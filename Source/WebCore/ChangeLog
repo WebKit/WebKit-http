@@ -1,3 +1,1425 @@
+2016-09-02  Zalan Bujtas  <zalan@apple.com>
+
+        Should never be reached failure in WebCore::floatValueForLength
+        https://bugs.webkit.org/show_bug.cgi?id=139397
+        <rdar://problem/27704376>
+
+        Reviewed by Simon Fraser.
+
+        floatValueForLength can't resolve unspecified Length types. Filter them out and return 0 as if they were auto.
+
+        Test: svg/css/assert-on-non-resolvable-dimension.html
+
+        * svg/SVGLengthContext.cpp:
+        (WebCore::SVGLengthContext::valueForLength):
+
+2016-09-02  Zalan Bujtas  <zalan@apple.com>
+
+        ASSERT_NOT_REACHED() is touched in WebCore::valueForLength
+        https://bugs.webkit.org/show_bug.cgi?id=123337
+        <rdar://problem/27684121>
+
+        Reviewed by Simon Fraser.
+
+        Do not try to use unspecified height value while resolving logical height for table row.
+
+        Test: fast/table/assert-on-non-resolvable-row-dimension.html
+
+        * rendering/RenderTableCell.h:
+        (WebCore::RenderTableCell::logicalHeightForRowSizing):
+
+2016-09-02  Zalan Bujtas  <zalan@apple.com>
+
+        ASSERTION FAILED: !m_committedWidth in WebCore::LineWidth::fitBelowFloats
+        https://bugs.webkit.org/show_bug.cgi?id=149462
+        <rdar://problem/27710841>
+
+        Reviewed by David Hyatt.
+
+        In certain cases (multiple spans on the same line with negativ marings), the LineWidth::m_committedWidth > 0
+        check is not sufficient to decide if some content has already been committed to the current line.
+        This patch adds a flag to indicate if we ever committed to the current line. 
+
+        Test: fast/text/assert-when-text-with-negative-margin-sibling-does-not-fit.html
+
+        * rendering/line/BreakingContext.h:
+        (WebCore::BreakingContext::handleText):
+        * rendering/line/LineWidth.h:
+        (WebCore::LineWidth::hasCommitted):
+
+2016-08-31  Zalan Bujtas  <zalan@apple.com>
+
+        ASSERTION FAILED: !flow->layer() && !flow->isInlineElementContinuation() in WebCore::RenderBlock::addContinuationWithOutline
+        https://bugs.webkit.org/show_bug.cgi?id=151022
+        <rdar://problem/27710993>
+
+        Reviewed by Simon Fraser.
+
+        Certain CSS properties like opacity, mask etc (graphical group members) require the layer to be a non-normal flow,
+        self painting layer so that we can manage painting properly. However in addition to those CSS properties, some of the will-change
+        values (again, graphical group members) also require the layer to be non-normal flow, self painting.
+        This patch ensures that when deciding whether a layer should be a normal flow layer, we take the will-change values into account as well.
+
+        Tests: compositing/layer-creation/assert-on-inline-element-with-will-change.html
+               compositing/layer-creation/will-change-on-normal-flow-content.html
+
+        * rendering/RenderLayer.cpp:
+        (WebCore::RenderLayer::calculateClipRects):
+        * rendering/style/WillChangeData.cpp:
+        (WebCore::propertyCreatesGraphicalGroup):
+        (WebCore::WillChangeData::addFeature):
+        * rendering/style/WillChangeData.h:
+        (WebCore::WillChangeData::canCreateGraphicalGroup):
+        (WebCore::WillChangeData::canTriggerCompositingOnInline): Deleted.
+
+2016-08-26  Zalan Bujtas  <zalan@apple.com>
+
+        ASSERT_NOT_REACHED() is touched in WebCore::minimumValueForLength
+        https://bugs.webkit.org/show_bug.cgi?id=125781
+        <rdar://problem/27684457>
+
+        Reviewed by Simon Fraser.
+
+        RenderTableSection::calcRowLogicalHeight misused minimumValueForLength to fallback to 0 for non-fixed values.
+        While this patch fixes the assertion, the table section code needs works to support calc values. See webkit.org/b/161273.   
+
+        Test: fast/table/assert-on-min-max-content-values.html
+
+        * rendering/RenderTableSection.cpp:
+        (WebCore::RenderTableSection::calcRowLogicalHeight):
+
+2016-08-24  Zalan Bujtas  <zalan@apple.com>
+
+        ASSERTION FAILED: contentSize >= 0 in WebCore::RenderFlexibleBox::adjustChildSizeForMinAndMax
+        https://bugs.webkit.org/show_bug.cgi?id=155700
+        <rdar://problem/27720727>
+
+        Reviewed by David Hyatt.
+
+        RenderBox::m_minPreferredLogicalWidth/m_maxPreferredLogicalWidth don't need special initial value since
+        preferredLogicalWidthsDirty flag guards them. -1 as initial value can cause problems for renderers that don't
+        override RenderBox::computePreferredLogicalWidths().    
+
+        Test: fast/ruby/assert-when-content-size-is-negative.html
+
+        * rendering/RenderBox.cpp:
+        (WebCore::RenderBox::RenderBox):
+        (WebCore::RenderBox::dirtyLineBoxes):
+        (WebCore::RenderBox::deleteLineBoxWrapper):
+        * rendering/RenderBox.h:
+
+2016-08-24  Zalan Bujtas  <zalan@apple.com>
+
+        ASSERTION FAILED: childrenInline() in WebCore::RenderBlockFlow::hasLines
+        https://bugs.webkit.org/show_bug.cgi?id=139396
+        <rdar://problem/27704339>
+
+        Reviewed by David Hyatt.
+
+        RenderBlockFlow::hasLines() should be able to handle the block-children case.
+
+        Test: fast/ruby/assert-with-block-rt-child-and-emphasis.html
+
+        * rendering/RenderBlock.h:
+        (WebCore::RenderBlock::hasLines): Deleted.
+        * rendering/RenderBlockFlow.cpp:
+        (WebCore::RenderBlockFlow::hasLines):
+        * rendering/RenderBlockFlow.h:
+
+2016-08-23  Zalan Bujtas  <zalan@apple.com>
+
+        ASSERTION FAILED: !view().layoutStateEnabled() || style().styleType() == FIRST_LETTER in WebCore::RenderInline::clippedOverflowRectForRepaint
+        https://bugs.webkit.org/show_bug.cgi?id=155363
+        <rdar://problem/27720434>
+
+        Reviewed by David Hyatt.
+
+        Loosen ASSERT to include calls when the inline has a self painting layer. It's valid to end up here during layout when
+        the layer's composite state changes.
+
+        Test: fast/layers/assert-on-self-painting-inline-with-scrolling.html
+
+        * rendering/RenderInline.cpp:
+        (WebCore::RenderInline::clippedOverflowRectForRepaint):
+
+2016-08-23  Zalan Bujtas  <zalan@apple.com>
+
+        ASSERTION FAILED: hasOverflowingCell == this->hasOverflowingCell() in WebCore::RenderTableSection::computeOverflowFromCells
+        https://bugs.webkit.org/show_bug.cgi?id=155702
+        <rdar://problem/27720731>
+
+        Reviewed by David Hyatt.
+
+        The simplified layout path for table/section should also clear the slow path flag for visual overflow (since it recomputes
+        the overflow for the descendant cells). 
+
+        Test: fast/table/assert-when-visual-overflow-is-cleared.html
+
+        * rendering/RenderTableSection.cpp:
+        (WebCore::RenderTableSection::layout):
+
+2016-08-24  Chris Dumez  <cdumez@apple.com>
+
+        Assertion hit: ASSERT(!m_parserScheduler) in ~HTMLDocumentParser()
+        https://bugs.webkit.org/show_bug.cgi?id=161083
+        <rdar://problem/27986937>
+
+        Reviewed by Darin Adler.
+
+        Call cancelParsing() right before re-creating the new parser in
+        Document::implicitOpen(). We would previously call removeChildren()
+        in between which is was an issue because it can cause JS to be
+        executed and therefore the parser to be re-created after we have
+        cancelled parsing.
+
+        No new tests, unskipped html/browsers/browsing-the-web/unloading-documents/004.html
+        which was consistently crashing.
+
+        * dom/Document.cpp:
+        (WebCore::Document::implicitOpen):
+
+2016-08-25  Zalan Bujtas  <zalan@apple.com>
+
+        Infinite recursion crash in WebCore::RenderBlockFlow::layoutBlock
+        https://bugs.webkit.org/show_bug.cgi?id=139474
+        <rdar://problem/27705190>
+
+        Reviewed by David Hyatt.
+
+        We should just give up trying to avoid widow when the page is too small to break line.
+
+        Test: fast/multicol/assert-on-small-page-height-with-widow.html
+
+        * rendering/RenderBlockFlow.cpp:
+        (WebCore::RenderBlockFlow::clearShouldBreakAtLineToAvoidWidowIfNeeded):
+        (WebCore::RenderBlockFlow::adjustLinePositionForPagination):
+        * rendering/RenderBlockFlow.h:
+
+2016-05-03  Pranjal Jumde  <pjumde@apple.com>
+
+        WorkerGlobalScope's self, location and navigator attributes should not be replaceable
+        https://bugs.webkit.org/show_bug.cgi?id=157296
+        <rdar://problem/25962738>
+
+        Reviewed by Chris Dumez.
+
+        Tests: http/tests/workers/location-readonly.html
+               http/tests/workers/navigator-readonly.html
+               http/tests/workers/self-readonly.html
+
+        * workers/WorkerGlobalScope.idl:
+        The 'self', 'location', and 'navigator' properties of the WorkerGlobalScope must be immutable.
+        See: https://html.spec.whatwg.org/multipage/workers.html#the-workerglobalscope-common-interface
+
+2016-07-08  Daniel Bates  <dabates@apple.com>
+
+        Move shouldInheritSecurityOriginFromOwner() from URL to Document
+        https://bugs.webkit.org/show_bug.cgi?id=158987
+
+        Reviewed by Alex Christensen.
+
+        The URL class should not have knowledge of the concept of an origin or the semantics of origin
+        inheritance as these are higher level concepts. We should make URL::shouldInheritSecurityOriginFromOwner()
+        a static non-member, non-friend function of Document because its implements the origin semantics
+        for a Document object as described in section Origin of the HTML5 spec., <https://html.spec.whatwg.org/multipage/browsers.html#origin> (8 July 2016).
+        These semantics only apply to Documents.
+
+        No functionality changed. So, no new tests.
+
+        * dom/Document.cpp:
+        (WebCore::shouldInheritSecurityOriginFromOwner): Added.
+        (WebCore::Document::initSecurityContext): Modified to call WebCore::shouldInheritSecurityOriginFromOwner().
+        (WebCore::Document::initContentSecurityPolicy): Ditto.
+        * platform/URL.cpp:
+        (WebCore::URL::shouldInheritSecurityOriginFromOwner): Deleted.
+        * platform/URL.h:
+
+2016-06-17  John Wilander  <wilander@apple.com>
+
+        Ignore case in the check for security origin inheritance
+        https://bugs.webkit.org/show_bug.cgi?id=158878
+
+        Reviewed by Alex Christensen.
+
+        Darin Adler commented in https://bugs.webkit.org/show_bug.cgi?id=158855:
+        "Are these comparisons intentionally case sensitive? Shouldn’t they ignore ASCII 
+        case? We could use equalIgnoringASCIICase and equalLettersIgnoringASCIICase for 
+        those two lines instead of using ==. URL::parse normalizes letters in the scheme 
+        and host by using toASCIILower, but does not normalize letters elsewhere in the 
+        URL, such as in the "blank" or "srcdoc" in the above URLs."
+
+        Test: http/tests/dom/window-open-about-uppercase-blank-and-access-document.html
+
+        * platform/URL.cpp:
+        (WebCore::URL::shouldInheritSecurityOriginFromOwner):
+
+2016-06-16  John Wilander  <wilander@apple.com>
+
+        Restrict security origin inheritance to empty, about:blank, and about:srcdoc URLs
+        https://bugs.webkit.org/show_bug.cgi?id=158855
+        <rdar://problem/26142632>
+
+        Reviewed by Alex Christensen.
+
+        Tests: http/tests/dom/window-open-about-blank-and-access-document.html
+               http/tests/dom/window-open-about-webkit-org-and-access-document.html
+
+        Document.cpp previously checked whether a document should inherit its owner's 
+        security origin by checking if the URL is either empty or blank. URL.cpp in 
+        turn only checks if the protocol is "about:" in the isBlankURL() function. 
+        Thus all about:* URLs inherited security origin. This patch restricts 
+        security origin inheritance to empty, about:blank, and about:srcdoc URLs.
+
+        Quotes and links from the WHATWG spec regarding about:srcdoc:
+
+        7.1 Browsing contexts
+        A browsing context can have a creator browsing context, the browsing context 
+        that was responsible for its creation. If a browsing context has a parent 
+        browsing context, then that is its creator browsing context. Otherwise, if the 
+        browsing context has an opener browsing context, then that is its creator 
+        browsing context. Otherwise, the browsing context has no creator browsing 
+        context.
+        https://html.spec.whatwg.org/multipage/browsers.html#concept-document-bc
+
+        7.1.1 Nested browsing contexts
+        Certain elements (for example, iframe elements) can instantiate further 
+        browsing contexts. These are called nested browsing contexts. If a browsing 
+        context P has a Document D with an element E that nests another browsing 
+        context C inside it, then C is said to be nested through D, and E is said to 
+        be the browsing context container of C. If the browsing context container 
+        element E is in the Document D, then P is said to be the parent browsing 
+        context of C and C is said to be a child browsing context of P. Otherwise, 
+        the nested browsing context C has no parent browsing context.
+        https://html.spec.whatwg.org/multipage/browsers.html#nested-browsing-context
+
+        4.8.5 The iframe element
+        The iframe element represents a nested browsing context.
+        ...
+        If the srcdoc attribute is specified
+            Navigate the element's child browsing context to a new response whose 
+            url list consists of about:srcdoc ...
+        https://html.spec.whatwg.org/multipage/embedded-content.html#attr-iframe-srcdoc
+
+        * dom/Document.cpp:
+        (WebCore::Document::initSecurityContext):
+            Now uses the URL::shouldInheritSecurityOriginFromOwner() function instead.
+        (WebCore::Document::initContentSecurityPolicy):
+            Now uses the URL::shouldInheritSecurityOriginFromOwner() function instead.
+        (WebCore::shouldInheritSecurityOriginFromOwner): Deleted.
+            Moved to URL::shouldInheritSecurityOriginFromOwner() and restricted the check.
+        * platform/URL.cpp:
+        (WebCore::URL::shouldInheritSecurityOriginFromOwner):
+        * platform/URL.h:
+            Moved the function from Document and restricted the check to only allow
+            security origin inheritance for empty, about:blank, and about:srcdoc URLs.
+
+2016-05-24  Antti Koivisto  <antti@apple.com>
+
+        REGRESSION (r196629): Safari can get into a state where switching Reader theme doesn't apply to the webpage
+        https://bugs.webkit.org/show_bug.cgi?id=158018
+        <rdar://problem/24732776>
+
+        Reviewed by Darin Adler.
+
+        When a tab goes to background we clear the style resolver. It is recreated lazily when the tab is again active.
+        However style invalidation code tests if the style resolver exists and skips the invalidation if it doesn't.
+        With sufficiently simple document (like in Reader) we may never create one for other reasons and so style
+        invalidation doesn't work.
+
+        No test, don't know how to make one.
+
+        * dom/Element.cpp:
+        (WebCore::Element::needsStyleInvalidation):
+
+            Remove styleResolverIfExists() check and do the invalidation normally.
+            Instead check for forced style recalc. If there is one pending we don't need to bother with invalidation.
+
+2016-05-31  Dave Hyatt  <hyatt@apple.com>
+
+        REGRESSION (r189567): Elements with aspect ratios not handled correctly inside flexbox.
+        https://bugs.webkit.org/show_bug.cgi?id=158040
+
+        Reviewed by Zalan Bujtas.
+
+        Added new tests in fast/flexbox.
+
+        * rendering/RenderFlexibleBox.cpp:
+        (WebCore::RenderFlexibleBox::clientLogicalBottomAfterRepositioning):
+        (WebCore::RenderFlexibleBox::hasOrthogonalFlow):
+        (WebCore::RenderFlexibleBox::mainAxisContentExtent):
+        (WebCore::RenderFlexibleBox::computeMainAxisExtentForChild):
+        (WebCore::RenderFlexibleBox::mainAxisBorderAndPaddingExtentForChild):
+        (WebCore::RenderFlexibleBox::mainAxisLengthIsDefinite):
+        (WebCore::RenderFlexibleBox::mainAxisScrollbarExtentForChild):
+        (WebCore::RenderFlexibleBox::prepareOrderIteratorAndMargins):
+        (WebCore::RenderFlexibleBox::crossAxisLengthIsDefinite):
+        (WebCore::RenderFlexibleBox::computeMainSizeFromAspectRatioUsing):
+        (WebCore::RenderFlexibleBox::adjustChildSizeForAspectRatioCrossAxisMinAndMax):
+        (WebCore::RenderFlexibleBox::useChildAspectRatio):
+        (WebCore::RenderFlexibleBox::adjustChildSizeForMinAndMax):
+        (WebCore::RenderFlexibleBox::resetAutoMarginsAndLogicalTopInCrossAxis):
+        (WebCore::RenderFlexibleBox::mainAxisOverflowForChild):
+        (WebCore::RenderFlexibleBox::mainAxisExtentIsDefinite): Deleted.
+        (WebCore::RenderFlexibleBox::mainAxisLengthIsIndefinite): Deleted.
+        * rendering/RenderFlexibleBox.h:
+        (WebCore::RenderFlexibleBox::isFlexibleBoxImpl):
+
+2016-04-04  Chris Dumez  <cdumez@apple.com>
+
+        Regression(r196145): Crash in getOwnPropertyDescriptor on http://www.history.com/shows/vikings
+        https://bugs.webkit.org/show_bug.cgi?id=156136
+        <rdar://problem/25410767>
+
+        Reviewed by Ryosuke Niwa.
+
+        The page was crashing when doing the following:
+        Object.getOwnPropertyDescriptor(window, "indexedDB")
+
+        getOwnPropertyDescriptor() expected getDirect() to return a CustomGetterSetter for
+        CustomAccessors but it was not the case for window.indexedDB. The reason was that
+        window.indexedDB was a special property, which is not part of the static table but
+        returned by GetOwnPropertySlot() if IndexedDB feature is enabled. This weirdness
+        was due to our bindings generator not having proper support for [EnabledAtRuntime]
+        properties on Window.
+
+        This patch adds support for [EnabledAtRuntime] properties on Window by omitting
+        these properties from the static property table and then setting them at runtime
+        in JSDOMWindow::finishCreation() if the corresponding feature is enabled.
+        window.indexedDB now looks like a regular property when IndexedDB is enabled
+        and getOwnPropertyDescriptor() works as expected for this property.
+
+        Test: storage/indexeddb/indexeddb-getownpropertyDescriptor.html
+
+        * Modules/indexeddb/DOMWindowIndexedDatabase.cpp:
+        (WebCore::DOMWindowIndexedDatabase::indexedDB):
+        * Modules/indexeddb/DOMWindowIndexedDatabase.h:
+        The generated bindings pass DOMWindow by reference instead of pointer so update
+        the implementation accordingly.
+
+        * Modules/indexeddb/DOMWindowIndexedDatabase.idl:
+        Add 'indexedDB' and 'webkitIndexedDB' properties and mark them as
+        [EnabledAtRuntime]. Now that the bindings generator correctly handles
+        [EnabledAtRuntime] properties on the Window, there is no need to
+        custom-handle them in JSDOMWindowCustom.
+
+        * bindings/js/JSDOMWindowCustom.cpp:
+        Drop custom handling for 'indexedDB' and 'webkitIndexedDB' properties
+        in getOwnPropertySlot(). The generated bindings code now makes sure to
+        only set those properties on the Window if IndexedDB is enabled so we
+        can let the regular code path look up those properties.
+
+        * bindings/scripts/CodeGeneratorJS.pm:
+        (GetJSCAttributesForAttribute):
+        (GenerateHeader):
+        (GeneratePropertiesHashTable):
+        (GenerateImplementation):
+        Add support for [EnabledAtRuntime] properties on DOMWindow. For such
+        properties, we do the following:
+        1. Omit them from the static property table
+        2. In JSDOMWindow::finishCreation(), dynamically add those properties
+           at runtime if the corresponding feature is enabled.
+
+        Note that this works for constructors as well.
+
+        * inspector/InspectorIndexedDBAgent.cpp:
+        (WebCore::assertIDBFactory):
+        Pass Window by reference instead of pointer.
+
+2016-06-16  Ting-Wei Lan  <lantw44@gmail.com>
+
+        Include cstdlib before using std::atexit
+        https://bugs.webkit.org/show_bug.cgi?id=158681
+
+        Reviewed by Brent Fulgham.
+
+        * platform/graphics/PlatformDisplay.cpp:
+
+2016-06-02  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [Wayland] PlatformDisplayWayland destructor is super crashy
+        https://bugs.webkit.org/show_bug.cgi?id=157973
+
+        Reviewed by Michael Catanzaro.
+
+        EGL registers two at exist callbacks one to finish the display and another one to unload drivers, the one to
+        finish the display happens first. When our destructor is called the _eglFiniDisplay callback has already been
+        called, so we have a valid pointer for an already finished display. Then eglTerminate tries to find the display
+        in the global display list, but fails and for some reason it crashes when trying to return an error.
+        If atexit is called after the global PlatformDisplay constructor, the atexit handler is called before the
+        destructor. The atexit callbacks are called in reverse order, so if we register an atexit handler after the
+        global instace has been created and after EGL has been initialized, we could terminate the EGL display before
+        the EGL atexit handlers and the global PlatformDisplay destructor.
+
+        * platform/graphics/PlatformDisplay.cpp:
+        (WebCore::PlatformDisplay::initializeEGLDisplay):
+
+2016-08-01  Antti Koivisto  <antti@apple.com>
+
+        REGRESSION (r196383): Drop down CSS menus not working on cnet.com, apmex.com
+        https://bugs.webkit.org/show_bug.cgi?id=160390
+
+        Reviewed by Simon Fraser.
+
+        The case here is that we have a rule like
+
+            .enableHover:hover .child { ... }
+
+        and the "enableHover" class is added dynamically. The class change invalidation optimization code would figure out
+        that nothing needs to be invalidated as the class change doesn't make the rule match (since :hover doesn't match).
+
+        However for event driven hover to actually work the hover element needs to have its childrenAffectedByHover bit set.
+        This bits is set when the selector match is attempted, whether it actually matches or not. Since we optimized away
+        the style invalidation we never set the bit either.
+
+        Fix by treating :hover as always matching (==ignored) when collecting rules for invalidation optimization purposes.
+        Dynamic pseudo elements are already treated this way for similar reasons.
+
+        Test: fast/selectors/hover-invalidation-descendant-dynamic.html
+
+        * css/SelectorChecker.cpp:
+        (WebCore::SelectorChecker::checkOne):
+
+            Match always in CollectingRulesIgnoringVirtualPseudoElements mode (now slightly misnamed).
+
+            This mode is used for optimization purposes in StyleInvalidationAnalysis (which we care about here) and
+            StyleSharingResolver. The change is fine for both.
+
+        * cssjit/SelectorCompiler.cpp:
+        (WebCore::SelectorCompiler::SelectorCodeGenerator::generateElementIsHovered):
+
+            Same change for the slow path selector checker.
+
+2016-07-04  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [GTK] Null Node dereference in FrameSelection::notifyAccessibilityForSelectionChange of FrameSelectionAtk.cpp
+        https://bugs.webkit.org/show_bug.cgi?id=159411
+
+        Reviewed by Carlos Garcia Campos.
+
+        Tests:
+            editing/selection/selection-in-iframe-removed-crash.html
+
+        * editing/atk/FrameSelectionAtk.cpp:
+        (WebCore::FrameSelection::notifyAccessibilityForSelectionChange):
+        Added a null check for the return value of containerNode().
+
+2016-07-14  Brent Fulgham  <bfulgham@apple.com>
+
+        editing/spelling/spellcheck-async.html sometimes crashes with GuardMalloc 
+        https://bugs.webkit.org/show_bug.cgi?id=142969
+        <rdar://problem/27331095>
+
+        Reviewed by Alex Christensen.
+
+        Fix based on a Blink change (patch by <rouslan@chromium.org>):
+        <https://chromium.googlesource.com/chromium/blink/+/c713736b122c2224804b2db72f1f711cb47ee260%5E%21/#F1>
+
+        Test: editing/spelling/copy-paste-crash.html
+              editing/spelling/spellcheck-async.html
+
+        * editing/SpellChecker.cpp:
+        (WebCore::SpellCheckRequest::didSucceed):
+        (WebCore::SpellCheckRequest::didCancel):
+
+2016-07-21  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [Cairo] Fix a crash in fast/canvas/canvas-getImageData-invalid-result-buffer-crash.html
+        https://bugs.webkit.org/show_bug.cgi?id=160014
+
+        Reviewed by Michael Catanzaro.
+
+        In r202887 some null checks were added for JSArray::createUninitialized (and related) but not for the
+        ImageBuffer cairo implementation.
+
+        * platform/graphics/cairo/ImageBufferCairo.cpp:
+        (WebCore::getImageData): Return early if Uint8ClampedArray::createUninitialized() returns nullptr.
+
+2016-07-06  Brent Fulgham  <bfulgham@apple.com>
+
+        Return values of JSArray::createUninitialized (and related) are not consistently checked for nullptr
+        https://bugs.webkit.org/show_bug.cgi?id=159495
+        <rdar://problem/26075433>
+
+        Reviewed by Dean Jackson.
+
+        Test: fast/canvas/canvas-getImageData-invalid-result-buffer-crash.html
+
+        * html/ImageData.cpp:
+        (WebCore::ImageData::ImageData): Assert at construction if we could not create a valid
+        buffer.
+        * platform/SharedBuffer.cpp:
+        (WebCore::SharedBuffer::createArrayBuffer): Check for a null buffer before using it.
+        * platform/graphics/cg/ImageBufferDataCG.cpp:
+        (WebCore::ImageBufferData::getData): Ditto.
+        * platform/graphics/filters/FEGaussianBlur.cpp:
+        (WebCore::FEGaussianBlur::platformApplySoftware): Ditto.
+        * platform/graphics/filters/FilterEffect.cpp:
+        (WebCore::FilterEffect::copyImageBytes): Ditto.
+        (WebCore::FilterEffect::copyUnmultipliedImage): Ditto.
+        (WebCore::FilterEffect::copyPremultipliedImage): Ditto.
+
+2016-07-26  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Infinite Canvas context save() causes WebKit to crash
+        https://bugs.webkit.org/show_bug.cgi?id=159586
+        <rdar://problem/26759984>
+
+        Reviewed by Simon Fraser.
+
+        Limit the size of the canvas context state stack to 1024 * 16 saves. All
+        the saves which come after that limit will stay unrealized. The restore() 
+        should not have any effect till there is no unrealized saves.
+         
+        Test: fast/canvas/canvas-context-save-limit.html
+
+        * html/canvas/CanvasRenderingContext2D.cpp:
+        (WebCore::CanvasRenderingContext2D::realizeSaves):
+        (WebCore::CanvasRenderingContext2D::realizeSavesLoop):
+        * html/canvas/CanvasRenderingContext2D.h: 
+
+2016-08-19  Chris Dumez  <cdumez@apple.com>
+
+        DumpRenderTree crashed in com.apple.WebCore: WebCore::DOMWindow::resetDOMWindowProperties + 607
+        https://bugs.webkit.org/show_bug.cgi?id=160983
+        <rdar://problem/26768524>
+
+        Reviewed by Brent Fulgham.
+
+        Update DOMWindow::frameDestroyed() to ref the window object as the crash
+        traces seem to indicate it can get destroyed during the execution of this
+        method. Also update the code in the ~Frame destructor to not iterate over
+        the list of FrameDestructionObservers because observers remove themselves
+        from the list when they get destroyed.
+
+        No new tests, do not know how to reproduce.
+
+        * page/DOMWindow.cpp:
+        (WebCore::DOMWindow::frameDestroyed):
+        * page/Frame.cpp:
+        (WebCore::Frame::~Frame):
+
+2016-08-05  Simon Fraser  <simon.fraser@apple.com>
+
+        marquee with "truespeed" animates at > 60fps, hogging CPU
+        https://bugs.webkit.org/show_bug.cgi?id=160609
+
+        Reviewed by David Hyatt.
+        
+        A <marquee truespeed="" scrollDelay="0"> would fire a zero-delay timer and also
+        fail to animate, hogging CPU.
+        
+        Fix to cap the timer at 16ms intervals. We don't believe it's necessary to
+        maintain web compatibility here.
+
+        Tested by existing tests.
+
+        * html/HTMLMarqueeElement.cpp:
+        (WebCore::HTMLMarqueeElement::minimumDelay):
+        * html/HTMLMarqueeElement.h:
+
+2016-07-25  Brady Eidson  <beidson@apple.com>
+
+        Allow LocalStorage by default for file URLs.
+        https://bugs.webkit.org/show_bug.cgi?id=160169
+
+        Reviewed by Brent Fulgham.
+
+        Test: storage/domstorage/localstorage/file-can-access.html
+
+        * page/SecurityOrigin.cpp:
+        (WebCore::SecurityOrigin::canAccessStorage): Remove the m_universalAccess check for local URLs.
+
+2016-07-15  Brady Eidson  <beidson@apple.com>
+
+        WebKit should prevent push/replace state with username in URL.
+        <rdar://problem/27361737> and https://bugs.webkit.org/show_bug.cgi?id=159818
+
+        Reviewed by Brent Fulgham.
+
+        Test: http/tests/security/history-username-password.html
+
+        * page/History.cpp:
+        (WebCore::History::stateObjectAdded): Don't allow URLs with usernames/passwords.
+
+2016-07-14  John Wilander  <wilander@apple.com>
+
+        Remove credentials in URL when accessed through location.href
+        https://bugs.webkit.org/show_bug.cgi?id=139562
+        <rdar://problem/27331164>
+
+        Reviewed by Brent Fulgham.
+
+        Test: http/tests/security/location-href-clears-username-password.html
+
+        The reason for this change is to not allow scripts on the page to
+        exfiltrate username and password from the URL.
+
+        * page/Location.cpp:
+        (WebCore::Location::href):
+            Now checks if there is a username or password in the URL. If so,
+            it copies the URL and removes the username and password.
+
+2016-07-24  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        The web process hangs when computing elements-based snap points for a container with large max scroll offset
+        https://bugs.webkit.org/show_bug.cgi?id=152605
+        <rdar://problem/25353661>
+
+        Reviewed by Simon Fraser.
+
+        Fixes a bug in the computation of axis snap points. The ScrollSnapPoints object, which tracks
+        snap points along a particular axis, has two flags, hasRepeat and usesElements. For elements-
+        based snapping, both flags would be turned on, since StyleBuilderConverter::convertScrollSnapPoints
+        short-circuits for elements-based snapping and does not default usesRepeat to false. To address this,
+        we make ScrollSnapPoints not repeat(100%) by default.
+
+        Test: css3/scroll-snap/scroll-snap-elements-container-larger-than-children.html
+
+        * css/StyleBuilderConverter.h:
+        (WebCore::StyleBuilderConverter::convertScrollSnapPoints): Deleted.
+        * rendering/style/StyleScrollSnapPoints.cpp:
+        (WebCore::ScrollSnapPoints::ScrollSnapPoints):
+
+2016-06-30  Antoine Quint  <graouts@apple.com>
+
+        Drawing an SVG image into a <canvas> that is not in the DOM draws the wrong region
+        https://bugs.webkit.org/show_bug.cgi?id=159276
+
+        Reviewed by Dean Jackson.
+
+        In the event where the <img> element that we are passing to CanvasRenderingContext2D.drawImage()
+        points to an SVG resource, we ensure that the container for the SVG image is sized to match the
+        HTML element. The necessity for setting this container size, explained in webkit.org/b/148845,
+        is that we must ensure a cached image does not have an outdated container size.
+
+        Tests: svg/as-image/img-with-svg-resource-in-dom-and-drawImage.html
+               svg/as-image/img-with-svg-resource-in-dom-no-size-and-drawImage.html
+               svg/as-image/img-with-svg-resource-not-in-dom-and-drawImage.html
+               svg/as-image/img-with-svg-resource-not-in-dom-no-size-and-drawImage.html
+
+        * html/canvas/CanvasRenderingContext2D.cpp:
+        (WebCore::CanvasRenderingContext2D::drawImage):
+
+2016-06-15  Antti Koivisto  <antti@apple.com>
+
+        GoogleMaps transit schedule explorer comes up blank initially
+        https://bugs.webkit.org/show_bug.cgi?id=158803
+        rdar://problem/25818080
+
+        Reviewed by Andreas Kling.
+
+        In case we had something like
+
+        .foo bar { ... }
+
+        and later a new stylesheet was added dynamically that contained
+
+        .foo baz { ... }
+
+        we would fail to add the new rules to the descendant invalidation rule sets for ".foo". This could
+        cause some style invalidations to be missed.
+
+        * css/DocumentRuleSets.cpp:
+        (WebCore::DocumentRuleSets::collectFeatures):
+
+        Reset the ancestorClassRules and ancestorAttributeRulesForHTML rule set caches when new style sheets
+        are added (==collectFeatures is called).
+
+2016-06-02  Darin Adler  <darin@apple.com>
+
+        Fix a couple of mistakes in CSSParserValue memory management
+        https://bugs.webkit.org/show_bug.cgi?id=158307
+        <rdar://problem/26127225>
+
+        Reviewed by Daniel Bates.
+
+        * css/CSSGrammar.y.in: Added a destructor for calc_func_term. This presumably
+        fixes some memory leaks in error cases. Removed an assertion about not needing
+        a call to destroy that was far too limited. Tweaked formatting of the percentage
+        ase in the key production. Indented calc_func_term to make it consistent with
+        other productions nearby.
+
+        * css/CSSParserValues.cpp:
+        (WebCore::CSSParserValueList::~CSSParserValueList): Use a modern for loop.
+        (WebCore::CSSParserValueList::deleteValueAt): Deleted. Unused function, and also
+        would have resulted in a memory leak unless the code already extracted the value
+        from the list.
+        (WebCore::CSSParserValueList::extend): Properly transfer ownership from one value
+        list to the other by setting the unit to 0 in the donor.
+
+        * css/CSSParserValues.h: Removed unused deleteValueAt function.
+
+2016-06-13  Dean Jackson  <dino@apple.com>
+
+        SVG elements don't blend correctly into HTML
+        https://bugs.webkit.org/show_bug.cgi?id=158718
+        <rdar://problem/26782004>
+
+        Reviewed by Antoine Quint.
+
+        We were not creating any transparency layers for the root SVG nodes.
+        This is ok if the SVG is the root document, because it is the backdrop.
+        However, if it is inline SVG, it needs to apply the operation in
+        order to composite into the document.
+
+        Test: svg/css/mix-blend-mode-with-inline-svg.html
+
+        * rendering/RenderLayer.cpp:
+        (WebCore::RenderLayer::beginTransparencyLayers):
+
+2016-06-09  Antoine Quint  <graouts@apple.com>
+
+        Changing canvas height immediately after page load does not relayout canvas
+        https://bugs.webkit.org/show_bug.cgi?id=156097
+
+        Reviewed by Zalan Bujtas.
+
+        Promote the logic use to identify whether we should perform a layout after a change of
+        intrinsic size from RenderImage to RenderReplaced such that RenderCanvas may use it
+        in canvasSizeChanged() and correctly update its layout in the case where the width
+        or height attribute is updated and there are no explicit sizing performed with CSS.
+        Additionally, this will also account for the object-fix property to only perform
+        a layout if necessary.
+
+        Test: fast/canvas/canvas-css-size-after-height-change-with-display-flex.html
+
+        * rendering/RenderHTMLCanvas.cpp:
+        (WebCore::RenderHTMLCanvas::canvasSizeChanged):
+        * rendering/RenderImage.cpp:
+        (WebCore::RenderImage::repaintOrMarkForLayout):
+        * rendering/RenderReplaced.cpp:
+        (WebCore::RenderReplaced::setNeedsLayoutIfNeededAfterIntrinsicSizeChange):
+        * rendering/RenderReplaced.h:
+
+2016-06-06  Jiewen Tan  <jiewen_tan@apple.com>
+
+        URLs containing tabs or newlines are parsed incorrectly
+        https://bugs.webkit.org/show_bug.cgi?id=143381
+        <rdar://problem/26567214>
+
+        Reviewed by Brent Fulgham.
+
+        1. Strip any tabs and newlines in the URL input.
+        2. Replace the original stripping URL leading and trailing white spaces logic with WTFString's
+        builtin, and move this logic to the very begining of the URL parser.
+        3. Enhance the protocolIs method to ignore any leading whitespace/control characters, and
+        tabs/newlines of the examining url.
+
+        Test: fast/url/tab-and-newline-stripping.html
+
+        * platform/URL.cpp:
+        (WebCore::isTabNewline):
+        (WebCore::shouldTrimFromURL):
+        (WebCore::URL::init):
+        (WebCore::protocolIs):
+
+2016-05-23  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r200414.
+
+        This change appears to have broken the 'write a reply' field
+        on Nextdoor.com
+
+        Reverted changeset:
+
+        "Clicks inside button elements are sometimes discarded when
+        the mouse moves"
+        https://bugs.webkit.org/show_bug.cgi?id=39620
+        http://trac.webkit.org/changeset/200414
+
+2016-05-24  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Font Loading] Crash during font download failure after garbage collection
+        https://bugs.webkit.org/show_bug.cgi?id=158013
+        <rdar://problem/25148032>
+
+        Reviewed by Darin Adler.
+
+        Usually, ownership during font loading is top-down - JavaScript owns a JSFontFace,
+        which owns a FontFace, which owns a CSSFontFace. However, when we receive the
+        asynchronous callback that a font finished loading, the call comes in from the
+        bottom - it is delivered from the CSSFontFaceSource to the CSSFontFace, and then
+        to the FontFace. If a garbage collection had previously run, we might remove
+        the last reference to ourself during this asynchronous callback. A simple guard
+        makes sure this doesn't happen.
+
+        Test: fast/text/font-face-crash.html
+
+        * css/CSSFontFace.cpp:
+        (WebCore::CSSFontFace::fontLoaded):
+
+2016-05-20  Dave Hyatt  <hyatt@apple.com>
+
+        Scrolling broken in iTunes connect pages
+        https://bugs.webkit.org/show_bug.cgi?id=157678
+
+        Reviewed by Zalan Bujtas.
+
+        Added fast/flexbox/nested-columns-min-intrinsic-disabled.html
+
+        Turn off minimum intrinsic size adjustment for flexboxes. This violates the spec,
+        but until we can produce good results that is what we need to do. Blink has also
+        turned off nested columns intrinsic sizing as well, so we match them with this
+        change.
+
+        * rendering/RenderFlexibleBox.cpp:
+        (WebCore::RenderFlexibleBox::adjustChildSizeForMinAndMax):
+
+2016-04-27  Simon Fraser  <simon.fraser@apple.com>
+
+        SVG SMIL animations run at less than 60fps
+        https://bugs.webkit.org/show_bug.cgi?id=157119
+        rdar://problem/25971304
+
+        Reviewed by Tim Horton.
+        
+        If you re-fetch current time while doing animation computations you're gonna have
+        a bad time.
+        
+        More specifically, SMILTimeContainer::startTimer() re-fetched elapsedTime() when
+        computing the delay for the next timer fire, then clamped to 16.667ms, so the timer
+        would actually be scheduled at intervals greater than desired, causing a ~54fps framerate.
+        
+        Fix by using the elapsedTime fetched at the start of animation processing.
+
+        Tested by iOS content-animation performance tests.
+
+        * svg/SVGSVGElement.cpp:
+        (WebCore::SVGSVGElement::SVGSVGElement): Just cleanup.
+        * svg/animation/SMILTimeContainer.cpp:
+        (WebCore::SMILTimeContainer::notifyIntervalsChanged):
+        (WebCore::SMILTimeContainer::resume):
+        (WebCore::SMILTimeContainer::startTimer):
+        (WebCore::SMILTimeContainer::updateAnimations):
+        * svg/animation/SMILTimeContainer.h:
+
+2016-04-27  Simon Fraser  <simon.fraser@apple.com>
+
+        CSS and SVG animations should run at 60fps
+        https://bugs.webkit.org/show_bug.cgi?id=157113
+        rdar://problem/24337280
+        rdar://problem/24337328
+
+        Reviewed by Dean Jackson.
+
+        For both CSS and SVG animations we used a 0.025s frame interval, which translates to
+        40fps. That caused these animations to look extra janky compared with accelerated
+        animations.
+
+        So use a 16.667ms frame interval for both.
+
+        Tested by content-animation benchmark tests.
+
+        * page/animation/AnimationController.cpp:
+        * svg/animation/SMILTime.h:
+        * svg/animation/SMILTimeContainer.cpp:
+        (WebCore::SMILTimeContainer::updateAnimations):
+        * svg/animation/SVGSMILElement.cpp:
+        (WebCore::SVGSMILElement::calculateNextProgressTime):
+
+2016-07-19  Zalan Bujtas  <zalan@apple.com>
+
+        REGRESSION(r203415): ASSERTION FAILED: !m_layoutRoot->container() || !m_layoutRoot->container()->needsLayout()
+        https://bugs.webkit.org/show_bug.cgi?id=159952
+
+        Reviewed by Simon Fraser.
+
+        Update ASSERTs to reflect new functionality, that is, now we can end up in a state
+        where the container (RenderView) of one of the dirty subtrees is dirty.
+        See r203415.
+ 
+        Covered by editing/pasteboard/drag-drop-input-in-svg.svg
+
+        * page/FrameView.cpp:
+        (WebCore::FrameView::scheduleRelayoutOfSubtree):
+
+2016-07-19  Zalan Bujtas  <zalan@apple.com>
+
+        theguardian.co.uk crossword puzzles are sometimes not displaying text
+        https://bugs.webkit.org/show_bug.cgi?id=159924
+        <rdar://problem/27409483>
+
+        Reviewed by Simon Fraser.
+
+        This patch fixes the case when
+        - 2 disjoint subtrees are dirty
+        - RenderView is also dirty.
+        and we end up not laying out one of the 2 subtrees.
+
+        In FrameView::scheduleRelayoutOfSubtree, we assume that when the RenderView is dirty
+        we already have a pending full layout which means that any previous subtree layouts have already been
+        converted to full layouts.
+        However this assumption is incorrect. RenderView can get dirty without checking if there's
+        already a pending subtree layout.
+        One option to solve this problem would be to override RenderObject::setNeedsLayout in RenderView
+        so that when the RenderView gets dirty, we could also convert any pending subtree layout to full layout.
+        However RenderObject::setNeedsLayout is a hot function and making it virtual would impact performance.
+        The other option is to always normalize subtree layouts in FrameView::scheduleRelayoutOfSubtree().
+        This patch implements the second option.
+
+        Test: fast/misc/subtree-layouts.html
+
+        * page/FrameView.cpp:
+        (WebCore::FrameView::scheduleRelayoutOfSubtree):
+
+2016-07-11  Zalan Bujtas  <zalan@apple.com>
+
+        Unable to edit fields or drag to select text in Dashboard widgets.
+        https://bugs.webkit.org/show_bug.cgi?id=159647
+        <rdar://problem/26941698>
+
+        Reviewed by Brent Fulgham.
+
+        RenderObject::computeAbsoluteRepaintRect's first paramenter is no longer in/out. Use the return
+        value to set the clip on the dashboard region.
+
+        Not testable.
+
+        * rendering/RenderInline.cpp:
+        (WebCore::RenderInline::addAnnotatedRegions):
+        * rendering/RenderObject.cpp:
+        (WebCore::RenderObject::addAnnotatedRegions):
+
+2016-07-10  Zalan Bujtas  <zalan@apple.com>
+
+        Fix LogicalSelectionOffsetCaches to work with detached render tree.
+        https://bugs.webkit.org/show_bug.cgi?id=159605
+        <rdar://problem/27248845>
+
+        Reviewed by Brent Fulgham.
+
+        When the renderer that is being destroyed is on a selection boundary,
+        we need to ensure that all its cached pointers across the selection code (e.g. SelectionSubtreeData)
+        are getting reset. In order to do that, we call clearSelection() on the RenderView.
+        One of the last steps of clearing selection is to collect the selection gaps. Selection gaps uses this
+        LogicalSelectionOffsetCaches helper class to collect selection information across blocks.
+        LogicalSelectionOffsetCaches normally operates on rooted renderers. However we need to ensure sure that
+        it can also handle renderers that are no longer part of the render tree.
+
+        Test: fast/text/selection-on-a-detached-tree.html
+
+        * rendering/LogicalSelectionOffsetCaches.h:
+        (WebCore::LogicalSelectionOffsetCaches::ContainingBlockInfo::setBlock):
+        (WebCore::LogicalSelectionOffsetCaches::ContainingBlockInfo::logicalLeftSelectionOffset):
+        (WebCore::LogicalSelectionOffsetCaches::ContainingBlockInfo::logicalRightSelectionOffset):
+        * rendering/RenderBlock.cpp:
+        (WebCore::RenderBlock::logicalLeftSelectionOffset):
+        (WebCore::RenderBlock::logicalRightSelectionOffset):
+
+2016-07-01  Zalan Bujtas  <zalan@apple.com>
+
+        prepareForDestruction() always needs to be called before destroying the Document object.
+        https://bugs.webkit.org/show_bug.cgi?id=159372
+        rdar://problem/26788150
+
+        Reviewed by Antti Koivisto.
+
+        We should never start destroying the Document object without calling prepareForDestruction() first.
+        It ensures that render tree gets nuked before we start tearing down the node tree.
+
+        Test: fast/history/page-cache-destroy-document.html
+
+        * dom/Document.cpp:
+        (WebCore::Document::removedLastRef):
+
+2016-06-20  Zalan Bujtas  <zalan@apple.com>
+
+        Set the end position on the placeholder BidiRun properly.
+        https://bugs.webkit.org/show_bug.cgi?id=158958
+
+        Reviewed by Myles C. Maxfield.
+        rdar://problem/26609266
+
+        The second paramenter for BidiRun indicates the end position and not the length of the run.
+        This was regressed at r102875 where only the start position was changed from 0 to pos.
+
+        Test: fast/text/international/bidi-style-in-isolate-crash.html
+
+        * rendering/InlineIterator.h:
+        (WebCore::addPlaceholderRunForIsolatedInline):
+
+2016-06-16  Zalan Bujtas  <zalan@apple.com>
+
+        [New Block-Inside-Inline Model] Do not attempt to re-run margin collapsing on the block sequence.
+        https://bugs.webkit.org/show_bug.cgi?id=158854
+
+        Reviewed by David Hyatt.
+
+        Test: fast/block/inside-inlines/crash-on-first-line-change.html
+
+        * rendering/RenderBlockLineLayout.cpp:
+        (WebCore::RenderBlockFlow::marginCollapseLinesFromStart):
+
+2016-06-15  Zalan Bujtas  <zalan@apple.com>
+
+        Decouple the percent height and positioned descendants maps.
+        https://bugs.webkit.org/show_bug.cgi?id=158773
+
+        Reviewed by David Hyatt and Chris Dumez.
+
+        We track renderers with percent height across multiple containers using
+        HashMap<const RenderBox*, std::unique_ptr<HashSet<const RenderBlock*>>>.
+        We also use the same data structure to track positioned descendants.
+        However a positioned renderer can have only one containing block so tracking it
+        with a 1:many type is defective.
+        It allows multiple inserts for positioned descendants, which could lead to
+        inconsistent layout state as the rendering logic expects these type of renderers
+        with only one containing block.
+        This patch decouples percent height and positioned tracking by introducing
+        the PositionedDescendantsMap class. This class is responsible for tracking
+        the positioned descendants inbetween layouts.
+
+        No change in functionality.
+
+        Tests: fast/block/positioning/change-containing-block-for-absolute-positioned.html
+               fast/block/positioning/change-containing-block-for-fixed-positioned.html
+
+        * rendering/RenderBlock.cpp:
+        (WebCore::insertIntoTrackedRendererMaps):
+        (WebCore::removeFromTrackedRendererMaps):
+        (WebCore::PositionedDescendantsMap::addDescendant): Add more defensive ASSERT_NOT_REACHED
+        to the double insert branch when webkit.org/b/158772 gets fixed.
+        (WebCore::PositionedDescendantsMap::removeDescendant):
+        (WebCore::PositionedDescendantsMap::removeContainingBlock):
+        (WebCore::PositionedDescendantsMap::positionedRenderers):
+        (WebCore::positionedDescendantsMap):
+        (WebCore::removeBlockFromPercentageDescendantAndContainerMaps):
+        (WebCore::RenderBlock::~RenderBlock):
+        (WebCore::RenderBlock::positionedObjects):
+        (WebCore::RenderBlock::insertPositionedObject):
+        (WebCore::RenderBlock::removePositionedObject):
+        (WebCore::RenderBlock::addPercentHeightDescendant):
+        (WebCore::RenderBlock::removePercentHeightDescendant):
+        (WebCore::RenderBlock::percentHeightDescendants):
+        (WebCore::RenderBlock::checkPositionedObjectsNeedLayout):
+        (WebCore::removeBlockFromDescendantAndContainerMaps): Deleted.
+        * rendering/RenderBlock.h:
+
+2016-06-14  Zalan Bujtas  <zalan@apple.com>
+
+        Make RenderBlock::insertInto/RemoveFromTrackedRendererMaps functions static.
+        https://bugs.webkit.org/show_bug.cgi?id=158722
+
+        Reviewed by Simon Fraser.
+
+        These functions manipulate static tracker hashmaps. They don't need to be on RenderBlock.
+        This is also in preparation for decoupling positioned descendant tracking from descendent percentage height handling.
+        (gPositionedDescendantsMap and gPercentHeightDescendantsMap) 
+
+        No change in functionality.
+
+        * rendering/RenderBlock.cpp:
+        (WebCore::insertIntoTrackedRendererMaps):
+        (WebCore::removeFromTrackedRendererMaps):
+        (WebCore::removeBlockFromDescendantAndContainerMaps):
+        (WebCore::RenderBlock::insertPositionedObject):
+        (WebCore::RenderBlock::addPercentHeightDescendant):
+        (WebCore::RenderBlock::insertIntoTrackedRendererMaps): Deleted.
+        (WebCore::RenderBlock::removeFromTrackedRendererMaps): Deleted.
+        * rendering/RenderBlock.h:
+
+2016-06-12  Zalan Bujtas  <zalan@apple.com>
+
+        Cleanup RenderBlock::removePositionedObjects
+        https://bugs.webkit.org/show_bug.cgi?id=158670
+
+        Reviewed by Simon Fraser.
+
+        No change in functionality.
+
+        * rendering/RenderBlock.cpp:
+        (WebCore::RenderBlock::insertPositionedObject):
+        (WebCore::RenderBlock::removePositionedObject):
+        (WebCore::RenderBlock::removePositionedObjects):
+        * rendering/RenderBlock.h:
+
+2016-06-12  Zalan Bujtas  <zalan@apple.com>
+
+        Remove positioned descendants when RenderBlock is no longer a containing block.
+        https://bugs.webkit.org/show_bug.cgi?id=158655
+        <rdar://problem/26510032>
+
+        Reviewed by Simon Fraser.
+
+        Normally the RenderView is the containing block for fixed positioned renderers.
+        However when a renderer acquires some transform related properties, it becomes the containing
+        block for all the fixed positioned renderers in its descendant tree.
+        When the last transform related property is removed, the renderer is no longer a containing block
+        and we need to remove all these positioned renderers from the descendant tracker map (gPositionedDescendantsMap).
+        They will be inserted back into the tracker map during the next layout (either under the RenderView or
+        under the next transformed renderer in the ancestor chain).
+
+        Test: fast/block/fixed-position-reparent-when-transition-is-removed.html
+
+        * rendering/RenderBlock.cpp:
+        (WebCore::RenderBlock::removePositionedObjectsIfNeeded):
+
+2016-06-03  Zalan Bujtas  <zalan@apple.com>
+
+        Incorrect rendering on boostmobile FAQ page
+        https://bugs.webkit.org/show_bug.cgi?id=158303
+        <rdar://problem/26603462>
+
+        Reviewed by Chris Dumez.
+
+        Initial value for background-color is 'transparent'. see https://drafts.csswg.org/css-backgrounds-3/#background-color
+
+        Test: fast/selectors/non-visited-link-backround-color.html
+
+        * css/CSSPropertyNames.in:
+
+2016-05-25  Zalan Bujtas  <zalan@apple.com>
+
+        Setting overflow:hidden does not always repaint clipped content.
+        https://bugs.webkit.org/show_bug.cgi?id=116994
+        rdar://problem/26476697
+
+        Issue repaint for both layout and visual overflow rects when the container starts
+        clipping overflow content.
+
+        Reviewed by David Hyatt.
+
+        Test: fast/repaint/overflow-hidden-repaint.html
+
+        * rendering/RenderBox.cpp:
+        (WebCore::RenderBox::updateFromStyle):
+
+2016-05-25  Zalan Bujtas  <zalan@apple.com>
+
+        Addressing post-review comments on r200971.
+
+        Reviewed by Darin Adler.
+
+        * page/EventHandler.cpp:
+        (WebCore::EventHandler::hitTestResultAtPoint):
+
+2016-05-24  Zalan Bujtas  <zalan@apple.com>
+
+        fast/table/neighboring-cells-when-collapsed-border-changes.html is flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=158009
+
+        Reviewed by David Hyatt.
+
+        RenderTable::invalidateCollapsedBorders() early returns on m_collapsedEmptyBorderIsPresent
+        which prevents us from marking neighboring cells dirty when style changes.
+        Decouple the "invalidate the collapsed borders" and the "mark the neighboring cells dirty" logic.
+
+        Covered by existing tests. (and now we agree with FF on cached-change-cell-border-width.html)
+
+        * rendering/RenderTable.cpp:
+        (WebCore::RenderTable::invalidateCollapsedBorders):
+        (WebCore::markCellDirtyWhenCollapsedBorderChanges): Deleted.
+        * rendering/RenderTableCell.cpp:
+        (WebCore::markCellDirtyWhenCollapsedBorderChanges):
+        (WebCore::RenderTableCell::styleDidChange):
+
+2016-05-23  Zalan Bujtas  <zalan@apple.com>
+
+        Changing border color and size simultaneously fails to repaint.
+        https://bugs.webkit.org/show_bug.cgi?id=157967
+        <rdar://problem/26423918>
+
+        Reviewed by David Hyatt.
+
+        This patch ensures that the neighboring tables cells are dirtied when collapsed border change requires layout.
+
+        Test: fast/table/neighboring-cells-when-collapsed-border-changes.html
+
+        * rendering/RenderTable.cpp:
+        (WebCore::markCellDirtyWhenCollapsedBorderChanges):
+        (WebCore::RenderTable::invalidateCollapsedBorders):
+
+2016-05-20  Zalan Bujtas  <zalan@apple.com>
+
+        `width: 1%` on nested table cell causes its table to hog horizontal space
+        https://bugs.webkit.org/show_bug.cgi?id=144696
+        <rdar://problem/20839572>
+
+        Reviewed by David Hyatt and Tim Horton.
+        
+        This patch is based on https://chromium.googlesource.com/chromium/src/+/9428cfb16993a2329e87c65da096ca295132ef0f
+
+        Tests: fast/table/inner-percent-width-affects-outer-floated-div.html
+               fast/table/inner-percent-width-doesnt-affect-ancestor-columns.html
+
+        * rendering/AutoTableLayout.cpp:
+        (WebCore::shouldScaleColumnsForParent):
+        (WebCore::shouldScaleColumnsForSelf):
+        (WebCore::AutoTableLayout::computeIntrinsicLogicalWidths):
+        (WebCore::shouldScaleColumns): Deleted.
+        * rendering/AutoTableLayout.h:
+        * rendering/RenderTable.cpp:
+        (WebCore::RenderTable::updateLogicalWidth):
+        * rendering/TableLayout.h:
+        (WebCore::TableLayout::scaledWidthFromPercentColumns):
+
+2016-06-17  Zalan Bujtas  <zalan@apple.com>
+
+        Potential null dereferencing on a detached positioned renderer.
+        https://bugs.webkit.org/show_bug.cgi?id=158879
+
+        Reviewed by Simon Fraser.
+
+        This patch fixes the case when the while loop to search for the absolute positioned ancestor
+        returns null (it happens when positioned renderer has been detached from the render tree).
+
+        Speculative fix.
+
+        * rendering/RenderBlock.cpp:
+        (WebCore::RenderBlock::markFixedPositionObjectForLayoutIfNeeded):
+        * rendering/RenderBlock.h:
+
+2016-06-27  Philippe Normand  <philn@igalia.com>
+
+        [GStreamer] top/bottom black bars added needlessly in fullscreen
+        https://bugs.webkit.org/show_bug.cgi?id=158980
+
+        Reviewed by Carlos Garcia Campos.
+
+        The natural video size calculation depends on the validity of the
+        current sample, so whenever the first sample reached the sink it's a
+        good idea to reflect this on the player which will update its natural
+        size accordingly.
+
+        Fixes an issue where black borders were added on top and bottom of
+        fullscreen video.
+
+        * platform/graphics/gstreamer/MediaPlayerPrivateGStreamerBase.cpp:
+        (WebCore::MediaPlayerPrivateGStreamerBase::triggerRepaint):
+
+2016-06-28  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GStreamer] Adaptive streaming issues
+        https://bugs.webkit.org/show_bug.cgi?id=144040
+
+        Reviewed by Philippe Normand.
+
+        There are multiple deadlocks in the web process when HLS content is loaded by GStreamer. It happens because gst
+        is using several threads to download manifest, fragments, monitor the downloads, etc. To download the fragments
+        and manifest it always creates the source element in a separate thread, something that is not actually expected
+        to happen in WebKit source element. Our source element is always scheduling tasks (start, stop, need-data,
+        enough-data and seek) to the main thread, and those downloads that use the ResourceHandleStreamingClient
+        (there's no player associated) also happen in the main thread, because libsoup calls all its async callbacks in
+        the main thread. So, the result is that it can happen that we end up blocking the main thread in a lock until
+        the download finishes, but the download never finishes because tasks are scheduled in the main thread that is
+        blocked in a lock. This can be prevented by always using a secondary thread for downloads made by
+        ResourceHandleStreamingClient, using its own run loop with a different GMainContext so that libsoup sends
+        callbacks to the right thread. We also had to refactor the tasks a bit, leaving the thread safe parts to be run
+        in the calling thread always, and only scheduling to the main thread in case of not using
+        ResourceHandleStreamingClient and only for the non thread safe parts.
+        This patch also includes r200455 that was rolled out, but it was a perfectly valid workaround for GST bug.
+
+        * platform/graphics/gstreamer/GRefPtrGStreamer.cpp:
+        (WTF::ensureGRef): Consume the floating ref if needed.
+        * platform/graphics/gstreamer/GRefPtrGStreamer.h:
+        * platform/graphics/gstreamer/WebKitWebSourceGStreamer.cpp:
+        (webkit_web_src_init): Check if object is being created in the main thread.
+        (webKitWebSrcStop): Stop the media resource loader in the main thread and the resource handle streaming in the
+        current thread.
+        (webKitWebSrcStart): Start the media resource loader in the main thread and the resource handle streaming in
+        the current thread.
+        (webKitWebSrcChangeState): Call webKitWebSrcStart and webKitWebSrcStop in the current thread.
+        (webKitWebSrcNeedData): Update status in the current thread and notify the media resource loader in the main thread.
+        (webKitWebSrcEnoughData): Ditto.
+        (webKitWebSrcSeek): Ditto.
+        (webKitWebSrcSetMediaPlayer): Add an assert to ensure that source elements used by WebKit are always created in
+        the main thread.
+        (ResourceHandleStreamingClient::ResourceHandleStreamingClient): Use a secondary thread to do the download.
+        (ResourceHandleStreamingClient::~ResourceHandleStreamingClient): Stop the secondary thread.
+        (ResourceHandleStreamingClient::setDefersLoading): Notify the secondary thread.
+
+2016-06-14  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r200455.
+        https://bugs.webkit.org/show_bug.cgi?id=158740
+
+        hangs twitter/facebook (Requested by mcatanzaro on #webkit).
+
+        Reverted changeset:
+
+        "[GStreamer] Adaptive streaming issues"
+        https://bugs.webkit.org/show_bug.cgi?id=144040
+        http://trac.webkit.org/changeset/200455
+
+2016-05-25  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        [GTK] accessibility/meter-element.html is failing
+        https://bugs.webkit.org/show_bug.cgi?id=115633
+
+        Unreviewed.
+
+        The meter's value description should be exposed in the same fashion
+        as (we should have been exposing) aria-valuetext, namely through the
+        "valuetext" AtkObject attribute. This exposure is now in place. Also
+        implement AccessibilityProgressIndicator::valueDescription() so that
+        the ports do not have to special-case meter in the platform wrappers.
+        Map the meter element to the correct role (ATK_ROLE_LEVEL_BAR), and
+        ignore a previously-included accessible object resulting from the
+        use of the title attribute on a meter. Finally, do not expose the
+        meter's title as the accessible name because the HTML spec suggests
+        authors can supply the numeric unit as the value of title.
+
+        No new test file as the failure was identified by meter-element.html.
+        Seven new test cases were added for additional coverage. Also updated
+        the ATK expectations for spinbutton-value.html to reflect that we are now
+        exposing the value of aria-valuetext.
+
+        * accessibility/AccessibilityNodeObject.cpp:
+        (WebCore::AccessibilityNodeObject::helpText):
+        (WebCore::AccessibilityNodeObject::accessibilityDescriptionForChildren):
+        (WebCore::AccessibilityNodeObject::visibleText):
+        * accessibility/AccessibilityNodeObject.h:
+        * accessibility/AccessibilityProgressIndicator.cpp:
+        (WebCore::AccessibilityProgressIndicator::valueDescription):
+        * accessibility/AccessibilityProgressIndicator.h:
+        * accessibility/AccessibilityRenderObject.cpp:
+        (WebCore::AccessibilityRenderObject::computeAccessibilityIsIgnored):
+        * accessibility/atk/WebKitAccessibleWrapperAtk.cpp:
+        (webkitAccessibleGetAttributes):
+        (atkRole):
+        * accessibility/mac/WebAccessibilityObjectWrapperMac.mm:
+        (-[WebAccessibilityObjectWrapper accessibilityAttributeValue:]):
+
+2016-05-25  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: [ATK] Use WebCore Accessibility's AccessibilityText for AtkObject name and description
+        https://bugs.webkit.org/show_bug.cgi?id=157822
+
+        Reviewed by Chris Fleizach.
+
+        Remove the old code which was overriding WebCore Accessibility and always use
+        AccessibilityText.
+
+        If the AccessibilityText's textSource is HelpText or SummaryText, it should be exposed
+        as the AtkObject description. If the textSource is TitleTagText and there is no other
+        text alternative, the value should also be exposed in this fashion. Note that AtkObject's
+        description property is equivalent to AXAPI's AXHelp property.
+
+        If the AccessibilityText's textSource is anything other than the above, the first
+        non-empty value should be exposed as the AtkObject name. Depending on the source of
+        the name content, AtkObject's name property can be the equivalent of AXAPI's AXTitle.
+        However, most of the time, AtkObject's name property is equivalent to AXAPI's
+        AXDescription property.
+
+        By making these changes, what WebKit exposes for ATK is now extremely similar to what
+        WebKit exposes on the Mac (modulo the property names) and also with what is defined in
+        the HTML Accessibility and Accessible Name and Description Computation API mappings specs.
+
+        Now that the exposure is correct, the Layout Tests needed to be adjusted accordingly because
+        asking for the "AXDescription" gives you the AXDescription on the Mac and the AtkObject
+        description in GNU/Linux. But as indicated above, what ATK calls a "description" is what
+        the Mac calls "help."
+
+        Ultimately our Layout Tests and/or our platform TestRunner API should be modified to deal
+        with these differences more gracefully. (Bug https://bugs.webkit.org/show_bug.cgi?id=157187
+        has been opened for that task.) In the meantime, the existing tests have been given platform
+        checks to ask for the right property on each platform. This was done in such a way as to not
+        require other (non-ATK) platforms change their current expectations files.
+
+        * accessibility/atk/WebKitAccessibleWrapperAtk.cpp:
+        (webkitAccessibleGetName):
+        (webkitAccessibleGetDescription):
+
 2016-03-05  Simon Fraser  <simon.fraser@apple.com>
 
         Add support for the object-position CSS property
@@ -1094,13 +2516,6 @@
         (WebCore::menuListColor): Ditto.
         (WebCore::RenderThemeGtk::popupInternalPaddingBox): Ditto.
         (WebCore::RenderThemeGtk::paintMenuList): Ditto.
-
-2016-04-27  Carlos Garcia Campos  <cgarcia@igalia.com>
-
-        Unreviewed. Fix compatibility issue with 2.12.1 regarding local storage access from file URLs.
-
-        * page/SecurityOrigin.cpp:
-        (WebCore::SecurityOrigin::canAccessStorage):
 
 2016-04-25  Alberto Garcia  <berto@igalia.com>
 

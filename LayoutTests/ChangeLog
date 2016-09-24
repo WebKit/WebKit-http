@@ -1,3 +1,800 @@
+2016-09-02  Zalan Bujtas  <zalan@apple.com>
+
+        Should never be reached failure in WebCore::floatValueForLength
+        https://bugs.webkit.org/show_bug.cgi?id=139397
+        <rdar://problem/27704376>
+
+        Reviewed by Simon Fraser.
+
+        * svg/css/assert-on-non-resolvable-dimension-expected.txt: Added.
+        * svg/css/assert-on-non-resolvable-dimension.html: Added.
+
+2016-09-02  Zalan Bujtas  <zalan@apple.com>
+
+        ASSERT_NOT_REACHED() is touched in WebCore::valueForLength
+        https://bugs.webkit.org/show_bug.cgi?id=123337
+        <rdar://problem/27684121>
+
+        Reviewed by Simon Fraser.
+
+        * fast/table/assert-on-non-resolvable-row-dimension-expected.txt: Added.
+        * fast/table/assert-on-non-resolvable-row-dimension.html: Added.
+
+2016-09-02  Zalan Bujtas  <zalan@apple.com>
+
+        ASSERTION FAILED: !m_committedWidth in WebCore::LineWidth::fitBelowFloats
+        https://bugs.webkit.org/show_bug.cgi?id=149462
+        <rdar://problem/27710841>
+
+        Reviewed by David Hyatt.
+
+        * fast/text/assert-when-text-with-negative-margin-sibling-does-not-fit-expected.txt: Added.
+        * fast/text/assert-when-text-with-negative-margin-sibling-does-not-fit.html: Added.
+
+2016-08-31  Zalan Bujtas  <zalan@apple.com>
+
+        ASSERTION FAILED: !flow->layer() && !flow->isInlineElementContinuation() in WebCore::RenderBlock::addContinuationWithOutline
+        https://bugs.webkit.org/show_bug.cgi?id=151022
+        <rdar://problem/27710993>
+
+        Reviewed by Simon Fraser.
+
+        * compositing/layer-creation/assert-on-inline-element-with-will-change-expected.txt: Added.
+        * compositing/layer-creation/assert-on-inline-element-with-will-change.html: Added.
+        * compositing/layer-creation/will-change-on-normal-flow-content-expected.txt: Added.
+        * compositing/layer-creation/will-change-on-normal-flow-content.html: Added.
+
+2016-08-26  Zalan Bujtas  <zalan@apple.com>
+
+        ASSERT_NOT_REACHED() is touched in WebCore::minimumValueForLength
+        https://bugs.webkit.org/show_bug.cgi?id=125781
+        <rdar://problem/27684457>
+
+        Reviewed by Simon Fraser.
+
+        * fast/table/assert-on-min-max-content-values-expected.txt: Added.
+        * fast/table/assert-on-min-max-content-values.html: Added.
+
+2016-08-24  Zalan Bujtas  <zalan@apple.com>
+
+        ASSERTION FAILED: contentSize >= 0 in WebCore::RenderFlexibleBox::adjustChildSizeForMinAndMax
+        https://bugs.webkit.org/show_bug.cgi?id=155700
+        <rdar://problem/27720727>
+
+        Reviewed by David Hyatt.
+
+        * fast/ruby/assert-when-content-size-is-negative-expected.txt: Added.
+        * fast/ruby/assert-when-content-size-is-negative.html: Added.
+
+2016-08-24  Zalan Bujtas  <zalan@apple.com>
+
+        ASSERTION FAILED: childrenInline() in WebCore::RenderBlockFlow::hasLines
+        https://bugs.webkit.org/show_bug.cgi?id=139396
+        <rdar://problem/27704339>
+
+        Reviewed by David Hyatt.
+
+        * fast/ruby/assert-with-block-rt-child-and-emphasis-expected.txt: Added.
+        * fast/ruby/assert-with-block-rt-child-and-emphasis.html: Added.
+
+2016-08-23  Zalan Bujtas  <zalan@apple.com>
+
+        ASSERTION FAILED: !view().layoutStateEnabled() || style().styleType() == FIRST_LETTER in WebCore::RenderInline::clippedOverflowRectForRepaint
+        https://bugs.webkit.org/show_bug.cgi?id=155363
+        <rdar://problem/27720434>
+
+        Reviewed by David Hyatt.
+
+        * fast/layers/assert-on-self-painting-inline-with-scrolling-expected.txt: Added.
+        * fast/layers/assert-on-self-painting-inline-with-scrolling.html: Added.
+
+2016-08-23  Zalan Bujtas  <zalan@apple.com>
+
+        ASSERTION FAILED: hasOverflowingCell == this->hasOverflowingCell() in WebCore::RenderTableSection::computeOverflowFromCells
+        https://bugs.webkit.org/show_bug.cgi?id=155702
+        <rdar://problem/27720731>
+
+        Reviewed by David Hyatt.
+
+        * fast/table/assert-when-visual-overflow-is-cleared-expected.txt: Added.
+        * fast/table/assert-when-visual-overflow-is-cleared.html: Added.
+
+2016-08-24  Chris Dumez  <cdumez@apple.com>
+
+        Assertion hit: ASSERT(!m_parserScheduler) in ~HTMLDocumentParser()
+        https://bugs.webkit.org/show_bug.cgi?id=161083
+        <rdar://problem/27986937>
+
+        Reviewed by Darin Adler.
+
+        Unskip html/browsers/browsing-the-web/unloading-documents/004.html as
+        it is no longer crashing.
+
+        * TestExpectations:
+
+2016-08-25  Zalan Bujtas  <zalan@apple.com>
+
+        Infinite recursion crash in WebCore::RenderBlockFlow::layoutBlock
+        https://bugs.webkit.org/show_bug.cgi?id=139474
+        <rdar://problem/27705190>
+
+        Reviewed by David Hyatt.
+
+        * fast/multicol/assert-on-small-page-height-with-widow-expected.txt: Added.
+        * fast/multicol/assert-on-small-page-height-with-widow.html: Added.
+
+2016-05-03  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, drop outdated layout test after r200375.
+
+        * fast/workers/resources/worker-replace-self.js: Removed.
+        * fast/workers/worker-replace-self-expected.txt: Removed.
+        * fast/workers/worker-replace-self.html: Removed.
+
+2016-05-03  Pranjal Jumde  <pjumde@apple.com>
+
+        WorkerGlobalScope's self, location and navigator attributes should not be replaceable
+        https://bugs.webkit.org/show_bug.cgi?id=157296
+        <rdar://problem/25962738>
+
+        Reviewed by Chris Dumez.
+
+        * http/tests/workers/location-readonly-expected.txt: Added.
+        * http/tests/workers/location-readonly.html: Added.
+        * http/tests/workers/navigator-readonly-expected.txt: Added.
+        * http/tests/workers/navigator-readonly.html: Added.
+        * http/tests/workers/self-readonly-expected.txt: Added.
+        * http/tests/workers/self-readonly.html: Added.
+        * http/tests/workers/worker-location.js: Added.
+        * http/tests/workers/worker-navigator.js: Added.
+        * http/tests/workers/worker-self.js: Added.
+
+2016-06-17  John Wilander  <wilander@apple.com>
+
+        Ignore case in the check for security origin inheritance
+        https://bugs.webkit.org/show_bug.cgi?id=158878
+
+        Reviewed by Alex Christensen.
+
+        * http/tests/dom/window-open-about-uppercase-blank-and-access-document-expected.txt: Added.
+        * http/tests/dom/window-open-about-uppercase-blank-and-access-document.html: Added.
+
+2016-06-16  John Wilander  <wilander@apple.com>
+
+        Restrict security origin inheritance to empty, about:blank, and about:srcdoc URLs
+        https://bugs.webkit.org/show_bug.cgi?id=158855
+        <rdar://problem/26142632>
+
+        Reviewed by Alex Christensen.
+
+        * http/tests/dom/window-open-about-blank-and-access-document-expected.txt: Added.
+        * http/tests/dom/window-open-about-blank-and-access-document.html: Added.
+        * http/tests/dom/window-open-about-webkit-org-and-access-document-expected.txt: Added.
+        * http/tests/dom/window-open-about-webkit-org-and-access-document.html: Added.
+
+2016-05-25  Chris Dumez  <cdumez@apple.com>
+
+        Update dom/Window/messageevent-source-postmessage-reified.html after r201315
+        https://bugs.webkit.org/show_bug.cgi?id=158048
+
+        Reviewed by Darin Adler.
+
+        We need to delete a property that is part of the Window's static table
+        now in order to force the reification.
+
+        * fast/dom/Window/messageevent-source-postmessage-reified.html:
+
+2016-05-31  Dave Hyatt  <hyatt@apple.com>
+
+        REGRESSION (r189567): Elements with aspect ratios not handled correctly inside flexbox.
+        https://bugs.webkit.org/show_bug.cgi?id=158040
+
+        Reviewed by Zalan Bujtas.
+
+        * fast/flexbox/aspect-ratio-intrinsic-adjust-expected.html: Added.
+        * fast/flexbox/aspect-ratio-intrinsic-adjust.html: Added.
+        * fast/flexbox/resources/subjects_sm.png: Added.
+
+2016-04-04  Chris Dumez  <cdumez@apple.com>
+
+        Regression(r196145): Crash in getOwnPropertyDescriptor on http://www.history.com/shows/vikings
+        https://bugs.webkit.org/show_bug.cgi?id=156136
+        <rdar://problem/25410767>
+
+        Reviewed by Ryosuke Niwa.
+
+        Add a layout test to confirm that calling Object.getOwnPropertyDescriptor(window, "indexedDB")
+        does not crash and works as expected.
+
+        * storage/indexeddb/indexeddb-getownpropertyDescriptor-expected.txt: Added.
+        * storage/indexeddb/indexeddb-getownpropertyDescriptor.html: Added.
+
+2016-08-01  Antti Koivisto  <antti@apple.com>
+
+        REGRESSION (r196383): Drop down CSS menus not working on cnet.com, apmex.com
+        https://bugs.webkit.org/show_bug.cgi?id=160390
+
+        Reviewed by Simon Fraser.
+
+        * fast/selectors/hover-invalidation-descendant-dynamic-expected.txt: Added.
+        * fast/selectors/hover-invalidation-descendant-dynamic.html: Added.
+
+2016-07-04  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [GTK] Null Node dereference in FrameSelection::notifyAccessibilityForSelectionChange of FrameSelectionAtk.cpp
+        https://bugs.webkit.org/show_bug.cgi?id=159411
+
+        Reviewed by Carlos Garcia Campos.
+
+        * platform/gtk/TestExpectations: Removed a crash expectation of
+        editing/selection/selection-in-iframe-removed-crash.html.
+
+2016-07-14  Brent Fulgham  <bfulgham@apple.com>
+
+        editing/spelling/spellcheck-async.html sometimes crashes with GuardMalloc 
+        https://bugs.webkit.org/show_bug.cgi?id=142969
+        <rdar://problem/27331095>
+
+        Reviewed by Alex Christensen.
+
+        Fix based on a Blink change (patch by <rouslan@chromium.org>):
+        <https://chromium.googlesource.com/chromium/blink/+/c713736b122c2224804b2db72f1f711cb47ee260%5E%21/#F1>
+
+        * editing/spelling/copy-paste-crash-expected.txt: Added.
+        * editing/spelling/copy-paste-crash.html: Added.
+        * platform/platform/mac-wk2/TestExpectations: Skip test on mac-wk2 since all Spelling tests are
+        currently broken (see <https://webkit.org/b/105616>).
+
+2016-07-06  Brent Fulgham  <bfulgham@apple.com>
+
+        Return values of JSArray::createUninitialized (and related) are not consistently checked for nullptr
+        https://bugs.webkit.org/show_bug.cgi?id=159495
+        <rdar://problem/26075433>
+
+        Reviewed by Dean Jackson.
+
+        * fast/canvas/canvas-getImageData-invalid-result-buffer-crash.html: Added.
+        * fast/canvas/canvas-getImageData-invalid-result-buffer-crash-expected.txt: Added.
+
+2016-07-26  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Infinite Canvas context save() causes WebKit to crash
+        https://bugs.webkit.org/show_bug.cgi?id=159586
+        <rdar://problem/26759984>
+
+        Reviewed by Simon Fraser.
+
+        * fast/canvas/canvas-context-save-limit-expected.txt: Added.
+        * fast/canvas/canvas-context-save-limit.html: Added.
+
+2016-08-05  Simon Fraser  <simon.fraser@apple.com>
+
+        marquee with "truespeed" animates at > 60fps, hogging CPU
+        https://bugs.webkit.org/show_bug.cgi?id=160609
+
+        Reviewed by David Hyatt.
+        
+        Convert marquee tests into ref tests, removing all the platform expectations.
+
+        * fast/html/marquee-scroll-expected.html: Copied from LayoutTests/fast/html/marquee-scroll.html.
+        * fast/html/marquee-scroll.html:
+        * fast/html/marquee-scrollamount-expected.html: Added.
+        * fast/html/marquee-set-truespeed.html:
+        * platform/efl/fast/html/marquee-scroll-expected.png: Removed.
+        * platform/efl/fast/html/marquee-scroll-expected.txt: Removed.
+        * platform/efl/fast/html/marquee-scrollamount-expected.png: Removed.
+        * platform/efl/fast/html/marquee-scrollamount-expected.txt: Removed.
+        * platform/gtk/fast/html/marquee-scroll-expected.png: Removed.
+        * platform/gtk/fast/html/marquee-scroll-expected.txt: Removed.
+        * platform/gtk/fast/html/marquee-scrollamount-expected.png: Removed.
+        * platform/gtk/fast/html/marquee-scrollamount-expected.txt: Removed.
+        * platform/ios-simulator-wk1/TestExpectations:
+        * platform/ios-simulator-wk2/TestExpectations:
+        * platform/ios-simulator-wk2/fast/html/marquee-scrollamount-expected.txt: Removed.
+        * platform/ios-simulator/fast/html/marquee-scroll-expected.txt: Removed.
+        * platform/ios-simulator/fast/html/marquee-scrollamount-expected.txt: Removed.
+        * platform/mac-wk1/TestExpectations:
+        * platform/mac/fast/html/marquee-scroll-expected.png: Removed.
+        * platform/mac/fast/html/marquee-scroll-expected.txt: Removed.
+        * platform/mac/fast/html/marquee-scrollamount-expected.png: Removed.
+        * platform/mac/fast/html/marquee-scrollamount-expected.txt: Removed.
+        * platform/win/TestExpectations:
+        * platform/win/fast/html/marquee-scroll-expected.txt: Removed.
+        * platform/win/fast/html/marquee-scrollamount-expected.txt: Removed.
+
+2016-07-25  Brady Eidson  <beidson@apple.com>
+
+        Allow LocalStorage by default for file URLs.
+        https://bugs.webkit.org/show_bug.cgi?id=160169
+
+        Reviewed by Brent Fulgham.
+
+        * storage/domstorage/localstorage/blocked-file-access-expected.txt: Removed.
+        * storage/domstorage/localstorage/file-can-access-expected.txt: Added.
+        * storage/domstorage/localstorage/file-can-access.html: Renamed from LayoutTests/storage/domstorage/localstorage/blocked-file-access.html.
+        * storage/domstorage/localstorage/resources/unblocked-example.html: Renamed from LayoutTests/storage/domstorage/localstorage/resources/blocked-example.html.
+
+2016-07-15  Brady Eidson  <beidson@apple.com>
+
+        WebKit should prevent push/replace state with username in URL.
+        <rdar://problem/27361737> and https://bugs.webkit.org/show_bug.cgi?id=159818
+
+        Reviewed by Brent Fulgham.
+
+        * http/tests/security/history-username-password-expected.txt: Added.
+        * http/tests/security/history-username-password.html: Added.
+
+2016-07-14  John Wilander  <wilander@apple.com>
+
+        Remove credentials in URL when accessed through location.href
+        https://bugs.webkit.org/show_bug.cgi?id=139562
+        <rdar://problem/27331164>
+
+        Reviewed by Brent Fulgham.
+
+        The reason for this change is to not allow scripts on the page to
+        exfiltrate username and password from the URL.
+
+        * http/tests/security/location-href-clears-username-password-expected.txt: Added.
+        * http/tests/security/location-href-clears-username-password.html: Added.
+            Test case adapted from https://src.chromium.org/viewvc/blink?revision=189367&view=revision.
+
+2016-07-24  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        The web process hangs when computing elements-based snap points for a container with large max scroll offset
+        https://bugs.webkit.org/show_bug.cgi?id=152605
+        <rdar://problem/25353661>
+
+        Reviewed by Simon Fraser.
+
+        Adds a scroll snap offset computation test case that would have previously
+        caused the web process to hang before this patch.
+
+        * css3/scroll-snap/scroll-snap-elements-container-larger-than-children-expected.txt: Added.
+        * css3/scroll-snap/scroll-snap-elements-container-larger-than-children.html: Added.
+
+2016-06-30  Antoine Quint  <graouts@apple.com>
+
+        Drawing an SVG image into a <canvas> that is not in the DOM draws the wrong region
+        https://bugs.webkit.org/show_bug.cgi?id=159276
+
+        Reviewed by Dean Jackson.
+
+        Adding a series of new tests to check we correctly respect mismatching source and
+        destination rectangles with SVG images as sources, both with the source <img> element
+        being present and absent from the DOM, and explicit sizes being set or not set.
+
+        * svg/as-image/img-with-svg-resource-in-dom-and-drawImage-expected.html: Added.
+        * svg/as-image/img-with-svg-resource-in-dom-and-drawImage.html: Added.
+        * svg/as-image/img-with-svg-resource-in-dom-no-size-and-drawImage-expected.html: Added.
+        * svg/as-image/img-with-svg-resource-in-dom-no-size-and-drawImage.html: Added.
+        * svg/as-image/img-with-svg-resource-not-in-dom-and-drawImage-expected.html: Added.
+        * svg/as-image/img-with-svg-resource-not-in-dom-and-drawImage.html: Added.
+        * svg/as-image/img-with-svg-resource-not-in-dom-no-size-and-drawImage-expected.html: Added.
+        * svg/as-image/img-with-svg-resource-not-in-dom-no-size-and-drawImage.html: Added.
+
+2016-06-15  Antti Koivisto  <antti@apple.com>
+
+        GoogleMaps transit schedule explorer comes up blank initially
+        https://bugs.webkit.org/show_bug.cgi?id=158803
+        rdar://problem/25818080
+
+        Reviewed by Andreas Kling
+
+        Expand the tests to cover this case.
+
+        * fast/css/style-invalidation-attribute-change-descendants-expected.txt:
+        * fast/css/style-invalidation-attribute-change-descendants.html:
+        * fast/css/style-invalidation-class-change-descendants-expected.txt:
+        * fast/css/style-invalidation-class-change-descendants.html:
+
+2016-06-02  Daniel Bates  <dabates@apple.com>
+
+        Fix a couple of mistakes in CSSParserValue memory management
+        https://bugs.webkit.org/show_bug.cgi?id=158307
+        <rdar://problem/26127225>
+
+        Reviewed by Darin Adler.
+
+        * fast/css/calc-with-two-variables-crash-expected.txt: Added.
+        * fast/css/calc-with-two-variables-crash.html: Added.
+
+2016-06-13  Dean Jackson  <dino@apple.com>
+
+        SVG elements don't blend correctly into HTML
+        https://bugs.webkit.org/show_bug.cgi?id=158718
+        <rdar://problem/26782004>
+
+        Reviewed by Antoine Quint.
+
+        * svg/css/mix-blend-mode-with-inline-svg-expected.html: Added.
+        * svg/css/mix-blend-mode-with-inline-svg.html: Added.
+
+2016-06-09  Antoine Quint  <graouts@apple.com>
+
+        Changing canvas height immediately after page load does not relayout canvas
+        https://bugs.webkit.org/show_bug.cgi?id=156097
+
+        Reviewed by Zalan Bujtas.
+
+        * fast/canvas/canvas-css-size-after-height-change-with-display-flex-expected.html: Added.
+        * fast/canvas/canvas-css-size-after-height-change-with-display-flex.html: Added.
+
+2016-06-06  Jiewen Tan  <jiewen_tan@apple.com>
+
+        URLs containing tabs or newlines are parsed incorrectly
+        https://bugs.webkit.org/show_bug.cgi?id=143381
+        <rdar://problem/26567214>
+
+        Reviewed by Brent Fulgham.
+
+        * fast/dom/DOMURL/set-href-attribute-host-expected.txt:
+        * fast/dom/DOMURL/set-href-attribute-host.html:
+        * fast/dom/HTMLAnchorElement/script-tests/set-href-attribute-host.js:
+        * fast/dom/HTMLAnchorElement/set-href-attribute-host-expected.txt:
+        * fast/url/segments-expected.txt:
+        * fast/url/segments-from-data-url-expected.txt:
+        * fast/url/segments-from-data-url.html:
+        * fast/url/segments.html:
+        * fast/url/tab-and-newline-stripping-expected.txt: Added.
+        * fast/url/tab-and-newline-stripping.html: Added.
+        * http/tests/security/javascriptURL/javascriptURL-execution-context-frame-location-htmldom-expected.txt:
+        * http/tests/security/javascriptURL/javascriptURL-execution-context-frame-src-getAttribute-value-expected.txt:
+        * http/tests/security/javascriptURL/javascriptURL-execution-context-frame-src-htmldom-expected.txt:
+        * http/tests/security/javascriptURL/javascriptURL-execution-context-frame-src-setAttribute-expected.txt:
+        * http/tests/security/javascriptURL/javascriptURL-execution-context-frame-src-setAttributeNS-expected.txt:
+        * http/tests/security/javascriptURL/javascriptURL-execution-context-frame-src-setAttributeNode-expected.txt:
+        * http/tests/security/javascriptURL/javascriptURL-execution-context-frame-src-setAttributeNodeNS-expected.txt:
+        * http/tests/security/javascriptURL/javascriptURL-execution-context-iframe-src-getAttribute-value-expected.txt:
+        * http/tests/security/javascriptURL/javascriptURL-execution-context-iframe-src-htmldom-expected.txt:
+        * http/tests/security/javascriptURL/javascriptURL-execution-context-iframe-src-setAttribute-expected.txt:
+        * http/tests/security/javascriptURL/javascriptURL-execution-context-iframe-src-setAttributeNS-expected.txt:
+        * http/tests/security/javascriptURL/javascriptURL-execution-context-iframe-src-setAttributeNode-expected.txt:
+        * http/tests/security/javascriptURL/javascriptURL-execution-context-iframe-src-setAttributeNodeNS-expected.txt:
+        * http/tests/security/xssAuditor/javascript-link-control-char2-expected.txt:
+
+2016-05-23  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r200414.
+
+        This change appears to have broken the 'write a reply' field
+        on Nextdoor.com
+
+        Reverted changeset:
+
+        "Clicks inside button elements are sometimes discarded when
+        the mouse moves"
+        https://bugs.webkit.org/show_bug.cgi?id=39620
+        http://trac.webkit.org/changeset/200414
+
+2016-05-24  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Font Loading] Crash during font download failure after garbage collection
+        https://bugs.webkit.org/show_bug.cgi?id=158013
+        <rdar://problem/25148032>
+
+        Reviewed by Darin Adler.
+
+        * fast/text/font-face-crash-expected.txt: Added.
+        * fast/text/font-face-crash.html: Added.
+
+2016-05-20  Dave Hyatt  <hyatt@apple.com>
+
+        Scrolling broken in iTunes connect pages
+        https://bugs.webkit.org/show_bug.cgi?id=157678
+
+        Reviewed by Zalan Bujtas.
+
+        * fast/flexbox/nested-column-intrinsic-min-disabled-expected.html: Added.
+        * fast/flexbox/nested-column-intrinsic-min-disabled.html: Added.
+
+2016-07-19  Zalan Bujtas  <zalan@apple.com>
+
+        theguardian.co.uk crossword puzzles are sometimes not displaying text
+        https://bugs.webkit.org/show_bug.cgi?id=159924
+        <rdar://problem/27409483>
+
+        Reviewed by Simon Fraser.
+
+        * fast/misc/subtree-layouts-expected.html: Added.
+        * fast/misc/subtree-layouts.html: Added.
+
+2016-07-10  Zalan Bujtas  <zalan@apple.com>
+
+        Fix LogicalSelectionOffsetCaches to work with detached render tree.
+        https://bugs.webkit.org/show_bug.cgi?id=159605
+        <rdar://problem/27248845>
+
+        Reviewed by Brent Fulgham.
+
+        * fast/text/selection-on-a-detached-tree-expected.txt: Added.
+        * fast/text/selection-on-a-detached-tree.html: Added.
+
+2016-07-01  Zalan Bujtas  <zalan@apple.com>
+
+        prepareForDestruction() always needs to be called before destroying the Document object.
+        https://bugs.webkit.org/show_bug.cgi?id=159372
+        rdar://problem/26788150
+
+        Reviewed by Antti Koivisto.
+
+        We should never start destroying the Document object without calling prepareForDestruction() first.
+        It ensures that render tree gets nuked before we start tearing down the node tree.
+
+        * fast/history/page-cache-destroy-document-expected.txt: Added.
+        * fast/history/page-cache-destroy-document.html: Added.
+        * fast/history/resources/page-cache-destroy-helper.html: Added.
+
+2016-06-20  Zalan Bujtas  <zalan@apple.com>
+
+        Set the end position on the placeholder BidiRun properly.
+        https://bugs.webkit.org/show_bug.cgi?id=158958
+
+        Reviewed by Myles C. Maxfield.
+        rdar://problem/26609266
+
+        The second paramenter for BidiRun indicates the end position and not the length of the run.
+        This was regressed at r102875 where only the start position was changed from 0 to pos.
+
+        * fast/text/international/bidi-style-in-isolate-crash-expected.txt: Added.
+        * fast/text/international/bidi-style-in-isolate-crash.html: Added.
+
+2016-06-16  Zalan Bujtas  <zalan@apple.com>
+
+        [New Block-Inside-Inline Model] Do not attempt to re-run margin collapsing on the block sequence.
+        https://bugs.webkit.org/show_bug.cgi?id=158854
+
+        Reviewed by David Hyatt.
+
+        * fast/block/inside-inlines/crash-on-first-line-change-expected.txt: Added.
+        * fast/block/inside-inlines/crash-on-first-line-change.html: Added.
+
+2016-06-15  Zalan Bujtas  <zalan@apple.com>
+
+        Decouple the percent height and positioned descendants maps.
+        https://bugs.webkit.org/show_bug.cgi?id=158773
+
+        Reviewed by David Hyatt and Chris Dumez.
+
+        Various dynamic containing block changing tests.
+
+        * fast/block/fixed-position-reparent-when-transition-is-removed.html:
+        * fast/block/positioning/change-containing-block-for-absolute-positioned-expected.txt: Added.
+        * fast/block/positioning/change-containing-block-for-absolute-positioned.html: Added.
+        * fast/block/positioning/change-containing-block-for-fixed-positioned-expected.txt: Added.
+        * fast/block/positioning/change-containing-block-for-fixed-positioned.html: Added.
+
+2016-06-12  Zalan Bujtas  <zalan@apple.com>
+
+        Remove positioned descendants when RenderBlock is no longer a containing block.
+        https://bugs.webkit.org/show_bug.cgi?id=158655
+        <rdar://problem/26510032>
+
+        Reviewed by Simon Fraser.
+
+        Normally the RenderView is the containing block for fixed positioned renderers.
+        However when a renderer acquires some transform related properties, it becomes the containing
+        block for all the fixed positioned renderers in its descendant tree.
+        When the last transform related property is removed, the renderer is no longer a containing block
+        and we need to remove all these positioned renderers from the descendant tracker map (gPositionedDescendantsMap).
+        They will be inserted back into the tracker map during the next layout (either under the RenderView or
+        under the next transformed renderer in the ancestor chain).
+
+        * fast/block/fixed-position-reparent-when-transition-is-removed-expected.txt: Added.
+        * fast/block/fixed-position-reparent-when-transition-is-removed.html: Added.
+
+2016-06-03  Zalan Bujtas  <zalan@apple.com>
+
+        Incorrect rendering on boostmobile FAQ page
+        https://bugs.webkit.org/show_bug.cgi?id=158303
+        <rdar://problem/26603462>
+
+        Reviewed by Chris Dumez.
+
+        Initial value for background-color is 'transparent'. see https://drafts.csswg.org/css-backgrounds-3/#background-color
+
+        * fast/selectors/non-visited-link-backround-color-expected.html: Added.
+        * fast/selectors/non-visited-link-backround-color.html: Added.
+
+2016-05-25  Zalan Bujtas  <zalan@apple.com>
+
+        Setting overflow:hidden does not always repaint clipped content.
+        https://bugs.webkit.org/show_bug.cgi?id=116994
+        rdar://problem/26476697
+
+        Issue repaint for both layout and visual overflow rects when the container starts
+        clipping overflow content.
+
+        Reviewed by David Hyatt.
+
+        * fast/repaint/overflow-hidden-repaint-expected.html: Added.
+        * fast/repaint/overflow-hidden-repaint.html: Added.
+
+2016-05-24  Zalan Bujtas  <zalan@apple.com>
+
+        fast/table/neighboring-cells-when-collapsed-border-changes.html is flaky.
+        https://bugs.webkit.org/show_bug.cgi?id=158009
+
+        Reviewed by David Hyatt.
+
+        RenderTable::invalidateCollapsedBorders() early returns on m_collapsedEmptyBorderIsPresent
+        which prevents us from marking neighboring cells dirty when style changes.
+        Decouple the "invalidate the collapsed borders" and the "mark the neighboring cells dirty" logic.
+
+        * fast/table/border-collapsing/cached-change-cell-border-width-expected.txt: Progression. FF agrees.
+        * fast/table/neighboring-cells-when-collapsed-border-changes.html:
+        * platform/ios-simulator-wk1/fast/table/border-collapsing/cached-change-cell-border-width-expected.txt:
+        * platform/mac-wk1/TestExpectations:
+        * platform/mac/fast/table/border-collapsing/cached-change-cell-border-width-expected.txt:
+
+2016-05-23  Zalan Bujtas  <zalan@apple.com>
+
+        Changing border color and size simultaneously fails to repaint.
+        https://bugs.webkit.org/show_bug.cgi?id=157967
+        <rdar://problem/26423918>
+
+        Reviewed by David Hyatt.
+
+        This patch ensures that the neighboring tables cells are dirtied when collapsed border change requires layout.
+
+        * fast/table/neighboring-cells-when-collapsed-border-changes-expected.html: Added.
+        * fast/table/neighboring-cells-when-collapsed-border-changes.html: Added.
+
+2016-05-20  Zalan Bujtas  <zalan@apple.com>
+
+        `width: 1%` on nested table cell causes its table to hog horizontal space
+        https://bugs.webkit.org/show_bug.cgi?id=144696
+        <rdar://problem/20839572>
+
+        Reviewed by David Hyatt and Tim Horton.
+        
+        This patch is based on https://chromium.googlesource.com/chromium/src/+/9428cfb16993a2329e87c65da096ca295132ef0f
+
+        * fast/table/inner-percent-width-affects-outer-floated-div-expected.html: Added.
+        * fast/table/inner-percent-width-affects-outer-floated-div.html: Added.
+        * fast/table/inner-percent-width-doesnt-affect-ancestor-columns-expected.html: Added.
+        * fast/table/inner-percent-width-doesnt-affect-ancestor-columns.html: Added.
+        * platform/mac/fast/table/border-collapsing/cached-change-row-border-width-expected.txt:
+        * platform/mac/fast/table/border-collapsing/cached-change-tbody-border-width-expected.txt:
+        * platform/mac/fast/table/max-width-integer-overflow-expected.txt:
+
+2016-05-25  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        [GTK] accessibility/meter-element.html is failing
+        https://bugs.webkit.org/show_bug.cgi?id=115633
+
+        Unreviewed.
+
+        Seven new test cases were added to meter-element.html for additional
+        coverage. Also updated the ATK expectations for spinbutton-value.html
+        to reflect that we are now exposing the value of aria-valuetext.
+
+        * accessibility/meter-element.html: New test cases added.
+        * platform/gtk/TestExpectations: Unskip the previously-failing test.
+        * platform/gtk/accessibility/meter-element-expected.txt: Updated.
+        * platform/gtk/accessibility/spinbutton-value-expected.txt: Updated.
+        * platform/mac/accessibility/meter-element-expected.txt: Updated.
+
+2016-05-25  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: Layout tests related to text alternative computation need to be done differently
+        https://bugs.webkit.org/show_bug.cgi?id=157187
+
+        Create several utility methods to facilitate retrieval of platform-independent
+        attribute values from platform-specific attributes:
+
+        - platformValueForW3CName() and platformValueForW3CDescription() to retrieve a
+          specific piece of text alternative information, stripping off the platform
+          attribute name by default. These methods should make it possible to share tests
+          and expectations files because the text alternative calculation defined by the
+          W3C accessibility specifications should be the same for all platforms. (The
+          differences are the result of the unique platform mappings.)
+
+        - platformTextAlternatives() to dump out all the text alternative attributes and
+          values, preserving the platform-specific attribute name. This, along with the
+          use of the platformValue* methods with attribute name enabled, should make it
+          possible to have shared tests with platform-specific expectations without the
+          need to check the platform in the test itself.
+
+        - platformRoleForComboBox() and platformRoleForStaticText() to eliminate the
+          need for platform-specific expectations files simply because such an element
+          happens to be included in the test file and verifying that element's role is
+          desired.
+
+        Begin using these methods in the tests related to text alternative computation
+        which had platform-specific checks and update the expectations files.
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/alt-tag-on-image-with-nonimage-role-expected.txt: Updated.
+        * accessibility/alt-tag-on-image-with-nonimage-role.html: Updated.
+        * accessibility/aria-help-expected.txt: Added.
+        * accessibility/aria-help.html: Updated.
+        * accessibility/aria-label-expected.txt: Updated.
+        * accessibility/aria-label.html: Updated.
+        * accessibility/aria-labeled-with-hidden-node-expected.txt: Updated.
+        * accessibility/aria-labeled-with-hidden-node.html: Updated.
+        * accessibility/aria-labelledby-on-input-expected.txt: Updated.
+        * accessibility/aria-labelledby-on-input.html: Updated.
+        * accessibility/aria-labelledby-overrides-aria-labeledby-expected.txt: Updated.
+        * accessibility/aria-labelledby-overrides-aria-labeledby.html: Updated.
+        * accessibility/aria-labelledby-overrides-label-expected.txt: Updated.
+        * accessibility/aria-labelledby-overrides-label.html: Updated.
+        * accessibility/aria-labelledby-stay-within-expected.txt: Updated.
+        * accessibility/aria-labelledby-stay-within.html: Updated.
+        * accessibility/aria-labelledby-with-descendants-expected.txt: Updated.
+        * accessibility/aria-labelledby-with-descendants.html: Updated.
+        * accessibility/aria-namefrom-author-expected.txt: Updated.
+        * accessibility/aria-namefrom-author.html: Updated.
+        * accessibility/aria-text-role-expected.txt: Updated.
+        * accessibility/aria-text-role.html: Updated.
+        * accessibility/canvas-description-and-role-expected.txt: Updated.
+        * accessibility/canvas-description-and-role.html: Updated.
+        * accessibility/canvas-fallback-content.html: Updated.
+        * accessibility/empty-image-with-title-expected.txt: Updated.
+        * accessibility/empty-image-with-title.html: Updated.
+        * accessibility/fieldset-element-expected.txt: Updated.
+        * accessibility/fieldset-element.html: Updated.
+        * accessibility/focusable-div-expected.txt: Updated.
+        * accessibility/focusable-div.html: Updated.
+        * accessibility/help-text.html: Updated.
+        * accessibility/img-alt-tag-only-whitespace-expected.txt: Updated.
+        * accessibility/img-alt-tag-only-whitespace.html: Updated.
+        * accessibility/img-aria-button-alt-tag-expected.txt: Updated.
+        * accessibility/img-aria-button-alt-tag.html: Updated.
+        * accessibility/img-fallsback-to-title.html: Updated.
+        * accessibility/input-image-alt-expected.txt: Updated.
+        * accessibility/input-image-alt.html: Updated.
+        * accessibility/loading-iframe-sends-notification.html: Updated.
+        * accessibility/self-referencing-aria-labelledby-expected.txt: Updated.
+        * accessibility/self-referencing-aria-labelledby.html: Updated.
+        * accessibility/svg-bounds.html: Updated.
+        * accessibility/svg-group-element-with-title-expected.txt: Updated.
+        * accessibility/svg-group-element-with-title.html: Updated.
+        * accessibility/svg-image-expected.txt: Updated.
+        * accessibility/svg-image.html: Updated.
+        * accessibility/svg-labelledby-expected.txt: Updated.
+        * accessibility/svg-labelledby.html: Updated.
+        * accessibility/svg-remote-element.html: Updated.
+        * accessibility/w3c-svg-description-calculation.html: Updated.
+        * accessibility/w3c-svg-name-calculation.html: Updated.
+        * platform/gtk/TestExpectations: Updated.
+        * platform/gtk/accessibility/aria-hidden-negates-no-visibility-expected.txt: Added.
+        * platform/gtk/accessibility/aria-labelledby-overrides-aria-label-expected.txt: Added.
+        * platform/gtk/accessibility/aria-labelledby-overrides-label-expected.txt: Added.
+        * platform/gtk/accessibility/aria-option-role-expected.txt: Added.
+        * platform/gtk/accessibility/aria-switch-text-expected.txt: Updated.
+        * platform/gtk/accessibility/aria-text-role-expected.txt: Added.
+        * platform/gtk/accessibility/canvas-description-and-role-expected.txt: Added.
+        * platform/gtk/accessibility/empty-image-with-title-expected.txt: Added.
+        * platform/gtk/accessibility/help-text-expected.txt: Added.
+        * platform/gtk/accessibility/image-link-expected.txt: Updated (Gardening).
+        * platform/gtk/accessibility/image-map1-expected.txt: Updated (Gardening).
+        * platform/gtk/accessibility/image-map2-expected.txt: Updated (Gardening).
+        * platform/gtk/accessibility/image-with-alt-and-map-expected.txt: Updated.
+        * platform/gtk/accessibility/img-fallsback-to-title-expected.txt: Updated.
+        * platform/gtk/accessibility/math-multiscript-attributes-expected.txt: Updated (Gardening).
+        * platform/gtk/accessibility/media-element-expected.txt: Updated.
+        * platform/gtk/accessibility/radio-button-title-label-expected.txt: Updated.
+        * platform/gtk/accessibility/svg-bounds-expected.txt: Added.
+        * platform/gtk/accessibility/svg-remote-element-expected.txt: Added.
+        * platform/gtk/accessibility/table-attributes-expected.txt: Updated (Gardening).
+        * platform/gtk/accessibility/table-cell-spans-expected.txt: Updated (Gardening).
+        * platform/gtk/accessibility/table-cells-expected.txt: Updated (Gardening).
+        * platform/gtk/accessibility/table-detection-expected.txt: Updated (Gardening).
+        * platform/gtk/accessibility/table-sections-expected.txt: Updated (Gardening).
+        * platform/mac/accessibility/aria-help-expected.txt: Removed.
+        * platform/mac/accessibility/canvas-description-and-role-expected.txt: Updated.
+        * platform/mac/accessibility/fieldset-element-expected.txt: Removed.
+        * platform/mac/accessibility/img-fallsback-to-title-expected.txt: Updated.
+        * platform/win/accessibility/canvas-description-and-role-expected.txt: Updated.
+        * resources/accessibility-helper.js:
+        (platformValueForW3CName): Added.
+        (platformValueForW3CDescription): Added.
+        (platformTextAlternatives): Added.
+        (platformRoleForComboBox): Added.
+        (platformRoleForStaticText): Added.
+
 2016-03-05  Simon Fraser  <simon.fraser@apple.com>
 
         Add support for the object-position CSS property

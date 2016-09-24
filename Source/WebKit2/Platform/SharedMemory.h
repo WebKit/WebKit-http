@@ -28,6 +28,7 @@
 
 #include <wtf/Forward.h>
 #include <wtf/Noncopyable.h>
+#include <wtf/Optional.h>
 #include <wtf/RefCounted.h>
 
 #if PLATFORM(QT) || PLATFORM(GTK) || PLATFORM(EFL)
@@ -122,7 +123,7 @@ private:
     Protection m_protection;
 
 #if USE(UNIX_DOMAIN_SOCKETS)
-    int m_fileDescriptor;
+    Optional<int> m_fileDescriptor;
     bool m_isWrappingMap { false };
 #elif OS(DARWIN)
     mach_port_t m_port;

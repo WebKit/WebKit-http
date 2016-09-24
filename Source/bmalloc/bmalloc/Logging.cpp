@@ -26,13 +26,18 @@
 #include "Logging.h"
 #include "BPlatform.h"
 
+#if !BUSE(OS_LOG)
+#include <stdarg.h>
+#include <stdio.h>
+#endif
+
 #if BPLATFORM(IOS)
 #include <mach/exception_types.h>
 #include <objc/objc.h>
 #include <unistd.h>
 
 #include "BSoftLinking.h"
-BSOFT_LINK_FRAMEWORK(CrashReporterSupport);
+BSOFT_LINK_PRIVATE_FRAMEWORK(CrashReporterSupport);
 BSOFT_LINK_FUNCTION(CrashReporterSupport, SimulateCrash, BOOL, (pid_t pid, mach_exception_data_type_t exceptionCode, id description), (pid, exceptionCode, description));
 #endif
 
@@ -45,5 +50,16 @@ void logVMFailure()
     SimulateCrash(getpid(), kExceptionCode, nullptr);
 #endif
 }
+
+#if !BUSE(OS_LOG)
+void reportAssertionFailureWithMessage(const char* file, int line, const char* function, const char* format, ...)
+{
+    va_list args;
+    va_start(args, format);
+    vfprintf(stderr, format, args);
+    va_end(args);
+    fprintf(stderr, "%s(%d) : %s\n", file, line, function);
+}
+#endif
 
 } // namespace bmalloc

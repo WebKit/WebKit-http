@@ -1,3 +1,216 @@
+2016-09-05  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Update OptionsGTK.cmake and NEWS for 2.12.5 release.
+
+        * gtk/NEWS: Add release notes for 2.12.5.
+
+2016-08-30  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        REGRESSION(r194846): [GTK] UI process crash visiting sites protected with HTTP auth when using GTK+ < 3.14
+        https://bugs.webkit.org/show_bug.cgi?id=161385
+
+        Reviewed by Antonio Gomes.
+
+        Since r194846, we are chaining up webkitWebViewBaseMotionNotifyEvent, but before GTK+ 3.14
+        GtkWidget::motion_notify_event was nullptr, so it can't be used unconditionally.
+
+        * UIProcess/API/gtk/WebKitWebViewBase.cpp:
+        (webkitWebViewBaseMotionNotifyEvent):
+
+2016-07-07  Alex Christensen  <achristensen@webkit.org>
+
+        Followup to r202939.
+        https://bugs.webkit.org/show_bug.cgi?id=159526
+
+        * NetworkProcess/NetworkResourceLoader.cpp:
+        (WebKit::NetworkResourceLoader::didFailLoading):
+        We need the correct destination id when sending a message.
+
+2016-08-24  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Update OptionsGTK.cmake and NEWS for 2.12.4 release.
+
+        * gtk/NEWS: Add release notes for 2.12.4.
+
+2016-08-07  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Bad performance in accelerated compositing mode with the modesetting intel driver and DRI3 enabled
+        https://bugs.webkit.org/show_bug.cgi?id=160491
+
+        Reviewed by Michael Catanzaro.
+
+        This is becoming the default in several linux distributions and it makes WebKitGTK+ unusable in accelerated
+        compositing mode, which is now always enabled because since we switched to use the threaded compositor. The
+        problem seems to be an optimization of the intel driver for windows that are offscreen, and our redirected
+        window is always positioned at ScreenWidth + 1, 0. Using negative coordinates to position the redirected window
+        offscreen fixes the problem.
+        See also https://bugs.freedesktop.org/show_bug.cgi?id=85064.
+
+        * WebProcess/WebPage/gtk/RedirectedXCompositeWindow.cpp:
+        (WebKit::RedirectedXCompositeWindow::RedirectedXCompositeWindow): Position the parent window at -1, -1.
+
+2016-08-03  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] Document how to initialize WebKitFaviconDatabase
+        https://bugs.webkit.org/show_bug.cgi?id=160391
+
+        Reviewed by Carlos Garcia Campos.
+
+        * UIProcess/API/gtk/WebKitFaviconDatabase.cpp:
+
+2016-07-13  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] WebKitGtk+ uses too many file descriptors
+        https://bugs.webkit.org/show_bug.cgi?id=152316
+
+        Reviewed by Michael Catanzaro.
+
+        The problem is that we are keeping file descriptors open in SharedMemory objects. Those objects can be kept
+        alive for a long time, for example in case of cached resources sent from the network process as shareable
+        resources. The thing is that we keep the file descriptor in the SharedMemory object only to be able to create a
+        Handle, duplicating the file descriptor. However, we are also assuming that we create handles for SharedMemory
+        objects created by another handle which is wrong. SharedMemory objects are created to map a file or data and
+        then a handle is created to send it to another process, or to map an existing file or data for a given handle
+        received from another process. They can also be created to wrap another map, but in that case we don't own the
+        file descritor nor the mapped data. So, after mapping from a handle, we no longer need the file descriptor, and
+        it can be closed to release it, while the mapped memory data will still be alive until munmap() is called. This
+        drastically reduces the amount of file descriptors used by WebKitGTK+.
+
+        * Platform/IPC/unix/ConnectionUnix.cpp:
+        (IPC::readBytesFromSocket): Use setCloseOnExec().
+        (IPC::Connection::createPlatformConnection): Ditto.
+        * Platform/SharedMemory.h:
+        * Platform/unix/SharedMemoryUnix.cpp:
+        (WebKit::SharedMemory::map): Close the file descriptor right after mmap.
+        (WebKit::SharedMemory::~SharedMemory): Close the file descriptor only if it hasn't been closed yet.
+        (WebKit::SharedMemory::createHandle): Add an ASSERT to ensure we only try to create a handle for SharedMemory
+        objects having a valid file descriptor. Use dupCloseOnExec() to duplicate the handle and set the close on exec flag.
+        * UIProcess/Launcher/gtk/ProcessLauncherGtk.cpp:
+        (WebKit::ProcessLauncher::launchProcess): Use setCloseOnExec().
+
+2016-07-04  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [GTK] Null WebCore::Range dereference in WebEditorClient::updateGlobalSelection
+        https://bugs.webkit.org/show_bug.cgi?id=159341
+
+        Reviewed by Carlos Garcia Campos.
+
+        FrameSelection::toNormalizedRange() can return null. Null check is
+        needed.
+
+        Tests:
+            editing/input/set-value-on-input-and-delete.html
+            editing/selection/selection-in-iframe-removed-crash.html
+            imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/sizes/parse-a-sizes-attribute.html
+            imported/w3c/web-platform-tests/html/semantics/forms/textfieldselection/selection-after-content-change.html
+            imported/w3c/web-platform-tests/html/semantics/forms/textfieldselection/selection-not-application-textarea.html
+            imported/w3c/web-platform-tests/html/semantics/forms/textfieldselection/selection-not-application.html
+
+        * WebProcess/WebCoreSupport/gtk/WebEditorClientGtk.cpp:
+        (WebKit::WebEditorClient::updateGlobalSelection): Do not update
+        global selection if FrameSelection::toNormalizedRange() returns
+        null.
+
+2016-07-04  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [GTK] ASSERTION_FAILED: m_key != PTHREAD_KEYS_MAX when defining WEBKIT2_PAUSE_WEB_PROCESS_ON_LAUNCH
+        https://bugs.webkit.org/show_bug.cgi?id=158149
+
+        Reviewed by Carlos Garcia Campos.
+
+        WTF::sleep can not be used at the beginning of web process because
+        WTF is not initialized at the moment yet.
+
+        * WebProcess/gtk/WebProcessMainGtk.cpp: Use g_usleep instead of WTF::sleep.
+
+2016-06-10  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Browser plugins crash under Wayland
+        https://bugs.webkit.org/show_bug.cgi?id=157605
+
+        Reviewed by Michael Catanzaro.
+
+        Fail the initialization of windowed plugins if we don't have a platform implementation.
+
+        * WebProcess/Plugins/Netscape/unix/NetscapePluginUnix.cpp:
+        (WebKit::NetscapePlugin::platformPostInitialize):
+
+2016-06-07  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] Hide GTK+ 2 plugins if GTK+ 2 plugin process was built but is not installed
+        https://bugs.webkit.org/show_bug.cgi?id=158419
+
+        Reviewed by Carlos Garcia Campos.
+
+        Patch by Alberto Garcia <berto@igalia.com>
+
+        * UIProcess/Plugins/unix/PluginInfoStoreUnix.cpp:
+        (WebKit::PluginInfoStore::getPluginInfo):
+        * UIProcess/Plugins/unix/PluginProcessProxyUnix.cpp:
+        (WebKit::PluginProcessProxy::scanPlugin):
+
+2016-05-25  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        [Unix] Potential buffer overrun of m_fileDescriptors in readBytesFromSocket of ConnectionUnix.cpp
+        https://bugs.webkit.org/show_bug.cgi?id=158058
+
+        Reviewed by Carlos Garcia Campos.
+
+        Memcpy does not check the boundary of m_fileDescriptors in
+        readBytesFromSocket of ConnectionUnix.cpp.  This is not a problem
+        in normal cases, but in the case when Web process is hijacked and
+        malicious IPC packets were sent.  WTF::Vector already has two
+        members m_capacity and m_size.  There is no need to have a
+        separate member m_fileDescriptorsSize to remember the number of
+        remaining data.
+
+        * Platform/IPC/Connection.h: Remove members m_readBufferSize and
+        m_fileDescriptorsSize.
+        * Platform/IPC/unix/ConnectionUnix.cpp:
+        (IPC::Connection::platformInitialize): Removed initialization of
+        m_readBufferSize and m_fileDescriptorsSize.  Reserve initial
+        capacity for m_readBuffer and m_fileDescriptors.
+        (IPC::Connection::processMessage): Replace m_readBufferSize and
+        m_fileDescriptorsSize with m_readBuffer.size() and
+        m_fileDescriptors.size().  Use Vector::shrink() to reset the
+        number of remaining data in the buffers.
+        (IPC::readBytesFromSocket) : Change argument types to WTF::Vector
+        instead of pointers and sizes.
+        (IPC::Connection::readyReadHandler): Call new readBytesFromSocket
+
+2016-07-07  Alex Christensen  <achristensen@webkit.org>
+
+        Fix crash when sending failure message to closed WebProcess
+        https://bugs.webkit.org/show_bug.cgi?id=159526
+        <rdar://problem/26767037>
+
+        Reviewed by Brady Eidson.
+
+        * NetworkProcess/NetworkResourceLoader.cpp:
+        (WebKit::NetworkResourceLoader::didFailLoading):
+        Check to see if there is a connection before using it to send a message.
+        Sometimes it was null.
+        I think this could be tested if we had real network loading from TestWebKitAPI
+        by cancelling slow loads and closing WebProcesses around the same time, but no such infrastructure exists yet.
+
+2016-07-12  Chris Dumez  <cdumez@apple.com>
+
+        [WK2] Protect against bad database data in LocalStorageDatabase::importItems()
+        https://bugs.webkit.org/show_bug.cgi?id=159663
+        <rdar://problem/18995873>
+
+        Reviewed by Benjamin Poulain.
+
+        Protect against bad database data in LocalStorageDatabase::importItems(). We
+        crash if the database contains a null key or a null value so protect against
+        it given that we have evidence it can happen.
+
+        With this change, I can no longer reproduce the UIProcess crash on evernote.com
+        that is documented at <rdar://problem/18995873>.
+
+        * UIProcess/Storage/LocalStorageDatabase.cpp:
+        (WebKit::LocalStorageDatabase::importItems):
+
 2016-05-24  Carlos Garcia Campos  <cgarcia@igalia.com>
 
         Unreviewed. Update OptionsGTK.cmake and NEWS for 2.12.3 release.

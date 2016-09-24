@@ -251,6 +251,15 @@ void RenderTableSection::addCell(RenderTableCell* cell, RenderTableRow* row)
     cell->setCol(table()->effColToCol(col));
 }
 
+static LayoutUnit resolveLogicalHeightForRow(const Length& rowLogicalHeight)
+{
+    if (rowLogicalHeight.isFixed())
+        return rowLogicalHeight.value();
+    if (rowLogicalHeight.isCalculated())
+        return rowLogicalHeight.nonNanCalculatedValue(0);
+    return 0;
+}
+
 LayoutUnit RenderTableSection::calcRowLogicalHeight()
 {
 #ifndef NDEBUG
@@ -278,7 +287,7 @@ LayoutUnit RenderTableSection::calcRowLogicalHeight()
         LayoutUnit baselineDescent = 0;
 
         // Our base size is the biggest logical height from our cells' styles (excluding row spanning cells).
-        m_rowPos[r + 1] = std::max(m_rowPos[r] + minimumValueForLength(m_grid[r].logicalHeight, 0), LayoutUnit::fromPixel(0));
+        m_rowPos[r + 1] = std::max(m_rowPos[r] + resolveLogicalHeightForRow(m_grid[r].logicalHeight), LayoutUnit::fromPixel(0));
 
         Row& row = m_grid[r].row;
         unsigned totalCols = row.size();
@@ -372,6 +381,7 @@ void RenderTableSection::layout()
     ASSERT(!needsCellRecalc());
     ASSERT(!table()->needsSectionRecalc());
 
+    m_forceSlowPaintPathWithOverflowingCell = false;
     // addChild may over-grow m_grid but we don't want to throw away the memory too early as addChild
     // can be called in a loop (e.g during parsing). Doing it now ensures we have a stable-enough structure.
     m_grid.shrinkToFit();

@@ -1,3 +1,113 @@
+2016-08-03  Geoffrey Garen  <ggaren@apple.com>
+
+        [bmalloc] Merging of XLargeRanges can leak the upper range
+        https://bugs.webkit.org/show_bug.cgi?id=160403
+
+        Reviewed by Michael Saboff.
+
+        * bmalloc/Heap.cpp:
+        (bmalloc::Heap::scavengeLargeObjects): Don't use removePhysical().
+        Recorded physical size is a performance optimization. It is not the
+        truth. So it might be zero even if a range contains physical pages.
+
+        Instead, iterate each range in the map unconditionally.
+
+        The map can shrink when we release the lock, so we must clamp our
+        iterator each time through the loop.
+
+        The map can grow when we release the lock, but we don't care because
+        growth restarts the scavenger from the beginning.
+
+        * bmalloc/XLargeMap.cpp:
+        (bmalloc::XLargeMap::removePhysical): Deleted. Not used anymore.
+
+        * bmalloc/XLargeMap.h:
+        (bmalloc::XLargeMap::ranges): Added direct access for the sake of
+        scavengeLargeObjects. (This violates our naming conventions -- I'll do
+        a rename in a follow-up patch.)
+
+2016-07-11  Geoffrey Garen  <ggaren@apple.com>
+
+        Crash due to abort() calling libc++.1.dylib: std::__1::thread::detach()
+        https://bugs.webkit.org/show_bug.cgi?id=159655
+
+        Reviewed by Sam Weinig.
+
+        It's not entirely clear what was happening in these crashes, but our
+        use of detach() was 100% forward-looking, so we can just remove it for
+        now.
+
+        This patch removes the ability for the scavenger owner to die before
+        the scavenger thread dies (which was unused) and also removes the
+        ability for the scavenger thread to exit (which was used, but we
+        messed up and did thread joining lazily, so we never got any benefit
+        from thread exit.)
+
+        We can add these features back when we need them, and make them work then.
+
+        * bmalloc/AsyncTask.h:
+        (bmalloc::Function>::AsyncTask): We start out in the running state now
+        because we know that starting our thread will run it.
+
+        (bmalloc::Function>::~AsyncTask): We don't support destruction anymore.
+
+        (bmalloc::Function>::runSlowCase): I removed the Exited state.
+
+        (bmalloc::Function>::threadRunLoop): I removed the Exited and
+        ExitRequested states.
+
+        * bmalloc/Heap.h:
+
+        * bmalloc/VMHeap.h:
+
+2016-06-12  David Kilzer  <ddkilzer@apple.com>
+
+        Crash in com.apple.WebKit.WebContent at std::__1::__call_once_proxy<std::__1::tuple<CrashReporterSupportLibrary()::$_0&&> >
+        <https://webkit.org/b/158660>
+        <rdar://problem/25652686>
+
+        Reviewed by Darin Adler.
+
+        * bmalloc/Logging.cpp: Switch to use
+        BSOFT_LINK_PRIVATE_FRAMEWORK() to link
+        CrashReporterSupport.framework.
+        * bmalloc/darwin/BSoftLinking.h:
+        (BSOFT_LINK_PRIVATE_FRAMEWORK): Rename from BSOFT_LINK_FRAMEWORK.
+        Switch to use /System/Library/PrivateFrameworks/.
+
+2016-06-11  David Kilzer  <ddkilzer@apple.com>
+
+        Implement logging for RELEASE_BASSERT_WITH_MESSAGE() in BAssert.h
+        <http://webkit.org/b/155992>
+
+        Reviewed by Geoff Garen.
+
+        * bmalloc/BAssert.h:
+        (BLOG_ERROR): Add method to always log error messages.
+        (RELEASE_BASSERT_WITH_MESSAGE): Use BLOG_ERROR() to implement
+        logging in Debug builds.
+        * bmalloc/BPlatform.h:
+        (BPLATFORM_MAC): Add.
+        (BUSE): Add BUSE() macro.
+        (BATTRIBUTE_PRINTF): Add.
+        (BUSE_OS_LOG): Add.
+        * bmalloc/Logging.cpp:
+        (bmalloc::reportAssertionFailureWithMessage): Add.  Logs to
+        stderr.
+        * bmalloc/Logging.h:
+        (bmalloc::reportAssertionFailureWithMessage): Add declaration.
+
+2016-06-07  Pranjal Jumde  <pjumde@apple.com>
+
+        Prevents integer overflow in Vector.h
+        https://bugs.webkit.org/show_bug.cgi?id=158455
+        <rdar://problem/20235469>
+
+        Reviewed by Mark Lam.
+
+        * bmalloc/Vector.h:
+        (bmalloc::Vector<T>::reallocateBuffer):
+
 2016-05-17  Geoffrey Garen  <ggaren@apple.com>
 
         REGRESSION: JetStream crashes on some iPhones

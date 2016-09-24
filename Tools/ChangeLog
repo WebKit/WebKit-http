@@ -1,3 +1,47 @@
+2016-07-12  Chris Dumez  <cdumez@apple.com>
+
+        [WK2] Protect against bad database data in LocalStorageDatabase::importItems()
+        https://bugs.webkit.org/show_bug.cgi?id=159663
+        <rdar://problem/18995873>
+
+        Reviewed by Benjamin Poulain.
+
+        Add API test coverage.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/LocalStorageNullEntries.html: Added.
+        * TestWebKitAPI/Tests/WebKit2Cocoa/LocalStorageNullEntries.localstorage: Added.
+        * TestWebKitAPI/Tests/WebKit2Cocoa/LocalStorageNullEntries.localstorage-shm: Added.
+        * TestWebKitAPI/Tests/WebKit2Cocoa/LocalStorageNullEntries.mm: Added.
+        (-[LocalStorageNullEntriesMessageHandler userContentController:didReceiveScriptMessage:]):
+        (TEST):
+
+2016-05-25  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        [GTK] accessibility/meter-element.html is failing
+        https://bugs.webkit.org/show_bug.cgi?id=115633
+
+        Unreviewed.
+
+        Implement AccessibilityUIElement::valueDescription() and add mapping
+        from ATK_ROLE_LEVEL_BAR to AXProgressIndicator.
+
+        * WebKitTestRunner/InjectedBundle/atk/AccessibilityUIElementAtk.cpp:
+        (WTR::AccessibilityUIElement::valueDescription):
+
+2016-05-25  Joanmarie Diggs  <jdiggs@igalia.com>
+
+        AX: [ATK] Use WebCore Accessibility's AccessibilityText for AtkObject name and description
+        https://bugs.webkit.org/show_bug.cgi?id=157822
+
+        Reviewed by Chris Fleizach.
+
+        Fix AccessibilityUIElement::helpText() so that it returns an empty string rather than
+        nullptr upon failure.
+
+        * WebKitTestRunner/InjectedBundle/atk/AccessibilityUIElementAtk.cpp:
+        (WTR::AccessibilityUIElement::helpText):
+
 2016-03-10  Frederic Wang  <fwang@igalia.com>
 
         [GTK] Add support for WOFF2
