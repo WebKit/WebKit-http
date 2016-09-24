@@ -1,0 +1,7 @@
+CONSOLE MESSAGE: line 8: Unable to get image data from canvas. Requested size was 381000000 x 2
+CONSOLE MESSAGE: line 8: InvalidStateError: DOM Exception 11: An attempt was made to use an object that is not, or is no longer, usable.
+PASSED (If this page did not crash.)
+PASS successfullyParsed is true
+
+TEST COMPLETE
+
