@@ -420,7 +420,11 @@ else ()
     set(WebKit_LIBRARY_TYPE SHARED)
 endif ()
 
-set(WebKit_OUTPUT_NAME Qt5WebKit)
+if (APPLE)
+    set(WebKit_OUTPUT_NAME QtWebKit)
+else ()
+    set(WebKit_OUTPUT_NAME Qt5WebKit)
+endif ()
 
 
 ############     WebKitWidgets     ############
@@ -625,7 +629,11 @@ else ()
     set(WebKitWidgets_LIBRARY_TYPE SHARED)
 endif ()
 
-set(WebKitWidgets_OUTPUT_NAME Qt5WebKitWidgets)
+if (APPLE)
+    set(WebKitWidgets_OUTPUT_NAME QtWebKitWidgets)
+else ()
+    set(WebKitWidgets_OUTPUT_NAME Qt5WebKitWidgets)
+endif ()
 set(WebKitWidgets_PRIVATE_HEADERS_LOCATION Headers/${PROJECT_VERSION}/QtWebKitWidgets/Private)
 
 WEBKIT_FRAMEWORK(WebKitWidgets)
