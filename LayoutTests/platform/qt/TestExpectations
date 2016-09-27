@@ -90,6 +90,9 @@ css3/flexbox/multiline-reverse-wrap-baseline.html [ Pass ]
 fast/multicol/multicol-with-child-renderLayer-for-input.html [ Pass ]
 http/tests/security/contentSecurityPolicy/video-with-https-url-allowed-by-csp-media-src-star.html [ Pass ]
 
+# This expectation was not merged to global file when backporting r202769
+webkit.org/b/159370 [ Debug ] fast/history/page-cache-destroy-document.html [ Crash ]
+
 # =========================================================================== #
 # Crashes                                                                     #
 # =========================================================================== #
