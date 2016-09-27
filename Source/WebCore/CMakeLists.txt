@@ -3788,7 +3788,7 @@ if (ENABLE_GRAPHICS_CONTEXT_3D AND NOT WIN32)
     set_target_properties(ANGLESupport PROPERTIES FOLDER "WebCore")
 
     # Suppress null conversion warnings for sources in Source/ThirdParty/ANGLE
-    if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+    if (COMPILER_IS_CLANG)
         ADD_TARGET_PROPERTIES(ANGLESupport COMPILE_FLAGS "-Wno-null-conversion")
     endif ()
 
