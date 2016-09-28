@@ -42,17 +42,17 @@ class WebPage : public QWebPage {
 public:
     WebPage(QObject* parent = 0);
 
-    virtual QWebPage* createWindow(QWebPage::WebWindowType);
-    virtual QObject* createPlugin(const QString&, const QUrl&, const QStringList&, const QStringList&);
-    virtual bool supportsExtension(QWebPage::Extension) const;
-    virtual bool extension(Extension, const ExtensionOption*, ExtensionReturn*);
+    QWebPage* createWindow(QWebPage::WebWindowType) override;
+    QObject* createPlugin(const QString&, const QUrl&, const QStringList&, const QStringList&) override;
+    bool supportsExtension(QWebPage::Extension) const override;
+    bool extension(Extension, const ExtensionOption*, ExtensionReturn*) override;
 
-    virtual bool acceptNavigationRequest(QWebFrame*, const QNetworkRequest&, NavigationType);
+    bool acceptNavigationRequest(QWebFrame*, const QNetworkRequest&, NavigationType) override;
 
-    QString userAgentForUrl(const QUrl&) const;
+    QString userAgentForUrl(const QUrl&) const override;
     void setInterruptingJavaScriptEnabled(bool enabled) { m_interruptingJavaScriptEnabled = enabled; }
 
-    virtual bool shouldInterruptJavaScript();
+    bool shouldInterruptJavaScript() override;
 
     void javaScriptConsoleMessage(const QString &message, int lineNumber, const QString &sourceID) override;
 
