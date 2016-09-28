@@ -103,9 +103,9 @@ bool CachedFont::ensureCustomFontData(SharedBuffer* data)
         RefPtr<SharedBuffer> buffer(data);
 
 #if !PLATFORM(COCOA)
-        if (isWOFF(buffer.get())) {
+        if (isWOFF(*buffer)) {
             Vector<char> convertedFont;
-            if (!convertWOFFToSfnt(buffer.get(), convertedFont))
+            if (!convertWOFFToSfnt(*buffer, convertedFont))
                 buffer = nullptr;
             else
                 buffer = SharedBuffer::adoptVector(convertedFont);
