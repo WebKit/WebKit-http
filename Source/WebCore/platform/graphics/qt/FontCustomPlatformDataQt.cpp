@@ -39,18 +39,7 @@ FontPlatformData FontCustomPlatformData::fontPlatformData(const FontDescription&
 
 std::unique_ptr<FontCustomPlatformData> createFontCustomPlatformData(SharedBuffer& buffer)
 {
-    SharedBuffer* fontBuffer = &buffer;
-    RefPtr<SharedBuffer> sfntBuffer;
-    if (isWOFF(&buffer)) {
-        Vector<char> sfnt;
-        if (!convertWOFFToSfnt(&buffer, sfnt))
-            return 0;
-
-        sfntBuffer = SharedBuffer::adoptVector(sfnt);
-        fontBuffer = sfntBuffer.get();
-    }
-
-    const QByteArray fontData(fontBuffer->data(), fontBuffer->size());
+    const QByteArray fontData(buffer.data(), buffer.size());
 
     // Pixel size doesn't matter at this point, it is set in FontCustomPlatformData::fontPlatformData.
     QRawFont rawFont(fontData, /*pixelSize = */0, QFont::PreferDefaultHinting);
