@@ -381,9 +381,52 @@ install(
         ${KDE_INSTALL_INCLUDEDIR}/QtWebKit/${PROJECT_VERSION}/QtWebKit/private
 )
 
+set(WEBKIT_PKGCONGIG_DEPS "Qt5Core Qt5Gui Qt5Network")
+set(WEBKIT_PRI_DEPS "core gui network")
+set(WEBKIT_PRI_RUNTIME_DEPS "sensors positioning qml quick webchannel core_private gui_private")
+set(WEBKIT_PRI_EXTRA_LIBS "")
+set(WEBKITWIDGETS_PKGCONGIG_DEPS "Qt5Core Qt5Gui Qt5Network Qt5Widgets Qt5WebKit")
+set(WEBKITWIDGETS_PRI_DEPS "core gui network widgets webkit")
+set(WEBKITWIDGETS_PRI_RUNTIME_DEPS "sensors positioning widgets_private opengl sql core_private gui_private")
+if (QT_STATIC_BUILD)
+    if (MSVC)
+        set(LIB_PREFIX "lib")
+    endif ()
+    set(WEBKIT_PKGCONGIG_DEPS "${WEBKIT_PKGCONGIG_DEPS} Qt5Sql")
+    set(WEBKIT_PRI_DEPS "${WEBKIT_PRI_DEPS} sql")
+    set(WEBKITWIDGETS_PKGCONGIG_DEPS "${WEBKITWIDGETS_PKGCONGIG_DEPS} Qt5PrintSupport")
+    set(WEBKITWIDGETS_PRI_DEPS "${WEBKITWIDGETS_PRI_DEPS} printsupport")
+    set(EXTRA_LIBS_NAMES WebCore JavaScriptCore WTF xml2)
+    if (NOT USE_SYSTEM_MALLOC)
+        list(APPEND EXTRA_LIBS_NAMES bmalloc)
+    endif ()
+    if (ENABLE_XSLT)
+        list(APPEND EXTRA_LIBS_NAMES xslt)
+    endif ()
+    if (USE_LIBHYPHEN)
+        list(APPEND EXTRA_LIBS_NAMES hyphen)
+    endif ()
+    if (USE_WEBP)
+        list(APPEND EXTRA_LIBS_NAMES webp)
+    endif ()
+    if (USE_WOFF2)
+        list(APPEND EXTRA_LIBS_NAMES woff2 brotli)
+    endif ()
+    if (APPLE)
+        list(APPEND EXTRA_LIBS_NAMES icucore)
+    endif ()
+    foreach (LIB_NAME ${EXTRA_LIBS_NAMES})
+        set(WEBKIT_PKGCONGIG_DEPS "${WEBKIT_PKGCONGIG_DEPS} ${LIB_PREFIX}${LIB_NAME}")
+        set(WEBKIT_PRI_EXTRA_LIBS "${WEBKIT_PRI_EXTRA_LIBS} -l${LIB_PREFIX}${LIB_NAME}")
+    endforeach ()
+else ()
+    set(WEBKIT_PRI_RUNTIME_DEPS "${WEBKIT_PRI_RUNTIME_DEPS} sql")
+    set(WEBKITWIDGETS_PRI_RUNTIME_DEPS "${WEBKITWIDGETS_PRI_RUNTIME_DEPS} printsupport")
+endif ()
+
 ecm_generate_pkgconfig_file(
     BASE_NAME Qt5WebKit
-    DEPS "Qt5Core Qt5Gui Qt5Network"
+    DEPS "${WEBKIT_PKGCONGIG_DEPS}"
     FILENAME_VAR WebKit_PKGCONFIG_FILENAME
     INSTALL
 )
@@ -405,10 +448,11 @@ endif ()
 ecm_generate_pri_file(
     BASE_NAME webkit
     LIB_NAME QtWebKit
-    DEPS "core gui network"
-    RUNTIME_DEPS "sensors positioning qml quick webchannel sql core_private gui_private"
+    DEPS "${WEBKIT_PRI_DEPS}"
+    RUNTIME_DEPS "${WEBKIT_PRI_RUNTIME_DEPS}"
     DEFINES QT_WEBKIT_LIB
     QT_MODULES webkit
+    EXTRA_LIBS "${WEBKIT_PRI_EXTRA_LIBS}"
     FILENAME_VAR WebKit_PRI_FILENAME
     ${WebKit_PRI_ARGUMENTS}
 )
@@ -547,7 +591,7 @@ install(
 
 ecm_generate_pkgconfig_file(
     BASE_NAME Qt5WebKitWidgets
-    DEPS "Qt5Core Qt5Gui Qt5Network Qt5Widgets Qt5WebKit"
+    DEPS "${WEBKITWIDGETS_PKGCONFIG_DEPS}"
     FILENAME_VAR WebKitWidgets_PKGCONFIG_FILENAME
     INSTALL
 )
@@ -569,8 +613,8 @@ endif ()
 ecm_generate_pri_file(
     BASE_NAME webkitwidgets
     LIB_NAME QtWebKitWidgets
-    DEPS "core gui network widgets webkit"
-    RUNTIME_DEPS "sensors positioning widgets_private printsupport opengl sql core_private gui_private"
+    DEPS "${WEBKITWIDGETS_PRI_DEPS}"
+    RUNTIME_DEPS "${WEBKITWIDGETS_PRI_RUNTIME_DEPS}"
     DEFINES QT_WEBKITWIDGETS_LIB
     QT_MODULES webkitwidgets
     FILENAME_VAR WebKitWidgets_PRI_FILENAME

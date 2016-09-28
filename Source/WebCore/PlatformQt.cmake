@@ -234,6 +234,12 @@ list(APPEND WebCore_LIBRARIES
     ${ZLIB_LIBRARIES}
 )
 
+if (QT_STATIC_BUILD)
+    list(APPEND WebCore_LIBRARIES
+        ${DEPEND_STATIC_LIBS}
+    )
+endif ()
+
 list(APPEND WebCore_USER_AGENT_STYLE_SHEETS
 #    ${WEBCORE_DIR}/css/mediaControlsGtk.css
 #    ${WEBCORE_DIR}/css/mediaControlsQt.css

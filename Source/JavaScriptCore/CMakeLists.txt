@@ -1318,6 +1318,8 @@ if (${JavaScriptCore_LIBRARY_TYPE} STREQUAL "SHARED")
     install(TARGETS JavaScriptCore DESTINATION "${LIB_INSTALL_DIR}")
 endif ()
 
+QT_ADD_EXTRA_WEBKIT_TARGET_EXPORT(JavaScriptCore)
+
 # Force staging of shared scripts, even if they aren't directly used to build JavaScriptCore.
 
 add_custom_target(stageSharedScripts DEPENDS ${JavaScriptCore_SCRIPTS})

@@ -41,6 +41,7 @@ set(QtTestBrowser_LIBRARIES
     ${Qt5Widgets_LIBRARIES}
     ${Qt5PrintSupport_LIBRARIES}
     WebKitWidgets
+    ${DEPEND_STATIC_LIBS}
 )
 
 qt_wrap_cpp(WebKit QtTestBrowser_SOURCES

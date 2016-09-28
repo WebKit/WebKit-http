@@ -18,6 +18,12 @@ list(APPEND JavaScriptCore_LIBRARIES
     ${Qt5Core_LIBRARIES}
 )
 
+if (QT_STATIC_BUILD)
+    list(APPEND JavaScriptCore_LIBRARIES
+        ${DEPEND_STATIC_LIBS}
+    )
+endif ()
+
 # From PlatformWin.cmake
 if (WIN32)
     list(REMOVE_ITEM JavaScriptCore_SOURCES

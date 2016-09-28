@@ -25,3 +25,5 @@ endif ()
 if (CMAKE_COMPILER_IS_GNUCXX)
     ADD_TARGET_PROPERTIES(woff2 COMPILE_FLAGS "-Wno-unused-but-set-variable")
 endif ()
+
+QT_ADD_EXTRA_WEBKIT_TARGET_EXPORT(woff2)

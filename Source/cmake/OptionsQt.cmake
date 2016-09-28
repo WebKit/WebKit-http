@@ -20,13 +20,22 @@ macro(macro_process_qtbase_prl_file qt_target_component)
         endif ()
         if (EXISTS ${_prl_file_location})
             file(STRINGS ${_prl_file_location} prl_strings REGEX "QMAKE_PRL_LIBS")
-            string(REGEX REPLACE "QMAKE_PRL_LIBS *= *([^\n]*)" "\\1" static_depends ${prl_strings})
+            string(REGEX REPLACE "QMAKE_PRL_LIBS *= *([^\\n]*)" "\\1" static_depends ${prl_strings})
             string(STRIP ${static_depends} static_depends)
             set_target_properties(${qt_target_component} PROPERTIES
                 "INTERFACE_LINK_LIBRARIES" "${_link_libs}${_list_sep}${static_depends}"
                 "IMPORTED_LOCATION" "${_lib_location}"
             )
+            string(REPLACE " " ";" static_depends ${static_depends})
+            set(${_lib_name}_STATIC_LIB_DEPENDENCIES "${static_depends}")
         endif ()
+    endif ()
+endmacro()
+
+macro(QT_ADD_EXTRA_WEBKIT_TARGET_EXPORT target)
+    if (QT_STATIC_BUILD)
+        install(TARGETS ${target} EXPORT WebKitTargets
+            DESTINATION "${LIB_INSTALL_DIR}")
     endif ()
 endmacro()
 
@@ -173,12 +182,9 @@ set(ENABLE_WEBKIT ON)
 set(ENABLE_WEBKIT2 OFF)
 set(WTF_USE_UDIS86 1)
 
-
 get_target_property(QT_CORE_TYPE Qt5::Core TYPE)
 if (QT_CORE_TYPE MATCHES STATIC)
     set(QT_STATIC_BUILD ON)
-endif ()
-if (QT_STATIC_BUILD)
     set(SHARED_CORE OFF)
 endif ()
 
@@ -252,6 +258,13 @@ else ()
     )
     set(ICU_LIBRARIES libicucore.dylib)
     find_library(COREFOUNDATION_LIBRARY CoreFoundation)
+    if (QT_STATIC_BUILD)
+        find_library(CARBON_LIBRARY Carbon)
+        find_library(COCOA_LIBRARY Cocoa)
+        find_library(SYSTEMCONFIGURATION_LIBRARY SystemConfiguration)
+        find_library(CORESERVICES_LIBRARY CoreServices)
+        find_library(SECURITY_LIBRARY Security)
+    endif ()
 endif ()
 
 if (ENABLE_XSLT)
@@ -271,8 +284,6 @@ if (WEBP_FOUND)
 endif ()
 
 set(REQUIRED_QT_VERSION 5.2.0)
-
-
 set(QT_REQUIRED_COMPONENTS Core Gui Network Sql)
 
 # FIXME: Allow building w/o these components
@@ -287,18 +298,48 @@ if (ENABLE_TEST_SUPPORT)
     )
 endif ()
 
+if (ENABLE_GEOLOCATION)
+    list(APPEND QT_REQUIRED_COMPONENTS Positioning)
+    SET_AND_EXPOSE_TO_BUILD(HAVE_QTPOSITIONING 1)
+endif ()
+
+if (ENABLE_DEVICE_ORIENTATION)
+    list(APPEND QT_REQUIRED_COMPONENTS Sensors)
+    SET_AND_EXPOSE_TO_BUILD(HAVE_QTSENSORS 1)
+endif ()
+
+if (ENABLE_PRINT_SUPPORT)
+    list(APPEND QT_REQUIRED_COMPONENTS PrintSupport)
+    SET_AND_EXPOSE_TO_BUILD(HAVE_QTPRINTSUPPORT 1)
+endif ()
+
 find_package(Qt5 ${REQUIRED_QT_VERSION} REQUIRED COMPONENTS ${QT_REQUIRED_COMPONENTS})
 if (QT_STATIC_BUILD)
     foreach (qt_module ${QT_REQUIRED_COMPONENTS})
         macro_process_qtbase_prl_file(Qt5::${qt_module})
+        list(APPEND STATIC_LIB_DEPENDENCIES
+            ${Qt5${qt_module}_STATIC_LIB_DEPENDENCIES}
+        )
     endforeach ()
+    # HACK: We must explicitly add LIB path of the Qt installation
+    # to correctly find qtpcre
+    link_directories("${_qt5_install_prefix}/lib")
 endif ()
+
 foreach (qt_module ${QT_OPTIONAL_COMPONENTS})
-    find_package("Qt5${qt_module}" ${REQUIRED_QT_VERSION})
+    find_package("Qt5${qt_module}" ${REQUIRED_QT_VERSION} PATHS ${_qt5_install_prefix} NO_DEFAULT_PATH)
     if (QT_STATIC_BUILD)
         macro_process_qtbase_prl_file(Qt5::${qt_module})
+        list(APPEND STATIC_LIB_DEPENDENCIES
+            ${Qt5${qt_module}_STATIC_LIB_DEPENDENCIES}
+        )
     endif ()
 endforeach ()
+
+if (QT_STATIC_BUILD)
+    list(REMOVE_DUPLICATES STATIC_LIB_DEPENDENCIES)
+    set(DEPEND_STATIC_LIBS ${STATIC_LIB_DEPENDENCIES})
+endif ()
 
 if (COMPILER_IS_GCC_OR_CLANG AND UNIX)
     if (APPLE OR CMAKE_SYSTEM_NAME MATCHES "Android" OR ${Qt5_VERSION} VERSION_LESS 5.6)
@@ -311,21 +352,6 @@ else ()
 endif ()
 
 option(USE_LINKER_VERSION_SCRIPT "Use linker script for ABI compatibility with Qt libraries" ${USE_LINKER_VERSION_SCRIPT_DEFAULT})
-
-if (ENABLE_GEOLOCATION)
-    find_package(Qt5Positioning ${REQUIRED_QT_VERSION} REQUIRED)
-    SET_AND_EXPOSE_TO_BUILD(HAVE_QTPOSITIONING 1)
-endif ()
-
-if (ENABLE_DEVICE_ORIENTATION)
-    find_package(Qt5Sensors ${REQUIRED_QT_VERSION} REQUIRED)
-    SET_AND_EXPOSE_TO_BUILD(HAVE_QTSENSORS 1)
-endif ()
-
-if (ENABLE_PRINT_SUPPORT)
-    find_package(Qt5PrintSupport ${REQUIRED_QT_VERSION} REQUIRED)
-    SET_AND_EXPOSE_TO_BUILD(HAVE_QTPRINTSUPPORT 1)
-endif ()
 
 # Find includes in corresponding build directories
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
@@ -390,9 +416,9 @@ if (NOT ENABLE_VIDEO)
 endif ()
 
 if (USE_QT_MULTIMEDIA)
-    find_package(Qt5Multimedia ${REQUIRED_QT_VERSION} REQUIRED)
+    find_package(Qt5Multimedia ${REQUIRED_QT_VERSION} REQUIRED PATHS ${_qt5_install_prefix} NO_DEFAULT_PATH)
     # FIXME: Allow building w/o widgets
-    find_package(Qt5MultimediaWidgets ${REQUIRED_QT_VERSION} REQUIRED)
+    find_package(Qt5MultimediaWidgets ${REQUIRED_QT_VERSION} REQUIRED PATHS ${_qt5_install_prefix} NO_DEFAULT_PATH)
 endif ()
 
 # From OptionsGTK.cmake
