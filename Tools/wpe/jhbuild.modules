@@ -15,6 +15,9 @@
       <dep package="gst-plugins-good"/>
       <dep package="gst-plugins-bad"/>
       <dep package="gst-libav"/>
+      <dep package="gst-libav"/>
+      <dep package="wpe"/>
+      <dep package="wpe-mesa"/>
     </dependencies>
   </metamodule>
 
@@ -175,4 +178,17 @@
             md5sum="85f1a047606ca9e08493d7b6b42df462"/>
   </autotools>
 
+  <cmake id="wpe">
+    <branch repo="github.com" module="WebKitForWayland/wpe.git" />
+  </cmake>
+
+  <cmake id="wpe-mesa">
+    <dependencies>
+      <dep package="wpe" />
+      <dep package="glib" />
+      <dep package="wayland" />
+      <dep package="xkbcommon" />
+    </dependencies>
+    <branch repo="github.com" module="WebKitForWayland/wpe-mesa.git" />
+  </cmake>
 </moduleset>
