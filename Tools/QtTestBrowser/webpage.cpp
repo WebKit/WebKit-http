@@ -33,6 +33,7 @@
 #include "webpage.h"
 
 #include "launcherwindow.h"
+#include "mainwindow.h"
 
 #include <QAction>
 #include <QApplication>
@@ -47,22 +48,28 @@
 #ifndef QT_NO_LINEEDIT
 #include <QLineEdit>
 #endif
+#include <QMessageBox>
 #include <QProgressBar>
+#include <QWindow>
 #include <QtNetwork/QNetworkReply>
 #include <QtNetwork/QNetworkRequest>
 #include <QtNetwork/QNetworkProxy>
 
-WebPage::WebPage(QObject* parent)
+WebPage::WebPage(MainWindow* parent)
     : QWebPage(parent)
+    , m_mainWindow(parent)
     , m_userAgent()
     , m_interruptingJavaScriptEnabled(false)
 {
+    settings()->setAttribute(QWebSettings::FullScreenSupportEnabled, true);
+
     applyProxy();
 
     connect(networkAccessManager(), SIGNAL(authenticationRequired(QNetworkReply*, QAuthenticator*)),
             this, SLOT(authenticationRequired(QNetworkReply*, QAuthenticator*)));
     connect(this, SIGNAL(featurePermissionRequested(QWebFrame*, QWebPage::Feature)), this, SLOT(requestPermission(QWebFrame*, QWebPage::Feature)));
     connect(this, SIGNAL(featurePermissionRequestCanceled(QWebFrame*, QWebPage::Feature)), this, SLOT(featurePermissionRequestCanceled(QWebFrame*, QWebPage::Feature)));
+    connect(this, SIGNAL(fullScreenRequested(QWebFullScreenRequest)), this, SLOT(requestFullScreen(QWebFullScreenRequest)));
 }
 
 void WebPage::applyProxy()
@@ -201,6 +208,23 @@ void WebPage::featurePermissionRequestCanceled(QWebFrame*, QWebPage::Feature)
 {
 }
 
+void WebPage::requestFullScreen(QWebFullScreenRequest request)
+{
+    if (request.toggleOn()) {
+        if (QMessageBox::question(view(), "Enter Full Screen Mode", "Do you want to enter full screen mode?", QMessageBox::Ok | QMessageBox::Cancel, QMessageBox::Cancel) == QMessageBox::Ok) {
+            m_mainWindow->setToolBarsVisible(false);
+            m_mainWindow->showFullScreen();
+            request.accept();
+            return;
+        }
+    } else {
+        m_mainWindow->setToolBarsVisible(true);
+        m_mainWindow->showNormal();
+        request.accept();
+        return;
+    }
+    request.reject();
+}
 QWebPage* WebPage::createWindow(QWebPage::WebWindowType type)
 {
     LauncherWindow* mw = new LauncherWindow;

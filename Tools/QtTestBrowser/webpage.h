@@ -36,11 +36,13 @@
 #include <qwebframe.h>
 #include <qwebpage.h>
 
+class MainWindow;
+
 class WebPage : public QWebPage {
     Q_OBJECT
 
 public:
-    WebPage(QObject* parent = 0);
+    WebPage(MainWindow* parent);
 
     QWebPage* createWindow(QWebPage::WebWindowType) override;
     QObject* createPlugin(const QString&, const QUrl&, const QStringList&, const QStringList&) override;
@@ -62,9 +64,11 @@ public Q_SLOTS:
     void authenticationRequired(QNetworkReply*, QAuthenticator*);
     void requestPermission(QWebFrame*, QWebPage::Feature);
     void featurePermissionRequestCanceled(QWebFrame*, QWebPage::Feature);
+    void requestFullScreen(QWebFullScreenRequest);
 
 private:
     void applyProxy();
+    MainWindow *m_mainWindow;
     QString m_userAgent;
     bool m_interruptingJavaScriptEnabled;
 };
