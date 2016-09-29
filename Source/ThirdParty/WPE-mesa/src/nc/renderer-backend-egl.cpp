@@ -50,8 +50,8 @@ GSourceFuncs ClientSource::sourceFuncs = {
     {
         auto& source = *reinterpret_cast<ClientSource*>(base);
         *timeout = -1;
-        wl_display_flush(source.display);
         wl_display_dispatch_pending(source.display);
+        wl_display_flush(source.display);
         return FALSE;
     },
     // check
@@ -68,7 +68,7 @@ GSourceFuncs ClientSource::sourceFuncs = {
         if (source.pfd.revents & G_IO_IN)
             wl_display_dispatch(source.display);
 
-        if (source.pfd.revents & (G_IO_IN | G_IO_HUP))
+        if (source.pfd.revents & (G_IO_ERR | G_IO_HUP))
             return FALSE;
 
         source.pfd.revents = 0;
