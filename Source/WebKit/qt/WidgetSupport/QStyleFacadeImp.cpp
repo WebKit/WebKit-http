@@ -163,6 +163,8 @@ QRect QStyleFacadeImp::buttonSubElementRect(QStyleFacade::ButtonSubElement butto
 
     QStyle::SubElement subElement = QStyle::SE_CustomBase;
     switch (buttonElement) {
+    case CheckBoxIndicator: subElement = QStyle::SE_CheckBoxIndicator; break;
+    case RadioButtonIndicator: subElement = QStyle::SE_RadioButtonIndicator; break;
     case PushButtonLayoutItem: subElement = QStyle::SE_PushButtonLayoutItem; break;
     case PushButtonContents: subElement = QStyle::SE_PushButtonContents; break;
     default: Q_UNREACHABLE();

@@ -22,6 +22,7 @@
 #ifndef RenderThemeQt_h
 #define RenderThemeQt_h
 
+#include "QStyleFacade.h"
 #include "RenderTheme.h"
 
 #include <QBrush>
@@ -166,6 +167,8 @@ protected:
 
     virtual QRect inflateButtonRect(const QRect& originalRect) const;
     virtual QRectF inflateButtonRect(const QRectF& originalRect) const;
+    virtual void inflateControlRect(QStyleFacade::ButtonType, QRect& originalRect) const;
+    virtual void inflateControlRect(QStyleFacade::ButtonType, FloatRect& originalRect) const;
 
     virtual void setPopupPadding(RenderStyle&) const = 0;
 
