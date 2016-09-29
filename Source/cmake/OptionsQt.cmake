@@ -325,7 +325,7 @@ if (QT_STATIC_BUILD)
     endforeach ()
     # HACK: We must explicitly add LIB path of the Qt installation
     # to correctly find qtpcre
-    link_directories("${_qt5_install_prefix}/lib")
+    link_directories(${_qt5_install_prefix}/../)
 endif ()
 
 foreach (qt_module ${QT_OPTIONAL_COMPONENTS})
@@ -340,7 +340,6 @@ endforeach ()
 
 if (QT_STATIC_BUILD)
     list(REMOVE_DUPLICATES STATIC_LIB_DEPENDENCIES)
-    set(DEPEND_STATIC_LIBS ${STATIC_LIB_DEPENDENCIES})
 endif ()
 
 if (COMPILER_IS_GCC_OR_CLANG AND UNIX)

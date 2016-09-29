@@ -236,7 +236,7 @@ list(APPEND WebCore_LIBRARIES
 
 if (QT_STATIC_BUILD)
     list(APPEND WebCore_LIBRARIES
-        ${DEPEND_STATIC_LIBS}
+        ${STATIC_LIB_DEPENDENCIES}
     )
 endif ()
 

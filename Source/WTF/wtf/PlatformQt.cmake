@@ -17,7 +17,7 @@ list(APPEND WTF_LIBRARIES
 
 if (QT_STATIC_BUILD)
     list(APPEND WTF_LIBRARIES
-        ${DEPEND_STATIC_LIBS}
+        ${STATIC_LIB_DEPENDENCIES}
     )
 endif ()
 

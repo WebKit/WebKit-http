@@ -20,7 +20,7 @@ list(APPEND JavaScriptCore_LIBRARIES
 
 if (QT_STATIC_BUILD)
     list(APPEND JavaScriptCore_LIBRARIES
-        ${DEPEND_STATIC_LIBS}
+        ${STATIC_LIB_DEPENDENCIES}
     )
 endif ()
 
