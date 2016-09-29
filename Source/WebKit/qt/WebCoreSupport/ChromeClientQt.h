@@ -163,6 +163,12 @@ public:
     FullScreenVideoQt* fullScreenVideo();
 #endif
 
+#if ENABLE(FULLSCREEN_API)
+    bool supportsFullScreenForElement(const Element*, bool) override;
+    void enterFullScreenForElement(Element*) override;
+    void exitFullScreenForElement(Element*) override;
+#endif
+
 #if ENABLE(INPUT_TYPE_COLOR)
     std::unique_ptr<ColorChooser> createColorChooser(ColorChooserClient*, const Color&) final;
 #endif

@@ -101,6 +101,7 @@ public:
     QColor colorSelectionRequested(const QColor& selectedColor) override;
     std::unique_ptr<QWebSelectMethod> createSelectPopup() override;
     QRect viewRectRelativeToWindow() override;
+    void fullScreenRequested(const QUrl& origin, const QWebElement& element, bool fullscreen) override;
     void geolocationPermissionRequested(QWebFrameAdapter*) override;
     void geolocationPermissionRequestCancelled(QWebFrameAdapter*) override;
     void notificationsPermissionRequested(QWebFrameAdapter*) override;
