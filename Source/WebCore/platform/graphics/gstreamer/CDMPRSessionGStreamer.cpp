@@ -69,7 +69,7 @@ const String& CDMPRSessionGStreamer::sessionId() const
 RefPtr<Uint8Array> CDMPRSessionGStreamer::generateKeyRequest(const String& mimeType, Uint8Array* initData, String& destinationURL, unsigned short& errorCode, uint32_t& systemCode)
 {
     UNUSED_PARAM(mimeType);
-    return playreadyGenerateKeyRequest(initData, destinationURL, errorCode, systemCode);
+    return playreadyGenerateKeyRequest(initData, String(), destinationURL, errorCode, systemCode);
 }
 
 bool CDMPRSessionGStreamer::update(Uint8Array* key, RefPtr<Uint8Array>& nextMessage, unsigned short& errorCode, uint32_t& systemCode)
