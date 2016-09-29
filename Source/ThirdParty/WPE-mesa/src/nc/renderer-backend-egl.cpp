@@ -26,6 +26,7 @@
 
 #include "nested-compositor.h"
 
+#include <assert.h>
 #include <cstdio>
 #include <cstring>
 #include <EGL/egl.h>
@@ -88,6 +89,8 @@ public:
 
     struct wl_surface* createSurface() const;
 
+    void initialize();
+
 private:
     static const struct wl_registry_listener s_registryListener;
 
@@ -95,7 +98,7 @@ private:
     struct wl_registry* m_registry;
     struct wl_compositor* m_compositor;
 
-    GSource* m_source;
+    GSource* m_source {nullptr};
 };
 
 struct EGLTarget {
@@ -134,19 +137,6 @@ Backend::Backend(int hostFd)
     m_display = wl_display_connect_to_fd(hostFd);
     m_registry = wl_display_get_registry(m_display);
 
-    m_source = g_source_new(&ClientSource::sourceFuncs, sizeof(ClientSource));
-    auto& source = *reinterpret_cast<ClientSource*>(m_source);
-    source.pfd.fd = wl_display_get_fd(m_display);
-    source.pfd.events = G_IO_IN | G_IO_ERR | G_IO_HUP;
-    source.pfd.revents = 0;
-    source.display = m_display;
-
-    g_source_add_poll(m_source, &source.pfd);
-    g_source_set_name(m_source, "NS::ClientSource");
-    g_source_set_priority(m_source, G_PRIORITY_DEFAULT);
-    g_source_set_can_recurse(m_source, TRUE);
-    g_source_attach(m_source, g_main_context_get_thread_default());
-
     wl_registry_add_listener(m_registry, &s_registryListener, this);
     wl_display_roundtrip(m_display);
 }
@@ -160,6 +150,24 @@ Backend::~Backend()
 struct wl_surface* Backend::createSurface() const
 {
     return wl_compositor_create_surface(m_compositor);
+}
+
+void Backend::initialize()
+{
+    assert(!m_source);
+
+    m_source = g_source_new(&ClientSource::sourceFuncs, sizeof(ClientSource));
+    auto& source = *reinterpret_cast<ClientSource*>(m_source);
+    source.pfd.fd = wl_display_get_fd(m_display);
+    source.pfd.events = G_IO_IN | G_IO_ERR | G_IO_HUP;
+    source.pfd.revents = 0;
+    source.display = m_display;
+
+    g_source_add_poll(m_source, &source.pfd);
+    g_source_set_name(m_source, "NS::ClientSource");
+    g_source_set_priority(m_source, G_PRIORITY_DEFAULT);
+    g_source_set_can_recurse(m_source, TRUE);
+    g_source_attach(m_source, g_main_context_get_thread_default());
 }
 
 const struct wl_registry_listener Backend::s_registryListener = {
@@ -218,6 +226,8 @@ struct wpe_renderer_backend_egl_target_interface nc_renderer_backend_egl_target_
     {
         auto& target = *static_cast<NC::EGLTarget*>(data);
         auto& backend = *static_cast<NC::Backend*>(backend_data);
+
+        backend.initialize();
 
         target.surface = backend.createSurface();
         target.egl_window = wl_egl_window_create(target.surface,
