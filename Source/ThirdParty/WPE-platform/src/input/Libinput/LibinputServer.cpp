@@ -91,13 +91,16 @@ LibinputServer::LibinputServer()
     , m_keyboardEventRepeating(new Input::KeyboardEventRepeating(*this))
     , m_pointerCoords(0, 0)
     , m_pointerBounds(1, 1)
+    , m_udev(nullptr)
 #ifdef KEY_INPUT_HANDLING_VIRTUAL
     , m_virtualkeyboard(nullptr)
 #endif
 {
+#ifdef KEY_INPUT_UDEV
     m_udev = udev_new();
     if (!m_udev)
         return;
+#endif
 
     m_libinput = libinput_udev_create_context(&g_interface, nullptr, m_udev);
     if (!m_libinput)
@@ -142,7 +145,9 @@ LibinputServer::~LibinputServer()
     }
 #endif
     libinput_unref(m_libinput);
-    udev_unref(m_udev);
+    if (m_udev) {
+        udev_unref(m_udev);
+    }
 }
 
 void LibinputServer::setClient(Client* client)

@@ -31,7 +31,9 @@
 #include "KeyboardEventRepeating.h"
 #include <glib.h>
 #include <libinput.h>
+#ifdef KEY_INPUT_UDEV
 #include <libudev.h>
+#endif
 #include <memory>
 #include <wpe/input.h>
 
