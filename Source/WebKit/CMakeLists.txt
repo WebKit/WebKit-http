@@ -67,6 +67,7 @@ set_target_properties(WebKit PROPERTIES VERSION ${PROJECT_VERSION} SOVERSION ${P
 install(TARGETS WebKit EXPORT WebKitTargets
         DESTINATION "${LIB_INSTALL_DIR}"
         INCLUDES DESTINATION "${KDE_INSTALL_INCLUDEDIR}/QtWebKitWidgets"
+        RUNTIME DESTINATION "${BIN_INSTALL_DIR}"
 )
 
 add_dependencies(WebKit WebCore)
