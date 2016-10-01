@@ -437,6 +437,14 @@ endif()
 
 option (KDE_INSTALL_USE_QT_SYS_PATHS "Install mkspecs files, Plugins and Imports to the Qt 5 install dir" "${_default_KDE_INSTALL_USE_QT_SYS_PATHS}")
 if(KDE_INSTALL_USE_QT_SYS_PATHS)
+    query_qmake(qt_lib_dir QT_INSTALL_LIBS)
+    query_qmake(qt_install_prefix QT_INSTALL_PREFIX)
+    file(RELATIVE_PATH LIB_INSTALL_DIR ${qt_install_prefix} ${qt_lib_dir})
+    set(KDE_INSTALL_LIBDIR ${LIB_INSTALL_DIR})
+
+    set(CMAKECONFIG_INSTALL_PREFIX "${LIB_INSTALL_DIR}/cmake")
+    set(KDE_INSTALL_CMAKEPACKAGEDIR "${LIB_INSTALL_DIR}/cmake")
+
     # Qt-specific vars
     query_qmake(qt_plugins_dir QT_INSTALL_PLUGINS)
 
