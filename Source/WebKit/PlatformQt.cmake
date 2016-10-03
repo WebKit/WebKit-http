@@ -253,8 +253,6 @@ if (ENABLE_TEST_SUPPORT)
     )
     if (SHARED_CORE)
         list(APPEND WebKit_LIBRARIES PUBLIC WebCoreTestSupport)
-        install(TARGETS WebCoreTestSupport EXPORT WebKitTargets
-                DESTINATION "${LIB_INSTALL_DIR}")
     else ()
         list(APPEND WebKit_LIBRARIES PRIVATE WebCoreTestSupport)
     endif ()

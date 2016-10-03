@@ -33,7 +33,7 @@ macro(macro_process_qtbase_prl_file qt_target_component)
 endmacro()
 
 macro(QT_ADD_EXTRA_WEBKIT_TARGET_EXPORT target)
-    if (QT_STATIC_BUILD)
+    if (QT_STATIC_BUILD OR SHARED_CORE)
         install(TARGETS ${target} EXPORT WebKitTargets
             DESTINATION "${LIB_INSTALL_DIR}")
     endif ()
