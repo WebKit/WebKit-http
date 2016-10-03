@@ -1,3 +1,10 @@
+2016-10-03  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Fix the build with coordinated graphics enabled after r206712.
+
+        * page/scrolling/ScrollingStateTree.cpp:
+        (WebCore::ScrollingStateTree::attachNode):
+
 2016-10-01  Simon Fraser  <simon.fraser@apple.com>
 
         Bad cast when CSS position programmatically changed from -webkit-sticky to fixed
