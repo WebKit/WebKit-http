@@ -1,4 +1,6 @@
 list(APPEND WTF_SOURCES
+    UniStdExtras.cpp
+
     qt/MainThreadQt.cpp
     qt/RunLoopQt.cpp
     qt/WorkQueueQt.cpp
