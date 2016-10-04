@@ -36,7 +36,10 @@
 #include <refsw/nexus_display.h>
 #include <refsw/nexus_core_utils.h>
 #include <refsw/default_nexus.h>
+
+#ifdef BACKEND_BCM_NEXUS_NXCLIENT
 #include <refsw/nxclient.h>
+#endif
 
 namespace BCMNexus {
 
@@ -45,13 +48,18 @@ struct Backend {
     ~Backend();
 
     NXPL_PlatformHandle nxplHandle;
+
+#ifdef BACKEND_BCM_NEXUS_NXCLIENT
     NxClient_AllocResults allocResults;
+#endif
+
     NEXUS_SurfaceClientHandle client;
 };
 
 Backend::Backend()
 {
     NEXUS_DisplayHandle displayHandle(nullptr);
+#ifdef BACKEND_BCM_NEXUS_NXCLIENT
     NxClient_AllocSettings allocSettings;
     NxClient_JoinSettings joinSettings;
     NxClient_GetDefaultJoinSettings(&joinSettings);
@@ -65,6 +73,10 @@ Backend::Backend()
     allocSettings.surfaceClient = 1;
     rc = NxClient_Alloc(&allocSettings, &allocResults);
     BDBG_ASSERT(!rc);
+#else
+    NEXUS_Error rc = NEXUS_Platform_Join();
+    BDBG_ASSERT(!rc);
+#endif
 
     NXPL_RegisterNexusDisplayPlatform(&nxplHandle, displayHandle);
 }
@@ -72,8 +84,10 @@ Backend::Backend()
 Backend::~Backend()
 {
     NXPL_UnregisterNexusDisplayPlatform(nxplHandle);
+#ifdef BACKEND_BCM_NEXUS_NXCLIENT
     NxClient_Free(&allocResults);
     NxClient_Uninit();
+#endif
 }
 
 struct EGLTarget : public IPC::Client::Handler {
