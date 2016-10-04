@@ -14,6 +14,7 @@ option(USE_WPE_BACKEND_DRM_TEGRA "Whether to enable support for the Tegra-specif
 option(USE_WPE_BACKEND_WAYLAND "Whether to enable support for the Wayland WPE backend" OFF)
 
 option(USE_WPE_INPUT_LIBINPUT "Whether to enable support for the libinput input backend" ON)
+option(USE_WPE_INPUT_UDEV "Whether to enable support for the libinput input udev lib" ON)
 set(USE_KEY_INPUT_HANDLING_LINUX_INPUT OFF CACHE BOOL "Whether to use <linux/input.h> event codes for keyboard event handling")
 
 find_package(GLIB 2.38.0 REQUIRED COMPONENTS gio gio-unix)
@@ -73,16 +74,22 @@ set(WPE_PLATFORM_SOURCES
 
 if (USE_WPE_INPUT_LIBINPUT)
     find_package(Libinput REQUIRED)
-    find_package(Libudev REQUIRED)
-
     list(APPEND WPE_PLATFORM_INCLUDE_DIRECTORIES
         ${LIBINPUT_INCLUDE_DIRS}
-        ${LIBUDEV_INCLUDE_DIRS}
     )
     list(APPEND WPE_PLATFORM_LIBRARIES
         ${LIBINPUT_LIBRARIES}
-        ${LIBUDEV_LIBRARIES}
     )
+    if (USE_WPE_INPUT_UDEV)
+        find_package(Libudev REQUIRED)
+        list(APPEND WPE_PLATFORM_INCLUDE_DIRECTORIES
+            ${LIBUDEV_INCLUDE_DIRS}
+        )
+        list(APPEND WPE_PLATFORM_LIBRARIES
+            ${LIBUDEV_LIBRARIES}
+        )
+        add_definitions(-DKEY_INPUT_UDEV=1)
+    endif ()
     list(APPEND WPE_PLATFORM_SOURCES
         src/input/Libinput/KeyboardEventRepeating.cpp
         src/input/Libinput/LibinputServer.cpp
