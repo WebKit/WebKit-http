@@ -36,11 +36,13 @@ public:
     ~QtWebContext();
 
     enum StorageType {
+        ApplicationCacheStorage,
         DatabaseStorage,
         LocalStorage,
         CookieStorage,
         DiskCacheStorage,
-        IconDatabaseStorage
+        IconDatabaseStorage,
+        NetworkCacheStorage
     };
 
     static QtWebContext* create(WKContextRef);

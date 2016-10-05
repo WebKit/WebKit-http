@@ -178,6 +178,10 @@ QString QtWebContext::preparedStoragePath(StorageType type)
 {
     QString path;
     switch (type) {
+    case ApplicationCacheStorage:
+        path = defaultLocation(QStandardPaths::DataLocation) % QStringLiteral("Applications");
+        QDir::root().mkpath(path);
+        break;
     case DatabaseStorage:
         path = defaultLocation(QStandardPaths::DataLocation) % QStringLiteral("Databases");
         QDir::root().mkpath(path);
@@ -191,7 +195,11 @@ QString QtWebContext::preparedStoragePath(StorageType type)
         QDir::root().mkpath(path);
         break;
     case DiskCacheStorage:
+#if ENABLE(NETWORK_CACHE)
+        path = defaultLocation(QStandardPaths::CacheLocation) % QStringLiteral("WebKitCache");
+#else
         path = defaultLocation(QStandardPaths::CacheLocation) % QStringLiteral("DiskCache");
+#endif
         QDir::root().mkpath(path);
         break;
     case IconDatabaseStorage:

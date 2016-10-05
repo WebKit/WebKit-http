@@ -88,6 +88,7 @@ list(APPEND WebKit2_SOURCES
     UIProcess/API/cpp/qt/WKStringQt.cpp
     UIProcess/API/cpp/qt/WKURLQt.cpp
 
+    UIProcess/API/qt/APIWebsiteDataStoreQt.cpp
     UIProcess/API/qt/qquicknetworkreply.cpp
     UIProcess/API/qt/qquicknetworkrequest.cpp
     UIProcess/API/qt/qquickurlschemedelegate.cpp

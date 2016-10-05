@@ -28,6 +28,7 @@
 #include "WebProcessPool.h"
 
 #include "NetworkProcessCreationParameters.h"
+#include "QtWebContext.h"
 #include "WKSharedAPICast.h"
 #include "WebCookieManagerProxy.h"
 #include "WebProcessCreationParameters.h"
@@ -76,32 +77,32 @@ void WebProcessPool::platformInitializeNetworkProcess(NetworkProcessCreationPara
 
 String WebProcessPool::platformDefaultIconDatabasePath() const
 {
-    return String();
+    return WebKit::QtWebContext::preparedStoragePath(WebKit::QtWebContext::IconDatabaseStorage);
 }
 
 String WebProcessPool::legacyPlatformDefaultLocalStorageDirectory()
 {
-    return String();
+    return WebKit::QtWebContext::preparedStoragePath(WebKit::QtWebContext::LocalStorage);
 }
 
 String WebProcessPool::legacyPlatformDefaultIndexedDBDatabaseDirectory()
 {
-    return String();
+    return WebKit::QtWebContext::preparedStoragePath(WebKit::QtWebContext::DatabaseStorage);
 }
 
 String WebProcessPool::legacyPlatformDefaultWebSQLDatabaseDirectory()
 {
-    return String();
+    return WebKit::QtWebContext::preparedStoragePath(WebKit::QtWebContext::DatabaseStorage);
 }
 
 String WebProcessPool::legacyPlatformDefaultMediaKeysStorageDirectory()
 {
-    return String();
+    return String(); // QTFIXME: Add MediaKeys path
 }
 
 String WebProcessPool::legacyPlatformDefaultNetworkCacheDirectory()
 {
-    return String();
+    return WebKit::QtWebContext::preparedStoragePath(WebKit::QtWebContext::DiskCacheStorage);
 }
 
 } // namespace WebKit
