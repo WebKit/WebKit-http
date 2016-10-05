@@ -19,7 +19,8 @@ void installExceptionHandler()
 {
   static google_breakpad::ExceptionHandler* excHandler = NULL;
   delete excHandler;
-  excHandler = new google_breakpad::ExceptionHandler(google_breakpad::MinidumpDescriptor(getenv("BREAKPAD_MINIDUMP_DIR")), NULL, breakpadCallback, NULL, true, -1);
+  const char* BREAKPAD_MINIDUMP_DIR = "/opt/minidumps";
+  excHandler = new google_breakpad::ExceptionHandler(google_breakpad::MinidumpDescriptor(BREAKPAD_MINIDUMP_DIR), NULL, breakpadCallback, NULL, true, -1);
 }
 }
 #endif
