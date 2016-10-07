@@ -147,7 +147,7 @@ void WebProcess::platformInitializeWebProcess(WebProcessCreationParameters&& par
     // We'll only install the Qt builtin bundle if we don't have one given by the UI process.
     // Currently only WTR provides its own bundle.
     if (parameters.injectedBundlePath.isEmpty()) {
-        InjectedBundle::create(parameters, transformHandlesToObjects(parameters.initializationUserData.object()).get());
+        m_injectedBundle = InjectedBundle::create(parameters, transformHandlesToObjects(parameters.initializationUserData.object()).get());
         QtBuiltinBundle::shared().initialize(toAPI(m_injectedBundle.get()));
     }
 }
