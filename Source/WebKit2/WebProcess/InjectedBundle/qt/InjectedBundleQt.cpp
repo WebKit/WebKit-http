@@ -36,6 +36,10 @@ namespace WebKit {
 
 bool InjectedBundle::initialize(const WebProcessCreationParameters&, API::Object* initializationUserData)
 {
+    // Built-in bundle
+    if (m_path.isEmpty())
+        return true;
+
     m_platformBundle.setFileName(static_cast<QString>(m_path));
     if (!m_platformBundle.load()) {
         qWarning("Error loading the injected bundle: %s", qPrintable(m_platformBundle.errorString()));
