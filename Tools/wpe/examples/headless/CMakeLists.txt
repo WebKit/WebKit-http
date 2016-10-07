@@ -1,3 +1,5 @@
+find_package(WPE-mesa REQUIRED)
+
 set(WPEHEADLESS_DIR "${TOOLS_DIR}/wpe/examples/headless")
 
 set(WPEHeadless_SOURCES

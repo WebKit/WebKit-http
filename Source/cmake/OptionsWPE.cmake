@@ -82,6 +82,8 @@ find_package(WebP REQUIRED)
 find_package(OpenGLES2 REQUIRED)
 find_package(EGL REQUIRED)
 
+find_package(WPE REQUIRED)
+
 if (ENABLE_VIDEO OR ENABLE_WEB_AUDIO)
     set(GSTREAMER_COMPONENTS app audio pbutils)
     SET_AND_EXPOSE_TO_BUILD(USE_GSTREAMER TRUE)

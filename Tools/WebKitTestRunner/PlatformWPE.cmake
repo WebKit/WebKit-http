@@ -1,3 +1,5 @@
+find_package(WPE-mesa REQUIRED)
+
 set(ForwardingHeadersForWebKitTestRunner_NAME WebKitTestRunner-forwarding-headers)
 
 list(APPEND WebKitTestRunner_SOURCES
@@ -11,8 +13,6 @@ list(APPEND WebKitTestRunner_SOURCES
 )
 
 list(APPEND WebKitTestRunner_INCLUDE_DIRECTORIES
-    ${CMAKE_SOURCE_DIR}/Source/ThirdParty/WPE/include
-    ${CMAKE_SOURCE_DIR}/Source/ThirdParty/WPE-mesa/include
     ${FORWARDING_HEADERS_DIR}
     ${CAIRO_INCLUDE_DIRS}
     ${GLIB_INCLUDE_DIRS}
