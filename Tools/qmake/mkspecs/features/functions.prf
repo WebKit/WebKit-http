@@ -1,0 +1,121 @@
+EOL = $$escape_expand(\\n)
+
+WEBKIT_SUBDIR = $$relative_path($$_PRO_FILE_PWD_, $$ROOT_WEBKIT_DIR)
+QTBASE_DIR = $$ROOT_WEBKIT_DIR/../qtbase
+
+defineTest(isQtMinimum) {
+    !equals(QT_MAJOR_VERSION, $$1): return(false)
+    count(ARGS, 1, greaterThan) {
+        lessThan(QT_MINOR_VERSION, $$2): return(false)
+    }
+    return(true)
+}
+
+!isQtMinimum(5, 8) {
+    defineTest(qtConfig) {
+        contains(QT_CONFIG, $$1): return(true)
+        return(false)
+    }
+}
+
+defineTest(isVersionAtLeast) {
+    have_version = $$split(1, .)
+    want_version = $$split(2, .)
+    num_components = $$size(have_version)
+
+    # FIXME: Replace it with 0..$$num_add($$num_digits, -1) when Qt 5.7 compatibility is dropped
+    for (i, 0..$$num_components) {
+        have_component = $$member(have_version, $$i)
+        want_component = $$member(want_version, $$i)
+        greaterThan(have_component, $$want_component): return(true)
+        lessThan(have_component, $$want_component): return(false)
+    }
+    return(true)
+}
+
+defineReplace(cmakeVersion) {
+    cmake_version_string = $$system("cmake --version")
+    # Format is "cmake version X.Y.Z"
+    cmake_version_words = $$split(cmake_version_string, " ")
+    return($$last(cmake_version_words))
+}
+
+defineReplace(appleSdkVersion) {
+    return($$system("/usr/bin/xcodebuild -sdk $$QMAKE_MAC_SDK -version ProductVersion 2>/dev/null"))
+}
+
+defineTest(isPlatformSupported) {
+    cross_compile: skipBuild("cross-compilation of QtWebKit with qmake is not supported yet")
+
+    requiredPrograms = cmake gperf python perl bison ruby flex
+    for(program, requiredPrograms): \
+        !programExistsInPath($$program): \
+            skipBuild("Missing $$program from PATH")
+
+    cmake_version = $$cmakeVersion()
+    !isVersionAtLeast($$cmake_version, "2.8.12") {
+        skipBuild("Using cmake version $$cmake_version, but at least cmake 2.8.12 is required to build QtWebKit.")
+    }
+
+    win32 {
+        winrt {
+            skipBuild("WinRT is not supported.")
+        }
+        msvc {
+            !isVersionAtLeast($$MSVC_VER, "14.0") {
+                skipBuild("QtWebKit on Windows requires MSVC 2015.")
+            }
+        } else {
+            isGCCVersionSupported()
+        }
+    } else: macos {
+        # We require macOS 10.10 (darwin version 14.0.0) or newer
+        darwin_major_version = $$section(QMAKE_HOST.version, ., 0, 0)
+        lessThan(darwin_major_version, 14) {
+            skipBuild("QtWebKit requires macOS version 10.10 or newer.")
+        }
+        sdk_version = $$appleSdkVersion()
+        !isVersionAtLeast($$sdk_version, "10.10") {
+            skipBuild("QtWebKit requires an macOS SDK version of 10.10 or newer. Current version is $$sdk_version().")
+        }
+    } else {
+        android: skipBuild("Android is not supported.")
+        uikit: skipBuild("UIKit platforms are not supported.")
+        qnx: skipBuild("QNX is not supported.")
+
+        gcc:!clang: isGCCVersionSupported()
+    }
+
+    !contains(QT_CONFIG, c++11) {
+        skipBuild("C++11 support is required in order to build QtWebKit.")
+    }
+
+    isEmpty(skipBuildReason): return(true)
+    return(false)
+}
+
+defineTest(isGCCVersionSupported) {
+    gcc_version = $${QT_GCC_MAJOR_VERSION}.$${QT_GCC_MINOR_VERSION}
+    isVersionAtLeast($$gcc_version, "4.9"): return(true)
+    skipBuild("Using gcc version $$gcc_version, but at least gcc version 4.9 is required to build QtWebKit.")
+    return(false)
+}
+
+defineTest(programExistsInPath) {
+    equals(QMAKE_HOST.os, Windows): program = $${1}.exe
+    else: program = $$1
+
+    PATH = $$(PATH)
+    paths = $$split(PATH, $$QMAKE_DIRLIST_SEP)
+
+    GNUTOOLS_DIR = $$ROOT_WEBKIT_DIR/../gnuwin32/bin
+    exists($$GNUTOOLS_DIR): paths += $$GNUTOOLS_DIR
+
+    for(p, paths): exists($$p/$$program):return(true)
+    return(false)
+}
+
+defineTest(skipBuild) {
+    skipBuildReason = "$$skipBuildReason$${EOL}    * $$1"
+    export(skipBuildReason)
+}
