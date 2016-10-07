@@ -320,7 +320,7 @@ static void debugThreadedCompositorFPS()
 
 void ThreadedCompositor::frameComplete()
 {
-    ASSERT(&RunLoop::current() == &m_compositingRunLoop->runLoop());
+    ASSERT(m_compositingRunLoop->isCurrent());
     static bool reportFPS = !!std::getenv("WPE_THREADED_COMPOSITOR_FPS");
     if (reportFPS)
         debugThreadedCompositorFPS();

@@ -106,6 +106,9 @@ private:
 
 CompositingRunLoop::CompositingRunLoop(std::function<void ()>&& updateFunction)
     : m_updateTimer(WorkQueuePool::singleton().runLoop(this), this, &CompositingRunLoop::updateTimerFired)
+#ifndef NDEBUG
+    , m_runLoop(WorkQueuePool::singleton().runLoop(this))
+#endif
     , m_updateFunction(WTFMove(updateFunction))
 {
     m_updateState.store(UpdateState::Completed);
@@ -173,6 +176,13 @@ void CompositingRunLoop::updateTimerFired()
 {
     m_updateFunction();
 }
+
+#ifndef NDEBUG
+bool CompositingRunLoop::isCurrent()
+{
+    return &RunLoop::current() == &m_runLoop;
+}
+#endif
 
 } // namespace WebKit
 
