@@ -1,6 +1,4 @@
 list(APPEND WTF_SOURCES
-    UniStdExtras.cpp
-
     qt/MainThreadQt.cpp
     qt/RunLoopQt.cpp
     qt/WorkQueueQt.cpp
@@ -20,6 +18,12 @@ list(APPEND WTF_LIBRARIES
 if (QT_STATIC_BUILD)
     list(APPEND WTF_LIBRARIES
         ${STATIC_LIB_DEPENDENCIES}
+    )
+endif ()
+
+if (UNIX AND NOT APPLE)
+    list(APPEND WTF_SOURCES
+        UniStdExtras.cpp
     )
 endif ()
 
