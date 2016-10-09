@@ -56,6 +56,8 @@ public:
 #else
         return 52;
 #endif
+#elif CPU(MIPS)
+        return 72;
 #else
 #error "unsupported platform"
 #endif
@@ -76,6 +78,8 @@ public:
 #else
         return 48;
 #endif
+#elif CPU(MIPS)
+        return 72;
 #else
 #error "unsupported platform"
 #endif
@@ -99,6 +103,8 @@ public:
 #else
         size_t size = 32;
 #endif
+#elif CPU(MIPS)
+        size_t size = 56;
 #else
 #error "unsupported platform"
 #endif
