@@ -55,7 +55,7 @@ class QWEBKITWIDGETS_EXPORT QWebView : public QWidget {
     Q_FLAGS(QPainter::RenderHints)
 public:
     explicit QWebView(QWidget* parent = Q_NULLPTR);
-    virtual ~QWebView();
+    ~QWebView();
 
     QWebPage* page() const;
     void setPage(QWebPage* page);
@@ -90,9 +90,9 @@ public:
     void setTextInteractionFlag(Qt::TextInteractionFlag flag);
     */
 
-    QVariant inputMethodQuery(Qt::InputMethodQuery property) const;
+    QVariant inputMethodQuery(Qt::InputMethodQuery property) const Q_DECL_OVERRIDE;
 
-    QSize sizeHint() const;
+    QSize sizeHint() const Q_DECL_OVERRIDE;
 
     qreal zoomFactor() const;
     void setZoomFactor(qreal factor);
@@ -106,7 +106,7 @@ public:
 
     bool findText(const QString& subString, QWebPage::FindFlags options = QWebPage::FindFlags());
 
-    virtual bool event(QEvent*);
+    bool event(QEvent*) Q_DECL_OVERRIDE;
 
 public Q_SLOTS:
     void stop();
@@ -128,33 +128,33 @@ Q_SIGNALS:
     void urlChanged(const QUrl&);
 
 protected:
-    void resizeEvent(QResizeEvent*);
-    void paintEvent(QPaintEvent*);
+    void resizeEvent(QResizeEvent*) Q_DECL_OVERRIDE;
+    void paintEvent(QPaintEvent*) Q_DECL_OVERRIDE;
 
     virtual QWebView *createWindow(QWebPage::WebWindowType type);
 
-    virtual void changeEvent(QEvent*);
-    virtual void mouseMoveEvent(QMouseEvent*);
-    virtual void mousePressEvent(QMouseEvent*);
-    virtual void mouseDoubleClickEvent(QMouseEvent*);
-    virtual void mouseReleaseEvent(QMouseEvent*);
+    void changeEvent(QEvent*) Q_DECL_OVERRIDE;
+    void mouseMoveEvent(QMouseEvent*) Q_DECL_OVERRIDE;
+    void mousePressEvent(QMouseEvent*) Q_DECL_OVERRIDE;
+    void mouseDoubleClickEvent(QMouseEvent*) Q_DECL_OVERRIDE;
+    void mouseReleaseEvent(QMouseEvent*) Q_DECL_OVERRIDE;
 #ifndef QT_NO_CONTEXTMENU
-    virtual void contextMenuEvent(QContextMenuEvent*);
+    void contextMenuEvent(QContextMenuEvent*) Q_DECL_OVERRIDE;
 #endif
 #ifndef QT_NO_WHEELEVENT
-    virtual void wheelEvent(QWheelEvent*);
+    void wheelEvent(QWheelEvent*) Q_DECL_OVERRIDE;
 #endif
-    virtual void keyPressEvent(QKeyEvent*);
-    virtual void keyReleaseEvent(QKeyEvent*);
-    virtual void dragEnterEvent(QDragEnterEvent*);
-    virtual void dragLeaveEvent(QDragLeaveEvent*);
-    virtual void dragMoveEvent(QDragMoveEvent*);
-    virtual void dropEvent(QDropEvent*);
-    virtual void focusInEvent(QFocusEvent*);
-    virtual void focusOutEvent(QFocusEvent*);
-    virtual void inputMethodEvent(QInputMethodEvent*);
+    void keyPressEvent(QKeyEvent*) Q_DECL_OVERRIDE;
+    void keyReleaseEvent(QKeyEvent*) Q_DECL_OVERRIDE;
+    void dragEnterEvent(QDragEnterEvent*) Q_DECL_OVERRIDE;
+    void dragLeaveEvent(QDragLeaveEvent*) Q_DECL_OVERRIDE;
+    void dragMoveEvent(QDragMoveEvent*) Q_DECL_OVERRIDE;
+    void dropEvent(QDropEvent*) Q_DECL_OVERRIDE;
+    void focusInEvent(QFocusEvent*) Q_DECL_OVERRIDE;
+    void focusOutEvent(QFocusEvent*) Q_DECL_OVERRIDE;
+    void inputMethodEvent(QInputMethodEvent*) Q_DECL_OVERRIDE;
 
-    virtual bool focusNextPrevChild(bool next);
+    bool focusNextPrevChild(bool next) Q_DECL_OVERRIDE;
 
 private:
     friend class QWebPage;

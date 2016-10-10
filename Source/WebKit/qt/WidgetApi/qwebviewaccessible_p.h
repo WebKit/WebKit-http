@@ -43,15 +43,15 @@ public:
 
     QWebFrame* frame() const;
 
-    QAccessibleInterface* parent() const;
-    int childCount() const;
-    QAccessibleInterface* child(int index) const;
-    int indexOfChild(const QAccessibleInterface*) const;
+    QAccessibleInterface* parent() const Q_DECL_OVERRIDE;
+    int childCount() const Q_DECL_OVERRIDE;
+    QAccessibleInterface* child(int index) const Q_DECL_OVERRIDE;
+    int indexOfChild(const QAccessibleInterface*) const Q_DECL_OVERRIDE;
     int navigate(QAccessible::RelationFlag, int, QAccessibleInterface** target) const;
 
-    QString text(QAccessible::Text) const;
-    QAccessible::Role role() const;
-    QAccessible::State state() const;
+    QString text(QAccessible::Text) const Q_DECL_OVERRIDE;
+    QAccessible::Role role() const Q_DECL_OVERRIDE;
+    QAccessible::State state() const Q_DECL_OVERRIDE;
 };
 
 class QWebPageAccessible : public QAccessibleObject {
@@ -60,15 +60,15 @@ public:
 
     QWebPage* page() const;
 
-    QAccessibleInterface* parent() const;
-    int childCount() const;
-    QAccessibleInterface* child(int index) const;
-    int indexOfChild(const QAccessibleInterface*) const;
+    QAccessibleInterface* parent() const Q_DECL_OVERRIDE;
+    int childCount() const Q_DECL_OVERRIDE;
+    QAccessibleInterface* child(int index) const Q_DECL_OVERRIDE;
+    int indexOfChild(const QAccessibleInterface*) const Q_DECL_OVERRIDE;
     int navigate(QAccessible::RelationFlag, int, QAccessibleInterface** target) const;
 
-    QString text(QAccessible::Text) const;
-    QAccessible::Role role() const;
-    QAccessible::State state() const;
+    QString text(QAccessible::Text) const Q_DECL_OVERRIDE;
+    QAccessible::Role role() const Q_DECL_OVERRIDE;
+    QAccessible::State state() const Q_DECL_OVERRIDE;
 };
 
 class QWebViewAccessible : public QAccessibleWidget {
@@ -77,8 +77,8 @@ public:
 
     QWebView* view() const;
 
-    int childCount() const;
-    QAccessibleInterface* child(int index) const;
+    int childCount() const Q_DECL_OVERRIDE;
+    QAccessibleInterface* child(int index) const Q_DECL_OVERRIDE;
 };
 
 #endif // !QT_NO_ACCESSIBILITY

@@ -202,7 +202,7 @@ public:
 
     QWebHitTestResult hitTestContent(const QPoint &pos) const;
 
-    virtual bool event(QEvent *);
+    bool event(QEvent *) Q_DECL_OVERRIDE;
 
     QWebSecurityOrigin securityOrigin() const;
     QWebFrameAdapter* handle() const;
