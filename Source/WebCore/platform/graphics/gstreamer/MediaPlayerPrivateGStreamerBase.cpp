@@ -63,6 +63,8 @@
 #include "PlatformDisplayX11.h"
 #elif PLATFORM(WAYLAND)
 #include "PlatformDisplayWayland.h"
+#elif PLATFORM(WPE)
+#include "PlatformDisplayWPE.h"
 #endif
 
 // gstglapi.h may include eglplatform.h and it includes X.h, which
@@ -241,6 +243,8 @@ bool MediaPlayerPrivateGStreamerBase::ensureGstGLContext()
         m_glDisplay = GST_GL_DISPLAY(gst_gl_display_x11_new_with_display(downcast<PlatformDisplayX11>(sharedDisplay).native()));
 #elif PLATFORM(WAYLAND)
         m_glDisplay = GST_GL_DISPLAY(gst_gl_display_egl_new_with_egl_display(downcast<PlatformDisplayWayland>(sharedDisplay).native()));
+#elif PLATFORM(WPE)
+        m_glDisplay = GST_GL_DISPLAY(gst_gl_display_egl_new_with_egl_display(downcast<PlatformDisplayWPE>(sharedDisplay).eglDisplay()));
 #endif
     }
 
@@ -701,10 +705,7 @@ void MediaPlayerPrivateGStreamerBase::paintToTextureMapper(TextureMapper& textur
 #if USE(GSTREAMER_GL)
 NativeImagePtr MediaPlayerPrivateGStreamerBase::nativeImageForCurrentTime()
 {
-#if !USE(CAIRO) || !ENABLE(ACCELERATED_2D_CANVAS)
-    return nullptr;
-#endif
-
+#if USE(CAIRO) && ENABLE(ACCELERATED_2D_CANVAS)
     if (m_usingFallbackVideoSink)
         return nullptr;
 
@@ -763,6 +764,9 @@ NativeImagePtr MediaPlayerPrivateGStreamerBase::nativeImageForCurrentTime()
     gst_video_frame_unmap(&videoFrame);
 
     return rotatedSurface;
+#else
+    return nullptr;
+#endif
 }
 #endif
 

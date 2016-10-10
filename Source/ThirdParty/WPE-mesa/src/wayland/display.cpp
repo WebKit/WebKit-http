@@ -62,8 +62,8 @@ GSourceFuncs EventSource::sourceFuncs = {
 
         *timeout = -1;
 
-        wl_display_flush(display);
         wl_display_dispatch_pending(display);
+        wl_display_flush(display);
 
         return FALSE;
     },
