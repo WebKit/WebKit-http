@@ -46,9 +46,9 @@ class QWEBKIT_EXPORT QWebNavigationListModel : public QAbstractListModel {
 public:
     virtual ~QWebNavigationListModel();
 
-    int rowCount(const QModelIndex& parent = QModelIndex()) const;
-    QVariant data(const QModelIndex& index, int role) const;
-    QHash<int, QByteArray> roleNames() const;
+    int rowCount(const QModelIndex& parent = QModelIndex()) const Q_DECL_OVERRIDE;
+    QVariant data(const QModelIndex& index, int role) const Q_DECL_OVERRIDE;
+    QHash<int, QByteArray> roleNames() const Q_DECL_OVERRIDE;
     void reset();
 
 private:

@@ -44,7 +44,7 @@ public:
     QTransform transformToItem() const;
 
 protected:
-    virtual QSGNode* updatePaintNode(QSGNode*, UpdatePaintNodeData*);
+    QSGNode* updatePaintNode(QSGNode*, UpdatePaintNodeData*) Q_DECL_OVERRIDE;
 
 private:
     QQuickWebPagePrivate* d;

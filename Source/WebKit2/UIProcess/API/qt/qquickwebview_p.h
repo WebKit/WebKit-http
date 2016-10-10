@@ -136,7 +136,7 @@ public:
     bool canGoForward() const;
     bool loading() const;
 
-    virtual QVariant inputMethodQuery(Qt::InputMethodQuery property) const;
+    QVariant inputMethodQuery(Qt::InputMethodQuery property) const Q_DECL_OVERRIDE;
 
     QPointF mapToWebContent(const QPointF&) const;
     QRectF mapRectToWebContent(const QRectF&) const;
@@ -177,28 +177,28 @@ Q_SIGNALS:
     void navigationRequested(QWebNavigationRequest* request);
 
 protected:
-    virtual bool childMouseEventFilter(QQuickItem*, QEvent*);
-    virtual void geometryChanged(const QRectF&, const QRectF&);
-    virtual void componentComplete();
-    virtual void keyPressEvent(QKeyEvent*);
-    virtual void keyReleaseEvent(QKeyEvent*);
-    virtual void inputMethodEvent(QInputMethodEvent*);
-    virtual void focusInEvent(QFocusEvent*);
-    virtual void itemChange(ItemChange change, const ItemChangeData &value);
-    virtual void touchEvent(QTouchEvent*);
-    virtual void mousePressEvent(QMouseEvent*);
-    virtual void mouseMoveEvent(QMouseEvent*);
-    virtual void mouseReleaseEvent(QMouseEvent *);
-    virtual void mouseDoubleClickEvent(QMouseEvent*);
-    virtual void wheelEvent(QWheelEvent*);
-    virtual void hoverEnterEvent(QHoverEvent*);
-    virtual void hoverMoveEvent(QHoverEvent*);
-    virtual void hoverLeaveEvent(QHoverEvent*);
-    virtual void dragMoveEvent(QDragMoveEvent*);
-    virtual void dragEnterEvent(QDragEnterEvent*);
-    virtual void dragLeaveEvent(QDragLeaveEvent*);
-    virtual void dropEvent(QDropEvent*);
-    virtual bool event(QEvent*);
+    bool childMouseEventFilter(QQuickItem*, QEvent*) Q_DECL_OVERRIDE;
+    void geometryChanged(const QRectF&, const QRectF&) Q_DECL_OVERRIDE;
+    void componentComplete() Q_DECL_OVERRIDE;
+    void keyPressEvent(QKeyEvent*) Q_DECL_OVERRIDE;
+    void keyReleaseEvent(QKeyEvent*) Q_DECL_OVERRIDE;
+    void inputMethodEvent(QInputMethodEvent*) Q_DECL_OVERRIDE;
+    void focusInEvent(QFocusEvent*) Q_DECL_OVERRIDE;
+    void itemChange(ItemChange change, const ItemChangeData &value) Q_DECL_OVERRIDE;
+    void touchEvent(QTouchEvent*) Q_DECL_OVERRIDE;
+    void mousePressEvent(QMouseEvent*) Q_DECL_OVERRIDE;
+    void mouseMoveEvent(QMouseEvent*) Q_DECL_OVERRIDE;
+    void mouseReleaseEvent(QMouseEvent *) Q_DECL_OVERRIDE;
+    void mouseDoubleClickEvent(QMouseEvent*) Q_DECL_OVERRIDE;
+    void wheelEvent(QWheelEvent*) Q_DECL_OVERRIDE;
+    void hoverEnterEvent(QHoverEvent*) Q_DECL_OVERRIDE;
+    void hoverMoveEvent(QHoverEvent*) Q_DECL_OVERRIDE;
+    void hoverLeaveEvent(QHoverEvent*) Q_DECL_OVERRIDE;
+    void dragMoveEvent(QDragMoveEvent*) Q_DECL_OVERRIDE;
+    void dragEnterEvent(QDragEnterEvent*) Q_DECL_OVERRIDE;
+    void dragLeaveEvent(QDragLeaveEvent*) Q_DECL_OVERRIDE;
+    void dropEvent(QDropEvent*) Q_DECL_OVERRIDE;
+    bool event(QEvent*) Q_DECL_OVERRIDE;
 
 private:
     Q_DECLARE_PRIVATE(QQuickWebView)
