@@ -1080,6 +1080,7 @@ void QQuickWebViewFlickablePrivate::onComponentComplete()
     Q_Q(QQuickWebView);
     m_pageViewportControllerClient.reset(new PageViewportControllerClientQt(q, pageView.data()));
     m_pageViewportController.reset(new PageViewportController(webPageProxy.get(), *m_pageViewportControllerClient.data()));
+    m_pageViewportControllerClient->setController(m_pageViewportController.data());
     pageEventHandler->setViewportController(m_pageViewportControllerClient.data());
 
     // Trigger setting of correct visibility flags after everything was allocated and initialized.

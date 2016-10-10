@@ -54,7 +54,7 @@ public:
     void didChangeVisibleContents() final;
     void didChangeViewportAttributes() final;
 
-    virtual void setController(PageViewportController* controller) { m_controller = controller; }
+    void setController(PageViewportController* controller) { m_controller = controller; }
 
     // Additional methods currently only relevant in the QQuick context.
     void touchBegin();
