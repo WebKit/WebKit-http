@@ -365,6 +365,8 @@ void GraphicsContext3DPrivate::createGraphicsSurfaces(const IntSize& size)
         m_graphicsSurface = nullptr;
     else
         m_graphicsSurface = GraphicsSurface::create(size, m_surfaceFlags, m_platformContext);
+#else
+    UNUSED_PARAM(size);
 #endif
 }
 

@@ -70,7 +70,7 @@ void Widget::setFrameRect(const IntRect& rect)
     frameRectsChanged();
 }
 
-void Widget::setFocus(bool focused)
+void Widget::setFocus(bool)
 {
 }
 

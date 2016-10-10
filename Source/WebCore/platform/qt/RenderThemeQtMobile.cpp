@@ -204,7 +204,7 @@ QPalette RenderThemeQtMobile::colorPalette() const
     return lightGrayPalette;
 }
 
-StylePainterMobile::StylePainterMobile(RenderThemeQtMobile* theme, const PaintInfo& paintInfo)
+StylePainterMobile::StylePainterMobile(RenderThemeQtMobile*, const PaintInfo& paintInfo)
     : StylePainter(paintInfo.context())
 {
     m_previousSmoothPixmapTransform = painter->testRenderHint(QPainter::SmoothPixmapTransform);
@@ -658,7 +658,7 @@ bool RenderThemeQtMobile::isControlStyled(const RenderStyle& style, const Border
     }
 }
 
-LengthBox RenderThemeQtMobile::popupInternalPaddingBox(const RenderStyle& style) const
+LengthBox RenderThemeQtMobile::popupInternalPaddingBox(const RenderStyle&) const
 {
     return { 0, 0, 1, 0 };
 }

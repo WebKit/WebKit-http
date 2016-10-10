@@ -990,7 +990,7 @@ void drawFocusRingForPath(QPainter* p, const QPainterPath& path, const Color& co
     p->setRenderHint(QPainter::Antialiasing, antiAlias);
 }
 
-void GraphicsContext::drawFocusRing(const Path& path, float /* width */, float offset, const Color& color)
+void GraphicsContext::drawFocusRing(const Path& path, float /* width */, float /* offset */, const Color& color)
 {
     // FIXME: Use 'offset' for something? http://webkit.org/b/49909
 
