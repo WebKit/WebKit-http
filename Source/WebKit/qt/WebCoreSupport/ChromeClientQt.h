@@ -63,137 +63,137 @@ class TextureMapperLayerClientQt;
 class ChromeClientQt final : public ChromeClient {
 public:
     ChromeClientQt(QWebPageAdapter*);
-    virtual ~ChromeClientQt();
-    void chromeDestroyed() override;
+    ~ChromeClientQt();
+    void chromeDestroyed() final;
 
-    void setWindowRect(const FloatRect&) override;
-    FloatRect windowRect() override;
+    void setWindowRect(const FloatRect&) final;
+    FloatRect windowRect() final;
 
-    FloatRect pageRect() override;
+    FloatRect pageRect() final;
 
-    void focus() override;
-    void unfocus() override;
+    void focus() final;
+    void unfocus() final;
 
-    bool canTakeFocus(FocusDirection) override;
-    void takeFocus(FocusDirection) override;
+    bool canTakeFocus(FocusDirection) final;
+    void takeFocus(FocusDirection) final;
 
-    void focusedElementChanged(Element*) override;
-    void focusedFrameChanged(Frame*) override;
+    void focusedElementChanged(Element*) final;
+    void focusedFrameChanged(Frame*) final;
 
-    Page* createWindow(Frame*, const FrameLoadRequest&, const WindowFeatures&, const NavigationAction&) override;
-    void show() override;
+    Page* createWindow(Frame*, const FrameLoadRequest&, const WindowFeatures&, const NavigationAction&) final;
+    void show() final;
 
-    bool canRunModal() override;
-    void runModal() override;
+    bool canRunModal() final;
+    void runModal() final;
 
-    void setToolbarsVisible(bool) override;
-    bool toolbarsVisible() override;
+    void setToolbarsVisible(bool) final;
+    bool toolbarsVisible() final;
 
-    void setStatusbarVisible(bool) override;
-    bool statusbarVisible() override;
+    void setStatusbarVisible(bool) final;
+    bool statusbarVisible() final;
 
-    void setScrollbarsVisible(bool) override;
-    bool scrollbarsVisible() override;
+    void setScrollbarsVisible(bool) final;
+    bool scrollbarsVisible() final;
 
-    void setMenubarVisible(bool) override;
-    bool menubarVisible() override;
+    void setMenubarVisible(bool) final;
+    bool menubarVisible() final;
 
-    void setResizable(bool) override;
+    void setResizable(bool) final;
 
-    void addMessageToConsole(MessageSource, MessageLevel, const String& message, unsigned lineNumber, unsigned columnNumber, const String& sourceID) override;
+    void addMessageToConsole(MessageSource, MessageLevel, const String& message, unsigned lineNumber, unsigned columnNumber, const String& sourceID) final;
 
-    bool canRunBeforeUnloadConfirmPanel() override;
-    bool runBeforeUnloadConfirmPanel(const String& message, Frame*) override;
+    bool canRunBeforeUnloadConfirmPanel() final;
+    bool runBeforeUnloadConfirmPanel(const String& message, Frame*) final;
 
-    void closeWindowSoon() override;
+    void closeWindowSoon() final;
 
-    void runJavaScriptAlert(Frame*, const String&) override;
-    bool runJavaScriptConfirm(Frame*, const String&) override;
-    bool runJavaScriptPrompt(Frame*, const String& message, const String& defaultValue, String& result) override;
     virtual bool shouldInterruptJavaScript();
+    void runJavaScriptAlert(Frame*, const String&) final;
+    bool runJavaScriptConfirm(Frame*, const String&) final;
+    bool runJavaScriptPrompt(Frame*, const String& message, const String& defaultValue, String& result) final;
 
-    void setStatusbarText(const String&) override;
+    void setStatusbarText(const String&) final;
 
-    KeyboardUIMode keyboardUIMode() override;
+    KeyboardUIMode keyboardUIMode() final;
 
-    void invalidateRootView(const IntRect&) override;
-    void invalidateContentsAndRootView(const IntRect&) override;
-    void invalidateContentsForSlowScroll(const IntRect&) override;
-    void scroll(const IntSize& scrollDelta, const IntRect& rectToScroll, const IntRect& clipRect) override;
+    void invalidateRootView(const IntRect&) final;
+    void invalidateContentsAndRootView(const IntRect&) final;
+    void invalidateContentsForSlowScroll(const IntRect&) final;
+    void scroll(const IntSize& scrollDelta, const IntRect& rectToScroll, const IntRect& clipRect) final;
 #if USE(TILED_BACKING_STORE)
-    virtual void delegatedScrollRequested(const IntPoint& scrollPoint);
+    void delegatedScrollRequested(const IntPoint& scrollPoint) final;
 #endif
 
-    IntPoint screenToRootView(const IntPoint&) const override;
-    IntRect rootViewToScreen(const IntRect&) const override;
-    PlatformPageClient platformPageClient() const override;
-    void contentsSizeChanged(Frame*, const IntSize&) const override;
+    IntPoint screenToRootView(const IntPoint&) const final;
+    IntRect rootViewToScreen(const IntRect&) const final;
+    PlatformPageClient platformPageClient() const final;
+    void contentsSizeChanged(Frame*, const IntSize&) const final;
 
-    void scrollbarsModeDidChange() const override { }
-    void mouseDidMoveOverElement(const HitTestResult&, unsigned modifierFlags) override;
+    void scrollbarsModeDidChange() const final { }
+    void mouseDidMoveOverElement(const HitTestResult&, unsigned modifierFlags) final;
 
-    void setToolTip(const String&, TextDirection) override;
+    void setToolTip(const String&, TextDirection) final;
 
-    void print(Frame*) override;
-    void exceededDatabaseQuota(Frame*, const String&, DatabaseDetails) override;
-    void reachedMaxAppCacheSize(int64_t spaceNeeded) override;
-    void reachedApplicationCacheOriginQuota(SecurityOrigin*, int64_t totalSpaceNeeded) override;
+    void print(Frame*) final;
+    void exceededDatabaseQuota(Frame*, const String&, DatabaseDetails) final;
+    void reachedMaxAppCacheSize(int64_t spaceNeeded) final;
+    void reachedApplicationCacheOriginQuota(SecurityOrigin*, int64_t totalSpaceNeeded) final;
 
     // This is a hook for WebCore to tell us what we need to do with the GraphicsLayers.
-    void attachRootGraphicsLayer(Frame*, GraphicsLayer*) override;
-    void setNeedsOneShotDrawingSynchronization() override;
-    void scheduleCompositingLayerFlush() override;
-    CompositingTriggerFlags allowedCompositingTriggers() const override;
-    bool allowsAcceleratedCompositing() const override;
+    void attachRootGraphicsLayer(Frame*, GraphicsLayer*) final;
+    void setNeedsOneShotDrawingSynchronization() final;
+    void scheduleCompositingLayerFlush() final;
+    CompositingTriggerFlags allowedCompositingTriggers() const final;
+    bool allowsAcceleratedCompositing() const final;
 
 #if USE(TILED_BACKING_STORE)
     virtual IntRect visibleRectForTiledBackingStore() const;
 #endif
 
 #if ENABLE(TOUCH_EVENTS)
-    void needTouchEvents(bool) override { }
+    void needTouchEvents(bool) final { }
 #endif
 
-    void isPlayingMediaDidChange(MediaProducer::MediaStateFlags, uint64_t) override;
+    void isPlayingMediaDidChange(MediaProducer::MediaStateFlags, uint64_t) final;
 
 #if ENABLE(VIDEO) && ((USE(GSTREAMER) && USE(NATIVE_FULLSCREEN_VIDEO)) || USE(QT_MULTIMEDIA))
-    bool supportsVideoFullscreen(MediaPlayerEnums::VideoFullscreenMode) override;
-    void enterVideoFullscreenForVideoElement(HTMLVideoElement&, MediaPlayerEnums::VideoFullscreenMode) override;
-    void exitVideoFullscreenForVideoElement(WebCore::HTMLVideoElement&) override;
-    bool requiresFullscreenForVideoPlayback() override;
+    bool supportsVideoFullscreen(MediaPlayerEnums::VideoFullscreenMode) final;
+    void enterVideoFullscreenForVideoElement(HTMLVideoElement&, MediaPlayerEnums::VideoFullscreenMode) final;
+    void exitVideoFullscreenForVideoElement(WebCore::HTMLVideoElement&) final;
+    bool requiresFullscreenForVideoPlayback() final;
     FullScreenVideoQt* fullScreenVideo();
 #endif
 
 #if ENABLE(INPUT_TYPE_COLOR)
-    std::unique_ptr<ColorChooser> createColorChooser(ColorChooserClient*, const Color&) override;
+    std::unique_ptr<ColorChooser> createColorChooser(ColorChooserClient*, const Color&) final;
 #endif
 
-    void runOpenPanel(Frame*, PassRefPtr<FileChooser>) override;
-    void loadIconForFiles(const Vector<String>&, FileIconLoader*) override;
+    void runOpenPanel(Frame*, PassRefPtr<FileChooser>) final;
+    void loadIconForFiles(const Vector<String>&, FileIconLoader*) final;
 
-    void setCursor(const Cursor&) override;
-    void setCursorHiddenUntilMouseMoves(bool) override { }
+    void setCursor(const Cursor&) final;
+    void setCursorHiddenUntilMouseMoves(bool) final { }
 
 #if ENABLE(REQUEST_ANIMATION_FRAME) && !USE(REQUEST_ANIMATION_FRAME_TIMER)
-    void scheduleAnimation() override;
+    void scheduleAnimation() final;
     void serviceScriptedAnimations();
 #endif
 
-    void scrollRectIntoView(const IntRect&) const override { }
+    void scrollRectIntoView(const IntRect&) const final { }
 
-    bool selectItemWritingDirectionIsNatural() override;
-    bool selectItemAlignmentFollowsMenuWritingDirection() override;
-    bool hasOpenedPopup() const override;
-    RefPtr<PopupMenu> createPopupMenu(PopupMenuClient*) const override;
-    RefPtr<SearchPopupMenu> createSearchPopupMenu(PopupMenuClient*) const override;
+    bool selectItemWritingDirectionIsNatural() final;
+    bool selectItemAlignmentFollowsMenuWritingDirection() final;
+    bool hasOpenedPopup() const final;
+    RefPtr<PopupMenu> createPopupMenu(PopupMenuClient*) const final;
+    RefPtr<SearchPopupMenu> createSearchPopupMenu(PopupMenuClient*) const final;
 
     std::unique_ptr<QWebSelectMethod> createSelectPopup() const;
 
-    void dispatchViewportPropertiesDidChange(const ViewportArguments&) const override;
+    void dispatchViewportPropertiesDidChange(const ViewportArguments&) const final;
 
-    void wheelEventHandlersChanged(bool) override { }
+    void wheelEventHandlersChanged(bool) final { }
 
-    void attachViewOverlayGraphicsLayer(Frame *, GraphicsLayer *) override;
+    void attachViewOverlayGraphicsLayer(Frame *, GraphicsLayer *) final;
 
     QWebFullScreenVideoHandler* createFullScreenVideoHandler();
 

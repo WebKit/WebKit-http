@@ -39,7 +39,7 @@ private:
     friend class StylePainterQStyle;
 
     RenderThemeQStyle(Page*);
-    virtual ~RenderThemeQStyle();
+    ~RenderThemeQStyle();
 
 public:
     static PassRefPtr<RenderTheme> create(Page*);
@@ -47,59 +47,59 @@ public:
     static void setStyleFactoryFunction(QtStyleFactoryFunction);
     static QtStyleFactoryFunction styleFactory();
 
-    void adjustSliderThumbSize(RenderStyle&, Element*) const override;
+    void adjustSliderThumbSize(RenderStyle&, Element*) const final;
 
     QStyleFacade* qStyle() { return m_qStyle.get(); }
 
 protected:
-    void adjustButtonStyle(StyleResolver&, RenderStyle&, Element*) const override;
-    bool paintButton(const RenderObject&, const PaintInfo&, const IntRect&) override;
+    void adjustButtonStyle(StyleResolver&, RenderStyle&, Element*) const final;
+    bool paintButton(const RenderObject&, const PaintInfo&, const IntRect&) final;
 
-    bool paintTextField(const RenderObject&, const PaintInfo&, const FloatRect&) override;
+    bool paintTextField(const RenderObject&, const PaintInfo&, const FloatRect&) final;
 
-    bool paintTextArea(const RenderObject&, const PaintInfo&, const FloatRect&) override;
-    void adjustTextAreaStyle(StyleResolver&, RenderStyle&, Element*) const override;
+    bool paintTextArea(const RenderObject&, const PaintInfo&, const FloatRect&) final;
+    void adjustTextAreaStyle(StyleResolver&, RenderStyle&, Element*) const final;
 
-    bool paintMenuList(const RenderObject&, const PaintInfo&, const FloatRect&) override;
+    bool paintMenuList(const RenderObject&, const PaintInfo&, const FloatRect&) final;
 
-    bool paintMenuListButtonDecorations(const RenderBox&, const PaintInfo&, const FloatRect&) override;
-    void adjustMenuListButtonStyle(StyleResolver&, RenderStyle&, Element*) const override;
+    bool paintMenuListButtonDecorations(const RenderBox&, const PaintInfo&, const FloatRect&) final;
+    void adjustMenuListButtonStyle(StyleResolver&, RenderStyle&, Element*) const final;
 
     // Returns the duration of the animation for the progress bar.
-    double animationDurationForProgressBar(RenderProgress&) const override;
-    bool paintProgressBar(const RenderObject&, const PaintInfo&, const IntRect&) override;
+    double animationDurationForProgressBar(RenderProgress&) const final;
+    bool paintProgressBar(const RenderObject&, const PaintInfo&, const IntRect&) final;
 
-    bool paintSliderTrack(const RenderObject&, const PaintInfo&, const IntRect&) override;
-    void adjustSliderTrackStyle(StyleResolver&, RenderStyle&, Element*) const override;
+    bool paintSliderTrack(const RenderObject&, const PaintInfo&, const IntRect&) final;
+    void adjustSliderTrackStyle(StyleResolver&, RenderStyle&, Element*) const final;
 
-    bool paintSliderThumb(const RenderObject&, const PaintInfo&, const IntRect&) override;
-    void adjustSliderThumbStyle(StyleResolver&, RenderStyle&, Element*) const override;
+    bool paintSliderThumb(const RenderObject&, const PaintInfo&, const IntRect&) final;
+    void adjustSliderThumbStyle(StyleResolver&, RenderStyle&, Element*) const final;
 
-    bool paintSearchField(const RenderObject&, const PaintInfo&, const IntRect&) override;
+    bool paintSearchField(const RenderObject&, const PaintInfo&, const IntRect&) final;
 
-    void adjustSearchFieldDecorationPartStyle(StyleResolver&, RenderStyle&, Element*) const override;
-    bool paintSearchFieldDecorationPart(const RenderObject&, const PaintInfo&, const IntRect&) override;
+    void adjustSearchFieldDecorationPartStyle(StyleResolver&, RenderStyle&, Element*) const final;
+    bool paintSearchFieldDecorationPart(const RenderObject&, const PaintInfo&, const IntRect&) final;
 
-    void adjustSearchFieldResultsDecorationPartStyle(StyleResolver&, RenderStyle&, Element*) const override;
-    bool paintSearchFieldResultsDecorationPart(const RenderBox&, const PaintInfo&, const IntRect&) override;
+    void adjustSearchFieldResultsDecorationPartStyle(StyleResolver&, RenderStyle&, Element*) const final;
+    bool paintSearchFieldResultsDecorationPart(const RenderBox&, const PaintInfo&, const IntRect&) final;
 
 #ifndef QT_NO_SPINBOX
-    bool paintInnerSpinButton(const RenderObject&, const PaintInfo&, const IntRect&) override;
+    bool paintInnerSpinButton(const RenderObject&, const PaintInfo&, const IntRect&) final;
 #endif
 
 protected:
-    void computeSizeBasedOnStyle(RenderStyle&) const override;
+    void computeSizeBasedOnStyle(RenderStyle&) const final;
 
-    QSharedPointer<StylePainter> getStylePainter(const PaintInfo&) override;
+    QSharedPointer<StylePainter> getStylePainter(const PaintInfo&) final;
 
-    QRect inflateButtonRect(const QRect& originalRect) const override;
-    QRectF inflateButtonRect(const QRectF& originalRect) const override;
-    void computeControlRect(QStyleFacade::ButtonType, QRect& originalRect) const override;
-    void computeControlRect(QStyleFacade::ButtonType, FloatRect& originalRect) const override;
+    QRect inflateButtonRect(const QRect& originalRect) const final;
+    QRectF inflateButtonRect(const QRectF& originalRect) const final;
+    void computeControlRect(QStyleFacade::ButtonType, QRect& originalRect) const final;
+    void computeControlRect(QStyleFacade::ButtonType, FloatRect& originalRect) const final;
 
-    void setPopupPadding(RenderStyle&) const override;
+    void setPopupPadding(RenderStyle&) const final;
 
-    QPalette colorPalette() const override;
+    QPalette colorPalette() const final;
 
 private:
     ControlPart initializeCommonQStyleOptions(QStyleFacadeOption&, const RenderObject&) const;

@@ -37,56 +37,56 @@ typedef QPixmapCache::Key CacheKey;
 
 namespace WebCore {
 
-class RenderThemeQtMobile : public RenderThemeQt {
+class RenderThemeQtMobile final : public RenderThemeQt {
 private:
     RenderThemeQtMobile(Page*);
-    virtual ~RenderThemeQtMobile();
+    ~RenderThemeQtMobile();
 
 public:
     static PassRefPtr<RenderTheme> create(Page*);
 
-    void adjustSliderThumbSize(RenderStyle&, Element*) const override;
+    void adjustSliderThumbSize(RenderStyle&, Element*) const final;
 
-    bool isControlStyled(const RenderStyle&, const BorderData&, const FillLayer&, const Color& backgroundColor) const override;
+    bool isControlStyled(const RenderStyle&, const BorderData&, const FillLayer&, const Color& backgroundColor) const final;
 
-    LengthBox popupInternalPaddingBox(const RenderStyle& style) const override;
+    LengthBox popupInternalPaddingBox(const RenderStyle& style) const final;
 
-    bool delegatesMenuListRendering() const override { return true; }
+    bool delegatesMenuListRendering() const final { return true; }
 
     // We don't want the focus ring to be drawn by the graphics context so we
     // always claim to support it in the theme.
     // FIXME: This could be a usability problem in the case of contenteditable divs.
-    bool supportsFocusRing(const RenderStyle&) const override { return true; }
+    bool supportsFocusRing(const RenderStyle&) const final { return true; }
 
 protected:
 
-    void adjustButtonStyle(StyleResolver&, RenderStyle&, Element*) const override;
-    bool paintButton(const RenderObject&, const PaintInfo&, const IntRect&) override;
+    void adjustButtonStyle(StyleResolver&, RenderStyle&, Element*) const final;
+    bool paintButton(const RenderObject&, const PaintInfo&, const IntRect&) final;
 
-    bool paintTextField(const RenderObject&, const PaintInfo&, const FloatRect&) override;
-    void adjustTextFieldStyle(StyleResolver&, RenderStyle&, Element*) const override;
+    bool paintTextField(const RenderObject&, const PaintInfo&, const FloatRect&) final;
+    void adjustTextFieldStyle(StyleResolver&, RenderStyle&, Element*) const final;
 
-    bool paintMenuList(const RenderObject&, const PaintInfo&, const FloatRect&) override;
-    void adjustMenuListStyle(StyleResolver&, RenderStyle&, Element*) const override;
+    bool paintMenuList(const RenderObject&, const PaintInfo&, const FloatRect&) final;
+    void adjustMenuListStyle(StyleResolver&, RenderStyle&, Element*) const final;
 
     virtual bool paintMenuListButton(RenderObject&, const PaintInfo&, const IntRect&);
 
     // Returns the duration of the animation for the progress bar.
-    double animationDurationForProgressBar(RenderProgress&) const override;
-    bool paintProgressBar(const RenderObject&, const PaintInfo&, const IntRect&) override;
+    double animationDurationForProgressBar(RenderProgress&) const final;
+    bool paintProgressBar(const RenderObject&, const PaintInfo&, const IntRect&) final;
 
-    bool paintSliderTrack(const RenderObject&, const PaintInfo&, const IntRect&) override;
-    bool paintSliderThumb(const RenderObject&, const PaintInfo&, const IntRect&) override;
+    bool paintSliderTrack(const RenderObject&, const PaintInfo&, const IntRect&) final;
+    bool paintSliderThumb(const RenderObject&, const PaintInfo&, const IntRect&) final;
 
-    void computeSizeBasedOnStyle(RenderStyle&) const override;
-    QSharedPointer<StylePainter> getStylePainter(const PaintInfo&) override;
+    void computeSizeBasedOnStyle(RenderStyle&) const final;
+    QSharedPointer<StylePainter> getStylePainter(const PaintInfo&) final;
 
-    QPalette colorPalette() const override;
+    QPalette colorPalette() const final;
 
 private:
     bool checkMultiple(const RenderObject&) const;
     void setButtonPadding(RenderStyle&) const;
-    void setPopupPadding(RenderStyle&) const override;
+    void setPopupPadding(RenderStyle&) const final;
 };
 
 struct KeyIdentifier {
