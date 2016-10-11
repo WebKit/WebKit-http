@@ -44,7 +44,7 @@ public:
 
     ScrollbarPart hitTest(Scrollbar&, const IntPoint&) final;
 
-    virtual bool shouldCenterOnThumb(Scrollbar&, const PlatformMouseEvent&);
+    ScrollbarButtonPressAction handleMousePressEvent(Scrollbar&, const PlatformMouseEvent&, ScrollbarPart) override;
 
     void invalidatePart(Scrollbar&, ScrollbarPart) final;
 

@@ -168,10 +168,30 @@ ScrollbarPart ScrollbarThemeQStyle::hitTest(Scrollbar& scrollbar, const IntPoint
     return scrollbarPart(sc);
 }
 
-bool ScrollbarThemeQStyle::shouldCenterOnThumb(Scrollbar&, const PlatformMouseEvent& evt)
+static bool shouldCenterOnThumb(QStyleFacade& qStyle, const PlatformMouseEvent& evt)
 {
     // Middle click centers slider thumb (if supported).
-    return m_qStyle->scrollBarMiddleClickAbsolutePositionStyleHint() && evt.button() == MiddleButton;
+    return qStyle.scrollBarMiddleClickAbsolutePositionStyleHint() && evt.button() == MiddleButton;
+}
+
+ScrollbarButtonPressAction ScrollbarThemeQStyle::handleMousePressEvent(Scrollbar&, const PlatformMouseEvent& event, ScrollbarPart pressedPart)
+{
+    if (event.button() == RightButton)
+        return ScrollbarButtonPressAction::None;
+
+    switch (pressedPart) {
+    case BackTrackPart:
+    case ForwardTrackPart:
+        if (shouldCenterOnThumb(*m_qStyle, event))
+            return ScrollbarButtonPressAction::CenterOnThumb;
+        break;
+    case ThumbPart:
+        return ScrollbarButtonPressAction::StartDrag;
+    default:
+        break;
+    }
+
+    return ScrollbarButtonPressAction::Scroll;
 }
 
 void ScrollbarThemeQStyle::invalidatePart(Scrollbar& scrollbar, ScrollbarPart)
