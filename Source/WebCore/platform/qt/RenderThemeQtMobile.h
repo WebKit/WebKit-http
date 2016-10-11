@@ -127,7 +127,7 @@ struct KeyIdentifier {
     }
 };
 
-class StylePainterMobile : public StylePainter {
+class StylePainterMobile final : public StylePainter {
 
 public:
     explicit StylePainterMobile(RenderThemeQtMobile*, const PaintInfo&);

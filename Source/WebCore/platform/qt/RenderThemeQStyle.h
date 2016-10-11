@@ -117,7 +117,7 @@ private:
     std::unique_ptr<QStyleFacade> m_qStyle;
 };
 
-class StylePainterQStyle : public StylePainter {
+class StylePainterQStyle final : public StylePainter {
 public:
     explicit StylePainterQStyle(RenderThemeQStyle*, const PaintInfo&);
     explicit StylePainterQStyle(RenderThemeQStyle*, const PaintInfo&, const RenderObject&);

@@ -33,7 +33,7 @@ QT_END_NAMESPACE
 
 namespace WebKit {
 
-class WebGeolocationProviderQt : public QObject {
+class WebGeolocationProviderQt final : public QObject {
     Q_OBJECT
 public:
     static WebGeolocationProviderQt* create(WKGeolocationManagerRef);

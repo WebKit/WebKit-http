@@ -33,7 +33,7 @@ class QtWebPageEventHandler;
 class DefaultUndoController;
 class ShareableBitmap;
 
-class QtPageClient : public PageClient {
+class QtPageClient final : public PageClient {
 public:
     QtPageClient();
     ~QtPageClient();

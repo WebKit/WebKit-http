@@ -39,7 +39,7 @@
 
 namespace WebCore {
 
-class SharedTimerQt : public QObject {
+class SharedTimerQt final : public QObject {
     Q_OBJECT
 public:
     static SharedTimerQt* inst();

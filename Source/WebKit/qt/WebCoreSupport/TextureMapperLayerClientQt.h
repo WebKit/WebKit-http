@@ -32,7 +32,7 @@ namespace WebCore {
 
 class TextureMapperLayer;
 
-class TextureMapperLayerClientQt : public GraphicsLayerClient {
+class TextureMapperLayerClientQt final : public GraphicsLayerClient {
 public:
     TextureMapperLayerClientQt(QWebFrameAdapter*);
     ~TextureMapperLayerClientQt();

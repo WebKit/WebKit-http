@@ -30,7 +30,7 @@ namespace WebCore {
 
 class NetworkStateNotifier;
 
-class NetworkStateNotifierPrivate : public QObject {
+class NetworkStateNotifierPrivate final : public QObject {
     Q_OBJECT
 public:
     NetworkStateNotifierPrivate(NetworkStateNotifier*);

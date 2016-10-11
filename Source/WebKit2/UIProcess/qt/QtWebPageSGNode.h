@@ -34,7 +34,7 @@ namespace WebKit {
 class ContentsSGNode;
 class CoordinatedGraphicsScene;
 
-class QtWebPageSGNode : public QSGTransformNode {
+class QtWebPageSGNode final : public QSGTransformNode {
     public:
         QtWebPageSGNode();
         void setBackground(const QRectF&, const QColor&);

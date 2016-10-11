@@ -49,7 +49,7 @@ struct udev_list_entry;
 
 namespace WebCore {
 
-class GamepadDeviceLinuxQt : public QObject, public GamepadDeviceLinux {
+class GamepadDeviceLinuxQt final : public QObject, public GamepadDeviceLinux {
     Q_OBJECT
 public:
     static std::unique_ptr<GamepadDeviceLinuxQt> create(const String& deviceFile)
@@ -192,7 +192,7 @@ public:
 };
 
 
-class GamepadsQt : public QObject, protected LibUdevWrapper {
+class GamepadsQt final : public QObject, protected LibUdevWrapper {
     Q_OBJECT
 public:
     GamepadsQt(unsigned);

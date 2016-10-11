@@ -32,7 +32,7 @@ QT_END_NAMESPACE
 
 namespace WebKit {
 
-class QtWebIconDatabaseClient : public QObject {
+class QtWebIconDatabaseClient final : public QObject {
     Q_OBJECT
 
 public:

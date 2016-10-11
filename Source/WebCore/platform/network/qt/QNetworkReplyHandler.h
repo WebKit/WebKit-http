@@ -43,7 +43,7 @@ class ResourceRequest;
 class ResourceResponse;
 class QNetworkReplyHandler;
 
-class QNetworkReplyHandlerCallQueue : public QObject {
+class QNetworkReplyHandlerCallQueue final : public QObject {
     Q_OBJECT
 public:
     QNetworkReplyHandlerCallQueue(QNetworkReplyHandler*, bool deferSignals);
@@ -67,7 +67,7 @@ private:
     Q_INVOKABLE void flush();
 };
 
-class QNetworkReplyWrapper : public QObject {
+class QNetworkReplyWrapper final : public QObject {
     Q_OBJECT
 public:
     QNetworkReplyWrapper(QNetworkReplyHandlerCallQueue*, QNetworkReply*, bool sniffMIMETypes, QObject* parent = 0);

@@ -34,7 +34,7 @@ QT_END_NAMESPACE
 
 namespace WebKit {
 
-class QtDialogRunner : public QEventLoop {
+class QtDialogRunner final : public QEventLoop {
     Q_OBJECT
 
 public:

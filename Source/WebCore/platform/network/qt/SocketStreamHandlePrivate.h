@@ -43,7 +43,7 @@ class Credential;
 class SocketStreamHandleClient;
 class SocketStreamHandlePrivate;
 
-class SocketStreamHandlePrivate : public QObject {
+class SocketStreamHandlePrivate final : public QObject {
     Q_OBJECT
 public:
     SocketStreamHandlePrivate(SocketStreamHandle*, const URL&);
