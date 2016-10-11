@@ -27,12 +27,12 @@ class UndoStepQt;
 
 #ifndef QT_NO_UNDOCOMMAND
 
-class QWebUndoCommand : public QUndoCommand {
+class QWebUndoCommand final : public QUndoCommand {
 public:
     QWebUndoCommand(QSharedPointer<UndoStepQt>, QUndoCommand *parent = 0);
 
-    void undo();
-    void redo();
+    void undo() final;
+    void redo() final;
 
 private:
     QSharedPointer<UndoStepQt> m_step;

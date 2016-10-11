@@ -28,15 +28,15 @@
 
 namespace WebCore {
 
-class QtWebComboBox : public QComboBox {
+class QtWebComboBox final : public QComboBox {
     Q_OBJECT
 public:
     QtWebComboBox();
 
     void showPopupAtCursorPosition();
-    virtual bool eventFilter(QObject* watched, QEvent*);
+    bool eventFilter(QObject* watched, QEvent*) final;
 
-    void hidePopup() override;
+    void hidePopup() final;
     void deleteComboBox();
 
 Q_SIGNALS:

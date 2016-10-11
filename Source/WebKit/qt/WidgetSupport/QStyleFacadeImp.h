@@ -42,45 +42,45 @@ namespace WebKit {
 class QStyleFacadeImp : public WebCore::QStyleFacade {
 public:
     QStyleFacadeImp(QWebPageAdapter* = 0);
-    virtual ~QStyleFacadeImp();
+    ~QStyleFacadeImp() override;
 
     static WebCore::QStyleFacade* create(QWebPageAdapter* page)
     { return new QStyleFacadeImp(page); }
 
-    virtual QRect buttonSubElementRect(ButtonSubElement, State, const QRect& originalRect) const;
+    QRect buttonSubElementRect(ButtonSubElement, State, const QRect& originalRect) const override;
 
-    virtual int findFrameLineWidth() const;
-    virtual int simplePixelMetric(PixelMetric, State = State_None) const;
-    virtual int buttonMargin(State, const QRect& originalRect) const;
-    virtual int sliderLength(Qt::Orientation) const;
-    virtual int sliderThickness(Qt::Orientation) const;
-    virtual int progressBarChunkWidth(const QSize&) const;
-    virtual void getButtonMetrics(QString* buttonFontFamily, int* buttonFontPixelSize) const;
+    int findFrameLineWidth() const override;
+    int simplePixelMetric(PixelMetric, State = State_None) const override;
+    int buttonMargin(State, const QRect& originalRect) const override;
+    int sliderLength(Qt::Orientation) const override;
+    int sliderThickness(Qt::Orientation) const override;
+    int progressBarChunkWidth(const QSize&) const override;
+    void getButtonMetrics(QString* buttonFontFamily, int* buttonFontPixelSize) const override;
 
-    virtual QSize comboBoxSizeFromContents(State, const QSize& contentsSize) const;
-    virtual QSize pushButtonSizeFromContents(State, const QSize& contentsSize) const;
+    QSize comboBoxSizeFromContents(State, const QSize& contentsSize) const override;
+    QSize pushButtonSizeFromContents(State, const QSize& contentsSize) const override;
 
-    virtual void paintButton(QPainter*, ButtonType, const WebCore::QStyleFacadeOption &proxyOption);
-    virtual void paintTextField(QPainter*, const WebCore::QStyleFacadeOption&);
-    virtual void paintComboBox(QPainter*, const WebCore::QStyleFacadeOption&);
-    virtual void paintComboBoxArrow(QPainter*, const WebCore::QStyleFacadeOption&);
+    void paintButton(QPainter*, ButtonType, const WebCore::QStyleFacadeOption &proxyOption) override;
+    void paintTextField(QPainter*, const WebCore::QStyleFacadeOption&) override;
+    void paintComboBox(QPainter*, const WebCore::QStyleFacadeOption&) override;
+    void paintComboBoxArrow(QPainter*, const WebCore::QStyleFacadeOption&) override;
 
-    virtual void paintSliderTrack(QPainter*, const WebCore::QStyleFacadeOption&);
-    virtual void paintSliderThumb(QPainter*, const WebCore::QStyleFacadeOption&);
-    virtual void paintInnerSpinButton(QPainter*, const WebCore::QStyleFacadeOption&, bool spinBoxUp);
-    virtual void paintProgressBar(QPainter*, const WebCore::QStyleFacadeOption&, double progress, double animationProgress);
+    void paintSliderTrack(QPainter*, const WebCore::QStyleFacadeOption&) override;
+    void paintSliderThumb(QPainter*, const WebCore::QStyleFacadeOption&) override;
+    void paintInnerSpinButton(QPainter*, const WebCore::QStyleFacadeOption&, bool spinBoxUp) override;
+    void paintProgressBar(QPainter*, const WebCore::QStyleFacadeOption&, double progress, double animationProgress) override;
 
-    virtual int scrollBarExtent(bool mini);
-    virtual bool scrollBarMiddleClickAbsolutePositionStyleHint() const;
-    virtual void paintScrollCorner(QPainter*, const QRect&);
+    int scrollBarExtent(bool mini) override;
+    bool scrollBarMiddleClickAbsolutePositionStyleHint() const override;
+    void paintScrollCorner(QPainter*, const QRect&) override;
 
-    virtual SubControl hitTestScrollBar(const WebCore::QStyleFacadeOption&, const QPoint& pos);
-    virtual QRect scrollBarSubControlRect(const WebCore::QStyleFacadeOption&, SubControl);
-    virtual void paintScrollBar(QPainter*, const WebCore::QStyleFacadeOption&);
+    SubControl hitTestScrollBar(const WebCore::QStyleFacadeOption&, const QPoint& pos) override;
+    QRect scrollBarSubControlRect(const WebCore::QStyleFacadeOption&, SubControl) override;
+    void paintScrollBar(QPainter*, const WebCore::QStyleFacadeOption&) override;
 
-    virtual QObject* widgetForPainter(QPainter*);
+    QObject* widgetForPainter(QPainter*) override;
 
-    virtual bool isValid() const { return style(); }
+    bool isValid() const override { return style(); }
 
 private:
     QStyle* style() const;

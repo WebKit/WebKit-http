@@ -37,16 +37,16 @@
 
 namespace WebCore {
 
-class TextCheckerClientQt : public TextCheckerClient {
+class TextCheckerClientQt final : public TextCheckerClient {
 public:
-    virtual bool shouldEraseMarkersAfterChangeSelection(TextCheckingType) const;
-    virtual void ignoreWordInSpellDocument(const String&);
-    virtual void learnWord(const String&);
-    virtual void checkSpellingOfString(StringView, int* misspellingLocation, int* misspellingLength);
-    virtual String getAutoCorrectSuggestionForMisspelledWord(const String& misspelledWord);
-    virtual void checkGrammarOfString(StringView, Vector<GrammarDetail>&, int* badGrammarLocation, int* badGrammarLength);
-    virtual void getGuessesForWord(const String& word, const String& context, Vector<String>& guesses);
-    virtual void requestCheckingOfString(WTF::PassRefPtr<WebCore::TextCheckingRequest>) { }
+    bool shouldEraseMarkersAfterChangeSelection(TextCheckingType) const final;
+    void ignoreWordInSpellDocument(const String&) final;
+    void learnWord(const String&) final;
+    void checkSpellingOfString(StringView, int* misspellingLocation, int* misspellingLength) final;
+    String getAutoCorrectSuggestionForMisspelledWord(const String& misspelledWord) final;
+    void checkGrammarOfString(StringView, Vector<GrammarDetail>&, int* badGrammarLocation, int* badGrammarLength) final;
+    void getGuessesForWord(const String& word, const String& context, Vector<String>& guesses) final;
+    void requestCheckingOfString(WTF::PassRefPtr<WebCore::TextCheckingRequest>) final { }
 
     virtual bool isContinousSpellCheckingEnabled();
     virtual void toggleContinousSpellChecking();

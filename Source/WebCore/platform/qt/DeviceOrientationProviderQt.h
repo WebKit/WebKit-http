@@ -27,14 +27,14 @@
 
 namespace WebCore {
 
-class DeviceOrientationProviderQt : public QRotationFilter {
+class DeviceOrientationProviderQt final : public QRotationFilter {
 public:
     DeviceOrientationProviderQt();
-    virtual ~DeviceOrientationProviderQt();
+    ~DeviceOrientationProviderQt();
 
     void setController(DeviceOrientationController*);
 
-    bool filter(QRotationReading*);
+    bool filter(QRotationReading*) final;
 
     void start();
     void stop();

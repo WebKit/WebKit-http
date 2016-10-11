@@ -54,16 +54,16 @@ namespace WebCore {
     class SocketStreamHandleClient;
     class SocketStreamHandlePrivate;
 
-    class SocketStreamHandle : public RefCounted<SocketStreamHandle>, public SocketStreamHandleBase {
+    class SocketStreamHandle final : public RefCounted<SocketStreamHandle>, public SocketStreamHandleBase {
     public:
         static PassRefPtr<SocketStreamHandle> create(const URL& url, SocketStreamHandleClient* client, NetworkingContext&) { return adoptRef(new SocketStreamHandle(url, client)); }
         static PassRefPtr<SocketStreamHandle> create(QTcpSocket* socket, SocketStreamHandleClient* client) { return adoptRef(new SocketStreamHandle(socket, client)); }
 
-        virtual ~SocketStreamHandle();
+        ~SocketStreamHandle();
 
     protected:
-        virtual int platformSend(const char* data, int length);
-        virtual void platformClose();
+        int platformSend(const char* data, int length) final;
+        void platformClose() final;
 
     private:
         SocketStreamHandle(const URL&, SocketStreamHandleClient*);

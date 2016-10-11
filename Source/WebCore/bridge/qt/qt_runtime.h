@@ -41,7 +41,7 @@ class JSDOMGlobalObject;
 namespace JSC {
 namespace Bindings {
 
-class QtField : public Field {
+class QtField final : public Field {
 public:
 
     typedef enum {
@@ -66,8 +66,8 @@ public:
         : m_type(ChildObject), m_childObject(child)
         {}
 
-    virtual JSValue valueFromInstance(ExecState*, const Instance*) const;
-    virtual void setValueToInstance(ExecState*, const Instance*, JSValue) const;
+    JSValue valueFromInstance(ExecState*, const Instance*) const final;
+    void setValueToInstance(ExecState*, const Instance*, JSValue) const final;
     QByteArray name() const;
     QtFieldType fieldType() const {return m_type;}
 private:
@@ -109,7 +109,7 @@ private:
 
 // A QtConnectionObject represents a connection created inside JS. It will connect its own execute() slot
 // with the appropriate signal of 'sender'. When execute() is called, it will call JS 'receiverFunction'.
-class QtConnectionObject : public QObject
+class QtConnectionObject final : public QObject
 {
     Q_OBJECT_FAKE
 public:

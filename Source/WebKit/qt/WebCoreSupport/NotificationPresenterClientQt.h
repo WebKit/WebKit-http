@@ -49,7 +49,7 @@ class Document;
 class Frame;
 class ScriptExecutionContext;
 
-class NotificationWrapper : public QObject, public QWebNotificationData {
+class NotificationWrapper final : public QObject, public QWebNotificationData {
     Q_OBJECT
 public:
     NotificationWrapper();
@@ -57,10 +57,10 @@ public:
 
     void close();
     void sendDisplayEvent();
-    const QString title() const;
-    const QString message() const;
-    const QUrl iconUrl() const;
-    const QUrl openerPageUrl() const;
+    const QString title() const final;
+    const QString message() const final;
+    const QUrl iconUrl() const final;
+    const QUrl openerPageUrl() const final;
 
 public Q_SLOTS:
     void notificationClosed();

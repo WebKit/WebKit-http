@@ -33,23 +33,23 @@
 
 namespace WebCore {
 
-class IconDatabaseClientQt : public QObject, public IconDatabaseClient {
+class IconDatabaseClientQt final : public QObject, public IconDatabaseClient {
     Q_OBJECT
 public:
     static IconDatabaseClientQt* instance();
 
-    virtual void didRemoveAllIcons();
-    virtual void didImportIconURLForPageURL(const String&);
-    virtual void didImportIconDataForPageURL(const String&);
-    virtual void didChangeIconForPageURL(const String&);
-    virtual void didFinishURLImport();
+    void didRemoveAllIcons() final;
+    void didImportIconURLForPageURL(const String&) final;
+    void didImportIconDataForPageURL(const String&) final;
+    void didChangeIconForPageURL(const String&) final;
+    void didFinishURLImport() final;
 
 Q_SIGNALS:
     void iconLoadedForPageURL(const QString&);
 
 private:
     IconDatabaseClientQt();
-    virtual ~IconDatabaseClientQt();
+    ~IconDatabaseClientQt();
 };
 
 }

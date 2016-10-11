@@ -115,7 +115,7 @@ private:
     bool m_sniffMIMETypes;
 };
 
-class QNetworkReplyHandler : public QObject
+class QNetworkReplyHandler final : public QObject
 {
     Q_OBJECT
 public:
@@ -150,7 +150,7 @@ private:
     QNetworkReply* sendNetworkRequest(QNetworkAccessManager*, const ResourceRequest&);
     FormDataIODevice* getIODevice(const ResourceRequest&);
     void clearContentHeaders();
-    void timerEvent(QTimerEvent*) override;
+    void timerEvent(QTimerEvent*) final;
     void timeout();
 
     std::unique_ptr<QNetworkReplyWrapper> m_replyWrapper;
@@ -171,19 +171,19 @@ private:
 //  QIODevice is valid as long finished() of the QNetworkReply has not
 //  been emitted. With the presence of QNetworkReplyHandler::release I do
 //  not want to gurantee this.
-class FormDataIODevice : public QIODevice {
+class FormDataIODevice final : public QIODevice {
     Q_OBJECT
 public:
     FormDataIODevice(FormData*);
     ~FormDataIODevice();
 
-    bool isSequential() const;
+    bool isSequential() const final;
     qint64 getFormDataSize() const { return m_fileSize + m_dataSize; }
-    virtual bool reset();
+    bool reset() final;
 
 protected:
-    qint64 readData(char*, qint64);
-    qint64 writeData(const char*, qint64);
+    qint64 readData(char*, qint64) final;
+    qint64 writeData(const char*, qint64) final;
 
 private:
     void prepareFormElements();

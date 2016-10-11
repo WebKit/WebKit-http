@@ -30,14 +30,14 @@ namespace WebCore {
 class DeviceMotionController;
 class DeviceOrientationProviderQt;
 
-class DeviceMotionProviderQt : public QAccelerometerFilter {
+class DeviceMotionProviderQt final : public QAccelerometerFilter {
 public:
     DeviceMotionProviderQt();
-    virtual ~DeviceMotionProviderQt();
+    ~DeviceMotionProviderQt();
 
     void setController(DeviceMotionController*);
 
-    bool filter(QAccelerometerReading*) override;
+    bool filter(QAccelerometerReading*) final;
 
     void start();
     void stop();

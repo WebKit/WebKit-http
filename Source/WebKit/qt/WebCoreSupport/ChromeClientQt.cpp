@@ -88,7 +88,7 @@
 namespace WebCore {
 
 #if ENABLE(REQUEST_ANIMATION_FRAME) && !USE(REQUEST_ANIMATION_FRAME_TIMER)
-class RefreshAnimation : public QAbstractAnimation {
+class RefreshAnimation final : public QAbstractAnimation {
 public:
     RefreshAnimation(ChromeClientQt* chromeClient)
         : QAbstractAnimation()
@@ -96,7 +96,7 @@ public:
         , m_animationScheduled(false)
     { }
 
-    virtual int duration() const { return -1; }
+    int duration() const final { return -1; }
 
     void scheduleAnimation()
     {
@@ -106,7 +106,7 @@ public:
     }
 
 protected:
-    virtual void updateCurrentTime(int currentTime)
+    void updateCurrentTime(int currentTime) final
     {
         UNUSED_PARAM(currentTime);
         if (m_animationScheduled) {

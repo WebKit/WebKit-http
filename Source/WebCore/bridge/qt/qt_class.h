@@ -32,19 +32,19 @@ namespace JSC {
 namespace Bindings {
 
 
-class QtClass : public Class {
+class QtClass final : public Class {
 protected:
     QtClass(const QMetaObject*);
 
 public:
     static QtClass* classForObject(QObject*);
-    virtual ~QtClass();
+    ~QtClass();
 
     virtual const char* name() const;
-    virtual Method* methodNamed(PropertyName, Instance*) const;
-    virtual Field* fieldNamed(PropertyName, Instance*) const;
+    Method* methodNamed(PropertyName, Instance*) const final;
+    Field* fieldNamed(PropertyName, Instance*) const final;
 
-    virtual JSValue fallbackObject(ExecState*, Instance*, PropertyName);
+    JSValue fallbackObject(ExecState*, Instance*, PropertyName) final;
 
 private:
     QtClass(const QtClass&); // prohibit copying

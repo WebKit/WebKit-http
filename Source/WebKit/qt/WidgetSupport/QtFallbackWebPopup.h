@@ -37,19 +37,19 @@ namespace WebCore {
 
 class QtWebComboBox;
 
-class QtFallbackWebPopup : public QWebSelectMethod {
+class QtFallbackWebPopup final : public QWebSelectMethod {
     Q_OBJECT
 public:
     QtFallbackWebPopup(const QWebPageAdapter*);
     ~QtFallbackWebPopup();
 
-    virtual void show(const QWebSelectData&);
-    virtual void hide();
+    void show(const QWebSelectData&) final;
+    void hide() final;
 
-    void setGeometry(const QRect& rect) { m_geometry = rect; }
+    void setGeometry(const QRect& rect) final { m_geometry = rect; }
     QRect geometry() const { return m_geometry; }
 
-    void setFont(const QFont& font) { m_font = font; }
+    void setFont(const QFont& font) final { m_font = font; }
     QFont font() const { return m_font; }
 
 private Q_SLOTS:

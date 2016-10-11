@@ -30,13 +30,13 @@ namespace WebCore {
 
 class DeviceOrientationProviderQt;
 
-class DeviceOrientationClientQt : public DeviceOrientationClient {
+class DeviceOrientationClientQt final : public DeviceOrientationClient {
 public:
-    virtual void setController(DeviceOrientationController*);
-    virtual void startUpdating();
-    virtual void stopUpdating();
-    virtual DeviceOrientationData* lastOrientation() const;
-    virtual void deviceOrientationControllerDestroyed();
+    void setController(DeviceOrientationController*) final;
+    void startUpdating() final;
+    void stopUpdating() final;
+    DeviceOrientationData* lastOrientation() const final;
+    void deviceOrientationControllerDestroyed() final;
 
 private:
     std::unique_ptr<DeviceOrientationProviderQt> m_provider;

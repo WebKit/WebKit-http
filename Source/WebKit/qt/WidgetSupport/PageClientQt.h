@@ -38,7 +38,7 @@
 
 namespace WebCore {
 
-class PageClientQWidget : public QWebPageClient {
+class PageClientQWidget final : public QWebPageClient {
 public:
     PageClientQWidget(QWidget* newView, QWebPage* newPage)
         : view(newView)
@@ -46,38 +46,38 @@ public:
     {
         Q_ASSERT(view);
     }
-    virtual ~PageClientQWidget();
+    ~PageClientQWidget() final;
 
-    virtual bool isQWidgetClient() const { return true; }
+    bool isQWidgetClient() const final { return true; }
 
-    virtual void scroll(int dx, int dy, const QRect&);
-    virtual void update(const QRect& dirtyRect);
-    virtual void repaintViewport();
-    virtual void setInputMethodEnabled(bool);
-    virtual bool inputMethodEnabled() const;
-    virtual void setInputMethodHints(Qt::InputMethodHints);
+    void scroll(int dx, int dy, const QRect&) final;
+    void update(const QRect& dirtyRect) final;
+    void repaintViewport() final;
+    void setInputMethodEnabled(bool) final;
+    bool inputMethodEnabled() const final;
+    void setInputMethodHints(Qt::InputMethodHints) final;
 
 #ifndef QT_NO_CURSOR
-    virtual QCursor cursor() const;
-    virtual void updateCursor(const QCursor&);
+    QCursor cursor() const final;
+    void updateCursor(const QCursor&) final;
 #endif
 
-    virtual QPalette palette() const;
-    virtual int screenNumber() const;
-    virtual QObject* ownerWidget() const;
-    virtual QRect geometryRelativeToOwnerWidget() const;
-    virtual QPoint mapToOwnerWindow(const QPoint&) const;
+    QPalette palette() const final;
+    int screenNumber() const final;
+    QObject* ownerWidget() const final;
+    QRect geometryRelativeToOwnerWidget() const final;
+    QPoint mapToOwnerWindow(const QPoint&) const final;
 
-    virtual QObject* pluginParent() const;
+    QObject* pluginParent() const final;
 
-    virtual QStyle* style() const;
+    QStyle* style() const final;
 
-    virtual bool viewResizesToContentsEnabled() const { return false; }
+    bool viewResizesToContentsEnabled() const final { return false; }
 
-    virtual QRectF windowRect() const;
+    QRectF windowRect() const final;
 
-    virtual void setWidgetVisible(Widget*, bool visible);
-    virtual bool isViewVisible();
+    void setWidgetVisible(Widget*, bool visible) final;
+    bool isViewVisible() final;
 
     QWidget* view;
     QWebPage* page;
@@ -86,7 +86,7 @@ public:
 #if !defined(QT_NO_GRAPHICSVIEW)
 // the overlay is here for one reason only: to have the scroll-bars and other
 // extra UI elements appear on top of any QGraphicsItems created by CSS compositing layers
-class QGraphicsItemOverlay : public QGraphicsObject {
+class QGraphicsItemOverlay final : public QGraphicsObject {
     public:
     QGraphicsItemOverlay(QGraphicsWidget* view, QWebPage* p)
         : QGraphicsObject(view)
@@ -98,12 +98,12 @@ class QGraphicsItemOverlay : public QGraphicsObject {
         setCacheMode(QGraphicsItem::DeviceCoordinateCache);
     }
 
-    QRectF boundingRect() const
+    QRectF boundingRect() const final
     {
         return q->boundingRect();
     }
 
-    void paint(QPainter* painter, const QStyleOptionGraphicsItem* options, QWidget*)
+    void paint(QPainter* painter, const QStyleOptionGraphicsItem* options, QWidget*) final
     {
         page->mainFrame()->render(painter, static_cast<QWebFrame::RenderLayer>(QWebFrame::AllLayers&(~QWebFrame::ContentsLayer)), options->exposedRect.toRect());
     }
@@ -118,7 +118,7 @@ class QGraphicsItemOverlay : public QGraphicsObject {
 };
 
 
-class PageClientQGraphicsWidget : public QWebPageClient {
+class PageClientQGraphicsWidget final : public QWebPageClient {
 public:
     PageClientQGraphicsWidget(QGraphicsWebView* newView, QWebPage* newPage)
         : view(newView)
@@ -132,44 +132,44 @@ public:
         view->setFlag(QGraphicsItem::ItemUsesExtendedStyleOption);
     }
 
-    virtual ~PageClientQGraphicsWidget();
+    ~PageClientQGraphicsWidget() final;
 
-    virtual bool isQWidgetClient() const { return false; }
+    bool isQWidgetClient() const final { return false; }
 
-    virtual void scroll(int dx, int dy, const QRect&);
-    virtual void update(const QRect& dirtyRect);
-    virtual void repaintViewport();
-    virtual void setInputMethodEnabled(bool);
-    virtual bool inputMethodEnabled() const;
-    virtual void setInputMethodHints(Qt::InputMethodHints);
+    void scroll(int dx, int dy, const QRect&) final;
+    void update(const QRect& dirtyRect) final;
+    void repaintViewport() final;
+    void setInputMethodEnabled(bool) final;
+    bool inputMethodEnabled() const final;
+    void setInputMethodHints(Qt::InputMethodHints) final;
 
 #ifndef QT_NO_CURSOR
-    virtual QCursor cursor() const;
-    virtual void updateCursor(const QCursor&);
+    QCursor cursor() const final;
+    void updateCursor(const QCursor&) final;
 #endif
 
-    virtual QPalette palette() const;
-    virtual int screenNumber() const;
-    virtual QObject* ownerWidget() const;
-    virtual QRect geometryRelativeToOwnerWidget() const;
-    virtual QPoint mapToOwnerWindow(const QPoint&) const;
+    QPalette palette() const final;
+    int screenNumber() const final;
+    QObject* ownerWidget() const final;
+    QRect geometryRelativeToOwnerWidget() const final;
+    QPoint mapToOwnerWindow(const QPoint&) const final;
 
-    virtual QObject* pluginParent() const;
+    QObject* pluginParent() const final;
 
-    virtual QStyle* style() const;
+    QStyle* style() const final;
 
-    virtual bool viewResizesToContentsEnabled() const { return viewResizesToContents; }
+    bool viewResizesToContentsEnabled() const final { return viewResizesToContents; }
 
-    virtual void setWidgetVisible(Widget*, bool);
-    virtual bool isViewVisible();
+    void setWidgetVisible(Widget*, bool) final;
+    bool isViewVisible() final;
 
 #if USE(TILED_BACKING_STORE)
     virtual QRectF graphicsItemVisibleRect() const;
 #endif
 
-    virtual bool makeOpenGLContextCurrentIfAvailable();
+    bool makeOpenGLContextCurrentIfAvailable() final;
 
-    virtual QRectF windowRect() const;
+    QRectF windowRect() const final;
 
     QGraphicsView* firstGraphicsView() const;
 

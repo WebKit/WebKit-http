@@ -36,13 +36,13 @@
 
 namespace WebKit {
 
-class InspectorClientWebPage : public QWebPage {
+class InspectorClientWebPage final : public QWebPage {
     Q_OBJECT
     friend class InspectorClientQt;
 public:
     InspectorClientWebPage();
 
-    QWebPage* createWindow(QWebPage::WebWindowType);
+    QWebPage* createWindow(QWebPage::WebWindowType) final;
 
 public Q_SLOTS:
     void javaScriptWindowObjectCleared();

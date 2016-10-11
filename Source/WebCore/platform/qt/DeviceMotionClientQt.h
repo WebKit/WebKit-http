@@ -31,20 +31,20 @@ namespace WebCore {
 class DeviceMotionController;
 class DeviceMotionProviderQt;
 
-class DeviceMotionClientQt : public DeviceMotionClient {
+class DeviceMotionClientQt final : public DeviceMotionClient {
 public:
     DeviceMotionClientQt() { }
-    virtual ~DeviceMotionClientQt();
+    ~DeviceMotionClientQt();
 
 private:
-    virtual void deviceMotionControllerDestroyed();
+    void deviceMotionControllerDestroyed() final;
 
-    virtual void startUpdating();
-    virtual void stopUpdating();
+    void startUpdating() final;
+    void stopUpdating() final;
 
-    virtual DeviceMotionData* lastMotion() const;
+    DeviceMotionData* lastMotion() const final;
 
-    virtual void setController(DeviceMotionController*);
+    void setController(DeviceMotionController*) final;
 
     std::unique_ptr<DeviceMotionProviderQt> m_provider;
 };

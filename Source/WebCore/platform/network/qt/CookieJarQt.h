@@ -30,7 +30,7 @@
 
 namespace WebCore {
 
-class SharedCookieJarQt : public QNetworkCookieJar {
+class SharedCookieJarQt final : public QNetworkCookieJar {
     Q_OBJECT
 public:
     static SharedCookieJarQt* shared();
@@ -38,10 +38,10 @@ public:
     void destroy();
 
     void getHostnamesWithCookies(HashSet<String>&);
-    bool deleteCookie(const QNetworkCookie&);
+    bool deleteCookie(const QNetworkCookie&) final;
     void deleteCookiesForHostname(const String&);
     void deleteAllCookies();
-    bool setCookiesFromUrl(const QList<QNetworkCookie>&, const QUrl&);
+    bool setCookiesFromUrl(const QList<QNetworkCookie>&, const QUrl&) final;
     void loadCookies();
 
 private:

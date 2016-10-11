@@ -26,17 +26,17 @@ QT_BEGIN_NAMESPACE
 class QWidget;
 QT_END_NAMESPACE
 
-class QWidgetPluginImpl : public QtPluginWidgetAdapter {
+class QWidgetPluginImpl final : public QtPluginWidgetAdapter {
     Q_OBJECT
 public:
     QWidgetPluginImpl(QWidget *w) : m_widget(w) { }
-    virtual ~QWidgetPluginImpl();
-    void update(const QRect &) override;
-    void setGeometryAndClip(const QRect&, const QRect&, bool isVisible) override;
-    void setVisible(bool) override;
-    void setStyleSheet(const QString&) override;
-    void setWidgetParent(QObject *) override;
-    QObject* handle() const override;
+    ~QWidgetPluginImpl();
+    void update(const QRect &) final;
+    void setGeometryAndClip(const QRect&, const QRect&, bool isVisible) final;
+    void setVisible(bool) final;
+    void setStyleSheet(const QString&) final;
+    void setWidgetParent(QObject *) final;
+    QObject* handle() const final;
 private:
     QWidget *m_widget;
 };

@@ -34,26 +34,26 @@ namespace WebCore {
 
 class QStyleFacade;
 
-class ScrollbarThemeQStyle : public ScrollbarTheme {
+class ScrollbarThemeQStyle final : public ScrollbarTheme {
 public:
     ScrollbarThemeQStyle();
-    virtual ~ScrollbarThemeQStyle();
+    ~ScrollbarThemeQStyle() final;
 
-    virtual bool paint(Scrollbar&, GraphicsContext&, const IntRect& dirtyRect);
-    virtual void paintScrollCorner(ScrollView*, GraphicsContext&, const IntRect& cornerRect);
+    bool paint(Scrollbar&, GraphicsContext&, const IntRect& dirtyRect) final;
+    void paintScrollCorner(ScrollView*, GraphicsContext&, const IntRect& cornerRect) final;
 
-    virtual ScrollbarPart hitTest(Scrollbar&, const IntPoint&);
+    ScrollbarPart hitTest(Scrollbar&, const IntPoint&) final;
 
     virtual bool shouldCenterOnThumb(Scrollbar&, const PlatformMouseEvent&);
 
-    virtual void invalidatePart(Scrollbar&, ScrollbarPart);
+    void invalidatePart(Scrollbar&, ScrollbarPart) final;
 
-    virtual int thumbPosition(Scrollbar&);
-    virtual int thumbLength(Scrollbar&);
-    virtual int trackPosition(Scrollbar&);
-    virtual int trackLength(Scrollbar&);
+    int thumbPosition(Scrollbar&) final;
+    int thumbLength(Scrollbar&) final;
+    int trackPosition(Scrollbar&) final;
+    int trackLength(Scrollbar&) final;
 
-    virtual int scrollbarThickness(ScrollbarControlSize = RegularScrollbar);
+    int scrollbarThickness(ScrollbarControlSize = RegularScrollbar) final;
 
     QStyleFacade* qStyle() { return m_qStyle.get(); }
 
