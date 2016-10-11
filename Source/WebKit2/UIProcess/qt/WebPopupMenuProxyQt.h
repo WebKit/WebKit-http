@@ -40,7 +40,7 @@ class QQuickWebView;
 
 namespace WebKit {
 
-class WebPopupMenuProxyQt : public QObject, public WebPopupMenuProxy {
+class WebPopupMenuProxyQt final : public QObject, public WebPopupMenuProxy {
     Q_OBJECT
 
 public:
@@ -55,10 +55,10 @@ public:
     }
     ~WebPopupMenuProxyQt();
 
-    virtual void showPopupMenu(const WebCore::IntRect&, WebCore::TextDirection, double pageScaleFactor, const Vector<WebPopupItem>&, const PlatformPopupMenuData&, int32_t selectedIndex);
+    void showPopupMenu(const WebCore::IntRect&, WebCore::TextDirection, double pageScaleFactor, const Vector<WebPopupItem>&, const PlatformPopupMenuData&, int32_t selectedIndex) final;
 
 public Q_SLOTS:
-    virtual void hidePopupMenu();
+    void hidePopupMenu() final;
 
 private Q_SLOTS:
     void selectIndex(int);

@@ -41,7 +41,7 @@ namespace WebKit {
 
 static QHash<int, QByteArray> createRoleNamesHash();
 
-class PopupMenuItemModel : public QAbstractListModel {
+class PopupMenuItemModel final : public QAbstractListModel {
     Q_OBJECT
 
 public:
@@ -53,9 +53,9 @@ public:
     };
 
     PopupMenuItemModel(const Vector<WebPopupItem>&, bool multiple);
-    virtual int rowCount(const QModelIndex& parent = QModelIndex()) const { return m_items.size(); }
-    virtual QVariant data(const QModelIndex&, int role = Qt::DisplayRole) const;
-    virtual QHash<int, QByteArray> roleNames() const;
+    int rowCount(const QModelIndex& parent = QModelIndex()) const final { return m_items.size(); }
+    QVariant data(const QModelIndex&, int role = Qt::DisplayRole) const final;
+    QHash<int, QByteArray> roleNames() const final;
 
     Q_INVOKABLE void select(int);
 

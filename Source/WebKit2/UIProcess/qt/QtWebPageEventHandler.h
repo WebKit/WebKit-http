@@ -51,7 +51,7 @@ class ShareableBitmap;
 class WebGestureEvent;
 class WebPageProxy;
 
-class QtWebPageEventHandler : public QObject {
+class QtWebPageEventHandler final : public QObject {
     Q_OBJECT
 
 public:
@@ -109,7 +109,7 @@ private Q_SLOTS:
     void inputPanelVisibleChanged();
 
 private:
-    void timerEvent(QTimerEvent*);
+    void timerEvent(QTimerEvent*) final;
 
     QPointF m_lastClick;
     QBasicTimer m_clickTimer;

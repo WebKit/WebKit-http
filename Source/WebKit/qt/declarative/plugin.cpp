@@ -42,14 +42,14 @@ class WebKitQmlPlugin : public QQmlExtensionPlugin {
     Q_OBJECT
 public:
 #if defined(HAVE_WEBKIT2)
-    virtual void initializeEngine(QQmlEngine* engine, const char* uri)
+    void initializeEngine(QQmlEngine* engine, const char* uri) override
     {
         Q_UNUSED(uri);
         engine->addImageProvider(QLatin1String("webicon"), new QWebIconImageProvider);
     }
 #endif
 
-    virtual void registerTypes(const char* uri)
+    void registerTypes(const char* uri) override
     {
         Q_ASSERT(QLatin1String(uri) == QLatin1String("QtWebKit"));
 

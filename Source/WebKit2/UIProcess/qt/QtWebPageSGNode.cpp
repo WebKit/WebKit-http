@@ -39,7 +39,7 @@ using namespace WebCore;
 
 namespace WebKit {
 
-class ContentsSGNode : public QSGRenderNode {
+class ContentsSGNode final : public QSGRenderNode {
 public:
     ContentsSGNode(PassRefPtr<CoordinatedGraphicsScene> scene)
         : m_scene(scene)
@@ -49,24 +49,24 @@ public:
 
 #if QT_VERSION >= QT_VERSION_CHECK(5, 8, 0)
 
-    StateFlags changedStates() const override
+    StateFlags changedStates() const final
     {
         return StateFlags(StencilState) | ColorState | BlendState;
     }
 
-    void render(const RenderState* state) override
+    void render(const RenderState* state) final
     {
         renderInternal(state->projectionMatrix());
     }
 
 #else
 
-    StateFlags changedStates() override
+    StateFlags changedStates() final
     {
         return StateFlags(StencilState) | ColorState | BlendState;
     }
 
-    void render(const RenderState& state) override
+    void render(const RenderState& state) final
     {
         renderInternal(state.projectionMatrix);
     }
@@ -93,7 +93,7 @@ public:
 
     void releaseResources()
 #if QT_VERSION >= QT_VERSION_CHECK(5, 8, 0)
-        override
+        final
 #endif
     {
         coordinatedGraphicsScene()->purgeGLResources();

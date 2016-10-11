@@ -84,7 +84,7 @@ using namespace WebCore;
 
 namespace WebKit {
 
-class QtWebProcess : public QProcess {
+class QtWebProcess final : public QProcess {
     Q_OBJECT
 public:
     QtWebProcess(QObject* parent = 0)
@@ -93,7 +93,7 @@ public:
     }
 
 protected:
-    virtual void setupChildProcess();
+    void setupChildProcess() final;
 };
 
 void QtWebProcess::setupChildProcess()

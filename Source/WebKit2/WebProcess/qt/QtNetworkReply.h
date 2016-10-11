@@ -36,22 +36,22 @@ namespace WebKit {
 
 class QtNetworkAccessManager;
 
-class QtNetworkReply : public QNetworkReply {
+class QtNetworkReply final : public QNetworkReply {
 public:
     QtNetworkReply(const QNetworkRequest&, QtNetworkAccessManager* parent);
 
-    virtual qint64 readData(char *data, qint64 maxlen);
-    virtual qint64 bytesAvailable() const;
+    qint64 readData(char *data, qint64 maxlen) final;
+    qint64 bytesAvailable() const final;
     void setReplyData(const QtNetworkReplyData&);
     void finalize();
 
 protected:
     void setData(const SharedMemory::Handle&, qint64 dataSize);
 
-    virtual void abort();
-    virtual void close();
-    virtual void setReadBufferSize(qint64);
-    virtual bool canReadLine() const;
+    void abort() final;
+    void close() final;
+    void setReadBufferSize(qint64) final;
+    bool canReadLine() const final;
 
 private:
     qint64 m_bytesAvailable;

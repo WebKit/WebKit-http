@@ -47,7 +47,7 @@ class WebKitQmlExperimentalExtensionPlugin: public QQmlExtensionPlugin {
     Q_OBJECT
     Q_PLUGIN_METADATA(IID "org.qt-project.Qt.QQmlExtensionInterface" FILE "plugin.json")
 public:
-    virtual void registerTypes(const char* uri)
+    void registerTypes(const char* uri) override
     {
         qWarning("\nWARNING: This project is using the experimental QML API extensions for QtWebKit and is therefore tied to a specific QtWebKit release.\n"
                  "WARNING: The experimental API will change from version to version, or even be removed. You have been warned!\n");

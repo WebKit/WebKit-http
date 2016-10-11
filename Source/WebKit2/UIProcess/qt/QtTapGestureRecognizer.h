@@ -35,7 +35,7 @@ namespace WebKit {
 
 class QtWebPageEventHandler;
 
-class QtTapGestureRecognizer : public QObject, private QtGestureRecognizer {
+class QtTapGestureRecognizer final : public QObject, private QtGestureRecognizer {
 public:
     QtTapGestureRecognizer(QtWebPageEventHandler*);
     void update(const QTouchEvent::TouchPoint&);
@@ -43,7 +43,7 @@ public:
     void cancel();
 
 protected:
-    void timerEvent(QTimerEvent*);
+    void timerEvent(QTimerEvent*) final;
     void highlightTimeout();
     void singleTapTimeout();
     void tapAndHoldTimeout();

@@ -40,19 +40,19 @@ class QWebKitTest;
 
 namespace WebKit {
 
-class PageViewportControllerClientQt : public QObject, public PageViewportControllerClient {
+class PageViewportControllerClientQt final : public QObject, public PageViewportControllerClient {
     Q_OBJECT
 
 public:
     PageViewportControllerClientQt(QQuickWebView*, QQuickWebPage*);
-    ~PageViewportControllerClientQt();
+    ~PageViewportControllerClientQt() final;
 
-    virtual void setViewportPosition(const WebCore::FloatPoint& contentsPoint);
-    virtual void setPageScaleFactor(float);
+    void setViewportPosition(const WebCore::FloatPoint& contentsPoint) final;
+    void setPageScaleFactor(float) final;
 
-    virtual void didChangeContentsSize(const WebCore::IntSize&);
-    virtual void didChangeVisibleContents();
-    virtual void didChangeViewportAttributes();
+    void didChangeContentsSize(const WebCore::IntSize&) final;
+    void didChangeVisibleContents() final;
+    void didChangeViewportAttributes() final;
 
     virtual void setController(PageViewportController* controller) { m_controller = controller; }
 
@@ -89,7 +89,7 @@ private Q_SLOTS:
     void flickMoveEnded(); //   Called when panning (+ kinetic animation) ends.
 
 private:
-    class ScaleAnimation : public QVariantAnimation {
+    class ScaleAnimation final : public QVariantAnimation {
         PageViewportControllerClientQt* m_controllerClient;
     public:
         ScaleAnimation(PageViewportControllerClientQt* parent)
@@ -97,7 +97,7 @@ private:
             , m_controllerClient(parent)
         { }
 
-        virtual void updateCurrentValue(const QVariant&);
+        void updateCurrentValue(const QVariant&) final;
     };
 
     class ViewportInteractionTracker {

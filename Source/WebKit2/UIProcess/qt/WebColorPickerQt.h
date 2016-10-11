@@ -39,7 +39,7 @@ class Color;
 
 namespace WebKit {
 
-class WebColorPickerQt : public QObject, public WebColorPicker {
+class WebColorPickerQt final : public QObject, public WebColorPicker {
     Q_OBJECT
 
 public:
@@ -49,10 +49,10 @@ public:
     }
     ~WebColorPickerQt();
 
-    virtual void setSelectedColor(const WebCore::Color&);
+    void setSelectedColor(const WebCore::Color&) final;
 
 public Q_SLOTS:
-    virtual void endPicker();
+    void endPicker() final;
 
 private Q_SLOTS:
     void notifyColorSelected(const QColor&);
