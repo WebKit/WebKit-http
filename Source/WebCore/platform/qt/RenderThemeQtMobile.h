@@ -49,7 +49,7 @@ public:
 
     bool isControlStyled(const RenderStyle&, const BorderData&, const FillLayer&, const Color& backgroundColor) const final;
 
-    LengthBox popupInternalPaddingBox(const RenderStyle& style) const final;
+    LengthBox popupInternalPaddingBox(const RenderStyle&) const final;
 
     bool delegatesMenuListRendering() const final { return true; }
 
