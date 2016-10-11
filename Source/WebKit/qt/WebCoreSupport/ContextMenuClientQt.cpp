@@ -40,11 +40,6 @@ void ContextMenuClientQt::contextMenuDestroyed()
     delete this;
 }
 
-void ContextMenuClientQt::contextMenuItemSelected(ContextMenuItem*, const ContextMenu*)
-{
-    notImplemented();
-}
-
 void ContextMenuClientQt::downloadURL(const URL&)
 {
     notImplemented();

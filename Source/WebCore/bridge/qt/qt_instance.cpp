@@ -177,16 +177,6 @@ RuntimeObject* QtInstance::newRuntimeObject(ExecState* exec)
     return QtRuntimeObject::create(exec->vm(), WebCore::deprecatedGetDOMStructure<QtRuntimeObject>(exec), this);
 }
 
-void QtInstance::begin()
-{
-    // Do nothing.
-}
-
-void QtInstance::end()
-{
-    // Do nothing.
-}
-
 void QtInstance::getPropertyNames(ExecState* exec, PropertyNameArray& array)
 {
     // This is the enumerable properties, so put:

@@ -71,9 +71,6 @@ public:
     Class* getClass() const override;
     RuntimeObject* newRuntimeObject(ExecState*) final;
 
-    virtual void begin();
-    virtual void end();
-
     JSValue valueOf(ExecState*) const final;
     JSValue defaultValue(ExecState*, PreferredPrimitiveType) const final;
 

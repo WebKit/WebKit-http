@@ -40,7 +40,6 @@ public:
     static QtClass* classForObject(QObject*);
     ~QtClass();
 
-    virtual const char* name() const;
     Method* methodNamed(PropertyName, Instance*) const final;
     Field* fieldNamed(PropertyName, Instance*) const final;
 

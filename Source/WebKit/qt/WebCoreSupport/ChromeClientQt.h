@@ -107,7 +107,6 @@ public:
 
     void closeWindowSoon() final;
 
-    virtual bool shouldInterruptJavaScript();
     void runJavaScriptAlert(Frame*, const String&) final;
     bool runJavaScriptConfirm(Frame*, const String&) final;
     bool runJavaScriptPrompt(Frame*, const String& message, const String& defaultValue, String& result) final;

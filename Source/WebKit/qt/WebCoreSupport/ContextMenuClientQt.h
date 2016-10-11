@@ -37,8 +37,6 @@ class ContextMenuClientQt final : public ContextMenuClient {
 public:
     void contextMenuDestroyed() final;
 
-    virtual void contextMenuItemSelected(ContextMenuItem*, const ContextMenu*);
-
     void downloadURL(const URL&) final;
     void lookUpInDictionary(Frame*) final;
     void speak(const String&) final;

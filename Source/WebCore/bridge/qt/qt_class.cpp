@@ -58,11 +58,6 @@ QtClass* QtClass::classForObject(QObject* o)
     return aClass;
 }
 
-const char* QtClass::name() const
-{
-    return m_metaObject->className();
-}
-
 // We use this to get at signals (so we can return a proper function object,
 // and not get wrapped in RuntimeMethod). Also, use this for methods,
 // so we can cache the object and return the same object for the same
