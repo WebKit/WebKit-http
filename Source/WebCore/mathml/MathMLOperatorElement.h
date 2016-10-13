@@ -26,6 +26,7 @@
 #pragma once
 
 #if ENABLE(MATHML)
+
 #include "MathMLOperatorDictionary.h"
 #include "MathMLTokenElement.h"
 
@@ -35,7 +36,7 @@ class MathMLOperatorElement final : public MathMLTokenElement {
 public:
     static Ref<MathMLOperatorElement> create(const QualifiedName& tagName, Document&);
     struct OperatorChar {
-        UChar character { 0 };
+        UChar32 character { 0 };
         bool isVertical { true };
     };
     static OperatorChar parseOperatorChar(const String&);
@@ -58,17 +59,9 @@ private:
 
     Optional<OperatorChar> m_operatorChar;
 
-    struct DictionaryProperty {
-        MathMLOperatorDictionary::Form form;
-        // Default leading and trailing spaces are "thickmathspace".
-        unsigned short leadingSpaceInMathUnit { 5 };
-        unsigned short trailingSpaceInMathUnit { 5 };
-        // Default operator properties are all set to "false".
-        unsigned short flags { 0 };
-    };
-    Optional<DictionaryProperty> m_dictionaryProperty;
-    DictionaryProperty computeDictionaryProperty();
-    const DictionaryProperty& dictionaryProperty();
+    Optional<MathMLOperatorDictionary::Property> m_dictionaryProperty;
+    MathMLOperatorDictionary::Property computeDictionaryProperty();
+    const MathMLOperatorDictionary::Property& dictionaryProperty();
 
     struct OperatorProperties {
         unsigned short flags;

@@ -170,12 +170,18 @@ Sub32 U:G:32, UZD:G:32
     x86: Addr, Tmp
     x86: Tmp, Addr
 
+arm64: Sub32 U:G:32, U:G:32, D:G:32
+    Tmp, Tmp, Tmp
+
 64: Sub64 U:G:64, UD:G:64
     Tmp, Tmp
     x86: Imm, Addr
     Imm, Tmp
     x86: Addr, Tmp
     x86: Tmp, Addr
+
+arm64: Sub64 U:G:64, U:G:64, D:G:64
+    Tmp, Tmp, Tmp
 
 SubDouble U:F:64, U:F:64, D:F:64
     arm64: Tmp, Tmp, Tmp
@@ -294,8 +300,13 @@ x86: X86Div32 UZD:G:32, UZD:G:32, U:G:32
 x86_64: X86Div64 UZD:G:64, UZD:G:64, U:G:64
     Tmp*, Tmp*, Tmp
 
-Lea UA:G:Ptr, D:G:Ptr
+Lea32 UA:G:32, D:G:32
     Addr, Tmp
+    x86: Index, Tmp as x86Lea32
+
+Lea64 UA:G:64, D:G:64
+    Addr, Tmp
+    x86: Index, Tmp as x86Lea64
 
 And32 U:G:32, U:G:32, ZD:G:32
     Tmp, Tmp, Tmp
@@ -837,6 +848,10 @@ MoveDoubleConditionallyDouble U:G:32, U:F:64, U:F:64, U:F:64, U:F:64, D:F:64
 MoveDoubleConditionallyFloat U:G:32, U:F:32, U:F:32, U:F:64, U:F:64, D:F:64
     DoubleCond, Tmp, Tmp, Tmp, Tmp, Tmp
 
+MemoryFence /effects
+StoreFence /effects
+LoadFence /effects
+
 Jump /branch
 
 RetVoid /return
@@ -874,4 +889,7 @@ custom Patch
 custom CCall
 custom ColdCCall
 
+# This is a special wasm opcode that branches to a trap handler. This uses the generator located to Air::Code
+# to produce the side-exit code.
+custom WasmBoundsCheck
 

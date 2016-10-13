@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2007, 2008 Apple Inc. All rights reserved.
+ * Copyright (C) 2007-2008, 2016 Apple Inc. All rights reserved.
  * Copyright (C) 2008 Matt Lilek <webkit@mattlilek.com>
  * Copyright (C) 2010-2011 Google Inc. All rights reserved.
  *
@@ -68,9 +68,9 @@ JSValue JSCommandLineAPIHost::inspectedObject(ExecState& state)
 static JSArray* getJSListenerFunctions(ExecState& state, Document* document, const EventListenerInfo& listenerInfo)
 {
     VM& vm = state.vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     JSArray* result = constructEmptyArray(&state, nullptr);
-    if (UNLIKELY(vm.exception()))
-        return nullptr;
+    RETURN_IF_EXCEPTION(scope, nullptr);
     size_t handlersCount = listenerInfo.eventListenerVector.size();
     for (size_t i = 0, outputIndex = 0; i < handlersCount; ++i) {
         const JSEventListener* jsListener = JSEventListener::cast(&listenerInfo.eventListenerVector[i]->callback());

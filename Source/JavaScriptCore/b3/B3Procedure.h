@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef B3Procedure_h
-#define B3Procedure_h
+#pragma once
 
 #if ENABLE(B3_JIT)
 
@@ -40,6 +39,7 @@
 #include <wtf/Bag.h>
 #include <wtf/FastMalloc.h>
 #include <wtf/HashSet.h>
+#include <wtf/IndexedContainerIterator.h>
 #include <wtf/Noncopyable.h>
 #include <wtf/PrintStream.h>
 #include <wtf/SharedTask.h>
@@ -57,6 +57,9 @@ class Value;
 class Variable;
 
 namespace Air { class Code; }
+
+typedef void WasmBoundsCheckGeneratorFunction(CCallHelpers&, GPRReg, unsigned);
+typedef SharedTask<WasmBoundsCheckGeneratorFunction> WasmBoundsCheckGenerator;
 
 // This represents B3's view of a piece of code. Note that this object must exist in a 1:1
 // relationship with Air::Code. B3::Procedure and Air::Code are just different facades of the B3
@@ -133,53 +136,7 @@ public:
     BasicBlock* at(unsigned index) const { return m_blocks[index].get(); }
     BasicBlock* operator[](unsigned index) const { return at(index); }
 
-    class iterator {
-    public:
-        iterator()
-            : m_procedure(nullptr)
-            , m_index(0)
-        {
-        }
-
-        iterator(const Procedure& procedure, unsigned index)
-            : m_procedure(&procedure)
-            , m_index(findNext(index))
-        {
-        }
-
-        BasicBlock* operator*()
-        {
-            return m_procedure->at(m_index);
-        }
-
-        iterator& operator++()
-        {
-            m_index = findNext(m_index + 1);
-            return *this;
-        }
-
-        bool operator==(const iterator& other) const
-        {
-            ASSERT(m_procedure == other.m_procedure);
-            return m_index == other.m_index;
-        }
-        
-        bool operator!=(const iterator& other) const
-        {
-            return !(*this == other);
-        }
-
-    private:
-        unsigned findNext(unsigned index)
-        {
-            while (index < m_procedure->size() && !m_procedure->at(index))
-                index++;
-            return index;
-        }
-
-        const Procedure* m_procedure;
-        unsigned m_index;
-    };
+    typedef WTF::IndexedContainerIterator<Procedure> iterator;
 
     iterator begin() const { return iterator(*this, 0); }
     iterator end() const { return iterator(*this, size()); }
@@ -255,14 +212,25 @@ public:
     const Air::Code& code() const { return *m_code; }
     Air::Code& code() { return *m_code; }
 
-    unsigned callArgAreaSize() const;
-    void requestCallArgAreaSize(unsigned size);
+    unsigned callArgAreaSizeInBytes() const;
+    void requestCallArgAreaSizeInBytes(unsigned size);
+
+    // This tells the register allocators to stay away from this register.
+    JS_EXPORT_PRIVATE void pinRegister(Reg);
 
     JS_EXPORT_PRIVATE unsigned frameSize() const;
-    const RegisterAtOffsetList& calleeSaveRegisters() const;
+    JS_EXPORT_PRIVATE const RegisterAtOffsetList& calleeSaveRegisters() const;
 
     PCToOriginMap& pcToOriginMap() { return m_pcToOriginMap; }
     PCToOriginMap releasePCToOriginMap() { return WTFMove(m_pcToOriginMap); }
+
+    JS_EXPORT_PRIVATE void setWasmBoundsCheckGenerator(RefPtr<WasmBoundsCheckGenerator>);
+
+    template<typename Functor>
+    void setWasmBoundsCheckGenerator(const Functor& functor)
+    {
+        setWasmBoundsCheckGenerator(RefPtr<WasmBoundsCheckGenerator>(createSharedTask<WasmBoundsCheckGeneratorFunction>(functor)));
+    }
 
 private:
     friend class BlockInsertionSet;
@@ -289,6 +257,3 @@ private:
 } } // namespace JSC::B3
 
 #endif // ENABLE(B3_JIT)
-
-#endif // B3Procedure_h
-

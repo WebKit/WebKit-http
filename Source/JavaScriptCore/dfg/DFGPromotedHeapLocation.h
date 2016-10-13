@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef DFGPromotedHeapLocation_h
-#define DFGPromotedHeapLocation_h
+#pragma once
 
 #if ENABLE(DFG_JIT)
 
@@ -87,8 +86,8 @@ public:
     PromotedLocationKind kind() const { return m_kind; }
     unsigned info() const { return m_info; }
     
-    OpInfo imm1() const { return OpInfo(static_cast<uint32_t>(m_kind)); }
-    OpInfo imm2() const { return OpInfo(static_cast<uint32_t>(m_info)); }
+    unsigned imm1() const { return static_cast<uint32_t>(m_kind); }
+    unsigned imm2() const { return static_cast<uint32_t>(m_info); }
     
     unsigned hash() const
     {
@@ -231,6 +230,3 @@ template<> struct HashTraits<JSC::DFG::PromotedLocationDescriptor> : SimpleClass
 } // namespace WTF
 
 #endif // ENABLE(DFG_JIT)
-
-#endif // DFGPromotedHeapLocation_h
-

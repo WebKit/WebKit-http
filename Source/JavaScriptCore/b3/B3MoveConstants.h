@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef B3MoveConstants_h
-#define B3MoveConstants_h
+#pragma once
 
 #if ENABLE(B3_JIT)
 
@@ -34,11 +33,8 @@ class Procedure;
 
 // Moves large constants around, with the goal of placing them in the optimal points in the program.
 
-void moveConstants(Procedure&);
+JS_EXPORT_PRIVATE void moveConstants(Procedure&);
 
 } } // namespace JSC::B3
 
 #endif // ENABLE(B3_JIT)
-
-#endif // B3MoveConstants_h
-

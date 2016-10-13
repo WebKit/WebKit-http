@@ -207,12 +207,6 @@ FloatSize WebPage::availableScreenSize() const
     return m_availableScreenSize;
 }
 
-void WebPage::viewportPropertiesDidChange(const ViewportArguments& viewportArguments)
-{
-    if (m_viewportConfiguration.setViewportArguments(viewportArguments))
-        viewportConfigurationChanged();
-}
-
 void WebPage::didReceiveMobileDocType(bool isMobileDoctype)
 {
     if (isMobileDoctype)
@@ -331,6 +325,13 @@ double WebPage::maximumPageScaleFactor() const
     if (!m_viewportConfiguration.allowsUserScaling())
         return m_page->pageScaleFactor();
     return m_viewportConfiguration.maximumScale();
+}
+
+double WebPage::maximumPageScaleFactorIgnoringAlwaysScalable() const
+{
+    if (!m_viewportConfiguration.allowsUserScalingIgnoringAlwaysScalable())
+        return m_page->pageScaleFactor();
+    return m_viewportConfiguration.maximumScaleIgnoringAlwaysScalable();
 }
 
 bool WebPage::allowsUserScaling() const
@@ -2343,7 +2344,8 @@ void WebPage::getPositionInformation(const IntPoint& point, InteractionInformati
                         }
                     }
 #endif
-                } else if (element->renderer() && element->renderer()->isRenderImage()) {
+                }
+                if (element->renderer() && element->renderer()->isRenderImage()) {
                     info.isImage = true;
                     auto& renderImage = downcast<RenderImage>(*(element->renderer()));
                     if (renderImage.cachedImage() && !renderImage.cachedImage()->errorOccurred()) {
@@ -2548,8 +2550,9 @@ void WebPage::getAssistedNodeInformation(AssistedNodeInformation& information)
 
     information.minimumScaleFactor = minimumPageScaleFactor();
     information.maximumScaleFactor = maximumPageScaleFactor();
+    information.maximumScaleFactorIgnoringAlwaysScalable = maximumPageScaleFactorIgnoringAlwaysScalable();
     information.allowsUserScaling = m_viewportConfiguration.allowsUserScaling();
-    information.allowsUserScalingIgnoringForceAlwaysScaling = m_viewportConfiguration.allowsUserScalingIgnoringForceAlwaysScaling();
+    information.allowsUserScalingIgnoringAlwaysScalable = m_viewportConfiguration.allowsUserScalingIgnoringAlwaysScalable();
     information.hasNextNode = hasAssistableElement(m_assistedNode.get(), *m_page, true);
     information.hasPreviousNode = hasAssistableElement(m_assistedNode.get(), *m_page, false);
 

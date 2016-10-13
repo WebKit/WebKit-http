@@ -25,7 +25,7 @@
 #ifndef Cache_h
 #define Cache_h
 
-#include "NativeImagePtr.h"
+#include "NativeImage.h"
 #include "SecurityOriginHash.h"
 #include "SessionID.h"
 #include "Timer.h"
@@ -133,7 +133,7 @@ public:
     void removeFromLRUList(CachedResource&);
 
     // Called to adjust the cache totals when a resource changes size.
-    void adjustSize(bool live, int delta);
+    void adjustSize(bool live, long long delta);
 
     // Track decoded resources that are in the cache and referenced by a Web page.
     void insertInLiveDecodedResourcesList(CachedResource&);

@@ -42,6 +42,7 @@
 #import <JavaScriptCore/JSContextInternal.h>
 #import <JavaScriptCore/JSValueInternal.h>
 #import <interpreter/CallFrame.h>
+#import <runtime/CatchScope.h>
 #import <runtime/Completion.h>
 #import <runtime/InitializeThreading.h>
 #import <runtime/JSGlobalObject.h>
@@ -57,7 +58,6 @@ using namespace WebCore;
 
 using JSC::CallData;
 using JSC::CallType;
-using JSC::CallType::None;
 using JSC::ExecState;
 using JSC::Identifier;
 using JSC::JSLockHolder;
@@ -129,8 +129,10 @@ static void addExceptionToConsole(ExecState* exec, JSC::Exception* exception)
 
 static void addExceptionToConsole(ExecState* exec)
 {
-    JSC::Exception* exception = exec->exception();
-    exec->clearException();
+    JSC::VM& vm = exec->vm();
+    auto scope = DECLARE_CATCH_SCOPE(vm);
+    JSC::Exception* exception = scope.exception();
+    scope.clearException();
     addExceptionToConsole(exec, exception);
 }
 
@@ -334,9 +336,12 @@ static void getListFromNSArray(ExecState *exec, NSArray *array, RootObject* root
         return nil;
 
     // Look up the function object.
-    ExecState* exec = [self _rootObject]->globalObject()->globalExec();
-    JSLockHolder lock(exec);
-    ASSERT(!exec->hadException());
+    auto globalObject = [self _rootObject]->globalObject();
+    auto& vm = globalObject->vm();
+    JSLockHolder lock(vm);
+    auto scope = DECLARE_CATCH_SCOPE(vm);
+    ExecState* exec = globalObject->globalExec();
+    UNUSED_PARAM(scope);
 
     JSC::JSValue function = [self _imp]->get(exec, Identifier::fromString(exec, String(name)));
     CallData callData;
@@ -369,10 +374,12 @@ static void getListFromNSArray(ExecState *exec, NSArray *array, RootObject* root
     if (![self _isSafeScript])
         return nil;
     
-    ExecState* exec = [self _rootObject]->globalObject()->globalExec();
-    ASSERT(!exec->hadException());
-
-    JSLockHolder lock(exec);
+    auto globalObject = [self _rootObject]->globalObject();
+    auto& vm = globalObject->vm();
+    JSLockHolder lock(vm);
+    auto scope = DECLARE_CATCH_SCOPE(vm);
+    ExecState* exec = globalObject->globalExec();
+    UNUSED_PARAM(scope);
     
     JSC::JSValue returnValue = JSMainThreadExecState::profiledEvaluate(exec, JSC::ProfilingReason::Other, makeSource(String(script)), JSC::JSValue());
 
@@ -386,17 +393,19 @@ static void getListFromNSArray(ExecState *exec, NSArray *array, RootObject* root
     if (![self _isSafeScript])
         return;
 
-    ExecState* exec = [self _rootObject]->globalObject()->globalExec();
-    ASSERT(!exec->hadException());
+    auto globalObject = [self _rootObject]->globalObject();
+    auto& vm = globalObject->vm();
+    JSLockHolder lock(vm);
+    auto scope = DECLARE_CATCH_SCOPE(vm);
+    ExecState* exec = globalObject->globalExec();
 
-    JSLockHolder lock(exec);
     JSObject* object = JSC::jsDynamicCast<JSObject*>([self _imp]);
     PutPropertySlot slot(object);
     object->methodTable()->put(object, exec, Identifier::fromString(exec, String(key)), convertObjcValueToValue(exec, &value, ObjcObjectType, [self _rootObject]), slot);
 
-    if (exec->hadException()) {
+    if (UNLIKELY(scope.exception())) {
         addExceptionToConsole(exec);
-        exec->clearException();
+        scope.clearException();
     }
 }
 
@@ -405,22 +414,25 @@ static void getListFromNSArray(ExecState *exec, NSArray *array, RootObject* root
     if (![self _isSafeScript])
         return nil;
 
-    ExecState* exec = [self _rootObject]->globalObject()->globalExec();
-    ASSERT(!exec->hadException());
-
     id resultObj;
     {
+        auto globalObject = [self _rootObject]->globalObject();
+        auto& vm = globalObject->vm();
+
         // Need to scope this lock to ensure that we release the lock before calling
         // [super valueForKey:key] which might throw an exception and bypass the JSLock destructor,
         // leaving the lock permanently held
-        JSLockHolder lock(exec);
-        
+        JSLockHolder lock(vm);
+
+        auto scope = DECLARE_CATCH_SCOPE(vm);
+        ExecState* exec = globalObject->globalExec();
+
         JSC::JSValue result = [self _imp]->get(exec, Identifier::fromString(exec, String(key)));
         
-        if (exec->hadException()) {
+        if (UNLIKELY(scope.exception())) {
             addExceptionToConsole(exec);
             result = jsUndefined();
-            exec->clearException();
+            scope.clearException();
         }
 
         resultObj = [WebScriptObject _convertValueToObjcValue:result originRootObject:[self _originRootObject] rootObject:[self _rootObject]];
@@ -437,15 +449,17 @@ static void getListFromNSArray(ExecState *exec, NSArray *array, RootObject* root
     if (![self _isSafeScript])
         return;
 
-    ExecState* exec = [self _rootObject]->globalObject()->globalExec();
-    ASSERT(!exec->hadException());
+    auto globalObject = [self _rootObject]->globalObject();
+    auto& vm = globalObject->vm();
+    JSLockHolder lock(vm);
+    auto scope = DECLARE_CATCH_SCOPE(vm);
+    ExecState* exec = globalObject->globalExec();
 
-    JSLockHolder lock(exec);
     [self _imp]->methodTable()->deleteProperty([self _imp], exec, Identifier::fromString(exec, String(key)));
 
-    if (exec->hadException()) {
+    if (UNLIKELY(scope.exception())) {
         addExceptionToConsole(exec);
-        exec->clearException();
+        scope.clearException();
     }
 }
 
@@ -454,15 +468,17 @@ static void getListFromNSArray(ExecState *exec, NSArray *array, RootObject* root
     if (![self _isSafeScript])
         return NO;
 
-    ExecState* exec = [self _rootObject]->globalObject()->globalExec();
-    ASSERT(!exec->hadException());
+    auto globalObject = [self _rootObject]->globalObject();
+    auto& vm = globalObject->vm();
+    JSLockHolder lock(vm);
+    auto scope = DECLARE_CATCH_SCOPE(vm);
+    ExecState* exec = globalObject->globalExec();
 
-    JSLockHolder lock(exec);
     BOOL result = [self _imp]->hasProperty(exec, Identifier::fromString(exec, String(key)));
 
-    if (exec->hadException()) {
+    if (UNLIKELY(scope.exception())) {
         addExceptionToConsole(exec);
-        exec->clearException();
+        scope.clearException();
     }
 
     return result;
@@ -490,16 +506,18 @@ static void getListFromNSArray(ExecState *exec, NSArray *array, RootObject* root
     if (![self _isSafeScript])
         return nil;
 
-    ExecState* exec = [self _rootObject]->globalObject()->globalExec();
-    ASSERT(!exec->hadException());
+    auto globalObject = [self _rootObject]->globalObject();
+    auto& vm = globalObject->vm();
+    JSLockHolder lock(vm);
+    auto scope = DECLARE_CATCH_SCOPE(vm);
+    ExecState* exec = globalObject->globalExec();
 
-    JSLockHolder lock(exec);
     JSC::JSValue result = [self _imp]->get(exec, index);
 
-    if (exec->hadException()) {
+    if (UNLIKELY(scope.exception())) {
         addExceptionToConsole(exec);
         result = jsUndefined();
-        exec->clearException();
+        scope.clearException();
     }
 
     id resultObj = [WebScriptObject _convertValueToObjcValue:result originRootObject:[self _originRootObject] rootObject:[self _rootObject]];
@@ -512,15 +530,17 @@ static void getListFromNSArray(ExecState *exec, NSArray *array, RootObject* root
     if (![self _isSafeScript])
         return;
 
-    ExecState* exec = [self _rootObject]->globalObject()->globalExec();
-    ASSERT(!exec->hadException());
+    auto globalObject = [self _rootObject]->globalObject();
+    auto& vm = globalObject->vm();
+    JSLockHolder lock(vm);
+    auto scope = DECLARE_CATCH_SCOPE(vm);
+    ExecState* exec = globalObject->globalExec();
 
-    JSLockHolder lock(exec);
     [self _imp]->methodTable()->putByIndex([self _imp], exec, index, convertObjcValueToValue(exec, &value, ObjcObjectType, [self _rootObject]), false);
 
-    if (exec->hadException()) {
+    if (UNLIKELY(scope.exception())) {
         addExceptionToConsole(exec);
-        exec->clearException();
+        scope.clearException();
     }
 }
 

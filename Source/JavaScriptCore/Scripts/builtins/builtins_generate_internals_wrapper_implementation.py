@@ -44,7 +44,6 @@ class BuiltinsInternalsWrapperImplementationGenerator(BuiltinsGenerator):
     def generate_output(self):
         args = {
             'namespace': self.model().framework.setting('namespace'),
-            'headerGuard': self.output_filename().replace('.', '_'),
         }
 
         sections = []
@@ -66,6 +65,9 @@ class BuiltinsInternalsWrapperImplementationGenerator(BuiltinsGenerator):
             ),
             (["WebCore"],
                 ("WebCore", "WebCoreJSClientData.h"),
+            ),
+            (["WebCore"],
+                ("JavaScriptCore", "heap/HeapInlines.h"),
             ),
             (["WebCore"],
                 ("JavaScriptCore", "heap/SlotVisitorInlines.h"),

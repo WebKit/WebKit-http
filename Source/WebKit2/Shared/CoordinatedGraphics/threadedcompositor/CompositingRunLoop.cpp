@@ -33,6 +33,10 @@
 #include <wtf/NeverDestroyed.h>
 #include <wtf/WorkQueue.h>
 
+#if USE(GLIB_EVENT_LOOP)
+#include <glib.h>
+#endif
+
 namespace WebKit {
 
 class WorkQueuePool {
@@ -112,6 +116,10 @@ CompositingRunLoop::CompositingRunLoop(std::function<void ()>&& updateFunction)
     , m_updateFunction(WTFMove(updateFunction))
 {
     m_updateState.store(UpdateState::Completed);
+
+#if PLATFORM(GTK)
+    m_updateTimer.setPriority(G_PRIORITY_HIGH_IDLE);
+#endif
 }
 
 CompositingRunLoop::~CompositingRunLoop()

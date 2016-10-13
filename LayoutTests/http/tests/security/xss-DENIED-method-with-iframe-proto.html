@@ -1,17 +1,14 @@
 <html>
 <head>
+<script src="/js-test-resources/js-test-pre.js"></script>
 <script src="resources/cross-frame-access.js"></script>
 </head>
 <body>
 <iframe src="http://localhost:8000/" style=""></iframe>
 <pre id="console"></pre>
 <script>
-if (window.testRunner) {
-    testRunner.dumpAsText();
-    testRunner.waitUntilDone();
-}
-
-log("Tests that making other frame window a prototype doesn't expose that window methods");
+description("Tests that making other frame window a prototype doesn't expose that window methods");
+jsTestIsAsync = true;
 
 targetWindow = frames[0];
 
@@ -23,38 +20,43 @@ function callback(global) {
 
 function check() {
   shouldBeFalse('this.wasInvoked');
-  if (window.testRunner)
-      testRunner.notifyDone();
+  finishJSTest();
 }
 
 window.onload = function() {
   originalSetTimeout = setTimeout;
 
-  __proto__ = targetWindow;
+  shouldThrowErrorName("__proto__ = targetWindow", "TypeError");
 
   var needsCheck = false;
   try {
     targetWindow.setTimeout(callback, 0, this);
     needsCheck = true;
-  } catch (e) { }
+  } catch (e) {
+    console.log(e);
+  }
 
   try {
     setTimeout.call(targetWindow, callback, 0, this);
     needsCheck = true;
-  } catch(e) { }
+  } catch(e) {
+    console.log(e);
+  }
 
   try {
     originalSetTimeout.call(targetWindow, callback, 0, this);
     needsCheck = true;
-  } catch(e) { }
+  } catch(e) {
+    console.log(e);
+  }
 
   if (needsCheck) {
     originalSetTimeout(check, 10);
   } else {
-    if (window.testRunner)
-      testRunner.notifyDone();
+    finishJSTest();
   }
 }
 </script>
+<script src="/js-test-resources/js-test-post.js"></script>
 </body>
 </html>

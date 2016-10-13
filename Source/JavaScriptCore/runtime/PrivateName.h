@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef PrivateName_h
-#define PrivateName_h
+#pragma once
 
 #include <wtf/text/SymbolImpl.h>
 
@@ -38,7 +37,7 @@ public:
     }
 
     explicit PrivateName(SymbolImpl& uid)
-        : m_uid(&uid)
+        : m_uid(uid)
     {
     }
 
@@ -48,15 +47,20 @@ public:
     {
     }
 
-    SymbolImpl* uid() const { return m_uid.get(); }
+    PrivateName(const PrivateName& privateName)
+        : m_uid(privateName.m_uid.copyRef())
+    {
+    }
 
-    bool operator==(const PrivateName& other) const { return uid() == other.uid(); }
-    bool operator!=(const PrivateName& other) const { return uid() != other.uid(); }
+    PrivateName(PrivateName&&) = default;
+
+    SymbolImpl& uid() const { return const_cast<SymbolImpl&>(m_uid.get()); }
+
+    bool operator==(const PrivateName& other) const { return &uid() == &other.uid(); }
+    bool operator!=(const PrivateName& other) const { return &uid() != &other.uid(); }
 
 private:
-    RefPtr<SymbolImpl> m_uid;
+    Ref<SymbolImpl> m_uid;
 };
 
-}
-
-#endif
+} // namespace JSC

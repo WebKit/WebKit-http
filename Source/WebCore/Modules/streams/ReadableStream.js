@@ -24,7 +24,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-// @conditional=ENABLE(STREAMS_API)
+// @conditional=ENABLE(READABLE_STREAM_API)
 
 function initializeReadableStream(underlyingSource, strategy)
 {
@@ -36,32 +36,30 @@ function initializeReadableStream(underlyingSource, strategy)
          strategy = { highWaterMark: 1, size: function() { return 1; } };
 
     if (!@isObject(underlyingSource))
-        throw new @TypeError("ReadableStream constructor takes an object as first argument");
+        @throwTypeError("ReadableStream constructor takes an object as first argument");
 
     if (strategy !== @undefined && !@isObject(strategy))
-        throw new @TypeError("ReadableStream constructor takes an object as second argument, if any");
+        @throwTypeError("ReadableStream constructor takes an object as second argument, if any");
 
-    this.@underlyingSource = underlyingSource;
-
-    this.@queue = @newQueue();
     this.@state = @streamReadable;
-    this.@started = false;
-    this.@closeRequested = false;
-    this.@pullAgain = false;
-    this.@pulling = false;
     this.@reader = @undefined;
     this.@storedError = @undefined;
     this.@disturbed = false;
-    this.@controller = new @ReadableStreamDefaultController(this);
-    this.@strategy = @validateAndNormalizeQueuingStrategy(strategy.size, strategy.highWaterMark);
+    // Initialized with null value to enable distinction with undefined case.
+    this.@readableStreamController = null;
 
-    @promiseInvokeOrNoopNoCatch(underlyingSource, "start", [this.@controller]).@then(() => {
-        this.@started = true;
-        @requestReadableStreamPull(this);
-    }, (error) => {
-        if (this.@state === @streamReadable)
-            @errorReadableStream(this, error);
-    });
+    const type = underlyingSource.type;
+    const typeString = @String(type);
+
+    if (typeString === "bytes") {
+         // FIXME: Implement support of ReadableByteStreamController.
+        @throwTypeError("ReadableByteStreamController is not implemented");
+    } else if (type === @undefined) {
+        if (strategy.highWaterMark === @undefined)
+            strategy.highWaterMark = 1;
+        this.@readableStreamController = new @ReadableStreamDefaultController(this, underlyingSource, strategy.size, strategy.highWaterMark);
+    } else
+        @throwRangeError("Invalid type for underlying source");
 
     return this;
 }
@@ -76,17 +74,28 @@ function cancel(reason)
     if (@isReadableStreamLocked(this))
         return @Promise.@reject(new @TypeError("ReadableStream is locked"));
 
-    return @cancelReadableStream(this, reason);
+    return @readableStreamCancel(this, reason);
 }
 
-function getReader()
+function getReader(options)
 {
     "use strict";
 
     if (!@isReadableStream(this))
         throw @makeThisTypeError("ReadableStream", "getReader");
 
-    return new @ReadableStreamDefaultReader(this);
+    if (options === @undefined)
+         options = { };
+
+    if (options.mode === 'byob') {
+        // FIXME: Update once ReadableByteStreamContoller and ReadableStreamBYOBReader are implemented.
+        @throwTypeError("ReadableStreamBYOBReader is not implemented");
+    }
+
+    if (options.mode === @undefined)
+        return new @ReadableStreamDefaultReader(this);
+
+    @throwRangeError("Invalid mode is specified");
 }
 
 function pipeThrough(streams, options)
@@ -197,7 +206,7 @@ function tee()
     if (!@isReadableStream(this))
         throw @makeThisTypeError("ReadableStream", "tee");
 
-    return @teeReadableStream(this, false);
+    return @readableStreamTee(this, false);
 }
 
 function locked()

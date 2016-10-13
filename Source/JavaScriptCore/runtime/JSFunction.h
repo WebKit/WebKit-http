@@ -21,8 +21,7 @@
  *
  */
 
-#ifndef JSFunction_h
-#define JSFunction_h
+#pragma once
 
 #include "FunctionRareData.h"
 #include "InternalFunction.h"
@@ -81,7 +80,7 @@ public:
     JS_EXPORT_PRIVATE static JSFunction* createBuiltinFunction(VM&, FunctionExecutable*, JSGlobalObject*);
     static JSFunction* createBuiltinFunction(VM&, FunctionExecutable*, JSGlobalObject*, const String& name);
 
-    JS_EXPORT_PRIVATE String name();
+    JS_EXPORT_PRIVATE String name(VM&);
     JS_EXPORT_PRIVATE String displayName(VM&);
     const String calculatedDisplayName(VM&);
 
@@ -189,11 +188,11 @@ private:
 
     bool hasReifiedLength() const;
     bool hasReifiedName() const;
-    void reifyLength(ExecState*);
-    void reifyName(ExecState*);
-    void reifyBoundNameIfNeeded(ExecState*, PropertyName);
-    void reifyName(ExecState*, String name);
-    void reifyLazyPropertyIfNeeded(ExecState*, PropertyName propertyName);
+    void reifyLength(VM&);
+    void reifyName(VM&, ExecState*);
+    void reifyBoundNameIfNeeded(VM&, ExecState*, PropertyName);
+    void reifyName(VM&, ExecState*, String name);
+    void reifyLazyPropertyIfNeeded(VM&, ExecState*, PropertyName propertyName);
 
     friend class LLIntOffsetsExtractor;
 
@@ -207,5 +206,3 @@ private:
 };
 
 } // namespace JSC
-
-#endif // JSFunction_h

@@ -50,8 +50,6 @@ webkit.org/b/146622 [ Yosemite Debug ] webgl/1.0.2/conformance/more/functions/co
 
 webkit.org/b/150564 svg/repaint/add-background-property-on-root.html [ Pass Timeout ]
 
-webkit.org/b/152272 [ Debug ] js/regress/generator-with-several-types.html [ Pass Timeout ]
-
 webkit.org/b/152485 webaudio/audiocontext-state-interrupted.html [ Pass Crash ]
 
 webkit.org/b/152789 webarchive/adopt-attribute-styled-body-webarchive.html [ Pass Crash ]
@@ -189,9 +187,12 @@ fast/scrolling/scroll-animator-overlay-scrollbars-hovered.html [ Skip ]
 # This hit-test test doesn't work on DRT
 webkit.org/b/156084 accessibility/mac/video-tag-hit-test.html [ Skip ]
 
-# <a download> is not support in WK1 yet.
+# <a download> is not supported in WK1 yet.
 webkit.org/b/156069 fast/dom/HTMLAnchorElement/anchor-nodownload-set.html [ Failure ]
 webkit.org/b/156069 fast/dom/HTMLAnchorElement/anchor-download.html [ Failure ]
+webkit.org/b/156069 fast/dom/HTMLAnchorElement/anchor-download-synthetic-click.html [ Skip ]
+webkit.org/b/156069 fast/dom/HTMLAnchorElement/anchor-download-user-triggered-synthetic-click.html [ Skip ]
+webkit.org/b/156069 http/tests/download/area-download.html [ Skip ]
 webkit.org/b/156069 http/tests/security/anchor-download-allow-blob.html [ Skip ]
 webkit.org/b/156069 http/tests/security/anchor-download-allow-data.html [ Skip ]
 webkit.org/b/156069 http/tests/security/anchor-download-allow-sameorigin.html [ Skip ]
@@ -227,8 +228,8 @@ webkit.org/b/158585 webgl/webgl-backing-store-size-update.html [ Pass Timeout ]
 [ Sierra+ ] accessibility/mac/document-attributes.html [ Failure ]
 [ Sierra+ ] accessibility/parent-delete.html [ Failure ]
 
-# rdar://problem/26422051
-[ Sierra+ ] fast/inline-block/003.html [ Failure ]
+# rdar://problem/28017216
+[ Yosemite ElCapitan ] fast/inline-block/003.html [ Failure ]
 
 # rdar://problem/26478296
 [ Sierra+ ] svg/hixie/text/003.html [ Failure ]
@@ -236,8 +237,6 @@ webkit.org/b/158585 webgl/webgl-backing-store-size-update.html [ Pass Timeout ]
 [ Yosemite ] http/tests/media/hls/video-controller-getStartDate.html [ Pass Timeout ]
 
 webkit.org/b/159893 [ Debug ] imported/w3c/web-platform-tests/XMLHttpRequest/event-readystatechange-loaded.htm [ Pass Failure ]
-
-webkit.org/b/156070 storage/indexeddb/modern/abort-requests-cancelled.html [ Pass Timeout ]
 
 webkit.org/b/160101 userscripts/window-onerror-for-isolated-world-3.html [ Pass Failure ]
 
@@ -249,3 +248,15 @@ webkit.org/b/160227 [ ElCapitan Debug ] inspector/memory/tracking.html [ Pass Cr
 
 # rdar://problem/27723718
 [ Sierra+ ] imported/blink/compositing/child-transform-with-anchor-point.html [ ImageOnlyFailure ]
+
+webkit.org/b/161056 gamepad [ Skip ]
+
+webkit.org/b/161191 imported/w3c/web-platform-tests/url/url-setters.html [ Skip ]
+
+webkit.org/b/162592 [ Sierra+ ] css3/filters/backdrop/backdrop-filter-with-reflection.html [ Pass ImageOnlyFailure ]
+webkit.org/b/162591 [ Sierra+ ] css3/filters/backdrop/backdrop-filter-with-reflection-add-backdrop.html [ Pass ImageOnlyFailure ]
+webkit.org/b/162591 [ Sierra+ ] css3/filters/backdrop/backdrop-filter-with-reflection-value-change.html [ Pass ImageOnlyFailure ]
+
+webkit.org/b/162507 http/tests/media/hls/hls-video-resize.html [ Pass Failure ]
+
+webkit.org/b/162986 inspector/formatting/formatting-javascript.html [ Pass Crash ]

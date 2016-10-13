@@ -26,8 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef SourceProvider_h
-#define SourceProvider_h
+#pragma once
 
 #include <wtf/RefCounted.h>
 #include <wtf/text/TextPosition.h>
@@ -35,11 +34,17 @@
 
 namespace JSC {
 
+    enum class SourceProviderSourceType {
+        Program,
+        Module,
+        WebAssembly,
+    };
+
     class SourceProvider : public RefCounted<SourceProvider> {
     public:
         static const intptr_t nullID = 1;
         
-        JS_EXPORT_PRIVATE SourceProvider(const String& url, const TextPosition& startPosition);
+        JS_EXPORT_PRIVATE SourceProvider(const String& url, const TextPosition& startPosition, SourceProviderSourceType);
 
         JS_EXPORT_PRIVATE virtual ~SourceProvider();
 
@@ -55,6 +60,8 @@ namespace JSC {
         const String& sourceMappingURL() const { return m_sourceMappingURLDirective; }
 
         TextPosition startPosition() const { return m_startPosition; }
+        SourceProviderSourceType sourceType() const { return m_sourceType; }
+
         intptr_t asID()
         {
             if (!m_id)
@@ -75,15 +82,16 @@ namespace JSC {
         String m_sourceURLDirective;
         String m_sourceMappingURLDirective;
         TextPosition m_startPosition;
+        SourceProviderSourceType m_sourceType;
         bool m_validated : 1;
         uintptr_t m_id : sizeof(uintptr_t) * 8 - 1;
     };
 
     class StringSourceProvider : public SourceProvider {
     public:
-        static Ref<StringSourceProvider> create(const String& source, const String& url, const TextPosition& startPosition = TextPosition::minimumPosition())
+        static Ref<StringSourceProvider> create(const String& source, const String& url, const TextPosition& startPosition = TextPosition::minimumPosition(), SourceProviderSourceType sourceType = SourceProviderSourceType::Program)
         {
-            return adoptRef(*new StringSourceProvider(source, url, startPosition));
+            return adoptRef(*new StringSourceProvider(source, url, startPosition, sourceType));
         }
         
         unsigned hash() const override
@@ -97,8 +105,8 @@ namespace JSC {
         }
 
     private:
-        StringSourceProvider(const String& source, const String& url, const TextPosition& startPosition)
-            : SourceProvider(url, startPosition)
+        StringSourceProvider(const String& source, const String& url, const TextPosition& startPosition, SourceProviderSourceType sourceType)
+            : SourceProvider(url, startPosition, sourceType)
             , m_source(source.isNull() ? *StringImpl::empty() : *source.impl())
         {
         }
@@ -131,7 +139,7 @@ namespace JSC {
 
     private:
         WebAssemblySourceProvider(const Vector<uint8_t>& data, const String& url)
-            : SourceProvider(url, TextPosition::minimumPosition())
+            : SourceProvider(url, TextPosition::minimumPosition(), SourceProviderSourceType::WebAssembly)
             , m_source("[WebAssembly source]")
             , m_data(data)
         {
@@ -143,5 +151,3 @@ namespace JSC {
 #endif
 
 } // namespace JSC
-
-#endif // SourceProvider_h

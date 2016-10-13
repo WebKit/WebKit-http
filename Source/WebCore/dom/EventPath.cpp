@@ -288,9 +288,9 @@ RelatedNodeRetargeter::RelatedNodeRetargeter(Node& relatedNode, Node& target)
 
     bool lowestCommonAncestorIsDocumentScope = i + 1 == m_ancestorTreeScopes.size();
     if (lowestCommonAncestorIsDocumentScope && !relatedNode.inDocument() && !target.inDocument()) {
-        Node& targetAncestorInDocumentScope = i ? *downcast<ShadowRoot>(m_ancestorTreeScopes[i - 1]->rootNode()).shadowHost() : target;
-        Node& relatedNodeAncestorInDocumentScope = j ? *downcast<ShadowRoot>(targetTreeScopeAncestors[j - 1]->rootNode()).shadowHost() : relatedNode;
-        if (targetAncestorInDocumentScope.rootNode() != relatedNodeAncestorInDocumentScope.rootNode()) {
+        Node& relatedNodeAncestorInDocumentScope = i ? *downcast<ShadowRoot>(m_ancestorTreeScopes[i - 1]->rootNode()).shadowHost() : relatedNode;
+        Node& targetAncestorInDocumentScope = j ? *downcast<ShadowRoot>(targetTreeScopeAncestors[j - 1]->rootNode()).shadowHost() : target;
+        if (&targetAncestorInDocumentScope.rootNode() != &relatedNodeAncestorInDocumentScope.rootNode()) {
             m_hasDifferentTreeRoot = true;
             m_retargetedRelatedNode = moveOutOfAllShadowRoots(relatedNode);
             return;
@@ -360,17 +360,10 @@ void RelatedNodeRetargeter::collectTreeScopes()
 #if !ASSERT_DISABLED
 void RelatedNodeRetargeter::checkConsistency(Node& currentTarget)
 {
-    ASSERT(!m_retargetedRelatedNode || currentTarget.isUnclosedNode(*m_retargetedRelatedNode));
-
-    // http://w3c.github.io/webcomponents/spec/shadow/#dfn-retargeting-algorithm
-    Node& base = currentTarget;
-    for (Node* targetAncestor = &m_relatedNode; targetAncestor; targetAncestor = targetAncestor->parentOrShadowHostNode()) {
-        if (targetAncestor->rootNode()->containsIncludingShadowDOM(&base)) {
-            ASSERT(m_retargetedRelatedNode == targetAncestor);
-            return;
-        }
-    }
-    ASSERT(!m_retargetedRelatedNode || m_hasDifferentTreeRoot);
+    if (!m_retargetedRelatedNode)
+        return;
+    ASSERT(currentTarget.isUnclosedNode(*m_retargetedRelatedNode));
+    ASSERT(m_retargetedRelatedNode == &currentTarget.treeScope().retargetToScope(m_relatedNode));
 }
 #endif
 

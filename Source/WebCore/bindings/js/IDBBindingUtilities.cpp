@@ -37,6 +37,7 @@
 #include "IDBValue.h"
 #include "IndexKey.h"
 #include "JSDOMBinding.h"
+#include "JSDOMConvert.h"
 #include "JSDOMStringList.h"
 #include "Logging.h"
 #include "ScriptExecutionContext.h"
@@ -90,14 +91,14 @@ JSValue toJS(ExecState& state, JSGlobalObject& globalObject, IDBKey* key)
 
     VM& vm = state.vm();
     Locker<JSLock> locker(vm.apiLock());
+    auto scope = DECLARE_THROW_SCOPE(vm);
 
     switch (key->type()) {
     case KeyType::Array: {
         auto& inArray = key->array();
         unsigned size = inArray.size();
         auto outArray = constructEmptyArray(&state, 0, &globalObject, size);
-        if (UNLIKELY(vm.exception()))
-            return jsUndefined();
+        RETURN_IF_EXCEPTION(scope, JSValue());
         for (size_t i = 0; i < size; ++i)
             outArray->putDirectIndex(&state, i, toJS(state, globalObject, inArray.at(i).get()));
         return outArray;
@@ -105,6 +106,8 @@ JSValue toJS(ExecState& state, JSGlobalObject& globalObject, IDBKey* key)
     case KeyType::String:
         return jsStringWithCache(&state, key->string());
     case KeyType::Date:
+        // FIXME: This should probably be jsDate() as per:
+        // http://w3c.github.io/IndexedDB/#request-convert-a-key-to-a-value
         return jsDateOrNull(&state, key->date());
     case KeyType::Number:
         return jsNumber(key->number());
@@ -176,7 +179,7 @@ IDBKeyPath idbKeyPathFromValue(ExecState& exec, JSValue keyPathValue)
 {
     IDBKeyPath keyPath;
     if (isJSArray(keyPathValue))
-        keyPath = IDBKeyPath(toNativeArray<String>(exec, keyPathValue));
+        keyPath = IDBKeyPath(convert<IDLSequence<IDLDOMString>>(exec, keyPathValue));
     else
         keyPath = IDBKeyPath(keyPathValue.toWTFString(&exec));
     return keyPath;

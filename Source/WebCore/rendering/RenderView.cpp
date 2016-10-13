@@ -165,7 +165,7 @@ void RenderView::unscheduleLazyRepaint(RenderBox& renderer)
 
 void RenderView::lazyRepaintTimerFired()
 {
-    bool shouldRepaint = !document().inPageCache();
+    bool shouldRepaint = document().pageCacheState() == Document::NotInPageCache;
 
     for (auto& renderer : m_renderersNeedingLazyRepaint) {
         if (shouldRepaint)
@@ -578,8 +578,8 @@ void RenderView::paintBoxDecorations(PaintInfo& paintInfo, const LayoutPoint&)
     if (frameView().isTransparent()) // FIXME: This needs to be dynamic. We should be able to go back to blitting if we ever stop being transparent.
         frameView().setCannotBlitToWindow(); // The parent must show behind the child.
     else {
-        Color documentBackgroundColor = frameView().documentBackgroundColor();
-        Color backgroundColor = (backgroundShouldExtendBeyondPage && documentBackgroundColor.isValid()) ? documentBackgroundColor : frameView().baseBackgroundColor();
+        const Color& documentBackgroundColor = frameView().documentBackgroundColor();
+        const Color& backgroundColor = (backgroundShouldExtendBeyondPage && documentBackgroundColor.isValid()) ? documentBackgroundColor : frameView().baseBackgroundColor();
         if (backgroundColor.alpha()) {
             CompositeOperator previousOperator = paintInfo.context().compositeOperation();
             paintInfo.context().setCompositeOperation(CompositeCopy);
@@ -1137,7 +1137,7 @@ bool RenderView::rootBackgroundIsEntirelyFixed() const
     if (!rootObject)
         return false;
 
-    return rootObject->rendererForRootBackground().hasEntirelyFixedBackground();
+    return rootObject->rendererForRootBackground().style().hasEntirelyFixedBackground();
 }
     
 LayoutRect RenderView::unextendedBackgroundRect() const

@@ -26,6 +26,7 @@
 #pragma once
 
 #if ENABLE(MATHML)
+
 #include "MathMLRowElement.h"
 
 namespace WebCore {
@@ -46,7 +47,7 @@ private:
     void finishParsingChildren() final;
     void childrenChanged(const ChildChange&) final;
     void attributeChanged(const QualifiedName&, const AtomicString& oldValue, const AtomicString& newValue, AttributeModificationReason = ModifiedDirectly) final;
-    void defaultEventHandler(Event*) final;
+    void defaultEventHandler(Event&) final;
     bool willRespondToMouseClickEvents() final;
 
     void toggle();

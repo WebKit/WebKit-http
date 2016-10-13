@@ -96,8 +96,6 @@ public:
 
     CSSParserMode cssParserMode() const { return static_cast<CSSParserMode>(m_cssParserMode); }
 
-    void addSubresourceStyleURLs(ListHashSet<URL>&, StyleSheetContents* contextStyleSheet) const;
-
     WEBCORE_EXPORT Ref<MutableStyleProperties> mutableCopy() const;
     Ref<ImmutableStyleProperties> immutableCopyIfNeeded() const;
 
@@ -134,9 +132,9 @@ protected:
     int findPropertyIndex(CSSPropertyID) const;
     int findCustomPropertyIndex(const String& propertyName) const;
     
-    unsigned m_cssParserMode : 2;
+    unsigned m_cssParserMode : 3;
     mutable unsigned m_isMutable : 1;
-    unsigned m_arraySize : 29;
+    unsigned m_arraySize : 28;
     
 private:
     String getShorthandValue(const StylePropertyShorthand&) const;
@@ -154,7 +152,7 @@ private:
     friend class PropertySetCSSStyleDeclaration;
 };
 
-class ImmutableStyleProperties : public StyleProperties {
+class ImmutableStyleProperties final : public StyleProperties {
 public:
     WEBCORE_EXPORT ~ImmutableStyleProperties();
     static Ref<ImmutableStyleProperties> create(const CSSProperty* properties, unsigned count, CSSParserMode);
@@ -184,9 +182,9 @@ inline const StylePropertyMetadata* ImmutableStyleProperties::metadataArray() co
     return reinterpret_cast_ptr<const StylePropertyMetadata*>(&reinterpret_cast_ptr<const char*>(&(this->m_storage))[m_arraySize * sizeof(CSSValue*)]);
 }
 
-class MutableStyleProperties : public StyleProperties {
+class MutableStyleProperties final : public StyleProperties {
 public:
-    WEBCORE_EXPORT static Ref<MutableStyleProperties> create(CSSParserMode = CSSQuirksMode);
+    WEBCORE_EXPORT static Ref<MutableStyleProperties> create(CSSParserMode = HTMLQuirksMode);
     static Ref<MutableStyleProperties> create(const CSSProperty* properties, unsigned count);
 
     WEBCORE_EXPORT ~MutableStyleProperties();
@@ -201,7 +199,8 @@ public:
     bool addParsedProperty(const CSSProperty&);
 
     // These expand shorthand properties into multiple properties.
-    bool setProperty(CSSPropertyID, const String& value, bool important = false, StyleSheetContents* contextStyleSheet = 0);
+    bool setProperty(CSSPropertyID, const String& value, bool important, CSSParserContext, StyleSheetContents* = nullptr);
+    bool setProperty(CSSPropertyID, const String& value, bool important = false);
     void setProperty(CSSPropertyID, RefPtr<CSSValue>&&, bool important = false);
 
     // These do not. FIXME: This is too messy, we can do better.
@@ -216,7 +215,7 @@ public:
     void mergeAndOverrideOnConflict(const StyleProperties&);
 
     void clear();
-    bool parseDeclaration(const String& styleDeclaration, StyleSheetContents* contextStyleSheet);
+    bool parseDeclaration(const String& styleDeclaration, CSSParserContext, StyleSheetContents* = nullptr);
 
     WEBCORE_EXPORT CSSStyleDeclaration* ensureCSSStyleDeclaration();
     CSSStyleDeclaration* ensureInlineCSSStyleDeclaration(StyledElement* parentElement);
@@ -227,7 +226,7 @@ public:
     Vector<CSSProperty, 4> m_propertyVector;
 
     // Methods for querying and altering CSS custom properties.
-    bool setCustomProperty(const String& propertyName, const String& value, bool important = false, StyleSheetContents* contextStyleSheet = 0);
+    bool setCustomProperty(const String& propertyName, const String& value, bool important, CSSParserContext, StyleSheetContents* = nullptr);
     bool removeCustomProperty(const String& propertyName, String* returnText = nullptr);
 
 private:

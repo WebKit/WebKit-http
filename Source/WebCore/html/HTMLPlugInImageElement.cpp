@@ -198,7 +198,7 @@ bool HTMLPlugInImageElement::wouldLoadAsPlugIn(const String& url, const String& 
 
 RenderPtr<RenderElement> HTMLPlugInImageElement::createElementRenderer(RenderStyle&& style, const RenderTreePosition& insertionPosition)
 {
-    ASSERT(!document().inPageCache());
+    ASSERT(document().pageCacheState() == Document::NotInPageCache);
 
     if (displayState() >= PreparingPluginReplacement)
         return HTMLPlugInElement::createElementRenderer(WTFMove(style), insertionPosition);
@@ -392,9 +392,11 @@ void HTMLPlugInImageElement::didAddUserAgentShadowRoot(ShadowRoot* root)
 
     ScriptController& scriptController = document().frame()->script();
     JSDOMGlobalObject* globalObject = JSC::jsCast<JSDOMGlobalObject*>(scriptController.globalObject(isolatedWorld));
-    JSC::ExecState* exec = globalObject->globalExec();
 
-    JSC::JSLockHolder lock(exec);
+    JSC::VM& vm = globalObject->vm();
+    JSC::JSLockHolder lock(vm);
+    auto scope = DECLARE_CATCH_SCOPE(vm);
+    JSC::ExecState* exec = globalObject->globalExec();
 
     JSC::MarkedArgumentBuffer argList;
     argList.append(toJS(exec, globalObject, root));
@@ -408,8 +410,8 @@ void HTMLPlugInImageElement::didAddUserAgentShadowRoot(ShadowRoot* root)
     // It is expected the JS file provides a createOverlay(shadowRoot, title, subtitle) function.
     JSC::JSObject* overlay = globalObject->get(exec, JSC::Identifier::fromString(exec, "createOverlay")).toObject(exec);
     if (!overlay) {
-        ASSERT(exec->hadException());
-        exec->clearException();
+        ASSERT(scope.exception());
+        scope.clearException();
         return;
     }
     JSC::CallData callData;
@@ -418,7 +420,7 @@ void HTMLPlugInImageElement::didAddUserAgentShadowRoot(ShadowRoot* root)
         return;
 
     JSC::call(exec, overlay, callType, callData, globalObject, argList);
-    exec->clearException();
+    scope.clearException();
 }
 
 bool HTMLPlugInImageElement::partOfSnapshotOverlay(const Node* node) const
@@ -755,12 +757,12 @@ void HTMLPlugInImageElement::subframeLoaderDidCreatePlugIn(const Widget& widget)
     }
 }
 
-void HTMLPlugInImageElement::defaultEventHandler(Event* event)
+void HTMLPlugInImageElement::defaultEventHandler(Event& event)
 {
     RenderElement* r = renderer();
     if (r && r->isEmbeddedObject()) {
-        if (displayState() == WaitingForSnapshot && is<MouseEvent>(*event) && event->type() == eventNames().clickEvent) {
-            MouseEvent& mouseEvent = downcast<MouseEvent>(*event);
+        if (displayState() == WaitingForSnapshot && is<MouseEvent>(event) && event.type() == eventNames().clickEvent) {
+            MouseEvent& mouseEvent = downcast<MouseEvent>(event);
             if (mouseEvent.button() == LeftButton) {
                 userDidClickSnapshot(&mouseEvent, true);
                 mouseEvent.setDefaultHandled();
@@ -773,6 +775,10 @@ void HTMLPlugInImageElement::defaultEventHandler(Event* event)
 
 bool HTMLPlugInImageElement::allowedToLoadPluginContent(const String& url, const String& mimeType) const
 {
+    // Elements in user agent show tree should load whatever the embedding document policy is.
+    if (isInUserAgentShadowTree())
+        return true;
+
     URL completedURL;
     if (!url.isEmpty())
         completedURL = document().completeURL(url);
@@ -782,10 +788,12 @@ bool HTMLPlugInImageElement::allowedToLoadPluginContent(const String& url, const
 
     contentSecurityPolicy.upgradeInsecureRequestIfNeeded(completedURL, ContentSecurityPolicy::InsecureRequestType::Load);
 
-    String declaredMimeType = document().isPluginDocument() && document().ownerElement() ?
+    if (!contentSecurityPolicy.allowObjectFromSource(completedURL))
+        return false;
+
+    auto& declaredMimeType = document().isPluginDocument() && document().ownerElement() ?
         document().ownerElement()->attributeWithoutSynchronization(HTMLNames::typeAttr) : attributeWithoutSynchronization(HTMLNames::typeAttr);
-    bool isInUserAgentShadowTree = this->isInUserAgentShadowTree();
-    return contentSecurityPolicy.allowObjectFromSource(completedURL, isInUserAgentShadowTree) && contentSecurityPolicy.allowPluginType(mimeType, declaredMimeType, completedURL, isInUserAgentShadowTree);
+    return contentSecurityPolicy.allowPluginType(mimeType, declaredMimeType, completedURL);
 }
 
 bool HTMLPlugInImageElement::requestObject(const String& url, const String& mimeType, const Vector<String>& paramNames, const Vector<String>& paramValues)

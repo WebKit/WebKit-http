@@ -29,25 +29,24 @@ import subprocess
 import time
 
 from webkitpy.common.memoized import memoized
-from webkitpy.common.system.crashlogs import CrashLogs
 from webkitpy.common.system.executive import ScriptError
 from webkitpy.layout_tests.models.test_configuration import TestConfiguration
 from webkitpy.port import config as port_config
 from webkitpy.port import driver, image_diff
-from webkitpy.port.apple import ApplePort
-from webkitpy.port.base import Port
+from webkitpy.port.darwin import DarwinPort
 from webkitpy.xcode.simulator import Simulator, Runtime, DeviceType
+from webkitpy.common.system.crashlogs import CrashLogs
 
 
 _log = logging.getLogger(__name__)
 
 
-class IOSPort(ApplePort):
+class IOSPort(DarwinPort):
     port_name = "ios"
 
     ARCHITECTURES = ['armv7', 'armv7s', 'arm64']
     DEFAULT_ARCHITECTURE = 'arm64'
-    VERSION_FALLBACK_ORDER = ['ios-7', 'ios-8', 'ios-9']
+    VERSION_FALLBACK_ORDER = ['ios-7', 'ios-8', 'ios-9', 'ios-10']
 
     @classmethod
     def determine_full_port_name(cls, host, options, port_name):
@@ -67,7 +66,7 @@ class IOSPort(ApplePort):
         return 'ios'
 
 
-class IOSSimulatorPort(ApplePort):
+class IOSSimulatorPort(DarwinPort):
     port_name = "ios-simulator"
 
     FUTURE_VERSION = 'future'
@@ -75,7 +74,8 @@ class IOSSimulatorPort(ApplePort):
     DEFAULT_ARCHITECTURE = 'x86_64'
 
     DEFAULT_DEVICE_CLASS = 'iphone'
-    CUSTOM_DEVICE_CLASSES = ['ipad']
+    CUSTOM_DEVICE_CLASSES = ['ipad', 'iphone7']
+    SDK = 'iphonesimulator'
 
     SIMULATOR_BUNDLE_ID = 'com.apple.iphonesimulator'
     relay_name = 'LayoutTestRelay'
@@ -86,6 +86,7 @@ class IOSSimulatorPort(ApplePort):
     DEVICE_CLASS_MAP = {
         'x86_64': {
             'iphone': 'iPhone 5s',
+            'iphone7': 'iPhone 7',
             'ipad': 'iPad Air'
         },
         'x86': {
@@ -95,7 +96,7 @@ class IOSSimulatorPort(ApplePort):
     }
 
     def __init__(self, host, port_name, **kwargs):
-        super(IOSSimulatorPort, self).__init__(host, port_name, **kwargs)
+        DarwinPort.__init__(self, host, port_name, **kwargs)
 
         optional_device_class = self.get_option('device_class')
         self._printing_cmd_line = False
@@ -159,7 +160,7 @@ class IOSSimulatorPort(ApplePort):
         best_child_process_count_for_cpu = self._executive.cpu_count() / 2
         system_process_count_limit = int(subprocess.check_output(["ulimit", "-u"]).strip())
         current_process_count = len(subprocess.check_output(["ps", "aux"]).strip().split('\n'))
-        _log.info('Process limit: %d, current #processes: %d' % (system_process_count_limit, current_process_count))
+        _log.debug('Process limit: %d, current #processes: %d' % (system_process_count_limit, current_process_count))
         maximum_simulator_count_on_this_system = (system_process_count_limit - current_process_count) // self.PROCESS_COUNT_ESTIMATE_PER_SIMULATOR_INSTANCE
         # FIXME: We should also take into account the available RAM.
 
@@ -185,6 +186,44 @@ class IOSSimulatorPort(ApplePort):
         if not self._check_relay():
             return False
         return True
+
+    def _get_crash_log(self, name, pid, stdout, stderr, newer_than, time_fn=time.time, sleep_fn=time.sleep, wait_for_log=True):
+        time_fn = time_fn or time.time
+        sleep_fn = sleep_fn or time.sleep
+
+        # FIXME: We should collect the actual crash log for DumpRenderTree.app because it includes more
+        # information (e.g. exception codes) than is available in the stack trace written to standard error.
+        stderr_lines = []
+        crashed_subprocess_name_and_pid = None  # e.g. ('DumpRenderTree.app', 1234)
+        for line in (stderr or '').splitlines():
+            if not crashed_subprocess_name_and_pid:
+                match = self.SUBPROCESS_CRASH_REGEX.match(line)
+                if match:
+                    crashed_subprocess_name_and_pid = (match.group('subprocess_name'), int(match.group('subprocess_pid')))
+                    continue
+            stderr_lines.append(line)
+
+        if crashed_subprocess_name_and_pid:
+            return self._get_crash_log(crashed_subprocess_name_and_pid[0], crashed_subprocess_name_and_pid[1], stdout,
+                '\n'.join(stderr_lines), newer_than, time_fn, sleep_fn, wait_for_log)
+
+        # LayoutTestRelay crashed
+        _log.debug('looking for crash log for %s:%s' % (name, str(pid)))
+        crash_log = ''
+        crash_logs = CrashLogs(self.host)
+        now = time_fn()
+        deadline = now + 5 * int(self.get_option('child_processes', 1))
+        while not crash_log and now <= deadline:
+            crash_log = crash_logs.find_newest_log(name, pid, include_errors=True, newer_than=newer_than)
+            if not wait_for_log:
+                break
+            if not crash_log or not [line for line in crash_log.splitlines() if not line.startswith('ERROR')]:
+                sleep_fn(0.1)
+                now = time_fn()
+
+        if not crash_log:
+            return stderr, None
+        return stderr, crash_log
 
     def _build_relay(self):
         environment = self.host.copy_current_environment()
@@ -227,9 +266,6 @@ class IOSSimulatorPort(ApplePort):
             fallback_names = [self.port_name + '-wk1'] + [self.port_name]
 
         return map(self._webkit_baseline_path, fallback_names)
-
-    def _port_specific_expectations_files(self):
-        return list(reversed([self._filesystem.join(self._webkit_baseline_path(p), 'TestExpectations') for p in self.baseline_search_path()]))
 
     def _set_device_class(self, device_class):
         self._device_class = device_class if device_class else self.DEFAULT_DEVICE_CLASS
@@ -343,44 +379,6 @@ class IOSSimulatorPort(ApplePort):
 
     SUBPROCESS_CRASH_REGEX = re.compile('#CRASHED - (?P<subprocess_name>\S+) \(pid (?P<subprocess_pid>\d+)\)')
 
-    def _get_crash_log(self, name, pid, stdout, stderr, newer_than, time_fn=time.time, sleep_fn=time.sleep, wait_for_log=True):
-        time_fn = time_fn or time.time
-        sleep_fn = sleep_fn or time.sleep
-
-        # FIXME: We should collect the actual crash log for DumpRenderTree.app because it includes more
-        # information (e.g. exception codes) than is available in the stack trace written to standard error.
-        stderr_lines = []
-        crashed_subprocess_name_and_pid = None  # e.g. ('DumpRenderTree.app', 1234)
-        for line in (stderr or '').splitlines():
-            if not crashed_subprocess_name_and_pid:
-                match = self.SUBPROCESS_CRASH_REGEX.match(line)
-                if match:
-                    crashed_subprocess_name_and_pid = (match.group('subprocess_name'), int(match.group('subprocess_pid')))
-                    continue
-            stderr_lines.append(line)
-
-        if crashed_subprocess_name_and_pid:
-            return self._get_crash_log(crashed_subprocess_name_and_pid[0], crashed_subprocess_name_and_pid[1], stdout,
-                '\n'.join(stderr_lines), newer_than, time_fn, sleep_fn, wait_for_log)
-
-        # LayoutTestRelay crashed
-        _log.debug('looking for crash log for %s:%s' % (name, str(pid)))
-        crash_log = ''
-        crash_logs = CrashLogs(self.host)
-        now = time_fn()
-        deadline = now + 5 * int(self.get_option('child_processes', 1))
-        while not crash_log and now <= deadline:
-            crash_log = crash_logs.find_newest_log(name, pid, include_errors=True, newer_than=newer_than)
-            if not wait_for_log:
-                break
-            if not crash_log or not [line for line in crash_log.splitlines() if not line.startswith('ERROR')]:
-                sleep_fn(0.1)
-                now = time_fn()
-
-        if not crash_log:
-            return stderr, None
-        return stderr, crash_log
-
     def _create_device(self, number):
         return Simulator.create_device(number, self.simulator_device_type(), self.simulator_runtime)
 
@@ -418,14 +416,6 @@ class IOSSimulatorPort(ApplePort):
 
     def nm_command(self):
         return self.xcrun_find('nm')
-
-    def xcrun_find(self, command, fallback=None):
-        fallback = fallback or command
-        try:
-            return self._executive.run_command(['xcrun', '--sdk', 'iphonesimulator', '-find', command]).rstrip()
-        except ScriptError:
-            _log.warn("xcrun failed; falling back to '%s'." % fallback)
-            return fallback
 
     @property
     @memoized

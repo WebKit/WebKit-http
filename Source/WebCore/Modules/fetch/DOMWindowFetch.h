@@ -30,18 +30,18 @@
 
 #if ENABLE(FETCH_API)
 
+#include "JSDOMPromise.h"
 #include <wtf/Forward.h>
 
 namespace WebCore {
 
 class DOMWindow;
-class DeferredWrapper;
 class Dictionary;
 class FetchRequest;
 
 class DOMWindowFetch {
 public:
-    static void fetch(DOMWindow&, FetchRequest&, DeferredWrapper&&);
+    static void fetch(DOMWindow&, FetchRequest&, Ref<DeferredPromise>&&);
 };
 
 } // namespace WebCore

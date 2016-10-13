@@ -22,6 +22,7 @@
 #include "NativeErrorConstructor.h"
 
 #include "ErrorInstance.h"
+#include "Interpreter.h"
 #include "JSFunction.h"
 #include "JSString.h"
 #include "NativeErrorPrototype.h"
@@ -45,7 +46,7 @@ void NativeErrorConstructor::finishCreation(VM& vm, JSGlobalObject* globalObject
     
     NativeErrorPrototype* prototype = NativeErrorPrototype::create(vm, prototypeStructure, name, this);
     
-    putDirect(vm, vm.propertyNames->length, jsNumber(1), DontDelete | ReadOnly | DontEnum); // ECMA 15.11.7.5
+    putDirect(vm, vm.propertyNames->length, jsNumber(1), DontEnum | ReadOnly);
     putDirect(vm, vm.propertyNames->prototype, prototype, DontDelete | ReadOnly | DontEnum);
     m_errorStructure.set(vm, this, ErrorInstance::createStructure(vm, globalObject, prototype));
     ASSERT(m_errorStructure);
@@ -62,10 +63,11 @@ void NativeErrorConstructor::visitChildren(JSCell* cell, SlotVisitor& visitor)
 
 EncodedJSValue JSC_HOST_CALL Interpreter::constructWithNativeErrorConstructor(ExecState* exec)
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     JSValue message = exec->argument(0);
     Structure* errorStructure = InternalFunction::createSubclassStructure(exec, exec->newTarget(), jsCast<NativeErrorConstructor*>(exec->callee())->errorStructure());
-    if (exec->hadException())
-        return JSValue::encode(JSValue());
+    RETURN_IF_EXCEPTION(scope, encodedJSValue());
     ASSERT(errorStructure);
     return JSValue::encode(ErrorInstance::create(exec, errorStructure, message, nullptr, TypeNothing, false));
 }

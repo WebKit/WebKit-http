@@ -196,36 +196,6 @@ static ImageOrientation readImageOrientation(jpeg_decompress_struct* info)
     return ImageOrientation();
 }
 
-static ColorProfile readColorProfile(jpeg_decompress_struct* info)
-{
-#if USE(ICCJPEG)
-    JOCTET* profile;
-    unsigned int profileLength;
-
-    if (!read_icc_profile(info, &profile, &profileLength))
-        return ColorProfile();
-
-    // Only accept RGB color profiles from input class devices.
-    bool ignoreProfile = false;
-    char* profileData = reinterpret_cast<char*>(profile);
-    if (profileLength < ImageDecoder::iccColorProfileHeaderLength)
-        ignoreProfile = true;
-    else if (!ImageDecoder::rgbColorProfile(profileData, profileLength))
-        ignoreProfile = true;
-    else if (!ImageDecoder::inputDeviceColorProfile(profileData, profileLength))
-        ignoreProfile = true;
-
-    ColorProfile colorProfile;
-    if (!ignoreProfile)
-        colorProfile.append(profileData, profileLength);
-    free(profile);
-    return colorProfile;
-#else
-    UNUSED_PARAM(info);
-    return ColorProfile();
-#endif
-}
-
 class JPEGImageReader {
     WTF_MAKE_FAST_ALLOCATED;
 public:
@@ -352,7 +322,7 @@ public:
             m_state = JPEG_START_DECOMPRESS;
 
             // We can fill in the size now that the header is available.
-            if (!m_decoder->setSize(m_info.image_width, m_info.image_height))
+            if (!m_decoder->setSize(IntSize(m_info.image_width, m_info.image_height)))
                 return false;
 
             m_decoder->setOrientation(readImageOrientation(info()));
@@ -363,13 +333,6 @@ public:
             if (m_decoder->willDownSample() && turboSwizzled(m_info.out_color_space))
                 m_info.out_color_space = JCS_RGB;
 #endif
-            // Allow color management of the decoded RGBA pixels if possible.
-            if (!m_decoder->ignoresGammaAndColorProfile()) {
-                ColorProfile rgbInputDeviceColorProfile = readColorProfile(info());
-                if (!rgbInputDeviceColorProfile.isEmpty())
-                    m_decoder->setColorProfile(rgbInputDeviceColorProfile);
-            }
-
             // Don't allocate a giant and superfluous memory buffer when the
             // image is a sequential JPEG.
             m_info.buffered_image = jpeg_has_multiple_scans(&m_info);
@@ -538,8 +501,7 @@ void term_source(j_decompress_ptr jd)
     src->decoder->decoder()->jpegComplete();
 }
 
-JPEGImageDecoder::JPEGImageDecoder(ImageSource::AlphaOption alphaOption,
-                                   ImageSource::GammaAndColorProfileOption gammaAndColorProfileOption)
+JPEGImageDecoder::JPEGImageDecoder(AlphaOption alphaOption, GammaAndColorProfileOption gammaAndColorProfileOption)
     : ImageDecoder(alphaOption, gammaAndColorProfileOption)
 {
 }
@@ -556,9 +518,9 @@ bool JPEGImageDecoder::isSizeAvailable()
     return ImageDecoder::isSizeAvailable();
 }
 
-bool JPEGImageDecoder::setSize(unsigned width, unsigned height)
+bool JPEGImageDecoder::setSize(const IntSize& size)
 {
-    if (!ImageDecoder::setSize(width, height))
+    if (!ImageDecoder::setSize(size))
         return false;
 
     prepareScaleDataIfNecessary();
@@ -570,13 +532,11 @@ ImageFrame* JPEGImageDecoder::frameBufferAtIndex(size_t index)
     if (index)
         return 0;
 
-    if (m_frameBufferCache.isEmpty()) {
+    if (m_frameBufferCache.isEmpty())
         m_frameBufferCache.resize(1);
-        m_frameBufferCache[0].setPremultiplyAlpha(m_premultiplyAlpha);
-    }
 
     ImageFrame& frame = m_frameBufferCache[0];
-    if (frame.status() != ImageFrame::FrameComplete)
+    if (!frame.isComplete())
         decode(false);
     return &frame;
 }
@@ -588,13 +548,13 @@ bool JPEGImageDecoder::setFailed()
 }
 
 template <J_COLOR_SPACE colorSpace>
-void setPixel(ImageFrame& buffer, ImageFrame::PixelData* currentAddress, JSAMPARRAY samples, int column)
+void setPixel(ImageFrame& buffer, RGBA32* currentAddress, JSAMPARRAY samples, int column)
 {
     JSAMPLE* jsample = *samples + column * (colorSpace == JCS_RGB ? 3 : 4);
 
     switch (colorSpace) {
     case JCS_RGB:
-        buffer.setRGBA(currentAddress, jsample[0], jsample[1], jsample[2], 0xFF);
+        buffer.backingStore()->setPixel(currentAddress, jsample[0], jsample[1], jsample[2], 0xFF);
         break;
     case JCS_CMYK:
         // Source is 'Inverted CMYK', output is RGB.
@@ -607,7 +567,7 @@ void setPixel(ImageFrame& buffer, ImageFrame::PixelData* currentAddress, JSAMPAR
         // From CMY (0..1) to RGB (0..1):
         // R = 1 - C => 1 - (1 - iC*iK) => iC*iK  [G and B similar]
         unsigned k = jsample[3];
-        buffer.setRGBA(currentAddress, jsample[0] * k / 255, jsample[1] * k / 255, jsample[2] * k / 255, 0xFF);
+        buffer.backingStore()->setPixel(currentAddress, jsample[0] * k / 255, jsample[1] * k / 255, jsample[2] * k / 255, 0xFF);
         break;
     }
 }
@@ -631,7 +591,7 @@ bool JPEGImageDecoder::outputScanlines(ImageFrame& buffer)
         if (destY < 0)
             continue;
 
-        ImageFrame::PixelData* currentAddress = buffer.getAddr(0, destY);
+        RGBA32* currentAddress = buffer.backingStore()->pixelAt(0, destY);
         for (int x = 0; x < width; ++x) {
             setPixel<colorSpace>(buffer, currentAddress, samples, isScaled ? m_scaledColumns[x] : x);
             ++currentAddress;
@@ -653,17 +613,13 @@ bool JPEGImageDecoder::outputScanlines()
 
     // Initialize the framebuffer if needed.
     ImageFrame& buffer = m_frameBufferCache[0];
-    if (buffer.status() == ImageFrame::FrameEmpty) {
-        if (!buffer.setSize(scaledSize().width(), scaledSize().height()))
+    if (buffer.isEmpty()) {
+        if (!buffer.initialize(scaledSize(), m_premultiplyAlpha))
             return setFailed();
-        buffer.setStatus(ImageFrame::FramePartial);
+        buffer.setDecoding(ImageFrame::Decoding::Partial);
         // The buffer is transparent outside the decoded area while the image is
         // loading. The completed image will be marked fully opaque in jpegComplete().
         buffer.setHasAlpha(true);
-        buffer.setColorProfile(m_colorProfile);
-
-        // For JPEGs, the frame always fills the entire image.
-        buffer.setOriginalFrameRect(IntRect(IntPoint(), size()));
     }
 
     jpeg_decompress_struct* info = m_reader->info();
@@ -671,7 +627,7 @@ bool JPEGImageDecoder::outputScanlines()
 #if defined(TURBO_JPEG_RGB_SWIZZLE)
     if (!m_scaled && turboSwizzled(info->out_color_space)) {
         while (info->output_scanline < info->output_height) {
-            unsigned char* row = reinterpret_cast<unsigned char*>(buffer.getAddr(0, info->output_scanline));
+            unsigned char* row = reinterpret_cast<unsigned char*>(buffer.backingStore()->pixelAt(0, info->output_scanline));
             if (jpeg_read_scanlines(info, &row, 1) != 1)
                 return false;
          }
@@ -704,7 +660,7 @@ void JPEGImageDecoder::jpegComplete()
     // empty.
     ImageFrame& buffer = m_frameBufferCache[0];
     buffer.setHasAlpha(false);
-    buffer.setStatus(ImageFrame::FrameComplete);
+    buffer.setDecoding(ImageFrame::Decoding::Complete);
 }
 
 void JPEGImageDecoder::decode(bool onlySize)
@@ -721,7 +677,7 @@ void JPEGImageDecoder::decode(bool onlySize)
         setFailed();
     // If we're done decoding the image, we don't need the JPEGImageReader
     // anymore.  (If we failed, |m_reader| has already been cleared.)
-    else if (!m_frameBufferCache.isEmpty() && (m_frameBufferCache[0].status() == ImageFrame::FrameComplete))
+    else if (!m_frameBufferCache.isEmpty() && (m_frameBufferCache[0].isComplete()))
         m_reader = nullptr;
 }
 

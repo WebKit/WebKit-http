@@ -1,6 +1,6 @@
 /*
  *  Copyright (C) 1999-2000 Harri Porten (porten@kde.org)
- *  Copyright (C) 2008 Apple Inc. All rights reserved.
+ *  Copyright (C) 2008, 2016 Apple Inc. All rights reserved.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
@@ -18,8 +18,7 @@
  *
  */
 
-#ifndef ObjectConstructor_h
-#define ObjectConstructor_h
+#pragma once
 
 #include "InternalFunction.h"
 #include "JSGlobalObject.h"
@@ -53,8 +52,6 @@ public:
     {
         return Structure::create(vm, globalObject, prototype, TypeInfo(ObjectType, StructureFlags), info());
     }
-
-    JSFunction* addDefineProperty(ExecState*, JSGlobalObject*);
 
 protected:
     void finishCreation(VM&, JSGlobalObject*, ObjectPrototype*);
@@ -101,9 +98,9 @@ inline JSObject* constructObject(ExecState* exec, JSGlobalObject* globalObject, 
 inline JSObject* constructObjectFromPropertyDescriptor(ExecState* exec, const PropertyDescriptor& descriptor)
 {
     VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     JSObject* description = constructEmptyObject(exec);
-    if (vm.exception())
-        return nullptr;
+    RETURN_IF_EXCEPTION(scope, nullptr);
 
     if (!descriptor.isAccessorDescriptor()) {
         description->putDirect(vm, vm.propertyNames->value, descriptor.value() ? descriptor.value() : jsUndefined(), 0);
@@ -124,12 +121,9 @@ inline JSObject* constructObjectFromPropertyDescriptor(ExecState* exec, const Pr
 
 
 JS_EXPORT_PRIVATE JSObject* objectConstructorFreeze(ExecState*, JSObject*);
-JSValue objectConstructorGetPrototypeOf(ExecState*, JSObject*);
 JSValue objectConstructorGetOwnPropertyDescriptor(ExecState*, JSObject*, const Identifier&);
 JSValue objectConstructorGetOwnPropertyDescriptors(ExecState*, JSObject*);
 JSArray* ownPropertyKeys(ExecState*, JSObject*, PropertyNameMode, DontEnumPropertiesMode);
 bool toPropertyDescriptor(ExecState*, JSValue, PropertyDescriptor&);
 
 } // namespace JSC
-
-#endif // ObjectConstructor_h

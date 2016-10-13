@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ImageDecoderCG_h
-#define ImageDecoderCG_h
+#pragma once
 
 #include "ImageSourceCG.h"
 #include "IntSize.h"
@@ -39,45 +38,39 @@ namespace WebCore {
 class ImageDecoder {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    ImageDecoder();
-    
-    static std::unique_ptr<ImageDecoder> create(const SharedBuffer&, ImageSource::AlphaOption, ImageSource::GammaAndColorProfileOption)
+    ImageDecoder(AlphaOption, GammaAndColorProfileOption);
+
+    static std::unique_ptr<ImageDecoder> create(const SharedBuffer&, AlphaOption alphaOption, GammaAndColorProfileOption gammaAndColorProfileOption)
     {
-        return std::make_unique<ImageDecoder>();
+        return std::make_unique<ImageDecoder>(alphaOption, gammaAndColorProfileOption);
     }
     
     static size_t bytesDecodedToDetermineProperties();
-    
-    String filenameExtension() const;
+
     bool isSizeAvailable() const;
-    
-    // Always original size, without subsampling.
-    IntSize size() const;
     size_t frameCount() const;
-    int repetitionCount() const;
+    RepetitionCount repetitionCount() const;
+    String filenameExtension() const;
     Optional<IntPoint> hotSpot() const;
-    
-    IntSize frameSizeAtIndex(size_t, SubsamplingLevel) const;
+
+    IntSize frameSizeAtIndex(size_t, SubsamplingLevel = SubsamplingLevel::Default) const;
     bool frameIsCompleteAtIndex(size_t) const;
-    ImageOrientation orientationAtIndex(size_t) const;
+    ImageOrientation frameOrientationAtIndex(size_t) const;
     
     float frameDurationAtIndex(size_t) const;
     bool frameHasAlphaAtIndex(size_t) const;
-    bool allowSubsamplingOfFrameAtIndex(size_t) const;
-    unsigned frameBytesAtIndex(size_t, SubsamplingLevel = 0) const;
+    bool frameAllowSubsamplingAtIndex(size_t) const;
+    unsigned frameBytesAtIndex(size_t, SubsamplingLevel = SubsamplingLevel::Default) const;
     
-    NativeImagePtr createFrameImageAtIndex(size_t, SubsamplingLevel) const;
+    NativeImagePtr createFrameImageAtIndex(size_t, SubsamplingLevel = SubsamplingLevel::Default, DecodingMode = DecodingMode::OnDemand) const;
     
-    void setData(CFDataRef, bool allDataReceived);
     void setData(SharedBuffer&, bool allDataReceived);
-    
+    bool isAllDataReceived() const { return m_isAllDataReceived; }
     void clearFrameBufferCache(size_t) { }
     
 protected:
-    mutable IntSize m_size;
+    bool m_isAllDataReceived { false };
     RetainPtr<CGImageSourceRef> m_nativeDecoder;
 };
 
 }
-
-#endif // ImageDecoderCG_h

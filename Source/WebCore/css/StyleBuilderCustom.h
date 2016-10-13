@@ -46,6 +46,7 @@
 #include "SVGElement.h"
 #include "SVGRenderStyle.h"
 #include "StyleBuilderConverter.h"
+#include "StyleCachedImage.h"
 #include "StyleFontSizeFunctions.h"
 #include "StyleGeneratedImage.h"
 #include "StyleResolver.h"
@@ -80,7 +81,7 @@ public:
 #if ENABLE(CSS_IMAGE_RESOLUTION)
     DECLARE_PROPERTY_CUSTOM_HANDLERS(ImageResolution);
 #endif
-#if ENABLE(IOS_TEXT_AUTOSIZING)
+#if ENABLE(TEXT_AUTOSIZING)
     DECLARE_PROPERTY_CUSTOM_HANDLERS(LineHeight);
 #endif
     DECLARE_PROPERTY_CUSTOM_HANDLERS(OutlineStyle);
@@ -111,6 +112,10 @@ public:
     static void applyInheritWebkitMaskImage(StyleResolver&) { }
     static void applyInitialFontFeatureSettings(StyleResolver&) { }
     static void applyInheritFontFeatureSettings(StyleResolver&) { }
+#if ENABLE(VARIATION_FONTS)
+    static void applyInitialFontVariationSettings(StyleResolver&) { }
+    static void applyInheritFontVariationSettings(StyleResolver&) { }
+#endif
 
     // Custom handling of inherit + value setting only.
     static void applyInheritDisplay(StyleResolver&);
@@ -125,7 +130,7 @@ public:
 #endif
     static void applyValueWebkitLocale(StyleResolver&, CSSValue&);
     static void applyValueWebkitTextOrientation(StyleResolver&, CSSValue&);
-#if ENABLE(IOS_TEXT_AUTOSIZING)
+#if ENABLE(TEXT_AUTOSIZING)
     static void applyValueWebkitTextSizeAdjust(StyleResolver&, CSSValue&);
 #endif
     static void applyValueWebkitTextZoom(StyleResolver&, CSSValue&);
@@ -609,7 +614,7 @@ DEFINE_BORDER_IMAGE_MODIFIER_HANDLER(WebkitMaskBoxImage, Repeat)
 DEFINE_BORDER_IMAGE_MODIFIER_HANDLER(WebkitMaskBoxImage, Slice)
 DEFINE_BORDER_IMAGE_MODIFIER_HANDLER(WebkitMaskBoxImage, Width)
 
-#if ENABLE(IOS_TEXT_AUTOSIZING)
+#if ENABLE(TEXT_AUTOSIZING)
 
 inline void StyleBuilderCustom::applyInheritLineHeight(StyleResolver& styleResolver)
 {
@@ -712,7 +717,7 @@ inline void StyleBuilderCustom::applyValueWebkitTextOrientation(StyleResolver& s
     styleResolver.setTextOrientation(downcast<CSSPrimitiveValue>(value));
 }
 
-#if ENABLE(IOS_TEXT_AUTOSIZING)
+#if ENABLE(TEXT_AUTOSIZING)
 inline void StyleBuilderCustom::applyValueWebkitTextSizeAdjust(StyleResolver& styleResolver, CSSValue& value)
 {
     auto& primitiveValue = downcast<CSSPrimitiveValue>(value);
@@ -1146,7 +1151,7 @@ inline void StyleBuilderCustom::applyValueCursor(StyleResolver& styleResolver, C
     for (auto& item : list) {
         if (is<CSSCursorImageValue>(item.get())) {
             auto& image = downcast<CSSCursorImageValue>(item.get());
-            styleResolver.style()->addCursor(styleResolver.styleImage(CSSPropertyCursor, image), image.hotSpot());
+            styleResolver.style()->addCursor(styleResolver.styleImage(image), image.hotSpot());
             continue;
         }
 
@@ -1313,12 +1318,12 @@ inline void StyleBuilderCustom::applyValueContent(StyleResolver& styleResolver, 
                 styleResolver.style()->setContent(StyleGeneratedImage::create(downcast<CSSImageGeneratorValue>(item.get())), didSet);
             didSet = true;
         } else if (is<CSSImageSetValue>(item.get())) {
-            styleResolver.style()->setContent(styleResolver.setOrPendingFromValue(CSSPropertyContent, downcast<CSSImageSetValue>(item.get())), didSet);
+            styleResolver.style()->setContent(StyleCachedImage::create(item), didSet);
             didSet = true;
         }
 
         if (is<CSSImageValue>(item.get())) {
-            styleResolver.style()->setContent(styleResolver.cachedOrPendingFromValue(CSSPropertyContent, downcast<CSSImageValue>(item.get())), didSet);
+            styleResolver.style()->setContent(StyleCachedImage::create(item), didSet);
             didSet = true;
             continue;
         }

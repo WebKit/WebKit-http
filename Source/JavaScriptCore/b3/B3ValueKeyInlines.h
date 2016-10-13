@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef B3ValueKeyInlines_h
-#define B3ValueKeyInlines_h
+#pragma once
 
 #if ENABLE(B3_JIT)
 
@@ -34,23 +33,23 @@
 
 namespace JSC { namespace B3 {
 
-inline ValueKey::ValueKey(Opcode opcode, Type type, Value* child)
-    : m_opcode(opcode)
+inline ValueKey::ValueKey(Kind kind, Type type, Value* child)
+    : m_kind(kind)
     , m_type(type)
 {
     u.indices[0] = child->index();
 }
 
-inline ValueKey::ValueKey(Opcode opcode, Type type, Value* left, Value* right)
-    : m_opcode(opcode)
+inline ValueKey::ValueKey(Kind kind, Type type, Value* left, Value* right)
+    : m_kind(kind)
     , m_type(type)
 {
     u.indices[0] = left->index();
     u.indices[1] = right->index();
 }
 
-inline ValueKey::ValueKey(Opcode opcode, Type type, Value* a, Value* b, Value* c)
-    : m_opcode(opcode)
+inline ValueKey::ValueKey(Kind kind, Type type, Value* a, Value* b, Value* c)
+    : m_kind(kind)
     , m_type(type)
 {
     u.indices[0] = a->index();
@@ -66,6 +65,3 @@ inline Value* ValueKey::child(Procedure& proc, unsigned index) const
 } } // namespace JSC::B3
 
 #endif // ENABLE(B3_JIT)
-
-#endif // B3ValueKeyInlines_h
-

@@ -26,19 +26,17 @@
 #include "config.h"
 #include "WASMModuleParser.h"
 
+#if ENABLE(WEBASSEMBLY)
+
 #include "WASMFormat.h"
 #include "WASMOps.h"
 #include "WASMSections.h"
 
-#if ENABLE(WEBASSEMBLY)
-
-namespace JSC {
-
-namespace WASM {
+namespace JSC { namespace WASM {
 
 static const bool verbose = false;
 
-bool WASMModuleParser::parse()
+bool ModuleParser::parse()
 {
     if (m_sourceLength < 8)
         return false;
@@ -59,22 +57,37 @@ bool WASMModuleParser::parse()
     if (verbose)
         dataLogLn("Passed processing header.");
 
-    WASMSections::Section previousSection = WASMSections::Section::Unknown;
+    Sections::Section previousSection = Sections::Unknown;
     while (m_offset < m_sourceLength) {
         if (verbose)
             dataLogLn("Starting to parse next section at offset: ", m_offset);
-        uint32_t sectionNameLength;
-        if (!parseVarUInt32(sectionNameLength))
+
+        Sections::Section section = Sections::Unknown;
+        uint8_t sectionByte;
+        if (!parseUInt7(sectionByte))
             return false;
 
-        // Make sure we can read up to the section's size.
-        if (m_offset + sectionNameLength + maxLEBByteLength >= m_sourceLength)
-            return false;
+        if (sectionByte) {
+            if (sectionByte >= Sections::Unknown)
+                section = Sections::Unknown;
+            else
+                section = static_cast<Sections::Section>(sectionByte);
+        } else {
+            uint32_t sectionNameLength;
+            if (!parseVarUInt32(sectionNameLength))
+                return false;
 
-        WASMSections::Section section = WASMSections::lookup(m_source.data() + m_offset, sectionNameLength);
-        if (!WASMSections::validateOrder(previousSection, section))
+            // Make sure we can read up to the section's size.
+            if (m_offset + sectionNameLength + maxLEBByteLength >= m_sourceLength)
+                return false;
+
+            // We don't support any custom sections yet.
+
+            m_offset += sectionNameLength;
+        }
+
+        if (!Sections::validateOrder(previousSection, section))
             return false;
-        m_offset += sectionNameLength;
 
         uint32_t sectionLength;
         if (!parseVarUInt32(sectionLength))
@@ -83,10 +96,7 @@ bool WASMModuleParser::parse()
         unsigned end = m_offset + sectionLength;
 
         switch (section) {
-        case WASMSections::Section::End:
-            return true;
-
-        case WASMSections::Section::FunctionTypes: {
+        case Sections::FunctionTypes: {
             if (verbose)
                 dataLogLn("Parsing types.");
             if (!parseFunctionTypes())
@@ -94,7 +104,7 @@ bool WASMModuleParser::parse()
             break;
         }
 
-        case WASMSections::Section::Signatures: {
+        case Sections::Signatures: {
             if (verbose)
                 dataLogLn("Parsing function signatures.");
             if (!parseFunctionSignatures())
@@ -102,7 +112,7 @@ bool WASMModuleParser::parse()
             break;
         }
 
-        case WASMSections::Section::Definitions: {
+        case Sections::Definitions: {
             if (verbose)
                 dataLogLn("Parsing function definitions.");
             if (!parseFunctionDefinitions())
@@ -110,7 +120,9 @@ bool WASMModuleParser::parse()
             break;
         }
 
-        case WASMSections::Section::Unknown: {
+        case Sections::Unknown:
+        // FIXME: Delete this when we support all the sections.
+        default: {
             if (verbose)
                 dataLogLn("Unknown section, skipping.");
             m_offset += sectionLength;
@@ -131,7 +143,7 @@ bool WASMModuleParser::parse()
     return true;
 }
 
-bool WASMModuleParser::parseFunctionTypes()
+bool ModuleParser::parseFunctionTypes()
 {
     uint32_t count;
     if (!parseVarUInt32(count))
@@ -139,6 +151,8 @@ bool WASMModuleParser::parseFunctionTypes()
 
     if (verbose)
         dataLogLn("count: ", count);
+
+    m_signatures.resize(count);
 
     for (uint32_t i = 0; i < count; ++i) {
         uint8_t type;
@@ -157,34 +171,36 @@ bool WASMModuleParser::parseFunctionTypes()
         if (verbose)
             dataLogLn("argumentCount: ", argumentCount);
 
-        Vector<WASMValueType> argumentTypes;
+        Vector<Type> argumentTypes;
+        argumentTypes.resize(argumentCount);
+
         for (unsigned i = 0; i < argumentCount; ++i) {
-            if (!parseUInt7(type) || type >= static_cast<uint8_t>(WASMValueType::NumberOfTypes))
+            if (!parseUInt7(type) || !isValueType(static_cast<Type>(type)))
                 return false;
-            argumentTypes.append(static_cast<WASMValueType>(type));
+            argumentTypes[i] = static_cast<Type>(type);
         }
 
         if (!parseVarUInt1(type))
             return false;
-        WASMFunctionReturnType returnType;
+        Type returnType;
 
         if (verbose)
             dataLogLn(type);
 
         if (type) {
-            WASMValueType value;
+            Type value;
             if (!parseValueType(value))
                 return false;
-            returnType = static_cast<WASMFunctionReturnType>(value);
+            returnType = static_cast<Type>(value);
         } else
-            returnType = WASMFunctionReturnType::Void;
+            returnType = Type::Void;
 
-        // TODO: Actually do something with this data...
+        m_signatures[i] = { returnType, WTFMove(argumentTypes) };
     }
     return true;
 }
 
-bool WASMModuleParser::parseFunctionSignatures()
+bool ModuleParser::parseFunctionSignatures()
 {
     uint32_t count;
     if (!parseVarUInt32(count))
@@ -196,12 +212,17 @@ bool WASMModuleParser::parseFunctionSignatures()
         uint32_t typeNumber;
         if (!parseVarUInt32(typeNumber))
             return false;
+
+        if (typeNumber >= m_signatures.size())
+            return false;
+
+        m_functions[i].signature = &m_signatures[typeNumber];
     }
 
     return true;
 }
 
-bool WASMModuleParser::parseFunctionDefinitions()
+bool ModuleParser::parseFunctionDefinitions()
 {
     uint32_t count;
     if (!parseVarUInt32(count))
@@ -215,7 +236,7 @@ bool WASMModuleParser::parseFunctionDefinitions()
         if (!parseVarUInt32(functionSize))
             return false;
 
-        WASMFunctionInformation& info = m_functions[i];
+        FunctionInformation& info = m_functions[i];
         info.start = m_offset;
         info.end = m_offset + functionSize;
         m_offset = info.end;
@@ -224,8 +245,6 @@ bool WASMModuleParser::parseFunctionDefinitions()
     return true;
 }
 
-} // namespace WASM
-
-} // namespace JSC
+} } // namespace JSC::WASM
 
 #endif // ENABLE(WEBASSEMBLY)

@@ -28,6 +28,7 @@
 
 #include "JSGlobalObject.h"
 #include "JSCInlines.h"
+#include "PrototypeMapInlines.h"
 
 namespace JSC {
 
@@ -102,6 +103,12 @@ bool JSProxy::deleteProperty(JSCell* cell, ExecState* exec, PropertyName propert
     return thisObject->target()->methodTable(exec->vm())->deleteProperty(thisObject->target(), exec, propertyName);
 }
 
+bool JSProxy::preventExtensions(JSObject* object, ExecState* exec)
+{
+    JSProxy* thisObject = jsCast<JSProxy*>(object);
+    return thisObject->target()->methodTable(exec->vm())->preventExtensions(thisObject->target(), exec);
+}
+
 bool JSProxy::deletePropertyByIndex(JSCell* cell, ExecState* exec, unsigned propertyName)
 {
     JSProxy* thisObject = jsCast<JSProxy*>(cell);
@@ -137,6 +144,22 @@ void JSProxy::getOwnPropertyNames(JSObject* object, ExecState* exec, PropertyNam
 {
     JSProxy* thisObject = jsCast<JSProxy*>(object);
     thisObject->target()->methodTable(exec->vm())->getOwnPropertyNames(thisObject->target(), exec, propertyNames, mode);
+}
+
+bool JSProxy::setPrototype(JSObject*, ExecState* exec, JSValue, bool shouldThrowIfCantSet)
+{
+    auto scope = DECLARE_THROW_SCOPE(exec->vm());
+
+    if (shouldThrowIfCantSet)
+        throwTypeError(exec, scope, ASCIILiteral("Cannot set prototype of this object"));
+
+    return false;
+}
+
+JSValue JSProxy::getPrototype(JSObject* object, ExecState* exec)
+{
+    JSProxy* thisObject = jsCast<JSProxy*>(object);
+    return thisObject->target()->methodTable(exec->vm())->getPrototype(thisObject->target(), exec);
 }
 
 } // namespace JSC

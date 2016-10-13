@@ -23,9 +23,9 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef DirectArguments_h
-#define DirectArguments_h
+#pragma once
 
+#include "AuxiliaryBarrier.h"
 #include "DirectArgumentsOffset.h"
 #include "GenericArguments.h"
 
@@ -58,7 +58,6 @@ public:
 
     static size_t estimatedSize(JSCell*);
     static void visitChildren(JSCell*, SlotVisitor&);
-    static void copyBackingStore(JSCell*, CopyVisitor&, CopyToken);
     
     uint32_t internalLength() const
     {
@@ -149,10 +148,7 @@ private:
     WriteBarrier<JSFunction> m_callee;
     uint32_t m_length; // Always the actual length of captured arguments and never what was stored into the length property.
     uint32_t m_minCapacity; // The max of this and length determines the capacity of this object. It may be the actual capacity, or maybe something smaller. We arrange it this way to be kind to the JITs.
-    CopyBarrier<bool> m_overrides; // If non-null, it means that length, callee, and caller are fully materialized properties.
+    AuxiliaryBarrier<bool*> m_overrides; // If non-null, it means that length, callee, and caller are fully materialized properties.
 };
 
 } // namespace JSC
-
-#endif // DirectArguments_h
-

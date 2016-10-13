@@ -51,8 +51,6 @@ bool isOnAccessControlSimpleRequestHeaderWhitelist(HTTPHeaderName name, const St
     case HTTPHeaderName::Accept:
     case HTTPHeaderName::AcceptLanguage:
     case HTTPHeaderName::ContentLanguage:
-    case HTTPHeaderName::Origin:
-    case HTTPHeaderName::Referer:
         return true;
     case HTTPHeaderName::ContentType: {
         // Preflight is required for MIME types that can not be sent via form submission.
@@ -130,9 +128,8 @@ ResourceRequest createAccessControlPreflightRequest(const ResourceRequest& reque
 
         bool appendComma = false;
         for (const auto& headerField : unsafeHeaders) {
-            // FIXME: header names should be separated by 0x2C, without space.
             if (appendComma)
-                headerBuffer.appendLiteral(", ");
+                headerBuffer.append(',');
             else
                 appendComma = true;
 

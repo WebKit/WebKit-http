@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012, 2014, 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2012, 2014-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef MacroAssemblerARM64_h
-#define MacroAssemblerARM64_h
+#pragma once
 
 #if ENABLE(ASSEMBLER)
 
@@ -166,7 +165,10 @@ public:
             m_assembler.add<32>(dest, src, UInt12(imm.m_value));
         else if (isUInt12(-imm.m_value))
             m_assembler.sub<32>(dest, src, UInt12(-imm.m_value));
-        else {
+        else if (src != dest) {
+            move(imm, dest);
+            add32(src, dest);
+        } else {
             move(imm, getCachedDataTempRegisterIDAndInvalidate());
             m_assembler.add<32>(dest, src, dataTempRegister);
         }
@@ -702,6 +704,11 @@ public:
         m_assembler.sub<32>(dest, dest, src);
     }
 
+    void sub32(RegisterID left, RegisterID right, RegisterID dest)
+    {
+        m_assembler.sub<32>(dest, left, right);
+    }
+
     void sub32(TrustedImm32 imm, RegisterID dest)
     {
         if (isUInt12(imm.m_value)) {
@@ -938,6 +945,11 @@ public:
     void not64(RegisterID src, RegisterID dest)
     {
         m_assembler.mvn<64>(dest, src);
+    }
+
+    void not64(RegisterID srcDst)
+    {
+        m_assembler.mvn<64>(srcDst, srcDst);
     }
 
     // Memory access operations:
@@ -3203,11 +3215,26 @@ public:
         m_assembler.nop();
     }
     
+    // We take memoryFence to mean acqrel. This has acqrel semantics on ARM64.
     void memoryFence()
     {
-        m_assembler.dmbSY();
+        m_assembler.dmbISH();
     }
 
+    // We take this to mean that it prevents motion of normal stores. That's a store fence on ARM64 (hence the "ST").
+    void storeFence()
+    {
+        m_assembler.dmbISHST();
+    }
+
+    // We take this to mean that it prevents motion of normal loads. Ideally we'd have expressed this
+    // using dependencies or half fences, but there are cases where this is as good as it gets. The only
+    // way to get a standalone load fence instruction on ARM is to use the ISH fence, which is just like
+    // the memoryFence().
+    void loadFence()
+    {
+        m_assembler.dmbISH();
+    }
 
     // Misc helper functions.
 
@@ -3247,6 +3274,11 @@ public:
     static ptrdiff_t maxJumpReplacementSize()
     {
         return ARM64Assembler::maxJumpReplacementSize();
+    }
+
+    static ptrdiff_t patchableJumpSize()
+    {
+        return ARM64Assembler::patchableJumpSize();
     }
 
     RegisterID scratchRegisterForBlinding()
@@ -3820,5 +3852,3 @@ ALWAYS_INLINE void MacroAssemblerARM64::storeUnscaledImmediate<16>(RegisterID rt
 } // namespace JSC
 
 #endif // ENABLE(ASSEMBLER)
-
-#endif // MacroAssemblerARM64_h

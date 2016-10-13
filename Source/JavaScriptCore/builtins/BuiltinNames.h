@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef BuiltinNames_h
-#define BuiltinNames_h
+#pragma once
 
 #include "BuiltinUtils.h"
 #include "BytecodeIntrinsicRegistry.h"
@@ -36,13 +35,14 @@ namespace JSC {
 #define JSC_COMMON_PRIVATE_IDENTIFIERS_EACH_PROPERTY_NAME(macro) \
     JSC_COMMON_BYTECODE_INTRINSIC_FUNCTIONS_EACH_NAME(macro) \
     JSC_COMMON_BYTECODE_INTRINSIC_CONSTANTS_EACH_NAME(macro) \
-    macro(iteratedObject) \
     macro(arrayIteratorNextIndex) \
     macro(arrayIterationKind) \
     macro(arrayIteratorNext) \
     macro(arrayIteratorIsDone) \
     macro(arrayIteratorKind) \
     macro(charCodeAt) \
+    macro(isView) \
+    macro(iteratedObject) \
     macro(iteratedString) \
     macro(stringIteratorNextIndex) \
     macro(promise) \
@@ -55,6 +55,7 @@ namespace JSC {
     macro(ownEnumerablePropertyKeys) \
     macro(Number) \
     macro(Array) \
+    macro(ArrayBuffer) \
     macro(String) \
     macro(RegExp) \
     macro(Map) \
@@ -124,17 +125,14 @@ namespace JSC {
     macro(isBoundFunction) \
     macro(hasInstanceBoundFunction) \
     macro(instanceOf) \
-    macro(isArray) \
+    macro(isArraySlow) \
     macro(isArrayConstructor) \
     macro(isConstructor) \
     macro(isDerivedConstructor) \
-    macro(isRegExpObject) \
     macro(concatMemcpy) \
     macro(appendMemcpy) \
     macro(predictFinalLengthFromArgumunts) \
     macro(print) \
-    macro(isSet) \
-    macro(isMap) \
     macro(regExpCreate) \
     macro(SetIterator) \
     macro(setIteratorNext) \
@@ -158,7 +156,9 @@ namespace JSC {
     macro(regExpTestFast) \
     macro(stringIncludesInternal) \
     macro(stringSplitFast) \
-    macro(stringSubstrInternal)
+    macro(stringSubstrInternal) \
+    macro(makeBoundFunction) \
+    macro(hasOwnLengthProperty) \
 
 
 #define INITIALIZE_PRIVATE_TO_PUBLIC_ENTRY(name) m_privateToPublicMap.add(m_##name##PrivateName.impl(), &m_##name);
@@ -265,6 +265,4 @@ inline void BuiltinNames::appendExternalName(const Identifier& publicName, const
     m_publicToPrivateMap.add(publicName.impl(), &privateName);
 }
 
-}
-
-#endif
+} // namespace JSC

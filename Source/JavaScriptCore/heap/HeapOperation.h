@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef HeapOperation_h
-#define HeapOperation_h
+#pragma once
 
 namespace JSC {
 
@@ -32,4 +31,10 @@ enum HeapOperation { NoOperation, Allocation, FullCollection, EdenCollection, An
 
 } // namespace JSC
 
-#endif // HeapOperation_h
+namespace WTF {
+
+class PrintStream;
+
+void printInternal(PrintStream& out, JSC::HeapOperation);
+
+} // namespace WTF

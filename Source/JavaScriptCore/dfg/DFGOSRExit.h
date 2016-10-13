@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef DFGOSRExit_h
-#define DFGOSRExit_h
+#pragma once
 
 #if ENABLE(DFG_JIT)
 
@@ -98,13 +97,13 @@ private:
 // going into baseline code.
 struct OSRExit : public OSRExitBase {
     OSRExit(ExitKind, JSValueSource, MethodOfGettingAValueProfile, SpeculativeJIT*, unsigned streamIndex, unsigned recoveryIndex = UINT_MAX);
+
+    unsigned m_patchableCodeOffset { 0 };
     
     MacroAssemblerCodeRef m_code;
     
     JSValueSource m_jsValueSource;
     MethodOfGettingAValueProfile m_valueProfile;
-
-    unsigned m_patchableCodeOffset;
     
     unsigned m_recoveryIndex;
 
@@ -129,6 +128,3 @@ struct SpeculationFailureDebugInfo {
 } } // namespace JSC::DFG
 
 #endif // ENABLE(DFG_JIT)
-
-#endif // DFGOSRExit_h
-

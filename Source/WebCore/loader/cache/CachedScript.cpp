@@ -29,6 +29,7 @@
 
 #include "CachedResourceClient.h"
 #include "CachedResourceClientWalker.h"
+#include "CachedResourceRequest.h"
 #include "HTTPHeaderNames.h"
 #include "HTTPParsers.h"
 #include "MIMETypeRegistry.h"
@@ -39,14 +40,10 @@
 
 namespace WebCore {
 
-CachedScript::CachedScript(const ResourceRequest& resourceRequest, const String& charset, SessionID sessionID)
-    : CachedResource(resourceRequest, Script, sessionID)
-    , m_decoder(TextResourceDecoder::create(ASCIILiteral("application/javascript"), charset))
+CachedScript::CachedScript(CachedResourceRequest&& request, SessionID sessionID)
+    : CachedResource(WTFMove(request), Script, sessionID)
+    , m_decoder(TextResourceDecoder::create(ASCIILiteral("application/javascript"), request.charset()))
 {
-    // It's javascript we want.
-    // But some websites think their scripts are <some wrong mimetype here>
-    // and refuse to serve them if we only accept application/x-javascript.
-    setAccept("*/*");
 }
 
 CachedScript::~CachedScript()
@@ -121,6 +118,18 @@ void CachedScript::destroyDecodedData()
 {
     m_script = String();
     setDecodedSize(0);
+}
+
+void CachedScript::setBodyDataFrom(const CachedResource& resource)
+{
+    ASSERT(resource.type() == type());
+    auto& script = static_cast<const CachedScript&>(resource);
+
+    m_data = script.m_data;
+    m_script = script.m_script;
+    m_scriptHash = script.m_scriptHash;
+    m_decodingState = script.m_decodingState;
+    m_decoder = script.m_decoder;
 }
 
 #if ENABLE(NOSNIFF)

@@ -580,7 +580,8 @@ static void webKitWebSrcStart(WebKitWebSrc* src)
         PlatformMediaResourceLoader::LoadOptions loadOptions = 0;
         if (request.url().protocolIsBlob())
             loadOptions |= PlatformMediaResourceLoader::LoadOption::BufferData;
-        priv->resource = priv->loader->requestResource(request, loadOptions);
+        // FIXME: request should be moved for efficiency
+        priv->resource = priv->loader->requestResource(ResourceRequest(request), loadOptions);
         if (priv->resource) {
             priv->resource->setClient(std::make_unique<CachedResourceStreamingClient>(protector.get()));
             GST_DEBUG_OBJECT(protector.get(), "Started request");
@@ -663,7 +664,6 @@ static gboolean webKitWebSrcQueryWithParent(GstPad* pad, GstObject* parent, GstQ
         result = TRUE;
         break;
     }
-#if GST_CHECK_VERSION(1, 2, 0)
     case GST_QUERY_SCHEDULING: {
         GstSchedulingFlags flags;
         int minSize, maxSize, align;
@@ -673,7 +673,6 @@ static gboolean webKitWebSrcQueryWithParent(GstPad* pad, GstObject* parent, GstQ
         result = TRUE;
         break;
     }
-#endif
     default: {
         GRefPtr<GstPad> target = adoptGRef(gst_ghost_pad_get_target(GST_GHOST_PAD_CAST(pad)));
 

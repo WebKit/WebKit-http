@@ -60,7 +60,7 @@ public:
         ProcessType processType;
         HashMap<String, String> extraInitializationData;
 
-#if (PLATFORM(EFL) || PLATFORM(GTK) || PLATFORM(WPE)) && !defined(NDEBUG)
+#if ENABLE(DEVELOPER_MODE) && (PLATFORM(GTK) || PLATFORM(EFL) || PLATFORM(WPE))
         String processCmdPrefix;
 #endif
     };
@@ -85,6 +85,10 @@ private:
     void platformInvalidate();
 
     Client* m_client;
+
+#if PLATFORM(COCOA)
+    OSObjectPtr<xpc_connection_t> m_xpcConnection;
+#endif
 
     WeakPtrFactory<ProcessLauncher> m_weakPtrFactory;
     const LaunchOptions m_launchOptions;

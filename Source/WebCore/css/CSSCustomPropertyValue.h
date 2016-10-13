@@ -30,9 +30,10 @@
 #include <wtf/RefPtr.h>
 #include <wtf/text/WTFString.h>
 
+// FIXME-NEWPARSER: This will be removed in favor of CSSCustomPropertyDeclaration
 namespace WebCore {
 
-class CSSCustomPropertyValue : public CSSValue {
+class CSSCustomPropertyValue final : public CSSValue {
 public:
     static Ref<CSSCustomPropertyValue> create(const AtomicString& name, Ref<CSSValue>&& value)
     {

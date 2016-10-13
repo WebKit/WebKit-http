@@ -93,10 +93,10 @@ bool EventHandler::passMouseReleaseEventToSubframe(MouseEventWithHitTestResults&
     return false;
 }
 
-unsigned EventHandler::accessKeyModifiers()
+OptionSet<PlatformEvent::Modifier> EventHandler::accessKeyModifiers()
 {
     notImplemented();
-    return PlatformEvent::AltKey;
+    return PlatformEvent::Modifier::AltKey;
 }
 
 // GTK+ must scroll horizontally if the mouse pointer is on top of the

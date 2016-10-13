@@ -35,7 +35,6 @@
 namespace WebCore {
 
 class ContainerNode;
-class DOMSelection;
 class Document;
 class Element;
 class HTMLLabelElement;
@@ -71,6 +70,9 @@ public:
     Document& documentScope() const { return *m_documentScope; }
     static ptrdiff_t documentScopeMemoryOffset() { return OBJECT_OFFSETOF(TreeScope, m_documentScope); }
 
+    // https://dom.spec.whatwg.org/#retarget
+    Node& retargetToScope(Node&) const;
+
     Node* ancestorInThisScope(Node*) const;
 
     void addImageMap(HTMLMapElement&);
@@ -83,7 +85,7 @@ public:
     void removeLabel(const AtomicStringImpl& forAttributeValue, HTMLLabelElement&);
     HTMLLabelElement* labelElementForId(const AtomicString& forAttributeValue);
 
-    DOMSelection* getSelection() const;
+    WEBCORE_EXPORT Element* elementFromPoint(int x, int y);
 
     // Find first anchor with the given name.
     // First searches for an element with the given ID, but if that fails, then looks
@@ -111,6 +113,8 @@ protected:
         m_documentScope = document;
     }
 
+    Node* nodeFromPoint(const LayoutPoint& clientPoint, LayoutPoint* localPoint);
+
 private:
     ContainerNode& m_rootNode;
     Document* m_documentScope;
@@ -122,8 +126,6 @@ private:
     std::unique_ptr<DocumentOrderedMap> m_labelsByForAttribute;
 
     std::unique_ptr<IdTargetObserverRegistry> m_idTargetObserverRegistry;
-
-    mutable RefPtr<DOMSelection> m_selection;
 };
 
 inline bool TreeScope::hasElementWithId(const AtomicStringImpl& id) const

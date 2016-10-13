@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef CustomGetterSetter_h
-#define CustomGetterSetter_h
+#pragma once
 
 #include "JSCell.h"
 #include "PropertySlot.h"
@@ -32,6 +31,9 @@
 #include "Structure.h"
 
 namespace JSC {
+namespace DOMJIT {
+class GetterSetter;
+}
 
 class CustomGetterSetter final : public JSCell {
 public:
@@ -41,15 +43,16 @@ public:
     typedef PropertySlot::GetValueFunc CustomGetter;
     typedef PutPropertySlot::PutValueFunc CustomSetter;
 
-    static CustomGetterSetter* create(VM& vm, CustomGetter customGetter, CustomSetter customSetter)
+    static CustomGetterSetter* create(VM& vm, CustomGetter customGetter, CustomSetter customSetter, DOMJIT::GetterSetter* domJIT = nullptr)
     {
-        CustomGetterSetter* customGetterSetter = new (NotNull, allocateCell<CustomGetterSetter>(vm.heap)) CustomGetterSetter(vm, customGetter, customSetter);
+        CustomGetterSetter* customGetterSetter = new (NotNull, allocateCell<CustomGetterSetter>(vm.heap)) CustomGetterSetter(vm, customGetter, customSetter, domJIT);
         customGetterSetter->finishCreation(vm);
         return customGetterSetter;
     }
 
     CustomGetterSetter::CustomGetter getter() const { return m_getter; }
     CustomGetterSetter::CustomSetter setter() const { return m_setter; }
+    DOMJIT::GetterSetter* domJIT() const { return m_domJIT; }
 
     static Structure* createStructure(VM& vm, JSGlobalObject* globalObject, JSValue prototype)
     {
@@ -59,20 +62,20 @@ public:
     DECLARE_EXPORT_INFO;
 
 private:
-    CustomGetterSetter(VM& vm, CustomGetter getter, CustomSetter setter)
+    CustomGetterSetter(VM& vm, CustomGetter getter, CustomSetter setter, DOMJIT::GetterSetter* domJIT)
         : JSCell(vm, vm.customGetterSetterStructure.get())
         , m_getter(getter)
         , m_setter(setter)
+        , m_domJIT(domJIT)
     {
     }
 
     CustomGetter m_getter;
     CustomSetter m_setter;
+    DOMJIT::GetterSetter* m_domJIT;
 };
 
 JS_EXPORT_PRIVATE bool callCustomSetter(ExecState*, CustomGetterSetter::CustomSetter, bool isAccessor, JSValue thisValue, JSValue);
 JS_EXPORT_PRIVATE bool callCustomSetter(ExecState*, JSValue customGetterSetter, bool isAccessor, JSObject* slotBase, JSValue thisValue, JSValue);
 
 } // namespace JSC
-
-#endif // CustomGetterSetter_h

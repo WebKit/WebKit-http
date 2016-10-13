@@ -42,6 +42,7 @@ namespace JSC {
 
 void genericUnwind(VM* vm, ExecState* callFrame, UnwindStart unwindStart)
 {
+    auto scope = DECLARE_CATCH_SCOPE(*vm);
     if (Options::breakOnThrow()) {
         CodeBlock* codeBlock = callFrame->codeBlock();
         if (codeBlock)
@@ -58,7 +59,7 @@ void genericUnwind(VM* vm, ExecState* callFrame, UnwindStart unwindStart)
     }
     vm->shadowChicken().log(*vm, shadowChickenTopFrame, ShadowChicken::Packet::throwPacket());
     
-    Exception* exception = vm->exception();
+    Exception* exception = scope.exception();
     RELEASE_ASSERT(exception);
     HandlerInfo* handler = vm->interpreter->unwind(*vm, callFrame, exception, unwindStart); // This may update callFrame.
 
@@ -88,6 +89,11 @@ void genericUnwind(VM* vm, ExecState* callFrame, UnwindStart unwindStart)
     vm->targetInterpreterPCForThrow = catchPCForInterpreter;
     
     RELEASE_ASSERT(catchRoutine);
+}
+
+void genericUnwind(VM* vm, ExecState* callFrame)
+{
+    genericUnwind(vm, callFrame, UnwindFromCurrentFrame);
 }
 
 } // namespace JSC

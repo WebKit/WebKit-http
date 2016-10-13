@@ -31,6 +31,7 @@
 #include "ResourceLoadPriority.h"
 #include "ResourceLoaderOptions.h"
 #include "ResourceRequest.h"
+#include "SecurityOrigin.h"
 #include <wtf/RefPtr.h>
 #include <wtf/text/AtomicString.h>
 
@@ -39,12 +40,7 @@ class Document;
 
 class CachedResourceRequest {
 public:
-    enum DeferOption { NoDefer, DeferredByClient };
-
-    explicit CachedResourceRequest(const ResourceRequest&, const String& charset = String(), Optional<ResourceLoadPriority> = Nullopt);
-    CachedResourceRequest(ResourceRequest&&, const ResourceLoaderOptions&);
-    CachedResourceRequest(const ResourceRequest&, Optional<ResourceLoadPriority>);
-    ~CachedResourceRequest();
+    CachedResourceRequest(ResourceRequest&&, const ResourceLoaderOptions&, Optional<ResourceLoadPriority> = Nullopt, String&& charset = String());
 
     ResourceRequest& mutableResourceRequest() { return m_resourceRequest; }
     const ResourceRequest& resourceRequest() const { return m_resourceRequest; }
@@ -53,26 +49,27 @@ public:
     const ResourceLoaderOptions& options() const { return m_options; }
     void setOptions(const ResourceLoaderOptions& options) { m_options = options; }
     const Optional<ResourceLoadPriority>& priority() const { return m_priority; }
-    bool forPreload() const { return m_forPreload; }
-    void setForPreload(bool forPreload) { m_forPreload = forPreload; }
-    DeferOption defer() const { return m_defer; }
-    void setDefer(DeferOption defer) { m_defer = defer; }
     void setInitiator(PassRefPtr<Element>);
     void setInitiator(const AtomicString& name);
     const AtomicString& initiatorName() const;
     bool allowsCaching() const { return m_options.cachingPolicy == CachingPolicy::AllowCaching; }
+    void setCachingPolicy(CachingPolicy policy) { m_options.cachingPolicy = policy; }
 
     void setAsPotentiallyCrossOrigin(const String&, Document&);
+    void setOrigin(RefPtr<SecurityOrigin>&& origin) { ASSERT(!m_origin); m_origin = WTFMove(origin); }
+    RefPtr<SecurityOrigin> releaseOrigin() { return WTFMove(m_origin); }
+    SecurityOrigin* origin() const { return m_origin.get(); }
+
+    void setCacheModeToNoStore() { m_options.cache = FetchOptions::Cache::NoStore; }
 
 private:
     ResourceRequest m_resourceRequest;
     String m_charset;
     ResourceLoaderOptions m_options;
     Optional<ResourceLoadPriority> m_priority;
-    bool m_forPreload;
-    DeferOption m_defer;
     RefPtr<Element> m_initiatorElement;
     AtomicString m_initiatorName;
+    RefPtr<SecurityOrigin> m_origin;
 };
 
 } // namespace WebCore

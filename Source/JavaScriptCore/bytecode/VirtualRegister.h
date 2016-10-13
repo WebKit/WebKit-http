@@ -23,11 +23,10 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef VirtualRegister_h
-#define VirtualRegister_h
+#pragma once
 
+#include "BytecodeConventions.h"
 #include "CallFrame.h"
-
 #include <wtf/PrintStream.h>
 
 namespace JSC {
@@ -103,7 +102,7 @@ public:
 
 private:
     static const int s_invalidVirtualRegister = 0x3fffffff;
-    static const int s_firstConstantRegisterIndex = 0x40000000;
+    static const int s_firstConstantRegisterIndex = FirstConstantRegisterIndex;
 
     static int localToOperand(int local) { return -1 - local; }
     static int operandToLocal(int operand) { return -1 - operand; }
@@ -126,5 +125,3 @@ inline VirtualRegister virtualRegisterForArgument(int argument, int offset = 0)
 }
 
 } // namespace JSC
-
-#endif // VirtualRegister_h

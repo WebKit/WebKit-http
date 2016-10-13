@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ASTBuilder_h
-#define ASTBuilder_h
+#pragma once
 
 #include "BuiltinNames.h"
 #include "BytecodeIntrinsicRegistry.h"
@@ -344,8 +343,8 @@ public:
 
     ExpressionNode* createAssignResolve(const JSTokenLocation& location, const Identifier& ident, ExpressionNode* rhs, const JSTextPosition& start, const JSTextPosition& divot, const JSTextPosition& end, AssignmentContext assignmentContext)
     {
-        if (rhs->isFuncExprNode() || rhs->isArrowFuncExprNode()) {
-            auto metadata = static_cast<FuncExprNode*>(rhs)->metadata();
+        if (rhs->isBaseFuncExprNode()) {
+            auto metadata = static_cast<BaseFuncExprNode*>(rhs)->metadata();
             metadata->setEcmaName(ident);
             metadata->setInferredName(ident);
         } else if (rhs->isClassExprNode())
@@ -367,6 +366,14 @@ public:
         return node;
     }
 
+    AwaitExprNode* createAwait(const JSTokenLocation& location, ExpressionNode* argument, const JSTextPosition& start, const JSTextPosition& divot, const JSTextPosition& end)
+    {
+        ASSERT(argument);
+        AwaitExprNode* node = new (m_parserArena) AwaitExprNode(location, argument);
+        setExceptionLocation(node, start, divot, end);
+        return node;
+    }
+
     ClassExprNode* createClassExpr(const JSTokenLocation& location, const ParserClassInfo<ASTBuilder>& classInfo, VariableEnvironment& classEnvironment, ExpressionNode* constructor,
         ExpressionNode* parentClass, PropertyListNode* instanceMethods, PropertyListNode* staticMethods)
     {
@@ -382,6 +389,17 @@ public:
         return result;
     }
 
+    ExpressionNode* createAsyncFunctionBody(const JSTokenLocation& location, const ParserFunctionInfo<ASTBuilder>& functionInfo, SourceParseMode parseMode)
+    {
+        if (parseMode == SourceParseMode::AsyncArrowFunctionBodyMode) {
+            SourceCode source = m_sourceCode->subExpression(functionInfo.startOffset, functionInfo.body->isArrowFunctionBodyExpression() ? functionInfo.endOffset - 1 : functionInfo.endOffset, functionInfo.startLine, functionInfo.parametersStartColumn);
+            FuncExprNode* result = new (m_parserArena) FuncExprNode(location, *functionInfo.name, functionInfo.body, source);
+            functionInfo.body->setLoc(functionInfo.startLine, functionInfo.endLine, location.startOffset, location.lineStartOffset);
+            return result;
+        }
+        return createFunctionExpr(location, functionInfo);
+    }
+
     ExpressionNode* createMethodDefinition(const JSTokenLocation& location, const ParserFunctionInfo<ASTBuilder>& functionInfo)
     {
         MethodDefinitionNode* result = new (m_parserArena) MethodDefinitionNode(location, *functionInfo.name, functionInfo.body,
@@ -394,12 +412,15 @@ public:
         const JSTokenLocation& startLocation, const JSTokenLocation& endLocation, 
         unsigned startColumn, unsigned endColumn, int functionKeywordStart, 
         int functionNameStart, int parametersStart, bool inStrictContext, 
-        ConstructorKind constructorKind, SuperBinding superBinding, unsigned parameterCount, SourceParseMode mode, bool isArrowFunctionBodyExpression)
+        ConstructorKind constructorKind, SuperBinding superBinding,
+        unsigned parameterCount, unsigned functionLength,
+        SourceParseMode mode, bool isArrowFunctionBodyExpression)
     {
         return new (m_parserArena) FunctionMetadataNode(
             m_parserArena, startLocation, endLocation, startColumn, endColumn, 
             functionKeywordStart, functionNameStart, parametersStart, 
-            inStrictContext, constructorKind, superBinding, parameterCount, mode, isArrowFunctionBodyExpression);
+            inStrictContext, constructorKind, superBinding,
+            parameterCount, functionLength, mode, isArrowFunctionBodyExpression);
     }
 
     ExpressionNode* createArrowFunctionExpr(const JSTokenLocation& location, const ParserFunctionInfo<ASTBuilder>& functionInfo)
@@ -450,8 +471,8 @@ public:
 
     PropertyNode* createProperty(const Identifier* propertyName, ExpressionNode* node, PropertyNode::Type type, PropertyNode::PutType putType, bool, SuperBinding superBinding, bool isClassProperty)
     {
-        if (node->isFuncExprNode()) {
-            auto metadata = static_cast<FuncExprNode*>(node)->metadata();
+        if (node->isBaseFuncExprNode()) {
+            auto metadata = static_cast<BaseFuncExprNode*>(node)->metadata();
             metadata->setEcmaName(*propertyName);
             metadata->setInferredName(*propertyName);
         } else if (node->isClassExprNode())
@@ -484,6 +505,7 @@ public:
     void appendParameter(FormalParameterList list, DestructuringPattern pattern, ExpressionNode* defaultValue) 
     { 
         list->append(pattern, defaultValue); 
+        tryInferNameInPattern(pattern, defaultValue);
     }
 
     CaseClauseNode* createClause(ExpressionNode* expr, JSC::SourceElements* statements) { return new (m_parserArena) CaseClauseNode(expr, statements); }
@@ -537,7 +559,7 @@ public:
         return result;
     }
 
-    StatementNode* createForInLoop(const JSTokenLocation& location, ExpressionNode* lhs, ExpressionNode* iter, StatementNode* statements, const JSTextPosition& eStart, const JSTextPosition& eDivot, const JSTextPosition& eEnd, int start, int end, VariableEnvironment& lexicalVariables)
+    StatementNode* createForInLoop(const JSTokenLocation& location, ExpressionNode* lhs, ExpressionNode* iter, StatementNode* statements, const JSTokenLocation&, const JSTextPosition& eStart, const JSTextPosition& eDivot, const JSTextPosition& eEnd, int start, int end, VariableEnvironment& lexicalVariables)
     {
         ForInNode* result = new (m_parserArena) ForInNode(location, lhs, iter, statements, lexicalVariables);
         result->setLoc(start, end, location.startOffset, location.lineStartOffset);
@@ -545,13 +567,13 @@ public:
         return result;
     }
     
-    StatementNode* createForInLoop(const JSTokenLocation& location, DestructuringPatternNode* pattern, ExpressionNode* iter, StatementNode* statements, const JSTextPosition& eStart, const JSTextPosition& eDivot, const JSTextPosition& eEnd, int start, int end, VariableEnvironment& lexicalVariables)
+    StatementNode* createForInLoop(const JSTokenLocation& location, DestructuringPatternNode* pattern, ExpressionNode* iter, StatementNode* statements, const JSTokenLocation& declLocation, const JSTextPosition& eStart, const JSTextPosition& eDivot, const JSTextPosition& eEnd, int start, int end, VariableEnvironment& lexicalVariables)
     {
-        auto lexpr = new (m_parserArena) DestructuringAssignmentNode(location, pattern, 0);
-        return createForInLoop(location, lexpr, iter, statements, eStart, eDivot, eEnd, start, end, lexicalVariables);
+        auto lexpr = new (m_parserArena) DestructuringAssignmentNode(declLocation, pattern, nullptr);
+        return createForInLoop(location, lexpr, iter, statements, declLocation, eStart, eDivot, eEnd, start, end, lexicalVariables);
     }
     
-    StatementNode* createForOfLoop(const JSTokenLocation& location, ExpressionNode* lhs, ExpressionNode* iter, StatementNode* statements, const JSTextPosition& eStart, const JSTextPosition& eDivot, const JSTextPosition& eEnd, int start, int end, VariableEnvironment& lexicalVariables)
+    StatementNode* createForOfLoop(const JSTokenLocation& location, ExpressionNode* lhs, ExpressionNode* iter, StatementNode* statements, const JSTokenLocation&, const JSTextPosition& eStart, const JSTextPosition& eDivot, const JSTextPosition& eEnd, int start, int end, VariableEnvironment& lexicalVariables)
     {
         ForOfNode* result = new (m_parserArena) ForOfNode(location, lhs, iter, statements, lexicalVariables);
         result->setLoc(start, end, location.startOffset, location.lineStartOffset);
@@ -559,10 +581,10 @@ public:
         return result;
     }
     
-    StatementNode* createForOfLoop(const JSTokenLocation& location, DestructuringPatternNode* pattern, ExpressionNode* iter, StatementNode* statements, const JSTextPosition& eStart, const JSTextPosition& eDivot, const JSTextPosition& eEnd, int start, int end, VariableEnvironment& lexicalVariables)
+    StatementNode* createForOfLoop(const JSTokenLocation& location, DestructuringPatternNode* pattern, ExpressionNode* iter, StatementNode* statements, const JSTokenLocation& declLocation, const JSTextPosition& eStart, const JSTextPosition& eDivot, const JSTextPosition& eEnd, int start, int end, VariableEnvironment& lexicalVariables)
     {
-        auto lexpr = new (m_parserArena) DestructuringAssignmentNode(location, pattern, 0);
-        return createForOfLoop(location, lexpr, iter, statements, eStart, eDivot, eEnd, start, end, lexicalVariables);
+        auto lexpr = new (m_parserArena) DestructuringAssignmentNode(declLocation, pattern, nullptr);
+        return createForOfLoop(location, lexpr, iter, statements, declLocation, eStart, eDivot, eEnd, start, end, lexicalVariables);
     }
 
     bool isBindingNode(const DestructuringPattern& pattern)
@@ -588,6 +610,11 @@ public:
     bool isObjectOrArrayLiteral(const Expression& node)
     {
         return isObjectLiteral(node) || isArrayLiteral(node);
+    }
+
+    bool shouldSkipPauseLocation(StatementNode* statement) const
+    {
+        return !statement || statement->isLabel();
     }
 
     StatementNode* createEmptyStatement(const JSTokenLocation& location) { return new (m_parserArena) EmptyStatementNode(location); }
@@ -881,6 +908,7 @@ public:
     void appendArrayPatternEntry(ArrayPattern node, const JSTokenLocation& location, DestructuringPattern pattern, ExpressionNode* defaultValue)
     {
         node->appendIndex(ArrayPatternNode::BindingType::Element, location, pattern, defaultValue);
+        tryInferNameInPattern(pattern, defaultValue);
     }
 
     void appendArrayPatternRestEntry(ArrayPattern node, const JSTokenLocation& location, DestructuringPattern pattern)
@@ -901,11 +929,13 @@ public:
     void appendObjectPatternEntry(ObjectPattern node, const JSTokenLocation& location, bool wasString, const Identifier& identifier, DestructuringPattern pattern, ExpressionNode* defaultValue)
     {
         node->appendEntry(location, identifier, wasString, pattern, defaultValue);
+        tryInferNameInPattern(pattern, defaultValue);
     }
 
     void appendObjectPatternEntry(ObjectPattern node, const JSTokenLocation& location, ExpressionNode* propertyExpression, DestructuringPattern pattern, ExpressionNode* defaultValue)
     {
         node->appendEntry(location, propertyExpression, pattern, defaultValue);
+        tryInferNameInPattern(pattern, defaultValue);
     }
 
     BindingPattern createBindingLocation(const JSTokenLocation&, const Identifier& boundProperty, const JSTextPosition& start, const JSTextPosition& end, AssignmentContext context)
@@ -943,6 +973,11 @@ public:
         node->setStartOffset(offset);
     }
 
+    JSTextPosition breakpointLocation(Node* node)
+    {
+        node->setNeedsDebugHook();
+        return node->position();
+    }
 
     void propagateArgumentsUse() { usesArguments(); }
     
@@ -995,6 +1030,24 @@ private:
         if (originalNode.isIntegerNode())
             return createIntegerLikeNumber(location, value);
         return createDoubleLikeNumber(location, value);
+    }
+
+    void tryInferNameInPattern(DestructuringPattern pattern, ExpressionNode* defaultValue)
+    {
+        if (!defaultValue)
+            return;
+
+        if (!pattern->isBindingNode())
+            return;
+
+        const Identifier& ident = static_cast<const BindingNode*>(pattern)->boundProperty();
+
+        if (defaultValue->isBaseFuncExprNode()) {
+            auto metadata = static_cast<BaseFuncExprNode*>(defaultValue)->metadata();
+            metadata->setEcmaName(ident);
+            metadata->setInferredName(ident);
+        } else if (defaultValue->isClassExprNode())
+            static_cast<ClassExprNode*>(defaultValue)->setEcmaName(ident);
     }
 
     VM* m_vm;
@@ -1345,8 +1398,8 @@ ExpressionNode* ASTBuilder::makeAssignNode(const JSTokenLocation& location, Expr
     if (loc->isResolveNode()) {
         ResolveNode* resolve = static_cast<ResolveNode*>(loc);
         if (op == OpEqual) {
-            if (expr->isFuncExprNode()) {
-                auto metadata = static_cast<FuncExprNode*>(expr)->metadata();
+            if (expr->isBaseFuncExprNode()) {
+                auto metadata = static_cast<BaseFuncExprNode*>(expr)->metadata();
                 metadata->setEcmaName(resolve->identifier());
                 metadata->setInferredName(resolve->identifier());
             } else if (expr->isClassExprNode())
@@ -1368,10 +1421,10 @@ ExpressionNode* ASTBuilder::makeAssignNode(const JSTokenLocation& location, Expr
     ASSERT(loc->isDotAccessorNode());
     DotAccessorNode* dot = static_cast<DotAccessorNode*>(loc);
     if (op == OpEqual) {
-        if (expr->isFuncExprNode()) {
+        if (expr->isBaseFuncExprNode()) {
             // We don't also set the ecma name here because ES6 specifies that the
             // function should not pick up the name of the dot->identifier().
-            static_cast<FuncExprNode*>(expr)->metadata()->setInferredName(dot->identifier());
+            static_cast<BaseFuncExprNode*>(expr)->metadata()->setInferredName(dot->identifier());
         }
         return new (m_parserArena) AssignDotNode(location, dot->base(), dot->identifier(), expr, exprHasAssignments, dot->divot(), start, end);
     }
@@ -1392,5 +1445,3 @@ ExpressionNode* ASTBuilder::makePostfixNode(const JSTokenLocation& location, Exp
 }
 
 }
-
-#endif

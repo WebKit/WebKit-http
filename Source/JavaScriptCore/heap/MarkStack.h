@@ -23,10 +23,9 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef MarkStack_h
-#define MarkStack_h
+#pragma once
 
-#include "GCSegmentedArrayInlines.h"
+#include "GCSegmentedArray.h"
 
 namespace JSC {
 
@@ -41,5 +40,3 @@ public:
 };
 
 } // namespace JSC
-
-#endif

@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef SamplingProfiler_h
-#define SamplingProfiler_h
+#pragma once
 
 #if ENABLE(SAMPLING_PROFILER)
 
@@ -150,6 +149,7 @@ public:
     void processUnverifiedStackTraces(); // You should call this only after acquiring the lock.
     void setStopWatch(const LockHolder&, Ref<Stopwatch>&& stopwatch) { m_stopwatch = WTFMove(stopwatch); }
     void pause(const LockHolder&);
+    void clearData(const LockHolder&);
 
     // Used for debugging in the JSC shell/DRT.
     void registerForReportAtExit();
@@ -160,7 +160,6 @@ public:
     JS_EXPORT_PRIVATE void reportTopBytecodes(PrintStream&);
 
 private:
-    void clearData(const LockHolder&);
     void createThreadIfNecessary(const LockHolder&);
     void timerLoop();
     void takeSample(const LockHolder&, std::chrono::microseconds& stackTraceProcessingTime);
@@ -190,5 +189,3 @@ void printInternal(PrintStream&, JSC::SamplingProfiler::FrameType);
 } // namespace WTF
 
 #endif // ENABLE(SAMPLING_PROFILER)
-
-#endif // SamplingProfiler_h 

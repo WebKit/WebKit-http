@@ -159,16 +159,18 @@ void Data::performAssertions(VM& vm)
     STATIC_ASSERT(ObjectType == 20);
     STATIC_ASSERT(FinalObjectType == 21);
     STATIC_ASSERT(JSFunctionType == 23);
-    STATIC_ASSERT(ArrayType == 29);
-    STATIC_ASSERT(Int8ArrayType == 100);
-    STATIC_ASSERT(Int16ArrayType == 101);
-    STATIC_ASSERT(Int32ArrayType == 102);
-    STATIC_ASSERT(Uint8ArrayType == 103);
-    STATIC_ASSERT(Uint8ClampedArrayType == 104);
-    STATIC_ASSERT(Uint16ArrayType == 105);
-    STATIC_ASSERT(Uint32ArrayType == 106);
-    STATIC_ASSERT(Float32ArrayType == 107);
-    STATIC_ASSERT(Float64ArrayType == 108);
+    STATIC_ASSERT(ArrayType == 31);
+    STATIC_ASSERT(DerivedArrayType == 32);
+    STATIC_ASSERT(ProxyObjectType == 49);
+    STATIC_ASSERT(Int8ArrayType == 33);
+    STATIC_ASSERT(Int16ArrayType == 34);
+    STATIC_ASSERT(Int32ArrayType == 35);
+    STATIC_ASSERT(Uint8ArrayType == 36);
+    STATIC_ASSERT(Uint8ClampedArrayType == 37);
+    STATIC_ASSERT(Uint16ArrayType == 38);
+    STATIC_ASSERT(Uint32ArrayType == 39);
+    STATIC_ASSERT(Float32ArrayType == 40);
+    STATIC_ASSERT(Float64ArrayType == 41);
     STATIC_ASSERT(MasqueradesAsUndefined == 1);
     STATIC_ASSERT(ImplementsDefaultHasInstance == 2);
     STATIC_ASSERT(FirstConstantRegisterIndex == 0x40000000);
@@ -211,7 +213,8 @@ void Data::performAssertions(VM& vm)
     STATIC_ASSERT(GetPutInfo::initializationShift == 10);
     STATIC_ASSERT(GetPutInfo::initializationBits == 0xffc00);
 
-    STATIC_ASSERT(MarkedBlock::blockMask == ~static_cast<decltype(MarkedBlock::blockMask)>(0x3fff));
+    STATIC_ASSERT(MarkedBlock::blockSize == 16 * 1024);
+    STATIC_ASSERT(blackThreshold == 0);
 
     ASSERT(bitwise_cast<uintptr_t>(ShadowChicken::Packet::tailMarker()) == static_cast<uintptr_t>(0x7a11));
 

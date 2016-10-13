@@ -55,7 +55,7 @@ void WebEditCommandProxy::unapply()
     if (!m_page || !m_page->isValid())
         return;
 
-    m_page->process().send(Messages::WebPage::UnapplyEditCommand(m_commandID), m_page->pageID(), IPC::DispatchMessageEvenWhenWaitingForSyncReply);
+    m_page->process().send(Messages::WebPage::UnapplyEditCommand(m_commandID), m_page->pageID(), IPC::SendOption::DispatchMessageEvenWhenWaitingForSyncReply);
     m_page->registerEditCommand(this, WebPageProxy::Redo);
 }
 
@@ -64,7 +64,7 @@ void WebEditCommandProxy::reapply()
     if (!m_page || !m_page->isValid())
         return;
 
-    m_page->process().send(Messages::WebPage::ReapplyEditCommand(m_commandID), m_page->pageID(), IPC::DispatchMessageEvenWhenWaitingForSyncReply);
+    m_page->process().send(Messages::WebPage::ReapplyEditCommand(m_commandID), m_page->pageID(), IPC::SendOption::DispatchMessageEvenWhenWaitingForSyncReply);
     m_page->registerEditCommand(this, WebPageProxy::Undo);
 }
 
@@ -75,6 +75,8 @@ String WebEditCommandProxy::nameForEditAction(EditAction editAction)
     case EditActionUnspecified:
         return String();
     case EditActionInsert:
+        return String();
+    case EditActionInsertReplacement:
         return String();
     case EditActionSetColor:
         return WEB_UI_STRING_KEY("Set Color", "Set Color (Undo action name)", "Undo action name");
@@ -142,13 +144,23 @@ String WebEditCommandProxy::nameForEditAction(EditAction editAction)
         return WEB_UI_STRING_KEY("Paste Font", "Paste Font (Undo action name)", "Undo action name");
     case EditActionPasteRuler:
         return WEB_UI_STRING_KEY("Paste Ruler", "Paste Ruler (Undo action name)", "Undo action name");
-    case EditActionTyping:
+    case EditActionTypingDeleteSelection:
+    case EditActionTypingDeleteBackward:
+    case EditActionTypingDeleteForward:
+    case EditActionTypingDeleteWordBackward:
+    case EditActionTypingDeleteWordForward:
+    case EditActionTypingDeleteLineBackward:
+    case EditActionTypingDeleteLineForward:
+    case EditActionTypingInsertText:
+    case EditActionTypingInsertLineBreak:
+    case EditActionTypingInsertParagraph:
         return WEB_UI_STRING_KEY("Typing", "Typing (Undo action name)", "Undo action name");
     case EditActionCreateLink:
         return WEB_UI_STRING_KEY("Create Link", "Create Link (Undo action name)", "Undo action name");
     case EditActionUnlink:
         return WEB_UI_STRING_KEY("Unlink", "Unlink (Undo action name)", "Undo action name");
-    case EditActionInsertList:
+    case EditActionInsertUnorderedList:
+    case EditActionInsertOrderedList:
         return WEB_UI_STRING_KEY("Insert List", "Insert List (Undo action name)", "Undo action name");
     case EditActionFormatBlock:
         return WEB_UI_STRING_KEY("Formatting", "Format Block (Undo action name)", "Undo action name");

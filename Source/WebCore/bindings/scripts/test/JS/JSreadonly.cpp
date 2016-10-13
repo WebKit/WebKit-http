@@ -37,7 +37,7 @@ bool setJSreadonlyConstructor(JSC::ExecState*, JSC::EncodedJSValue, JSC::Encoded
 
 class JSreadonlyPrototype : public JSC::JSNonFinalObject {
 public:
-    typedef JSC::JSNonFinalObject Base;
+    using Base = JSC::JSNonFinalObject;
     static JSreadonlyPrototype* create(JSC::VM& vm, JSC::JSGlobalObject* globalObject, JSC::Structure* structure)
     {
         JSreadonlyPrototype* ptr = new (NotNull, JSC::allocateCell<JSreadonlyPrototype>(vm.heap)) JSreadonlyPrototype(vm, globalObject, structure);
@@ -60,7 +60,7 @@ private:
     void finishCreation(JSC::VM&);
 };
 
-typedef JSDOMConstructorNotConstructable<JSreadonly> JSreadonlyConstructor;
+using JSreadonlyConstructor = JSDOMConstructorNotConstructable<JSreadonly>;
 
 template<> JSValue JSreadonlyConstructor::prototypeForStructure(JSC::VM& vm, const JSDOMGlobalObject& globalObject)
 {
@@ -117,18 +117,22 @@ void JSreadonly::destroy(JSC::JSCell* cell)
 
 EncodedJSValue jsreadonlyConstructor(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
+    VM& vm = state->vm();
+    auto throwScope = DECLARE_THROW_SCOPE(vm);
     JSreadonlyPrototype* domObject = jsDynamicCast<JSreadonlyPrototype*>(JSValue::decode(thisValue));
     if (UNLIKELY(!domObject))
-        return throwVMTypeError(state);
+        return throwVMTypeError(state, throwScope);
     return JSValue::encode(JSreadonly::getConstructor(state->vm(), domObject->globalObject()));
 }
 
 bool setJSreadonlyConstructor(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
 {
+    VM& vm = state->vm();
+    auto throwScope = DECLARE_THROW_SCOPE(vm);
     JSValue value = JSValue::decode(encodedValue);
     JSreadonlyPrototype* domObject = jsDynamicCast<JSreadonlyPrototype*>(JSValue::decode(thisValue));
     if (UNLIKELY(!domObject)) {
-        throwVMTypeError(state);
+        throwVMTypeError(state, throwScope);
         return false;
     }
     // Shadowing a built-in constructor
@@ -163,7 +167,7 @@ JSC::JSValue toJSNewlyCreated(JSC::ExecState*, JSDOMGlobalObject* globalObject, 
     // attribute to readonly.
     static_assert(!__is_polymorphic(readonly), "readonly is polymorphic but the IDL claims it is not");
 #endif
-    return createWrapper<JSreadonly, readonly>(globalObject, WTFMove(impl));
+    return createWrapper<readonly>(globalObject, WTFMove(impl));
 }
 
 JSC::JSValue toJS(JSC::ExecState* state, JSDOMGlobalObject* globalObject, readonly& impl)

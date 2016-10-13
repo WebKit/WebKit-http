@@ -50,6 +50,7 @@
 namespace WebCore {
 
 class Archive;
+class CachedFrame;
 class CachedFrameBase;
 class CachedPage;
 class CachedResource;
@@ -230,7 +231,7 @@ public:
 
     bool checkIfFormActionAllowedByCSP(const URL&, bool didReceiveRedirectResponse) const;
 
-    Frame* opener();
+    WEBCORE_EXPORT Frame* opener();
     WEBCORE_EXPORT void setOpener(Frame*);
 
     void resetMultipleFormSubmissionProtection();
@@ -310,16 +311,17 @@ private:
     bool allChildrenAreComplete() const; // immediate children, not all descendants
 
     void checkTimerFired();
-    
+
     void loadSameDocumentItem(HistoryItem&);
     void loadDifferentDocumentItem(HistoryItem&, FrameLoadType, FormSubmissionCacheLoadPolicy);
-    
+
     void loadProvisionalItemFromCachedPage();
 
     void updateFirstPartyForCookies();
     void setFirstPartyForCookies(const URL&);
-    
+
     void addExtraFieldsToRequest(ResourceRequest&, FrameLoadType, bool isMainResource);
+    ResourceRequestCachePolicy defaultRequestCachingPolicy(const ResourceRequest&, FrameLoadType, bool isMainResource);
 
     void clearProvisionalLoad();
     void transitionToCommitted(CachedPage*);
@@ -350,7 +352,7 @@ private:
 
     bool shouldReloadToHandleUnreachableURL(DocumentLoader*);
 
-    void dispatchDidCommitLoad();
+    void dispatchDidCommitLoad(Optional<HasInsecureContent> initialHasInsecureContent);
 
     void urlSelected(const FrameLoadRequest&, Event*);
 

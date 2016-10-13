@@ -752,6 +752,20 @@ void PageClientImpl::removeNavigationGestureSnapshot()
         gestureController->removeSwipeSnapshot();
 }
 
+void PageClientImpl::handleControlledElementIDResponse(const String& identifier)
+{
+#if WK_API_ENABLED
+    [m_webView _handleControlledElementIDResponse:nsStringFromWebCoreString(identifier)];
+#endif
+}
+
+void PageClientImpl::handleActiveNowPlayingSessionInfoResponse(bool hasActiveSession, const String& title, double duration, double elapsedTime)
+{
+#if WK_API_ENABLED
+    [m_webView _handleActiveNowPlayingSessionInfoResponse:hasActiveSession title:nsStringFromWebCoreString(title) duration:duration elapsedTime:elapsedTime];
+#endif
+}
+
 void PageClientImpl::didChangeBackgroundColor()
 {
     notImplemented();

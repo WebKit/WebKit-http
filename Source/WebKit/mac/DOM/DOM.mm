@@ -561,7 +561,7 @@ id <DOMEventTarget> kit(EventTarget* eventTarget)
 
     if (textIndicator) {
         if (Image* image = textIndicator->contentImage())
-            *cgImage = (CGImageRef)CFAutorelease(CGImageRetain(image->getCGImageRef()));
+            *cgImage = image->nativeImage().autorelease();
     }
 
     RetainPtr<NSMutableArray> rectArray = adoptNS([[NSMutableArray alloc] init]);
@@ -670,7 +670,7 @@ id <DOMEventTarget> kit(EventTarget* eventTarget)
     auto* cachedImage = downcast<RenderImage>(*renderer).cachedImage();
     if (!cachedImage || cachedImage->errorOccurred())
         return nil;
-    return cachedImage->imageForRenderer(renderer)->getNSImage();
+    return cachedImage->imageForRenderer(renderer)->nsImage();
 }
 
 #endif
@@ -698,7 +698,7 @@ id <DOMEventTarget> kit(EventTarget* eventTarget)
     auto* cachedImage = downcast<RenderImage>(*renderer).cachedImage();
     if (!cachedImage || cachedImage->errorOccurred())
         return nil;
-    return (NSData *)cachedImage->imageForRenderer(renderer)->getTIFFRepresentation();
+    return (NSData *)cachedImage->imageForRenderer(renderer)->tiffRepresentation();
 }
 
 #endif

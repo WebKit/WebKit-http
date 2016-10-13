@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef DFGNode_h
-#define DFGNode_h
+#pragma once
 
 #if ENABLE(DFG_JIT)
 
@@ -54,9 +53,15 @@
 #include "StructureSet.h"
 #include "TypeLocation.h"
 #include "ValueProfile.h"
+#include <type_traits>
 #include <wtf/ListDump.h>
 
 namespace JSC {
+
+namespace DOMJIT {
+class Patchpoint;
+class CallDOMPatchpoint;
+}
 
 namespace Profiler {
 class ExecutionCounter;
@@ -254,8 +259,6 @@ public:
         , m_virtualRegister(VirtualRegister())
         , m_refCount(1)
         , m_prediction(SpecNone)
-        , m_opInfo(0)
-        , m_opInfo2(0)
         , owner(nullptr)
     {
         m_misc.replacement = nullptr;
@@ -270,8 +273,6 @@ public:
         , m_virtualRegister(VirtualRegister())
         , m_refCount(1)
         , m_prediction(SpecNone)
-        , m_opInfo(0)
-        , m_opInfo2(0)
         , owner(nullptr)
     {
         m_misc.replacement = nullptr;
@@ -288,7 +289,6 @@ public:
         , m_refCount(1)
         , m_prediction(SpecNone)
         , m_opInfo(imm.m_value)
-        , m_opInfo2(0)
         , owner(nullptr)
     {
         m_misc.replacement = nullptr;
@@ -304,7 +304,6 @@ public:
         , m_refCount(1)
         , m_prediction(SpecNone)
         , m_opInfo(imm.m_value)
-        , m_opInfo2(0)
         , owner(nullptr)
     {
         m_misc.replacement = nullptr;
@@ -406,7 +405,7 @@ public:
     void convertToCheckStructure(StructureSet* set)
     {
         setOpAndDefaultFlags(CheckStructure);
-        m_opInfo = bitwise_cast<uintptr_t>(set); 
+        m_opInfo = set; 
     }
 
     void convertToCheckStructureImmediate(Node* structure)
@@ -471,7 +470,7 @@ public:
             return FrozenValue::emptySingleton();
         }
         
-        return bitwise_cast<FrozenValue*>(m_opInfo);
+        return m_opInfo.as<FrozenValue*>();
     }
     
     // Don't call this directly - use Graph::convertToConstant() instead!
@@ -484,7 +483,7 @@ public:
         else
             m_op = JSConstant;
         m_flags &= ~NodeMustGenerate;
-        m_opInfo = bitwise_cast<uintptr_t>(value);
+        m_opInfo = value;
         children.reset();
     }
 
@@ -494,7 +493,7 @@ public:
     {
         ASSERT(op() == GetIndexedPropertyStorage);
         m_op = ConstantStoragePointer;
-        m_opInfo = bitwise_cast<uintptr_t>(pointer);
+        m_opInfo = pointer;
         children.reset();
     }
     
@@ -511,23 +510,23 @@ public:
     {
         m_op = PutStack;
         m_flags |= NodeMustGenerate;
-        m_opInfo = bitwise_cast<uintptr_t>(data);
-        m_opInfo2 = 0;
+        m_opInfo = data;
+        m_opInfo2 = OpInfoWrapper();
     }
     
     void convertToGetStack(StackAccessData* data)
     {
         m_op = GetStack;
         m_flags &= ~NodeMustGenerate;
-        m_opInfo = bitwise_cast<uintptr_t>(data);
-        m_opInfo2 = 0;
+        m_opInfo = data;
+        m_opInfo2 = OpInfoWrapper();
         children.reset();
     }
     
     void convertToGetByOffset(StorageAccessData& data, Edge storage, Edge base)
     {
         ASSERT(m_op == GetById || m_op == GetByIdFlush || m_op == MultiGetByOffset);
-        m_opInfo = bitwise_cast<uintptr_t>(&data);
+        m_opInfo = &data;
         children.setChild1(storage);
         children.setChild2(base);
         m_op = GetByOffset;
@@ -537,7 +536,7 @@ public:
     void convertToMultiGetByOffset(MultiGetByOffsetData* data)
     {
         ASSERT(m_op == GetById || m_op == GetByIdFlush);
-        m_opInfo = bitwise_cast<intptr_t>(data);
+        m_opInfo = data;
         child1().setUseKind(CellUse);
         m_op = MultiGetByOffset;
         ASSERT(m_flags & NodeMustGenerate);
@@ -546,7 +545,7 @@ public:
     void convertToPutByOffset(StorageAccessData& data, Edge storage, Edge base)
     {
         ASSERT(m_op == PutById || m_op == PutByIdDirect || m_op == PutByIdFlush || m_op == MultiPutByOffset);
-        m_opInfo = bitwise_cast<uintptr_t>(&data);
+        m_opInfo = &data;
         children.setChild3(children.child2());
         children.setChild2(base);
         children.setChild1(storage);
@@ -556,7 +555,7 @@ public:
     void convertToMultiPutByOffset(MultiPutByOffsetData* data)
     {
         ASSERT(m_op == PutById || m_op == PutByIdDirect || m_op == PutByIdFlush);
-        m_opInfo = bitwise_cast<intptr_t>(data);
+        m_opInfo = data;
         m_op = MultiPutByOffset;
     }
     
@@ -572,8 +571,8 @@ public:
         m_op = PhantomNewObject;
         m_flags &= ~NodeHasVarArgs;
         m_flags |= NodeMustGenerate;
-        m_opInfo = 0;
-        m_opInfo2 = 0;
+        m_opInfo = OpInfoWrapper();
+        m_opInfo2 = OpInfoWrapper();
         children = AdjacencyList();
     }
 
@@ -582,8 +581,8 @@ public:
         ASSERT(m_op == NewFunction || m_op == NewGeneratorFunction);
         m_op = PhantomNewFunction;
         m_flags |= NodeMustGenerate;
-        m_opInfo = 0;
-        m_opInfo2 = 0;
+        m_opInfo = OpInfoWrapper();
+        m_opInfo2 = OpInfoWrapper();
         children = AdjacencyList();
     }
 
@@ -592,8 +591,8 @@ public:
         ASSERT(m_op == NewGeneratorFunction);
         m_op = PhantomNewGeneratorFunction;
         m_flags |= NodeMustGenerate;
-        m_opInfo = 0;
-        m_opInfo2 = 0;
+        m_opInfo = OpInfoWrapper();
+        m_opInfo2 = OpInfoWrapper();
         children = AdjacencyList();
     }
 
@@ -603,8 +602,8 @@ public:
         m_op = PhantomCreateActivation;
         m_flags &= ~NodeHasVarArgs;
         m_flags |= NodeMustGenerate;
-        m_opInfo = 0;
-        m_opInfo2 = 0;
+        m_opInfo = OpInfoWrapper();
+        m_opInfo2 = OpInfoWrapper();
         children = AdjacencyList();
     }
 
@@ -627,8 +626,8 @@ public:
     {
         ASSERT(m_op == GetLocalUnlinked);
         m_op = GetLocal;
-        m_opInfo = bitwise_cast<uintptr_t>(variable);
-        m_opInfo2 = 0;
+        m_opInfo = variable;
+        m_opInfo2 = OpInfoWrapper();
         children.setChild1(Edge(phi));
     }
     
@@ -738,7 +737,7 @@ public:
     LazyJSValue lazyJSValue()
     {
         ASSERT(hasLazyJSValue());
-        return *bitwise_cast<LazyJSValue*>(m_opInfo);
+        return *m_opInfo.as<LazyJSValue*>();
     }
 
     String tryGetString(Graph&);
@@ -746,7 +745,7 @@ public:
     JSValue initializationValueForActivation() const
     {
         ASSERT(op() == CreateActivation);
-        return bitwise_cast<FrozenValue*>(m_opInfo2)->value();
+        return m_opInfo2.as<FrozenValue*>()->value();
     }
 
     bool hasArgumentsChild()
@@ -814,7 +813,7 @@ public:
     // access data doesn't have one because it hasn't been initialized yet.
     VariableAccessData* tryGetVariableAccessData()
     {
-        VariableAccessData* result = reinterpret_cast<VariableAccessData*>(m_opInfo);
+        VariableAccessData* result = m_opInfo.as<VariableAccessData*>();
         if (!result)
             return 0;
         return result->find();
@@ -822,7 +821,7 @@ public:
     
     VariableAccessData* variableAccessData()
     {
-        return reinterpret_cast<VariableAccessData*>(m_opInfo)->find();
+        return m_opInfo.as<VariableAccessData*>()->find();
     }
     
     VirtualRegister local()
@@ -852,7 +851,7 @@ public:
     VirtualRegister unlinkedLocal()
     {
         ASSERT(hasUnlinkedLocal());
-        return static_cast<VirtualRegister>(m_opInfo);
+        return VirtualRegister(m_opInfo.as<int32_t>());
     }
     
     bool hasUnlinkedMachineLocal()
@@ -869,7 +868,7 @@ public:
     VirtualRegister unlinkedMachineLocal()
     {
         ASSERT(hasUnlinkedMachineLocal());
-        return VirtualRegister(m_opInfo2);
+        return VirtualRegister(m_opInfo2.as<int32_t>());
     }
     
     bool hasStackAccessData()
@@ -886,7 +885,7 @@ public:
     StackAccessData* stackAccessData()
     {
         ASSERT(hasStackAccessData());
-        return bitwise_cast<StackAccessData*>(m_opInfo);
+        return m_opInfo.as<StackAccessData*>();
     }
     
     bool hasPhi()
@@ -897,12 +896,12 @@ public:
     Node* phi()
     {
         ASSERT(hasPhi());
-        return bitwise_cast<Node*>(m_opInfo);
+        return m_opInfo.as<Node*>();
     }
 
     bool isStoreBarrier()
     {
-        return op() == StoreBarrier;
+        return op() == StoreBarrier || op() == FencedStoreBarrier;
     }
 
     bool hasIdentifier()
@@ -932,7 +931,7 @@ public:
     unsigned identifierNumber()
     {
         ASSERT(hasIdentifier());
-        return m_opInfo;
+        return m_opInfo.as<unsigned>();
     }
 
     bool hasGetPutInfo()
@@ -949,7 +948,7 @@ public:
     unsigned getPutInfo()
     {
         ASSERT(hasGetPutInfo());
-        return m_opInfo2;
+        return m_opInfo2.as<unsigned>();
     }
 
     bool hasAccessorAttributes()
@@ -973,10 +972,10 @@ public:
         case PutGetterById:
         case PutSetterById:
         case PutGetterSetterById:
-            return m_opInfo2;
+            return m_opInfo2.as<int32_t>();
         case PutGetterByVal:
         case PutSetterByVal:
-            return m_opInfo;
+            return m_opInfo.as<int32_t>();
         default:
             RELEASE_ASSERT_NOT_REACHED();
             return 0;
@@ -1024,7 +1023,7 @@ public:
     NewArrayBufferData* newArrayBufferData()
     {
         ASSERT(hasConstantBuffer());
-        return reinterpret_cast<NewArrayBufferData*>(m_opInfo);
+        return m_opInfo.as<NewArrayBufferData*>();
     }
     
     unsigned startConstant()
@@ -1062,7 +1061,7 @@ public:
         ASSERT(hasIndexingType());
         if (op() == NewArrayBuffer)
             return newArrayBufferData()->indexingType;
-        return m_opInfo;
+        return static_cast<IndexingType>(m_opInfo.as<uint32_t>());
     }
     
     bool hasTypedArrayType()
@@ -1078,7 +1077,7 @@ public:
     TypedArrayType typedArrayType()
     {
         ASSERT(hasTypedArrayType());
-        TypedArrayType result = static_cast<TypedArrayType>(m_opInfo);
+        TypedArrayType result = static_cast<TypedArrayType>(m_opInfo.as<uint32_t>());
         ASSERT(isTypedView(result));
         return result;
     }
@@ -1091,27 +1090,13 @@ public:
     unsigned inlineCapacity()
     {
         ASSERT(hasInlineCapacity());
-        return m_opInfo;
+        return m_opInfo.as<unsigned>();
     }
 
     void setIndexingType(IndexingType indexingType)
     {
         ASSERT(hasIndexingType());
         m_opInfo = indexingType;
-    }
-    
-    // FIXME: We really should be able to inline code that uses NewRegexp. That means
-    // using something other than the index into the CodeBlock here.
-    // https://bugs.webkit.org/show_bug.cgi?id=154808
-    bool hasRegexpIndex()
-    {
-        return op() == NewRegexp;
-    }
-    
-    unsigned regexpIndex()
-    {
-        ASSERT(hasRegexpIndex());
-        return m_opInfo;
     }
     
     bool hasScopeOffset()
@@ -1122,7 +1107,7 @@ public:
     ScopeOffset scopeOffset()
     {
         ASSERT(hasScopeOffset());
-        return ScopeOffset(m_opInfo);
+        return ScopeOffset(m_opInfo.as<uint32_t>());
     }
     
     bool hasDirectArgumentsOffset()
@@ -1133,7 +1118,7 @@ public:
     DirectArgumentsOffset capturedArgumentsOffset()
     {
         ASSERT(hasDirectArgumentsOffset());
-        return DirectArgumentsOffset(m_opInfo);
+        return DirectArgumentsOffset(m_opInfo.as<uint32_t>());
     }
     
     bool hasRegisterPointer()
@@ -1143,7 +1128,7 @@ public:
     
     WriteBarrier<Unknown>* variablePointer()
     {
-        return bitwise_cast<WriteBarrier<Unknown>*>(m_opInfo);
+        return m_opInfo.as<WriteBarrier<Unknown>*>();
     }
     
     bool hasCallVarargsData()
@@ -1166,7 +1151,7 @@ public:
     CallVarargsData* callVarargsData()
     {
         ASSERT(hasCallVarargsData());
-        return bitwise_cast<CallVarargsData*>(m_opInfo);
+        return m_opInfo.as<CallVarargsData*>();
     }
     
     bool hasLoadVarargsData()
@@ -1177,17 +1162,33 @@ public:
     LoadVarargsData* loadVarargsData()
     {
         ASSERT(hasLoadVarargsData());
-        return bitwise_cast<LoadVarargsData*>(m_opInfo);
+        return m_opInfo.as<LoadVarargsData*>();
+    }
+
+    bool hasQueriedType()
+    {
+        return op() == IsCellWithType;
+    }
+
+    JSType queriedType()
+    {
+        static_assert(std::is_same<uint8_t, std::underlying_type<JSType>::type>::value, "Ensure that uint8_t is the underlying type for JSType.");
+        return static_cast<JSType>(m_opInfo.as<uint32_t>());
+    }
+
+    bool hasSpeculatedTypeForQuery()
+    {
+        return op() == IsCellWithType;
+    }
+
+    SpeculatedType speculatedTypeForQuery()
+    {
+        return speculationFromJSType(queriedType());
     }
     
     bool hasResult()
     {
         return !!result();
-    }
-
-    bool hasInt32Result()
-    {
-        return result() == NodeResultInt32;
     }
     
     bool hasInt52Result()
@@ -1273,25 +1274,25 @@ public:
     unsigned targetBytecodeOffsetDuringParsing()
     {
         ASSERT(isJump());
-        return m_opInfo;
+        return m_opInfo.as<unsigned>();
     }
 
     BasicBlock*& targetBlock()
     {
         ASSERT(isJump());
-        return *bitwise_cast<BasicBlock**>(&m_opInfo);
+        return *bitwise_cast<BasicBlock**>(&m_opInfo.u.pointer);
     }
     
     BranchData* branchData()
     {
         ASSERT(isBranch());
-        return bitwise_cast<BranchData*>(m_opInfo);
+        return m_opInfo.as<BranchData*>();
     }
     
     SwitchData* switchData()
     {
         ASSERT(isSwitch());
-        return bitwise_cast<SwitchData*>(m_opInfo);
+        return m_opInfo.as<SwitchData*>();
     }
     
     unsigned numSuccessors()
@@ -1411,6 +1412,7 @@ public:
     bool hasHeapPrediction()
     {
         switch (op()) {
+        case ArithAbs:
         case ArithRound:
         case ArithFloor:
         case ArithCeil:
@@ -1418,7 +1420,10 @@ public:
         case GetDirectPname:
         case GetById:
         case GetByIdFlush:
+        case GetByIdWithThis:
+        case TryGetById:
         case GetByVal:
+        case GetByValWithThis:
         case Call:
         case TailCallInlinedCaller:
         case Construct:
@@ -1441,6 +1446,8 @@ public:
         case StringReplace:
         case StringReplaceRegExp:
         case ToNumber:
+        case LoadFromJSMapBucket:
+        case CallDOM:
             return true;
         default:
             return false;
@@ -1450,7 +1457,7 @@ public:
     SpeculatedType getHeapPrediction()
     {
         ASSERT(hasHeapPrediction());
-        return static_cast<SpeculatedType>(m_opInfo2);
+        return m_opInfo2.as<SpeculatedType>();
     }
 
     void setHeapPrediction(SpeculatedType prediction)
@@ -1468,6 +1475,7 @@ public:
         case NewGeneratorFunction:
         case CreateActivation:
         case MaterializeCreateActivation:
+        case NewRegexp:
         case CompareEqPtr:
             return true;
         default:
@@ -1478,7 +1486,7 @@ public:
     FrozenValue* cellOperand()
     {
         ASSERT(hasCellOperand());
-        return reinterpret_cast<FrozenValue*>(m_opInfo);
+        return m_opInfo.as<FrozenValue*>();
     }
     
     template<typename T>
@@ -1490,7 +1498,7 @@ public:
     void setCellOperand(FrozenValue* value)
     {
         ASSERT(hasCellOperand());
-        m_opInfo = bitwise_cast<uintptr_t>(value);
+        m_opInfo = value;
     }
     
     bool hasWatchpointSet()
@@ -1501,7 +1509,7 @@ public:
     WatchpointSet* watchpointSet()
     {
         ASSERT(hasWatchpointSet());
-        return reinterpret_cast<WatchpointSet*>(m_opInfo);
+        return m_opInfo.as<WatchpointSet*>();
     }
     
     bool hasStoragePointer()
@@ -1512,7 +1520,7 @@ public:
     void* storagePointer()
     {
         ASSERT(hasStoragePointer());
-        return reinterpret_cast<void*>(m_opInfo);
+        return m_opInfo.as<void*>();
     }
 
     bool hasUidOperand()
@@ -1523,7 +1531,7 @@ public:
     UniquedStringImpl* uidOperand()
     {
         ASSERT(hasUidOperand());
-        return reinterpret_cast<UniquedStringImpl*>(m_opInfo);
+        return m_opInfo.as<UniquedStringImpl*>();
     }
 
     bool hasTypeInfoOperand()
@@ -1533,8 +1541,8 @@ public:
 
     unsigned typeInfoOperand()
     {
-        ASSERT(hasTypeInfoOperand() && m_opInfo <= UCHAR_MAX);
-        return static_cast<unsigned>(m_opInfo);
+        ASSERT(hasTypeInfoOperand() && m_opInfo.as<uint32_t>() <= static_cast<uint32_t>(UCHAR_MAX));
+        return m_opInfo.as<uint32_t>();
     }
 
     bool hasTransition()
@@ -1552,7 +1560,7 @@ public:
     Transition* transition()
     {
         ASSERT(hasTransition());
-        return reinterpret_cast<Transition*>(m_opInfo);
+        return m_opInfo.as<Transition*>();
     }
     
     bool hasStructureSet()
@@ -1570,7 +1578,7 @@ public:
     StructureSet& structureSet()
     {
         ASSERT(hasStructureSet());
-        return *reinterpret_cast<StructureSet*>(m_opInfo);
+        return *m_opInfo.as<StructureSet*>();
     }
     
     bool hasStructure()
@@ -1588,7 +1596,7 @@ public:
     Structure* structure()
     {
         ASSERT(hasStructure());
-        return reinterpret_cast<Structure*>(m_opInfo);
+        return m_opInfo.as<Structure*>();
     }
     
     bool hasStorageAccessData()
@@ -1606,7 +1614,7 @@ public:
     StorageAccessData& storageAccessData()
     {
         ASSERT(hasStorageAccessData());
-        return *bitwise_cast<StorageAccessData*>(m_opInfo);
+        return *m_opInfo.as<StorageAccessData*>();
     }
     
     bool hasMultiGetByOffsetData()
@@ -1617,7 +1625,7 @@ public:
     MultiGetByOffsetData& multiGetByOffsetData()
     {
         ASSERT(hasMultiGetByOffsetData());
-        return *reinterpret_cast<MultiGetByOffsetData*>(m_opInfo);
+        return *m_opInfo.as<MultiGetByOffsetData*>();
     }
     
     bool hasMultiPutByOffsetData()
@@ -1628,7 +1636,7 @@ public:
     MultiPutByOffsetData& multiPutByOffsetData()
     {
         ASSERT(hasMultiPutByOffsetData());
-        return *reinterpret_cast<MultiPutByOffsetData*>(m_opInfo);
+        return *m_opInfo.as<MultiPutByOffsetData*>();
     }
     
     bool hasObjectMaterializationData()
@@ -1646,7 +1654,7 @@ public:
     ObjectMaterializationData& objectMaterializationData()
     {
         ASSERT(hasObjectMaterializationData());
-        return *reinterpret_cast<ObjectMaterializationData*>(m_opInfo2);
+        return *m_opInfo2.as<ObjectMaterializationData*>();
     }
 
     bool isObjectAllocation()
@@ -1755,8 +1763,8 @@ public:
     {
         ASSERT(hasArrayMode());
         if (op() == ArrayifyToStructure)
-            return ArrayMode::fromWord(m_opInfo2);
-        return ArrayMode::fromWord(m_opInfo);
+            return ArrayMode::fromWord(m_opInfo2.as<uint32_t>());
+        return ArrayMode::fromWord(m_opInfo.as<uint32_t>());
     }
     
     bool setArrayMode(ArrayMode arrayMode)
@@ -1789,7 +1797,7 @@ public:
     Arith::Mode arithMode()
     {
         ASSERT(hasArithMode());
-        return static_cast<Arith::Mode>(m_opInfo);
+        return static_cast<Arith::Mode>(m_opInfo.as<uint32_t>());
     }
     
     void setArithMode(Arith::Mode mode)
@@ -1805,13 +1813,13 @@ public:
     Arith::RoundingMode arithRoundingMode()
     {
         ASSERT(hasArithRoundingMode());
-        return static_cast<Arith::RoundingMode>(m_opInfo);
+        return static_cast<Arith::RoundingMode>(m_opInfo.as<uint32_t>());
     }
 
     void setArithRoundingMode(Arith::RoundingMode mode)
     {
         ASSERT(hasArithRoundingMode());
-        m_opInfo = static_cast<uintptr_t>(mode);
+        m_opInfo = static_cast<uint32_t>(mode);
     }
     
     bool hasVirtualRegister()
@@ -1840,7 +1848,7 @@ public:
     
     Profiler::ExecutionCounter* executionCounter()
     {
-        return bitwise_cast<Profiler::ExecutionCounter*>(m_opInfo);
+        return m_opInfo.as<Profiler::ExecutionCounter*>();
     }
 
     bool shouldGenerate()
@@ -2077,6 +2085,16 @@ public:
     {
         return isArraySpeculation(prediction());
     }
+
+    bool shouldSpeculateProxyObject()
+    {
+        return isProxyObjectSpeculation(prediction());
+    }
+
+    bool shouldSpeculateDerivedArray()
+    {
+        return isDerivedArraySpeculation(prediction());
+    }
     
     bool shouldSpeculateDirectArguments()
     {
@@ -2283,7 +2301,7 @@ public:
     TypeLocation* typeLocation()
     {
         ASSERT(hasTypeLocation());
-        return reinterpret_cast<TypeLocation*>(m_opInfo);
+        return m_opInfo.as<TypeLocation*>();
     }
 
     bool hasBasicBlockLocation()
@@ -2294,9 +2312,41 @@ public:
     BasicBlockLocation* basicBlockLocation()
     {
         ASSERT(hasBasicBlockLocation());
-        return reinterpret_cast<BasicBlockLocation*>(m_opInfo);
+        return m_opInfo.as<BasicBlockLocation*>();
     }
-    
+
+    bool hasCheckDOMPatchpoint() const
+    {
+        return op() == CheckDOM;
+    }
+
+    DOMJIT::Patchpoint* checkDOMPatchpoint()
+    {
+        ASSERT(hasCheckDOMPatchpoint());
+        return m_opInfo.as<DOMJIT::Patchpoint*>();
+    }
+
+    bool hasCallDOMPatchpoint() const
+    {
+        return op() == CallDOM;
+    }
+
+    DOMJIT::CallDOMPatchpoint* callDOMPatchpoint()
+    {
+        ASSERT(hasCallDOMPatchpoint());
+        return m_opInfo.as<DOMJIT::CallDOMPatchpoint*>();
+    }
+
+    bool hasClassInfo() const
+    {
+        return op() == CheckDOM;
+    }
+
+    const ClassInfo* classInfo()
+    {
+        return m_opInfo2.as<const ClassInfo*>();
+    }
+
     Node* replacement() const
     {
         return m_misc.replacement;
@@ -2320,7 +2370,7 @@ public:
     unsigned numberOfArgumentsToSkip()
     {
         ASSERT(op() == CreateRest || op() == GetRestLength);
-        return static_cast<unsigned>(m_opInfo);
+        return m_opInfo.as<unsigned>();
     }
 
     void dumpChildren(PrintStream& out)
@@ -2357,8 +2407,88 @@ private:
     SpeculatedType m_prediction { SpecNone };
     // Immediate values, accesses type-checked via accessors above. The first one is
     // big enough to store a pointer.
-    uintptr_t m_opInfo;
-    uintptr_t m_opInfo2;
+    struct OpInfoWrapper {
+        OpInfoWrapper()
+        {
+            u.int64 = 0;
+        }
+        OpInfoWrapper(uint32_t intValue)
+        {
+            u.int64 = 0;
+            u.int32 = intValue;
+        }
+        OpInfoWrapper(uint64_t intValue)
+        {
+            u.int64 = intValue;
+        }
+        OpInfoWrapper(void* pointer)
+        {
+            u.int64 = 0;
+            u.pointer = pointer;
+        }
+        OpInfoWrapper(const void* constPointer)
+        {
+            u.int64 = 0;
+            u.constPointer = constPointer;
+        }
+        OpInfoWrapper& operator=(uint32_t int32)
+        {
+            u.int64 = 0;
+            u.int32 = int32;
+            return *this;
+        }
+        OpInfoWrapper& operator=(int32_t int32)
+        {
+            u.int64 = 0;
+            u.int32 = int32;
+            return *this;
+        }
+        OpInfoWrapper& operator=(uint64_t int64)
+        {
+            u.int64 = int64;
+            return *this;
+        }
+        OpInfoWrapper& operator=(void* pointer)
+        {
+            u.int64 = 0;
+            u.pointer = pointer;
+            return *this;
+        }
+        OpInfoWrapper& operator=(const void* constPointer)
+        {
+            u.int64 = 0;
+            u.constPointer = constPointer;
+            return *this;
+        }
+        template <typename T>
+        ALWAYS_INLINE auto as() const -> typename std::enable_if<std::is_pointer<T>::value && !std::is_const<typename std::remove_pointer<T>::type>::value, T>::type
+        {
+            return static_cast<T>(u.pointer);
+        }
+        template <typename T>
+        ALWAYS_INLINE auto as() const -> typename std::enable_if<std::is_pointer<T>::value && std::is_const<typename std::remove_pointer<T>::type>::value, T>::type
+        {
+            return static_cast<T>(u.constPointer);
+        }
+        template <typename T>
+        ALWAYS_INLINE auto as() const -> typename std::enable_if<std::is_integral<T>::value && sizeof(T) == 4, T>::type
+        {
+            return u.int32;
+        }
+        template <typename T>
+        ALWAYS_INLINE auto as() const -> typename std::enable_if<std::is_integral<T>::value && sizeof(T) == 8, T>::type
+        {
+            return u.int64;
+        }
+        union {
+            uint32_t int32;
+            uint64_t int64;
+            void* pointer;
+            const void* constPointer;
+        } u;
+    };
+    OpInfoWrapper m_opInfo;
+    OpInfoWrapper m_opInfo2;
 
     // Miscellaneous data that is usually meaningless, but can hold some analysis results
     // if you ask right. For example, if you do Graph::initializeNodeOwners(), Node::owner
@@ -2435,5 +2565,4 @@ inline JSC::DFG::Node* inContext(JSC::DFG::Node* node, JSC::DumpContext*) { retu
 
 using WTF::inContext;
 
-#endif
 #endif

@@ -31,8 +31,9 @@
 
 namespace WebCore {
 
-Event::Event()
-    : m_createTime(convertSecondsToDOMTimeStamp(currentTime()))
+Event::Event(IsTrusted isTrusted)
+    : m_isTrusted(isTrusted == IsTrusted::Yes)
+    , m_createTime(convertSecondsToDOMTimeStamp(currentTime()))
 {
 }
 
@@ -56,12 +57,13 @@ Event::Event(const AtomicString& eventType, bool canBubbleArg, bool cancelableAr
 {
 }
 
-Event::Event(const AtomicString& eventType, const EventInit& initializer)
+Event::Event(const AtomicString& eventType, const EventInit& initializer, IsTrusted isTrusted)
     : m_type(eventType)
     , m_isInitialized(true)
     , m_canBubble(initializer.bubbles)
     , m_cancelable(initializer.cancelable)
     , m_composed(initializer.composed)
+    , m_isTrusted(isTrusted == IsTrusted::Yes)
     , m_createTime(convertSecondsToDOMTimeStamp(currentTime()))
 {
 }
@@ -104,7 +106,8 @@ bool Event::composed() const
         || isFocusEvent()
         || isKeyboardEvent()
         || isMouseEvent()
-        || isTouchEvent();
+        || isTouchEvent()
+        || isInputEvent();
 }
 
 EventInterface Event::eventInterface() const
@@ -128,6 +131,11 @@ bool Event::isFocusEvent() const
 }
 
 bool Event::isKeyboardEvent() const
+{
+    return false;
+}
+
+bool Event::isInputEvent() const
 {
     return false;
 }

@@ -21,7 +21,7 @@ function runTest(_a, expectSyntaxError)
 
     if (expectSyntaxError) {
         if (error && error instanceof SyntaxError)
-            testPassed('Invalid: "' + _a + '"');
+            testPassed(`Invalid: "${_a}". Produced the following syntax error: "${error.toString()}"`);
         else if (error)
             testFailed('Invalid: "' + _a + '" should throw SyntaxError but got ' + (error.name || error));
         else
@@ -346,7 +346,7 @@ invalid("for (a ? b : c in c) break");
 valid  ("for ((a ? b : c) in c) break");
 valid  ("for (var a in b in c) break");
 valid("for (var a = 5 += 6 in b) break");
-valid("for (var a = debug('should not be hit') in b) break");
+valid("for (var a = foo('should be hit') in b) break");
 invalid("for (var a += 5 in b) break");
 invalid("for (var a = in b) break");
 invalid("for (var a, b in b) break");
@@ -629,6 +629,23 @@ invalid("({get [x (){}})")
 invalid("({set [x](){}})")
 valid("({set [x](x){}})")
 invalid("({set [x (x){}})")
+valid("({set foo(x) { } })");
+valid("({set foo(x) { 'use strict'; } })");
+invalid("({set foo(x = 20) { 'use strict'; } })");
+invalid("({set foo({x}) { 'use strict'; } })");
+invalid("({set foo([x]) { 'use strict'; } })");
+invalid("({set foo(...x) {} })");
+valid("class Foo { set v(z) { } }");
+valid("class Foo { set v(z) { 'use strict'; } }");
+invalid("class Foo { set v(z = 50) { 'use strict'; } }");
+invalid("class Foo { set v({z}) { 'use strict'; } }");
+invalid("class Foo { set v([z]) { 'use strict'; } }");
+invalid("class Foo { set v(...z) { } }");
+invalid("class foo { set y([x, y, x]) { } }");
+invalid("class foo { set y([x, y, {x}]) { } }");
+invalid("class foo { set y({x, x}) { } }");
+invalid("class foo { set y({x, field: {x}}) { } }");
+valid("class foo { set y({x, field: {xx}}) { } }");
 invalid("({[...x]: 1})")
 invalid("function f({a, a}) {}");
 invalid("function f({a}, a) {}");
@@ -826,6 +843,20 @@ valid("class C { constructor() { this._x = 45; } get foo() { return this._x;} } 
 valid("class C { constructor() { this._x = 45; } get foo() { return this._x;} } class D extends C { x(y = (y = () => super.foo) => {return y()}) { return y(); } }");
 valid("class C { constructor() { this._x = 45; } get foo() { return this._x;} } class D extends C { constructor(x = () => super.foo) { super(); this._x_f = x; } x() { return this._x_f(); } }");
 valid("class C { constructor() { this._x = 45; } get foo() { return this._x;} } class D extends C { constructor(x = () => super()) { x(); } x() { return super.foo; } }");
+invalid("let x = (a,a)=>a;");
+invalid("let x = ([a],a)=>a;");
+invalid("let x = ([a, a])=>a;");
+invalid("let x = ({a, b:{a}})=>a;");
+invalid("let x = (a,a)=>{ a };");
+invalid("let x = ([a],a)=>{ };");
+invalid("let x = ([a, a])=>{ };");
+invalid("let x = ([a, a])=>{ };");
+invalid("let x = (a, ...a)=>{ };");
+invalid("let x = (b, c, b)=>{ };");
+invalid("let x = (a, b, c, d, {a})=>{ };");
+invalid("let x = (b = (a,a)=>a, b)=>{ };");
+invalid("((a,a)=>a);");
+invalid("let x = (a)\n=>a;");
 
 debug("Weird things that used to crash.");
 invalid(`or ([[{break //(elseifo (a=0;a<2;a++)n=

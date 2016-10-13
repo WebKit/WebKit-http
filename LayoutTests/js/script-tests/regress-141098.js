@@ -1,4 +1,4 @@
-//@ noNoLLIntRunLayoutTest
+//@ skip
 
 description("Regression test for https://webkit.org/b/141098. Make sure eval() properly handles running out of stack space. This test should run without crashing.");
 
@@ -13,7 +13,7 @@ description("Regression test for https://webkit.org/b/141098. Make sure eval() p
 // Under no circumstance should this test ever crash.
 let countStart = 2;
 let countIncrement = 8;
-let numberOfFramesToBackoffFromStackOverflowPoint = 50;
+let numberOfFramesToBackoffFromStackOverflowPoint = 10;
 
 // backoffEverything is chosen to be -1 because a negative number will never be
 // decremented to 0, and hence, will cause probeAndRecurse() to return out of every

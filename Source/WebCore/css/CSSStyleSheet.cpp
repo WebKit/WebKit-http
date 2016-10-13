@@ -21,7 +21,6 @@
 #include "config.h"
 #include "CSSStyleSheet.h"
 
-#include "AuthorStyleSheets.h"
 #include "CSSCharsetRule.h"
 #include "CSSFontFaceRule.h"
 #include "CSSImportRule.h"
@@ -41,25 +40,28 @@
 #include "SVGNames.h"
 #include "SVGStyleElement.h"
 #include "SecurityOrigin.h"
+#include "ShadowRoot.h"
 #include "StyleResolver.h"
 #include "StyleRule.h"
+#include "StyleScope.h"
 #include "StyleSheetContents.h"
+
 #include <wtf/text/StringBuilder.h>
 
 namespace WebCore {
 
-class StyleSheetCSSRuleList : public CSSRuleList {
+class StyleSheetCSSRuleList final : public CSSRuleList {
 public:
     StyleSheetCSSRuleList(CSSStyleSheet* sheet) : m_styleSheet(sheet) { }
     
 private:
-    void ref() override { m_styleSheet->ref(); }
-    void deref() override { m_styleSheet->deref(); }
+    void ref() final { m_styleSheet->ref(); }
+    void deref() final { m_styleSheet->deref(); }
 
-    unsigned length() const override { return m_styleSheet->length(); }
-    CSSRule* item(unsigned index) const override { return m_styleSheet->item(index); }
+    unsigned length() const final { return m_styleSheet->length(); }
+    CSSRule* item(unsigned index) const final { return m_styleSheet->item(index); }
 
-    CSSStyleSheet* styleSheet() const override { return m_styleSheet; }
+    CSSStyleSheet* styleSheet() const final { return m_styleSheet; }
 
     CSSStyleSheet* m_styleSheet;
 };
@@ -78,19 +80,19 @@ static bool isAcceptableCSSStyleSheetParent(Node* parentNode)
 #endif
 
 Ref<CSSStyleSheet> CSSStyleSheet::create(Ref<StyleSheetContents>&& sheet, CSSImportRule* ownerRule)
-{ 
+{
     return adoptRef(*new CSSStyleSheet(WTFMove(sheet), ownerRule));
 }
 
-Ref<CSSStyleSheet> CSSStyleSheet::create(Ref<StyleSheetContents>&& sheet, Node* ownerNode)
-{ 
-    return adoptRef(*new CSSStyleSheet(WTFMove(sheet), ownerNode, TextPosition::minimumPosition(), false));
+Ref<CSSStyleSheet> CSSStyleSheet::create(Ref<StyleSheetContents>&& sheet, Node& ownerNode, const Optional<bool>& isCleanOrigin)
+{
+    return adoptRef(*new CSSStyleSheet(WTFMove(sheet), ownerNode, TextPosition::minimumPosition(), false, isCleanOrigin));
 }
 
 Ref<CSSStyleSheet> CSSStyleSheet::createInline(Node& ownerNode, const URL& baseURL, const TextPosition& startPosition, const String& encoding)
 {
     CSSParserContext parserContext(ownerNode.document(), baseURL, encoding);
-    return adoptRef(*new CSSStyleSheet(StyleSheetContents::create(baseURL.string(), parserContext), &ownerNode, startPosition, true));
+    return adoptRef(*new CSSStyleSheet(StyleSheetContents::create(baseURL.string(), parserContext), ownerNode, startPosition, true, true));
 }
 
 CSSStyleSheet::CSSStyleSheet(Ref<StyleSheetContents>&& contents, CSSImportRule* ownerRule)
@@ -105,16 +107,17 @@ CSSStyleSheet::CSSStyleSheet(Ref<StyleSheetContents>&& contents, CSSImportRule* 
     m_contents->registerClient(this);
 }
 
-CSSStyleSheet::CSSStyleSheet(Ref<StyleSheetContents>&& contents, Node* ownerNode, const TextPosition& startPosition, bool isInlineStylesheet)
+CSSStyleSheet::CSSStyleSheet(Ref<StyleSheetContents>&& contents, Node& ownerNode, const TextPosition& startPosition, bool isInlineStylesheet, const Optional<bool>& isOriginClean)
     : m_contents(WTFMove(contents))
     , m_isInlineStylesheet(isInlineStylesheet)
     , m_isDisabled(false)
     , m_mutatedRules(false)
-    , m_ownerNode(ownerNode)
+    , m_isOriginClean(isOriginClean)
+    , m_ownerNode(&ownerNode)
     , m_ownerRule(0)
     , m_startPosition(startPosition)
 {
-    ASSERT(isAcceptableCSSStyleSheetParent(ownerNode));
+    ASSERT(isAcceptableCSSStyleSheetParent(&ownerNode));
     m_contents->registerClient(this);
 }
 
@@ -168,40 +171,36 @@ void CSSStyleSheet::didMutateRules(RuleMutationType mutationType, WhetherContent
     ASSERT(m_contents->isMutable());
     ASSERT(m_contents->hasOneClient());
 
-    Document* owner = ownerDocument();
-    if (!owner)
+    auto* scope = styleScope();
+    if (!scope)
         return;
 
-    if (mutationType == RuleInsertion && !contentsWereClonedForMutation && !owner->authorStyleSheets().activeStyleSheetsContains(this)) {
+    if (mutationType == RuleInsertion && !contentsWereClonedForMutation && !scope->activeStyleSheetsContains(this)) {
         if (insertedKeyframesRule) {
-            if (StyleResolver* resolver = owner->styleResolverIfExists())
+            if (auto* resolver = scope->resolverIfExists())
                 resolver->addKeyframeStyle(*insertedKeyframesRule);
             return;
         }
-        owner->scheduleOptimizedStyleSheetUpdate();
+        scope->scheduleActiveSetUpdate();
         return;
     }
 
-    owner->styleResolverChanged(DeferRecalcStyle);
+    scope->didChangeContentsOrInterpretation();
 
     m_mutatedRules = true;
 }
 
 void CSSStyleSheet::didMutate()
 {
-    Document* owner = ownerDocument();
-    if (!owner)
+    auto* scope = styleScope();
+    if (!scope)
         return;
-    owner->styleResolverChanged(DeferRecalcStyle);
+    scope->didChangeContentsOrInterpretation();
 }
 
 void CSSStyleSheet::clearOwnerNode()
 {
-    Document* owner = ownerDocument();
-    m_ownerNode = 0;
-    if (!owner)
-        return;
-    owner->styleResolverChanged(DeferRecalcStyleIfNeeded);
+    m_ownerNode = nullptr;
 }
 
 void CSSStyleSheet::reattachChildRuleCSSOMWrappers()
@@ -258,17 +257,16 @@ CSSRule* CSSStyleSheet::item(unsigned index)
 
 bool CSSStyleSheet::canAccessRules() const
 {
-    if (m_isInlineStylesheet)
-        return true;
+    if (m_isOriginClean)
+        return m_isOriginClean.value();
+
     URL baseURL = m_contents->baseURL();
     if (baseURL.isEmpty())
         return true;
     Document* document = ownerDocument();
     if (!document)
         return true;
-    if (document->securityOrigin()->canRequest(baseURL))
-        return true;
-    return false;
+    return document->securityOrigin()->canRequest(baseURL);
 }
 
 RefPtr<CSSRuleList> CSSStyleSheet::rules()
@@ -399,12 +397,31 @@ CSSStyleSheet* CSSStyleSheet::parentStyleSheet() const
     return m_ownerRule ? m_ownerRule->parentStyleSheet() : nullptr;
 }
 
-Document* CSSStyleSheet::ownerDocument() const
+CSSStyleSheet& CSSStyleSheet::rootStyleSheet()
 {
-    const CSSStyleSheet* root = this;
+    auto* root = this;
     while (root->parentStyleSheet())
         root = root->parentStyleSheet();
-    return root->ownerNode() ? &root->ownerNode()->document() : nullptr;
+    return *root;
+}
+
+const CSSStyleSheet& CSSStyleSheet::rootStyleSheet() const
+{
+    return const_cast<CSSStyleSheet&>(*this).rootStyleSheet();
+}
+
+Document* CSSStyleSheet::ownerDocument() const
+{
+    auto& root = rootStyleSheet();
+    return root.ownerNode() ? &root.ownerNode()->document() : nullptr;
+}
+
+Style::Scope* CSSStyleSheet::styleScope()
+{
+    auto* ownerNode = rootStyleSheet().ownerNode();
+    if (!ownerNode)
+        return nullptr;
+    return &Style::Scope::forNode(*ownerNode);
 }
 
 void CSSStyleSheet::clearChildRuleCSSOMWrappers()

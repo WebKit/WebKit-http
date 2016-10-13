@@ -30,9 +30,6 @@
 #include "ChildProcessMain.h"
 #include "NetworkProcessMainUnix.h"
 #include <WebCore/SoupNetworkSession.h>
-#include <libsoup/soup.h>
-
-using namespace WebCore;
 
 namespace WebKit {
 
@@ -40,9 +37,8 @@ class NetworkProcessMain final: public ChildProcessMainBase {
 public:
     bool platformInitialize() override
     {
-        SoupNetworkSession::defaultSession().setSSLPolicy(SoupNetworkSession::SSLUseSystemCAFile);
 #if PLATFORM(WPE)
-        SoupNetworkSession::defaultSession().setupHTTPProxyFromEnvironment();
+        WebCore::SoupNetworkSession::defaultSession().setupHTTPProxyFromEnvironment();
 #endif
         return true;
     }

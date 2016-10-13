@@ -51,6 +51,7 @@
 #include <runtime/JSCInlines.h>
 #include <runtime/JSLock.h>
 #include <wtf/RAMSize.h>
+#include <wtf/text/StringBuilder.h>
 
 #if ENABLE(WEBGL)    
 #include "WebGLContextAttributes.h"
@@ -259,22 +260,6 @@ CanvasRenderingContext* HTMLCanvasElement::getContext(const String& type, Canvas
     UNUSED_PARAM(attrs);
 #endif
     return nullptr;
-}
-    
-bool HTMLCanvasElement::probablySupportsContext(const String& type, CanvasContextAttributes*)
-{
-    // FIXME: Provide implementation that accounts for attributes.
-    // https://bugs.webkit.org/show_bug.cgi?id=117093
-    if (is2dType(type))
-        return !m_context || m_context->is2d();
-
-#if ENABLE(WEBGL)
-    if (shouldEnableWebGL(document().settings())) {
-        if (is3dType(type))
-            return !m_context || m_context->is3d();
-    }
-#endif
-    return false;
 }
 
 bool HTMLCanvasElement::is2dType(const String& type)
@@ -575,14 +560,14 @@ size_t HTMLCanvasElement::memoryCost() const
 {
     if (!m_imageBuffer)
         return 0;
-    return 4 * m_imageBuffer->internalSize().width() * m_imageBuffer->internalSize().height();
+    return m_imageBuffer->memoryCost();
 }
 
 size_t HTMLCanvasElement::externalMemoryCost() const
 {
     if (!m_imageBuffer)
         return 0;
-    return 4 * m_imageBuffer->internalSize().width() * m_imageBuffer->internalSize().height();
+    return m_imageBuffer->externalMemoryCost();
 }
 
 void HTMLCanvasElement::setUsesDisplayListDrawing(bool usesDisplayListDrawing)

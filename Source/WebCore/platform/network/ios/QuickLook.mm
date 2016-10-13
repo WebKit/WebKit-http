@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009 Apple Inc. All rights reserved.
+ * Copyright (C) 2009-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -185,81 +185,6 @@ const char* WebCore::QLPreviewProtocol()
     return previewProtocol.get().data();
 }
 
-#if USE(CFNETWORK)
-// The way QuickLook works is we pass it an NSURLConnectionDelegate callback object at creation
-// time. Then we pass it all the data as we receive it. Once we've downloaded the full URL,
-// QuickLook turns around and send us, through this delegate, the HTML version of the file which we
-// pass on to WebCore. The flag m_finishedLoadingDataIntoConverter in QuickLookHandle decides
-// whether to pass the data to QuickLook or WebCore.
-//
-// This works fine when using NS APIs, but when using CFNetwork, we don't have a NSURLConnectionDelegate.
-// So we create WebQuickLookHandleAsDelegate as an intermediate delegate object and pass it to
-// QLPreviewConverter. The proxy delegate then forwards the messages on to the CFNetwork code.
-@interface WebQuickLookHandleAsDelegate : NSObject <NSURLConnectionDelegate, WebCoreResourceLoaderDelegate> {
-    RefPtr<SynchronousResourceHandleCFURLConnectionDelegate> m_connectionDelegate;
-}
-
-- (id)initWithConnectionDelegate:(SynchronousResourceHandleCFURLConnectionDelegate*)connectionDelegate;
-@end
-
-@implementation WebQuickLookHandleAsDelegate
-- (id)initWithConnectionDelegate:(SynchronousResourceHandleCFURLConnectionDelegate*)connectionDelegate
-{
-    self = [super init];
-    if (!self)
-        return nil;
-    m_connectionDelegate = connectionDelegate;
-    return self;
-}
-
-- (void)connection:(NSURLConnection *)connection didReceiveDataArray:(NSArray *)dataArray
-{
-    UNUSED_PARAM(connection);
-    if (!m_connectionDelegate)
-        return;
-    LOG(Network, "WebQuickLookHandleAsDelegate::didReceiveDataArray()");
-    m_connectionDelegate->didReceiveDataArray(reinterpret_cast<CFArrayRef>(dataArray));
-}
-
-- (void)connection:(NSURLConnection *)connection didReceiveData:(NSData *)data lengthReceived:(long long)lengthReceived
-{
-    UNUSED_PARAM(connection);
-    if (!m_connectionDelegate)
-        return;
-    LOG(Network, "WebQuickLookHandleAsDelegate::didReceiveData() - data length = %ld", (long)[data length]);
-
-    // QuickLook code sends us a nil data at times. The check below is the same as the one in
-    // ResourceHandleMac.cpp added for a different bug.
-    if (![data length])
-        return;
-    m_connectionDelegate->didReceiveData(reinterpret_cast<CFDataRef>(data), static_cast<int>(lengthReceived));
-}
-
-- (void)connectionDidFinishLoading:(NSURLConnection *)connection
-{
-    UNUSED_PARAM(connection);
-    if (!m_connectionDelegate)
-        return;
-    LOG(Network, "WebQuickLookHandleAsDelegate::didFinishLoading()");
-    m_connectionDelegate->didFinishLoading();
-}
-
-- (void)connection:(NSURLConnection *)connection didFailWithError:(NSError *)error
-{
-    UNUSED_PARAM(connection);
-    if (!m_connectionDelegate)
-        return;
-    LOG(Network, "WebQuickLookHandleAsDelegate::didFail()");
-    m_connectionDelegate->didFail(reinterpret_cast<CFErrorRef>(error));
-}
-
-- (void)detachHandle
-{
-    m_connectionDelegate = nullptr;
-}
-@end
-#endif
-
 @interface WebResourceLoaderQuickLookDelegate : NSObject <NSURLConnectionDelegate, WebCoreResourceLoaderDelegate> {
     RefPtr<ResourceLoader> _resourceLoader;
     BOOL _hasSentDidReceiveResponse;
@@ -287,15 +212,18 @@ const char* WebCore::QLPreviewProtocol()
 
     // QuickLook might fail to convert a document without calling connection:didFailWithError: (see <rdar://problem/17927972>).
     // A nil MIME type is an indication of such a failure, so stop loading the resource and ignore subsequent delegate messages.
-    NSURLResponse *previewResponse = _quickLookHandle->nsResponse();
-    if (![previewResponse MIMEType]) {
+    NSURLResponse *nsResponse = _quickLookHandle->nsResponse();
+    if (![nsResponse MIMEType]) {
         _hasFailed = YES;
         _resourceLoader->didFail(_resourceLoader->cannotShowURLError());
         return;
     }
 
+    ResourceResponse response(nsResponse);
+    response.setIsQuickLook(true);
+
     _hasSentDidReceiveResponse = YES;
-    _resourceLoader->didReceiveResponse(previewResponse);
+    _resourceLoader->didReceiveResponse(response);
 }
 
 #if USE(NETWORK_CFDATA_ARRAY_CALLBACK)
@@ -309,7 +237,8 @@ const char* WebCore::QLPreviewProtocol()
     if (_hasFailed)
         return;
 
-    _resourceLoader->didReceiveDataArray(reinterpret_cast<CFArrayRef>(dataArray));
+    if (_resourceLoader)
+        _resourceLoader->didReceiveDataArray(reinterpret_cast<CFArrayRef>(dataArray));
 }
 #endif
 
@@ -327,7 +256,9 @@ const char* WebCore::QLPreviewProtocol()
     // ResourceHandleMac.cpp added for a different bug.
     if (![data length])
         return;
-    _resourceLoader->didReceiveData(reinterpret_cast<const char*>([data bytes]), [data length], lengthReceived, DataPayloadBytes);
+
+    if (_resourceLoader)
+        _resourceLoader->didReceiveData(reinterpret_cast<const char*>([data bytes]), [data length], lengthReceived, DataPayloadBytes);
 }
 
 - (void)connectionDidFinishLoading:(NSURLConnection *)connection
@@ -348,7 +279,8 @@ const char* WebCore::QLPreviewProtocol()
     if (_hasFailed)
         return;
 
-    _resourceLoader->didFail(ResourceError(error));
+    if (_resourceLoader)
+        _resourceLoader->didFail(ResourceError(error));
 }
 
 - (void)detachHandle
@@ -406,26 +338,6 @@ std::unique_ptr<QuickLookHandle> QuickLookHandle::create(ResourceHandle* handle,
     handle->client()->didCreateQuickLookHandle(*quickLookHandle);
     return quickLookHandle;
 }
-
-#if USE(CFNETWORK)
-std::unique_ptr<QuickLookHandle> QuickLookHandle::create(ResourceHandle* handle, SynchronousResourceHandleCFURLConnectionDelegate* connectionDelegate, CFURLResponseRef cfResponse)
-{
-    ASSERT_ARG(handle, handle);
-    if (handle->firstRequest().requester() != ResourceRequest::Requester::Main || ![QLPreviewGetSupportedMIMETypesSet() containsObject:(NSString *)CFURLResponseGetMIMEType(cfResponse)])
-        return nullptr;
-
-    NSURLResponse *nsResponse = [NSURLResponse _responseWithCFURLResponse:cfResponse];
-    WebQuickLookHandleAsDelegate *delegate = [[[WebQuickLookHandleAsDelegate alloc] initWithConnectionDelegate:connectionDelegate] autorelease];
-    std::unique_ptr<QuickLookHandle> quickLookHandle(new QuickLookHandle([handle->firstRequest().nsURLRequest(DoNotUpdateHTTPBody) URL], nil, nsResponse, delegate));
-    handle->client()->didCreateQuickLookHandle(*quickLookHandle);
-    return quickLookHandle;
-}
-
-CFURLResponseRef QuickLookHandle::cfResponse()
-{
-    return [m_nsResponse _CFURLResponse];
-}
-#endif
 
 bool QuickLookHandle::shouldCreateForMIMEType(const String& mimeType)
 {

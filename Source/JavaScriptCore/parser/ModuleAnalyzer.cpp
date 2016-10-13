@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,9 +26,7 @@
 #include "config.h"
 #include "ModuleAnalyzer.h"
 
-#include "IdentifierInlines.h"
-#include "JSCJSValueInlines.h"
-#include "JSCellInlines.h"
+#include "JSCInlines.h"
 #include "JSGlobalObject.h"
 #include "JSModuleRecord.h"
 #include "ModuleScopeData.h"
@@ -39,7 +37,7 @@ namespace JSC {
 
 ModuleAnalyzer::ModuleAnalyzer(ExecState* exec, const Identifier& moduleKey, const SourceCode& sourceCode, const VariableEnvironment& declaredVariables, const VariableEnvironment& lexicalVariables)
     : m_vm(&exec->vm())
-    , m_moduleRecord(exec->vm(), JSModuleRecord::create(exec->vm(), exec->lexicalGlobalObject()->moduleRecordStructure(), moduleKey, sourceCode, declaredVariables, lexicalVariables))
+    , m_moduleRecord(exec->vm(), JSModuleRecord::create(exec, exec->vm(), exec->lexicalGlobalObject()->moduleRecordStructure(), moduleKey, sourceCode, declaredVariables, lexicalVariables))
 {
 }
 

@@ -126,9 +126,9 @@ EncodedJSValue JSC_HOST_CALL hasInstanceBoundFunction(ExecState* exec)
 
 inline Structure* getBoundFunctionStructure(VM& vm, ExecState* exec, JSGlobalObject* globalObject, JSObject* targetFunction)
 {
+    auto scope = DECLARE_THROW_SCOPE(vm);
     JSValue prototype = targetFunction->getPrototype(vm, exec);
-    if (UNLIKELY(vm.exception()))
-        return nullptr;
+    RETURN_IF_EXCEPTION(scope, nullptr);
     JSFunction* targetJSFunction = jsDynamicCast<JSFunction*>(targetFunction);
 
     // We only cache the structure of the bound function if the bindee is a JSFunction since there
@@ -158,6 +158,7 @@ inline Structure* getBoundFunctionStructure(VM& vm, ExecState* exec, JSGlobalObj
 
 JSBoundFunction* JSBoundFunction::create(VM& vm, ExecState* exec, JSGlobalObject* globalObject, JSObject* targetFunction, JSValue boundThis, JSArray* boundArgs, int length, const String& name)
 {
+    auto scope = DECLARE_THROW_SCOPE(vm);
     ConstructData constructData;
     ConstructType constructType = JSC::getConstructData(targetFunction, constructData);
     bool canConstruct = constructType != ConstructType::None;
@@ -170,8 +171,7 @@ JSBoundFunction* JSBoundFunction::create(VM& vm, ExecState* exec, JSGlobalObject
         canConstruct ? (slowCase ? boundFunctionConstruct : boundThisNoArgsFunctionConstruct) : callHostFunctionAsConstructor,
         name);
     Structure* structure = getBoundFunctionStructure(vm, exec, globalObject, targetFunction);
-    if (UNLIKELY(vm.exception()))
-        return nullptr;
+    RETURN_IF_EXCEPTION(scope, nullptr);
     JSBoundFunction* function = new (NotNull, allocateCell<JSBoundFunction>(vm.heap)) JSBoundFunction(vm, globalObject, structure, targetFunction, boundThis, boundArgs);
 
     function->finishCreation(vm, executable, length);

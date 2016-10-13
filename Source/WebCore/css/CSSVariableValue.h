@@ -28,13 +28,14 @@
 
 #include "CSSValue.h"
 
+// FIXME-NEWPARSER: This will be removed in favor of the new variables implementation.
 namespace WebCore {
 
 class CSSValueList;
 class CSSParserValueList;
 struct CSSParserVariable;
 
-class CSSVariableValue : public CSSValue {
+class CSSVariableValue final : public CSSValue {
 public:
     static Ref<CSSVariableValue> create(CSSParserVariable* Variable)
     {

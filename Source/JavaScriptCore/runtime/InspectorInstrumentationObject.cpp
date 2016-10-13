@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -83,10 +83,11 @@ void InspectorInstrumentationObject::disable(VM& vm)
 
 EncodedJSValue JSC_HOST_CALL inspectorInstrumentationObjectLog(ExecState* exec)
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     JSValue target = exec->argument(0);
     String value = target.toString(exec)->value(exec);
-    if (exec->hadException())
-        return JSValue::encode(jsUndefined());
+    RETURN_IF_EXCEPTION(scope, encodedJSValue());
     dataLog(value, "\n");
     return JSValue::encode(jsUndefined());
 }

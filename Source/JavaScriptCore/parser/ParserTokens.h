@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ParserTokens_h
-#define ParserTokens_h
+#pragma once
 
 #include "ParserModes.h"
 #include <limits.h>
@@ -83,6 +82,7 @@ enum JSTokenType {
     CLASSTOKEN,
     EXTENDS,
     SUPER,
+    AWAIT,
     OPENBRACE = 0,
     CLOSEBRACE,
     OPENPAREN,
@@ -236,5 +236,3 @@ ALWAYS_INLINE bool isUnaryOp(JSTokenType token)
 }
 
 } // namespace JSC
-
-#endif // ParserTokens_h

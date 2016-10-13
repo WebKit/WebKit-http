@@ -113,9 +113,15 @@ public:
     virtual bool shouldRetainAutocorrectionIndicator() const;
     virtual void setShouldRetainAutocorrectionIndicator(bool);
     virtual bool shouldStopCaretBlinking() const { return false; }
+    virtual String inputEventTypeName() const;
+    virtual String inputEventData() const { return { }; }
 
 protected:
     explicit CompositeEditCommand(Document&, EditAction = EditActionUnspecified);
+
+    // If willApplyCommand returns false, we won't proceed with applying the command.
+    virtual bool willApplyCommand();
+    virtual void didApplyCommand();
 
     //
     // sugary-sweet convenience functions to help create and apply edit commands in composite commands

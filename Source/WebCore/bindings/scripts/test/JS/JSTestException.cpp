@@ -40,7 +40,7 @@ bool setJSTestExceptionConstructor(JSC::ExecState*, JSC::EncodedJSValue, JSC::En
 
 class JSTestExceptionPrototype : public JSC::JSNonFinalObject {
 public:
-    typedef JSC::JSNonFinalObject Base;
+    using Base = JSC::JSNonFinalObject;
     static JSTestExceptionPrototype* create(JSC::VM& vm, JSC::JSGlobalObject* globalObject, JSC::Structure* structure)
     {
         JSTestExceptionPrototype* ptr = new (NotNull, JSC::allocateCell<JSTestExceptionPrototype>(vm.heap)) JSTestExceptionPrototype(vm, globalObject, structure);
@@ -63,7 +63,7 @@ private:
     void finishCreation(JSC::VM&);
 };
 
-typedef JSDOMConstructorNotConstructable<JSTestException> JSTestExceptionConstructor;
+using JSTestExceptionConstructor = JSDOMConstructorNotConstructable<JSTestException>;
 
 /* Hash table */
 
@@ -132,35 +132,45 @@ void JSTestException::destroy(JSC::JSCell* cell)
     thisObject->JSTestException::~JSTestException();
 }
 
-EncodedJSValue jsTestExceptionName(ExecState* state, EncodedJSValue thisValue, PropertyName)
+template<> inline JSTestException* BindingCaller<JSTestException>::castForAttribute(ExecState&, EncodedJSValue thisValue)
 {
-    UNUSED_PARAM(state);
-    UNUSED_PARAM(thisValue);
-    JSValue decodedThisValue = JSValue::decode(thisValue);
-    auto* castedThis = jsDynamicCast<JSTestException*>(decodedThisValue);
-    if (UNLIKELY(!castedThis)) {
-        return throwGetterTypeError(*state, "TestException", "name");
-    }
-    auto& impl = castedThis->wrapped();
-    JSValue result = jsStringWithCache(state, impl.name());
-    return JSValue::encode(result);
+    return jsDynamicCast<JSTestException*>(JSValue::decode(thisValue));
 }
 
+static inline JSValue jsTestExceptionNameGetter(ExecState&, JSTestException&, ThrowScope& throwScope);
+
+EncodedJSValue jsTestExceptionName(ExecState* state, EncodedJSValue thisValue, PropertyName)
+{
+    return BindingCaller<JSTestException>::attribute<jsTestExceptionNameGetter>(state, thisValue, "name");
+}
+
+static inline JSValue jsTestExceptionNameGetter(ExecState& state, JSTestException& thisObject, ThrowScope& throwScope)
+{
+    UNUSED_PARAM(throwScope);
+    UNUSED_PARAM(state);
+    auto& impl = thisObject.wrapped();
+    JSValue result = jsStringWithCache(&state, impl.name());
+    return result;
+}
 
 EncodedJSValue jsTestExceptionConstructor(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
+    VM& vm = state->vm();
+    auto throwScope = DECLARE_THROW_SCOPE(vm);
     JSTestExceptionPrototype* domObject = jsDynamicCast<JSTestExceptionPrototype*>(JSValue::decode(thisValue));
     if (UNLIKELY(!domObject))
-        return throwVMTypeError(state);
+        return throwVMTypeError(state, throwScope);
     return JSValue::encode(JSTestException::getConstructor(state->vm(), domObject->globalObject()));
 }
 
 bool setJSTestExceptionConstructor(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
 {
+    VM& vm = state->vm();
+    auto throwScope = DECLARE_THROW_SCOPE(vm);
     JSValue value = JSValue::decode(encodedValue);
     JSTestExceptionPrototype* domObject = jsDynamicCast<JSTestExceptionPrototype*>(JSValue::decode(thisValue));
     if (UNLIKELY(!domObject)) {
-        throwVMTypeError(state);
+        throwVMTypeError(state, throwScope);
         return false;
     }
     // Shadowing a built-in constructor
@@ -216,7 +226,7 @@ JSC::JSValue toJSNewlyCreated(JSC::ExecState*, JSDOMGlobalObject* globalObject, 
     // by adding the SkipVTableValidation attribute to the interface IDL definition
     RELEASE_ASSERT(actualVTablePointer == expectedVTablePointer);
 #endif
-    return createWrapper<JSTestException, TestException>(globalObject, WTFMove(impl));
+    return createWrapper<TestException>(globalObject, WTFMove(impl));
 }
 
 JSC::JSValue toJS(JSC::ExecState* state, JSDOMGlobalObject* globalObject, TestException& impl)

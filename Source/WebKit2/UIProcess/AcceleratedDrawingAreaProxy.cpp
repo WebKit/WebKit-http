@@ -41,6 +41,11 @@
 #include "CoordinatedLayerTreeHostProxy.h"
 #endif
 
+#if PLATFORM(WAYLAND)
+#include "WaylandCompositor.h"
+#include <WebCore/PlatformDisplay.h>
+#endif
+
 using namespace WebCore;
 
 namespace WebKit {
@@ -134,7 +139,7 @@ void AcceleratedDrawingAreaProxy::didUpdateBackingStoreState(uint64_t backingSto
     else {
         m_hasReceivedFirstUpdate = true;
 
-#if USE(TEXTURE_MAPPER) && PLATFORM(GTK) && !USE(REDIRECTED_XCOMPOSITE_WINDOW)
+#if USE(TEXTURE_MAPPER) && PLATFORM(GTK) && PLATFORM(X11) && !USE(REDIRECTED_XCOMPOSITE_WINDOW)
         if (m_pendingNativeSurfaceHandleForCompositing) {
             setNativeSurfaceHandleForCompositing(m_pendingNativeSurfaceHandleForCompositing);
             m_pendingNativeSurfaceHandleForCompositing = 0;
@@ -215,6 +220,15 @@ void AcceleratedDrawingAreaProxy::waitForAndDispatchDidUpdateBackingStoreState()
         return;
     if (m_webPageProxy.process().state() == WebProcessProxy::State::Launching)
         return;
+    if (!m_webPageProxy.isViewVisible())
+        return;
+
+#if PLATFORM(WAYLAND)
+    // Never block the UI process in Wayland when waiting for DidUpdateBackingStoreState after a resize,
+    // because the nested compositor needs to handle the web process requests that happens while resizing.
+    if (PlatformDisplay::sharedDisplay().type() == PlatformDisplay::Type::Wayland && WaylandCompositor::singleton().isRunning())
+        return;
+#endif
 
     // FIXME: waitForAndDispatchImmediately will always return the oldest DidUpdateBackingStoreState message that
     // hasn't yet been processed. But it might be better to skip ahead to some other DidUpdateBackingStoreState
@@ -249,14 +263,14 @@ void AcceleratedDrawingAreaProxy::updateAcceleratedCompositingMode(const LayerTr
     m_webPageProxy.updateAcceleratedCompositingMode(layerTreeContext);
 }
 
-#if USE(TEXTURE_MAPPER) && PLATFORM(GTK) && !USE(REDIRECTED_XCOMPOSITE_WINDOW)
+#if USE(TEXTURE_MAPPER) && PLATFORM(GTK) && PLATFORM(X11) && !USE(REDIRECTED_XCOMPOSITE_WINDOW)
 void AcceleratedDrawingAreaProxy::setNativeSurfaceHandleForCompositing(uint64_t handle)
 {
     if (!m_hasReceivedFirstUpdate) {
         m_pendingNativeSurfaceHandleForCompositing = handle;
         return;
     }
-    m_webPageProxy.process().send(Messages::DrawingArea::SetNativeSurfaceHandleForCompositing(handle), m_webPageProxy.pageID(), IPC::DispatchMessageEvenWhenWaitingForSyncReply);
+    m_webPageProxy.process().send(Messages::DrawingArea::SetNativeSurfaceHandleForCompositing(handle), m_webPageProxy.pageID(), IPC::SendOption::DispatchMessageEvenWhenWaitingForSyncReply);
 }
 
 void AcceleratedDrawingAreaProxy::destroyNativeSurfaceHandleForCompositing()

@@ -60,6 +60,7 @@ namespace WebCore {
     macro(autocompleteerror) \
     macro(beforecopy) \
     macro(beforecut) \
+    macro(beforeinput) \
     macro(beforeload) \
     macro(beforepaste) \
     macro(beforeunload) \
@@ -132,6 +133,7 @@ namespace WebCore {
     macro(keydown) \
     macro(keypress) \
     macro(keyup) \
+    macro(languagechange) \
     macro(levelchange) \
     macro(load) \
     macro(loadeddata) \

@@ -33,8 +33,10 @@
 #include "ArithProfile.h"
 #include "BasicBlockLocation.h"
 #include "BytecodeGenerator.h"
+#include "BytecodeLivenessAnalysis.h"
 #include "BytecodeUseDef.h"
 #include "CallLinkStatus.h"
+#include "CodeBlockSet.h"
 #include "DFGCapabilities.h"
 #include "DFGCommon.h"
 #include "DFGDriver.h"
@@ -51,6 +53,7 @@
 #include "JSFunction.h"
 #include "JSLexicalEnvironment.h"
 #include "JSModuleEnvironment.h"
+#include "LLIntData.h"
 #include "LLIntEntrypoint.h"
 #include "LLIntPrototypeLoadAdaptiveStructureWatchpoint.h"
 #include "LowLevelInterpreter.h"
@@ -69,6 +72,7 @@
 #include "VMInlines.h"
 #include <wtf/BagToHashMap.h>
 #include <wtf/CommaPrinter.h>
+#include <wtf/SimpleStats.h>
 #include <wtf/StringExtras.h>
 #include <wtf/StringPrintStream.h>
 #include <wtf/text/UniquedStringImpl.h>
@@ -296,15 +300,17 @@ static CString regexpName(int re, RegExp* regexp)
     return toCString(regexpToSourceString(regexp), "(@re", re, ")");
 }
 
-NEVER_INLINE static const char* debugHookName(int debugHookID)
+NEVER_INLINE static const char* debugHookName(int debugHookType)
 {
-    switch (static_cast<DebugHookID>(debugHookID)) {
+    switch (static_cast<DebugHookType>(debugHookType)) {
         case DidEnterCallFrame:
             return "didEnterCallFrame";
         case WillLeaveCallFrame:
             return "willLeaveCallFrame";
         case WillExecuteStatement:
             return "willExecuteStatement";
+        case WillExecuteExpression:
+            return "willExecuteExpression";
         case WillExecuteProgram:
             return "willExecuteProgram";
         case DidExecuteProgram:
@@ -694,18 +700,6 @@ void CodeBlock::dumpBytecode(PrintStream& out)
             out.printf("      }\n");
             ++i;
         } while (i < m_rareData->m_stringSwitchJumpTables.size());
-    }
-
-    if (m_rareData && !m_rareData->m_liveCalleeLocalsAtYield.isEmpty()) {
-        out.printf("\nLive Callee Locals:\n");
-        unsigned i = 0;
-        do {
-            const FastBitVector& liveness = m_rareData->m_liveCalleeLocalsAtYield[i];
-            out.printf("  live%1u = ", i);
-            liveness.dump(out);
-            out.printf("\n");
-            ++i;
-        } while (i < m_rareData->m_liveCalleeLocalsAtYield.size());
     }
 
     out.printf("\n");
@@ -1111,12 +1105,12 @@ void CodeBlock::dumpBytecode(
             printUnaryOp(out, exec, location, it, "is_number");
             break;
         }
-        case op_is_string: {
-            printUnaryOp(out, exec, location, it, "is_string");
-            break;
-        }
-        case op_is_jsarray: {
-            printUnaryOp(out, exec, location, it, "is_jsarray");
+        case op_is_cell_with_type: {
+            int r0 = (++it)->u.operand;
+            int r1 = (++it)->u.operand;
+            int type = (++it)->u.operand;
+            printLocationAndOp(out, exec, location, it, "is_cell_with_type");
+            out.printf("%s, %s, %d", registerName(r0).data(), registerName(r1).data(), type);
             break;
         }
         case op_is_object: {
@@ -1141,6 +1135,7 @@ void CodeBlock::dumpBytecode(
             int id0 = (++it)->u.operand;
             printLocationAndOp(out, exec, location, it, "try_get_by_id");
             out.printf("%s, %s, %s", registerName(r0).data(), registerName(r1).data(), idName(id0, identifier(id0)).data());
+            dumpValueProfiling(out, it, hasPrintedProfiling);
             break;
         }
         case op_get_by_id:
@@ -1159,6 +1154,7 @@ void CodeBlock::dumpBytecode(
             int r2 = (++it)->u.operand;
             int id0 = (++it)->u.operand;
             out.printf("%s, %s, %s, %s", registerName(r0).data(), registerName(r1).data(), registerName(r2).data(), idName(id0, identifier(id0)).data());
+            dumpValueProfiling(out, it, hasPrintedProfiling);
             break;
         }
         case op_get_by_val_with_this: {
@@ -1168,6 +1164,7 @@ void CodeBlock::dumpBytecode(
             int r3 = (++it)->u.operand;
             printLocationAndOp(out, exec, location, it, "get_by_val_with_this");
             out.printf("%s, %s, %s, %s", registerName(r0).data(), registerName(r1).data(), registerName(r2).data(), registerName(r3).data());
+            dumpValueProfiling(out, it, hasPrintedProfiling);
             break;
         }
         case op_put_by_id: {
@@ -1237,6 +1234,25 @@ void CodeBlock::dumpBytecode(
             int r2 = (++it)->u.operand;
             printLocationAndOp(out, exec, location, it, "put_setter_by_val");
             out.printf("%s, %s, %d, %s", registerName(r0).data(), registerName(r1).data(), n0, registerName(r2).data());
+            break;
+        }
+        case op_define_data_property: {
+            int r0 = (++it)->u.operand;
+            int r1 = (++it)->u.operand;
+            int r2 = (++it)->u.operand;
+            int r3 = (++it)->u.operand;
+            printLocationAndOp(out, exec, location, it, "define_data_property");
+            out.printf("%s, %s, %s, %s", registerName(r0).data(), registerName(r1).data(), registerName(r2).data(), registerName(r3).data());
+            break;
+        }
+        case op_define_accessor_property: {
+            int r0 = (++it)->u.operand;
+            int r1 = (++it)->u.operand;
+            int r2 = (++it)->u.operand;
+            int r3 = (++it)->u.operand;
+            int r4 = (++it)->u.operand;
+            printLocationAndOp(out, exec, location, it, "define_accessor_property");
+            out.printf("%s, %s, %s, %s, %s", registerName(r0).data(), registerName(r1).data(), registerName(r2).data(), registerName(r3).data(), registerName(r4).data());
             break;
         }
         case op_del_by_id: {
@@ -1659,41 +1675,17 @@ void CodeBlock::dumpBytecode(
         }
         case op_throw_static_error: {
             int k0 = (++it)->u.operand;
-            int k1 = (++it)->u.operand;
+            ErrorType k1 = static_cast<ErrorType>((++it)->u.unsignedValue);
             printLocationAndOp(out, exec, location, it, "throw_static_error");
-            out.printf("%s, %s", constantName(k0).data(), k1 ? "true" : "false");
+            out.printf("%s, ", constantName(k0).data());
+            out.print(k1);
             break;
         }
         case op_debug: {
-            int debugHookID = (++it)->u.operand;
+            int debugHookType = (++it)->u.operand;
             int hasBreakpointFlag = (++it)->u.operand;
             printLocationAndOp(out, exec, location, it, "debug");
-            out.printf("%s, %d", debugHookName(debugHookID), hasBreakpointFlag);
-            break;
-        }
-        case op_save: {
-            int generator = (++it)->u.operand;
-            unsigned liveCalleeLocalsIndex = (++it)->u.unsignedValue;
-            int offset = (++it)->u.operand;
-            FastBitVector liveness;
-            if (liveCalleeLocalsIndex < m_rareData->m_liveCalleeLocalsAtYield.size())
-                liveness = m_rareData->m_liveCalleeLocalsAtYield[liveCalleeLocalsIndex];
-            printLocationAndOp(out, exec, location, it, "save");
-            out.printf("%s, ", registerName(generator).data());
-            liveness.dump(out);
-            out.printf("(@live%1u), %d(->%d)", liveCalleeLocalsIndex, offset, location + offset);
-            break;
-        }
-        case op_resume: {
-            int generator = (++it)->u.operand;
-            unsigned liveCalleeLocalsIndex = (++it)->u.unsignedValue;
-            FastBitVector liveness;
-            if (liveCalleeLocalsIndex < m_rareData->m_liveCalleeLocalsAtYield.size())
-                liveness = m_rareData->m_liveCalleeLocalsAtYield[liveCalleeLocalsIndex];
-            printLocationAndOp(out, exec, location, it, "resume");
-            out.printf("%s, ", registerName(generator).data());
-            liveness.dump(out);
-            out.printf("(@live%1u)", liveCalleeLocalsIndex);
+            out.printf("%s, %d", debugHookName(debugHookType), hasBreakpointFlag);
             break;
         }
         case op_assert: {
@@ -1907,10 +1899,9 @@ void CodeBlock::finishCreation(VM& vm, CopyParsedBlockTag, CodeBlock& other)
         m_rareData->m_constantBuffers = other.m_rareData->m_constantBuffers;
         m_rareData->m_switchJumpTables = other.m_rareData->m_switchJumpTables;
         m_rareData->m_stringSwitchJumpTables = other.m_rareData->m_stringSwitchJumpTables;
-        m_rareData->m_liveCalleeLocalsAtYield = other.m_rareData->m_liveCalleeLocalsAtYield;
     }
     
-    heap()->m_codeBlocks.add(this);
+    heap()->m_codeBlocks->add(this);
 }
 
 CodeBlock::CodeBlock(VM* vm, Structure* structure, ScriptExecutable* ownerExecutable, UnlinkedCodeBlock* unlinkedCodeBlock,
@@ -2029,7 +2020,7 @@ void CodeBlock::finishCreation(VM& vm, ScriptExecutable* ownerExecutable, Unlink
                 UnlinkedStringJumpTable::StringOffsetTable::iterator end = unlinkedCodeBlock->stringSwitchJumpTable(i).offsetTable.end();
                 for (; ptr != end; ++ptr) {
                     OffsetLocation offset;
-                    offset.branchOffset = ptr->value;
+                    offset.branchOffset = ptr->value.branchOffset;
                     m_rareData->m_stringSwitchJumpTables[i].offsetTable.add(ptr->key, offset);
                 }
             }
@@ -2069,10 +2060,16 @@ void CodeBlock::finishCreation(VM& vm, ScriptExecutable* ownerExecutable, Unlink
     // Bookkeep the strongly referenced module environments.
     HashSet<JSModuleEnvironment*> stronglyReferencedModuleEnvironments;
 
-    // Bookkeep the merge point bytecode offsets.
-    Vector<size_t> mergePointBytecodeOffsets;
-
     RefCountedArray<Instruction> instructions(instructionCount);
+
+    unsigned valueProfileCount = 0;
+    auto linkValueProfile = [&](unsigned bytecodeOffset, unsigned opLength) {
+        unsigned valueProfileIndex = valueProfileCount++;
+        ValueProfile* profile = &m_valueProfiles[valueProfileIndex];
+        ASSERT(profile->m_bytecodeOffset == -1);
+        profile->m_bytecodeOffset = bytecodeOffset;
+        instructions[bytecodeOffset + opLength - 1] = profile;
+    };
 
     for (unsigned i = 0; !instructionReader.atEnd(); ) {
         const UnlinkedInstruction* pc = instructionReader.next();
@@ -2106,12 +2103,12 @@ void CodeBlock::finishCreation(VM& vm, ScriptExecutable* ownerExecutable, Unlink
         }
         case op_get_direct_pname:
         case op_get_by_id:
+        case op_get_by_id_with_this:
+        case op_try_get_by_id:
+        case op_get_by_val_with_this:
         case op_get_from_arguments:
         case op_to_number: {
-            ValueProfile* profile = &m_valueProfiles[pc[opLength - 1].u.operand];
-            ASSERT(profile->m_bytecodeOffset == -1);
-            profile->m_bytecodeOffset = i;
-            instructions[i + opLength - 1] = profile;
+            linkValueProfile(i, opLength);
             break;
         }
         case op_put_by_val: {
@@ -2148,10 +2145,7 @@ void CodeBlock::finishCreation(VM& vm, ScriptExecutable* ownerExecutable, Unlink
         case op_call:
         case op_tail_call:
         case op_call_eval: {
-            ValueProfile* profile = &m_valueProfiles[pc[opLength - 1].u.operand];
-            ASSERT(profile->m_bytecodeOffset == -1);
-            profile->m_bytecodeOffset = i;
-            instructions[i + opLength - 1] = profile;
+            linkValueProfile(i, opLength);
             int arrayProfileIndex = pc[opLength - 2].u.operand;
             m_arrayProfiles[arrayProfileIndex] = ArrayProfile(i);
             instructions[i + opLength - 2] = &m_arrayProfiles[arrayProfileIndex];
@@ -2160,10 +2154,7 @@ void CodeBlock::finishCreation(VM& vm, ScriptExecutable* ownerExecutable, Unlink
         }
         case op_construct: {
             instructions[i + 5] = &m_llintCallLinkInfos[pc[5].u.operand];
-            ValueProfile* profile = &m_valueProfiles[pc[opLength - 1].u.operand];
-            ASSERT(profile->m_bytecodeOffset == -1);
-            profile->m_bytecodeOffset = i;
-            instructions[i + opLength - 1] = profile;
+            linkValueProfile(i, opLength);
             break;
         }
         case op_get_array_length:
@@ -2194,10 +2185,7 @@ void CodeBlock::finishCreation(VM& vm, ScriptExecutable* ownerExecutable, Unlink
         }
 
         case op_get_from_scope: {
-            ValueProfile* profile = &m_valueProfiles[pc[opLength - 1].u.operand];
-            ASSERT(profile->m_bytecodeOffset == -1);
-            profile->m_bytecodeOffset = i;
-            instructions[i + opLength - 1] = profile;
+            linkValueProfile(i, opLength);
 
             // get_from_scope dst, scope, id, GetPutInfo, Structure, Operand
 
@@ -2354,15 +2342,6 @@ void CodeBlock::finishCreation(VM& vm, ScriptExecutable* ownerExecutable, Unlink
             break;
         }
 
-        case op_save: {
-            unsigned liveCalleeLocalsIndex = pc[2].u.index;
-            int offset = pc[3].u.operand;
-            if (liveCalleeLocalsIndex >= mergePointBytecodeOffsets.size())
-                mergePointBytecodeOffsets.resize(liveCalleeLocalsIndex + 1);
-            mergePointBytecodeOffsets[liveCalleeLocalsIndex] = i + offset;
-            break;
-        }
-
         default:
             break;
         }
@@ -2373,20 +2352,6 @@ void CodeBlock::finishCreation(VM& vm, ScriptExecutable* ownerExecutable, Unlink
         insertBasicBlockBoundariesForControlFlowProfiler(instructions);
 
     m_instructions = WTFMove(instructions);
-
-    // Perform bytecode liveness analysis to determine which locals are live and should be resumed when executing op_resume.
-    if (unlinkedCodeBlock->parseMode() == SourceParseMode::GeneratorBodyMode) {
-        if (size_t count = mergePointBytecodeOffsets.size()) {
-            createRareDataIfNecessary();
-            BytecodeLivenessAnalysis liveness(this);
-            m_rareData->m_liveCalleeLocalsAtYield.grow(count);
-            size_t liveCalleeLocalsIndex = 0;
-            for (size_t bytecodeOffset : mergePointBytecodeOffsets) {
-                m_rareData->m_liveCalleeLocalsAtYield[liveCalleeLocalsIndex] = liveness.getLivenessInfoAtBytecodeOffset(bytecodeOffset);
-                ++liveCalleeLocalsIndex;
-            }
-        }
-    }
 
     // Set optimization thresholds only after m_instructions is initialized, since these
     // rely on the instruction count (and are in theory permitted to also inspect the
@@ -2402,7 +2367,7 @@ void CodeBlock::finishCreation(VM& vm, ScriptExecutable* ownerExecutable, Unlink
     if (Options::dumpGeneratedBytecodes())
         dumpBytecode();
     
-    heap()->m_codeBlocks.add(this);
+    heap()->m_codeBlocks->add(this);
     heap()->reportExtraMemoryAllocated(m_instructions.size() * sizeof(Instruction));
 }
 
@@ -2439,7 +2404,7 @@ void CodeBlock::finishCreation(VM& vm, WebAssemblyExecutable*, JSGlobalObject*)
 {
     Base::finishCreation(vm);
 
-    heap()->m_codeBlocks.add(this);
+    heap()->m_codeBlocks->add(this);
 }
 #endif
 
@@ -2543,7 +2508,7 @@ void CodeBlock::visitWeakly(SlotVisitor& visitor)
     if (!setByMe)
         return;
 
-    if (Heap::isMarked(this))
+    if (Heap::isMarkedConcurrently(this))
         return;
 
     if (shouldVisitStrongly()) {
@@ -2686,7 +2651,7 @@ static std::chrono::milliseconds timeToLive(JITCode::JITType jitType)
 
 bool CodeBlock::shouldJettisonDueToOldAge()
 {
-    if (Heap::isMarked(this))
+    if (Heap::isMarkedConcurrently(this))
         return false;
 
     if (UNLIKELY(Options::forceCodeBlockToJettisonDueToOldAge()))
@@ -2701,10 +2666,10 @@ bool CodeBlock::shouldJettisonDueToOldAge()
 #if ENABLE(DFG_JIT)
 static bool shouldMarkTransition(DFG::WeakReferenceTransition& transition)
 {
-    if (transition.m_codeOrigin && !Heap::isMarked(transition.m_codeOrigin.get()))
+    if (transition.m_codeOrigin && !Heap::isMarkedConcurrently(transition.m_codeOrigin.get()))
         return false;
     
-    if (!Heap::isMarked(transition.m_from.get()))
+    if (!Heap::isMarkedConcurrently(transition.m_from.get()))
         return false;
     
     return true;
@@ -2735,7 +2700,7 @@ void CodeBlock::propagateTransitions(SlotVisitor& visitor)
                     m_vm->heap.structureIDTable().get(oldStructureID);
                 Structure* newStructure =
                     m_vm->heap.structureIDTable().get(newStructureID);
-                if (Heap::isMarked(oldStructure))
+                if (Heap::isMarkedConcurrently(oldStructure))
                     visitor.appendUnbarrieredReadOnlyPointer(newStructure);
                 else
                     allAreMarkedSoFar = false;
@@ -2807,14 +2772,14 @@ void CodeBlock::determineLiveness(SlotVisitor& visitor)
     // GC we still have not proved liveness, then this code block is toast.
     bool allAreLiveSoFar = true;
     for (unsigned i = 0; i < dfgCommon->weakReferences.size(); ++i) {
-        if (!Heap::isMarked(dfgCommon->weakReferences[i].get())) {
+        if (!Heap::isMarkedConcurrently(dfgCommon->weakReferences[i].get())) {
             allAreLiveSoFar = false;
             break;
         }
     }
     if (allAreLiveSoFar) {
         for (unsigned i = 0; i < dfgCommon->weakStructureReferences.size(); ++i) {
-            if (!Heap::isMarked(dfgCommon->weakStructureReferences[i].get())) {
+            if (!Heap::isMarkedConcurrently(dfgCommon->weakStructureReferences[i].get())) {
                 allAreLiveSoFar = false;
                 break;
             }
@@ -2841,6 +2806,14 @@ void CodeBlock::WeakReferenceHarvester::visitWeakReferences(SlotVisitor& visitor
 
     codeBlock->propagateTransitions(visitor);
     codeBlock->determineLiveness(visitor);
+}
+
+void CodeBlock::clearLLIntGetByIdCache(Instruction* instruction)
+{
+    instruction[0].u.opcode = LLInt::getOpcode(op_get_by_id);
+    instruction[4].u.pointer = nullptr;
+    instruction[5].u.pointer = nullptr;
+    instruction[6].u.pointer = nullptr;
 }
 
 void CodeBlock::finalizeLLIntInlineCaches()
@@ -3050,19 +3023,24 @@ StructureStubInfo* CodeBlock::addStubInfo(AccessType accessType)
     return m_stubInfos.add(accessType);
 }
 
-JITAddIC* CodeBlock::addJITAddIC()
+JITAddIC* CodeBlock::addJITAddIC(ArithProfile* arithProfile)
 {
-    return m_addICs.add();
+    return m_addICs.add(arithProfile);
 }
 
-JITMulIC* CodeBlock::addJITMulIC()
+JITMulIC* CodeBlock::addJITMulIC(ArithProfile* arithProfile)
 {
-    return m_mulICs.add();
+    return m_mulICs.add(arithProfile);
 }
 
-JITSubIC* CodeBlock::addJITSubIC()
+JITSubIC* CodeBlock::addJITSubIC(ArithProfile* arithProfile)
 {
-    return m_subICs.add();
+    return m_subICs.add(arithProfile);
+}
+
+JITNegIC* CodeBlock::addJITNegIC(ArithProfile* arithProfile)
+{
+    return m_negICs.add(arithProfile);
 }
 
 StructureStubInfo* CodeBlock::findStubInfo(CodeOrigin codeOrigin)
@@ -3244,21 +3222,7 @@ HandlerInfo* CodeBlock::handlerForIndex(unsigned index, RequiredHandler required
 {
     if (!m_rareData)
         return 0;
-    
-    Vector<HandlerInfo>& exceptionHandlers = m_rareData->m_exceptionHandlers;
-    for (size_t i = 0; i < exceptionHandlers.size(); ++i) {
-        HandlerInfo& handler = exceptionHandlers[i];
-        if ((requiredHandler == RequiredHandler::CatchHandler) && !handler.isCatchHandler())
-            continue;
-
-        // Handlers are ordered innermost first, so the first handler we encounter
-        // that contains the source address is the correct handler to use.
-        // This index used is either the BytecodeOffset or a CallSiteIndex.
-        if (handler.start <= index && handler.end > index)
-            return &handler;
-    }
-
-    return 0;
+    return HandlerInfo::handlerForIndex(m_rareData->m_exceptionHandlers, index, requiredHandler);
 }
 
 CallSiteIndex CodeBlock::newExceptionHandlingCallSiteIndex(CallSiteIndex originalCallSite)
@@ -3353,7 +3317,6 @@ void CodeBlock::shrinkToFit(ShrinkMode shrinkMode)
         if (m_rareData) {
             m_rareData->m_switchJumpTables.shrinkToFit();
             m_rareData->m_stringSwitchJumpTables.shrinkToFit();
-            m_rareData->m_liveCalleeLocalsAtYield.shrinkToFit();
         }
     } // else don't shrink these, because we would have already pointed pointers into these tables.
 }
@@ -4259,12 +4222,12 @@ size_t CodeBlock::predictedMachineCodeSize()
     if (!m_vm)
         return 0;
     
-    if (!m_vm->machineCodeBytesPerBytecodeWordForBaselineJIT)
+    if (!*m_vm->machineCodeBytesPerBytecodeWordForBaselineJIT)
         return 0; // It's as good of a prediction as we'll get.
     
     // Be conservative: return a size that will be an overestimation 84% of the time.
-    double multiplier = m_vm->machineCodeBytesPerBytecodeWordForBaselineJIT.mean() +
-        m_vm->machineCodeBytesPerBytecodeWordForBaselineJIT.standardDeviation();
+    double multiplier = m_vm->machineCodeBytesPerBytecodeWordForBaselineJIT->mean() +
+        m_vm->machineCodeBytesPerBytecodeWordForBaselineJIT->standardDeviation();
     
     // Be paranoid: silently reject bogus multipiers. Silently doing the "wrong" thing
     // here is OK, since this whole method is just a heuristic.
@@ -4335,14 +4298,9 @@ String CodeBlock::nameForRegister(VirtualRegister virtualRegister)
 
 ValueProfile* CodeBlock::valueProfileForBytecodeOffset(int bytecodeOffset)
 {
-    ValueProfile* result = binarySearch<ValueProfile, int>(
-        m_valueProfiles, m_valueProfiles.size(), bytecodeOffset,
-        getValueProfileBytecodeOffset<ValueProfile>);
-    ASSERT(result->m_bytecodeOffset != -1);
-    ASSERT(instructions()[bytecodeOffset + opcodeLength(
-        m_vm->interpreter->getOpcodeID(
-            instructions()[bytecodeOffset].u.opcode)) - 1].u.profile == result);
-    return result;
+    OpcodeID opcodeID = m_vm->interpreter->getOpcodeID(instructions()[bytecodeOffset].u.opcode);
+    unsigned length = opcodeLength(opcodeID);
+    return instructions()[bytecodeOffset + length - 1].u.profile;
 }
 
 void CodeBlock::validate()
@@ -4362,7 +4320,7 @@ void CodeBlock::validate()
     for (unsigned i = m_numCalleeLocals; i--;) {
         VirtualRegister reg = virtualRegisterForLocal(i);
         
-        if (liveAtHead.get(i)) {
+        if (liveAtHead[i]) {
             beginValidationDidFail();
             dataLog("    Variable ", reg, " is expected to be dead.\n");
             dataLog("    Result: ", liveAtHead, "\n");
@@ -4424,8 +4382,15 @@ unsigned CodeBlock::rareCaseProfileCountForBytecodeOffset(int bytecodeOffset)
 
 ArithProfile* CodeBlock::arithProfileForBytecodeOffset(int bytecodeOffset)
 {
-    auto opcodeID = vm()->interpreter->getOpcodeID(instructions()[bytecodeOffset].u.opcode);
+    return arithProfileForPC(instructions().begin() + bytecodeOffset);
+}
+
+ArithProfile* CodeBlock::arithProfileForPC(Instruction* pc)
+{
+    auto opcodeID = vm()->interpreter->getOpcodeID(pc[0].u.opcode);
     switch (opcodeID) {
+    case op_negate:
+        return bitwise_cast<ArithProfile*>(&pc[3].u.operand);
     case op_bitor:
     case op_bitand:
     case op_bitxor:
@@ -4433,34 +4398,12 @@ ArithProfile* CodeBlock::arithProfileForBytecodeOffset(int bytecodeOffset)
     case op_mul:
     case op_sub:
     case op_div:
-        break;
+        return bitwise_cast<ArithProfile*>(&pc[4].u.operand);
     default:
-        return nullptr;
+        break;
     }
 
-    return &arithProfileForPC(instructions().begin() + bytecodeOffset);
-}
-
-ArithProfile& CodeBlock::arithProfileForPC(Instruction* pc)
-{
-    if (!ASSERT_DISABLED) {
-        ASSERT(pc >= instructions().begin() && pc < instructions().end());
-        auto opcodeID = vm()->interpreter->getOpcodeID(pc[0].u.opcode);
-        switch (opcodeID) {
-        case op_bitor:
-        case op_bitand:
-        case op_bitxor:
-        case op_add:
-        case op_mul:
-        case op_sub:
-        case op_div:
-            break;
-        default:
-            ASSERT_NOT_REACHED();
-        }
-    }
-
-    return *bitwise_cast<ArithProfile*>(&pc[4].u.operand);
+    return nullptr;
 }
 
 bool CodeBlock::couldTakeSpecialFastCase(int bytecodeOffset)
@@ -4632,6 +4575,8 @@ void CodeBlock::dumpMathICStats()
     double totalAddSize = 0.0;
     double numMuls = 0.0;
     double totalMulSize = 0.0;
+    double numNegs = 0.0;
+    double totalNegSize = 0.0;
     double numSubs = 0.0;
     double totalSubSize = 0.0;
 
@@ -4644,6 +4589,11 @@ void CodeBlock::dumpMathICStats()
         for (JITMulIC* mulIC : codeBlock->m_mulICs) {
             numMuls++;
             totalMulSize += mulIC->codeSize();
+        }
+
+        for (JITNegIC* negIC : codeBlock->m_negICs) {
+            numNegs++;
+            totalNegSize += negIC->codeSize();
         }
 
         for (JITSubIC* subIC : codeBlock->m_subICs) {
@@ -4663,6 +4613,10 @@ void CodeBlock::dumpMathICStats()
     dataLog("Total Mul size in bytes: ", totalMulSize, "\n");
     dataLog("Average Mul size: ", totalMulSize / numMuls, "\n");
     dataLog("\n");
+    dataLog("Num Negs: ", numNegs, "\n");
+    dataLog("Total Neg size in bytes: ", totalNegSize, "\n");
+    dataLog("Average Neg size: ", totalNegSize / numNegs, "\n");
+    dataLog("\n");
     dataLog("Num Subs: ", numSubs, "\n");
     dataLog("Total Sub size in bytes: ", totalSubSize, "\n");
     dataLog("Average Sub size: ", totalSubSize / numSubs, "\n");
@@ -4670,5 +4624,17 @@ void CodeBlock::dumpMathICStats()
     dataLog("-----------------------\n");
 #endif
 }
+
+BytecodeLivenessAnalysis& CodeBlock::livenessAnalysisSlow()
+{
+    std::unique_ptr<BytecodeLivenessAnalysis> analysis = std::make_unique<BytecodeLivenessAnalysis>(this);
+    {
+        ConcurrentJITLocker locker(m_lock);
+        if (!m_livenessAnalysis)
+            m_livenessAnalysis = WTFMove(analysis);
+        return *m_livenessAnalysis;
+    }
+}
+
 
 } // namespace JSC

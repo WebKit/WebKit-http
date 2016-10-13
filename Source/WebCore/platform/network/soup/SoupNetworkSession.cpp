@@ -31,17 +31,22 @@
 
 #include "AuthenticationChallenge.h"
 #include "CookieJarSoup.h"
+#include "CryptoDigest.h"
 #include "FileSystem.h"
 #include "GUniquePtrSoup.h"
 #include "Logging.h"
 #include "ResourceHandle.h"
 #include <glib/gstdio.h>
 #include <libsoup/soup.h>
+#include <wtf/HashSet.h>
 #include <wtf/NeverDestroyed.h>
+#include <wtf/text/Base64.h>
 #include <wtf/text/CString.h>
 #include <wtf/text/StringBuilder.h>
 
 namespace WebCore {
+
+static bool gIgnoreTLSErrors;
 
 #if !LOG_DISABLED
 inline static void soupLogPrinter(SoupLogger*, SoupLoggerLogLevel, char direction, const char* data, gpointer)
@@ -49,6 +54,44 @@ inline static void soupLogPrinter(SoupLogger*, SoupLoggerLogLevel, char directio
     LOG(Network, "%c %s", direction, data);
 }
 #endif
+
+class HostTLSCertificateSet {
+public:
+    void add(GTlsCertificate* certificate)
+    {
+        String certificateHash = computeCertificateHash(certificate);
+        if (!certificateHash.isEmpty())
+            m_certificates.add(certificateHash);
+    }
+
+    bool contains(GTlsCertificate* certificate) const
+    {
+        return m_certificates.contains(computeCertificateHash(certificate));
+    }
+
+private:
+    static String computeCertificateHash(GTlsCertificate* certificate)
+    {
+        GRefPtr<GByteArray> certificateData;
+        g_object_get(G_OBJECT(certificate), "certificate", &certificateData.outPtr(), nullptr);
+        if (!certificateData)
+            return String();
+
+        auto digest = CryptoDigest::create(CryptoDigest::Algorithm::SHA_256);
+        digest->addBytes(certificateData->data, certificateData->len);
+
+        auto hash = digest->computeHash();
+        return base64Encode(reinterpret_cast<const char*>(hash.data()), hash.size());
+    }
+
+    HashSet<String> m_certificates;
+};
+
+static HashMap<String, HostTLSCertificateSet, ASCIICaseInsensitiveHash>& clientCertificates()
+{
+    static NeverDestroyed<HashMap<String, HostTLSCertificateSet, ASCIICaseInsensitiveHash>> certificates;
+    return certificates;
+}
 
 SoupNetworkSession& SoupNetworkSession::defaultSession()
 {
@@ -63,8 +106,11 @@ std::unique_ptr<SoupNetworkSession> SoupNetworkSession::createPrivateBrowsingSes
 
 std::unique_ptr<SoupNetworkSession> SoupNetworkSession::createTestingSession()
 {
-    GRefPtr<SoupCookieJar> cookieJar = adoptGRef(createPrivateBrowsingCookieJar());
-    return std::unique_ptr<SoupNetworkSession>(new SoupNetworkSession(cookieJar.get()));
+    auto cookieJar = adoptGRef(createPrivateBrowsingCookieJar());
+    auto newSoupSession = std::unique_ptr<SoupNetworkSession>(new SoupNetworkSession(cookieJar.get()));
+    // FIXME: Creating a testing session is losing soup session values set when initializing the network process.
+    g_object_set(newSoupSession->soupSession(), "accept-language", "en-us", nullptr);
+    return newSoupSession;
 }
 
 std::unique_ptr<SoupNetworkSession> SoupNetworkSession::createForSoupSession(SoupSession* soupSession)
@@ -72,12 +118,12 @@ std::unique_ptr<SoupNetworkSession> SoupNetworkSession::createForSoupSession(Sou
     return std::unique_ptr<SoupNetworkSession>(new SoupNetworkSession(soupSession));
 }
 
-static void authenticateCallback(SoupSession* session, SoupMessage* soupMessage, SoupAuth* soupAuth, gboolean retrying)
+static void authenticateCallback(SoupSession*, SoupMessage* soupMessage, SoupAuth* soupAuth, gboolean retrying)
 {
     RefPtr<ResourceHandle> handle = static_cast<ResourceHandle*>(g_object_get_data(G_OBJECT(soupMessage), "handle"));
     if (!handle)
         return;
-    handle->didReceiveAuthenticationChallenge(AuthenticationChallenge(session, soupMessage, soupAuth, retrying, handle.get()));
+    handle->didReceiveAuthenticationChallenge(AuthenticationChallenge(soupMessage, soupAuth, retrying, handle.get()));
 }
 
 #if ENABLE(WEB_TIMING) && !SOUP_CHECK_VERSION(2, 49, 91)
@@ -108,6 +154,8 @@ SoupNetworkSession::SoupNetworkSession(SoupCookieJar* cookieJar)
         SOUP_SESSION_ADD_FEATURE_BY_TYPE, SOUP_TYPE_PROXY_RESOLVER_DEFAULT,
         SOUP_SESSION_ADD_FEATURE, cookieJar,
         SOUP_SESSION_USE_THREAD_CONTEXT, TRUE,
+        SOUP_SESSION_SSL_USE_SYSTEM_CA_FILE, TRUE,
+        SOUP_SESSION_SSL_STRICT, FALSE,
         nullptr);
 
 #if SOUP_CHECK_VERSION(2, 53, 92)
@@ -160,18 +208,6 @@ SoupCookieJar* SoupNetworkSession::cookieJar() const
     return SOUP_COOKIE_JAR(soup_session_get_feature(m_soupSession.get(), SOUP_TYPE_COOKIE_JAR));
 }
 
-void SoupNetworkSession::setCache(SoupCache* cache)
-{
-    ASSERT(!soup_session_get_feature(m_soupSession.get(), SOUP_TYPE_CACHE));
-    soup_session_add_feature(m_soupSession.get(), SOUP_SESSION_FEATURE(cache));
-}
-
-SoupCache* SoupNetworkSession::cache() const
-{
-    SoupSessionFeature* soupCache = soup_session_get_feature(m_soupSession.get(), SOUP_TYPE_CACHE);
-    return soupCache ? SOUP_CACHE(soupCache) : nullptr;
-}
-
 static inline bool stringIsNumeric(const char* str)
 {
     while (*str) {
@@ -182,7 +218,8 @@ static inline bool stringIsNumeric(const char* str)
     return true;
 }
 
-void SoupNetworkSession::clearCache(const String& cacheDirectory)
+// Old versions of WebKit created this cache.
+void SoupNetworkSession::clearOldSoupCache(const String& cacheDirectory)
 {
     CString cachePath = fileSystemRepresentation(cacheDirectory);
     GUniquePtr<char> cacheFile(g_build_filename(cachePath.data(), "soup.cache2", nullptr));
@@ -201,30 +238,6 @@ void SoupNetworkSession::clearCache(const String& cacheDirectory)
         if (g_file_test(filename.get(), G_FILE_TEST_IS_REGULAR))
             g_unlink(filename.get());
     }
-}
-
-void SoupNetworkSession::setSSLPolicy(SSLPolicy flags)
-{
-    g_object_set(m_soupSession.get(),
-        SOUP_SESSION_SSL_USE_SYSTEM_CA_FILE, flags & SSLUseSystemCAFile ? TRUE : FALSE,
-        SOUP_SESSION_SSL_STRICT, flags & SSLStrict ? TRUE : FALSE,
-        nullptr);
-}
-
-SoupNetworkSession::SSLPolicy SoupNetworkSession::sslPolicy() const
-{
-    gboolean useSystemCAFile, strict;
-    g_object_get(m_soupSession.get(),
-        SOUP_SESSION_SSL_USE_SYSTEM_CA_FILE, &useSystemCAFile,
-        SOUP_SESSION_SSL_STRICT, &strict,
-        nullptr);
-
-    SSLPolicy flags = 0;
-    if (useSystemCAFile)
-        flags |= SSLUseSystemCAFile;
-    if (strict)
-        flags |= SSLStrict;
-    return flags;
 }
 
 void SoupNetworkSession::setHTTPProxy(const char* httpProxy, const char* httpProxyExceptions)
@@ -307,6 +320,41 @@ static CString buildAcceptLanguages(const Vector<String>& languages)
 void SoupNetworkSession::setAcceptLanguages(const Vector<String>& languages)
 {
     g_object_set(m_soupSession.get(), "accept-language", buildAcceptLanguages(languages).data(), nullptr);
+}
+
+void SoupNetworkSession::setShouldIgnoreTLSErrors(bool ignoreTLSErrors)
+{
+    gIgnoreTLSErrors = ignoreTLSErrors;
+}
+
+void SoupNetworkSession::checkTLSErrors(SoupRequest* soupRequest, SoupMessage* message, std::function<void (const ResourceError&)>&& completionHandler)
+{
+    if (gIgnoreTLSErrors) {
+        completionHandler({ });
+        return;
+    }
+
+    GTlsCertificate* certificate = nullptr;
+    GTlsCertificateFlags tlsErrors = static_cast<GTlsCertificateFlags>(0);
+    soup_message_get_https_status(message, &certificate, &tlsErrors);
+    if (!tlsErrors) {
+        completionHandler({ });
+        return;
+    }
+
+    URL url(soup_request_get_uri(soupRequest));
+    auto it = clientCertificates().find(url.host());
+    if (it != clientCertificates().end() && it->value.contains(certificate)) {
+        completionHandler({ });
+        return;
+    }
+
+    completionHandler(ResourceError::tlsError(soupRequest, tlsErrors, certificate));
+}
+
+void SoupNetworkSession::allowSpecificHTTPSCertificateForHost(const CertificateInfo& certificateInfo, const String& host)
+{
+    clientCertificates().add(host, HostTLSCertificateSet()).iterator->value.add(certificateInfo.certificate());
 }
 
 } // namespace WebCore

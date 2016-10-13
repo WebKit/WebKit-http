@@ -81,6 +81,8 @@
 #include "ContentFilter.h"
 #endif
 
+#define RELEASE_LOG_IF_ALLOWED(fmt, ...) RELEASE_LOG_IF(isAlwaysOnLoggingAllowed(), Network, "%p - DocumentLoader::" fmt, this, ##__VA_ARGS__)
+
 namespace WebCore {
 
 static void cancelAll(const ResourceLoaderMap& loaders)
@@ -371,14 +373,14 @@ bool DocumentLoader::isLoading() const
     return isLoadingMainResource() || !m_subresourceLoaders.isEmpty() || !m_plugInStreamLoaders.isEmpty();
 }
 
-void DocumentLoader::notifyFinished(CachedResource* resource)
+void DocumentLoader::notifyFinished(CachedResource& resource)
 {
 #if ENABLE(CONTENT_FILTERING)
     if (m_contentFilter && !m_contentFilter->continueAfterNotifyFinished(resource))
         return;
 #endif
 
-    ASSERT_UNUSED(resource, m_mainResource == resource);
+    ASSERT_UNUSED(resource, m_mainResource == &resource);
     ASSERT(m_mainResource);
     if (!m_mainResource->errorOccurred() && !m_mainResource->wasCanceled()) {
         finishedLoading(m_mainResource->loadFinishTime());
@@ -469,7 +471,7 @@ void DocumentLoader::handleSubstituteDataLoadNow()
     if (response.url().isEmpty())
         response = ResourceResponse(m_request.url(), m_substituteData.mimeType(), m_substituteData.content()->size(), m_substituteData.textEncoding());
 
-    responseReceived(0, response);
+    responseReceived(response);
 }
 
 void DocumentLoader::startDataLoadTimer()
@@ -490,9 +492,9 @@ void DocumentLoader::handleSubstituteDataLoadSoon()
         startDataLoadTimer();
 }
 
-void DocumentLoader::redirectReceived(CachedResource* resource, ResourceRequest& request, const ResourceResponse& redirectResponse)
+void DocumentLoader::redirectReceived(CachedResource& resource, ResourceRequest& request, const ResourceResponse& redirectResponse)
 {
-    ASSERT_UNUSED(resource, resource == m_mainResource);
+    ASSERT_UNUSED(resource, &resource == m_mainResource);
     willSendRequest(request, redirectResponse);
 }
 
@@ -630,14 +632,19 @@ void DocumentLoader::stopLoadingAfterXFrameOptionsOrContentSecurityPolicyDenied(
         cancelMainResourceLoad(frameLoader->cancelledError(m_request));
 }
 
-void DocumentLoader::responseReceived(CachedResource* resource, const ResourceResponse& response)
+void DocumentLoader::responseReceived(CachedResource& resource, const ResourceResponse& response)
+{
+    ASSERT_UNUSED(resource, m_mainResource == &resource);
+    responseReceived(response);
+}
+
+void DocumentLoader::responseReceived(const ResourceResponse& response)
 {
 #if ENABLE(CONTENT_FILTERING)
-    if (m_contentFilter && !m_contentFilter->continueAfterResponseReceived(resource, response))
+    if (m_contentFilter && !m_contentFilter->continueAfterResponseReceived(response))
         return;
 #endif
 
-    ASSERT_UNUSED(resource, m_mainResource == resource);
     Ref<DocumentLoader> protectedThis(*this);
     bool willLoadFallback = m_applicationCacheHost->maybeLoadFallbackForMainResponse(request(), response);
 
@@ -819,7 +826,7 @@ void DocumentLoader::continueAfterContentPolicy(PolicyAction policy)
     if (!isStopping() && m_substituteData.isValid() && isLoadingMainResource()) {
         auto content = m_substituteData.content();
         if (content && content->size())
-            dataReceived(nullptr, content->data(), content->size());
+            dataReceived(content->data(), content->size());
         if (isLoadingMainResource())
             finishedLoading(0);
     }
@@ -927,16 +934,21 @@ void DocumentLoader::commitData(const char* bytes, size_t length)
     m_writer.addData(bytes, length);
 }
 
-void DocumentLoader::dataReceived(CachedResource* resource, const char* data, int length)
+void DocumentLoader::dataReceived(CachedResource& resource, const char* data, int length)
+{
+    ASSERT_UNUSED(resource, &resource == m_mainResource);
+    dataReceived(data, length);
+}
+
+void DocumentLoader::dataReceived(const char* data, int length)
 {
 #if ENABLE(CONTENT_FILTERING)
-    if (m_contentFilter && !m_contentFilter->continueAfterDataReceived(resource, data, length))
+    if (m_contentFilter && !m_contentFilter->continueAfterDataReceived(data, length))
         return;
 #endif
 
     ASSERT(data);
     ASSERT(length);
-    ASSERT_UNUSED(resource, resource == m_mainResource);
     ASSERT(!m_response.isNull());
 
     // There is a bug in CFNetwork where callbacks can be dispatched even when loads are deferred.
@@ -1018,8 +1030,8 @@ void DocumentLoader::detachFromFrame()
     // It never makes sense to have a document loader that is detached from its
     // frame have any loads active, so kill all the loads.
     stopLoading();
-    if (m_mainResource && m_mainResource->hasClient(this))
-        m_mainResource->removeClient(this);
+    if (m_mainResource && m_mainResource->hasClient(*this))
+        m_mainResource->removeClient(*this);
 #if ENABLE(CONTENT_FILTERING)
     if (m_contentFilter)
         m_contentFilter->stopFilteringMainResource();
@@ -1406,8 +1418,8 @@ void DocumentLoader::addSubresourceLoader(ResourceLoader* loader)
     ASSERT(!m_subresourceLoaders.contains(loader->identifier()));
     ASSERT(!mainResourceLoader() || mainResourceLoader() != loader);
 
-    // A page in the PageCache should not be able to start loads.
-    ASSERT_WITH_SECURITY_IMPLICATION(!document() || !document()->inPageCache());
+    // A page in the PageCache or about to enter PageCache should not be able to start loads.
+    ASSERT_WITH_SECURITY_IMPLICATION(!document() || document()->pageCacheState() == Document::NotInPageCache);
 
     m_subresourceLoaders.add(loader->identifier(), loader);
 }
@@ -1466,13 +1478,15 @@ bool DocumentLoader::maybeLoadEmpty()
 void DocumentLoader::startLoadingMainResource()
 {
     m_mainDocumentError = ResourceError();
-    timing().markStartTime();
+    timing().markStartTimeAndFetchStart();
     ASSERT(!m_mainResource);
     ASSERT(!m_loadingMainResource);
     m_loadingMainResource = true;
 
-    if (maybeLoadEmpty())
+    if (maybeLoadEmpty()) {
+        RELEASE_LOG_IF_ALLOWED("startLoadingMainResource: Returning empty document (frame = %p, main = %d)", m_frame, m_frame ? m_frame->isMainFrame() : false);
         return;
+    }
 
 #if ENABLE(CONTENT_FILTERING)
     m_contentFilter = !m_substituteData.isValid() ? ContentFilter::create(*this) : nullptr;
@@ -1485,19 +1499,21 @@ void DocumentLoader::startLoadingMainResource()
     frameLoader()->addExtraFieldsToMainResourceRequest(m_request);
 
     ASSERT(timing().startTime());
-    ASSERT(!timing().fetchStart());
-    timing().markFetchStart();
+    ASSERT(timing().fetchStart());
 
     Ref<DocumentLoader> protectedThis(*this); // willSendRequest() may deallocate the provisional loader (which may be us) if it cancels the load.
     willSendRequest(m_request, ResourceResponse());
 
     // willSendRequest() may lead to our Frame being detached or cancelling the load via nulling the ResourceRequest.
-    if (!m_frame || m_request.isNull())
+    if (!m_frame || m_request.isNull()) {
+        RELEASE_LOG_IF_ALLOWED("startLoadingMainResource: Load canceled after willSendRequest (frame = %p, main = %d)", m_frame, m_frame ? m_frame->isMainFrame() : false);
         return;
+    }
 
     m_applicationCacheHost->maybeLoadMainResource(m_request, m_substituteData);
 
     if (m_substituteData.isValid() && m_frame->page()) {
+        RELEASE_LOG_IF_ALLOWED("startLoadingMainResource: Returning cached main resource (frame = %p, main = %d)", m_frame, m_frame->isMainFrame());
         m_identifierForLoadWithoutResourceLoader = m_frame->page()->progress().createUniqueIdentifier();
         frameLoader()->notifier().assignIdentifierToInitialRequest(m_identifierForLoadWithoutResourceLoader, this, m_request);
         frameLoader()->notifier().dispatchWillSendRequest(this, m_identifierForLoadWithoutResourceLoader, m_request, ResourceResponse());
@@ -1510,12 +1526,14 @@ void DocumentLoader::startLoadingMainResource()
     // If this is a reload the cache layer might have made the previous request conditional. DocumentLoader can't handle 304 responses itself.
     request.makeUnconditional();
 
-    static NeverDestroyed<ResourceLoaderOptions> mainResourceLoadOptions(SendCallbacks, SniffContent, BufferData, AllowStoredCredentials, ClientCredentialPolicy::MayAskClientForCredentials, FetchOptions::Credentials::Include, SkipSecurityCheck, FetchOptions::Mode::NoCors, IncludeCertificateInfo, ContentSecurityPolicyImposition::DoPolicyCheck, DefersLoadingPolicy::AllowDefersLoading, CachingPolicy::AllowCaching);
-    CachedResourceRequest cachedResourceRequest(ResourceRequest(request), mainResourceLoadOptions);
-    m_mainResource = m_cachedResourceLoader->requestMainResource(cachedResourceRequest);
+    RELEASE_LOG_IF_ALLOWED("startLoadingMainResource: Starting load (frame = %p, main = %d)", m_frame, m_frame->isMainFrame());
+
+    static NeverDestroyed<ResourceLoaderOptions> mainResourceLoadOptions(SendCallbacks, SniffContent, BufferData, AllowStoredCredentials, ClientCredentialPolicy::MayAskClientForCredentials, FetchOptions::Credentials::Include, SkipSecurityCheck, FetchOptions::Mode::NoCors, IncludeCertificateInfo, ContentSecurityPolicyImposition::SkipPolicyCheck, DefersLoadingPolicy::AllowDefersLoading, CachingPolicy::AllowCaching);
+    m_mainResource = m_cachedResourceLoader->requestMainResource(CachedResourceRequest(ResourceRequest(request), mainResourceLoadOptions));
 
 #if ENABLE(CONTENT_EXTENSIONS)
     if (m_mainResource && m_mainResource->errorOccurred() && m_frame->page() && m_mainResource->resourceError().domain() == ContentExtensions::WebKitContentBlockerDomain) {
+        RELEASE_LOG_IF_ALLOWED("startLoadingMainResource: Blocked by content blocker error (frame = %p, main = %d)", m_frame, m_frame->isMainFrame());
         cancelMainResourceLoad(frameLoader()->blockedByContentBlockerError(m_request));
         return;
     }
@@ -1523,9 +1541,12 @@ void DocumentLoader::startLoadingMainResource()
 
     if (!m_mainResource) {
         if (!m_request.url().isValid()) {
+            RELEASE_LOG_IF_ALLOWED("startLoadingMainResource: Unable to load main resource, URL is invalid (frame = %p, main = %d)", m_frame, m_frame->isMainFrame());
             cancelMainResourceLoad(frameLoader()->client().cannotShowURLError(m_request));
             return;
         }
+
+        RELEASE_LOG_IF_ALLOWED("startLoadingMainResource: Unable to load main resource, returning empty document (frame = %p, main = %d)", m_frame, m_frame->isMainFrame());
 
         setRequest(ResourceRequest());
         // If the load was aborted by clearing m_request, it's possible the ApplicationCacheHost
@@ -1584,8 +1605,8 @@ void DocumentLoader::cancelMainResourceLoad(const ResourceError& resourceError)
 
 void DocumentLoader::clearMainResource()
 {
-    if (m_mainResource && m_mainResource->hasClient(this))
-        m_mainResource->removeClient(this);
+    if (m_mainResource && m_mainResource->hasClient(*this))
+        m_mainResource->removeClient(*this);
 #if ENABLE(CONTENT_FILTERING)
     if (m_contentFilter)
         m_contentFilter->stopFilteringMainResource();
@@ -1688,7 +1709,7 @@ void DocumentLoader::becomeMainResourceClient()
     if (m_contentFilter)
         m_contentFilter->startFilteringMainResource(*m_mainResource);
 #endif
-    m_mainResource->addClient(this);
+    m_mainResource->addClient(*this);
 }
 
 #if ENABLE(CONTENT_EXTENSIONS)
@@ -1712,5 +1733,10 @@ ContentFilter* DocumentLoader::contentFilter() const
     return m_contentFilter.get();
 }
 #endif
+
+bool DocumentLoader::isAlwaysOnLoggingAllowed() const
+{
+    return m_frame ? m_frame->isAlwaysOnLoggingAllowed() : true;
+}
 
 } // namespace WebCore

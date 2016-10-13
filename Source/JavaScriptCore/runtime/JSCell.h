@@ -20,8 +20,7 @@
  *
  */
 
-#ifndef JSCell_h
-#define JSCell_h
+#pragma once
 
 #include "CallData.h"
 #include "CellState.h"
@@ -40,6 +39,7 @@
 namespace JSC {
 
 class CopyVisitor;
+class GCDeferralContext;
 class ExecState;
 class Identifier;
 class JSArrayBufferView;
@@ -52,6 +52,9 @@ class Structure;
 
 template<typename T> void* allocateCell(Heap&);
 template<typename T> void* allocateCell(Heap&, size_t);
+
+template<typename T> void* allocateCell(Heap&, GCDeferralContext*);
+template<typename T> void* allocateCell(Heap&, GCDeferralContext*, size_t);
 
 #define DECLARE_EXPORT_INFO                                             \
     protected:                                                          \
@@ -70,6 +73,8 @@ class JSCell : public HeapCell {
     friend class MarkedBlock;
     template<typename T> friend void* allocateCell(Heap&);
     template<typename T> friend void* allocateCell(Heap&, size_t);
+    template<typename T> friend void* allocateCell(Heap&, GCDeferralContext*);
+    template<typename T> friend void* allocateCell(Heap&, GCDeferralContext*, size_t);
 
 public:
     static const unsigned StructureFlags = 0;
@@ -80,7 +85,7 @@ public:
 
     enum CreatingEarlyCellTag { CreatingEarlyCell };
     JSCell(CreatingEarlyCellTag);
-
+    
 protected:
     JSCell(VM&, Structure*);
     JS_EXPORT_PRIVATE static void destroy(JSCell*);
@@ -107,8 +112,6 @@ public:
     TypeInfo::InlineTypeFlags inlineTypeFlags() const { return m_flags; }
 
     const char* className() const;
-
-    VM* vm() const;
 
     // Extracting the value.
     JS_EXPORT_PRIVATE bool getString(ExecState*, String&) const;
@@ -140,7 +143,6 @@ public:
     JS_EXPORT_PRIVATE static size_t estimatedSize(JSCell*);
 
     static void visitChildren(JSCell*, SlotVisitor&);
-    JS_EXPORT_PRIVATE static void copyBackingStore(JSCell*, CopyVisitor&, CopyToken);
 
     JS_EXPORT_PRIVATE static void heapSnapshot(JSCell*, HeapSnapshotBuilder&);
 
@@ -190,6 +192,8 @@ public:
     {
         return OBJECT_OFFSETOF(JSCell, m_cellState);
     }
+    
+    void callDestructor(VM&);
 
     static const TypedArrayType TypedArrayStorageType = NotTypedArray;
 protected:
@@ -212,6 +216,7 @@ protected:
     static NO_RETURN_DUE_TO_CRASH JSValue getPrototype(JSObject*, ExecState*);
 
     static String className(const JSObject*);
+    static String toStringName(const JSObject*, ExecState*);
     JS_EXPORT_PRIVATE static bool customHasInstance(JSObject*, ExecState*, JSValue);
     static bool defineOwnProperty(JSObject*, ExecState*, PropertyName, const PropertyDescriptor&, bool shouldThrow);
     static bool getOwnPropertySlot(JSObject*, ExecState*, PropertyName, PropertySlot&);
@@ -260,5 +265,3 @@ inline To jsDynamicCast(JSValue from)
 }
 
 } // namespace JSC
-
-#endif // JSCell_h

@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef TestRunnerUtils_h
-#define TestRunnerUtils_h
+#pragma once
 
 #include "JSCJSValue.h"
 
@@ -53,6 +52,6 @@ JS_EXPORT_PRIVATE unsigned numberOfExecutableAllocationFuzzChecks();
 JS_EXPORT_PRIVATE unsigned numberOfStaticOSRExitFuzzChecks();
 JS_EXPORT_PRIVATE unsigned numberOfOSRExitFuzzChecks();
 
-} // namespace JSC
+JS_EXPORT_PRIVATE void finalizeStatsAtEndOfTesting();
 
-#endif // TestRunnerUtils_h
+} // namespace JSC

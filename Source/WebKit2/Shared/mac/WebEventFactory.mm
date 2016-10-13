@@ -236,8 +236,10 @@ static WebWheelEvent::Phase momentumPhaseForEvent(NSEvent *event)
     return static_cast<WebWheelEvent::Phase>(phase);
 }
 
-static inline String textFromEvent(NSEvent* event)
+static inline String textFromEvent(NSEvent* event, bool replacesSoftSpace)
 {
+    if (replacesSoftSpace)
+        return emptyString();
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
     if ([event type] == NSFlagsChanged)
@@ -246,8 +248,10 @@ static inline String textFromEvent(NSEvent* event)
     return String([event characters]);
 }
 
-static inline String unmodifiedTextFromEvent(NSEvent* event)
+static inline String unmodifiedTextFromEvent(NSEvent* event, bool replacesSoftSpace)
 {
+    if (replacesSoftSpace)
+        return emptyString();
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
     if ([event type] == NSFlagsChanged)
@@ -334,8 +338,19 @@ static inline bool isKeyUpEvent(NSEvent *event)
 static inline WebEvent::Modifiers modifiersForEvent(NSEvent *event)
 {
     unsigned modifiers = 0;
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200
+    if ([event modifierFlags] & NSEventModifierFlagCapsLock)
+        modifiers |= WebEvent::CapsLockKey;
+    if ([event modifierFlags] & NSEventModifierFlagShift)
+        modifiers |= WebEvent::ShiftKey;
+    if ([event modifierFlags] & NSEventModifierFlagControl)
+        modifiers |= WebEvent::ControlKey;
+    if ([event modifierFlags] & NSEventModifierFlagOption)
+        modifiers |= WebEvent::AltKey;
+    if ([event modifierFlags] & NSEventModifierFlagCommand)
+        modifiers |= WebEvent::MetaKey;
+#else
     if ([event modifierFlags] & NSAlphaShiftKeyMask)
         modifiers |= WebEvent::CapsLockKey;
     if ([event modifierFlags] & NSShiftKeyMask)
@@ -346,7 +361,8 @@ static inline WebEvent::Modifiers modifiersForEvent(NSEvent *event)
         modifiers |= WebEvent::AltKey;
     if ([event modifierFlags] & NSCommandKeyMask)
         modifiers |= WebEvent::MetaKey;
-#pragma clang diagnostic pop
+#endif
+
     return (WebEvent::Modifiers)modifiers;
 }
 
@@ -457,11 +473,13 @@ WebWheelEvent WebEventFactory::createWebWheelEvent(NSEvent *event, NSView *windo
     return WebWheelEvent(WebEvent::Wheel, IntPoint(position), IntPoint(globalPosition), FloatSize(deltaX, deltaY), FloatSize(wheelTicksX, wheelTicksY), granularity, directionInvertedFromDevice, phase, momentumPhase, hasPreciseScrollingDeltas, scrollCount, unacceleratedScrollingDelta, modifiers, timestamp);
 }
 
-WebKeyboardEvent WebEventFactory::createWebKeyboardEvent(NSEvent *event, bool handledByInputMethod, const Vector<WebCore::KeypressCommand>& commands)
+WebKeyboardEvent WebEventFactory::createWebKeyboardEvent(NSEvent *event, bool handledByInputMethod, bool replacesSoftSpace, const Vector<WebCore::KeypressCommand>& commands)
 {
     WebEvent::Type type             = isKeyUpEvent(event) ? WebEvent::KeyUp : WebEvent::KeyDown;
-    String text                     = textFromEvent(event);
-    String unmodifiedText           = unmodifiedTextFromEvent(event);
+    String text                     = textFromEvent(event, replacesSoftSpace);
+    String unmodifiedText           = unmodifiedTextFromEvent(event, replacesSoftSpace);
+    String key                      = keyForKeyEvent(event);
+    String code                     = codeForKeyEvent(event);
     String keyIdentifier            = keyIdentifierForKeyEvent(event);
     int windowsVirtualKeyCode       = windowsKeyCodeForKeyEvent(event);
     int nativeVirtualKeyCode        = [event keyCode];
@@ -493,7 +511,7 @@ WebKeyboardEvent WebEventFactory::createWebKeyboardEvent(NSEvent *event, bool ha
         unmodifiedText = "\x9";
     }
 
-    return WebKeyboardEvent(type, text, unmodifiedText, keyIdentifier, windowsVirtualKeyCode, nativeVirtualKeyCode, macCharCode, handledByInputMethod, commands, autoRepeat, isKeypad, isSystemKey, modifiers, timestamp);
+    return WebKeyboardEvent(type, text, unmodifiedText, key, code, keyIdentifier, windowsVirtualKeyCode, nativeVirtualKeyCode, macCharCode, handledByInputMethod, commands, autoRepeat, isKeypad, isSystemKey, modifiers, timestamp);
 }
 
 } // namespace WebKit

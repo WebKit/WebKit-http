@@ -75,6 +75,8 @@ public:
     WEBCORE_EXPORT SecurityOrigin* securityOrigin() const;
 
     static SandboxFlags parseSandboxPolicy(const String& policy, String& invalidTokensErrorMessage);
+    static bool isSupportedSandboxPolicy(StringView);
+
     bool foundMixedContent() const { return m_foundMixedContent; }
     void setFoundMixedContent() { m_foundMixedContent = true; }
     bool geolocationAccessed() const { return m_geolocationAccessed; }

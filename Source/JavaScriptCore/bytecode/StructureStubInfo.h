@@ -23,15 +23,13 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef StructureStubInfo_h
-#define StructureStubInfo_h
+#pragma once
 
 #include "CodeOrigin.h"
 #include "Instruction.h"
 #include "JITStubRoutine.h"
 #include "MacroAssembler.h"
 #include "ObjectPropertyConditionSet.h"
-#include "Opcode.h"
 #include "Options.h"
 #include "RegisterSet.h"
 #include "Structure.h"
@@ -223,5 +221,3 @@ class StructureStubInfo;
 typedef HashMap<CodeOrigin, StructureStubInfo*, CodeOriginApproximateHash> StubInfoMap;
 
 } // namespace JSC
-
-#endif // StructureStubInfo_h

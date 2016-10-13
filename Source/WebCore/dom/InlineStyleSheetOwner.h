@@ -44,11 +44,13 @@ public:
     bool sheetLoaded(Element&);
     void startLoadingDynamicSheet(Element&);
 
-    void insertedIntoDocument(Document&, Element&);
-    void removedFromDocument(Document&, Element&);
-    void clearDocumentData(Document&, Element&);
+    void insertedIntoDocument(Element&);
+    void removedFromDocument(Element&);
+    void clearDocumentData(Element&);
     void childrenChanged(Element&);
     void finishParsingChildren(Element&);
+
+    Style::Scope* styleScope() { return m_styleScope; }
 
 private:
     void createSheet(Element&, const String& text);
@@ -61,6 +63,7 @@ private:
     AtomicString m_contentType;
     AtomicString m_media;
     RefPtr<CSSStyleSheet> m_sheet;
+    Style::Scope* m_styleScope { nullptr };
 };
 
 }

@@ -30,6 +30,7 @@
 #include "FloatRect.h"
 #include "GraphicsTypes.h"
 #include "Image.h"
+#include "Settings.h"
 
 #if USE(CG)
 
@@ -52,7 +53,7 @@ public:
         return adoptRef(new PDFDocumentImage(observer));
     }
 
-    void setCachedPDFImageEnabled(bool);
+    void setPdfImageCachingPolicy(PDFImageCachingPolicy);
 
 private:
     PDFDocumentImage(ImageObserver*);
@@ -74,7 +75,7 @@ private:
     void draw(GraphicsContext&, const FloatRect& dstRect, const FloatRect& srcRect, CompositeOperator, BlendMode, ImageOrientationDescription) override;
 
     // FIXME: Implement this to be less conservative.
-    bool currentFrameKnownToBeOpaque() override { return false; }
+    bool currentFrameKnownToBeOpaque() const override { return false; }
 
     void dump(TextStream&) const override;
 
@@ -87,7 +88,7 @@ private:
     void updateCachedImageIfNeeded(GraphicsContext&, const FloatRect& dstRect, const FloatRect& srcRect);
     bool cacheParametersMatch(GraphicsContext&, const FloatRect& dstRect, const FloatRect& srcRect) const;
 
-    bool m_isCachedPDFImageEnabled { true };
+    PDFImageCachingPolicy m_pdfImageCachingPolicy { PDFImageCachingDefault };
 
 #if USE(PDFKIT_FOR_PDFDOCUMENTIMAGE)
     RetainPtr<PDFDocument> m_document;

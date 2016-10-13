@@ -164,7 +164,7 @@ namespace WebCore {
         virtual void dispatchDidReceiveIcon() = 0;
         virtual void dispatchDidStartProvisionalLoad() = 0;
         virtual void dispatchDidReceiveTitle(const StringWithDirection&) = 0;
-        virtual void dispatchDidCommitLoad() = 0;
+        virtual void dispatchDidCommitLoad(Optional<HasInsecureContent>) = 0;
         virtual void dispatchDidFailProvisionalLoad(const ResourceError&) = 0;
         virtual void dispatchDidFailLoad(const ResourceError&) = 0;
         virtual void dispatchDidFinishDocumentLoad() = 0;
@@ -297,7 +297,7 @@ namespace WebCore {
         virtual NSCachedURLResponse* willCacheResponse(DocumentLoader*, unsigned long identifier, NSCachedURLResponse*) const = 0;
         virtual NSDictionary *dataDetectionContext() { return nullptr; }
 #endif
-#if PLATFORM(WIN) && USE(CFNETWORK)
+#if USE(CFURLCONNECTION)
         // FIXME: Windows should use willCacheResponse - <https://bugs.webkit.org/show_bug.cgi?id=57257>.
         virtual bool shouldCacheResponse(DocumentLoader*, unsigned long identifier, const ResourceResponse&, const unsigned char* data, unsigned long long length) = 0;
 #endif

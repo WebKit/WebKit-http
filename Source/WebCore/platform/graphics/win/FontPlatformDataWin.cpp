@@ -2,7 +2,7 @@
  * This file is part of the internal font implementation.  It should not be included by anyone other than
  * FontMac.cpp, FontWin.cpp and Font.cpp.
  *
- * Copyright (C) 2006, 2007, 2008 Apple Inc.
+ * Copyright (C) 2006-2008, 2016 Apple Inc.
  * Copyright (C) 2008 Brent Fulgham
  *
  * This library is free software; you can redistribute it and/or
@@ -33,6 +33,10 @@
 #include <wtf/text/StringHash.h>
 #include <wtf/text/WTFString.h>
 
+#if USE(DIRECT2D)
+#include <dwrite.h>
+#endif
+
 using std::min;
 
 namespace WebCore {
@@ -40,9 +44,6 @@ namespace WebCore {
 FontPlatformData::FontPlatformData(GDIObject<HFONT> font, float size, bool bold, bool oblique, bool useGDI)
     : m_font(SharedGDIObject<HFONT>::create(WTFMove(font)))
     , m_size(size)
-    , m_orientation(Horizontal)
-    , m_widthVariant(RegularWidth)
-    , m_isColorBitmapFont(false)
     , m_syntheticBold(bold)
     , m_syntheticOblique(oblique)
     , m_useGDI(useGDI)

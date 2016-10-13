@@ -33,6 +33,7 @@
 #include "JSInterfaceJIT.h"
 #include "JSObject.h"
 #include "LLIntCLoop.h"
+#include "LLIntData.h"
 #include "LinkBuffer.h"
 #include "LowLevelInterpreter.h"
 #include "ProtoCallFrame.h"
@@ -41,6 +42,11 @@
 
 namespace JSC {
 
+EncodedJSValue JS_EXPORT_PRIVATE vmEntryToWASM(void* code, VM* vm, ProtoCallFrame* frame)
+{
+    return vmEntryToJavaScript(code, vm, frame);
+}
+    
 #if ENABLE(JIT)
 
 namespace LLInt {

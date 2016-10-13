@@ -26,7 +26,7 @@
 #import "config.h"
 #import "CDMSessionAVContentKeySession.h"
 
-#if ENABLE(ENCRYPTED_MEDIA_V2) && ENABLE(MEDIA_SOURCE)
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA) && ENABLE(MEDIA_SOURCE)
 
 #import "CDM.h"
 #import "CDMPrivateMediaSourceAVFObjC.h"
@@ -283,7 +283,7 @@ bool CDMSessionAVContentKeySession::update(Uint8Array* key, RefPtr<Uint8Array>& 
         NSError* error = nil;
         NSData* requestData = [m_keyRequest contentKeyRequestDataForApp:certificateData.get() contentIdentifier:nil options:options.get() error:&error];
         if (error) {
-            errorCode = MediaPlayerClient::DomainError;
+            errorCode = CDM::DomainError;
             systemCode = mediaKeyErrorSystemCode(error);
             return false;
         }

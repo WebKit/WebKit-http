@@ -20,7 +20,7 @@
 
 [
     Constructor,
-    ConstructorCallWith=ScriptExecutionContext,
+    ConstructorCallWith=Document,
     CustomToJSObject,
     ExportMacro=WEBCORE_EXPORT,
     JSCustomHeader,
@@ -31,63 +31,40 @@
     readonly attribute DOMImplementation implementation;
     readonly attribute Element? documentElement;
 
-    [NewObject, RaisesException, ImplementedAs=createElementForBindings] Element createElement(DOMString tagName);
-    [NewObject] DocumentFragment   createDocumentFragment();
+    [NewObject, MayThrowLegacyException, ImplementedAs=createElementForBindings] Element createElement(DOMString tagName);
+    [NewObject] DocumentFragment createDocumentFragment();
 
     [NewObject] Text createTextNode(DOMString data);
     [NewObject] Comment createComment(DOMString data);
-    [NewObject, RaisesException] CDATASection createCDATASection(DOMString data);
-    [NewObject, RaisesException] ProcessingInstruction createProcessingInstruction(DOMString target, DOMString data);
-    [NewObject, RaisesException] Attr createAttribute(DOMString name);
+    [NewObject, MayThrowLegacyException] CDATASection createCDATASection(DOMString data);
+    [NewObject, MayThrowLegacyException] ProcessingInstruction createProcessingInstruction(DOMString target, DOMString data);
+    [NewObject, MayThrowLegacyException] Attr createAttribute(DOMString name);
 
     HTMLCollection getElementsByTagName(DOMString tagname);
 
-    [NewObject, RaisesException] Node importNode(Node importedNode, optional boolean deep = false);
+    [CEReactions, MayThrowLegacyException, NewObject] Node importNode(Node importedNode, optional boolean deep = false);
 
-    [NewObject, RaisesException] Element createElementNS(DOMString? namespaceURI, DOMString qualifiedName);
-    [NewObject, RaisesException] Attr createAttributeNS(DOMString? namespaceURI, DOMString qualifiedName);
+    [NewObject, MayThrowLegacyException] Element createElementNS(DOMString? namespaceURI, DOMString qualifiedName);
+    [NewObject, MayThrowLegacyException] Attr createAttributeNS(DOMString? namespaceURI, DOMString qualifiedName);
 
     HTMLCollection getElementsByTagNameNS(DOMString? namespaceURI, DOMString localName);
 
     [ImplementedAs=characterSetWithUTF8Fallback] readonly attribute DOMString inputEncoding;
 
     readonly attribute DOMString? xmlEncoding;
-    [SetterRaisesException] attribute DOMString? xmlVersion;
-    [SetterRaisesException] attribute boolean xmlStandalone;
+    [SetterMayThrowLegacyException] attribute DOMString? xmlVersion;
+    attribute boolean xmlStandalone;
 
-    [RaisesException] Node adoptNode(Node source);
+    [CEReactions, MayThrowLegacyException] Node adoptNode(Node source);
 
-#if defined(LANGUAGE_GOBJECT) && LANGUAGE_GOBJECT
-    // document.documentURI was writable in DOM3 Core, but is read-only in DOM4
-    // (see http://www.w3.org/TR/2011/WD-dom-20110915/#document). We need to keep
-    // the writable version around for GObject clients, but are moving to
-    // read-only for other clients.
-    attribute DOMString? documentURI;
-#else
     [ImplementedAs=urlForBindings] readonly attribute USVString documentURI;
-#endif
 
-    [RaisesException, NewObject] Event createEvent(DOMString eventType);
+    [MayThrowLegacyException, NewObject] Event createEvent(DOMString eventType);
 
     [NewObject] Range createRange();
 
-#if defined(LANGUAGE_GOBJECT) && LANGUAGE_GOBJECT
-    NodeIterator createNodeIterator(Node root,
-        optional unsigned long whatToShow = 0xFFFFFFFF,
-        optional NodeFilter? filter,
-        optional boolean expandEntityReferences);
-    TreeWalker createTreeWalker(Node root,
-        optional unsigned long whatToShow = 0xFFFFFFFF,
-        optional NodeFilter? filter,
-        optional boolean expandEntityReferences);
-#else
-    [NewObject] NodeIterator createNodeIterator(Node root,
-        optional unsigned long whatToShow = 0xFFFFFFFF,
-        optional NodeFilter? filter = null);
-    [NewObject] TreeWalker createTreeWalker(Node root,
-        optional unsigned long whatToShow = 0xFFFFFFFF,
-        optional NodeFilter? filter = null);
-#endif
+    [NewObject] NodeIterator createNodeIterator(Node root, optional unsigned long whatToShow = 0xFFFFFFFF, optional NodeFilter? filter = null);
+    [NewObject] TreeWalker createTreeWalker(Node root, optional unsigned long whatToShow = 0xFFFFFFFF, optional NodeFilter? filter = null);
 
     readonly attribute DOMWindow defaultView;
 
@@ -99,11 +76,11 @@
     readonly attribute DOMString contentType;
 
     // FIXME: Using "undefined" as default parameter value is wrong.
-    [RaisesException] XPathExpression createExpression(optional DOMString expression = "undefined", optional XPathNSResolver? resolver);
+    [MayThrowLegacyException] XPathExpression createExpression(optional DOMString expression = "undefined", optional XPathNSResolver? resolver);
     XPathNSResolver createNSResolver(Node? nodeResolver);
 
     // FIXME: Using "undefined" as default parameter value is wrong.
-    [RaisesException] XPathResult evaluate(optional DOMString expression = "undefined", optional Node? contextNode, optional XPathNSResolver? resolver,
+    [MayThrowLegacyException] XPathResult evaluate(optional DOMString expression = "undefined", optional Node? contextNode, optional XPathNSResolver? resolver,
         optional unsigned short type = 0, optional XPathResult? inResult);
 
     // FIXME: The default value for the last parameter should be the empty string.
@@ -115,21 +92,17 @@
     boolean queryCommandSupported(DOMString command);
     DOMString queryCommandValue(DOMString command);
 
-    [SetterRaisesException] attribute DOMString title;
+    attribute DOMString title;
     attribute DOMString dir;
     attribute DOMString designMode;
 
     readonly attribute USVString referrer;
-#if !(defined(LANGUAGE_GOBJECT) && LANGUAGE_GOBJECT)
-    [SetterRaisesException] attribute USVString domain;
-#else
-    readonly attribute DOMString domain;
-#endif
+    [SetterMayThrowLegacyException] attribute USVString domain;
     [ImplementedAs=urlForBindings] readonly attribute USVString URL;
 
-    [GetterRaisesException, SetterRaisesException] attribute USVString cookie;
+    [GetterMayThrowLegacyException, SetterMayThrowLegacyException] attribute USVString cookie;
 
-    [SetterRaisesException, ImplementedAs=bodyOrFrameset] attribute HTMLElement? body;
+    [SetterMayThrowLegacyException, ImplementedAs=bodyOrFrameset] attribute HTMLElement? body;
 
     readonly attribute HTMLHeadElement? head;
     readonly attribute HTMLCollection images;
@@ -144,38 +117,25 @@
 
     NodeList getElementsByName([AtomicString] DOMString elementName);
 
-#if !(defined(LANGUAGE_GOBJECT) && LANGUAGE_GOBJECT)
     [PutForwards=href, Unforgeable] readonly attribute Location? location;
-#endif
 
-#if defined(LANGUAGE_GOBJECT) && LANGUAGE_GOBJECT
-    attribute DOMString charset;
-#else
     [ImplementedAs=characterSetWithUTF8Fallback] readonly attribute DOMString charset;
-#endif
     readonly attribute DOMString readyState;
 
-    Element elementFromPoint(optional long x = 0, optional long y = 0);
     Range caretRangeFromPoint(optional long x = 0, optional long y = 0);
 
     // Mozilla extensions
-#if !(defined(LANGUAGE_GOBJECT) && LANGUAGE_GOBJECT)
     DOMSelection getSelection();
-#endif
     [ImplementedAs=characterSetWithUTF8Fallback] readonly attribute DOMString characterSet;
 
     readonly attribute DOMString? preferredStylesheetSet;
     attribute DOMString? selectedStylesheetSet;
 
-#if defined(LANGUAGE_GOBJECT) && LANGUAGE_GOBJECT
-    CSSStyleDeclaration createCSSStyleDeclaration();
-#endif
-
-    CanvasRenderingContext getCSSCanvasContext(DOMString contextId, DOMString name, long width, long height);
+    // FIXME: This is not standard and has been dropped from Blink already.
+    [Custom] (CanvasRenderingContext2D or WebGLRenderingContextBase) getCSSCanvasContext(DOMString contextId, DOMString name, long width, long height);
 
     HTMLCollection getElementsByClassName(DOMString classNames);
 
-    readonly attribute Element? activeElement;
     boolean hasFocus();
 
     readonly attribute DOMString compatMode;
@@ -196,7 +156,6 @@
     [Conditional=POINTER_LOCK] void exitPointerLock();
     [Conditional=POINTER_LOCK] readonly attribute Element? pointerLockElement;
 
-#if !(defined(LANGUAGE_GOBJECT) && LANGUAGE_GOBJECT)
     [Conditional=CSS_REGIONS] DOMNamedFlowCollection webkitGetNamedFlows();
 
     readonly attribute FontFaceSet fonts;
@@ -204,14 +163,12 @@
 #if defined(ENABLE_IOS_TOUCH_EVENTS) && ENABLE_IOS_TOUCH_EVENTS
 #include <WebKitAdditions/DocumentIOS.idl>
 #elif defined(ENABLE_TOUCH_EVENTS) && ENABLE_TOUCH_EVENTS
-    [NewObject, RaisesException] Touch createTouch(optional DOMWindow? window = null, optional EventTarget? target = null,
+    [NewObject, MayThrowLegacyException] Touch createTouch(optional DOMWindow? window = null, optional EventTarget? target = null,
         optional long identifier = 0,
         optional long pageX = 0, optional long pageY = 0, optional long screenX = 0, optional long screenY = 0,
         optional long webkitRadiusX = 0, optional long webkitRadiusY = 0,
         optional unrestricted float webkitRotationAngle = NaN, optional unrestricted float webkitForce = NaN);
     [NewObject, Custom] TouchList createTouchList(Touch... touches);
-#endif
-
 #endif
 
     // Page visibility API.
@@ -231,6 +188,7 @@
     // FIXME: Should these be exposed on Window as well (and therefore moved to GlobalEventHandlers.idl)?
     [NotEnumerable] attribute EventHandler onbeforecopy;
     [NotEnumerable] attribute EventHandler onbeforecut;
+    [NotEnumerable] attribute EventHandler onbeforeinput;
     [NotEnumerable] attribute EventHandler onbeforepaste;
     [NotEnumerable] attribute EventHandler oncopy;
     [NotEnumerable] attribute EventHandler oncut;
@@ -251,4 +209,5 @@
 
 Document implements ParentNode;
 Document implements NonElementParentNode;
+Document implements DocumentOrShadowRoot;
 Document implements GlobalEventHandlers;

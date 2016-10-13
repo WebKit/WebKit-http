@@ -1206,7 +1206,7 @@ LayoutRect RenderInline::linesVisualOverflowBoundingBoxInRegion(const RenderRegi
 LayoutRect RenderInline::clippedOverflowRectForRepaint(const RenderLayerModelObject* repaintContainer) const
 {
     // Only first-letter renderers are allowed in here during layout. They mutate the tree triggering repaints.
-    ASSERT(!view().layoutStateEnabled() || style().styleType() == FIRST_LETTER);
+    ASSERT(!view().layoutStateEnabled() || style().styleType() == FIRST_LETTER || hasSelfPaintingLayer());
 
     if (!firstLineBoxIncludingCulling() && !continuation())
         return LayoutRect();
@@ -1644,7 +1644,7 @@ void RenderInline::paintOutline(PaintInfo& paintInfo, const LayoutPoint& paintOf
 }
 
 void RenderInline::paintOutlineForLine(GraphicsContext& graphicsContext, const LayoutPoint& paintOffset,
-    const LayoutRect& previousLine, const LayoutRect& thisLine, const LayoutRect& nextLine, const Color outlineColor)
+    const LayoutRect& previousLine, const LayoutRect& thisLine, const LayoutRect& nextLine, const Color& outlineColor)
 {
     const auto& styleToUse = style();
     float outlineOffset = styleToUse.outlineOffset();

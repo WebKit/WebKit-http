@@ -77,7 +77,7 @@ class WaveShaperNode;
 class AudioContext : public ActiveDOMObject, public ThreadSafeRefCounted<AudioContext>, public EventTargetWithInlineData, public MediaCanStartListener, public MediaProducer, private PlatformMediaSessionClient {
 public:
     // Create an AudioContext for rendering to the audio hardware.
-    static RefPtr<AudioContext> create(Document&, ExceptionCode&);
+    static RefPtr<AudioContext> create(Document&);
 
     virtual ~AudioContext();
 
@@ -98,8 +98,8 @@ public:
     void incrementActiveSourceCount();
     void decrementActiveSourceCount();
     
-    RefPtr<AudioBuffer> createBuffer(unsigned numberOfChannels, size_t numberOfFrames, float sampleRate, ExceptionCode&);
-    RefPtr<AudioBuffer> createBuffer(ArrayBuffer&, bool mixToMono, ExceptionCode&);
+    ExceptionOr<Ref<AudioBuffer>> createBuffer(unsigned numberOfChannels, size_t numberOfFrames, float sampleRate);
+    ExceptionOr<Ref<AudioBuffer>> createBuffer(ArrayBuffer&, bool mixToMono);
 
     // Asynchronous audio file data decoding.
     void decodeAudioData(Ref<ArrayBuffer>&&, RefPtr<AudioBufferCallback>&&, RefPtr<AudioBufferCallback>&&);
@@ -121,25 +121,25 @@ public:
     // The AudioNode create methods are called on the main thread (from JavaScript).
     Ref<AudioBufferSourceNode> createBufferSource();
 #if ENABLE(VIDEO)
-    RefPtr<MediaElementAudioSourceNode> createMediaElementSource(HTMLMediaElement&, ExceptionCode&);
+    ExceptionOr<Ref<MediaElementAudioSourceNode>> createMediaElementSource(HTMLMediaElement&);
 #endif
 #if ENABLE(MEDIA_STREAM)
-    RefPtr<MediaStreamAudioSourceNode> createMediaStreamSource(MediaStream&, ExceptionCode&);
+    ExceptionOr<Ref<MediaStreamAudioSourceNode>> createMediaStreamSource(MediaStream&);
     Ref<MediaStreamAudioDestinationNode> createMediaStreamDestination();
 #endif
     Ref<GainNode> createGain();
     Ref<BiquadFilterNode> createBiquadFilter();
     Ref<WaveShaperNode> createWaveShaper();
-    RefPtr<DelayNode> createDelay(double maxDelayTime, ExceptionCode&);
+    ExceptionOr<Ref<DelayNode>> createDelay(double maxDelayTime);
     Ref<PannerNode> createPanner();
     Ref<ConvolverNode> createConvolver();
     Ref<DynamicsCompressorNode> createDynamicsCompressor();
     Ref<AnalyserNode> createAnalyser();
-    RefPtr<ScriptProcessorNode> createScriptProcessor(size_t bufferSize, size_t numberOfInputChannels, size_t numberOfOutputChannels, ExceptionCode&);
-    RefPtr<ChannelSplitterNode> createChannelSplitter(size_t numberOfOutputs, ExceptionCode&);
-    RefPtr<ChannelMergerNode> createChannelMerger(size_t numberOfInputs, ExceptionCode&);
+    ExceptionOr<Ref<ScriptProcessorNode>> createScriptProcessor(size_t bufferSize, size_t numberOfInputChannels, size_t numberOfOutputChannels);
+    ExceptionOr<Ref<ChannelSplitterNode>> createChannelSplitter(size_t numberOfOutputs);
+    ExceptionOr<Ref<ChannelMergerNode>> createChannelMerger(size_t numberOfInputs);
     Ref<OscillatorNode> createOscillator();
-    RefPtr<PeriodicWave> createPeriodicWave(Float32Array& real, Float32Array& imaginary, ExceptionCode&);
+    ExceptionOr<Ref<PeriodicWave>> createPeriodicWave(Float32Array& real, Float32Array& imaginary);
 
     // When a source node has no more processing to do (has finished playing), then it tells the context to dereference it.
     void notifyNodeFinishedProcessing(AudioNode*);
@@ -317,6 +317,7 @@ private:
     void didReceiveRemoteControlCommand(PlatformMediaSession::RemoteControlCommandType, const PlatformMediaSession::RemoteCommandArgument*) override { }
     bool supportsSeeking() const override { return false; }
     bool shouldOverrideBackgroundPlaybackRestriction(PlatformMediaSession::InterruptionType) const override { return false; }
+    String sourceApplicationIdentifier() const override;
 
     // EventTarget
     void refEventTarget() override { ref(); }

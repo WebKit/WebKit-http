@@ -23,14 +23,15 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef GPRInfo_h
-#define GPRInfo_h
+#pragma once
 
 #include "MacroAssembler.h"
 #include <array>
 #include <wtf/PrintStream.h>
 
 namespace JSC {
+
+enum NoResultTag { NoResult };
 
 // We use the same conventions in the basline JIT as in the LLint. If you
 // change mappings in the GPRInfo, you should change them in the offlineasm
@@ -898,6 +899,14 @@ COMPILE_ASSERT(GPRInfo::regT0 == GPRInfo::returnValueGPR, regT0_must_equal_retur
 COMPILE_ASSERT(GPRInfo::regT1 == GPRInfo::returnValueGPR2, regT1_must_equal_returnValueGPR2);
 #endif
 
+inline GPRReg extractResult(GPRReg result) { return result; }
+#if USE(JSVALUE64)
+inline GPRReg extractResult(JSValueRegs result) { return result.gpr(); }
+#else
+inline JSValueRegs extractResult(JSValueRegs result) { return result; }
+#endif
+inline NoResultTag extractResult(NoResultTag) { return NoResult; }
+
 #endif // ENABLE(JIT)
 
 } // namespace JSC
@@ -914,5 +923,3 @@ inline void printInternal(PrintStream& out, JSC::GPRReg reg)
 }
 
 } // namespace WTF
-
-#endif

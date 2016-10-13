@@ -446,8 +446,7 @@ void CoordinatedGraphicsScene::createTilesIfNeeded(TextureMapperLayer* layer, co
         return;
 
     RefPtr<CoordinatedBackingStore> backingStore = m_backingStores.get(layer);
-    // FIXME: It would be better to keep an ASSERT here and fix the update producer
-    // to avoid committing tile creation and backing store removal updates together.
+    ASSERT(backingStore || !layerShouldHaveBackingStore(layer));
     if (!backingStore)
         return;
 
@@ -476,8 +475,7 @@ void CoordinatedGraphicsScene::updateTilesIfNeeded(TextureMapperLayer* layer, co
         return;
 
     RefPtr<CoordinatedBackingStore> backingStore = m_backingStores.get(layer);
-    // FIXME: It would be better to keep an ASSERT here and fix the update producer
-    // to avoid committing tile creation and backing store removal updates together.
+    ASSERT(backingStore || !layerShouldHaveBackingStore(layer));
     if (!backingStore)
         return;
 

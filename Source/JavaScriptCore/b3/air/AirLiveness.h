@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef AirLiveness_h
-#define AirLiveness_h
+#pragma once
 
 #if ENABLE(B3_JIT)
 
@@ -33,8 +32,8 @@
 #include "AirInstInlines.h"
 #include "AirStackSlot.h"
 #include "AirTmpInlines.h"
-#include "B3IndexMap.h"
-#include "B3IndexSet.h"
+#include <wtf/IndexMap.h>
+#include <wtf/IndexSet.h>
 #include <wtf/IndexSparseSet.h>
 #include <wtf/ListDump.h>
 
@@ -391,6 +390,3 @@ typedef AbstractLiveness<RegLivenessAdapter> RegLiveness;
 } } } // namespace JSC::B3::Air
 
 #endif // ENABLE(B3_JIT)
-
-#endif // AirLiveness_h
-

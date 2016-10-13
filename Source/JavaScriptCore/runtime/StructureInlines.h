@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef StructureInlines_h
-#define StructureInlines_h
+#pragma once
 
 #include "JSArrayBufferView.h"
 #include "JSCJSValueInlines.h"
@@ -242,7 +241,6 @@ inline bool Structure::putWillGrowOutOfLineStorage()
 
 ALWAYS_INLINE WriteBarrier<PropertyTable>& Structure::propertyTable()
 {
-    ASSERT(!globalObject() || (!globalObject()->vm().heap.isCollecting() || globalObject()->vm().heap.isHeapSnapshotting()));
     return m_propertyTableUnsafe;
 }
 
@@ -314,6 +312,3 @@ inline void Structure::setObjectToStringValue(ExecState* exec, VM& vm, JSString*
 }
 
 } // namespace JSC
-
-#endif // StructureInlines_h
-

@@ -297,7 +297,7 @@ void MediaPlayerPrivateMediaStreamAVFObjC::updatePausedImage()
     if (!image)
         return;
 
-    m_pausedImage = image->getCGImageRef();
+    m_pausedImage = image->nativeImage();
     ASSERT(m_pausedImage);
 }
 
@@ -312,6 +312,7 @@ void MediaPlayerPrivateMediaStreamAVFObjC::play()
     m_playing = true;
     m_haveEverPlayed = true;
     scheduleDeferredTask([this] {
+        updateDisplayMode();
         updateReadyState();
     });
 }

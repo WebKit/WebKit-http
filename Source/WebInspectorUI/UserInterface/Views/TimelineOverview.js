@@ -31,7 +31,7 @@ WebInspector.TimelineOverview = class TimelineOverview extends WebInspector.View
 
         console.assert(timelineRecording instanceof WebInspector.TimelineRecording);
 
-        this._timelinesViewModeSettings = this._createViewModeSettings(WebInspector.TimelineOverview.ViewMode.Timelines, 0.0001, 60, 0.01, 0, 15);
+        this._timelinesViewModeSettings = this._createViewModeSettings(WebInspector.TimelineOverview.ViewMode.Timelines, WebInspector.TimelineOverview.MinimumDurationPerPixel, WebInspector.TimelineOverview.MaximumDurationPerPixel, 0.01, 0, 15);
         this._instrumentTypes = WebInspector.TimelineManager.availableTimelineTypes();
 
         if (WebInspector.FPSInstrument.supported()) {
@@ -106,7 +106,7 @@ WebInspector.TimelineOverview = class TimelineOverview extends WebInspector.View
         this._cachedScrollContainerWidth = NaN;
         this._timelineRulerSelectionChanged = false;
         this._viewMode = WebInspector.TimelineOverview.ViewMode.Timelines;
-        this._selectedTimeline = null;;
+        this._selectedTimeline = null;
 
         for (let instrument of this._recording.instruments)
             this._instrumentAdded(instrument);
@@ -590,7 +590,7 @@ WebInspector.TimelineOverview = class TimelineOverview extends WebInspector.View
     _handleGestureChange(event)
     {
         // Cap zooming out at 5x.
-        let scale = Math.max(1/5, event.scale);
+        let scale = Math.max(1 / 5, event.scale);
 
         let mouseOffset = event.pageX - this.element.totalOffsetLeft;
         let newSecondsPerPixel = this._gestureStartDurationPerPixel / scale;
@@ -995,6 +995,8 @@ WebInspector.TimelineOverview.PlaceholderOverviewGraph = Symbol("placeholder-ove
 
 WebInspector.TimelineOverview.ScrollDeltaDenominator = 500;
 WebInspector.TimelineOverview.EditInstrumentsStyleClassName = "edit-instruments";
+WebInspector.TimelineOverview.MinimumDurationPerPixel = 0.0001;
+WebInspector.TimelineOverview.MaximumDurationPerPixel = 60;
 
 WebInspector.TimelineOverview.ViewMode = {
     Timelines: "timeline-overview-view-mode-timelines",

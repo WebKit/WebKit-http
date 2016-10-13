@@ -25,40 +25,23 @@
 
 #include "config.h"
 
-#import <WebKit/WKNavigationDelegate.h>
-#import <WebKit/WKWebView.h>
-#import <wtf/RetainPtr.h>
 #import "PlatformUtilities.h"
 #import "Test.h"
+#import "TestNavigationDelegate.h"
+#import <WebKit/WKWebView.h>
+#import <wtf/RetainPtr.h>
 
 #if WK_API_ENABLED
 
-static bool finishedLoading;
 static bool finishedDispatch;
-
-@interface WKPDFViewResizeNavigationDelegate : NSObject <WKNavigationDelegate>
-@end
-
-@implementation WKPDFViewResizeNavigationDelegate
-
-- (void)webView:(WKWebView *)webView didFinishNavigation:(WKNavigation *)navigation
-{
-    finishedLoading = true;
-}
-
-@end
 
 TEST(WebKit2, WKPDFViewResizeCrash)
 {
     RetainPtr<WKWebView> webView = adoptNS([[WKWebView alloc] initWithFrame:NSMakeRect(0, 0, 800, 600)]);
 
-    RetainPtr<WKPDFViewResizeNavigationDelegate> delegate = adoptNS([[WKPDFViewResizeNavigationDelegate alloc] init]);
-    [webView setNavigationDelegate:delegate.get()];
-
     NSURLRequest *request = [NSURLRequest requestWithURL:[[NSBundle mainBundle] URLForResource:@"test" withExtension:@"pdf" subdirectory:@"TestWebKitAPI.resources"]];
     [webView loadRequest:request];
-
-    TestWebKitAPI::Util::run(&finishedLoading);
+    [webView _test_waitForDidFinishNavigation];
 
     [webView setFrame:NSMakeRect(0, 0, 100, 100)];
     webView = nil;

@@ -24,11 +24,9 @@
  */
 
 [NoInterfaceObject] interface URLUtils {
-    [SetterRaisesException, URL] attribute USVString href;
+    [SetterMayThrowLegacyException, URL] attribute USVString href;
 
-#if !(defined(LANGUAGE_GOBJECT) && LANGUAGE_GOBJECT)
     [NotEnumerable] DOMString toString();
-#endif
 
     readonly attribute USVString origin;
 
@@ -41,4 +39,5 @@
     attribute USVString pathname;
     attribute USVString hash;
     attribute USVString search;
+    [CachedAttribute] readonly attribute URLSearchParams searchParams;
 };

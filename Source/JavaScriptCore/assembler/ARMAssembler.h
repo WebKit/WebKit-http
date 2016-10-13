@@ -24,8 +24,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ARMAssembler_h
-#define ARMAssembler_h
+#pragma once
 
 #if ENABLE(ASSEMBLER) && CPU(ARM_TRADITIONAL)
 
@@ -1002,6 +1001,11 @@ namespace JSC {
             return sizeof(ARMWord) * 2;
         }
 
+        static constexpr ptrdiff_t patchableJumpSize()
+        {
+            return sizeof(ARMWord) * 3;
+        }
+
         static void replaceWithLoad(void* instructionStart)
         {
             ARMWord* instruction = reinterpret_cast<ARMWord*>(instructionStart);
@@ -1195,5 +1199,3 @@ namespace JSC {
 } // namespace JSC
 
 #endif // ENABLE(ASSEMBLER) && CPU(ARM_TRADITIONAL)
-
-#endif // ARMAssembler_h

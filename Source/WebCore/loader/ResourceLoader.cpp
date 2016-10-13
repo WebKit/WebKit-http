@@ -116,6 +116,8 @@ bool ResourceLoader::init(const ResourceRequest& r)
     
     ResourceRequest clientRequest(r);
 
+    m_loadTiming.markStartTimeAndFetchStart();
+
 #if PLATFORM(IOS)
     // If the documentLoader was detached while this ResourceLoader was waiting its turn
     // in ResourceLoadScheduler queue, don't continue.
@@ -257,6 +259,9 @@ void ResourceLoader::loadDataURL()
         auto dataSize = result.data ? result.data->size() : 0;
 
         ResourceResponse dataResponse { url, result.mimeType, dataSize, result.charset };
+        dataResponse.setHTTPStatusCode(200);
+        dataResponse.setHTTPStatusText(ASCIILiteral("OK"));
+        dataResponse.setHTTPHeaderField(HTTPHeaderName::ContentType, result.contentType);
         protectedThis->didReceiveResponse(dataResponse);
 
         if (!protectedThis->reachedTerminalState() && dataSize)
@@ -708,14 +713,8 @@ void ResourceLoader::didReceiveAuthenticationChallenge(const AuthenticationChall
             return;
         }
     }
-    // Only these platforms provide a way to continue without credentials.
-    // If we can't continue with credentials, we need to cancel the load altogether.
-#if PLATFORM(COCOA) || USE(CFNETWORK) || USE(CURL) || PLATFORM(GTK) || PLATFORM(EFL)
     challenge.authenticationClient()->receivedRequestToContinueWithoutCredential(challenge);
     ASSERT(!m_handle || !m_handle->hasAuthenticationChallenge());
-#else
-    didFail(blockedError());
-#endif
 }
 
 #if USE(PROTECTION_SPACE_AUTH_CALLBACK)
@@ -742,7 +741,7 @@ void ResourceLoader::receivedCancellation(const AuthenticationChallenge&)
     cancel();
 }
 
-#if PLATFORM(COCOA) && !USE(CFNETWORK)
+#if PLATFORM(COCOA)
 
 void ResourceLoader::schedule(SchedulePair& pair)
 {

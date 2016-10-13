@@ -33,12 +33,13 @@
 #include "Document.h"
 #include "Frame.h"
 #include "HTMLFrameOwnerElement.h"
+#include "LoadTiming.h"
 #include "Performance.h"
 #include "RuntimeEnabledFeatures.h"
 
 namespace WebCore {
 
-void ResourceTimingInformation::addResourceTiming(CachedResource* resource, Document& document)
+void ResourceTimingInformation::addResourceTiming(CachedResource* resource, Document& document, const LoadTiming& loadTiming)
 {
     ASSERT(RuntimeEnabledFeatures::sharedFeatures().resourceTimingEnabled());
     if (resource && resource->resourceRequest().url().protocolIsInHTTPFamily()
@@ -52,13 +53,13 @@ void ResourceTimingInformation::addResourceTiming(CachedResource* resource, Docu
             ASSERT(initiatorDocument->domWindow());
             ASSERT(initiatorDocument->domWindow()->performance());
             const InitiatorInfo& info = initiatorIt->value;
-            initiatorDocument->domWindow()->performance()->addResourceTiming(info.name, initiatorDocument, resource->resourceRequest(), resource->response(), info.startTime, resource->loadFinishTime());
+            initiatorDocument->domWindow()->performance()->addResourceTiming(info.name, initiatorDocument, resource->resourceRequest().url(), resource->response(), loadTiming);
             initiatorIt->value.added = Added;
         }
     }
 }
 
-void ResourceTimingInformation::storeResourceTimingInitiatorInformation(const CachedResourceHandle<CachedResource>& resource, const CachedResourceRequest& request, Frame* frame)
+void ResourceTimingInformation::storeResourceTimingInitiatorInformation(const CachedResourceHandle<CachedResource>& resource, const AtomicString& initiatorName, Frame* frame)
 {
     ASSERT(RuntimeEnabledFeatures::sharedFeatures().resourceTimingEnabled());
     ASSERT(resource.get());
@@ -70,7 +71,7 @@ void ResourceTimingInformation::storeResourceTimingInitiatorInformation(const Ca
             m_initiatorMap.add(resource.get(), info);
         }
     } else {
-        InitiatorInfo info = { request.initiatorName(), monotonicallyIncreasingTime(), NotYetAdded };
+        InitiatorInfo info = { initiatorName, monotonicallyIncreasingTime(), NotYetAdded };
         m_initiatorMap.add(resource.get(), info);
     }
 }

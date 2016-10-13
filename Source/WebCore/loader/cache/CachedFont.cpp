@@ -40,10 +40,14 @@
 #include "WOFFFileFormat.h"
 #include <wtf/Vector.h>
 
+#if USE(DIRECT2D)
+#include <dwrite.h>
+#endif
+
 namespace WebCore {
 
-CachedFont::CachedFont(const ResourceRequest& resourceRequest, SessionID sessionID, Type type)
-    : CachedResource(resourceRequest, type, sessionID)
+CachedFont::CachedFont(CachedResourceRequest&& request, SessionID sessionID, Type type)
+    : CachedResource(WTFMove(request), type, sessionID)
     , m_loadInitiated(false)
     , m_hasCreatedFontDataWrappingResource(false)
 {
@@ -53,18 +57,17 @@ CachedFont::~CachedFont()
 {
 }
 
-void CachedFont::load(CachedResourceLoader&, const ResourceLoaderOptions& options)
+void CachedFont::load(CachedResourceLoader&)
 {
     // Don't load the file yet.  Wait for an access before triggering the load.
     setLoading(true);
-    m_options = options;
 }
 
-void CachedFont::didAddClient(CachedResourceClient* client)
+void CachedFont::didAddClient(CachedResourceClient& client)
 {
-    ASSERT(client->resourceClientType() == CachedFontClient::expectedType());
+    ASSERT(client.resourceClientType() == CachedFontClient::expectedType());
     if (!isLoading())
-        static_cast<CachedFontClient*>(client)->fontLoaded(*this);
+        static_cast<CachedFontClient&>(client).fontLoaded(*this);
 }
 
 void CachedFont::finishLoading(SharedBuffer* data)
@@ -79,7 +82,7 @@ void CachedFont::beginLoadIfNeeded(CachedResourceLoader& loader)
 {
     if (!m_loadInitiated) {
         m_loadInitiated = true;
-        CachedResource::load(loader, m_options);
+        CachedResource::load(loader);
     }
 }
 

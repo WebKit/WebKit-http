@@ -36,11 +36,14 @@
 #include "CSSContentDistributionValue.h"
 #include "CSSCrossfadeValue.h"
 #include "CSSCursorImageValue.h"
+#include "CSSCustomIdentValue.h"
+#include "CSSCustomPropertyDeclaration.h"
 #include "CSSCustomPropertyValue.h"
 #include "CSSFilterImageValue.h"
 #include "CSSFontFaceSrcValue.h"
 #include "CSSFontFeatureValue.h"
 #include "CSSFontValue.h"
+#include "CSSFontVariationValue.h"
 #include "CSSFunctionValue.h"
 #include "CSSGradientValue.h"
 #include "CSSImageSetValue.h"
@@ -58,6 +61,7 @@
 #include "CSSUnsetValue.h"
 #include "CSSValueList.h"
 #include "CSSVariableDependentValue.h"
+#include "CSSVariableReferenceValue.h"
 #include "CSSVariableValue.h"
 #include "SVGColor.h"
 #include "SVGPaint.h"
@@ -78,7 +82,7 @@ struct SameSizeAsCSSValue : public RefCounted<SameSizeAsCSSValue> {
 
 COMPILE_ASSERT(sizeof(CSSValue) == sizeof(SameSizeAsCSSValue), CSS_value_should_stay_small);
 
-class TextCloneCSSValue : public CSSValue {
+class TextCloneCSSValue final : public CSSValue {
 public:
     static Ref<TextCloneCSSValue> create(ClassType classType, const String& text)
     {
@@ -118,21 +122,6 @@ CSSValue::Type CSSValue::cssValueType() const
     if (isRevertValue())
         return CSS_REVERT;
     return CSS_CUSTOM;
-}
-
-void CSSValue::addSubresourceStyleURLs(ListHashSet<URL>& urls, const StyleSheetContents* styleSheet) const
-{
-    // This should get called for internal instances only.
-    ASSERT(!isCSSOMSafe());
-
-    if (is<CSSPrimitiveValue>(*this))
-        downcast<CSSPrimitiveValue>(*this).addSubresourceStyleURLs(urls, styleSheet);
-    else if (is<CSSValueList>(*this))
-        downcast<CSSValueList>(*this).addSubresourceStyleURLs(urls, styleSheet);
-    else if (is<CSSFontFaceSrcValue>(*this))
-        downcast<CSSFontFaceSrcValue>(*this).addSubresourceStyleURLs(urls, styleSheet);
-    else if (is<CSSReflectValue>(*this))
-        downcast<CSSReflectValue>(*this).addSubresourceStyleURLs(urls, styleSheet);
 }
 
 bool CSSValue::traverseSubresources(const std::function<bool (const CachedResource&)>& handler) const
@@ -188,6 +177,10 @@ bool CSSValue::equals(const CSSValue& other) const
             return compareCSSValues<CSSFontFaceSrcValue>(*this, other);
         case FontFeatureClass:
             return compareCSSValues<CSSFontFeatureValue>(*this, other);
+#if ENABLE(VARIATION_FONTS)
+        case FontVariationClass:
+            return compareCSSValues<CSSFontVariationValue>(*this, other);
+#endif
         case FunctionClass:
             return compareCSSValues<CSSFunctionValue>(*this, other);
         case LinearGradientClass:
@@ -294,6 +287,10 @@ String CSSValue::cssText() const
         return downcast<CSSFontFaceSrcValue>(*this).customCSSText();
     case FontFeatureClass:
         return downcast<CSSFontFeatureValue>(*this).customCSSText();
+#if ENABLE(VARIATION_FONTS)
+    case FontVariationClass:
+        return downcast<CSSFontVariationValue>(*this).customCSSText();
+#endif
     case FunctionClass:
         return downcast<CSSFunctionValue>(*this).customCSSText();
     case LinearGradientClass:
@@ -362,6 +359,12 @@ String CSSValue::cssText() const
         return downcast<CSSVariableDependentValue>(*this).customCSSText();
     case VariableClass:
         return downcast<CSSVariableValue>(*this).customCSSText();
+    case CustomPropertyDeclarationClass:
+        return downcast<CSSCustomPropertyDeclaration>(*this).customCSSText();
+    case CustomIdentClass:
+        return downcast<CSSCustomIdentValue>(*this).customCSSText();
+    case VariableReferenceClass:
+        return downcast<CSSVariableReferenceValue>(*this).customCSSText();
     }
 
     ASSERT_NOT_REACHED();
@@ -402,6 +405,11 @@ void CSSValue::destroy()
     case FontFeatureClass:
         delete downcast<CSSFontFeatureValue>(this);
         return;
+#if ENABLE(VARIATION_FONTS)
+    case FontVariationClass:
+        delete downcast<CSSFontVariationValue>(this);
+        return;
+#endif
     case FunctionClass:
         delete downcast<CSSFunctionValue>(this);
         return;
@@ -504,6 +512,15 @@ void CSSValue::destroy()
         return;
     case VariableClass:
         delete downcast<CSSVariableValue>(this);
+        return;
+    case CustomPropertyDeclarationClass:
+        delete downcast<CSSCustomPropertyDeclaration>(this);
+        return;
+    case CustomIdentClass:
+        delete downcast<CSSCustomIdentValue>(this);
+        return;
+    case VariableReferenceClass:
+        delete downcast<CSSVariableReferenceValue>(this);
         return;
     }
     ASSERT_NOT_REACHED();

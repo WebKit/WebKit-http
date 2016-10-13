@@ -173,7 +173,7 @@ public:
     static float platformFocusRingOffset(float outlineWidth) { return std::max<float>(outlineWidth - platformFocusRingWidth(), 0); }
 #if ENABLE(TOUCH_EVENTS)
     static Color tapHighlightColor();
-    virtual Color platformTapHighlightColor() const { return RenderTheme::defaultTapHighlightColor; }
+    virtual Color platformTapHighlightColor() const;
 #endif
     virtual void platformColorsDidChange();
 
@@ -325,6 +325,11 @@ protected:
     virtual void adjustCapsLockIndicatorStyle(StyleResolver&, RenderStyle&, const Element*) const;
     virtual bool paintCapsLockIndicator(const RenderObject&, const PaintInfo&, const IntRect&);
 
+#if ENABLE(APPLE_PAY)
+    virtual void adjustApplePayButtonStyle(StyleResolver&, RenderStyle&, const Element*) const { }
+    virtual bool paintApplePayButton(const RenderObject&, const PaintInfo&, const IntRect&) { return true; }
+#endif
+
 #if ENABLE(ATTACHMENT_ELEMENT)
     virtual void adjustAttachmentStyle(StyleResolver&, RenderStyle&, const Element*) const;
     virtual bool paintAttachment(const RenderObject&, const PaintInfo&, const IntRect&);
@@ -408,12 +413,6 @@ private:
     mutable Color m_inactiveListBoxSelectionBackgroundColor;
     mutable Color m_activeListBoxSelectionForegroundColor;
     mutable Color m_inactiveListBoxSelectionForegroundColor;
-
-#if ENABLE(TOUCH_EVENTS)
-    // This color is expected to be drawn on a semi-transparent overlay,
-    // making it more transparent than its alpha value indicates.
-    static const RGBA32 defaultTapHighlightColor = 0x66000000;
-#endif
 
 #if USE(NEW_THEME)
     Theme* m_theme; // The platform-specific theme.

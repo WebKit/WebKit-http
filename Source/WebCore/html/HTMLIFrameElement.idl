@@ -22,16 +22,13 @@ interface HTMLIFrameElement : HTMLElement {
     [Reflect] attribute DOMString align;
     [Reflect] attribute DOMString frameBorder;
     [Reflect] attribute DOMString height;
-    [Reflect] attribute USVString longDesc;
+    [Reflect, URL] attribute USVString longDesc;
     [Reflect, TreatNullAs=EmptyString] attribute DOMString marginHeight;
     [Reflect, TreatNullAs=EmptyString] attribute DOMString marginWidth;
     [Reflect] attribute DOMString name;
 
-#if defined(LANGUAGE_GOBJECT) && LANGUAGE_GOBJECT
-    [Reflect] attribute DOMString sandbox;
-#else
     [PutForwards=value] readonly attribute DOMTokenList sandbox;
-#endif
+    [Reflect] attribute boolean allowFullscreen;
 
     [Reflect] attribute DOMString scrolling;
     [Reflect, URL] attribute USVString src;
@@ -44,6 +41,6 @@ interface HTMLIFrameElement : HTMLElement {
     // Extensions
     readonly attribute DOMWindow contentWindow;
 
-    [CheckSecurityForNode, RaisesException] SVGDocument getSVGDocument();
+    [CheckSecurityForNode, MayThrowLegacyException] SVGDocument getSVGDocument();
 };
 

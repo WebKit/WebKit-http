@@ -47,7 +47,7 @@ void GeneratorFunctionConstructor::finishCreation(VM& vm, GeneratorFunctionProto
     putDirectWithoutTransition(vm, vm.propertyNames->prototype, generatorFunctionPrototype, DontEnum | DontDelete | ReadOnly);
 
     // Number of arguments for constructor
-    putDirectWithoutTransition(vm, vm.propertyNames->length, jsNumber(1), ReadOnly | DontDelete | DontEnum);
+    putDirectWithoutTransition(vm, vm.propertyNames->length, jsNumber(1), ReadOnly | DontEnum);
 }
 
 static EncodedJSValue JSC_HOST_CALL callGeneratorFunctionConstructor(ExecState* exec)
@@ -59,7 +59,7 @@ static EncodedJSValue JSC_HOST_CALL callGeneratorFunctionConstructor(ExecState* 
 static EncodedJSValue JSC_HOST_CALL constructGeneratorFunctionConstructor(ExecState* exec)
 {
     ArgList args(exec);
-    return JSValue::encode(constructFunction(exec, asInternalFunction(exec->callee())->globalObject(), args, FunctionConstructionMode::Generator));
+    return JSValue::encode(constructFunction(exec, asInternalFunction(exec->callee())->globalObject(), args, FunctionConstructionMode::Generator, exec->newTarget()));
 }
 
 CallType GeneratorFunctionConstructor::getCallData(JSCell*, CallData& callData)

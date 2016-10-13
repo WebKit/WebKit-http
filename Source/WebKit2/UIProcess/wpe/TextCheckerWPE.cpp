@@ -40,6 +40,14 @@ const TextCheckerState& TextChecker::state()
     return textCheckerState;
 }
 
+void TextChecker::setTestingMode(bool)
+{
+}
+
+bool TextChecker::isTestingMode()
+{
+}
+
 bool TextChecker::isContinuousSpellCheckingAllowed()
 {
     notImplemented();

@@ -37,6 +37,7 @@
 #include "QuotesData.h"
 #include "RenderObject.h"
 #include "RenderTheme.h"
+#include "RuntimeEnabledFeatures.h"
 #include "ScaleTransformOperation.h"
 #include "ShadowData.h"
 #include "StyleImage.h"
@@ -51,19 +52,15 @@
 #include <wtf/StdLibExtras.h>
 #include <algorithm>
 
-#if ENABLE(IOS_TEXT_AUTOSIZING)
-#include <wtf/text/StringHash.h>
-#endif
-
 #if ENABLE(TEXT_AUTOSIZING)
-#include "TextAutosizer.h"
+#include <wtf/text/StringHash.h>
 #endif
 
 namespace WebCore {
 
 struct SameSizeAsBorderValue {
     float m_width;
-    RGBA32 m_color;
+    Color m_color;
     int m_restBits;
 };
 
@@ -187,6 +184,15 @@ RenderStyle::~RenderStyle()
 #if !ASSERT_DISABLED || ENABLE(SECURITY_ASSERTIONS)
     ASSERT_WITH_SECURITY_IMPLICATION(!m_deletionHasBegun);
     m_deletionHasBegun = true;
+#endif
+}
+
+bool RenderStyle::isCSSGridLayoutEnabled()
+{
+#if ENABLE(CSS_GRID_LAYOUT)
+    return RuntimeEnabledFeatures::sharedFeatures().isCSSGridLayoutEnabled();
+#else
+    return false;
 #endif
 }
 
@@ -378,7 +384,7 @@ bool RenderStyle::inheritedNotEqual(const RenderStyle* other) const
            || rareInheritedData != other->rareInheritedData;
 }
 
-#if ENABLE(IOS_TEXT_AUTOSIZING)
+#if ENABLE(TEXT_AUTOSIZING)
 
 static inline unsigned computeFontHash(const FontCascade& font)
 {
@@ -433,7 +439,7 @@ bool RenderStyle::equalForTextAutosizing(const RenderStyle& other) const
         && rareNonInheritedData->textOverflow == other.rareNonInheritedData->textOverflow;
 }
 
-#endif // ENABLE(IOS_TEXT_AUTOSIZING)
+#endif // ENABLE(TEXT_AUTOSIZING)
 
 bool RenderStyle::inheritedDataShared(const RenderStyle* other) const
 {
@@ -597,7 +603,7 @@ bool RenderStyle::changeRequiresLayout(const RenderStyle& other, unsigned& chang
 #endif
             || rareInheritedData->m_effectiveZoom != other.rareInheritedData->m_effectiveZoom
             || rareInheritedData->m_textZoom != other.rareInheritedData->m_textZoom
-#if ENABLE(IOS_TEXT_AUTOSIZING)
+#if ENABLE(TEXT_AUTOSIZING)
             || rareInheritedData->textSizeAdjust != other.rareInheritedData->textSizeAdjust
 #endif
             || rareInheritedData->wordBreak != other.rareInheritedData->wordBreak
@@ -638,13 +644,8 @@ bool RenderStyle::changeRequiresLayout(const RenderStyle& other, unsigned& chang
             return true;
     }
 
-#if ENABLE(TEXT_AUTOSIZING)
-    if (visual->m_textAutosizingMultiplier != other.visual->m_textAutosizingMultiplier)
-        return true;
-#endif
-
     if (inherited->line_height != other.inherited->line_height
-#if ENABLE(IOS_TEXT_AUTOSIZING)
+#if ENABLE(TEXT_AUTOSIZING)
         || inherited->specifiedLineHeight != other.inherited->specifiedLineHeight
 #endif
         || inherited->fontCascade != other.inherited->fontCascade
@@ -1188,10 +1189,25 @@ void RenderStyle::setListStyleImage(PassRefPtr<StyleImage> v)
         rareInheritedData.access()->listStyleImage = v;
 }
 
-Color RenderStyle::color() const { return inherited->color; }
-Color RenderStyle::visitedLinkColor() const { return inherited->visitedLinkColor; }
-void RenderStyle::setColor(const Color& v) { SET_VAR(inherited, color, v); }
-void RenderStyle::setVisitedLinkColor(const Color& v) { SET_VAR(inherited, visitedLinkColor, v); }
+const Color& RenderStyle::color() const
+{
+    return inherited->color;
+}
+
+const Color& RenderStyle::visitedLinkColor() const
+{
+    return inherited->visitedLinkColor;
+}
+
+void RenderStyle::setColor(const Color& v)
+{
+    SET_VAR(inherited, color, v);
+}
+
+void RenderStyle::setVisitedLinkColor(const Color& v)
+{
+    SET_VAR(inherited, visitedLinkColor, v);
+}
 
 float RenderStyle::horizontalBorderSpacing() const { return inherited->horizontal_border_spacing; }
 float RenderStyle::verticalBorderSpacing() const { return inherited->vertical_border_spacing; }
@@ -1460,7 +1476,7 @@ bool RenderStyle::setFontDescription(const FontCascadeDescription& v)
     return false;
 }
 
-#if ENABLE(IOS_TEXT_AUTOSIZING)
+#if ENABLE(TEXT_AUTOSIZING)
 const Length& RenderStyle::specifiedLineHeight() const { return inherited->specifiedLineHeight; }
 void RenderStyle::setSpecifiedLineHeight(Length v) { SET_VAR(inherited, specifiedLineHeight, v); }
 #else
@@ -1469,17 +1485,7 @@ const Length& RenderStyle::specifiedLineHeight() const { return inherited->line_
 
 Length RenderStyle::lineHeight() const
 {
-    const Length& lh = inherited->line_height;
-#if ENABLE(TEXT_AUTOSIZING)
-    // Unlike fontDescription().computedSize() and hence fontSize(), this is
-    // recalculated on demand as we only store the specified line height.
-    // FIXME: Should consider scaling the fixed part of any calc expressions
-    // too, though this involves messily poking into CalcExpressionLength.
-    float multiplier = textAutosizingMultiplier();
-    if (multiplier > 1 && lh.isFixed())
-        return Length(TextAutosizer::computeAutosizedFontSize(lh.value(), multiplier), Fixed);
-#endif
-    return lh;
+    return inherited->line_height;
 }
 void RenderStyle::setLineHeight(Length specifiedLineHeight) { SET_VAR(inherited, line_height, specifiedLineHeight); }
 
@@ -1540,17 +1546,21 @@ void RenderStyle::setFontSize(float size)
     description.setSpecifiedSize(size);
     description.setComputedSize(size);
 
-#if ENABLE(TEXT_AUTOSIZING)
-    float multiplier = textAutosizingMultiplier();
-    if (multiplier > 1) {
-        float autosizedFontSize = TextAutosizer::computeAutosizedFontSize(size, multiplier);
-        description.setComputedSize(min(maximumAllowedFontSize, autosizedFontSize));
-    }
-#endif
+    setFontDescription(description);
+    fontCascade().update(currentFontSelector);
+}
+
+#if ENABLE(VARIATION_FONTS)
+void RenderStyle::setFontVariationSettings(FontVariationSettings settings)
+{
+    FontSelector* currentFontSelector = fontCascade().fontSelector();
+    auto description = fontDescription();
+    description.setVariationSettings(WTFMove(settings));
 
     setFontDescription(description);
     fontCascade().update(currentFontSelector);
 }
+#endif
 
 void RenderStyle::getShadowExtent(const ShadowData* shadow, LayoutUnit &top, LayoutUnit &right, LayoutUnit &bottom, LayoutUnit &left) const
 {

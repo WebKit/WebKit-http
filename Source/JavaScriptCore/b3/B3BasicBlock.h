@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef B3BasicBlock_h
-#define B3BasicBlock_h
+#pragma once
 
 #if ENABLE(B3_JIT)
 
@@ -82,6 +81,7 @@ public:
 
     JS_EXPORT_PRIVATE Value* appendIntConstant(Procedure&, Origin, Type, int64_t value);
     Value* appendIntConstant(Procedure&, Value* likeValue, int64_t value);
+    Value* appendBoolConstant(Procedure&, Origin, bool);
 
     void removeLast(Procedure&);
     
@@ -198,6 +198,3 @@ inline DeepBasicBlockDump deepDump(const Procedure& proc, const BasicBlock* bloc
 } } // namespace JSC::B3
 
 #endif // ENABLE(B3_JIT)
-
-#endif // B3BasicBlock_h
-

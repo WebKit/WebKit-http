@@ -31,6 +31,7 @@
 
 #pragma once
 
+#include "ContentSecurityPolicy.h"
 #include "CrossOriginPreflightChecker.h"
 #include "ResourceResponse.h"
 #include "SecurityOrigin.h"
@@ -49,7 +50,7 @@ namespace WebCore {
         static void loadResourceSynchronously(Document&, ResourceRequest&&, ThreadableLoaderClient&, const ThreadableLoaderOptions&);
 
         static RefPtr<DocumentThreadableLoader> create(Document&, ThreadableLoaderClient&, ResourceRequest&&, const ThreadableLoaderOptions&, RefPtr<SecurityOrigin>&&, std::unique_ptr<ContentSecurityPolicy>&&, String&& referrer);
-        static RefPtr<DocumentThreadableLoader> create(Document&, ThreadableLoaderClient&, ResourceRequest&&, const ThreadableLoaderOptions&);
+        static RefPtr<DocumentThreadableLoader> create(Document&, ThreadableLoaderClient&, ResourceRequest&&, const ThreadableLoaderOptions&, String&& referrer = String());
 
         virtual ~DocumentThreadableLoader();
 
@@ -76,11 +77,11 @@ namespace WebCore {
         void clearResource();
 
         // CachedRawResourceClient
-        void dataSent(CachedResource*, unsigned long long bytesSent, unsigned long long totalBytesToBeSent) override;
-        void responseReceived(CachedResource*, const ResourceResponse&) override;
-        void dataReceived(CachedResource*, const char* data, int dataLength) override;
-        void redirectReceived(CachedResource*, ResourceRequest&, const ResourceResponse&) override;
-        void notifyFinished(CachedResource*) override;
+        void dataSent(CachedResource&, unsigned long long bytesSent, unsigned long long totalBytesToBeSent) override;
+        void responseReceived(CachedResource&, const ResourceResponse&) override;
+        void dataReceived(CachedResource&, const char* data, int dataLength) override;
+        void redirectReceived(CachedResource&, ResourceRequest&, const ResourceResponse&) override;
+        void notifyFinished(CachedResource&) override;
 
         void didReceiveResponse(unsigned long identifier, const ResourceResponse&, ResourceResponse::Tainting);
         void didReceiveData(unsigned long identifier, const char* data, int dataLength);
@@ -94,7 +95,7 @@ namespace WebCore {
 
         void loadRequest(ResourceRequest&&, SecurityCheckPolicy);
         bool isAllowedRedirect(const URL&);
-        bool isAllowedByContentSecurityPolicy(const URL&, bool didRedirect = false);
+        bool isAllowedByContentSecurityPolicy(const URL&, ContentSecurityPolicy::RedirectResponseReceived);
 
         bool isXMLHttpRequest() const final;
 

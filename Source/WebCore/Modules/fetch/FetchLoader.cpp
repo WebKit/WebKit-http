@@ -47,7 +47,7 @@
 
 namespace WebCore {
 
-void FetchLoader::start(ScriptExecutionContext& context, Blob& blob)
+void FetchLoader::start(ScriptExecutionContext& context, const Blob& blob)
 {
     auto urlForReading = BlobURL::createPublicURL(context.securityOrigin());
     if (urlForReading.isEmpty()) {
@@ -76,21 +76,32 @@ void FetchLoader::start(ScriptExecutionContext& context, const FetchRequest& req
 {
     ThreadableLoaderOptions options(request.fetchOptions(), ConsiderPreflight,
         context.shouldBypassMainWorldContentSecurityPolicy() ? ContentSecurityPolicyEnforcement::DoNotEnforce : ContentSecurityPolicyEnforcement::EnforceConnectSrcDirective,
-        String(cachedResourceRequestInitiators().fetch));
+        String(cachedResourceRequestInitiators().fetch),
+        OpaqueResponseBodyPolicy::DoNotReceive);
     options.sendLoadCallbacks = SendCallbacks;
     options.dataBufferingPolicy = DoNotBufferData;
+    options.sameOriginDataURLFlag = SameOriginDataURLFlag::Set;
 
     ResourceRequest fetchRequest = request.internalRequest();
 
     ASSERT(context.contentSecurityPolicy());
-    context.contentSecurityPolicy()->upgradeInsecureRequestIfNeeded(fetchRequest, ContentSecurityPolicy::InsecureRequestType::Load);
+    auto& contentSecurityPolicy = *context.contentSecurityPolicy();
 
-    if (!context.contentSecurityPolicy()->allowConnectToSource(fetchRequest.url(), context.shouldBypassMainWorldContentSecurityPolicy())) {
+    contentSecurityPolicy.upgradeInsecureRequestIfNeeded(fetchRequest, ContentSecurityPolicy::InsecureRequestType::Load);
+
+    if (!context.shouldBypassMainWorldContentSecurityPolicy() && !contentSecurityPolicy.allowConnectToSource(fetchRequest.url())) {
         m_client.didFail();
         return;
     }
 
-    m_loader = ThreadableLoader::create(context, *this, WTFMove(fetchRequest), options);
+    String referrer = request.internalRequestReferrer();
+    if (referrer == "no-referrer") {
+        options.referrerPolicy = FetchOptions::ReferrerPolicy::NoReferrer;
+        referrer = String();
+    } else
+        referrer = (referrer == "client") ? context.url().strippedForUseAsReferrer() : URL(context.url(), referrer).strippedForUseAsReferrer();
+
+    m_loader = ThreadableLoader::create(context, *this, WTFMove(fetchRequest), options, WTFMove(referrer));
     m_isStarted = m_loader;
 }
 

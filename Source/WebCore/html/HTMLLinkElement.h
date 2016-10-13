@@ -55,9 +55,6 @@ public:
 
     Optional<LinkIconType> iconType() const;
 
-    // the icon size string as parsed from the HTML attribute
-    String iconSizes();
-
     CSSStyleSheet* sheet() const { return m_sheet.get(); }
 
     bool styleSheetIsLoading() const;
@@ -85,6 +82,8 @@ private:
     InsertionNotificationRequest insertedInto(ContainerNode&) final;
     void removedFrom(ContainerNode&) final;
 
+    void initializeStyleSheet(Ref<StyleSheetContents>&&, const CachedCSSStyleSheet&);
+
     // from CachedResourceClient
     void setCSSStyleSheet(const String& href, const URL& baseURL, const String& charset, const CachedCSSStyleSheet*) final;
     bool sheetLoaded() final;
@@ -100,7 +99,7 @@ private:
 
     bool isURLAttribute(const Attribute&) const final;
 
-    void defaultEventHandler(Event*) final;
+    void defaultEventHandler(Event&) final;
     void handleClick(Event&);
 
     HTMLLinkElement(const QualifiedName&, Document&, bool createdByParser);
@@ -137,7 +136,7 @@ private:
     bool m_createdByParser;
     bool m_isInShadowTree;
     bool m_firedLoad;
-    bool m_loadedSheet;
+    bool m_loadedResource;
 
     PendingSheetType m_pendingSheetType;
 

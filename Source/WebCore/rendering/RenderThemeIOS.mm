@@ -74,9 +74,6 @@
 #import <wtf/RefPtr.h>
 #import <wtf/StdLibExtras.h>
 
-SOFT_LINK_FRAMEWORK(MobileCoreServices)
-SOFT_LINK_CLASS(MobileCoreServices, LSDocumentProxy)
-
 SOFT_LINK_FRAMEWORK(UIKit)
 SOFT_LINK_CLASS(UIKit, UIApplication)
 SOFT_LINK_CLASS(UIKit, UIColor)
@@ -328,7 +325,7 @@ void RenderThemeIOS::setContentSizeCategory(const String& contentSizeCategory)
 
 const Color& RenderThemeIOS::shadowColor() const
 {
-    static Color color(0.0f, 0.0f, 0.0f, 0.7f);
+    static NeverDestroyed<Color> color(0.0f, 0.0f, 0.0f, 0.7f);
     return color;
 }
 
@@ -575,7 +572,7 @@ public:
     }
     float measureText(const String& string) const override
     {
-        TextRun run = RenderBlock::constructTextRun(string, m_style, AllowTrailingExpansion | ForbidLeadingExpansion, DefaultTextRunFlags);
+        TextRun run = RenderBlock::constructTextRun(string, m_style);
         return m_font.width(run);
     }
 private:
@@ -1281,7 +1278,7 @@ void RenderThemeIOS::updateCachedSystemFontDescription(CSSValueID valueID, FontC
 
     ASSERT(fontDescriptor);
     RetainPtr<CTFontRef> font = adoptCF(CTFontCreateWithFontDescriptor(fontDescriptor.get(), 0, nullptr));
-    font = preparePlatformFont(font.get(), fontDescription.textRenderingMode(), nullptr, nullptr, fontDescription.featureSettings(), fontDescription.variantSettings());
+    font = preparePlatformFont(font.get(), fontDescription.textRenderingMode(), nullptr, nullptr, fontDescription.featureSettings(), fontDescription.variantSettings(), fontDescription.variationSettings());
     fontDescription.setIsAbsoluteSize(true);
     fontDescription.setOneFamily(textStyle);
     fontDescription.setSpecifiedSize(CTFontGetSize(font.get()));
@@ -1293,11 +1290,8 @@ void RenderThemeIOS::updateCachedSystemFontDescription(CSSValueID valueID, FontC
 String RenderThemeIOS::mediaControlsStyleSheet()
 {
 #if ENABLE(MEDIA_CONTROLS_SCRIPT)
-    if (m_mediaControlsStyleSheet.isEmpty()) {
-        StringBuilder builder;
-        builder.append([NSString stringWithContentsOfFile:[[NSBundle bundleForClass:[WebCoreRenderThemeBundle class]] pathForResource:@"mediaControlsiOS" ofType:@"css"] encoding:NSUTF8StringEncoding error:nil]);
-        m_mediaControlsStyleSheet = builder.toString();
-    }
+    if (m_mediaControlsStyleSheet.isEmpty())
+        m_mediaControlsStyleSheet = [NSString stringWithContentsOfFile:[[NSBundle bundleForClass:[WebCoreRenderThemeBundle class]] pathForResource:@"mediaControlsiOS" ofType:@"css"] encoding:NSUTF8StringEncoding error:nil];
     return m_mediaControlsStyleSheet;
 #else
     return emptyString();
@@ -1309,9 +1303,10 @@ String RenderThemeIOS::mediaControlsScript()
 #if ENABLE(MEDIA_CONTROLS_SCRIPT)
     if (m_mediaControlsScript.isEmpty()) {
         StringBuilder scriptBuilder;
-        scriptBuilder.append([NSString stringWithContentsOfFile:[[NSBundle bundleForClass:[WebCoreRenderThemeBundle class]] pathForResource:@"mediaControlsLocalizedStrings" ofType:@"js"] encoding:NSUTF8StringEncoding error:nil]);
-        scriptBuilder.append([NSString stringWithContentsOfFile:[[NSBundle bundleForClass:[WebCoreRenderThemeBundle class]] pathForResource:@"mediaControlsApple" ofType:@"js"] encoding:NSUTF8StringEncoding error:nil]);
-        scriptBuilder.append([NSString stringWithContentsOfFile:[[NSBundle bundleForClass:[WebCoreRenderThemeBundle class]] pathForResource:@"mediaControlsiOS" ofType:@"js"] encoding:NSUTF8StringEncoding error:nil]);
+        NSBundle* bundle = [NSBundle bundleForClass:[WebCoreRenderThemeBundle class]];
+        scriptBuilder.append([NSString stringWithContentsOfFile:[bundle pathForResource:@"mediaControlsLocalizedStrings" ofType:@"js"] encoding:NSUTF8StringEncoding error:nil]);
+        scriptBuilder.append([NSString stringWithContentsOfFile:[bundle pathForResource:@"mediaControlsApple" ofType:@"js"] encoding:NSUTF8StringEncoding error:nil]);
+        scriptBuilder.append([NSString stringWithContentsOfFile:[bundle pathForResource:@"mediaControlsiOS" ofType:@"js"] encoding:NSUTF8StringEncoding error:nil]);
         m_mediaControlsScript = scriptBuilder.toString();
     }
     return m_mediaControlsScript;
@@ -1652,7 +1647,7 @@ static void paintAttachmentText(GraphicsContext& context, AttachmentInfo& info)
         context.translate(toFloatSize(line.rect.minXMaxYCorner()));
         context.scale(FloatSize(1, -1));
 
-        CGContextSetTextMatrix(context.platformContext(), CGAffineTransformIdentity);
+        CGContextSetTextPosition(context.platformContext(), 0, 0);
         CTLineDraw(line.line.get(), context.platformContext());
     }
 }

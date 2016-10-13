@@ -25,12 +25,12 @@
 
 #pragma once
 
+#if ENABLE(WEBASSEMBLY)
+
 #include "CompilationResult.h"
 #include "VM.h"
 #include <wtf/ThreadSafeRefCounted.h>
 #include <wtf/Vector.h>
-
-#if ENABLE(WEBASSEMBLY)
 
 namespace JSC {
 
@@ -48,8 +48,6 @@ public:
     Vector<std::unique_ptr<B3::Compilation>> result;
 };
 
-} // namespace WASM
-
-} // namespace JSC
+} } // namespace JSC::WASM
 
 #endif // ENABLE(WEBASSEMBLY)

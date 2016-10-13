@@ -36,24 +36,21 @@ namespace WebCore {
 
 #if ENABLE(XSLT)
 
-CachedXSLStyleSheet::CachedXSLStyleSheet(const ResourceRequest& resourceRequest, SessionID sessionID)
-    : CachedResource(resourceRequest, XSLStyleSheet, sessionID)
+CachedXSLStyleSheet::CachedXSLStyleSheet(CachedResourceRequest&& request, SessionID sessionID)
+    : CachedResource(WTFMove(request), XSLStyleSheet, sessionID)
     , m_decoder(TextResourceDecoder::create("text/xsl"))
 {
-    // It's XML we want.
-    // FIXME: This should accept more general xml formats */*+xml, image/svg+xml for example.
-    setAccept("text/xml, application/xml, application/xhtml+xml, text/xsl, application/rss+xml, application/atom+xml");
 }
 
 CachedXSLStyleSheet::~CachedXSLStyleSheet()
 {
 }
 
-void CachedXSLStyleSheet::didAddClient(CachedResourceClient* c)
-{  
-    ASSERT(c->resourceClientType() == CachedStyleSheetClient::expectedType());
+void CachedXSLStyleSheet::didAddClient(CachedResourceClient& client)
+{
+    ASSERT(client.resourceClientType() == CachedStyleSheetClient::expectedType());
     if (!isLoading())
-        static_cast<CachedStyleSheetClient*>(c)->setXSLStyleSheet(m_resourceRequest.url(), m_response.url(), m_sheet);
+        static_cast<CachedStyleSheetClient&>(client).setXSLStyleSheet(m_resourceRequest.url(), m_response.url(), m_sheet);
 }
 
 void CachedXSLStyleSheet::setEncoding(const String& chs)

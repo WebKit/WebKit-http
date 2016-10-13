@@ -52,6 +52,10 @@ void WebInspectorProxy::platformDidClose()
     notImplemented();
 }
 
+void WebInspectorProxy::platformDidCloseForCrash()
+{
+}
+
 void WebInspectorProxy::platformInvalidate()
 {
 }
@@ -62,6 +66,11 @@ void WebInspectorProxy::platformHide()
 }
 
 void WebInspectorProxy::platformBringToFront()
+{
+    notImplemented();
+}
+
+void WebInspectorProxy::platformBringInspectedPageToFront()
 {
     notImplemented();
 }
