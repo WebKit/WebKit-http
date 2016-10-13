@@ -10,30 +10,17 @@ if (CONANBUILDINFO_PATH)
     conan_basic_setup()
 endif ()
 
-macro(macro_process_qtbase_prl_file qt_target_component)
-    if (TARGET ${qt_target_component})
-        get_target_property(_lib_name ${qt_target_component} NAME)
-        string(REGEX REPLACE "::" "" _lib_name ${_lib_name})
-        get_target_property(_lib_location ${qt_target_component} LOCATION)
-        get_target_property(_prl_file_location ${qt_target_component} LOCATION)
-        string(REGEX REPLACE "^(.+/lib${_lib_name}).+$" "\\1.prl" _prl_file_location ${_prl_file_location})
-        get_target_property(_link_libs ${qt_target_component} INTERFACE_LINK_LIBRARIES)
-        if (_link_libs)
-            set(_list_sep ";")
-        else ()
-            set(_list_sep "")
-        endif ()
-        if (EXISTS ${_prl_file_location})
-            file(STRINGS ${_prl_file_location} prl_strings REGEX "QMAKE_PRL_LIBS")
-            string(REGEX REPLACE "QMAKE_PRL_LIBS *= *([^\\n]*)" "\\1" static_depends ${prl_strings})
-            string(STRIP ${static_depends} static_depends)
-            set_target_properties(${qt_target_component} PROPERTIES
-                "INTERFACE_LINK_LIBRARIES" "${_link_libs}${_list_sep}${static_depends}"
-                "IMPORTED_LOCATION" "${_lib_location}"
-            )
-            string(REPLACE " " ";" static_depends ${static_depends})
-            set(${_lib_name}_STATIC_LIB_DEPENDENCIES "${static_depends}")
-        endif ()
+set(STATIC_DEPENDENCIES_CMAKE_FILE "${CMAKE_BINARY_DIR}/QtStaticDependencies.cmake")
+if (EXISTS ${STATIC_DEPENDENCIES_CMAKE_FILE})
+    file(REMOVE ${STATIC_DEPENDENCIES_CMAKE_FILE})
+endif ()
+
+macro(CONVERT_PRL_LIBS_TO_CMAKE _qt_component)
+    if (TARGET Qt5::${_qt_component})
+        get_target_property(_lib_location Qt5::${_qt_component} LOCATION)
+        execute_process(COMMAND ${PERL_EXECUTABLE} ${TOOLS_DIR}/qt/convert-prl-libs-to-cmake.pl
+            ${_lib_location} ${_qt_component} ${STATIC_DEPENDENCIES_CMAKE_FILE}
+        )
     endif ()
 endmacro()
 
@@ -339,10 +326,7 @@ endif ()
 find_package(Qt5 ${REQUIRED_QT_VERSION} REQUIRED COMPONENTS ${QT_REQUIRED_COMPONENTS})
 if (QT_STATIC_BUILD)
     foreach (qt_module ${QT_REQUIRED_COMPONENTS})
-        macro_process_qtbase_prl_file(Qt5::${qt_module})
-        list(APPEND STATIC_LIB_DEPENDENCIES
-            ${Qt5${qt_module}_STATIC_LIB_DEPENDENCIES}
-        )
+        CONVERT_PRL_LIBS_TO_CMAKE(${qt_module})
     endforeach ()
     # HACK: We must explicitly add LIB path of the Qt installation
     # to correctly find qtpcre
@@ -352,14 +336,15 @@ endif ()
 foreach (qt_module ${QT_OPTIONAL_COMPONENTS})
     find_package("Qt5${qt_module}" ${REQUIRED_QT_VERSION} PATHS ${_qt5_install_prefix} NO_DEFAULT_PATH)
     if (QT_STATIC_BUILD)
-        macro_process_qtbase_prl_file(Qt5::${qt_module})
-        list(APPEND STATIC_LIB_DEPENDENCIES
-            ${Qt5${qt_module}_STATIC_LIB_DEPENDENCIES}
-        )
+        CONVERT_PRL_LIBS_TO_CMAKE(${qt_module})
     endif ()
 endforeach ()
 
 if (QT_STATIC_BUILD)
+    if (NOT EXISTS ${STATIC_DEPENDENCIES_CMAKE_FILE})
+        message(FATAL_ERROR "Unable to find ${STATIC_DEPENDENCIES_CMAKE_FILE}")
+    endif ()
+    include(${STATIC_DEPENDENCIES_CMAKE_FILE})
     list(REMOVE_DUPLICATES STATIC_LIB_DEPENDENCIES)
 endif ()
 
