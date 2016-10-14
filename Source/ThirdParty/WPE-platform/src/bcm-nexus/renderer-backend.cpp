@@ -109,6 +109,7 @@ struct EGLTarget : public IPC::Client::Handler {
 
 EGLTarget::EGLTarget(struct wpe_renderer_backend_egl_target* target, int hostFd)
     : target(target)
+    , nativeWindow(nullptr)
 {
     ipcClient.initialize(*this, hostFd);
 }
