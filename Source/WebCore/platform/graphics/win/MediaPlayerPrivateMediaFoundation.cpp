@@ -38,6 +38,11 @@
 #endif
 #include "SoftLinking.h"
 
+#if PLATFORM(QT)
+#include "QWebPageClient.h"
+#include <QWindow>
+#endif
+
 #if USE(MEDIA_FOUNDATION)
 
 #include <wtf/MainThread.h>
@@ -602,7 +607,16 @@ void MediaPlayerPrivateMediaFoundation::createVideoWindow()
     view = m_player->cachedResourceLoader()->document()->view();
     if (!view || !view->hostWindow())
         return;
-    hWndParent = view->hostWindow()->platformPageClient();
+
+    PlatformPageClient pageClient = view->hostWindow()->platformPageClient();
+#if PLATFORM(QT)
+    QWindow* ownerWindow = pageClient->ownerWindow();
+    if (!ownerWindow)
+        return;
+    hWndParent = (HWND)ownerWindow->winId();
+#else
+    hWndParent = pageClient;
+#endif
 
     m_hwndVideo = CreateWindowEx(WS_EX_NOACTIVATE | WS_EX_TRANSPARENT, registerVideoWindowClass(), 0, WS_CHILD | WS_CLIPSIBLINGS | WS_CLIPCHILDREN,
         0, 0, 0, 0, hWndParent, 0, 0, 0);

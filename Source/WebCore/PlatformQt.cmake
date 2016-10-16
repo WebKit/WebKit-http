@@ -298,6 +298,10 @@ if (USE_MEDIA_FOUNDATION)
     list(APPEND WebCore_SOURCES
         platform/graphics/win/MediaPlayerPrivateMediaFoundation.cpp
     )
+    list(APPEND WebCore_LIBRARIES
+        mfuuid
+        strmbase
+    )
 endif ()
 
 if (USE_QT_MULTIMEDIA)
