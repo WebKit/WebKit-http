@@ -83,8 +83,6 @@ ssize_t MediaBuffer::ReadAt(off_t position, void* buffer, size_t size)
     // Wait for the data we need to be downloaded
     if(fWritePointer - position < size)
     {
-        printf("W %lld R %lld D %lld T %lu S %lu\n", fWritePointer, position, 
-            fWritePointer - position, BufferLength(), size);
         fInvalidRead = position;
         return B_BAD_DATA;
     }
@@ -139,7 +137,7 @@ void MediaPlayerPrivate::load(const String& url)
     m_videoTrack = nullptr;
     delete m_mediaFile;
     m_mediaFile = nullptr;
-    
+
     m_cache->SetSize(0);
     m_cache->Seek(0, SEEK_SET);
 
