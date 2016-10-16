@@ -44,6 +44,11 @@
 #include <wtf/efl/UniquePtrEfl.h>
 #endif
 
+#if PLATFORM(HAIKU)
+#include <Handler.h>
+#include <MessageRunner.h>
+#endif
+
 namespace WTF {
 
 class RunLoop : public FunctionDispatcher {
@@ -99,6 +104,8 @@ public:
         static bool timerFired(void* data);
         Ecore_Timer* m_timer;
         bool m_isRepeating;
+#elif PLATFORM(HAIKU)
+        BMessageRunner* m_messageRunner;
 #elif USE(GLIB)
         GMainLoopSource m_timerSource;
 #endif
@@ -154,6 +161,9 @@ private:
     bool m_wakeUpEventRequested;
 
     static void wakeUpEvent(void* data, void*, unsigned);
+#elif PLATFORM(HAIKU)
+    BHandler* m_handler;
+    friend class LoopHandler;
 #elif USE(GLIB)
 public:
     static gboolean queueWork(RunLoop*);

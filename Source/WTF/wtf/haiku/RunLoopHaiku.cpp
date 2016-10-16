@@ -27,38 +27,65 @@
 #include "RunLoop.h"
 
 #include <Application.h>
+#include <Handler.h>
+#include <MessageRunner.h>
 #include <stdio.h>
 
 namespace WTF {
 
+
+class LoopHandler: public BHandler
+{
+    public:
+        LoopHandler(RunLoop* loop)
+            : BHandler("RunLoop")
+            , m_loop(loop)
+        {
+        }
+
+        void MessageReceived(BMessage* message)
+        {
+            if (message->what == 'loop')
+                m_loop->performWork();
+            else
+                BHandler::MessageReceived(message);
+        }
+
+    private:
+        RunLoop* m_loop;
+};
+
+
 RunLoop::RunLoop()
 {
-    // It's up to the application to create BApplication (with the correct
-    // signature). However, we run it here.
+    m_handler = new LoopHandler(this);
+    be_app->AddHandler(m_handler);
 }
 
 RunLoop::~RunLoop()
 {
+    delete m_handler;
 }
 
 void RunLoop::run()
 {
-    be_app->Run();
+    // TODO ???
 }
 
 void RunLoop::stop()
 {
-    be_app->PostMessage(B_QUIT_REQUESTED);
+    be_app->RemoveHandler(m_handler);
 }
 
 void RunLoop::wakeUp()
 {
-    puts("FIXME RunLoop wake");
+    m_handler->Looper()->PostMessage('loop', m_handler);
 }
 
 RunLoop::TimerBase::TimerBase(RunLoop& runLoop)
     : m_runLoop(runLoop)
 {
+    m_messageRunner = NULL;
 }
 
 RunLoop::TimerBase::~TimerBase()
@@ -68,18 +95,20 @@ RunLoop::TimerBase::~TimerBase()
 
 void RunLoop::TimerBase::start(double nextFireInterval, bool repeat)
 {
-    puts("FIXME TimerBase start");
+    m_messageRunner = new BMessageRunner(m_runLoop.m_handler,
+        new BMessage('loop'), nextFireInterval * 1000, repeat ? -1 : 1);
 }
 
 bool RunLoop::TimerBase::isActive() const
 {
-    puts("FIXME TimerrBase isActive");
-    return false;
+    /* TODO do we need to check if the messages have all been sent already? */
+    return m_messageRunner != NULL;
 }
 
 void RunLoop::TimerBase::stop()
 {
-    puts("FIXME TimerBase stop");
+    delete m_messageRunner;
+    m_messageRunner = NULL;
 }
 
 }

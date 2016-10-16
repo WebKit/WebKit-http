@@ -158,6 +158,8 @@ BMessenger BWebPage::sDownloadListener;
     WebCore::UTF8Encoding();
 
     WebVisitedLinkStore::setShouldTrackVisitedLinks(true);
+
+    RunLoop::initializeMainRunLoop();
 }
 
 /*static*/ void BWebPage::ShutdownOnce()
