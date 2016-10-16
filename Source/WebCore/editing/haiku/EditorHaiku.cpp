@@ -36,9 +36,23 @@
 
 namespace WebCore {
 
-void Editor::pasteWithPasteboard(Pasteboard*, bool, MailBlockquoteHandling)
+void Editor::pasteWithPasteboard(Pasteboard* pasteboard, bool allowPlainText,
+    MailBlockquoteHandling mailBlockquoteHandling)
 {
-    notImplemented();
+    RefPtr<Range> range = selectedRange();
+    if (!range)
+        return;
+
+    bool chosePlainText;
+    RefPtr<DocumentFragment> fragment = pasteboard->documentFragment(
+        m_frame, *range, allowPlainText, chosePlainText);
+
+    if (fragment && shouldInsertFragment(fragment, range,
+            EditorInsertActionPasted))
+    {
+        pasteAsFragment(fragment, canSmartReplaceWithPasteboard(*pasteboard),
+            chosePlainText, mailBlockquoteHandling);
+    }
 }
 
 PassRefPtr<DocumentFragment> Editor::webContentFromPasteboard(Pasteboard&, Range&, bool /*allowPlainText*/, bool& /*chosePlainText*/)
