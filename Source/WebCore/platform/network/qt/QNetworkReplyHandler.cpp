@@ -30,6 +30,7 @@
 #include "ResourceHandleInternal.h"
 #include "ResourceRequest.h"
 #include "ResourceResponse.h"
+#include "SharedBuffer.h"
 #include <QDateTime>
 #include <QFile>
 #include <QFileInfo>
@@ -672,21 +673,22 @@ void QNetworkReplyHandler::forwardData()
         return;
 
     qint64 bytesAvailable = m_replyWrapper->reply()->bytesAvailable();
-    char* buffer = new char[8128]; // smaller than 8192 to fit within 8k including overhead.
+    Vector<char> buffer(8128); // smaller than 8192 to fit within 8k including overhead.
     while (bytesAvailable > 0 && !m_queue.deferSignals()) {
-        qint64 readSize = m_replyWrapper->reply()->read(buffer, 8128);
+        qint64 readSize = m_replyWrapper->reply()->read(buffer.data(), buffer.size());
         if (readSize <= 0)
             break;
+        buffer.shrink(readSize);
         bytesAvailable -= readSize;
+
         // FIXME: https://bugs.webkit.org/show_bug.cgi?id=19793
         // -1 means we do not provide any data about transfer size to inspector so it would use
         // Content-Length headers or content size to show transfer size.
-        client->didReceiveData(m_resourceHandle, buffer, readSize, -1);
+        client->didReceiveBuffer(m_resourceHandle, SharedBuffer::adoptVector(buffer), -1);
         // Check if the request has been aborted or this reply-handler was otherwise released.
         if (wasAborted() || !m_replyWrapper)
             break;
     }
-    delete[] buffer;
     if (bytesAvailable > 0 && m_replyWrapper)
         m_queue.requeue(&QNetworkReplyHandler::forwardData);
 }

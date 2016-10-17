@@ -49,7 +49,7 @@
 
 namespace WebCore {
 
-class WebCoreSynchronousLoader : public ResourceHandleClient {
+class WebCoreSynchronousLoader final : public ResourceHandleClient {
 public:
     WebCoreSynchronousLoader(ResourceError& error, ResourceResponse& response, Vector<char>& data)
         : m_error(error)
@@ -59,7 +59,8 @@ public:
 
     void willSendRequest(ResourceHandle*, ResourceRequest&, const ResourceResponse&) override;
     void didReceiveResponse(ResourceHandle*, const ResourceResponse& response) override { m_response = response; }
-    void didReceiveData(ResourceHandle*, const char* data, unsigned length, int) override { m_data.append(data, length); }
+    void didReceiveData(ResourceHandle*, const char*, unsigned, int) override;
+    void didReceiveBuffer(ResourceHandle*, PassRefPtr<SharedBuffer>, int /*encodedDataLength*/) override;
     void didFinishLoading(ResourceHandle*, double /*finishTime*/) override {}
     void didFail(ResourceHandle*, const ResourceError& error) override { m_error = error; }
 private:
@@ -76,6 +77,22 @@ void WebCoreSynchronousLoader::willSendRequest(ResourceHandle* handle, ResourceR
         m_error.setIsCancellation(true);
         request = ResourceRequest();
         return;
+    }
+}
+
+void WebCoreSynchronousLoader::didReceiveData(ResourceHandle*, const char*, unsigned, int)
+{
+    ASSERT_NOT_REACHED();
+}
+
+void WebCoreSynchronousLoader::didReceiveBuffer(ResourceHandle*, PassRefPtr<SharedBuffer> buffer, int)
+{
+    // This pattern is suggested by SharedBuffer.h.
+    const char* segment;
+    unsigned position = 0;
+    while (unsigned length = buffer->getSomeData(segment, position)) {
+        m_data.append(segment, length);
+        position += length;
     }
 }
 
