@@ -62,6 +62,12 @@
 #endif
 #endif // USE(GSTREAMER)
 
+#if PLATFORM(WPE) && ENABLE(ENCRYPTED_MEDIA_V2)
+#include <wpe/CDMPrivateEncKeyWPE.h>
+#include <Modules/encryptedmedia/CDM.h>
+#include <Modules/encryptedmedia/CDMPrivateClearKey.h>
+#endif
+
 #if USE(MEDIA_FOUNDATION)
 #include "MediaPlayerPrivateMediaFoundation.h"
 #define PlatformMediaEngineClassName MediaPlayerPrivateMediaFoundation
@@ -252,6 +258,12 @@ static void buildMediaEnginesVector()
 #if ENABLE(VIDEO) && USE(GSTREAMER) && ENABLE(MEDIA_SOURCE) && ENABLE(VIDEO_TRACK)
     if (Settings::isGStreamerEnabled())
         MediaPlayerPrivateGStreamerMSE::registerMediaEngine(addMediaEngine);
+#endif
+
+#if PLATFORM(WPE) && ENABLE(ENCRYPTED_MEDIA_V2)
+    printf ("This is file %s --function (%s)--%d \n",__FILE__,__func__, __LINE__);
+    CDM::registerCDMFactory([](CDM* cdm) { return std::make_unique<CDMPrivateEncKey>(cdm); },
+        CDMPrivateEncKey::supportsKeySystem, CDMPrivateEncKey::supportsKeySystemAndMimeType);
 #endif
 
     haveMediaEnginesVector() = true;

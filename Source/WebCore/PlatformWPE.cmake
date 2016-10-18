@@ -180,6 +180,8 @@ list(APPEND WebCore_SOURCES
     platform/wpe/SoundWPE.cpp
     platform/wpe/ThemeWPE.cpp
     platform/wpe/WidgetWPE.cpp
+    platform/wpe/CDMPrivateEncKeyWPE.cpp
+    platform/wpe/CDMSessionEncKeyWPE.cpp
 )
 
 list(APPEND WebCore_USER_AGENT_STYLE_SHEETS
@@ -214,6 +216,7 @@ list(APPEND WebCore_LIBRARIES
     ${LIBXML2_LIBRARIES}
     ${LIBXSLT_LIBRARIES}
     ${SQLITE_LIBRARIES}
+    ${OCDM_LIBRARIES}
     WPE
 )
 
@@ -223,6 +226,7 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
     ${EGL_INCLUDE_DIRS}
     ${FONTCONFIG_INCLUDE_DIRS}
     ${FREETYPE2_INCLUDE_DIRS}
+    ${OCDM_INCLUDE_DIRS}
     ${GLIB_INCLUDE_DIRS}
     ${GNUTLS_INCLUDE_DIRS}
     ${HARFBUZZ_INCLUDE_DIRS}
