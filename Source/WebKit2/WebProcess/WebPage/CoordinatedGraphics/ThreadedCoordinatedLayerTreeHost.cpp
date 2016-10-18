@@ -92,9 +92,12 @@ void ThreadedCoordinatedLayerTreeHost::scrollNonCompositedContents(const IntRect
     didChangeViewport();
 }
 
-void ThreadedCoordinatedLayerTreeHost::contentsSizeChanged(const IntSize& newSize)
+void ThreadedCoordinatedLayerTreeHost::contentsSizeChanged(const IntSize& size)
 {
-    m_viewportController.didChangeContentsSize(newSize);
+    m_viewportController.didChangeViewportSize(size);
+    IntSize scaledSize(size);
+    scaledSize.scale(m_webPage.deviceScaleFactor());
+    m_compositor->setViewportSize(scaledSize, m_webPage.deviceScaleFactor() * m_viewportController.pageScaleFactor());
     didChangeViewport();
 }
 
@@ -119,11 +122,7 @@ void ThreadedCoordinatedLayerTreeHost::sizeDidChange(const IntSize& size)
         m_layerTreeContext.contextID = m_surface->surfaceID();
 
     CoordinatedLayerTreeHost::sizeDidChange(size);
-    m_viewportController.didChangeViewportSize(size);
-    IntSize scaledSize(size);
-    scaledSize.scale(m_webPage.deviceScaleFactor());
-    m_compositor->setViewportSize(scaledSize, m_webPage.deviceScaleFactor() * m_viewportController.pageScaleFactor());
-    didChangeViewport();
+    m_viewportController.didChangeContentsSize(size);
 }
 
 void ThreadedCoordinatedLayerTreeHost::didChangeViewportProperties(const ViewportAttributes& attr)
