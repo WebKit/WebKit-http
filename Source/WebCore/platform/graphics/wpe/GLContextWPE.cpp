@@ -24,6 +24,9 @@
 
 #if USE(CAIRO)
 #include <cairo.h>
+#if ENABLE(ACCELERATED_2D_CANVAS)
+#include <cairo-gl.h>
+#endif
 #endif
 
 namespace WebCore {
