@@ -46,6 +46,8 @@ void TextChecker::setTestingMode(bool)
 
 bool TextChecker::isTestingMode()
 {
+    notImplemented();
+    return false;
 }
 
 bool TextChecker::isContinuousSpellCheckingAllowed()
