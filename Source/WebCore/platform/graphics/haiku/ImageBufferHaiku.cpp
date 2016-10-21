@@ -50,6 +50,7 @@ namespace WebCore {
 ImageBufferData::ImageBufferData(const FloatSize& size)
     : m_bitmap(BRect(0, 0, size.width() - 1., size.height() - 1.), B_RGBA32, true)
     , m_view(NULL)
+    , m_context(NULL)
 {
     // Always keep the bitmap locked, we are the only client.
     m_bitmap.Lock();
