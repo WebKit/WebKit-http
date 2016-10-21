@@ -417,6 +417,17 @@ double MediaPlayerPrivateGStreamer::playbackPosition() const
     return result;
 }
 
+GstSeekFlags MediaPlayerPrivateGStreamer::hardwareDependantSeekFlags()
+{
+#if USE(FUSION_SINK)
+    // With Fusion we use a decoder+renderer sink which can't be fed with samples not starting
+    // in a key frame.
+    return static_cast<GstSeekFlags>(GST_SEEK_FLAG_KEY_UNIT | GST_SEEK_FLAG_SNAP_NEAREST);
+#else
+    return GST_SEEK_FLAG_ACCURATE;
+#endif
+}
+
 void MediaPlayerPrivateGStreamer::readyTimerFired()
 {
     changePipelineState(GST_STATE_NULL);
@@ -605,7 +616,7 @@ void MediaPlayerPrivateGStreamer::seek(float time)
         }
     } else {
         // We can seek now.
-        if (!doSeek(clockTime, m_player->rate(), static_cast<GstSeekFlags>(GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_ACCURATE))) {
+        if (!doSeek(clockTime, m_player->rate(), static_cast<GstSeekFlags>(GST_SEEK_FLAG_FLUSH | hardwareDependantSeekFlags()))) {
             GST_DEBUG("[Seek] seeking to %f failed", time);
             return;
         }
@@ -664,7 +675,7 @@ void MediaPlayerPrivateGStreamer::updatePlaybackRate()
     }
 
     GST_INFO("Need to mute audio?: %d", (int) mute);
-    if (doSeek(currentPosition, m_playbackRate, static_cast<GstSeekFlags>(GST_SEEK_FLAG_FLUSH))) {
+    if (doSeek(currentPosition, m_playbackRate, static_cast<GstSeekFlags>(GST_SEEK_FLAG_FLUSH | hardwareDependantSeekFlags()))) {
         g_object_set(m_pipeline.get(), "mute", mute, nullptr);
         m_lastPlaybackRate = m_playbackRate;
     } else {
@@ -1654,7 +1665,7 @@ void MediaPlayerPrivateGStreamer::updateStates()
         if (m_seekIsPending) {
             GST_DEBUG("[Seek] committing pending seek to %f", m_seekTime);
             m_seekIsPending = false;
-            m_seeking = doSeek(toGstClockTime(m_seekTime), m_player->rate(), static_cast<GstSeekFlags>(GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_ACCURATE));
+            m_seeking = doSeek(toGstClockTime(m_seekTime), m_player->rate(), static_cast<GstSeekFlags>(GST_SEEK_FLAG_FLUSH | hardwareDependantSeekFlags()));
             if (!m_seeking) {
                 m_cachedPosition = -1;
                 GST_DEBUG("[Seek] seeking to %f failed", m_seekTime);

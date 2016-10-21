@@ -391,7 +391,7 @@ bool MediaPlayerPrivateGStreamerMSE::doSeek()
     GstClockTime position = toGstClockTime(m_seekTime);
     MediaTime seekTime = MediaTime::createWithDouble(m_seekTime);
     double rate = m_player->rate();
-    GstSeekFlags seekType = static_cast<GstSeekFlags>(GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_ACCURATE);
+    GstSeekFlags seekType = static_cast<GstSeekFlags>(GST_SEEK_FLAG_FLUSH | hardwareDependantSeekFlags());
 
     // Always move to seeking state to report correct 'currentTime' while pending for actual seek to complete.
     m_seeking = true;

@@ -187,6 +187,7 @@ protected:
     GRefPtr<GstElement> m_source;
     bool m_volumeAndMuteInitialized;
 
+    static GstSeekFlags hardwareDependantSeekFlags();
     void readyTimerFired();
 
     void notifyPlayerOfVideo();
