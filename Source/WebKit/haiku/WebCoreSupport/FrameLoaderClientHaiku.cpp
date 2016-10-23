@@ -905,13 +905,6 @@ RefPtr<Frame> FrameLoaderClientHaiku::createFrame(const URL& url,
     RefPtr<WebCore::Frame> coreSubFrame = subFrame->Frame();
     ASSERT(coreSubFrame);
 
-    // The creation of the frame may have run arbitrary JavaScript that removed
-    // it from the page already.
-    if (!coreSubFrame->page()) {
-        delete subFrame;
-        return nullptr;
-    }
-
     subFrame->SetListener(m_messenger);
     m_webFrame->Frame()->loader().loadURLIntoChildFrame(url, referrer, coreSubFrame.get());
 
