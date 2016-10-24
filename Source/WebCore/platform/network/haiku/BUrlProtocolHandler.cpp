@@ -87,7 +87,7 @@ ssize_t BFormDataIO::Size()
 
                 for (size_t j = 0; j < blobData->items().size(); ++j)
                 {
-                    const BlobDataItem& blobItem = blobData->items()[i];
+                    const BlobDataItem& blobItem = blobData->items()[j];
                     if (blobItem.type == BlobDataItem::File
                         && blobItem.length() == BlobDataItem::toEndOfFile)
                     {
