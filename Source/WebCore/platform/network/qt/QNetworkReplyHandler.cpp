@@ -563,6 +563,7 @@ void QNetworkReplyHandler::timerEvent(QTimerEvent* timerEvent)
 void QNetworkReplyHandler::sendResponseIfNeeded()
 {
     ASSERT(m_replyWrapper && m_replyWrapper->reply() && !wasAborted());
+    ASSERT(!m_queue.deferSignals());
 
     if (m_replyWrapper->reply()->error() && m_replyWrapper->reply()->attribute(QNetworkRequest::HttpStatusCodeAttribute).isNull())
         return;
@@ -585,7 +586,11 @@ void QNetworkReplyHandler::sendResponseIfNeeded()
                               m_replyWrapper->encoding());
 
     if (url.isLocalFile()) {
-        client->didReceiveResponse(m_resourceHandle, response);
+        if (client->usesAsyncCallbacks()) {
+            setLoadingDeferred(true);
+            client->didReceiveResponseAsync(m_resourceHandle, response);
+        } else
+            client->didReceiveResponse(m_resourceHandle, response);
         return;
     }
 
@@ -607,11 +612,41 @@ void QNetworkReplyHandler::sendResponseIfNeeded()
         return;
     }
 
-    client->didReceiveResponse(m_resourceHandle, response);
+    if (client->usesAsyncCallbacks()) {
+        setLoadingDeferred(true);
+        client->didReceiveResponseAsync(m_resourceHandle, response);
+    } else
+        client->didReceiveResponse(m_resourceHandle, response);
+}
+
+void QNetworkReplyHandler::continueAfterWillSendRequest(const ResourceRequest& newRequest)
+{
+    if (wasAborted()) // Network error cancelled the request.
+        return;
+
+    m_request = newRequest.toNetworkRequest(m_resourceHandle->getInternal()->m_context.get());
+}
+
+void QNetworkReplyHandler::continueWillSendRequest(const ResourceRequest& newRequest)
+{
+    ASSERT(!m_resourceHandle->client() || m_resourceHandle->client()->usesAsyncCallbacks());
+    ASSERT(m_queue.deferSignals());
+    setLoadingDeferred(false);
+
+    continueAfterWillSendRequest(newRequest);
+}
+
+void QNetworkReplyHandler::continueDidReceiveResponse()
+{
+    ASSERT(!m_resourceHandle->client() || m_resourceHandle->client()->usesAsyncCallbacks());
+    ASSERT(m_queue.deferSignals());
+    setLoadingDeferred(false);
 }
 
 void QNetworkReplyHandler::redirect(ResourceResponse& response, const QUrl& redirection)
 {
+    ASSERT(!m_queue.deferSignals());
+
     QUrl newUrl = m_replyWrapper->reply()->url().resolved(redirection);
 
     ResourceHandleClient* client = m_resourceHandle->client();
@@ -644,11 +679,13 @@ void QNetworkReplyHandler::redirect(ResourceResponse& response, const QUrl& redi
     if (!newRequest.url().protocolIs("https") && protocolIs(newRequest.httpReferrer(), "https") && m_resourceHandle->context()->shouldClearReferrerOnHTTPSToHTTPRedirect())
         newRequest.clearHTTPReferrer();
 
-    client->willSendRequest(m_resourceHandle, newRequest, response);
-    if (wasAborted()) // Network error cancelled the request.
-        return;
-
-    m_request = newRequest.toNetworkRequest(m_resourceHandle->getInternal()->m_context.get());
+    if (client->usesAsyncCallbacks()) {
+        setLoadingDeferred(true);
+        client->willSendRequestAsync(m_resourceHandle, newRequest, response);
+    } else {
+        client->willSendRequest(m_resourceHandle, newRequest, response);
+        continueAfterWillSendRequest(newRequest);
+    }
 }
 
 void QNetworkReplyHandler::forwardData()
@@ -662,6 +699,15 @@ void QNetworkReplyHandler::forwardData()
     ResourceHandleClient* client = m_resourceHandle->client();
     if (!client)
         return;
+
+    // We have to use didReceiveBuffer instead of didReceiveData
+    // See https://bugs.webkit.org/show_bug.cgi?id=118598
+    // and https://bugs.webkit.org/show_bug.cgi?id=118448#c32
+    // NetworkResourceLoader implements only didReceiveBuffer and sends it over IPC to WebProcess
+
+    // See also https://codereview.qt-project.org/#/c/79565/
+    //
+    // FIXME: We need API to get unflattened array of data segments to convert it to non-contiguous SharedBuffer
 
     qint64 bytesAvailable = m_replyWrapper->reply()->bytesAvailable();
     Vector<char> buffer(8128); // smaller than 8192 to fit within 8k including overhead.

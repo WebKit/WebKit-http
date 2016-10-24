@@ -24,6 +24,7 @@
 #include "Download.h"
 #include "HTTPParsers.h"
 #include "MIMETypeRegistry.h"
+#include "NetworkProcess.h"
 #include <QCoreApplication>
 #include <QFile>
 #include <QFileInfo>
@@ -37,12 +38,25 @@ using namespace WTF;
 
 namespace WebKit {
 
+QtFileDownloader::QtFileDownloader(Download* download, const QNetworkRequest& request)
+    : m_download(download)
+    , m_reply(NetworkProcess::singleton().networkAccessManager()->get(request))
+    , m_error(QNetworkReply::NoError)
+{
+    makeConnections();
+}
+
 QtFileDownloader::QtFileDownloader(Download* download, QNetworkReply* reply)
     : m_download(download)
     , m_reply(reply)
-    , m_error(QNetworkReply::NoError)
-    , m_headersRead(false)
+    , m_error(reply->error())
 {
+    makeConnections();
+
+    if (reply->isFinished())
+        onFinished();
+    else if (reply->isReadable())
+        onReadyRead();
 }
 
 QtFileDownloader::~QtFileDownloader()
@@ -53,7 +67,7 @@ QtFileDownloader::~QtFileDownloader()
     abortDownloadWritingAndEmitError(QtFileDownloader::DownloadErrorAborted);
 }
 
-void QtFileDownloader::init()
+void QtFileDownloader::makeConnections()
 {
     connect(m_reply.get(), SIGNAL(readyRead()), SLOT(onReadyRead()));
     connect(m_reply.get(), SIGNAL(finished()), SLOT(onFinished()));

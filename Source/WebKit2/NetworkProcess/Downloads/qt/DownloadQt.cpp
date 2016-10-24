@@ -27,7 +27,6 @@
 #include "config.h"
 #include "Download.h"
 
-#include "NetworkProcess.h"
 #include "QtFileDownloader.h"
 #include <WebCore/NotImplemented.h>
 #include <WebCore/QNetworkReplyHandler.h>
@@ -41,19 +40,14 @@ namespace WebKit {
 
 void Download::start()
 {
-    QNetworkAccessManager* manager = NetworkProcess::singleton().networkAccessManager();
-    ASSERT(manager);
     ASSERT(!m_qtDownloader);
-
-    m_qtDownloader = new QtFileDownloader(this, manager->get(m_request.toNetworkRequest()));
-    m_qtDownloader->init();
+    m_qtDownloader = new QtFileDownloader(this, m_request.toNetworkRequest());
 }
 
 void Download::startWithHandle(ResourceHandle* handle, const ResourceResponse& resp)
 {
     ASSERT(!m_qtDownloader);
     m_qtDownloader = new QtFileDownloader(this, handle->getInternal()->m_job->release());
-    m_qtDownloader->init();
 }
 
 void Download::resume(const IPC::DataReference&, const WTF::String&, const SandboxExtension::Handle&)

@@ -135,6 +135,20 @@ void ResourceHandle::cancel()
     }
 }
 
+void ResourceHandle::continueWillSendRequest(const ResourceRequest& request)
+{
+    ASSERT(!client() || client()->usesAsyncCallbacks());
+    ASSERT(d->m_job);
+    d->m_job->continueWillSendRequest(request);
+}
+
+void ResourceHandle::continueDidReceiveResponse()
+{
+    ASSERT(!client() || client()->usesAsyncCallbacks());
+    ASSERT(d->m_job);
+    d->m_job->continueDidReceiveResponse();
+}
+
 void ResourceHandle::platformLoadResourceSynchronously(NetworkingContext* context, const ResourceRequest& request, StoredCredentials /*storedCredentials*/, ResourceError& error, ResourceResponse& response, Vector<char>& data)
 {
     WebCoreSynchronousLoader syncLoader(error, response, data);
