@@ -66,7 +66,13 @@ PassRefPtr<ImageData> ImageData::create(const IntSize& size)
     if (dataSize.hasOverflowed())
         return 0;
 
-    return adoptRef(new ImageData(size));
+    ImageData* data = new ImageData(size);
+    if (data->data() == nullptr)
+    {
+        delete data;
+        return 0;
+    }
+    return adoptRef(data);
 }
 
 PassRefPtr<ImageData> ImageData::create(const IntSize& size, PassRefPtr<Uint8ClampedArray> byteArray)
