@@ -123,7 +123,15 @@ BFormDataIO::Read(void* buffer, size_t size)
             case FormDataElement::Type::EncodedBlob:
             {
                 BlobRegistryImpl& registry = static_cast<BlobRegistryImpl&>(blobRegistry());
-                RefPtr<BlobData> blobData = registry.getBlobDataFromURL(URL(ParsedURLString, element.m_url));
+                RefPtr<BlobData> blobData = registry.getBlobDataFromURL(
+                    URL(ParsedURLString, element.m_url));
+
+                if (m_currentItem > m_lastItem)
+                {
+                    _NextElement();
+                    break;
+                }
+
                 const BlobDataItem& item = blobData->items()[m_currentItem];
                 if (item.type == BlobDataItem::Data) {
                     size_t toCopy = 0;
@@ -145,39 +153,39 @@ BFormDataIO::Read(void* buffer, size_t size)
                 // fallthrough for file blobs
             }
             case FormDataElement::Type::EncodedFile:
-                {
-                    ssize_t result = m_currentFile->Read(
-                        reinterpret_cast<char*>(buffer) + read, remaining);
+            {
+                ssize_t result = m_currentFile->Read(
+                    reinterpret_cast<char*>(buffer) + read, remaining);
 
-                    if (result < 0)
-                        return read;
+                if (result < 0)
+                    return read;
 
-                    read += result;
+                read += result;
 
-                    if (m_currentFile->Position() >= m_currentFileSize 
-                            || !m_currentFile->IsReadable())
-                        _NextElement();
-                }
-                break;
+                if (m_currentFile->Position() >= m_currentFileSize 
+                        || !m_currentFile->IsReadable())
+                    _NextElement();
+            }
+            break;
 
             case FormDataElement::Type::Data:
-                {
-                    size_t toCopy = 0;
+            {
+                size_t toCopy = 0;
 
-                    if (remaining < element.m_data.size() - m_currentOffset)
-                        toCopy = remaining;
-                    else
-                        toCopy = element.m_data.size() - m_currentOffset;
+                if (remaining < element.m_data.size() - m_currentOffset)
+                    toCopy = remaining;
+                else
+                    toCopy = element.m_data.size() - m_currentOffset;
 
-                    memcpy(reinterpret_cast<char*>(buffer) + read,
-                        element.m_data.data() + m_currentOffset, toCopy); 
-                    m_currentOffset += toCopy;
-                    read += toCopy;
+                memcpy(reinterpret_cast<char*>(buffer) + read,
+                    element.m_data.data() + m_currentOffset, toCopy); 
+                m_currentOffset += toCopy;
+                read += toCopy;
 
-                    if (m_currentOffset >= element.m_data.size())
-                        _NextElement();
-                }
-                break;
+                if (m_currentOffset >= element.m_data.size())
+                    _NextElement();
+            }
+            break;
         }
     }
 
@@ -197,9 +205,11 @@ BFormDataIO::_NextElement()
     m_currentOffset = 0;
     m_currentFileSize = 0;
 
-    if (m_currentItem == m_lastItem)
+    if (m_currentItem >= m_lastItem) {
         m_formElements.remove(0);
-    else
+        m_currentItem = 0;
+        m_lastItem = 0;
+    } else
         m_currentItem++;
 
     _ParseCurrentElement();
@@ -233,25 +243,28 @@ BFormDataIO::_ParseCurrentElement()
 
             m_lastItem = blobData->items().size() - 1;
 
-            // FIXME handle blobs with multiple items
-            const BlobDataItem& item = blobData->items()[0];
-
-            // FIXME handle BlobDataItem::Data too!
-            if (item.type == BlobDataItem::File)
+            if (m_currentItem < m_lastItem)
             {
-                m_currentFile->SetTo(item.file->path().utf8().data(), B_READ_ONLY);
-                m_currentFile->Seek(item.offset(), SEEK_SET);
-                if (item.length() == BlobDataItem::toEndOfFile)
-                    m_currentFile->GetSize(&m_currentFileSize);
-                else
-                    m_currentFileSize = item.length();
-                return;
-            } else if(item.type == BlobDataItem::Data) {
+                const BlobDataItem& item = blobData->items()[m_currentItem];
 
-            } else {
-                debugger("Unhandled blob type. Please submit a bugreport with the webpage that triggered this.");
+                if (item.type == BlobDataItem::File)
+                {
+                    m_currentFile->SetTo(item.file->path().utf8().data(), B_READ_ONLY);
+                    m_currentFile->Seek(item.offset(), SEEK_SET);
+                    if (item.length() == BlobDataItem::toEndOfFile)
+                        m_currentFile->GetSize(&m_currentFileSize);
+                    else
+                        m_currentFileSize = item.length();
+                    return;
+                } else if(item.type == BlobDataItem::Data) {
+                    // FIXME handle BlobDataItem::Data too!
+                } else {
+                    debugger("Unhandled blob type. Please submit a bugreport with the webpage that triggered this.");
+                }
             }
         }
+        return;
+        case FormDataElement::Type::Data:
         default:
             m_currentItem = 0;
             m_lastItem = 0;
