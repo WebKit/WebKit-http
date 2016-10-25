@@ -91,8 +91,8 @@ private:
     virtual AffineTransform localTransform() const override { return m_localTransform; }
     virtual std::unique_ptr<RootInlineBox> createRootInlineBox() override;
 
-    virtual RenderBlock* firstLineBlock() const override;
-    virtual void updateFirstLetter() override;
+    RenderBlock* firstLineBlock() const override;
+    void updateFirstLetter(RenderTreeMutationIsAllowed = RenderTreeMutationIsAllowed::Yes) override;
 
     bool shouldHandleSubtreeMutations() const;
 

@@ -60,8 +60,8 @@ public:
     virtual void addChild(RenderObject* child, RenderObject* beforeChild = 0) override;
     virtual void removeChild(RenderObject&) override;
 
-    virtual RenderBlock* firstLineBlock() const override;
-    virtual void updateFirstLetter() override;
+    RenderBlock* firstLineBlock() const override;
+    void updateFirstLetter(RenderTreeMutationIsAllowed = RenderTreeMutationIsAllowed::Yes) override;
 
     void getOverhang(bool firstLine, RenderObject* startRenderer, RenderObject* endRenderer, float& startOverhang, float& endOverhang) const;
 

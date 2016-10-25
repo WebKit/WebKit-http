@@ -303,8 +303,8 @@ private:
 
     void invalidateCachedColumnOffsets();
 
-    virtual RenderBlock* firstLineBlock() const override final;
-    virtual void updateFirstLetter() override final;
+    RenderBlock* firstLineBlock() const final;
+    void updateFirstLetter(RenderTreeMutationIsAllowed = RenderTreeMutationIsAllowed::Yes) final;
     
     virtual void updateLogicalWidth() override final;
 
