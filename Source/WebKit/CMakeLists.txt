@@ -71,7 +71,7 @@ install(TARGETS WebKit EXPORT WebKitTargets
 )
 
 add_dependencies(WebKit WebCore)
-if (WIN32)
+if (TARGET WebKitGUID)
     add_dependencies(WebKit WebKitGUID)
 endif ()
 
