@@ -54,7 +54,8 @@ public:
 
     void requestPermission(ScriptExecutionContext*, 
             PassRefPtr<NotificationPermissionCallback> callback) override {
-        callback->handleEvent(Notification::permissionString(PermissionAllowed));
+        if (callback)
+            callback->handleEvent(Notification::permissionString(PermissionAllowed));
     }
     void cancelRequestsForPermission(ScriptExecutionContext*) override {}
     bool hasPendingPermissionRequests(WebCore::ScriptExecutionContext*) const override { return false; }
