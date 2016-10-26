@@ -188,6 +188,7 @@ list(APPEND WebKit_SOURCES
     qt/WebCoreSupport/PopupMenuQt.cpp
     qt/WebCoreSupport/ProgressTrackerClientQt.cpp
     qt/WebCoreSupport/QWebFrameAdapter.cpp
+    qt/WebCoreSupport/QWebFrameData.cpp
     qt/WebCoreSupport/QWebPageAdapter.cpp
     qt/WebCoreSupport/QtPlatformPlugin.cpp
     qt/WebCoreSupport/QtPluginWidgetAdapter.cpp

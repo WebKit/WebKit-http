@@ -41,6 +41,7 @@
 #include "NetworkingContext.h"
 #include "NodeList.h"
 #include "Page.h"
+#include "QWebFrameData.h"
 #include "QWebPageAdapter.h"
 #include "RenderObject.h"
 #include "ScriptController.h"
@@ -83,29 +84,6 @@ static inline ResourceRequestCachePolicy cacheLoadControlToCachePolicy(uint cach
         break;
     }
     return WebCore::UseProtocolCachePolicy;
-}
-
-QWebFrameData::QWebFrameData(WebCore::Page* parentPage, WebCore::Frame* parentFrame, WebCore::HTMLFrameOwnerElement* ownerFrameElement, const WTF::String& frameName)
-    : name(frameName)
-    , ownerElement(ownerFrameElement)
-    , page(parentPage)
-    , allowsScrolling(true)
-    , marginWidth(0)
-    , marginHeight(0)
-{
-    // mainframe is already created in WebCore::Page, just use it.
-    if (!parentFrame || !ownerElement) {
-        frame = &parentPage->mainFrame();
-        frameLoaderClient = static_cast<FrameLoaderClientQt*>(&frame->loader().client());
-    } else {
-        frameLoaderClient = new FrameLoaderClientQt();
-        frame = Frame::create(page, ownerElement, frameLoaderClient);
-    }
-
-    // FIXME: All of the below should probably be moved over into WebCore
-    frame->tree().setName(name);
-    if (parentFrame)
-        parentFrame->tree().appendChild(frame);
 }
 
 QWebFrameAdapter::QWebFrameAdapter()

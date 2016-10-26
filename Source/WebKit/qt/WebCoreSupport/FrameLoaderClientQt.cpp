@@ -62,6 +62,7 @@
 #include "PolicyChecker.h"
 #include "QNetworkReplyHandler.h"
 #include "QWebFrameAdapter.h"
+#include "QWebFrameData.h"
 #include "QWebPageAdapter.h"
 #include "QWebPageClient.h"
 #include "QtPluginWidgetAdapter.h"

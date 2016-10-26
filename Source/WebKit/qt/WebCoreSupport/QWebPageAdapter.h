@@ -20,9 +20,7 @@
 #ifndef QWebPageAdapter_h
 #define QWebPageAdapter_h
 
-#include "PlatformExportMacros.h"
 #include "QWebPageClient.h"
-#include "ViewportArguments.h"
 #include "qwebhistory.h"
 
 #include <qbasictimer.h>
@@ -33,7 +31,7 @@
 #include <qsharedpointer.h>
 #include <qstring.h>
 #include <qurl.h>
-#include <wtf/ExportMacros.h>
+#include <wtf/Forward.h>
 
 QT_BEGIN_NAMESPACE
 class QBitArray;
@@ -52,6 +50,7 @@ class DeviceMotionClient;
 class GeolocationClientQt;
 class Page;
 class UndoStep;
+struct ViewportArguments;
 }
 
 class QtPluginWidgetAdapter;

@@ -23,9 +23,7 @@
 #include "qwebpage.h"
 
 #include "InitWebKitQt.h"
-#include "InspectorClientQt.h"
 #include "InspectorClientWebPage.h"
-#include "InspectorServerQt.h"
 #include "PageClientQt.h"
 #include "QGraphicsWidgetPluginImpl.h"
 #include "QWebUndoCommand.h"

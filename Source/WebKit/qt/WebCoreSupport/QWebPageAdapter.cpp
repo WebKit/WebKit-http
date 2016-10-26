@@ -39,6 +39,7 @@
 #include "EventHandler.h"
 #include "FocusController.h"
 #include "FrameLoadRequest.h"
+#include "FrameLoaderClientQt.h"
 #include "FrameSelection.h"
 #include "FrameView.h"
 #include "GeolocationPermissionClientQt.h"

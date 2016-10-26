@@ -20,9 +20,6 @@
 #ifndef QWebFrameAdapter_h
 #define QWebFrameAdapter_h
 
-#include "FrameLoaderClientQt.h"
-#include "PlatformEvent.h"
-#include "PlatformExportMacros.h"
 #if ENABLE(ORIENTATION_EVENTS) && HAVE(QTSENSORS)
 #include "qorientationsensor.h"
 #endif // ENABLE(ORIENTATION_EVENTS).
@@ -35,12 +32,10 @@
 #include <QRect>
 #include <QSize>
 #include <QUrl>
-#include <wtf/ExportMacros.h>
-#include <wtf/RefPtr.h>
-#include <wtf/text/WTFString.h>
 
 namespace WebCore {
 class Frame;
+class FrameLoaderClientQt;
 class HitTestResult;
 class GraphicsContext;
 class IntRect;
@@ -56,6 +51,7 @@ QT_END_NAMESPACE
 class QGestureEventFacade;
 #endif
 class QWebFrame;
+class QWebFrameData;
 class QWebPageAdapter;
 class QWebSecurityOrigin;
 
@@ -98,22 +94,6 @@ private:
     WebCore::Frame* webCoreFrame;
     friend class QWebFrameAdapter;
     friend class QWebPageAdapter;
-};
-
-class QWebFrameData {
-public:
-    QWebFrameData(WebCore::Page*, WebCore::Frame* parentFrame = 0, WebCore::HTMLFrameOwnerElement* = 0, const WTF::String& frameName = WTF::String());
-
-    WTF::String name;
-    WebCore::HTMLFrameOwnerElement* ownerElement;
-    WebCore::Page* page;
-    RefPtr<WebCore::Frame> frame;
-    WebCore::FrameLoaderClientQt* frameLoaderClient;
-
-    WTF::String referrer;
-    bool allowsScrolling;
-    int marginWidth;
-    int marginHeight;
 };
 
 class QWEBKIT_EXPORT QWebFrameAdapter {
