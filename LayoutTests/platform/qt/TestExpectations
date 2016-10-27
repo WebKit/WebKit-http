@@ -593,6 +593,9 @@ fast/loader/form-submission-after-beforeunload-cancel.html [ Failure ]
 fast/forms/input-readonly-autoscroll.html [ Missing ]
 fast/forms/input-text-drag-down.html [ Missing ]
 
+# Only Mac has implemented DictionaryLookup
+fast/layers/prevent-hit-test-during-layout.html [ Skip ]
+
 
 # ============================================================================= #
 # Fluctuating/flakey tests
