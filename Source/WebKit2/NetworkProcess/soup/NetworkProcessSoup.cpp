@@ -61,8 +61,7 @@ void NetworkProcess::platformInitializeNetworkProcess(const NetworkProcessCreati
     m_diskCacheDirectory = parameters.diskCacheDirectory;
 
 #if ENABLE(NETWORK_CACHE)
-    // Clear the old soup cache if it exists.
-    SoupNetworkSession::defaultSession().clearCache(WebCore::directoryName(m_diskCacheDirectory));
+    SoupNetworkSession::defaultSession().clearSoupCache(WebCore::directoryName(m_diskCacheDirectory));
 
     NetworkCache::Cache::Parameters cacheParameters {
         parameters.shouldEnableNetworkCacheEfficacyLogging
@@ -110,12 +109,12 @@ void NetworkProcess::platformSetURLCacheSize(unsigned /*urlCacheMemoryCapacity*/
 
 void NetworkProcess::setIgnoreTLSErrors(bool ignoreTLSErrors)
 {
-    ResourceHandle::setIgnoreSSLErrors(ignoreTLSErrors);
+    SoupNetworkSession::setShouldIgnoreTLSErrors(ignoreTLSErrors);
 }
 
 void NetworkProcess::allowSpecificHTTPSCertificateForHost(const CertificateInfo& certificateInfo, const String& host)
 {
-    ResourceHandle::setClientCertificate(host, certificateInfo.certificate());
+    SoupNetworkSession::allowSpecificHTTPSCertificateForHost(certificateInfo, host);
 }
 
 void NetworkProcess::clearCacheForAllOrigins(uint32_t cachesToClear)

@@ -34,7 +34,6 @@
 #include "ComposedTreeAncestorIterator.h"
 #include "ContainerNodeAlgorithms.h"
 #include "ContextMenuController.h"
-#include "DOMImplementation.h"
 #include "DocumentType.h"
 #include "ElementIterator.h"
 #include "ElementRareData.h"
@@ -48,6 +47,7 @@
 #include "HTMLImageElement.h"
 #include "HTMLSlotElement.h"
 #include "HTMLStyleElement.h"
+#include "InputEvent.h"
 #include "InspectorController.h"
 #include "KeyboardEvent.h"
 #include "Logging.h"
@@ -62,6 +62,7 @@
 #include "RenderTextControl.h"
 #include "RenderView.h"
 #include "ScopedEventQueue.h"
+#include "Settings.h"
 #include "StorageEvent.h"
 #include "StyleResolver.h"
 #include "StyleSheetContents.h"
@@ -85,11 +86,6 @@
 namespace WebCore {
 
 using namespace HTMLNames;
-
-bool Node::isSupportedForBindings(const String& feature, const String& version)
-{
-    return DOMImplementation::hasFeature(feature, version);
-}
 
 #if DUMP_NODE_STATISTICS
 static HashSet<Node*> liveNodeSet;
@@ -439,12 +435,12 @@ bool Node::appendChild(Node& newChild, ExceptionCode& ec)
     return downcast<ContainerNode>(*this).appendChild(newChild, ec);
 }
 
-static HashSet<RefPtr<Node>> nodeSetPreTransformedFromNodeOrStringVector(const Vector<std::experimental::variant<Ref<Node>, String>>& vector)
+static HashSet<RefPtr<Node>> nodeSetPreTransformedFromNodeOrStringVector(const Vector<std::experimental::variant<std::reference_wrapper<Node>, String>>& vector)
 {
     HashSet<RefPtr<Node>> nodeSet;
 
     auto visitor = WTF::makeVisitor(
-        [&](const Ref<Node>& node) { nodeSet.add(const_cast<Node*>(node.ptr())); },
+        [&](const std::reference_wrapper<Node>& node) { nodeSet.add(const_cast<Node*>(&node.get())); },
         [](const String&) { }
     );
 
@@ -472,7 +468,7 @@ static RefPtr<Node> firstFollowingSiblingNotInNodeSet(Node& context, const HashS
     return nullptr;
 }
 
-RefPtr<Node> Node::convertNodesOrStringsIntoNode(Vector<std::experimental::variant<Ref<Node>, String>>&& nodeOrStringVector, ExceptionCode& ec)
+RefPtr<Node> Node::convertNodesOrStringsIntoNode(Vector<std::experimental::variant<std::reference_wrapper<Node>, String>>&& nodeOrStringVector, ExceptionCode& ec)
 {
     if (nodeOrStringVector.isEmpty())
         return nullptr;
@@ -481,7 +477,7 @@ RefPtr<Node> Node::convertNodesOrStringsIntoNode(Vector<std::experimental::varia
     nodes.reserveInitialCapacity(nodeOrStringVector.size());
 
     auto visitor = WTF::makeVisitor(
-        [&](Ref<Node>& node) { nodes.uncheckedAppend(node.copyRef()); },
+        [&](std::reference_wrapper<Node>& node) { nodes.uncheckedAppend(node); },
         [&](String& string) { nodes.uncheckedAppend(Text::create(document(), string)); }
     );
 
@@ -499,7 +495,7 @@ RefPtr<Node> Node::convertNodesOrStringsIntoNode(Vector<std::experimental::varia
     return WTFMove(nodeToReturn);
 }
 
-void Node::before(Vector<std::experimental::variant<Ref<Node>, String>>&& nodeOrStringVector, ExceptionCode& ec)
+void Node::before(Vector<std::experimental::variant<std::reference_wrapper<Node>, String>>&& nodeOrStringVector, ExceptionCode& ec)
 {
     RefPtr<ContainerNode> parent = parentNode();
     if (!parent)
@@ -520,7 +516,7 @@ void Node::before(Vector<std::experimental::variant<Ref<Node>, String>>&& nodeOr
     parent->insertBefore(*node, viablePreviousSibling.get(), ec);
 }
 
-void Node::after(Vector<std::experimental::variant<Ref<Node>, String>>&& nodeOrStringVector, ExceptionCode& ec)
+void Node::after(Vector<std::experimental::variant<std::reference_wrapper<Node>, String>>&& nodeOrStringVector, ExceptionCode& ec)
 {
     RefPtr<ContainerNode> parent = parentNode();
     if (!parent)
@@ -536,7 +532,7 @@ void Node::after(Vector<std::experimental::variant<Ref<Node>, String>>&& nodeOrS
     parent->insertBefore(*node, viableNextSibling.get(), ec);
 }
 
-void Node::replaceWith(Vector<std::experimental::variant<Ref<Node>, String>>&& nodeOrStringVector, ExceptionCode& ec)
+void Node::replaceWith(Vector<std::experimental::variant<std::reference_wrapper<Node>, String>>&& nodeOrStringVector, ExceptionCode& ec)
 {
     RefPtr<ContainerNode> parent = parentNode();
     if (!parent)
@@ -841,19 +837,15 @@ bool Document::shouldInvalidateNodeListAndCollectionCaches(const QualifiedName* 
 
 void Document::invalidateNodeListAndCollectionCaches(const QualifiedName* attrName)
 {
-#if !ASSERT_DISABLED
-    m_inInvalidateNodeListAndCollectionCaches = true;
-#endif
-    HashSet<LiveNodeList*> lists = WTFMove(m_listsInvalidatedAtDocument);
-    m_listsInvalidatedAtDocument.clear();
+    Vector<LiveNodeList*, 8> lists;
+    copyToVector(m_listsInvalidatedAtDocument, lists);
     for (auto* list : lists)
         list->invalidateCacheForAttribute(attrName);
-    HashSet<HTMLCollection*> collections = WTFMove(m_collectionsInvalidatedAtDocument);
+
+    Vector<HTMLCollection*, 8> collections;
+    copyToVector(m_collectionsInvalidatedAtDocument, collections);
     for (auto* collection : collections)
         collection->invalidateCacheForAttribute(attrName);
-#if !ASSERT_DISABLED
-    m_inInvalidateNodeListAndCollectionCaches = false;
-#endif
 }
 
 void Node::invalidateNodeListAndCollectionCachesInAncestors(const QualifiedName* attrName, Element* attributeOwnerElement)
@@ -1169,16 +1161,31 @@ Element* Node::parentOrShadowHostElement() const
     return downcast<Element>(parent);
 }
 
-Node* Node::rootNode() const
+Node& Node::rootNode() const
 {
     if (isInTreeScope())
-        return &treeScope().rootNode();
+        return treeScope().rootNode();
 
     Node* node = const_cast<Node*>(this);
     Node* highest = node;
     for (; node; node = node->parentNode())
         highest = node;
-    return highest;
+    return *highest;
+}
+
+// https://dom.spec.whatwg.org/#concept-shadow-including-root
+Node& Node::shadowIncludingRoot() const
+{
+    auto& root = rootNode();
+    if (!is<ShadowRoot>(root))
+        return root;
+    auto* host = downcast<ShadowRoot>(root).host();
+    return host ? host->shadowIncludingRoot() : root;
+}
+
+Node& Node::getRootNode(const GetRootNodeOptions& options) const
+{
+    return options.composed ? shadowIncludingRoot() : rootNode();
 }
 
 Node::InsertionNotificationRequest Node::insertedInto(ContainerNode& insertionPoint)
@@ -1833,7 +1840,7 @@ void Node::getSubresourceURLs(ListHashSet<URL>& urls) const
 
 Element* Node::enclosingLinkEventParentOrSelf()
 {
-    for (Node* node = this; node; node = node->parentOrShadowHostNode()) {
+    for (Node* node = this; node; node = node->parentInComposedTree()) {
         // For imagemaps, the enclosing link element is the associated area element not the image itself.
         // So we don't let images be the enclosing link element, even though isLink sometimes returns
         // true for them.
@@ -2156,11 +2163,11 @@ void Node::dispatchSubtreeModifiedEvent()
     dispatchScopedEvent(MutationEvent::create(subtreeModifiedEventName, true));
 }
 
-bool Node::dispatchDOMActivateEvent(int detail, PassRefPtr<Event> underlyingEvent)
+bool Node::dispatchDOMActivateEvent(int detail, Event& underlyingEvent)
 {
     ASSERT_WITH_SECURITY_IMPLICATION(!NoEventDispatchAssertion::isEventDispatchForbidden());
     Ref<UIEvent> event = UIEvent::create(eventNames().DOMActivateEvent, true, true, document().defaultView(), detail);
-    event->setUnderlyingEvent(underlyingEvent.get());
+    event->setUnderlyingEvent(&underlyingEvent);
     dispatchScopedEvent(event);
     return event->defaultHandled();
 }
@@ -2196,34 +2203,34 @@ void Node::dispatchInputEvent()
     dispatchScopedEvent(Event::create(eventNames().inputEvent, true, false));
 }
 
-void Node::defaultEventHandler(Event* event)
+void Node::defaultEventHandler(Event& event)
 {
-    if (event->target() != this)
+    if (event.target() != this)
         return;
-    const AtomicString& eventType = event->type();
+    const AtomicString& eventType = event.type();
     if (eventType == eventNames().keydownEvent || eventType == eventNames().keypressEvent) {
-        if (is<KeyboardEvent>(*event)) {
+        if (is<KeyboardEvent>(event)) {
             if (Frame* frame = document().frame())
                 frame->eventHandler().defaultKeyboardEventHandler(downcast<KeyboardEvent>(event));
         }
     } else if (eventType == eventNames().clickEvent) {
-        int detail = is<UIEvent>(*event) ? downcast<UIEvent>(*event).detail() : 0;
+        int detail = is<UIEvent>(event) ? downcast<UIEvent>(event).detail() : 0;
         if (dispatchDOMActivateEvent(detail, event))
-            event->setDefaultHandled();
+            event.setDefaultHandled();
 #if ENABLE(CONTEXT_MENUS)
     } else if (eventType == eventNames().contextmenuEvent) {
         if (Frame* frame = document().frame())
             if (Page* page = frame->page())
-                page->contextMenuController().handleContextMenuEvent(event);
+                page->contextMenuController().handleContextMenuEvent(&event);
 #endif
     } else if (eventType == eventNames().textInputEvent) {
-        if (is<TextEvent>(*event)) {
+        if (is<TextEvent>(event)) {
             if (Frame* frame = document().frame())
                 frame->eventHandler().defaultTextInputEventHandler(downcast<TextEvent>(event));
         }
 #if ENABLE(PAN_SCROLLING)
-    } else if (eventType == eventNames().mousedownEvent && is<MouseEvent>(*event)) {
-        if (downcast<MouseEvent>(*event).button() == MiddleButton) {
+    } else if (eventType == eventNames().mousedownEvent && is<MouseEvent>(event)) {
+        if (downcast<MouseEvent>(event).button() == MiddleButton) {
             if (enclosingLinkEventParentOrSelf())
                 return;
 
@@ -2237,7 +2244,7 @@ void Node::defaultEventHandler(Event* event)
             }
         }
 #endif
-    } else if (eventNames().isWheelEventType(eventType) && is<WheelEvent>(*event)) {
+    } else if (eventNames().isWheelEventType(eventType) && is<WheelEvent>(event)) {
         // If we don't have a renderer, send the wheel event to the first node we find with a renderer.
         // This is needed for <option> and <optgroup> elements so that <select>s get a wheel scroll.
         Node* startNode = this;
@@ -2248,18 +2255,16 @@ void Node::defaultEventHandler(Event* event)
             if (Frame* frame = document().frame())
                 frame->eventHandler().defaultWheelEventHandler(startNode, downcast<WheelEvent>(event));
 #if ENABLE(TOUCH_EVENTS) && PLATFORM(IOS)
-    } else if (is<TouchEvent>(*event) && eventNames().isTouchEventType(eventType)) {
+    } else if (is<TouchEvent>(event) && eventNames().isTouchEventType(eventType)) {
         RenderObject* renderer = this->renderer();
         while (renderer && (!is<RenderBox>(*renderer) || !downcast<RenderBox>(*renderer).canBeScrolledAndHasScrollableArea()))
             renderer = renderer->parent();
 
         if (renderer && renderer->node()) {
             if (Frame* frame = document().frame())
-                frame->eventHandler().defaultTouchEventHandler(renderer->node(), downcast<TouchEvent>(event));
+                frame->eventHandler().defaultTouchEventHandler(renderer->node(), &downcast<TouchEvent>(event));
         }
 #endif
-    } else if (event->type() == eventNames().webkitEditableContentChangedEvent) {
-        dispatchInputEvent();
     }
 }
 

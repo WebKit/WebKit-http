@@ -26,7 +26,6 @@
 #pragma once
 
 #include "APIObject.h"
-#include "APISession.h"
 #include "AssistedNodeInformation.h"
 #include "AutoCorrectionCallback.h"
 #include "Connection.h"
@@ -154,6 +153,7 @@ class ProtectionSpace;
 class RunLoopObserver;
 class SharedBuffer;
 class TextIndicator;
+enum class HasInsecureContent;
 struct DictionaryPopupInfo;
 struct ExceptionDetails;
 struct FileChooserSettings;
@@ -206,7 +206,7 @@ struct AttributedString;
 struct ColorSpaceData;
 struct EditingRange;
 struct EditorState;
-struct GamepadData;
+class GamepadData;
 struct LoadParameters;
 struct PlatformPopupMenuData;
 struct PrintInfo;
@@ -283,7 +283,6 @@ public:
 
     uint64_t pageID() const { return m_pageID; }
     WebCore::SessionID sessionID() const { return m_sessionID; }
-    void setSessionID(WebCore::SessionID);
 
     WebFrameProxy* mainFrame() const { return m_mainFrame.get(); }
     WebFrameProxy* focusedFrame() const { return m_focusedFrame.get(); }
@@ -564,7 +563,7 @@ public:
     void setAcceleratedCompositingRootLayer(LayerOrView*);
     LayerOrView* acceleratedCompositingRootLayer() const;
 
-    void insertTextAsync(const String& text, const EditingRange& replacementRange, bool registerUndoGroup = false, EditingRangeIsRelativeTo = EditingRangeIsRelativeTo::EditableRoot);
+    void insertTextAsync(const String& text, const EditingRange& replacementRange, bool registerUndoGroup = false, EditingRangeIsRelativeTo = EditingRangeIsRelativeTo::EditableRoot, bool suppressSelectionUpdate = false);
     void getMarkedRangeAsync(std::function<void (EditingRange, CallbackBase::Error)>);
     void getSelectedRangeAsync(std::function<void (EditingRange, CallbackBase::Error)>);
     void characterIndexForPointAsync(const WebCore::IntPoint&, std::function<void (uint64_t, CallbackBase::Error)>);
@@ -762,6 +761,7 @@ public:
 
     void getContentsAsString(std::function<void (const String&, CallbackBase::Error)>);
     void getBytecodeProfile(std::function<void (const String&, CallbackBase::Error)>);
+    void getSamplingProfilerOutput(std::function<void (const String&, CallbackBase::Error)>);
     void isWebProcessResponsive(std::function<void (bool isWebProcessResponsive)>);
 
 #if ENABLE(MHTML)
@@ -810,7 +810,7 @@ public:
 #endif
 #endif
 #if PLATFORM(GTK)
-    void startDrag(const WebCore::DragData&, const ShareableBitmap::Handle& dragImage);
+    void startDrag(WebSelectionData&&, uint64_t dragOperation, const ShareableBitmap::Handle& dragImage);
 #endif
 #endif
 
@@ -1005,7 +1005,7 @@ public:
 
     bool shouldRecordNavigationSnapshots() const { return m_shouldRecordNavigationSnapshots; }
     void setShouldRecordNavigationSnapshots(bool shouldRecordSnapshots) { m_shouldRecordNavigationSnapshots = shouldRecordSnapshots; }
-    void recordNavigationSnapshot();
+    void recordAutomaticNavigationSnapshot();
     void recordNavigationSnapshot(WebBackForwardListItem&);
 
 #if PLATFORM(COCOA)
@@ -1035,6 +1035,10 @@ public:
 #if PLATFORM(MAC)
     void videoControlsManagerDidChange();
     bool hasActiveVideoForControlsManager() const;
+    void requestControlledElementID() const;
+    void handleControlledElementIDResponse(const String&) const;
+    void requestActiveNowPlayingSessionInfo();
+    void handleActiveNowPlayingSessionInfoResponse(bool hasActiveSession, const String& title, double duration, double elapsedTime) const;
     bool isPlayingVideoInEnhancedFullscreen() const;
 #endif
 
@@ -1119,6 +1123,8 @@ public:
     void setUserInterfaceLayoutDirection(WebCore::UserInterfaceLayoutDirection);
 
     bool hasHadSelectionChangesFromUserInteraction() const { return m_hasHadSelectionChangesFromUserInteraction; }
+    bool needsHiddenContentEditableQuirk() const { return m_needsHiddenContentEditableQuirk; }
+    bool needsPlainTextQuirk() const { return m_needsPlainTextQuirk; }
 
     bool isAlwaysOnLoggingAllowed() const;
 
@@ -1127,6 +1133,8 @@ public:
 #if ENABLE(GAMEPAD)
     void gamepadActivity(const Vector<GamepadData>&);
 #endif
+        
+    WeakPtr<WebPageProxy> createWeakPtr() const { return m_weakPtrFactory.createWeakPtr(); }
 
 private:
     WebPageProxy(PageClient&, WebProcessProxy&, uint64_t pageID, Ref<API::PageConfiguration>&&);
@@ -1151,8 +1159,9 @@ private:
     void didReceiveMessage(IPC::Connection&, IPC::Decoder&) override;
     void didReceiveSyncMessage(IPC::Connection&, IPC::Decoder&, std::unique_ptr<IPC::Encoder>&) override;
 
+
     // IPC::MessageSender
-    bool sendMessage(std::unique_ptr<IPC::Encoder>, unsigned messageSendFlags) override;
+    bool sendMessage(std::unique_ptr<IPC::Encoder>, OptionSet<IPC::SendOption>) override;
     IPC::Connection* messageSenderConnection() override;
     uint64_t messageSenderDestinationID() override;
 
@@ -1170,7 +1179,7 @@ private:
     void didReceiveServerRedirectForProvisionalLoadForFrame(uint64_t frameID, uint64_t navigationID, const String&, const UserData&);
     void didChangeProvisionalURLForFrame(uint64_t frameID, uint64_t navigationID, const String& url);
     void didFailProvisionalLoadForFrame(uint64_t frameID, const WebCore::SecurityOriginData& frameSecurityOrigin, uint64_t navigationID, const String& provisionalURL, const WebCore::ResourceError&, const UserData&);
-    void didCommitLoadForFrame(uint64_t frameID, uint64_t navigationID, const String& mimeType, bool frameHasCustomContentProvider, uint32_t frameLoadType, const WebCore::CertificateInfo&, bool containsPluginDocument, const UserData&);
+    void didCommitLoadForFrame(uint64_t frameID, uint64_t navigationID, const String& mimeType, bool frameHasCustomContentProvider, uint32_t frameLoadType, const WebCore::CertificateInfo&, bool containsPluginDocument, Optional<WebCore::HasInsecureContent> forcedHasInsecureContent, const UserData&);
     void didFinishDocumentLoadForFrame(uint64_t frameID, uint64_t navigationID, const UserData&);
     void didFinishLoadForFrame(uint64_t frameID, uint64_t navigationID, const UserData&);
     void didFailLoadForFrame(uint64_t frameID, uint64_t navigationID, const WebCore::ResourceError&, const UserData&);
@@ -1187,6 +1196,8 @@ private:
     void didChangeProgress(double);
     void didFinishProgress();
     void setNetworkRequestsInProgress(bool);
+
+    void hasInsecureContent(WebCore::HasInsecureContent&);
 
     void didDestroyNavigation(uint64_t navigationID);
 
@@ -1286,6 +1297,8 @@ private:
     void editorStateChanged(const EditorState&);
     void compositionWasCanceled(const EditorState&);
     void setHasHadSelectionChangesFromUserInteraction(bool);
+    void setNeedsHiddenContentEditableQuirk(bool);
+    void setNeedsPlainTextQuirk(bool);
 
     // Back/Forward list management
     void backForwardAddItem(uint64_t itemID);
@@ -1375,6 +1388,7 @@ private:
     void dataCallback(const IPC::DataReference&, uint64_t);
     void imageCallback(const ShareableBitmap::Handle&, uint64_t);
     void stringCallback(const String&, uint64_t);
+    void invalidateStringCallback(uint64_t);
     void scriptValueCallback(const IPC::DataReference&, bool hadException, const WebCore::ExceptionDetails&, uint64_t);
     void computedPagesCallback(const Vector<WebCore::IntRect>&, double totalScaleFactorForPrinting, uint64_t);
     void validateCommandCallback(const String&, bool, int, uint64_t);
@@ -1414,6 +1428,14 @@ private:
 #endif
 
     bool maybeInitializeSandboxExtensionHandle(const WebCore::URL&, SandboxExtension::Handle&);
+
+#if USE(AUTOMATIC_TEXT_REPLACEMENT)
+    void toggleSmartInsertDelete();
+    void toggleAutomaticQuoteSubstitution();
+    void toggleAutomaticLinkDetection();
+    void toggleAutomaticDashSubstitution();
+    void toggleAutomaticTextReplacement();
+#endif
 
 #if PLATFORM(MAC)
     void substitutionsPanelIsShowing(bool&);
@@ -1741,7 +1763,7 @@ private:
 #endif
 
     const uint64_t m_pageID;
-    WebCore::SessionID m_sessionID;
+    const WebCore::SessionID m_sessionID;
 
     bool m_isPageSuspended;
     bool m_addsVisitedLinks;
@@ -1827,7 +1849,7 @@ private:
     bool m_waitingForDidUpdateViewState;
 
     bool m_shouldScaleViewToFitDocument { false };
-    bool m_suppressNavigationSnapshotting { false };
+    bool m_suppressAutomaticNavigationSnapshotting { false };
 
 #if PLATFORM(COCOA)
     HashMap<String, String> m_temporaryPDFFiles;
@@ -1855,6 +1877,8 @@ private:
     bool m_isResourceCachingDisabled { false };
 
     bool m_hasHadSelectionChangesFromUserInteraction { false };
+    bool m_needsHiddenContentEditableQuirk { false };
+    bool m_needsPlainTextQuirk { false };
 
 #if ENABLE(MEDIA_SESSION)
     bool m_hasMediaSessionWithActiveMediaElements { false };
@@ -1873,6 +1897,8 @@ private:
 #if ENABLE(DOWNLOAD_ATTRIBUTE)
     bool m_syncNavigationActionHasDownloadAttribute { false };
 #endif
+        
+    WeakPtrFactory<WebPageProxy> m_weakPtrFactory;
 };
 
 } // namespace WebKit

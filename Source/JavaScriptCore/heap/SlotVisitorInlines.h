@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef SlotVisitorInlines_h
-#define SlotVisitorInlines_h
+#pragma once
 
 #include "SlotVisitor.h"
 #include "Weak.h"
@@ -106,13 +105,13 @@ inline void SlotVisitor::addUnconditionalFinalizer(UnconditionalFinalizer* uncon
 
 inline void SlotVisitor::reportExtraMemoryVisited(size_t size)
 {
-    heap()->reportExtraMemoryVisited(m_currentObjectCellStateBeforeVisiting, size);
+    heap()->reportExtraMemoryVisited(m_oldCellState, size);
 }
 
 #if ENABLE(RESOURCE_USAGE)
 inline void SlotVisitor::reportExternalMemoryVisited(size_t size)
 {
-    heap()->reportExternalMemoryVisited(m_currentObjectCellStateBeforeVisiting, size);
+    heap()->reportExternalMemoryVisited(m_oldCellState, size);
 }
 #endif
 
@@ -132,6 +131,3 @@ inline const VM& SlotVisitor::vm() const
 }
 
 } // namespace JSC
-
-#endif // SlotVisitorInlines_h
-

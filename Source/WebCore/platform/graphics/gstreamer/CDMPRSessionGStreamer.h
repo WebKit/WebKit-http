@@ -28,7 +28,7 @@
 #ifndef CDMPRSessionGStreamer_h
 #define CDMPRSessionGStreamer_h
 
-#if ENABLE(ENCRYPTED_MEDIA_V2) && USE(GSTREAMER) && USE(PLAYREADY)
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA) && USE(GSTREAMER) && USE(PLAYREADY)
 
 #include "CDMSession.h"
 #include "PlayreadySession.h"

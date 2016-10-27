@@ -40,12 +40,18 @@ namespace WebCore {
 enum TextSpacingCTFeatureSelector { TextSpacingProportional, TextSpacingFullWidth, TextSpacingHalfWidth, TextSpacingThirdWidth, TextSpacingQuarterWidth };
 
 FontPlatformData::FontPlatformData(CTFontRef font, float size, bool syntheticBold, bool syntheticOblique, FontOrientation orientation, FontWidthVariant widthVariant, TextRenderingMode textRenderingMode)
+#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED < 101200) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED < 100000)
     : FontPlatformData(adoptCF(CTFontCopyGraphicsFont(font, NULL)).get(), size, syntheticBold, syntheticOblique, orientation, widthVariant, textRenderingMode)
+#else
+    : FontPlatformData(size, syntheticBold, syntheticOblique, orientation, widthVariant, textRenderingMode)
+#endif
 {
     ASSERT_ARG(font, font);
     m_font = font;
     m_isColorBitmapFont = CTFontGetSymbolicTraits(font) & kCTFontTraitColorGlyphs;
     m_isSystemFont = CTFontDescriptorIsSystemUIFont(adoptCF(CTFontCopyFontDescriptor(m_font.get())).get());
+    auto variations = adoptCF(static_cast<CFDictionaryRef>(CTFontCopyAttribute(font, kCTFontVariationAttribute)));
+    m_hasVariations = variations && CFDictionaryGetCount(variations.get());
 
 #if PLATFORM(IOS)
     m_isEmoji = CTFontIsAppleColorEmoji(m_font.get());
@@ -63,7 +69,7 @@ bool FontPlatformData::platformIsEqual(const FontPlatformData& other) const
 #endif
         return result;
     }
-    return m_cgFont == other.m_cgFont;
+    return true;
 }
 
 CTFontRef FontPlatformData::registeredFont() const
@@ -95,11 +101,11 @@ inline int mapFontWidthVariantToCTFeatureSelector(FontWidthVariant variant)
     return TextSpacingProportional;
 }
 
-static CTFontDescriptorRef cascadeToLastResortFontDescriptor()
+static CFDictionaryRef cascadeToLastResortAttributesDictionary()
 {
-    static CTFontDescriptorRef descriptor;
-    if (descriptor)
-        return descriptor;
+    static CFDictionaryRef attributes = nullptr;
+    if (attributes)
+        return attributes;
 
     RetainPtr<CTFontDescriptorRef> lastResort = adoptCF(CTFontDescriptorCreateWithNameAndSize(CFSTR("LastResort"), 0));
 
@@ -108,11 +114,37 @@ static CTFontDescriptorRef cascadeToLastResortFontDescriptor()
 
     const void* keys[] = { kCTFontCascadeListAttribute };
     const void* values[] = { array.get() };
-    RetainPtr<CFDictionaryRef> attributes = adoptCF(CFDictionaryCreate(kCFAllocatorDefault, keys, values, WTF_ARRAY_LENGTH(keys), &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks));
+    attributes = CFDictionaryCreate(kCFAllocatorDefault, keys, values, WTF_ARRAY_LENGTH(keys), &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
 
-    descriptor = CTFontDescriptorCreateWithAttributes(attributes.get());
+    return attributes;
+}
 
-    return descriptor;
+static RetainPtr<CTFontDescriptorRef> cascadeToLastResortAndVariationsFontDescriptor(CTFontRef originalFont)
+{
+// FIXME: Remove this when <rdar://problem/28449441> is fixed.
+#define WORKAROUND_CORETEXT_VARIATIONS_WITH_FALLBACK_LIST_BUG (ENABLE(VARIATION_FONTS) && ((PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED < 101300) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED < 110000)))
+
+    CFDictionaryRef attributes = cascadeToLastResortAttributesDictionary();
+#if WORKAROUND_CORETEXT_VARIATIONS_WITH_FALLBACK_LIST_BUG
+    auto variations = adoptCF(static_cast<CFDictionaryRef>(CTFontCopyAttribute(originalFont, kCTFontVariationAttribute)));
+    if (!variations || !CFDictionaryGetCount(variations.get()) || CTFontDescriptorIsSystemUIFont(adoptCF(CTFontCopyFontDescriptor(originalFont)).get()))
+#endif
+    {
+        UNUSED_PARAM(originalFont);
+
+        static CTFontDescriptorRef descriptor = nullptr;
+        if (descriptor)
+            return descriptor;
+
+        descriptor = CTFontDescriptorCreateWithAttributes(attributes);
+        return descriptor;
+    }
+#if WORKAROUND_CORETEXT_VARIATIONS_WITH_FALLBACK_LIST_BUG
+    auto mutableAttributes = adoptCF(CFDictionaryCreateMutableCopy(kCFAllocatorDefault, 2, attributes));
+    CFDictionaryAddValue(mutableAttributes.get(), kCTFontVariationAttribute, variations.get());
+    return adoptCF(CTFontDescriptorCreateWithAttributes(mutableAttributes.get()));
+#endif
+#undef WORKAROUND_CORETEXT_VARIATIONS_WITH_FALLBACK_LIST_BUG
 }
 
 CTFontRef FontPlatformData::ctFont() const
@@ -121,8 +153,10 @@ CTFontRef FontPlatformData::ctFont() const
         return m_ctFont.get();
 
     ASSERT(m_font);
+#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED < 101200) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED < 100000)
     ASSERT(m_cgFont);
-    m_ctFont = adoptCF(CTFontCreateCopyWithAttributes(m_font.get(), m_size, 0, cascadeToLastResortFontDescriptor()));
+#endif
+    m_ctFont = adoptCF(CTFontCreateCopyWithAttributes(m_font.get(), m_size, 0, cascadeToLastResortAndVariationsFontDescriptor(m_font.get()).get()));
 
     if (m_widthVariant != RegularWidth) {
         int featureTypeValue = kTextSpacingType;
@@ -157,7 +191,7 @@ RetainPtr<CFTypeRef> FontPlatformData::objectForEqualityCheck() const
 
 RefPtr<SharedBuffer> FontPlatformData::openTypeTable(uint32_t table) const
 {
-    if (RetainPtr<CFDataRef> data = adoptCF(CGFontCopyTableForTag(cgFont(), table)))
+    if (RetainPtr<CFDataRef> data = adoptCF(CTFontCopyTable(font(), table, kCTFontTableOptionNoOptions)))
         return SharedBuffer::wrapCFData(data.get());
     
     return nullptr;
@@ -166,8 +200,8 @@ RefPtr<SharedBuffer> FontPlatformData::openTypeTable(uint32_t table) const
 #ifndef NDEBUG
 String FontPlatformData::description() const
 {
-    RetainPtr<CFStringRef> cgFontDescription = adoptCF(CFCopyDescription(cgFont()));
-    return String(cgFontDescription.get()) + " " + String::number(m_size)
+    auto fontDescription = adoptCF(CFCopyDescription(font()));
+    return String(fontDescription.get()) + " " + String::number(m_size)
             + (m_syntheticBold ? " synthetic bold" : "") + (m_syntheticOblique ? " synthetic oblique" : "") + (m_orientation ? " vertical orientation" : "");
 }
 #endif

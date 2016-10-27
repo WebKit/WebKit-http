@@ -99,7 +99,7 @@ std::unique_ptr<Length[]> newCoordsArray(const String& string, int& len)
         else
             spacified[i] = cc;
     }
-    RefPtr<StringImpl> str = StringImpl::adopt(spacified);
+    RefPtr<StringImpl> str = StringImpl::adopt(WTFMove(spacified));
 
     str = str->simplifyWhiteSpace();
 
@@ -293,12 +293,12 @@ static Length blendMixedTypes(const Length& from, const Length& to, double progr
         return to;
         
     auto blend = std::make_unique<CalcExpressionBlendLength>(from, to, progress);
-    return Length(CalculationValue::create(WTFMove(blend), CalculationRangeAll));
+    return Length(CalculationValue::create(WTFMove(blend), ValueRangeAll));
 }
 
 Length blend(const Length& from, const Length& to, double progress)
 {
-    if (from.isAuto() || to.isAuto())
+    if (from.isAuto() || from.isUndefined() || to.isAuto() || to.isUndefined())
         return to;
 
     if (from.type() == Calculated || to.type() == Calculated)

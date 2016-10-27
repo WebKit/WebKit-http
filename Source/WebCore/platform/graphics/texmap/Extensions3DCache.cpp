@@ -44,10 +44,10 @@ const Extensions3DCache& Extensions3DCache::singleton()
 
 Extensions3DCache::Extensions3DCache()
 {
-    GLContext* previousActiveContext = GLContext::getCurrent();
+    GLContext* previousActiveContext = GLContext::current();
 
     if (!previousActiveContext)
-        GLContext::sharingContext()->makeContextCurrent();
+        PlatformDisplay::sharedDisplayForCompositing().sharingGLContext()->makeContextCurrent();
 
     RefPtr<GraphicsContext3D> context3D = GraphicsContext3D::createForCurrentGLContext();
     m_GL_EXT_unpack_subimage = context3D->getExtensions()->supports("GL_EXT_unpack_subimage");

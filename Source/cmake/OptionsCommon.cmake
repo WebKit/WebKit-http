@@ -15,27 +15,57 @@ else ()
     set(CODE_GENERATOR_PREPROCESSOR_WITH_LINEMARKERS "${CMAKE_CXX_COMPILER} -E -x c++")
 endif ()
 
-execute_process(COMMAND ${CMAKE_AR} -V OUTPUT_VARIABLE AR_VERSION)
-if ("${AR_VERSION}" MATCHES "^GNU ar")
-    set(CMAKE_CXX_ARCHIVE_CREATE "<CMAKE_AR> crT <TARGET> <LINK_FLAGS> <OBJECTS>")
-    set(CMAKE_C_ARCHIVE_CREATE "<CMAKE_AR> crT <TARGET> <LINK_FLAGS> <OBJECTS>")
-    set(CMAKE_CXX_ARCHIVE_APPEND "<CMAKE_AR> rT <TARGET> <LINK_FLAGS> <OBJECTS>")
-    set(CMAKE_C_ARCHIVE_APPEND "<CMAKE_AR> rT <TARGET> <LINK_FLAGS> <OBJECTS>")
+option(USE_THIN_ARCHIVES "Produce all static libraries as thin archives" ON)
+if (USE_THIN_ARCHIVES)
+    execute_process(COMMAND ${CMAKE_AR} -V OUTPUT_VARIABLE AR_VERSION)
+    if ("${AR_VERSION}" MATCHES "^GNU ar")
+        set(CMAKE_CXX_ARCHIVE_CREATE "<CMAKE_AR> crT <TARGET> <LINK_FLAGS> <OBJECTS>")
+        set(CMAKE_C_ARCHIVE_CREATE "<CMAKE_AR> crT <TARGET> <LINK_FLAGS> <OBJECTS>")
+        set(CMAKE_CXX_ARCHIVE_APPEND "<CMAKE_AR> rT <TARGET> <LINK_FLAGS> <OBJECTS>")
+        set(CMAKE_C_ARCHIVE_APPEND "<CMAKE_AR> rT <TARGET> <LINK_FLAGS> <OBJECTS>")
+    endif ()
 endif ()
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 define_property(TARGET PROPERTY FOLDER INHERITED BRIEF_DOCS "folder" FULL_DOCS "IDE folder name")
 
-if (CMAKE_COMPILER_IS_GNUCXX OR "${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+if (COMPILER_IS_GCC_OR_CLANG)
     set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -fno-exceptions -fno-strict-aliasing")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -std=c99")
     set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -fno-exceptions -fno-strict-aliasing -fno-rtti")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++1y")
 endif ()
 
-if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang" AND CMAKE_GENERATOR STREQUAL "Ninja")
+if (COMPILER_IS_CLANG AND CMAKE_GENERATOR STREQUAL "Ninja")
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fcolor-diagnostics")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fcolor-diagnostics")
+endif ()
+
+# Ensure that the default include system directories are added to the list of CMake implicit includes.
+# This workarounds an issue that happens when using GCC 6 and using system includes (-isystem).
+# For more details check: https://bugs.webkit.org/show_bug.cgi?id=161697
+macro(DETERMINE_GCC_SYSTEM_INCLUDE_DIRS _lang _compiler _flags _result)
+    file(WRITE "${CMAKE_BINARY_DIR}/CMakeFiles/dummy" "\n")
+    separate_arguments(_buildFlags UNIX_COMMAND "${_flags}")
+    execute_process(COMMAND ${_compiler} ${_buildFlags} -v -E -x ${_lang} -dD dummy
+                    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/CMakeFiles OUTPUT_QUIET
+                    ERROR_VARIABLE _gccOutput)
+    file(REMOVE "${CMAKE_BINARY_DIR}/CMakeFiles/dummy")
+    if ("${_gccOutput}" MATCHES "> search starts here[^\n]+\n *(.+) *\n *End of (search) list")
+        set(${_result} ${CMAKE_MATCH_1})
+        string(REPLACE "\n" " " ${_result} "${${_result}}")
+        separate_arguments(${_result})
+    endif ()
+endmacro()
+
+if (CMAKE_COMPILER_IS_GNUCC)
+   DETERMINE_GCC_SYSTEM_INCLUDE_DIRS("c" "${CMAKE_C_COMPILER}" "${CMAKE_C_FLAGS}" SYSTEM_INCLUDE_DIRS)
+   set(CMAKE_C_IMPLICIT_INCLUDE_DIRECTORIES ${CMAKE_C_IMPLICIT_INCLUDE_DIRECTORIES} ${SYSTEM_INCLUDE_DIRS})
+endif ()
+
+if (CMAKE_COMPILER_IS_GNUCXX)
+   DETERMINE_GCC_SYSTEM_INCLUDE_DIRS("c++" "${CMAKE_CXX_COMPILER}" "${CMAKE_CXX_FLAGS}" SYSTEM_INCLUDE_DIRS)
+   set(CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES ${CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES} ${SYSTEM_INCLUDE_DIRS})
 endif ()
 
 # Detect Cortex-A53 core if CPU is ARM64 and OS is Linux.
@@ -125,7 +155,7 @@ if (DEBUG_FISSION)
     set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--gdb-index")
 endif ()
 
-if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+if (COMPILER_IS_CLANG)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Qunused-arguments")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Qunused-arguments")
 endif ()
@@ -178,8 +208,59 @@ if (NOT APPLE)
     set(CMAKE_NINJA_FORCE_RESPONSE_FILE 1)
 endif ()
 
+# Macros for determining HAVE values.
+include(CheckIncludeFile)
+include(CheckFunctionExists)
+include(CheckSymbolExists)
+include(CheckStructHasMember)
+
+macro(_HAVE_CHECK_INCLUDE _variable _header)
+    check_include_file(${_header} ${_variable}_value)
+    SET_AND_EXPOSE_TO_BUILD(${_variable} ${_variable}_value)
+endmacro()
+
+macro(_HAVE_CHECK_FUNCTION _variable _function)
+    check_function_exists(${_function} ${_variable}_value)
+    SET_AND_EXPOSE_TO_BUILD(${_variable} ${_variable}_value)
+endmacro()
+
+macro(_HAVE_CHECK_SYMBOL _variable _symbol _header)
+    check_symbol_exists(${_symbol} ${_header} ${_variable}_value)
+    SET_AND_EXPOSE_TO_BUILD(${_variable} ${_variable}_value)
+endmacro()
+
+macro(_HAVE_CHECK_STRUCT _variable _struct _member _header)
+    check_struct_has_member(${_struct} ${_member} ${_header} ${_variable}_value)
+    SET_AND_EXPOSE_TO_BUILD(${_variable} ${_variable}_value)
+endmacro()
+
 # Check whether features.h header exists.
 # Including glibc's one defines __GLIBC__, that is used in Platform.h
-include(CheckIncludeFiles)
-check_include_files(features.h HAVE_FEATURES_H)
-SET_AND_EXPOSE_TO_BUILD(HAVE_FEATURES_H ${HAVE_FEATURES_H})
+_HAVE_CHECK_INCLUDE(HAVE_FEATURES_H features.h)
+
+# Check for headers
+_HAVE_CHECK_INCLUDE(HAVE_ERRNO_H errno.h)
+_HAVE_CHECK_INCLUDE(HAVE_LANGINFO_H langinfo.h)
+_HAVE_CHECK_INCLUDE(HAVE_MMAP sys/mman.h)
+_HAVE_CHECK_INCLUDE(HAVE_PTHREAD_NP_H pthread_np.h)
+_HAVE_CHECK_INCLUDE(HAVE_STRINGS_H strings.h)
+_HAVE_CHECK_INCLUDE(HAVE_SYS_PARAM_H sys/param.h)
+_HAVE_CHECK_INCLUDE(HAVE_SYS_TIME_H sys/time.h)
+_HAVE_CHECK_INCLUDE(HAVE_SYS_TIMEB_H sys/timeb.h)
+
+# Check for functions
+_HAVE_CHECK_FUNCTION(HAVE_ALIGNED_MALLOC _aligned_malloc)
+_HAVE_CHECK_FUNCTION(HAVE_ISDEBUGGERPRESENT IsDebuggerPresent)
+_HAVE_CHECK_FUNCTION(HAVE_LOCALTIME_R localtime_r)
+_HAVE_CHECK_FUNCTION(HAVE_STRNSTR strnstr)
+_HAVE_CHECK_FUNCTION(HAVE_TIMEGM timegm)
+_HAVE_CHECK_FUNCTION(HAVE_VASPRINTF vasprintf)
+
+# Check for symbols
+# Windows has signal.h but is missing symbols that are used in calls to signal.
+_HAVE_CHECK_SYMBOL(HAVE_SIGNAL_H SIGTRAP signal.h)
+
+# Check for struct members
+_HAVE_CHECK_STRUCT(HAVE_STAT_BIRTHTIME "struct stat" st_birthtime sys/stat.h)
+_HAVE_CHECK_STRUCT(HAVE_TM_GMTOFF "struct tm" tm_gmtoff time.h)
+_HAVE_CHECK_STRUCT(HAVE_TM_ZONE "struct tm" tm_zone time.h)

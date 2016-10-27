@@ -1,6 +1,6 @@
 /*
  *  Copyright (C) 1999-2000 Harri Porten (porten@kde.org)
- *  Copyright (C) 2004, 2005, 2006, 2007, 2008, 2011, 2016 Apple Inc. All rights reserved.
+ *  Copyright (C) 2004-2008, 2011, 2016 Apple Inc. All rights reserved.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
@@ -147,6 +147,7 @@ static double millisecondsFromComponents(ExecState* exec, const ArgList& args, W
 JSObject* constructDate(ExecState* exec, JSGlobalObject* globalObject, JSValue newTarget, const ArgList& args)
 {
     VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     int numArgs = args.size();
 
     double value;
@@ -167,8 +168,7 @@ JSObject* constructDate(ExecState* exec, JSGlobalObject* globalObject, JSValue n
         value = millisecondsFromComponents(exec, args, WTF::LocalTime);
 
     Structure* dateStructure = InternalFunction::createSubclassStructure(exec, newTarget, globalObject->dateStructure());
-    if (exec->hadException())
-        return nullptr;
+    RETURN_IF_EXCEPTION(scope, nullptr);
 
     return DateInstance::create(vm, dateStructure, value);
 }
@@ -202,10 +202,11 @@ CallType DateConstructor::getCallData(JSCell*, CallData& callData)
 
 EncodedJSValue JSC_HOST_CALL dateParse(ExecState* exec)
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     String dateStr = exec->argument(0).toString(exec)->value(exec);
-    if (exec->hadException())
-        return JSValue::encode(jsUndefined());
-    return JSValue::encode(jsNumber(parseDate(exec->vm(), dateStr)));
+    RETURN_IF_EXCEPTION(scope, encodedJSValue());
+    return JSValue::encode(jsNumber(parseDate(vm, dateStr)));
 }
 
 EncodedJSValue JSC_HOST_CALL dateNow(ExecState* exec)

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009 Apple Inc. All rights reserved.
+ * Copyright (C) 2009, 2016 Apple Inc. All rights reserved.
  * Copyright (C) 2012 Mathias Bynens (mathias@qiwi.be)
  *
  * Redistribution and use in source and binary forms, with or without
@@ -29,7 +29,6 @@
 
 #include "ButterflyInlines.h"
 #include "CodeBlock.h"
-#include "CopiedSpaceInlines.h"
 #include "JSArray.h"
 #include "JSString.h"
 #include "Lexer.h"
@@ -572,6 +571,8 @@ TokenType LiteralParser<CharType>::Lexer::lexNumber(LiteralParserToken<CharType>
 template <typename CharType>
 JSValue LiteralParser<CharType>::parse(ParserState initialState)
 {
+    VM& vm = m_exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     ParserState state = initialState;
     MarkedArgumentBuffer objectStack;
     JSValue lastValue;
@@ -583,8 +584,7 @@ JSValue LiteralParser<CharType>::parse(ParserState initialState)
             startParseArray:
             case StartParseArray: {
                 JSArray* array = constructEmptyArray(m_exec, 0);
-                if (UNLIKELY(m_exec->hadException()))
-                    return JSValue();
+                RETURN_IF_EXCEPTION(scope, JSValue());
                 objectStack.append(array);
             }
             doParseArrayStartExpression:
@@ -681,7 +681,7 @@ JSValue LiteralParser<CharType>::parse(ParserState initialState)
             {
                 JSObject* object = asObject(objectStack.last());
                 PropertyName ident = identifierStack.last();
-                if (m_mode != StrictJSON && ident == m_exec->vm().propertyNames->underscoreProto) {
+                if (m_mode != StrictJSON && ident == vm.propertyNames->underscoreProto) {
                     if (!visitedUnderscoreProto.add(object).isNewEntry) {
                         m_parseErrorMessage = ASCIILiteral("Attempted to redefine __proto__ property");
                         return JSValue();
@@ -693,7 +693,7 @@ JSValue LiteralParser<CharType>::parse(ParserState initialState)
                     if (Optional<uint32_t> index = parseIndex(ident))
                         object->putDirectIndex(m_exec, index.value(), lastValue);
                     else
-                        object->putDirect(m_exec->vm(), ident, lastValue);                    
+                        object->putDirect(vm, ident, lastValue);
                 }
                 identifierStack.removeLast();
                 if (m_lexer.currentToken()->type == TokComma)

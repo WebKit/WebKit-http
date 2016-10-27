@@ -28,11 +28,14 @@
 
 #if ENABLE(WEBASSEMBLY)
 
+#include "AuxiliaryBarrierInlines.h"
+#include "HeapInlines.h"
 #include "JSArrayBuffer.h"
 #include "JSCJSValueInlines.h"
 #include "JSCellInlines.h"
 #include "JSFunction.h"
 #include "SlotVisitorInlines.h"
+#include "StructureInlines.h"
 
 namespace JSC {
 

@@ -24,9 +24,9 @@
  */
 
 #include "config.h"
+#include "MathMLStyle.h"
 
 #if ENABLE(MATHML)
-#include "MathMLStyle.h"
 
 #include "MathMLElement.h"
 #include "MathMLNames.h"
@@ -87,8 +87,6 @@ void MathMLStyle::updateStyleIfNeeded(RenderObject* renderer, bool oldDisplaySty
         renderer->setNeedsLayoutAndPrefWidthsRecalc();
         if (is<RenderMathMLToken>(renderer))
             downcast<RenderMathMLToken>(renderer)->updateTokenContent();
-        else if (is<RenderMathMLRoot>(renderer))
-            downcast<RenderMathMLRoot>(renderer)->updateStyle();
         else if (is<RenderMathMLFraction>(renderer))
             downcast<RenderMathMLFraction>(renderer)->updateFromElement();
     }

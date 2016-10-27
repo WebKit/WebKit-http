@@ -41,6 +41,7 @@
 #include "StyleProperties.h"
 #include "StyleResolver.h"
 #include "StyleRule.h"
+#include "StyleScope.h"
 #include <math.h>
 
 namespace WebCore {
@@ -49,7 +50,7 @@ using namespace SVGNames;
 
 inline SVGFontFaceElement::SVGFontFaceElement(const QualifiedName& tagName, Document& document)
     : SVGElement(tagName, document)
-    , m_fontFaceRule(StyleRuleFontFace::create(MutableStyleProperties::create(CSSStrictMode)))
+    , m_fontFaceRule(StyleRuleFontFace::create(MutableStyleProperties::create(HTMLStandardMode)))
     , m_fontElement(nullptr)
 {
     ASSERT(hasTagName(font_faceTag));
@@ -76,7 +77,7 @@ unsigned SVGFontFaceElement::unitsPerEm() const
 {
     const AtomicString& value = attributeWithoutSynchronization(units_per_emAttr);
     if (value.isEmpty())
-        return gDefaultUnitsPerEm;
+        return FontMetrics::defaultUnitsPerEm;
 
     return static_cast<unsigned>(ceilf(value.toFloat()));
 }
@@ -266,7 +267,7 @@ void SVGFontFaceElement::rebuildFontFace()
         }
     }
 
-    document().styleResolverChanged(DeferRecalcStyle);
+    document().styleScope().didChangeContentsOrInterpretation();
 }
 
 Node::InsertionNotificationRequest SVGFontFaceElement::insertedInto(ContainerNode& rootParent)
@@ -291,7 +292,7 @@ void SVGFontFaceElement::removedFrom(ContainerNode& rootParent)
         document().accessSVGExtensions().unregisterSVGFontFaceElement(this);
         m_fontFaceRule->mutableProperties().clear();
 
-        document().styleResolverChanged(DeferRecalcStyle);
+        document().styleScope().didChangeContentsOrInterpretation();
     } else
         ASSERT(!m_fontElement);
 }

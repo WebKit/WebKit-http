@@ -41,13 +41,15 @@ class Document;
 class Element;
 class Frame;
 
+String inputTypeNameForEditingAction(EditAction);
+
 class EditCommand : public RefCounted<EditCommand> {
 public:
     virtual ~EditCommand();
 
     void setParent(CompositeEditCommand*);
 
-    EditAction editingAction() const;
+    virtual EditAction editingAction() const;
 
     const VisibleSelection& startingSelection() const { return m_startingSelection; }
     const VisibleSelection& endingSelection() const { return m_endingSelection; }
@@ -69,6 +71,8 @@ protected:
     CompositeEditCommand* parent() const { return m_parent; }
     void setStartingSelection(const VisibleSelection&);
     WEBCORE_EXPORT void setEndingSelection(const VisibleSelection&);
+
+    bool isEditingTextAreaOrTextInput() const;
 
     void postTextStateChangeNotification(AXTextEditType, const String&);
     void postTextStateChangeNotification(AXTextEditType, const String&, const VisiblePosition&);

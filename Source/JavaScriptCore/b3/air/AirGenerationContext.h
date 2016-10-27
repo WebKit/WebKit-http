@@ -23,15 +23,14 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef AirGenerationContext_h
-#define AirGenerationContext_h
+#pragma once
 
 #if ENABLE(B3_JIT)
 
 #include "AirBasicBlock.h"
-#include "B3IndexMap.h"
 #include "CCallHelpers.h"
 #include <wtf/Box.h>
+#include <wtf/IndexMap.h>
 #include <wtf/SharedTask.h>
 #include <wtf/Vector.h>
 
@@ -53,6 +52,3 @@ struct GenerationContext {
 } } } // namespace JSC::B3::Air
 
 #endif // ENABLE(B3_JIT)
-
-#endif // AirGenerationContext_h
-

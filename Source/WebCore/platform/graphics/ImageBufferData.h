@@ -25,6 +25,8 @@
 
 #if USE(CG)
 #include "ImageBufferDataCG.h"
+#elif USE(DIRECT2D)
+#include "ImageBufferDataDirect2D.h"
 #elif USE(CAIRO)
 #include "ImageBufferDataCairo.h"
 #endif

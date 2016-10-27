@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef DFGAbstractValue_h
-#define DFGAbstractValue_h
+#pragma once
 
 #if ENABLE(DFG_JIT)
 
@@ -61,9 +60,7 @@ struct AbstractValue {
         static bool needsDefaultConstructorCheck = true;
         if (needsDefaultConstructorCheck) {
             needsDefaultConstructorCheck = false;
-
-            for (unsigned i = 0; i < sizeof(AbstractValue); ++i)
-                ASSERT(!(reinterpret_cast<char*>(this)[i]));
+            ensureCanInitializeWithZeros();
         }
 #endif
     }
@@ -310,6 +307,7 @@ struct AbstractValue {
     FiltrationResult filter(SpeculatedType);
     FiltrationResult filterByValue(const FrozenValue& value);
     FiltrationResult filter(const AbstractValue&);
+    FiltrationResult filterClassInfo(Graph&, const ClassInfo*);
 
     FiltrationResult filter(Graph&, const InferredType::Descriptor&);
     
@@ -459,6 +457,10 @@ private:
     
     void filterValueByType();
     void filterArrayModesByType();
+
+#if USE(JSVALUE64) && !defined(NDEBUG)
+    void ensureCanInitializeWithZeros();
+#endif
     
     bool shouldBeClear() const;
     FiltrationResult normalizeClarity();
@@ -482,7 +484,3 @@ struct HashTraits<JSC::DFG::AbstractValue> : GenericHashTraits<JSC::DFG::Abstrac
 #endif // USE(JSVALUE64)
 
 #endif // ENABLE(DFG_JIT)
-
-#endif // DFGAbstractValue_h
-
-

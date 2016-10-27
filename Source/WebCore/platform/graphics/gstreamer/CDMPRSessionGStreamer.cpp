@@ -28,7 +28,7 @@
 #include "config.h"
 #include "CDMPRSessionGStreamer.h"
 
-#if ENABLE(ENCRYPTED_MEDIA_V2) && USE(GSTREAMER) && USE(PLAYREADY)
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA) && USE(GSTREAMER) && USE(PLAYREADY)
 
 #include "CDM.h"
 #include "MediaKeyError.h"

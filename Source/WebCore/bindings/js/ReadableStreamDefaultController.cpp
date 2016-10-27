@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2016 Canon Inc.
+ * Copyright (C) 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted, provided that the following conditions
@@ -30,10 +31,8 @@
 #include "config.h"
 #include "ReadableStreamDefaultController.h"
 
-#if ENABLE(STREAMS_API)
+#if ENABLE(READABLE_STREAM_API)
 
-#include "JSReadableStream.h"
-#include "JSReadableStreamSource.h"
 #include "WebCoreJSClientData.h"
 
 namespace WebCore {
@@ -47,15 +46,16 @@ static inline JSC::JSValue callFunction(JSC::ExecState& state, JSC::JSValue jsFu
 
 JSC::JSValue ReadableStreamDefaultController::invoke(JSC::ExecState& state, JSC::JSObject& object, const char* propertyName, JSC::JSValue parameter)
 {
-    JSC::JSLockHolder lock(&state);
+    JSC::VM& vm = state.vm();
+    JSC::JSLockHolder lock(vm);
+    auto scope = DECLARE_THROW_SCOPE(vm);
 
     auto function = object.get(&state, JSC::Identifier::fromString(&state, propertyName));
-    if (state.hadException())
-        return JSC::jsUndefined();
+    RETURN_IF_EXCEPTION(scope, JSC::JSValue());
 
     if (!function.isFunction()) {
         if (!function.isUndefined())
-            throwTypeError(&state, ASCIILiteral("ReadableStream trying to call a property that is not callable"));
+            throwTypeError(&state, scope, ASCIILiteral("ReadableStream trying to call a property that is not callable"));
         return JSC::jsUndefined();
     }
 
@@ -67,23 +67,27 @@ JSC::JSValue ReadableStreamDefaultController::invoke(JSC::ExecState& state, JSC:
 
 bool ReadableStreamDefaultController::isControlledReadableStreamLocked() const
 {
-    auto& state = *globalObject()->globalExec();
-    JSC::JSLockHolder lock(&state);
+    auto& globalObject = this->globalObject();
+    JSC::VM& vm = globalObject.vm();
+    JSC::JSLockHolder lock(vm);
+    auto scope = DECLARE_CATCH_SCOPE(vm);
+    auto& state = globalExec();
 
-    auto& clientData = *static_cast<JSVMClientData*>(state.vm().clientData);
+    auto& clientData = *static_cast<JSVMClientData*>(vm.clientData);
     auto readableStream = m_jsController->get(&state, clientData.builtinNames().controlledReadableStreamPrivateName());
-    ASSERT(!state.hadException());
+    ASSERT_UNUSED(scope, !scope.exception());
 
-    auto isLocked = globalObject()->builtinInternalFunctions().readableStreamInternals().m_isReadableStreamLockedFunction.get();
+    auto* isLocked = globalObject.builtinInternalFunctions().readableStreamInternals().m_isReadableStreamLockedFunction.get();
+    ASSERT(isLocked);
 
     JSC::MarkedArgumentBuffer arguments;
     arguments.append(readableStream);
     auto result = callFunction(state, isLocked, JSC::jsUndefined(), arguments);
-    ASSERT(!state.hadException());
+    ASSERT(!scope.exception());
 
     return result.isTrue();
 }
 
 } // namespace WebCore
 
-#endif // ENABLE(STREAMS_API)
+#endif // ENABLE(READABLE_STREAM_API)

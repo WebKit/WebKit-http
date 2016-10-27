@@ -28,7 +28,7 @@
 
 #pragma once
 
-#if ENABLE(FETCH_API) && ENABLE(STREAMS_API)
+#if ENABLE(FETCH_API) && ENABLE(READABLE_STREAM_API)
 
 #include "ReadableStreamSource.h"
 
@@ -51,9 +51,11 @@ public:
     bool isCancelling() const { return m_isCancelling; }
     bool isReadableStreamLocked() const;
 
+    void resolvePullPromise() { pullFinished(); }
+
 private:
-    void firstReadCallback() final;
     void doStart() final;
+    void doPull() final;
     void doCancel() final;
     void setActive() final;
     void setInactive() final;
@@ -64,4 +66,4 @@ private:
 
 } // namespace WebCore
 
-#endif // ENABLE(FETCH_API) && ENABLE(STREAMS_API)
+#endif // ENABLE(FETCH_API) && ENABLE(READABLE_STREAM_API)

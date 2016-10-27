@@ -140,6 +140,7 @@
 #import <WebCore/FrameTree.h>
 #import <WebCore/FrameView.h>
 #import <WebCore/GCController.h>
+#import <WebCore/GameControllerGamepadProvider.h>
 #import <WebCore/GeolocationController.h>
 #import <WebCore/GeolocationError.h>
 #import <WebCore/HTMLNames.h>
@@ -260,7 +261,6 @@
 #import <WebCore/ResourceLoadStatisticsStore.h>
 #import <WebCore/SQLiteDatabaseTracker.h>
 #import <WebCore/SmartReplace.h>
-#import <WebCore/TextRun.h>
 #import <WebCore/TileControllerMemoryHandlerIOS.h>
 #import <WebCore/WAKWindow.h>
 #import <WebCore/WKView.h>
@@ -903,6 +903,16 @@ static bool shouldConvertInvalidURLsToBlank()
     return shouldConvertInvalidURLsToBlank;
 }
 
+static bool shouldRequireUserGestureToLoadVideo()
+{
+#if PLATFORM(IOS)
+    static bool shouldRequireUserGestureToLoadVideo = dyld_get_program_sdk_version() >= DYLD_IOS_VERSION_10_0;
+    return shouldRequireUserGestureToLoadVideo;
+#else
+    return true;
+#endif
+}
+
 #if ENABLE(GAMEPAD)
 static void WebKitInitializeGamepadProviderIfNecessary()
 {
@@ -910,7 +920,12 @@ static void WebKitInitializeGamepadProviderIfNecessary()
     if (initialized)
         return;
 
+#if PLATFORM(MAC)
     GamepadProvider::singleton().setSharedProvider(HIDGamepadProvider::singleton());
+#else
+    GamepadProvider::singleton().setSharedProvider(GameControllerGamepadProvider::singleton());
+#endif
+
     initialized = true;
 }
 #endif
@@ -961,7 +976,7 @@ static void WebKitInitializeGamepadProviderIfNecessary()
     static bool didOneTimeInitialization = false;
 #endif
     if (!didOneTimeInitialization) {
-#if !LOG_DISABLED
+#if !LOG_DISABLED || !RELEASE_LOG_DISABLED
         WebKitInitializeLogChannelsIfNecessary();
         WebCore::initializeLogChannelsIfNecessary();
 #endif
@@ -1419,7 +1434,7 @@ static void WebKitInitializeGamepadProviderIfNecessary()
 {
     ASSERT(WebThreadIsCurrent());
     WebKit::MemoryMeasure measurer("Memory warning: Calling JavaScript GC.");
-    GCController::singleton().garbageCollectNow();
+    WebCore::GCController::singleton().garbageCollectNow();
 }
 
 + (void)purgeInactiveFontData
@@ -1440,7 +1455,7 @@ static void WebKitInitializeGamepadProviderIfNecessary()
 {
     ASSERT(WebThreadIsCurrent());
     WebKit::MemoryMeasure measurer("Memory warning: Discarding JIT'ed code.");
-    GCController::singleton().deleteAllCode();
+    WebCore::GCController::singleton().deleteAllCode();
 }
 
 + (BOOL)isCharacterSmartReplaceExempt:(unichar)character isPreviousCharacter:(BOOL)b
@@ -1877,7 +1892,7 @@ static bool fastDocumentTeardownEnabled()
 #ifndef NDEBUG
     // Need this to make leak messages accurate.
     if (applicationIsTerminating) {
-        GCController::singleton().garbageCollectNow();
+        WebCore::GCController::singleton().garbageCollectNow();
         [WebCache setDisabled:YES];
     }
 #endif
@@ -2365,6 +2380,7 @@ static bool needsSelfRetainWhileLoadingQuirk()
     BOOL mediaPlaybackRequiresUserGesture = [preferences mediaPlaybackRequiresUserGesture];
     settings.setVideoPlaybackRequiresUserGesture(mediaPlaybackRequiresUserGesture || [preferences videoPlaybackRequiresUserGesture]);
     settings.setAudioPlaybackRequiresUserGesture(mediaPlaybackRequiresUserGesture || [preferences audioPlaybackRequiresUserGesture]);
+    settings.setRequiresUserGestureToLoadVideo(shouldRequireUserGestureToLoadVideo());
     settings.setMainContentUserGestureOverrideEnabled([preferences overrideUserGestureRequirementForMainContent]);
     settings.setAllowsInlineMediaPlayback([preferences mediaPlaybackAllowsInline]);
     settings.setAllowsInlineMediaPlaybackAfterFullscreen([preferences allowsInlineMediaPlaybackAfterFullscreen]);
@@ -2441,7 +2457,7 @@ static bool needsSelfRetainWhileLoadingQuirk()
     ASSERT_WITH_MESSAGE(settings.pageCacheSupportsPlugins(), "PageCacheSupportsPlugins should be enabled on iOS.");
     settings.setDelegatesPageScaling(true);
 
-#if ENABLE(IOS_TEXT_AUTOSIZING)
+#if ENABLE(TEXT_AUTOSIZING)
     settings.setMinimumZoomFontSize([preferences _minimumZoomFontSize]);
     settings.setTextAutosizingEnabled([preferences _textAutosizingEnabled]);
 #endif
@@ -2520,6 +2536,8 @@ static bool needsSelfRetainWhileLoadingQuirk()
 
     RuntimeEnabledFeatures::sharedFeatures().setDOMIteratorEnabled([preferences DOMIteratorEnabled]);
 
+    RuntimeEnabledFeatures::sharedFeatures().setModernMediaControlsEnabled([preferences modernMediaControlsEnabled]);
+
 #if ENABLE(CUSTOM_ELEMENTS)
     RuntimeEnabledFeatures::sharedFeatures().setCustomElementsEnabled([preferences customElementsEnabled]);
 #endif
@@ -2562,7 +2580,7 @@ static bool needsSelfRetainWhileLoadingQuirk()
     [WAKView _setInterpolationQuality:[preferences _interpolationQuality]];
 #endif
 
-#if ENABLE(ENCRYPTED_MEDIA_V2)
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
     settings.setMediaKeysStorageDirectory([preferences mediaKeysStorageDirectory]);
 #endif
 
@@ -6772,24 +6790,14 @@ static WebFrame *incrementFrame(WebFrame *frame, WebFindOptions options = 0)
 
 - (void)scheduleInRunLoop:(NSRunLoop *)runLoop forMode:(NSString *)mode
 {
-#if USE(CFNETWORK)
-    CFRunLoopRef schedulePairRunLoop = [runLoop getCFRunLoop];
-#else
-    NSRunLoop *schedulePairRunLoop = runLoop;
-#endif
     if (runLoop && mode)
-        core(self)->addSchedulePair(SchedulePair::create(schedulePairRunLoop, (CFStringRef)mode));
+        core(self)->addSchedulePair(SchedulePair::create(runLoop, (CFStringRef)mode));
 }
 
 - (void)unscheduleFromRunLoop:(NSRunLoop *)runLoop forMode:(NSString *)mode
 {
-#if USE(CFNETWORK)
-    CFRunLoopRef schedulePairRunLoop = [runLoop getCFRunLoop];
-#else
-    NSRunLoop *schedulePairRunLoop = runLoop;
-#endif
     if (runLoop && mode)
-        core(self)->removeSchedulePair(SchedulePair::create(schedulePairRunLoop, (CFStringRef)mode));
+        core(self)->removeSchedulePair(SchedulePair::create(runLoop, (CFStringRef)mode));
 }
 
 static BOOL findString(NSView <WebDocumentSearching> *searchView, NSString *string, WebFindOptions options)
@@ -6931,6 +6939,9 @@ static BOOL findString(NSView <WebDocumentSearching> *searchView, NSString *stri
 #if !PLATFORM(IOS)
 static NSAppleEventDescriptor* aeDescFromJSValue(ExecState* exec, JSC::JSValue jsValue)
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_CATCH_SCOPE(vm);
+
     NSAppleEventDescriptor* aeDesc = 0;
     if (jsValue.isBoolean())
         return [NSAppleEventDescriptor descriptorWithBoolean:jsValue.asBoolean()];
@@ -6971,8 +6982,8 @@ static NSAppleEventDescriptor* aeDescFromJSValue(ExecState* exec, JSC::JSValue j
             }
         }
         JSC::JSValue primitive = object->toPrimitive(exec);
-        if (exec->hadException()) {
-            exec->clearException();
+        if (UNLIKELY(scope.exception())) {
+            scope.clearException();
             return [NSAppleEventDescriptor nullDescriptor];
         }
         return aeDescFromJSValue(exec, primitive);
@@ -8631,10 +8642,8 @@ bool LayerFlushController::flushLayers()
     _private->playbackSessionModel->setMediaElement(&mediaElement);
 
     if (!_private->playbackSessionInterface)
-        _private->playbackSessionInterface = WebPlaybackSessionInterfaceMac::create();
+        _private->playbackSessionInterface = WebPlaybackSessionInterfaceMac::create(*_private->playbackSessionModel);
 
-    _private->playbackSessionInterface->setWebPlaybackSessionModel(_private->playbackSessionModel.get());
-    _private->playbackSessionModel->setWebPlaybackSessionInterface(_private->playbackSessionInterface.get());
     [self updateWebViewAdditions];
 }
 
@@ -8644,8 +8653,7 @@ bool LayerFlushController::flushLayers()
         return;
 
     _private->playbackSessionModel->setMediaElement(nullptr);
-    _private->playbackSessionModel->setWebPlaybackSessionInterface(nullptr);
-    _private->playbackSessionInterface->setWebPlaybackSessionModel(nullptr);
+    _private->playbackSessionInterface->invalidate();
 
     _private->playbackSessionModel = nullptr;
     _private->playbackSessionInterface = nullptr;
@@ -8995,9 +9003,12 @@ bool LayerFlushController::flushLayers()
 - (uint64_t)_notificationIDForTesting:(JSValueRef)jsNotification
 {
 #if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
+    auto* page = _private->page;
+    if (!page)
+        return 0;
     JSContextRef context = [[self mainFrame] globalContext];
-    WebCore::Notification* notification = JSNotification::toWrapped(toJS(toJS(context), jsNotification));
-    return static_cast<WebNotificationClient*>(NotificationController::clientFrom(_private->page))->notificationIDForTesting(notification);
+    auto* notification = JSNotification::toWrapped(toJS(toJS(context), jsNotification));
+    return static_cast<WebNotificationClient*>(NotificationController::clientFrom(*page))->notificationIDForTesting(notification);
 #else
     return 0;
 #endif

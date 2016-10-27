@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008, 2009, 2011 Apple Inc. All Rights Reserved.
+ * Copyright (C) 2008-2009, 2011, 2016 Apple Inc. All Rights Reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -41,7 +41,6 @@
 #include "WorkerGlobalScope.h"
 #include "WorkerLocation.h"
 #include "WorkerNavigator.h"
-#include <interpreter/Interpreter.h>
 
 #if ENABLE(WEB_SOCKETS)
 #include "JSWebSocket.h"
@@ -62,14 +61,16 @@ void JSWorkerGlobalScope::visitAdditionalChildren(SlotVisitor& visitor)
 
 JSValue JSWorkerGlobalScope::importScripts(ExecState& state)
 {
+    VM& vm = state.vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     if (!state.argumentCount())
         return jsUndefined();
 
     Vector<String> urls;
     for (unsigned i = 0; i < state.argumentCount(); ++i) {
         urls.append(valueToUSVString(&state, state.uncheckedArgument(i)));
-        if (state.hadException())
-            return jsUndefined();
+        RETURN_IF_EXCEPTION(scope, JSValue());
     }
     ExceptionCode ec = 0;
 
@@ -80,12 +81,14 @@ JSValue JSWorkerGlobalScope::importScripts(ExecState& state)
 
 JSValue JSWorkerGlobalScope::setTimeout(ExecState& state)
 {
+    VM& vm = state.vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     if (UNLIKELY(state.argumentCount() < 1))
-        return state.vm().throwException(&state, createNotEnoughArgumentsError(&state));
+        return throwException(&state, scope, createNotEnoughArgumentsError(&state));
 
     std::unique_ptr<ScheduledAction> action = ScheduledAction::create(&state, globalObject()->world(), wrapped().contentSecurityPolicy());
-    if (state.hadException())
-        return jsUndefined();
+    RETURN_IF_EXCEPTION(scope, JSValue());
     if (!action)
         return jsNumber(0);
     int delay = state.argument(1).toInt32(&state);
@@ -94,12 +97,14 @@ JSValue JSWorkerGlobalScope::setTimeout(ExecState& state)
 
 JSValue JSWorkerGlobalScope::setInterval(ExecState& state)
 {
+    VM& vm = state.vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     if (UNLIKELY(state.argumentCount() < 1))
-        return state.vm().throwException(&state, createNotEnoughArgumentsError(&state));
+        return throwException(&state, scope, createNotEnoughArgumentsError(&state));
 
     std::unique_ptr<ScheduledAction> action = ScheduledAction::create(&state, globalObject()->world(), wrapped().contentSecurityPolicy());
-    if (state.hadException())
-        return jsUndefined();
+    RETURN_IF_EXCEPTION(scope, JSValue());
     if (!action)
         return jsNumber(0);
     int delay = state.argument(1).toInt32(&state);

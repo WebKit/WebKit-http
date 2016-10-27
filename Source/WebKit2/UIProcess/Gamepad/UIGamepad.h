@@ -28,6 +28,7 @@
 #if ENABLE(GAMEPAD)
 
 #include <wtf/Vector.h>
+#include <wtf/text/WTFString.h>
 
 namespace WebCore {
 class PlatformGamepad;
@@ -35,7 +36,7 @@ class PlatformGamepad;
 
 namespace WebKit {
 
-struct GamepadData;
+class GamepadData;
 
 class UIGamepad {
 public:
@@ -43,12 +44,14 @@ public:
 
     unsigned index() const { return m_index; }
 
-    GamepadData gamepadData() const;
+    GamepadData condensedGamepadData() const;
+    GamepadData fullGamepadData() const;
 
     void updateFromPlatformGamepad(WebCore::PlatformGamepad&);
 
 private:
     unsigned m_index;
+    String m_id;
     Vector<double> m_axisValues;
     Vector<double> m_buttonValues;
 };

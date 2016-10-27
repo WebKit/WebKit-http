@@ -21,12 +21,10 @@
 #include "WebEditorClient.h"
 
 #include "PlatformKeyboardEvent.h"
-#include <WebCore/DataObjectGtk.h>
 #include <WebCore/Document.h>
 #include <WebCore/Editor.h>
 #include <WebCore/EventNames.h>
 #include <WebCore/Frame.h>
-#include <WebCore/FrameDestructionObserver.h>
 #include <WebCore/KeyboardEvent.h>
 #include <WebCore/Pasteboard.h>
 #include <WebCore/markup.h>
@@ -119,72 +117,19 @@ void WebEditorClient::handleInputMethodKeydown(KeyboardEvent* event)
         event->setDefaultHandled();
 }
 
-#if PLATFORM(X11)
-class EditorClientFrameDestructionObserver : FrameDestructionObserver {
-public:
-    EditorClientFrameDestructionObserver(Frame* frame, GClosure* closure)
-        : FrameDestructionObserver(frame)
-        , m_closure(closure)
-    {
-        g_closure_add_finalize_notifier(m_closure, this, destroyOnClosureFinalization);
-    }
-
-    void frameDestroyed()
-    {
-        g_closure_invalidate(m_closure);
-        FrameDestructionObserver::frameDestroyed();
-    }
-private:
-    GClosure* m_closure;
-
-    static void destroyOnClosureFinalization(gpointer data, GClosure*)
-    {
-        // Calling delete void* will free the memory but won't invoke
-        // the destructor, something that is a must for us.
-        EditorClientFrameDestructionObserver* observer = static_cast<EditorClientFrameDestructionObserver*>(data);
-        delete observer;
-    }
-};
-
-static Frame* frameSettingClipboard;
-
-static void collapseSelection(GtkClipboard*, Frame* frame)
-{
-    if (frameSettingClipboard && frameSettingClipboard == frame)
-        return;
-
-    // Collapse the selection without clearing it.
-    ASSERT(frame);
-    const VisibleSelection& selection = frame->selection().selection();
-    frame->selection().setBase(selection.extent(), selection.affinity());
-}
-#endif
-
 void WebEditorClient::updateGlobalSelection(Frame* frame)
 {
-#if PLATFORM(X11)
     if (!frame->selection().isRange())
         return;
     RefPtr<Range> range = frame->selection().toNormalizedRange();
     if (!range)
         return;
 
-    frameSettingClipboard = frame;
-    GRefPtr<GClosure> callback = adoptGRef(g_cclosure_new(G_CALLBACK(collapseSelection), frame, nullptr));
-    // This observer will be self-destroyed on closure finalization,
-    // that will happen either after closure execution or after
-    // closure invalidation.
-    new EditorClientFrameDestructionObserver(frame, callback.get());
-    g_closure_set_marshal(callback.get(), g_cclosure_marshal_VOID__VOID);
-
     PasteboardWebContent pasteboardContent;
     pasteboardContent.canSmartCopyOrDelete = false;
     pasteboardContent.text = range->text();
     pasteboardContent.markup = createMarkup(*range, nullptr, AnnotateForInterchange, false, ResolveNonLocalURLs);
-    pasteboardContent.callback = callback;
     Pasteboard::createForGlobalSelection()->write(pasteboardContent);
-    frameSettingClipboard = nullptr;
-#endif
 }
 
 bool WebEditorClient::shouldShowUnicodeMenu()

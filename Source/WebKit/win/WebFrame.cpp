@@ -59,7 +59,6 @@
 #include <WebCore/Document.h>
 #include <WebCore/DocumentLoader.h>
 #include <WebCore/DocumentMarkerController.h>
-#include <WebCore/DOMImplementation.h>
 #include <WebCore/DOMWindow.h>
 #include <WebCore/Editor.h>
 #include <WebCore/Event.h>
@@ -81,6 +80,7 @@
 #include <WebCore/HTMLPlugInElement.h>
 #include <WebCore/JSDOMWindow.h>
 #include <WebCore/KeyboardEvent.h>
+#include <WebCore/MIMETypeRegistry.h>
 #include <WebCore/MainFrame.h>
 #include <WebCore/MouseRelatedEvent.h>
 #include <WebCore/NotImplemented.h>
@@ -1385,7 +1385,7 @@ HRESULT WebFrame::canProvideDocumentSource(bool* result)
         BString mimeTypeBStr;
         if (SUCCEEDED(urlResponse->MIMEType(&mimeTypeBStr))) {
             String mimeType(mimeTypeBStr, SysStringLen(mimeTypeBStr));
-            *result = mimeType == "text/html" || WebCore::DOMImplementation::isXMLMIMEType(mimeType);
+            *result = mimeType == "text/html" || WebCore::MIMETypeRegistry::isXMLMIMEType(mimeType);
         }
     }
     return hr;
@@ -1838,11 +1838,13 @@ HRESULT WebFrame::spoolPages(HDC printDC, UINT startPage, UINT endPage, void* ct
 
     float headerHeight = 0, footerHeight = 0;
     headerAndFooterHeights(&headerHeight, &footerHeight);
+#if USE(CG) || USE(CAIRO)
     GraphicsContext spoolCtx(pctx);
     spoolCtx.setShouldIncludeChildWindows(true);
 
     for (UINT ii = startPage; ii < endPage; ii++)
         spoolPage(pctx, spoolCtx, printDC, ui.get(), headerHeight, footerHeight, ii, pageCount);
+#endif
 
 #if USE(CAIRO)
     cairo_surface_finish(printSurface);

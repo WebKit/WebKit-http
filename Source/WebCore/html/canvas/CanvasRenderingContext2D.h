@@ -117,6 +117,7 @@ public:
     void translate(float tx, float ty);
     void transform(float m11, float m12, float m21, float m22, float dx, float dy);
     void setTransform(float m11, float m12, float m21, float m22, float dx, float dy);
+    void resetTransform();
 
     void setStrokeColor(const String& color, Optional<float> alpha = Nullopt);
     void setStrokeColor(float grayLevel, float alpha = 1.0);
@@ -286,7 +287,7 @@ private:
         float miterLimit;
         FloatSize shadowOffset;
         float shadowBlur;
-        RGBA32 shadowColor;
+        Color shadowColor;
         float globalAlpha;
         CompositeOperator globalComposite;
         BlendMode globalBlend;
@@ -318,7 +319,7 @@ private:
     const State& state() const { return m_stateStack.last(); }
 
     void applyLineDash() const;
-    void setShadow(const FloatSize& offset, float blur, RGBA32 color);
+    void setShadow(const FloatSize& offset, float blur, const Color&);
     void applyShadow();
     bool shouldDrawShadows() const;
 

@@ -26,8 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ValueProfile_h
-#define ValueProfile_h
+#pragma once
 
 #include "ConcurrentJITLock.h"
 #include "Heap.h"
@@ -40,8 +39,6 @@
 #include <wtf/StringPrintStream.h>
 
 namespace JSC {
-
-class CCallHelpers;
 
 template<unsigned numberOfBucketsArgument>
 struct ValueProfileBase {
@@ -210,5 +207,3 @@ inline int getRareCaseProfileBytecodeOffset(RareCaseProfile* rareCaseProfile)
 }
 
 } // namespace JSC
-
-#endif // ValueProfile_h

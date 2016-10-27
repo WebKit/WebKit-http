@@ -40,11 +40,11 @@
  * limitations under the License.
  */
 
-#ifndef WASMFormat_h
-#define WASMFormat_h
+#pragma once
 
 #if ENABLE(WEBASSEMBLY)
 
+#include "B3Type.h"
 #include <wtf/Vector.h>
 #include <wtf/text/WTFString.h>
 
@@ -52,54 +52,80 @@ namespace JSC {
 
 class JSFunction;
 
-enum class WASMValueType : uint8_t {
-    I32,
-    I64,
-    F32,
-    F64,
-    NumberOfTypes
-};
+namespace WASM {
 
-enum class WASMFunctionReturnType : uint8_t {
-    I32,
-    I64,
-    F32,
-    F64,
+enum Type : uint8_t {
     Void,
-    NumberOfExpressionTypes
+    I32,
+    I64,
+    F32,
+    F64,
+    LastValueType = F64,
 };
 
-struct WASMSignature {
-    WASMFunctionReturnType returnType;
-    Vector<WASMValueType> arguments;
+static_assert(I32 == 1, "WASM needs I32 to have the value 1");
+static_assert(I64 == 2, "WASM needs I64 to have the value 2");
+static_assert(F32 == 3, "WASM needs F32 to have the value 3");
+static_assert(F64 == 4, "WASM needs F64 to have the value 4");
+
+inline B3::Type toB3Type(Type type)
+{
+    switch (type) {
+    case I32: return B3::Int32;
+    case I64: return B3::Int64;
+    case F32: return B3::Float;
+    case F64: return B3::Double;
+    case Void: return B3::Void;
+    default: break;
+    }
+    RELEASE_ASSERT_NOT_REACHED();
+}
+
+inline bool isValueType(Type type)
+{
+    switch (type) {
+    case I32:
+    case I64:
+    case F32:
+    case F64:
+        return true;
+    default:
+        break;
+    }
+    return false;
+}
+
+
+struct Signature {
+    Type returnType;
+    Vector<Type> arguments;
 };
 
-struct WASMFunctionImport {
+struct FunctionImport {
     String functionName;
 };
 
-struct WASMFunctionImportSignature {
+struct FunctionImportSignature {
     uint32_t signatureIndex;
     uint32_t functionImportIndex;
 };
 
-struct WASMFunctionDeclaration {
+struct FunctionDeclaration {
     uint32_t signatureIndex;
 };
 
-struct WASMFunctionPointerTable {
+struct FunctionPointerTable {
     uint32_t signatureIndex;
     Vector<uint32_t> functionIndices;
     Vector<JSFunction*> functions;
 };
 
-struct WASMFunctionInformation {
+struct FunctionInformation {
+    Signature* signature;
     size_t start;
     size_t end;
 };
 
-} // namespace JSC
+} } // namespace JSC::WASM
 
 #endif // ENABLE(WEBASSEMBLY)
-
-#endif // WASMFormat_h

@@ -322,7 +322,7 @@ WebInspector.ConsoleMessageView = class ConsoleMessageView extends WebInspector.
             if (this._message.url) {
                 var anchor = WebInspector.linkifyURLAsNode(this._message.url, this._message.url, "console-message-url");
                 anchor.classList.add("console-message-location");
-                this._element.appendChild(anchor);                
+                this._element.appendChild(anchor);
             }
             return;
         }
@@ -536,6 +536,7 @@ WebInspector.ConsoleMessageView = class ConsoleMessageView extends WebInspector.
             "weakset": this._formatParameterAsObject,
             "iterator": this._formatParameterAsObject,
             "class": this._formatParameterAsObject,
+            "proxy": this._formatParameterAsObject,
             "array": this._formatParameterAsArray,
             "node": this._formatParameterAsNode,
             "string": this._formatParameterAsString,

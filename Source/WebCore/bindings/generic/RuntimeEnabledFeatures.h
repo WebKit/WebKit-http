@@ -177,9 +177,6 @@ public:
     // The lang attribute support is incomplete and should only be turned on for tests.
     void setLangAttributeAwareFormControlUIEnabled(bool isEnabled) { m_isLangAttributeAwareFormControlUIEnabled = isEnabled; }
 
-    void setPluginReplacementEnabled(bool isEnabled) { m_isPluginReplacementEnabled = isEnabled; }
-    bool pluginReplacementEnabled() const { return m_isPluginReplacementEnabled; }
-
     void setResourceTimingEnabled(bool isEnabled) { m_isResourceTimingEnabled = isEnabled; }
     bool resourceTimingEnabled() const { return m_isResourceTimingEnabled; }
 
@@ -226,6 +223,9 @@ public:
     bool isCSSGridLayoutEnabled() const { return m_cssGridLayoutEnabled; }
 #endif
 
+    void setModernMediaControlsEnabled(bool areEnabled) { m_areModernMediaControlsEnabled = areEnabled; }
+    bool modernMediaControlsEnabled() const { return m_areModernMediaControlsEnabled; }
+
     WEBCORE_EXPORT static RuntimeEnabledFeatures& sharedFeatures();
 
     WEBCORE_EXPORT void reset();
@@ -234,6 +234,7 @@ private:
     // Never instantiate.
     RuntimeEnabledFeatures();
 
+    bool m_areModernMediaControlsEnabled;
     bool m_isLocalStorageEnabled;
     bool m_isSessionStorageEnabled;
     bool m_isWebkitNotificationsEnabled;
@@ -246,7 +247,6 @@ private:
     bool m_isDeviceOrientationEnabled;
     bool m_isLinkPreloadEnabled;
     bool m_isLangAttributeAwareFormControlUIEnabled;
-    bool m_isPluginReplacementEnabled;
     bool m_isResourceTimingEnabled;
 
 #if ENABLE(INDEXED_DATABASE)
@@ -305,7 +305,7 @@ private:
 #endif
 
 #if ENABLE(GAMEPAD)
-    bool m_areGamepadsEnabled;
+    bool m_areGamepadsEnabled { false };
 #endif
 
 #if ENABLE(CSS_ANIMATIONS_LEVEL_2)

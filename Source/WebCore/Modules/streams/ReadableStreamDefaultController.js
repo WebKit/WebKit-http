@@ -23,7 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-// @conditional=ENABLE(STREAMS_API)
+// @conditional=ENABLE(READABLE_STREAM_API)
 
 function enqueue(chunk)
 {
@@ -32,15 +32,13 @@ function enqueue(chunk)
     if (!@isReadableStreamDefaultController(this))
         throw @makeThisTypeError("ReadableStreamDefaultController", "enqueue");
 
-    const stream = this.@controlledReadableStream;
+    if (this.@closeRequested)
+        @throwTypeError("ReadableStreamDefaultController is requested to close");
 
-    if (stream.@closeRequested)
-        throw new @TypeError("ReadableStream is requested to close");
+    if (this.@controlledReadableStream.@state !== @streamReadable)
+        @throwTypeError("ReadableStream is not readable");
 
-    if (stream.@state !== @streamReadable)
-        throw new @TypeError("ReadableStream is not readable");
-
-    return @enqueueInReadableStream(stream, chunk);
+    return @readableStreamDefaultControllerEnqueue(this, chunk);
 }
 
 function error(error)
@@ -52,9 +50,9 @@ function error(error)
 
     const stream = this.@controlledReadableStream;
     if (stream.@state !== @streamReadable)
-        throw new @TypeError("ReadableStream is not readable");
+        @throwTypeError("ReadableStream is not readable");
 
-    @errorReadableStream(stream, error);
+    @readableStreamError(stream, error);
 }
 
 function close()
@@ -64,14 +62,13 @@ function close()
     if (!@isReadableStreamDefaultController(this))
         throw @makeThisTypeError("ReadableStreamDefaultController", "close");
 
-    const stream = this.@controlledReadableStream;
-    if (stream.@closeRequested)
-        throw new @TypeError("ReadableStream is already requested to close");
+    if (this.@closeRequested)
+        @throwTypeError("ReadableStreamDefaultController is already requested to close");
 
-    if (stream.@state !== @streamReadable)
-        throw new @TypeError("ReadableStream is not readable");
+    if (this.@controlledReadableStream.@state !== @streamReadable)
+        @throwTypeError("ReadableStream is not readable");
 
-    @closeReadableStream(stream);
+    @readableStreamDefaultControllerClose(this);
 }
 
 function desiredSize()
@@ -81,5 +78,6 @@ function desiredSize()
     if (!@isReadableStreamDefaultController(this))
         throw @makeGetterTypeError("ReadableStreamDefaultController", "desiredSize");
 
-    return @getReadableStreamDesiredSize(this.@controlledReadableStream);
+    return @readableStreamDefaultControllerGetDesiredSize(this);
 }
+

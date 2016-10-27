@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,33 +28,55 @@
 
 #include "ExceptionCode.h"
 #include "JSDOMError.h"
+#include "JSDOMWindow.h"
+#include <builtins/BuiltinNames.h>
 #include <runtime/Exception.h>
 #include <runtime/JSONObject.h>
+#include <runtime/JSPromiseConstructor.h>
 
 using namespace JSC;
 
 namespace WebCore {
 
-DeferredWrapper::DeferredWrapper(ExecState* exec, JSDOMGlobalObject* globalObject, JSPromiseDeferred* promiseDeferred)
-    : m_globalObject(exec->vm(), globalObject)
-    , m_deferred(exec->vm(), promiseDeferred)
+DeferredPromise::DeferredPromise(JSDOMGlobalObject& globalObject, JSPromiseDeferred& promiseDeferred)
+    : ActiveDOMCallback(globalObject.scriptExecutionContext())
+    , m_deferred(&promiseDeferred)
+    , m_globalObject(&globalObject)
 {
+    globalObject.vm().heap.writeBarrier(&globalObject, &promiseDeferred);
+    globalObject.deferredPromises().add(this);
 }
 
-JSDOMGlobalObject& DeferredWrapper::globalObject() const
+DeferredPromise::~DeferredPromise()
 {
-    ASSERT(m_globalObject);
-    return *m_globalObject.get();
+    clear();
 }
 
-JSC::JSValue DeferredWrapper::promise() const
+void DeferredPromise::clear()
+{
+    ASSERT(!m_deferred || m_globalObject);
+    if (m_deferred && m_globalObject)
+        m_globalObject->deferredPromises().remove(this);
+    m_deferred.clear();
+}
+
+void DeferredPromise::contextDestroyed()
+{
+    ActiveDOMCallback::contextDestroyed();
+    clear();
+}
+
+JSC::JSValue DeferredPromise::promise() const
 {
     ASSERT(m_deferred);
     return m_deferred->promise();
 }
 
-void DeferredWrapper::callFunction(ExecState& exec, JSValue function, JSValue resolution)
+void DeferredPromise::callFunction(ExecState& exec, JSValue function, JSValue resolution)
 {
+    if (!canInvokeCallback())
+        return;
+
     CallData callData;
     CallType callType = getCallData(function, callData);
     ASSERT(callType != CallType::None);
@@ -64,12 +86,26 @@ void DeferredWrapper::callFunction(ExecState& exec, JSValue function, JSValue re
 
     call(&exec, function, callType, callData, jsUndefined(), arguments);
 
-    m_globalObject.clear();
-    m_deferred.clear();
+    clear();
 }
 
-void DeferredWrapper::reject(ExceptionCode ec, const String& message)
+void DeferredPromise::reject(Exception&& exception)
 {
+    if (isSuspended())
+        return;
+
+    ASSERT(m_deferred);
+    ASSERT(m_globalObject);
+    auto& state = *m_globalObject->globalExec();
+    JSC::JSLockHolder locker(&state);
+    reject(state, createDOMException(state, WTFMove(exception)));
+}
+
+void DeferredPromise::reject(ExceptionCode ec, const String& message)
+{
+    if (isSuspended())
+        return;
+
     ASSERT(m_deferred);
     ASSERT(m_globalObject);
     JSC::ExecState* state = m_globalObject->globalExec();
@@ -79,13 +115,43 @@ void DeferredWrapper::reject(ExceptionCode ec, const String& message)
 
 void rejectPromiseWithExceptionIfAny(JSC::ExecState& state, JSDOMGlobalObject& globalObject, JSPromiseDeferred& promiseDeferred)
 {
-    if (!state.hadException())
+    VM& vm = state.vm();
+    auto scope = DECLARE_CATCH_SCOPE(vm);
+
+    if (LIKELY(!scope.exception()))
         return;
 
-    JSValue error = state.exception()->value();
-    state.clearException();
+    JSValue error = scope.exception()->value();
+    scope.clearException();
 
-    DeferredWrapper(&state, &globalObject, &promiseDeferred).reject(error);
+    DeferredPromise::create(globalObject, promiseDeferred)->reject(error);
+}
+
+Ref<DeferredPromise> createDeferredPromise(JSC::ExecState& state, JSDOMWindow& domWindow)
+{
+    JSC::JSPromiseDeferred* deferred = JSC::JSPromiseDeferred::create(&state, &domWindow);
+    // deferred can only be null in workers.
+    ASSERT(deferred);
+    return DeferredPromise::create(domWindow, *deferred);
+}
+
+JSC::EncodedJSValue createRejectedPromiseWithTypeError(JSC::ExecState& state, const String& errorMessage)
+{
+    ASSERT(state.lexicalGlobalObject());
+    auto& globalObject = *state.lexicalGlobalObject();
+
+    auto promiseConstructor = globalObject.promiseConstructor();
+    auto rejectFunction = promiseConstructor->get(&state, state.vm().propertyNames->builtinNames().rejectPrivateName());
+    auto rejectionValue = createTypeError(&state, errorMessage);
+
+    CallData callData;
+    auto callType = getCallData(rejectFunction, callData);
+    ASSERT(callType != CallType::None);
+
+    MarkedArgumentBuffer arguments;
+    arguments.append(rejectionValue);
+
+    return JSValue::encode(call(&state, rejectFunction, callType, callData, promiseConstructor, arguments));
 }
 
 static inline JSC::JSValue parseAsJSON(JSC::ExecState* state, const String& data)
@@ -94,27 +160,27 @@ static inline JSC::JSValue parseAsJSON(JSC::ExecState* state, const String& data
     return JSC::JSONParse(state, data);
 }
 
-void fulfillPromiseWithJSON(DeferredWrapper& promise, const String& data)
+void fulfillPromiseWithJSON(Ref<DeferredPromise>&& promise, const String& data)
 {
-    JSC::JSValue value = parseAsJSON(promise.globalObject().globalExec(), data);
+    JSC::JSValue value = parseAsJSON(promise->globalObject()->globalExec(), data);
     if (!value)
-        promise.reject(SYNTAX_ERR);
+        promise->reject(SYNTAX_ERR);
     else
-        promise.resolve(value);
+        promise->resolve(value);
 }
 
-void fulfillPromiseWithArrayBuffer(DeferredWrapper& promise, ArrayBuffer* arrayBuffer)
+void fulfillPromiseWithArrayBuffer(Ref<DeferredPromise>&& promise, ArrayBuffer* arrayBuffer)
 {
     if (!arrayBuffer) {
-        promise.reject<JSValue>(createOutOfMemoryError(promise.globalObject().globalExec()));
+        promise->reject<JSValue>(createOutOfMemoryError(promise->globalObject()->globalExec()));
         return;
     }
-    promise.resolve(arrayBuffer);
+    promise->resolve(arrayBuffer);
 }
 
-void fulfillPromiseWithArrayBuffer(DeferredWrapper& promise, const void* data, size_t length)
+void fulfillPromiseWithArrayBuffer(Ref<DeferredPromise>&& promise, const void* data, size_t length)
 {
-    fulfillPromiseWithArrayBuffer(promise, ArrayBuffer::tryCreate(data, length).get());
+    fulfillPromiseWithArrayBuffer(WTFMove(promise), ArrayBuffer::tryCreate(data, length).get());
 }
 
 }

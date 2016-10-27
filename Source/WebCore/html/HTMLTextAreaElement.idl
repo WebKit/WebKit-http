@@ -24,18 +24,14 @@ interface HTMLTextAreaElement : HTMLElement {
     [Reflect] attribute DOMString dirName;
     [Reflect] attribute boolean disabled;
     readonly attribute HTMLFormElement form;
-    [ImplementedAs=maxLengthForBindings, SetterRaisesException] attribute long maxLength;
+    [SetterMayThrowLegacyException] attribute long minLength;
+    [SetterMayThrowLegacyException] attribute long maxLength;
     [Reflect] attribute DOMString name;
     [Reflect] attribute DOMString placeholder;
     [Reflect] attribute boolean readOnly;
     [Reflect] attribute boolean required;
-#if defined(LANGUAGE_GOBJECT) && LANGUAGE_GOBJECT
-    attribute long rows;
-    attribute long cols;
-#else
     attribute unsigned long rows;
     attribute unsigned long cols;
-#endif
     [Reflect] attribute DOMString wrap;
 
     readonly attribute DOMString type;
@@ -56,8 +52,8 @@ interface HTMLTextAreaElement : HTMLElement {
     attribute long selectionEnd;
     attribute DOMString selectionDirection;
 
-    [RaisesException] void setRangeText(DOMString replacement);
-    [RaisesException] void setRangeText(DOMString replacement,
+    [MayThrowLegacyException] void setRangeText(DOMString replacement);
+    [MayThrowLegacyException] void setRangeText(DOMString replacement,
                         unsigned long start,
                         unsigned long end,
                         optional DOMString selectionMode);

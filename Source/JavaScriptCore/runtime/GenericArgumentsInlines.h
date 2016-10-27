@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef GenericArgumentsInlines_h
-#define GenericArgumentsInlines_h
+#pragma once
 
 #include "GenericArguments.h"
 #include "JSCInlines.h"
@@ -219,19 +218,18 @@ bool GenericArguments<Type>::defineOwnProperty(JSObject* object, ExecState* exec
 template<typename Type>
 void GenericArguments<Type>::copyToArguments(ExecState* exec, VirtualRegister firstElementDest, unsigned offset, unsigned length)
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     Type* thisObject = static_cast<Type*>(this);
     for (unsigned i = 0; i < length; ++i) {
         if (thisObject->canAccessIndexQuickly(i + offset))
             exec->r(firstElementDest + i) = thisObject->getIndexQuickly(i + offset);
         else {
             exec->r(firstElementDest + i) = get(exec, i + offset);
-            if (UNLIKELY(exec->vm().exception()))
-                return;
+            RETURN_IF_EXCEPTION(scope, void());
         }
     }
 }
 
 } // namespace JSC
-
-#endif // GenericArgumentsInlines_h
-

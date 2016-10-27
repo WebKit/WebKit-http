@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef CachedCall_h
-#define CachedCall_h
+#pragma once
 
 #include "CallFrameClosure.h"
 #include "ExceptionHelpers.h"
@@ -42,15 +41,19 @@ namespace JSC {
         CachedCall(CallFrame* callFrame, JSFunction* function, int argumentCount)
             : m_valid(false)
             , m_interpreter(callFrame->interpreter())
-            , m_entryScope(callFrame->vm(), function->scope()->globalObject())
+            , m_vm(callFrame->vm())
+            , m_entryScope(m_vm, function->scope()->globalObject(m_vm))
         {
+            VM& vm = m_entryScope.vm();
+            auto scope = DECLARE_THROW_SCOPE(vm);
+
             ASSERT(!function->isHostFunctionNonInline());
-            if (UNLIKELY(callFrame->vm().isSafeToRecurseSoft())) {
+            if (UNLIKELY(vm.isSafeToRecurseSoft())) {
                 m_arguments.resize(argumentCount);
                 m_closure = m_interpreter->prepareForRepeatCall(function->jsExecutable(), callFrame, &m_protoCallFrame, function, argumentCount + 1, function->scope(), m_arguments.data());
             } else
-                throwStackOverflowError(callFrame);
-            m_valid = !callFrame->hadException();
+                throwStackOverflowError(callFrame, scope);
+            m_valid = !scope.exception();
         }
         
         JSValue call()
@@ -64,11 +67,10 @@ namespace JSC {
     private:
         bool m_valid;
         Interpreter* m_interpreter;
+        VM& m_vm;
         VMEntryScope m_entryScope;
         ProtoCallFrame m_protoCallFrame;
         Vector<JSValue> m_arguments;
         CallFrameClosure m_closure;
     };
 }
-
-#endif

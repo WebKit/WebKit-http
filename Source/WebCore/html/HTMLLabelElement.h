@@ -32,7 +32,7 @@ public:
     static Ref<HTMLLabelElement> create(const QualifiedName&, Document&);
 
     WEBCORE_EXPORT LabelableElement* control();
-    WEBCORE_EXPORT HTMLFormElement* form() const;
+    WEBCORE_EXPORT HTMLFormElement* form();
 
     bool willRespondToMouseClickEvents() final;
 
@@ -48,7 +48,7 @@ private:
     void setHovered(bool = true) final;
 
     // Overridden to either click() or focus() the corresponding control.
-    void defaultEventHandler(Event*) final;
+    void defaultEventHandler(Event&) final;
 
     void focus(bool restorePreviousSelection, FocusDirection) final;
 };

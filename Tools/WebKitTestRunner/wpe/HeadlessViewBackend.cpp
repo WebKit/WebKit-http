@@ -167,7 +167,7 @@ void HeadlessViewBackend::performUpdate()
     }
 
     m_lockedImage = m_pendingImage;
-    m_pendingImage = { };
+    m_pendingImage = std::pair<uint32_t, std::tuple<EGLImageKHR, uint32_t, uint32_t>> { };
 }
 
 struct wpe_mesa_view_backend_exportable_client HeadlessViewBackend::s_exportableClient = {

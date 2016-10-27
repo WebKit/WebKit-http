@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2015 Apple Inc. All Rights Reserved.
+ * Copyright (C) 2012-2016 Apple Inc. All Rights Reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -200,23 +200,25 @@ JSObject* JSScope::objectAtScope(JSScope* scope)
 // When an exception occurs, the result of isUnscopable becomes false.
 static inline bool isUnscopable(ExecState* exec, JSScope* scope, JSObject* object, const Identifier& ident)
 {
+    VM& vm = exec->vm();
+    auto throwScope = DECLARE_THROW_SCOPE(vm);
     if (scope->type() != WithScopeType)
         return false;
 
     JSValue unscopables = object->get(exec, exec->propertyNames().unscopablesSymbol);
-    if (exec->hadException())
-        return false;
+    RETURN_IF_EXCEPTION(throwScope, false);
     if (!unscopables.isObject())
         return false;
     JSValue blocked = jsCast<JSObject*>(unscopables)->get(exec, ident);
-    if (exec->hadException())
-        return false;
+    RETURN_IF_EXCEPTION(throwScope, false);
 
     return blocked.toBoolean(exec);
 }
 
 JSObject* JSScope::resolve(ExecState* exec, JSScope* scope, const Identifier& ident)
 {
+    VM& vm = exec->vm();
+    auto throwScope = DECLARE_THROW_SCOPE(vm);
     ScopeChainIterator end = scope->end();
     ScopeChainIterator it = scope->begin();
     while (1) {
@@ -225,7 +227,7 @@ JSObject* JSScope::resolve(ExecState* exec, JSScope* scope, const Identifier& id
 
         // Global scope.
         if (++it == end) {
-            JSScope* globalScopeExtension = scope->globalObject()->globalScopeExtension();
+            JSScope* globalScopeExtension = scope->globalObject(vm)->globalScopeExtension();
             if (UNLIKELY(globalScopeExtension)) {
                 if (object->hasProperty(exec, ident))
                     return object;
@@ -239,7 +241,7 @@ JSObject* JSScope::resolve(ExecState* exec, JSScope* scope, const Identifier& id
         if (object->hasProperty(exec, ident)) {
             if (!isUnscopable(exec, scope, object, ident))
                 return object;
-            ASSERT_WITH_MESSAGE(!exec->hadException(), "When an exception occurs, the result of isUnscopable becomes false");
+            ASSERT_WITH_MESSAGE_UNUSED(throwScope, !throwScope.exception(), "When an exception occurs, the result of isUnscopable becomes false");
         }
     }
 }

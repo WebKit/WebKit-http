@@ -41,6 +41,7 @@ public:
     Node* firstChild() const { return m_firstChild; }
     static ptrdiff_t firstChildMemoryOffset() { return OBJECT_OFFSETOF(ContainerNode, m_firstChild); }
     Node* lastChild() const { return m_lastChild; }
+    static ptrdiff_t lastChildMemoryOffset() { return OBJECT_OFFSETOF(ContainerNode, m_lastChild); }
     bool hasChildNodes() const { return m_firstChild; }
     bool hasOneChild() const { return m_firstChild && !m_firstChild->nextSibling(); }
 
@@ -99,8 +100,8 @@ public:
     WEBCORE_EXPORT Element* firstElementChild() const;
     WEBCORE_EXPORT Element* lastElementChild() const;
     WEBCORE_EXPORT unsigned childElementCount() const;
-    void append(Vector<std::experimental::variant<Ref<Node>, String>>&&, ExceptionCode&);
-    void prepend(Vector<std::experimental::variant<Ref<Node>, String>>&&, ExceptionCode&);
+    void append(Vector<std::experimental::variant<std::reference_wrapper<Node>, String>>&&, ExceptionCode&);
+    void prepend(Vector<std::experimental::variant<std::reference_wrapper<Node>, String>>&&, ExceptionCode&);
 
     bool ensurePreInsertionValidity(Node& newChild, Node* refChild, ExceptionCode&);
 

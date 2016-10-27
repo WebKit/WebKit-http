@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef JSCellInlines_h
-#define JSCellInlines_h
+#pragma once
 
 #include "CallFrame.h"
 #include "DeferGC.h"
@@ -114,16 +113,13 @@ inline void JSCell::visitChildren(JSCell* cell, SlotVisitor& visitor)
     visitor.appendUnbarrieredPointer(&structure);
 }
 
-inline VM* JSCell::vm() const
-{
-    return MarkedBlock::blockFor(this)->vm();
-}
-
 ALWAYS_INLINE VM& ExecState::vm() const
 {
     ASSERT(callee());
     ASSERT(callee()->vm());
-    return *calleeAsValue().asCell()->vm();
+    ASSERT(!callee()->isLargeAllocation());
+    // This is an important optimization since we access this so often.
+    return *calleeAsValue().asCell()->markedBlock().vm();
 }
 
 template<typename T>
@@ -148,6 +144,25 @@ template<typename T>
 void* allocateCell(Heap& heap)
 {
     return allocateCell<T>(heap, sizeof(T));
+}
+    
+template<typename T>
+void* allocateCell(Heap& heap, GCDeferralContext* deferralContext, size_t size)
+{
+    ASSERT(size >= sizeof(T));
+    JSCell* result = static_cast<JSCell*>(heap.allocateObjectOfType<T>(deferralContext, size));
+#if ENABLE(GC_VALIDATION)
+    ASSERT(!heap.vm()->isInitializingObject());
+    heap.vm()->setInitializingObjectClass(T::info());
+#endif
+    result->clearStructure();
+    return result;
+}
+    
+template<typename T>
+void* allocateCell(Heap& heap, GCDeferralContext* deferralContext)
+{
+    return allocateCell<T>(heap, deferralContext, sizeof(T));
 }
     
 inline bool JSCell::isObject() const
@@ -238,12 +253,19 @@ inline bool JSCell::canUseFastGetOwnProperty(const Structure& structure)
         && !structure.typeInfo().overridesGetOwnPropertySlot();
 }
 
-inline const ClassInfo* JSCell::classInfo() const
+ALWAYS_INLINE const ClassInfo* JSCell::classInfo() const
 {
-    MarkedBlock* block = MarkedBlock::blockFor(this);
-    if (block->needsDestruction() && !(inlineTypeFlags() & StructureIsImmortal))
+    if (isLargeAllocation()) {
+        LargeAllocation& allocation = largeAllocation();
+        if (allocation.attributes().destruction == NeedsDestruction
+            && !(inlineTypeFlags() & StructureIsImmortal))
+            return static_cast<const JSDestructibleObject*>(this)->classInfo();
+        return structure(*allocation.vm())->classInfo();
+    }
+    MarkedBlock& block = markedBlock();
+    if (block.needsDestruction() && !(inlineTypeFlags() & StructureIsImmortal))
         return static_cast<const JSDestructibleObject*>(this)->classInfo();
-    return structure(*block->vm())->classInfo();
+    return structure(*block.vm())->classInfo();
 }
 
 inline bool JSCell::toBoolean(ExecState* exec) const
@@ -262,6 +284,16 @@ inline TriState JSCell::pureToBoolean() const
     return MixedTriState;
 }
 
-} // namespace JSC
+inline void JSCell::callDestructor(VM& vm)
+{
+    if (isZapped())
+        return;
+    ASSERT(structureID());
+    if (inlineTypeFlags() & StructureIsImmortal)
+        structure(vm)->classInfo()->methodTable.destroy(this);
+    else
+        jsCast<JSDestructibleObject*>(this)->classInfo()->methodTable.destroy(this);
+    zap();
+}
 
-#endif // JSCellInlines_h
+} // namespace JSC

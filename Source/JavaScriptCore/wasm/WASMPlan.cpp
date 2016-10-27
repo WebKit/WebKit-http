@@ -26,16 +26,14 @@
 #include "config.h"
 #include "WASMPlan.h"
 
+#if ENABLE(WEBASSEMBLY)
+
 #include "B3Compilation.h"
 #include "WASMB3IRGenerator.h"
 #include "WASMModuleParser.h"
 #include <wtf/DataLog.h>
 
-#if ENABLE(WEBASSEMBLY)
-
-namespace JSC {
-
-namespace WASM {
+namespace JSC { namespace WASM {
 
 static const bool verbose = false;
 
@@ -43,7 +41,7 @@ Plan::Plan(VM& vm, Vector<uint8_t> source)
 {
     if (verbose)
         dataLogLn("Starting plan.");
-    WASMModuleParser moduleParser(source);
+    ModuleParser moduleParser(source);
     if (!moduleParser.parse()) {
         dataLogLn("Parsing module failed.");
         return;
@@ -52,15 +50,13 @@ Plan::Plan(VM& vm, Vector<uint8_t> source)
     if (verbose)
         dataLogLn("Parsed module.");
 
-    for (const WASMFunctionInformation& info : moduleParser.functionInformation()) {
+    for (const FunctionInformation& info : moduleParser.functionInformation()) {
         if (verbose)
             dataLogLn("Processing funcion starting at: ", info.start, " and ending at: ", info.end);
         result.append(parseAndCompile(vm, source, info));
     }
 }
 
-} // namespace WASM
-
-} // namespace JSC
+} } // namespace JSC::WASM
 
 #endif // ENABLE(WEBASSEMBLY)

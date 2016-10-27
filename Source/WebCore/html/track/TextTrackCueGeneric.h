@@ -61,14 +61,14 @@ public:
     String fontName() const { return m_fontName; }
     void setFontName(String name) { m_fontName = name; }
 
-    Color foregroundColor() const { return m_foregroundColor; }
-    void setForegroundColor(RGBA32 color) { m_foregroundColor.setRGB(color); }
+    const Color& foregroundColor() const { return m_foregroundColor; }
+    void setForegroundColor(Color color) { m_foregroundColor = color; }
     
-    Color backgroundColor() const { return m_backgroundColor; }
-    void setBackgroundColor(RGBA32 color) { m_backgroundColor.setRGB(color); }
+    const Color& backgroundColor() const { return m_backgroundColor; }
+    void setBackgroundColor(Color color) { m_backgroundColor = color; }
     
-    Color highlightColor() const { return m_highlightColor; }
-    void setHighlightColor(RGBA32 color) { m_highlightColor.setRGB(color); }
+    const Color& highlightColor() const { return m_highlightColor; }
+    void setHighlightColor(Color color) { m_highlightColor = color; }
     
     void setFontSize(int, const IntSize&, bool important) override;
 

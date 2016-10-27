@@ -35,6 +35,7 @@
 #import "APIURL.h"
 #import "AuthenticationDecisionListener.h"
 #import "CompletionHandlerCallChecker.h"
+#import "Logging.h"
 #import "NavigationActionData.h"
 #import "PageLoadState.h"
 #import "WKBackForwardListInternal.h"
@@ -63,6 +64,7 @@
 #import "_WKSameDocumentNavigationTypeInternal.h"
 #import <WebCore/Credential.h>
 #import <WebCore/SecurityOriginData.h>
+#import <WebCore/SerializedCryptoKeyWrap.h>
 #import <WebCore/URL.h>
 #import <wtf/NeverDestroyed.h>
 
@@ -718,8 +720,13 @@ void NavigationState::NavigationClient::processDidBecomeUnresponsive(WebKit::Web
 
 RefPtr<API::Data> NavigationState::NavigationClient::webCryptoMasterKey(WebKit::WebPageProxy&)
 {
-    if (!m_navigationState.m_navigationDelegateMethods.webCryptoMasterKeyForWebView)
-        return nullptr;
+    if (!m_navigationState.m_navigationDelegateMethods.webCryptoMasterKeyForWebView) {
+        Vector<uint8_t> masterKey;
+        if (!getDefaultWebCryptoMasterKey(masterKey))
+            return nullptr;
+
+        return API::Data::create(masterKey.data(), masterKey.size());
+    }
 
     auto navigationDelegate = m_navigationState.m_navigationDelegate.get();
     if (!navigationDelegate)
@@ -825,7 +832,7 @@ void NavigationState::willChangeIsLoading()
 #if PLATFORM(IOS)
 void NavigationState::releaseNetworkActivityToken()
 {
-    RELEASE_LOG_IF(m_webView->_page->isAlwaysOnLoggingAllowed(), "%p UIProcess is releasing a background assertion because a page load completed", this);
+    RELEASE_LOG_IF(m_webView->_page->isAlwaysOnLoggingAllowed(), ProcessSuspension, "%p UIProcess is releasing a background assertion because a page load completed", this);
     ASSERT(m_activityToken);
     m_activityToken = nullptr;
 }
@@ -838,7 +845,7 @@ void NavigationState::didChangeIsLoading()
         if (m_releaseActivityTimer.isActive())
             m_releaseActivityTimer.stop();
         else {
-            RELEASE_LOG_IF(m_webView->_page->isAlwaysOnLoggingAllowed(), "%p - UIProcess is taking a background assertion because a page load started", this);
+            RELEASE_LOG_IF(m_webView->_page->isAlwaysOnLoggingAllowed(), ProcessSuspension, "%p - UIProcess is taking a background assertion because a page load started", this);
             ASSERT(!m_activityToken);
             m_activityToken = m_webView->_page->process().throttler().backgroundActivityToken();
         }

@@ -20,8 +20,7 @@
  *
  */
 
-#ifndef JSString_h
-#define JSString_h
+#pragma once
 
 #include "CallFrame.h"
 #include "CommonIdentifiers.h"
@@ -219,7 +218,7 @@ private:
     String& string() { ASSERT(!isRope()); return m_value; }
     StringView unsafeView(ExecState&) const;
 
-    friend JSValue jsString(ExecState*, JSString*, JSString*);
+    friend JSString* jsString(ExecState*, JSString*, JSString*);
     friend JSString* jsSubstring(ExecState*, JSString*, unsigned offset, unsigned length);
 };
 
@@ -277,6 +276,7 @@ private:
     void finishCreation(VM& vm, JSString* s1, JSString* s2)
     {
         Base::finishCreation(vm);
+        ASSERT(!sumOverflows<int32_t>(s1->length(), s2->length()));
         m_length = s1->length() + s2->length();
         setIs8Bit(s1->is8Bit() && s2->is8Bit());
         setIsSubstring(false);
@@ -288,6 +288,7 @@ private:
     void finishCreation(VM& vm, JSString* s1, JSString* s2, JSString* s3)
     {
         Base::finishCreation(vm);
+        ASSERT(!sumOverflows<int32_t>(s1->length(), s2->length(), s3->length()));
         m_length = s1->length() + s2->length() + s3->length();
         setIs8Bit(s1->is8Bit() && s2->is8Bit() &&  s3->is8Bit());
         setIsSubstring(false);
@@ -357,6 +358,32 @@ private:
     }
 
 public:
+    static JSString* create(VM& vm, ExecState* exec, JSString* base, unsigned offset, unsigned length)
+    {
+        JSRopeString* newString = new (NotNull, allocateCell<JSRopeString>(vm.heap)) JSRopeString(vm);
+        newString->finishCreation(vm, exec, base, offset, length);
+        return newString;
+    }
+
+    ALWAYS_INLINE static JSString* createSubstringOfResolved(VM& vm, GCDeferralContext* deferralContext, JSString* base, unsigned offset, unsigned length)
+    {
+        JSRopeString* newString = new (NotNull, allocateCell<JSRopeString>(vm.heap, deferralContext)) JSRopeString(vm);
+        newString->finishCreationSubstringOfResolved(vm, base, offset, length);
+        return newString;
+    }
+
+    ALWAYS_INLINE static JSString* createSubstringOfResolved(VM& vm, JSString* base, unsigned offset, unsigned length)
+    {
+        return createSubstringOfResolved(vm, nullptr, base, offset, length);
+    }
+
+    void visitFibers(SlotVisitor&);
+
+    static ptrdiff_t offsetOfFibers() { return OBJECT_OFFSETOF(JSRopeString, u); }
+
+    static const unsigned s_maxInternalRopeLength = 3;
+
+private:
     static JSString* create(VM& vm, JSString* s1, JSString* s2)
     {
         JSRopeString* newString = new (NotNull, allocateCell<JSRopeString>(vm.heap)) JSRopeString(vm);
@@ -370,27 +397,6 @@ public:
         return newString;
     }
 
-    static JSString* create(VM& vm, ExecState* exec, JSString* base, unsigned offset, unsigned length)
-    {
-        JSRopeString* newString = new (NotNull, allocateCell<JSRopeString>(vm.heap)) JSRopeString(vm);
-        newString->finishCreation(vm, exec, base, offset, length);
-        return newString;
-    }
-
-    ALWAYS_INLINE static JSString* createSubstringOfResolved(VM& vm, JSString* base, unsigned offset, unsigned length)
-    {
-        JSRopeString* newString = new (NotNull, allocateCell<JSRopeString>(vm.heap)) JSRopeString(vm);
-        newString->finishCreationSubstringOfResolved(vm, base, offset, length);
-        return newString;
-    }
-
-    void visitFibers(SlotVisitor&);
-
-    static ptrdiff_t offsetOfFibers() { return OBJECT_OFFSETOF(JSRopeString, u); }
-
-    static const unsigned s_maxInternalRopeLength = 3;
-
-private:
     friend JSValue jsStringFromRegisterArray(ExecState*, Register*, unsigned);
     friend JSValue jsStringFromArguments(ExecState*, JSValue);
 
@@ -449,6 +455,11 @@ private:
         uintptr_t number;
         WriteBarrierBase<JSString> string;
     } u[s_maxInternalRopeLength];
+
+
+    friend JSString* jsString(ExecState*, JSString*, JSString*);
+    friend JSString* jsString(ExecState*, JSString*, JSString*, JSString*);
+    friend JSString* jsString(ExecState*, const String&, const String&, const String&);
 };
 
 class JSString::SafeView {
@@ -485,6 +496,7 @@ inline JSString* asString(JSValue value)
     return jsCast<JSString*>(value.asCell());
 }
 
+// This MUST NOT GC.
 inline JSString* jsEmptyString(VM* vm)
 {
     return vm->smallStrings.emptyString();
@@ -575,7 +587,7 @@ inline JSString* jsSubstring(VM& vm, ExecState* exec, JSString* s, unsigned offs
     return JSRopeString::create(vm, exec, s, offset, length);
 }
 
-inline JSString* jsSubstringOfResolved(VM& vm, JSString* s, unsigned offset, unsigned length)
+inline JSString* jsSubstringOfResolved(VM& vm, GCDeferralContext* deferralContext, JSString* s, unsigned offset, unsigned length)
 {
     ASSERT(offset <= static_cast<unsigned>(s->length()));
     ASSERT(length <= static_cast<unsigned>(s->length()));
@@ -584,7 +596,12 @@ inline JSString* jsSubstringOfResolved(VM& vm, JSString* s, unsigned offset, uns
         return vm.smallStrings.emptyString();
     if (!offset && length == s->length())
         return s;
-    return JSRopeString::createSubstringOfResolved(vm, s, offset, length);
+    return JSRopeString::createSubstringOfResolved(vm, deferralContext, s, offset, length);
+}
+
+inline JSString* jsSubstringOfResolved(VM& vm, JSString* s, unsigned offset, unsigned length)
+{
+    return jsSubstringOfResolved(vm, nullptr, s, offset, length);
 }
 
 inline JSString* jsSubstring(ExecState* exec, JSString* s, unsigned offset, unsigned length)
@@ -785,5 +802,3 @@ inline String JSValue::toWTFString(ExecState* exec) const
 }
 
 } // namespace JSC
-
-#endif // JSString_h

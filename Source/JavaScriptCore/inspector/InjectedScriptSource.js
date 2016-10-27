@@ -574,6 +574,9 @@ InjectedScript.prototype = {
 
     _propertyDescriptors: function(object, collectionMode, nativeGettersAsValues)
     {
+        if (InjectedScriptHost.subtype(object) === "proxy")
+            return [];
+
         var descriptors = [];
         var nameProcessed = new Set;
 
@@ -675,7 +678,7 @@ InjectedScript.prototype = {
         // For array types with a large length we attempt to skip getOwnPropertyNames and instead just sublist of indexes.
         var isArrayLike = false;
         try {
-            isArrayLike = injectedScript._subtype(object) === "array" && isFinite(object.length);
+            isArrayLike = injectedScript._subtype(object) === "array" && isFinite(object.length) && object.length > 0;
         } catch(e) {}
 
         for (var o = object; this._isDefined(o); o = o.__proto__) {
@@ -732,8 +735,7 @@ InjectedScript.prototype = {
         try {
             if (typeof obj.splice === "function" && isFinite(obj.length))
                 return "array";
-        } catch (e) {
-        }
+        } catch (e) {}
 
         return null;
     },
@@ -790,6 +792,9 @@ InjectedScript.prototype = {
 
         if (subtype === "error")
             return toString(obj);
+
+        if (subtype === "proxy")
+            return "Proxy";
 
         if (subtype === "node")
             return this._nodePreview(obj);
@@ -958,8 +963,13 @@ InjectedScript.RemoteObject = function(object, objectGroupName, forceValueType, 
         this.className = object.name;
     }
 
-    if (generatePreview && this.type === "object")
-        this.preview = this._generatePreview(object, undefined, columnNames);
+    if (generatePreview && this.type === "object") {
+        if (subtype === "proxy") {
+            this.preview = this._generatePreview(InjectedScriptHost.proxyTargetValue(object));
+            this.preview.lossless = false;
+        } else
+            this.preview = this._generatePreview(object, undefined, columnNames);
+    }
 };
 
 InjectedScript.RemoteObject.createObjectPreviewForValue = function(value, generatePreview)

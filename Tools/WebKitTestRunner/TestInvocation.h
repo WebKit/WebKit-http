@@ -49,8 +49,11 @@ public:
 
     void setIsPixelTest(const std::string& expectedPixelHash);
 
+    // Milliseconds
     void setCustomTimeout(int duration) { m_timeout = duration; }
-    int customTimeout() const { return m_timeout; }
+
+    // Seconds
+    double shortTimeout() const;
 
     void invoke();
     void didReceiveMessageFromInjectedBundle(WKStringRef messageName, WKTypeRef messageBody);
@@ -89,7 +92,7 @@ private:
 
     void runUISideScript(WKStringRef, unsigned callbackID);
     // UIScriptContextDelegate
-    void uiScriptDidComplete(WKStringRef result, unsigned callbackID) override;
+    void uiScriptDidComplete(const String& result, unsigned callbackID) override;
 
     const TestOptions m_options;
     

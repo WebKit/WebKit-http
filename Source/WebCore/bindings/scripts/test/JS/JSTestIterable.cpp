@@ -46,7 +46,7 @@ bool setJSTestIterableConstructor(JSC::ExecState*, JSC::EncodedJSValue, JSC::Enc
 
 class JSTestIterablePrototype : public JSC::JSNonFinalObject {
 public:
-    typedef JSC::JSNonFinalObject Base;
+    using Base = JSC::JSNonFinalObject;
     static JSTestIterablePrototype* create(JSC::VM& vm, JSC::JSGlobalObject* globalObject, JSC::Structure* structure)
     {
         JSTestIterablePrototype* ptr = new (NotNull, JSC::allocateCell<JSTestIterablePrototype>(vm.heap)) JSTestIterablePrototype(vm, globalObject, structure);
@@ -69,7 +69,7 @@ private:
     void finishCreation(JSC::VM&);
 };
 
-typedef JSDOMConstructorNotConstructable<JSTestIterable> JSTestIterableConstructor;
+using JSTestIterableConstructor = JSDOMConstructorNotConstructable<JSTestIterable>;
 
 template<> JSValue JSTestIterableConstructor::prototypeForStructure(JSC::VM& vm, const JSDOMGlobalObject& globalObject)
 {
@@ -129,20 +129,29 @@ void JSTestIterable::destroy(JSC::JSCell* cell)
     thisObject->JSTestIterable::~JSTestIterable();
 }
 
+template<> inline JSTestIterable* BindingCaller<JSTestIterable>::castForOperation(ExecState& state)
+{
+    return jsDynamicCast<JSTestIterable*>(state.thisValue());
+}
+
 EncodedJSValue jsTestIterableConstructor(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
+    VM& vm = state->vm();
+    auto throwScope = DECLARE_THROW_SCOPE(vm);
     JSTestIterablePrototype* domObject = jsDynamicCast<JSTestIterablePrototype*>(JSValue::decode(thisValue));
     if (UNLIKELY(!domObject))
-        return throwVMTypeError(state);
+        return throwVMTypeError(state, throwScope);
     return JSValue::encode(JSTestIterable::getConstructor(state->vm(), domObject->globalObject()));
 }
 
 bool setJSTestIterableConstructor(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
 {
+    VM& vm = state->vm();
+    auto throwScope = DECLARE_THROW_SCOPE(vm);
     JSValue value = JSValue::decode(encodedValue);
     JSTestIterablePrototype* domObject = jsDynamicCast<JSTestIterablePrototype*>(JSValue::decode(thisValue));
     if (UNLIKELY(!domObject)) {
-        throwVMTypeError(state);
+        throwVMTypeError(state, throwScope);
         return false;
     }
     // Shadowing a built-in constructor
@@ -232,7 +241,7 @@ JSC::JSValue toJSNewlyCreated(JSC::ExecState*, JSDOMGlobalObject* globalObject, 
     // by adding the SkipVTableValidation attribute to the interface IDL definition
     RELEASE_ASSERT(actualVTablePointer == expectedVTablePointer);
 #endif
-    return createWrapper<JSTestIterable, TestIterable>(globalObject, WTFMove(impl));
+    return createWrapper<TestIterable>(globalObject, WTFMove(impl));
 }
 
 JSC::JSValue toJS(JSC::ExecState* state, JSDOMGlobalObject* globalObject, TestIterable& impl)

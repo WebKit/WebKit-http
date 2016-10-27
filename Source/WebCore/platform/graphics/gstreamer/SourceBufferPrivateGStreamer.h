@@ -57,6 +57,7 @@ public:
     void setClient(SourceBufferPrivateClient*) override;
     void append(const unsigned char*, unsigned) override;
     void abort() override;
+    void resetParserState() override;
     void removedFromMediaSource() override;
     MediaPlayer::ReadyState readyState() const override;
     void setReadyState(MediaPlayer::ReadyState) override;

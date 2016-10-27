@@ -46,22 +46,12 @@ ChildProcessProxy::~ChildProcessProxy()
     }
 }
 
-ChildProcessProxy* ChildProcessProxy::fromConnection(IPC::Connection* connection)
-{
-    ASSERT(connection);
-
-    ChildProcessProxy* childProcessProxy = static_cast<ChildProcessProxy*>(connection->client());
-    ASSERT(childProcessProxy->connection() == connection);
-
-    return childProcessProxy;
-}
-
 void ChildProcessProxy::getLaunchOptions(ProcessLauncher::LaunchOptions& launchOptions)
 {
     if (const char* userDirectorySuffix = getenv("DIRHELPER_USER_DIR_SUFFIX"))
         launchOptions.extraInitializationData.add(ASCIILiteral("user-directory-suffix"), userDirectorySuffix);
 
-#if !defined(NDEBUG) && (PLATFORM(GTK) || PLATFORM(WPE) || PLATFORM(EFL))
+#if ENABLE(DEVELOPER_MODE) && (PLATFORM(GTK) || PLATFORM(WPE) || PLATFORM(EFL))
     const char* varname;
     switch (launchOptions.processType) {
     case ProcessLauncher::ProcessType::Web:
@@ -119,16 +109,16 @@ ChildProcessProxy::State ChildProcessProxy::state() const
     return ChildProcessProxy::State::Running;
 }
 
-bool ChildProcessProxy::sendMessage(std::unique_ptr<IPC::Encoder> encoder, unsigned messageSendFlags)
+bool ChildProcessProxy::sendMessage(std::unique_ptr<IPC::Encoder> encoder, OptionSet<IPC::SendOption> sendOptions)
 {
     switch (state()) {
     case State::Launching:
         // If we're waiting for the child process to launch, we need to stash away the messages so we can send them once we have a connection.
-        m_pendingMessages.append(std::make_pair(WTFMove(encoder), messageSendFlags));
+        m_pendingMessages.append(std::make_pair(WTFMove(encoder), sendOptions));
         return true;
 
     case State::Running:
-        return connection()->sendMessage(WTFMove(encoder), messageSendFlags);
+        return connection()->sendMessage(WTFMove(encoder), sendOptions);
 
     case State::Terminated:
         return false;
@@ -184,8 +174,8 @@ void ChildProcessProxy::didFinishLaunching(ProcessLauncher*, IPC::Connection::Id
 
     for (size_t i = 0; i < m_pendingMessages.size(); ++i) {
         std::unique_ptr<IPC::Encoder> message = WTFMove(m_pendingMessages[i].first);
-        unsigned messageSendFlags = m_pendingMessages[i].second;
-        m_connection->sendMessage(WTFMove(message), messageSendFlags);
+        OptionSet<IPC::SendOption> sendOptions = m_pendingMessages[i].second;
+        m_connection->sendMessage(WTFMove(message), sendOptions);
     }
 
     m_pendingMessages.clear();

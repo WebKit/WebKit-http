@@ -138,10 +138,10 @@ public:
 
     void swap(String& o) { m_impl.swap(o.m_impl); }
 
-    static String adopt(StringBuffer<LChar>& buffer) { return StringImpl::adopt(buffer); }
-    static String adopt(StringBuffer<UChar>& buffer) { return StringImpl::adopt(buffer); }
+    static String adopt(StringBuffer<LChar>&& buffer) { return StringImpl::adopt(WTFMove(buffer)); }
+    static String adopt(StringBuffer<UChar>&& buffer) { return StringImpl::adopt(WTFMove(buffer)); }
     template<typename CharacterType, size_t inlineCapacity, typename OverflowHandler>
-    static String adopt(Vector<CharacterType, inlineCapacity, OverflowHandler>& vector) { return StringImpl::adopt(vector); }
+    static String adopt(Vector<CharacterType, inlineCapacity, OverflowHandler>&& vector) { return StringImpl::adopt(WTFMove(vector)); }
 
     bool isNull() const { return !m_impl; }
     bool isEmpty() const { return !m_impl || !m_impl->length(); }
@@ -330,6 +330,7 @@ public:
     WTF_EXPORT_STRING_API String convertToASCIILowercase() const;
     WTF_EXPORT_STRING_API String convertToASCIIUppercase() const;
     WTF_EXPORT_STRING_API String convertToLowercaseWithoutLocale() const;
+    WTF_EXPORT_STRING_API String convertToLowercaseWithoutLocaleStartingAtFailingIndex8Bit(unsigned) const;
     WTF_EXPORT_STRING_API String convertToUppercaseWithoutLocale() const;
     WTF_EXPORT_STRING_API String convertToLowercaseWithLocale(const AtomicString& localeIdentifier) const;
     WTF_EXPORT_STRING_API String convertToUppercaseWithLocale(const AtomicString& localeIdentifier) const;

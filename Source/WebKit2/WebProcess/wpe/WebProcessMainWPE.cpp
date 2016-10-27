@@ -70,10 +70,6 @@ public:
             });
         return true;
     }
-
-    void platformFinalize() override
-    {
-    }
 };
 
 int WebProcessMainUnix(int argc, char** argv)

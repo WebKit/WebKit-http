@@ -27,6 +27,8 @@
 
 #include "GraphicsLayerCA.h"
 
+#if USE(CA)
+
 #include "Animation.h"
 #include "DisplayListRecorder.h"
 #include "DisplayListReplayer.h"
@@ -66,6 +68,11 @@
 #if PLATFORM(WIN)
 #include "PlatformCAAnimationWin.h"
 #include "PlatformCALayerWin.h"
+#endif
+
+#if COMPILER(MSVC)
+// See https://msdn.microsoft.com/en-us/library/1wea5zwe.aspx
+#pragma warning(disable: 4701)
 #endif
 
 namespace WebCore {
@@ -1364,8 +1371,8 @@ void GraphicsLayerCA::recursiveCommitChanges(const CommitState& commitState, con
     // Use having a transform as a key to making the tile wash layer. If every layer gets a wash,
     // they start to obscure useful information.
     if ((!m_transform.isIdentity() || m_usingTiledBacking) && !m_visibleTileWashLayer) {
-        static Color washFillColor(255, 0, 0, 50);
-        static Color washBorderColor(255, 0, 0, 100);
+        static NeverDestroyed<Color> washFillColor(255, 0, 0, 50);
+        static NeverDestroyed<Color> washBorderColor(255, 0, 0, 100);
         
         m_visibleTileWashLayer = createPlatformCALayer(PlatformCALayer::LayerTypeLayer, this);
         String name = String::format("Visible Tile Wash Layer %p", m_visibleTileWashLayer->platformLayer());
@@ -2565,7 +2572,7 @@ GraphicsLayerCA::CloneID GraphicsLayerCA::ReplicaState::cloneID() const
         currChar = (currChar << 1) | m_replicaBranches[i];
     }
     
-    return String::adopt(result);
+    return String::adopt(WTFMove(result));
 }
 
 PassRefPtr<PlatformCALayer> GraphicsLayerCA::replicatedLayerRoot(ReplicaState& replicaState)
@@ -3988,3 +3995,5 @@ double GraphicsLayerCA::backingStoreMemoryEstimate() const
 }
 
 } // namespace WebCore
+
+#endif

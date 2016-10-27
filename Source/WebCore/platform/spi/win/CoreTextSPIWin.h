@@ -29,17 +29,31 @@
 #include <CoreGraphics/CoreGraphics.h>
 #include <CoreText/CoreText.h>
 
-extern "C" {
+WTF_EXTERN_C_BEGIN
 
 typedef const struct __CTFont* CTFontRef;
 typedef const struct __CTLine* CTLineRef;
+typedef UInt32 FourCharCode;
+typedef FourCharCode CTFontTableTag;
 
-extern const CFStringRef kCTFontAttributeName;
-extern const CFStringRef kCTForegroundColorFromContextAttributeName;
+CT_EXPORT const CFStringRef kCTFontAttributeName;
+CT_EXPORT const CFStringRef kCTForegroundColorFromContextAttributeName;
 
-CTFontRef CTFontCreateWithName(CFStringRef name, CGFloat size, const CGAffineTransform* matrix);
+// This enum is defined in CTFont.h. To avoid redefinition, only define it here if CTFont.h has not been included. 
+#ifndef __CTFONT__
+typedef CF_OPTIONS(uint32_t, CTFontTableOptions)
+{
+    kCTFontTableOptionNoOptions = 0,
+    kCTFontTableOptionExcludeSynthetic = (1 << 0)
+};
+#endif
+
+CTFontRef CTFontCreateWithName(CFStringRef, CGFloat size, const CGAffineTransform*);
+CTFontRef CTFontCreateWithGraphicsFont(CGFontRef, CGFloat size, const CGAffineTransform*, CTFontDescriptorRef attributes);
 CTLineRef CTLineCreateWithAttributedString(CFAttributedStringRef);
 void CTLineDraw(CTLineRef, CGContextRef);
+CFDataRef CTFontCopyTable(CTFontRef, CTFontTableTag, CTFontTableOptions);
+CFArrayRef CTFontCopyAvailableTables(CTFontRef, CTFontTableOptions);
 
-}
+WTF_EXTERN_C_END
 

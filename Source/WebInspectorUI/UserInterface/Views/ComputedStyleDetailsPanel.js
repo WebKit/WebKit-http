@@ -30,17 +30,13 @@ WebInspector.ComputedStyleDetailsPanel = class ComputedStyleDetailsPanel extends
         super(delegate, WebInspector.ComputedStyleDetailsPanel.StyleClassName, "computed", WebInspector.UIString("Styles \u2014 Computed"));
 
         this._computedStyleShowAllSetting = new WebInspector.Setting("computed-style-show-all", false);
-        
+
         this.cssStyleDeclarationTextEditorShouldAddPropertyGoToArrows = true;
     }
 
     // Public
 
-    get regionFlow()
-    {
-        return this._regionFlow;
-    }
-
+    get regionFlow() { return this._regionFlow; }
     set regionFlow(regionFlow)
     {
         this._regionFlow = regionFlow;
@@ -49,11 +45,7 @@ WebInspector.ComputedStyleDetailsPanel = class ComputedStyleDetailsPanel extends
         this._updateFlowNamesSectionVisibility();
     }
 
-    get contentFlow()
-    {
-        return this._contentFlow;
-    }
-
+    get contentFlow() { return this._contentFlow; }
     set contentFlow(contentFlow)
     {
         this._contentFlow = contentFlow;
@@ -62,11 +54,7 @@ WebInspector.ComputedStyleDetailsPanel = class ComputedStyleDetailsPanel extends
         this._updateFlowNamesSectionVisibility();
     }
 
-    get containerRegions()
-    {
-        return this._containerRegions;
-    }
-
+    get containerRegions() { return this._containerRegions; }
     set containerRegions(regions)
     {
         this._containerRegions = regions;
@@ -128,15 +116,20 @@ WebInspector.ComputedStyleDetailsPanel = class ComputedStyleDetailsPanel extends
         }
 
         this._propertiesTextEditor.style = this.nodeStyles.computedStyle;
+        this._variablesTextEditor.style = this.nodeStyles.computedStyle;
         this._refreshFlowDetails(this.nodeStyles.node);
         this._boxModelDiagramRow.nodeStyles = this.nodeStyles;
 
         super.refresh();
+
+        this._variablesSection.element.classList.toggle("hidden", !this._variablesTextEditor.shownProperties.length);
     }
 
     filterDidChange(filterBar)
     {
-        this._propertiesTextEditor.removeNonMatchingProperties(filterBar.filters.text);
+        let filterText = filterBar.filters.text;
+        this._propertiesTextEditor.removeNonMatchingProperties(filterText);
+        this._variablesTextEditor.removeNonMatchingProperties(filterText);
     }
 
     // Protected
@@ -153,6 +146,7 @@ WebInspector.ComputedStyleDetailsPanel = class ComputedStyleDetailsPanel extends
         computedStyleShowAllLabel.appendChild(this._computedStyleShowAllCheckbox);
 
         this._propertiesTextEditor = new WebInspector.CSSStyleDeclarationTextEditor(this);
+        this._propertiesTextEditor.propertyVisibilityMode = WebInspector.CSSStyleDeclarationTextEditor.PropertyVisibilityMode.HideVariables;
         this._propertiesTextEditor.showsImplicitProperties = this._computedStyleShowAllSetting.value;
         this._propertiesTextEditor.alwaysShowPropertyNames = ["display", "width", "height"];
         this._propertiesTextEditor.sortProperties = true;
@@ -160,11 +154,24 @@ WebInspector.ComputedStyleDetailsPanel = class ComputedStyleDetailsPanel extends
         let propertiesRow = new WebInspector.DetailsSectionRow;
         let propertiesGroup = new WebInspector.DetailsSectionGroup([propertiesRow]);
         let propertiesSection = new WebInspector.DetailsSection("computed-style-properties", WebInspector.UIString("Properties"), [propertiesGroup], computedStyleShowAllLabel);
-        propertiesSection.addEventListener(WebInspector.DetailsSection.Event.CollapsedStateChanged, this._handleCollapsedStateChanged, this);
+        propertiesSection.addEventListener(WebInspector.DetailsSection.Event.CollapsedStateChanged, this._handlePropertiesSectionCollapsedStateChanged, this);
 
         this.addSubview(this._propertiesTextEditor);
 
         propertiesRow.element.appendChild(this._propertiesTextEditor.element);
+
+        this._variablesTextEditor = new WebInspector.CSSStyleDeclarationTextEditor(this);
+        this._variablesTextEditor.propertyVisibilityMode = WebInspector.CSSStyleDeclarationTextEditor.PropertyVisibilityMode.HideNonVariables;
+        this._variablesTextEditor.sortProperties = true;
+
+        let variablesRow = new WebInspector.DetailsSectionRow;
+        let variablesGroup = new WebInspector.DetailsSectionGroup([variablesRow]);
+        this._variablesSection = new WebInspector.DetailsSection("computed-style-properties", WebInspector.UIString("Variables"), [variablesGroup]);
+        this._variablesSection.addEventListener(WebInspector.DetailsSection.Event.CollapsedStateChanged, this._handleVariablesSectionCollapsedStateChanged, this);
+
+        this.addSubview(this._variablesTextEditor);
+
+        variablesRow.element.appendChild(this._variablesTextEditor.element);
 
         // Region flow name is used to display the "flow-from" property of the Region Containers.
         this._regionFlowFragment = document.createElement("span");
@@ -192,13 +199,14 @@ WebInspector.ComputedStyleDetailsPanel = class ComputedStyleDetailsPanel extends
         this._flowNamesSection = new WebInspector.DetailsSection("content-flow", WebInspector.UIString("Flows"), [flowNamesGroup]);
 
         this._containerRegionsDataGrid = new WebInspector.DOMTreeDataGrid;
-        this._containerRegionsDataGrid.element.classList.add("no-header");
+        this._containerRegionsDataGrid.headerVisible = false;
 
         let containerRegionsRow = new WebInspector.DetailsSectionDataGridRow(this._containerRegionsDataGrid);
         let containerRegionsGroup = new WebInspector.DetailsSectionGroup([containerRegionsRow]);
         this._containerRegionsFlowSection = new WebInspector.DetailsSection("container-regions", WebInspector.UIString("Container Regions"), [containerRegionsGroup]);
 
         this.element.appendChild(propertiesSection.element);
+        this.element.appendChild(this._variablesSection.element);
         this.element.appendChild(this._flowNamesSection.element);
         this.element.appendChild(this._containerRegionsFlowSection.element);
 
@@ -216,15 +224,22 @@ WebInspector.ComputedStyleDetailsPanel = class ComputedStyleDetailsPanel extends
 
     _computedStyleShowAllCheckboxValueChanged(event)
     {
-        var checked = this._computedStyleShowAllCheckbox.checked;
+        let checked = this._computedStyleShowAllCheckbox.checked;
         this._computedStyleShowAllSetting.value = checked;
         this._propertiesTextEditor.showsImplicitProperties = checked;
+        this._propertiesTextEditor.updateLayout();
     }
 
-    _handleCollapsedStateChanged(event)
+    _handlePropertiesSectionCollapsedStateChanged(event)
     {
         if (event && event.data && !event.data.collapsed)
             this._propertiesTextEditor.refresh();
+    }
+
+    _handleVariablesSectionCollapsedStateChanged(event)
+    {
+        if (event && event.data && !event.data.collapsed)
+            this._variablesTextEditor.refresh();
     }
 
     _updateFlowNamesSectionVisibility()

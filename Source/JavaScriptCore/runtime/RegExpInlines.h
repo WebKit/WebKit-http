@@ -20,8 +20,7 @@
  *
  */
 
-#ifndef RegExpInlines_h
-#define RegExpInlines_h
+#pragma once
 
 #include "RegExp.h"
 #include "JSCInlines.h"
@@ -94,7 +93,8 @@ ALWAYS_INLINE void RegExp::compileIfNecessary(VM& vm, Yarr::YarrCharSize charSiz
     compile(&vm, charSize);
 }
 
-ALWAYS_INLINE int RegExp::matchInline(VM& vm, const String& s, unsigned startOffset, Vector<int, 32>& ovector)
+template<typename VectorType>
+ALWAYS_INLINE int RegExp::matchInline(VM& vm, const String& s, unsigned startOffset, VectorType& ovector)
 {
 #if ENABLE(REGEXP_TRACING)
     m_rtMatchCallCount++;
@@ -232,6 +232,3 @@ ALWAYS_INLINE MatchResult RegExp::matchInline(VM& vm, const String& s, unsigned 
 }
 
 } // namespace JSC
-
-#endif // RegExpInlines_h
-

@@ -23,7 +23,6 @@
 
 #include "BuiltinNames.h"
 #include "ButterflyInlines.h"
-#include "CopiedSpaceInlines.h"
 #include "Error.h"
 #include "ExceptionHelpers.h"
 #include "JSArray.h"
@@ -108,19 +107,13 @@ void ObjectConstructor::finishCreation(VM& vm, JSGlobalObject* globalObject, Obj
     JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION(vm.propertyNames->builtinNames().getOwnPropertyNamesPrivateName(), objectConstructorGetOwnPropertyNames, DontEnum, 1);
 }
 
-JSFunction* ObjectConstructor::addDefineProperty(ExecState* exec, JSGlobalObject* globalObject)
-{
-    VM& vm = exec->vm();
-    JSFunction* definePropertyFunction = JSFunction::create(vm, globalObject, 3, vm.propertyNames->defineProperty.string(), objectConstructorDefineProperty);
-    putDirectWithoutTransition(vm, vm.propertyNames->defineProperty, definePropertyFunction, DontEnum);
-    return definePropertyFunction;
-}
-
 // ES 19.1.1.1 Object([value])
 static ALWAYS_INLINE JSObject* constructObject(ExecState* exec, JSValue newTarget)
 {
     ObjectConstructor* objectConstructor = jsCast<ObjectConstructor*>(exec->callee());
     JSGlobalObject* globalObject = objectConstructor->globalObject();
+    VM& vm = globalObject->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
 
     // We need to check newTarget condition in this caller side instead of InternalFunction::createSubclassStructure side.
     // Since if we found this condition is met, we should not fall into the type conversion in the step 3.
@@ -129,8 +122,7 @@ static ALWAYS_INLINE JSObject* constructObject(ExecState* exec, JSValue newTarge
     if (newTarget && newTarget != objectConstructor) {
         // a. Return ? OrdinaryCreateFromConstructor(NewTarget, "%ObjectPrototype%").
         Structure* objectStructure = InternalFunction::createSubclassStructure(exec, newTarget, globalObject->objectStructureForObjectConstructor());
-        if (exec->hadException())
-            return nullptr;
+        RETURN_IF_EXCEPTION(scope, nullptr);
         return constructEmptyObject(exec, objectStructure);
     }
 
@@ -166,86 +158,45 @@ CallType ObjectConstructor::getCallData(JSCell*, CallData& callData)
     return CallType::Host;
 }
 
-class ObjectConstructorGetPrototypeOfFunctor {
-public:
-    ObjectConstructorGetPrototypeOfFunctor(ExecState* exec, JSObject* object)
-        : m_exec(exec)
-        , m_hasSkippedFirstFrame(false)
-        , m_object(object)
-        , m_result(jsUndefined())
-    {
-    }
-
-    JSValue result() const { return m_result; }
-
-    StackVisitor::Status operator()(StackVisitor& visitor) const
-    {
-        if (!m_hasSkippedFirstFrame) {
-            m_hasSkippedFirstFrame = true;
-            return StackVisitor::Continue;
-        }
-
-        if (m_object->allowsAccessFrom(visitor->callFrame()))
-            m_result = m_object->getPrototype(m_exec->vm(), m_exec);
-        return StackVisitor::Done;
-    }
-
-private:
-    ExecState* m_exec;
-    mutable bool m_hasSkippedFirstFrame;
-    JSObject* m_object;
-    mutable JSValue m_result;
-};
-
-JSValue objectConstructorGetPrototypeOf(ExecState* exec, JSObject* object)
-{
-    ObjectConstructorGetPrototypeOfFunctor functor(exec, object);
-    // This can throw but it's just unneeded extra work to check for it. The return
-    // value from this function is only used as the return value from a host call.
-    // Therefore, the return value is only used if there wasn't an exception.
-    exec->iterate(functor);
-    return functor.result();
-}
-
 EncodedJSValue JSC_HOST_CALL objectConstructorGetPrototypeOf(ExecState* exec)
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     JSObject* object = exec->argument(0).toObject(exec);
-    if (exec->hadException())
-        return JSValue::encode(jsUndefined());
-    return JSValue::encode(objectConstructorGetPrototypeOf(exec, object));
+    RETURN_IF_EXCEPTION(scope, encodedJSValue());
+    return JSValue::encode(object->getPrototype(exec->vm(), exec));
 }
 
 EncodedJSValue JSC_HOST_CALL objectConstructorSetPrototypeOf(ExecState* exec)
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     JSValue objectValue = exec->argument(0);
     if (objectValue.isUndefinedOrNull())
-        return throwVMTypeError(exec);
+        return throwVMTypeError(exec, scope);
 
     JSValue protoValue = exec->argument(1);
     if (!protoValue.isObject() && !protoValue.isNull())
-        return throwVMTypeError(exec);
+        return throwVMTypeError(exec, scope);
 
     JSObject* object = objectValue.toObject(exec);
-    if (exec->hadException())
-        return JSValue::encode(objectValue);
+    RETURN_IF_EXCEPTION(scope, encodedJSValue());
 
-    if (!checkProtoSetterAccessAllowed(exec, object))
-        return JSValue::encode(objectValue);
-
-    VM& vm = exec->vm();
     bool shouldThrowIfCantSet = true;
     bool didSetPrototype = object->setPrototype(vm, exec, protoValue, shouldThrowIfCantSet);
-    ASSERT_UNUSED(didSetPrototype, vm.exception() || didSetPrototype);
+    ASSERT_UNUSED(didSetPrototype, scope.exception() || didSetPrototype);
     return JSValue::encode(objectValue);
 }
 
 JSValue objectConstructorGetOwnPropertyDescriptor(ExecState* exec, JSObject* object, const Identifier& propertyName)
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     PropertyDescriptor descriptor;
     if (!object->getOwnPropertyDescriptor(exec, propertyName, descriptor))
         return jsUndefined();
-    if (exec->hadException())
-        return jsUndefined();
+    RETURN_IF_EXCEPTION(scope, JSValue());
 
     JSObject* result = constructObjectFromPropertyDescriptor(exec, descriptor);
     if (!result)
@@ -255,20 +206,19 @@ JSValue objectConstructorGetOwnPropertyDescriptor(ExecState* exec, JSObject* obj
 
 JSValue objectConstructorGetOwnPropertyDescriptors(ExecState* exec, JSObject* object)
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     PropertyNameArray properties(exec, PropertyNameMode::StringsAndSymbols);
-    object->methodTable(exec->vm())->getOwnPropertyNames(object, exec, properties, EnumerationMode(DontEnumPropertiesMode::Include));
-    if (exec->hadException())
-        return jsUndefined();
+    object->methodTable(vm)->getOwnPropertyNames(object, exec, properties, EnumerationMode(DontEnumPropertiesMode::Include));
+    RETURN_IF_EXCEPTION(scope, JSValue());
 
     JSObject* descriptors = constructEmptyObject(exec);
-    if (exec->hadException())
-        return jsUndefined();
+    RETURN_IF_EXCEPTION(scope, JSValue());
 
     for (auto& propertyName : properties) {
         PropertyDescriptor descriptor;
         bool didGetDescriptor = object->getOwnPropertyDescriptor(exec, propertyName, descriptor);
-        if (exec->hadException())
-            return jsUndefined();
+        RETURN_IF_EXCEPTION(scope, JSValue());
 
         if (!didGetDescriptor)
             continue;
@@ -279,7 +229,7 @@ JSValue objectConstructorGetOwnPropertyDescriptors(ExecState* exec, JSObject* ob
 
         PutPropertySlot slot(descriptors);
         descriptors->putOwnDataPropertyMayBeIndex(exec, propertyName, fromDescriptor, slot);
-        ASSERT(!exec->hadException());
+        ASSERT(!scope.exception());
     }
 
     return descriptors;
@@ -287,55 +237,60 @@ JSValue objectConstructorGetOwnPropertyDescriptors(ExecState* exec, JSObject* ob
 
 EncodedJSValue JSC_HOST_CALL objectConstructorGetOwnPropertyDescriptor(ExecState* exec)
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     JSObject* object = exec->argument(0).toObject(exec);
-    if (exec->hadException())
-        return JSValue::encode(jsUndefined());
+    RETURN_IF_EXCEPTION(scope, encodedJSValue());
     auto propertyName = exec->argument(1).toPropertyKey(exec);
-    if (exec->hadException())
-        return JSValue::encode(jsUndefined());
+    RETURN_IF_EXCEPTION(scope, encodedJSValue());
     return JSValue::encode(objectConstructorGetOwnPropertyDescriptor(exec, object, propertyName));
 }
 
 EncodedJSValue JSC_HOST_CALL objectConstructorGetOwnPropertyDescriptors(ExecState* exec)
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     JSObject* object = exec->argument(0).toObject(exec);
-    if (exec->hadException())
-        return JSValue::encode(jsUndefined());
+    RETURN_IF_EXCEPTION(scope, encodedJSValue());
     return JSValue::encode(objectConstructorGetOwnPropertyDescriptors(exec, object));
 }
 
 // FIXME: Use the enumeration cache.
 EncodedJSValue JSC_HOST_CALL objectConstructorGetOwnPropertyNames(ExecState* exec)
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     JSObject* object = exec->argument(0).toObject(exec);
-    if (exec->hadException())
-        return JSValue::encode(jsNull());
+    RETURN_IF_EXCEPTION(scope, encodedJSValue());
     return JSValue::encode(ownPropertyKeys(exec, object, PropertyNameMode::Strings, DontEnumPropertiesMode::Include));
 }
 
 // FIXME: Use the enumeration cache.
 EncodedJSValue JSC_HOST_CALL objectConstructorGetOwnPropertySymbols(ExecState* exec)
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     JSObject* object = exec->argument(0).toObject(exec);
-    if (exec->hadException())
-        return JSValue::encode(jsNull());
+    RETURN_IF_EXCEPTION(scope, encodedJSValue());
     return JSValue::encode(ownPropertyKeys(exec, object, PropertyNameMode::Symbols, DontEnumPropertiesMode::Include));
 }
 
 // FIXME: Use the enumeration cache.
 EncodedJSValue JSC_HOST_CALL objectConstructorKeys(ExecState* exec)
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     JSObject* object = exec->argument(0).toObject(exec);
-    if (exec->hadException())
-        return JSValue::encode(jsNull());
+    RETURN_IF_EXCEPTION(scope, encodedJSValue());
     return JSValue::encode(ownPropertyKeys(exec, object, PropertyNameMode::Strings, DontEnumPropertiesMode::Exclude));
 }
 
 EncodedJSValue JSC_HOST_CALL ownEnumerablePropertyKeys(ExecState* exec)
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     JSObject* object = exec->argument(0).toObject(exec);
-    if (exec->hadException())
-        return JSValue::encode(jsNull());
+    RETURN_IF_EXCEPTION(scope, encodedJSValue());
     return JSValue::encode(ownPropertyKeys(exec, object, PropertyNameMode::StringsAndSymbols, DontEnumPropertiesMode::Exclude));
 }
 
@@ -344,85 +299,81 @@ EncodedJSValue JSC_HOST_CALL ownEnumerablePropertyKeys(ExecState* exec)
 bool toPropertyDescriptor(ExecState* exec, JSValue in, PropertyDescriptor& desc)
 {
     VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     if (!in.isObject()) {
-        throwTypeError(exec, ASCIILiteral("Property description must be an object."));
+        throwTypeError(exec, scope, ASCIILiteral("Property description must be an object."));
         return false;
     }
     JSObject* description = asObject(in);
 
     if (description->hasProperty(exec, exec->propertyNames().enumerable)) {
         JSValue value = description->get(exec, exec->propertyNames().enumerable);
-        if (vm.exception())
-            return false;
+        RETURN_IF_EXCEPTION(scope, false);
         desc.setEnumerable(value.toBoolean(exec));
-    } else if (vm.exception())
-        return false;
+    } else
+        RETURN_IF_EXCEPTION(scope, false);
 
     if (description->hasProperty(exec, exec->propertyNames().configurable)) {
         JSValue value = description->get(exec, exec->propertyNames().configurable);
-        if (vm.exception())
-            return false;
+        RETURN_IF_EXCEPTION(scope, false);
         desc.setConfigurable(value.toBoolean(exec));
-    } else if (vm.exception())
-        return false;
+    } else
+        RETURN_IF_EXCEPTION(scope, false);
 
     JSValue value;
     if (description->hasProperty(exec, exec->propertyNames().value)) {
         JSValue value = description->get(exec, exec->propertyNames().value);
-        if (vm.exception())
-            return false;
+        RETURN_IF_EXCEPTION(scope, false);
         desc.setValue(value);
-    } else if (vm.exception())
-        return false;
+    } else
+        RETURN_IF_EXCEPTION(scope, false);
 
     if (description->hasProperty(exec, exec->propertyNames().writable)) {
         JSValue value = description->get(exec, exec->propertyNames().writable);
-        if (vm.exception())
-            return false;
+        RETURN_IF_EXCEPTION(scope, false);
         desc.setWritable(value.toBoolean(exec));
-    } else if (vm.exception())
-        return false;
+    } else
+        RETURN_IF_EXCEPTION(scope, false);
 
     if (description->hasProperty(exec, exec->propertyNames().get)) {
         JSValue get = description->get(exec, exec->propertyNames().get);
-        if (vm.exception())
-            return false;
+        RETURN_IF_EXCEPTION(scope, false);
         if (!get.isUndefined()) {
             CallData callData;
             if (getCallData(get, callData) == CallType::None) {
-                throwTypeError(exec, ASCIILiteral("Getter must be a function."));
+                throwTypeError(exec, scope, ASCIILiteral("Getter must be a function."));
                 return false;
             }
         }
         desc.setGetter(get);
-    } else if (vm.exception())
-        return false;
+    } else
+        RETURN_IF_EXCEPTION(scope, false);
 
     if (description->hasProperty(exec, exec->propertyNames().set)) {
         JSValue set = description->get(exec, exec->propertyNames().set);
-        if (vm.exception())
-            return false;
+        RETURN_IF_EXCEPTION(scope, false);
         if (!set.isUndefined()) {
             CallData callData;
             if (getCallData(set, callData) == CallType::None) {
-                throwTypeError(exec, ASCIILiteral("Setter must be a function."));
+                throwTypeError(exec, scope, ASCIILiteral("Setter must be a function."));
                 return false;
             }
         }
         desc.setSetter(set);
-    } else if (vm.exception())
-        return false;
+    } else
+        RETURN_IF_EXCEPTION(scope, false);
 
     if (!desc.isAccessorDescriptor())
         return true;
 
     if (desc.value()) {
-        throwTypeError(exec, ASCIILiteral("Invalid property.  'value' present on property with getter or setter."));
+        throwTypeError(exec, scope, ASCIILiteral("Invalid property.  'value' present on property with getter or setter."));
         return false;
     }
 
     if (desc.writablePresent()) {
-        throwTypeError(exec, ASCIILiteral("Invalid property.  'writable' present on property with getter or setter."));
+        throwTypeError(exec, scope, ASCIILiteral("Invalid property.  'writable' present on property with getter or setter."));
         return false;
     }
     return true;
@@ -430,34 +381,40 @@ bool toPropertyDescriptor(ExecState* exec, JSValue in, PropertyDescriptor& desc)
 
 EncodedJSValue JSC_HOST_CALL objectConstructorDefineProperty(ExecState* exec)
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     if (!exec->argument(0).isObject())
-        return throwVMTypeError(exec, ASCIILiteral("Properties can only be defined on Objects."));
-    JSObject* O = asObject(exec->argument(0));
+        return throwVMTypeError(exec, scope, ASCIILiteral("Properties can only be defined on Objects."));
+    JSObject* obj = asObject(exec->argument(0));
     auto propertyName = exec->argument(1).toPropertyKey(exec);
-    if (exec->hadException())
-        return JSValue::encode(jsNull());
+    RETURN_IF_EXCEPTION(scope, encodedJSValue());
     PropertyDescriptor descriptor;
-    if (!toPropertyDescriptor(exec, exec->argument(2), descriptor))
+    auto success = toPropertyDescriptor(exec, exec->argument(2), descriptor);
+    ASSERT(!scope.exception() == success);
+    if (!success)
         return JSValue::encode(jsNull());
     ASSERT((descriptor.attributes() & Accessor) || (!descriptor.isAccessorDescriptor()));
-    ASSERT(!exec->hadException());
-    O->methodTable(exec->vm())->defineOwnProperty(O, exec, propertyName, descriptor, true);
-    return JSValue::encode(O);
+    ASSERT(!scope.exception());
+    obj->methodTable(vm)->defineOwnProperty(obj, exec, propertyName, descriptor, true);
+    scope.release();
+    return JSValue::encode(obj);
 }
 
 static JSValue defineProperties(ExecState* exec, JSObject* object, JSObject* properties)
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     PropertyNameArray propertyNames(exec, PropertyNameMode::StringsAndSymbols);
-    asObject(properties)->methodTable(exec->vm())->getOwnPropertyNames(asObject(properties), exec, propertyNames, EnumerationMode(DontEnumPropertiesMode::Exclude));
-    if (UNLIKELY(exec->hadException()))
-        return jsNull();
+    asObject(properties)->methodTable(vm)->getOwnPropertyNames(asObject(properties), exec, propertyNames, EnumerationMode(DontEnumPropertiesMode::Exclude));
+    RETURN_IF_EXCEPTION(scope, JSValue());
     size_t numProperties = propertyNames.size();
     Vector<PropertyDescriptor> descriptors;
     MarkedArgumentBuffer markBuffer;
     for (size_t i = 0; i < numProperties; i++) {
         JSValue prop = properties->get(exec, propertyNames[i]);
-        if (exec->hadException())
-            return jsNull();
+        RETURN_IF_EXCEPTION(scope, JSValue());
         PropertyDescriptor descriptor;
         if (!toPropertyDescriptor(exec, prop, descriptor))
             return jsNull();
@@ -476,17 +433,19 @@ static JSValue defineProperties(ExecState* exec, JSObject* object, JSObject* pro
         Identifier propertyName = propertyNames[i];
         if (exec->propertyNames().isPrivateName(propertyName))
             continue;
-        object->methodTable(exec->vm())->defineOwnProperty(object, exec, propertyName, descriptors[i], true);
-        if (exec->hadException())
-            return jsNull();
+        object->methodTable(vm)->defineOwnProperty(object, exec, propertyName, descriptors[i], true);
+        RETURN_IF_EXCEPTION(scope, JSValue());
     }
     return object;
 }
 
 EncodedJSValue JSC_HOST_CALL objectConstructorDefineProperties(ExecState* exec)
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     if (!exec->argument(0).isObject())
-        return throwVMTypeError(exec, ASCIILiteral("Properties can only be defined on Objects."));
+        return throwVMTypeError(exec, scope, ASCIILiteral("Properties can only be defined on Objects."));
     JSObject* targetObj = asObject(exec->argument(0));
     JSObject* props = exec->argument(1).toObject(exec);
     if (!props)
@@ -496,21 +455,72 @@ EncodedJSValue JSC_HOST_CALL objectConstructorDefineProperties(ExecState* exec)
 
 EncodedJSValue JSC_HOST_CALL objectConstructorCreate(ExecState* exec)
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     JSValue proto = exec->argument(0);
     if (!proto.isObject() && !proto.isNull())
-        return throwVMTypeError(exec, ASCIILiteral("Object prototype may only be an Object or null."));
+        return throwVMTypeError(exec, scope, ASCIILiteral("Object prototype may only be an Object or null."));
     JSObject* newObject = proto.isObject()
         ? constructEmptyObject(exec, asObject(proto))
         : constructEmptyObject(exec, exec->lexicalGlobalObject()->nullPrototypeObjectStructure());
     if (exec->argument(1).isUndefined())
         return JSValue::encode(newObject);
     if (!exec->argument(1).isObject())
-        return throwVMTypeError(exec, ASCIILiteral("Property descriptor list must be an Object."));
+        return throwVMTypeError(exec, scope, ASCIILiteral("Property descriptor list must be an Object."));
     return JSValue::encode(defineProperties(exec, newObject, asObject(exec->argument(1))));
 }
 
+enum class IntegrityLevel {
+    Sealed,
+    Frozen
+};
+
+template<IntegrityLevel level>
+bool setIntegrityLevel(ExecState* exec, VM& vm, JSObject* object)
+{
+    // See https://tc39.github.io/ecma262/#sec-setintegritylevel.
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
+    bool success = object->methodTable(vm)->preventExtensions(object, exec);
+    RETURN_IF_EXCEPTION(scope, false);
+    if (UNLIKELY(!success))
+        return false;
+
+    PropertyNameArray properties(exec, PropertyNameMode::StringsAndSymbols);
+    object->methodTable(vm)->getOwnPropertyNames(object, exec, properties, EnumerationMode(DontEnumPropertiesMode::Include));
+    RETURN_IF_EXCEPTION(scope, false);
+
+    PropertyNameArray::const_iterator end = properties.end();
+    for (PropertyNameArray::const_iterator iter = properties.begin(); iter != end; ++iter) {
+        Identifier propertyName = *iter;
+        if (vm.propertyNames->isPrivateName(propertyName))
+            continue;
+
+        PropertyDescriptor desc;
+        if (level == IntegrityLevel::Sealed)
+            desc.setConfigurable(false);
+        else {
+            if (!object->getOwnPropertyDescriptor(exec, propertyName, desc))
+                continue;
+
+            if (desc.isDataDescriptor())
+                desc.setWritable(false);
+
+            desc.setConfigurable(false);
+        }
+
+        object->methodTable(vm)->defineOwnProperty(object, exec, propertyName, desc, true);
+        RETURN_IF_EXCEPTION(scope, false);
+    }
+    return true;
+}
+    
 EncodedJSValue JSC_HOST_CALL objectConstructorSeal(ExecState* exec)
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     // 1. If Type(O) is not Object, return O.
     JSValue obj = exec->argument(0);
     if (!obj.isObject())
@@ -518,92 +528,47 @@ EncodedJSValue JSC_HOST_CALL objectConstructorSeal(ExecState* exec)
     JSObject* object = asObject(obj);
 
     if (isJSFinalObject(object)) {
-        object->seal(exec->vm());
+        object->seal(vm);
         return JSValue::encode(obj);
     }
 
-    // 2. For each named own property name P of O,
-    PropertyNameArray properties(exec, PropertyNameMode::StringsAndSymbols);
-    object->methodTable(exec->vm())->getOwnPropertyNames(object, exec, properties, EnumerationMode(DontEnumPropertiesMode::Include));
-    if (UNLIKELY(exec->hadException()))
-        return JSValue::encode(obj);
-    PropertyNameArray::const_iterator end = properties.end();
-    for (PropertyNameArray::const_iterator iter = properties.begin(); iter != end; ++iter) {
-        Identifier propertyName = *iter;
-        if (exec->propertyNames().isPrivateName(propertyName))
-            continue;
-        // a. Let desc be the result of calling the [[GetOwnProperty]] internal method of O with P.
-        PropertyDescriptor desc;
-        if (!object->getOwnPropertyDescriptor(exec, propertyName, desc))
-            continue;
-        // b. If desc.[[Configurable]] is true, set desc.[[Configurable]] to false.
-        desc.setConfigurable(false);
-        // c. Call the [[DefineOwnProperty]] internal method of O with P, desc, and true as arguments.
-        object->methodTable(exec->vm())->defineOwnProperty(object, exec, propertyName, desc, true);
-        if (exec->hadException())
-            return JSValue::encode(obj);
+    bool success = setIntegrityLevel<IntegrityLevel::Sealed>(exec, vm, object);
+    RETURN_IF_EXCEPTION(scope, encodedJSValue());
+    if (!success) {
+        throwTypeError(exec, scope, ASCIILiteral("Unable to prevent extension in Object.seal"));
+        return encodedJSValue();
     }
 
-    // 3. Set the [[Extensible]] internal property of O to false.
-    object->methodTable(exec->vm())->preventExtensions(object, exec);
-    if (exec->hadException())
-        return JSValue::encode(JSValue());
-
-    // 4. Return O.
     return JSValue::encode(obj);
 }
 
 JSObject* objectConstructorFreeze(ExecState* exec, JSObject* object)
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     if (isJSFinalObject(object) && !hasIndexedProperties(object->indexingType())) {
-        object->freeze(exec->vm());
+        object->freeze(vm);
         return object;
     }
 
-    // 2. For each named own property name P of O,
-    PropertyNameArray properties(exec, PropertyNameMode::StringsAndSymbols);
-    object->methodTable(exec->vm())->getOwnPropertyNames(object, exec, properties, EnumerationMode(DontEnumPropertiesMode::Include));
-    if (UNLIKELY(exec->hadException()))
-        return object;
-    PropertyNameArray::const_iterator end = properties.end();
-    for (PropertyNameArray::const_iterator iter = properties.begin(); iter != end; ++iter) {
-        Identifier propertyName = *iter;
-        if (exec->propertyNames().isPrivateName(propertyName))
-            continue;
-        // a. Let desc be the result of calling the [[GetOwnProperty]] internal method of O with P.
-        PropertyDescriptor desc;
-        if (!object->getOwnPropertyDescriptor(exec, propertyName, desc))
-            continue;
-        // b. If IsDataDescriptor(desc) is true, then
-        // i. If desc.[[Writable]] is true, set desc.[[Writable]] to false.
-        if (desc.isDataDescriptor())
-            desc.setWritable(false);
-        // c. If desc.[[Configurable]] is true, set desc.[[Configurable]] to false.
-        desc.setConfigurable(false);
-        // d. Call the [[DefineOwnProperty]] internal method of O with P, desc, and true as arguments.
-        object->methodTable(exec->vm())->defineOwnProperty(object, exec, propertyName, desc, true);
-        if (exec->hadException())
-            return object;
-    }
-
-    // 3. Set the [[Extensible]] internal property of O to false.
-    object->methodTable(exec->vm())->preventExtensions(object, exec);
-    if (exec->hadException())
-        return nullptr;
-
-    // 4. Return O.
+    bool success = setIntegrityLevel<IntegrityLevel::Frozen>(exec, vm, object);
+    RETURN_IF_EXCEPTION(scope, nullptr);
+    if (!success)
+        return throwTypeError(exec, scope, ASCIILiteral("Unable to prevent extension in Object.freeze"));
     return object;
 }
 
 EncodedJSValue JSC_HOST_CALL objectConstructorFreeze(ExecState* exec)
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     // 1. If Type(O) is not Object, return O.
     JSValue obj = exec->argument(0);
     if (!obj.isObject())
         return JSValue::encode(obj);
     JSObject* result = objectConstructorFreeze(exec, asObject(obj));
-    if (exec->hadException())
-        return JSValue::encode(JSValue());
+    RETURN_IF_EXCEPTION(scope, encodedJSValue());
     return JSValue::encode(result);
 }
 
@@ -619,6 +584,9 @@ EncodedJSValue JSC_HOST_CALL objectConstructorPreventExtensions(ExecState* exec)
 
 EncodedJSValue JSC_HOST_CALL objectConstructorIsSealed(ExecState* exec)
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     // 1. If Type(O) is not Object, return true.
     JSValue obj = exec->argument(0);
     if (!obj.isObject())
@@ -626,13 +594,12 @@ EncodedJSValue JSC_HOST_CALL objectConstructorIsSealed(ExecState* exec)
     JSObject* object = asObject(obj);
 
     if (isJSFinalObject(object))
-        return JSValue::encode(jsBoolean(object->isSealed(exec->vm())));
+        return JSValue::encode(jsBoolean(object->isSealed(vm)));
 
     // 2. For each named own property name P of O,
     PropertyNameArray properties(exec, PropertyNameMode::StringsAndSymbols);
-    object->methodTable(exec->vm())->getOwnPropertyNames(object, exec, properties, EnumerationMode(DontEnumPropertiesMode::Include));
-    if (UNLIKELY(exec->hadException()))
-        return JSValue::encode(JSValue());
+    object->methodTable(vm)->getOwnPropertyNames(object, exec, properties, EnumerationMode(DontEnumPropertiesMode::Include));
+    RETURN_IF_EXCEPTION(scope, encodedJSValue());
     PropertyNameArray::const_iterator end = properties.end();
     for (PropertyNameArray::const_iterator iter = properties.begin(); iter != end; ++iter) {
         Identifier propertyName = *iter;
@@ -650,13 +617,15 @@ EncodedJSValue JSC_HOST_CALL objectConstructorIsSealed(ExecState* exec)
     // 3. If the [[Extensible]] internal property of O is false, then return true.
     // 4. Otherwise, return false.
     bool isExtensible = object->isExtensible(exec);
-    if (exec->hadException())
-        return JSValue::encode(JSValue());
+    RETURN_IF_EXCEPTION(scope, encodedJSValue());
     return JSValue::encode(jsBoolean(!isExtensible));
 }
 
 EncodedJSValue JSC_HOST_CALL objectConstructorIsFrozen(ExecState* exec)
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     // 1. If Type(O) is not Object, return true.
     JSValue obj = exec->argument(0);
     if (!obj.isObject())
@@ -664,13 +633,12 @@ EncodedJSValue JSC_HOST_CALL objectConstructorIsFrozen(ExecState* exec)
     JSObject* object = asObject(obj);
 
     if (isJSFinalObject(object))
-        return JSValue::encode(jsBoolean(object->isFrozen(exec->vm())));
+        return JSValue::encode(jsBoolean(object->isFrozen(vm)));
 
     // 2. For each named own property name P of O,
     PropertyNameArray properties(exec, PropertyNameMode::StringsAndSymbols);
-    object->methodTable(exec->vm())->getOwnPropertyNames(object, exec, properties, EnumerationMode(DontEnumPropertiesMode::Include));
-    if (UNLIKELY(exec->hadException()))
-        return JSValue::encode(JSValue());
+    object->methodTable(vm)->getOwnPropertyNames(object, exec, properties, EnumerationMode(DontEnumPropertiesMode::Include));
+    RETURN_IF_EXCEPTION(scope, encodedJSValue());
     PropertyNameArray::const_iterator end = properties.end();
     for (PropertyNameArray::const_iterator iter = properties.begin(); iter != end; ++iter) {
         Identifier propertyName = *iter;
@@ -689,20 +657,20 @@ EncodedJSValue JSC_HOST_CALL objectConstructorIsFrozen(ExecState* exec)
     // 3. If the [[Extensible]] internal property of O is false, then return true.
     // 4. Otherwise, return false.
     bool isExtensible = object->isExtensible(exec);
-    if (exec->hadException())
-        return JSValue::encode(JSValue());
+    RETURN_IF_EXCEPTION(scope, encodedJSValue());
     return JSValue::encode(jsBoolean(!isExtensible));
 }
 
 EncodedJSValue JSC_HOST_CALL objectConstructorIsExtensible(ExecState* exec)
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     JSValue obj = exec->argument(0);
     if (!obj.isObject())
         return JSValue::encode(jsBoolean(false));
     JSObject* object = asObject(obj);
     bool isExtensible = object->isExtensible(exec);
-    if (exec->hadException())
-        return JSValue::encode(JSValue());
+    RETURN_IF_EXCEPTION(scope, encodedJSValue());
     return JSValue::encode(jsBoolean(isExtensible));
 }
 
@@ -715,14 +683,13 @@ EncodedJSValue JSC_HOST_CALL objectConstructorIs(ExecState* exec)
 JSArray* ownPropertyKeys(ExecState* exec, JSObject* object, PropertyNameMode propertyNameMode, DontEnumPropertiesMode dontEnumPropertiesMode)
 {
     VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     PropertyNameArray properties(exec, propertyNameMode);
     object->methodTable(vm)->getOwnPropertyNames(object, exec, properties, EnumerationMode(dontEnumPropertiesMode));
-    if (UNLIKELY(vm.exception()))
-        return nullptr;
+    RETURN_IF_EXCEPTION(scope, nullptr);
 
     JSArray* keys = constructEmptyArray(exec, 0);
-    if (UNLIKELY(vm.exception()))
-        return nullptr;
+    RETURN_IF_EXCEPTION(scope, nullptr);
 
     switch (propertyNameMode) {
     case PropertyNameMode::Strings: {

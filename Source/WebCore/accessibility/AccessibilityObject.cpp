@@ -1909,8 +1909,19 @@ String AccessibilityObject::invalidStatus() const
     // aria-invalid can return false (default), grammar, spelling, or true.
     String ariaInvalid = stripLeadingAndTrailingHTMLSpaces(getAttribute(aria_invalidAttr));
     
+    if (ariaInvalid.isEmpty()) {
+        // We should expose invalid status for input types.
+        Node* node = this->node();
+        if (node && is<HTMLInputElement>(*node)) {
+            HTMLInputElement& input = downcast<HTMLInputElement>(*node);
+            if (input.hasBadInput() || input.typeMismatch())
+                return trueValue;
+        }
+        return falseValue;
+    }
+    
     // If "false", "undefined" [sic, string value], empty, or missing, return "false".
-    if (ariaInvalid.isEmpty() || ariaInvalid == falseValue || ariaInvalid == undefinedValue)
+    if (ariaInvalid == falseValue || ariaInvalid == undefinedValue)
         return falseValue;
     // Besides true/false/undefined, the only tokens defined by WAI-ARIA 1.0...
     // ...for @aria-invalid are "grammar" and "spelling".
@@ -2280,13 +2291,13 @@ bool AccessibilityObject::isValueAutofilled() const
 
 const AtomicString& AccessibilityObject::placeholderValue() const
 {
-    const AtomicString& ariaPlaceholder = getAttribute(aria_placeholderAttr);
-    if (!ariaPlaceholder.isEmpty())
-        return ariaPlaceholder;
-    
     const AtomicString& placeholder = getAttribute(placeholderAttr);
     if (!placeholder.isEmpty())
         return placeholder;
+    
+    const AtomicString& ariaPlaceholder = getAttribute(aria_placeholderAttr);
+    if (!ariaPlaceholder.isEmpty())
+        return ariaPlaceholder;
     
     return nullAtom;
 }
@@ -3087,6 +3098,12 @@ bool AccessibilityObject::isSuperscriptStyleGroup() const
 {
     Node* node = this->node();
     return node && node->hasTagName(supTag);
+}
+
+bool AccessibilityObject::isFigure() const
+{
+    Node* node = this->node();
+    return node && node->hasTagName(figureTag);
 }
     
 bool AccessibilityObject::isContainedByPasswordField() const

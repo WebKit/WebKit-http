@@ -52,7 +52,7 @@ WebInspector.VisualStylePropertyEditor = class VisualStylePropertyEditor extends
             else {
                 this._possibleValues.basic = canonicalizeValues(possibleValues.basic);
                 this._possibleValues.advanced = canonicalizeValues(possibleValues.advanced);
-            } 
+            }
         }
         this._possibleUnits = null;
         if (possibleUnits) {
@@ -105,7 +105,7 @@ WebInspector.VisualStylePropertyEditor = class VisualStylePropertyEditor extends
                 name,
                 textContainsNameRegExp: new RegExp("(?:(?:^|;)\\s*" + name + "\\s*:)"),
                 replacementRegExp: new RegExp("((?:^|;)\\s*)(" + name + ")(.+?(?:;|$))")
-            })
+            });
         }
 
         this._propertyReferenceName = propertyNames[0];
@@ -549,7 +549,7 @@ WebInspector.VisualStylePropertyEditor = class VisualStylePropertyEditor extends
         }
 
         this._element.classList.toggle("missing-dependency", !!title.length);
-        this._warningElement.title = !!title.length ? WebInspector.UIString("Missing Dependencies:%s").format(title) : null;
+        this._warningElement.title = title.length ? WebInspector.UIString("Missing Dependencies:%s").format(title) : null;
     }
 
     _titleElementPrepareForClick(event)
@@ -615,4 +615,4 @@ WebInspector.VisualStylePropertyEditor = class VisualStylePropertyEditor extends
 
 WebInspector.VisualStylePropertyEditor.Event = {
     ValueDidChange: "visual-style-property-editor-value-changed"
-}
+};

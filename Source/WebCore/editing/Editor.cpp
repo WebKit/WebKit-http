@@ -59,9 +59,12 @@
 #include "HTMLTextAreaElement.h"
 #include "HitTestResult.h"
 #include "IndentOutdentCommand.h"
+#include "InputEvent.h"
 #include "InsertListCommand.h"
+#include "InsertTextCommand.h"
 #include "KeyboardEvent.h"
 #include "KillRing.h"
+#include "Logging.h"
 #include "MainFrame.h"
 #include "ModifySelectionListLevel.h"
 #include "NodeList.h"
@@ -74,6 +77,7 @@
 #include "RenderTextControl.h"
 #include "RenderedDocumentMarker.h"
 #include "RenderedPosition.h"
+#include "ReplaceRangeWithTextCommand.h"
 #include "ReplaceSelectionCommand.h"
 #include "Settings.h"
 #include "ShadowRoot.h"
@@ -106,6 +110,41 @@
 #endif
 
 namespace WebCore {
+
+static bool dispatchBeforeInputEvent(Element& element, const AtomicString& inputType, const String& data = { })
+{
+    auto* settings = element.document().settings();
+    if (!settings || !settings->inputEventsEnabled())
+        return true;
+
+    auto event = InputEvent::create(eventNames().beforeinputEvent, inputType, true, true, element.document().defaultView(), data, 0);
+    element.dispatchScopedEvent(event);
+
+    return !event->defaultPrevented();
+}
+
+static void dispatchInputEvent(Element& element, const AtomicString& inputType, const String& data = { })
+{
+    auto* settings = element.document().settings();
+    if (settings && settings->inputEventsEnabled())
+        element.dispatchScopedEvent(InputEvent::create(eventNames().inputEvent, inputType, true, false, element.document().defaultView(), data, 0));
+    else
+        element.dispatchInputEvent();
+}
+
+static String inputEventDataForEditingStyleAndAction(EditingStyle& style, EditAction action)
+{
+    auto* properties = style.style();
+    if (!properties)
+        return { };
+
+    switch (action) {
+    case EditActionSetColor:
+        return properties->getPropertyValue(CSSPropertyColor);
+    default:
+        return { };
+    }
+}
 
 class ClearTextCommand : public DeleteSelectionCommand {
 public:
@@ -183,49 +222,51 @@ TextCheckerClient* Editor::textChecker() const
     return 0;
 }
 
-void Editor::handleKeyboardEvent(KeyboardEvent* event)
+void Editor::handleKeyboardEvent(KeyboardEvent& event)
 {
     if (EditorClient* c = client())
-        c->handleKeyboardEvent(event);
+        c->handleKeyboardEvent(&event);
 }
 
-void Editor::handleInputMethodKeydown(KeyboardEvent* event)
+void Editor::handleInputMethodKeydown(KeyboardEvent& event)
 {
     if (EditorClient* c = client())
-        c->handleInputMethodKeydown(event);
+        c->handleInputMethodKeydown(&event);
 }
 
-bool Editor::handleTextEvent(TextEvent* event)
+bool Editor::handleTextEvent(TextEvent& event)
 {
+    LOG(Editing, "Editor %p handleTextEvent (data %s)", this, event.data().utf8().data());
+
     // Default event handling for Drag and Drop will be handled by DragController
     // so we leave the event for it.
-    if (event->isDrop())
+    if (event.isDrop())
         return false;
 
-    if (event->isPaste()) {
-        if (event->pastingFragment())
+    if (event.isPaste()) {
+        if (event.pastingFragment())
 #if PLATFORM(IOS)
         {
-            if (client()->performsTwoStepPaste(event->pastingFragment()))
+            if (client()->performsTwoStepPaste(event.pastingFragment()))
                 return true;
 #endif
-            replaceSelectionWithFragment(event->pastingFragment(), false, event->shouldSmartReplace(), event->shouldMatchStyle(), EditActionPaste, event->mailBlockquoteHandling());
+            replaceSelectionWithFragment(event.pastingFragment(), false, event.shouldSmartReplace(), event.shouldMatchStyle(), EditActionPaste, event.mailBlockquoteHandling());
 #if PLATFORM(IOS)
         }
 #endif
         else 
-            replaceSelectionWithText(event->data(), false, event->shouldSmartReplace(), EditActionPaste);
+            replaceSelectionWithText(event.data(), false, event.shouldSmartReplace(), EditActionPaste);
         return true;
     }
 
-    String data = event->data();
+    String data = event.data();
     if (data == "\n") {
-        if (event->isLineBreak())
+        if (event.isLineBreak())
             return insertLineBreak();
         return insertParagraphSeparator();
     }
 
-    return insertTextWithoutSendingTextEvent(data, false, event);
+    return insertTextWithoutSendingTextEvent(data, false, &event);
 }
 
 bool Editor::canEdit() const
@@ -863,9 +904,13 @@ bool Editor::dispatchCPPEvent(const AtomicString& eventType, DataTransferAccessP
     if (!target)
         return true;
 
-    RefPtr<DataTransfer> dataTransfer = DataTransfer::createForCopyAndPaste(policy);
+    auto dataTransfer = DataTransfer::createForCopyAndPaste(policy);
 
-    Ref<Event> event = ClipboardEvent::create(eventType, true, true, dataTransfer.get());
+    ClipboardEvent::Init init;
+    init.bubbles = true;
+    init.cancelable = true;
+    init.clipboardData = dataTransfer.ptr();
+    auto event = ClipboardEvent::create(eventType, init, Event::IsTrusted::Yes);
     target->dispatchEvent(event);
     bool noDefaultProcessing = event->defaultPrevented();
     if (noDefaultProcessing && policy == DataTransferAccessPolicy::Writable) {
@@ -1021,18 +1066,37 @@ static void notifyTextFromControls(Element* startRoot, Element* endRoot)
         endingTextControl->didEditInnerTextValue();
 }
 
-static void dispatchEditableContentChangedEvents(PassRefPtr<Element> prpStartRoot, PassRefPtr<Element> prpEndRoot)
+static bool dispatchBeforeInputEvents(RefPtr<Element> startRoot, RefPtr<Element> endRoot, const AtomicString& inputTypeName, const String& data = { })
 {
-    RefPtr<Element> startRoot = prpStartRoot;
-    RefPtr<Element> endRoot = prpEndRoot;
+    bool continueWithDefaultBehavior = true;
     if (startRoot)
-        startRoot->dispatchEvent(Event::create(eventNames().webkitEditableContentChangedEvent, false, false));
+        continueWithDefaultBehavior &= dispatchBeforeInputEvent(*startRoot, inputTypeName, data);
     if (endRoot && endRoot != startRoot)
-        endRoot->dispatchEvent(Event::create(eventNames().webkitEditableContentChangedEvent, false, false));
+        continueWithDefaultBehavior &= dispatchBeforeInputEvent(*endRoot, inputTypeName, data);
+    return continueWithDefaultBehavior;
+}
+
+static void dispatchInputEvents(RefPtr<Element> startRoot, RefPtr<Element> endRoot, const AtomicString& inputTypeName, const String& data = { })
+{
+    if (startRoot)
+        dispatchInputEvent(*startRoot, inputTypeName, data);
+    if (endRoot && endRoot != startRoot)
+        dispatchInputEvent(*endRoot, inputTypeName, data);
+}
+
+bool Editor::willApplyEditing(CompositeEditCommand& command) const
+{
+    auto* composition = command.composition();
+    if (!composition)
+        return true;
+
+    return dispatchBeforeInputEvents(composition->startingRootEditableElement(), composition->endingRootEditableElement(), command.inputEventTypeName(), command.inputEventData());
 }
 
 void Editor::appliedEditing(PassRefPtr<CompositeEditCommand> cmd)
 {
+    LOG(Editing, "Editor %p appliedEditing", this);
+
     document().updateLayout();
 
     EditCommandComposition* composition = cmd->composition();
@@ -1045,7 +1109,7 @@ void Editor::appliedEditing(PassRefPtr<CompositeEditCommand> cmd)
     FrameSelection::SetSelectionOptions options = cmd->isDictationCommand() ? FrameSelection::DictationTriggered : 0;
     
     changeSelectionAfterCommand(newSelection, options);
-    dispatchEditableContentChangedEvents(composition->startingRootEditableElement(), composition->endingRootEditableElement());
+    dispatchInputEvents(composition->startingRootEditableElement(), composition->endingRootEditableElement(), cmd->inputEventTypeName(), cmd->inputEventData());
 
     updateEditorUINowIfScheduled();
     
@@ -1068,6 +1132,11 @@ void Editor::appliedEditing(PassRefPtr<CompositeEditCommand> cmd)
     respondToChangedContents(newSelection);
 }
 
+bool Editor::willUnapplyEditing(const EditCommandComposition& composition) const
+{
+    return dispatchBeforeInputEvents(composition.startingRootEditableElement(), composition.endingRootEditableElement(), "historyUndo");
+}
+
 void Editor::unappliedEditing(PassRefPtr<EditCommandComposition> cmd)
 {
     document().updateLayout();
@@ -1076,7 +1145,7 @@ void Editor::unappliedEditing(PassRefPtr<EditCommandComposition> cmd)
 
     VisibleSelection newSelection(cmd->startingSelection());
     changeSelectionAfterCommand(newSelection, FrameSelection::defaultSetSelectionOptions());
-    dispatchEditableContentChangedEvents(cmd->startingRootEditableElement(), cmd->endingRootEditableElement());
+    dispatchInputEvents(cmd->startingRootEditableElement(), cmd->endingRootEditableElement(), "historyUndo");
 
     updateEditorUINowIfScheduled();
 
@@ -1088,6 +1157,11 @@ void Editor::unappliedEditing(PassRefPtr<EditCommandComposition> cmd)
     respondToChangedContents(newSelection);
 }
 
+bool Editor::willReapplyEditing(const EditCommandComposition& composition) const
+{
+    return dispatchBeforeInputEvents(composition.startingRootEditableElement(), composition.endingRootEditableElement(), "historyRedo");
+}
+
 void Editor::reappliedEditing(PassRefPtr<EditCommandComposition> cmd)
 {
     document().updateLayout();
@@ -1096,7 +1170,7 @@ void Editor::reappliedEditing(PassRefPtr<EditCommandComposition> cmd)
 
     VisibleSelection newSelection(cmd->endingSelection());
     changeSelectionAfterCommand(newSelection, FrameSelection::defaultSetSelectionOptions());
-    dispatchEditableContentChangedEvents(cmd->startingRootEditableElement(), cmd->endingRootEditableElement());
+    dispatchInputEvents(cmd->startingRootEditableElement(), cmd->endingRootEditableElement(), "historyRedo");
     
     updateEditorUINowIfScheduled();
 
@@ -2464,18 +2538,18 @@ static bool isAutomaticTextReplacementType(TextCheckingType type)
 
 static void correctSpellcheckingPreservingTextCheckingParagraph(TextCheckingParagraph& paragraph, PassRefPtr<Range> rangeToReplace, const String& replacement, int resultLocation, int resultLength)
 {
-    ContainerNode* scope = downcast<ContainerNode>(paragraph.paragraphRange()->startContainer().rootNode());
+    auto& scope = downcast<ContainerNode>(paragraph.paragraphRange()->startContainer().rootNode());
 
     size_t paragraphLocation;
     size_t paragraphLength;
-    TextIterator::getLocationAndLengthFromRange(scope, paragraph.paragraphRange().get(), paragraphLocation, paragraphLength);
+    TextIterator::getLocationAndLengthFromRange(&scope, paragraph.paragraphRange().get(), paragraphLocation, paragraphLength);
 
     applyCommand(SpellingCorrectionCommand::create(rangeToReplace, replacement));
 
     // TextCheckingParagraph may be orphaned after SpellingCorrectionCommand mutated DOM.
     // See <rdar://10305315>, http://webkit.org/b/89526.
 
-    RefPtr<Range> newParagraphRange = TextIterator::rangeFromLocationAndLength(scope, paragraphLocation, paragraphLength + replacement.length() - resultLength);
+    RefPtr<Range> newParagraphRange = TextIterator::rangeFromLocationAndLength(&scope, paragraphLocation, paragraphLength + replacement.length() - resultLength);
 
     paragraph = TextCheckingParagraph(TextIterator::subrange(newParagraphRange.get(), resultLocation, replacement.length()), newParagraphRange);
 }
@@ -3046,6 +3120,12 @@ void Editor::computeAndSetTypingStyle(EditingStyle& style, EditAction editingAct
         return;
     }
 
+    String inputTypeName = inputTypeNameForEditingAction(editingAction);
+    String inputEventData = inputEventDataForEditingStyleAndAction(style, editingAction);
+    auto* element = m_frame.selection().selection().rootEditableElement();
+    if (element && !dispatchBeforeInputEvent(*element, inputTypeName, inputEventData))
+        return;
+
     // Calculate the current typing style.
     RefPtr<EditingStyle> typingStyle;
     if (auto existingTypingStyle = m_frame.selection().typingStyle())
@@ -3058,6 +3138,9 @@ void Editor::computeAndSetTypingStyle(EditingStyle& style, EditAction editingAct
     RefPtr<EditingStyle> blockStyle = typingStyle->extractAndRemoveBlockProperties();
     if (!blockStyle->isEmpty())
         applyCommand(ApplyStyleCommand::create(document(), blockStyle.get(), editingAction));
+
+    if (element)
+        dispatchInputEvent(*element, inputTypeName, inputEventData);
 
     // Set the remaining style as the typing style.
     m_frame.selection().setTypingStyle(typingStyle);
@@ -3143,18 +3226,6 @@ bool Editor::findString(const String& target, FindOptions options)
         m_frame.selection().revealSelection();
 
     return true;
-}
-
-RefPtr<Range> Editor::findStringAndScrollToVisible(const String& target, Range* previousMatch, FindOptions options)
-{
-    RefPtr<Range> nextMatch = rangeOfString(target, previousMatch, options);
-    if (!nextMatch)
-        return nullptr;
-
-    nextMatch->firstNode()->renderer()->scrollRectToVisible(SelectionRevealMode::Reveal, nextMatch->absoluteBoundingBox(),
-        ScrollAlignment::alignCenterIfNeeded, ScrollAlignment::alignCenterIfNeeded);
-
-    return nextMatch;
 }
 
 RefPtr<Range> Editor::rangeOfString(const String& target, Range* referenceRange, FindOptions options)
@@ -3605,27 +3676,40 @@ String Editor::stringForCandidateRequest() const
 
     return String();
 }
+    
+RefPtr<Range> Editor::contextRangeForCandidateRequest() const
+{
+    const VisibleSelection& selection = m_frame.selection().selection();
+    return makeRange(startOfParagraph(selection.visibleStart()), endOfParagraph(selection.visibleEnd()));
+}
+
+RefPtr<Range> Editor::rangeForTextCheckingResult(const TextCheckingResult& result) const
+{
+    if (!result.length)
+        return nullptr;
+
+    RefPtr<Range> contextRange = contextRangeForCandidateRequest();
+    if (!contextRange)
+        return nullptr;
+
+    return TextIterator::subrange(contextRange.get(), result.location, result.length);
+}
 
 void Editor::handleAcceptedCandidate(TextCheckingResult acceptedCandidate)
 {
     const VisibleSelection& selection = m_frame.selection().selection();
-    RefPtr<Range> candidateRange = candidateRangeForSelection(m_frame);
-    int candidateLength = acceptedCandidate.length;
 
     m_isHandlingAcceptedCandidate = true;
 
-    if (candidateWouldReplaceText(selection))
-        m_frame.selection().setSelectedRange(candidateRange.get(), UPSTREAM, true);
+    if (auto range = rangeForTextCheckingResult(acceptedCandidate)) {
+        if (shouldInsertText(acceptedCandidate.replacement, range.get(), EditorInsertActionTyped)) {
+            Ref<ReplaceRangeWithTextCommand> replaceCommand = ReplaceRangeWithTextCommand::create(range.get(), acceptedCandidate.replacement);
+            applyCommand(replaceCommand.ptr());
+        }
+    } else
+        insertText(acceptedCandidate.replacement, nullptr);
 
-    insertText(acceptedCandidate.replacement, 0);
-
-    // Some candidates come with a space built in, and we do not need to add another space in that case.
-    if (!acceptedCandidate.replacement.endsWith(' ')) {
-        insertText(ASCIILiteral(" "), 0);
-        ++candidateLength;
-    }
-
-    RefPtr<Range> insertedCandidateRange = rangeExpandedAroundPositionByCharacters(selection.visibleStart(), candidateLength);
+    RefPtr<Range> insertedCandidateRange = rangeExpandedByCharactersInDirectionAtWordBoundary(selection.visibleStart(), acceptedCandidate.replacement.length(), DirectionBackward);
     if (insertedCandidateRange)
         insertedCandidateRange->startContainer().document().markers().addMarker(insertedCandidateRange.get(), DocumentMarker::AcceptedCandidate, acceptedCandidate.replacement);
 

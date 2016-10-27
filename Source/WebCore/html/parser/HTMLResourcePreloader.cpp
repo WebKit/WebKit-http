@@ -43,7 +43,7 @@ URL PreloadRequest::completeURL(Document& document)
 CachedResourceRequest PreloadRequest::resourceRequest(Document& document)
 {
     ASSERT(isMainThread());
-    CachedResourceRequest request(ResourceRequest(completeURL(document)));
+    CachedResourceRequest request(completeURL(document), CachedResourceLoader::defaultCachedResourceOptions());
     request.setInitiator(m_initiator);
     request.setAsPotentiallyCrossOrigin(m_crossOriginMode, document);
     return request;
@@ -68,8 +68,7 @@ void HTMLResourcePreloader::preload(std::unique_ptr<PreloadRequest> preload)
     if (!preload->media().isEmpty() && !mediaAttributeMatches(m_document, &m_document.renderView()->style(), preload->media()))
         return;
 
-    CachedResourceRequest request = preload->resourceRequest(m_document);
-    m_document.cachedResourceLoader().preload(preload->resourceType(), request, preload->charset());
+    m_document.cachedResourceLoader().preload(preload->resourceType(), preload->resourceRequest(m_document), CachedResourceLoader::ImplicitPreload);
 }
 
 

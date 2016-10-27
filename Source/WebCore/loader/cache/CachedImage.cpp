@@ -56,49 +56,26 @@
 
 namespace WebCore {
 
-CachedImage::CachedImage(const ResourceRequest& resourceRequest, SessionID sessionID)
-    : CachedResource(resourceRequest, ImageResource, sessionID)
-    , m_image(nullptr)
-    , m_isManuallyCached(false)
-    , m_shouldPaintBrokenImage(true)
+CachedImage::CachedImage(CachedResourceRequest&& request, SessionID sessionID)
+    : CachedResource(WTFMove(request), ImageResource, sessionID)
 {
     setStatus(Unknown);
 }
 
 CachedImage::CachedImage(Image* image, SessionID sessionID)
-    : CachedResource(ResourceRequest(), ImageResource, sessionID)
+    : CachedResource(URL(), ImageResource, sessionID)
     , m_image(image)
-    , m_isManuallyCached(false)
-    , m_shouldPaintBrokenImage(true)
 {
-    setStatus(Cached);
-    setLoading(false);
 }
 
 CachedImage::CachedImage(const URL& url, Image* image, SessionID sessionID)
-    : CachedResource(ResourceRequest(url), ImageResource, sessionID)
+    : CachedResource(url, ImageResource, sessionID)
     , m_image(image)
-    , m_isManuallyCached(false)
-    , m_shouldPaintBrokenImage(true)
+    , m_isManuallyCached(true)
 {
-    setStatus(Cached);
-    setLoading(false);
-}
-
-CachedImage::CachedImage(const URL& url, Image* image, CachedImage::CacheBehaviorType type, SessionID sessionID)
-    : CachedResource(ResourceRequest(url), ImageResource, sessionID)
-    , m_image(image)
-    , m_isManuallyCached(type == CachedImage::ManuallyCached)
-    , m_shouldPaintBrokenImage(true)
-{
-    setStatus(Cached);
-    setLoading(false);
-    if (UNLIKELY(isManuallyCached())) {
-        // Use the incoming URL in the response field. This ensures that code
-        // using the response directly, such as origin checks for security,
-        // actually see something.
-        m_response.setURL(url);
-    }
+    // Use the incoming URL in the response field. This ensures that code using the response directly,
+    // such as origin checks for security, actually see something.
+    m_response.setURL(url);
 }
 
 CachedImage::~CachedImage()
@@ -106,37 +83,47 @@ CachedImage::~CachedImage()
     clearImage();
 }
 
-void CachedImage::load(CachedResourceLoader& cachedResourceLoader, const ResourceLoaderOptions& options)
+void CachedImage::load(CachedResourceLoader& loader)
 {
-    if (cachedResourceLoader.shouldPerformImageLoad(url()))
-        CachedResource::load(cachedResourceLoader, options);
+    if (loader.shouldPerformImageLoad(url()))
+        CachedResource::load(loader);
     else
         setLoading(false);
 }
 
-void CachedImage::didAddClient(CachedResourceClient* client)
+void CachedImage::setBodyDataFrom(const CachedResource& resource)
+{
+    ASSERT(resource.type() == type());
+    const CachedImage& image = static_cast<const CachedImage&>(resource);
+
+    m_image = image.m_image;
+
+    if (m_image && is<SVGImage>(*m_image))
+        m_svgImageCache = std::make_unique<SVGImageCache>(&downcast<SVGImage>(*m_image));
+}
+
+void CachedImage::didAddClient(CachedResourceClient& client)
 {
     if (m_data && !m_image && !errorOccurred()) {
         createImage();
         m_image->setData(m_data.copyRef(), true);
     }
-    
-    ASSERT(client->resourceClientType() == CachedImageClient::expectedType());
+
+    ASSERT(client.resourceClientType() == CachedImageClient::expectedType());
     if (m_image && !m_image->isNull())
-        static_cast<CachedImageClient*>(client)->imageChanged(this);
+        static_cast<CachedImageClient&>(client).imageChanged(this);
 
     CachedResource::didAddClient(client);
 }
 
-void CachedImage::didRemoveClient(CachedResourceClient* client)
+void CachedImage::didRemoveClient(CachedResourceClient& client)
 {
-    ASSERT(client);
-    ASSERT(client->resourceClientType() == CachedImageClient::expectedType());
+    ASSERT(client.resourceClientType() == CachedImageClient::expectedType());
 
-    m_pendingContainerSizeRequests.remove(static_cast<CachedImageClient*>(client));
+    m_pendingContainerSizeRequests.remove(&static_cast<CachedImageClient&>(client));
 
     if (m_svgImageCache)
-        m_svgImageCache->removeClientFromCache(static_cast<CachedImageClient*>(client));
+        m_svgImageCache->removeClientFromCache(&static_cast<CachedImageClient&>(client));
 
     CachedResource::didRemoveClient(client);
 }
@@ -266,7 +253,7 @@ bool CachedImage::imageHasRelativeHeight() const
     return false;
 }
 
-LayoutSize CachedImage::imageSizeForRenderer(const RenderObject* renderer, float multiplier, SizeType sizeType)
+LayoutSize CachedImage::imageSizeForRenderer(const RenderElement* renderer, float multiplier, SizeType sizeType)
 {
     if (!m_image)
         return LayoutSize();
@@ -462,12 +449,13 @@ void CachedImage::destroyDecodedData()
         m_image->destroyDecodedData();
 }
 
-void CachedImage::decodedSizeChanged(const Image* image, int delta)
+void CachedImage::decodedSizeChanged(const Image* image, long long delta)
 {
     if (!image || image != m_image)
         return;
-    
-    setDecodedSize(decodedSize() + delta);
+
+    ASSERT(delta >= 0 || decodedSize() + delta >= 0);
+    setDecodedSize(static_cast<unsigned>(decodedSize() + delta));
 }
 
 void CachedImage::didDraw(const Image* image)
@@ -504,13 +492,12 @@ bool CachedImage::currentFrameKnownToBeOpaque(const RenderElement* renderer)
     return image->currentFrameKnownToBeOpaque();
 }
 
-bool CachedImage::isOriginClean(SecurityOrigin* securityOrigin)
+bool CachedImage::isOriginClean(SecurityOrigin* origin)
 {
-    if (!image()->hasSingleSecurityOrigin())
-        return false;
-    if (passesAccessControlCheck(*securityOrigin))
-        return true;
-    return !securityOrigin->taintsCanvas(responseForSameOriginPolicyChecks().url());
+    ASSERT_UNUSED(origin, origin);
+    ASSERT(this->origin());
+    ASSERT(origin->toString() == this->origin()->toString());
+    return !loadFailedOrCanceled() && isCORSSameOrigin();
 }
 
 CachedResource::RevalidationDecision CachedImage::makeRevalidationDecision(CachePolicy cachePolicy) const

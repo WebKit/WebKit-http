@@ -70,7 +70,6 @@ class MediaControls;
 class MediaControlsHost;
 class MediaElementAudioSourceNode;
 class MediaError;
-class MediaKeys;
 class MediaPlayer;
 class MediaSession;
 class MediaSource;
@@ -84,6 +83,9 @@ class URL;
 class VideoPlaybackQuality;
 class VideoTrackList;
 class VideoTrackPrivate;
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
+class WebKitMediaKeys;
+#endif
 
 #if ENABLE(VIDEO_TRACK)
 typedef PODIntervalTree<MediaTime, TextTrackCue*> CueIntervalTree;
@@ -114,6 +116,8 @@ public:
     bool hasAudio() const override;
 
     static HashSet<HTMLMediaElement*>& allMediaElements();
+
+    static HTMLMediaElement* bestMediaElementForShowingPlaybackControlsManager(MediaElementSession::PlaybackControlsPurpose);
 
     void rewind(double timeDelta);
     WEBCORE_EXPORT void returnToRealtime() override;
@@ -178,7 +182,7 @@ public:
 
     Ref<TimeRanges> buffered() const override;
     WEBCORE_EXPORT void load();
-    WEBCORE_EXPORT String canPlayType(const String& mimeType, const String& keySystem = String(), const URL& = URL()) const;
+    WEBCORE_EXPORT String canPlayType(const String& mimeType) const;
 
 // ready state
     using HTMLMediaElementEnums::ReadyState;
@@ -241,20 +245,14 @@ public:
 
 #if ENABLE(MEDIA_SOURCE)
 //  Media Source.
-    void closeMediaSource();
+    void detachMediaSource();
     void incrementDroppedFrameCount() { ++m_droppedVideoFrames; }
     size_t maximumSourceBufferSize(const SourceBuffer&) const;
 #endif
 
-#if ENABLE(ENCRYPTED_MEDIA)
-    void webkitGenerateKeyRequest(const String& keySystem, const RefPtr<Uint8Array>& initData, const String& customData, ExceptionCode&);
-    void webkitAddKey(const String& keySystem, Uint8Array& key, const RefPtr<Uint8Array>& initData, const String& sessionId, ExceptionCode&);
-    void webkitCancelKeyRequest(const String& keySystem, const String& sessionId, ExceptionCode&);
-#endif
-
-#if ENABLE(ENCRYPTED_MEDIA_V2)
-    MediaKeys* keys() const { return m_mediaKeys.get(); }
-    void setMediaKeys(MediaKeys*);
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
+    WebKitMediaKeys* webkitKeys() const { return m_mediaKeys.get(); }
+    void webkitSetMediaKeys(WebKitMediaKeys*);
 
     void keyAdded();
 #endif
@@ -468,6 +466,16 @@ public:
 
     RenderMedia* renderer() const;
 
+    void resetPlaybackSessionState();
+    bool isVisibleInViewport() const;
+    bool hasEverNotifiedAboutPlaying() const;
+    void setShouldDelayLoadEvent(bool);
+
+    bool hasEverHadAudio() const { return m_hasEverHadAudio; }
+    bool hasEverHadVideo() const { return m_hasEverHadVideo; }
+
+    double playbackStartedTime() const { return m_playbackStartedTime; }
+
 protected:
     HTMLMediaElement(const QualifiedName&, Document&, bool createdByParser);
     virtual ~HTMLMediaElement();
@@ -562,14 +570,7 @@ private:
     void mediaPlayerFirstVideoFrameAvailable(MediaPlayer*) override;
     void mediaPlayerCharacteristicChanged(MediaPlayer*) override;
 
-#if ENABLE(ENCRYPTED_MEDIA)
-    void mediaPlayerKeyAdded(MediaPlayer*, const String& keySystem, const String& sessionId) override;
-    void mediaPlayerKeyError(MediaPlayer*, const String& keySystem, const String& sessionId, MediaPlayerClient::MediaKeyErrorCode, unsigned short systemCode) override;
-    void mediaPlayerKeyMessage(MediaPlayer*, const String& keySystem, const String& sessionId, const unsigned char* message, unsigned messageLength, const URL& defaultURL) override;
-    bool mediaPlayerKeyNeeded(MediaPlayer*, const String& keySystem, const String& sessionId, const unsigned char* initData, unsigned initDataLength) override;
-#endif
-
-#if ENABLE(ENCRYPTED_MEDIA_V2)
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
     RefPtr<ArrayBuffer> mediaPlayerCachedKeyForKeyId(const String& keyId) const override;
     bool mediaPlayerKeyNeeded(MediaPlayer*, Uint8Array*) override;
     String mediaPlayerMediaKeysStorageDirectory() const override;
@@ -615,9 +616,12 @@ private:
     GraphicsDeviceAdapter* mediaPlayerGraphicsDeviceAdapter(const MediaPlayer*) const override;
 #endif
 
+    void mediaPlayerActiveSourceBuffersChanged(const MediaPlayer*) override;
+
     bool mediaPlayerShouldWaitForResponseToAuthenticationChallenge(const AuthenticationChallenge&) override;
     void mediaPlayerHandlePlaybackCommand(PlatformMediaSession::RemoteControlCommandType command) override { didReceiveRemoteControlCommand(command, nullptr); }
-    String mediaPlayerSourceApplicationIdentifier() const override;
+    String sourceApplicationIdentifier() const override;
+    String mediaPlayerSourceApplicationIdentifier() const override { return sourceApplicationIdentifier(); }
     Vector<String> mediaPlayerPreferredAudioCharacteristics() const override;
 
 #if PLATFORM(IOS)
@@ -715,7 +719,6 @@ private:
 
     void mediaCanStart() override;
 
-    void setShouldDelayLoadEvent(bool);
     void invalidateCachedTime() const;
     void refreshCachedTime() const;
 
@@ -787,6 +790,7 @@ private:
     void pauseAfterDetachedTask();
     void updatePlaybackControlsManager();
     void scheduleUpdatePlaybackControlsManager();
+    void playbackControlsManagerBehaviorRestrictionsTimerFired();
 
     void updateRenderer();
 
@@ -794,16 +798,23 @@ private:
     void updateUsesLTRUserInterfaceLayoutDirectionJSProperty();
     void setControllerJSProperty(const char*, JSC::JSValue);
 
+    void addBehaviorRestrictionsOnEndIfNecessary();
+    void handleSeekToPlaybackPosition(double);
+    void seekToPlaybackPositionEndedTimerFired();
+
     Timer m_pendingActionTimer;
     Timer m_progressEventTimer;
     Timer m_playbackProgressTimer;
     Timer m_scanTimer;
+    Timer m_playbackControlsManagerBehaviorRestrictionsTimer;
+    Timer m_seekToPlaybackPositionEndedTimer;
     GenericTaskQueue<Timer> m_seekTaskQueue;
     GenericTaskQueue<Timer> m_resizeTaskQueue;
     GenericTaskQueue<Timer> m_shadowDOMTaskQueue;
     GenericTaskQueue<Timer> m_promiseTaskQueue;
     GenericTaskQueue<Timer> m_pauseAfterDetachedTaskQueue;
     GenericTaskQueue<Timer> m_updatePlaybackControlsManagerQueue;
+    GenericTaskQueue<Timer> m_playbackControlsManagerBehaviorRestrictionsQueue;
     RefPtr<TimeRanges> m_playedTimeRanges;
     GenericEventQueue m_asyncEventQueue;
 
@@ -841,6 +852,7 @@ private:
     MediaTime m_lastSeekTime;
     
     double m_previousProgressTime;
+    double m_playbackStartedTime { 0 };
 
     // The last time a timeupdate event was sent (based on monotonic clock).
     double m_clockTimeAtLastUpdateEvent;
@@ -938,11 +950,17 @@ private:
     bool m_elementIsHidden : 1;
     bool m_creatingControls : 1;
     bool m_receivedLayoutSizeChanged : 1;
+    bool m_hasEverNotifiedAboutPlaying : 1;
+
+    bool m_hasEverHadAudio : 1;
+    bool m_hasEverHadVideo : 1;
 
 #if ENABLE(MEDIA_CONTROLS_SCRIPT)
     bool m_mediaControlsDependOnPageScaleFactor : 1;
     bool m_haveSetUpCaptionContainer : 1;
 #endif
+
+    bool m_isScrubbingRemotely : 1;
 
 #if ENABLE(VIDEO_TRACK)
     bool m_tracksAreReady : 1;
@@ -982,8 +1000,8 @@ private:
 
     friend class TrackDisplayUpdateScope;
 
-#if ENABLE(ENCRYPTED_MEDIA_V2)
-    RefPtr<MediaKeys> m_mediaKeys;
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
+    RefPtr<WebKitMediaKeys> m_mediaKeys;
 #endif
 
     std::unique_ptr<MediaElementSession> m_mediaSession;

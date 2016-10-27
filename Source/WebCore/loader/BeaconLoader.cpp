@@ -108,7 +108,7 @@ bool BeaconLoader::sendBeacon(Frame& frame, int allowance, const URL& beaconURL,
 
 BeaconLoader::BeaconLoader(Frame& frame, ResourceRequest& request)
 {
-    startPingLoad(frame, request);
+    startPingLoad(frame, request, ShouldFollowRedirects::Yes);
 }
 
 namespace {

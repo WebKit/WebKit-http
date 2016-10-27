@@ -412,6 +412,9 @@ String InputType::validationMessage() const
     if (patternMismatch(value))
         return validationMessagePatternMismatchText();
 
+    if (element().tooShort())
+        return validationMessageTooShortText(numGraphemeClusters(value), element().minLength());
+
     if (element().tooLong())
         return validationMessageTooLongText(numGraphemeClusters(value), element().effectiveMaxLength());
 
@@ -438,47 +441,47 @@ String InputType::validationMessage() const
     return emptyString();
 }
 
-void InputType::handleClickEvent(MouseEvent*)
+void InputType::handleClickEvent(MouseEvent&)
 {
 }
 
-void InputType::handleMouseDownEvent(MouseEvent*)
+void InputType::handleMouseDownEvent(MouseEvent&)
 {
 }
 
-void InputType::handleDOMActivateEvent(Event*)
+void InputType::handleDOMActivateEvent(Event&)
 {
 }
 
-void InputType::handleKeydownEvent(KeyboardEvent*)
+void InputType::handleKeydownEvent(KeyboardEvent&)
 {
 }
 
-void InputType::handleKeypressEvent(KeyboardEvent*)
+void InputType::handleKeypressEvent(KeyboardEvent&)
 {
 }
 
-void InputType::handleKeyupEvent(KeyboardEvent*)
+void InputType::handleKeyupEvent(KeyboardEvent&)
 {
 }
 
-void InputType::handleBeforeTextInsertedEvent(BeforeTextInsertedEvent*)
+void InputType::handleBeforeTextInsertedEvent(BeforeTextInsertedEvent&)
 {
 }
 
 #if ENABLE(TOUCH_EVENTS)
-void InputType::handleTouchEvent(TouchEvent*)
+void InputType::handleTouchEvent(TouchEvent&)
 {
 }
 #endif
 
-void InputType::forwardEvent(Event*)
+void InputType::forwardEvent(Event&)
 {
 }
 
-bool InputType::shouldSubmitImplicitly(Event* event)
+bool InputType::shouldSubmitImplicitly(Event& event)
 {
-    return is<KeyboardEvent>(*event) && event->type() == eventNames().keypressEvent && downcast<KeyboardEvent>(*event).charCode() == '\r';
+    return is<KeyboardEvent>(event) && event.type() == eventNames().keypressEvent && downcast<KeyboardEvent>(event).charCode() == '\r';
 }
 
 PassRefPtr<HTMLFormElement> InputType::formForSubmission() const
@@ -539,11 +542,11 @@ DateComponents::Type InputType::dateType() const
 }
 #endif
 
-void InputType::dispatchSimulatedClickIfActive(KeyboardEvent* event) const
+void InputType::dispatchSimulatedClickIfActive(KeyboardEvent& event) const
 {
     if (element().active())
-        element().dispatchSimulatedClick(event);
-    event->setDefaultHandled();
+        element().dispatchSimulatedClick(&event);
+    event.setDefaultHandled();
 }
 
 Chrome* InputType::chrome() const
@@ -563,7 +566,7 @@ bool InputType::hasCustomFocusLogic() const
     return true;
 }
 
-bool InputType::isKeyboardFocusable(KeyboardEvent* event) const
+bool InputType::isKeyboardFocusable(KeyboardEvent& event) const
 {
     return !element().isReadOnly() && element().isTextFormControlKeyboardFocusable(event);
 }
@@ -618,11 +621,6 @@ void InputType::maxResultsAttributeChanged()
 bool InputType::shouldRespectAlignAttribute()
 {
     return false;
-}
-
-bool InputType::canChangeFromAnotherType() const
-{
-    return true;
 }
 
 void InputType::minOrMaxAttributeChanged()

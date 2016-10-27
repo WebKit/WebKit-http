@@ -27,6 +27,7 @@
 #import "URL.h"
 
 #import "CFURLExtras.h"
+#import "URLParser.h"
 #import <wtf/ObjcRuntimeExtras.h>
 #import <wtf/text/CString.h>
 
@@ -42,7 +43,11 @@ URL::URL(NSURL *url)
     // FIXME: Why is it OK to ignore base URL here?
     CString urlBytes;
     getURLBytes(reinterpret_cast<CFURLRef>(url), urlBytes);
-    parse(urlBytes.data());
+    if (URLParser::enabled()) {
+        URLParser parser(urlBytes.data());
+        *this = parser.result();
+    } else
+        parse(urlBytes.data());
 }
 
 URL::operator NSURL *() const

@@ -29,7 +29,6 @@
 #include "APIError.h"
 #include "APINumber.h"
 #include "APISecurityOrigin.h"
-#include "APISession.h"
 #include "APIString.h"
 #include "APIURL.h"
 #include "APIURLRequest.h"
@@ -112,7 +111,6 @@ WK_ADD_API_MAPPING(WKURLRef, API::URL)
 WK_ADD_API_MAPPING(WKURLRequestRef, API::URLRequest)
 WK_ADD_API_MAPPING(WKURLResponseRef, API::URLResponse)
 WK_ADD_API_MAPPING(WKUserContentURLPatternRef, API::UserContentURLPattern)
-WK_ADD_API_MAPPING(WKSessionRef, API::Session)
 
 template<> struct APITypeInfo<WKMutableArrayRef> { typedef API::Array ImplType; };
 template<> struct APITypeInfo<WKMutableDictionaryRef> { typedef API::Dictionary ImplType; };
@@ -294,6 +292,8 @@ inline WKEventModifiers toAPI(WebEvent::Modifiers modifiers)
         wkModifiers |= kWKEventModifiersAltKey;
     if (modifiers & WebEvent::MetaKey)
         wkModifiers |= kWKEventModifiersMetaKey;
+    if (modifiers & WebEvent::CapsLockKey)
+        wkModifiers |= kWKEventModifiersCapsLockKey;
     return wkModifiers;
 }
 
@@ -507,8 +507,8 @@ inline WKContextMenuItemTag toAPI(WebCore::ContextMenuAction action)
     case WebCore::ContextMenuItemTagShareMenu:
         return kWKContextMenuItemTagShareMenu;
     default:
-        if (action < WebCore::ContextMenuItemBaseApplicationTag)
-            LOG_ERROR("ContextMenuAction %i is an unknown tag but is below the allowable custom tag value of %i", action, WebCore::  ContextMenuItemBaseApplicationTag);
+        if (action < WebCore::ContextMenuItemBaseApplicationTag && !(action >= WebCore::ContextMenuItemBaseCustomTag && action <= WebCore::ContextMenuItemLastCustomTag))
+            LOG_ERROR("ContextMenuAction %i is an unknown tag but is below the allowable custom tag value of %i", action, WebCore::ContextMenuItemBaseApplicationTag);
         return static_cast<WKContextMenuItemTag>(action);
     }
 }
@@ -702,7 +702,7 @@ inline WebCore::ContextMenuAction toImpl(WKContextMenuItemTag tag)
 #endif
     case kWKContextMenuItemTagOpenLinkInThisWindow:
     default:
-        if (tag < kWKContextMenuItemBaseApplicationTag)
+        if (tag < kWKContextMenuItemBaseApplicationTag && !(tag >= WebCore::ContextMenuItemBaseCustomTag && tag <= WebCore::ContextMenuItemLastCustomTag))
             LOG_ERROR("WKContextMenuItemTag %i is an unknown tag but is below the allowable custom tag value of %i", tag, kWKContextMenuItemBaseApplicationTag);
         return static_cast<WebCore::ContextMenuAction>(tag);
     }

@@ -35,18 +35,20 @@
 
 namespace WebCore {
 
-static unsigned modifiersForEvent(WebEvent *event)
+static OptionSet<PlatformEvent::Modifier> modifiersForEvent(WebEvent *event)
 {
-    unsigned modifiers = 0;
+    OptionSet<PlatformEvent::Modifier> modifiers;
 
     if (event.modifierFlags & WebEventFlagMaskShift)
-        modifiers |= PlatformEvent::ShiftKey;
+        modifiers |= PlatformEvent::Modifier::ShiftKey;
     if (event.modifierFlags & WebEventFlagMaskControl)
-        modifiers |= PlatformEvent::CtrlKey;
+        modifiers |= PlatformEvent::Modifier::CtrlKey;
     if (event.modifierFlags & WebEventFlagMaskAlternate)
-        modifiers |= PlatformEvent::AltKey;
+        modifiers |= PlatformEvent::Modifier::AltKey;
     if (event.modifierFlags & WebEventFlagMaskCommand)
-        modifiers |= PlatformEvent::MetaKey;
+        modifiers |= PlatformEvent::Modifier::MetaKey;
+    if (event.modifierFlags & WebEventFlagMaskAlphaShift)
+        modifiers |= PlatformEvent::Modifier::CapsLockKey;
 
     return modifiers;
 }
@@ -82,7 +84,6 @@ public:
     PlatformMouseEventBuilder(WebEvent *event)
     {
         m_type = mouseEventType(event);
-        m_modifiers = 0;
         m_timestamp = currentTime();
 
         m_position = pointForEvent(event);
@@ -104,7 +105,6 @@ public:
         ASSERT(event.type == WebEventScrollWheel);
 
         m_type = PlatformEvent::Wheel;
-        m_modifiers = 0;
         m_timestamp = currentTime();
 
         m_position = pointForEvent(event);
@@ -131,6 +131,23 @@ String keyIdentifierForKeyEvent(WebEvent *event)
     return keyIdentifierForCharCode(CFStringGetCharacterAtIndex((CFStringRef)s, 0));
 }
 
+String keyForKeyEvent(WebEvent *event)
+{
+    NSString *characters = event.characters;
+    auto length = [characters length];
+
+    // characters return an empty string for dead keys.
+    // https://developer.apple.com/reference/appkit/nsevent/1534183-characters
+    // "Dead" is defined here https://w3c.github.io/uievents-key/#keys-composition.
+    if (!length)
+        return ASCIILiteral("Dead");
+
+    if (length > 1)
+        return characters;
+
+    return keyForCharCode([characters characterAtIndex:0]);
+}
+
 class PlatformKeyboardEventBuilder : public PlatformKeyboardEvent {
 public:
     PlatformKeyboardEventBuilder(WebEvent *event)
@@ -143,9 +160,9 @@ public:
 
         m_text = event.characters;
         m_unmodifiedText = event.charactersIgnoringModifiers;
+        m_key = keyForKeyEvent(event);
         m_keyIdentifier = keyIdentifierForKeyEvent(event);
         m_windowsVirtualKeyCode = event.keyCode;
-        m_macCharCode = 0;
         m_autoRepeat = event.isKeyRepeating;
         m_isKeypad = false; // iOS does not distinguish the numpad. See <rdar://problem/7190835>.
         m_isSystemKey = false;

@@ -26,8 +26,6 @@
 #include "config.h"
 #include "JSTypedArrays.h"
 
-#include "CopiedBlockInlines.h"
-#include "CopyVisitorInlines.h"
 #include "GenericTypedArrayViewInlines.h"
 #include "JSGenericTypedArrayViewInlines.h"
 #include "JSCInlines.h"
@@ -50,6 +48,12 @@ MAKE_S_INFO(Uint16);
 MAKE_S_INFO(Uint32);
 MAKE_S_INFO(Float32);
 MAKE_S_INFO(Float64);
+
+JSUint8Array* createUint8TypedArray(ExecState* exec, Structure* structure, RefPtr<ArrayBuffer>&& passedBuffer, unsigned byteOffset, unsigned length)
+{
+    return JSUint8Array::create(exec, structure, std::forward<RefPtr<ArrayBuffer>>(passedBuffer), byteOffset, length);
+}
+
 
 } // namespace JSC
 

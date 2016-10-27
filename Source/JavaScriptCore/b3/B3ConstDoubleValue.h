@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef B3ConstDoubleValue_h
-#define B3ConstDoubleValue_h
+#pragma once
 
 #if ENABLE(B3_JIT)
 
@@ -34,7 +33,7 @@ namespace JSC { namespace B3 {
 
 class JS_EXPORT_PRIVATE ConstDoubleValue : public Value {
 public:
-    static bool accepts(Opcode opcode) { return opcode == ConstDouble; }
+    static bool accepts(Kind kind) { return kind == ConstDouble; }
     
     ~ConstDoubleValue();
     
@@ -83,6 +82,3 @@ private:
 } } // namespace JSC::B3
 
 #endif // ENABLE(B3_JIT)
-
-#endif // B3ConstDoubleValue_h
-

@@ -268,6 +268,7 @@ CodeBlock* ScriptExecutable::newCodeBlockFor(
     CodeSpecializationKind kind, JSFunction* function, JSScope* scope, JSObject*& exception)
 {
     VM* vm = scope->vm();
+    auto throwScope = DECLARE_THROW_SCOPE(*vm);
 
     ASSERT(vm->heap.isDeferred());
     ASSERT(startColumn() != UINT_MAX);
@@ -319,8 +320,8 @@ CodeBlock* ScriptExecutable::newCodeBlockFor(
         executable->m_unlinkedExecutable->hasCapturedVariables(), firstLine(), 
         lastLine(), startColumn(), endColumn()); 
     if (!unlinkedCodeBlock) {
-        exception = vm->throwException(
-            globalObject->globalExec(),
+        exception = throwException(
+            globalObject->globalExec(), throwScope,
             error.toErrorObject(globalObject, executable->m_source));
         return nullptr;
     }
@@ -429,20 +430,23 @@ const ClassInfo EvalExecutable::s_info = { "EvalExecutable", &ScriptExecutable::
 
 EvalExecutable* EvalExecutable::create(ExecState* exec, const SourceCode& source, bool isInStrictContext, DerivedContextType derivedContextType, bool isArrowFunctionContext, EvalContextType evalContextType, const VariableEnvironment* variablesUnderTDZ)
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     JSGlobalObject* globalObject = exec->lexicalGlobalObject();
     if (!globalObject->evalEnabled()) {
-        exec->vm().throwException(exec, createEvalError(exec, globalObject->evalDisabledErrorMessage()));
+        throwException(exec, scope, createEvalError(exec, globalObject->evalDisabledErrorMessage()));
         return 0;
     }
 
     EvalExecutable* executable = new (NotNull, allocateCell<EvalExecutable>(*exec->heap())) EvalExecutable(exec, source, isInStrictContext, derivedContextType, isArrowFunctionContext, evalContextType);
-    executable->finishCreation(exec->vm());
+    executable->finishCreation(vm);
 
     UnlinkedEvalCodeBlock* unlinkedEvalCode = globalObject->createEvalCodeBlock(exec, executable, variablesUnderTDZ);
     if (!unlinkedEvalCode)
         return 0;
 
-    executable->m_unlinkedEvalCodeBlock.set(exec->vm(), executable, unlinkedEvalCode);
+    executable->m_unlinkedEvalCodeBlock.set(vm, executable, unlinkedEvalCode);
 
     return executable;
 }
@@ -450,6 +454,7 @@ EvalExecutable* EvalExecutable::create(ExecState* exec, const SourceCode& source
 EvalExecutable::EvalExecutable(ExecState* exec, const SourceCode& source, bool inStrictContext, DerivedContextType derivedContextType, bool isArrowFunctionContext, EvalContextType evalContextType)
     : ScriptExecutable(exec->vm().evalExecutableStructure.get(), exec->vm(), source, inStrictContext, derivedContextType, isArrowFunctionContext, evalContextType, NoIntrinsic)
 {
+    ASSERT(source.provider()->sourceType() == SourceProviderSourceType::Program);
 }
 
 void EvalExecutable::destroy(JSCell* cell)
@@ -462,6 +467,7 @@ const ClassInfo ProgramExecutable::s_info = { "ProgramExecutable", &ScriptExecut
 ProgramExecutable::ProgramExecutable(ExecState* exec, const SourceCode& source)
     : ScriptExecutable(exec->vm().programExecutableStructure.get(), exec->vm(), source, false, DerivedContextType::None, false, EvalContextType::None, NoIntrinsic)
 {
+    ASSERT(source.provider()->sourceType() == SourceProviderSourceType::Program);
     m_typeProfilingStartOffset = 0;
     m_typeProfilingEndOffset = source.length() - 1;
     if (exec->vm().typeProfiler() || exec->vm().controlFlowProfiler())
@@ -478,6 +484,7 @@ const ClassInfo ModuleProgramExecutable::s_info = { "ModuleProgramExecutable", &
 ModuleProgramExecutable::ModuleProgramExecutable(ExecState* exec, const SourceCode& source)
     : ScriptExecutable(exec->vm().moduleProgramExecutableStructure.get(), exec->vm(), source, false, DerivedContextType::None, false, EvalContextType::None, NoIntrinsic)
 {
+    ASSERT(source.provider()->sourceType() == SourceProviderSourceType::Module);
     m_typeProfilingStartOffset = 0;
     m_typeProfilingEndOffset = source.length() - 1;
     if (exec->vm().typeProfiler() || exec->vm().controlFlowProfiler())
@@ -569,7 +576,7 @@ JSObject* ProgramExecutable::checkSyntax(ExecState* exec)
     JSGlobalObject* lexicalGlobalObject = exec->lexicalGlobalObject();
     std::unique_ptr<ProgramNode> programNode = parse<ProgramNode>(
         vm, m_source, Identifier(), JSParserBuiltinMode::NotBuiltin,
-        JSParserStrictMode::NotStrict, JSParserCommentMode::Classic, SourceParseMode::ProgramMode, SuperBinding::NotNeeded, error);
+        JSParserStrictMode::NotStrict, JSParserScriptMode::Classic, SourceParseMode::ProgramMode, SuperBinding::NotNeeded, error);
     if (programNode)
         return 0;
     ASSERT(error.isValid());
@@ -747,6 +754,7 @@ WebAssemblyExecutable::WebAssemblyExecutable(VM& vm, const SourceCode& source, J
     , m_module(vm, this, module)
     , m_functionIndex(functionIndex)
 {
+    ASSERT(source.provider()->sourceType() == SourceProviderSourceType::WebAssembly);
 }
 
 void WebAssemblyExecutable::destroy(JSCell* cell)

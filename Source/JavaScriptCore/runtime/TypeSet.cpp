@@ -27,8 +27,7 @@
 #include "TypeSet.h"
 
 #include "InspectorProtocolObjects.h"
-#include "JSCJSValue.h"
-#include "JSCJSValueInlines.h"
+#include "JSCInlines.h"
 #include <wtf/text/CString.h>
 #include <wtf/text/WTFString.h>
 #include <wtf/text/StringBuilder.h>
@@ -590,4 +589,4 @@ void StructureShape::enterDictionaryMode()
     m_isInDictionaryMode = true;
 }
 
-} //namespace JSC
+} // namespace JSC

@@ -33,6 +33,7 @@
 
 #include "JSBlob.h"
 #include "JSDOMPromise.h"
+#include "TextResourceDecoder.h"
 
 namespace WebCore {
 
@@ -43,20 +44,35 @@ static inline Ref<Blob> blobFromData(const unsigned char* data, unsigned length,
     return Blob::create(WTFMove(value), contentType);
 }
 
-void FetchBodyConsumer::resolveWithData(DeferredWrapper& promise, const unsigned char* data, unsigned length)
+static inline bool shouldPrependBOM(const unsigned char* data, unsigned length)
+{
+    if (length < 3)
+        return true;
+    return data[0] != 0xef || data[1] != 0xbb || data[2] != 0xbf;
+}
+
+static String textFromUTF8(const unsigned char* data, unsigned length)
+{
+    auto decoder = TextResourceDecoder::create("text/plain", "UTF-8");
+    if (shouldPrependBOM(data, length))
+        decoder->decode("\xef\xbb\xbf", 3);
+    return decoder->decodeAndFlush(reinterpret_cast<const char*>(data), length);
+}
+
+void FetchBodyConsumer::resolveWithData(Ref<DeferredPromise>&& promise, const unsigned char* data, unsigned length)
 {
     switch (m_type) {
     case Type::ArrayBuffer:
-        fulfillPromiseWithArrayBuffer(promise, data, length);
+        fulfillPromiseWithArrayBuffer(WTFMove(promise), data, length);
         return;
     case Type::Blob:
-        promise.resolveWithNewlyCreated(blobFromData(data, length, m_contentType));
+        promise->resolveWithNewlyCreated(blobFromData(data, length, m_contentType));
         return;
     case Type::JSON:
-        fulfillPromiseWithJSON(promise, String(data, length));
+        fulfillPromiseWithJSON(WTFMove(promise), textFromUTF8(data, length));
         return;
     case Type::Text:
-        promise.resolve(String(data, length));
+        promise->resolve(textFromUTF8(data, length));
         return;
     case Type::None:
         ASSERT_NOT_REACHED();
@@ -64,21 +80,21 @@ void FetchBodyConsumer::resolveWithData(DeferredWrapper& promise, const unsigned
     }
 }
 
-void FetchBodyConsumer::resolve(DeferredWrapper& promise)
+void FetchBodyConsumer::resolve(Ref<DeferredPromise>&& promise)
 {
     ASSERT(m_type != Type::None);
     switch (m_type) {
     case Type::ArrayBuffer:
-        fulfillPromiseWithArrayBuffer(promise, takeAsArrayBuffer().get());
+        fulfillPromiseWithArrayBuffer(WTFMove(promise), takeAsArrayBuffer().get());
         return;
     case Type::Blob:
-        promise.resolveWithNewlyCreated(takeAsBlob());
+        promise->resolveWithNewlyCreated(takeAsBlob());
         return;
     case Type::JSON:
-        fulfillPromiseWithJSON(promise, takeAsText());
+        fulfillPromiseWithJSON(WTFMove(promise), takeAsText());
         return;
     case Type::Text:
-        promise.resolve(takeAsText());
+        promise->resolve(takeAsText());
         return;
     case Type::None:
         ASSERT_NOT_REACHED();
@@ -118,7 +134,7 @@ RefPtr<JSC::ArrayBuffer> FetchBodyConsumer::takeAsArrayBuffer()
 Ref<Blob> FetchBodyConsumer::takeAsBlob()
 {
     if (!m_buffer)
-        return Blob::create();
+        return Blob::create(Vector<uint8_t>(), m_contentType);
 
     // FIXME: We should try to move m_buffer to Blob without doing extra copy.
     return blobFromData(reinterpret_cast<const unsigned char*>(m_buffer->data()), m_buffer->size(), m_contentType);
@@ -126,10 +142,11 @@ Ref<Blob> FetchBodyConsumer::takeAsBlob()
 
 String FetchBodyConsumer::takeAsText()
 {
+    // FIXME: We could probably text decode on the fly as soon as m_type is set to JSON or Text.
     if (!m_buffer)
         return String();
 
-    auto text = String(m_buffer->data(), m_buffer->size());
+    auto text = textFromUTF8(reinterpret_cast<const unsigned char*>(m_buffer->data()), m_buffer->size());
     m_buffer = nullptr;
     return text;
 }

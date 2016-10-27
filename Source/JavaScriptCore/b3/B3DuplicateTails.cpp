@@ -32,13 +32,13 @@
 #include "B3BreakCriticalEdges.h"
 #include "B3Dominators.h"
 #include "B3FixSSA.h"
-#include "B3IndexSet.h"
 #include "B3InsertionSetInlines.h"
 #include "B3PhaseScope.h"
 #include "B3ProcedureInlines.h"
 #include "B3SwitchValue.h"
 #include "B3UpsilonValue.h"
 #include "B3ValueInlines.h"
+#include <wtf/IndexSet.h>
 
 namespace JSC { namespace B3 {
 
@@ -71,7 +71,11 @@ public:
         IndexSet<BasicBlock> candidates;
 
         for (BasicBlock* block : m_proc) {
-            if (block->size() > m_maxSize || block->numSuccessors() > m_maxSuccessors)
+            if (block->size() > m_maxSize)
+                continue;
+            if (block->numSuccessors() > m_maxSuccessors)
+                continue;
+            if (block->last()->type() != Void) // Demoting doesn't handle terminals with values.
                 continue;
 
             candidates.add(block);

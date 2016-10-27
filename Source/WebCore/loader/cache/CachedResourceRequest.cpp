@@ -34,34 +34,11 @@
 
 namespace WebCore {
 
-CachedResourceRequest::CachedResourceRequest(const ResourceRequest& resourceRequest, const String& charset, Optional<ResourceLoadPriority> priority)
-    : m_resourceRequest(resourceRequest)
-    , m_charset(charset)
-    , m_options(CachedResourceLoader::defaultCachedResourceOptions())
-    , m_priority(priority)
-    , m_forPreload(false)
-    , m_defer(NoDefer)
-{
-}
-
-CachedResourceRequest::CachedResourceRequest(ResourceRequest&& resourceRequest, const ResourceLoaderOptions& options)
+CachedResourceRequest::CachedResourceRequest(ResourceRequest&& resourceRequest, const ResourceLoaderOptions& options, Optional<ResourceLoadPriority> priority, String&& charset)
     : m_resourceRequest(WTFMove(resourceRequest))
+    , m_charset(WTFMove(charset))
     , m_options(options)
-    , m_forPreload(false)
-    , m_defer(NoDefer)
-{
-}
-
-CachedResourceRequest::CachedResourceRequest(const ResourceRequest& resourceRequest, Optional<ResourceLoadPriority> priority)
-    : m_resourceRequest(resourceRequest)
-    , m_options(CachedResourceLoader::defaultCachedResourceOptions())
     , m_priority(priority)
-    , m_forPreload(false)
-    , m_defer(NoDefer)
-{
-}
-
-CachedResourceRequest::~CachedResourceRequest()
 {
 }
 
@@ -91,13 +68,16 @@ const AtomicString& CachedResourceRequest::initiatorName() const
 void CachedResourceRequest::setAsPotentiallyCrossOrigin(const String& mode, Document& document)
 {
     ASSERT(m_options.mode == FetchOptions::Mode::NoCors);
+    ASSERT(document.securityOrigin());
+
+    m_origin = document.securityOrigin();
+
     if (mode.isNull())
         return;
     m_options.mode = FetchOptions::Mode::Cors;
     m_options.credentials = equalLettersIgnoringASCIICase(mode, "use-credentials") ? FetchOptions::Credentials::Include : FetchOptions::Credentials::SameOrigin;
     m_options.allowCredentials = equalLettersIgnoringASCIICase(mode, "use-credentials") ? AllowStoredCredentials : DoNotAllowStoredCredentials;
 
-    ASSERT(document.securityOrigin());
     updateRequestForAccessControl(m_resourceRequest, *document.securityOrigin(), m_options.allowCredentials);
 }
 

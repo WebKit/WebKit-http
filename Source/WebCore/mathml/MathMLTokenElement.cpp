@@ -26,9 +26,9 @@
  */
 
 #include "config.h"
+#include "MathMLTokenElement.h"
 
 #if ENABLE(MATHML)
-#include "MathMLTokenElement.h"
 
 #include "MathMLNames.h"
 #include "RenderMathMLToken.h"
@@ -38,7 +38,7 @@ namespace WebCore {
 using namespace MathMLNames;
 
 MathMLTokenElement::MathMLTokenElement(const QualifiedName& tagName, Document& document)
-    : MathMLElement(tagName, document)
+    : MathMLPresentationElement(tagName, document)
 {
     setHasCustomStyleResolveCallbacks();
 }
@@ -50,7 +50,7 @@ Ref<MathMLTokenElement> MathMLTokenElement::create(const QualifiedName& tagName,
 
 void MathMLTokenElement::didAttachRenderers()
 {
-    MathMLElement::didAttachRenderers();
+    MathMLPresentationElement::didAttachRenderers();
     auto* mathmlRenderer = renderer();
     if (is<RenderMathMLToken>(mathmlRenderer))
         downcast<RenderMathMLToken>(*mathmlRenderer).updateTokenContent();
@@ -58,21 +58,10 @@ void MathMLTokenElement::didAttachRenderers()
 
 void MathMLTokenElement::childrenChanged(const ChildChange& change)
 {
-    MathMLElement::childrenChanged(change);
+    MathMLPresentationElement::childrenChanged(change);
     auto* mathmlRenderer = renderer();
     if (is<RenderMathMLToken>(mathmlRenderer))
         downcast<RenderMathMLToken>(*mathmlRenderer).updateTokenContent();
-}
-
-void MathMLTokenElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
-{
-    if (name == mathvariantAttr) {
-        m_mathVariant = Nullopt;
-        if (renderer())
-            MathMLStyle::resolveMathMLStyleTree(renderer());
-    }
-
-    MathMLElement::parseAttribute(name, value);
 }
 
 RenderPtr<RenderElement> MathMLTokenElement::createElementRenderer(RenderStyle&& style, const RenderTreePosition&)
@@ -86,6 +75,17 @@ bool MathMLTokenElement::childShouldCreateRenderer(const Node& child) const
 {
     // The HTML specification defines <mi>, <mo>, <mn>, <ms> and <mtext> as insertion points.
     return isPhrasingContent(child) && StyledElement::childShouldCreateRenderer(child);
+}
+
+Optional<UChar32> MathMLTokenElement::convertToSingleCodePoint(StringView string)
+{
+    auto codePoints = stripLeadingAndTrailingWhitespace(string).codePoints();
+    auto iterator = codePoints.begin();
+    if (iterator == codePoints.end())
+        return Nullopt;
+    Optional<UChar32> character = *iterator;
+    ++iterator;
+    return iterator == codePoints.end() ? character : Nullopt;
 }
 
 }

@@ -40,6 +40,7 @@
 #include "RegExpConstructor.h"
 #include "StringPrototype.h"
 #include <cstdlib>
+#include <wtf/text/StringBuilder.h>
 
 namespace JSC { namespace DFG {
 
@@ -321,8 +322,48 @@ private:
         // move these to the abstract interpreter once AbstractValue can support LazyJSValue.
         // https://bugs.webkit.org/show_bug.cgi?id=155204
 
+        case ValueAdd: {
+            if (m_node->child1()->isConstant()
+                && m_node->child2()->isConstant()
+                && (!!m_node->child1()->tryGetString(m_graph) || !!m_node->child2()->tryGetString(m_graph))) {
+                auto tryGetConstantString = [&] (Node* node) -> String {
+                    String string = node->tryGetString(m_graph);
+                    if (!string.isEmpty())
+                        return string;
+                    JSValue value = node->constant()->value();
+                    if (!value)
+                        return String();
+                    if (value.isInt32())
+                        return String::number(value.asInt32());
+                    if (value.isNumber())
+                        return String::numberToStringECMAScript(value.asNumber());
+                    if (value.isBoolean())
+                        return value.asBoolean() ? ASCIILiteral("true") : ASCIILiteral("false");
+                    if (value.isNull())
+                        return ASCIILiteral("null");
+                    if (value.isUndefined())
+                        return ASCIILiteral("undefined");
+                    return String();
+                };
+
+                String leftString = tryGetConstantString(m_node->child1().node());
+                if (!leftString)
+                    break;
+                String rightString = tryGetConstantString(m_node->child2().node());
+                if (!rightString)
+                    break;
+
+                StringBuilder builder;
+                builder.append(leftString);
+                builder.append(rightString);
+                m_node->convertToLazyJSConstant(
+                    m_graph, LazyJSValue::newString(m_graph, builder.toString()));
+                m_changed = true;
+            }
+            break;
+        }
+
         case MakeRope:
-        case ValueAdd:
         case StrCat: {
             String leftString = m_node->child1()->tryGetString(m_graph);
             if (!leftString)
@@ -391,7 +432,7 @@ private:
             if (RegExpObject* regExpObject = regExpObjectNode->dynamicCastConstant<RegExpObject*>())
                 regExp = regExpObject->regExp();
             else if (regExpObjectNode->op() == NewRegexp)
-                regExp = codeBlock()->regexp(regExpObjectNode->regexpIndex());
+                regExp = regExpObjectNode->castOperand<RegExp*>();
             else {
                 if (verbose)
                     dataLog("Giving up because the regexp is unknown.\n");
@@ -420,7 +461,7 @@ private:
                     dataLog("Giving up because of pattern limit.\n");
                 break;
             }
-
+            
             unsigned lastIndex;
             if (regExp->globalOrSticky()) {
                 // This will only work if we can prove what the value of lastIndex is. To do this
@@ -468,7 +509,7 @@ private:
             FrozenValue* constructorFrozenValue = m_graph.freeze(constructor);
 
             MatchResult result;
-            Vector<int, 32> ovector;
+            Vector<int> ovector;
             // We have to call the kind of match function that the main thread would have called.
             // Otherwise, we might not have the desired Yarr code compiled, and the match will fail.
             if (m_node->op() == RegExpExec) {
@@ -514,7 +555,8 @@ private:
                     }
 
                     unsigned publicLength = resultArray.size();
-                    unsigned vectorLength = std::max(BASE_VECTOR_LEN, publicLength);
+                    unsigned vectorLength =
+                        Butterfly::optimalContiguousVectorLength(structure, publicLength);
 
                     UniquedStringImpl* indexUID = vm().propertyNames->index.impl();
                     UniquedStringImpl* inputUID = vm().propertyNames->input.impl();
@@ -631,7 +673,7 @@ private:
             if (RegExpObject* regExpObject = regExpObjectNode->dynamicCastConstant<RegExpObject*>())
                 regExp = regExpObject->regExp();
             else if (regExpObjectNode->op() == NewRegexp)
-                regExp = codeBlock()->regexp(regExpObjectNode->regexpIndex());
+                regExp = regExpObjectNode->castOperand<RegExp*>();
             else {
                 if (verbose)
                     dataLog("Giving up because the regexp is unknown.\n");
@@ -649,7 +691,7 @@ private:
             bool ok = true;
             do {
                 MatchResult result;
-                Vector<int, 32> ovector;
+                Vector<int> ovector;
                 // Model which version of match() is called by the main thread.
                 if (replace.isEmpty() && regExp->global()) {
                     if (!regExp->matchConcurrently(vm(), string, startPosition, result)) {

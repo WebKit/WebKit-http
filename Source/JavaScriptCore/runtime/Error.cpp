@@ -28,14 +28,16 @@
 #include "ErrorConstructor.h"
 #include "ExceptionHelpers.h"
 #include "FunctionPrototype.h"
+#include "Interpreter.h"
 #include "JSArray.h"
 #include "JSFunction.h"
 #include "JSGlobalObject.h"
 #include "JSObject.h"
 #include "JSString.h"
-#include "NativeErrorConstructor.h"
 #include "JSCInlines.h"
+#include "NativeErrorConstructor.h"
 #include "SourceCode.h"
+#include "StackFrame.h"
 
 namespace JSC {
 
@@ -94,6 +96,28 @@ JSObject* createURIError(ExecState* exec, const String& message, ErrorInstance::
     ASSERT(!message.isEmpty());
     JSGlobalObject* globalObject = exec->lexicalGlobalObject();
     return ErrorInstance::create(exec, globalObject->vm(), globalObject->URIErrorConstructor()->errorStructure(), message, appender, TypeNothing, true);
+}
+
+JSObject* createError(ExecState* exec, ErrorType errorType, const String& message)
+{
+    switch (errorType) {
+    case ErrorType::Error:
+        return createError(exec, message);
+    case ErrorType::EvalError:
+        return createEvalError(exec, message);
+    case ErrorType::RangeError:
+        return createRangeError(exec, message);
+    case ErrorType::ReferenceError:
+        return createReferenceError(exec, message);
+    case ErrorType::SyntaxError:
+        return createSyntaxError(exec, message);
+    case ErrorType::TypeError:
+        return createTypeError(exec, message);
+    case ErrorType::URIError:
+        return createURIError(exec, message);
+    }
+    ASSERT_NOT_REACHED();
+    return nullptr;
 }
 
 class FindFirstCallerFrameWithCodeblockFunctor {
@@ -191,41 +215,34 @@ JSObject* addErrorInfo(CallFrame* callFrame, JSObject* error, int line, const So
     return error;
 }
 
-
-bool hasErrorInfo(ExecState* exec, JSObject* error)
+JSObject* throwConstructorCannotBeCalledAsFunctionTypeError(ExecState* exec, ThrowScope& scope, const char* constructorName)
 {
-    return error->hasProperty(exec, Identifier::fromString(exec, linePropertyName))
-        || error->hasProperty(exec, Identifier::fromString(exec, sourceURLPropertyName));
+    return throwTypeError(exec, scope, makeString("calling ", constructorName, " constructor without new is invalid"));
 }
 
-JSObject* throwConstructorCannotBeCalledAsFunctionTypeError(ExecState* exec, const char* constructorName)
+JSObject* throwTypeError(ExecState* exec, ThrowScope& scope)
 {
-    return throwTypeError(exec, makeString("calling ", constructorName, " constructor without new is invalid"));
+    return throwException(exec, scope, createTypeError(exec));
 }
 
-JSObject* throwTypeError(ExecState* exec)
+JSObject* throwTypeError(ExecState* exec, ThrowScope& scope, ASCIILiteral errorMessage)
 {
-    return exec->vm().throwException(exec, createTypeError(exec));
+    return throwTypeError(exec, scope, String(errorMessage));
 }
 
-JSObject* throwTypeError(ExecState* exec, ASCIILiteral errorMessage)
+JSObject* throwTypeError(ExecState* exec, ThrowScope& scope, const String& message)
 {
-    return throwTypeError(exec, String(errorMessage));
+    return throwException(exec, scope, createTypeError(exec, message));
 }
 
-JSObject* throwTypeError(ExecState* exec, const String& message)
+JSObject* throwSyntaxError(ExecState* exec, ThrowScope& scope)
 {
-    return exec->vm().throwException(exec, createTypeError(exec, message));
+    return throwException(exec, scope, createSyntaxError(exec, ASCIILiteral("Syntax error")));
 }
 
-JSObject* throwSyntaxError(ExecState* exec)
+JSObject* throwSyntaxError(ExecState* exec, ThrowScope& scope, const String& message)
 {
-    return exec->vm().throwException(exec, createSyntaxError(exec, ASCIILiteral("Syntax error")));
-}
-
-JSObject* throwSyntaxError(ExecState* exec, const String& message)
-{
-    return exec->vm().throwException(exec, createSyntaxError(exec, message));
+    return throwException(exec, scope, createSyntaxError(exec, message));
 }
 
 JSObject* createError(ExecState* exec, const String& message)
@@ -287,3 +304,36 @@ void StrictModeTypeErrorFunction::destroy(JSCell* cell)
 }
 
 } // namespace JSC
+
+namespace WTF {
+
+using namespace JSC;
+
+void printInternal(PrintStream& out, JSC::ErrorType errorType)
+{
+    switch (errorType) {
+    case JSC::ErrorType::Error:
+        out.print("Error");
+        break;
+    case JSC::ErrorType::EvalError:
+        out.print("EvalError");
+        break;
+    case JSC::ErrorType::RangeError:
+        out.print("RangeError");
+        break;
+    case JSC::ErrorType::ReferenceError:
+        out.print("ReferenceError");
+        break;
+    case JSC::ErrorType::SyntaxError:
+        out.print("SyntaxError");
+        break;
+    case JSC::ErrorType::TypeError:
+        out.print("TypeError");
+        break;
+    case JSC::ErrorType::URIError:
+        out.print("URIError");
+        break;
+    }
+}
+
+} // namespace WTF

@@ -61,9 +61,9 @@ static bool subimageKnownToBeOpaque(const CSSValue& value, const RenderElement* 
 CSSCrossfadeValue::~CSSCrossfadeValue()
 {
     if (m_cachedFromImage)
-        m_cachedFromImage->removeClient(&m_crossfadeSubimageObserver);
+        m_cachedFromImage->removeClient(m_crossfadeSubimageObserver);
     if (m_cachedToImage)
-        m_cachedToImage->removeClient(&m_crossfadeSubimageObserver);
+        m_cachedToImage->removeClient(m_crossfadeSubimageObserver);
 }
 
 String CSSCrossfadeValue::customCSSText() const
@@ -110,7 +110,7 @@ FloatSize CSSCrossfadeValue::fixedSize(const RenderElement* renderer)
         fromImageSize.height() * inversePercentage + toImageSize.height() * percentage);
 }
 
-bool CSSCrossfadeValue::isPending()
+bool CSSCrossfadeValue::isPending() const
 {
     return CSSImageGeneratorValue::subimageIsPending(m_fromValue)
         || CSSImageGeneratorValue::subimageIsPending(m_toValue);
@@ -131,16 +131,16 @@ void CSSCrossfadeValue::loadSubimages(CachedResourceLoader& cachedResourceLoader
 
     if (m_cachedFromImage != oldCachedFromImage) {
         if (oldCachedFromImage)
-            oldCachedFromImage->removeClient(&m_crossfadeSubimageObserver);
+            oldCachedFromImage->removeClient(m_crossfadeSubimageObserver);
         if (m_cachedFromImage)
-            m_cachedFromImage->addClient(&m_crossfadeSubimageObserver);
+            m_cachedFromImage->addClient(m_crossfadeSubimageObserver);
     }
 
     if (m_cachedToImage != oldCachedToImage) {
         if (oldCachedToImage)
-            oldCachedToImage->removeClient(&m_crossfadeSubimageObserver);
+            oldCachedToImage->removeClient(m_crossfadeSubimageObserver);
         if (m_cachedToImage)
-            m_cachedToImage->addClient(&m_crossfadeSubimageObserver);
+            m_cachedToImage->addClient(m_crossfadeSubimageObserver);
     }
 
     m_crossfadeSubimageObserver.setReady(true);
@@ -199,11 +199,8 @@ RefPtr<CSSCrossfadeValue> CSSCrossfadeValue::blend(const CSSCrossfadeValue& from
     ASSERT(equalInputImages(from));
     if (!m_cachedToImage || !m_cachedFromImage)
         return nullptr;
-    RefPtr<StyleCachedImage> toStyledImage = StyleCachedImage::create(m_cachedToImage.get());
-    RefPtr<StyleCachedImage> fromStyledImage = StyleCachedImage::create(m_cachedFromImage.get());
-
-    auto fromImageValue = CSSImageValue::create(m_cachedFromImage->url(), fromStyledImage.get());
-    auto toImageValue = CSSImageValue::create(m_cachedToImage->url(), toStyledImage.get());
+    auto fromImageValue = CSSImageValue::create(*m_cachedFromImage);
+    auto toImageValue = CSSImageValue::create(*m_cachedToImage);
 
     double fromPercentage = from.m_percentageValue->getDoubleValue();
     if (from.m_percentageValue->isPercentage())

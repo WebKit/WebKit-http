@@ -36,7 +36,7 @@ struct wpe_renderer_backend_egl_target;
 namespace WebCore {
 
 class GLContext;
-class GLContextEGL;
+class GLContextWPE;
 class IntSize;
 
 class PlatformDisplayWPE final : public PlatformDisplay {
@@ -59,7 +59,7 @@ public:
         ~EGLTarget();
 
         void initialize(const IntSize&);
-        std::unique_ptr<GLContextEGL> createGLContext() const;
+        std::unique_ptr<GLContextWPE> createGLContext() const;
 
         void resize(const IntSize&);
 
@@ -74,7 +74,7 @@ public:
 
     std::unique_ptr<EGLTarget> createEGLTarget(EGLTarget::Client&, int);
 
-    std::unique_ptr<GLContextEGL> createOffscreenContext(GLContext*);
+    std::unique_ptr<GLContextWPE> createOffscreenContext(PlatformDisplay&, bool);
 
 private:
     Type type() const override { return PlatformDisplay::Type::WPE; }

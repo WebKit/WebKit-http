@@ -1,6 +1,6 @@
 /*
 
-Copyright (C) 2014 Apple Inc. All rights reserved.
+Copyright (C) 2014, 2016 Apple Inc. All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
 modification, are permitted provided that the following conditions
@@ -141,6 +141,21 @@ private:
     unsigned m_indexEnd;
 };
 
+Vector<StringView> StringView::split(UChar separator)
+{
+    Vector<StringView> result;
+    unsigned startPos = 0;
+    size_t endPos;
+    while ((endPos = find(separator, startPos)) != notFound) {
+        if (startPos != endPos)
+            result.append(substring(startPos, endPos - startPos));
+        startPos = endPos + 1;
+    }
+    if (startPos != length())
+        result.append(substring(startPos));
+    return result;
+}
+
 StringView::GraphemeClusters::Iterator::Iterator(const StringView& stringView, unsigned index)
     : m_impl(std::make_unique<Impl>(stringView, stringView.isNull() ? Nullopt : Optional<NonSharedCharacterBreakIterator>(NonSharedCharacterBreakIterator(stringView)), index))
 {
@@ -221,9 +236,9 @@ bool StringView::underlyingStringIsValid() const
 void StringView::adoptUnderlyingString(UnderlyingString* underlyingString)
 {
     if (m_underlyingString) {
+        std::lock_guard<StaticLock> lock(underlyingStringsMutex);
         if (!--m_underlyingString->refCount) {
             if (m_underlyingString->isValid) {
-                std::lock_guard<StaticLock> lock(underlyingStringsMutex);
                 underlyingStrings().remove(&m_underlyingString->string);
             }
             delete m_underlyingString;
@@ -249,9 +264,9 @@ void StringView::setUnderlyingString(const StringImpl* string)
     adoptUnderlyingString(underlyingString);
 }
 
-void StringView::setUnderlyingString(const StringView& string)
+void StringView::setUnderlyingString(const StringView& otherString)
 {
-    UnderlyingString* underlyingString = string.m_underlyingString;
+    UnderlyingString* underlyingString = otherString.m_underlyingString;
     if (underlyingString)
         ++underlyingString->refCount;
     adoptUnderlyingString(underlyingString);

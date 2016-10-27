@@ -807,18 +807,28 @@ void CanvasRenderingContext2D::setTransform(float m11, float m12, float m21, flo
     if (!std::isfinite(m11) | !std::isfinite(m21) | !std::isfinite(dx) | !std::isfinite(m12) | !std::isfinite(m22) | !std::isfinite(dy))
         return;
 
-    AffineTransform ctm = state().transform;
-    if (!ctm.isInvertible())
+    resetTransform();
+    transform(m11, m12, m21, m22, dx, dy);
+}
+
+void CanvasRenderingContext2D::resetTransform()
+{
+    GraphicsContext* c = drawingContext();
+    if (!c)
         return;
 
+    AffineTransform ctm = state().transform;
+    bool hasInvertibleTransform = state().hasInvertibleTransform;
+
     realizeSaves();
-    
+
     c->setCTM(canvas()->baseTransform());
     modifiableState().transform = AffineTransform();
-    m_path.transform(ctm);
+
+    if (hasInvertibleTransform)
+        m_path.transform(ctm);
 
     modifiableState().hasInvertibleTransform = true;
-    transform(m11, m12, m21, m22, dx, dy);
 }
 
 void CanvasRenderingContext2D::setStrokeColor(const String& color, Optional<float> alpha)
@@ -1248,17 +1258,17 @@ void CanvasRenderingContext2D::setShadow(float width, float height, float blur, 
 
 void CanvasRenderingContext2D::setShadow(float width, float height, float blur, float grayLevel, float alpha)
 {
-    setShadow(FloatSize(width, height), blur, makeRGBA32FromFloats(grayLevel, grayLevel, grayLevel, alpha));
+    setShadow(FloatSize(width, height), blur, Color(grayLevel, grayLevel, grayLevel, alpha));
 }
 
 void CanvasRenderingContext2D::setShadow(float width, float height, float blur, float r, float g, float b, float a)
 {
-    setShadow(FloatSize(width, height), blur, makeRGBA32FromFloats(r, g, b, a));
+    setShadow(FloatSize(width, height), blur, Color(r, g, b, a));
 }
 
 void CanvasRenderingContext2D::setShadow(float width, float height, float blur, float c, float m, float y, float k, float a)
 {
-    setShadow(FloatSize(width, height), blur, makeRGBAFromCMYKA(c, m, y, k, a));
+    setShadow(FloatSize(width, height), blur, Color(c, m, y, k, a));
 }
 
 void CanvasRenderingContext2D::clearShadow()
@@ -1266,7 +1276,7 @@ void CanvasRenderingContext2D::clearShadow()
     setShadow(FloatSize(), 0, Color::transparent);
 }
 
-void CanvasRenderingContext2D::setShadow(const FloatSize& offset, float blur, RGBA32 color)
+void CanvasRenderingContext2D::setShadow(const FloatSize& offset, float blur, const Color& color)
 {
     if (state().shadowOffset == offset && state().shadowBlur == blur && state().shadowColor == color)
         return;
@@ -1296,7 +1306,7 @@ void CanvasRenderingContext2D::applyShadow()
 
 bool CanvasRenderingContext2D::shouldDrawShadows() const
 {
-    return alphaChannel(state().shadowColor) && (state().shadowBlur || !state().shadowOffset.isZero());
+    return state().shadowColor.alpha() && (state().shadowBlur || !state().shadowOffset.isZero());
 }
 
 enum ImageSizeType {
@@ -1877,7 +1887,7 @@ void CanvasRenderingContext2D::didDraw(const FloatRect& r, unsigned options)
         dirtyRect = ctm.mapRect(r);
     }
 
-    if (options & CanvasDidDrawApplyShadow && alphaChannel(state().shadowColor)) {
+    if (options & CanvasDidDrawApplyShadow && state().shadowColor.alpha()) {
         // The shadow gets applied after transformation
         FloatRect shadowRect(dirtyRect);
         shadowRect.move(state().shadowOffset);
@@ -2362,7 +2372,7 @@ static void normalizeSpaces(String& text)
         if (isSpaceThatNeedsReplacing(charVector[i]))
             charVector[i] = ' ';
     }
-    text = String::adopt(charVector);
+    text = String::adopt(WTFMove(charVector));
 }
 
 Ref<TextMetrics> CanvasRenderingContext2D::measureText(const String& text)

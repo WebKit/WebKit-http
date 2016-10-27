@@ -97,6 +97,7 @@ AccessibilityUIElement::~AccessibilityUIElement()
 - (id)_accessibilityFieldsetAncestor;
 - (BOOL)_accessibilityHasTouchEventListener;
 - (NSString *)accessibilityExpandedTextValue;
+- (BOOL)accessibilityIsExpanded;
 
 // TextMarker related
 - (NSArray *)textMarkerRange;
@@ -107,6 +108,8 @@ AccessibilityUIElement::~AccessibilityUIElement()
 - (id)nextMarkerForMarker:(id)marker;
 - (id)previousMarkerForMarker:(id)marker;
 - (id)accessibilityObjectForTextMarker:(id)marker;
+- (id)lineStartMarkerForMarker:(id)marker;
+- (id)lineEndMarkerForMarker:(id)marker;
 @end
 
 @interface NSObject (WebAccessibilityObjectWrapperPrivate)
@@ -434,9 +437,14 @@ JSStringRef AccessibilityUIElement::pathDescription() const
 
 // Text markers
 
-AccessibilityTextMarkerRange AccessibilityUIElement::lineTextMarkerRangeForTextMarker(AccessibilityTextMarker*)
+AccessibilityTextMarkerRange AccessibilityUIElement::lineTextMarkerRangeForTextMarker(AccessibilityTextMarker* textMarker)
 {
-    return nullptr;
+    id startTextMarker = [m_element lineStartMarkerForMarker:(id)textMarker->platformTextMarker()];
+    id endTextMarker = [m_element lineEndMarkerForMarker:(id)textMarker->platformTextMarker()];
+    NSArray *textMarkers = [NSArray arrayWithObjects:startTextMarker, endTextMarker, nil];
+    
+    id textMarkerRange = [m_element textMarkerRangeForMarkers:textMarkers];
+    return AccessibilityTextMarkerRange(textMarkerRange);
 }
 
 AccessibilityTextMarkerRange AccessibilityUIElement::textMarkerRangeForElement(AccessibilityUIElement* element)
@@ -817,7 +825,7 @@ bool AccessibilityUIElement::isSelected() const
 
 bool AccessibilityUIElement::isExpanded() const
 {
-    return false;
+    return [m_element accessibilityIsExpanded];
 }
 
 bool AccessibilityUIElement::isChecked() const

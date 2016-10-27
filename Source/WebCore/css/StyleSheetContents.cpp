@@ -62,11 +62,11 @@ unsigned StyleSheetContents::estimatedSizeInBytes() const
 StyleSheetContents::StyleSheetContents(StyleRuleImport* ownerRule, const String& originalURL, const CSSParserContext& context)
     : m_ownerRule(ownerRule)
     , m_originalURL(originalURL)
+    , m_defaultNamespace(starAtom)
     , m_loadCompleted(false)
     , m_isUserStyleSheet(ownerRule && ownerRule->parentStyleSheet() && ownerRule->parentStyleSheet()->isUserStyleSheet())
     , m_hasSyntacticallyValidCSSHeader(true)
     , m_didLoadErrorOccur(false)
-    , m_usesRemUnits(false)
     , m_usesStyleBasedEditability(false)
     , m_isMutable(false)
     , m_isInMemoryCache(false)
@@ -82,11 +82,11 @@ StyleSheetContents::StyleSheetContents(const StyleSheetContents& o)
     , m_importRules(o.m_importRules.size())
     , m_childRules(o.m_childRules.size())
     , m_namespaces(o.m_namespaces)
+    , m_defaultNamespace(o.m_defaultNamespace)
     , m_loadCompleted(true)
     , m_isUserStyleSheet(o.m_isUserStyleSheet)
     , m_hasSyntacticallyValidCSSHeader(o.m_hasSyntacticallyValidCSSHeader)
     , m_didLoadErrorOccur(false)
-    , m_usesRemUnits(o.m_usesRemUnits)
     , m_usesStyleBasedEditability(o.m_usesStyleBasedEditability)
     , m_isMutable(false)
     , m_isInMemoryCache(false)
@@ -269,15 +269,18 @@ void StyleSheetContents::wrapperDeleteRule(unsigned index)
 
 void StyleSheetContents::parserAddNamespace(const AtomicString& prefix, const AtomicString& uri)
 {
-    if (uri.isNull() || prefix.isNull())
+    ASSERT(!uri.isNull());
+    if (prefix.isNull()) {
+        m_defaultNamespace = uri;
         return;
+    }
     PrefixNamespaceURIMap::AddResult result = m_namespaces.add(prefix, uri);
     if (result.isNewEntry)
         return;
     result.iterator->value = uri;
 }
 
-const AtomicString& StyleSheetContents::determineNamespace(const AtomicString& prefix)
+const AtomicString& StyleSheetContents::namespaceURIFromPrefix(const AtomicString& prefix)
 {
     PrefixNamespaceURIMap::const_iterator it = m_namespaces.find(prefix);
     if (it == m_namespaces.end())
@@ -405,29 +408,6 @@ URL StyleSheetContents::completeURL(const String& url) const
     return CSSParser::completeURL(m_parserContext, url);
 }
 
-void StyleSheetContents::addSubresourceStyleURLs(ListHashSet<URL>& urls)
-{
-    Deque<StyleSheetContents*> styleSheetQueue;
-    styleSheetQueue.append(this);
-
-    while (!styleSheetQueue.isEmpty()) {
-        StyleSheetContents* styleSheet = styleSheetQueue.takeFirst();
-        
-        for (auto& importRule : styleSheet->m_importRules) {
-            if (importRule->styleSheet()) {
-                styleSheetQueue.append(importRule->styleSheet());
-                addSubresourceURL(urls, importRule->styleSheet()->baseURL());
-            }
-        }
-        for (auto& rule : styleSheet->m_childRules) {
-            if (is<StyleRule>(*rule))
-                downcast<StyleRule>(*rule).properties().addSubresourceStyleURLs(urls, this);
-            else if (is<StyleRuleFontFace>(*rule))
-                downcast<StyleRuleFontFace>(*rule).properties().addSubresourceStyleURLs(urls, this);
-        }
-    }
-}
-
 static bool traverseSubresourcesInRules(const Vector<RefPtr<StyleRuleBase>>& rules, const std::function<bool (const CachedResource&)>& handler)
 {
     for (auto& rule : rules) {
@@ -455,6 +435,7 @@ static bool traverseSubresourcesInRules(const Vector<RefPtr<StyleRuleBase>>& rul
 #endif
         case StyleRuleBase::Page:
         case StyleRuleBase::Keyframes:
+        case StyleRuleBase::Namespace:
         case StyleRuleBase::Unknown:
         case StyleRuleBase::Charset:
         case StyleRuleBase::Keyframe:
@@ -471,9 +452,12 @@ static bool traverseSubresourcesInRules(const Vector<RefPtr<StyleRuleBase>>& rul
 bool StyleSheetContents::traverseSubresources(const std::function<bool (const CachedResource&)>& handler) const
 {
     for (auto& importRule : m_importRules) {
-        if (!importRule->styleSheet())
-            continue;
-        if (traverseSubresourcesInRules(importRule->styleSheet()->m_childRules, handler))
+        if (auto* cachedResource = importRule->cachedCSSStyleSheet()) {
+            if (handler(*cachedResource))
+                return true;
+        }
+        auto* importedStyleSheet = importRule->styleSheet();
+        if (importedStyleSheet && importedStyleSheet->traverseSubresources(handler))
             return true;
     }
     return traverseSubresourcesInRules(m_childRules, handler);

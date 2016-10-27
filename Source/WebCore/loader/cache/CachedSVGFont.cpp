@@ -40,10 +40,14 @@
 #include "TypedElementDescendantIterator.h"
 #include "SVGToOTFFontConversion.h"
 
+#if USE(DIRECT2D)
+#include <dwrite.h>
+#endif
+
 namespace WebCore {
 
-CachedSVGFont::CachedSVGFont(const ResourceRequest& resourceRequest, SessionID sessionID)
-    : CachedFont(resourceRequest, sessionID, SVGFontResource)
+CachedSVGFont::CachedSVGFont(CachedResourceRequest&& request, SessionID sessionID)
+    : CachedFont(WTFMove(request), sessionID, SVGFontResource)
     , m_externalSVGFontElement(nullptr)
 {
 }

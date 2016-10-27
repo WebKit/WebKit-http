@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012, 2013, 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2014, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,11 +30,29 @@
 #include "DFGOperations.h"
 #include "DFGThunks.h"
 #include "JSCInlines.h"
+#include "MacroAssembler.h"
+#include "Opcode.h"
 #include "Repatch.h"
 #include <wtf/ListDump.h>
 
 #if ENABLE(JIT)
 namespace JSC {
+
+CallLinkInfo::CallType CallLinkInfo::callTypeFor(OpcodeID opcodeID)
+{
+    if (opcodeID == op_call || opcodeID == op_call_eval)
+        return Call;
+    if (opcodeID == op_call_varargs)
+        return CallVarargs;
+    if (opcodeID == op_construct)
+        return Construct;
+    if (opcodeID == op_construct_varargs)
+        return ConstructVarargs;
+    if (opcodeID == op_tail_call)
+        return TailCall;
+    ASSERT(opcodeID == op_tail_call_varargs || op_tail_call_forward_arguments);
+    return TailCallVarargs;
+}
 
 CallLinkInfo::CallLinkInfo()
     : m_hasSeenShouldRepatch(false)
@@ -78,6 +96,18 @@ void CallLinkInfo::unlink(VM& vm)
     // It will be on a list if the callee has a code block.
     if (isOnList())
         remove();
+}
+
+void CallLinkInfo::setCallee(VM& vm, JSCell* owner, JSFunction* callee)
+{
+    MacroAssembler::repatchPointer(m_hotPathBegin, callee);
+    m_callee.set(vm, owner, callee);
+}
+
+void CallLinkInfo::clearCallee()
+{
+    MacroAssembler::repatchPointer(m_hotPathBegin, nullptr);
+    m_callee.clear();
 }
 
 void CallLinkInfo::visitWeak(VM& vm)

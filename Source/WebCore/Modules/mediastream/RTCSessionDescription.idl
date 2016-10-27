@@ -32,12 +32,14 @@
 [
     Conditional=WEB_RTC,
     Constructor(Dictionary dictionary),
-    ConstructorRaisesException,
+    ConstructorMayThrowLegacyException,
     PrivateIdentifier,
     PublicIdentifier
 ] interface RTCSessionDescription {
-    [SetterRaisesException] readonly attribute RTCSdpType type;
+    [SetterMayThrowLegacyException] readonly attribute RTCSdpType type;
     readonly attribute DOMString sdp;
+
+    serializer = {type, sdp};
 };
 
 enum RTCSdpType {

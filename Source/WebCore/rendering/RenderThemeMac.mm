@@ -249,8 +249,9 @@ String RenderThemeMac::mediaControlsScript()
 #if ENABLE(MEDIA_CONTROLS_SCRIPT)
     if (m_mediaControlsScript.isEmpty()) {
         StringBuilder scriptBuilder;
-        scriptBuilder.append([NSString stringWithContentsOfFile:[[NSBundle bundleForClass:[WebCoreRenderThemeBundle class]] pathForResource:@"mediaControlsLocalizedStrings" ofType:@"js"] encoding:NSUTF8StringEncoding error:nil]);
-        scriptBuilder.append([NSString stringWithContentsOfFile:[[NSBundle bundleForClass:[WebCoreRenderThemeBundle class]] pathForResource:@"mediaControlsApple" ofType:@"js"] encoding:NSUTF8StringEncoding error:nil]);
+        NSBundle* bundle = [NSBundle bundleForClass:[WebCoreRenderThemeBundle class]];
+        scriptBuilder.append([NSString stringWithContentsOfFile:[bundle pathForResource:@"mediaControlsLocalizedStrings" ofType:@"js"] encoding:NSUTF8StringEncoding error:nil]);
+        scriptBuilder.append([NSString stringWithContentsOfFile:[bundle pathForResource:@"mediaControlsApple" ofType:@"js"] encoding:NSUTF8StringEncoding error:nil]);
         m_mediaControlsScript = scriptBuilder.toString();
     }
     return m_mediaControlsScript;
@@ -2510,7 +2511,7 @@ static void paintAttachmentTitle(const RenderAttachment&, GraphicsContext& conte
         context.translate(toFloatSize(line.origin));
         context.scale(FloatSize(1, -1));
 
-        CGContextSetTextMatrix(context.platformContext(), CGAffineTransformIdentity);
+        CGContextSetTextPosition(context.platformContext(), 0, 0);
         CTLineDraw(line.line.get(), context.platformContext());
     }
 }
@@ -2522,7 +2523,7 @@ static void paintAttachmentSubtitle(const RenderAttachment&, GraphicsContext& co
     context.translate(toFloatSize(layout.subtitleTextRect.minXMaxYCorner()));
     context.scale(FloatSize(1, -1));
 
-    CGContextSetTextMatrix(context.platformContext(), CGAffineTransformIdentity);
+    CGContextSetTextPosition(context.platformContext(), 0, 0);
     CTLineDraw(layout.subtitleLine.get(), context.platformContext());
 }
 

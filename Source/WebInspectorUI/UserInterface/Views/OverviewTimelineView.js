@@ -205,13 +205,15 @@ WebInspector.OverviewTimelineView = class OverviewTimelineView extends WebInspec
 
         let parentFrame = resource.parentFrame;
         if (!parentFrame)
-            return;
+            return null;
 
         let resourceTimelineRecord = this._networkTimeline ? this._networkTimeline.recordForResource(resource) : null;
         if (!resourceTimelineRecord)
             resourceTimelineRecord = new WebInspector.ResourceTimelineRecord(resource);
 
-        let resourceDataGridNode = new WebInspector.ResourceTimelineDataGridNode(resourceTimelineRecord, true, this);
+        const includesGraph = true;
+        const shouldShowPopover = false;
+        let resourceDataGridNode = new WebInspector.ResourceTimelineDataGridNode(resourceTimelineRecord, includesGraph, this, shouldShowPopover);
         this._resourceDataGridNodeMap.set(resource, resourceDataGridNode);
 
         let expandedByDefault = false;
@@ -231,7 +233,7 @@ WebInspector.OverviewTimelineView = class OverviewTimelineView extends WebInspec
             parentDataGridNode = this._addResourceToDataGridIfNeeded(parentResource);
             console.assert(parentDataGridNode);
             if (!parentDataGridNode)
-                return;
+                return null;
         }
 
         this._insertDataGridNode(resourceDataGridNode, parentDataGridNode);

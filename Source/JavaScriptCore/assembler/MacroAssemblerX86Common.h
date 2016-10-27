@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef MacroAssemblerX86Common_h
-#define MacroAssemblerX86Common_h
+#pragma once
 
 #if ENABLE(ASSEMBLER)
 
@@ -560,7 +559,18 @@ public:
     {
         m_assembler.subl_rr(src, dest);
     }
-    
+
+    void sub32(RegisterID left, RegisterID right, RegisterID dest)
+    {
+        if (dest == right) {
+            neg32(dest);
+            add32(left, dest);
+            return;
+        }
+        move(left, dest);
+        sub32(right, dest);
+    }
+
     void sub32(TrustedImm32 imm, RegisterID dest)
     {
         if (imm.m_value == 1)
@@ -2618,9 +2628,22 @@ public:
         m_assembler.nop();
     }
     
+    // We take memoryFence to mean acqrel. This has acqrel semantics on x86.
     void memoryFence()
     {
-        m_assembler.mfence();
+        // lock; orl $0, (%rsp)
+        m_assembler.lock();
+        m_assembler.orl_im(0, 0, X86Registers::esp);
+    }
+
+    // We take this to mean that it prevents motion of normal stores. So, it's a no-op on x86.
+    void storeFence()
+    {
+    }
+
+    // We take this to mean that it prevents motion of normal loads. So, it's a no-op on x86.
+    void loadFence()
+    {
     }
 
     static void replaceWithJump(CodeLocationLabel instructionStart, CodeLocationLabel destination)
@@ -2631,6 +2654,11 @@ public:
     static ptrdiff_t maxJumpReplacementSize()
     {
         return X86Assembler::maxJumpReplacementSize();
+    }
+
+    static ptrdiff_t patchableJumpSize()
+    {
+        return X86Assembler::patchableJumpSize();
     }
 
     static bool supportsFloatingPointRounding()
@@ -2933,5 +2961,3 @@ private:
 } // namespace JSC
 
 #endif // ENABLE(ASSEMBLER)
-
-#endif // MacroAssemblerX86Common_h

@@ -24,8 +24,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef JPEGImageDecoder_h
-#define JPEGImageDecoder_h
+#pragma once
 
 #include "ImageDecoder.h"
 #include <stdio.h> // Needed by jpeglib.h for FILE.
@@ -44,13 +43,13 @@ namespace WebCore {
     // This class decodes the JPEG image format.
     class JPEGImageDecoder final : public ImageDecoder {
     public:
-        JPEGImageDecoder(ImageSource::AlphaOption, ImageSource::GammaAndColorProfileOption);
+        JPEGImageDecoder(AlphaOption, GammaAndColorProfileOption);
         virtual ~JPEGImageDecoder();
 
         // ImageDecoder
         String filenameExtension() const override { return "jpg"; }
         bool isSizeAvailable() override;
-        bool setSize(unsigned width, unsigned height) override;
+        bool setSize(const IntSize&) override;
         ImageFrame* frameBufferAtIndex(size_t index) override;
         // CAUTION: setFailed() deletes |m_reader|.  Be careful to avoid
         // accessing deleted memory, especially when calling this from inside
@@ -66,7 +65,6 @@ namespace WebCore {
         bool outputScanlines();
         void jpegComplete();
 
-        void setColorProfile(const ColorProfile& colorProfile) { m_colorProfile = colorProfile; }
         void setOrientation(ImageOrientation orientation) { m_orientation = orientation; }
 
     private:
@@ -85,5 +83,3 @@ namespace WebCore {
     };
 
 } // namespace WebCore
-
-#endif

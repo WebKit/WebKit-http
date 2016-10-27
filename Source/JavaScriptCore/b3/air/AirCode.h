@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef AirCode_h
-#define AirCode_h
+#pragma once
 
 #if ENABLE(B3_JIT)
 
@@ -33,11 +32,11 @@
 #include "AirSpecial.h"
 #include "AirStackSlot.h"
 #include "AirTmp.h"
-#include "B3IndexMap.h"
 #include "B3SparseCollection.h"
 #include "CCallHelpers.h"
 #include "RegisterAtOffsetList.h"
 #include "StackAlignment.h"
+#include <wtf/IndexMap.h>
 
 namespace JSC { namespace B3 {
 
@@ -53,6 +52,9 @@ namespace Air {
 class BlockInsertionSet;
 class CCallSpecial;
 
+typedef void WasmBoundsCheckGeneratorFunction(CCallHelpers&, GPRReg, unsigned);
+typedef SharedTask<WasmBoundsCheckGeneratorFunction> WasmBoundsCheckGenerator;
+
 // This is an IR that is very close to the bare metal. It requires about 40x more bytes than the
 // generated machine code - for example if you're generating 1MB of machine code, you need about
 // 40MB of Air.
@@ -64,6 +66,27 @@ public:
     ~Code();
 
     Procedure& proc() { return m_proc; }
+    
+    const Vector<Reg>& regsInPriorityOrder(Arg::Type type) const
+    {
+        switch (type) {
+        case Arg::GP:
+            return m_gpRegsInPriorityOrder;
+        case Arg::FP:
+            return m_fpRegsInPriorityOrder;
+        }
+        ASSERT_NOT_REACHED();
+    }
+    
+    void setRegsInPriorityOrder(Arg::Type, const Vector<Reg>&);
+    
+    // This is the set of registers that Air is allowed to emit code to mutate. It's derived from
+    // regsInPriorityOrder. Any registers not in this set are said to be "pinned".
+    const RegisterSet& mutableRegs() const { return m_mutableRegs; }
+    
+    bool isPinned(Reg reg) const { return !mutableRegs().get(reg); }
+    
+    void pinRegister(Reg);
 
     JS_EXPORT_PRIVATE BasicBlock* addBlock(double frequency = 1);
 
@@ -101,10 +124,10 @@ public:
         ASSERT_NOT_REACHED();
     }
 
-    unsigned callArgAreaSize() const { return m_callArgAreaSize; }
+    unsigned callArgAreaSizeInBytes() const { return m_callArgAreaSize; }
 
     // You can call this before code generation to force a minimum call arg area size.
-    void requestCallArgAreaSize(unsigned size)
+    void requestCallArgAreaSizeInBytes(unsigned size)
     {
         m_callArgAreaSize = std::max(
             m_callArgAreaSize,
@@ -163,7 +186,7 @@ public:
     Vector<std::unique_ptr<BasicBlock>>& blockList() { return m_blocks; }
 
     // Finds the smallest index' such that at(index') != null and index' >= index.
-    unsigned findFirstBlockIndex(unsigned index) const;
+    JS_EXPORT_PRIVATE unsigned findFirstBlockIndex(unsigned index) const;
 
     // Finds the smallest index' such that at(index') != null and index' > index.
     unsigned findNextBlockIndex(unsigned index) const;
@@ -241,6 +264,13 @@ public:
 
     const char* lastPhaseName() const { return m_lastPhaseName; }
 
+    void setWasmBoundsCheckGenerator(RefPtr<WasmBoundsCheckGenerator> generator)
+    {
+        m_wasmBoundsCheckGenerator = generator;
+    }
+
+    RefPtr<WasmBoundsCheckGenerator> wasmBoundsCheckGenerator() const { return m_wasmBoundsCheckGenerator; }
+
     // This is a hash of the code. You can use this if you want to put code into a hashtable, but
     // it's mainly for validating the results from JSAir.
     unsigned jsHash() const;
@@ -251,7 +281,21 @@ private:
     
     Code(Procedure&);
 
+    Vector<Reg>& regsInPriorityOrderImpl(Arg::Type type)
+    {
+        switch (type) {
+        case Arg::GP:
+            return m_gpRegsInPriorityOrder;
+        case Arg::FP:
+            return m_fpRegsInPriorityOrder;
+        }
+        ASSERT_NOT_REACHED();
+    }
+
     Procedure& m_proc; // Some meta-data, like byproducts, is stored in the Procedure.
+    Vector<Reg> m_gpRegsInPriorityOrder;
+    Vector<Reg> m_fpRegsInPriorityOrder;
+    RegisterSet m_mutableRegs;
     SparseCollection<StackSlot> m_stackSlots;
     Vector<std::unique_ptr<BasicBlock>> m_blocks;
     SparseCollection<Special> m_specials;
@@ -264,6 +308,7 @@ private:
     RegisterAtOffsetList m_calleeSaveRegisters;
     Vector<FrequentedBlock> m_entrypoints; // This is empty until after lowerEntrySwitch().
     Vector<CCallHelpers::Label> m_entrypointLabels; // This is empty until code generation.
+    RefPtr<WasmBoundsCheckGenerator> m_wasmBoundsCheckGenerator;
     const char* m_lastPhaseName;
 };
 
@@ -274,6 +319,3 @@ private:
 #endif // COMPILER(GCC) && ASSERT_DISABLED
 
 #endif // ENABLE(B3_JIT)
-
-#endif // AirCode_h
-

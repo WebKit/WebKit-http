@@ -1,6 +1,7 @@
 add_definitions(/bigobj)
 
 list(APPEND WebCore_INCLUDE_DIRECTORIES
+    "${WEBCORE_DIR}/ForwardingHeaders"
     "${CMAKE_BINARY_DIR}/../include/private"
     "${CMAKE_BINARY_DIR}/../include/private/JavaScriptCore"
     "${DERIVED_SOURCES_DIR}/ForwardingHeaders/ANGLE"
@@ -14,6 +15,7 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
     "${DERIVED_SOURCES_DIR}/ForwardingHeaders/JavaScriptCore/bytecompiler"
     "${DERIVED_SOURCES_DIR}/ForwardingHeaders/JavaScriptCore/dfg"
     "${DERIVED_SOURCES_DIR}/ForwardingHeaders/JavaScriptCore/disassembler"
+    "${DERIVED_SOURCES_DIR}/ForwardingHeaders/JavaScriptCore/domjit"
     "${DERIVED_SOURCES_DIR}/ForwardingHeaders/JavaScriptCore/heap"
     "${DERIVED_SOURCES_DIR}/ForwardingHeaders/JavaScriptCore/debugger"
     "${DERIVED_SOURCES_DIR}/ForwardingHeaders/JavaScriptCore/interpreter"
@@ -24,7 +26,6 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
     "${DERIVED_SOURCES_DIR}/ForwardingHeaders/JavaScriptCore/runtime"
     "${DERIVED_SOURCES_DIR}/ForwardingHeaders/JavaScriptCore/yarr"
     "${DERIVED_SOURCES_DIR}/ForwardingHeaders/WTF"
-    "${WEBCORE_DIR}/ForwardingHeaders"
     "${WEBCORE_DIR}/accessibility/win"
     "${WEBCORE_DIR}/page/win"
     "${WEBCORE_DIR}/platform/cf"
@@ -86,7 +87,11 @@ list(APPEND WebCore_SOURCES
 
     platform/graphics/opentype/OpenTypeUtilities.cpp
 
+    platform/graphics/win/ColorDirect2D.cpp
     platform/graphics/win/DIBPixelData.cpp
+    platform/graphics/win/FloatPointDirect2D.cpp
+    platform/graphics/win/FloatRectDirect2D.cpp
+    platform/graphics/win/FloatSizeDirect2D.cpp
     platform/graphics/win/FontCacheWin.cpp
     platform/graphics/win/FontPlatformDataWin.cpp
     platform/graphics/win/FontWin.cpp
@@ -99,6 +104,7 @@ list(APPEND WebCore_SOURCES
     platform/graphics/win/IntSizeWin.cpp
     platform/graphics/win/MediaPlayerPrivateFullscreenWindow.cpp
     platform/graphics/win/SimpleFontDataWin.cpp
+    platform/graphics/win/TransformationMatrixDirect2D.cpp
     platform/graphics/win/TransformationMatrixWin.cpp
     platform/graphics/win/UniscribeController.cpp
 
@@ -199,6 +205,8 @@ set(WebCore_FORWARDING_HEADERS_DIRECTORIES
 
     bridge/c
     bridge/jsc
+
+    css/parser
 
     history/cf
 

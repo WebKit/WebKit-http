@@ -84,7 +84,7 @@ public:
 
     void markEndOfStream(MediaSourcePrivate::EndOfStreamStatus);
 
-#if ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2)
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
     void dispatchDecryptionKey(GstBuffer*) override;
 #endif
 #if USE(PLAYREADY)

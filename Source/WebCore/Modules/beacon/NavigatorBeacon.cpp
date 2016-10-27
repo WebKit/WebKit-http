@@ -47,7 +47,7 @@ bool NavigatorBeacon::canSendBeacon(ScriptExecutionContext& context, const URL& 
         return false;
     }
 
-    if (!context.contentSecurityPolicy()->allowConnectToSource(url, context.shouldBypassMainWorldContentSecurityPolicy())) {
+    if (!context.shouldBypassMainWorldContentSecurityPolicy() && !context.contentSecurityPolicy()->allowConnectToSource(url)) {
         ec = SECURITY_ERR;
         return false;
     }

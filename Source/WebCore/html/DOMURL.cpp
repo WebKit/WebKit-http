@@ -34,6 +34,7 @@
 #include "PublicURLManager.h"
 #include "ResourceRequest.h"
 #include "ScriptExecutionContext.h"
+#include "URLSearchParams.h"
 #include <wtf/MainThread.h>
 
 namespace WebCore {
@@ -77,9 +78,22 @@ inline DOMURL::DOMURL(const String& url, ExceptionCode& ec)
         ec = TypeError;
 }
 
+DOMURL::~DOMURL()
+{
+    if (m_searchParams)
+        m_searchParams->associatedURLDestroyed();
+}
+
 void DOMURL::setHref(const String& url)
 {
     m_url = URL(m_baseURL, url);
+    if (m_searchParams)
+        m_searchParams->updateFromAssociatedURL();
+}
+
+void DOMURL::setQuery(const String& query)
+{
+    m_url.setQuery(query);
 }
 
 void DOMURL::setHref(const String& url, ExceptionCode& ec)
@@ -89,14 +103,12 @@ void DOMURL::setHref(const String& url, ExceptionCode& ec)
         ec = TypeError;
 }
 
-String DOMURL::createObjectURL(ScriptExecutionContext& scriptExecutionContext, Blob* blob)
+String DOMURL::createObjectURL(ScriptExecutionContext& scriptExecutionContext, Blob& blob)
 {
-    if (!blob)
-        return String();
     return createPublicURL(scriptExecutionContext, blob);
 }
 
-String DOMURL::createPublicURL(ScriptExecutionContext& scriptExecutionContext, URLRegistrable* registrable)
+String DOMURL::createPublicURL(ScriptExecutionContext& scriptExecutionContext, URLRegistrable& registrable)
 {
     URL publicURL = BlobURL::createPublicURL(scriptExecutionContext.securityOrigin());
     if (publicURL.isEmpty())
@@ -107,6 +119,13 @@ String DOMURL::createPublicURL(ScriptExecutionContext& scriptExecutionContext, U
     return publicURL.string();
 }
 
+URLSearchParams& DOMURL::searchParams()
+{
+    if (!m_searchParams)
+        m_searchParams = URLSearchParams::create(search(), this);
+    return *m_searchParams;
+}
+    
 void DOMURL::revokeObjectURL(ScriptExecutionContext& scriptExecutionContext, const String& urlString)
 {
     URL url(URL(), urlString);

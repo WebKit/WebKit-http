@@ -20,13 +20,14 @@
  *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#ifndef WebKitMediaSourceGStreamer_h
-#define WebKitMediaSourceGStreamer_h
+#pragma once
+
 #if ENABLE(VIDEO) && ENABLE(MEDIA_SOURCE) && USE(GSTREAMER)
 
 #include "GRefPtrGStreamer.h"
 #include "MediaPlayer.h"
 #include "MediaSource.h"
+#include "MediaSourcePrivate.h"
 #include "SourceBufferPrivate.h"
 #include "SourceBufferPrivateClient.h"
 #include <gst/gst.h>
@@ -118,4 +119,3 @@ class PlaybackPipeline: public RefCounted<PlaybackPipeline> {
 };
 
 #endif // USE(GSTREAMER)
-#endif

@@ -23,7 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-// @conditional=ENABLE(STREAMS_API)
+// @conditional=ENABLE(READABLE_STREAM_API)
 
 function cancel(reason)
 {
@@ -35,7 +35,7 @@ function cancel(reason)
     if (!this.@ownerReadableStream)
         return @Promise.@reject(new @TypeError("cancel() called on a reader owned by no readable stream"));
 
-    return @cancelReadableStream(this.@ownerReadableStream, reason);
+    return @readableStreamReaderGenericCancel(this, reason);
 }
 
 function read()
@@ -47,7 +47,7 @@ function read()
     if (!this.@ownerReadableStream)
         return @Promise.@reject(new @TypeError("read() called on a reader owned by no readable stream"));
 
-    return @readFromReadableStreamDefaultReader(this);
+    return @readableStreamDefaultReaderRead(this);
 }
 
 function releaseLock()
@@ -57,20 +57,13 @@ function releaseLock()
     if (!@isReadableStreamDefaultReader(this))
         throw @makeThisTypeError("ReadableStreamDefaultReader", "releaseLock");
 
-    const stream = this.@ownerReadableStream;
-    if (!stream)
-         return;
+    if (!this.@ownerReadableStream)
+        return;
 
     if (this.@readRequests.length)
-        throw new @TypeError("There are still pending read requests, cannot release the lock");
+        @throwTypeError("There are still pending read requests, cannot release the lock");
 
-    if (stream.@state === @streamReadable)
-        this.@closedPromiseCapability.@reject.@call(@undefined, new @TypeError("releasing lock of reader whose stream is still in readable state"));
-    else
-        this.@closedPromiseCapability = { @promise: @Promise.@reject(new @TypeError("reader released lock")) };
-
-    stream.@reader = @undefined;
-    this.@ownerReadableStream = null;
+    @readableStreamReaderGenericRelease(this);
 }
 
 function closed()

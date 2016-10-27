@@ -363,39 +363,20 @@ UChar32 StringImpl::characterStartingAt(unsigned i)
 Ref<StringImpl> StringImpl::convertToLowercaseWithoutLocale()
 {
     // Note: At one time this was a hot function in the Dromaeo benchmark, specifically the
-    // no-op code path up through the first 'return' statement.
+    // no-op code path that may return ourself if we find no upper case letters and no invalid
+    // ASCII letters.
 
     // First scan the string for uppercase and non-ASCII characters:
     if (is8Bit()) {
-        unsigned failingIndex;
         for (unsigned i = 0; i < m_length; ++i) {
             LChar character = m_data8[i];
-            if (UNLIKELY((character & ~0x7F) || isASCIIUpper(character))) {
-                failingIndex = i;
-                goto SlowPath;
-            }
+            if (UNLIKELY((character & ~0x7F) || isASCIIUpper(character)))
+                return convertToLowercaseWithoutLocaleStartingAtFailingIndex8Bit(i);
         }
+
         return *this;
-
-SlowPath:
-        LChar* data8;
-        auto newImpl = createUninitializedInternalNonEmpty(m_length, data8);
-
-        for (unsigned i = 0; i < failingIndex; ++i)
-            data8[i] = m_data8[i];
-
-        for (unsigned i = failingIndex; i < m_length; ++i) {
-            LChar character = m_data8[i];
-            if (!(character & ~0x7F))
-                data8[i] = toASCIILower(character);
-            else {
-                ASSERT(u_tolower(character) <= 0xFF);
-                data8[i] = static_cast<LChar>(u_tolower(character));
-            }
-        }
-
-        return newImpl;
     }
+
     bool noUpper = true;
     unsigned ored = 0;
 
@@ -438,6 +419,30 @@ SlowPath:
     u_strToLower(data16, realLength, m_data16, m_length, "", &status);
     if (U_FAILURE(status))
         return *this;
+    return newImpl;
+}
+
+Ref<StringImpl> StringImpl::convertToLowercaseWithoutLocaleStartingAtFailingIndex8Bit(unsigned failingIndex)
+{
+    ASSERT(is8Bit());
+    LChar* data8;
+    auto newImpl = createUninitializedInternalNonEmpty(m_length, data8);
+
+    for (unsigned i = 0; i < failingIndex; ++i) {
+        ASSERT(!(m_data8[i] & ~0x7F) && !isASCIIUpper(m_data8[i]));
+        data8[i] = m_data8[i];
+    }
+
+    for (unsigned i = failingIndex; i < m_length; ++i) {
+        LChar character = m_data8[i];
+        if (!(character & ~0x7F))
+            data8[i] = toASCIILower(character);
+        else {
+            ASSERT(u_tolower(character) <= 0xFF);
+            data8[i] = static_cast<LChar>(u_tolower(character));
+        }
+    }
+
     return newImpl;
 }
 
@@ -831,7 +836,7 @@ ALWAYS_INLINE Ref<StringImpl> StringImpl::removeCharacters(const CharType* chara
 
     data.shrink(outc);
 
-    return adopt(data);
+    return adopt(WTFMove(data));
 }
 
 Ref<StringImpl> StringImpl::removeCharacters(CharacterMatchFunctionPtr findMatch)
@@ -875,7 +880,7 @@ inline Ref<StringImpl> StringImpl::simplifyMatchedCharactersToSpace(UCharPredica
     
     data.shrink(outc);
     
-    return adopt(data);
+    return adopt(WTFMove(data));
 }
 
 Ref<StringImpl> StringImpl::simplifyWhiteSpace()
@@ -2002,7 +2007,7 @@ UCharDirection StringImpl::defaultWritingDirection(bool* hasStrongDirectionality
     return U_LEFT_TO_RIGHT;
 }
 
-Ref<StringImpl> StringImpl::adopt(StringBuffer<LChar>& buffer)
+Ref<StringImpl> StringImpl::adopt(StringBuffer<LChar>&& buffer)
 {
     unsigned length = buffer.length();
     if (!length)
@@ -2010,7 +2015,7 @@ Ref<StringImpl> StringImpl::adopt(StringBuffer<LChar>& buffer)
     return adoptRef(*new StringImpl(buffer.release(), length));
 }
 
-Ref<StringImpl> StringImpl::adopt(StringBuffer<UChar>& buffer)
+Ref<StringImpl> StringImpl::adopt(StringBuffer<UChar>&& buffer)
 {
     unsigned length = buffer.length();
     if (!length)

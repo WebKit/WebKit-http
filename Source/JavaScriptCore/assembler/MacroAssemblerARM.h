@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008, 2013-2015 Apple Inc.
+ * Copyright (C) 2008, 2013-2016 Apple Inc.
  * Copyright (C) 2009, 2010 University of Szeged
  * All rights reserved.
  *
@@ -25,8 +25,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef MacroAssemblerARM_h
-#define MacroAssemblerARM_h
+#pragma once
 
 #if ENABLE(ASSEMBLER) && CPU(ARM_TRADITIONAL)
 
@@ -312,6 +311,11 @@ public:
     void sub32(RegisterID src, RegisterID dest)
     {
         m_assembler.subs(dest, dest, src);
+    }
+
+    void sub32(RegisterID left, RegisterID right, RegisterID dest)
+    {
+        m_assembler.subs(dest, left, right);
     }
 
     void sub32(TrustedImm32 imm, RegisterID dest)
@@ -646,6 +650,12 @@ public:
         move(TrustedImmPtr(left.m_ptr), ARMRegisters::S1);
         load8(Address(ARMRegisters::S1), ARMRegisters::S1);
         return branch32(cond, ARMRegisters::S1, right8);
+    }
+
+    Jump branchPtr(RelationalCondition cond, BaseIndex left, RegisterID right)
+    {
+        load32(left, ARMRegisters::S1);
+        return branch32(cond, ARMRegisters::S1, right);
     }
 
     Jump branch32(RelationalCondition cond, RegisterID left, RegisterID right, int useConstantPool = 0)
@@ -1463,6 +1473,11 @@ public:
         return ARMAssembler::maxJumpReplacementSize();
     }
 
+    static ptrdiff_t patchableJumpSize()
+    {
+        return ARMAssembler::patchableJumpSize();
+    }
+
     static bool canJumpReplacePatchableBranchPtrWithPatch() { return false; }
     static bool canJumpReplacePatchableBranch32WithPatch() { return false; }
 
@@ -1590,8 +1605,6 @@ private:
     static const bool s_isVFPPresent;
 };
 
-}
+} // namespace JSC
 
 #endif // ENABLE(ASSEMBLER) && CPU(ARM_TRADITIONAL)
-
-#endif // MacroAssemblerARM_h

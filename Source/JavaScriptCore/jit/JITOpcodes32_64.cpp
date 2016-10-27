@@ -39,6 +39,7 @@
 #include "JSPropertyNameEnumerator.h"
 #include "LinkBuffer.h"
 #include "MaxFrameExtentForSlowPathCall.h"
+#include "Opcode.h"
 #include "SlowPathCall.h"
 #include "TypeProfilerLog.h"
 #include "VirtualRegister.h"
@@ -163,21 +164,24 @@ void JIT::emit_op_new_object(Instruction* currentInstruction)
 {
     Structure* structure = currentInstruction[3].u.objectAllocationProfile->structure();
     size_t allocationSize = JSFinalObject::allocationSize(structure->inlineCapacity());
-    MarkedAllocator* allocator = &m_vm->heap.allocatorForObjectWithoutDestructor(allocationSize);
+    MarkedAllocator* allocator = m_vm->heap.allocatorForObjectWithoutDestructor(allocationSize);
 
     RegisterID resultReg = returnValueGPR;
     RegisterID allocatorReg = regT1;
     RegisterID scratchReg = regT3;
 
     move(TrustedImmPtr(allocator), allocatorReg);
+    if (allocator)
+        addSlowCase(Jump());
     JumpList slowCases;
-    emitAllocateJSObject(resultReg, allocatorReg, TrustedImmPtr(structure), TrustedImmPtr(0), scratchReg, slowCases);
+    emitAllocateJSObject(resultReg, allocator, allocatorReg, TrustedImmPtr(structure), TrustedImmPtr(0), scratchReg, slowCases);
     addSlowCase(slowCases);
     emitStoreCell(currentInstruction[1].u.operand, resultReg);
 }
 
 void JIT::emitSlow_op_new_object(Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
 {
+    linkSlowCase(iter);
     linkSlowCase(iter);
     int dst = currentInstruction[1].u.operand;
     Structure* structure = currentInstruction[3].u.objectAllocationProfile->structure();
@@ -350,33 +354,16 @@ void JIT::emit_op_is_number(Instruction* currentInstruction)
     emitStoreBool(dst, regT0);
 }
 
-void JIT::emit_op_is_string(Instruction* currentInstruction)
+void JIT::emit_op_is_cell_with_type(Instruction* currentInstruction)
 {
     int dst = currentInstruction[1].u.operand;
     int value = currentInstruction[2].u.operand;
-    
-    emitLoad(value, regT1, regT0);
-    Jump isNotCell = branch32(NotEqual, regT1, TrustedImm32(JSValue::CellTag));
-    
-    compare8(Equal, Address(regT0, JSCell::typeInfoTypeOffset()), TrustedImm32(StringType), regT0);
-    Jump done = jump();
-    
-    isNotCell.link(this);
-    move(TrustedImm32(0), regT0);
-    
-    done.link(this);
-    emitStoreBool(dst, regT0);
-}
-
-void JIT::emit_op_is_jsarray(Instruction* currentInstruction)
-{
-    int dst = currentInstruction[1].u.operand;
-    int value = currentInstruction[2].u.operand;
+    int type = currentInstruction[3].u.operand;
 
     emitLoad(value, regT1, regT0);
     Jump isNotCell = branch32(NotEqual, regT1, TrustedImm32(JSValue::CellTag));
 
-    compare8(Equal, Address(regT0, JSCell::typeInfoTypeOffset()), TrustedImm32(ArrayType), regT0);
+    compare8(Equal, Address(regT0, JSCell::typeInfoTypeOffset()), TrustedImm32(type), regT0);
     Jump done = jump();
 
     isNotCell.link(this);
@@ -471,31 +458,13 @@ void JIT::emit_op_jfalse(Instruction* currentInstruction)
 
     emitLoad(cond, regT1, regT0);
 
-    ASSERT((JSValue::BooleanTag + 1 == JSValue::Int32Tag) && !(JSValue::Int32Tag + 1));
-    addSlowCase(branch32(Below, regT1, TrustedImm32(JSValue::BooleanTag)));
-    addJump(branchTest32(Zero, regT0), target);
-}
+    JSValueRegs value(regT1, regT0);
+    GPRReg scratch = regT2;
+    GPRReg result = regT3;
+    bool shouldCheckMasqueradesAsUndefined = true;
+    emitConvertValueToBoolean(value, result, scratch, fpRegT0, fpRegT1, shouldCheckMasqueradesAsUndefined, m_codeBlock->globalObject());
 
-void JIT::emitSlow_op_jfalse(Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
-{
-    int cond = currentInstruction[1].u.operand;
-    unsigned target = currentInstruction[2].u.operand;
-
-    linkSlowCase(iter);
-
-    if (supportsFloatingPoint()) {
-        // regT1 contains the tag from the hot path.
-        Jump notNumber = branch32(Above, regT1, TrustedImm32(JSValue::LowestTag));
-
-        emitLoadDouble(cond, fpRegT0);
-        emitJumpSlowToHot(branchDoubleZeroOrNaN(fpRegT0, fpRegT1), target);
-        emitJumpSlowToHot(jump(), OPCODE_LENGTH(op_jfalse));
-
-        notNumber.link(this);
-    }
-
-    callOperation(operationConvertJSValueToBoolean, regT1, regT0);
-    emitJumpSlowToHot(branchTest32(Zero, returnValueGPR), target); // Inverted.
+    addJump(branchTest32(Zero, result), target);
 }
 
 void JIT::emit_op_jtrue(Instruction* currentInstruction)
@@ -504,32 +473,13 @@ void JIT::emit_op_jtrue(Instruction* currentInstruction)
     unsigned target = currentInstruction[2].u.operand;
 
     emitLoad(cond, regT1, regT0);
+    bool shouldCheckMasqueradesAsUndefined = true;
+    JSValueRegs value(regT1, regT0);
+    GPRReg scratch = regT2;
+    GPRReg result = regT3;
+    emitConvertValueToBoolean(value, result, scratch, fpRegT0, fpRegT1, shouldCheckMasqueradesAsUndefined, m_codeBlock->globalObject());
 
-    ASSERT((JSValue::BooleanTag + 1 == JSValue::Int32Tag) && !(JSValue::Int32Tag + 1));
-    addSlowCase(branch32(Below, regT1, TrustedImm32(JSValue::BooleanTag)));
-    addJump(branchTest32(NonZero, regT0), target);
-}
-
-void JIT::emitSlow_op_jtrue(Instruction* currentInstruction, Vector<SlowCaseEntry>::iterator& iter)
-{
-    int cond = currentInstruction[1].u.operand;
-    unsigned target = currentInstruction[2].u.operand;
-
-    linkSlowCase(iter);
-
-    if (supportsFloatingPoint()) {
-        // regT1 contains the tag from the hot path.
-        Jump notNumber = branch32(Above, regT1, TrustedImm32(JSValue::LowestTag));
-
-        emitLoadDouble(cond, fpRegT0);
-        emitJumpSlowToHot(branchDoubleNonZero(fpRegT0, fpRegT1), target);
-        emitJumpSlowToHot(jump(), OPCODE_LENGTH(op_jtrue));
-
-        notNumber.link(this);
-    }
-
-    callOperation(operationConvertJSValueToBoolean, regT1, regT0);
-    emitJumpSlowToHot(branchTest32(NonZero, returnValueGPR), target);
+    addJump(branchTest32(NonZero, result), target);
 }
 
 void JIT::emit_op_jeq_null(Instruction* currentInstruction)
@@ -969,12 +919,6 @@ void JIT::emit_op_switch_string(Instruction* currentInstruction)
     jump(returnValueGPR);
 }
 
-void JIT::emit_op_throw_static_error(Instruction* currentInstruction)
-{
-    emitLoad(m_codeBlock->getConstant(currentInstruction[1].u.operand), regT1, regT0);
-    callOperation(operationThrowStaticError, regT1, regT0, currentInstruction[2].u.operand);
-}
-
 void JIT::emit_op_debug(Instruction* currentInstruction)
 {
     load32(codeBlock()->debuggerRequestsAddress(), regT0);
@@ -1032,7 +976,7 @@ void JIT::emit_op_create_this(Instruction* currentInstruction)
     hasSeenMultipleCallees.link(this);
 
     JumpList slowCases;
-    emitAllocateJSObject(resultReg, allocatorReg, structureReg, TrustedImmPtr(0), scratchReg, slowCases);
+    emitAllocateJSObject(resultReg, nullptr, allocatorReg, structureReg, TrustedImmPtr(0), scratchReg, slowCases);
     addSlowCase(slowCases);
     emitStoreCell(currentInstruction[1].u.operand, resultReg);
 }
@@ -1042,7 +986,8 @@ void JIT::emitSlow_op_create_this(Instruction* currentInstruction, Vector<SlowCa
     linkSlowCase(iter); // Callee::m_type != JSFunctionType.
     linkSlowCase(iter); // doesn't have rare data
     linkSlowCase(iter); // doesn't have an allocation profile
-    linkSlowCase(iter); // allocation failed
+    linkSlowCase(iter); // allocation failed (no allocator)
+    linkSlowCase(iter); // allocation failed (allocator empty)
     linkSlowCase(iter); // cached function didn't match
 
     JITSlowPathCall slowPathCall(this, currentInstruction, slow_path_create_this);

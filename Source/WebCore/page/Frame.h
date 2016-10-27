@@ -135,7 +135,7 @@ namespace WebCore {
         void disconnectOwnerElement();
 
         MainFrame& mainFrame() const;
-        WEBCORE_EXPORT bool isMainFrame() const;
+        bool isMainFrame() const { return this == static_cast<void*>(&m_mainFrame); }
 
         Page* page() const;
         HTMLFrameOwnerElement* ownerElement() const;
@@ -264,7 +264,7 @@ namespace WebCore {
         bool activeDOMObjectsAndAnimationsSuspended() const { return m_activeDOMObjectsAndAnimationsSuspendedCount > 0; }
 
         bool isURLAllowed(const URL&) const;
-        bool isAlwaysOnLoggingAllowed() const;
+        WEBCORE_EXPORT bool isAlwaysOnLoggingAllowed() const;
 
     // ========
 

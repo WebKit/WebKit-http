@@ -94,6 +94,9 @@ if (ENABLE_VIDEO)
         list(APPEND WebCore_LIBRARIES
             ${GSTREAMER_GL_LIBRARIES}
         )
+        list(APPEND WebCore_SOURCES
+            platform/graphics/gstreamer/VideoTextureCopierGStreamer.cpp
+        )
     endif ()
 endif ()
 
@@ -120,7 +123,7 @@ if (ENABLE_WEB_AUDIO)
     )
 endif ()
 
-if ((ENABLE_ENCRYPTED_MEDIA OR ENABLE_ENCRYPTED_MEDIA_V2))
+if (ENABLE_LEGACY_ENCRYPTED_MEDIA)
     list(APPEND WebCore_INCLUDE_DIRECTORIES
         ${LIBGCRYPT_INCLUDE_DIRS}
     )
@@ -129,16 +132,11 @@ if ((ENABLE_ENCRYPTED_MEDIA OR ENABLE_ENCRYPTED_MEDIA_V2))
     )
 
     list(APPEND WebCore_SOURCES
+        platform/graphics/gstreamer/CDMPRSessionGStreamer.cpp
         platform/graphics/gstreamer/WebKitCommonEncryptionDecryptorGStreamer.cpp
         platform/graphics/gstreamer/WebKitClearKeyDecryptorGStreamer.cpp
         platform/graphics/gstreamer/WebKitPlayReadyDecryptorGStreamer.cpp
     )
-
-    if (ENABLE_ENCRYPTED_MEDIA_V2)
-        list(APPEND WebCore_SOURCES
-            platform/graphics/gstreamer/CDMPRSessionGStreamer.cpp
-        )
-    endif ()
 
     if (ENABLE_PLAYREADY)
         list(APPEND WebCore_LIBRARIES

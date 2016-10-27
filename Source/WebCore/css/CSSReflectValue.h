@@ -33,7 +33,7 @@ namespace WebCore {
 
 class CSSPrimitiveValue;
 
-class CSSReflectValue : public CSSValue {
+class CSSReflectValue final : public CSSValue {
 public:
     static Ref<CSSReflectValue> create(Ref<CSSPrimitiveValue>&& direction, Ref<CSSPrimitiveValue>&& offset, RefPtr<CSSValue>&& mask)
     {
@@ -47,8 +47,6 @@ public:
     CSSValue* mask() const { return m_mask.get(); }
 
     String customCSSText() const;
-
-    void addSubresourceStyleURLs(ListHashSet<URL>&, const StyleSheetContents*) const;
 
     bool equals(const CSSReflectValue&) const;
 

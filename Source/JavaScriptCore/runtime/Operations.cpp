@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 1999-2000 Harri Porten (porten@kde.org)
- * Copyright (C) 2008 Apple Inc. All Rights Reserved.
+ * Copyright (C) 2008, 2016 Apple Inc. All Rights Reserved.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Library General Public
@@ -44,12 +44,11 @@ NEVER_INLINE JSValue jsAddSlowCase(CallFrame* callFrame, JSValue v1, JSValue v2)
 {
     // exception for the Date exception in defaultValue()
     VM& vm = callFrame->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     JSValue p1 = v1.toPrimitive(callFrame);
-    if (UNLIKELY(vm.exception()))
-        return JSValue();
+    RETURN_IF_EXCEPTION(scope, JSValue());
     JSValue p2 = v2.toPrimitive(callFrame);
-    if (UNLIKELY(vm.exception()))
-        return JSValue();
+    RETURN_IF_EXCEPTION(scope, JSValue());
 
     if (p1.isString())
         return jsString(callFrame, asString(p1), p2.toString(callFrame));

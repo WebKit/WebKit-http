@@ -33,9 +33,11 @@
 #if ENABLE(WEB_RTC)
 #include "MockMediaEndpoint.h"
 
+#include "MediaEndpointSessionConfiguration.h"
 #include "MediaPayload.h"
 #include "MockRealtimeAudioSource.h"
 #include "MockRealtimeVideoSource.h"
+#include "RealtimeMediaSource.h"
 #include <wtf/MainThread.h>
 
 namespace WebCore {
@@ -50,6 +52,9 @@ std::unique_ptr<MediaEndpoint> MockMediaEndpoint::create(MediaEndpointClient& cl
 
 MockMediaEndpoint::MockMediaEndpoint(MediaEndpointClient& client)
     : m_client(client)
+    , m_iceCandidateTimer(*this, &MockMediaEndpoint::iceCandidateTimerFired)
+    , m_iceTransportTimer(*this, &MockMediaEndpoint::iceTransportTimerFired)
+    , m_unmuteTimer(*this, &MockMediaEndpoint::unmuteTimerFired)
 {
 }
 
@@ -70,9 +75,9 @@ void MockMediaEndpoint::generateDtlsInfo()
     });
 }
 
-Vector<RefPtr<MediaPayload>> MockMediaEndpoint::getDefaultAudioPayloads()
+MediaPayloadVector MockMediaEndpoint::getDefaultAudioPayloads()
 {
-    Vector<RefPtr<MediaPayload>> payloads;
+    MediaPayloadVector payloads;
 
     RefPtr<MediaPayload> payload = MediaPayload::create();
     payload->setType(111);
@@ -98,9 +103,9 @@ Vector<RefPtr<MediaPayload>> MockMediaEndpoint::getDefaultAudioPayloads()
     return payloads;
 }
 
-Vector<RefPtr<MediaPayload>> MockMediaEndpoint::getDefaultVideoPayloads()
+MediaPayloadVector MockMediaEndpoint::getDefaultVideoPayloads()
 {
-    Vector<RefPtr<MediaPayload>> payloads;
+    MediaPayloadVector payloads;
 
     RefPtr<MediaPayload> payload = MediaPayload::create();
     payload->setType(103);
@@ -158,18 +163,18 @@ MediaPayloadVector MockMediaEndpoint::filterPayloads(const MediaPayloadVector& r
 
 MediaEndpoint::UpdateResult MockMediaEndpoint::updateReceiveConfiguration(MediaEndpointSessionConfiguration* configuration, bool isInitiator)
 {
-    UNUSED_PARAM(configuration);
     UNUSED_PARAM(isInitiator);
 
+    updateConfigurationMids(*configuration);
     return UpdateResult::Success;
 }
 
 MediaEndpoint::UpdateResult MockMediaEndpoint::updateSendConfiguration(MediaEndpointSessionConfiguration* configuration, const RealtimeMediaSourceMap& sendSourceMap, bool isInitiator)
 {
-    UNUSED_PARAM(configuration);
     UNUSED_PARAM(sendSourceMap);
     UNUSED_PARAM(isInitiator);
 
+    updateConfigurationMids(*configuration);
     return UpdateResult::Success;
 }
 
@@ -181,13 +186,19 @@ void MockMediaEndpoint::addRemoteCandidate(IceCandidate& candidate, const String
     UNUSED_PARAM(password);
 }
 
-Ref<RealtimeMediaSource> MockMediaEndpoint::createMutedRemoteSource(const String&, RealtimeMediaSource::Type type)
+Ref<RealtimeMediaSource> MockMediaEndpoint::createMutedRemoteSource(const String& mid, RealtimeMediaSource::Type type)
 {
-    if (type == RealtimeMediaSource::Audio)
-        return MockRealtimeAudioSource::createMuted("remote audio");
+    RefPtr<RealtimeMediaSource> source;
 
-    ASSERT(type == RealtimeMediaSource::Video);
-    return MockRealtimeVideoSource::createMuted("remote video");
+    switch (type) {
+    case RealtimeMediaSource::Audio: source = MockRealtimeAudioSource::createMuted("remote audio"); break;
+    case RealtimeMediaSource::Video: source = MockRealtimeVideoSource::createMuted("remote video"); break;
+    case RealtimeMediaSource::None:
+        ASSERT_NOT_REACHED();
+    }
+
+    m_mutedRemoteSources.set(mid, source);
+    return *source;
 }
 
 void MockMediaEndpoint::replaceSendSource(RealtimeMediaSource& newSource, const String& mid)
@@ -196,8 +207,158 @@ void MockMediaEndpoint::replaceSendSource(RealtimeMediaSource& newSource, const 
     UNUSED_PARAM(mid);
 }
 
+void MockMediaEndpoint::replaceMutedRemoteSourceMid(const String& oldMid, const String& newMid)
+{
+    RefPtr<RealtimeMediaSource> remoteSource = m_mutedRemoteSources.take(oldMid);
+    m_mutedRemoteSources.set(newMid, WTFMove(remoteSource));
+}
+
 void MockMediaEndpoint::stop()
 {
+}
+
+void MockMediaEndpoint::emulatePlatformEvent(const String& action)
+{
+    if (action == "dispatch-fake-ice-candidates")
+        dispatchFakeIceCandidates();
+    else if (action == "step-ice-transport-states")
+        stepIceTransportStates();
+    else if (action == "unmute-remote-sources-by-mid")
+        unmuteRemoteSourcesByMid();
+}
+
+void MockMediaEndpoint::updateConfigurationMids(const MediaEndpointSessionConfiguration& configuration)
+{
+    Vector<String> mids;
+    for (const RefPtr<PeerMediaDescription>& mediaDescription : configuration.mediaDescriptions())
+        mids.append(mediaDescription->mid());
+    m_mids.swap(mids);
+}
+
+void MockMediaEndpoint::dispatchFakeIceCandidates()
+{
+    RefPtr<IceCandidate> iceCandidate = IceCandidate::create();
+    iceCandidate->setType("host");
+    iceCandidate->setFoundation("1");
+    iceCandidate->setComponentId(1);
+    iceCandidate->setPriority(2013266431);
+    iceCandidate->setAddress("192.168.0.100");
+    iceCandidate->setPort(38838);
+    iceCandidate->setTransport("UDP");
+    m_fakeIceCandidates.append(WTFMove(iceCandidate));
+
+    iceCandidate = IceCandidate::create();
+    iceCandidate->setType("host");
+    iceCandidate->setFoundation("2");
+    iceCandidate->setComponentId(1);
+    iceCandidate->setPriority(1019216383);
+    iceCandidate->setAddress("192.168.0.100");
+    iceCandidate->setPort(9);
+    iceCandidate->setTransport("TCP");
+    iceCandidate->setTcpType("active");
+    m_fakeIceCandidates.append(WTFMove(iceCandidate));
+
+    iceCandidate = IceCandidate::create();
+    iceCandidate->setType("srflx");
+    iceCandidate->setFoundation("3");
+    iceCandidate->setComponentId(1);
+    iceCandidate->setPriority(1677722111);
+    iceCandidate->setAddress("172.18.0.1");
+    iceCandidate->setPort(47989);
+    iceCandidate->setTransport("UDP");
+    iceCandidate->setRelatedAddress("192.168.0.100");
+    iceCandidate->setRelatedPort(47989);
+    m_fakeIceCandidates.append(WTFMove(iceCandidate));
+
+    // Reverse order to use takeLast() while keeping the above order
+    m_fakeIceCandidates.reverse();
+
+    m_iceCandidateTimer.startOneShot(0);
+}
+
+void MockMediaEndpoint::iceCandidateTimerFired()
+{
+    if (m_mids.isEmpty())
+        return;
+
+    if (!m_fakeIceCandidates.isEmpty()) {
+        m_client.gotIceCandidate(m_mids[0], m_fakeIceCandidates.takeLast());
+        m_iceCandidateTimer.startOneShot(0);
+    } else
+        m_client.doneGatheringCandidates(m_mids[0]);
+}
+
+void MockMediaEndpoint::stepIceTransportStates()
+{
+    if (m_mids.size() != 3) {
+        LOG_ERROR("The 'step-ice-transport-states' action requires 3 transceivers");
+        return;
+    }
+
+    // Should go to:
+    // 'checking'
+    m_iceTransportStateChanges.append(std::make_pair(m_mids[0], MediaEndpoint::IceTransportState::Checking));
+    m_iceTransportStateChanges.append(std::make_pair(m_mids[1], MediaEndpoint::IceTransportState::Checking));
+    m_iceTransportStateChanges.append(std::make_pair(m_mids[2], MediaEndpoint::IceTransportState::Checking));
+
+    // 'connected'
+    m_iceTransportStateChanges.append(std::make_pair(m_mids[0], MediaEndpoint::IceTransportState::Connected));
+    m_iceTransportStateChanges.append(std::make_pair(m_mids[1], MediaEndpoint::IceTransportState::Completed));
+    m_iceTransportStateChanges.append(std::make_pair(m_mids[2], MediaEndpoint::IceTransportState::Closed));
+
+    // 'completed'
+    m_iceTransportStateChanges.append(std::make_pair(m_mids[0], MediaEndpoint::IceTransportState::Completed));
+
+    // 'failed'
+    m_iceTransportStateChanges.append(std::make_pair(m_mids[0], MediaEndpoint::IceTransportState::Failed));
+
+    // 'disconnected'
+    m_iceTransportStateChanges.append(std::make_pair(m_mids[1], MediaEndpoint::IceTransportState::Disconnected));
+    m_iceTransportStateChanges.append(std::make_pair(m_mids[0], MediaEndpoint::IceTransportState::Closed));
+
+    // 'new'
+    m_iceTransportStateChanges.append(std::make_pair(m_mids[1], MediaEndpoint::IceTransportState::Closed));
+
+    // Reverse order to use takeLast() while keeping the above order
+    m_iceTransportStateChanges.reverse();
+
+    m_iceTransportTimer.startOneShot(0);
+}
+
+void MockMediaEndpoint::iceTransportTimerFired()
+{
+    if (m_iceTransportStateChanges.isEmpty() || m_mids.size() != 3)
+        return;
+
+    auto stateChange = m_iceTransportStateChanges.takeLast();
+    m_client.iceTransportStateChanged(stateChange.first, stateChange.second);
+
+    m_iceTransportTimer.startOneShot(0);
+}
+
+void MockMediaEndpoint::unmuteRemoteSourcesByMid()
+{
+    if (m_mids.isEmpty())
+        return;
+
+    // Looking up each source by its mid, instead of simply iterating over the list of muted sources,
+    // emulates remote media arriving on a media description with a specific mid (RTCRtpTransceiver).
+
+    // Copy values in reverse order to maintain the original order while using takeLast()
+    for (int i = m_mids.size() - 1; i >= 0; --i)
+        m_midsOfSourcesToUnmute.append(m_mids[i]);
+
+    m_unmuteTimer.startOneShot(0);
+}
+
+void MockMediaEndpoint::unmuteTimerFired()
+{
+    RefPtr<RealtimeMediaSource> source = m_mutedRemoteSources.get(m_midsOfSourcesToUnmute.takeLast());
+    if (source)
+        source->setMuted(false);
+
+    if (!m_midsOfSourcesToUnmute.isEmpty())
+        m_unmuteTimer.startOneShot(0);
 }
 
 } // namespace WebCore

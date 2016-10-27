@@ -64,13 +64,9 @@ public:
         ScriptFontFamilyMap m_fantasyFontFamilies;
         ScriptFontFamilyMap m_pictographFontFamilies;
 
-#if ENABLE(TEXT_AUTOSIZING) || ENABLE(IOS_TEXT_AUTOSIZING)
+#if ENABLE(TEXT_AUTOSIZING)
         bool m_originalTextAutosizingEnabled;
         IntSize m_originalTextAutosizingWindowSizeOverride;
-#endif
-
-#if ENABLE(TEXT_AUTOSIZING)
-        float m_originalTextAutosizingFontScaleFactor;
 #endif
 
         String m_originalMediaTypeOverride;
@@ -80,7 +76,6 @@ public:
         bool m_langAttributeAwareFormControlUIEnabled;
         bool m_imagesEnabled;
         bool m_preferMIMETypeForImages;
-        bool m_cachedPDFImageEnabled;
         std::chrono::milliseconds m_minimumTimerInterval;
 #if ENABLE(VIDEO_TRACK)
         bool m_shouldDisplaySubtitles;
@@ -92,7 +87,8 @@ public:
         bool m_originalTimeWithoutMouseMovementBeforeHidingControls;
         bool m_useLegacyBackgroundSizeShorthandBehavior;
         bool m_autoscrollForDragAndDropEnabled;
-        bool m_pluginReplacementEnabled;
+        bool m_quickTimePluginReplacementEnabled;
+        bool m_youTubeFlashPluginReplacementEnabled;
         bool m_shouldConvertPositionStyleOnCopy;
         bool m_fontFallbackPrefersPictographs;
         bool m_webFontsAlwaysFallBack;
@@ -111,8 +107,15 @@ public:
 #if ENABLE(INDEXED_DATABASE_IN_WORKERS)
         bool m_indexedDBWorkersEnabled;
 #endif
+#if ENABLE(VARIATION_FONTS)
+        bool m_variationFontsEnabled;
+#endif
+        bool m_inputEventsEnabled;
+
         UserInterfaceDirectionPolicy m_userInterfaceDirectionPolicy;
         TextDirection m_systemLayoutDirection;
+        PDFImageCachingPolicy m_pdfImageCachingPolicy;
+        Settings::ForcedPrefersReducedMotionValue m_forcedPrefersReducedMotionValue;
     };
 
     static Ref<InternalSettings> create(Page* page)
@@ -142,7 +145,7 @@ public:
     void setAllowsAirPlayForMediaPlayback(bool);
     void setEditingBehavior(const String&, ExceptionCode&);
     void setPreferMIMETypeForImages(bool, ExceptionCode&);
-    void setCachedPDFImageEnabled(bool, ExceptionCode&);
+    void setPDFImageCachingPolicy(const String&, ExceptionCode&);
     void setShouldDisplayTrackKind(const String& kind, bool enabled, ExceptionCode&);
     bool shouldDisplayTrackKind(const String& kind, ExceptionCode&);
     void setStorageBlockingPolicy(const String&, ExceptionCode&);
@@ -156,7 +159,8 @@ public:
     void setAutoscrollForDragAndDropEnabled(bool, ExceptionCode&);
     void setFontFallbackPrefersPictographs(bool, ExceptionCode&);
     void setWebFontsAlwaysFallBack(bool, ExceptionCode&);
-    void setPluginReplacementEnabled(bool);
+    void setQuickTimePluginReplacementEnabled(bool, ExceptionCode&);
+    void setYouTubeFlashPluginReplacementEnabled(bool, ExceptionCode&);
     void setBackgroundShouldExtendBeyondPage(bool, ExceptionCode&);
     void setShouldConvertPositionStyleOnCopy(bool, ExceptionCode&);
     void setScrollingTreeIncludesFrames(bool, ExceptionCode&);
@@ -168,6 +172,12 @@ public:
     void setUserInterfaceDirectionPolicy(const String& policy, ExceptionCode&);
     String systemLayoutDirection(ExceptionCode&);
     void setSystemLayoutDirection(const String& direction, ExceptionCode&);
+    bool variationFontsEnabled(ExceptionCode&);
+    void setVariationFontsEnabled(bool, ExceptionCode&);
+
+    enum class ForcedPrefersReducedMotionValue { System, On, Off };
+    ForcedPrefersReducedMotionValue forcedPrefersReducedMotionValue() const;
+    void setForcedPrefersReducedMotionValue(ForcedPrefersReducedMotionValue);
 
     static void setAllowsAnySSLCertificate(bool);
 

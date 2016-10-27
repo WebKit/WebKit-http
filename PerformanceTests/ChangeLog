@@ -1,3 +1,97 @@
+2016-10-03  Saam Barati  <sbarati@apple.com>
+
+        MapHash should speculate on the type of its child node
+        https://bugs.webkit.org/show_bug.cgi?id=161922
+
+        Reviewed by Filip Pizlo.
+
+        I gave the main generator a name so it's easier to see what
+        it is when using the sampling profiler.
+
+        * ES6SampleBench/Basic/ast.js:
+        (Basic.Program):
+
+2016-09-19  Sergio Villar Senin  <svillar@igalia.com>
+
+        [css-grid] Remove the x2 computation of row sizes with indefinite heights
+        https://bugs.webkit.org/show_bug.cgi?id=162150
+
+        Reviewed by Darin Adler.
+
+        Added a new test case which checks the layout performance of grids inside other grids, i.e,
+        grids acting both as grid container and grid item.
+
+        * Layout/nested-grid.html: Added.
+
+2016-09-09  Simon Fraser  <simon.fraser@apple.com>
+
+        Perf test Animation/css-accelerated-animation.html failing
+        https://bugs.webkit.org/show_bug.cgi?id=161795
+
+        Skip Animation/css-accelerated-animation.html since this only works as a MobileSafari
+        perf test.
+
+        * Skipped:
+
+2016-09-08  Simon Fraser  <simon.fraser@apple.com>
+
+        Add a content-animation test with accelerated CSS animations
+        https://bugs.webkit.org/show_bug.cgi?id=161776
+
+        Reviewed by Dean Jackson.
+
+        Add a test that measures the frame rate of accelerated CSS animations.
+
+        This is like css-animation.html (which animates 'left' and 'top') but animates
+        transforms instead. In order to get animation in X and Y we make two nested elements
+        and set transformX() on one, and transformY() on the other.
+
+        * Animation/css-accelerated-animation.html: Added.
+
+2016-08-23  Saam Barati  <sbarati@apple.com>
+
+        It should be easy to run ES6SampleBench from the jsc shell
+        https://bugs.webkit.org/show_bug.cgi?id=161085
+
+        Reviewed by Yusuke Suzuki.
+
+        This patch makes ES6 sample bench runnable through the `jsc` shell.
+        To do that, you need to be in the PerformanceTests/ES6SampleBench
+        directory and run `jsc cli.js`. To make this work, the benchmark
+        is now aware of being run in two modes: via the browser, and via
+        the shell. Each entry point will set a variable `isInBrowser`,
+        and the benchmark will do different things based on if that
+        variable is true or false.
+
+        * ES6SampleBench/Air/benchmark.js:
+        * ES6SampleBench/Air/stress-test.js:
+        * ES6SampleBench/Basic/benchmark.js:
+        (runBenchmark):
+        * ES6SampleBench/Basic/stress-test.js:
+        * ES6SampleBench/air_benchmark.js:
+        * ES6SampleBench/basic_benchmark.js:
+        * ES6SampleBench/cli.js: Added.
+        (return.doRun):
+        (makeBenchmarkRunner):
+        * ES6SampleBench/driver.js:
+        (Driver):
+        (Driver.prototype._recomputeSummary):
+        (Driver.prototype._iterate.window.setTimeout):
+        (Driver.prototype._iterate):
+        (Driver.prototype._updateIterations):
+        * ES6SampleBench/glue.js:
+        (reportResult):
+        * ES6SampleBench/index.html:
+        * ES6SampleBench/results.js:
+        (Results):
+        (Results.prototype.reportRunning):
+        (Results.prototype.reportDone):
+        (Results.prototype.reportError):
+        * ES6SampleBench/stats.js:
+        (Stats):
+        (Stats.prototype.toString):
+        (Stats.prototype._update):
+
 2016-08-01  Said Abou-Hallawa  <sabouhallawa@apple.com>
 
         Add an option to run the MotionMark tests with classic tile size (512x512)

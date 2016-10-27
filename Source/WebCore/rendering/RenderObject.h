@@ -33,7 +33,7 @@
 #include "PaintPhase.h"
 #include "RenderObjectEnums.h"
 #include "RenderStyle.h"
-#include "ScrollBehavior.h"
+#include "ScrollAlignment.h"
 #include "StyleImage.h"
 #include "TextAffinity.h"
 
@@ -135,7 +135,7 @@ public:
     RenderObject* firstLeafChild() const;
     RenderObject* lastLeafChild() const;
 
-#if ENABLE(IOS_TEXT_AUTOSIZING)
+#if ENABLE(TEXT_AUTOSIZING)
     // Minimal distance between the block with fixed height and overflowing content and the text block to apply text autosizing.
     // The greater this constant is the more potential places we have where autosizing is turned off.
     // So it should be as low as possible. There are sites that break at 2.
@@ -461,7 +461,6 @@ public:
     VisibleInViewportState visibleInViewportState() { return m_bitfields.hasRareData() ? rareData().visibleInViewportState() : VisibilityUnknown; }
 
     bool hasLayer() const { return m_bitfields.hasLayer(); }
-    bool hasSelfPaintingLayer() const;
 
     enum BoxDecorationState {
         NoBoxDecorations,
@@ -471,7 +470,6 @@ public:
     };
     bool hasVisibleBoxDecorations() const { return m_bitfields.boxDecorationState() != NoBoxDecorations; }
     bool backgroundIsKnownToBeObscured(const LayoutPoint& paintOffset);
-    bool hasEntirelyFixedBackground() const;
 
     bool needsLayout() const
     {
@@ -519,9 +517,6 @@ public:
 
     Document& document() const { return m_node.document(); }
     Frame& frame() const;
-
-    bool hasOutlineAnnotation() const;
-    bool hasOutline() const { return style().hasOutline() || hasOutlineAnnotation(); }
 
     // Returns the object containing this one. Can be different from parent for positioned elements.
     // If repaintContainer and repaintContainerSkipped are not null, on return *repaintContainerSkipped
@@ -656,9 +651,6 @@ public:
     
     virtual CursorDirective getCursor(const LayoutPoint&, Cursor&) const;
 
-    void getTextDecorationColorsAndStyles(int decorations, Color& underlineColor, Color& overlineColor, Color& linethroughColor,
-        TextDecorationStyle& underlineStyle, TextDecorationStyle& overlineStyle, TextDecorationStyle& linethroughStyle, bool firstlineStyle = false) const;
-
     // Return the RenderLayerModelObject in the container chain which is responsible for painting this object, or nullptr
     // if painting is root-relative. This is the container that should be passed to the 'forRepaint'
     // methods.
@@ -676,8 +668,6 @@ public:
 
     // Repaint a slow repaint object, which, at this time, means we are repainting an object with background-attachment:fixed.
     void repaintSlowRepaintObject() const;
-
-    bool checkForRepaintDuringLayout() const;
 
     // Returns the rect that should be repainted whenever this object changes.  The rect is in the view's
     // coordinate space.  This method deals with outlines and overflow.
@@ -735,7 +725,6 @@ public:
     virtual LayoutRect selectionRectForRepaint(const RenderLayerModelObject* /*repaintContainer*/, bool /*clipToVisibleContent*/ = true) { return LayoutRect(); }
 
     virtual bool canBeSelectionLeaf() const { return false; }
-    bool hasSelectedChildren() const { return selectionState() != SelectionNone; }
 
     // Whether or not a given block needs to paint selection gaps.
     virtual bool shouldPaintSelectionGaps() const { return false; }
@@ -804,8 +793,6 @@ public:
         return outlineBoundsForRepaint(nullptr);
     }
 
-    RespectImageOrientationEnum shouldRespectImageOrientation() const;
-
 protected:
     //////////////////////////////////////////
     // Helper functions. Dangerous to use!
@@ -829,7 +816,6 @@ protected:
     void setNeedsSimplifiedNormalFlowLayoutBit(bool b) { m_bitfields.setNeedsSimplifiedNormalFlowLayout(b); }
 
     virtual RenderFlowThread* locateFlowThreadContainingBlock() const;
-    void invalidateFlowThreadContainingBlockIncludingDescendants(RenderFlowThread* = nullptr);
     static void calculateBorderStyleColor(const EBorderStyle&, const BoxSide&, Color&);
 
 private:
@@ -842,8 +828,6 @@ private:
     void setLayerNeedsFullRepaint();
     void setLayerNeedsFullRepaintForPositionedMovementLayout();
 
-    void removeFromRenderFlowThread();
-    void removeFromRenderFlowThreadIncludingDescendants(bool);
     Node* generatingPseudoHostElement() const;
 
     void propagateRepaintToParentWithOutlineAutoIfNeeded(const RenderLayerModelObject& repaintContainer, const LayoutRect& repaintRect) const;

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2012, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,9 +23,9 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WeakBlock_h
-#define WeakBlock_h
+#pragma once
 
+#include "CellContainer.h"
 #include "WeakImpl.h"
 #include <wtf/DoublyLinkedList.h>
 #include <wtf/StdLibExtras.h>
@@ -34,12 +34,11 @@ namespace JSC {
 
 class Heap;
 class HeapRootVisitor;
-class MarkedBlock;
 
 class WeakBlock : public DoublyLinkedListNode<WeakBlock> {
 public:
     friend class WTF::DoublyLinkedListNode<WeakBlock>;
-    static const size_t blockSize = 1 * KB; // 1/16 of MarkedBlock size
+    static const size_t blockSize = 256; // 1/16 of MarkedBlock size
 
     struct FreeCell {
         FreeCell* next;
@@ -53,7 +52,7 @@ public:
         FreeCell* freeList { nullptr };
     };
 
-    static WeakBlock* create(Heap&, MarkedBlock&);
+    static WeakBlock* create(Heap&, CellContainer);
     static void destroy(Heap&, WeakBlock*);
 
     static WeakImpl* asWeakImpl(FreeCell*);
@@ -68,18 +67,21 @@ public:
     void reap();
 
     void lastChanceToFinalize();
-    void disconnectMarkedBlock() { m_markedBlock = nullptr; }
+    void disconnectContainer() { m_container = CellContainer(); }
 
 private:
     static FreeCell* asFreeCell(WeakImpl*);
+    
+    template<typename ContainerType>
+    void specializedVisit(ContainerType&, HeapRootVisitor&);
 
-    explicit WeakBlock(MarkedBlock&);
+    explicit WeakBlock(CellContainer);
     void finalize(WeakImpl*);
     WeakImpl* weakImpls();
     size_t weakImplCount();
     void addToFreeList(FreeCell**, WeakImpl*);
 
-    MarkedBlock* m_markedBlock;
+    CellContainer m_container;
     WeakBlock* m_prev;
     WeakBlock* m_next;
     SweepResult m_sweepResult;
@@ -139,5 +141,3 @@ inline bool WeakBlock::isLogicallyEmptyButNotFree() const
 }
 
 } // namespace JSC
-
-#endif // WeakBlock_h

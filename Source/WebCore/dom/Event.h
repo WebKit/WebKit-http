@@ -25,6 +25,7 @@
 #define Event_h
 
 #include "DOMTimeStamp.h"
+#include "EventInit.h"
 #include "EventInterfaces.h"
 #include "ScriptWrappable.h"
 #include <wtf/RefCounted.h>
@@ -38,12 +39,6 @@ class EventPath;
 class EventTarget;
 class HTMLIFrameElement;
 
-struct EventInit {
-    bool bubbles { false };
-    bool cancelable { false };
-    bool composed { false };
-};
-
 enum EventInterface {
 
 #define DOM_EVENT_INTERFACE_DECLARE(name) name##InterfaceType,
@@ -54,6 +49,8 @@ DOM_EVENT_INTERFACES_FOR_EACH(DOM_EVENT_INTERFACE_DECLARE)
 
 class Event : public ScriptWrappable, public RefCounted<Event> {
 public:
+    enum class IsTrusted { No, Yes };
+
     enum PhaseType { 
         NONE                = 0,
         CAPTURING_PHASE     = 1, 
@@ -134,8 +131,6 @@ public:
     bool legacyReturnValue() const { return !defaultPrevented(); }
     void setLegacyReturnValue(bool returnValue) { setDefaultPrevented(!returnValue); }
 
-    DataTransfer* clipboardData() const { return isClipboardEvent() ? internalDataTransfer() : nullptr; }
-
     virtual EventInterface eventInterface() const;
 
     // These events are general classes of events.
@@ -143,6 +138,7 @@ public:
     virtual bool isMouseEvent() const;
     virtual bool isFocusEvent() const;
     virtual bool isKeyboardEvent() const;
+    virtual bool isInputEvent() const;
     virtual bool isCompositionEvent() const;
     virtual bool isTouchEvent() const;
 
@@ -187,8 +183,6 @@ public:
     Event* underlyingEvent() const { return m_underlyingEvent.get(); }
     void setUnderlyingEvent(Event*);
 
-    virtual DataTransfer* internalDataTransfer() const { return 0; }
-
     bool isBeingDispatched() const { return eventPhase(); }
 
     virtual Ref<Event> cloneFor(HTMLIFrameElement*) const;
@@ -196,10 +190,10 @@ public:
     virtual EventTarget* relatedTarget() const { return nullptr; }
 
 protected:
-    Event();
+    Event(IsTrusted = IsTrusted::No);
     WEBCORE_EXPORT Event(const AtomicString& type, bool canBubble, bool cancelable);
     Event(const AtomicString& type, bool canBubble, bool cancelable, double timestamp);
-    Event(const AtomicString& type, const EventInit&);
+    Event(const AtomicString& type, const EventInit&, IsTrusted = IsTrusted::No);
 
     virtual void receivedTarget();
     bool dispatched() const { return m_target; }

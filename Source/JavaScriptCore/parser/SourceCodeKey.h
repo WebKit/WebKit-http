@@ -24,8 +24,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef SourceCodeKey_h
-#define SourceCodeKey_h
+#pragma once
 
 #include "ParserModes.h"
 #include "SourceCode.h"
@@ -39,9 +38,9 @@ class SourceCodeFlags {
 public:
     SourceCodeFlags() = default;
 
-    SourceCodeFlags(SourceCodeType codeType, JSParserBuiltinMode builtinMode, JSParserStrictMode strictMode, JSParserCommentMode commentMode, DerivedContextType derivedContextType, EvalContextType evalContextType, bool isArrowFunctionContext)
+    SourceCodeFlags(SourceCodeType codeType, JSParserBuiltinMode builtinMode, JSParserStrictMode strictMode, JSParserScriptMode scriptMode, DerivedContextType derivedContextType, EvalContextType evalContextType, bool isArrowFunctionContext)
         : m_flags(
-            (static_cast<unsigned>(commentMode) << 8) |
+            (static_cast<unsigned>(scriptMode) << 8) |
             (static_cast<unsigned>(isArrowFunctionContext) << 7) |
             (static_cast<unsigned>(evalContextType) << 6) |
             (static_cast<unsigned>(derivedContextType) << 4) |
@@ -67,10 +66,10 @@ public:
     {
     }
 
-    SourceCodeKey(const SourceCode& sourceCode, const String& name, SourceCodeType codeType, JSParserBuiltinMode builtinMode, JSParserStrictMode strictMode, JSParserCommentMode commentMode, DerivedContextType derivedContextType, EvalContextType evalContextType, bool isArrowFunctionContext)
+    SourceCodeKey(const SourceCode& sourceCode, const String& name, SourceCodeType codeType, JSParserBuiltinMode builtinMode, JSParserStrictMode strictMode, JSParserScriptMode scriptMode, DerivedContextType derivedContextType, EvalContextType evalContextType, bool isArrowFunctionContext)
         : m_sourceCode(sourceCode)
         , m_name(name)
-        , m_flags(codeType, builtinMode, strictMode, commentMode, derivedContextType, evalContextType, isArrowFunctionContext)
+        , m_flags(codeType, builtinMode, strictMode, scriptMode, derivedContextType, evalContextType, isArrowFunctionContext)
         , m_hash(sourceCode.hash())
     {
     }
@@ -119,6 +118,4 @@ private:
     unsigned m_hash;
 };
 
-}
-
-#endif // SourceCodeKey_h
+} // namespace JSC

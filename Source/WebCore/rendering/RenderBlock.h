@@ -204,17 +204,19 @@ public:
     }
 
     static TextRun constructTextRun(StringView, const RenderStyle&,
-        ExpansionBehavior = AllowTrailingExpansion | ForbidLeadingExpansion, TextRunFlags = DefaultTextRunFlags);
+        ExpansionBehavior = DefaultExpansion, TextRunFlags = DefaultTextRunFlags);
     static TextRun constructTextRun(const String&, const RenderStyle&,
-        ExpansionBehavior = AllowTrailingExpansion | ForbidLeadingExpansion, TextRunFlags = DefaultTextRunFlags);
-    static TextRun constructTextRun(const RenderText*, const RenderStyle&,
-        ExpansionBehavior = AllowTrailingExpansion | ForbidLeadingExpansion);
-    static TextRun constructTextRun(const RenderText*, unsigned offset, unsigned length, const RenderStyle&,
-        ExpansionBehavior = AllowTrailingExpansion | ForbidLeadingExpansion);
-    static TextRun constructTextRun(const LChar* characters, int length, const RenderStyle&,
-        ExpansionBehavior = AllowTrailingExpansion | ForbidLeadingExpansion);
-    static TextRun constructTextRun(const UChar* characters, int length, const RenderStyle&,
-        ExpansionBehavior = AllowTrailingExpansion | ForbidLeadingExpansion);
+        ExpansionBehavior = DefaultExpansion, TextRunFlags = DefaultTextRunFlags);
+    static TextRun constructTextRun(const AtomicString&, const RenderStyle&,
+        ExpansionBehavior = DefaultExpansion, TextRunFlags = DefaultTextRunFlags);
+    static TextRun constructTextRun(const RenderText&, const RenderStyle&,
+        ExpansionBehavior = DefaultExpansion);
+    static TextRun constructTextRun(const RenderText&, unsigned offset, unsigned length, const RenderStyle&,
+        ExpansionBehavior = DefaultExpansion);
+    static TextRun constructTextRun(const LChar* characters, unsigned length, const RenderStyle&,
+        ExpansionBehavior = DefaultExpansion);
+    static TextRun constructTextRun(const UChar* characters, unsigned length, const RenderStyle&,
+        ExpansionBehavior = DefaultExpansion);
     
     LayoutUnit paginationStrut() const;
     void setPaginationStrut(LayoutUnit);
@@ -417,9 +419,6 @@ private:
     bool isSelfCollapsingBlock() const override;
     virtual bool childrenPreventSelfCollapsing() const;
     
-    // FIXME-BLOCKFLOW: Remove virtualizaion when all callers have moved to RenderBlockFlow
-    virtual bool hasLines() const { return false; }
-
     void createFirstLetterRenderer(RenderElement* firstLetterBlock, RenderText* currentTextChild);
     void updateFirstLetterStyle(RenderElement* firstLetterBlock, RenderObject* firstLetterContainer);
 

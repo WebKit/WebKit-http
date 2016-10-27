@@ -227,13 +227,7 @@ public:
     virtual AudioSourceProvider* audioSourceProvider() { return 0; }
 #endif
 
-#if ENABLE(ENCRYPTED_MEDIA)
-    virtual MediaPlayer::MediaKeyException addKey(const String&, const unsigned char*, unsigned, const unsigned char*, unsigned, const String&) { return MediaPlayer::KeySystemNotSupported; }
-    virtual MediaPlayer::MediaKeyException generateKeyRequest(const String&, const unsigned char*, unsigned, const String&) { return MediaPlayer::KeySystemNotSupported; }
-    virtual MediaPlayer::MediaKeyException cancelKeyRequest(const String&, const String&) { return MediaPlayer::KeySystemNotSupported; }
-#endif
-
-#if ENABLE(ENCRYPTED_MEDIA_V2)
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
     virtual std::unique_ptr<CDMSession> createSession(const String&, CDMSessionClient*) { return nullptr; }
     virtual void setCDMSession(CDMSession*) { }
     virtual void keyAdded() { }
@@ -276,6 +270,8 @@ public:
 #if ENABLE(AVF_CAPTIONS)
     virtual void notifyTrackModeChanged() { }
 #endif
+
+    virtual void notifyActiveSourceBuffersChanged() { }
 };
 
 }

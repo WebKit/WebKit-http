@@ -30,8 +30,9 @@
 
 #include "CompositingRunLoop.h"
 #include "CoordinatedGraphicsScene.h"
-#include "SimpleViewportController.h"
+#include <WebCore/GLContext.h>
 #include <WebCore/IntSize.h>
+#include <WebCore/TextureMapper.h>
 #include <wtf/Atomics.h>
 #include <wtf/FastMalloc.h>
 #include <wtf/Noncopyable.h>
@@ -62,7 +63,7 @@ class CoordinatedGraphicsSceneClient;
 class DisplayRefreshMonitor;
 class WebPage;
 
-class ThreadedCompositor : public ThreadSafeRefCounted<ThreadedCompositor>, public SimpleViewportController::Client, public CoordinatedGraphicsSceneClient
+class ThreadedCompositor : public CoordinatedGraphicsSceneClient, public ThreadSafeRefCounted<ThreadedCompositor>
 #if PLATFORM(WPE)
     , public WebCore::PlatformDisplayWPE::EGLTarget::Client
 #endif
@@ -72,25 +73,22 @@ class ThreadedCompositor : public ThreadSafeRefCounted<ThreadedCompositor>, publ
 public:
     class Client {
     public:
-        virtual void setVisibleContentsRect(const WebCore::FloatRect&, const WebCore::FloatPoint&, float) = 0;
         virtual void renderNextFrame() = 0;
         virtual void commitScrollOffset(uint32_t layerID, const WebCore::IntSize& offset) = 0;
     };
 
-    static Ref<ThreadedCompositor> create(Client*, WebPage&, uint64_t nativeSurfaceHandle = 0);
+    enum class ShouldDoFrameSync { No, Yes };
+
+    static Ref<ThreadedCompositor> create(Client&, WebPage&, uint64_t nativeSurfaceHandle = 0, ShouldDoFrameSync = ShouldDoFrameSync::Yes, WebCore::TextureMapper::PaintFlags = 0);
     virtual ~ThreadedCompositor();
 
     void setNativeSurfaceHandleForCompositing(uint64_t);
-    void setDeviceScaleFactor(float);
+    void setScaleFactor(float);
+    void setScrollPosition(const WebCore::IntPoint&, float scale);
+    void setViewportSize(const WebCore::IntSize&, float scale);
     void setDrawsBackground(bool);
 
     void updateSceneState(const WebCore::CoordinatedGraphicsState&);
-
-    void didChangeViewportSize(const WebCore::IntSize&);
-    void didChangeViewportAttribute(const WebCore::ViewportAttributes&);
-    void didChangeContentsSize(const WebCore::IntSize&);
-    void scrollTo(const WebCore::IntPoint&);
-    void scrollBy(const WebCore::IntSize&);
 
     void invalidate();
 
@@ -101,15 +99,12 @@ public:
 #endif
 
 private:
-    ThreadedCompositor(Client*, WebPage&, uint64_t nativeSurfaceHandle);
+    ThreadedCompositor(Client&, WebPage&, uint64_t nativeSurfaceHandle, ShouldDoFrameSync, WebCore::TextureMapper::PaintFlags);
 
     // CoordinatedGraphicsSceneClient
     void renderNextFrame() override;
     void updateViewport() override;
     void commitScrollOffset(uint32_t layerID, const WebCore::IntSize& offset) override;
-
-    // SimpleViewportController::Client.
-    void didChangeVisibleRect() override;
 
 #if PLATFORM(WPE)
     // WebCore::PlatformDisplayWPE::Surface::Client
@@ -119,23 +114,28 @@ private:
     void renderLayerTree();
     void scheduleDisplayImmediately();
 
-    bool tryEnsureGLContext();
-    WebCore::GLContext* glContext();
+    bool makeContextCurrent();
 
-    Client* m_client { nullptr };
+    Client& m_client;
     RefPtr<CoordinatedGraphicsScene> m_scene;
-    std::unique_ptr<SimpleViewportController> m_viewportController;
 
 #if PLATFORM(WPE)
     CompositingManager m_compositingManager;
     std::unique_ptr<WebCore::PlatformDisplayWPE::EGLTarget> m_target;
 #endif
+
     std::unique_ptr<WebCore::GLContext> m_context;
 
     WebCore::IntSize m_viewportSize;
-    float m_deviceScaleFactor { 1 };
+    WebCore::IntPoint m_scrollPosition;
+    float m_scaleFactor { 1 };
     bool m_drawsBackground { true };
     uint64_t m_nativeSurfaceHandle;
+#if PLATFORM(GTK)
+    ShouldDoFrameSync m_doFrameSync;
+#endif
+    WebCore::TextureMapper::PaintFlags m_paintFlags { 0 };
+    bool m_needsResize { false };
 
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
     friend class DisplayRefreshMonitor;

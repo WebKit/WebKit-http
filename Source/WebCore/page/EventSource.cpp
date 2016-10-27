@@ -72,7 +72,7 @@ RefPtr<EventSource> EventSource::create(ScriptExecutionContext& context, const S
     }
 
     // FIXME: Convert this to check the isolated world's Content Security Policy once webkit.org/b/104520 is solved.
-    if (!context.contentSecurityPolicy()->allowConnectToSource(fullURL, context.shouldBypassMainWorldContentSecurityPolicy())) {
+    if (!context.shouldBypassMainWorldContentSecurityPolicy() && !context.contentSecurityPolicy()->allowConnectToSource(fullURL)) {
         // FIXME: Should this be throwing an exception?
         ec = SECURITY_ERR;
         return nullptr;
@@ -108,6 +108,7 @@ void EventSource::connect()
     options.credentials = m_withCredentials ? FetchOptions::Credentials::Include : FetchOptions::Credentials::SameOrigin;
     options.preflightPolicy = PreventPreflight;
     options.mode = FetchOptions::Mode::Cors;
+    options.cache = FetchOptions::Cache::NoStore;
     options.dataBufferingPolicy = DoNotBufferData;
     options.contentSecurityPolicyEnforcement = scriptExecutionContext()->shouldBypassMainWorldContentSecurityPolicy() ? ContentSecurityPolicyEnforcement::DoNotEnforce : ContentSecurityPolicyEnforcement::EnforceConnectSrcDirective;
 

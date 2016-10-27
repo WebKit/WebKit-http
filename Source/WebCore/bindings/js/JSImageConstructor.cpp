@@ -1,6 +1,6 @@
 /*
  *  Copyright (C) 1999-2000 Harri Porten (porten@kde.org)
- *  Copyright (C) 2004, 2005, 2006, 2007, 2008, 2010 Apple Inc. All rights reserved.
+ *  Copyright (C) 2004-2008, 2010, 2016 Apple Inc. All rights reserved.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
@@ -46,30 +46,28 @@ template<> JSValue JSImageConstructor::prototypeForStructure(VM& vm, const JSDOM
 
 template<> EncodedJSValue JSImageConstructor::construct(ExecState* state)
 {
+    VM& vm = state->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     JSImageConstructor* jsConstructor = jsCast<JSImageConstructor*>(state->callee());
     Document* document = jsConstructor->document();
     if (!document)
-        return throwVMError(state, createReferenceError(state, "Image constructor associated document is unavailable"));
+        return throwVMError(state, scope, createReferenceError(state, "Image constructor associated document is unavailable"));
 
     // Calling toJS on the document causes the JS document wrapper to be
     // added to the window object. This is done to ensure that JSDocument::visit
     // will be called, which will cause the image element to be marked if necessary.
     toJS(state, jsConstructor->globalObject(), *document);
-    int width;
-    int height;
-    int* optionalWidth = 0;
-    int* optionalHeight = 0;
+    Optional<unsigned> width;
+    Optional<unsigned> height;
     if (state->argumentCount() > 0) {
-        width = state->argument(0).toInt32(state);
-        optionalWidth = &width;
-    }
-    if (state->argumentCount() > 1) {
-        height = state->argument(1).toInt32(state);
-        optionalHeight = &height;
+        width = state->uncheckedArgument(0).toUInt32(state);
+        if (state->argumentCount() > 1)
+            height = state->uncheckedArgument(1).toUInt32(state);
     }
 
     return JSValue::encode(asObject(toJS(state, jsConstructor->globalObject(),
-        HTMLImageElement::createForJSConstructor(*document, optionalWidth, optionalHeight))));
+        HTMLImageElement::createForJSConstructor(*document, width, height))));
 }
 
 template<> const ClassInfo JSImageConstructor::s_info = { "ImageConstructor", &Base::s_info, 0, CREATE_METHOD_TABLE(JSImageConstructor) };

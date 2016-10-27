@@ -45,6 +45,7 @@
 #include "WebPreferencesStore.h"
 #include "WebProcess.h"
 #include "WebProcessCreationParameters.h"
+#include "WebProcessMessages.h"
 #include "WebProcessPoolMessages.h"
 #include "WebUserContentController.h"
 #include <JavaScriptCore/APICast.h>
@@ -211,6 +212,9 @@ void InjectedBundle::overrideBoolPreferenceForTestRunner(WebPageGroupProxy* page
         RuntimeEnabledFeatures::sharedFeatures().setWebGL2Enabled(enabled);
 #endif
 
+    if (preference == "WebKitModernMediaControlsEnabled")
+        RuntimeEnabledFeatures::sharedFeatures().setModernMediaControlsEnabled(enabled);
+
     // Map the names used in LayoutTests with the names used in WebCore::Settings and WebPreferencesStore.
 #define FOR_EACH_OVERRIDE_BOOL_PREFERENCE(macro) \
     macro(WebKitAcceleratedCompositingEnabled, AcceleratedCompositingEnabled, acceleratedCompositingEnabled) \
@@ -313,6 +317,14 @@ void InjectedBundle::setPrivateBrowsingEnabled(WebPageGroupProxy* pageGroup, boo
     const HashSet<Page*>& pages = PageGroup::pageGroup(pageGroup->identifier())->pages();
     for (HashSet<Page*>::iterator iter = pages.begin(); iter != pages.end(); ++iter)
         (*iter)->enableLegacyPrivateBrowsing(enabled);
+}
+
+void InjectedBundle::setUseDashboardCompatibilityMode(WebPageGroupProxy* pageGroup, bool enabled)
+{
+#if ENABLE(DASHBOARD_SUPPORT)
+    for (auto& page : PageGroup::pageGroup(pageGroup->identifier())->pages())
+        page->settings().setUsesDashboardBackwardCompatibilityMode(enabled);
+#endif
 }
 
 void InjectedBundle::setPopupBlockingEnabled(WebPageGroupProxy* pageGroup, bool enabled)

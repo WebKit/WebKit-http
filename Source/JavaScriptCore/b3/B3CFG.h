@@ -23,15 +23,14 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef B3CFG_h
-#define B3CFG_h
+#pragma once
 
 #if ENABLE(B3_JIT)
 
 #include "B3BasicBlock.h"
-#include "B3IndexMap.h"
-#include "B3IndexSet.h"
 #include "B3Procedure.h"
+#include <wtf/IndexMap.h>
+#include <wtf/IndexSet.h>
 
 namespace JSC { namespace B3 {
 
@@ -75,6 +74,3 @@ private:
 } } // namespace JSC::B3
 
 #endif // ENABLE(B3_JIT)
-
-#endif // B3CFG_h
-

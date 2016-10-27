@@ -152,7 +152,7 @@
 #include <wtf/dtoa.h>
 #endif
 
-#if ENABLE(ENCRYPTED_MEDIA_V2)
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
 #include "CDM.h"
 #include "MockCDM.h"
 #endif
@@ -408,6 +408,11 @@ void Internals::resetToConsistentState(Page& page)
     MockContentFilterSettings::reset();
 #endif
 
+#if ENABLE(WIRELESS_PLAYBACK_TARGET)
+    page.setMockMediaPlaybackTargetPickerEnabled(true);
+    page.setMockMediaPlaybackTargetPickerState(emptyString(), MediaPlaybackTargetContext::Unknown);
+#endif
+
     page.setShowAllPlugins(false);
 }
 
@@ -433,6 +438,14 @@ Internals::Internals(Document& document)
         document.page()->setMockMediaPlaybackTargetPickerEnabled(true);
 #endif
     RuntimeEnabledFeatures::sharedFeatures().reset();
+
+    if (contextDocument() && contextDocument()->frame()) {
+        setAutomaticSpellingCorrectionEnabled(true);
+        setAutomaticQuoteSubstitutionEnabled(false);
+        setAutomaticDashSubstitutionEnabled(false);
+        setAutomaticLinkDetectionEnabled(false);
+        setAutomaticTextReplacementEnabled(true);
+    }
 }
 
 Document* Internals::contextDocument() const
@@ -944,6 +957,11 @@ void Internals::enableMockMediaEndpoint()
 void Internals::enableMockRTCPeerConnectionHandler()
 {
     RTCPeerConnectionHandler::create = RTCPeerConnectionHandlerMock::create;
+}
+
+void Internals::emulateRTCPeerConnectionPlatformEvent(RTCPeerConnection& connection, const String& action)
+{
+    connection.emulatePlatformEvent(action);
 }
 #endif
 
@@ -1610,7 +1628,7 @@ bool Internals::hasAutocorrectedMarker(int from, int length, ExceptionCode&)
     return document->frame()->editor().selectionStartHasMarkerFor(DocumentMarker::Autocorrected, from, length);
 }
 
-void Internals::setContinuousSpellCheckingEnabled(bool enabled, ExceptionCode&)
+void Internals::setContinuousSpellCheckingEnabled(bool enabled)
 {
     if (!contextDocument() || !contextDocument()->frame())
         return;
@@ -1619,7 +1637,7 @@ void Internals::setContinuousSpellCheckingEnabled(bool enabled, ExceptionCode&)
         contextDocument()->frame()->editor().toggleContinuousSpellChecking();
 }
 
-void Internals::setAutomaticQuoteSubstitutionEnabled(bool enabled, ExceptionCode&)
+void Internals::setAutomaticQuoteSubstitutionEnabled(bool enabled)
 {
     if (!contextDocument() || !contextDocument()->frame())
         return;
@@ -1632,7 +1650,7 @@ void Internals::setAutomaticQuoteSubstitutionEnabled(bool enabled, ExceptionCode
 #endif
 }
 
-void Internals::setAutomaticLinkDetectionEnabled(bool enabled, ExceptionCode&)
+void Internals::setAutomaticLinkDetectionEnabled(bool enabled)
 {
     if (!contextDocument() || !contextDocument()->frame())
         return;
@@ -1645,7 +1663,7 @@ void Internals::setAutomaticLinkDetectionEnabled(bool enabled, ExceptionCode&)
 #endif
 }
 
-void Internals::setAutomaticDashSubstitutionEnabled(bool enabled, ExceptionCode&)
+void Internals::setAutomaticDashSubstitutionEnabled(bool enabled)
 {
     if (!contextDocument() || !contextDocument()->frame())
         return;
@@ -1658,7 +1676,7 @@ void Internals::setAutomaticDashSubstitutionEnabled(bool enabled, ExceptionCode&
 #endif
 }
 
-void Internals::setAutomaticTextReplacementEnabled(bool enabled, ExceptionCode&)
+void Internals::setAutomaticTextReplacementEnabled(bool enabled)
 {
     if (!contextDocument() || !contextDocument()->frame())
         return;
@@ -1671,7 +1689,7 @@ void Internals::setAutomaticTextReplacementEnabled(bool enabled, ExceptionCode&)
 #endif
 }
 
-void Internals::setAutomaticSpellingCorrectionEnabled(bool enabled, ExceptionCode&)
+void Internals::setAutomaticSpellingCorrectionEnabled(bool enabled)
 {
     if (!contextDocument() || !contextDocument()->frame())
         return;
@@ -1684,14 +1702,15 @@ void Internals::setAutomaticSpellingCorrectionEnabled(bool enabled, ExceptionCod
 #endif
 }
 
-void Internals::handleAcceptedCandidate(const String& candidate, ExceptionCode&)
+void Internals::handleAcceptedCandidate(const String& candidate, unsigned location, unsigned length, ExceptionCode&)
 {
     if (!contextDocument() || !contextDocument()->frame())
         return;
 
     TextCheckingResult result;
     result.type = TextCheckingTypeNone;
-    result.length = candidate.length();
+    result.location = location;
+    result.length = length;
     result.replacement = candidate;
     contextDocument()->frame()->editor().handleAcceptedCandidate(result);
 }
@@ -2549,7 +2568,7 @@ void Internals::enableAutoSizeMode(bool enabled, int minimumWidth, int minimumHe
     document->view()->enableAutoSizeMode(enabled, IntSize(minimumWidth, minimumHeight), IntSize(maximumWidth, maximumHeight));
 }
 
-#if ENABLE(ENCRYPTED_MEDIA_V2)
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
 void Internals::initializeMockCDM()
 {
     CDM::registerCDMFactory([](CDM* cdm) { return std::make_unique<MockCDM>(cdm); },
@@ -2755,6 +2774,11 @@ Vector<String> Internals::bufferedSamplesForTrackID(SourceBuffer& buffer, const 
     return buffer.bufferedSamplesForTrackID(trackID);
 }
     
+Vector<String> Internals::enqueuedSamplesForTrackID(SourceBuffer& buffer, const AtomicString& trackID)
+{
+    return buffer.enqueuedSamplesForTrackID(trackID);
+}
+
 void Internals::setShouldGenerateTimestamps(SourceBuffer& buffer, bool flag)
 {
     buffer.setShouldGenerateTimestamps(flag);
@@ -3255,7 +3279,7 @@ void Internals::setShowAllPlugins(bool show)
     page->setShowAllPlugins(show);
 }
 
-#if ENABLE(STREAMS_API)
+#if ENABLE(READABLE_STREAM_API)
 
 bool Internals::isReadableStreamDisturbed(JSC::ExecState& state, JSValue stream)
 {
@@ -3353,5 +3377,12 @@ void Internals::setUserInterfaceLayoutDirection(UserInterfaceLayoutDirection use
 
     page->setUserInterfaceLayoutDirection(userInterfaceLayoutDirection == UserInterfaceLayoutDirection::LTR ? WebCore::UserInterfaceLayoutDirection::LTR : WebCore::UserInterfaceLayoutDirection::RTL);
 }
+
+#if !PLATFORM(COCOA)
+bool Internals::userPrefersReducedMotion() const
+{
+    return false;
+}
+#endif
 
 } // namespace WebCore

@@ -28,7 +28,7 @@ namespace WebCore {
 
 class JSTestGenerateIsReachable : public JSDOMWrapper<TestGenerateIsReachable> {
 public:
-    typedef JSDOMWrapper<TestGenerateIsReachable> Base;
+    using Base = JSDOMWrapper<TestGenerateIsReachable>;
     static JSTestGenerateIsReachable* create(JSC::Structure* structure, JSDOMGlobalObject* globalObject, Ref<TestGenerateIsReachable>&& impl)
     {
         JSTestGenerateIsReachable* ptr = new (NotNull, JSC::allocateCell<JSTestGenerateIsReachable>(globalObject->vm().heap)) JSTestGenerateIsReachable(structure, *globalObject, WTFMove(impl));
@@ -82,5 +82,8 @@ inline JSC::JSValue toJS(JSC::ExecState* state, JSDOMGlobalObject* globalObject,
 JSC::JSValue toJSNewlyCreated(JSC::ExecState*, JSDOMGlobalObject*, Ref<TestGenerateIsReachable>&&);
 inline JSC::JSValue toJSNewlyCreated(JSC::ExecState* state, JSDOMGlobalObject* globalObject, RefPtr<TestGenerateIsReachable>&& impl) { return impl ? toJSNewlyCreated(state, globalObject, impl.releaseNonNull()) : JSC::jsNull(); }
 
+template<> struct JSDOMWrapperConverterTraits<TestGenerateIsReachable> {
+    using WrapperClass = JSTestGenerateIsReachable;
+};
 
 } // namespace WebCore
