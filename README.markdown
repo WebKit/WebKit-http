@@ -163,6 +163,13 @@ PHP, Perl, and a few others. You can use the --no-http option to
 run-webkit-tests to skip this part. Otherwise you need to install lighttpd
 and PHP (both available in HaikuPorts package depot).
 
+Finally, the tests are a mix of html and xhtml files. The file:// loader in
+Haiku relies on MIME sniffing to tell them apart. This is not completely
+reliable, so for some tests the type needs to be forced (unfortunately this
+can't be stored in the git repo):
+
+    $ sh Tools/haiku/mimefix.sh
+
 You can then run the testsuite:
 
     $ python Tools/Scripts/run-webkit-tests --platform=haiku --dump-render-tree --no-build \
@@ -177,6 +184,16 @@ A lot of tests are currently failing. The problems are either in the WebKit
 code itself, or in the various parts of the test harness, none of which are
 actually complete: DumpRenderTree, webkitpy, etc. Some of them are triggering
 asserts in WebKit code.
+
+You can run the tests manually using either DumpRenderTree or HaikuLauncher
+(both accept an URL from the command line). For tests that require the page to
+be served over http (and not directly read from a file), you need an HTTP server.
+Install the lighttpd package and run:
+
+    Tools/Scripts/new-run-webkit-httpd --server start
+
+This will start lighttpd with the appropriate setting file, allowing you to run
+the tests. The server listens on port 8000 by default.
 
 ### WebKit2 ###
 
