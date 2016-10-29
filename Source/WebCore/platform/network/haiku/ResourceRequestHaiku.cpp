@@ -63,7 +63,7 @@ BUrlRequest* ResourceRequest::toNetworkRequest(BUrlContext* context)
             httpRequest->SetPassword(fPassword);
         }
 
-        if (!requestHeaders->HasHeader("Accept-Language") >= 0) {
+        if (!requestHeaders->HasHeader("Accept-Language")) {
             // Add the default languages
             BMessage message;
             BLocaleRoster::Default()->GetPreferredLanguages(&message);
