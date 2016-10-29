@@ -551,7 +551,7 @@ void BUrlProtocolHandler::HeadersReceived(BUrlRequest* /*caller*/)
         }
 
         // Notify the client that we are redirecting.
-        ResourceRequest& request = m_resourceHandle->firstRequest();
+        ResourceRequest request(m_resourceHandle->firstRequest());
         request.setURL(url);
 
         client->willSendRequest(m_resourceHandle, request, response);
