@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Haiku, Inc.
+ * Copyright (C) 2014-2016 Haiku, Inc.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -39,57 +39,6 @@
 
 namespace WebCore {
 
-class MediaBuffer: public BMallocIO {
-    public:
-        MediaBuffer();
-        ssize_t WriteAt(off_t position, const void* buffer, size_t size) override;
-	    ssize_t ReadAt(off_t position, void* buffer, size_t size) override;
-
-        off_t fInvalidRead;
-
-    private:
-        // TODO this is not enough, as we run multiple requests and they each
-        // have a write position.
-        off_t fWritePointer;
-};
-
-
-MediaBuffer::MediaBuffer()
-    : BMallocIO()
-    , fInvalidRead(0)
-    , fWritePointer(0)
-{
-}
-
-
-ssize_t MediaBuffer::WriteAt(off_t position, const void* buffer, size_t size)
-{
-    ssize_t written = BMallocIO::WriteAt(position, buffer, size);
-    if (written > 0)
-        fWritePointer = std::max(fWritePointer, position + written);
-    return written;
-}
-
-
-ssize_t MediaBuffer::ReadAt(off_t position, void* buffer, size_t size)
-{
-    // Check for the end of stream...
-    if (position + size > BufferLength())
-        size = BufferLength() - position;
-
-    if (size <= 0)
-        return 0;
-
-    // Wait for the data we need to be downloaded
-    if(fWritePointer - position < size)
-    {
-        fInvalidRead = position;
-        return B_BAD_DATA;
-    }
-    return BMallocIO::ReadAt(position, buffer, size);
-}
-
-
 void MediaPlayerPrivate::registerMediaEngine(MediaEngineRegistrar registrar)
 {
     registrar([](MediaPlayer* player) { return std::make_unique<MediaPlayerPrivate>(player); },
@@ -98,7 +47,6 @@ void MediaPlayerPrivate::registerMediaEngine(MediaEngineRegistrar registrar)
 
 MediaPlayerPrivate::MediaPlayerPrivate(MediaPlayer* player)
     : m_didReceiveData(false)
-    , m_cache(new MediaBuffer())
     , m_mediaFile(nullptr)
     , m_audioTrack(nullptr)
     , m_videoTrack(nullptr)
@@ -119,7 +67,6 @@ MediaPlayerPrivate::~MediaPlayerPrivate()
 
     delete m_soundPlayer;
     delete m_mediaFile;
-    delete m_cache;
     delete m_frameBuffer;
 }
 
@@ -138,31 +85,33 @@ void MediaPlayerPrivate::load(const String& url)
     delete m_mediaFile;
     m_mediaFile = nullptr;
 
-    m_cache->SetSize(0);
-    m_cache->Seek(0, SEEK_SET);
+    // TODO we need more detailed info from the BMediaFile to accurately report
+    // the m_readyState and the m_networkState to WebKit. The API will need to
+    // be extended on Haiku side to query the internal state (and probably
+    // BMediaFile should not block until data is ready?)
+    IdentifyTracks(url);
+    if (m_mediaFile && m_mediaFile->InitCheck() == B_OK) {
+        m_player->characteristicChanged();
+        m_player->durationChanged();
+        m_player->sizeChanged();
+        m_player->firstVideoFrameAvailable();
 
-    BUrlRequest* request = BUrlProtocolRoster::MakeRequest(
-        BUrl(url.utf8().data()), this);
-
-    if (request) {
-        request->Run();
-        m_networkState = MediaPlayer::Loading;
-        m_requests.AddItem(request);
-    } else
+        //m_readyState = MediaPlayer::HaveMetadata;
+        //m_readyState = MediaPlayer::HaveFutureData;
+        m_readyState = MediaPlayer::HaveEnoughData;
+        m_networkState = MediaPlayer::Loaded; // Loading;
+    } else {
         m_networkState = MediaPlayer::FormatError;
+        m_readyState = MediaPlayer::HaveMetadata;
+    }
     m_player->networkStateChanged();
-
-    m_readyState = MediaPlayer::HaveNothing;
     m_player->readyStateChanged();
 }
 
 void MediaPlayerPrivate::cancelLoad()
 {
-    BUrlRequest* request;
-    while((request = m_requests.RemoveItemAt(0))) {
-        request->Stop();
-        delete request;
-    }
+    delete m_mediaFile;
+    m_mediaFile = nullptr;
 }
 
 void MediaPlayerPrivate::prepareToPlay()
@@ -183,7 +132,8 @@ void MediaPlayerPrivate::playCallback(void* cookie, void* buffer,
     {
         // Notify that we're done playing...
         player->m_currentTime = player->m_audioTrack->Duration() / 1000000.f;
-        player->Looper()->PostMessage('fnsh', player);
+        player->m_soundPlayer->Stop();
+        player->m_player->timeChanged();
     }
 
     if (player->m_videoTrack) {
@@ -195,7 +145,7 @@ void MediaPlayerPrivate::playCallback(void* cookie, void* buffer,
             player->m_videoTrack->ReadFrames(player->m_frameBuffer->Bits(),
                 &count);
 
-            player->Looper()->PostMessage('rfsh', player);
+            player->m_player->repaint();
         }
     }
 }
@@ -334,100 +284,13 @@ void MediaPlayerPrivate::paint(GraphicsContext* context, const FloatRect& r)
     }
 }
 
-// #pragma mark - BUrlProtocolListener
-
-void MediaPlayerPrivate::DataReceived(BUrlRequest* /*r*/, const char* data, off_t position, ssize_t size)
-{
-    m_cache->WriteAt(position, data, size);
-}
-
-void MediaPlayerPrivate::DownloadProgress(BUrlRequest*, ssize_t currentSize,
-    ssize_t totalSize)
-{
-    static ssize_t lastUpdate = 0;
-    m_didReceiveData = true;
-
-    off_t size = 0;
-    m_cache->GetSize(&size);
-    if (size != totalSize)
-        m_cache->SetSize(totalSize);
-
-    if (!m_mediaFile && currentSize >= std::min(totalSize, lastUpdate + 512 * 1024)) {
-        lastUpdate = currentSize;
-        Looper()->PostMessage('redy', this);
-    }
-}
-
-void MediaPlayerPrivate::RequestCompleted(BUrlRequest* /*req*/, bool success)
-{
-    BMessage result('reqc');
-    result.AddBool("success", success);
-    Looper()->PostMessage(&result, this);
-}
-
-void MediaPlayerPrivate::MessageReceived(BMessage* message)
-{
-    switch(message->what)
-    {
-        case 'redy':
-            IdentifyTracks();
-            if (m_mediaFile) {
-                m_player->characteristicChanged();
-                m_player->durationChanged();
-                m_player->sizeChanged();
-                m_player->firstVideoFrameAvailable();
-
-                //m_readyState = MediaPlayer::HaveMetadata;
-                m_readyState = MediaPlayer::HaveFutureData;
-                m_player->readyStateChanged();
-            }
-
-            return;
-        case 'reqc':
-            if(message->FindBool("success")) {
-                m_networkState = MediaPlayer::Loaded;
-                m_readyState = MediaPlayer::HaveEnoughData;
-                m_player->readyStateChanged();
-            } else
-                m_networkState = MediaPlayer::NetworkError;
-
-            m_player->networkStateChanged();
-
-            return;
-        case 'rfsh':
-            m_player->repaint();
-            return;
-
-        case 'fnsh':
-            m_soundPlayer->Stop();
-            m_player->timeChanged();
-            return;
-
-        default:
-            BUrlProtocolAsynchronousListener::MessageReceived(message);
-            return;
-    }
-}
-
 // #pragma mark - private methods
 
-void MediaPlayerPrivate::IdentifyTracks()
+void MediaPlayerPrivate::IdentifyTracks(const String& url)
 {
-    // Check if we already did this.
-    if (m_mediaFile)
-        return;
+    m_mediaFile = new BMediaFile(BUrl(url.utf8().data()));
 
-    ((MediaBuffer*)m_cache)->fInvalidRead = 0;
-
-    m_mediaFile = new BMediaFile(m_cache);
-
-    if (((MediaBuffer*)m_cache)->fInvalidRead)
-    {
-        // TODO launch a range request on the data we need, so we can get out
-        // of there earlier.
-        delete m_mediaFile;
-        m_mediaFile = nullptr;
-    } else if (m_mediaFile->InitCheck() == B_OK) {
+    if (m_mediaFile->InitCheck() == B_OK) {
         for (int i = m_mediaFile->CountTracks() - 1; i >= 0; i--)
         {
             BMediaTrack* track = m_mediaFile->TrackAt(i);
@@ -463,11 +326,6 @@ void MediaPlayerPrivate::IdentifyTracks()
                     break;
             }
         }
-
-    } else {
-        // Not enough data to decode the header yet. Try again later!
-        delete m_mediaFile;
-        m_mediaFile = nullptr;
     }
 }
 

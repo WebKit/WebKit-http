@@ -36,7 +36,7 @@ struct media_raw_audio_format;
 
 namespace WebCore {
 
-class MediaPlayerPrivate : public MediaPlayerPrivateInterface, BUrlProtocolAsynchronousListener {
+class MediaPlayerPrivate : public MediaPlayerPrivateInterface, BHandler {
     public:
         static void registerMediaEngine(MediaEngineRegistrar);
 
@@ -79,16 +79,9 @@ class MediaPlayerPrivate : public MediaPlayerPrivateInterface, BUrlProtocolAsync
 
         void paint(GraphicsContext*, const FloatRect&) override;
 
-        // BUrlProtocolListener API
-	    void DataReceived(BUrlRequest* caller, const char* data, off_t position, ssize_t size) override;
-        void DownloadProgress(BUrlRequest*, ssize_t, ssize_t) override;
-        void RequestCompleted(BUrlRequest*, bool success) override;
-
-        // BHandler API
-	    void MessageReceived(BMessage* message) override;
     private:
         
-        void IdentifyTracks();
+        void IdentifyTracks(const String& url);
 
         static void playCallback(void*, void*, size_t,
             const media_raw_audio_format&);
@@ -98,8 +91,6 @@ class MediaPlayerPrivate : public MediaPlayerPrivateInterface, BUrlProtocolAsync
         static MediaPlayer::SupportsType supportsType(const MediaEngineSupportParameters&);
 
         mutable bool m_didReceiveData;
-        BObjectList<BUrlRequest> m_requests;
-        BPositionIO* m_cache;
         BMediaFile* m_mediaFile;
         BMediaTrack* m_audioTrack;
         BMediaTrack* m_videoTrack;
