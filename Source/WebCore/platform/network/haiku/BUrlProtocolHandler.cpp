@@ -463,7 +463,7 @@ void BUrlProtocolHandler::AuthenticationNeeded(BHttpRequest* request, ResourceRe
         currentRequest.setCredentials(d->m_user.utf8().data(), d->m_pass.utf8().data());
         client->willSendRequest(m_resourceHandle, currentRequest, response);
     } else {
-        client->didFinishLoading(m_resourceHandle, 0);
+        // Anything to do in case of failure?
     }
 }
 
