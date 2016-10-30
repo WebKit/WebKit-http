@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!perl
 # Simple script to that dumps the HTTP request method and all input parameters.
 
 use CGI;

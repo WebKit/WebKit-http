@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!perl
 # Test that BOM can override whatever charset was set in Content-Type
 # (this is not the behavior of Firefox, nor expected by any standard).
 

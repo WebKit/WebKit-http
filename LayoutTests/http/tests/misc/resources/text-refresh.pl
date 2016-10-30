@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!perl
 # Simple script to generate a redirect to a success document.
 
 print "Content-type: text/plain\r\n";

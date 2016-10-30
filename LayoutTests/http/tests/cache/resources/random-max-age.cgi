@@ -1,4 +1,4 @@
-#!/usr/bin/perl -w
+#!perl -w
 
 print "Content-type: text/javascript\n";
 print "Cache-control: max-age=0\n";

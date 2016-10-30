@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!perl
 # Simple script to generate a frameset, where the main frame is 
 # determined by a URL query parameter.
 #

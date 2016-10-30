@@ -1,3 +1,3 @@
-#!/usr/bin/perl -w
+#!perl -w
 
 print "Status: 404 Not Found\n\n";

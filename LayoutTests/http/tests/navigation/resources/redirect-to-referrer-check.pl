@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!perl
 # Simple script to generate a 302 HTTP redirect
 
 print "Status: 302 Moved Temporarily\r\n";

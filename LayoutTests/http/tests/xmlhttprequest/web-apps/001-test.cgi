@@ -1,4 +1,4 @@
-#!/usr/bin/perl -wT
+#!perl -wT
 use strict;
 
 if ($ENV{'HTTP_X_TEST_HEADER'} eq 'Test') {

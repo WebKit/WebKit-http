@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!env python
 
 import argparse
 import json

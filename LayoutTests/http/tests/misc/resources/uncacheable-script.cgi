@@ -1,4 +1,4 @@
-#!/usr/bin/perl -wT
+#!perl -wT
 use strict;
 
 print "Content-Type: text/javascript\nCache-Control: no-store\n\nwindow.pass='PASS'\;";

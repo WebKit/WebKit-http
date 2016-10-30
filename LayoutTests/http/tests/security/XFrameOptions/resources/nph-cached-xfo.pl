@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!perl
 # Script to generate a 304 HTTP status with (illegal) X-Frame-Options headers.
 # Relies on its nph- filename to invoke the CGI non-parsed-header facility.
 

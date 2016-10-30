@@ -1,4 +1,4 @@
-#!/usr/bin/perl -wT
+#!perl -wT
 use strict;
 
 # in whitelist

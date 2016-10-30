@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!perl
 # Script to generate a 30x HTTP redirect (determined by the query parameter)
 
 $REDIRECT_CODE = $ENV{'QUERY_STRING'} || '301';

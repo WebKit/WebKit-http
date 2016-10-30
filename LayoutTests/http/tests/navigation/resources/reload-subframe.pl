@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!perl
 
 print "Content-type: text/html\r\n";
 

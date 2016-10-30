@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!perl
 
 $count = 1;
 

@@ -1,4 +1,4 @@
-#!/usr/bin/perl -wT
+#!perl -wT
 use strict;
 
 print "Content-Type: application/x-unknown-type\n\n";

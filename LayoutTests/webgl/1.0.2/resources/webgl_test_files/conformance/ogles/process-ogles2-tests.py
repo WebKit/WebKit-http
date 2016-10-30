@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!python
 
 """generates tests from OpenGL ES 2.0 .run/.test files."""
 

@@ -1,4 +1,4 @@
-#!/usr/bin/perl -wT
+#!perl -wT
 use strict;
 
 if ($ENV{"QUERY_STRING"} eq "clear=1") {

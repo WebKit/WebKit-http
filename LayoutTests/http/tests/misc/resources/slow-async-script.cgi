@@ -1,4 +1,4 @@
-#!/usr/bin/perl -w
+#!perl -w
 
 print "Content-type: text/javascript\n\n";
 sleep(1.0);

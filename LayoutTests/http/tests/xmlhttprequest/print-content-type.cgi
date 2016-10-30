@@ -1,4 +1,4 @@
-#!/usr/bin/perl -w
+#!perl -w
 
 use CGI qw(:standard);
 my $cgi = new CGI;

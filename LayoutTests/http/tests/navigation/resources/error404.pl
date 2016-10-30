@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!perl
 # Simple script to generate a 404 HTTP error
 
 print "Status: 404 Not Found\r\n";

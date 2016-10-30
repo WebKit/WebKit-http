@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!perl
 # Simple script to generate a POST result.
 #
 # Depending on which button was pushed in the form, we either generate a direct

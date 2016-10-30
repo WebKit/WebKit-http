@@ -1,4 +1,4 @@
-#!/usr/bin/perl -w
+#!perl -w
 
 # Flush STDOUT after each print.
 select (STDOUT);

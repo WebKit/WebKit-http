@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!perl
 
 print "Status: 302 Moved Temporarily\r\n";
 print "Location: redirect-cycle-1.pl\r\n";

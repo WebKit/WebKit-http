@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!perl
 # Script to generate a Refresh header HTTP redirect
 
 print "Status: 200 ok\r\n";
