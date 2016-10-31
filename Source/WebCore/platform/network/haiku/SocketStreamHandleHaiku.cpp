@@ -105,8 +105,10 @@ int SocketStreamHandle::platformSend(const char* buffer, int length)
 void SocketStreamHandle::platformClose()
 {
     LOG(Network, "SocketStreamHandle %p platformClose", this);
-    socket->Disconnect();
-	m_client->didCloseSocketStream(this);
+    if (socket)
+        socket->Disconnect();
+    if (m_client)
+        m_client->didCloseSocketStream(this);
     setClient(0);
 }
 
