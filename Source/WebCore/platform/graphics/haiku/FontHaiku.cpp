@@ -107,8 +107,15 @@ float FontCascade::drawComplexText(GraphicsContext* context, const TextRun& run,
     BView* view = context->platformContext();
     view->SetFont(primaryFont().platformData().font());
 
+    // The "point" is where the complete run starts. We need to offset it
+    // because we don't draw the characters before "from".
+    TextRun before = run.subRun(0, from);
+    float offset = floatWidthForComplexText(before);
+    BPoint p(point);
+    p.x += offset;
+
     CString string = run.subRun(from,to).string().utf8();
-    view->DrawString(string.data(), point);
+    view->DrawString(string.data(), p);
 
     return view->StringWidth(string.data());
 }
