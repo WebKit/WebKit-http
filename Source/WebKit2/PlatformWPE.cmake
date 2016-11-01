@@ -432,7 +432,6 @@ set(WPE_INSTALLED_WEBKIT_HEADERS
     ${WEBKIT2_DIR}/UIProcess/API/C/WKPageUIClient.h
     ${WEBKIT2_DIR}/UIProcess/API/C/WKPluginLoadPolicy.h
     ${WEBKIT2_DIR}/UIProcess/API/C/WKPreferencesRef.h
-    ${WEBKIT2_DIR}/UIProcess/API/C/WKSessionRef.h
     ${WEBKIT2_DIR}/UIProcess/API/C/WKSessionStateRef.h
     ${WEBKIT2_DIR}/UIProcess/API/C/WKUserContentControllerRef.h
     ${WEBKIT2_DIR}/UIProcess/API/C/WKUserScriptRef.h
