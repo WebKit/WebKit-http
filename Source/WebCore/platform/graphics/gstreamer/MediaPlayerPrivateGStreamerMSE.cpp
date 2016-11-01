@@ -41,6 +41,7 @@
 #include "URL.h"
 #include "VideoTrackPrivateGStreamer.h"
 #include <wtf/Condition.h>
+#include <wtf/NeverDestroyed.h>
 
 #include <gst/app/gstappsink.h>
 #include <gst/app/gstappsrc.h>

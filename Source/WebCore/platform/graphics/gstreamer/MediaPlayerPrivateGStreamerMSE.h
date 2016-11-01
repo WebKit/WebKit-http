@@ -167,6 +167,8 @@ public:
     FloatSize presentationSize() const { return m_presentationSize; }
     void offsetTimestampsBy(const MediaTime&);
     void setTimestamps(const MediaTime&, const MediaTime&) { }
+    bool isDivisable() const { return false; }
+    std::pair<RefPtr<MediaSample>, RefPtr<MediaSample>> divide(const MediaTime&) override  { return { nullptr, nullptr }; }
     SampleFlags flags() const { return m_flags; }
     PlatformSample platformSample() { return PlatformSample(); }
     void dump(PrintStream&) const { }
