@@ -31,7 +31,7 @@
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA) && USE(GSTREAMER) && USE(PLAYREADY)
 
 #include "CDM.h"
-#include "MediaKeyError.h"
+#include "WebKitMediaKeyError.h"
 #include "UUID.h"
 
 #include <wtf/text/CString.h>
