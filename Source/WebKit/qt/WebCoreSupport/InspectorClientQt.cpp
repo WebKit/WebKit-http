@@ -145,6 +145,9 @@ InspectorClientQt::InspectorClientQt(QWebPageAdapter* page)
 
 void InspectorClientQt::inspectedPageDestroyed()
 {
+    if (m_frontendClient)
+        m_frontendClient->inspectorClientDestroyed();
+
     InspectorServerQt* webInspectorServer = InspectorServerQt::server();
     if (webInspectorServer)
         webInspectorServer->unregisterClient(this);
