@@ -23,16 +23,49 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-[
-    Conditional=ENCRYPTED_MEDIA|LEGACY_ENCRYPTED_MEDIA,
-    ImplementationLacksVTable,
-] interface WebKitMediaKeyError {
-    const unsigned short MEDIA_KEYERR_UNKNOWN = 1;
-    const unsigned short MEDIA_KEYERR_CLIENT = 2;
-    const unsigned short MEDIA_KEYERR_SERVICE = 3;
-    const unsigned short MEDIA_KEYERR_OUTPUT = 4;
-    const unsigned short MEDIA_KEYERR_HARDWARECHANGE = 5;
-    const unsigned short MEDIA_KEYERR_DOMAIN = 6;
-    readonly attribute unsigned short code;
-    readonly attribute unsigned long systemCode;
-};
+#include "config.h"
+
+#if ENABLE(ENCRYPTED_MEDIA)
+
+#include "MediaKeyEvent.h"
+
+#include "EventNames.h"
+
+namespace WebCore {
+
+MediaKeyEvent::MediaKeyEvent(const AtomicString& type, const String& keySystem, const String& sessionId, RefPtr<Uint8Array>&& initData, RefPtr<Uint8Array>&& message, const String& defaultURL, RefPtr<WebKitMediaKeyError>&& errorCode, uint32_t systemCode)
+    : Event(type, false, false)
+    , m_keySystem(keySystem)
+    , m_sessionId(sessionId)
+    , m_initData(initData)
+    , m_message(message)
+    , m_defaultURL(defaultURL)
+    , m_errorCode(errorCode)
+    , m_systemCode(systemCode)
+{
+}
+
+MediaKeyEvent::MediaKeyEvent(const AtomicString& type, const MediaKeyEventInit& initializer)
+    : Event(type, initializer)
+    , m_keySystem(initializer.keySystem)
+    , m_sessionId(initializer.sessionId)
+    , m_initData(initializer.initData)
+    , m_message(initializer.message)
+    , m_defaultURL(initializer.defaultURL)
+    , m_errorCode(initializer.errorCode)
+    , m_systemCode(initializer.systemCode)
+{
+}
+
+MediaKeyEvent::~MediaKeyEvent()
+{
+}
+
+EventInterface MediaKeyEvent::eventInterface() const
+{
+    return MediaKeyEventInterfaceType;
+}
+
+} // namespace WebCore
+
+#endif

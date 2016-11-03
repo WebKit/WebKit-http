@@ -110,6 +110,7 @@ struct MediaEngineSupportParameters {
     String type;
     String codecs;
     URL url;
+    String keySystem;
     bool isMediaSource { false };
     bool isMediaStream { false };
 };
@@ -199,6 +200,14 @@ public:
 
 #if PLATFORM(WIN) && USE(AVFOUNDATION)
     virtual GraphicsDeviceAdapter* mediaPlayerGraphicsDeviceAdapter(const MediaPlayer*) const { return 0; }
+#endif
+
+#if ENABLE(ENCRYPTED_MEDIA)
+    enum MediaKeyErrorCode { UnknownError = 1, ClientError, ServiceError, OutputError, HardwareChangeError, DomainError };
+    virtual void mediaPlayerKeyAdded(MediaPlayer*, const String& /* keySystem */, const String& /* sessionId */) { }
+    virtual void mediaPlayerKeyError(MediaPlayer*, const String& /* keySystem */, const String& /* sessionId */, MediaKeyErrorCode, unsigned short /* systemCode */) { }
+    virtual void mediaPlayerKeyMessage(MediaPlayer*, const String& /* keySystem */, const String& /* sessionId */, const unsigned char* /* message */, unsigned /* messageLength */, const URL& /* defaultURL */) { }
+    virtual bool mediaPlayerKeyNeeded(MediaPlayer*, const String& /* keySystem */, const String& /* sessionId */, const unsigned char* /* initData */, unsigned /* initDataLength */) { return false; }
 #endif
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
@@ -342,11 +351,19 @@ public:
     void pause();
     void setShouldBufferData(bool);
 
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
+#if ENABLE(ENCRYPTED_MEDIA) || ENABLE(LEGACY_ENCRYPTED_MEDIA)
     // Represents synchronous exceptions that can be thrown from the Encrypted Media methods.
     // This is different from the asynchronous MediaKeyError.
     enum MediaKeyException { NoError, InvalidPlayerState, KeySystemNotSupported };
+#endif
 
+#if ENABLE(ENCRYPTED_MEDIA)
+    MediaKeyException generateKeyRequest(const String& keySystem, const unsigned char* initData, unsigned initDataLength);
+    MediaKeyException addKey(const String& keySystem, const unsigned char* key, unsigned keyLength, const unsigned char* initData, unsigned initDataLength, const String& sessionId);
+    MediaKeyException cancelKeyRequest(const String& keySystem, const String& sessionId);
+#endif
+
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
     std::unique_ptr<CDMSession> createSession(const String& keySystem, CDMSessionClient*);
     void setCDMSession(CDMSession*);
     void keyAdded();
@@ -508,6 +525,13 @@ public:
 
 #if ENABLE(WEB_AUDIO)
     AudioSourceProvider* audioSourceProvider();
+#endif
+
+#if ENABLE(ENCRYPTED_MEDIA)
+    void keyAdded(const String& keySystem, const String& sessionId);
+    void keyError(const String& keySystem, const String& sessionId, MediaPlayerClient::MediaKeyErrorCode, unsigned short systemCode);
+    void keyMessage(const String& keySystem, const String& sessionId, const unsigned char* message, unsigned messageLength, const URL& defaultURL);
+    bool keyNeeded(const String& keySystem, const String& sessionId, const unsigned char* initData, unsigned initDataLength);
 #endif
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)

@@ -24,15 +24,15 @@
  */
 
 [
-    Conditional=ENCRYPTED_MEDIA|LEGACY_ENCRYPTED_MEDIA,
-    ImplementationLacksVTable,
-] interface WebKitMediaKeyError {
-    const unsigned short MEDIA_KEYERR_UNKNOWN = 1;
-    const unsigned short MEDIA_KEYERR_CLIENT = 2;
-    const unsigned short MEDIA_KEYERR_SERVICE = 3;
-    const unsigned short MEDIA_KEYERR_OUTPUT = 4;
-    const unsigned short MEDIA_KEYERR_HARDWARECHANGE = 5;
-    const unsigned short MEDIA_KEYERR_DOMAIN = 6;
-    readonly attribute unsigned short code;
-    readonly attribute unsigned long systemCode;
+    Conditional=ENCRYPTED_MEDIA,
+    ConstructorTemplate=Event 
+] interface MediaKeyEvent : Event {
+    [InitializedByEventConstructor] readonly attribute DOMString keySystem;
+    [InitializedByEventConstructor] readonly attribute DOMString sessionId;
+    [InitializedByEventConstructor] readonly attribute Uint8Array initData;
+    [InitializedByEventConstructor] readonly attribute Uint8Array message;
+    [InitializedByEventConstructor] readonly attribute DOMString defaultURL;
+    [InitializedByEventConstructor] readonly attribute WebKitMediaKeyError errorCode;
+    [InitializedByEventConstructor] readonly attribute unsigned short systemCode;
 };
+

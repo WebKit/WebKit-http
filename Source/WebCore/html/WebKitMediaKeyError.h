@@ -26,7 +26,7 @@
 #ifndef WebKitMediaKeyError_h
 #define WebKitMediaKeyError_h
 
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
+#if ENABLE(ENCRYPTED_MEDIA) || ENABLE(LEGACY_ENCRYPTED_MEDIA)
 
 #include <runtime/Uint8Array.h>
 #include <wtf/RefCounted.h>

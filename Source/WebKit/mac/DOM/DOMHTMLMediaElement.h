@@ -72,7 +72,7 @@ WEBKIT_CLASS_AVAILABLE_MAC(9876_5)
 @property (copy) NSString *mediaGroup;
 
 - (void)load;
-- (NSString *)canPlayType:(NSString *)type;
+- (NSString *)canPlayType:(NSString *)type keySystem:(NSString *)keySystem;
 - (NSTimeInterval)getStartDate;
 - (void)play;
 - (void)pause;
