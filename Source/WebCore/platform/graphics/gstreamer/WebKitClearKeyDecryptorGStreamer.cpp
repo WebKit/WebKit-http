@@ -22,7 +22,7 @@
 #include "config.h"
 #include "WebKitClearKeyDecryptorGStreamer.h"
 
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA) && USE(GSTREAMER)
+#if (ENABLE(ENCRYPTED_MEDIA) || ENABLE(LEGACY_ENCRYPTED_MEDIA)) && USE(GSTREAMER)
 
 #include "GRefPtrGStreamer.h"
 #include <gcrypt.h>

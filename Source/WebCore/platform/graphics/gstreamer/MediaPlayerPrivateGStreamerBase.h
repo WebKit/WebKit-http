@@ -129,13 +129,20 @@ public:
     bool supportsAcceleratedRendering() const override { return true; }
 #endif
 
+#if ENABLE(ENCRYPTED_MEDIA)
+    MediaPlayer::MediaKeyException addKey(const String&, const unsigned char*, unsigned, const unsigned char*, unsigned, const String&);
+    MediaPlayer::MediaKeyException generateKeyRequest(const String&, const unsigned char*, unsigned, const String&);
+    MediaPlayer::MediaKeyException cancelKeyRequest(const String&, const String&);
+    void needKey(const String&, const String&, const unsigned char*, unsigned);
+#endif
+
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
     void needKey(RefPtr<Uint8Array> initData);
     void setCDMSession(CDMSession*);
     void keyAdded();
 #endif
 
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
+#if ENABLE(ENCRYPTED_MEDIA) || ENABLE(LEGACY_ENCRYPTED_MEDIA)
     virtual void dispatchDecryptionKey(GstBuffer*);
 #endif
 
@@ -255,6 +262,10 @@ private:
 
 #if USE(WESTEROS_SINK) || USE(FUSION_SINK)
     void updateVideoRectangle();
+#endif
+
+#if ENABLE(ENCRYPTED_MEDIA) && USE(PLAYREADY)
+    PlayreadySession* m_prSession;
 #endif
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
