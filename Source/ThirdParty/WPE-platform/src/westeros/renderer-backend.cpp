@@ -277,7 +277,7 @@ struct wpe_renderer_backend_egl_target_interface westeros_renderer_backend_egl_t
     [](void* data) -> EGLNativeWindowType
     {
         auto& target = *static_cast<Westeros::EGLTarget*>(data);
-        return target.nativeWindow();
+        return (EGLNativeWindowType)target.nativeWindow();
     },
     // resize
     [](void* data, uint32_t width, uint32_t height)
@@ -316,7 +316,7 @@ struct wpe_renderer_backend_egl_offscreen_target_interface westeros_renderer_bac
     // get_native_window
     [](void* data) -> EGLNativeWindowType
     {
-        return nullptr;
+        return (EGLNativeWindowType)nullptr;
     },
 };
 

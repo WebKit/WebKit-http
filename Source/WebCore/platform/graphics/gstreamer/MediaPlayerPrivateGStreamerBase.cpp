@@ -287,14 +287,12 @@ MediaPlayerPrivateGStreamerBase::~MediaPlayerPrivateGStreamerBase()
 
 #if ENABLE(ENCRYPTED_MEDIA)
 #if USE(PLAYREADY)
-    if (m_prSession != NULL) {
+    if (m_prSession)
         delete m_prSession;
-    }
+    m_prSession = nullptr;
 #endif
 #elif ENABLE(LEGACY_ENCRYPTED_MEDIA)
-    if (m_cdmSession != NULL) {
-        delete m_cdmSession;
-    }
+    m_cdmSession = nullptr;
 #endif
 
 
