@@ -147,13 +147,6 @@ list(APPEND WebCore_SOURCES
     platform/text/qt/TextBreakIteratorInternalICUQt.cpp
 )
 
-if (SQLITE_SOURCE_FILE)
-    list(APPEND WebCore_SOURCES
-        "${SQLITE_SOURCE_FILE}"
-    )
-    add_definitions(-DSQLITE_CORE -DSQLITE_OMIT_LOAD_EXTENSION -DSQLITE_OMIT_COMPLETE)
-endif ()
-
 if (ENABLE_DEVICE_ORIENTATION)
     list(APPEND WebCore_SOURCES
         platform/qt/DeviceMotionClientQt.cpp
