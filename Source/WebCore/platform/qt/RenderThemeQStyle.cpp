@@ -191,25 +191,21 @@ template<typename T>
 static void inflateCheckBoxRectImpl(T& originalRect, const QRect& rect)
 {
     if (!rect.isNull()) {
-        if (rect.width() > originalRect.width()) {
-            int dx = static_cast<int>((rect.width() - originalRect.width()) / 2);
-            originalRect.setX(originalRect.x() - dx);
-            originalRect.setWidth(rect.width());
-        }
-        if (rect.height() > originalRect.height()) {
-            int dy = static_cast<int>((rect.height() - originalRect.height()) / 2);
-            originalRect.setY(originalRect.y() - dy);
-            originalRect.setHeight(rect.height());
-        }
+        int dx = static_cast<int>((rect.width() - originalRect.width()) / 2);
+        originalRect.setX(originalRect.x() - dx);
+        originalRect.setWidth(rect.width());
+        int dy = static_cast<int>((rect.height() - originalRect.height()) / 2);
+        originalRect.setY(originalRect.y() - dy);
+        originalRect.setHeight(rect.height());
     }
 }
 
-void RenderThemeQStyle::inflateControlRect(QStyleFacade::ButtonType part, QRect& originalRect) const
+void RenderThemeQStyle::computeControlRect(QStyleFacade::ButtonType part, QRect& originalRect) const
 {
     inflateCheckBoxRectImpl(originalRect, indicatorRect(part, originalRect));
 }
 
-void RenderThemeQStyle::inflateControlRect(QStyleFacade::ButtonType part, FloatRect& originalRect) const
+void RenderThemeQStyle::computeControlRect(QStyleFacade::ButtonType part, FloatRect& originalRect) const
 {
     inflateCheckBoxRectImpl(originalRect, indicatorRect(part, enclosingIntRect(originalRect)));
 }
@@ -369,10 +365,10 @@ bool RenderThemeQStyle::paintButton(const RenderObject& o, const PaintInfo& i, c
         p.styleOption.rect = inflateButtonRect(p.styleOption.rect);
         p.paintButton(QStyleFacade::PushButton);
     } else if (p.appearance == RadioPart) {
-        inflateControlRect(QStyleFacade::RadioButton, p.styleOption.rect);
+        computeControlRect(QStyleFacade::RadioButton, p.styleOption.rect);
         p.paintButton(QStyleFacade::RadioButton);
     } else if (p.appearance == CheckboxPart) {
-        inflateControlRect(QStyleFacade::CheckBox, p.styleOption.rect);
+        computeControlRect(QStyleFacade::CheckBox, p.styleOption.rect);
         p.paintButton(QStyleFacade::CheckBox);
     }
 

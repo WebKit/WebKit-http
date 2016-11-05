@@ -94,8 +94,8 @@ protected:
 
     QRect inflateButtonRect(const QRect& originalRect) const override;
     QRectF inflateButtonRect(const QRectF& originalRect) const override;
-    void inflateControlRect(QStyleFacade::ButtonType, QRect& originalRect) const override;
-    void inflateControlRect(QStyleFacade::ButtonType, FloatRect& originalRect) const override;
+    void computeControlRect(QStyleFacade::ButtonType, QRect& originalRect) const override;
+    void computeControlRect(QStyleFacade::ButtonType, FloatRect& originalRect) const override;
 
     void setPopupPadding(RenderStyle&) const override;
 

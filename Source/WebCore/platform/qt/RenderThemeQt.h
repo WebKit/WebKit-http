@@ -167,8 +167,8 @@ protected:
 
     virtual QRect inflateButtonRect(const QRect& originalRect) const;
     virtual QRectF inflateButtonRect(const QRectF& originalRect) const;
-    virtual void inflateControlRect(QStyleFacade::ButtonType, QRect& originalRect) const;
-    virtual void inflateControlRect(QStyleFacade::ButtonType, FloatRect& originalRect) const;
+    virtual void computeControlRect(QStyleFacade::ButtonType, QRect& originalRect) const;
+    virtual void computeControlRect(QStyleFacade::ButtonType, FloatRect& originalRect) const;
 
     virtual void setPopupPadding(RenderStyle&) const = 0;
 

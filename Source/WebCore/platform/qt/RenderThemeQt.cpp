@@ -217,11 +217,11 @@ QRectF RenderThemeQt::inflateButtonRect(const QRectF& originalRect) const
     return originalRect;
 }
 
-void RenderThemeQt::inflateControlRect(QStyleFacade::ButtonType, QRect&) const
+void RenderThemeQt::computeControlRect(QStyleFacade::ButtonType, QRect&) const
 {
 }
 
-void RenderThemeQt::inflateControlRect(QStyleFacade::ButtonType, FloatRect&) const
+void RenderThemeQt::computeControlRect(QStyleFacade::ButtonType, FloatRect&) const
 {
 }
 
@@ -229,10 +229,10 @@ void RenderThemeQt::adjustRepaintRect(const RenderObject& o, FloatRect& rect)
 {
     switch (o.style().appearance()) {
     case CheckboxPart:
-        inflateControlRect(QStyleFacade::CheckBox, rect);
+        computeControlRect(QStyleFacade::CheckBox, rect);
         break;
     case RadioPart:
-        inflateControlRect(QStyleFacade::RadioButton, rect);
+        computeControlRect(QStyleFacade::RadioButton, rect);
         break;
     case PushButtonPart:
     case ButtonPart: {
