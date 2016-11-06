@@ -382,10 +382,12 @@ set(CMAKE_AUTOMOC ON)
 
 # From OptionsEfl.cmake
 # Optimize binary size for release builds by removing dead sections on unix/gcc.
-if (COMPILER_IS_GCC_OR_CLANG AND UNIX AND NOT APPLE)
-    set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -ffunction-sections -fdata-sections")
-    set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -ffunction-sections -fdata-sections -fno-rtti")
-    set(CMAKE_SHARED_LINKER_FLAGS_RELEASE "${CMAKE_SHARED_LINKER_FLAGS_RELEASE} -Wl,--gc-sections")
+if (COMPILER_IS_GCC_OR_CLANG AND UNIX)
+    if (NOT APPLE)
+        set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -ffunction-sections -fdata-sections")
+        set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -ffunction-sections -fdata-sections -fno-rtti")
+        set(CMAKE_SHARED_LINKER_FLAGS_RELEASE "${CMAKE_SHARED_LINKER_FLAGS_RELEASE} -Wl,--gc-sections")
+    endif ()
 
     if (NOT SHARED_CORE)
         set(CMAKE_C_FLAGS "-fvisibility=hidden ${CMAKE_C_FLAGS}")
