@@ -7,7 +7,7 @@ cross_compile {
         SYSTEM_NAME = Linux
     } else: macos {
         # We don't support uikit platforms for now, and they certainly won't work
-        # with simplistic toolchain file we are generating here
+        # with the simplistic toolchain file we are generating here.
         SYSTEM_NAME = Darwin
     } else: win32 {
         SYSTEM_NAME = Windows

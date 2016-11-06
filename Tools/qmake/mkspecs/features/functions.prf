@@ -23,7 +23,7 @@ defineTest(isVersionAtLeast) {
     want_version = $$split(2, .)
     num_components = $$size(have_version)
 
-    # FIXME: Replace it with 0..$$num_add($$num_digits, -1) when Qt 5.7 compatibility is dropped
+    # FIXME: Off-by-one. Mostly harmless, but still replace it with 0..$$num_add($$num_digits, -1) when Qt 5.7 compatibility is dropped.
     for (i, 0..$$num_components) {
         have_component = $$member(have_version, $$i)
         want_component = $$member(want_version, $$i)
@@ -34,9 +34,10 @@ defineTest(isVersionAtLeast) {
 }
 
 defineReplace(cmakeVersion) {
-    cmake_version_string = $$system("cmake --version")
+    cmake_version_output = $$system("cmake --version", lines)
+    cmake_version_string = $$first(cmake_version_output)
     # Format is "cmake version X.Y.Z"
-    cmake_version_words = $$split(cmake_version_string, " ")
+    cmake_version_words = $$split(cmake_version_string)
     return($$last(cmake_version_words))
 }
 
@@ -76,7 +77,7 @@ defineTest(isPlatformSupported) {
         }
         sdk_version = $$appleSdkVersion()
         !isVersionAtLeast($$sdk_version, "10.10") {
-            skipBuild("QtWebKit requires an macOS SDK version of 10.10 or newer. Current version is $$sdk_version().")
+            skipBuild("QtWebKit requires an macOS SDK version of 10.10 or newer. Current version is $${sdk_version}.")
         }
     } else {
         android: skipBuild("Android is not supported.")
@@ -111,7 +112,7 @@ defineTest(programExistsInPath) {
     GNUTOOLS_DIR = $$ROOT_WEBKIT_DIR/../gnuwin32/bin
     exists($$GNUTOOLS_DIR): paths += $$GNUTOOLS_DIR
 
-    for(p, paths): exists($$p/$$program):return(true)
+    for(p, paths): exists($$p/$$program): return(true)
     return(false)
 }
 
