@@ -130,3 +130,15 @@ if (GENERATE_DOCUMENTATION)
     install(DIRECTORY "${DOC_OUTPUT_DIR}/qtwebkit" DESTINATION ${DOC_INSTALL_DIR})
     install(FILES "${DOC_OUTPUT_DIR}/qtwebkit.qch" DESTINATION ${DOC_INSTALL_DIR})
 endif ()
+
+# Uninstall target
+
+configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/cmake_uninstall.cmake.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake"
+    IMMEDIATE @ONLY
+)
+
+add_custom_target(uninstall
+    COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake
+)
