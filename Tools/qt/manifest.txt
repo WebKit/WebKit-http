@@ -112,6 +112,7 @@ file Source/WebCore/Resources/aliasCursor.png
 file Source/WebCore/platform/audio/resources/Composite.wav
 
 directory Tools/qt
+directory Tools/qmake
 directory Tools/ImageDiff
 directory Tools/MiniBrowser
 directory Tools/TestWebKitAPI
@@ -135,4 +136,5 @@ file Tools/Scripts/webkit-build-directory
 file Tools/Scripts/webkitdirs.pm
 file Tools/Scripts/webkitperl/FeatureList.pm
 file Tools/jhbuild/jhbuildutils.py
-
+file WebKit.pro
+file .qmake.conf
