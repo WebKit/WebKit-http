@@ -2,7 +2,7 @@
  * Copyright (C) 1999 Lars Knoll (knoll@kde.org)
  *           (C) 1999 Antti Koivisto (koivisto@kde.org)
  *           (C) 2000 Dirk Mueller (mueller@kde.org)
- * Copyright (C) 2003, 2006, 2007, 2008, 2009, 2010, 2011 Apple Inc.
+ * Copyright (C) 2003, 2006-2011, 2016 Apple Inc.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -49,8 +49,6 @@ SOFT_LINK_CLASS(CoreUI, CUIStyleEffectConfiguration)
 SOFT_LINK_FRAMEWORK(UIKit)
 SOFT_LINK(UIKit, _UIKitGetTextEffectsCatalog, CUICatalog *, (void), ())
 #endif
-
-#define SYNTHETIC_OBLIQUE_ANGLE 14
 
 #ifdef __LP64__
 #define URefCon void*
@@ -120,7 +118,13 @@ static void showLetterpressedGlyphsWithAdvances(const FloatPoint& point, const F
         styleConfiguration.useSimplifiedEffect = YES;
     }
 
+    CGContextSetFont(context, adoptCF(CTFontCopyGraphicsFont(ctFont, nullptr)).get());
+    CGContextSetFontSize(context, platformData.size());
+
     [catalog drawGlyphs:glyphs atPositions:positions.data() inContext:context withFont:ctFont count:count stylePresetName:@"_UIKitNewLetterpressStyle" styleConfiguration:styleConfiguration foregroundColor:CGContextGetFillColorAsColor(context)];
+
+    CGContextSetFont(context, nullptr);
+    CGContextSetFontSize(context, 0);
 #else
     UNUSED_PARAM(point);
     UNUSED_PARAM(font);
@@ -131,33 +135,6 @@ static void showLetterpressedGlyphsWithAdvances(const FloatPoint& point, const F
 #endif
 }
 
-class RenderingStyleSaver {
-public:
-#if !PLATFORM(MAC) || __MAC_OS_X_VERSION_MIN_REQUIRED <= 101000
-    RenderingStyleSaver(CTFontRef, CGContextRef) { }
-#else
-    RenderingStyleSaver(CTFontRef font, CGContextRef context)
-        : m_context(context)
-    {
-        m_changed = CTFontSetRenderingStyle(font, context, &m_originalStyle, &m_originalDilation);
-    }
-
-    ~RenderingStyleSaver()
-    {
-        if (!m_changed)
-            return;
-        CGContextSetFontRenderingStyle(m_context, m_originalStyle);
-        CGContextSetFontDilation(m_context, m_originalDilation);
-    }
-
-private:
-    bool m_changed;
-    CGContextRef m_context;
-    CGFontRenderingStyle m_originalStyle;
-    CGSize m_originalDilation;
-#endif
-};
-
 static void showGlyphsWithAdvances(const FloatPoint& point, const Font& font, CGContextRef context, const CGGlyph* glyphs, const CGSize* advances, unsigned count)
 {
     if (!count)
@@ -167,13 +144,10 @@ static void showGlyphsWithAdvances(const FloatPoint& point, const Font& font, CG
 
     const FontPlatformData& platformData = font.platformData();
     Vector<CGPoint, 256> positions(count);
-    if (platformData.isColorBitmapFont())
-        fillVectorWithHorizontalGlyphPositions(positions, context, advances, count);
     if (platformData.orientation() == Vertical) {
-        CGAffineTransform savedMatrix;
         CGAffineTransform rotateLeftTransform = CGAffineTransformMake(0, -1, 1, 0, 0, 0);
-        savedMatrix = CGContextGetTextMatrix(context);
-        CGAffineTransform runMatrix = CGAffineTransformConcat(savedMatrix, rotateLeftTransform);
+        CGAffineTransform textMatrix = CGContextGetTextMatrix(context);
+        CGAffineTransform runMatrix = CGAffineTransformConcat(textMatrix, rotateLeftTransform);
         CGContextSetTextMatrix(context, runMatrix);
 
         Vector<CGSize, 256> translations(count);
@@ -188,21 +162,10 @@ static void showGlyphsWithAdvances(const FloatPoint& point, const Font& font, CG
             position.x += advances[i].width;
             position.y += advances[i].height;
         }
-        if (!platformData.isColorBitmapFont()) {
-            RenderingStyleSaver saver(platformData.ctFont(), context);
-            CGContextShowGlyphsAtPositions(context, glyphs, positions.data(), count);
-        } else
-            CTFontDrawGlyphs(platformData.ctFont(), glyphs, positions.data(), count, context);
-        CGContextSetTextMatrix(context, savedMatrix);
+        CTFontDrawGlyphs(platformData.ctFont(), glyphs, positions.data(), count, context);
     } else {
-        if (!platformData.isColorBitmapFont()) {
-            RenderingStyleSaver saver(platformData.ctFont(), context);
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-            CGContextShowGlyphsWithAdvances(context, glyphs, advances, count);
-#pragma clang diagnostic pop
-        } else
-            CTFontDrawGlyphs(platformData.ctFont(), glyphs, positions.data(), count, context);
+        fillVectorWithHorizontalGlyphPositions(positions, context, advances, count);
+        CTFontDrawGlyphs(platformData.ctFont(), glyphs, positions.data(), count, context);
     }
 }
 
@@ -270,8 +233,6 @@ void FontCascade::drawGlyphs(GraphicsContext& context, const Font& font, const G
     }
 #endif
 
-    CGContextSetFont(cgContext, platformData.cgFont());
-
     bool useLetterpressEffect = shouldUseLetterpressEffect(context);
     FloatPoint point = anchorPoint;
 
@@ -281,13 +242,13 @@ void FontCascade::drawGlyphs(GraphicsContext& context, const Font& font, const G
     matrix.b = -matrix.b;
     matrix.d = -matrix.d;
     if (platformData.syntheticOblique()) {
-        static float obliqueSkew = tanf(SYNTHETIC_OBLIQUE_ANGLE * piFloat / 180);
+        static float obliqueSkew = tanf(syntheticObliqueAngle() * piFloat / 180);
         if (platformData.orientation() == Vertical)
             matrix = CGAffineTransformConcat(matrix, CGAffineTransformMake(1, obliqueSkew, 0, 1, 0, 0));
         else
             matrix = CGAffineTransformConcat(matrix, CGAffineTransformMake(1, 0, -obliqueSkew, 1, 0, 0));
     }
-    CGContextSetTextMatrix(cgContext, matrix);
+    ScopedTextMatrix restorer(matrix, cgContext);
 
     setCGFontRenderingMode(context);
     CGContextSetFontSize(cgContext, platformData.size());
@@ -557,7 +518,7 @@ float FontCascade::getGlyphsAndAdvancesForComplexText(const TextRun& run, unsign
     float afterWidth = controller.runWidthSoFar();
 
     if (run.rtl()) {
-        initialAdvance = controller.totalWidth() + controller.finalRoundingWidth() - afterWidth + controller.leadingExpansion();
+        initialAdvance = controller.totalWidth() - afterWidth + controller.leadingExpansion();
         glyphBuffer.reverse(0, glyphBuffer.size());
     } else
         initialAdvance = beforeWidth;

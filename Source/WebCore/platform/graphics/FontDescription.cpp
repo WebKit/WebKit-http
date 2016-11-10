@@ -36,6 +36,11 @@ namespace WebCore {
 
 struct SameSizeAsFontCascadeDescription {
     Vector<void*> vector;
+#if ENABLE(VARIATION_FONTS)
+    Vector<void*> vector2;
+#else
+    char c;
+#endif
     AtomicString string;
     float size;
     unsigned bitfields1;
@@ -141,7 +146,7 @@ FontWeight FontCascadeDescription::bolderWeight(void) const
     return FontWeightNormal;
 }
 
-#if ENABLE(IOS_TEXT_AUTOSIZING)
+#if ENABLE(TEXT_AUTOSIZING)
 
 bool FontCascadeDescription::familiesEqualForTextAutoSizing(const FontCascadeDescription& other) const
 {
@@ -159,6 +164,6 @@ bool FontCascadeDescription::familiesEqualForTextAutoSizing(const FontCascadeDes
     return true;
 }
 
-#endif // ENABLE(IOS_TEXT_AUTOSIZING)
+#endif // ENABLE(TEXT_AUTOSIZING)
 
 } // namespace WebCore

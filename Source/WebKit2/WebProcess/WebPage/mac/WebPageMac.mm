@@ -75,6 +75,7 @@
 #import <WebCore/Page.h>
 #import <WebCore/PageOverlayController.h>
 #import <WebCore/PlatformKeyboardEvent.h>
+#import <WebCore/PlatformMediaSessionManager.h>
 #import <WebCore/PluginDocument.h>
 #import <WebCore/RenderElement.h>
 #import <WebCore/RenderObject.h>
@@ -88,6 +89,7 @@
 #import <WebCore/WindowsKeyboardCodes.h>
 #import <WebCore/htmlediting.h>
 #import <WebKitSystemInterface.h>
+#import <wtf/TemporaryChange.h>
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
 #include <WebCore/MediaPlaybackTargetMac.h>
@@ -139,7 +141,7 @@ void WebPage::platformEditorState(Frame& frame, EditorState& result, IncludePost
 
     postLayoutData.candidateRequestStartPosition = TextIterator::rangeLength(makeRange(paragraphStart, selectionStart).get());
     postLayoutData.selectedTextLength = TextIterator::rangeLength(makeRange(paragraphStart, selectionEnd).get()) - postLayoutData.candidateRequestStartPosition;
-    postLayoutData.paragraphContextForCandidateRequest = plainText(makeRange(paragraphStart, paragraphEnd).get());
+    postLayoutData.paragraphContextForCandidateRequest = plainText(frame.editor().contextRangeForCandidateRequest().get());
     postLayoutData.stringForCandidateRequest = frame.editor().stringForCandidateRequest();
 
     IntRect rectForSelectionCandidates;
@@ -157,6 +159,22 @@ void WebPage::handleAcceptedCandidate(WebCore::TextCheckingResult acceptedCandid
 
     frame->editor().handleAcceptedCandidate(acceptedCandidate);
     send(Messages::WebPageProxy::DidHandleAcceptedCandidate());
+}
+
+void WebPage::requestActiveNowPlayingSessionInfo()
+{
+    bool hasActiveSession = false;
+    String title = emptyString();
+    double duration = NAN;
+    double elapsedTime = NAN;
+    if (auto* sharedManager = WebCore::PlatformMediaSessionManager::sharedManagerIfExists()) {
+        hasActiveSession = sharedManager->hasActiveNowPlayingSession();
+        title = sharedManager->lastUpdatedNowPlayingTitle();
+        duration = sharedManager->lastUpdatedNowPlayingDuration();
+        elapsedTime = sharedManager->lastUpdatedNowPlayingElapsedTime();
+    }
+
+    send(Messages::WebPageProxy::HandleActiveNowPlayingSessionInfoResponse(hasActiveSession, title, duration, elapsedTime));
 }
 
 NSObject *WebPage::accessibilityObjectForMainFramePlugin()
@@ -417,6 +435,8 @@ void WebPage::performDictionaryLookupOfCurrentSelection()
 
 DictionaryPopupInfo WebPage::dictionaryPopupInfoForRange(Frame* frame, Range& range, NSDictionary **options, TextIndicatorPresentationTransition presentationTransition)
 {
+    TemporaryChange<bool> isGettingDictionaryPopupInfoChange { m_isGettingDictionaryPopupInfo, true };
+
     DictionaryPopupInfo dictionaryPopupInfo;
     if (range.text().stripWhiteSpace().isEmpty())
         return dictionaryPopupInfo;
@@ -532,7 +552,7 @@ bool WebPage::performNonEditingBehaviorForSelector(const String& selector, Keybo
 {
     // First give accessibility a chance to handle the event.
     Frame* frame = frameForEvent(event);
-    frame->eventHandler().handleKeyboardSelectionMovementForAccessibility(event);
+    frame->eventHandler().handleKeyboardSelectionMovementForAccessibility(*event);
     if (event->defaultHandled())
         return true;
 

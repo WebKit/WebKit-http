@@ -30,8 +30,9 @@
 #include "ContextDestructionObserver.h"
 #include "EventTarget.h"
 #include "FrameDestructionObserver.h"
-#include "URL.h"
+#include "ScrollToOptions.h"
 #include "Supplementable.h"
+#include "URL.h"
 #include <functional>
 #include <memory>
 #include <wtf/HashSet.h>
@@ -140,8 +141,6 @@ namespace WebCore {
         static bool canShowModalDialog(const Frame*);
         WEBCORE_EXPORT void setCanShowModalDialogOverride(bool);
 
-        // DOM Level 0
-
         Screen* screen() const;
         History* history() const;
         Crypto* crypto() const;
@@ -193,8 +192,6 @@ namespace WebCore {
         int screenTop() const { return screenY(); }
         int scrollX() const;
         int scrollY() const;
-        int pageXOffset() const { return scrollX(); }
-        int pageYOffset() const { return scrollY(); }
 
         bool closed() const;
 
@@ -229,6 +226,7 @@ namespace WebCore {
         // DOM Level 2 Style Interface
 
         WEBCORE_EXPORT RefPtr<CSSStyleDeclaration> getComputedStyle(Element&, const String& pseudoElt) const;
+        RefPtr<CSSStyleDeclaration> getComputedStyle(Document&, const String& pseudoElt, ExceptionCode&);
 
         // WebKit extensions
 
@@ -247,10 +245,7 @@ namespace WebCore {
         void postMessageTimerFired(PostMessageTimer&);
         void dispatchMessageEventWithOriginCheck(SecurityOrigin* intendedTargetOrigin, Event&, PassRefPtr<Inspector::ScriptCallStack>);
 
-        struct ScrollToOptions {
-            Optional<double> left;
-            Optional<double> top;
-        };
+        void languagesChanged();
 
         void scrollBy(const ScrollToOptions&) const;
         void scrollBy(double x, double y) const;
@@ -385,18 +380,19 @@ namespace WebCore {
 
         HashSet<DOMWindowProperty*> m_properties;
 
-        mutable RefPtr<Screen> m_screen;
+        mutable RefPtr<Crypto> m_crypto;
         mutable RefPtr<History> m_history;
-        mutable RefPtr<Crypto>  m_crypto;
         mutable RefPtr<BarProp> m_locationbar;
+        mutable RefPtr<StyleMedia> m_media;
         mutable RefPtr<BarProp> m_menubar;
+        mutable RefPtr<Navigator> m_navigator;
         mutable RefPtr<BarProp> m_personalbar;
+        mutable RefPtr<Screen> m_screen;
         mutable RefPtr<BarProp> m_scrollbars;
+        mutable RefPtr<DOMSelection> m_selection;
         mutable RefPtr<BarProp> m_statusbar;
         mutable RefPtr<BarProp> m_toolbar;
-        mutable RefPtr<Navigator> m_navigator;
         mutable RefPtr<Location> m_location;
-        mutable RefPtr<StyleMedia> m_media;
 
         String m_status;
         String m_defaultStatus;

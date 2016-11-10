@@ -28,7 +28,7 @@
 
 #if PLATFORM(WPE)
 
-#include "GLContextEGL.h"
+#include "GLContextWPE.h"
 #include "IntSize.h"
 #include <wpe/renderer-backend-egl.h>
 
@@ -59,7 +59,7 @@ std::unique_ptr<PlatformDisplayWPE::EGLTarget> PlatformDisplayWPE::createEGLTarg
     return std::make_unique<EGLTarget>(*this, client, hostFd);
 }
 
-std::unique_ptr<GLContextEGL> PlatformDisplayWPE::createOffscreenContext(GLContext* sharingContext)
+std::unique_ptr<GLContextWPE> PlatformDisplayWPE::createOffscreenContext(PlatformDisplay& platformDisplay, bool isSharing)
 {
     struct OffscreenContextData final : public GLContext::Data {
     public:
@@ -68,7 +68,7 @@ std::unique_ptr<GLContextEGL> PlatformDisplayWPE::createOffscreenContext(GLConte
             wpe_renderer_backend_egl_offscreen_target_destroy(surface);
         }
 
-         wpe_renderer_backend_egl_offscreen_target* surface;
+        wpe_renderer_backend_egl_offscreen_target* surface;
     };
 
     auto contextData = std::make_unique<OffscreenContextData>();
@@ -76,7 +76,7 @@ std::unique_ptr<GLContextEGL> PlatformDisplayWPE::createOffscreenContext(GLConte
     wpe_renderer_backend_egl_offscreen_target_initialize(contextData->surface, m_backend, m_eglDisplay);
 
     EGLNativeWindowType nativeWindow = wpe_renderer_backend_egl_offscreen_target_get_native_window(contextData->surface);
-    return GLContextEGL::createContext(nativeWindow, sharingContext, WTFMove(contextData));
+    return GLContextWPE::createContext(platformDisplay, nativeWindow, isSharing, WTFMove(contextData));
 }
 
 PlatformDisplayWPE::EGLTarget::EGLTarget(const PlatformDisplayWPE& display, PlatformDisplayWPE::EGLTarget::Client& client, int hostFd)
@@ -107,9 +107,9 @@ void PlatformDisplayWPE::EGLTarget::initialize(const IntSize& size)
         m_display.m_eglDisplay, std::max(0, size.width()), std::max(0, size.height()));
 }
 
-std::unique_ptr<GLContextEGL> PlatformDisplayWPE::EGLTarget::createGLContext() const
+std::unique_ptr<GLContextWPE> PlatformDisplayWPE::EGLTarget::createGLContext() const
 {
-    return GLContextEGL::createWindowContext(wpe_renderer_backend_egl_target_get_native_window(m_backend), GLContext::sharingContext());
+    return GLContextWPE::createContext(const_cast<PlatformDisplayWPE&>(m_display), wpe_renderer_backend_egl_target_get_native_window(m_backend), false);
 }
 
 void PlatformDisplayWPE::EGLTarget::resize(const IntSize& size)

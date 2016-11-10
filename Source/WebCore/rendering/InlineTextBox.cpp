@@ -617,7 +617,7 @@ std::pair<unsigned, unsigned> InlineTextBox::selectionStartEnd() const
     return { clampedOffset(start), clampedOffset(end) };
 }
 
-void InlineTextBox::paintSelection(GraphicsContext& context, const FloatPoint& boxOrigin, const RenderStyle& style, const FontCascade& font, Color textColor)
+void InlineTextBox::paintSelection(GraphicsContext& context, const FloatPoint& boxOrigin, const RenderStyle& style, const FontCascade& font, const Color& textColor)
 {
 #if ENABLE(TEXT_SELECTION)
     if (context.paintingDisabled())
@@ -715,13 +715,12 @@ void InlineTextBox::paintDecoration(GraphicsContext& context, const FontCascade&
         width = renderer().width(m_start, m_truncation, textPos(), isFirstLine());
         mirrorRTLSegment(m_logicalWidth, direction(), start, width);
     }
-    
-    int baseline = lineStyle().fontMetrics().ascent();
+
     TextDecorationPainter decorationPainter(context, decoration, renderer(), isFirstLine());
     decorationPainter.setInlineTextBox(this);
     decorationPainter.setFont(font);
     decorationPainter.setWidth(width);
-    decorationPainter.setBaseline(baseline);
+    decorationPainter.setBaseline(lineStyle().fontMetrics().ascent());
     decorationPainter.setIsHorizontal(isHorizontal());
     decorationPainter.addTextShadow(shadow);
 

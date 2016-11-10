@@ -48,13 +48,13 @@
 #include "AirSpillEverything.h"
 #include "AirValidate.h"
 #include "B3Common.h"
-#include "B3IndexMap.h"
 #include "B3Procedure.h"
 #include "B3TimingScope.h"
 #include "B3ValueInlines.h"
 #include "CCallHelpers.h"
 #include "DisallowMacroScratchRegisterUsage.h"
 #include "LinkBuffer.h"
+#include <wtf/IndexMap.h>
 
 namespace JSC { namespace B3 { namespace Air {
 
@@ -190,10 +190,10 @@ void generate(Code& code, CCallHelpers& jit)
     PCToOriginMap& pcToOriginMap = code.proc().pcToOriginMap();
     auto addItem = [&] (Inst& inst) {
         if (!inst.origin) {
-            pcToOriginMap.appendItem(jit.label(), Origin());
+            pcToOriginMap.appendItem(jit.labelIgnoringWatchpoints(), Origin());
             return;
         }
-        pcToOriginMap.appendItem(jit.label(), inst.origin->origin());
+        pcToOriginMap.appendItem(jit.labelIgnoringWatchpoints(), inst.origin->origin());
     };
 
     for (BasicBlock* block : code) {
@@ -227,13 +227,13 @@ void generate(Code& code, CCallHelpers& jit)
 
         context.indexInBlock = block->size() - 1;
         
-        if (block->last().opcode == Jump
+        if (block->last().kind.opcode == Jump
             && block->successorBlock(0) == code.findNextBlock(block))
             continue;
 
         addItem(block->last());
 
-        if (isReturn(block->last().opcode)) {
+        if (isReturn(block->last().kind.opcode)) {
             // We currently don't represent the full prologue/epilogue in Air, so we need to
             // have this override.
             if (code.frameSize()) {

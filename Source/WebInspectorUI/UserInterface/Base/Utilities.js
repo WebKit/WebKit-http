@@ -47,12 +47,19 @@ Object.defineProperty(Object, "shallowEqual",
     {
         // Checks if two objects have the same top-level properties.
 
+        // Only objects can proceed.
+        if (!(a instanceof Object) || !(b instanceof Object))
+            return false;
+
         // Check for strict equality in case they are the same object.
         if (a === b)
             return true;
 
-        // Only objects can proceed. null is an object, but Object.keys throws for null.
-        if (typeof a !== "object" || typeof b !== "object" || a === null || b === null)
+        // Use an optimized version of shallowEqual for arrays.
+        if (Array.isArray(a) && Array.isArray(b))
+            return Array.shallowEqual(a, b);
+
+        if (a.constructor !== b.constructor)
             return false;
 
         var aKeys = Object.keys(a);
@@ -429,6 +436,9 @@ Object.defineProperty(Array, "shallowEqual",
 {
     value: function(a, b)
     {
+        if (!Array.isArray(a) || !Array.isArray(b))
+            return false;
+
         if (a === b)
             return true;
 
@@ -1400,6 +1410,29 @@ function isWebKitInternalScript(url)
 function isFunctionStringNativeCode(str)
 {
     return str.endsWith("{\n    [native code]\n}");
+}
+
+function isTextLikelyMinified(content)
+{
+    const autoFormatMaxCharactersToCheck = 5000;
+    const autoFormatWhitespaceRatio = 0.2;
+
+    let whitespaceScore = 0;
+    let size = Math.min(autoFormatMaxCharactersToCheck, content.length);
+
+    for (let i = 0; i < size; i++) {
+        let char = content[i];
+
+        if (char === " ")
+            whitespaceScore++;
+        else if (char === "\t")
+            whitespaceScore += 4;
+        else if (char === "\n")
+            whitespaceScore += 8;
+    }
+
+    let ratio = whitespaceScore / size;
+    return ratio < autoFormatWhitespaceRatio;
 }
 
 function doubleQuotedString(str)

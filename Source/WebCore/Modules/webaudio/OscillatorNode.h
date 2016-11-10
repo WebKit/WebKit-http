@@ -22,46 +22,34 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef OscillatorNode_h
-#define OscillatorNode_h
+#pragma once
 
-#include "AudioBus.h"
-#include "AudioParam.h"
 #include "AudioScheduledSourceNode.h"
 #include <wtf/Lock.h>
-#include <wtf/RefPtr.h>
 
 namespace WebCore {
 
-class AudioContext;
 class PeriodicWave;
 
 // OscillatorNode is an audio generator of periodic waveforms.
 
-class OscillatorNode : public AudioScheduledSourceNode {
+class OscillatorNode final : public AudioScheduledSourceNode {
 public:
     // The waveform type.
-    // These must be defined as in the .idl file.
-    enum {
-        SINE = 0,
-        SQUARE = 1,
-        SAWTOOTH = 2,
-        TRIANGLE = 3,
-        CUSTOM = 4
+    enum class Type {
+        Sine,
+        Square,
+        Sawtooth,
+        Triangle,
+        Custom
     };
 
     static Ref<OscillatorNode> create(AudioContext&, float sampleRate);
 
     virtual ~OscillatorNode();
-    
-    // AudioNode
-    void process(size_t framesToProcess) override;
-    void reset() override;
 
-    String type() const;
-
-    bool setType(unsigned); // Returns true on success.
-    void setType(const String&);
+    Type type() const { return m_type; }
+    ExceptionOr<void> setType(Type);
 
     AudioParam* frequency() { return m_frequency.get(); }
     AudioParam* detune() { return m_detune.get(); }
@@ -71,16 +59,19 @@ public:
 private:
     OscillatorNode(AudioContext&, float sampleRate);
 
-    double tailTime() const override { return 0; }
-    double latencyTime() const override { return 0; }
+    void process(size_t framesToProcess) final;
+    void reset() final;
+
+    double tailTime() const final { return 0; }
+    double latencyTime() const final { return 0; }
 
     // Returns true if there are sample-accurate timeline parameter changes.
     bool calculateSampleAccuratePhaseIncrements(size_t framesToProcess);
 
-    bool propagatesSilence() const override;
+    bool propagatesSilence() const final;
 
     // One of the waveform types defined in the enum.
-    unsigned short m_type;
+    Type m_type { Type::Sine };
     
     // Frequency value in Hertz.
     RefPtr<AudioParam> m_frequency;
@@ -111,5 +102,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // OscillatorNode_h

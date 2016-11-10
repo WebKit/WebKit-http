@@ -24,8 +24,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef ARMAssembler_h
-#define ARMAssembler_h
+#pragma once
 
 #if ENABLE(ASSEMBLER) && CPU(ARM_THUMB2)
 
@@ -2340,6 +2339,11 @@ public:
         return 4;
 #endif
     }
+
+    static constexpr ptrdiff_t patchableJumpSize()
+    {
+        return 10;
+    }
     
     static void replaceWithLoad(void* instructionStart)
     {
@@ -2945,5 +2949,3 @@ private:
 } // namespace JSC
 
 #endif // ENABLE(ASSEMBLER) && CPU(ARM_THUMB2)
-
-#endif // ARMAssembler_h

@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2012 Google Inc. All rights reserved.
+ * Copyright (C) 2016 Apple Inc. All Rights Reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -82,6 +83,9 @@ bool ArrayValue::get(size_t index, Dictionary& value) const
 
 bool ArrayValue::get(size_t index, String& value) const
 {
+    VM& vm = m_exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     if (isUndefinedOrNull())
         return false;
 
@@ -90,8 +94,7 @@ bool ArrayValue::get(size_t index, String& value) const
         return false;
 
     value = indexedValue.toWTFString(m_exec);
-    if (m_exec->hadException())
-        return false;
+    RETURN_IF_EXCEPTION(scope, false);
 
     return true;
 }

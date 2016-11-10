@@ -18,12 +18,14 @@
  *
  */
 
-#ifndef ScriptElement_h
-#define ScriptElement_h
+#pragma once
 
 #include "CachedResourceClient.h"
 #include "CachedResourceHandle.h"
+#include "LoadableScript.h"
+#include "LoadableScriptClient.h"
 #include "Timer.h"
+#include "URL.h"
 #include <wtf/text/TextPosition.h>
 #include <wtf/text/WTFString.h>
 
@@ -32,12 +34,13 @@ namespace WebCore {
 class CachedScript;
 class ContainerNode;
 class Element;
+class PendingScript;
 class ScriptElement;
 class ScriptSourceCode;
 
-class ScriptElement : private CachedResourceClient {
+class ScriptElement {
 public:
-    virtual ~ScriptElement();
+    virtual ~ScriptElement() { }
 
     Element& element() { return m_element; }
     const Element& element() const { return m_element; }
@@ -48,7 +51,8 @@ public:
     String scriptCharset() const { return m_characterEncoding; }
     WEBCORE_EXPORT String scriptContent() const;
     void executeScript(const ScriptSourceCode&);
-    void execute(CachedScript*);
+
+    void executeScriptForScriptRunner(PendingScript&);
 
     // XML parser calls these
     virtual void dispatchLoadEvent() = 0;
@@ -58,7 +62,8 @@ public:
     bool willBeParserExecuted() const { return m_willBeParserExecuted; }
     bool readyToBeParserExecuted() const { return m_readyToBeParserExecuted; }
     bool willExecuteWhenDocumentFinishedParsing() const { return m_willExecuteWhenDocumentFinishedParsing; }
-    CachedResourceHandle<CachedScript> cachedScript() { return m_cachedScript; }
+    bool willExecuteInOrder() const { return m_willExecuteInOrder; }
+    LoadableScript* loadableScript() { return m_loadableScript.get(); }
 
 protected:
     ScriptElement(Element&, bool createdByParser, bool isEvaluated);
@@ -72,20 +77,21 @@ protected:
     bool shouldCallFinishedInsertingSubtree(ContainerNode&);
     void finishedInsertingSubtree();
     void childrenChanged();
-    void handleSourceAttribute(const String& sourceUrl);
+    void handleSourceAttribute(const String& sourceURL);
     void handleAsyncAttribute();
 
 private:
+    void executeScriptAndDispatchEvent(LoadableScript&);
+
     // https://html.spec.whatwg.org/multipage/scripting.html#concept-script-type
     enum class ScriptType { Classic, Module };
     Optional<ScriptType> determineScriptType(LegacyTypeSupport) const;
     bool ignoresLoadRequest() const;
     bool isScriptForEventSupported() const;
 
-    bool requestScript(const String& sourceUrl);
-    void stopLoadRequest();
+    CachedResourceHandle<CachedScript> requestScriptWithCache(const URL&, const String&);
 
-    void notifyFinished(CachedResource*) override;
+    bool requestClassicScript(const String& sourceURL);
 
     virtual String sourceAttributeValue() const = 0;
     virtual String charsetAttributeValue() const = 0;
@@ -98,7 +104,6 @@ private:
     virtual bool hasSourceAttribute() const = 0;
 
     Element& m_element;
-    CachedResourceHandle<CachedScript> m_cachedScript;
     WTF::OrdinalNumber m_startLineNumber;
     bool m_parserInserted : 1;
     bool m_isExternalScript : 1;
@@ -109,14 +114,12 @@ private:
     bool m_willExecuteWhenDocumentFinishedParsing : 1;
     bool m_forceAsync : 1;
     bool m_willExecuteInOrder : 1;
-    bool m_requestUsesAccessControl : 1;
     String m_characterEncoding;
     String m_fallbackCharacterEncoding;
+    RefPtr<LoadableScript> m_loadableScript;
 };
 
 // FIXME: replace with downcast<ScriptElement>.
 ScriptElement* toScriptElementIfPossible(Element*);
 
 }
-
-#endif

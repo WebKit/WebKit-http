@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef MathCommon_h
-#define MathCommon_h
+#pragma once
 
 #include <cmath>
 #include <wtf/Optional.h>
@@ -111,6 +110,14 @@ ALWAYS_INLINE int32_t toInt32(double number)
     return bits < 0 ? -result : result;
 }
 
+// This implements ToUInt32, defined in ECMA-262 9.6.
+inline uint32_t toUInt32(double number)
+{
+    // As commented in the spec, the operation of ToInt32 and ToUint32 only differ
+    // in how the result is interpreted; see NOTEs in sections 9.5 and 9.6.
+    return toInt32(number);
+}
+
 inline Optional<double> safeReciprocalForDivByConst(double constant)
 {
     // No "weird" numbers (NaN, Denormal, etc).
@@ -151,6 +158,4 @@ double JIT_OPERATION jsMod(double x, double y) REFERENCED_FROM_ASM WTF_INTERNAL;
 #endif
 }
 
-}
-
-#endif // MathCommon_h
+} // namespace JSC

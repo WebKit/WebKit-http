@@ -39,6 +39,7 @@
 #include <map>
 #include <runtime/ArrayBuffer.h>
 #include <wtf/PrintStream.h>
+#include <wtf/StringPrintStream.h>
 
 namespace WebCore {
 
@@ -66,6 +67,9 @@ private:
     void dump(PrintStream&) const override;
     void offsetTimestampsBy(const MediaTime& offset) override { m_box.offsetTimestampsBy(offset); }
     void setTimestamps(const MediaTime& presentationTimestamp, const MediaTime& decodeTimestamp) override { m_box.setTimestamps(presentationTimestamp, decodeTimestamp); }
+    bool isDivisable() const override { return false; }
+    std::pair<RefPtr<MediaSample>, RefPtr<MediaSample>> divide(const MediaTime&) override { return {nullptr, nullptr}; }
+
 
     unsigned generation() const { return m_box.generation(); }
 
@@ -199,6 +203,10 @@ void MockSourceBufferPrivate::abort()
 {
 }
 
+void MockSourceBufferPrivate::resetParserState()
+{
+}
+
 void MockSourceBufferPrivate::removedFromMediaSource()
 {
     if (m_mediaSource)
@@ -222,8 +230,14 @@ void MockSourceBufferPrivate::setActive(bool isActive)
         m_mediaSource->sourceBufferPrivateDidChangeActiveState(this, isActive);
 }
 
-void MockSourceBufferPrivate::enqueueSample(PassRefPtr<MediaSample> sample, AtomicString)
+Vector<String> MockSourceBufferPrivate::enqueuedSamplesForTrackID(AtomicString)
 {
+    return m_enqueuedSamples;
+}
+
+void MockSourceBufferPrivate::enqueueSample(PassRefPtr<MediaSample> prpSample, AtomicString)
+{
+    RefPtr<MediaSample> sample = prpSample;
     if (!m_mediaSource || !sample)
         return;
 
@@ -242,6 +256,8 @@ void MockSourceBufferPrivate::enqueueSample(PassRefPtr<MediaSample> sample, Atom
         m_mediaSource->incrementDroppedFrames();
     if (box->isDelayed())
         m_mediaSource->incrementTotalFrameDelayBy(MediaTime(1, 1));
+
+    m_enqueuedSamples.append(toString(sample));
 }
 
 bool MockSourceBufferPrivate::hasVideo() const

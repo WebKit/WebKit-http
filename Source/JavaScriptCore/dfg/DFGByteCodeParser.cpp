@@ -44,7 +44,6 @@
 #include "GetByIdStatus.h"
 #include "Heap.h"
 #include "JSCInlines.h"
-#include "JSLexicalEnvironment.h"
 #include "JSModuleEnvironment.h"
 #include "NumberConstructor.h"
 #include "ObjectConstructor.h"
@@ -220,6 +219,7 @@ private:
     bool handleConstantInternalFunction(Node* callTargetNode, int resultOperand, InternalFunction*, int registerOffset, int argumentCountIncludingThis, CodeSpecializationKind, SpeculatedType, const ChecksFunctor& insertChecks);
     Node* handlePutByOffset(Node* base, unsigned identifier, PropertyOffset, const InferredType::Descriptor&, Node* value);
     Node* handleGetByOffset(SpeculatedType, Node* base, unsigned identifierNumber, PropertyOffset, const InferredType::Descriptor&, NodeType = GetByOffset);
+    bool handleDOMJITGetter(int resultOperand, const GetByIdVariant&, Node* thisNode, SpeculatedType prediction);
 
     // Create a presence ObjectPropertyCondition based on some known offset and structure set. Does not
     // check the validity of the condition, but it may return a null one if it encounters a contradiction.
@@ -238,7 +238,6 @@ private:
 
     Node* store(Node* base, unsigned identifier, const PutByIdVariant&, Node* value);
 
-    void handleTryGetById(int destinationOperand, Node* base, unsigned identifierNumber, const GetByIdStatus&);
     void handleGetById(
         int destinationOperand, SpeculatedType, Node* base, unsigned identifierNumber, GetByIdStatus, AccessType);
     void emitPutById(
@@ -639,7 +638,7 @@ private:
             const FastBitVector& livenessAtBytecode = fullLiveness.getLiveness(bytecodeIndex);
 
             for (unsigned local = codeBlock->m_numCalleeLocals; local--;) {
-                if (livenessAtBytecode.get(local)) {
+                if (livenessAtBytecode[local]) {
                     VirtualRegister reg = virtualRegisterForLocal(local);
                     if (inlineCallFrame)
                         reg = inlineStackEntry->remapOperand(reg);
@@ -1204,14 +1203,26 @@ private:
     bool m_hasDebuggerEnabled;
 };
 
+// The idiom:
+//     if (true) { ...; goto label; } else label: continue
+// Allows using NEXT_OPCODE as a statement, even in unbraced if+else, while containing a `continue`.
+// The more common idiom:
+//     do { ...; } while (false)
+// Doesn't allow using `continue`.
 #define NEXT_OPCODE(name) \
-    m_currentIndex += OPCODE_LENGTH(name); \
-    continue
+    if (true) { \
+        m_currentIndex += OPCODE_LENGTH(name); \
+        goto WTF_CONCAT(NEXT_OPCODE_, __LINE__); /* Need a unique label: usable more than once per function. */ \
+    } else \
+    WTF_CONCAT(NEXT_OPCODE_, __LINE__): \
+        continue
 
+// Chain expressions with comma-operator so LAST_OPCODE can be used as a statement.
 #define LAST_OPCODE(name) \
-    m_currentIndex += OPCODE_LENGTH(name); \
-    m_exitOK = false; \
-    return shouldContinueParsing
+    return \
+        m_currentIndex += OPCODE_LENGTH(name), \
+        m_exitOK = false, \
+        shouldContinueParsing
 
 ByteCodeParser::Terminality ByteCodeParser::handleCall(Instruction* pc, NodeType op, CallMode callMode)
 {
@@ -2140,41 +2151,44 @@ bool ByteCodeParser::handleIntrinsicCall(Node* callee, int resultOperand, Intrin
     case MaxIntrinsic:
         return handleMinMax(resultOperand, ArithMax, registerOffset, argumentCountIncludingThis, insertChecks);
 
-    case SqrtIntrinsic:
     case CosIntrinsic:
+    case FRoundIntrinsic:
+    case LogIntrinsic:
     case SinIntrinsic:
-    case LogIntrinsic: {
+    case SqrtIntrinsic:
+    case TanIntrinsic: {
         if (argumentCountIncludingThis == 1) {
             insertChecks();
             set(VirtualRegister(resultOperand), addToGraph(JSConstant, OpInfo(m_constantNaN)));
             return true;
         }
-        
-        switch (intrinsic) {
-        case SqrtIntrinsic:
-            insertChecks();
-            set(VirtualRegister(resultOperand), addToGraph(ArithSqrt, get(virtualRegisterForArgument(1, registerOffset))));
-            return true;
-            
-        case CosIntrinsic:
-            insertChecks();
-            set(VirtualRegister(resultOperand), addToGraph(ArithCos, get(virtualRegisterForArgument(1, registerOffset))));
-            return true;
-            
-        case SinIntrinsic:
-            insertChecks();
-            set(VirtualRegister(resultOperand), addToGraph(ArithSin, get(virtualRegisterForArgument(1, registerOffset))));
-            return true;
 
+        NodeType nodeType = Unreachable;
+        switch (intrinsic) {
+        case CosIntrinsic:
+            nodeType = ArithCos;
+            break;
+        case FRoundIntrinsic:
+            nodeType = ArithFRound;
+            break;
         case LogIntrinsic:
-            insertChecks();
-            set(VirtualRegister(resultOperand), addToGraph(ArithLog, get(virtualRegisterForArgument(1, registerOffset))));
-            return true;
-            
+            nodeType = ArithLog;
+            break;
+        case SinIntrinsic:
+            nodeType = ArithSin;
+            break;
+        case SqrtIntrinsic:
+            nodeType = ArithSqrt;
+            break;
+        case TanIntrinsic:
+            nodeType = ArithTan;
+            break;
         default:
             RELEASE_ASSERT_NOT_REACHED();
-            return false;
         }
+        insertChecks();
+        set(VirtualRegister(resultOperand), addToGraph(nodeType, get(virtualRegisterForArgument(1, registerOffset))));
+        return true;
     }
 
     case PowIntrinsic: {
@@ -2348,15 +2362,6 @@ bool ByteCodeParser::handleIntrinsicCall(Node* callee, int resultOperand, Intrin
         return true;
     }
 
-    case IsRegExpObjectIntrinsic: {
-        ASSERT(argumentCountIncludingThis == 2);
-
-        insertChecks();
-        Node* isRegExpObject = addToGraph(IsRegExpObject, OpInfo(prediction), get(virtualRegisterForArgument(1, registerOffset)));
-        set(VirtualRegister(resultOperand), isRegExpObject);
-        return true;
-    }
-
     case IsTypedArrayViewIntrinsic: {
         ASSERT(argumentCountIncludingThis == 2);
 
@@ -2436,25 +2441,22 @@ bool ByteCodeParser::handleIntrinsicCall(Node* callee, int resultOperand, Intrin
             set(VirtualRegister(resultOperand), addToGraph(JSConstant, OpInfo(m_constantNaN)));
             return true;
         }
-        if (argumentCountIncludingThis == 2) {
-            insertChecks();
-            Node* operand = get(virtualRegisterForArgument(1, registerOffset));
-            NodeType op;
-            if (intrinsic == RoundIntrinsic)
-                op = ArithRound;
-            else if (intrinsic == FloorIntrinsic)
-                op = ArithFloor;
-            else if (intrinsic == CeilIntrinsic)
-                op = ArithCeil;
-            else {
-                ASSERT(intrinsic == TruncIntrinsic);
-                op = ArithTrunc;
-            }
-            Node* roundNode = addToGraph(op, OpInfo(0), OpInfo(prediction), operand);
-            set(VirtualRegister(resultOperand), roundNode);
-            return true;
+        insertChecks();
+        Node* operand = get(virtualRegisterForArgument(1, registerOffset));
+        NodeType op;
+        if (intrinsic == RoundIntrinsic)
+            op = ArithRound;
+        else if (intrinsic == FloorIntrinsic)
+            op = ArithFloor;
+        else if (intrinsic == CeilIntrinsic)
+            op = ArithCeil;
+        else {
+            ASSERT(intrinsic == TruncIntrinsic);
+            op = ArithTrunc;
         }
-        return false;
+        Node* roundNode = addToGraph(op, OpInfo(0), OpInfo(prediction), operand);
+        set(VirtualRegister(resultOperand), roundNode);
+        return true;
     }
     case IMulIntrinsic: {
         if (argumentCountIncludingThis != 3)
@@ -2473,15 +2475,6 @@ bool ByteCodeParser::handleIntrinsicCall(Node* callee, int resultOperand, Intrin
             return false;
         insertChecks();
         set(VirtualRegister(resultOperand), addToGraph(ArithRandom));
-        return true;
-    }
-        
-    case FRoundIntrinsic: {
-        if (argumentCountIncludingThis != 2)
-            return false;
-        insertChecks();
-        VirtualRegister operand = virtualRegisterForArgument(1, registerOffset);
-        set(VirtualRegister(resultOperand), addToGraph(ArithFRound, get(operand)));
         return true;
     }
         
@@ -2537,7 +2530,71 @@ bool ByteCodeParser::handleIntrinsicCall(Node* callee, int resultOperand, Intrin
             set(VirtualRegister(resultOperand), get(operand));
         return true;
     }
-        
+
+    case JSMapGetIntrinsic: {
+        if (argumentCountIncludingThis != 2)
+            return false;
+
+        insertChecks();
+        Node* map = get(virtualRegisterForArgument(0, registerOffset));
+        Node* key = get(virtualRegisterForArgument(1, registerOffset));
+        Node* hash = addToGraph(MapHash, key);
+        Node* bucket = addToGraph(GetMapBucket, Edge(map, MapObjectUse), Edge(key), Edge(hash));
+        Node* result = addToGraph(LoadFromJSMapBucket, OpInfo(), OpInfo(prediction), bucket);
+        set(VirtualRegister(resultOperand), result);
+        return true;
+    }
+
+    case JSSetHasIntrinsic:
+    case JSMapHasIntrinsic: {
+        if (argumentCountIncludingThis != 2)
+            return false;
+
+        insertChecks();
+        Node* mapOrSet = get(virtualRegisterForArgument(0, registerOffset));
+        Node* key = get(virtualRegisterForArgument(1, registerOffset));
+        Node* hash = addToGraph(MapHash, key);
+        UseKind useKind = intrinsic == JSSetHasIntrinsic ? SetObjectUse : MapObjectUse;
+        Node* bucket = addToGraph(GetMapBucket, OpInfo(0), Edge(mapOrSet, useKind), Edge(key), Edge(hash));
+        Node* result = addToGraph(IsNonEmptyMapBucket, bucket);
+        set(VirtualRegister(resultOperand), result);
+        return true;
+    }
+
+    case HasOwnPropertyIntrinsic: {
+        if (argumentCountIncludingThis != 2)
+            return false;
+
+        // This can be racy, that's fine. We know that once we observe that this is created,
+        // that it will never be destroyed until the VM is destroyed. It's unlikely that
+        // we'd ever get to the point where we inline this as an intrinsic without the
+        // cache being created, however, it's possible if we always throw exceptions inside
+        // hasOwnProperty.
+        if (!m_vm->hasOwnPropertyCache())
+            return false;
+
+        insertChecks();
+        Node* object = get(virtualRegisterForArgument(0, registerOffset));
+        Node* key = get(virtualRegisterForArgument(1, registerOffset));
+        Node* result = addToGraph(HasOwnProperty, object, key);
+        set(VirtualRegister(resultOperand), result);
+        return true;
+    }
+
+    case ToLowerCaseIntrinsic: {
+        if (argumentCountIncludingThis != 1)
+            return false;
+
+        if (m_inlineStackTop->m_exitProfile.hasExitSite(m_currentIndex, BadType))
+            return false;
+
+        insertChecks();
+        Node* thisString = get(virtualRegisterForArgument(0, registerOffset));
+        Node* result = addToGraph(ToLowerCase, thisString);
+        set(VirtualRegister(resultOperand), result);
+        return true;
+    }
+
     default:
         return false;
     }
@@ -2615,6 +2672,35 @@ bool ByteCodeParser::handleIntrinsicGetter(int resultOperand, const GetByIdVaria
         return false;
     }
     RELEASE_ASSERT_NOT_REACHED();
+}
+
+bool ByteCodeParser::handleDOMJITGetter(int resultOperand, const GetByIdVariant& variant, Node* thisNode, SpeculatedType prediction)
+{
+    if (!variant.domJIT())
+        return false;
+
+    DOMJIT::GetterSetter* domJIT = variant.domJIT();
+
+    // We do not need to actually look up CustomGetterSetter here. Checking Structures or registering watchpoints are enough,
+    // since replacement of CustomGetterSetter always incurs Structure transition.
+    if (!check(variant.conditionSet()))
+        return false;
+    addToGraph(CheckStructure, OpInfo(m_graph.addStructureSet(variant.structureSet())), thisNode);
+
+    Ref<DOMJIT::Patchpoint> checkDOMPatchpoint = domJIT->checkDOM();
+    m_graph.m_domJITPatchpoints.append(checkDOMPatchpoint.ptr());
+    // We do not need to emit CheckCell thingy here. When the custom accessor is replaced to different one, Structure transition occurs.
+    addToGraph(CheckDOM, OpInfo(checkDOMPatchpoint.ptr()), OpInfo(domJIT->thisClassInfo()), thisNode);
+
+    Ref<DOMJIT::CallDOMPatchpoint> callDOMPatchpoint = domJIT->callDOM();
+    m_graph.m_domJITPatchpoints.append(callDOMPatchpoint.ptr());
+    if (callDOMPatchpoint->requireGlobalObject) {
+        Node* globalObject = addToGraph(GetGlobalObject, thisNode);
+        addVarArgChild(globalObject); // GlobalObject of thisNode is always used to create a DOMWrapper.
+    }
+    addVarArgChild(thisNode);
+    set(VirtualRegister(resultOperand), addToGraph(Node::VarArg, CallDOM, OpInfo(callDOMPatchpoint.ptr()), OpInfo(prediction)));
+    return true;
 }
 
 template<typename ChecksFunctor>
@@ -3211,6 +3297,20 @@ void ByteCodeParser::handleGetById(
     else
         getById = TryGetById;
 
+    // Special path for custom accessors since custom's offset does not have any meanings.
+    // So, this is completely different from Simple one. But we have a chance to optimize it when we use DOMJIT.
+    if (getByIdStatus.isCustom()) {
+        ASSERT(getByIdStatus.numVariants() == 1);
+        ASSERT(!getByIdStatus.makesCalls());
+        GetByIdVariant variant = getByIdStatus[0];
+        ASSERT(variant.domJIT());
+        if (handleDOMJITGetter(destinationOperand, variant, base, prediction)) {
+            if (m_graph.compilation())
+                m_graph.compilation()->noticeInlinedGetById();
+            return;
+        }
+    }
+
     ASSERT(type == AccessType::Get || !getByIdStatus.makesCalls());
     if (!getByIdStatus.isSimple() || !getByIdStatus.numVariants() || !Options::useAccessInlining()) {
         set(VirtualRegister(destinationOperand),
@@ -3708,10 +3808,9 @@ bool ByteCodeParser::parseBlock(unsigned limit)
         }
             
         case op_new_regexp: {
-            // FIXME: We really should be able to inline code that uses NewRegexp. That means
-            // using something other than the index into the CodeBlock here.
-            // https://bugs.webkit.org/show_bug.cgi?id=154808
-            set(VirtualRegister(currentInstruction[1].u.operand), addToGraph(NewRegexp, OpInfo(currentInstruction[2].u.operand)));
+            RegExp* regexp = m_inlineStackTop->m_codeBlock->regexp(currentInstruction[2].u.operand);
+            FrozenValue* frozen = m_graph.freezeStrong(regexp);
+            set(VirtualRegister(currentInstruction[1].u.operand), addToGraph(NewRegexp, OpInfo(frozen)));
             NEXT_OPCODE(op_new_regexp);
         }
 
@@ -3936,16 +4035,11 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             NEXT_OPCODE(op_is_number);
         }
 
-        case op_is_string: {
+        case op_is_cell_with_type: {
+            JSType type = static_cast<JSType>(currentInstruction[3].u.operand);
             Node* value = get(VirtualRegister(currentInstruction[2].u.operand));
-            set(VirtualRegister(currentInstruction[1].u.operand), addToGraph(IsString, value));
-            NEXT_OPCODE(op_is_string);
-        }
-
-        case op_is_jsarray: {
-            Node* value = get(VirtualRegister(currentInstruction[2].u.operand));
-            set(VirtualRegister(currentInstruction[1].u.operand), addToGraph(IsJSArray, value));
-            NEXT_OPCODE(op_is_jsarray);
+            set(VirtualRegister(currentInstruction[1].u.operand), addToGraph(IsCellWithType, OpInfo(type), value));
+            NEXT_OPCODE(op_is_cell_with_type);
         }
 
         case op_is_object: {
@@ -4129,10 +4223,12 @@ bool ByteCodeParser::parseBlock(unsigned limit)
         }
 
         case op_get_by_val_with_this: {
+            SpeculatedType prediction = getPrediction();
+
             Node* base = get(VirtualRegister(currentInstruction[2].u.operand));
             Node* thisValue = get(VirtualRegister(currentInstruction[3].u.operand));
             Node* property = get(VirtualRegister(currentInstruction[4].u.operand));
-            Node* getByValWithThis = addToGraph(GetByValWithThis, base, thisValue, property);
+            Node* getByValWithThis = addToGraph(GetByValWithThis, OpInfo(), OpInfo(prediction), base, thisValue, property);
             set(VirtualRegister(currentInstruction[1].u.operand), getByValWithThis);
 
             NEXT_OPCODE(op_get_by_val_with_this);
@@ -4150,7 +4246,12 @@ bool ByteCodeParser::parseBlock(unsigned limit)
                 ByValInfo* byValInfo = m_inlineStackTop->m_byValInfos.get(CodeOrigin(currentCodeOrigin().bytecodeIndex));
                 // FIXME: When the bytecode is not compiled in the baseline JIT, byValInfo becomes null.
                 // At that time, there is no information.
-                if (byValInfo && byValInfo->stubInfo && !byValInfo->tookSlowPath && !m_inlineStackTop->m_exitProfile.hasExitSite(m_currentIndex, BadIdent) && !m_inlineStackTop->m_exitProfile.hasExitSite(m_currentIndex, BadCell)) {
+                if (byValInfo 
+                    && byValInfo->stubInfo
+                    && !byValInfo->tookSlowPath
+                    && !m_inlineStackTop->m_exitProfile.hasExitSite(m_currentIndex, BadIdent)
+                    && !m_inlineStackTop->m_exitProfile.hasExitSite(m_currentIndex, BadType)
+                    && !m_inlineStackTop->m_exitProfile.hasExitSite(m_currentIndex, BadCell)) {
                     compiledAsPutById = true;
                     unsigned identifierNumber = m_graph.identifiers().ensure(byValInfo->cachedId.impl());
                     UniquedStringImpl* uid = m_graph.identifiers()[identifierNumber];
@@ -4200,21 +4301,39 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             NEXT_OPCODE(op_put_by_val_with_this);
         }
 
-        case op_try_get_by_id: {
-            Node* base = get(VirtualRegister(currentInstruction[2].u.operand));
-            unsigned identifierNumber = m_inlineStackTop->m_identifierRemap[currentInstruction[3].u.operand];
-            UniquedStringImpl* uid = m_graph.identifiers()[identifierNumber];
+        case op_define_data_property: {
+            Node* base = get(VirtualRegister(currentInstruction[1].u.operand));
+            Node* property = get(VirtualRegister(currentInstruction[2].u.operand));
+            Node* value = get(VirtualRegister(currentInstruction[3].u.operand));
+            Node* attributes = get(VirtualRegister(currentInstruction[4].u.operand));
 
-            GetByIdStatus getByIdStatus = GetByIdStatus::computeFor(
-                m_inlineStackTop->m_profiledBlock, m_dfgCodeBlock,
-                m_inlineStackTop->m_stubInfos, m_dfgStubInfos,
-                currentCodeOrigin(), uid);
+            addVarArgChild(base);
+            addVarArgChild(property);
+            addVarArgChild(value);
+            addVarArgChild(attributes);
+            addToGraph(Node::VarArg, DefineDataProperty, OpInfo(0), OpInfo(0));
 
-            handleGetById(currentInstruction[1].u.operand, SpecHeapTop, base, identifierNumber, getByIdStatus, AccessType::GetPure);
-
-            NEXT_OPCODE(op_try_get_by_id);
+            NEXT_OPCODE(op_define_data_property);
         }
 
+        case op_define_accessor_property: {
+            Node* base = get(VirtualRegister(currentInstruction[1].u.operand));
+            Node* property = get(VirtualRegister(currentInstruction[2].u.operand));
+            Node* getter = get(VirtualRegister(currentInstruction[3].u.operand));
+            Node* setter = get(VirtualRegister(currentInstruction[4].u.operand));
+            Node* attributes = get(VirtualRegister(currentInstruction[5].u.operand));
+
+            addVarArgChild(base);
+            addVarArgChild(property);
+            addVarArgChild(getter);
+            addVarArgChild(setter);
+            addVarArgChild(attributes);
+            addToGraph(Node::VarArg, DefineAccessorProperty, OpInfo(0), OpInfo(0));
+
+            NEXT_OPCODE(op_define_accessor_property);
+        }
+
+        case op_try_get_by_id:
         case op_get_by_id:
         case op_get_by_id_proto_load:
         case op_get_by_id_unset:
@@ -4229,19 +4348,25 @@ bool ByteCodeParser::parseBlock(unsigned limit)
                 m_inlineStackTop->m_profiledBlock, m_dfgCodeBlock,
                 m_inlineStackTop->m_stubInfos, m_dfgStubInfos,
                 currentCodeOrigin(), uid);
+            AccessType type = op_try_get_by_id == opcodeID ? AccessType::GetPure : AccessType::Get;
             
             handleGetById(
-                currentInstruction[1].u.operand, prediction, base, identifierNumber, getByIdStatus, AccessType::Get);
+                currentInstruction[1].u.operand, prediction, base, identifierNumber, getByIdStatus, type);
 
-            NEXT_OPCODE(op_get_by_id);
+            if (op_try_get_by_id == opcodeID)
+                NEXT_OPCODE(op_try_get_by_id); // Opcode's length is different from others in this case.
+            else
+                NEXT_OPCODE(op_get_by_id);
         }
         case op_get_by_id_with_this: {
+            SpeculatedType prediction = getPrediction();
+
             Node* base = get(VirtualRegister(currentInstruction[2].u.operand));
             Node* thisValue = get(VirtualRegister(currentInstruction[3].u.operand));
             unsigned identifierNumber = m_inlineStackTop->m_identifierRemap[currentInstruction[4].u.operand];
 
             set(VirtualRegister(currentInstruction[1].u.operand),
-                addToGraph(GetByIdWithThis, OpInfo(identifierNumber), base, thisValue));
+                addToGraph(GetByIdWithThis, OpInfo(identifierNumber), OpInfo(prediction), base, thisValue));
 
             NEXT_OPCODE(op_get_by_id_with_this);
         }
@@ -4547,7 +4672,8 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             LAST_OPCODE(op_throw);
             
         case op_throw_static_error:
-            addToGraph(ThrowReferenceError);
+            addToGraph(Phantom, get(VirtualRegister(currentInstruction[1].u.operand))); // Keep argument live.
+            addToGraph(ThrowStaticError);
             flushForTerminal();
             addToGraph(Unreachable);
             LAST_OPCODE(op_throw_static_error);
@@ -4568,11 +4694,10 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             // If the call is terminal then we should not parse any further bytecodes as the TailCall will exit the function.
             // If the call is not terminal, however, then we want the subsequent op_ret/op_jump to update metadata and clean
             // things up.
-            if (terminality == NonTerminal) {
+            if (terminality == NonTerminal)
                 NEXT_OPCODE(op_tail_call);
-            } else {
+            else
                 LAST_OPCODE(op_tail_call);
-            }
         }
 
         case op_construct:
@@ -4593,11 +4718,10 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             // If the call is terminal then we should not parse any further bytecodes as the TailCall will exit the function.
             // If the call is not terminal, however, then we want the subsequent op_ret/op_jump to update metadata and clean
             // things up.
-            if (terminality == NonTerminal) {
+            if (terminality == NonTerminal)
                 NEXT_OPCODE(op_tail_call_varargs);
-            } else {
+            else
                 LAST_OPCODE(op_tail_call_varargs);
-            }
         }
 
         case op_tail_call_forward_arguments: {
@@ -4610,11 +4734,10 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             // If the call is terminal then we should not parse any further bytecodes as the TailCall will exit the function.
             // If the call is not terminal, however, then we want the subsequent op_ret/op_jump to update metadata and clean
             // things up.
-            if (terminality == NonTerminal) {
+            if (terminality == NonTerminal)
                 NEXT_OPCODE(op_tail_call);
-            } else {
+            else
                 LAST_OPCODE(op_tail_call);
-            }
         }
             
         case op_construct_varargs: {

@@ -97,7 +97,6 @@
 #include <WebKit/WKPageGroup.h>
 #include <WebKit/WKPage.h>
 #include <WebKit/WKPreferencesRef.h>
-#include <WebKit/WKSessionRef.h>
 #include <WebKit/WKSessionStateRef.h>
 #include <WebKit/WKUserContentControllerRef.h>
 #include <WebKit/WKUserScriptRef.h>

@@ -42,6 +42,16 @@ PassRefPtr<CSSValue> StyleGeneratedImage::cssValue() const
     return const_cast<CSSImageGeneratorValue*>(m_imageGeneratorValue.ptr());
 }
 
+bool StyleGeneratedImage::isPending() const
+{
+    return m_imageGeneratorValue->isPending();
+}
+
+void StyleGeneratedImage::load(CachedResourceLoader& loader, const ResourceLoaderOptions& options)
+{
+    m_imageGeneratorValue->loadSubimages(loader, options);
+}
+
 FloatSize StyleGeneratedImage::imageSize(const RenderElement* renderer, float multiplier) const
 {
     if (m_fixedSize) {

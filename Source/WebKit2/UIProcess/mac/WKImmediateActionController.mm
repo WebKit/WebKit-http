@@ -55,8 +55,7 @@ using namespace WebKit;
 @interface WKImmediateActionController () <QLPreviewMenuItemDelegate>
 @end
 
-@interface WKAnimationController : NSObject <NSImmediateActionAnimationController> {
-}
+@interface WKAnimationController : NSObject <NSImmediateActionAnimationController>
 @end
 
 @implementation WKAnimationController
@@ -270,10 +269,8 @@ using namespace WebKit;
 
 - (id <NSImmediateActionAnimationController>)_defaultAnimationController
 {
-    if (_contentPreventsDefault) {
-        RetainPtr<WKAnimationController> dummyController = [[WKAnimationController alloc] init];
-        return dummyController.get();
-    }
+    if (_contentPreventsDefault)
+        return [[[WKAnimationController alloc] init] autorelease];
 
     RefPtr<API::HitTestResult> hitTestResult = [self _webHitTestResult];
 

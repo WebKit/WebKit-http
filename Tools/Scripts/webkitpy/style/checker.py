@@ -38,6 +38,7 @@ import sys
 
 from checkers.common import categories as CommonCategories
 from checkers.common import CarriageReturnChecker
+from checkers.contributors import ContributorsChecker
 from checkers.changelog import ChangeLogChecker
 from checkers.cpp import CppChecker
 from checkers.cmake import CMakeChecker
@@ -87,7 +88,6 @@ _BASE_FILTER_RULES = [
     '-build/endif_comment',
     '-build/include_what_you_use',  # <string> for std::string
     '-build/storage_class',  # const static
-    '-legal/copyright',
     '-readability/multiline_comment',
     '-readability/braces',  # int foo() {};
     '-readability/fn_size',
@@ -145,25 +145,6 @@ _PATH_RULES_SPECIFIER = [
       os.path.join('Tools', 'TestWebKitAPI')],
      ["-readability/naming"]),
 
-    ([# The GTK+ APIs use GTK+ naming style, which includes
-      # lower-cased, underscore-separated values, whitespace before
-      # parens for function calls, and always having variable names.
-      # Also, GTK+ allows the use of NULL.
-      os.path.join('Source', 'WebCore', 'bindings', 'gobject', 'WebKitDOMCustom.h'),
-      os.path.join('Source', 'WebCore', 'bindings', 'gobject', 'WebKitDOMDeprecated.h'),
-      os.path.join('Source', 'WebCore', 'bindings', 'gobject', 'WebKitDOMEventTarget.h'),
-      os.path.join('Source', 'WebCore', 'bindings', 'gobject', 'WebKitDOMNodeFilter.h'),
-      os.path.join('Source', 'WebCore', 'bindings', 'gobject', 'WebKitDOMXPathNSResolver.h'),
-      os.path.join('Source', 'WebKit', 'gtk', 'webkit'),
-      os.path.join('Tools', 'DumpRenderTree', 'gtk')],
-     ["-readability/naming",
-      "-readability/parameter_name",
-      "-readability/null",
-      "-readability/enum_casing",
-      "-whitespace/declaration",
-      "-whitespace/indent",
-      "-whitespace/parens"]),
-
     ([# The GTK+ API use upper case, underscore separated, words in
       # certain types of enums (e.g. signals, properties).
       os.path.join('Source', 'WebKit2', 'UIProcess', 'API', 'gtk'),
@@ -203,6 +184,7 @@ _PATH_RULES_SPECIFIER = [
       "-readability/parameter_name",
       "-runtime/ctype_function",
       "-whitespace/declaration",
+      "-whitespace/indent",
       "-build/include_order"]),
 
     # WebKit2 rules:
@@ -224,11 +206,6 @@ _PATH_RULES_SPECIFIER = [
       "-whitespace/declaration"]),
     ([# These files define GObjects, which implies some definitions of
       # variables and functions containing underscores.
-      os.path.join('Source', 'WebCore', 'bindings', 'gobject', 'WebKitDOMCustom.cpp'),
-      os.path.join('Source', 'WebCore', 'bindings', 'gobject', 'WebKitDOMDeprecated.cpp'),
-      os.path.join('Source', 'WebCore', 'bindings', 'gobject', 'WebKitDOMEventTarget.cpp'),
-      os.path.join('Source', 'WebCore', 'bindings', 'gobject', 'WebKitDOMNodeFilter.cpp'),
-      os.path.join('Source', 'WebCore', 'bindings', 'gobject', 'WebKitDOMXPathNSResolver.cpp'),
       os.path.join('Source', 'WebCore', 'platform', 'graphics', 'gstreamer', 'VideoSinkGStreamer.cpp'),
       os.path.join('Source', 'WebCore', 'platform', 'graphics', 'gstreamer', 'WebKitWebSourceGStreamer.cpp'),
       os.path.join('Source', 'WebCore', 'platform', 'audio', 'gstreamer', 'WebKitWebAudioSourceGStreamer.cpp'),
@@ -325,6 +302,9 @@ _SKIPPED_FILES_WITH_WARNING = [
     # WebKit*.h files in Source/WebKit2/UIProcess/API/gtk, except those ending in Private.h are GTK+ API headers, which do not follow WebKit coding style.
     re.compile(re.escape(os.path.join('Source', 'WebKit2', 'UIProcess', 'API', 'gtk') + os.path.sep) + r'WebKit(?!.*Private\.h).*\.h$'),
     re.compile(re.escape(os.path.join('Source', 'WebKit2', 'WebProcess', 'InjectedBundle', 'API', 'gtk') + os.path.sep) + r'WebKit(?!.*Private\.h).*\.h$'),
+
+    # GObject DOM bindings copied from generated code using different coding style.
+    os.path.join('Source', 'WebKit2', 'WebProcess', 'InjectedBundle', 'API', 'gtk', 'DOM'),
 
     os.path.join('Source', 'WebKit2', 'UIProcess', 'API', 'gtk', 'webkit2.h'),
     os.path.join('Source', 'WebKit2', 'WebProcess', 'InjectedBundle', 'API', 'gtk', 'webkit-web-extension.h')]
@@ -624,9 +604,12 @@ class CheckerDispatcher(object):
                 checker = TextChecker(file_path, handle_style_error)
         elif file_type == FileType.JSON:
             basename = os.path.basename(file_path)
-            if commit_queue and basename == 'contributors.json':
-                checker = JSONContributorsChecker(file_path, handle_style_error)
-            if basename == 'features.json':
+            if basename == 'contributors.json':
+                if commit_queue:
+                    checker = JSONContributorsChecker(file_path, handle_style_error)
+                else:
+                    checker = ContributorsChecker(file_path, handle_style_error)
+            elif basename == 'features.json':
                 checker = JSONFeaturesChecker(file_path, handle_style_error)
             else:
                 checker = JSONChecker(file_path, handle_style_error)

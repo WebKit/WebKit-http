@@ -231,6 +231,9 @@ void EditCommandComposition::unapply()
     frame->editor().cancelComposition();
 #endif
 
+    if (!frame->editor().willUnapplyEditing(*this))
+        return;
+
     size_t size = m_commands.size();
     for (size_t i = size; i; --i)
         m_commands[i - 1]->doUnapply();
@@ -254,6 +257,9 @@ void EditCommandComposition::reapply()
     // Low level operations, like RemoveNodeCommand, don't require a layout because the high level operations that use them perform one
     // if one is necessary (like for the creation of VisiblePositions).
     m_document->updateLayoutIgnorePendingStylesheets();
+
+    if (!frame->editor().willReapplyEditing(*this))
+        return;
 
     for (auto& command : m_commands)
         command->doReapply();
@@ -311,17 +317,32 @@ CompositeEditCommand::~CompositeEditCommand()
     ASSERT(isTopLevelCommand() || !m_composition);
 }
 
+bool CompositeEditCommand::willApplyCommand()
+{
+    return frame().editor().willApplyEditing(*this);
+}
+
 void CompositeEditCommand::apply()
 {
     if (!endingSelection().isContentRichlyEditable()) {
         switch (editingAction()) {
-        case EditActionTyping:
+        case EditActionTypingDeleteSelection:
+        case EditActionTypingDeleteBackward:
+        case EditActionTypingDeleteForward:
+        case EditActionTypingDeleteWordBackward:
+        case EditActionTypingDeleteWordForward:
+        case EditActionTypingDeleteLineBackward:
+        case EditActionTypingDeleteLineForward:
+        case EditActionTypingInsertText:
+        case EditActionTypingInsertLineBreak:
+        case EditActionTypingInsertParagraph:
         case EditActionPaste:
         case EditActionDrag:
         case EditActionSetWritingDirection:
         case EditActionCut:
         case EditActionUnspecified:
         case EditActionInsert:
+        case EditActionInsertReplacement:
         case EditActionDelete:
         case EditActionDictation:
             break;
@@ -337,16 +358,21 @@ void CompositeEditCommand::apply()
     // if one is necessary (like for the creation of VisiblePositions).
     document().updateLayoutIgnorePendingStylesheets();
 
+    if (!willApplyCommand())
+        return;
+
     {
         EventQueueScope eventQueueScope;
         doApply();
     }
 
-    // Only need to call appliedEditing for top-level commands,
-    // and TypingCommands do it on their own (see TypingCommand::typingAddedToOpenCommand).
-    if (!isTypingCommand())
-        frame().editor().appliedEditing(this);
+    didApplyCommand();
     setShouldRetainAutocorrectionIndicator(false);
+}
+
+void CompositeEditCommand::didApplyCommand()
+{
+    frame().editor().appliedEditing(this);
 }
 
 EditCommandComposition* CompositeEditCommand::ensureComposition()
@@ -381,6 +407,11 @@ bool CompositeEditCommand::shouldRetainAutocorrectionIndicator() const
 
 void CompositeEditCommand::setShouldRetainAutocorrectionIndicator(bool)
 {
+}
+
+String CompositeEditCommand::inputEventTypeName() const
+{
+    return inputTypeNameForEditingAction(editingAction());
 }
 
 //

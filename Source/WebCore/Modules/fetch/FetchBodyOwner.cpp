@@ -34,35 +34,40 @@
 #include "ExceptionCode.h"
 #include "FetchLoader.h"
 #include "FetchResponseSource.h"
+#include "HTTPParsers.h"
 #include "JSBlob.h"
 #include "ResourceResponse.h"
 
 namespace WebCore {
 
-FetchBodyOwner::FetchBodyOwner(ScriptExecutionContext& context, FetchBody&& body)
+FetchBodyOwner::FetchBodyOwner(ScriptExecutionContext& context, Optional<FetchBody>&& body, Ref<FetchHeaders>&& headers)
     : ActiveDOMObject(&context)
     , m_body(WTFMove(body))
+    , m_headers(WTFMove(headers))
 {
     suspendIfNeeded();
 }
 
 void FetchBodyOwner::stop()
 {
-    m_body.cleanConsumePromise();
+    if (m_body)
+        m_body->cleanConsumePromise();
 
     if (m_blobLoader) {
+        bool isUniqueReference = hasOneRef();
         if (m_blobLoader->loader)
             m_blobLoader->loader->stop();
+        // After that point, 'this' may be destroyed, since unsetPendingActivity should have been called.
+        ASSERT_UNUSED(isUniqueReference, isUniqueReference || !m_blobLoader);
     }
-    ASSERT(!m_blobLoader);
 }
 
-bool FetchBodyOwner::isDisturbed() const
+bool FetchBodyOwner::isDisturbedOrLocked() const
 {
     if (m_isDisturbed)
         return true;
 
-#if ENABLE(STREAMS_API)
+#if ENABLE(READABLE_STREAM_API)
     if (m_readableStreamSource && m_readableStreamSource->isReadableStreamLocked())
         return true;
 #endif
@@ -70,84 +75,119 @@ bool FetchBodyOwner::isDisturbed() const
     return false;
 }
 
-void FetchBodyOwner::arrayBuffer(DeferredWrapper&& promise)
+void FetchBodyOwner::arrayBuffer(Ref<DeferredPromise>&& promise)
 {
-    if (m_body.isEmpty()) {
-        fulfillPromiseWithArrayBuffer(promise, nullptr, 0);
+    if (isBodyNull()) {
+        fulfillPromiseWithArrayBuffer(WTFMove(promise), nullptr, 0);
         return;
     }
-    if (isDisturbed()) {
-        promise.reject(TypeError);
+    if (isDisturbedOrLocked()) {
+        promise->reject(TypeError);
         return;
     }
     m_isDisturbed = true;
-    m_body.arrayBuffer(*this, WTFMove(promise));
+    m_body->arrayBuffer(*this, WTFMove(promise));
 }
 
-void FetchBodyOwner::blob(DeferredWrapper&& promise)
+void FetchBodyOwner::blob(Ref<DeferredPromise>&& promise)
 {
-    if (m_body.isEmpty()) {
-        promise.resolve(Blob::create());
+    if (isBodyNull()) {
+        promise->resolve(Blob::create(Vector<uint8_t>(), Blob::normalizedContentType(extractMIMETypeFromMediaType(m_contentType))));
         return;
     }
-    if (isDisturbed()) {
-        promise.reject(TypeError);
+    if (isDisturbedOrLocked()) {
+        promise->reject(TypeError);
         return;
     }
     m_isDisturbed = true;
-    m_body.blob(*this, WTFMove(promise));
+    m_body->blob(*this, WTFMove(promise), m_contentType);
 }
 
-void FetchBodyOwner::formData(DeferredWrapper&& promise)
+void FetchBodyOwner::cloneBody(const FetchBodyOwner& owner)
 {
-    if (m_body.isEmpty()) {
-        promise.reject(0);
+    m_contentType = owner.m_contentType;
+    if (owner.isBodyNull())
+        return;
+    m_body = owner.m_body->clone();
+}
+
+void FetchBodyOwner::extractBody(ScriptExecutionContext& context, JSC::ExecState& state, JSC::JSValue value)
+{
+    m_body = FetchBody::extract(context, state, value, m_contentType);
+}
+
+void FetchBodyOwner::updateContentType()
+{
+    String contentType = m_headers->fastGet(HTTPHeaderName::ContentType);
+    if (!contentType.isNull()) {
+        m_contentType = WTFMove(contentType);
         return;
     }
-    if (isDisturbed()) {
-        promise.reject(TypeError);
+    if (!m_contentType.isNull())
+        m_headers->fastSet(HTTPHeaderName::ContentType, m_contentType);
+}
+
+void FetchBodyOwner::consumeOnceLoadingFinished(FetchBodyConsumer::Type type, Ref<DeferredPromise>&& promise)
+{
+    if (isDisturbedOrLocked()) {
+        promise->reject(TypeError);
         return;
     }
     m_isDisturbed = true;
-    m_body.formData(*this, WTFMove(promise));
+    m_body->consumeOnceLoadingFinished(type, WTFMove(promise));
 }
 
-void FetchBodyOwner::json(DeferredWrapper&& promise)
+void FetchBodyOwner::formData(Ref<DeferredPromise>&& promise)
 {
-    if (m_body.isEmpty()) {
-        promise.reject(SYNTAX_ERR);
+    if (isBodyNull()) {
+        promise->reject(0);
         return;
     }
-    if (isDisturbed()) {
-        promise.reject(TypeError);
+    if (isDisturbedOrLocked()) {
+        promise->reject(TypeError);
         return;
     }
     m_isDisturbed = true;
-    m_body.json(*this, WTFMove(promise));
+    m_body->formData(*this, WTFMove(promise));
 }
 
-void FetchBodyOwner::text(DeferredWrapper&& promise)
+void FetchBodyOwner::json(Ref<DeferredPromise>&& promise)
 {
-    if (m_body.isEmpty()) {
-        promise.resolve(String());
+    if (isBodyNull()) {
+        promise->reject(SYNTAX_ERR);
         return;
     }
-    if (isDisturbed()) {
-        promise.reject(TypeError);
+    if (isDisturbedOrLocked()) {
+        promise->reject(TypeError);
         return;
     }
     m_isDisturbed = true;
-    m_body.text(*this, WTFMove(promise));
+    m_body->json(*this, WTFMove(promise));
 }
 
-void FetchBodyOwner::loadBlob(Blob& blob, FetchBodyConsumer* consumer)
+void FetchBodyOwner::text(Ref<DeferredPromise>&& promise)
+{
+    if (isBodyNull()) {
+        promise->resolve(String());
+        return;
+    }
+    if (isDisturbedOrLocked()) {
+        promise->reject(TypeError);
+        return;
+    }
+    m_isDisturbed = true;
+    m_body->text(*this, WTFMove(promise));
+}
+
+void FetchBodyOwner::loadBlob(const Blob& blob, FetchBodyConsumer* consumer)
 {
     // Can only be called once for a body instance.
     ASSERT(isDisturbed());
     ASSERT(!m_blobLoader);
+    ASSERT(!isBodyNull());
 
     if (!scriptExecutionContext()) {
-        m_body.loadingFailed();
+        m_body->loadingFailed();
         return;
     }
 
@@ -156,7 +196,7 @@ void FetchBodyOwner::loadBlob(Blob& blob, FetchBodyConsumer* consumer)
 
     m_blobLoader->loader->start(*scriptExecutionContext(), blob);
     if (!m_blobLoader->loader->isStarted()) {
-        m_body.loadingFailed();
+        m_body->loadingFailed();
         m_blobLoader = Nullopt;
         return;
     }
@@ -173,28 +213,28 @@ void FetchBodyOwner::finishBlobLoading()
 
 void FetchBodyOwner::blobLoadingSucceeded()
 {
-    ASSERT(m_body.type() == FetchBody::Type::Blob);
-
-#if ENABLE(STREAMS_API)
+    ASSERT(!isBodyNull());
+#if ENABLE(READABLE_STREAM_API)
     if (m_readableStreamSource) {
         m_readableStreamSource->close();
         m_readableStreamSource = nullptr;
     }
 #endif
-    m_body.loadingSucceeded();
+    m_body->loadingSucceeded();
     finishBlobLoading();
 }
 
 void FetchBodyOwner::blobLoadingFailed()
 {
-#if ENABLE(STREAMS_API)
+    ASSERT(!isBodyNull());
+#if ENABLE(READABLE_STREAM_API)
     if (m_readableStreamSource) {
         if (!m_readableStreamSource->isCancelling())
             m_readableStreamSource->error(ASCIILiteral("Blob loading failed"));
         m_readableStreamSource = nullptr;
     } else
 #endif
-        m_body.loadingFailed();
+        m_body->loadingFailed();
 
     finishBlobLoading();
 }
@@ -202,7 +242,7 @@ void FetchBodyOwner::blobLoadingFailed()
 void FetchBodyOwner::blobChunk(const char* data, size_t size)
 {
     ASSERT(data);
-#if ENABLE(STREAMS_API)
+#if ENABLE(READABLE_STREAM_API)
     ASSERT(m_readableStreamSource);
     if (!m_readableStreamSource->enqueue(ArrayBuffer::tryCreate(data, size)))
         stop();

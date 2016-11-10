@@ -23,10 +23,10 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef Exception_h
-#define Exception_h
+#pragma once
 
-#include "Interpreter.h"
+#include "JSObject.h"
+#include "StackFrame.h"
 #include <wtf/Vector.h>
 
 namespace JSC {
@@ -76,5 +76,3 @@ private:
 };
 
 } // namespace JSC
-
-#endif // Exception_h

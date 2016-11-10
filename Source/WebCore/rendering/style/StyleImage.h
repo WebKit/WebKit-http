@@ -35,9 +35,11 @@
 namespace WebCore {
 
 class CachedImage;
+class CachedResourceLoader;
 class CSSValue;
 class RenderElement;
 class RenderObject;
+struct ResourceLoaderOptions;
 
 typedef const void* WrappedImagePtr;
 
@@ -45,14 +47,13 @@ class StyleImage : public RefCounted<StyleImage> {
 public:
     virtual ~StyleImage() { }
 
-    bool operator==(const StyleImage& other) const
-    {
-        return data() == other.data();
-    }
+    virtual bool operator==(const StyleImage& other) const = 0;
 
     virtual PassRefPtr<CSSValue> cssValue() const = 0;
 
-    virtual bool canRender(const RenderObject*, float /*multiplier*/) const { return true; }
+    virtual bool canRender(const RenderElement*, float /*multiplier*/) const { return true; }
+    virtual bool isPending() const = 0;
+    virtual void load(CachedResourceLoader&, const ResourceLoaderOptions&) = 0;
     virtual bool isLoaded() const { return true; }
     virtual bool errorOccurred() const { return false; }
     virtual FloatSize imageSize(const RenderElement*, float multiplier) const = 0;
@@ -70,18 +71,15 @@ public:
     virtual CachedImage* cachedImage() const { return 0; }
 
     ALWAYS_INLINE bool isCachedImage() const { return m_isCachedImage; }
-    ALWAYS_INLINE bool isPendingImage() const { return m_isPendingImage; }
     ALWAYS_INLINE bool isGeneratedImage() const { return m_isGeneratedImage; }
 
 protected:
     StyleImage()
         : m_isCachedImage(false)
-        , m_isPendingImage(false)
         , m_isGeneratedImage(false)
     {
     }
     bool m_isCachedImage : 1;
-    bool m_isPendingImage : 1;
     bool m_isGeneratedImage : 1;
 };
 

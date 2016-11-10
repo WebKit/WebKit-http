@@ -107,7 +107,7 @@ WebPageProxy* WebInspectorProxy::platformCreateInspectorPage()
         return 0;
 
     WKContextRef wkContext = toAPI(&inspectorProcessPool(inspectionLevel()));
-    WKRetainPtr<WKStringRef> wkGroupIdentifier = adoptWK(WKStringCreateWithUTF8CString(inspectorPageGroupIdentifier().utf8().data()));
+    WKRetainPtr<WKStringRef> wkGroupIdentifier = adoptWK(WKStringCreateWithUTF8CString(inspectorPageGroupIdentifierForPage(inspectedPage()).utf8().data()));
     WKPageGroupRef wkPageGroup = WKPageGroupCreateWithIdentifier(wkGroupIdentifier.get());
 
     WKRetainPtr<WKPageConfigurationRef> wkPageConfiguration = adoptWK(WKPageConfigurationCreate());
@@ -146,6 +146,10 @@ void WebInspectorProxy::platformDidClose()
     }
 }
 
+void WebInspectorProxy::platformDidCloseForCrash()
+{
+}
+
 void WebInspectorProxy::platformInvalidate()
 {
 }
@@ -156,6 +160,11 @@ void WebInspectorProxy::platformHide()
 }
 
 void WebInspectorProxy::platformBringToFront()
+{
+    notImplemented();
+}
+
+void WebInspectorProxy::platformBringInspectedPageToFront()
 {
     notImplemented();
 }

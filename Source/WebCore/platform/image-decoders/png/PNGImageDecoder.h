@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef PNGImageDecoder_h
-#define PNGImageDecoder_h
+#pragma once
 
 #include "ImageDecoder.h"
 #if ENABLE(APNG)
@@ -38,17 +37,17 @@ namespace WebCore {
     // This class decodes the PNG image format.
     class PNGImageDecoder final : public ImageDecoder {
     public:
-        PNGImageDecoder(ImageSource::AlphaOption, ImageSource::GammaAndColorProfileOption);
+        PNGImageDecoder(AlphaOption, GammaAndColorProfileOption);
         virtual ~PNGImageDecoder();
 
         // ImageDecoder
         String filenameExtension() const override { return "png"; }
 #if ENABLE(APNG)
-        size_t frameCount() override { return m_frameCount; }
-        int repetitionCount() const override { return m_playCount-1; }
+        size_t frameCount() const override { return m_frameCount; }
+        RepetitionCount repetitionCount() const override { return m_playCount-1; }
 #endif
         bool isSizeAvailable() override;
-        bool setSize(unsigned width, unsigned height) override;
+        bool setSize(const IntSize&) override;
         ImageFrame* frameBufferAtIndex(size_t index) override;
         // CAUTION: setFailed() deletes |m_reader|.  Be careful to avoid
         // accessing deleted memory, especially when calling this from inside
@@ -73,7 +72,7 @@ namespace WebCore {
                 return false;
 
             for (auto& imageFrame : m_frameBufferCache) {
-                if (imageFrame.status() != ImageFrame::FrameComplete)
+                if (!imageFrame.isComplete())
                     return false;
             }
 
@@ -82,7 +81,7 @@ namespace WebCore {
 
         bool isCompleteAtIndex(size_t index)
         {
-            return (index < m_frameBufferCache.size() && m_frameBufferCache[index].status() == ImageFrame::FrameComplete);
+            return (index < m_frameBufferCache.size() && m_frameBufferCache[index].isComplete());
         }
 
     private:
@@ -130,5 +129,3 @@ namespace WebCore {
     };
 
 } // namespace WebCore
-
-#endif

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # Copyright (c) 2011 Google Inc. All rights reserved.
 # Copyright (c) 2012 Intel Corporation. All rights reserved.
-# Copyright (c) 2013, 2014 Apple Inc. All rights reserved.
+# Copyright (c) 2013, 2014, 2016 Apple Inc. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are
@@ -67,8 +67,7 @@ class Templates:
     HeaderSkeleton = (
     """${licenseBlock}
 
-#ifndef ${headerGuard}
-#define ${headerGuard}
+#pragma once
 
 #if ${guardCondition}
 ${includes}
@@ -81,7 +80,7 @@ ${inputForwardDeclarations}
 
 namespace ${traitsNamespace} {
 ${inputTraitDeclarations}
-${enumTraitDeclarations}
+${enumerableTypeTraitDeclarations}
 } // namespace ${traitsNamespace}
 
 namespace ${inputsNamespace} {
@@ -93,8 +92,6 @@ ${inputTypeTraitDeclarations}
 ${forEachMacro}
 
 #endif // ${guardCondition}
-
-#endif // ${filename}_h
 """)
 
     InputTraitsDeclaration = (
@@ -111,20 +108,12 @@ ${forEachMacro}
     static bool isType(const NondeterministicInputBase& input) { return input.type() == InputTraits<${qualifiedInputName}>::type(); }
 SPECIALIZE_TYPE_TRAITS_END()""")
 
-    EnumTraitDeclaration = (
+    EnumerableTypeTraitDeclaration = (
     """template<> ${structOrClass} EncodingTraits<${encodingTypeArgument}> {
-    typedef ${enumType} DecodedType;
+    typedef ${enumerableType} DecodedType;
 
-    static EncodedValue encodeValue(const ${enumType}& value);
-    static bool decodeValue(EncodedValue&, ${enumType}& value);
-};""")
-
-    EnumClassTraitDeclaration = (
-    """template<> ${structOrClass} EncodingTraits<${encodingTypeArgument}> {
-    typedef ${enumType} DecodedType;
-
-    static EncodedValue encodeValue(const ${enumType}& value);
-    static bool decodeValue(EncodedValue&, ${enumType}& value);
+    static EncodedValue encodeValue(const ${enumerableType}& value);
+    static bool decodeValue(EncodedValue&, ${enumerableType}& value);
 };""")
 
     InputClassDeclaration = (
@@ -152,7 +141,7 @@ ${inputClassImplementations}
 
 namespace ${traitsNamespace} {
 ${inputTraitImplementations}
-${enumTraitImplementations}
+${enumerableTypeTraitImplementations}
 } // namespace ${traitsNamespace}
 
 #endif // ${guardCondition}
@@ -177,8 +166,8 @@ ${decodeSteps}
     return true;
 }""")
 
-    EnumClassTraitImplementation = (
-    """EncodedValue EncodingTraits<${encodingTypeArgument}>::encodeValue(const ${enumType}& enumValue)
+    EnumClassTypeTraitImplementation = (
+    """EncodedValue EncodingTraits<${encodingTypeArgument}>::encodeValue(const ${enumerableType}& enumValue)
 {
     switch (enumValue) {
 ${encodeCases}
@@ -186,31 +175,31 @@ ${encodeCases}
     }
 }
 
-bool EncodingTraits<${encodingTypeArgument}>::decodeValue(EncodedValue& encodedValue, ${enumType}& enumValue)
+bool EncodingTraits<${encodingTypeArgument}>::decodeValue(EncodedValue& encodedValue, ${enumerableType}& enumValue)
 {
     String enumString = encodedValue.convertTo<String>();
 ${decodeCases}
     return false;
 }""")
 
-    EnumClassEncodeCase = (
+    EnumClassTypeEncodeCase = (
     """    case ${qualifiedEnumValue}: return EncodedValue::createString("${enumStringValue}");""")
 
-    EnumClassDecodeCase = (
+    EnumClassTypeDecodeCase = (
     """    if (enumString == "${enumStringValue}") {
         enumValue = ${qualifiedEnumValue};
         return true;
     }""")
 
-    EnumTraitImplementation = (
-    """EncodedValue EncodingTraits<${encodingTypeArgument}>::encodeValue(const ${enumType}& enumValue)
+    EnumTypeTraitImplementation = (
+    """EncodedValue EncodingTraits<${encodingTypeArgument}>::encodeValue(const ${enumerableType}& enumValue)
 {
     EncodedValue encodedValue = EncodedValue::createArray();
 ${encodeCases}
     return encodedValue;
 }
 
-bool EncodingTraits<${encodingTypeArgument}>::decodeValue(EncodedValue& encodedValue, ${enumType}& enumValue)
+bool EncodingTraits<${encodingTypeArgument}>::decodeValue(EncodedValue& encodedValue, ${enumerableType}& enumValue)
 {
     Vector<String> enumStrings;
     if (!EncodingTraits<Vector<String>>::decodeValue(encodedValue, enumStrings))
@@ -223,16 +212,47 @@ ${decodeCases}
     return true;
 }""")
 
-    EnumEncodeCase = (
+    EnumTypeEncodeCase = (
     """    if (enumValue & ${qualifiedEnumValue}) {
         encodedValue.append<String>(ASCIILiteral("${enumStringValue}"));
         if (enumValue == ${qualifiedEnumValue})
             return encodedValue;
     }""")
 
-    EnumDecodeCase = (
+    EnumTypeDecodeCase = (
     """        ${branchKeyword} (enumString == "${enumStringValue}")
             enumValue = static_cast<${qualifiedEnumName}>(enumValue | ${qualifiedEnumValue});""")
+
+    OptionSetTypeTraitImplementation = (
+    """EncodedValue EncodingTraits<${encodingTypeArgument}>::encodeValue(const ${enumerableType}& enumValue)
+{
+    EncodedValue encodedValue = EncodedValue::createArray();
+${encodeCases}
+
+    return encodedValue;
+}
+
+bool EncodingTraits<${encodingTypeArgument}>::decodeValue(EncodedValue& encodedValue, ${enumerableType}& enumValue)
+{
+    Vector<String> enumStrings;
+    if (!EncodingTraits<Vector<String>>::decodeValue(encodedValue, enumStrings))
+        return false;
+
+    for (const String& enumString : enumStrings) {
+${decodeCases}
+    }
+
+    return true;
+}""")
+
+    OptionSetTypeEncodeCase = (
+    """    if (enumValue.contains(${qualifiedEnumValue}))
+        encodedValue.append<String>(ASCIILiteral("${enumStringValue}"));""")
+
+    OptionSetTypeDecodeCase = (
+    """        ${branchKeyword} (enumString == "${enumStringValue}")
+            enumValue |= ${qualifiedEnumValue};""")
+
 
     InputClassImplementation = (
     """${inputName}::${inputName}(${constructorFormalsList})

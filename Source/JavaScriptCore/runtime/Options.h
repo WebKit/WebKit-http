@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef Options_h
-#define Options_h
+#pragma once
 
 #include "GCLogging.h"
 #include "JSExportMacros.h"
@@ -182,6 +181,14 @@ typedef const char* optionString;
     v(bool, testTheFTL, false, Normal, nullptr) \
     v(bool, verboseSanitizeStack, false, Normal, nullptr) \
     v(bool, useGenerationalGC, true, Normal, nullptr) \
+    v(bool, useConcurrentBarriers, true, Normal, nullptr) \
+    v(bool, forceFencedBarrier, false, Normal, nullptr) \
+    v(bool, scribbleFreeCells, false, Normal, nullptr) \
+    v(double, sizeClassProgression, 1.4, Normal, nullptr) \
+    v(unsigned, largeAllocationCutoff, 100000, Normal, nullptr) \
+    v(bool, dumpSizeClasses, false, Normal, nullptr) \
+    v(bool, useBumpAllocator, true, Normal, nullptr) \
+    v(bool, stealEmptyBlocksFromOtherAllocators, true, Normal, nullptr) \
     v(bool, eagerlyUpdateTopCallFrame, false, Normal, nullptr) \
     \
     v(bool, useOSREntryToDFG, true, Normal, nullptr) \
@@ -297,7 +304,6 @@ typedef const char* optionString;
     v(unsigned, numberOfGCMarkers, computeNumberOfGCMarkers(7), Normal, nullptr) \
     v(unsigned, opaqueRootMergeThreshold, 1000, Normal, nullptr) \
     v(double, minHeapUtilization, 0.8, Normal, nullptr) \
-    v(double, minCopiedBlockUtilization, 0.9, Normal, nullptr) \
     v(double, minMarkedBlockUtilization, 0.9, Normal, nullptr) \
     v(unsigned, slowPathAllocsBetweenGCs, 0, Normal, "force a GC on every Nth slow path alloc, where N is specified by this option") \
     v(bool, deferGCShouldCollectWithProbability, false, Normal, "If true, we perform a collection based on flipping a coin according the probability in the 'deferGCProbability' option when DeferGC is destructed.") \
@@ -341,6 +347,8 @@ typedef const char* optionString;
     v(bool, useExceptionFuzz, false, Normal, nullptr) \
     v(unsigned, fireExceptionFuzzAt, 0, Normal, nullptr) \
     v(bool, validateDFGExceptionHandling, false, Normal, "Causes the DFG to emit code validating exception handling for each node that can exit") /* This is true by default on Debug builds */\
+    v(bool, dumpSimulatedThrows, false, Normal, "Dumps the call stack at each simulated throw for exception scope verification") \
+    v(bool, validateExceptionChecks, false, Normal, "Verifies that needed exception checks are performed.") \
     \
     v(bool, useExecutableAllocationFuzz, false, Normal, nullptr) \
     v(unsigned, fireExecutableAllocationFuzzAt, 0, Normal, nullptr) \
@@ -381,6 +389,7 @@ typedef const char* optionString;
     v(optionString, llintStatsFile, nullptr, Configurable, "File to collect LLInt statistics in") \
     \
     v(bool, useSourceProviderCache, true, Normal, "If false, the parser will not use the source provider cache. It's good to verify everything works when this is false. Because the cache is so successful, it can mask bugs.") \
+    v(bool, useCodeCache, true, Normal, "If false, the unlinked byte code cache will not be used.") \
 
 enum OptionEquivalence {
     SameOption,
@@ -633,5 +642,3 @@ inline GCLogging::Level& Option::gcLogLevelVal()
 }
 
 } // namespace JSC
-
-#endif // Options_h

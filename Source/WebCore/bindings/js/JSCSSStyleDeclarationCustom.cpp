@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2007, 2008, 2009, 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2007-2009, 2013, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,10 +29,15 @@
 #include "CSSParser.h"
 #include "CSSPrimitiveValue.h"
 #include "CSSPropertyNames.h"
+#include "CSSRule.h"
+#include "CSSStyleDeclaration.h"
+#include "CSSStyleSheet.h"
 #include "CSSValue.h"
 #include "HashTools.h"
+#include "JSCSSStyleDeclaration.h"
 #include "JSCSSValue.h"
 #include "JSNode.h"
+#include "JSStyleSheetCustom.h"
 #include "RuntimeEnabledFeatures.h"
 #include "Settings.h"
 #include "StyleProperties.h"
@@ -47,6 +52,17 @@
 using namespace JSC;
 
 namespace WebCore {
+
+void* root(CSSStyleDeclaration* style)
+{
+    if (auto* parentRule = style->parentRule())
+        return root(parentRule);
+    if (auto* styleSheet = style->parentStyleSheet())
+        return root(styleSheet);
+    if (auto* parentElement = style->parentElement())
+        return root(parentElement);
+    return style;
+}
 
 void JSCSSStyleDeclaration::visitAdditionalChildren(SlotVisitor& visitor)
 {
@@ -348,12 +364,14 @@ bool JSCSSStyleDeclaration::putDelegate(ExecState* exec, PropertyName propertyNa
 
 JSValue JSCSSStyleDeclaration::getPropertyCSSValue(ExecState& state)
 {
+    VM& vm = state.vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     if (UNLIKELY(state.argumentCount() < 1))
-        return state.vm().throwException(&state, createNotEnoughArgumentsError(&state));
+        return throwException(&state, scope, createNotEnoughArgumentsError(&state));
 
     String propertyName = state.uncheckedArgument(0).toWTFString(&state);
-    if (state.hadException())
-        return jsUndefined();
+    RETURN_IF_EXCEPTION(scope, JSValue());
 
     RefPtr<CSSValue> cssValue = wrapped().getPropertyCSSValue(propertyName);
     if (!cssValue)

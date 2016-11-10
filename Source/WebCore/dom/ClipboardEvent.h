@@ -28,38 +28,32 @@
 
 namespace WebCore {
 
-    class DataTransfer;
+class DataTransfer;
 
-    struct ClipboardEventInit : public EventInit {
-        ClipboardEventInit();
-        RefPtr<DataTransfer> dataTransfer;
+class ClipboardEvent final : public Event {
+public:
+    virtual ~ClipboardEvent();
+
+    struct Init : EventInit {
+        RefPtr<DataTransfer> clipboardData;
     };
 
-    class ClipboardEvent final : public Event {
-    public:
-        virtual ~ClipboardEvent();
+    static Ref<ClipboardEvent> create(const AtomicString& type, const Init& init, IsTrusted isTrusted = IsTrusted::No)
+    {
+        auto event = adoptRef(*new ClipboardEvent(type, init, isTrusted));
+        return event;
+    }
 
-        static Ref<ClipboardEvent> create(const AtomicString& type, bool canBubbleArg, bool cancelableArg, DataTransfer* clipboardArg)
-        {
-            return adoptRef(*new ClipboardEvent(type, canBubbleArg, cancelableArg, clipboardArg));
-        }
+    DataTransfer* clipboardData() const { return m_clipboardData.get(); }
 
-        static Ref<ClipboardEvent> createForBindings(const AtomicString& type, ClipboardEventInit& initializer)
-        {
-            return adoptRef(*new ClipboardEvent(type, initializer));
-        }
+private:
+    ClipboardEvent(const AtomicString& type, const Init&, IsTrusted);
 
-        DataTransfer* internalDataTransfer() const override { return m_dataTransfer.get(); }
+    EventInterface eventInterface() const final;
+    bool isClipboardEvent() const final;
 
-    private:
-        ClipboardEvent(const AtomicString& type, bool canBubbleArg, bool cancelableArg, DataTransfer*);
-        ClipboardEvent(const AtomicString& type, ClipboardEventInit&);
-
-        EventInterface eventInterface() const override;
-        bool isClipboardEvent() const override;
-
-        RefPtr<DataTransfer> m_dataTransfer;
-    };
+    RefPtr<DataTransfer> m_clipboardData;
+};
 
 } // namespace WebCore
 

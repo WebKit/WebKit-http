@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009-2010, 2014-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2009-2010, 2014-2016 Apple Inc. All rights reserved.
  * Copyright (C) 2010 University of Szeged
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,8 +24,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef MacroAssemblerARMv7_h
-#define MacroAssemblerARMv7_h
+#pragma once
 
 #if ENABLE(ASSEMBLER)
 
@@ -460,6 +459,11 @@ public:
     void sub32(RegisterID src, RegisterID dest)
     {
         m_assembler.sub(dest, dest, src);
+    }
+
+    void sub32(RegisterID left, RegisterID right, RegisterID dest)
+    {
+        m_assembler.sub(dest, left, right);
     }
 
     void sub32(TrustedImm32 imm, RegisterID dest)
@@ -1350,6 +1354,11 @@ public:
         return ARMv7Assembler::maxJumpReplacementSize();
     }
 
+    static ptrdiff_t patchableJumpSize()
+    {
+        return ARMv7Assembler::patchableJumpSize();
+    }
+
     // Forwards / external control flow operations:
     //
     // This set of jump and conditional branch operations return a Jump
@@ -2123,5 +2132,3 @@ private:
 } // namespace JSC
 
 #endif // ENABLE(ASSEMBLER)
-
-#endif // MacroAssemblerARMv7_h

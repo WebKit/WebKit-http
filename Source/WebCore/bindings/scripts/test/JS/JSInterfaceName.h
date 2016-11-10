@@ -28,7 +28,7 @@ namespace WebCore {
 
 class JSInterfaceName : public JSDOMWrapper<InterfaceName> {
 public:
-    typedef JSDOMWrapper<InterfaceName> Base;
+    using Base = JSDOMWrapper<InterfaceName>;
     static JSInterfaceName* create(JSC::Structure* structure, JSDOMGlobalObject* globalObject, Ref<InterfaceName>&& impl)
     {
         JSInterfaceName* ptr = new (NotNull, JSC::allocateCell<JSInterfaceName>(globalObject->vm().heap)) JSInterfaceName(structure, *globalObject, WTFMove(impl));
@@ -85,5 +85,8 @@ inline JSC::JSValue toJS(JSC::ExecState* state, JSDOMGlobalObject* globalObject,
 JSC::JSValue toJSNewlyCreated(JSC::ExecState*, JSDOMGlobalObject*, Ref<InterfaceName>&&);
 inline JSC::JSValue toJSNewlyCreated(JSC::ExecState* state, JSDOMGlobalObject* globalObject, RefPtr<InterfaceName>&& impl) { return impl ? toJSNewlyCreated(state, globalObject, impl.releaseNonNull()) : JSC::jsNull(); }
 
+template<> struct JSDOMWrapperConverterTraits<InterfaceName> {
+    using WrapperClass = JSInterfaceName;
+};
 
 } // namespace WebCore

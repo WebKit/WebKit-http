@@ -36,7 +36,13 @@
 
 namespace WebCore {
 
-#if !PLATFORM(IOS) && !PLATFORM(MAC)
+#if !PLATFORM(MAC)
+
+void PlatformMediaSessionManager::updateNowPlayingInfoIfNecessary()
+{
+}
+
+#if !PLATFORM(IOS)
 static PlatformMediaSessionManager* platformMediaSessionManager = nullptr;
 
 PlatformMediaSessionManager& PlatformMediaSessionManager::sharedManager()
@@ -50,7 +56,9 @@ PlatformMediaSessionManager* PlatformMediaSessionManager::sharedManagerIfExists(
 {
     return platformMediaSessionManager;
 }
-#endif
+#endif // !PLATFORM(IOS)
+
+#endif // !PLATFORM(MAC)
 
 PlatformMediaSessionManager::PlatformMediaSessionManager()
     : m_systemSleepListener(SystemSleepListener::create(*this))
@@ -280,13 +288,14 @@ PlatformMediaSession* PlatformMediaSessionManager::currentSession() const
     return m_sessions[0];
 }
 
-PlatformMediaSession* PlatformMediaSessionManager::currentSessionMatching(std::function<bool(const PlatformMediaSession &)> filter)
+Vector<PlatformMediaSession*> PlatformMediaSessionManager::currentSessionsMatching(std::function<bool(const PlatformMediaSession &)> filter)
 {
+    Vector<PlatformMediaSession*> matchingSessions;
     for (auto& session : m_sessions) {
         if (filter(*session))
-            return session;
+            matchingSessions.append(session);
     }
-    return nullptr;
+    return matchingSessions;
 }
     
 bool PlatformMediaSessionManager::sessionCanLoadMedia(const PlatformMediaSession& session) const

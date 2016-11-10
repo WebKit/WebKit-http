@@ -44,7 +44,6 @@ class BuiltinsInternalsWrapperHeaderGenerator(BuiltinsGenerator):
     def generate_output(self):
         args = {
             'namespace': self.model().framework.setting('namespace'),
-            'headerGuard': self.output_filename().replace('.', '_'),
         }
 
         sections = []
@@ -61,9 +60,8 @@ class BuiltinsInternalsWrapperHeaderGenerator(BuiltinsGenerator):
 
     def generate_secondary_header_includes(self):
         header_includes = [
-            (["WebCore"],
-                ("JavaScriptCore", "runtime/VM.h"),
-            ),
+            (["WebCore"], ("JavaScriptCore", "heap/WeakInlines.h")),
+            (["WebCore"], ("JavaScriptCore", "runtime/VM.h"))
         ]
         for object in self.internals:
             header_includes.append((["WebCore"], ("WebCore", object.object_name + "Builtins.h")))

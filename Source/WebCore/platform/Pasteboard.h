@@ -32,11 +32,6 @@
 #include <wtf/Vector.h>
 #include <wtf/text/WTFString.h>
 
-#if PLATFORM(GTK)
-typedef struct _GtkClipboard GtkClipboard;
-#include <wtf/glib/GRefPtr.h>
-#endif
-
 #if PLATFORM(IOS)
 OBJC_CLASS NSArray;
 OBJC_CLASS NSString;
@@ -55,12 +50,12 @@ typedef struct HWND__* HWND;
 
 namespace WebCore {
 
-class DataObjectGtk;
 class DocumentFragment;
 class DragData;
 class Element;
 class Frame;
 class Range;
+class SelectionData;
 class SharedBuffer;
 
 enum ShouldSerializeSelectedTextForDataTransfer { DefaultSelectedTextType, IncludeImageAltTextForDataTransfer };
@@ -83,7 +78,6 @@ struct PasteboardWebContent {
     bool canSmartCopyOrDelete;
     String text;
     String markup;
-    GRefPtr<GClosure> callback;
 #endif
 #if PLATFORM(WPE)
     String text;
@@ -106,6 +100,9 @@ struct PasteboardImage {
     WEBCORE_EXPORT PasteboardImage();
     WEBCORE_EXPORT ~PasteboardImage();
     RefPtr<Image> image;
+#if PLATFORM(MAC)
+    RefPtr<SharedBuffer> dataInWebArchiveFormat;
+#endif
 #if !(PLATFORM(EFL) || PLATFORM(WIN))
     PasteboardURL url;
 #endif
@@ -147,8 +144,8 @@ public:
     ~Pasteboard();
 
 #if PLATFORM(GTK)
-    explicit Pasteboard(RefPtr<DataObjectGtk>&&);
-    explicit Pasteboard(GtkClipboard*);
+    explicit Pasteboard(const String& name);
+    explicit Pasteboard(SelectionData&);
 #endif
 
 #if PLATFORM(WIN)
@@ -197,7 +194,7 @@ public:
 #endif
 
 #if PLATFORM(GTK)
-    DataObjectGtk* dataObject() const;
+    const SelectionData& selectionData() const;
     static std::unique_ptr<Pasteboard> createForGlobalSelection();
 #endif
 
@@ -230,8 +227,10 @@ private:
 #endif
 
 #if PLATFORM(GTK)
-    RefPtr<DataObjectGtk> m_dataObject;
-    GtkClipboard* m_gtkClipboard;
+    void writeToClipboard();
+    void readFromClipboard();
+    Ref<SelectionData> m_selectionData;
+    String m_name;
 #endif
 
 #if PLATFORM(IOS)

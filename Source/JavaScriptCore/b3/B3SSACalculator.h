@@ -23,15 +23,14 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef B3SSACalculator_h
-#define B3SSACalculator_h
+#pragma once
 
 #if ENABLE(B3_JIT)
 
 #include "B3Dominators.h"
-#include "B3IndexMap.h"
 #include "B3ProcedureInlines.h"
 #include <wtf/Bag.h>
+#include <wtf/IndexMap.h>
 #include <wtf/SegmentedVector.h>
 
 namespace JSC { namespace B3 {
@@ -166,6 +165,3 @@ private:
 } } // namespace JSC::B3
 
 #endif // ENABLE(B3_JIT)
-
-#endif // B3SSACalculator_h
-

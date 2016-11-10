@@ -166,7 +166,7 @@ static const struct wl_pointer_listener g_pointerListener = {
         seatData.serial = serial;
         auto it = seatData.inputClients.find(surface);
         if (it != seatData.inputClients.end() && seatData.pointer.target.first == it->first)
-            seatData.pointer.target = { };
+            seatData.pointer.target = { nullptr, nullptr };
     },
     // motion
     [](void* data, struct wl_pointer*, uint32_t time, wl_fixed_t fixedX, wl_fixed_t fixedY)
@@ -311,7 +311,7 @@ static const struct wl_keyboard_listener g_keyboardListener = {
         seatData.serial = serial;
         auto it = seatData.inputClients.find(surface);
         if (it != seatData.inputClients.end() && seatData.keyboard.target.first == it->first)
-            seatData.keyboard.target = { };
+            seatData.keyboard.target = { nullptr, nullptr };
     },
     // key
     [](void* data, struct wl_keyboard*, uint32_t serial, uint32_t time, uint32_t key, uint32_t state)
@@ -610,9 +610,9 @@ void Display::unregisterInputClient(struct wl_surface* surface)
     assert(it != m_seatData.inputClients.end());
 
     if (m_seatData.pointer.target.first == it->first)
-        m_seatData.pointer.target = { };
+        m_seatData.pointer.target = { nullptr, nullptr };
     if (m_seatData.keyboard.target.first == it->first)
-        m_seatData.keyboard.target = { };
+        m_seatData.keyboard.target = { nullptr, nullptr };
     m_seatData.inputClients.erase(it);
 }
 

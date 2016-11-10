@@ -100,25 +100,23 @@ void Database::addCompilation(CodeBlock* codeBlock, PassRefPtr<Compilation> pass
 JSValue Database::toJS(ExecState* exec) const
 {
     VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     JSObject* result = constructEmptyObject(exec);
     
     JSArray* bytecodes = constructEmptyArray(exec, 0);
-    if (UNLIKELY(vm.exception()))
-        return jsUndefined();
+    RETURN_IF_EXCEPTION(scope, JSValue());
     for (unsigned i = 0; i < m_bytecodes.size(); ++i)
         bytecodes->putDirectIndex(exec, i, m_bytecodes[i].toJS(exec));
     result->putDirect(vm, exec->propertyNames().bytecodes, bytecodes);
     
     JSArray* compilations = constructEmptyArray(exec, 0);
-    if (UNLIKELY(vm.exception()))
-        return jsUndefined();
+    RETURN_IF_EXCEPTION(scope, JSValue());
     for (unsigned i = 0; i < m_compilations.size(); ++i)
         compilations->putDirectIndex(exec, i, m_compilations[i]->toJS(exec));
     result->putDirect(vm, exec->propertyNames().compilations, compilations);
     
     JSArray* events = constructEmptyArray(exec, 0);
-    if (UNLIKELY(vm.exception()))
-        return jsUndefined();
+    RETURN_IF_EXCEPTION(scope, JSValue());
     for (unsigned i = 0; i < m_events.size(); ++i)
         events->putDirectIndex(exec, i, m_events[i].toJS(exec));
     result->putDirect(vm, exec->propertyNames().events, events);
@@ -136,11 +134,17 @@ String Database::toJSON() const
 
 bool Database::save(const char* filename) const
 {
+    auto scope = DECLARE_CATCH_SCOPE(m_vm);
     auto out = FilePrintStream::open(filename, "w");
     if (!out)
         return false;
     
-    out->print(toJSON());
+    String data = toJSON();
+    if (UNLIKELY(scope.exception())) {
+        scope.clearException();
+        return false;
+    }
+    out->print(data);
     return true;
 }
 

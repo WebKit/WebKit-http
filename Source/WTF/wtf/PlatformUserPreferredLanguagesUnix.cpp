@@ -35,10 +35,10 @@ void setPlatformUserPreferredLanguagesChangedCallback(void (*)()) { }
 static String platformLanguage()
 {
     String localeDefault(setlocale(LC_CTYPE, nullptr));
-    if (localeDefault.isEmpty())
-        return String("c");
+    if (localeDefault.isEmpty() || equalIgnoringASCIICase(localeDefault, "C") || equalIgnoringASCIICase(localeDefault, "POSIX"))
+        return ASCIILiteral("en-US");
 
-    String normalizedDefault = localeDefault.convertToASCIILowercase();
+    String normalizedDefault = localeDefault;
     normalizedDefault.replace('_', '-');
     normalizedDefault.truncate(normalizedDefault.find('.'));
     return normalizedDefault;

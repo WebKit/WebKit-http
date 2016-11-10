@@ -30,9 +30,6 @@
 
 #include "APICast.h"
 #include "APIUtils.h"
-#include "ButterflyInlines.h"
-#include "CodeBlock.h"
-#include "CopiedSpaceInlines.h"
 #include "DateConstructor.h"
 #include "ErrorConstructor.h"
 #include "Exception.h"
@@ -41,6 +38,7 @@
 #include "InitializeThreading.h"
 #include "JSAPIWrapperObject.h"
 #include "JSArray.h"
+#include "JSCInlines.h"
 #include "JSCallbackConstructor.h"
 #include "JSCallbackFunction.h"
 #include "JSCallbackObject.h"
@@ -53,7 +51,6 @@
 #include "JSValueRef.h"
 #include "ObjectConstructor.h"
 #include "ObjectPrototype.h"
-#include "JSCInlines.h"
 #include "PropertyNameArray.h"
 #include "RegExpConstructor.h"
 
@@ -312,20 +309,24 @@ void JSObjectSetProperty(JSContextRef ctx, JSObjectRef object, JSStringRef prope
         return;
     }
     ExecState* exec = toJS(ctx);
-    JSLockHolder locker(exec);
+    VM& vm = exec->vm();
+    JSLockHolder locker(vm);
+    auto scope = DECLARE_CATCH_SCOPE(vm);
 
     JSObject* jsObject = toJS(object);
     Identifier name(propertyName->identifier(&exec->vm()));
     JSValue jsValue = toJS(exec, value);
 
-    if (attributes && !jsObject->hasProperty(exec, name)) {
-        PropertyDescriptor desc(jsValue, attributes);
-        jsObject->methodTable()->defineOwnProperty(jsObject, exec, name, desc, false);
-    } else {
-        PutPropertySlot slot(jsObject);
-        jsObject->methodTable()->put(jsObject, exec, name, jsValue, slot);
+    bool doesNotHaveProperty = attributes && !jsObject->hasProperty(exec, name);
+    if (LIKELY(!scope.exception())) {
+        if (doesNotHaveProperty) {
+            PropertyDescriptor desc(jsValue, attributes);
+            jsObject->methodTable()->defineOwnProperty(jsObject, exec, name, desc, false);
+        } else {
+            PutPropertySlot slot(jsObject);
+            jsObject->methodTable()->put(jsObject, exec, name, jsValue, slot);
+        }
     }
-
     handleExceptionIfNeeded(exec, exception);
 }
 

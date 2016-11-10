@@ -42,7 +42,7 @@ WebInspector.RenderingFrameTimelineRecord = class RenderingFrameTimelineRecord e
 
     static displayNameForTaskType(taskType)
     {
-        switch(taskType) {
+        switch (taskType) {
         case WebInspector.RenderingFrameTimelineRecord.TaskType.Script:
             return WebInspector.UIString("Script");
         case WebInspector.RenderingFrameTimelineRecord.TaskType.Layout:
@@ -56,11 +56,11 @@ WebInspector.RenderingFrameTimelineRecord = class RenderingFrameTimelineRecord e
 
     static taskTypeForTimelineRecord(record)
     {
-        switch(record.type) {
+        switch (record.type) {
         case WebInspector.TimelineRecord.Type.Script:
             return WebInspector.RenderingFrameTimelineRecord.TaskType.Script;
         case WebInspector.TimelineRecord.Type.Layout:
-            if (record.eventType  === WebInspector.LayoutTimelineRecord.EventType.Paint || record.eventType === WebInspector.LayoutTimelineRecord.EventType.Composite)
+            if (record.eventType === WebInspector.LayoutTimelineRecord.EventType.Paint || record.eventType === WebInspector.LayoutTimelineRecord.EventType.Composite)
                 return WebInspector.RenderingFrameTimelineRecord.TaskType.Paint;
             return WebInspector.RenderingFrameTimelineRecord.TaskType.Layout;
         default:

@@ -567,6 +567,7 @@ public:
     }
 
     bool operator!=(const FragmentForwardIterator& other) const { return m_fragmentIndex != other.m_fragmentIndex; }
+    bool operator==(const FragmentForwardIterator& other) const { return m_fragmentIndex == other.m_fragmentIndex; }
     unsigned operator*() const { return m_fragmentIndex; }
 
 private:
@@ -1095,7 +1096,7 @@ static void collectNonEmptyLeafRenderBlockFlows(const RenderObject& renderer, Ha
 static void collectNonEmptyLeafRenderBlockFlowsForCurrentPage(HashSet<const RenderBlockFlow*>& leafRenderers)
 {
     for (const auto* document : Document::allDocuments()) {
-        if (!document->renderView() || document->inPageCache())
+        if (!document->renderView() || document->pageCacheState() != Document::NotInPageCache)
             continue;
         if (!document->isHTMLDocument() && !document->isXHTMLDocument())
             continue;

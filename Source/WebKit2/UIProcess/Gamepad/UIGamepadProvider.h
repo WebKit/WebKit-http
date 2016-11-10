@@ -38,7 +38,7 @@ namespace WebKit {
 class UIGamepad;
 class WebPageProxy;
 class WebProcessPool;
-struct GamepadData;
+class GamepadData;
 
 class UIGamepadProvider : public WebCore::GamepadProviderClient {
 public:
@@ -52,6 +52,10 @@ public:
 
     Vector<GamepadData> gamepadStates() const;
 
+#if PLATFORM(COCOA)
+    static void setUsesGameControllerFramework();
+#endif
+
 private:
     friend NeverDestroyed<UIGamepadProvider>;
     UIGamepadProvider();
@@ -60,9 +64,7 @@ private:
     void startMonitoringGamepads();
     void stopMonitoringGamepads();
 
-    void platformStartMonitoringGamepads();
-    void platformStopMonitoringGamepads();
-    const Vector<WebCore::PlatformGamepad*>& platformGamepads();
+    void platformSetDefaultGamepadProvider();
     WebPageProxy* platformWebPageProxyForGamepadInput();
     void platformStopMonitoringInput();
     void platformStartMonitoringInput();

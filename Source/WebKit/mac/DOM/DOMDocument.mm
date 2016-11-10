@@ -46,7 +46,6 @@
 #import "DOMHTMLElementInternal.h"
 #import "DOMHTMLHeadElementInternal.h"
 #import "DOMHTMLScriptElementInternal.h"
-#import <WebCore/DOMImplementation.h>
 #import "DOMInternal.h"
 #import "DOMNodeInternal.h"
 #import "DOMNodeIteratorInternal.h"
@@ -147,9 +146,7 @@
 - (void)setXmlStandalone:(BOOL)newXmlStandalone
 {
     WebCore::JSMainThreadNullState state;
-    WebCore::ExceptionCode ec = 0;
-    IMPL->setXMLStandalone(newXmlStandalone, ec);
-    raiseOnDOMError(ec);
+    IMPL->setXMLStandalone(newXmlStandalone);
 }
 
 - (NSString *)documentURI
@@ -191,9 +188,7 @@
 - (void)setTitle:(NSString *)newTitle
 {
     WebCore::JSMainThreadNullState state;
-    WebCore::ExceptionCode ec = 0;
-    IMPL->setTitle(newTitle, ec);
-    raiseOnDOMError(ec);
+    IMPL->setTitle(newTitle);
 }
 
 - (NSString *)dir
@@ -315,8 +310,7 @@
 
 - (NSString *)defaultCharset
 {
-    WebCore::JSMainThreadNullState state;
-    return IMPL->defaultCharsetForBindings();
+    return IMPL->defaultCharsetForLegacyBindings();
 }
 
 - (NSString *)readyState

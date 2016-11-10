@@ -321,7 +321,7 @@ private:
             case AllocatePropertyStorage:
             case ReallocatePropertyStorage:
                 // These allocate but then run their own barrier.
-                insertBarrier(m_nodeIndex + 1, Edge(m_node->child1().node(), KnownCellUse));
+                insertBarrier(m_nodeIndex + 1, m_node->child1());
                 m_node->setEpoch(Epoch());
                 break;
                 
@@ -410,61 +410,6 @@ private:
             break;
         } }
         
-        // We don't need a store barrier if the base is at least as new as the child. For
-        // example this won't need a barrier:
-        //
-        // var o = {}
-        // var p = {}
-        // p.f = o
-        //
-        // This is stronger than the currentEpoch rule in considerBarrier(Edge), because it will
-        // also eliminate barriers in cases like this:
-        //
-        // var o = {} // o.epoch = 1, currentEpoch = 1
-        // var p = {} // o.epoch = 1, p.epoch = 2, currentEpoch = 2
-        // var q = {} // o.epoch = 1, p.epoch = 2, q.epoch = 3, currentEpoch = 3
-        // p.f = o // p.epoch >= o.epoch
-        //
-        // This relationship works because if it holds then we are in one of the following
-        // scenarios. Note that we don't know *which* of these scenarios we are in, but it's
-        // one of them (though without loss of generality, you can replace "a GC happened" with
-        // "many GCs happened").
-        //
-        // 1) There is no GC between the allocation/last-barrier of base, child and now. Then
-        //    we definitely don't need a barrier.
-        //
-        // 2) There was a GC after child was allocated but before base was allocated. Then we
-        //    don't need a barrier, because base is still a new object.
-        //
-        // 3) There was a GC after both child and base were allocated. Then they are both old.
-        //    We don't need barriers on stores of old into old. Note that in this case it
-        //    doesn't matter if there was also a GC between the allocation of child and base.
-        //
-        // Note that barriers will lift an object into the current epoch. This is sort of weird.
-        // It means that later if you store that object into some other object, and that other
-        // object was previously newer object, you'll think that you need a barrier. We could
-        // avoid this by tracking allocation epoch and barrier epoch separately. For now I think
-        // that this would be overkill. But this does mean that there are the following
-        // possibilities when this relationship holds:
-        //
-        // 4) Base is allocated first. A GC happens and base becomes old. Then we allocate
-        //    child. (Note that alternatively the GC could happen during the allocation of
-        //    child.) Then we run a barrier on base. Base will appear to be as new as child
-        //    (same epoch). At this point, we don't need another barrier on base.
-        //
-        // 5) Base is allocated first. Then we allocate child. Then we run a GC. Then we run a
-        //    barrier on base. Base will appear newer than child. We don't need a barrier
-        //    because both objects are old.
-        //
-        // Something we watch out for here is that the null epoch is a catch-all for objects
-        // allocated before we did any epoch tracking. Two objects being in the null epoch
-        // means that we don't know their epoch relationship.
-        if (!!base->epoch() && !!child->epoch() && base->epoch() >= child->epoch()) {
-            if (verbose)
-                dataLog("            Rejecting because of epoch ordering.\n");
-            return;
-        }
-
         considerBarrier(base);
     }
     
@@ -485,11 +430,16 @@ private:
         
         if (verbose)
             dataLog("            Inserting barrier.\n");
-        insertBarrier(m_nodeIndex, base);
+        insertBarrier(m_nodeIndex + 1, base);
     }
 
-    void insertBarrier(unsigned nodeIndex, Edge base, bool exitOK = true)
+    void insertBarrier(unsigned nodeIndex, Edge base)
     {
+        // This is just our way of saying that barriers are not redundant with each other according
+        // to forward analysis: if we proved one time that a barrier was necessary then it'll for
+        // sure be necessary next time.
+        base->setEpoch(Epoch());
+
         // If we're in global mode, we should only insert the barriers once we have converged.
         if (!reallyInsertBarriers())
             return;
@@ -497,19 +447,23 @@ private:
         // FIXME: We could support StoreBarrier(UntypedUse:). That would be sort of cool.
         // But right now we don't need it.
 
-        // If the original edge was unchecked, we should also not have a check. We may be in a context
-        // where checks are not allowed. If we ever did have to insert a barrier at an ExitInvalid
-        // context and that barrier needed a check, then we could make that work by hoisting the check.
-        // That doesn't happen right now.
-        if (base.useKind() != KnownCellUse) {
-            DFG_ASSERT(m_graph, m_node, m_node->origin.exitOK);
-            base.setUseKind(CellUse);
-        }
+        DFG_ASSERT(m_graph, m_node, isCell(base.useKind()));
         
-        m_insertionSet.insertNode(
-            nodeIndex, SpecNone, StoreBarrier, m_node->origin.takeValidExit(exitOK), base);
-
-        base->setEpoch(m_currentEpoch);
+        // Barriers are always inserted after the node that they service. Therefore, we always know
+        // that the thing is a cell now.
+        base.setUseKind(KnownCellUse);
+        
+        NodeOrigin origin = m_node->origin;
+        if (clobbersExitState(m_graph, m_node))
+            origin = origin.withInvalidExit();
+        
+        NodeType type;
+        if (Options::useConcurrentBarriers())
+            type = FencedStoreBarrier;
+        else
+            type = StoreBarrier;
+        
+        m_insertionSet.insertNode(nodeIndex, SpecNone, type, origin, base);
     }
     
     bool reallyInsertBarriers()

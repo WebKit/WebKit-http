@@ -89,6 +89,7 @@ list(APPEND WebKit2_SOURCES
     Shared/wpe/NativeWebWheelEventWPE.cpp
     Shared/wpe/ProcessExecutablePathWPE.cpp
     Shared/wpe/WebEventFactory.cpp
+    Shared/wpe/WebKit2InitializeWPE.cpp
 
     UIProcess/API/C/cairo/WKIconDatabaseCairo.cpp
 
@@ -106,6 +107,8 @@ list(APPEND WebKit2_SOURCES
     UIProcess/DefaultUndoController.cpp
     UIProcess/LegacySessionStateCodingNone.cpp
     UIProcess/WebResourceLoadStatisticsStore.cpp
+    UIProcess/WebTextChecker.cpp
+    UIProcess/WebTextCheckerClient.cpp
 
     UIProcess/InspectorServer/wpe/WebInspectorServerWPE.cpp
 
@@ -155,6 +158,7 @@ list(APPEND WebKit2_SOURCES
     WebProcess/WebCoreSupport/wpe/WebErrorsWPE.cpp
     WebProcess/WebCoreSupport/wpe/WebPopupMenuWPE.cpp
 
+    WebProcess/WebPage/CoordinatedGraphics/AcceleratedSurface.cpp
     WebProcess/WebPage/CoordinatedGraphics/AreaAllocator.cpp
     WebProcess/WebPage/CoordinatedGraphics/CompositingCoordinator.cpp
     WebProcess/WebPage/CoordinatedGraphics/CoordinatedLayerTreeHost.cpp
@@ -428,7 +432,6 @@ set(WPE_INSTALLED_WEBKIT_HEADERS
     ${WEBKIT2_DIR}/UIProcess/API/C/WKPageUIClient.h
     ${WEBKIT2_DIR}/UIProcess/API/C/WKPluginLoadPolicy.h
     ${WEBKIT2_DIR}/UIProcess/API/C/WKPreferencesRef.h
-    ${WEBKIT2_DIR}/UIProcess/API/C/WKSessionRef.h
     ${WEBKIT2_DIR}/UIProcess/API/C/WKSessionStateRef.h
     ${WEBKIT2_DIR}/UIProcess/API/C/WKUserContentControllerRef.h
     ${WEBKIT2_DIR}/UIProcess/API/C/WKUserScriptRef.h

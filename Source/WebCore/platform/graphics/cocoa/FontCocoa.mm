@@ -34,6 +34,7 @@
 #import "FontCache.h"
 #import "FontCascade.h"
 #import "FontDescription.h"
+#import "OpenTypeCG.h"
 #import "SharedBuffer.h"
 #import "WebCoreSystemInterface.h"
 #import <float.h>
@@ -46,7 +47,6 @@
 #import <AppKit/AppKit.h>
 #import <ApplicationServices/ApplicationServices.h>
 #else
-#import "FontServicesIOS.h"
 #import <CoreText/CoreText.h>
 #endif
 
@@ -56,11 +56,12 @@
 @end
 #endif
 
-#if USE(APPKIT)
-#import "OpenTypeCG.h"
-#endif
-
 namespace WebCore {
+
+static inline bool caseInsensitiveCompare(CFStringRef a, CFStringRef b)
+{
+    return a && CFStringCompare(a, b, kCFCompareCaseInsensitive) == kCFCompareEqualTo;
+}
 
 static bool fontHasVerticalGlyphs(CTFontRef ctFont)
 {
@@ -77,7 +78,7 @@ static bool fontHasVerticalGlyphs(CTFontRef ctFont)
     return false;
 }
 
-#if !USE(APPKIT)
+#if PLATFORM(IOS)
 bool fontFamilyShouldNotBeUsedForArabic(CFStringRef fontFamilyName)
 {
     if (!fontFamilyName)
@@ -88,13 +89,39 @@ bool fontFamilyShouldNotBeUsedForArabic(CFStringRef fontFamilyName)
     return (CFStringCompare(CFSTR("Times New Roman"), fontFamilyName, 0) == kCFCompareEqualTo)
         || (CFStringCompare(CFSTR("Arial"), fontFamilyName, 0) == kCFCompareEqualTo);
 }
+
+static const float kLineHeightAdjustment = 0.15f;
+
+static bool shouldUseAdjustment(CTFontRef font)
+{
+    RetainPtr<CFStringRef> familyName = adoptCF(CTFontCopyFamilyName(font));
+
+    if (!familyName || !CFStringGetLength(familyName.get()))
+        return false;
+
+    return caseInsensitiveCompare(familyName.get(), CFSTR("Times"))
+        || caseInsensitiveCompare(familyName.get(), CFSTR("Helvetica"))
+        || caseInsensitiveCompare(familyName.get(), CFSTR(".Helvetica NeueUI"));
+}
+
+#else
+
+static bool needsAscentAdjustment(CFStringRef familyName)
+{
+    return familyName && (caseInsensitiveCompare(familyName, CFSTR("Times"))
+        || caseInsensitiveCompare(familyName, CFSTR("Helvetica"))
+        || caseInsensitiveCompare(familyName, CFSTR("Courier")));
+}
+
 #endif
 
 void Font::platformInit()
 {
-    // FIXME: Unify these two codepaths
-#if USE(APPKIT)
+#if PLATFORM(IOS)
+    m_syntheticBoldOffset = m_platformData.syntheticBold() ? ceilf(m_platformData.size() / 24.0f) : 0.f;
+#else
     m_syntheticBoldOffset = m_platformData.syntheticBold() ? 1.0f : 0.f;
+#endif
 
 #if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED < 101100
     // Work around <rdar://problem/19433490>
@@ -103,65 +130,75 @@ void Font::platformInit()
     CTFontTransformGlyphs(m_platformData.ctFont(), dummyGlyphs, dummySize, 2, kCTFontTransformApplyPositioning | kCTFontTransformApplyShaping);
 #endif
 
-    unsigned unitsPerEm = CGFontGetUnitsPerEm(m_platformData.cgFont());
-
-    // Some fonts erroneously specify a positive descender value. We follow Core Text in assuming that
-    // such fonts meant the same distance, but in the reverse direction.
+    unsigned unitsPerEm = CTFontGetUnitsPerEm(m_platformData.font());
     float pointSize = m_platformData.size();
-    float ascent = scaleEmToUnits(CGFontGetAscent(m_platformData.cgFont()), unitsPerEm) * pointSize;
-    float descent = -scaleEmToUnits(-abs(CGFontGetDescent(m_platformData.cgFont())), unitsPerEm) * pointSize;
-    float capHeight = scaleEmToUnits(CGFontGetCapHeight(m_platformData.cgFont()), unitsPerEm) * pointSize;
-    
-    float lineGap = scaleEmToUnits(CGFontGetLeading(m_platformData.cgFont()), unitsPerEm) * pointSize;
+    CGFloat capHeight = CTFontGetCapHeight(m_platformData.font());
+    CGFloat lineGap = CTFontGetLeading(m_platformData.font());
+    CGFloat ascent = m_platformData.size() ? CTFontGetAscent(m_platformData.font()) : 0;
+    CGFloat descent = m_platformData.size() ? CTFontGetDescent(m_platformData.font()) : 0;
 
     // The Open Font Format describes the OS/2 USE_TYPO_METRICS flag as follows:
     // "If set, it is strongly recommended to use OS/2.sTypoAscender - OS/2.sTypoDescender+ OS/2.sTypoLineGap as a value for default line spacing for this font."
     // On OS X, we only apply this rule in the important case of fonts with a MATH table.
     if (OpenType::fontHasMathTable(m_platformData.ctFont())) {
         short typoAscent, typoDescent, typoLineGap;
-        if (OpenType::tryGetTypoMetrics(m_platformData.cgFont(), typoAscent, typoDescent, typoLineGap)) {
+        if (OpenType::tryGetTypoMetrics(m_platformData.font(), typoAscent, typoDescent, typoLineGap)) {
             ascent = scaleEmToUnits(typoAscent, unitsPerEm) * pointSize;
             descent = -scaleEmToUnits(typoDescent, unitsPerEm) * pointSize;
             lineGap = scaleEmToUnits(typoLineGap, unitsPerEm) * pointSize;
         }
     }
 
+    auto familyName = adoptCF(CTFontCopyFamilyName(m_platformData.font()));
+#if PLATFORM(MAC)
     // We need to adjust Times, Helvetica, and Courier to closely match the
     // vertical metrics of their Microsoft counterparts that are the de facto
     // web standard. The AppKit adjustment of 20% is too big and is
     // incorrectly added to line spacing, so we use a 15% adjustment instead
     // and add it to the ascent.
-    RetainPtr<CFStringRef> familyName = adoptCF(CTFontCopyFamilyName(m_platformData.font()));
-    if (!m_isCustomFont && familyName && (CFStringCompare(familyName.get(), CFSTR("Times"), kCFCompareCaseInsensitive) == kCFCompareEqualTo
-        || CFStringCompare(familyName.get(), CFSTR("Helvetica"), kCFCompareCaseInsensitive) == kCFCompareEqualTo
-        || CFStringCompare(familyName.get(), CFSTR("Courier"), kCFCompareCaseInsensitive) == kCFCompareEqualTo))
-        ascent += floorf(((ascent + descent) * 0.15f) + 0.5f);
+    if (!m_isCustomFont && needsAscentAdjustment(familyName.get()))
+        ascent += std::round((ascent + descent) * 0.15f);
+#endif
 
-    // Compute and store line spacing, before the line metrics hacks are applied.
-    m_fontMetrics.setLineSpacing(lroundf(ascent) + lroundf(descent) + lroundf(lineGap));
+    // Compute line spacing before the line metrics hacks are applied.
+    float lineSpacing = lroundf(ascent) + lroundf(descent) + lroundf(lineGap);
 
+#if PLATFORM(MAC)
     // Hack Hiragino line metrics to allow room for marked text underlines.
     // <rdar://problem/5386183>
     if (descent < 3 && lineGap >= 3 && familyName && CFStringHasPrefix(familyName.get(), CFSTR("Hiragino"))) {
         lineGap -= 3 - descent;
         descent = 3;
     }
+#endif
     
     if (platformData().orientation() == Vertical && !isTextOrientationFallback())
         m_hasVerticalGlyphs = fontHasVerticalGlyphs(m_platformData.ctFont());
 
-    float xHeight;
+#if PLATFORM(IOS)
+    CGFloat adjustment = shouldUseAdjustment(m_platformData.font()) ? ceil((ascent + descent) * kLineHeightAdjustment) : 0;
 
-    if (platformData().orientation() == Horizontal) {
-        // Measure the actual character "x", since it's possible for it to extend below the baseline, and we need the
-        // reported x-height to only include the portion of the glyph that is above the baseline.
-        NSGlyph xGlyph = glyphForCharacter('x');
-        if (xGlyph)
-            xHeight = -CGRectGetMinY(platformBoundsForGlyph(xGlyph));
-        else
-            xHeight = scaleEmToUnits(CGFontGetXHeight(m_platformData.cgFont()), unitsPerEm) * pointSize;
-    } else
-        xHeight = verticalRightOrientationFont().fontMetrics().xHeight();
+    lineGap = ceilf(lineGap);
+    lineSpacing = ceil(ascent) + adjustment + ceil(descent) + lineGap;
+    ascent = ceilf(ascent + adjustment);
+    descent = ceilf(descent);
+
+    m_shouldNotBeUsedForArabic = fontFamilyShouldNotBeUsedForArabic(adoptCF(CTFontCopyFamilyName(m_platformData.font())).get());
+#endif
+
+    CGFloat xHeight = 0;
+    if (m_platformData.size()) {
+        if (platformData().orientation() == Horizontal) {
+            // Measure the actual character "x", since it's possible for it to extend below the baseline, and we need the
+            // reported x-height to only include the portion of the glyph that is above the baseline.
+            Glyph xGlyph = glyphForCharacter('x');
+            if (xGlyph)
+                xHeight = -CGRectGetMinY(platformBoundsForGlyph(xGlyph));
+            else
+                xHeight = CTFontGetXHeight(m_platformData.font());
+        } else
+            xHeight = verticalRightOrientationFont().fontMetrics().xHeight();
+    }
 
     m_fontMetrics.setUnitsPerEm(unitsPerEm);
     m_fontMetrics.setAscent(ascent);
@@ -169,25 +206,7 @@ void Font::platformInit()
     m_fontMetrics.setCapHeight(capHeight);
     m_fontMetrics.setLineGap(lineGap);
     m_fontMetrics.setXHeight(xHeight);
-
-#else
-
-    m_syntheticBoldOffset = m_platformData.syntheticBold() ? ceilf(m_platformData.size()  / 24.0f) : 0.f;
-
-    CTFontRef ctFont = m_platformData.font();
-    FontServicesIOS fontService(ctFont);
-    m_fontMetrics.setUnitsPerEm(fontService.unitsPerEm());
-    m_fontMetrics.setAscent(ceilf(fontService.ascent()));
-    m_fontMetrics.setDescent(ceilf(fontService.descent()));
-    m_fontMetrics.setLineGap(fontService.lineGap());
-    m_fontMetrics.setLineSpacing(fontService.lineSpacing());
-    m_fontMetrics.setXHeight(fontService.xHeight());
-    m_fontMetrics.setCapHeight(fontService.capHeight());
-    m_shouldNotBeUsedForArabic = fontFamilyShouldNotBeUsedForArabic(adoptCF(CTFontCopyFamilyName(ctFont)).get());
-
-    if (platformData().orientation() == Vertical && !isTextOrientationFallback())
-        m_hasVerticalGlyphs = fontHasVerticalGlyphs(m_platformData.ctFont());
-#endif
+    m_fontMetrics.setLineSpacing(lineSpacing);
 }
 
 void Font::platformCharWidthInit()
@@ -196,14 +215,14 @@ void Font::platformCharWidthInit()
     m_maxCharWidth = 0;
     
 #if PLATFORM(MAC)
-    RetainPtr<CFDataRef> os2Table = adoptCF(CGFontCopyTableForTag(m_platformData.cgFont(), 'OS/2'));
+    auto os2Table = adoptCF(CTFontCopyTable(m_platformData.font(), kCTFontTableOS2, kCTFontTableOptionNoOptions));
     if (os2Table && CFDataGetLength(os2Table.get()) >= 4) {
         const UInt8* os2 = CFDataGetBytePtr(os2Table.get());
         SInt16 os2AvgCharWidth = os2[2] * 256 + os2[3];
         m_avgCharWidth = scaleEmToUnits(os2AvgCharWidth, m_fontMetrics.unitsPerEm()) * m_platformData.size();
     }
 
-    RetainPtr<CFDataRef> headTable = adoptCF(CGFontCopyTableForTag(m_platformData.cgFont(), 'head'));
+    auto headTable = adoptCF(CTFontCopyTable(m_platformData.font(), kCTFontTableHead, kCTFontTableOptionNoOptions));
     if (headTable && CFDataGetLength(headTable.get()) >= 42) {
         const UInt8* head = CFDataGetBytePtr(headTable.get());
         ushort uxMin = head[36] * 256 + head[37];
@@ -523,9 +542,12 @@ RefPtr<Font> Font::platformCreateScaledFont(const FontDescription&, float scaleF
     return createDerivativeFont(scaledFont.get(), size, m_platformData.orientation(), fontTraits, m_platformData.syntheticBold(), m_platformData.syntheticOblique());
 }
 
-static inline bool caseInsensitiveCompare(CFStringRef a, CFStringRef b)
+static int extractNumber(CFNumberRef number)
 {
-    return a && CFStringCompare(a, b, kCFCompareCaseInsensitive) == kCFCompareEqualTo;
+    int result = 0;
+    if (number)
+        CFNumberGetValue(number, kCFNumberIntType, &result);
+    return result;
 }
 
 void Font::determinePitch()
@@ -545,12 +567,13 @@ void Font::determinePitch()
     // According to <rdar://problem/5454704>, we should not treat MonotypeCorsiva as fixed pitch.
     // Note that AppKit does report MonotypeCorsiva as fixed pitch.
 
-    RetainPtr<CFStringRef> fullName = adoptCF(CTFontCopyFullName(ctFont));
-    RetainPtr<CFStringRef> familyName = adoptCF(CTFontCopyFamilyName(ctFont));
+    auto fullName = adoptCF(CTFontCopyFullName(ctFont));
+    auto familyName = adoptCF(CTFontCopyFamilyName(ctFont));
 
-    m_treatAsFixedPitch = (CTFontGetSymbolicTraits(ctFont) & kCTFontMonoSpaceTrait) || CGFontIsFixedPitch(m_platformData.cgFont()) || (caseInsensitiveCompare(fullName.get(), CFSTR("Osaka-Mono")) || caseInsensitiveCompare(fullName.get(), CFSTR("MS-PGothic")) || caseInsensitiveCompare(fullName.get(), CFSTR("MonotypeCorsiva")));
+    int fixedPitch = extractNumber(adoptCF(static_cast<CFNumberRef>(CTFontCopyAttribute(m_platformData.font(), kCTFontFixedAdvanceAttribute))).get());
+    m_treatAsFixedPitch = (CTFontGetSymbolicTraits(ctFont) & kCTFontMonoSpaceTrait) || fixedPitch || (caseInsensitiveCompare(fullName.get(), CFSTR("Osaka-Mono")) || caseInsensitiveCompare(fullName.get(), CFSTR("MS-PGothic")) || caseInsensitiveCompare(fullName.get(), CFSTR("MonotypeCorsiva")));
 #if PLATFORM(IOS)
-    if (familyName && CFStringCompare(familyName.get(), CFSTR("Courier New"), kCFCompareCaseInsensitive) == kCFCompareEqualTo) {
+    if (familyName && caseInsensitiveCompare(familyName.get(), CFSTR("Courier New"))) {
         // Special case Courier New to not be treated as fixed pitch, as this will make use of a hacked space width which is undesireable for iPhone (see rdar://6269783).
         m_treatAsFixedPitch = false;
     }
@@ -568,6 +591,7 @@ FloatRect Font::platformBoundsForGlyph(Glyph glyph) const
     return boundingBox;
 }
 
+#if !((PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 100000))
 static inline Optional<CGSize> advanceForColorBitmapFont(const FontPlatformData& platformData, Glyph glyph)
 {
     CTFontRef font = platformData.font();
@@ -589,16 +613,30 @@ static inline bool canUseFastGlyphAdvanceGetter(const FontPlatformData& platform
     }
     return true;
 }
+#endif
 
 float Font::platformWidthForGlyph(Glyph glyph) const
 {
     CGSize advance = CGSizeZero;
     bool horizontal = platformData().orientation() == Horizontal;
+    CGFontRenderingStyle style = kCGFontRenderingStyleAntialiasing | kCGFontRenderingStyleSubpixelPositioning | kCGFontRenderingStyleSubpixelQuantization | kCGFontAntialiasingStyleUnfiltered;
+
+#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 100000)
+    if (platformData().size()) {
+        CTFontOrientation orientation = horizontal || m_isBrokenIdeographFallback ? kCTFontOrientationHorizontal : kCTFontOrientationVertical;
+        // FIXME: Remove this special-casing when <rdar://problem/28197291> and <rdar://problem/28662086> are fixed.
+        if (CTFontIsAppleColorEmoji(m_platformData.ctFont()) || m_platformData.hasVariations())
+            CTFontGetAdvancesForGlyphs(m_platformData.ctFont(), orientation, &glyph, &advance, 1);
+        else
+            CTFontGetUnsummedAdvancesForGlyphsAndStyle(m_platformData.ctFont(), orientation, style, &glyph, &advance, 1);
+    }
+
+#else
+
     bool populatedAdvance = false;
     if ((horizontal || m_isBrokenIdeographFallback) && canUseFastGlyphAdvanceGetter(this->platformData(), glyph, advance, populatedAdvance)) {
         float pointSize = platformData().size();
         CGAffineTransform m = CGAffineTransformMakeScale(pointSize, pointSize);
-        CGFontRenderingStyle style = kCGFontRenderingStyleAntialiasing | kCGFontRenderingStyleSubpixelPositioning | kCGFontRenderingStyleSubpixelQuantization | kCGFontAntialiasingStyleUnfiltered;
         if (!CGFontGetGlyphAdvancesForStyle(platformData().cgFont(), &m, style, &glyph, 1, &advance)) {
             RetainPtr<CFStringRef> fullName = adoptCF(CGFontCopyFullName(platformData().cgFont()));
             LOG_ERROR("Unable to cache glyph widths for %@ %f", fullName.get(), pointSize);
@@ -606,6 +644,7 @@ float Font::platformWidthForGlyph(Glyph glyph) const
         }
     } else if (!populatedAdvance && platformData().size())
         CTFontGetAdvancesForGlyphs(m_platformData.ctFont(), horizontal ? kCTFontOrientationHorizontal : kCTFontOrientationVertical, &glyph, &advance, 1);
+#endif
 
     return advance.width + m_syntheticBoldOffset;
 }

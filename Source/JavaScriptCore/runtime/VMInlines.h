@@ -23,16 +23,11 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef VMInlines_h
-#define VMInlines_h
+#pragma once
 
 #include "ProfilerDatabase.h"
 #include "VM.h"
 #include "Watchdog.h"
-
-#if !ENABLE(JIT)
-#include "CLoopStackInlines.h"
-#endif
 
 namespace JSC {
     
@@ -42,7 +37,7 @@ bool VM::ensureStackCapacityFor(Register* newTopOfStack)
     ASSERT(wtfThreadData().stack().isGrowingDownward());
     return newTopOfStack >= m_softStackLimit;
 #else
-    return interpreter->cloopStack().ensureCapacityFor(newTopOfStack);
+    return ensureStackCapacityForCLoop(newTopOfStack);
 #endif
     
 }
@@ -51,7 +46,7 @@ bool VM::isSafeToRecurseSoft() const
 {
     bool safe = isSafeToRecurse(m_softStackLimit);
 #if !ENABLE(JIT)
-    safe = safe && interpreter->cloopStack().isSafeToRecurse();
+    safe = safe && isSafeToRecurseSoftCLoop();
 #endif
     return safe;
 }
@@ -73,6 +68,3 @@ void VM::logEvent(CodeBlock* codeBlock, const char* summary, const Func& func)
 }
 
 } // namespace JSC
-
-#endif // LLIntData_h
-

@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef DFGNodeType_h
-#define DFGNodeType_h
+#pragma once
 
 #if ENABLE(DFG_JIT)
 
@@ -142,7 +141,7 @@ namespace JSC { namespace DFG {
     /* this is only true if we do the overflow check - hence the need to keep it alive. More */\
     /* generally, we need to keep alive any operation whose checks cause filtration in AI. */\
     macro(ArithAdd, NodeResultNumber | NodeMustGenerate) \
-    macro(ArithClz32, NodeResultInt32) \
+    macro(ArithClz32, NodeResultInt32 | NodeMustGenerate) \
     macro(ArithSub, NodeResultNumber | NodeMustGenerate) \
     macro(ArithNegate, NodeResultNumber | NodeMustGenerate) \
     macro(ArithMul, NodeResultNumber | NodeMustGenerate) \
@@ -152,17 +151,18 @@ namespace JSC { namespace DFG {
     macro(ArithAbs, NodeResultNumber | NodeMustGenerate) \
     macro(ArithMin, NodeResultNumber) \
     macro(ArithMax, NodeResultNumber) \
-    macro(ArithFRound, NodeResultNumber) \
+    macro(ArithFRound, NodeResultDouble | NodeMustGenerate) \
     macro(ArithPow, NodeResultDouble) \
     macro(ArithRandom, NodeResultDouble | NodeMustGenerate) \
-    macro(ArithRound, NodeResultNumber) \
-    macro(ArithFloor, NodeResultNumber) \
-    macro(ArithCeil, NodeResultNumber) \
-    macro(ArithTrunc, NodeResultNumber) \
-    macro(ArithSqrt, NodeResultDouble) \
-    macro(ArithSin, NodeResultNumber) \
-    macro(ArithCos, NodeResultNumber) \
-    macro(ArithLog, NodeResultNumber) \
+    macro(ArithRound, NodeResultNumber | NodeMustGenerate) \
+    macro(ArithFloor, NodeResultNumber | NodeMustGenerate) \
+    macro(ArithCeil, NodeResultNumber | NodeMustGenerate) \
+    macro(ArithTrunc, NodeResultNumber | NodeMustGenerate) \
+    macro(ArithSqrt, NodeResultDouble | NodeMustGenerate) \
+    macro(ArithSin, NodeResultDouble | NodeMustGenerate) \
+    macro(ArithCos, NodeResultDouble | NodeMustGenerate) \
+    macro(ArithTan, NodeResultDouble | NodeMustGenerate) \
+    macro(ArithLog, NodeResultDouble | NodeMustGenerate) \
     \
     /* Add of values may either be arithmetic, or result in string concatenation. */\
     macro(ValueAdd, NodeResultJS | NodeMustGenerate) \
@@ -198,6 +198,8 @@ namespace JSC { namespace DFG {
     macro(PutGetterSetterById, NodeMustGenerate) \
     macro(PutGetterByVal, NodeMustGenerate) \
     macro(PutSetterByVal, NodeMustGenerate) \
+    macro(DefineDataProperty, NodeMustGenerate | NodeHasVarArgs) \
+    macro(DefineAccessorProperty, NodeMustGenerate | NodeHasVarArgs) \
     macro(DeleteById, NodeResultBoolean | NodeMustGenerate) \
     macro(DeleteByVal, NodeResultBoolean | NodeMustGenerate) \
     macro(CheckStructure, NodeMustGenerate) \
@@ -308,16 +310,14 @@ namespace JSC { namespace DFG {
     macro(InstanceOf, NodeResultBoolean) \
     macro(InstanceOfCustom, NodeMustGenerate | NodeResultBoolean) \
     \
-    macro(IsJSArray, NodeResultBoolean) \
+    macro(IsCellWithType, NodeResultBoolean) \
     macro(IsEmpty, NodeResultBoolean) \
     macro(IsUndefined, NodeResultBoolean) \
     macro(IsBoolean, NodeResultBoolean) \
     macro(IsNumber, NodeResultBoolean) \
-    macro(IsString, NodeResultBoolean) \
     macro(IsObject, NodeResultBoolean) \
     macro(IsObjectOrNull, NodeResultBoolean) \
     macro(IsFunction, NodeResultBoolean) \
-    macro(IsRegExpObject, NodeResultBoolean) \
     macro(IsTypedArrayView, NodeResultBoolean) \
     macro(TypeOf, NodeResultJS) \
     macro(LogicalNot, NodeResultBoolean) \
@@ -332,6 +332,7 @@ namespace JSC { namespace DFG {
     macro(ProfileType, NodeMustGenerate) \
     macro(ProfileControlFlow, NodeMustGenerate) \
     macro(SetFunctionName, NodeMustGenerate) \
+    macro(HasOwnProperty, NodeResultBoolean) \
     \
     macro(CreateActivation, NodeResultJS) \
     \
@@ -349,7 +350,7 @@ namespace JSC { namespace DFG {
     \
     /* These aren't terminals but always exit */ \
     macro(Throw, NodeMustGenerate) \
-    macro(ThrowReferenceError, NodeMustGenerate) \
+    macro(ThrowStaticError, NodeMustGenerate) \
     \
     /* Block terminals. */\
     macro(Jump, NodeMustGenerate) \
@@ -376,8 +377,9 @@ namespace JSC { namespace DFG {
     \
     /* Checks the watchdog timer. If the timer has fired, we call operation operationHandleWatchdogTimer*/ \
     macro(CheckWatchdogTimer, NodeMustGenerate) \
-    /* Write barriers ! */\
+    /* Write barriers */\
     macro(StoreBarrier, NodeMustGenerate) \
+    macro(FencedStoreBarrier, NodeMustGenerate) \
     \
     /* For-in enumeration opcodes */\
     macro(GetEnumerableLength, NodeMustGenerate | NodeResultJS) \
@@ -388,7 +390,17 @@ namespace JSC { namespace DFG {
     macro(GetPropertyEnumerator, NodeMustGenerate | NodeResultJS) \
     macro(GetEnumeratorStructurePname, NodeMustGenerate | NodeResultJS) \
     macro(GetEnumeratorGenericPname, NodeMustGenerate | NodeResultJS) \
-    macro(ToIndexString, NodeResultJS)
+    macro(ToIndexString, NodeResultJS) \
+    /* Nodes for JSMap and JSSet */ \
+    macro(MapHash, NodeResultInt32) \
+    macro(GetMapBucket, NodeResultJS) \
+    macro(LoadFromJSMapBucket, NodeResultJS) \
+    macro(IsNonEmptyMapBucket, NodeResultBoolean) \
+    \
+    macro(ToLowerCase, NodeResultJS) \
+    /* Nodes for DOM JIT */\
+    macro(CheckDOM, NodeMustGenerate) \
+    macro(CallDOM, NodeResultJS | NodeMustGenerate | NodeHasVarArgs) \
 
 // This enum generates a monotonically increasing id for all Node types,
 // and is used by the subsequent enum to fill out the id (as accessed via the NodeIdMask).
@@ -415,6 +427,3 @@ inline NodeFlags defaultFlags(NodeType op)
 } } // namespace JSC::DFG
 
 #endif // ENABLE(DFG_JIT)
-
-#endif // DFGNodeType_h
-

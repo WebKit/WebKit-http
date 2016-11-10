@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef JSScope_h
-#define JSScope_h
+#pragma once
 
 #include "GetPutInfo.h"
 #include "JSObject.h"
@@ -69,7 +68,7 @@ public:
     JSScope* next();
 
     JSGlobalObject* globalObject();
-    VM* vm();
+    JSGlobalObject* globalObject(VM&);
     JSObject* globalThis();
 
     SymbolTable* symbolTable();
@@ -129,9 +128,9 @@ inline JSGlobalObject* JSScope::globalObject()
     return structure()->globalObject();
 }
 
-inline VM* JSScope::vm()
+inline JSGlobalObject* JSScope::globalObject(VM& vm)
 { 
-    return MarkedBlock::blockFor(this)->vm();
+    return structure(vm)->globalObject();
 }
 
 inline Register& Register::operator=(JSScope* scope)
@@ -156,5 +155,3 @@ inline size_t JSScope::offsetOfNext()
 }
 
 } // namespace JSC
-
-#endif // JSScope_h

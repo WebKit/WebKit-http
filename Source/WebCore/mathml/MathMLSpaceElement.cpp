@@ -25,9 +25,9 @@
  */
 
 #include "config.h"
+#include "MathMLSpaceElement.h"
 
 #if ENABLE(MATHML)
-#include "MathMLSpaceElement.h"
 
 #include "RenderMathMLSpace.h"
 
@@ -36,7 +36,7 @@ namespace WebCore {
 using namespace MathMLNames;
 
 MathMLSpaceElement::MathMLSpaceElement(const QualifiedName& tagName, Document& document)
-    : MathMLElement(tagName, document)
+    : MathMLPresentationElement(tagName, document)
 {
 }
 
@@ -69,7 +69,7 @@ void MathMLSpaceElement::parseAttribute(const QualifiedName& name, const AtomicS
     else if (name == depthAttr)
         m_depth = Nullopt;
 
-    MathMLElement::parseAttribute(name, value);
+    MathMLPresentationElement::parseAttribute(name, value);
 }
 
 RenderPtr<RenderElement> MathMLSpaceElement::createElementRenderer(RenderStyle&& style, const RenderTreePosition&)

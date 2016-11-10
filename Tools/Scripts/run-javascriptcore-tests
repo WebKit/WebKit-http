@@ -52,6 +52,7 @@ my $jsDriverArgs;
 my $childProcesses;
 my $shellRunner;
 my $makeRunner;
+my $memoryLimited;
 
 my $buildJSC = 1;
 
@@ -131,6 +132,10 @@ Usage: $programName [options] [options to pass to build system]
   --shell-runner                Uses the shell-based test runner instead of the default make-based runner.
                                 In general the shell runner is slower than the make runner.
   --make-runner                 Uses the faster make-based runner.
+
+  --memory-limited              Indicate that we are targeting the test for a memory limited device.
+                                Skip tests tagged with //\@largeHeap
+
   --filter                      Only run tests whose name matches the given regular expression.
   --env-vars                    Pass a list of environment variables to set before running tests.
                                 Each environment variable should be separated by a space.
@@ -160,6 +165,7 @@ GetOptions(
     'child-processes=s' => \$childProcesses,
     'shell-runner' => \$shellRunner,
     'make-runner' => \$makeRunner,
+    'memory-limited' => \$memoryLimited,
     'filter=s' => \$filter,
     'help' => \$showHelp,
     'env-vars=s' => \$envVars,
@@ -269,13 +275,14 @@ sub runJSCStressTests
             "PerformanceTests/SunSpider/shadow-chicken.yaml",
             "PerformanceTests/SunSpider/tests/v8-v6",
             "JSTests/stress",
-            "LayoutTests/js/regress/script-tests",
+            "JSTests/microbenchmarks",
             "PerformanceTests/SunSpider/profiler-test.yaml",
             "LayoutTests/jsc-layout-tests.yaml",
             "JSTests/typeProfiler.yaml",
             "JSTests/controlFlowProfiler.yaml",
             "JSTests/es6.yaml",
-            "JSTests/modules.yaml");
+            "JSTests/modules.yaml",
+            "JSTests/ChakraCore.yaml");
     }
 
     if ($runMozillaTests) {
@@ -335,6 +342,10 @@ sub runJSCStressTests
 
     if ($makeRunner) {
         push(@jscStressDriverCmd, "--make-runner");
+    }
+
+    if ($memoryLimited) {
+        push(@jscStressDriverCmd, "--memory-limited");
     }
 
     if ($filter) {

@@ -32,7 +32,7 @@
 #include "ShareableBitmap.h"
 #include "WebPage.h"
 #include "WebPageProxyMessages.h"
-#include <WebCore/DataObjectGtk.h>
+#include "WebSelectionData.h"
 #include <WebCore/DataTransfer.h>
 #include <WebCore/DragData.h>
 #include <WebCore/GraphicsContext.h>
@@ -43,17 +43,17 @@ using namespace WebCore;
 
 namespace WebKit {
 
-static PassRefPtr<ShareableBitmap> convertCairoSurfaceToShareableBitmap(cairo_surface_t* surface)
+static RefPtr<ShareableBitmap> convertCairoSurfaceToShareableBitmap(cairo_surface_t* surface)
 {
     if (!surface)
-        return 0;
+        return nullptr;
 
     IntSize imageSize(cairo_image_surface_get_width(surface), cairo_image_surface_get_height(surface));
     RefPtr<ShareableBitmap> bitmap = ShareableBitmap::createShareable(imageSize, ShareableBitmap::SupportsAlpha);
     auto graphicsContext = bitmap->createGraphicsContext();
 
     graphicsContext->platformContext()->drawSurfaceToContext(surface, IntRect(IntPoint(), imageSize), IntRect(IntPoint(), imageSize), *graphicsContext);
-    return bitmap.release();
+    return bitmap;
 }
 
 void WebDragClient::startDrag(DragImageRef dragImage, const IntPoint& clientPosition, const IntPoint& globalPosition, DataTransfer& dataTransfer, Frame&, bool)
@@ -65,9 +65,10 @@ void WebDragClient::startDrag(DragImageRef dragImage, const IntPoint& clientPosi
     if (bitmap && !bitmap->createHandle(handle))
         return;
 
-    RefPtr<DataObjectGtk> dataObject = dataTransfer.pasteboard().dataObject();
-    DragData dragData(dataObject.get(), clientPosition, globalPosition, dataTransfer.sourceOperation());
-    m_page->send(Messages::WebPageProxy::StartDrag(dragData, handle));
+    m_page->willStartDrag();
+
+    WebSelectionData selection(dataTransfer.pasteboard().selectionData());
+    m_page->send(Messages::WebPageProxy::StartDrag(selection, dataTransfer.sourceOperation(), handle));
 }
 
 }; // namespace WebKit.

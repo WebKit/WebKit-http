@@ -1,6 +1,7 @@
 /*
  * Copyright (C) 2014 Frédéric Wang (fred.wang@free.fr). All rights reserved.
  * Copyright (C) 2016 Igalia S.L.
+ * Copyright (C) 2016 Apple Inc.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -40,17 +41,13 @@ namespace WebCore {
 
 using namespace MathMLNames;
 
-RenderMathMLToken::RenderMathMLToken(Element& element, RenderStyle&& style)
+RenderMathMLToken::RenderMathMLToken(MathMLTokenElement& element, RenderStyle&& style)
     : RenderMathMLBlock(element, WTFMove(style))
-    , m_mathVariantGlyph()
-    , m_mathVariantGlyphDirty(false)
 {
 }
 
 RenderMathMLToken::RenderMathMLToken(Document& document, RenderStyle&& style)
     : RenderMathMLBlock(document, WTFMove(style))
-    , m_mathVariantGlyph()
-    , m_mathVariantGlyphDirty(false)
 {
 }
 
@@ -325,7 +322,7 @@ static UChar32 mathVariant(UChar32 codePoint, MathMLElement::MathVariant mathvar
 
     // The Unicode mathematical blocks are divided into four segments: Latin, Greek, numbers and Arabic.
     // In the case of the first three baseChar represents the relative order in which the characters are encoded in the Unicode mathematical block, normalised to the first character of that sequence.
-    UChar32 baseChar;
+    UChar32 baseChar = 0;
     enum CharacterType {
         Latin,
         Greekish,
@@ -446,7 +443,7 @@ static UChar32 mathVariant(UChar32 codePoint, MathMLElement::MathVariant mathvar
         return baseChar + mathBoldUpperAlpha + multiplier * (mathItalicUpperAlpha - mathBoldUpperAlpha);
     }
 
-    UChar32 tempChar;
+    UChar32 tempChar = 0;
     UChar32 newChar;
     if (varType == Arabic) {
         // The Arabic mathematical block is not continuous, nor does it have a monotonic mapping to the unencoded characters, requiring the use of a lookup table.
@@ -503,10 +500,13 @@ void RenderMathMLToken::computePreferredLogicalWidths()
     if (m_mathVariantGlyphDirty)
         updateMathVariantGlyph();
 
-    if (m_mathVariantGlyph.font) {
-        m_maxPreferredLogicalWidth = m_minPreferredLogicalWidth = m_mathVariantGlyph.font->widthForGlyph(m_mathVariantGlyph.glyph);
-        setPreferredLogicalWidthsDirty(false);
-        return;
+    if (m_mathVariantCodePoint) {
+        auto mathVariantGlyph = style().fontCascade().glyphDataForCharacter(m_mathVariantCodePoint.value(), m_mathVariantIsMirrored);
+        if (mathVariantGlyph.font) {
+            m_maxPreferredLogicalWidth = m_minPreferredLogicalWidth = mathVariantGlyph.font->widthForGlyph(mathVariantGlyph.glyph);
+            setPreferredLogicalWidthsDirty(false);
+            return;
+        }
     }
 
     RenderMathMLBlock::computePreferredLogicalWidths();
@@ -516,7 +516,7 @@ void RenderMathMLToken::updateMathVariantGlyph()
 {
     ASSERT(m_mathVariantGlyphDirty);
 
-    m_mathVariantGlyph = GlyphData();
+    m_mathVariantCodePoint = Nullopt;
     m_mathVariantGlyphDirty = false;
 
     // Early return if the token element contains RenderElements.
@@ -527,15 +527,15 @@ void RenderMathMLToken::updateMathVariantGlyph()
     }
 
     const auto& tokenElement = element();
-    AtomicString textContent = element().textContent().stripWhiteSpace().simplifyWhiteSpace();
-    if (textContent.length() == 1) {
-        UChar32 codePoint = textContent[0];
+    if (auto codePoint = MathMLTokenElement::convertToSingleCodePoint(element().textContent())) {
         MathMLElement::MathVariant mathvariant = mathMLStyle()->mathVariant();
         if (mathvariant == MathMLElement::MathVariant::None)
             mathvariant = tokenElement.hasTagName(MathMLNames::miTag) ? MathMLElement::MathVariant::Italic : MathMLElement::MathVariant::Normal;
-        UChar32 transformedCodePoint = mathVariant(codePoint, mathvariant);
-        if (transformedCodePoint != codePoint)
-            m_mathVariantGlyph = style().fontCascade().glyphDataForCharacter(transformedCodePoint, !style().isLeftToRightDirection());
+        UChar32 transformedCodePoint = mathVariant(codePoint.value(), mathvariant);
+        if (transformedCodePoint != codePoint.value()) {
+            m_mathVariantCodePoint = mathVariant(codePoint.value(), mathvariant);
+            m_mathVariantIsMirrored = !style().isLeftToRightDirection();
+        }
     }
 }
 
@@ -553,8 +553,11 @@ void RenderMathMLToken::updateFromElement()
 
 Optional<int> RenderMathMLToken::firstLineBaseline() const
 {
-    if (m_mathVariantGlyph.font)
-        return Optional<int>(static_cast<int>(lroundf(-m_mathVariantGlyph.font->boundsForGlyph(m_mathVariantGlyph.glyph).y())));
+    if (m_mathVariantCodePoint) {
+        auto mathVariantGlyph = style().fontCascade().glyphDataForCharacter(m_mathVariantCodePoint.value(), m_mathVariantIsMirrored);
+        if (mathVariantGlyph.font)
+            return Optional<int>(static_cast<int>(lroundf(-mathVariantGlyph.font->boundsForGlyph(mathVariantGlyph.glyph).y())));
+    }
     return RenderMathMLBlock::firstLineBaseline();
 }
 
@@ -565,7 +568,11 @@ void RenderMathMLToken::layoutBlock(bool relayoutChildren, LayoutUnit pageLogica
     if (!relayoutChildren && simplifiedLayout())
         return;
 
-    if (!m_mathVariantGlyph.font) {
+    GlyphData mathVariantGlyph;
+    if (m_mathVariantCodePoint)
+        mathVariantGlyph = style().fontCascade().glyphDataForCharacter(m_mathVariantCodePoint.value(), m_mathVariantIsMirrored);
+
+    if (!mathVariantGlyph.font) {
         RenderMathMLBlock::layoutBlock(relayoutChildren, pageLogicalHeight);
         return;
     }
@@ -573,8 +580,8 @@ void RenderMathMLToken::layoutBlock(bool relayoutChildren, LayoutUnit pageLogica
     for (auto* child = firstChildBox(); child; child = child->nextSiblingBox())
         child->layoutIfNeeded();
 
-    setLogicalWidth(m_mathVariantGlyph.font->widthForGlyph(m_mathVariantGlyph.glyph));
-    setLogicalHeight(m_mathVariantGlyph.font->boundsForGlyph(m_mathVariantGlyph.glyph).height());
+    setLogicalWidth(mathVariantGlyph.font->widthForGlyph(mathVariantGlyph.glyph));
+    setLogicalHeight(mathVariantGlyph.font->boundsForGlyph(mathVariantGlyph.glyph).height());
 
     clearNeedsLayout();
 }
@@ -584,22 +591,30 @@ void RenderMathMLToken::paint(PaintInfo& info, const LayoutPoint& paintOffset)
     RenderMathMLBlock::paint(info, paintOffset);
 
     // FIXME: Instead of using DrawGlyph, we may consider using the more general TextPainter so that we can apply mathvariant to strings with an arbitrary number of characters and preserve advanced CSS effects (text-shadow, etc).
-    if (info.context().paintingDisabled() || info.phase != PaintPhaseForeground || style().visibility() != VISIBLE || !m_mathVariantGlyph.font)
+    if (info.context().paintingDisabled() || info.phase != PaintPhaseForeground || style().visibility() != VISIBLE || !m_mathVariantCodePoint)
+        return;
+
+    auto mathVariantGlyph = style().fontCascade().glyphDataForCharacter(m_mathVariantCodePoint.value(), m_mathVariantIsMirrored);
+    if (!mathVariantGlyph.font)
         return;
 
     GraphicsContextStateSaver stateSaver(info.context());
     info.context().setFillColor(style().visitedDependentColor(CSSPropertyColor));
 
     GlyphBuffer buffer;
-    buffer.add(m_mathVariantGlyph.glyph, m_mathVariantGlyph.font, m_mathVariantGlyph.font->widthForGlyph(m_mathVariantGlyph.glyph));
-    LayoutUnit glyphAscent = static_cast<int>(lroundf(-m_mathVariantGlyph.font->boundsForGlyph(m_mathVariantGlyph.glyph).y()));
-    info.context().drawGlyphs(style().fontCascade(), *m_mathVariantGlyph.font, buffer, 0, 1, paintOffset + location() + LayoutPoint(0, glyphAscent));
+    buffer.add(mathVariantGlyph.glyph, mathVariantGlyph.font, mathVariantGlyph.font->widthForGlyph(mathVariantGlyph.glyph));
+    LayoutUnit glyphAscent = static_cast<int>(lroundf(-mathVariantGlyph.font->boundsForGlyph(mathVariantGlyph.glyph).y()));
+    info.context().drawGlyphs(style().fontCascade(), *mathVariantGlyph.font, buffer, 0, 1, paintOffset + location() + LayoutPoint(0, glyphAscent));
 }
 
 void RenderMathMLToken::paintChildren(PaintInfo& paintInfo, const LayoutPoint& paintOffset, PaintInfo& paintInfoForChild, bool usePrintRect)
 {
-    if (m_mathVariantGlyph.font)
-        return;
+    if (m_mathVariantCodePoint) {
+        auto mathVariantGlyph = style().fontCascade().glyphDataForCharacter(m_mathVariantCodePoint.value(), m_mathVariantIsMirrored);
+        if (mathVariantGlyph.font)
+            return;
+    }
+
     RenderMathMLBlock::paintChildren(paintInfo, paintOffset, paintInfoForChild, usePrintRect);
 }
 

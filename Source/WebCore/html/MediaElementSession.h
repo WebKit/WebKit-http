@@ -35,6 +35,11 @@
 
 namespace WebCore {
 
+enum class MediaSessionMainContentPurpose {
+    MediaControls,
+    Autoplay
+};
+
 class Document;
 class HTMLMediaElement;
 class SourceBuffer;
@@ -53,8 +58,6 @@ public:
     bool fullscreenPermitted(const HTMLMediaElement&) const;
     bool pageAllowsDataLoading(const HTMLMediaElement&) const;
     bool pageAllowsPlaybackAfterResuming(const HTMLMediaElement&) const;
-
-    bool canControlControlsManager() const override;
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
     void showPlaybackTargetPicker(const HTMLMediaElement&);
@@ -78,8 +81,10 @@ public:
 
     void mediaEngineUpdated(const HTMLMediaElement&);
 
+    void resetPlaybackSessionState() override;
+
     // Restrictions to modify default behaviors.
-    enum BehaviorRestrictionFlags {
+    enum BehaviorRestrictionFlags : unsigned {
         NoRestrictions = 0,
         RequireUserGestureForLoad = 1 << 0,
         RequireUserGestureForVideoRateChange = 1 << 1,
@@ -111,6 +116,17 @@ public:
 
     HTMLMediaElement& element() const { return m_element; }
 
+    bool wantsToObserveViewportVisibilityForMediaControls() const;
+    bool wantsToObserveViewportVisibilityForAutoplay() const;
+
+    enum class PlaybackControlsPurpose { ControlsManager, NowPlaying };
+    bool canShowControlsManager(PlaybackControlsPurpose) const;
+    bool isLargeEnoughForMainContent(MediaSessionMainContentPurpose) const;
+    double mostRecentUserInteractionTime() const;
+
+    bool allowsPlaybackControlsForAutoplayingAudio() const;
+    bool allowsNowPlayingControlsVisibility() const override;
+
 private:
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
@@ -139,6 +155,8 @@ private:
 #if PLATFORM(IOS)
     bool m_hasPlaybackTargetAvailabilityListeners { false };
 #endif
+
+    double m_mostRecentUserInteractionTime { 0 };
 
     mutable bool m_isMainContent { false };
     Timer m_mainContentCheckTimer;

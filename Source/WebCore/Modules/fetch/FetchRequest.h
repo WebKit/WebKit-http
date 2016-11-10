@@ -26,30 +26,28 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef FetchRequest_h
-#define FetchRequest_h
+#pragma once
 
 #if ENABLE(FETCH_API)
 
+#include "ExceptionOr.h"
 #include "FetchBodyOwner.h"
-#include "FetchHeaders.h"
 #include "FetchOptions.h"
 #include "ResourceRequest.h"
+#include <wtf/Optional.h>
 
 namespace WebCore {
 
 class Dictionary;
 class ScriptExecutionContext;
 
-typedef int ExceptionCode;
-
 class FetchRequest final : public FetchBodyOwner {
 public:
-    static Ref<FetchRequest> create(ScriptExecutionContext& context) { return adoptRef(*new FetchRequest(context, { }, FetchHeaders::create(FetchHeaders::Guard::Request), { })); }
+    static Ref<FetchRequest> create(ScriptExecutionContext& context) { return adoptRef(*new FetchRequest(context, Nullopt, FetchHeaders::create(FetchHeaders::Guard::Request), { })); }
 
-    FetchHeaders* initializeWith(FetchRequest&, const Dictionary&, ExceptionCode&);
-    FetchHeaders* initializeWith(const String&, const Dictionary&, ExceptionCode&);
-    void setBody(JSC::ExecState&, JSC::JSValue, FetchRequest*, ExceptionCode&);
+    ExceptionOr<Ref<FetchHeaders>> initializeWith(FetchRequest&, const Dictionary&);
+    ExceptionOr<Ref<FetchHeaders>> initializeWith(const String&, const Dictionary&);
+    ExceptionOr<void> setBody(JSC::ExecState&, JSC::JSValue, FetchRequest*);
 
     const String& method() const { return m_internalRequest.request.httpMethod(); }
     const String& url() const;
@@ -80,7 +78,7 @@ public:
 
     const String& integrity() const { return m_internalRequest.integrity; }
 
-    RefPtr<FetchRequest> clone(ScriptExecutionContext&, ExceptionCode&);
+    ExceptionOr<Ref<FetchRequest>> clone(ScriptExecutionContext&);
 
     struct InternalRequest {
         ResourceRequest request;
@@ -92,23 +90,22 @@ public:
     const FetchOptions& fetchOptions() const { return m_internalRequest.options; }
     ResourceRequest internalRequest() const;
 
+    const String& internalRequestReferrer() const { return m_internalRequest.referrer; }
+
 private:
-    FetchRequest(ScriptExecutionContext&, FetchBody&&, Ref<FetchHeaders>&&, InternalRequest&&);
+    FetchRequest(ScriptExecutionContext&, Optional<FetchBody>&&, Ref<FetchHeaders>&&, InternalRequest&&);
 
-    void initializeOptions(const Dictionary&, ExceptionCode&);
+    ExceptionOr<Ref<FetchHeaders>> initializeOptions(const Dictionary&);
 
-    // ActiveDOMObject API.
     const char* activeDOMObjectName() const final;
     bool canSuspendForDocumentSuspension() const final;
 
-    Ref<FetchHeaders> m_headers;
     InternalRequest m_internalRequest;
     mutable String m_requestURL;
 };
 
-inline FetchRequest::FetchRequest(ScriptExecutionContext& context, FetchBody&& body, Ref<FetchHeaders>&& headers, InternalRequest&& internalRequest)
-    : FetchBodyOwner(context, WTFMove(body))
-    , m_headers(WTFMove(headers))
+inline FetchRequest::FetchRequest(ScriptExecutionContext& context, Optional<FetchBody>&& body, Ref<FetchHeaders>&& headers, InternalRequest&& internalRequest)
+    : FetchBodyOwner(context, WTFMove(body), WTFMove(headers))
     , m_internalRequest(WTFMove(internalRequest))
 {
 }
@@ -151,5 +148,3 @@ inline auto FetchRequest::type() const -> Type
 } // namespace WebCore
 
 #endif // ENABLE(FETCH_API)
-
-#endif // FetchRequest_h

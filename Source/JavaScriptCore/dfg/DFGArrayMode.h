@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef DFGArrayMode_h
-#define DFGArrayMode_h
+#pragma once
 
 #if ENABLE(DFG_JIT)
 
@@ -234,6 +233,7 @@ public:
     bool usesButterfly() const
     {
         switch (type()) {
+        case Array::Undecided:
         case Array::Int32:
         case Array::Double:
         case Array::Contiguous:
@@ -312,6 +312,7 @@ public:
     bool lengthNeedsStorage() const
     {
         switch (type()) {
+        case Array::Undecided:
         case Array::Int32:
         case Array::Double:
         case Array::Contiguous:
@@ -531,6 +532,3 @@ void printInternal(PrintStream&, JSC::DFG::Array::Conversion);
 } // namespace WTF
 
 #endif // ENABLE(DFG_JIT)
-
-#endif // DFGArrayMode_h
-

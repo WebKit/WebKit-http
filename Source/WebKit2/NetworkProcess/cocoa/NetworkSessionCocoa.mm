@@ -295,14 +295,14 @@ static NSURLSessionAuthChallengeDisposition toNSURLSessionAuthChallengeDispositi
 {
     auto storedCredentials = _withCredentials ? WebCore::StoredCredentials::AllowStoredCredentials : WebCore::StoredCredentials::DoNotAllowStoredCredentials;
     if (auto* networkDataTask = _session->dataTaskForIdentifier([dataTask taskIdentifier], storedCredentials)) {
+        Ref<NetworkDataTask> protectedNetworkDataTask(*networkDataTask);
         auto downloadID = networkDataTask->pendingDownloadID();
         auto& downloadManager = WebKit::NetworkProcess::singleton().downloadManager();
-        auto download = std::make_unique<WebKit::Download>(downloadManager, downloadID, downloadTask, _session->sessionID());
+        auto download = std::make_unique<WebKit::Download>(downloadManager, downloadID, downloadTask, _session->sessionID(), networkDataTask->suggestedFilename());
         networkDataTask->transferSandboxExtensionToDownload(*download);
         ASSERT(WebCore::fileExists(networkDataTask->pendingDownloadLocation()));
         download->didCreateDestination(networkDataTask->pendingDownloadLocation());
-        auto pendingDownload = downloadManager.dataTaskBecameDownloadTask(downloadID, WTFMove(download));
-
+        downloadManager.dataTaskBecameDownloadTask(downloadID, WTFMove(download));
         networkDataTask->didBecomeDownload();
 
         _session->addDownloadID([downloadTask taskIdentifier], downloadID);
@@ -335,15 +335,61 @@ static RetainPtr<CFDataRef>& globalSourceApplicationAuditTokenData()
     return sourceApplicationAuditTokenData.get();
 }
 
+static String& globalSourceApplicationBundleIdentifier()
+{
+    static NeverDestroyed<String> sourceApplicationBundleIdentifier;
+    return sourceApplicationBundleIdentifier.get();
+}
+
+static String& globalSourceApplicationSecondaryIdentifier()
+{
+    static NeverDestroyed<String> sourceApplicationSecondaryIdentifier;
+    return sourceApplicationSecondaryIdentifier.get();
+}
+
+#if PLATFORM(IOS)
+static String& globalCTDataConnectionServiceType()
+{
+    static NeverDestroyed<String> ctDataConnectionServiceType;
+    return ctDataConnectionServiceType.get();
+}
+#endif
+
+#if !ASSERT_DISABLED
+static bool sessionsCreated = false;
+#endif
+
 void NetworkSession::setCustomProtocolManager(CustomProtocolManager* customProtocolManager)
 {
+    ASSERT(!sessionsCreated);
     globalCustomProtocolManager() = customProtocolManager;
 }
     
 void NetworkSession::setSourceApplicationAuditTokenData(RetainPtr<CFDataRef>&& data)
 {
+    ASSERT(!sessionsCreated);
     globalSourceApplicationAuditTokenData() = data;
 }
+
+void NetworkSession::setSourceApplicationBundleIdentifier(const String& identifier)
+{
+    ASSERT(!sessionsCreated);
+    globalSourceApplicationBundleIdentifier() = identifier;
+}
+
+void NetworkSession::setSourceApplicationSecondaryIdentifier(const String& identifier)
+{
+    ASSERT(!sessionsCreated);
+    globalSourceApplicationSecondaryIdentifier() = identifier;
+}
+
+#if PLATFORM(IOS)
+void NetworkSession::setCTDataConnectionServiceType(const String& type)
+{
+    ASSERT(!sessionsCreated);
+    globalCTDataConnectionServiceType() = type;
+}
+#endif
 
 Ref<NetworkSession> NetworkSession::create(Type type, WebCore::SessionID sessionID, CustomProtocolManager* customProtocolManager)
 {
@@ -362,6 +408,10 @@ NetworkSession::NetworkSession(Type type, WebCore::SessionID sessionID, CustomPr
 {
     relaxAdoptionRequirement();
 
+#if !ASSERT_DISABLED
+    sessionsCreated = true;
+#endif
+
     NSURLSessionConfiguration *configuration = configurationForType(type);
 
     if (NetworkCache::singleton().isEnabled())
@@ -369,7 +419,21 @@ NetworkSession::NetworkSession(Type type, WebCore::SessionID sessionID, CustomPr
     
     if (auto& data = globalSourceApplicationAuditTokenData())
         configuration._sourceApplicationAuditTokenData = (NSData *)data.get();
-    
+
+    auto& sourceApplicationBundleIdentifier = globalSourceApplicationBundleIdentifier();
+    if (!sourceApplicationBundleIdentifier.isEmpty())
+        configuration._sourceApplicationBundleIdentifier = sourceApplicationBundleIdentifier;
+
+    auto& sourceApplicationSecondaryIdentifier = globalSourceApplicationSecondaryIdentifier();
+    if (!sourceApplicationSecondaryIdentifier.isEmpty())
+        configuration._sourceApplicationSecondaryIdentifier = sourceApplicationSecondaryIdentifier;
+
+#if PLATFORM(IOS)
+    auto& ctDataConnectionServiceType = globalCTDataConnectionServiceType();
+    if (!ctDataConnectionServiceType.isEmpty())
+        configuration._CTDataConnectionServiceType = ctDataConnectionServiceType;
+#endif
+
     if (customProtocolManager)
         customProtocolManager->registerProtocolClass(configuration);
     

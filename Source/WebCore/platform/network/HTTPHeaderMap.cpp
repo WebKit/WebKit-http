@@ -97,10 +97,15 @@ void HTTPHeaderMap::add(const String& name, const String& value)
     if (!findHTTPHeaderName(name, headerName)) {
         auto result = m_uncommonHeaders.add(name, value);
         if (!result.isNewEntry)
-            result.iterator->value = result.iterator->value + ", " + value;
+            result.iterator->value = makeString(result.iterator->value, ',', value);
         return;
     }
     add(headerName, value);
+}
+
+bool HTTPHeaderMap::addIfNotPresent(HTTPHeaderName headerName, const String& value)
+{
+    return m_commonHeaders.add(headerName, value).isNewEntry;
 }
 
 bool HTTPHeaderMap::contains(const String& name) const

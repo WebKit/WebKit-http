@@ -75,10 +75,11 @@ void PropertyDescriptor::setUndefined()
 GetterSetter* PropertyDescriptor::slowGetterSetter(ExecState* exec)
 {
     VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     JSGlobalObject* globalObject = exec->lexicalGlobalObject();
     GetterSetter* getterSetter = GetterSetter::create(vm, globalObject);
-    if (exec->hadException())
-        return nullptr;
+    RETURN_IF_EXCEPTION(scope, nullptr);
     if (m_getter && !m_getter.isUndefined())
         getterSetter->setGetter(vm, globalObject, jsCast<JSObject*>(m_getter));
     if (m_setter && !m_setter.isUndefined())
@@ -189,22 +190,6 @@ void PropertyDescriptor::setGetter(JSValue getter)
     m_getter = getter;
     m_attributes |= Accessor;
     m_attributes &= ~ReadOnly;
-}
-
-// See ES5.1 9.12
-bool sameValue(ExecState* exec, JSValue a, JSValue b)
-{
-    if (!a.isNumber())
-        return JSValue::strictEqual(exec, a, b);
-    if (!b.isNumber())
-        return false;
-    double x = a.asNumber();
-    double y = b.asNumber();
-    bool xIsNaN = std::isnan(x);
-    bool yIsNaN = std::isnan(y);
-    if (xIsNaN || yIsNaN)
-        return xIsNaN && yIsNaN;
-    return bitwise_cast<uint64_t>(x) == bitwise_cast<uint64_t>(y);
 }
 
 bool PropertyDescriptor::equalTo(ExecState* exec, const PropertyDescriptor& other) const

@@ -29,7 +29,7 @@
 #ifndef ReadableStreamDefaultController_h
 #define ReadableStreamDefaultController_h
 
-#if ENABLE(STREAMS_API)
+#if ENABLE(READABLE_STREAM_API)
 
 #include "JSDOMBinding.h"
 #include "JSReadableStreamDefaultController.h"
@@ -52,30 +52,48 @@ public:
     template<class ResolveResultType>
     void error(const ResolveResultType&);
 
-    void close() { invoke(*globalObject()->globalExec(), *m_jsController, "close", JSC::jsUndefined()); }
+    void close() { invoke(*globalObject().globalExec(), jsController(), "close", JSC::jsUndefined()); }
 
     bool isControlledReadableStreamLocked() const;
 
 private:
-    void error(JSC::ExecState& state, JSC::JSValue value) { invoke(state, *m_jsController, "error", value); }
-    void enqueue(JSC::ExecState& state, JSC::JSValue value) { invoke(state, *m_jsController, "enqueue", value); }
+    void error(JSC::ExecState& state, JSC::JSValue value) { invoke(state, jsController(), "error", value); }
+    void enqueue(JSC::ExecState& state, JSC::JSValue value) { invoke(state, jsController(), "enqueue", value); }
+    JSReadableStreamDefaultController& jsController() const;
 
-    JSDOMGlobalObject* globalObject() const;
+    JSDOMGlobalObject& globalObject() const;
+    JSC::ExecState& globalExec() const;
 
     // The owner of ReadableStreamDefaultController is responsible to keep uncollected the JSReadableStreamDefaultController.
     JSReadableStreamDefaultController* m_jsController { nullptr };
 };
 
-inline JSDOMGlobalObject* ReadableStreamDefaultController::globalObject() const
+inline JSReadableStreamDefaultController& ReadableStreamDefaultController::jsController() const
 {
     ASSERT(m_jsController);
-    return static_cast<JSDOMGlobalObject*>(m_jsController->globalObject());
+    return *m_jsController;
+}
+
+inline JSDOMGlobalObject& ReadableStreamDefaultController::globalObject() const
+{
+    ASSERT(m_jsController);
+    ASSERT(m_jsController->globalObject());
+    return *static_cast<JSDOMGlobalObject*>(m_jsController->globalObject());
+}
+
+inline JSC::ExecState& ReadableStreamDefaultController::globalExec() const
+{
+    ASSERT(globalObject().globalExec());
+    return *globalObject().globalExec();
 }
 
 inline bool ReadableStreamDefaultController::enqueue(RefPtr<JSC::ArrayBuffer>&& buffer)
 {
-    JSC::ExecState& state = *globalObject()->globalExec();
-    JSC::JSLockHolder locker(&state);
+    auto& globalObject = this->globalObject();
+    JSC::VM& vm = globalObject.vm();
+    JSC::JSLockHolder locker(vm);
+    auto scope = DECLARE_THROW_SCOPE(vm);
+    JSC::ExecState& state = globalExec();
 
     if (!buffer) {
         error(state, createOutOfMemoryError(&state));
@@ -84,21 +102,21 @@ inline bool ReadableStreamDefaultController::enqueue(RefPtr<JSC::ArrayBuffer>&& 
     auto length = buffer->byteLength();
     auto chunk = JSC::Uint8Array::create(WTFMove(buffer), 0, length);
     ASSERT(chunk);
-    enqueue(state, toJS(&state, globalObject(), chunk.get()));
-    ASSERT(!state.hadException());
+    enqueue(state, toJS(&state, &globalObject, chunk.get()));
+    ASSERT_UNUSED(scope, !scope.exception());
     return true;
 }
 
 template<>
-inline void ReadableStreamDefaultController::error<String>(const String& result)
+inline void ReadableStreamDefaultController::error<String>(const String& errorMessage)
 {
-    JSC::ExecState* state = globalObject()->globalExec();
-    JSC::JSLockHolder locker(state);
-    error(*state, jsString(state, result));
+    JSC::ExecState& state = globalExec();
+    JSC::JSLockHolder locker(&state);
+    error(state, JSC::createTypeError(&state, errorMessage));
 }
 
 } // namespace WebCore
 
-#endif // ENABLE(STREAMS_API)
+#endif // ENABLE(READABLE_STREAM_API)
 
 #endif // ReadableStreamDefaultController_h

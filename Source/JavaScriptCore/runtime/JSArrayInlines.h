@@ -17,8 +17,7 @@
  *
  */
 
-#ifndef JSArrayInlines_h
-#define JSArrayInlines_h
+#pragma once
 
 #include "JSArray.h"
 #include "JSCellInlines.h"
@@ -26,7 +25,7 @@
 
 namespace JSC {
 
-IndexingType JSArray::mergeIndexingTypeForCopying(IndexingType other)
+inline IndexingType JSArray::mergeIndexingTypeForCopying(IndexingType other)
 {
     IndexingType type = indexingType();
     if (!(type & IsArray && other & IsArray))
@@ -56,7 +55,7 @@ IndexingType JSArray::mergeIndexingTypeForCopying(IndexingType other)
     return type;
 }
 
-bool JSArray::canFastCopy(VM& vm, JSArray* otherArray)
+inline bool JSArray::canFastCopy(VM& vm, JSArray* otherArray)
 {
     if (hasAnyArrayStorage(indexingType()) || hasAnyArrayStorage(otherArray->indexingType()))
         return false;
@@ -68,6 +67,28 @@ bool JSArray::canFastCopy(VM& vm, JSArray* otherArray)
     return true;
 }
 
-} // namespace JSC
+ALWAYS_INLINE unsigned getLength(ExecState* exec, JSObject* obj)
+{
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+    if (isJSArray(obj))
+        return jsCast<JSArray*>(obj)->length();
 
-#endif /* JSArrayInlines_h */
+    JSValue lengthValue = obj->get(exec, vm.propertyNames->length);
+    RETURN_IF_EXCEPTION(scope, UINT_MAX);
+    return lengthValue.toUInt32(exec);
+}
+
+ALWAYS_INLINE double toLength(ExecState* exec, JSObject* obj)
+{
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+    if (isJSArray(obj))
+        return jsCast<JSArray*>(obj)->length();
+
+    JSValue lengthValue = obj->get(exec, vm.propertyNames->length);
+    RETURN_IF_EXCEPTION(scope, PNaN);
+    return lengthValue.toLength(exec);
+}
+
+} // namespace JSC

@@ -18,11 +18,11 @@
  *
  */
 
-#ifndef RegExpObject_h
-#define RegExpObject_h
+#pragma once
 
 #include "JSObject.h"
 #include "RegExp.h"
+#include "ThrowScope.h"
 
 namespace JSC {
     
@@ -43,22 +43,28 @@ public:
 
     bool setLastIndex(ExecState* exec, size_t lastIndex)
     {
+        VM& vm = exec->vm();
+        auto scope = DECLARE_THROW_SCOPE(vm);
+
         if (LIKELY(m_lastIndexIsWritable)) {
             m_lastIndex.setWithoutWriteBarrier(jsNumber(lastIndex));
             return true;
         }
-        throwTypeError(exec, StrictModeReadonlyPropertyWriteError);
+        throwTypeError(exec, scope, ReadonlyPropertyWriteError);
         return false;
     }
     bool setLastIndex(ExecState* exec, JSValue lastIndex, bool shouldThrow)
     {
+        VM& vm = exec->vm();
+        auto scope = DECLARE_THROW_SCOPE(vm);
+
         if (LIKELY(m_lastIndexIsWritable)) {
             m_lastIndex.set(exec->vm(), this, lastIndex);
             return true;
         }
 
         if (shouldThrow)
-            throwTypeError(exec, StrictModeReadonlyPropertyWriteError);
+            throwTypeError(exec, scope, ReadonlyPropertyWriteError);
         return false;
     }
     JSValue getLastIndex() const
@@ -124,5 +130,3 @@ inline RegExpObject* asRegExpObject(JSValue value)
 }
 
 } // namespace JSC
-
-#endif // RegExpObject_h

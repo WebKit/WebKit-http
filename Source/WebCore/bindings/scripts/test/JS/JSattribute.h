@@ -29,7 +29,7 @@ namespace WebCore {
 
 class JSattribute : public JSDOMWrapper<attribute> {
 public:
-    typedef JSDOMWrapper<attribute> Base;
+    using Base = JSDOMWrapper<attribute>;
     static JSattribute* create(JSC::Structure* structure, JSDOMGlobalObject* globalObject, Ref<attribute>&& impl)
     {
         JSattribute* ptr = new (NotNull, JSC::allocateCell<JSattribute>(globalObject->vm().heap)) JSattribute(structure, *globalObject, WTFMove(impl));
@@ -85,5 +85,8 @@ inline JSC::JSValue toJS(JSC::ExecState* state, JSDOMGlobalObject* globalObject,
 JSC::JSValue toJSNewlyCreated(JSC::ExecState*, JSDOMGlobalObject*, Ref<attribute>&&);
 inline JSC::JSValue toJSNewlyCreated(JSC::ExecState* state, JSDOMGlobalObject* globalObject, RefPtr<attribute>&& impl) { return impl ? toJSNewlyCreated(state, globalObject, impl.releaseNonNull()) : JSC::jsNull(); }
 
+template<> struct JSDOMWrapperConverterTraits<attribute> {
+    using WrapperClass = JSattribute;
+};
 
 } // namespace WebCore

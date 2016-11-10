@@ -21,8 +21,7 @@
  *
  */
 
-#ifndef JSGlobalObjectFunctions_h
-#define JSGlobalObjectFunctions_h
+#pragma once
 
 #include "JSCJSValue.h"
 #include <unicode/uchar.h>
@@ -52,13 +51,9 @@ EncodedJSValue JSC_HOST_CALL globalFuncProtoGetter(ExecState*);
 EncodedJSValue JSC_HOST_CALL globalFuncProtoSetter(ExecState*);
 EncodedJSValue JSC_HOST_CALL globalFuncBuiltinLog(ExecState*);
 
-bool checkProtoSetterAccessAllowed(ExecState*, JSObject*);
-
 static const double mantissaOverflowLowerBound = 9007199254740992.0;
 double parseIntOverflow(const LChar*, unsigned length, int radix);
 bool isStrWhiteSpace(UChar);
 double jsToNumber(StringView);
 
 } // namespace JSC
-
-#endif // JSGlobalObjectFunctions_h

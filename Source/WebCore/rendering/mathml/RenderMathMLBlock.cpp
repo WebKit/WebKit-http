@@ -25,16 +25,16 @@
  */
 
 #include "config.h"
+#include "RenderMathMLBlock.h"
 
 #if ENABLE(MATHML)
-
-#include "RenderMathMLBlock.h"
 
 #include "CSSHelper.h"
 #include "GraphicsContext.h"
 #include "LayoutRepainter.h"
 #include "MathMLElement.h"
 #include "MathMLNames.h"
+#include "MathMLPresentationElement.h"
 #include "RenderView.h"
 
 #if ENABLE(DEBUG_MATH_LAYOUT)
@@ -45,7 +45,7 @@ namespace WebCore {
 
 using namespace MathMLNames;
 
-RenderMathMLBlock::RenderMathMLBlock(Element& container, RenderStyle&& style)
+RenderMathMLBlock::RenderMathMLBlock(MathMLPresentationElement& container, RenderStyle&& style)
     : RenderBlock(container, WTFMove(style), 0)
     , m_mathMLStyle(MathMLStyle::create())
 {

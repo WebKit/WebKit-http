@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2012, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef JSValueInlines_h
-#define JSValueInlines_h
+#pragma once
 
 #include "ExceptionHelpers.h"
 #include "Identifier.h"
@@ -633,14 +632,16 @@ inline JSValue JSValue::toPrimitive(ExecState* exec, PreferredPrimitiveType pref
 
 inline PreferredPrimitiveType toPreferredPrimitiveType(ExecState* exec, JSValue value)
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     if (!value.isString()) {
-        throwTypeError(exec, ASCIILiteral("Primitive hint is not a string."));
+        throwTypeError(exec, scope, ASCIILiteral("Primitive hint is not a string."));
         return NoPreference;
     }
 
     StringImpl* hintString = jsCast<JSString*>(value)->value(exec).impl();
-    if (exec->hadException())
-        return NoPreference;
+    RETURN_IF_EXCEPTION(scope, NoPreference);
 
     if (WTF::equal(hintString, "default"))
         return NoPreference;
@@ -649,7 +650,7 @@ inline PreferredPrimitiveType toPreferredPrimitiveType(ExecState* exec, JSValue 
     if (WTF::equal(hintString, "string"))
         return PreferString;
 
-    throwTypeError(exec, ASCIILiteral("Expected primitive hint to match one of 'default', 'number', 'string'."));
+    throwTypeError(exec, scope, ASCIILiteral("Expected primitive hint to match one of 'default', 'number', 'string'."));
     return NoPreference;
 }
 
@@ -781,9 +782,9 @@ ALWAYS_INLINE typename std::result_of<CallbackWhenNoException(bool, PropertySlot
 template<typename CallbackWhenNoException>
 ALWAYS_INLINE typename std::result_of<CallbackWhenNoException(bool, PropertySlot&)>::type JSValue::getPropertySlot(ExecState* exec, PropertyName propertyName, PropertySlot& slot, CallbackWhenNoException callback) const
 {
+    auto scope = DECLARE_THROW_SCOPE(exec->vm());
     bool found = getPropertySlot(exec, propertyName, slot);
-    if (UNLIKELY(exec->hadException()))
-        return { };
+    RETURN_IF_EXCEPTION(scope, { });
     return callback(found, slot);
 }
 
@@ -894,6 +895,7 @@ inline bool JSValue::equal(ExecState* exec, JSValue v1, JSValue v2)
 ALWAYS_INLINE bool JSValue::equalSlowCaseInline(ExecState* exec, JSValue v1, JSValue v2)
 {
     VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     do {
         if (v1.isNumber() && v2.isNumber())
             return v1.asNumber() == v2.asNumber();
@@ -921,8 +923,7 @@ ALWAYS_INLINE bool JSValue::equalSlowCaseInline(ExecState* exec, JSValue v1, JSV
             if (v2.isObject())
                 return v1 == v2;
             JSValue p1 = v1.toPrimitive(exec);
-            if (exec->hadException())
-                return false;
+            RETURN_IF_EXCEPTION(scope, false);
             v1 = p1;
             if (v1.isInt32() && v2.isInt32())
                 return v1 == v2;
@@ -931,8 +932,7 @@ ALWAYS_INLINE bool JSValue::equalSlowCaseInline(ExecState* exec, JSValue v1, JSV
 
         if (v2.isObject()) {
             JSValue p2 = v2.toPrimitive(exec);
-            if (exec->hadException())
-                return false;
+            RETURN_IF_EXCEPTION(scope, false);
             v2 = p2;
             if (v1.isInt32() && v2.isInt32())
                 return v1 == v2;
@@ -1031,9 +1031,12 @@ inline TriState JSValue::pureToBoolean() const
 
 ALWAYS_INLINE bool JSValue::requireObjectCoercible(ExecState* exec) const
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     if (!isUndefinedOrNull())
         return true;
-    exec->vm().throwException(exec, createNotAnObjectError(exec, *this));
+    throwException(exec, scope, createNotAnObjectError(exec, *this));
     return false;
 }
 
@@ -1052,7 +1055,20 @@ ALWAYS_INLINE bool isThisValueAltered(const PutPropertySlot& slot, JSObject* bas
     return true;
 }
 
+// See section 7.2.9: https://tc39.github.io/ecma262/#sec-samevalue
+ALWAYS_INLINE bool sameValue(ExecState* exec, JSValue a, JSValue b)
+{
+    if (!a.isNumber())
+        return JSValue::strictEqual(exec, a, b);
+    if (!b.isNumber())
+        return false;
+    double x = a.asNumber();
+    double y = b.asNumber();
+    bool xIsNaN = std::isnan(x);
+    bool yIsNaN = std::isnan(y);
+    if (xIsNaN || yIsNaN)
+        return xIsNaN && yIsNaN;
+    return bitwise_cast<uint64_t>(x) == bitwise_cast<uint64_t>(y);
+}
+
 } // namespace JSC
-
-#endif // JSValueInlines_h
-

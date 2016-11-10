@@ -26,6 +26,8 @@
 #include "config.h"
 #include "WebInspectorUI.h"
 
+#include "RemoteWebInspectorUI.h"
+
 namespace WebKit {
 
 bool WebInspectorUI::canSave()
@@ -34,6 +36,11 @@ bool WebInspectorUI::canSave()
 }
 
 String WebInspectorUI::localizedStringsURL()
+{
+    return String();
+}
+
+String RemoteWebInspectorUI::localizedStringsURL()
 {
     return String();
 }

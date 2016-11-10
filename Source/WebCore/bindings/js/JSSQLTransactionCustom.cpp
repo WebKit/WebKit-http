@@ -36,6 +36,7 @@
 #include "JSDOMWindowCustom.h"
 #include "SQLTransaction.h"
 #include "SQLValue.h"
+#include <runtime/JSObjectInlines.h>
 
 using namespace JSC;
 
@@ -43,14 +44,16 @@ namespace WebCore {
 
 JSValue JSSQLTransaction::executeSql(ExecState& state)
 {
+    VM& vm = state.vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     if (!state.argumentCount()) {
         setDOMException(&state, SYNTAX_ERR);
         return jsUndefined();
     }
 
     String sqlStatement = state.argument(0).toString(&state)->value(&state);
-    if (state.hadException())
-        return jsUndefined();
+    RETURN_IF_EXCEPTION(scope, JSValue());
 
     // Now assemble the list of SQL arguments
     Vector<SQLValue> sqlValues;
@@ -62,16 +65,13 @@ JSValue JSSQLTransaction::executeSql(ExecState& state)
         }
 
         JSValue lengthValue = object->get(&state, state.propertyNames().length);
-        if (state.hadException())
-            return jsUndefined();
+        RETURN_IF_EXCEPTION(scope, JSValue());
         unsigned length = lengthValue.toUInt32(&state);
-        if (state.hadException())
-            return jsUndefined();
+        RETURN_IF_EXCEPTION(scope, JSValue());
 
         for (unsigned i = 0 ; i < length; ++i) {
             JSValue value = object->get(&state, i);
-            if (state.hadException())
-                return jsUndefined();
+            RETURN_IF_EXCEPTION(scope, JSValue());
 
             if (value.isUndefinedOrNull())
                 sqlValues.append(SQLValue());
@@ -80,8 +80,7 @@ JSValue JSSQLTransaction::executeSql(ExecState& state)
             else {
                 // Convert the argument to a string and append it
                 sqlValues.append(value.toString(&state)->value(&state));
-                if (state.hadException())
-                    return jsUndefined();
+                RETURN_IF_EXCEPTION(scope, JSValue());
             }
         }
     }

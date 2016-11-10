@@ -43,9 +43,6 @@ public:
         return clip == o.clip
             && hasClip == o.hasClip
             && textDecoration == o.textDecoration
-#if ENABLE(TEXT_AUTOSIZING)
-            && m_textAutosizingMultiplier == o.m_textAutosizingMultiplier
-#endif
             && m_zoom == o.m_zoom;
     }
     bool operator!=(const StyleVisualData& o) const { return !(*this == o); }
@@ -53,10 +50,6 @@ public:
     LengthBox clip;
     bool hasClip : 1;
     unsigned textDecoration : TextDecorationBits; // Text decorations defined *only* by this element.
-
-#if ENABLE(TEXT_AUTOSIZING)
-    float m_textAutosizingMultiplier;
-#endif
     float m_zoom;
 
 private:

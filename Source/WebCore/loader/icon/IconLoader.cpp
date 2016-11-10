@@ -64,9 +64,9 @@ void IconLoader::startLoading()
     request.mutableResourceRequest().setPriority(ResourceLoadPriority::Low);
     request.setInitiator(cachedResourceRequestInitiators().icon);
 
-    m_resource = m_frame.document()->cachedResourceLoader().requestRawResource(request);
+    m_resource = m_frame.document()->cachedResourceLoader().requestRawResource(WTFMove(request));
     if (m_resource)
-        m_resource->addClient(this);
+        m_resource->addClient(*this);
     else
         LOG_ERROR("Failed to start load for icon at url %s", m_frame.loader().icon().url().string().ascii().data());
 }
@@ -74,35 +74,35 @@ void IconLoader::startLoading()
 void IconLoader::stopLoading()
 {
     if (m_resource) {
-        m_resource->removeClient(this);
+        m_resource->removeClient(*this);
         m_resource = nullptr;
     }
 }
 
-void IconLoader::notifyFinished(CachedResource* resource)
+void IconLoader::notifyFinished(CachedResource& resource)
 {
-    ASSERT(resource == m_resource);
+    ASSERT_UNUSED(resource, &resource == m_resource);
 
     // If we got a status code indicating an invalid response, then lets
     // ignore the data and not try to decode the error page as an icon.
-    auto* data = resource->resourceBuffer();
-    int status = resource->response().httpStatusCode();
+    auto* data = m_resource->resourceBuffer();
+    int status = m_resource->response().httpStatusCode();
     if (status && (status < 200 || status > 299))
         data = nullptr;
 
     static const char pdfMagicNumber[] = "%PDF";
     static unsigned pdfMagicNumberLength = sizeof(pdfMagicNumber) - 1;
     if (data && data->size() >= pdfMagicNumberLength && !memcmp(data->data(), pdfMagicNumber, pdfMagicNumberLength)) {
-        LOG(IconDatabase, "IconLoader::finishLoading() - Ignoring icon at %s because it appears to be a PDF", resource->url().string().ascii().data());
+        LOG(IconDatabase, "IconLoader::finishLoading() - Ignoring icon at %s because it appears to be a PDF", m_resource->url().string().ascii().data());
         data = nullptr;
     }
 
-    LOG(IconDatabase, "IconLoader::finishLoading() - Committing iconURL %s to database", resource->url().string().ascii().data());
-    m_frame.loader().icon().commitToDatabase(resource->url());
+    LOG(IconDatabase, "IconLoader::finishLoading() - Committing iconURL %s to database", m_resource->url().string().ascii().data());
+    m_frame.loader().icon().commitToDatabase(m_resource->url());
     // Setting the icon data only after committing to the database ensures that the data is
     // kept in memory (so it does not have to be read from the database asynchronously), since
     // there is a page URL referencing it.
-    iconDatabase().setIconDataForIconURL(data, resource->url().string());
+    iconDatabase().setIconDataForIconURL(data, m_resource->url().string());
     m_frame.loader().client().dispatchDidReceiveIcon();
     stopLoading();
 }

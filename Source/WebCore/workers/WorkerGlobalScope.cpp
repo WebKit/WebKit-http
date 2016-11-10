@@ -46,6 +46,7 @@
 #include "SecurityOriginPolicy.h"
 #include "SocketProvider.h"
 #include "URL.h"
+#include "WorkerLoaderProxy.h"
 #include "WorkerLocation.h"
 #include "WorkerNavigator.h"
 #include "WorkerObjectProxy.h"
@@ -216,11 +217,14 @@ void WorkerGlobalScope::clearInterval(int timeoutId)
 
 void WorkerGlobalScope::importScripts(const Vector<String>& urls, ExceptionCode& ec)
 {
+    ASSERT(scriptExecutionContext());
     ASSERT(contentSecurityPolicy());
+
+    auto& context = *scriptExecutionContext();
     ec = 0;
     Vector<URL> completedURLs;
     for (auto& entry : urls) {
-        URL url = scriptExecutionContext()->completeURL(entry);
+        URL url = context.completeURL(entry);
         if (!url.isValid()) {
             ec = SYNTAX_ERR;
             return;
@@ -230,14 +234,14 @@ void WorkerGlobalScope::importScripts(const Vector<String>& urls, ExceptionCode&
 
     for (auto& url : completedURLs) {
         // FIXME: Convert this to check the isolated world's Content Security Policy once webkit.org/b/104520 is solved.
-        bool shouldBypassMainWorldContentSecurityPolicy = scriptExecutionContext()->shouldBypassMainWorldContentSecurityPolicy();
-        if (!scriptExecutionContext()->contentSecurityPolicy()->allowScriptFromSource(url, shouldBypassMainWorldContentSecurityPolicy)) {
+        bool shouldBypassMainWorldContentSecurityPolicy = context.shouldBypassMainWorldContentSecurityPolicy();
+        if (!shouldBypassMainWorldContentSecurityPolicy && !context.contentSecurityPolicy()->allowScriptFromSource(url)) {
             ec = NETWORK_ERR;
             return;
         }
 
         Ref<WorkerScriptLoader> scriptLoader = WorkerScriptLoader::create();
-        scriptLoader->loadSynchronously(scriptExecutionContext(), url, FetchOptions::Mode::NoCors, shouldBypassMainWorldContentSecurityPolicy ? ContentSecurityPolicyEnforcement::DoNotEnforce : ContentSecurityPolicyEnforcement::EnforceScriptSrcDirective);
+        scriptLoader->loadSynchronously(&context, url, FetchOptions::Mode::NoCors, shouldBypassMainWorldContentSecurityPolicy ? ContentSecurityPolicyEnforcement::DoNotEnforce : ContentSecurityPolicyEnforcement::EnforceScriptSrcDirective);
 
         // If the fetching attempt failed, throw a NETWORK_ERR exception and abort all these steps.
         if (scriptLoader->failed()) {
@@ -245,7 +249,7 @@ void WorkerGlobalScope::importScripts(const Vector<String>& urls, ExceptionCode&
             return;
         }
 
-        InspectorInstrumentation::scriptImported(scriptExecutionContext(), scriptLoader->identifier(), scriptLoader->script());
+        InspectorInstrumentation::scriptImported(&context, scriptLoader->identifier(), scriptLoader->script());
 
         NakedPtr<JSC::Exception> exception;
         m_script->evaluate(ScriptSourceCode(scriptLoader->script(), scriptLoader->responseURL()), exception);
@@ -380,14 +384,40 @@ WorkerEventQueue& WorkerGlobalScope::eventQueue() const
 }
 
 #if ENABLE(SUBTLE_CRYPTO)
-bool WorkerGlobalScope::wrapCryptoKey(const Vector<uint8_t>&, Vector<uint8_t>&)
+bool WorkerGlobalScope::wrapCryptoKey(const Vector<uint8_t>& key, Vector<uint8_t>& wrappedKey)
 {
-    return false;
+    bool result = false, done = false;
+    m_thread.workerLoaderProxy().postTaskToLoader([&result, &key, &wrappedKey, &done, workerGlobalScope = this](ScriptExecutionContext& context) {
+        result = context.wrapCryptoKey(key, wrappedKey);
+        done = true;
+        workerGlobalScope->postTask([](ScriptExecutionContext& context) {
+            ASSERT_UNUSED(context, context.isWorkerGlobalScope());
+        });
+    });
+
+    MessageQueueWaitResult waitResult = MessageQueueMessageReceived;
+    while (!done && waitResult != MessageQueueTerminated)
+        waitResult = m_thread.runLoop().runInMode(this, WorkerRunLoop::defaultMode());
+
+    return result;
 }
 
-bool WorkerGlobalScope::unwrapCryptoKey(const Vector<uint8_t>&, Vector<uint8_t>&)
+bool WorkerGlobalScope::unwrapCryptoKey(const Vector<uint8_t>& wrappedKey, Vector<uint8_t>& key)
 {
-    return false;
+    bool result = false, done = false;
+    m_thread.workerLoaderProxy().postTaskToLoader([&result, &wrappedKey, &key, &done, workerGlobalScope = this](ScriptExecutionContext& context) {
+        result = context.unwrapCryptoKey(wrappedKey, key);
+        done = true;
+        workerGlobalScope->postTask([](ScriptExecutionContext& context) {
+            ASSERT_UNUSED(context, context.isWorkerGlobalScope());
+        });
+    });
+
+    MessageQueueWaitResult waitResult = MessageQueueMessageReceived;
+    while (!done && waitResult != MessageQueueTerminated)
+        waitResult = m_thread.runLoop().runInMode(this, WorkerRunLoop::defaultMode());
+
+    return result;
 }
 #endif // ENABLE(SUBTLE_CRYPTO)
 

@@ -69,6 +69,10 @@
 #include "StringUtilities.h"
 #endif
 
+#if PLATFORM(GTK)
+#include "WebSelectionData.h"
+#endif
+
 using namespace WebCore;
 
 namespace WebKit {
@@ -339,7 +343,26 @@ long WebPlatformStrategies::changeCount()
 
 #endif // PLATFORM(COCOA)
 
+#if PLATFORM(GTK)
+// PasteboardStrategy
+
+void WebPlatformStrategies::writeToClipboard(const String& pasteboardName, const SelectionData& selection)
+{
+    WebSelectionData selectionData(selection);
+    WebProcess::singleton().parentProcessConnection()->send(Messages::WebPasteboardProxy::WriteToClipboard(pasteboardName, selectionData), 0);
+}
+
+Ref<SelectionData> WebPlatformStrategies::readFromClipboard(const String& pasteboardName)
+{
+    WebSelectionData selection;
+    WebProcess::singleton().parentProcessConnection()->sendSync(Messages::WebPasteboardProxy::ReadFromClipboard(pasteboardName), Messages::WebPasteboardProxy::ReadFromClipboard::Reply(selection), 0);
+    return WTFMove(selection.selectionData);
+}
+
+#endif // PLATFORM(GTK)
+
 #if PLATFORM(WPE)
+// PasteboardStrategy
 
 void WebPlatformStrategies::getTypes(Vector<String>& types)
 {

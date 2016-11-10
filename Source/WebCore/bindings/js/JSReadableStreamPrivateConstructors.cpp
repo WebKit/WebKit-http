@@ -1,5 +1,6 @@
 /*
  *  Copyright (C) 2015 Canon Inc. All rights reserved.
+ *  Copyright (C) 2016 Apple Inc. All rights reserved.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
@@ -19,7 +20,7 @@
 #include "config.h"
 #include "JSReadableStreamPrivateConstructors.h"
 
-#if ENABLE(STREAMS_API)
+#if ENABLE(READABLE_STREAM_API)
 
 #include "JSDOMBinding.h"
 #include "JSDOMConstructor.h"
@@ -36,14 +37,19 @@ namespace WebCore {
 // Public JS ReadableStreamReder and ReadableStreamDefaultController constructor callbacks.
 EncodedJSValue JSC_HOST_CALL constructJSReadableStreamDefaultController(ExecState& exec)
 {
-    return throwVMTypeError(&exec, ASCIILiteral("ReadableStreamDefaultController constructor should not be called directly"));
+    VM& vm = exec.vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+    return throwVMTypeError(&exec, scope, ASCIILiteral("ReadableStreamDefaultController constructor should not be called directly"));
 }
 
 EncodedJSValue JSC_HOST_CALL constructJSReadableStreamDefaultReader(ExecState& exec)
 {
+    VM& vm = exec.vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+    
     JSReadableStream* stream = jsDynamicCast<JSReadableStream*>(exec.argument(0));
     if (!stream)
-        return throwVMTypeError(&exec, ASCIILiteral("ReadableStreamDefaultReader constructor parameter is not a ReadableStream"));
+        return throwArgumentTypeError(exec, scope, 0, "stream", "ReadableStreamReader", nullptr, "ReadableStream");
 
     JSValue jsFunction = stream->get(&exec, Identifier::fromString(&exec, "getReader"));
 

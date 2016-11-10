@@ -27,8 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef Opcode_h
-#define Opcode_h
+#pragma once
 
 #include "Bytecodes.h"
 #include "LLIntOpcode.h"
@@ -55,7 +54,7 @@ namespace JSC {
 
 
 #define OPCODE_ID_ENUM(opcode, length) opcode,
-    typedef enum { FOR_EACH_OPCODE_ID(OPCODE_ID_ENUM) } OpcodeID;
+    enum OpcodeID : unsigned { FOR_EACH_OPCODE_ID(OPCODE_ID_ENUM) };
 #undef OPCODE_ID_ENUM
 
 const int maxOpcodeLength = 9;
@@ -75,9 +74,18 @@ const int numOpcodeIDs = NUMBER_OF_BYTECODE_IDS + NUMBER_OF_BYTECODE_HELPER_IDS;
     const int opcodeLengths[numOpcodeIDs] = { FOR_EACH_OPCODE_ID(OPCODE_ID_LENGTH_MAP) };
 #undef OPCODE_ID_LENGTH_MAP
 
+#if COMPILER(GCC)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wtype-limits"
+#endif
+
 #define VERIFY_OPCODE_ID(id, size) COMPILE_ASSERT(id <= numOpcodeIDs, ASSERT_THAT_JS_OPCODE_IDS_ARE_VALID);
     FOR_EACH_OPCODE_ID(VERIFY_OPCODE_ID);
 #undef VERIFY_OPCODE_ID
+
+#if COMPILER(GCC)
+#pragma GCC diagnostic pop
+#endif
 
 #if ENABLE(COMPUTED_GOTO_OPCODES)
 typedef void* Opcode;
@@ -126,6 +134,64 @@ inline size_t opcodeLength(OpcodeID opcode)
     return 0;
 }
 
+inline bool isBranch(OpcodeID opcodeID)
+{
+    switch (opcodeID) {
+    case op_jmp:
+    case op_jtrue:
+    case op_jfalse:
+    case op_jeq_null:
+    case op_jneq_null:
+    case op_jneq_ptr:
+    case op_jless:
+    case op_jlesseq:
+    case op_jgreater:
+    case op_jgreatereq:
+    case op_jnless:
+    case op_jnlesseq:
+    case op_jngreater:
+    case op_jngreatereq:
+    case op_switch_imm:
+    case op_switch_char:
+    case op_switch_string:
+        return true;
+    default:
+        return false;
+    }
+}
+
+inline bool isUnconditionalBranch(OpcodeID opcodeID)
+{
+    switch (opcodeID) {
+    case op_jmp:
+        return true;
+    default:
+        return false;
+    }
+}
+
+inline bool isTerminal(OpcodeID opcodeID)
+{
+    switch (opcodeID) {
+    case op_ret:
+    case op_end:
+        return true;
+    default:
+        return false;
+    }
+}
+
+inline bool isThrow(OpcodeID opcodeID)
+{
+    switch (opcodeID) {
+    case op_throw:
+    case op_throw_static_error:
+        return true;
+    default:
+        return false;
+    }
+}
+
 } // namespace JSC
 
 namespace WTF {
@@ -135,5 +201,3 @@ class PrintStream;
 void printInternal(PrintStream&, JSC::OpcodeID);
 
 } // namespace WTF
-
-#endif // Opcode_h

@@ -40,6 +40,10 @@
 #include <wtf/RefPtr.h>
 #include <wtf/Vector.h>
 
+#if PLATFORM(WIN)
+interface ID2D1RenderTarget;
+#endif
+
 namespace WebCore {
 
 class FloatRect;
@@ -149,10 +153,12 @@ private:
     RetainPtr<CGImageRef> copyNativeImage(BackingStoreCopy = CopyBackingStore) const;
     static RetainPtr<CGImageRef> sinkIntoNativeImage(std::unique_ptr<ImageBuffer>);
     void flushContext() const;
+#elif USE(DIRECT2D)
+    void flushContext() const;
 #endif
     
     void draw(GraphicsContext&, const FloatRect& destRect, const FloatRect& srcRect = FloatRect(0, 0, -1, -1), CompositeOperator = CompositeSourceOver, BlendMode = BlendModeNormal);
-    void drawPattern(GraphicsContext&, const FloatRect& srcRect, const AffineTransform& patternTransform, const FloatPoint& phase, const FloatSize& spacing, CompositeOperator, const FloatRect& destRect, BlendMode = BlendModeNormal);
+    void drawPattern(GraphicsContext&, const FloatRect& destRect, const FloatRect& srcRect, const AffineTransform& patternTransform, const FloatPoint& phase, const FloatSize& spacing, CompositeOperator, BlendMode = BlendModeNormal);
 
     static void drawConsuming(std::unique_ptr<ImageBuffer>, GraphicsContext&, const FloatRect& destRect, const FloatRect& srcRect = FloatRect(0, 0, -1, -1), CompositeOperator = CompositeSourceOver, BlendMode = BlendModeNormal);
 
@@ -175,6 +181,8 @@ private:
     WEBCORE_EXPORT ImageBuffer(const FloatSize&, float resolutionScale, ColorSpace, RenderingMode, bool& success);
 #if USE(CG)
     ImageBuffer(const FloatSize&, float resolutionScale, CGColorSpaceRef, RenderingMode, bool& success);
+#elif USE(DIRECT2D)
+    ImageBuffer(const FloatSize&, float resolutionScale, ColorSpace, RenderingMode, ID2D1RenderTarget*, bool& success);
 #endif
 };
 

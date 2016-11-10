@@ -49,6 +49,11 @@ messages -> WebPasteboardProxy {
     SetPasteboardBufferForType(String pasteboardName, String pasteboardType, WebKit::SharedMemory::Handle handle, uint64_t size) -> (uint64_t changeCount)
 #endif
 
+#if PLATFORM(GTK)
+    WriteToClipboard(String pasteboardName, struct WebKit::WebSelectionData pasteboardContent)
+    ReadFromClipboard(String pasteboardName) -> (struct WebKit::WebSelectionData pasteboardContent)
+#endif
+
 #if PLATFORM(WPE)
     GetPasteboardTypes() -> (Vector<String> types)
     ReadStringFromPasteboard(uint64_t index, String pasteboardType) -> (String string)

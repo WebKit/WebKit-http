@@ -76,7 +76,7 @@ bool SVGFEImageElement::hasSingleSecurityOrigin() const
 void SVGFEImageElement::clearResourceReferences()
 {
     if (m_cachedImage) {
-        m_cachedImage->removeClient(this);
+        m_cachedImage->removeClient(*this);
         m_cachedImage = nullptr;
     }
 
@@ -90,10 +90,10 @@ void SVGFEImageElement::requestImageResource()
 
     CachedResourceRequest request(ResourceRequest(document().completeURL(href())), options);
     request.setInitiator(this);
-    m_cachedImage = document().cachedResourceLoader().requestImage(request);
+    m_cachedImage = document().cachedResourceLoader().requestImage(WTFMove(request));
 
     if (m_cachedImage)
-        m_cachedImage->addClient(this);
+        m_cachedImage->addClient(*this);
 }
 
 void SVGFEImageElement::buildPendingResource()
@@ -169,7 +169,7 @@ void SVGFEImageElement::removedFrom(ContainerNode& rootParent)
         clearResourceReferences();
 }
 
-void SVGFEImageElement::notifyFinished(CachedResource*)
+void SVGFEImageElement::notifyFinished(CachedResource&)
 {
     if (!inDocument())
         return;

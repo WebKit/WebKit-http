@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef JSGeneratorFunction_h
-#define JSGeneratorFunction_h
+#pragma once
 
 #include "JSFunction.h"
 
@@ -55,11 +54,22 @@ public:
         Executing = -2,
     };
 
+    // [this], @generator, @generatorState, @generatorValue, @generatorResumeMode, @generatorFrame.
+    enum class GeneratorArgument : int32_t {
+        ThisValue = 0,
+        Generator = 1,
+        State = 2,
+        Value = 3,
+        ResumeMode = 4,
+        Frame = 5,
+    };
+
     const static unsigned StructureFlags = Base::StructureFlags;
 
     DECLARE_EXPORT_INFO;
 
     static JSGeneratorFunction* create(VM&, FunctionExecutable*, JSScope*);
+    static JSGeneratorFunction* create(VM&, FunctionExecutable*, JSScope*, Structure*);
     static JSGeneratorFunction* createWithInvalidatedReallocationWatchpoint(VM&, FunctionExecutable*, JSScope*);
 
     static size_t allocationSize(size_t inlineCapacity)
@@ -75,13 +85,11 @@ public:
     }
 
 private:
-    JSGeneratorFunction(VM&, FunctionExecutable*, JSScope*);
+    JSGeneratorFunction(VM&, FunctionExecutable*, JSScope*, Structure*);
 
-    static JSGeneratorFunction* createImpl(VM&, FunctionExecutable*, JSScope*);
+    static JSGeneratorFunction* createImpl(VM&, FunctionExecutable*, JSScope*, Structure*);
 
     friend class LLIntOffsetsExtractor;
 };
 
 } // namespace JSC
-
-#endif // JSGeneratorFunction_h

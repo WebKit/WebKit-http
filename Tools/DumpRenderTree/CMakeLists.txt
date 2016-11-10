@@ -1,3 +1,9 @@
+set(WEBKIT_TESTRUNNER_SHARED_DIR "${TOOLS_DIR}/TestRunnerShared/")
+set(WEBKIT_TESTRUNNER_UISCRIPTCONTEXT_DIR "${TOOLS_DIR}/TestRunnerShared/UIScriptContext")
+set(DUMP_RENDER_TREE_BINDINGS_DIR "${TOOLS_DIR}/DumpRenderTree/Bindings")
+
+file(MAKE_DIRECTORY ${DERIVED_SOURCES_DIR}/DumpRenderTree)
+
 set(DumpRenderTree_SOURCES
     AccessibilityController.cpp
     AccessibilityTextMarker.cpp
@@ -9,6 +15,9 @@ set(DumpRenderTree_SOURCES
     PixelDumpSupport.cpp
     TestRunner.cpp
     WorkQueue.cpp
+    ${WEBKIT_TESTRUNNER_UISCRIPTCONTEXT_DIR}/UIScriptContext.cpp
+    ${WEBKIT_TESTRUNNER_UISCRIPTCONTEXT_DIR}/UIScriptController.cpp
+    ${WEBKIT_TESTRUNNER_SHARED_DIR}/Bindings/JSWrapper.cpp
 )
 
 set(DumpRenderTree_LIBRARIES
@@ -48,6 +57,7 @@ set(DumpRenderTree_INCLUDE_DIRECTORIES
     ${JAVASCRIPTCORE_DIR}/bytecode
     ${JAVASCRIPTCORE_DIR}/dfg
     ${JAVASCRIPTCORE_DIR}/disassembler
+    ${JAVASCRIPTCORE_DIR}/domjit
     ${JAVASCRIPTCORE_DIR}/heap
     ${JAVASCRIPTCORE_DIR}/interpreter
     ${JAVASCRIPTCORE_DIR}/jit
@@ -58,6 +68,9 @@ set(DumpRenderTree_INCLUDE_DIRECTORIES
     ${JAVASCRIPTCORE_DIR}/ForwardingHeaders
     ${DERIVED_SOURCES_DIR}/ForwardingHeaders
     ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}
+    ${DERIVED_SOURCES_DIR}/DumpRenderTree
+    ${WEBKIT_TESTRUNNER_UISCRIPTCONTEXT_DIR}
+    ${WEBKIT_TESTRUNNER_SHARED_DIR}/Bindings
     ${TOOLS_DIR}/DumpRenderTree
     ${WTF_DIR}
     ${CMAKE_SOURCE_DIR}/Source
@@ -102,6 +115,19 @@ set(TestNetscapePlugin_LIBRARIES
     WTF
     WebCoreTestSupport
 )
+
+set(DumpRenderTree_IDL_FILES
+    "${WEBKIT_TESTRUNNER_UISCRIPTCONTEXT_DIR}/Bindings/UIScriptController.idl"
+)
+
+GENERATE_BINDINGS(
+    OUTPUT_SOURCE DumpRenderTree_SOURCES
+    INPUT_FILES ${DumpRenderTree_IDL_FILES}
+    BASE_DIR ${DUMP_RENDER_TREE_BINDINGS_DIR}
+    IDL_INCLUDES Bindings
+    FEATURES ${FEATURE_DEFINES_WITH_SPACE_SEPARATOR}
+    DESTINATION ${DERIVED_SOURCES_DIR}/DumpRenderTree
+    GENERATOR DumpRenderTree)
 
 WEBKIT_INCLUDE_CONFIG_FILES_IF_EXISTS()
 

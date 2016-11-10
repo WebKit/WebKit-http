@@ -69,6 +69,7 @@
 #include "History.h"
 #include "InspectorInstrumentation.h"
 #include "JSMainThreadExecState.h"
+#include "Language.h"
 #include "Location.h"
 #include "MainFrame.h"
 #include "MediaQueryList.h"
@@ -81,6 +82,7 @@
 #include "PageTransitionEvent.h"
 #include "Performance.h"
 #include "ResourceLoadInfo.h"
+#include "RuntimeApplicationChecks.h"
 #include "RuntimeEnabledFeatures.h"
 #include "ScheduledAction.h"
 #include "Screen.h"
@@ -95,6 +97,7 @@
 #include "StorageNamespaceProvider.h"
 #include "StyleMedia.h"
 #include "StyleResolver.h"
+#include "StyleScope.h"
 #include "SuddenTermination.h"
 #include "URL.h"
 #include "UserGestureIndicator.h"
@@ -390,6 +393,11 @@ bool DOMWindow::canShowModalDialog(const Frame* frame)
     return page ? page->chrome().canRunModal() : false;
 }
 
+static void languagesChangedCallback(void* context)
+{
+    static_cast<DOMWindow*>(context)->languagesChanged();
+}
+
 void DOMWindow::setCanShowModalDialogOverride(bool allow)
 {
     m_canShowModalDialogOverride = allow;
@@ -414,6 +422,8 @@ DOMWindow::DOMWindow(Document* document)
 {
     ASSERT(frame());
     ASSERT(DOMWindow::document());
+
+    addLanguageChangeObserver(this, &languagesChangedCallback);
 }
 
 void DOMWindow::didSecureTransitionTo(Document* document)
@@ -462,6 +472,8 @@ DOMWindow::~DOMWindow()
     if (m_gamepadEventListenerCount)
         GamepadManager::singleton().unregisterDOMWindow(this);
 #endif
+
+    removeLanguageChangeObserver(this);
 }
 
 DOMWindow* DOMWindow::toDOMWindow()
@@ -595,24 +607,26 @@ void DOMWindow::resetDOMWindowProperties()
 {
     m_properties.clear();
 
-    m_screen = nullptr;
-    m_history = nullptr;
+    m_applicationCache = nullptr;
     m_crypto = nullptr;
+    m_history = nullptr;
+    m_localStorage = nullptr;
+    m_location = nullptr;
     m_locationbar = nullptr;
+    m_media = nullptr;
     m_menubar = nullptr;
+    m_navigator = nullptr;
     m_personalbar = nullptr;
+    m_screen = nullptr;
     m_scrollbars = nullptr;
+    m_selection = nullptr;
+    m_sessionStorage = nullptr;
     m_statusbar = nullptr;
     m_toolbar = nullptr;
-    m_navigator = nullptr;
+
 #if ENABLE(WEB_TIMING)
     m_performance = nullptr;
 #endif
-    m_location = nullptr;
-    m_media = nullptr;
-    m_sessionStorage = nullptr;
-    m_localStorage = nullptr;
-    m_applicationCache = nullptr;
 }
 
 bool DOMWindow::isCurrentlyDisplayedInFrame() const
@@ -624,7 +638,7 @@ bool DOMWindow::isCurrentlyDisplayedInFrame() const
 CustomElementRegistry& DOMWindow::ensureCustomElementRegistry()
 {
     if (!m_customElementRegistry)
-        m_customElementRegistry = CustomElementRegistry::create();
+        m_customElementRegistry = CustomElementRegistry::create(*this);
     return *m_customElementRegistry;
 }
 #endif
@@ -651,9 +665,9 @@ Screen* DOMWindow::screen() const
 History* DOMWindow::history() const
 {
     if (!isCurrentlyDisplayedInFrame())
-        return 0;
+        return nullptr;
     if (!m_history)
-        m_history = History::create(m_frame);
+        m_history = History::create(*m_frame);
     return m_history.get();
 }
 
@@ -962,10 +976,11 @@ void DOMWindow::dispatchMessageEventWithOriginCheck(SecurityOrigin* intendedTarg
 
 DOMSelection* DOMWindow::getSelection()
 {
-    if (!isCurrentlyDisplayedInFrame() || !m_frame)
-        return 0;
-
-    return m_frame->document()->getSelection();
+    if (!isCurrentlyDisplayedInFrame())
+        return nullptr;
+    if (!m_selection)
+        m_selection = DOMSelection::create(*m_frame);
+    return m_selection.get();
 }
 
 Element* DOMWindow::frameElement() const
@@ -1004,7 +1019,9 @@ void DOMWindow::focus(bool allowFocus)
     if (focusedFrame && focusedFrame != m_frame)
         focusedFrame->document()->setFocusedElement(nullptr);
 
-    m_frame->eventHandler().focusDocumentView();
+    // setFocusedElement may clear m_frame, so recheck before using it.
+    if (m_frame)
+        m_frame->eventHandler().focusDocumentView();
 }
 
 void DOMWindow::blur()
@@ -1405,6 +1422,19 @@ RefPtr<CSSStyleDeclaration> DOMWindow::getComputedStyle(Element& element, const 
     return CSSComputedStyleDeclaration::create(element, false, pseudoElt);
 }
 
+// FIXME: Drop this overload once <rdar://problem/28016778> has been fixed.
+RefPtr<CSSStyleDeclaration> DOMWindow::getComputedStyle(Document&, const String&, ExceptionCode& ec)
+{
+#if PLATFORM(MAC)
+    if (MacApplication::isAppStore()) {
+        printErrorMessage(ASCIILiteral("Passing a non-Element as first parameter to window.getComputedStyle() is invalid and always returns null"));
+        return nullptr;
+    }
+#endif
+    ec = TypeError;
+    return nullptr;
+}
+
 RefPtr<CSSRuleList> DOMWindow::getMatchedCSSRules(Element* element, const String& pseudoElement, bool authorOnly) const
 {
     if (!isCurrentlyDisplayedInFrame())
@@ -1415,6 +1445,8 @@ RefPtr<CSSRuleList> DOMWindow::getMatchedCSSRules(Element* element, const String
     if (pseudoType == CSSSelector::PseudoElementUnknown && !pseudoElement.isEmpty())
         return nullptr;
 
+    m_frame->document()->styleScope().flushPendingUpdate();
+
     unsigned rulesToInclude = StyleResolver::AuthorCSSRules;
     if (!authorOnly)
         rulesToInclude |= StyleResolver::UAAndUserCSSRules;
@@ -1423,7 +1455,7 @@ RefPtr<CSSRuleList> DOMWindow::getMatchedCSSRules(Element* element, const String
 
     PseudoId pseudoId = CSSSelector::pseudoId(pseudoType);
 
-    auto matchedRules = m_frame->document()->ensureStyleResolver().pseudoStyleRulesForElement(element, pseudoId, rulesToInclude);
+    auto matchedRules = m_frame->document()->styleScope().resolver().pseudoStyleRulesForElement(element, pseudoId, rulesToInclude);
     if (matchedRules.isEmpty())
         return nullptr;
 
@@ -1789,7 +1821,7 @@ void DOMWindow::decrementScrollEventListenersCount()
     Document* document = this->document();
     if (!--m_scrollEventListenerCount && document == &document->topDocument()) {
         Frame* frame = this->frame();
-        if (frame && frame->page() && !document->inPageCache())
+        if (frame && frame->page() && document->pageCacheState() == Document::NotInPageCache)
             frame->page()->chrome().client().setNeedsScrollNotifications(frame, false);
     }
 }
@@ -1864,6 +1896,12 @@ bool DOMWindow::removeEventListener(const AtomicString& eventType, EventListener
 #endif
 
     return true;
+}
+
+void DOMWindow::languagesChanged()
+{
+    if (auto* document = this->document())
+        document->enqueueWindowEvent(Event::create(eventNames().languagechangeEvent, false, false));
 }
 
 void DOMWindow::dispatchLoadEvent()

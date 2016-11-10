@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef DFGOSRExitBase_h
-#define DFGOSRExitBase_h
+#pragma once
 
 #if ENABLE(DFG_JIT)
 
@@ -42,7 +41,6 @@ struct Node;
 struct OSRExitBase {
     OSRExitBase(ExitKind kind, CodeOrigin origin, CodeOrigin originForProfile, bool wasHoisted)
         : m_kind(kind)
-        , m_count(0)
         , m_wasHoisted(wasHoisted)
         , m_codeOrigin(origin)
         , m_codeOriginForExitProfile(originForProfile)
@@ -50,9 +48,9 @@ struct OSRExitBase {
         ASSERT(m_codeOrigin.isSet());
         ASSERT(m_codeOriginForExitProfile.isSet());
     }
-    
+
+    uint32_t m_count { 0 };
     ExitKind m_kind;
-    uint32_t m_count;
     bool m_wasHoisted;
     
     CodeOrigin m_codeOrigin;
@@ -86,6 +84,3 @@ private:
 } } // namespace JSC::DFG
 
 #endif // ENABLE(DFG_JIT)
-
-#endif // DFGOSRExitBase_h
-

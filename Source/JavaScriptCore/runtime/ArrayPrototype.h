@@ -18,8 +18,7 @@
  *
  */
 
-#ifndef ArrayPrototype_h
-#define ArrayPrototype_h
+#pragma once
 
 #include "JSArray.h"
 #include "Lookup.h"
@@ -47,7 +46,7 @@ public:
 
     static Structure* createStructure(VM& vm, JSGlobalObject* globalObject, JSValue prototype)
     {
-        return Structure::create(vm, globalObject, prototype, TypeInfo(ObjectType, StructureFlags), info(), ArrayClass);
+        return Structure::create(vm, globalObject, prototype, TypeInfo(DerivedArrayType, StructureFlags), info(), ArrayClass);
     }
 
     SpeciesWatchpointStatus speciesWatchpointStatus() const { return m_speciesWatchpointStatus; }
@@ -74,5 +73,3 @@ EncodedJSValue JSC_HOST_CALL arrayProtoPrivateFuncConcatMemcpy(ExecState*);
 EncodedJSValue JSC_HOST_CALL arrayProtoPrivateFuncAppendMemcpy(ExecState*);
 
 } // namespace JSC
-
-#endif // ArrayPrototype_h

@@ -39,9 +39,11 @@
 #include "MediaStream.h"
 #include "MediaStreamEvent.h"
 #include "MediaStreamTrack.h"
+#include "NotImplemented.h"
 #include "PeerMediaDescription.h"
 #include "RTCConfiguration.h"
 #include "RTCIceCandidate.h"
+#include "RTCIceCandidateEvent.h"
 #include "RTCOfferAnswerOptions.h"
 #include "RTCRtpTransceiver.h"
 #include "RTCTrackEvent.h"
@@ -301,7 +303,6 @@ static RealtimeMediaSourceMap createSourceMap(const MediaDescriptionVector& remo
         if (transceiver) {
             if (transceiver->hasSendingDirection() && transceiver->sender()->track())
                 sourceMap.set(transceiver->mid(), &transceiver->sender()->track()->source());
-            break;
         }
     }
 
@@ -320,12 +321,12 @@ void MediaEndpointPeerConnection::setLocalDescriptionTask(RefPtr<RTCSessionDescr
     if (m_client->internalSignalingState() == SignalingState::Closed)
         return;
 
-    ExceptionCodeWithMessage exception;
-    auto newDescription = MediaEndpointSessionDescription::create(WTFMove(description), *m_sdpProcessor, exception);
-    if (exception.code) {
-        promise.reject(exception.code, exception.message);
+    auto result = MediaEndpointSessionDescription::create(WTFMove(description), *m_sdpProcessor);
+    if (result.hasException()) {
+        promise.reject(result.releaseException());
         return;
     }
+    auto newDescription = result.releaseReturnValue();
 
     if (!localDescriptionTypeValidForState(newDescription->type())) {
         promise.reject(INVALID_STATE_ERR, "Description type incompatible with current signaling state");
@@ -387,12 +388,12 @@ void MediaEndpointPeerConnection::setLocalDescriptionTask(RefPtr<RTCSessionDescr
     // Update state and local descriptions according to setLocal/RemoteDescription processing model
     switch (newDescription->type()) {
     case RTCSessionDescription::SdpType::Offer:
-        m_pendingLocalDescription = newDescription;
+        m_pendingLocalDescription = WTFMove(newDescription);
         newSignalingState = SignalingState::HaveLocalOffer;
         break;
 
     case RTCSessionDescription::SdpType::Answer:
-        m_currentLocalDescription = newDescription;
+        m_currentLocalDescription = WTFMove(newDescription);
         m_currentRemoteDescription = m_pendingRemoteDescription;
         m_pendingLocalDescription = nullptr;
         m_pendingRemoteDescription = nullptr;
@@ -405,7 +406,7 @@ void MediaEndpointPeerConnection::setLocalDescriptionTask(RefPtr<RTCSessionDescr
         break;
 
     case RTCSessionDescription::SdpType::Pranswer:
-        m_pendingLocalDescription = newDescription;
+        m_pendingLocalDescription = WTFMove(newDescription);
         newSignalingState = SignalingState::HaveLocalPrAnswer;
         break;
     }
@@ -451,12 +452,12 @@ void MediaEndpointPeerConnection::setRemoteDescriptionTask(RefPtr<RTCSessionDesc
     if (m_client->internalSignalingState() == SignalingState::Closed)
         return;
 
-    ExceptionCodeWithMessage exception;
-    auto newDescription = MediaEndpointSessionDescription::create(WTFMove(description), *m_sdpProcessor, exception);
-    if (exception.code) {
-        promise.reject(exception.code, exception.message);
+    auto result = MediaEndpointSessionDescription::create(WTFMove(description), *m_sdpProcessor);
+    if (result.hasException()) {
+        promise.reject(result.releaseException());
         return;
     }
+    auto newDescription = result.releaseReturnValue();
 
     if (!remoteDescriptionTypeValidForState(newDescription->type())) {
         promise.reject(INVALID_STATE_ERR, "Description type incompatible with current signaling state");
@@ -498,9 +499,12 @@ void MediaEndpointPeerConnection::setRemoteDescriptionTask(RefPtr<RTCSessionDesc
                     return !current.stopped() && current.mid().isNull() && current.sender()->trackKind() == mediaDescription->type();
                 });
 
-                if (transceiver)
+                if (transceiver) {
+                    // This transceiver was created locally with a provisional mid. Its real mid will now be set by the remote
+                    // description so we need to update the mid of the transceiver's muted source to preserve the association.
                     transceiver->setMid(mediaDescription->mid());
-                else
+                    m_mediaEndpoint->replaceMutedRemoteSourceMid(transceiver->provisionalMid(), mediaDescription->mid());
+                } else
                     receiveOnlyFlag = true;
             }
 
@@ -562,12 +566,12 @@ void MediaEndpointPeerConnection::setRemoteDescriptionTask(RefPtr<RTCSessionDesc
     // Update state and local descriptions according to setLocal/RemoteDescription processing model
     switch (newDescription->type()) {
     case RTCSessionDescription::SdpType::Offer:
-        m_pendingRemoteDescription = newDescription;
+        m_pendingRemoteDescription = WTFMove(newDescription);
         newSignalingState = SignalingState::HaveRemoteOffer;
         break;
 
     case RTCSessionDescription::SdpType::Answer:
-        m_currentRemoteDescription = newDescription;
+        m_currentRemoteDescription = WTFMove(newDescription);
         m_currentLocalDescription = m_pendingLocalDescription;
         m_pendingRemoteDescription = nullptr;
         m_pendingLocalDescription = nullptr;
@@ -580,7 +584,7 @@ void MediaEndpointPeerConnection::setRemoteDescriptionTask(RefPtr<RTCSessionDesc
         break;
 
     case RTCSessionDescription::SdpType::Pranswer:
-        m_pendingRemoteDescription = newDescription;
+        m_pendingRemoteDescription = WTFMove(newDescription);
         newSignalingState = SignalingState::HaveRemotePrAnswer;
         break;
     }
@@ -755,6 +759,11 @@ void MediaEndpointPeerConnection::markAsNeedingNegotiation()
         m_client->scheduleNegotiationNeededEvent();
 }
 
+void MediaEndpointPeerConnection::emulatePlatformEvent(const String& action)
+{
+    m_mediaEndpoint->emulatePlatformEvent(action);
+}
+
 bool MediaEndpointPeerConnection::localDescriptionTypeValidForState(RTCSessionDescription::SdpType type) const
 {
     switch (m_client->internalSignalingState()) {
@@ -818,23 +827,119 @@ void MediaEndpointPeerConnection::gotDtlsFingerprint(const String& fingerprint, 
     startRunningTasks();
 }
 
-void MediaEndpointPeerConnection::gotIceCandidate(unsigned mdescIndex, RefPtr<IceCandidate>&& candidate)
+void MediaEndpointPeerConnection::gotIceCandidate(const String& mid, RefPtr<IceCandidate>&& candidate)
 {
     ASSERT(isMainThread());
 
-    UNUSED_PARAM(mdescIndex);
-    UNUSED_PARAM(candidate);
+    const MediaDescriptionVector& mediaDescriptions = internalLocalDescription()->configuration()->mediaDescriptions();
+    size_t mediaDescriptionIndex = notFound;
 
-    notImplemented();
+    for (size_t i = 0; i < mediaDescriptions.size(); ++i) {
+        if (mediaDescriptions[i]->mid() == mid) {
+            mediaDescriptionIndex = i;
+            break;
+        }
+    }
+    ASSERT(mediaDescriptionIndex != notFound);
+
+    PeerMediaDescription& mediaDescription = *mediaDescriptions[mediaDescriptionIndex];
+    mediaDescription.addIceCandidate(candidate.copyRef());
+
+    String candidateLine;
+    SDPProcessor::Result result = m_sdpProcessor->generateCandidateLine(*candidate, candidateLine);
+    if (result != SDPProcessor::Result::Success) {
+        LOG_ERROR("SDPProcessor internal error");
+        return;
+    }
+
+    RefPtr<RTCIceCandidate> iceCandidate = RTCIceCandidate::create(candidateLine, mid, mediaDescriptionIndex);
+
+    m_client->fireEvent(RTCIceCandidateEvent::create(false, false, WTFMove(iceCandidate)));
 }
 
-void MediaEndpointPeerConnection::doneGatheringCandidates(unsigned mdescIndex)
+void MediaEndpointPeerConnection::doneGatheringCandidates(const String& mid)
 {
     ASSERT(isMainThread());
 
-    UNUSED_PARAM(mdescIndex);
+    RtpTransceiverVector transceivers = RtpTransceiverVector(m_client->getTransceivers());
+    RTCRtpTransceiver* notifyingTransceiver = matchTransceiverByMid(transceivers, mid);
+    ASSERT(notifyingTransceiver);
 
-    notImplemented();
+    notifyingTransceiver->iceTransport().setGatheringState(RTCIceTransport::GatheringState::Complete);
+
+    // Don't notify the script if there are transceivers still gathering.
+    RTCRtpTransceiver* stillGatheringTransceiver = matchTransceiver(transceivers, [] (RTCRtpTransceiver& current) {
+        return !current.stopped() && !current.mid().isNull()
+            && current.iceTransport().gatheringState() != RTCIceTransport::GatheringState::Complete;
+    });
+    if (!stillGatheringTransceiver) {
+        m_client->fireEvent(RTCIceCandidateEvent::create(false, false, nullptr));
+        m_client->updateIceGatheringState(IceGatheringState::Complete);
+    }
+}
+
+static RTCIceTransport::TransportState deriveAggregatedIceConnectionState(const Vector<RTCIceTransport::TransportState>& states)
+{
+    unsigned newCount = 0;
+    unsigned checkingCount = 0;
+    unsigned connectedCount = 0;
+    unsigned completedCount = 0;
+    unsigned failedCount = 0;
+    unsigned disconnectedCount = 0;
+    unsigned closedCount = 0;
+
+    for (auto& state : states) {
+        switch (state) {
+        case RTCIceTransport::TransportState::New: ++newCount; break;
+        case RTCIceTransport::TransportState::Checking: ++checkingCount; break;
+        case RTCIceTransport::TransportState::Connected: ++connectedCount; break;
+        case RTCIceTransport::TransportState::Completed: ++completedCount; break;
+        case RTCIceTransport::TransportState::Failed: ++failedCount; break;
+        case RTCIceTransport::TransportState::Disconnected: ++disconnectedCount; break;
+        case RTCIceTransport::TransportState::Closed: ++closedCount; break;
+        }
+    }
+
+    // The aggregated RTCIceConnectionState is derived from the RTCIceTransportState of all RTCIceTransports.
+    if ((newCount > 0 && !checkingCount && !failedCount && !disconnectedCount) || (closedCount == states.size()))
+        return RTCIceTransport::TransportState::New;
+
+    if (checkingCount > 0 && !failedCount && !disconnectedCount)
+        return RTCIceTransport::TransportState::Checking;
+
+    if ((connectedCount + completedCount + closedCount) == states.size() && connectedCount > 0)
+        return RTCIceTransport::TransportState::Connected;
+
+    if ((completedCount + closedCount) == states.size() && completedCount > 0)
+        return RTCIceTransport::TransportState::Completed;
+
+    if (failedCount > 0)
+        return RTCIceTransport::TransportState::Failed;
+
+    if (disconnectedCount > 0) // Any failed caught above.
+        return RTCIceTransport::TransportState::Disconnected;
+
+    ASSERT_NOT_REACHED();
+    return RTCIceTransport::TransportState::New;
+}
+
+void MediaEndpointPeerConnection::iceTransportStateChanged(const String& mid, MediaEndpoint::IceTransportState mediaEndpointIceTransportState)
+{
+    ASSERT(isMainThread());
+
+    RTCRtpTransceiver* transceiver = matchTransceiverByMid(m_client->getTransceivers(), mid);
+    ASSERT(transceiver);
+
+    RTCIceTransport::TransportState transportState = static_cast<RTCIceTransport::TransportState>(mediaEndpointIceTransportState);
+    transceiver->iceTransport().setTransportState(transportState);
+
+    // Determine if the script needs to be notified.
+    Vector<RTCIceTransport::TransportState> transportStates;
+    for (auto& transceiver : m_client->getTransceivers())
+        transportStates.append(transceiver->iceTransport().transportState());
+
+    RTCIceTransport::TransportState derivedState = deriveAggregatedIceConnectionState(transportStates);
+    m_client->updateIceConnectionState(static_cast<IceConnectionState>(derivedState));
 }
 
 } // namespace WebCore

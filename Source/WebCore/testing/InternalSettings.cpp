@@ -67,12 +67,9 @@ namespace WebCore {
 
 InternalSettings::Backup::Backup(Settings& settings)
     : m_originalEditingBehavior(settings.editingBehaviorType())
-#if ENABLE(TEXT_AUTOSIZING) || ENABLE(IOS_TEXT_AUTOSIZING)
+#if ENABLE(TEXT_AUTOSIZING)
     , m_originalTextAutosizingEnabled(settings.textAutosizingEnabled())
     , m_originalTextAutosizingWindowSizeOverride(settings.textAutosizingWindowSizeOverride())
-#endif
-#if ENABLE(TEXT_AUTOSIZING)
-    , m_originalTextAutosizingFontScaleFactor(settings.textAutosizingFontScaleFactor())
 #endif
     , m_originalMediaTypeOverride(settings.mediaTypeOverride())
     , m_originalCanvasUsesAcceleratedDrawing(settings.canvasUsesAcceleratedDrawing())
@@ -80,7 +77,6 @@ InternalSettings::Backup::Backup(Settings& settings)
     , m_langAttributeAwareFormControlUIEnabled(RuntimeEnabledFeatures::sharedFeatures().langAttributeAwareFormControlUIEnabled())
     , m_imagesEnabled(settings.areImagesEnabled())
     , m_preferMIMETypeForImages(settings.preferMIMETypeForImages())
-    , m_cachedPDFImageEnabled(settings.isCachedPDFImageEnabled())
     , m_minimumTimerInterval(settings.minimumDOMTimerInterval())
 #if ENABLE(VIDEO_TRACK)
     , m_shouldDisplaySubtitles(settings.shouldDisplaySubtitles())
@@ -92,7 +88,8 @@ InternalSettings::Backup::Backup(Settings& settings)
     , m_originalTimeWithoutMouseMovementBeforeHidingControls(settings.timeWithoutMouseMovementBeforeHidingControls())
     , m_useLegacyBackgroundSizeShorthandBehavior(settings.useLegacyBackgroundSizeShorthandBehavior())
     , m_autoscrollForDragAndDropEnabled(settings.autoscrollForDragAndDropEnabled())
-    , m_pluginReplacementEnabled(RuntimeEnabledFeatures::sharedFeatures().pluginReplacementEnabled())
+    , m_quickTimePluginReplacementEnabled(settings.quickTimePluginReplacementEnabled())
+    , m_youTubeFlashPluginReplacementEnabled(settings.youTubeFlashPluginReplacementEnabled())
     , m_shouldConvertPositionStyleOnCopy(settings.shouldConvertPositionStyleOnCopy())
     , m_fontFallbackPrefersPictographs(settings.fontFallbackPrefersPictographs())
     , m_webFontsAlwaysFallBack(settings.webFontsAlwaysFallBack())
@@ -111,8 +108,14 @@ InternalSettings::Backup::Backup(Settings& settings)
 #if ENABLE(INDEXED_DATABASE_IN_WORKERS)
     , m_indexedDBWorkersEnabled(RuntimeEnabledFeatures::sharedFeatures().indexedDBWorkersEnabled())
 #endif
+#if ENABLE(VARIATION_FONTS)
+    , m_variationFontsEnabled(settings.variationFontsEnabled())
+#endif
+    , m_inputEventsEnabled(settings.inputEventsEnabled())
     , m_userInterfaceDirectionPolicy(settings.userInterfaceDirectionPolicy())
     , m_systemLayoutDirection(settings.systemLayoutDirection())
+    , m_pdfImageCachingPolicy(settings.pdfImageCachingPolicy())
+    , m_forcedPrefersReducedMotionValue(settings.forcedPrefersReducedMotionValue())
 {
 }
 
@@ -148,19 +151,15 @@ void InternalSettings::Backup::restoreTo(Settings& settings)
         settings.setPictographFontFamily(pictographFont.value, static_cast<UScriptCode>(pictographFont.key));
     m_pictographFontFamilies.clear();
 
-#if ENABLE(TEXT_AUTOSIZING) || ENABLE(IOS_TEXT_AUTOSIZING)
+#if ENABLE(TEXT_AUTOSIZING)
     settings.setTextAutosizingEnabled(m_originalTextAutosizingEnabled);
     settings.setTextAutosizingWindowSizeOverride(m_originalTextAutosizingWindowSizeOverride);
-#endif
-#if ENABLE(TEXT_AUTOSIZING)
-    settings.setTextAutosizingFontScaleFactor(m_originalTextAutosizingFontScaleFactor);
 #endif
     settings.setMediaTypeOverride(m_originalMediaTypeOverride);
     settings.setCanvasUsesAcceleratedDrawing(m_originalCanvasUsesAcceleratedDrawing);
     RuntimeEnabledFeatures::sharedFeatures().setLangAttributeAwareFormControlUIEnabled(m_langAttributeAwareFormControlUIEnabled);
     settings.setImagesEnabled(m_imagesEnabled);
     settings.setPreferMIMETypeForImages(m_preferMIMETypeForImages);
-    settings.setCachedPDFImageEnabled(m_cachedPDFImageEnabled);
     settings.setMinimumDOMTimerInterval(m_minimumTimerInterval);
 #if ENABLE(VIDEO_TRACK)
     settings.setShouldDisplaySubtitles(m_shouldDisplaySubtitles);
@@ -184,12 +183,19 @@ void InternalSettings::Backup::restoreTo(Settings& settings)
     settings.setAllowsInlineMediaPlayback(m_allowsInlineMediaPlayback);
     settings.setAllowsInlineMediaPlaybackAfterFullscreen(m_allowsInlineMediaPlaybackAfterFullscreen);
     settings.setInlineMediaPlaybackRequiresPlaysInlineAttribute(m_inlineMediaPlaybackRequiresPlaysInlineAttribute);
-    RuntimeEnabledFeatures::sharedFeatures().setPluginReplacementEnabled(m_pluginReplacementEnabled);
+    settings.setQuickTimePluginReplacementEnabled(m_quickTimePluginReplacementEnabled);
+    settings.setYouTubeFlashPluginReplacementEnabled(m_youTubeFlashPluginReplacementEnabled);
 #if ENABLE(INDEXED_DATABASE_IN_WORKERS)
     RuntimeEnabledFeatures::sharedFeatures().setIndexedDBWorkersEnabled(m_indexedDBWorkersEnabled);
 #endif
+#if ENABLE(VARIATION_FONTS)
+    settings.setVariationFontsEnabled(m_variationFontsEnabled);
+#endif
+    settings.setInputEventsEnabled(m_inputEventsEnabled);
     settings.setUserInterfaceDirectionPolicy(m_userInterfaceDirectionPolicy);
     settings.setSystemLayoutDirection(m_systemLayoutDirection);
+    settings.setPdfImageCachingPolicy(m_pdfImageCachingPolicy);
+    settings.setForcedPrefersReducedMotionValue(m_forcedPrefersReducedMotionValue);
     Settings::setAllowsAnySSLCertificate(false);
 }
 
@@ -339,7 +345,7 @@ void InternalSettings::setPictographFontFamily(const String& family, const Strin
 
 void InternalSettings::setTextAutosizingEnabled(bool enabled, ExceptionCode& ec)
 {
-#if ENABLE(TEXT_AUTOSIZING) || ENABLE(IOS_TEXT_AUTOSIZING)
+#if ENABLE(TEXT_AUTOSIZING)
     InternalSettingsGuardForSettings();
     settings()->setTextAutosizingEnabled(enabled);
 #else
@@ -350,7 +356,7 @@ void InternalSettings::setTextAutosizingEnabled(bool enabled, ExceptionCode& ec)
 
 void InternalSettings::setTextAutosizingWindowSizeOverride(int width, int height, ExceptionCode& ec)
 {
-#if ENABLE(TEXT_AUTOSIZING) || ENABLE(IOS_TEXT_AUTOSIZING)
+#if ENABLE(TEXT_AUTOSIZING)
     InternalSettingsGuardForSettings();
     settings()->setTextAutosizingWindowSizeOverride(IntSize(width, height));
 #else
@@ -364,17 +370,6 @@ void InternalSettings::setMediaTypeOverride(const String& mediaType, ExceptionCo
 {
     InternalSettingsGuardForSettings();
     settings()->setMediaTypeOverride(mediaType);
-}
-
-void InternalSettings::setTextAutosizingFontScaleFactor(float fontScaleFactor, ExceptionCode& ec)
-{
-#if ENABLE(TEXT_AUTOSIZING)
-    InternalSettingsGuardForSettings();
-    settings()->setTextAutosizingFontScaleFactor(fontScaleFactor);
-#else
-    UNUSED_PARAM(fontScaleFactor);
-    UNUSED_PARAM(ec);
-#endif
 }
 
 void InternalSettings::setCanStartMedia(bool enabled, ExceptionCode& ec)
@@ -485,10 +480,19 @@ void InternalSettings::setImagesEnabled(bool enabled, ExceptionCode& ec)
     settings()->setImagesEnabled(enabled);
 }
 
-void InternalSettings::setCachedPDFImageEnabled(bool enabled, ExceptionCode& ec)
+void InternalSettings::setPDFImageCachingPolicy(const String& policy, ExceptionCode& ec)
 {
     InternalSettingsGuardForSettings();
-    settings()->setCachedPDFImageEnabled(enabled);
+    if (equalLettersIgnoringASCIICase(policy, "disabled"))
+        settings()->setPdfImageCachingPolicy(PDFImageCachingDisabled);
+    else if (equalLettersIgnoringASCIICase(policy, "belowmemorylimit"))
+        settings()->setPdfImageCachingPolicy(PDFImageCachingBelowMemoryLimit);
+    else if (equalLettersIgnoringASCIICase(policy, "clipboundsonly"))
+        settings()->setPdfImageCachingPolicy(PDFImageCachingClipBoundsOnly);
+    else if (equalLettersIgnoringASCIICase(policy, "enabled"))
+        settings()->setPdfImageCachingPolicy(PDFImageCachingEnabled);
+    else
+        ec = SYNTAX_ERR;
 }
 
 void InternalSettings::setMinimumTimerInterval(double intervalInSeconds, ExceptionCode& ec)
@@ -539,9 +543,16 @@ void InternalSettings::setWebFontsAlwaysFallBack(bool enable, ExceptionCode& ec)
     settings()->setWebFontsAlwaysFallBack(enable);
 }
 
-void InternalSettings::setPluginReplacementEnabled(bool enabled)
+void InternalSettings::setQuickTimePluginReplacementEnabled(bool enabled, ExceptionCode& ec)
 {
-    RuntimeEnabledFeatures::sharedFeatures().setPluginReplacementEnabled(enabled);
+    InternalSettingsGuardForSettings();
+    settings()->setQuickTimePluginReplacementEnabled(enabled);
+}
+
+void InternalSettings::setYouTubeFlashPluginReplacementEnabled(bool enabled, ExceptionCode& ec)
+{
+    InternalSettingsGuardForSettings();
+    settings()->setYouTubeFlashPluginReplacementEnabled(enabled);
 }
 
 void InternalSettings::setBackgroundShouldExtendBeyondPage(bool hasExtendedBackground, ExceptionCode& ec)
@@ -646,6 +657,58 @@ void InternalSettings::setSystemLayoutDirection(const String& direction, Excepti
 void InternalSettings::setAllowsAnySSLCertificate(bool allowsAnyCertificate)
 {
     Settings::setAllowsAnySSLCertificate(allowsAnyCertificate);
+}
+
+bool InternalSettings::variationFontsEnabled(ExceptionCode& ec)
+{
+#if ENABLE(VARIATION_FONTS)
+    InternalSettingsGuardForSettingsReturn(true);
+    return settings()->variationFontsEnabled();
+#else
+    UNUSED_PARAM(ec);
+    return false;
+#endif
+}
+
+void InternalSettings::setVariationFontsEnabled(bool enabled, ExceptionCode& ec)
+{
+#if ENABLE(VARIATION_FONTS)
+    InternalSettingsGuardForSettings();
+    settings()->setVariationFontsEnabled(enabled);
+#else
+    UNUSED_PARAM(enabled);
+    UNUSED_PARAM(ec);
+#endif
+}
+
+InternalSettings::ForcedPrefersReducedMotionValue InternalSettings::forcedPrefersReducedMotionValue() const
+{
+    switch (settings()->forcedPrefersReducedMotionValue()) {
+    case Settings::ForcedPrefersReducedMotionValue::System:
+        return InternalSettings::ForcedPrefersReducedMotionValue::System;
+    case Settings::ForcedPrefersReducedMotionValue::On:
+        return InternalSettings::ForcedPrefersReducedMotionValue::On;
+    case Settings::ForcedPrefersReducedMotionValue::Off:
+        return InternalSettings::ForcedPrefersReducedMotionValue::Off;
+    }
+
+    ASSERT_NOT_REACHED();
+    return InternalSettings::ForcedPrefersReducedMotionValue::Off;
+}
+
+void InternalSettings::setForcedPrefersReducedMotionValue(InternalSettings::ForcedPrefersReducedMotionValue value)
+{
+    switch (value) {
+    case InternalSettings::ForcedPrefersReducedMotionValue::System:
+        settings()->setForcedPrefersReducedMotionValue(Settings::ForcedPrefersReducedMotionValue::System);
+        break;
+    case InternalSettings::ForcedPrefersReducedMotionValue::On:
+        settings()->setForcedPrefersReducedMotionValue(Settings::ForcedPrefersReducedMotionValue::On);
+        break;
+    case InternalSettings::ForcedPrefersReducedMotionValue::Off:
+        settings()->setForcedPrefersReducedMotionValue(Settings::ForcedPrefersReducedMotionValue::Off);
+        break;
+    }
 }
 
 // If you add to this list, make sure that you update the Backup class for test reproducability!

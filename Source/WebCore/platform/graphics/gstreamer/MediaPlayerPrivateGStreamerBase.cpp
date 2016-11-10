@@ -54,14 +54,17 @@
 #if USE(GLX)
 #include "GLContextGLX.h"
 #include <gst/gl/x11/gstgldisplay_x11.h>
-#elif USE(EGL)
-#include "GLContextEGL.h"
+#endif
+
+#if USE(EGL)
 #include <gst/gl/egl/gstgldisplay_egl.h>
 #endif
 
 #if PLATFORM(X11)
 #include "PlatformDisplayX11.h"
-#elif PLATFORM(WAYLAND)
+#endif
+
+#if PLATFORM(WAYLAND)
 #include "PlatformDisplayWayland.h"
 #elif PLATFORM(WPE)
 #include "PlatformDisplayWPE.h"
@@ -72,9 +75,10 @@
 #if PLATFORM(X11) && GST_GL_HAVE_PLATFORM_EGL
 #undef None
 #endif // PLATFORM(X11) && GST_GL_HAVE_PLATFORM_EGL
+#include "VideoTextureCopierGStreamer.h"
 #endif // USE(GSTREAMER_GL)
 
-#if GST_CHECK_VERSION(1, 1, 0) && USE(TEXTURE_MAPPER_GL)
+#if USE(TEXTURE_MAPPER_GL)
 #include "BitmapTextureGL.h"
 #include "BitmapTexturePool.h"
 #include "TextureMapperGL.h"
@@ -104,6 +108,26 @@ static int greatestCommonDivisor(int a, int b)
 
     return ABS(a);
 }
+
+#if USE(TEXTURE_MAPPER_GL)
+static inline TextureMapperGL::Flags texMapFlagFromOrientation(const ImageOrientation& orientation)
+{
+    switch (orientation) {
+    case DefaultImageOrientation:
+        return 0;
+    case OriginRightTop:
+        return TextureMapperGL::ShouldRotateTexture90;
+    case OriginBottomRight:
+        return TextureMapperGL::ShouldRotateTexture180;
+    case OriginLeftBottom:
+        return TextureMapperGL::ShouldRotateTexture270;
+    default:
+        ASSERT_NOT_REACHED();
+    }
+
+    return 0;
+}
+#endif
 
 #if USE(COORDINATED_GRAPHICS_THREADED) && USE(GSTREAMER_GL)
 class GstVideoFrameHolder : public TextureMapperPlatformLayerBuffer::UnmanagedBufferDataHolder {
@@ -156,9 +180,6 @@ MediaPlayerPrivateGStreamerBase::MediaPlayerPrivateGStreamerBase(MediaPlayer* pl
     , m_drawTimer(RunLoop::main(), this, &MediaPlayerPrivateGStreamerBase::repaint)
 #endif
     , m_usingFallbackVideoSink(false)
-#if USE(TEXTURE_MAPPER_GL)
-    , m_textureMapperRotationFlag(0)
-#endif
 {
     g_mutex_init(&m_sampleMutex);
 #if USE(COORDINATED_GRAPHICS_THREADED)
@@ -207,23 +228,12 @@ bool MediaPlayerPrivateGStreamerBase::handleSyncMessage(GstMessage* message)
     const gchar* contextType;
     gst_message_parse_context_type(message, &contextType);
 
-    if (!ensureGstGLContext())
+    GRefPtr<GstContext> elementContext = adoptGRef(requestGLContext(contextType, this));
+    if (!elementContext)
         return false;
 
-    if (!g_strcmp0(contextType, GST_GL_DISPLAY_CONTEXT_TYPE)) {
-        GRefPtr<GstContext> displayContext = adoptGRef(gst_context_new(GST_GL_DISPLAY_CONTEXT_TYPE, TRUE));
-        gst_context_set_gl_display(displayContext.get(), m_glDisplay.get());
-        gst_element_set_context(GST_ELEMENT(message->src), displayContext.get());
-        return true;
-    }
-
-    if (!g_strcmp0(contextType, "gst.gl.app_context")) {
-        GRefPtr<GstContext> appContext = adoptGRef(gst_context_new("gst.gl.app_context", TRUE));
-        GstStructure* structure = gst_context_writable_structure(appContext.get());
-        gst_structure_set(structure, "context", GST_GL_TYPE_CONTEXT, m_glContext.get(), nullptr);
-        gst_element_set_context(GST_ELEMENT(message->src), appContext.get());
-        return true;
-    }
+    gst_element_set_context(GST_ELEMENT(message->src), elementContext.get());
+    return true;
 #else
     UNUSED_PARAM(message);
 #endif // USE(GSTREAMER_GL)
@@ -232,23 +242,58 @@ bool MediaPlayerPrivateGStreamerBase::handleSyncMessage(GstMessage* message)
 }
 
 #if USE(GSTREAMER_GL)
+GstContext* MediaPlayerPrivateGStreamerBase::requestGLContext(const gchar* contextType, MediaPlayerPrivateGStreamerBase* player)
+{
+    if (!player->ensureGstGLContext())
+        return nullptr;
+
+    if (!g_strcmp0(contextType, GST_GL_DISPLAY_CONTEXT_TYPE)) {
+        GstContext* displayContext = gst_context_new(GST_GL_DISPLAY_CONTEXT_TYPE, TRUE);
+        gst_context_set_gl_display(displayContext, player->gstGLDisplay());
+        return displayContext;
+    }
+
+    if (!g_strcmp0(contextType, "gst.gl.app_context")) {
+        GstContext* appContext = gst_context_new("gst.gl.app_context", TRUE);
+        GstStructure* structure = gst_context_writable_structure(appContext);
+        gst_structure_set(structure, "context", GST_GL_TYPE_CONTEXT, player->gstGLContext(), nullptr);
+        return appContext;
+    }
+
+    return nullptr;
+}
+
 bool MediaPlayerPrivateGStreamerBase::ensureGstGLContext()
 {
     if (m_glContext)
         return true;
 
+    auto& sharedDisplay = PlatformDisplay::sharedDisplayForCompositing();
     if (!m_glDisplay) {
-        const auto& sharedDisplay = PlatformDisplay::sharedDisplay();
 #if PLATFORM(X11)
-        m_glDisplay = GST_GL_DISPLAY(gst_gl_display_x11_new_with_display(downcast<PlatformDisplayX11>(sharedDisplay).native()));
-#elif PLATFORM(WAYLAND)
-        m_glDisplay = GST_GL_DISPLAY(gst_gl_display_egl_new_with_egl_display(downcast<PlatformDisplayWayland>(sharedDisplay).native()));
-#elif PLATFORM(WPE)
+#if USE(GLX)
+        if (is<PlatformDisplayX11>(sharedDisplay))
+            m_glDisplay = GST_GL_DISPLAY(gst_gl_display_x11_new_with_display(downcast<PlatformDisplayX11>(sharedDisplay).native()));
+#elif USE(EGL)
+        if (is<PlatformDisplayX11>(sharedDisplay))
+            m_glDisplay = GST_GL_DISPLAY(gst_gl_display_egl_new_with_egl_display(downcast<PlatformDisplayX11>(sharedDisplay).eglDisplay()));
+#endif
+#endif
+
+#if PLATFORM(WAYLAND)
+        if (is<PlatformDisplayWayland>(sharedDisplay))
+            m_glDisplay = GST_GL_DISPLAY(gst_gl_display_egl_new_with_egl_display(downcast<PlatformDisplayWayland>(sharedDisplay).eglDisplay()));
+#endif
+
+#if PLATFORM(WPE)
+        ASSERT(is<PlatformDisplayWPE>(sharedDisplay));
         m_glDisplay = GST_GL_DISPLAY(gst_gl_display_egl_new_with_egl_display(downcast<PlatformDisplayWPE>(sharedDisplay).eglDisplay()));
 #endif
+
+        ASSERT(m_glDisplay);
     }
 
-    GLContext* webkitContext = GLContext::sharingContext();
+    GLContext* webkitContext = sharedDisplay.sharingGLContext();
     // EGL and GLX are mutually exclusive, no need for ifdefs here.
     GstGLPlatform glPlatform = webkitContext->isEGLContext() ? GST_GL_PLATFORM_EGL : GST_GL_PLATFORM_GLX;
 
@@ -436,7 +481,6 @@ void MediaPlayerPrivateGStreamerBase::updateTexture(BitmapTextureGL& texture, Gs
 {
     GstBuffer* buffer = gst_sample_get_buffer(m_sample.get());
 
-#if GST_CHECK_VERSION(1, 1, 0)
     GstVideoGLTextureUploadMeta* meta;
     if ((meta = gst_buffer_get_video_gl_texture_upload_meta(buffer))) {
         if (meta->n_textures == 1) { // BRGx & BGRA formats use only one texture.
@@ -446,7 +490,6 @@ void MediaPlayerPrivateGStreamerBase::updateTexture(BitmapTextureGL& texture, Gs
                 return;
         }
     }
-#endif
 
     // Right now the TextureMapper only supports chromas with one plane
     ASSERT(GST_VIDEO_INFO_N_PLANES(&videoInfo) == 1);
@@ -493,7 +536,7 @@ void MediaPlayerPrivateGStreamerBase::pushTextureToCompositor()
         return;
 
 #if USE(GSTREAMER_GL)
-    std::unique_ptr<GstVideoFrameHolder> frameHolder = std::make_unique<GstVideoFrameHolder>(m_sample.get(), m_textureMapperRotationFlag);
+    std::unique_ptr<GstVideoFrameHolder> frameHolder = std::make_unique<GstVideoFrameHolder>(m_sample.get(), texMapFlagFromOrientation(m_videoSourceOrientation));
     if (UNLIKELY(!frameHolder->isValid()))
         return;
 
@@ -516,7 +559,7 @@ void MediaPlayerPrivateGStreamerBase::pushTextureToCompositor()
         buffer = std::make_unique<TextureMapperPlatformLayerBuffer>(WTFMove(texture));
     }
     updateTexture(buffer->textureGL(), videoInfo);
-    buffer->setExtraFlags(m_textureMapperRotationFlag | (GST_VIDEO_INFO_HAS_ALPHA(&videoInfo) ? TextureMapperGL::ShouldBlend : 0));
+    buffer->setExtraFlags(texMapFlagFromOrientation(m_videoSourceOrientation) | (GST_VIDEO_INFO_HAS_ALPHA(&videoInfo) ? TextureMapperGL::ShouldBlend : 0));
     m_platformLayerProxy->pushNextBuffer(WTFMove(buffer));
 #endif
 }
@@ -669,7 +712,7 @@ void MediaPlayerPrivateGStreamerBase::paintToTextureMapper(TextureMapper& textur
                 return;
 
             size = IntSize(GST_VIDEO_INFO_WIDTH(&videoInfo), GST_VIDEO_INFO_HEIGHT(&videoInfo));
-            flags = m_textureMapperRotationFlag | (GST_VIDEO_INFO_HAS_ALPHA(&videoInfo) ? TextureMapperGL::ShouldBlend : 0);
+            flags = texMapFlagFromOrientation(m_videoSourceOrientation) | (GST_VIDEO_INFO_HAS_ALPHA(&videoInfo) ? TextureMapperGL::ShouldBlend : 0);
             texture = textureMapper.acquireTextureFromPool(size, GST_VIDEO_INFO_HAS_ALPHA(&videoInfo) ? BitmapTexture::SupportsAlpha : BitmapTexture::NoFlag);
             updateTexture(static_cast<BitmapTextureGL&>(*texture), videoInfo);
         }
@@ -692,7 +735,7 @@ void MediaPlayerPrivateGStreamerBase::paintToTextureMapper(TextureMapper& textur
         return;
 
     unsigned textureID = *reinterpret_cast<unsigned*>(videoFrame.data[0]);
-    TextureMapperGL::Flags flags = m_textureMapperRotationFlag | (GST_VIDEO_INFO_HAS_ALPHA(&videoInfo) ? TextureMapperGL::ShouldBlend : 0);
+    TextureMapperGL::Flags flags = texMapFlagFromOrientation(m_videoSourceOrientation) | (GST_VIDEO_INFO_HAS_ALPHA(&videoInfo) ? TextureMapperGL::ShouldBlend : 0);
 
     IntSize size = IntSize(GST_VIDEO_INFO_WIDTH(&videoInfo), GST_VIDEO_INFO_HEIGHT(&videoInfo));
     TextureMapperGL& textureMapperGL = reinterpret_cast<TextureMapperGL&>(textureMapper);
@@ -703,37 +746,36 @@ void MediaPlayerPrivateGStreamerBase::paintToTextureMapper(TextureMapper& textur
 #endif
 
 #if USE(GSTREAMER_GL)
-NativeImagePtr MediaPlayerPrivateGStreamerBase::nativeImageForCurrentTime()
-{
 #if USE(CAIRO) && ENABLE(ACCELERATED_2D_CANVAS)
-    if (m_usingFallbackVideoSink)
-        return nullptr;
-
-    WTF::GMutexLocker<GMutex> lock(m_sampleMutex);
-
-    GstVideoInfo videoInfo;
+// This should be called with the sample mutex locked.
+GLContext* MediaPlayerPrivateGStreamerBase::prepareContextForCairoPaint(GstVideoInfo& videoInfo, IntSize& size, IntSize& rotatedSize)
+{
     if (!getSampleVideoInfo(m_sample.get(), videoInfo))
         return nullptr;
 
+    GLContext* context = PlatformDisplay::sharedDisplayForCompositing().sharingGLContext();
+    context->makeContextCurrent();
+
+    // Thread-awareness is a huge performance hit on non-Intel drivers.
+    cairo_gl_device_set_thread_aware(context->cairoDevice(), FALSE);
+
+    size = IntSize(GST_VIDEO_INFO_WIDTH(&videoInfo), GST_VIDEO_INFO_HEIGHT(&videoInfo));
+    rotatedSize = m_videoSourceOrientation.usesWidthAsHeight() ? size.transposedSize() : size;
+
+    return context;
+}
+
+// This should be called with the sample mutex locked.
+bool MediaPlayerPrivateGStreamerBase::paintToCairoSurface(cairo_surface_t* outputSurface, cairo_device_t* device, GstVideoInfo& videoInfo, const IntSize& size, const IntSize& rotatedSize, bool flipY)
+{
     GstBuffer* buffer = gst_sample_get_buffer(m_sample.get());
     GstVideoFrame videoFrame;
     if (!gst_video_frame_map(&videoFrame, &videoInfo, buffer, static_cast<GstMapFlags>(GST_MAP_READ | GST_MAP_GL)))
-        return nullptr;
-
-    GLContext* context = GLContext::sharingContext();
-    context->makeContextCurrent();
-    cairo_device_t* device = context->cairoDevice();
-
-    // Thread-awareness is a huge performance hit on non-Intel drivers.
-    cairo_gl_device_set_thread_aware(device, FALSE);
+        return false;
 
     unsigned textureID = *reinterpret_cast<unsigned*>(videoFrame.data[0]);
-    IntSize size = IntSize(GST_VIDEO_INFO_WIDTH(&videoInfo), GST_VIDEO_INFO_HEIGHT(&videoInfo));
     RefPtr<cairo_surface_t> surface = adoptRef(cairo_gl_surface_create_for_texture(device, CAIRO_CONTENT_COLOR_ALPHA, textureID, size.width(), size.height()));
-
-    IntSize rotatedSize = m_videoSourceOrientation.usesWidthAsHeight() ? size.transposedSize() : size;
-    RefPtr<cairo_surface_t> rotatedSurface = adoptRef(cairo_gl_surface_create(device, CAIRO_CONTENT_COLOR_ALPHA, rotatedSize.width(), rotatedSize.height()));
-    RefPtr<cairo_t> cr = adoptRef(cairo_create(rotatedSurface.get()));
+    RefPtr<cairo_t> cr = adoptRef(cairo_create(outputSurface));
 
     switch (m_videoSourceOrientation) {
     case DefaultImageOrientation:
@@ -757,11 +799,78 @@ NativeImagePtr MediaPlayerPrivateGStreamerBase::nativeImageForCurrentTime()
         ASSERT_NOT_REACHED();
         break;
     }
+
+    if (flipY) {
+        cairo_scale(cr.get(), 1.0f, -1.0f);
+        cairo_translate(cr.get(), 0.0f, -size.height());
+    }
+
     cairo_set_source_surface(cr.get(), surface.get(), 0, 0);
     cairo_set_operator(cr.get(), CAIRO_OPERATOR_SOURCE);
     cairo_paint(cr.get());
 
     gst_video_frame_unmap(&videoFrame);
+
+    return true;
+}
+#endif // USE(CAIRO) && ENABLE(ACCELERATED_2D_CANVAS)
+
+bool MediaPlayerPrivateGStreamerBase::copyVideoTextureToPlatformTexture(GraphicsContext3D* context, Platform3DObject outputTexture, GC3Denum outputTarget, GC3Dint level, GC3Denum internalFormat, GC3Denum format, GC3Denum type, bool premultiplyAlpha, bool flipY)
+{
+#if USE(GSTREAMER_GL)
+    UNUSED_PARAM(context);
+
+    if (m_usingFallbackVideoSink)
+        return false;
+
+    if (premultiplyAlpha)
+        return false;
+
+    WTF::GMutexLocker<GMutex> lock(m_sampleMutex);
+
+    GstVideoInfo videoInfo;
+    if (!getSampleVideoInfo(m_sample.get(), videoInfo))
+        return false;
+
+    GstBuffer* buffer = gst_sample_get_buffer(m_sample.get());
+    GstVideoFrame videoFrame;
+    if (!gst_video_frame_map(&videoFrame, &videoInfo, buffer, static_cast<GstMapFlags>(GST_MAP_READ | GST_MAP_GL)))
+        return false;
+
+    IntSize size(GST_VIDEO_INFO_WIDTH(&videoInfo), GST_VIDEO_INFO_HEIGHT(&videoInfo));
+    if (m_videoSourceOrientation.usesWidthAsHeight())
+        size = size.transposedSize();
+    unsigned textureID = *reinterpret_cast<unsigned*>(videoFrame.data[0]);
+
+    if (!m_videoTextureCopier)
+        m_videoTextureCopier = std::make_unique<VideoTextureCopierGStreamer>();
+
+    bool copied = m_videoTextureCopier->copyVideoTextureToPlatformTexture(textureID, size, outputTexture, outputTarget, level, internalFormat, format, type, flipY, m_videoSourceOrientation);
+
+    gst_video_frame_unmap(&videoFrame);
+
+    return copied;
+#else
+    return false;
+#endif
+}
+
+NativeImagePtr MediaPlayerPrivateGStreamerBase::nativeImageForCurrentTime()
+{
+#if USE(CAIRO) && ENABLE(ACCELERATED_2D_CANVAS)
+    if (m_usingFallbackVideoSink)
+        return nullptr;
+
+    GstVideoInfo videoInfo;
+    IntSize size, rotatedSize;
+    WTF::GMutexLocker<GMutex> lock(m_sampleMutex);
+    GLContext* context = prepareContextForCairoPaint(videoInfo, size, rotatedSize);
+    if (!context)
+        return nullptr;
+
+    RefPtr<cairo_surface_t> rotatedSurface = adoptRef(cairo_gl_surface_create(context->cairoDevice(), CAIRO_CONTENT_COLOR_ALPHA, rotatedSize.width(), rotatedSize.height()));
+    if (!paintToCairoSurface(rotatedSurface.get(), context->cairoDevice(), videoInfo, size, rotatedSize, false))
+        return nullptr;
 
     return rotatedSurface;
 #else
@@ -776,26 +885,6 @@ void MediaPlayerPrivateGStreamerBase::setVideoSourceOrientation(const ImageOrien
         return;
 
     m_videoSourceOrientation = orientation;
-
-#if USE(TEXTURE_MAPPER_GL)
-    switch (m_videoSourceOrientation) {
-    case DefaultImageOrientation:
-        m_textureMapperRotationFlag = 0;
-        break;
-    case OriginRightTop:
-        m_textureMapperRotationFlag = TextureMapperGL::ShouldRotateTexture90;
-        break;
-    case OriginBottomRight:
-        m_textureMapperRotationFlag = TextureMapperGL::ShouldRotateTexture180;
-        break;
-    case OriginLeftBottom:
-        m_textureMapperRotationFlag = TextureMapperGL::ShouldRotateTexture270;
-        break;
-    default:
-        ASSERT_NOT_REACHED();
-        break;
-    }
-#endif
 }
 
 bool MediaPlayerPrivateGStreamerBase::supportsFullscreen() const

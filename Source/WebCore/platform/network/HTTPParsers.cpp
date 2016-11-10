@@ -47,17 +47,12 @@ namespace WebCore {
 
 // true if there is more to parse, after incrementing pos past whitespace.
 // Note: Might return pos == str.length()
-static inline bool skipWhiteSpace(const String& str, unsigned& pos, bool fromHttpEquivMeta)
+static inline bool skipWhiteSpace(const String& str, unsigned& pos)
 {
     unsigned len = str.length();
 
-    if (fromHttpEquivMeta) {
-        while (pos < len && str[pos] <= ' ')
-            ++pos;
-    } else {
-        while (pos < len && (str[pos] == '\t' || str[pos] == ' '))
-            ++pos;
-    }
+    while (pos < len && (str[pos] == '\t' || str[pos] == ' '))
+        ++pos;
 
     return pos < len;
 }
@@ -86,7 +81,7 @@ static inline bool skipToken(const String& str, unsigned& pos, const char* token
 // True if the expected equals sign is seen and there is more to follow.
 static inline bool skipEquals(const String& str, unsigned &pos)
 {
-    return skipWhiteSpace(str, pos, false) && str[pos++] == '=' && skipWhiteSpace(str, pos, false);
+    return skipWhiteSpace(str, pos) && str[pos++] == '=' && skipWhiteSpace(str, pos);
 }
 
 // True if a value present, incrementing pos to next space or semicolon, if any.  
@@ -157,42 +152,12 @@ static String trimInputSample(const char* p, size_t length)
     return s;
 }
 
-ContentDispositionType contentDispositionType(const String& contentDisposition)
-{
-    if (contentDisposition.isEmpty())
-        return ContentDispositionNone;
-
-    Vector<String> parameters;
-    contentDisposition.split(';', parameters);
-
-    String dispositionType = parameters[0];
-    dispositionType.stripWhiteSpace();
-
-    if (equalLettersIgnoringASCIICase(dispositionType, "inline"))
-        return ContentDispositionInline;
-
-    // Some broken sites just send bogus headers like
-    //
-    //   Content-Disposition: ; filename="file"
-    //   Content-Disposition: filename="file"
-    //   Content-Disposition: name="file"
-    //
-    // without a disposition token... screen those out.
-    if (!isValidHTTPToken(dispositionType))
-        return ContentDispositionNone;
-
-    // We have a content-disposition of "attachment" or unknown.
-    // RFC 2183, section 2.8 says that an unknown disposition
-    // value should be treated as "attachment"
-    return ContentDispositionAttachment;  
-}
-
-bool parseHTTPRefresh(const String& refresh, bool fromHttpEquivMeta, double& delay, String& url)
+bool parseHTTPRefresh(const String& refresh, double& delay, String& url)
 {
     unsigned len = refresh.length();
     unsigned pos = 0;
     
-    if (!skipWhiteSpace(refresh, pos, fromHttpEquivMeta))
+    if (!skipWhiteSpace(refresh, pos))
         return false;
     
     while (pos != len && refresh[pos] != ',' && refresh[pos] != ';')
@@ -210,14 +175,14 @@ bool parseHTTPRefresh(const String& refresh, bool fromHttpEquivMeta, double& del
             return false;
         
         ++pos;
-        skipWhiteSpace(refresh, pos, fromHttpEquivMeta);
+        skipWhiteSpace(refresh, pos);
         unsigned urlStartPos = pos;
         if (refresh.find("url", urlStartPos, false) == urlStartPos) {
             urlStartPos += 3;
-            skipWhiteSpace(refresh, urlStartPos, fromHttpEquivMeta);
+            skipWhiteSpace(refresh, urlStartPos);
             if (refresh[urlStartPos] == '=') {
                 ++urlStartPos;
-                skipWhiteSpace(refresh, urlStartPos, fromHttpEquivMeta);
+                skipWhiteSpace(refresh, urlStartPos);
             } else
                 urlStartPos = pos;  // e.g. "Refresh: 0; url.html"
         }
@@ -388,7 +353,7 @@ XSSProtectionDisposition parseXSSProtectionHeader(const String& header, String& 
 
     unsigned pos = 0;
 
-    if (!skipWhiteSpace(header, pos, false))
+    if (!skipWhiteSpace(header, pos))
         return XSSProtectionDisposition::Enabled;
 
     if (header[pos] == '0')
@@ -405,7 +370,7 @@ XSSProtectionDisposition parseXSSProtectionHeader(const String& header, String& 
 
     while (1) {
         // At end of previous directive: consume whitespace, semicolon, and whitespace.
-        if (!skipWhiteSpace(header, pos, false))
+        if (!skipWhiteSpace(header, pos))
             return result;
 
         if (header[pos++] != ';') {
@@ -414,7 +379,7 @@ XSSProtectionDisposition parseXSSProtectionHeader(const String& header, String& 
             return XSSProtectionDisposition::Invalid;
         }
 
-        if (!skipWhiteSpace(header, pos, false))
+        if (!skipWhiteSpace(header, pos))
             return result;
 
         // At start of next directive.
@@ -670,7 +635,7 @@ size_t parseHTTPHeader(const char* start, size_t length, String& failureReason, 
     Vector<char> value;
 
     bool foundFirstNameChar = false;
-    const char* namePtr;
+    const char* namePtr = nullptr;
     size_t nameSize = 0;
 
     nameStr = StringView();

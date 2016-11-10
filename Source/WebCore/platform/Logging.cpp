@@ -35,20 +35,18 @@
 #include <notify.h>
 #endif
 
-#if !LOG_DISABLED
-
 namespace WebCore {
 
-#define DEFINE_LOG_CHANNEL(name) \
-    WTFLogChannel JOIN_LOG_CHANNEL_WITH_PREFIX(LOG_CHANNEL_PREFIX, name) = { WTFLogChannelOff, #name };
-WEBCORE_LOG_CHANNELS(DEFINE_LOG_CHANNEL)
+#if !LOG_DISABLED || !RELEASE_LOG_DISABLED
 
-#define LOG_CHANNEL_ADDRESS(name)  &JOIN_LOG_CHANNEL_WITH_PREFIX(LOG_CHANNEL_PREFIX, name),
-WTFLogChannel* logChannels[] = {
+#define DEFINE_WEBCORE_LOG_CHANNEL(name) DEFINE_LOG_CHANNEL(name, LOG_CHANNEL_WEBKIT_SUBSYSTEM)
+WEBCORE_LOG_CHANNELS(DEFINE_WEBCORE_LOG_CHANNEL)
+
+static WTFLogChannel* logChannels[] = {
     WEBCORE_LOG_CHANNELS(LOG_CHANNEL_ADDRESS)
 };
 
-size_t logChannelCount = WTF_ARRAY_LENGTH(logChannels);
+static const size_t logChannelCount = WTF_ARRAY_LENGTH(logChannels);
 
 bool isLogChannelEnabled(const String& name)
 {
@@ -95,11 +93,14 @@ void registerNotifyCallback(const String& notifyID, std::function<void()> callba
 }
 #endif
 
+#endif // !LOG_DISABLED || !RELEASE_LOG_DISABLED
+
+#if !LOG_DISABLED
 void logFunctionResult(WTFLogChannel* channel, std::function<const char*()> function)
 {
     WTFLog(channel, "%s", function());
 }
 
-} // namespace WebCore
-
 #endif // !LOG_DISABLED
+
+} // namespace WebCore

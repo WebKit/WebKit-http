@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef B3StackmapGenerationParams_h
-#define B3StackmapGenerationParams_h
+#pragma once
 
 #if ENABLE(B3_JIT)
 
@@ -92,7 +91,7 @@ public:
     // This is computed lazily, so it won't work if you capture StackmapGenerationParams by value.
     // Returns true if the successor at the given index is going to be emitted right after the
     // patchpoint.
-    bool fallsThroughToSuccessor(unsigned successorIndex) const;
+    JS_EXPORT_PRIVATE bool fallsThroughToSuccessor(unsigned successorIndex) const;
 
     // This is provided for convenience; it means that you don't have to capture it if you don't want to.
     JS_EXPORT_PRIVATE Procedure& proc() const;
@@ -126,6 +125,3 @@ private:
 } } // namespace JSC::B3
 
 #endif // ENABLE(B3_JIT)
-
-#endif // B3StackmapGenerationParams_h
-

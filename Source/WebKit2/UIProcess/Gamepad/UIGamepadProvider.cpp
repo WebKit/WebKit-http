@@ -31,6 +31,7 @@
 #include "GamepadData.h"
 #include "UIGamepad.h"
 #include "WebProcessPool.h"
+#include <WebCore/MockGamepadProvider.h>
 #include <WebCore/PlatformGamepad.h>
 #include <wtf/NeverDestroyed.h>
 
@@ -49,12 +50,13 @@ UIGamepadProvider& UIGamepadProvider::singleton()
 UIGamepadProvider::UIGamepadProvider()
     : m_gamepadSyncTimer(RunLoop::main(), this, &UIGamepadProvider::gamepadSyncTimerFired)
 {
+    platformSetDefaultGamepadProvider();
 }
 
 UIGamepadProvider::~UIGamepadProvider()
 {
     if (!m_processPoolsUsingGamepads.isEmpty())
-        platformStopMonitoringGamepads();
+        GamepadProvider::singleton().stopMonitoringGamepads(*this);
 }
 
 void UIGamepadProvider::gamepadSyncTimerFired()
@@ -126,7 +128,7 @@ void UIGamepadProvider::platformGamepadDisconnected(PlatformGamepad& gamepad)
 
 void UIGamepadProvider::platformGamepadInputActivity()
 {
-    auto platformGamepads = this->platformGamepads();
+    auto platformGamepads = GamepadProvider::singleton().platformGamepads();
     ASSERT(platformGamepads.size() == m_gamepads.size());
 
     for (size_t i = 0; i < platformGamepads.size(); ++i) {
@@ -189,7 +191,8 @@ void UIGamepadProvider::startMonitoringGamepads()
         return;
 
     m_isMonitoringGamepads = true;
-    platformStartMonitoringGamepads();
+    ASSERT(!m_processPoolsUsingGamepads.isEmpty());
+    GamepadProvider::singleton().startMonitoringGamepads(*this);
 }
 
 void UIGamepadProvider::stopMonitoringGamepads()
@@ -198,7 +201,10 @@ void UIGamepadProvider::stopMonitoringGamepads()
         return;
 
     m_isMonitoringGamepads = false;
-    platformStopMonitoringGamepads();
+
+    ASSERT(m_processPoolsUsingGamepads.isEmpty());
+    GamepadProvider::singleton().stopMonitoringGamepads(*this);
+
     m_gamepads.clear();
 }
 
@@ -209,7 +215,7 @@ Vector<GamepadData> UIGamepadProvider::snapshotGamepads()
 
     for (auto& gamepad : m_gamepads) {
         if (gamepad)
-            gamepadDatas.uncheckedAppend(gamepad->gamepadData());
+            gamepadDatas.uncheckedAppend(gamepad->condensedGamepadData());
         else
             gamepadDatas.uncheckedAppend({ });
     }
@@ -217,23 +223,10 @@ Vector<GamepadData> UIGamepadProvider::snapshotGamepads()
     return gamepadDatas;
 }
 
-#if !PLATFORM(MAC)
+#if !PLATFORM(COCOA)
 
-void UIGamepadProvider::platformStartMonitoringGamepads()
+void UIGamepadProvider::platformSetDefaultGamepadProvider()
 {
-    // FIXME: Implement for other platforms
-}
-
-void UIGamepadProvider::platformStopMonitoringGamepads()
-{
-    // FIXME: Implement for other platforms
-}
-
-const Vector<PlatformGamepad*>& UIGamepadProvider::platformGamepads()
-{
-    static NeverDestroyed<Vector<PlatformGamepad*>> emptyGamepads;
-    return emptyGamepads;
-
     // FIXME: Implement for other platforms
 }
 

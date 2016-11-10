@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2003, 2006, 2007 Apple Inc.  All rights reserved.
+ * Copyright (C) 2003-2016 Apple Inc.  All rights reserved.
  * Copyright (C) 2005 Nokia.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -43,6 +43,11 @@ typedef struct _NSRect NSRect;
 
 #if USE(CAIRO)
 typedef struct _cairo_rectangle cairo_rectangle_t;
+#endif
+
+#if PLATFORM(WIN)
+struct D2D_RECT_F;
+typedef D2D_RECT_F D2D1_RECT_F;
 #endif
 
 namespace WebCore {
@@ -138,7 +143,7 @@ public:
     WEBCORE_EXPORT void unite(const FloatRect&);
     void uniteEvenIfEmpty(const FloatRect&);
     void uniteIfNonZero(const FloatRect&);
-    void extend(const FloatPoint&);
+    WEBCORE_EXPORT void extend(const FloatPoint&);
 
     // Note, this doesn't match what IntRect::contains(IntPoint&) does; the int version
     // is really checking for containment of 1x1 rect, but that doesn't make sense with floats.
@@ -163,9 +168,9 @@ public:
     FloatRect transposedRect() const { return FloatRect(m_location.transposedPoint(), m_size.transposedSize()); }
 
     // Re-initializes this rectangle to fit the sets of passed points.
-    void fitToPoints(const FloatPoint& p0, const FloatPoint& p1);
-    void fitToPoints(const FloatPoint& p0, const FloatPoint& p1, const FloatPoint& p2);
-    void fitToPoints(const FloatPoint& p0, const FloatPoint& p1, const FloatPoint& p2, const FloatPoint& p3);
+    WEBCORE_EXPORT void fitToPoints(const FloatPoint& p0, const FloatPoint& p1);
+    WEBCORE_EXPORT void fitToPoints(const FloatPoint& p0, const FloatPoint& p1, const FloatPoint& p2);
+    WEBCORE_EXPORT void fitToPoints(const FloatPoint& p0, const FloatPoint& p1, const FloatPoint& p2, const FloatPoint& p3);
 
 #if USE(CG)
     WEBCORE_EXPORT FloatRect(const CGRect&);
@@ -180,6 +185,11 @@ public:
 #if USE(CAIRO)
     FloatRect(const cairo_rectangle_t&);
     operator cairo_rectangle_t() const;
+#endif
+
+#if PLATFORM(WIN)
+    WEBCORE_EXPORT FloatRect(const D2D1_RECT_F&);
+    WEBCORE_EXPORT operator D2D1_RECT_F() const;
 #endif
 
     static FloatRect infiniteRect();

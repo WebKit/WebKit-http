@@ -25,21 +25,11 @@
 ] interface NamedNodeMap {
     readonly attribute unsigned long length;
 
-#if !(defined(LANGUAGE_GOBJECT) && LANGUAGE_GOBJECT)
     getter Attr? getNamedItem(DOMString name);
-    [RaisesException] Attr? setNamedItem(Attr attr);
-    [RaisesException] Attr removeNamedItem(DOMString name);
+    [CEReactions, MayThrowLegacyException] Attr? setNamedItem(Attr attr);
+    [CEReactions, MayThrowLegacyException] Attr removeNamedItem(DOMString name);
     getter Attr? item(unsigned long index);
     Attr? getNamedItemNS(DOMString? namespaceURI, DOMString localName);
-    [RaisesException, ImplementedAs=setNamedItem] Attr? setNamedItemNS(Attr attr);
-    [RaisesException] Attr removeNamedItemNS(DOMString? namespaceURI, DOMString localName);
-#else
-    getter Node? getNamedItem(DOMString name);
-    [RaisesException] Node? setNamedItem(Node node);
-    [RaisesException] Node removeNamedItem(DOMString name);
-    getter Node? item(unsigned long index);
-    Node? getNamedItemNS(DOMString? namespaceURI, DOMString localName);
-    [RaisesException, ImplementedAs=setNamedItem] Node? setNamedItemNS(Node node);
-    [RaisesException] Node removeNamedItemNS(DOMString? namespaceURI, DOMString localName);
-#endif
+    [CEReactions, MayThrowLegacyException, ImplementedAs=setNamedItem] Attr? setNamedItemNS(Attr attr);
+    [CEReactions, MayThrowLegacyException] Attr removeNamedItemNS(DOMString? namespaceURI, DOMString localName);
 };

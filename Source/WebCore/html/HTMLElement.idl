@@ -41,22 +41,20 @@
     [Reflect] attribute boolean hidden;
     [Reflect] attribute DOMString accessKey;
 
-    [TreatNullAs=EmptyString, SetterRaisesException] attribute DOMString innerText;
-    [TreatNullAs=EmptyString, SetterRaisesException] attribute DOMString outerText;
+    [TreatNullAs=EmptyString, SetterMayThrowLegacyException] attribute DOMString innerText;
+    [TreatNullAs=EmptyString, SetterMayThrowLegacyException] attribute DOMString outerText;
 
-    [SetterRaisesException] attribute DOMString contentEditable;
+    [SetterMayThrowLegacyException] attribute DOMString contentEditable;
     readonly attribute boolean isContentEditable;
 
     attribute boolean spellcheck;
 
     void click();
 
-#if !(defined(LANGUAGE_GOBJECT) && LANGUAGE_GOBJECT)
     void focus();
     void blur();
 
     readonly attribute DOMStringMap dataset;
-#endif
 };
 
 HTMLElement implements GlobalEventHandlers;

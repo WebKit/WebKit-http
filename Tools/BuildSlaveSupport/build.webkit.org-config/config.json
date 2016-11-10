@@ -41,19 +41,33 @@
                     { "name": "bot418", "platform": "mac-elcapitan" },
                     { "name": "bot419", "platform": "mac-elcapitan" },
 
-                    { "name": "bot407", "platform": "ios-9" },
-                    { "name": "bot197", "platform": "ios-simulator-9" },
-                    { "name": "bot329", "platform": "ios-simulator-9" },
-                    { "name": "bot402", "platform": "ios-simulator-9" },
-                    { "name": "bot403", "platform": "ios-simulator-9" },
-                    { "name": "bot404", "platform": "ios-simulator-9" },
-                    { "name": "bot215", "platform": "ios-simulator-9" },
-                    { "name": "bot216", "platform": "ios-simulator-9" },
-                    { "name": "bot217", "platform": "ios-simulator-9" },
-                    { "name": "bot651", "platform": "ios-simulator-9" },
-                    { "name": "bot652", "platform": "ios-simulator-9" },
-                    { "name": "bot653", "platform": "ios-simulator-9" },
-                    { "name": "bot654", "platform": "ios-simulator-9" },
+                    { "name": "bot118", "platform": "mac-sierra" },
+                    { "name": "bot122", "platform": "mac-sierra" },
+                    { "name": "bot141", "platform": "mac-sierra" },
+                    { "name": "bot143", "platform": "mac-sierra" },
+                    { "name": "bot160", "platform": "mac-sierra" },
+                    { "name": "bot164", "platform": "mac-sierra" },
+                    { "name": "bot199", "platform": "mac-sierra" },
+                    { "name": "bot219", "platform": "mac-sierra" },
+                    { "name": "bot439", "platform": "mac-sierra" },
+                    { "name": "bot443", "platform": "mac-sierra" },
+                    { "name": "bot600", "platform": "mac-sierra" },
+                    { "name": "bot698", "platform": "mac-sierra" },
+                    { "name": "bot699", "platform": "mac-sierra" },
+
+                    { "name": "bot407", "platform": "ios-10" },
+                    { "name": "bot197", "platform": "ios-simulator-10" },
+                    { "name": "bot329", "platform": "ios-simulator-10" },
+                    { "name": "bot402", "platform": "ios-simulator-10" },
+                    { "name": "bot403", "platform": "ios-simulator-10" },
+                    { "name": "bot404", "platform": "ios-simulator-10" },
+                    { "name": "bot215", "platform": "ios-simulator-10" },
+                    { "name": "bot216", "platform": "ios-simulator-10" },
+                    { "name": "bot217", "platform": "ios-simulator-10" },
+                    { "name": "bot651", "platform": "ios-simulator-10" },
+                    { "name": "bot652", "platform": "ios-simulator-10" },
+                    { "name": "bot653", "platform": "ios-simulator-10" },
+                    { "name": "bot654", "platform": "ios-simulator-10" },
 
                     { "name": "bot516", "platform": "win" },
                     { "name": "bot514", "platform": "win" },
@@ -81,7 +95,41 @@
 
                   ],
 
-    "builders":   [ { "name": "Apple El Capitan Debug (Build)", "type": "Build", "builddir": "elcapitan-debug",
+    "builders":   [ { "name": "Apple Sierra Debug (Build)", "type": "Build", "builddir": "sierra-debug",
+                      "platform": "mac-sierra", "configuration": "debug", "architectures": ["x86_64"],
+                      "triggers": ["sierra-debug-tests-wk1", "sierra-debug-tests-wk2"],
+                      "slavenames": ["bot439", "bot698"]
+                    },
+                    { "name": "Apple Sierra Debug WK1 (Tests)", "type": "TestWebKit1AllButJSC", "builddir": "sierra-debug-tests-wk1",
+                      "platform": "mac-sierra", "configuration": "debug", "architectures": ["x86_64"],
+                      "additionalArguments": ["--no-retry-failures"],
+                      "slavenames": ["bot118", "bot122"]
+                    },
+                    { "name": "Apple Sierra Debug WK2 (Tests)", "type": "TestAllButJSC", "builddir": "sierra-debug-tests-wk2",
+                      "platform": "mac-sierra", "configuration": "debug", "architectures": ["x86_64"],
+                      "additionalArguments": ["--no-retry-failures"],
+                      "slavenames": ["bot143", "bot219"]
+                    },
+                    { "name": "Apple Sierra Release (Build)", "type": "Build", "builddir": "sierra-release",
+                      "platform": "mac-sierra", "configuration": "release", "architectures": ["x86_64"],
+                      "triggers": ["sierra-release-tests-wk1", "sierra-release-tests-wk2"],
+                      "slavenames": ["bot443", "bot699"]
+                    },
+                    { "name": "Apple Sierra Release WK1 (Tests)", "type": "TestWebKit1AllButJSC", "builddir": "sierra-release-tests-wk1",
+                      "platform": "mac-sierra", "configuration": "release", "architectures": ["x86_64"],
+                      "additionalArguments": ["--no-retry-failures"],
+                      "slavenames": ["bot141", "bot160"]
+                    },
+                    { "name": "Apple Sierra Release WK2 (Tests)", "type": "TestAllButJSC", "builddir": "sierra-release-tests-wk2",
+                      "platform": "mac-sierra", "configuration": "release", "architectures": ["x86_64"],
+                      "additionalArguments": ["--no-retry-failures"],
+                      "slavenames": ["bot164", "bot199"]
+                    },
+                    { "name": "Apple Sierra Release (32-bit Build)", "type": "Build", "builddir": "sierra-32bit-release",
+                      "platform": "mac-sierra", "configuration": "release", "architectures": ["i386"],
+                      "slavenames": ["bot600"]
+                    },
+                    { "name": "Apple El Capitan Debug (Build)", "type": "Build", "builddir": "elcapitan-debug",
                       "platform": "mac-elcapitan", "configuration": "debug", "architectures": ["x86_64"],
                       "triggers": ["elcapitan-debug-tests-jsc", "elcapitan-debug-tests-wk1", "elcapitan-debug-tests-wk2"],
                       "slavenames": ["bot415", "bot416"]
@@ -97,12 +145,12 @@
                     },
                     { "name": "Apple El Capitan Debug WK1 (Tests)", "type": "TestWebKit1AllButJSC", "builddir": "elcapitan-debug-tests-wk1",
                       "platform": "mac-elcapitan", "configuration": "debug", "architectures": ["x86_64"],
-                      "additionalArguments": ["--no-retry-failures"],
+                      "additionalArguments": ["--no-retry-failures", "--no-sample-on-timeout"],
                       "slavenames": ["bot133", "bot145"]
                     },
                     { "name": "Apple El Capitan Debug WK2 (Tests)", "type": "TestAllButJSC", "builddir": "elcapitan-debug-tests-wk2",
                       "platform": "mac-elcapitan", "configuration": "debug", "architectures": ["x86_64"],
-                      "additionalArguments": ["--no-retry-failures"],
+                      "additionalArguments": ["--no-retry-failures", "--no-sample-on-timeout"],
                       "slavenames": ["bot162", "bot165"]
                     },
                     { "name": "Apple El Capitan LLINT CLoop (BuildAndTest)", "type": "BuildAndTestLLINTCLoop", "builddir": "elcapitan-cloop-debug",
@@ -124,12 +172,12 @@
                     },
                     { "name": "Apple El Capitan Release WK1 (Tests)", "type": "TestWebKit1AllButJSC", "builddir": "elcapitan-release-tests-wk1",
                       "platform": "mac-elcapitan", "configuration": "release", "architectures": ["x86_64"],
-                      "additionalArguments": ["--no-retry-failures"],
+                      "additionalArguments": ["--no-retry-failures", "--no-sample-on-timeout"],
                       "slavenames": ["bot173", "bot174"]
                     },
                     { "name": "Apple El Capitan Release WK2 (Tests)", "type": "TestAllButJSC", "builddir": "elcapitan-release-tests-wk2",
                       "platform": "mac-elcapitan", "configuration": "release", "architectures": ["x86_64"],
-                      "additionalArguments": ["--no-retry-failures"],
+                      "additionalArguments": ["--no-retry-failures", "--no-sample-on-timeout"],
                       "slavenames": ["bot208", "bot209"]
                     },
                     {
@@ -139,7 +187,7 @@
                     },
                     { "name": "Apple El Capitan (Leaks)", "type": "TestWebKit1Leaks", "builddir": "elcapitan-leaks",
                       "platform": "mac-elcapitan", "configuration": "release", "architectures": ["x86_64"],
-                      "additionalArguments": ["--no-retry-failures"],
+                      "additionalArguments": ["--no-retry-failures", "--no-sample-on-timeout"],
                       "slavenames": ["bot121"]
                     },
                     { "name": "Apple El Capitan Release (32-bit Build)", "type": "Build", "builddir": "elcapitan-32bit-release",
@@ -161,12 +209,12 @@
                     },
                     { "name": "Apple Yosemite Debug WK1 (Tests)", "type": "TestWebKit1AllButJSC", "builddir": "yosemite-debug-tests-wk1",
                       "platform": "mac-yosemite", "configuration": "debug", "architectures": ["x86_64"],
-                      "additionalArguments": ["--no-retry-failures"],
+                      "additionalArguments": ["--no-retry-failures", "--no-sample-on-timeout"],
                       "slavenames": ["bot182", "bot183"]
                     },
                     { "name": "Apple Yosemite Debug WK2 (Tests)", "type": "TestAllButJSC", "builddir": "yosemite-debug-tests-wk2",
                       "platform": "mac-yosemite", "configuration": "debug", "architectures": ["x86_64"],
-                      "additionalArguments": ["--no-retry-failures"],
+                      "additionalArguments": ["--no-retry-failures", "--no-sample-on-timeout"],
                       "slavenames": ["bot184", "bot185"]
                     },
                     { "name": "Apple Yosemite LLINT CLoop (BuildAndTest)", "type": "BuildAndTestLLINTCLoop", "builddir": "yosemite-cloop-debug",
@@ -188,12 +236,12 @@
                     },
                     { "name": "Apple Yosemite Release WK1 (Tests)", "type": "TestWebKit1AllButJSC", "builddir": "yosemite-release-tests-wk1",
                       "platform": "mac-yosemite", "configuration": "release", "architectures": ["x86_64"],
-                      "additionalArguments": ["--no-retry-failures"],
+                      "additionalArguments": ["--no-retry-failures", "--no-sample-on-timeout"],
                       "slavenames": ["bot190", "bot191"]
                     },
                     { "name": "Apple Yosemite Release WK2 (Tests)", "type": "TestAllButJSC", "builddir": "yosemite-release-tests-wk2",
                       "platform": "mac-yosemite", "configuration": "release", "architectures": ["x86_64"],
-                      "additionalArguments": ["--no-retry-failures"],
+                      "additionalArguments": ["--no-retry-failures", "--no-sample-on-timeout"],
                       "slavenames": ["bot192", "bot193"]
                     },
                     {
@@ -202,44 +250,44 @@
                       "slavenames": ["bot194"]
                     },
                     {
-                      "name": "Apple iOS 9 Release (Build)", "type": "Build", "builddir": "ios-9-release",
-                      "platform": "ios-9", "configuration": "release", "architectures": ["armv7s", "arm64"],
+                      "name": "Apple iOS 10 Release (Build)", "type": "Build", "builddir": "ios-10-release",
+                      "platform": "ios-10", "configuration": "release", "architectures": ["armv7s", "arm64"],
                       "slavenames": ["bot407"]
                     },
                     {
-                      "name": "Apple iOS 9 Simulator Release (Build)", "type": "Build", "builddir": "ios-simulator-9-release",
-                      "platform": "ios-simulator-9", "configuration": "release", "architectures": ["x86_64"],
-                      "triggers": ["ios-simulator-9-release-tests-wk1", "ios-simulator-9-release-tests-wk2"],
+                      "name": "Apple iOS 10 Simulator Release (Build)", "type": "Build", "builddir": "ios-simulator-10-release",
+                      "platform": "ios-simulator-10", "configuration": "release", "architectures": ["x86_64"],
+                      "triggers": ["ios-simulator-10-release-tests-wk1", "ios-simulator-10-release-tests-wk2"],
                       "slavenames": ["bot402", "bot403"]
                     },
                     {
-                      "name": "Apple iOS 9 Simulator Debug (Build)", "type": "Build", "builddir": "ios-simulator-9-debug",
-                      "platform": "ios-simulator-9", "configuration": "debug", "architectures": ["x86_64"],
-                      "triggers": ["ios-simulator-9-debug-tests-wk1", "ios-simulator-9-debug-tests-wk2"],
+                      "name": "Apple iOS 10 Simulator Debug (Build)", "type": "Build", "builddir": "ios-simulator-10-debug",
+                      "platform": "ios-simulator-10", "configuration": "debug", "architectures": ["x86_64"],
+                      "triggers": ["ios-simulator-10-debug-tests-wk1", "ios-simulator-10-debug-tests-wk2"],
                       "slavenames": ["bot329", "bot404"]
                     },
                     {
-                      "name": "Apple iOS 9 Simulator Release WK1 (Tests)", "type": "TestWebKit1AllButJSC", "builddir": "ios-simulator-9-release-tests-wk1",
-                      "platform": "ios-simulator-9", "configuration": "release", "architectures": ["x86_64"],
-                      "additionalArguments": ["--no-retry-failures"],
+                      "name": "Apple iOS 10 Simulator Release WK1 (Tests)", "type": "TestWebKit1AllButJSC", "builddir": "ios-simulator-10-release-tests-wk1",
+                      "platform": "ios-simulator-10", "configuration": "release", "architectures": ["x86_64"],
+                      "additionalArguments": ["--no-retry-failures", "--no-sample-on-timeout"],
                       "slavenames": ["bot197", "bot215"]
                     },
                     {
-                      "name": "Apple iOS 9 Simulator Debug WK1 (Tests)", "type": "TestWebKit1AllButJSC", "builddir": "ios-simulator-9-debug-tests-wk1",
-                      "platform": "ios-simulator-9", "configuration": "debug", "architectures": ["x86_64"],
-                      "additionalArguments": ["--no-retry-failures"],
+                      "name": "Apple iOS 10 Simulator Debug WK1 (Tests)", "type": "TestWebKit1AllButJSC", "builddir": "ios-simulator-10-debug-tests-wk1",
+                      "platform": "ios-simulator-10", "configuration": "debug", "architectures": ["x86_64"],
+                      "additionalArguments": ["--no-retry-failures", "--no-sample-on-timeout"],
                       "slavenames": ["bot216", "bot217"]
                     },
                     {
-                      "name": "Apple iOS 9 Simulator Release WK2 (Tests)", "type": "TestAllButJSC", "builddir": "ios-simulator-9-release-tests-wk2",
-                      "platform": "ios-simulator-9", "configuration": "release", "architectures": ["x86_64"],
+                      "name": "Apple iOS 10 Simulator Release WK2 (Tests)", "type": "TestAllButJSC", "builddir": "ios-simulator-10-release-tests-wk2",
+                      "platform": "ios-simulator-10", "configuration": "release", "architectures": ["x86_64"],
                       "additionalArguments": ["--no-retry-failures"],
                       "slavenames": ["bot651", "bot652"]
                     },
                     {
-                      "name": "Apple iOS 9 Simulator Debug WK2 (Tests)", "type": "TestAllButJSC", "builddir": "ios-simulator-9-debug-tests-wk2",
-                      "platform": "ios-simulator-9", "configuration": "debug", "architectures": ["x86_64"],
-                      "additionalArguments": ["--no-retry-failures"],
+                      "name": "Apple iOS 10 Simulator Debug WK2 (Tests)", "type": "TestAllButJSC", "builddir": "ios-simulator-10-debug-tests-wk2",
+                      "platform": "ios-simulator-10", "configuration": "debug", "architectures": ["x86_64"],
+                      "additionalArguments": ["--no-retry-failures", "--no-sample-on-timeout"],
                       "slavenames": ["bot653", "bot654"]
                     },
                     {
@@ -348,14 +396,29 @@
                     { "type": "PlatformSpecificScheduler", "platform": "mac-elcapitan", "branch": "trunk", "treeStableTimer": 45.0,
                       "builderNames": ["Apple El Capitan Release (Build)", "Apple El Capitan Debug (Build)", "Apple El Capitan LLINT CLoop (BuildAndTest)", "Apple El Capitan 32-bit JSC (BuildAndTest)", "Apple El Capitan Release (32-bit Build)", "Apple El Capitan CMake Debug (Build)"]
                     },
-                    { "type": "PlatformSpecificScheduler", "platform": "ios-9", "branch": "trunk", "treeStableTimer": 45.0,
-                      "builderNames": ["Apple iOS 9 Release (Build)"]
+                    { "type": "PlatformSpecificScheduler", "platform": "mac-sierra", "branch": "trunk", "treeStableTimer": 45.0,
+                      "builderNames": ["Apple Sierra Release (Build)", "Apple Sierra Debug (Build)", "Apple Sierra Release (32-bit Build)"]
                     },
-                    { "type": "PlatformSpecificScheduler", "platform": "ios-simulator-9", "branch": "trunk", "treeStableTimer": 45.0,
-                      "builderNames": ["Apple iOS 9 Simulator Release (Build)", "Apple iOS 9 Simulator Debug (Build)"]
+                    { "type": "PlatformSpecificScheduler", "platform": "ios-10", "branch": "trunk", "treeStableTimer": 45.0,
+                      "builderNames": ["Apple iOS 10 Release (Build)"]
+                    },
+                    { "type": "PlatformSpecificScheduler", "platform": "ios-simulator-10", "branch": "trunk", "treeStableTimer": 45.0,
+                      "builderNames": ["Apple iOS 10 Simulator Release (Build)", "Apple iOS 10 Simulator Debug (Build)"]
                     },
                     { "type": "PlatformSpecificScheduler", "platform": "win", "branch": "trunk", "treeStableTimer": 45.0,
                       "builderNames": ["Apple Win Release (Build)", "Apple Win Debug (Build)"]
+                    },
+                    { "type": "Triggerable", "name": "sierra-release-tests-wk1",
+                      "builderNames": ["Apple Sierra Release WK1 (Tests)"]
+                    },
+                    { "type": "Triggerable", "name": "sierra-release-tests-wk2",
+                      "builderNames": ["Apple Sierra Release WK2 (Tests)"]
+                    },
+                    { "type": "Triggerable", "name": "sierra-debug-tests-wk1",
+                      "builderNames": ["Apple Sierra Debug WK1 (Tests)"]
+                    },
+                    { "type": "Triggerable", "name": "sierra-debug-tests-wk2",
+                      "builderNames": ["Apple Sierra Debug WK2 (Tests)"]
                     },
                     { "type": "Triggerable", "name": "elcapitan-leaks",
                       "builderNames": ["Apple El Capitan (Leaks)"]
@@ -402,17 +465,17 @@
                     { "type": "Triggerable", "name": "yosemite-release-perf",
                       "builderNames": ["Apple Yosemite Release WK2 (Perf)"]
                     },
-                    { "type": "Triggerable", "name": "ios-simulator-9-release-tests-wk1",
-                      "builderNames": ["Apple iOS 9 Simulator Release WK1 (Tests)"]
+                    { "type": "Triggerable", "name": "ios-simulator-10-release-tests-wk1",
+                      "builderNames": ["Apple iOS 10 Simulator Release WK1 (Tests)"]
                     },
-                    { "type": "Triggerable", "name": "ios-simulator-9-debug-tests-wk1",
-                      "builderNames": ["Apple iOS 9 Simulator Debug WK1 (Tests)"]
+                    { "type": "Triggerable", "name": "ios-simulator-10-debug-tests-wk1",
+                      "builderNames": ["Apple iOS 10 Simulator Debug WK1 (Tests)"]
                     },
-                    { "type": "Triggerable", "name": "ios-simulator-9-release-tests-wk2",
-                      "builderNames": ["Apple iOS 9 Simulator Release WK2 (Tests)"]
+                    { "type": "Triggerable", "name": "ios-simulator-10-release-tests-wk2",
+                      "builderNames": ["Apple iOS 10 Simulator Release WK2 (Tests)"]
                     },
-                    { "type": "Triggerable", "name": "ios-simulator-9-debug-tests-wk2",
-                      "builderNames": ["Apple iOS 9 Simulator Debug WK2 (Tests)"]
+                    { "type": "Triggerable", "name": "ios-simulator-10-debug-tests-wk2",
+                      "builderNames": ["Apple iOS 10 Simulator Debug WK2 (Tests)"]
                     },
                     { "type": "Triggerable", "name": "win-release-tests",
                       "builderNames": ["Apple Win 7 Release (Tests)"]

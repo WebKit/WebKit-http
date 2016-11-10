@@ -423,7 +423,7 @@ void WebFrameLoaderClient::dispatchDidReceiveTitle(const StringWithDirection& ti
         frameLoadDelegate->didReceiveTitle(webView, BString(title.string()), m_webFrame);
 }
 
-void WebFrameLoaderClient::dispatchDidCommitLoad()
+void WebFrameLoaderClient::dispatchDidCommitLoad(Optional<HasInsecureContent>)
 {
     WebView* webView = m_webFrame->webView();
     COMPtr<IWebFrameLoadDelegate> frameLoadDelegate;
@@ -974,7 +974,7 @@ void WebFrameLoaderClient::setTitle(const StringWithDirection& title, const URL&
 
 void WebFrameLoaderClient::savePlatformDataToCachedFrame(CachedFrame* cachedFrame)
 {
-#if USE(CFNETWORK)
+#if USE(CFURLCONNECTION)
     Frame* coreFrame = core(m_webFrame);
     if (!coreFrame)
         return;

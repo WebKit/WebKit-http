@@ -28,6 +28,7 @@
 
 #include "JSDOMBinding.h"
 #include "JSDictionary.h"
+#include "ScriptExecutionContext.h"
 #include "WebKitBlobBuilder.h"
 #include <runtime/Error.h>
 #include <runtime/JSArray.h>
@@ -42,28 +43,32 @@ namespace WebCore {
 
 EncodedJSValue JSC_HOST_CALL constructJSFile(ExecState& exec)
 {
+    VM& vm = exec.vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     auto* constructor = jsCast<DOMConstructorObject*>(exec.callee());
+    ASSERT(constructor);
+
     ScriptExecutionContext* context = constructor->scriptExecutionContext();
     if (!context)
-        return throwVMError(&exec, createReferenceError(&exec, "File constructor associated document is unavailable"));
+        return throwConstructorScriptExecutionContextUnavailableError(exec, scope, "File");
+    ASSERT(context->isDocument());
 
     JSValue arg = exec.argument(0);
     if (arg.isUndefinedOrNull())
-        return throwVMTypeError(&exec, ASCIILiteral("First argument to File constructor must be a valid sequence, was undefined or null"));
+        return throwArgumentTypeError(exec, scope, 0, "fileBits", "File", nullptr, "sequence");
 
     unsigned blobPartsLength = 0;
     JSObject* blobParts = toJSSequence(exec, arg, blobPartsLength);
-    if (exec.hadException())
-        return JSValue::encode(jsUndefined());
+    RETURN_IF_EXCEPTION(scope, encodedJSValue());
     ASSERT(blobParts);
 
     arg = exec.argument(1);
     if (arg.isUndefined())
-        return throwVMTypeError(&exec, ASCIILiteral("Second argument to File constructor must be a valid string, was undefined"));
+        return throwArgumentTypeError(exec, scope, 1, "filename", "File", nullptr, "DOMString");
 
     String filename = arg.toWTFString(&exec).replace('/', ':');
-    if (exec.hadException())
-        return JSValue::encode(jsUndefined());
+    RETURN_IF_EXCEPTION(scope, encodedJSValue());
 
     String normalizedType;
     Optional<int64_t> lastModified;
@@ -72,7 +77,7 @@ EncodedJSValue JSC_HOST_CALL constructJSFile(ExecState& exec)
     if (!arg.isUndefinedOrNull()) {
         JSObject* filePropertyBagObject = arg.getObject();
         if (!filePropertyBagObject)
-            return throwVMTypeError(&exec, ASCIILiteral("Third argument of the constructor is not of type Object"));
+            return throwArgumentTypeError(exec, scope, 2, "options", "File", nullptr, "FilePropertyBag");
 
         // Create the dictionary wrapper from the initializer object.
         JSDictionary dictionary(&exec, filePropertyBagObject);
@@ -80,16 +85,14 @@ EncodedJSValue JSC_HOST_CALL constructJSFile(ExecState& exec)
         // Attempt to get the type property.
         String type;
         dictionary.get("type", type);
-        if (exec.hadException())
-            return JSValue::encode(jsUndefined());
+        RETURN_IF_EXCEPTION(scope, encodedJSValue());
 
         normalizedType = Blob::normalizedContentType(type);
 
         // Only try to parse the lastModified date if there was not an invalid type argument.
         if (type.isEmpty() ||  !normalizedType.isEmpty()) {
             dictionary.get("lastModified", lastModified);
-            if (exec.hadException())
-                return JSValue::encode(jsUndefined());
+            RETURN_IF_EXCEPTION(scope, encodedJSValue());
         }
     }
 
@@ -100,8 +103,7 @@ EncodedJSValue JSC_HOST_CALL constructJSFile(ExecState& exec)
 
     for (unsigned i = 0; i < blobPartsLength; ++i) {
         JSValue item = blobParts->get(&exec, i);
-        if (exec.hadException())
-            return JSValue::encode(jsUndefined());
+        RETURN_IF_EXCEPTION(scope, encodedJSValue());
 
         if (ArrayBuffer* arrayBuffer = toArrayBuffer(item))
             blobBuilder.append(arrayBuffer);
@@ -111,14 +113,13 @@ EncodedJSValue JSC_HOST_CALL constructJSFile(ExecState& exec)
             blobBuilder.append(blob);
         else {
             String string = item.toWTFString(&exec);
-            if (exec.hadException())
-                return JSValue::encode(jsUndefined());
+            RETURN_IF_EXCEPTION(scope, encodedJSValue());
             blobBuilder.append(string, ASCIILiteral("transparent"));
         }
     }
 
     auto file = File::create(blobBuilder.finalize(), filename, normalizedType, lastModified.value());
-    return JSValue::encode(CREATE_DOM_WRAPPER(constructor->globalObject(), File, WTFMove(file)));
+    return JSValue::encode(createWrapper<File>(constructor->globalObject(), WTFMove(file)));
 }
 
 } // namespace WebCore

@@ -23,17 +23,17 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef B3BlockWorklist_h
-#define B3BlockWorklist_h
+#pragma once
 
 #if ENABLE(B3_JIT)
 
-#include "B3BasicBlock.h"
-#include "B3IndexSet.h"
 #include <wtf/GraphNodeWorklist.h>
+#include <wtf/IndexSet.h>
 #include <wtf/Vector.h>
 
 namespace JSC { namespace B3 {
+
+class BasicBlock;
 
 typedef GraphNodeWorklist<BasicBlock*, IndexSet<BasicBlock>> BlockWorklist;
 
@@ -55,6 +55,3 @@ typedef PostOrderGraphNodeWorklist<BasicBlock*, IndexSet<BasicBlock>> PostOrderB
 } } // namespace JSC::B3
 
 #endif // ENABLE(B3_JIT)
-
-#endif // B3BlockWorklist_h
-

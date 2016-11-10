@@ -53,12 +53,14 @@ using namespace WebKit;
     BOOL _originalSourceViewIsInWindow;
 
     BOOL _snapshotWasDeferred;
-    double _lastSnapshotScale;
+    CGFloat _lastSnapshotScale;
+    CGSize _lastSnapshotMaximumSize;
 }
 
 @synthesize snapshotSize=_snapshotSize;
 @synthesize _waitingForSnapshot=_waitingForSnapshot;
 @synthesize exclusivelyUsesSnapshot=_exclusivelyUsesSnapshot;
+@synthesize shouldKeepSnapshotWhenRemovedFromSuperview=_shouldKeepSnapshotWhenRemovedFromSuperview;
 
 - (instancetype)initWithFrame:(NSRect)frame fromWKView:(WKView *)wkView
 {
@@ -93,7 +95,18 @@ using namespace WebKit;
     SnapshotOptions options = SnapshotOptionsInViewCoordinates;
     IntSize bitmapSize = snapshotRect.size();
     bitmapSize.scale(_scale * _webPageProxy->deviceScaleFactor());
+
+    if (!CGSizeEqualToSize(_maximumSnapshotSize, CGSizeZero)) {
+        double sizeConstraintScale = 1;
+        if (_maximumSnapshotSize.width)
+            sizeConstraintScale = CGFloatMin(sizeConstraintScale, _maximumSnapshotSize.width / bitmapSize.width());
+        if (_maximumSnapshotSize.height)
+            sizeConstraintScale = CGFloatMin(sizeConstraintScale, _maximumSnapshotSize.height / bitmapSize.height());
+        bitmapSize = IntSize(CGCeiling(bitmapSize.width() * sizeConstraintScale), CGCeiling(bitmapSize.height() * sizeConstraintScale));
+    }
+
     _lastSnapshotScale = _scale;
+    _lastSnapshotMaximumSize = _maximumSnapshotSize;
     _webPageProxy->takeSnapshot(snapshotRect, bitmapSize, options, [thumbnailView](const ShareableBitmap::Handle& imageHandle, WebKit::CallbackBase::Error) {
         RefPtr<ShareableBitmap> bitmap = ShareableBitmap::create(imageHandle, SharedMemory::Protection::ReadOnly);
         RetainPtr<CGImageRef> cgImage = bitmap ? bitmap->makeCGImage() : nullptr;
@@ -108,6 +121,9 @@ using namespace WebKit;
         [_wkView _setIgnoresAllEvents:NO];
         _webPageProxy->setMayStartMediaWhenInWindow(_originalMayStartMediaWhenInWindow);
     }
+
+    if (_shouldKeepSnapshotWhenRemovedFromSuperview)
+        return;
 
     self.layer.contents = nil;
     _lastSnapshotScale = NAN;
@@ -131,7 +147,7 @@ using namespace WebKit;
 
 - (void)_requestSnapshotIfNeeded
 {
-    if (self.layer.contents && _lastSnapshotScale == _scale)
+    if (self.layer.contents && _lastSnapshotScale == _scale && CGSizeEqualToSize(_lastSnapshotMaximumSize, _maximumSnapshotSize))
         return;
 
     [self requestSnapshot];
@@ -174,6 +190,16 @@ using namespace WebKit;
     [self _requestSnapshotIfNeeded];
 
     self.layer.sublayerTransform = CATransform3DMakeScale(_scale, _scale, 1);
+}
+
+- (void)setMaximumSnapshotSize:(CGSize)maximumSnapshotSize
+{
+    if (CGSizeEqualToSize(_maximumSnapshotSize, maximumSnapshotSize))
+        return;
+
+    _maximumSnapshotSize = maximumSnapshotSize;
+
+    [self _requestSnapshotIfNeeded];
 }
 
 // This should be removed when all clients go away; it is always YES now.

@@ -221,8 +221,7 @@ function DOMBuilder(tagName, className)
 
 DOMBuilder.prototype.appendTextNode = function(content)
 {
-    var node = document.createTextNode();
-    node.textContent = content;
+    let node = document.createTextNode(content);
     this.element.appendChild(node);
     return node;
 }
@@ -263,11 +262,16 @@ function _truncateString(value, maxLength)
 
 function _createElementTitle(elementData)
 {
-    var builder = new DOMBuilder("div", "element-title");
-    
+    let builder = new DOMBuilder("div", "element-title");
+
     builder.appendSpanIfNotNull("tag-name", elementData.tagName);
-    builder.appendSpanIfNotNull("node-id", elementData.idValue, "#");
-    builder.appendSpanIfNotNull("class-name", _truncateString(elementData.className, 50));
+    builder.appendSpanIfNotNull("node-id", CSS.escape(elementData.idValue), "#");
+
+    let classes = elementData.classes;
+    if (classes && classes.length)
+        builder.appendSpan("class-name", _truncateString(classes.map((className) => "." + CSS.escape(className)).join(""), 50));
+
+    builder.appendSpanIfNotNull("pseudo-type", elementData.pseudoElement, "::");
 
     builder.appendTextNode(" ");
     builder.appendSpan("node-width", elementData.size.width);

@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef B3Effects_h
-#define B3Effects_h
+#pragma once
 
 #if ENABLE(B3_JIT)
 
@@ -53,17 +52,29 @@ struct Effects {
     bool controlDependent { false };
 
     // True if this writes to the local state. Operations that write local state don't write to anything
-    // in "memory" but they have a side-effect anyway. This is for modeling Upsilons and Sets. You can ignore
-    // this if you have your own way of modeling Upsilons and Sets or if you intend to just rebuild them
-    // anyway.
+    // in "memory" but they have a side-effect anyway. This is for modeling Upsilons, Sets, and Fences.
+    // This is a way of saying: even though this operation is not a terminal, does not exit sideways,
+    // and does not write to the heap, you still cannot kill this operation.
     bool writesLocalState { false };
 
     // True if this reads from the local state. This is only used for Phi and Get.
     bool readsLocalState { false };
 
+    // B3 understands things about pinned registers. Therefore, it needs to know who reads them and
+    // who writes them. We don't track this on a per-register basis because that would be harder and
+    // we don't need it. Note that if you want to construct an immutable pinned register while also
+    // having other pinned registers that are mutable, then you can use ArgumentReg. Also note that
+    // nobody will stop you from making this get out-of-sync with your clobbered register sets in
+    // Patchpoint. It's recommended that you err on the side of being conservative.
+    // FIXME: Explore making these be RegisterSets. That's mainly hard because it would be awkward to
+    // reconcile with StackmapValue's support for clobbered regs.
+    // https://bugs.webkit.org/show_bug.cgi?id=163173
+    bool readsPinned { false };
+    bool writesPinned { false };
+
     HeapRange writes;
     HeapRange reads;
-
+    
     static Effects none()
     {
         return Effects();
@@ -76,24 +87,35 @@ struct Effects {
         result.controlDependent = true;
         result.writes = HeapRange::top();
         result.reads = HeapRange::top();
+        result.readsPinned = true;
+        result.writesPinned = true;
+        return result;
+    }
+
+    static Effects forCheck()
+    {
+        Effects result;
+        result.exitsSideways = true;
+        // The program could read anything after exiting, and it's on us to declare this.
+        result.reads = HeapRange::top();
         return result;
     }
 
     bool mustExecute() const
     {
-        return terminal || exitsSideways || writesLocalState || writes;
+        return terminal || exitsSideways || writesLocalState || writes || writesPinned;
     }
 
     // Returns true if reordering instructions with these respective effects would change program
     // behavior in an observable way.
     bool interferes(const Effects&) const;
+    
+    JS_EXPORT_PRIVATE bool operator==(const Effects&) const;
+    JS_EXPORT_PRIVATE bool operator!=(const Effects&) const;
 
-    void dump(PrintStream& out) const;
+    JS_EXPORT_PRIVATE void dump(PrintStream& out) const;
 };
 
 } } // namespace JSC::B3
 
 #endif // ENABLE(B3_JIT)
-
-#endif // B3Effects_h
-

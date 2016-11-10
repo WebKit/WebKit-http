@@ -33,24 +33,21 @@ typedef struct _GtkPrintSettings GtkPrintSettings;
 typedef struct _GtkPageSetup GtkPageSetup;
 
 namespace WebCore {
-class DataObjectGtk;
-class DragData;
+class SelectionData;
 }
 
 namespace IPC {
-
-#if ENABLE(DRAG_SUPPORT)
-template<> struct ArgumentCoder<WebCore::DragData> {
-    static void encode(Encoder&, const WebCore::DragData&);
-    static bool decode(Decoder&, WebCore::DragData&);
-};
-#endif
 
 void encode(Encoder&, GtkPrintSettings*);
 bool decode(Decoder&, GRefPtr<GtkPrintSettings>&);
 
 void encode(Encoder&, GtkPageSetup*);
 bool decode(Decoder&, GRefPtr<GtkPageSetup>&);
+
+template<> struct ArgumentCoder<WebCore::SelectionData> {
+    static void encode(Encoder&, const WebCore::SelectionData&);
+    static bool decode(Decoder&, WebCore::SelectionData&);
+};
 
 } // namespace IPC
 

@@ -50,11 +50,6 @@ public:
             WTF::sleep(30);
         }
 
-        // Despite using system CAs to validate certificates we're
-        // accepting invalid certificates by default. New API will be
-        // added later to let client accept/discard invalid certificates.
-        SoupNetworkSession::defaultSession().setSSLPolicy(SoupNetworkSession::SSLUseSystemCAFile);
-
         SoupNetworkSession::defaultSession().setupHTTPProxyFromEnvironment();
         return true;
     }
@@ -75,14 +70,6 @@ public:
                 downcast<PlatformDisplayWPE>(PlatformDisplay::sharedDisplay()).initialize(wpeFd);
             });
         return true;
-    }
-
-    void platformFinalize() override
-    {
-        if (SoupCache* soupCache = SoupNetworkSession::defaultSession().cache()) {
-            soup_cache_flush(soupCache);
-            soup_cache_dump(soupCache);
-        }
     }
 };
 

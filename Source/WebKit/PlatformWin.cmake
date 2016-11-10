@@ -1,8 +1,8 @@
 if (${WTF_PLATFORM_WIN_CAIRO})
     add_definitions(-DUSE_CAIRO=1 -DUSE_CURL=1 -DWEBKIT_EXPORTS=1)
     list(APPEND WebKit_INCLUDE_DIRECTORIES
+        ${CAIRO_INCLUDE_DIRS}
         "${WEBKIT_LIBRARIES_DIR}/include"
-        "${WEBKIT_LIBRARIES_DIR}/include/cairo"
         "${WEBKIT_LIBRARIES_DIR}/include/sqlite"
         "${WEBCORE_DIR}/platform/graphics/cairo"
     )
@@ -26,6 +26,7 @@ else ()
         PRIVATE CoreFoundation${DEBUG_SUFFIX}
         PRIVATE CoreGraphics${DEBUG_SUFFIX}
         PRIVATE CoreText${DEBUG_SUFFIX}
+        PRIVATE QuartzCore${DEBUG_SUFFIX}
         PRIVATE SQLite3${DEBUG_SUFFIX}
         PRIVATE WebKitSystemInterface${DEBUG_SUFFIX}
         PRIVATE libdispatch${DEBUG_SUFFIX}
@@ -420,6 +421,9 @@ list(APPEND WebKit_LIBRARIES
     PRIVATE Comctl32
     PRIVATE Comsupp
     PRIVATE Crypt32
+    PRIVATE D2d1
+    PRIVATE Dwrite
+    PRIVATE dxguid
     PRIVATE Iphlpapi
     PRIVATE Psapi
     PRIVATE Rpcrt4
@@ -429,6 +433,7 @@ list(APPEND WebKit_LIBRARIES
     PRIVATE Winmm
     PRIVATE WebKitGUID${DEBUG_SUFFIX}
     PRIVATE WebCoreDerivedSources${DEBUG_SUFFIX}
+    PRIVATE WindowsCodecs
 )
 
 if (ENABLE_GRAPHICS_CONTEXT_3D)

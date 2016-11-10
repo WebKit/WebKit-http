@@ -70,7 +70,7 @@ WebInspector.IssueMessage = class IssueMessage extends WebInspector.Object
             break;
 
         default:
-            console.error("Unknown issue source:", source);
+            console.error("Unknown issue source:", this._consoleMessage.source);
             this._type = WebInspector.IssueMessage.Type.OtherIssue;
         }
 
@@ -83,7 +83,7 @@ WebInspector.IssueMessage = class IssueMessage extends WebInspector.Object
 
     static displayName(type)
     {
-        switch(type) {
+        switch (type) {
         case WebInspector.IssueMessage.Type.SemanticIssue:
             return WebInspector.UIString("Semantic Issue");
         case WebInspector.IssueMessage.Type.RangeIssue:

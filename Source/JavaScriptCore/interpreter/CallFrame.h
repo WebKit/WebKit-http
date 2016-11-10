@@ -20,8 +20,7 @@
  *
  */
 
-#ifndef CallFrame_h
-#define CallFrame_h
+#pragma once
 
 #include "AbstractPC.h"
 #include "MacroAssemblerCodeRef.h"
@@ -115,14 +114,6 @@ namespace JSC  {
         // It takes a few memory references to get from a call frame to the global data
         // pointer, so these are inefficient, and should be used sparingly in new code.
         // But they're used in many places in legacy code, so they're not going away any time soon.
-
-        void clearException() { vm().clearException(); }
-
-        Exception* exception() const { return vm().exception(); }
-        bool hadException() const { return !!vm().exception(); }
-
-        Exception* lastException() const { return vm().lastException(); }
-        void clearLastException() { vm().clearLastException(); }
 
         AtomicStringTable* atomicStringTable() const { return vm().atomicStringTable(); }
         const CommonIdentifiers& propertyNames() const { return *vm().propertyNames; }
@@ -303,5 +294,3 @@ namespace JSC  {
     };
 
 } // namespace JSC
-
-#endif // CallFrame_h

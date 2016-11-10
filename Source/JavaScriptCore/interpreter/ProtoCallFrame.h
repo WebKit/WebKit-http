@@ -23,14 +23,13 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ProtoCallFrame_h
-#define ProtoCallFrame_h
+#pragma once
 
 #include "Register.h"
 
 namespace JSC {
 
-struct ProtoCallFrame {
+struct JS_EXPORT_PRIVATE ProtoCallFrame {
     Register codeBlockValue;
     Register calleeValue;
     Register argCountAndCodeOriginValue;
@@ -72,5 +71,3 @@ struct ProtoCallFrame {
 };
 
 } // namespace JSC
-
-#endif // ProtoCallFrame_h

@@ -32,6 +32,7 @@
 #include "CustomProtocolManagerProxyMessages.h"
 #include "DataReference.h"
 #include "DownloadProxyMap.h"
+#include "Logging.h"
 #include "PluginInfoStore.h"
 #include "PluginProcessManager.h"
 #include "TextChecker.h"
@@ -39,7 +40,7 @@
 #include "UserData.h"
 #include "WebBackForwardListItem.h"
 #include "WebIconDatabase.h"
-#include "WebInspectorProxy.h"
+#include "WebInspectorUtilities.h"
 #include "WebNavigationDataStore.h"
 #include "WebNotificationManagerProxy.h"
 #include "WebPageGroup.h"
@@ -56,6 +57,7 @@
 #include <wtf/NeverDestroyed.h>
 #include <wtf/RunLoop.h>
 #include <wtf/text/CString.h>
+#include <wtf/text/StringBuilder.h>
 #include <wtf/text/WTFString.h>
 
 #if PLATFORM(COCOA)
@@ -78,13 +80,6 @@ static uint64_t generatePageID()
 {
     static uint64_t uniquePageID;
     return ++uniquePageID;
-}
-
-static uint64_t generateCallbackID()
-{
-    static uint64_t callbackID;
-
-    return ++callbackID;
 }
 
 static WebProcessProxy::WebPageProxyMap& globalPageMap()
@@ -115,9 +110,6 @@ WebProcessProxy::WebProcessProxy(WebProcessPool& processPool)
 
 WebProcessProxy::~WebProcessProxy()
 {
-    ASSERT(m_pendingFetchWebsiteDataCallbacks.isEmpty());
-    ASSERT(m_pendingDeleteWebsiteDataCallbacks.isEmpty());
-    ASSERT(m_pendingDeleteWebsiteDataForOriginsCallbacks.isEmpty());
     ASSERT(m_pageURLRetainCountMap.isEmpty());
 
     if (m_webConnection)
@@ -133,7 +125,7 @@ void WebProcessProxy::getLaunchOptions(ProcessLauncher::LaunchOptions& launchOpt
 
     ChildProcessProxy::getLaunchOptions(launchOptions);
 
-    if (WebInspectorProxy::isInspectorProcessPool(m_processPool))
+    if (WebKit::isInspectorProcessPool(m_processPool))
         launchOptions.extraInitializationData.add(ASCIILiteral("inspector-process"), ASCIILiteral("1"));
 
     auto overrideLanguages = m_processPool->configuration().overrideLanguages();
@@ -163,18 +155,6 @@ void WebProcessProxy::connectionWillOpen(IPC::Connection& connection)
 void WebProcessProxy::processWillShutDown(IPC::Connection& connection)
 {
     ASSERT_UNUSED(connection, this->connection() == &connection);
-
-    for (const auto& callback : m_pendingFetchWebsiteDataCallbacks.values())
-        callback(WebsiteData());
-    m_pendingFetchWebsiteDataCallbacks.clear();
-
-    for (const auto& callback : m_pendingDeleteWebsiteDataCallbacks.values())
-        callback();
-    m_pendingDeleteWebsiteDataCallbacks.clear();
-
-    for (const auto& callback : m_pendingDeleteWebsiteDataForOriginsCallbacks.values())
-        callback();
-    m_pendingDeleteWebsiteDataForOriginsCallbacks.clear();
 
     for (auto& page : m_pageMap.values())
         page->webProcessWillShutDown();
@@ -492,6 +472,13 @@ void WebProcessProxy::releaseRemainingIconsForPageURLs()
     m_pageURLRetainCountMap.clear();
 }
 
+#if !PLATFORM(COCOA)
+bool WebProcessProxy::platformIsBeingDebugged() const
+{
+    return false;
+}
+#endif
+
 void WebProcessProxy::didReceiveMessage(IPC::Connection& connection, IPC::Decoder& decoder)
 {
     if (dispatchMessage(connection, decoder))
@@ -599,6 +586,11 @@ void WebProcessProxy::didChangeIsResponsive()
         page->didChangeProcessIsResponsive();
 }
 
+bool WebProcessProxy::mayBecomeUnresponsive()
+{
+    return !platformIsBeingDebugged();
+}
+
 void WebProcessProxy::didFinishLaunching(ProcessLauncher* launcher, IPC::Connection::Identifier connectionIdentifier)
 {
     ChildProcessProxy::didFinishLaunching(launcher, connectionIdentifier);
@@ -688,9 +680,6 @@ bool WebProcessProxy::canTerminateChildProcess()
     if (!m_pageMap.isEmpty())
         return false;
 
-    if (!m_pendingDeleteWebsiteDataCallbacks.isEmpty())
-        return false;
-
     if (!m_processPool->shouldTerminate(this))
         return false;
 
@@ -704,24 +693,6 @@ void WebProcessProxy::shouldTerminate(bool& shouldTerminate)
         // We know that the web process is going to terminate so start shutting it down in the UI process.
         shutDown();
     }
-}
-
-void WebProcessProxy::didFetchWebsiteData(uint64_t callbackID, const WebsiteData& websiteData)
-{
-    auto callback = m_pendingFetchWebsiteDataCallbacks.take(callbackID);
-    callback(websiteData);
-}
-
-void WebProcessProxy::didDeleteWebsiteData(uint64_t callbackID)
-{
-    auto callback = m_pendingDeleteWebsiteDataCallbacks.take(callbackID);
-    callback();
-}
-
-void WebProcessProxy::didDeleteWebsiteDataForOrigins(uint64_t callbackID)
-{
-    auto callback = m_pendingDeleteWebsiteDataForOriginsCallbacks.take(callbackID);
-    callback();
 }
 
 void WebProcessProxy::updateTextCheckerState()
@@ -747,65 +718,65 @@ void WebProcessProxy::windowServerConnectionStateChanged()
         page->viewStateDidChange(ViewState::IsVisuallyIdle);
 }
 
-void WebProcessProxy::fetchWebsiteData(SessionID sessionID, OptionSet<WebsiteDataType> dataTypes, std::function<void (WebsiteData)> completionHandler)
+void WebProcessProxy::fetchWebsiteData(SessionID sessionID, OptionSet<WebsiteDataType> dataTypes, Function<void (WebsiteData)> completionHandler)
 {
     ASSERT(canSendMessage());
 
-    uint64_t callbackID = generateCallbackID();
     auto token = throttler().backgroundActivityToken();
-    RELEASE_LOG_IF(sessionID.isAlwaysOnLoggingAllowed(), "%p - WebProcessProxy is taking a background assertion because the Web process is fetching Website data", this);
+    RELEASE_LOG_IF(sessionID.isAlwaysOnLoggingAllowed(), ProcessSuspension, "%p - WebProcessProxy is taking a background assertion because the Web process is fetching Website data", this);
 
-    m_pendingFetchWebsiteDataCallbacks.add(callbackID, [this, token, completionHandler, sessionID](WebsiteData websiteData) {
-        completionHandler(WTFMove(websiteData));
-        RELEASE_LOG_IF(sessionID.isAlwaysOnLoggingAllowed(), "%p - WebProcessProxy is releasing a background assertion because the Web process is done fetching Website data", this);
+    connection()->sendWithReply(Messages::WebProcess::FetchWebsiteData(sessionID, dataTypes), 0, RunLoop::main(), [this, token, completionHandler = WTFMove(completionHandler), sessionID](auto reply) {
+        if (!reply) {
+            completionHandler(WebsiteData { });
+            return;
+        }
+
+        completionHandler(WTFMove(std::get<0>(*reply)));
+        RELEASE_LOG_IF(sessionID.isAlwaysOnLoggingAllowed(), ProcessSuspension, "%p - WebProcessProxy is releasing a background assertion because the Web process is done fetching Website data", this);
     });
-
-    send(Messages::WebProcess::FetchWebsiteData(sessionID, dataTypes, callbackID), 0);
 }
 
-void WebProcessProxy::deleteWebsiteData(SessionID sessionID, OptionSet<WebsiteDataType> dataTypes, std::chrono::system_clock::time_point modifiedSince, std::function<void ()> completionHandler)
+void WebProcessProxy::deleteWebsiteData(SessionID sessionID, OptionSet<WebsiteDataType> dataTypes, std::chrono::system_clock::time_point modifiedSince, Function<void ()> completionHandler)
 {
     ASSERT(canSendMessage());
 
-    uint64_t callbackID = generateCallbackID();
     auto token = throttler().backgroundActivityToken();
-    RELEASE_LOG_IF(sessionID.isAlwaysOnLoggingAllowed(), "%p - WebProcessProxy is taking a background assertion because the Web process is deleting Website data", this);
+    RELEASE_LOG_IF(sessionID.isAlwaysOnLoggingAllowed(), ProcessSuspension, "%p - WebProcessProxy is taking a background assertion because the Web process is deleting Website data", this);
 
-    m_pendingDeleteWebsiteDataCallbacks.add(callbackID, [this, token, completionHandler, sessionID] {
+    connection()->sendWithReply(Messages::WebProcess::DeleteWebsiteData(sessionID, dataTypes, modifiedSince), 0, RunLoop::main(), [this, token, completionHandler = WTFMove(completionHandler), sessionID](auto reply) {
         completionHandler();
-        RELEASE_LOG_IF(sessionID.isAlwaysOnLoggingAllowed(), "%p - WebProcessProxy is releasing a background assertion because the Web process is done deleting Website data", this);
+        RELEASE_LOG_IF(sessionID.isAlwaysOnLoggingAllowed(), ProcessSuspension, "%p - WebProcessProxy is releasing a background assertion because the Web process is done deleting Website data", this);
     });
-    send(Messages::WebProcess::DeleteWebsiteData(sessionID, dataTypes, modifiedSince, callbackID), 0);
 }
 
-void WebProcessProxy::deleteWebsiteDataForOrigins(SessionID sessionID, OptionSet<WebsiteDataType> dataTypes, const Vector<RefPtr<WebCore::SecurityOrigin>>& origins, std::function<void ()> completionHandler)
+void WebProcessProxy::deleteWebsiteDataForOrigins(SessionID sessionID, OptionSet<WebsiteDataType> dataTypes, const Vector<RefPtr<WebCore::SecurityOrigin>>& origins, Function<void ()> completionHandler)
 {
     ASSERT(canSendMessage());
 
-    uint64_t callbackID = generateCallbackID();
     auto token = throttler().backgroundActivityToken();
-    RELEASE_LOG_IF(sessionID.isAlwaysOnLoggingAllowed(), "%p - WebProcessProxy is taking a background assertion because the Web process is deleting Website data for several origins", this);
-
-    m_pendingDeleteWebsiteDataForOriginsCallbacks.add(callbackID, [this, token, completionHandler, sessionID] {
-        completionHandler();
-        RELEASE_LOG_IF(sessionID.isAlwaysOnLoggingAllowed(), "%p - WebProcessProxy is releasing a background assertion because the Web process is done deleting Website data for several origins", this);
-    });
+    RELEASE_LOG_IF(sessionID.isAlwaysOnLoggingAllowed(), ProcessSuspension, "%p - WebProcessProxy is taking a background assertion because the Web process is deleting Website data for several origins", this);
 
     Vector<SecurityOriginData> originData;
     for (auto& origin : origins)
         originData.append(SecurityOriginData::fromSecurityOrigin(*origin));
 
-    send(Messages::WebProcess::DeleteWebsiteDataForOrigins(sessionID, dataTypes, originData, callbackID), 0);
+    connection()->sendWithReply(Messages::WebProcess::DeleteWebsiteDataForOrigins(sessionID, dataTypes, originData), 0, RunLoop::main(), [this, token, completionHandler = WTFMove(completionHandler), sessionID](auto reply) {
+        completionHandler();
+        RELEASE_LOG_IF(sessionID.isAlwaysOnLoggingAllowed(), ProcessSuspension, "%p - WebProcessProxy is releasing a background assertion because the Web process is done deleting Website data for several origins", this);
+    });
 }
 
 void WebProcessProxy::requestTermination()
 {
-    if (state() != State::Running)
+    if (state() == State::Terminated)
         return;
 
     ChildProcessProxy::terminate();
 
-    didClose(*connection());
+    if (webConnection())
+        webConnection()->didClose();
+
+    shutDown();
 }
 
 void WebProcessProxy::enableSuddenTermination()
@@ -988,7 +959,7 @@ void WebProcessProxy::didSetAssertionState(AssertionState state)
 
     switch (state) {
     case AssertionState::Suspended:
-        RELEASE_LOG("%p - WebProcessProxy::didSetAssertionState(Suspended) release all assertions for network process", this);
+        RELEASE_LOG(ProcessSuspension, "%p - WebProcessProxy::didSetAssertionState(Suspended) release all assertions for network process", this);
         m_foregroundTokenForNetworkProcess = nullptr;
         m_backgroundTokenForNetworkProcess = nullptr;
         for (auto& page : m_pageMap.values())
@@ -996,13 +967,13 @@ void WebProcessProxy::didSetAssertionState(AssertionState state)
         break;
 
     case AssertionState::Background:
-        RELEASE_LOG("%p - WebProcessProxy::didSetAssertionState(Background) taking background assertion for network process", this);
+        RELEASE_LOG(ProcessSuspension, "%p - WebProcessProxy::didSetAssertionState(Background) taking background assertion for network process", this);
         m_backgroundTokenForNetworkProcess = processPool().ensureNetworkProcess().throttler().backgroundActivityToken();
         m_foregroundTokenForNetworkProcess = nullptr;
         break;
     
     case AssertionState::Foreground:
-        RELEASE_LOG("%p - WebProcessProxy::didSetAssertionState(Foreground) taking foreground assertion for network process", this);
+        RELEASE_LOG(ProcessSuspension, "%p - WebProcessProxy::didSetAssertionState(Foreground) taking foreground assertion for network process", this);
         m_foregroundTokenForNetworkProcess = processPool().ensureNetworkProcess().throttler().foregroundActivityToken();
         m_backgroundTokenForNetworkProcess = nullptr;
         for (auto& page : m_pageMap.values())
@@ -1019,12 +990,12 @@ void WebProcessProxy::didSetAssertionState(AssertionState state)
 void WebProcessProxy::setIsHoldingLockedFiles(bool isHoldingLockedFiles)
 {
     if (!isHoldingLockedFiles) {
-        RELEASE_LOG("UIProcess is releasing a background assertion because the WebContent process is no longer holding locked files");
+        RELEASE_LOG(ProcessSuspension, "UIProcess is releasing a background assertion because the WebContent process is no longer holding locked files");
         m_tokenForHoldingLockedFiles = nullptr;
         return;
     }
     if (!m_tokenForHoldingLockedFiles) {
-        RELEASE_LOG("UIProcess is taking a background assertion because the WebContent process is holding locked files");
+        RELEASE_LOG(ProcessSuspension, "UIProcess is taking a background assertion because the WebContent process is holding locked files");
         m_tokenForHoldingLockedFiles = m_throttler.backgroundActivityToken();
     }
 }

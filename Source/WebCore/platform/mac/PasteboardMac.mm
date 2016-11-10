@@ -98,20 +98,12 @@ static const Vector<String> writableTypesForURL()
     return types;
 }
 
-static inline Vector<String> createWritableTypesForImage()
-{
-    Vector<String> types;
-    
-    types.append(String(NSTIFFPboardType));
-    types.appendVector(writableTypesForURL());
-    types.append(String(NSRTFDPboardType));
-    return types;
-}
-
 static Vector<String> writableTypesForImage()
 {
     Vector<String> types;
-    types.appendVector(createWritableTypesForImage());
+    types.append(String(NSTIFFPboardType));
+    types.appendVector(writableTypesForURL());
+    types.append(String(NSRTFDPboardType));
     return types;
 }
 
@@ -255,15 +247,21 @@ static void writeFileWrapperAsRTFDAttachment(NSFileWrapper *wrapper, const Strin
 
 void Pasteboard::write(const PasteboardImage& pasteboardImage)
 {
-    CFDataRef imageData = pasteboardImage.image->getTIFFRepresentation();
+    CFDataRef imageData = pasteboardImage.image->tiffRepresentation();
     if (!imageData)
         return;
 
     // FIXME: Why can we assert this? It doesn't seem like it's guaranteed.
     ASSERT(MIMETypeRegistry::isSupportedImageResourceMIMEType(pasteboardImage.resourceMIMEType));
 
-    m_changeCount = writeURLForTypes(writableTypesForImage(), m_pasteboardName, pasteboardImage.url);
+    auto types = writableTypesForImage();
+    if (pasteboardImage.dataInWebArchiveFormat)
+        types.append(WebArchivePboardType);
+
+    m_changeCount = writeURLForTypes(types, m_pasteboardName, pasteboardImage.url);
     m_changeCount = platformStrategies()->pasteboardStrategy()->setBufferForType(SharedBuffer::wrapCFData(imageData).ptr(), NSTIFFPboardType, m_pasteboardName);
+    if (pasteboardImage.dataInWebArchiveFormat)
+        m_changeCount = platformStrategies()->pasteboardStrategy()->setBufferForType(pasteboardImage.dataInWebArchiveFormat.get(), WebArchivePboardType, m_pasteboardName);
     writeFileWrapperAsRTFDAttachment(fileWrapper(pasteboardImage), m_pasteboardName, m_changeCount);
 }
 

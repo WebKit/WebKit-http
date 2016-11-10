@@ -170,8 +170,8 @@ FAIL Interfaces for menuitem assert_equals: Element menuitem should have HTMLMen
 FAIL Interfaces for MENUITEM assert_equals: Element MENUITEM should have HTMLMenuItemElement as its primary interface. expected "[object HTMLMenuItemElement]" but got "[object HTMLUnknownElement]"
 PASS Interfaces for meta 
 PASS Interfaces for META 
-FAIL Interfaces for meter assert_equals: Element meter should have HTMLMeterElement as its primary interface. expected "[object HTMLMeterElement]" but got "[object HTMLUnknownElement]"
-FAIL Interfaces for METER assert_equals: Element METER should have HTMLMeterElement as its primary interface. expected "[object HTMLMeterElement]" but got "[object HTMLUnknownElement]"
+PASS Interfaces for meter 
+PASS Interfaces for METER 
 PASS Interfaces for mod 
 PASS Interfaces for MOD 
 PASS Interfaces for multicol 
@@ -292,5 +292,6 @@ PASS Interfaces for wbr
 PASS Interfaces for WBR 
 PASS Interfaces for xmp 
 PASS Interfaces for XMP 
-FAIL Interfaces for Ã¥-bar The string contains invalid characters.
+FAIL Interfaces for å-bar assert_equals: Element å-bar should have HTMLUnknownElement as its primary interface. expected "[object HTMLUnknownElement]" but got "[object HTMLElement]"
+FAIL Interfaces for Å-BAR assert_equals: Element Å-BAR should have HTMLUnknownElement as its primary interface. expected "[object HTMLUnknownElement]" but got "[object HTMLElement]"
 

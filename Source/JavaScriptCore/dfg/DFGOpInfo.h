@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef DFGOpInfo_h
-#define DFGOpInfo_h
+#pragma once
 
 #include <wtf/StdLibExtras.h>
 
@@ -37,18 +36,17 @@ namespace JSC { namespace DFG {
 // a constant index, argument, or identifier) from a Node*.
 struct OpInfo {
     OpInfo() : m_value(0) { }
-    explicit OpInfo(int32_t value) : m_value(static_cast<uintptr_t>(value)) { }
-    explicit OpInfo(uint32_t value) : m_value(static_cast<uintptr_t>(value)) { }
-#if OS(DARWIN) || USE(JSVALUE64)
-    explicit OpInfo(size_t value) : m_value(static_cast<uintptr_t>(value)) { }
+    explicit OpInfo(int32_t value) : m_value(static_cast<uint64_t>(value)) { }
+    explicit OpInfo(uint32_t value) : m_value(static_cast<uint64_t>(value)) { }
+    explicit OpInfo(uint64_t value) : m_value(static_cast<uint64_t>(value)) { }
+#if OS(DARWIN)
+    explicit OpInfo(uintptr_t value) : m_value(static_cast<uint64_t>(value)) { }
 #endif
-    explicit OpInfo(void* value) : m_value(reinterpret_cast<uintptr_t>(value)) { }
-    uintptr_t m_value;
+    explicit OpInfo(void* value) : m_value(static_cast<uint64_t>(reinterpret_cast<uintptr_t>(value))) { }
+    explicit OpInfo(const void* value) : m_value(static_cast<uint64_t>(reinterpret_cast<uintptr_t>(value))) { }
+    uint64_t m_value;
 };
 
 } } // namespace JSC::DFG
 
 #endif // ENABLE(DFG_JIT)
-
-#endif // DFGOpInfo_h
-

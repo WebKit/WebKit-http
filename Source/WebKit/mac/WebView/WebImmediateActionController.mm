@@ -63,8 +63,7 @@ SOFT_LINK_CLASS(QuickLookUI, QLPreviewMenuItem)
 @interface WebImmediateActionController () <QLPreviewMenuItemDelegate>
 @end
 
-@interface WebAnimationController : NSObject <NSImmediateActionAnimationController> {
-}
+@interface WebAnimationController : NSObject <NSImmediateActionAnimationController>
 @end
 
 @implementation WebAnimationController
@@ -256,10 +255,8 @@ using namespace WebCore;
 
 - (id <NSImmediateActionAnimationController>)_defaultAnimationController
 {
-    if (_contentPreventsDefault) {
-        RetainPtr<WebAnimationController> dummyController = [[WebAnimationController alloc] init];
-        return dummyController.get();
-    }
+    if (_contentPreventsDefault)
+        return [[[WebAnimationController alloc] init] autorelease];
 
     NSURL *url = _hitTestResult.absoluteLinkURL();
     NSString *absoluteURLString = [url absoluteString];

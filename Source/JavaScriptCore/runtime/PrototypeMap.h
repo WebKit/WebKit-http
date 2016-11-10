@@ -23,9 +23,10 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef PrototypeMap_h
-#define PrototypeMap_h
+#pragma once
 
+#include "IndexingType.h"
+#include "JSTypeInfo.h"
 #include "WeakGCMap.h"
 #include <wtf/TriState.h>
 
@@ -48,7 +49,7 @@ public:
     JS_EXPORT_PRIVATE Structure* emptyStructureForPrototypeFromBaseStructure(JSObject*, Structure*);
     void clearEmptyObjectStructureForPrototype(JSObject*, unsigned inlineCapacity);
     JS_EXPORT_PRIVATE void addPrototype(JSObject*);
-    TriState isPrototype(JSObject*) const; // Returns a conservative estimate.
+    inline TriState isPrototype(JSObject*) const; // Returns a conservative estimate.
 
 private:
     Structure* createEmptyStructure(JSObject* prototype, const TypeInfo&, const ClassInfo*, IndexingType, unsigned inlineCapacity);
@@ -58,18 +59,4 @@ private:
     StructureMap m_structures;
 };
 
-inline TriState PrototypeMap::isPrototype(JSObject* object) const
-{
-    if (!m_prototypes.contains(object))
-        return FalseTriState;
-
-    // We know that 'object' was used as a prototype at one time, so be
-    // conservative and say that it might still be so. (It would be expensive
-    // to find out for sure, and we don't know of any cases where being precise
-    // would improve performance.)
-    return MixedTriState;
-}
-
 } // namespace JSC
-
-#endif // PrototypeMap_h

@@ -79,6 +79,7 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/ForwardingHeaders"
     "${WEBCORE_DIR}/ForwardingHeaders/bindings"
     "${WEBCORE_DIR}/ForwardingHeaders/bytecode"
+    "${WEBCORE_DIR}/ForwardingHeaders/domjit"
     "${WEBCORE_DIR}/ForwardingHeaders/debugger"
     "${WEBCORE_DIR}/ForwardingHeaders/heap"
     "${WEBCORE_DIR}/ForwardingHeaders/inspector"
@@ -176,10 +177,10 @@ list(APPEND WebCore_SOURCES
 
     crypto/CommonCryptoUtilities.cpp
     crypto/CryptoAlgorithm.cpp
-    crypto/CryptoAlgorithmDescriptionBuilder.cpp
     crypto/CryptoAlgorithmRegistry.cpp
     crypto/CryptoKey.cpp
     crypto/CryptoKeyPair.cpp
+    crypto/SubtleCrypto.cpp
     crypto/WebKitSubtleCrypto.cpp
 
     crypto/algorithms/CryptoAlgorithmAES_CBC.cpp
@@ -385,7 +386,6 @@ list(APPEND WebCore_SOURCES
     platform/graphics/ca/cocoa/WebSystemBackdropLayer.mm
     platform/graphics/ca/cocoa/WebTiledBackingLayer.mm
 
-    platform/graphics/cg/BitmapImageCG.cpp
     platform/graphics/cg/ColorCG.cpp
     platform/graphics/cg/FloatPointCG.cpp
     platform/graphics/cg/FloatRectCG.cpp
@@ -402,6 +402,7 @@ list(APPEND WebCore_SOURCES
     platform/graphics/cg/IntPointCG.cpp
     platform/graphics/cg/IntRectCG.cpp
     platform/graphics/cg/IntSizeCG.cpp
+    platform/graphics/cg/NativeImageCG.cpp
     platform/graphics/cg/PDFDocumentImage.cpp
     platform/graphics/cg/PathCG.cpp
     platform/graphics/cg/PatternCG.cpp
@@ -603,6 +604,8 @@ set(WebCore_FORWARDING_HEADERS_DIRECTORIES
     bridge/objc
     bridge/jsc
 
+    css/parser
+
     editing/cocoa
     editing/mac
 
@@ -638,6 +641,7 @@ set(WebCore_FORWARDING_HEADERS_DIRECTORIES
 
     platform/audio/cocoa
 
+    platform/gamepad/cocoa
     platform/gamepad/mac
 
     platform/graphics/ca

@@ -42,8 +42,10 @@ namespace WebCore {
 
 // CSS Filters
 
+class CachedResourceLoader;
 class CachedSVGDocumentReference;
 class FilterEffect;
+struct ResourceLoaderOptions;
 
 class FilterOperation : public RefCounted<FilterOperation> {
 public:
@@ -184,8 +186,9 @@ public:
     const String& url() const { return m_url; }
     const String& fragment() const { return m_fragment; }
 
+    void loadExternalDocumentIfNeeded(CachedResourceLoader&, const ResourceLoaderOptions&);
+
     CachedSVGDocumentReference* cachedSVGDocumentReference() const { return m_cachedSVGDocumentReference.get(); }
-    CachedSVGDocumentReference* getOrCreateCachedSVGDocumentReference();
 
     FilterEffect* filterEffect() const { return m_filterEffect.get(); }
     void setFilterEffect(PassRefPtr<FilterEffect>);
@@ -299,7 +302,7 @@ private:
 
 class WEBCORE_EXPORT DropShadowFilterOperation : public FilterOperation {
 public:
-    static PassRefPtr<DropShadowFilterOperation> create(const IntPoint& location, int stdDeviation, Color color)
+    static PassRefPtr<DropShadowFilterOperation> create(const IntPoint& location, int stdDeviation, const Color& color)
     {
         return adoptRef(new DropShadowFilterOperation(location, stdDeviation, color));
     }
@@ -313,7 +316,7 @@ public:
     int y() const { return m_location.y(); }
     IntPoint location() const { return m_location; }
     int stdDeviation() const { return m_stdDeviation; }
-    Color color() const { return m_color; }
+    const Color& color() const { return m_color; }
 
     bool affectsOpacity() const override { return true; }
     bool movesPixels() const override { return true; }
@@ -323,7 +326,7 @@ public:
 private:
     bool operator==(const FilterOperation&) const override;
 
-    DropShadowFilterOperation(const IntPoint& location, int stdDeviation, Color color)
+    DropShadowFilterOperation(const IntPoint& location, int stdDeviation, const Color& color)
         : FilterOperation(DROP_SHADOW)
         , m_location(location)
         , m_stdDeviation(stdDeviation)
