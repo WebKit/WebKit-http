@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006, 2007, 2008, 2013, 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2006-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,11 +26,12 @@
 #import "config.h"
 #import "Editor.h"
 
+#import "Blob.h"
 #import "CSSPrimitiveValueMappings.h"
 #import "CSSValuePool.h"
 #import "CachedResourceLoader.h"
 #import "ColorMac.h"
-#import "DOMRangeInternal.h"
+#import "DOMURL.h"
 #import "DataTransfer.h"
 #import "DocumentFragment.h"
 #import "DocumentLoader.h"
@@ -44,7 +45,7 @@
 #import "HTMLAttachmentElement.h"
 #import "HTMLConverter.h"
 #import "HTMLElement.h"
-#include "HTMLImageElement.h"
+#import "HTMLImageElement.h"
 #import "HTMLNames.h"
 #import "LegacyWebArchive.h"
 #import "MIMETypeRegistry.h"
@@ -115,7 +116,7 @@ const Font* Editor::fontForSelection(bool& hasMultipleFonts) const
         if (style) {
             result = &style->fontCascade().primaryFont();
             if (nodeToRemove)
-                nodeToRemove->remove(ASSERT_NO_EXCEPTION);
+                nodeToRemove->remove();
         }
         return result;
     }
@@ -154,13 +155,13 @@ NSDictionary* Editor::fontAttributesForSelectionStart() const
 
     NSMutableDictionary* result = [NSMutableDictionary dictionary];
 
-    if (style->visitedDependentColor(CSSPropertyBackgroundColor).isValid() && style->visitedDependentColor(CSSPropertyBackgroundColor).alpha() != 0)
+    if (style->visitedDependentColor(CSSPropertyBackgroundColor).isVisible())
         [result setObject:nsColor(style->visitedDependentColor(CSSPropertyBackgroundColor)) forKey:NSBackgroundColorAttributeName];
 
     if (auto ctFont = style->fontCascade().primaryFont().getCTFont())
         [result setObject:toNSFont(ctFont) forKey:NSFontAttributeName];
 
-    if (style->visitedDependentColor(CSSPropertyColor).isValid() && style->visitedDependentColor(CSSPropertyColor) != Color::black)
+    if (style->visitedDependentColor(CSSPropertyColor).isValid() && !Color::isBlackColor(style->visitedDependentColor(CSSPropertyColor)))
         [result setObject:nsColor(style->visitedDependentColor(CSSPropertyColor)) forKey:NSForegroundColorAttributeName];
 
     const ShadowData* shadow = style->textShadow();
@@ -196,7 +197,7 @@ NSDictionary* Editor::fontAttributesForSelectionStart() const
     getTextDecorationAttributesRespectingTypingStyle(*style, result);
 
     if (nodeToRemove)
-        nodeToRemove->remove(ASSERT_NO_EXCEPTION);
+        nodeToRemove->remove();
 
     return result;
 }
@@ -260,6 +261,7 @@ void Editor::replaceNodeFromPasteboard(Node* node, const String& pasteboardName)
     if (&node->document() != m_frame.document())
         return;
 
+    Ref<Frame> protector(m_frame);
     RefPtr<Range> range = Range::create(node->document(), Position(node, Position::PositionIsBeforeAnchor), Position(node, Position::PositionIsAfterAnchor));
     m_frame.selection().setSelection(VisibleSelection(*range), FrameSelection::DoNotSetFocus);
 
@@ -288,7 +290,7 @@ void Editor::replaceNodeFromPasteboard(Node* node, const String& pasteboardName)
 String Editor::stringSelectionForPasteboard()
 {
     if (!canCopy())
-        return "";
+        return emptyString();
     String text = selectedText();
     text.replace(noBreakSpace, ' ');
     return text;
@@ -297,7 +299,7 @@ String Editor::stringSelectionForPasteboard()
 String Editor::stringSelectionForPasteboardWithImageAltText()
 {
     if (!canCopy())
-        return "";
+        return emptyString();
     String text = selectedTextForDataTransfer();
     text.replace(noBreakSpace, ' ');
     return text;
@@ -306,6 +308,19 @@ String Editor::stringSelectionForPasteboardWithImageAltText()
 RefPtr<SharedBuffer> Editor::selectionInWebArchiveFormat()
 {
     RefPtr<LegacyWebArchive> archive = LegacyWebArchive::createFromSelection(&m_frame);
+    if (!archive)
+        return nullptr;
+    return SharedBuffer::wrapCFData(archive->rawDataRepresentation().get());
+}
+
+String Editor::selectionInHTMLFormat()
+{
+    return createMarkup(*selectedRange(), nullptr, AnnotateForInterchange, false, ResolveNonLocalURLs);
+}
+
+RefPtr<SharedBuffer> Editor::imageInWebArchiveFormat(Element& imageElement)
+{
+    RefPtr<LegacyWebArchive> archive = LegacyWebArchive::create(imageElement);
     if (!archive)
         return nullptr;
     return SharedBuffer::wrapCFData(archive->rawDataRepresentation().get());
@@ -320,7 +335,7 @@ RefPtr<Range> Editor::adjustedSelectionRange()
     ASSERT(commonAncestor);
     auto* enclosingAnchor = enclosingElementWithTag(firstPositionInNode(commonAncestor), HTMLNames::aTag);
     if (enclosingAnchor && comparePositions(firstPositionInOrBeforeNode(range->startPosition().anchorNode()), range->startPosition()) >= 0)
-        range->setStart(*enclosingAnchor, 0, IGNORE_EXCEPTION);
+        range->setStart(*enclosingAnchor, 0);
     return range;
 }
     
@@ -386,6 +401,7 @@ void Editor::writeSelectionToPasteboard(Pasteboard& pasteboard)
     content.dataInWebArchiveFormat = selectionInWebArchiveFormat();
     content.dataInRTFDFormat = [attributedString containsAttachments] ? dataInRTFDFormat(attributedString) : 0;
     content.dataInRTFFormat = dataInRTFFormat(attributedString);
+    content.dataInHTMLFormat = selectionInHTMLFormat();
     content.dataInStringFormat = stringSelectionForPasteboardWithImageAltText();
     client()->getClientPasteboardDataForRange(selectedRange().get(), content.clientTypes, content.clientData);
 
@@ -414,6 +430,15 @@ void Editor::fillInUserVisibleForm(PasteboardURL& pasteboardURL)
     pasteboardURL.userVisibleForm = client()->userVisibleString(pasteboardURL.url);
 }
 
+void Editor::selectionWillChange()
+{
+    if (!hasComposition() || ignoreCompositionSelectionChange() || m_frame.selection().isNone())
+        return;
+
+    cancelComposition();
+    client()->canceledComposition();
+}
+
 String Editor::plainTextFromPasteboard(const PasteboardPlainText& text)
 {
     String string = text.text;
@@ -437,6 +462,7 @@ void Editor::writeImageToPasteboard(Pasteboard& pasteboard, Element& imageElemen
         return;
     ASSERT(cachedImage);
 
+    pasteboardImage.dataInWebArchiveFormat = imageInWebArchiveFormat(imageElement);
     pasteboardImage.url.url = url;
     pasteboardImage.url.title = title;
     pasteboardImage.url.userVisibleForm = client()->userVisibleString(pasteboardImage.url.url);
@@ -586,9 +612,14 @@ bool Editor::WebContentReader::readImage(Ref<SharedBuffer>&& buffer, const Strin
     ASSERT(type.contains('/'));
     String typeAsFilenameWithExtension = type;
     typeAsFilenameWithExtension.replace('/', '.');
-    URL imageURL = URL::fakeURLWithRelativePart(typeAsFilenameWithExtension);
 
-    fragment = frame.editor().createFragmentForImageResourceAndAddResource(ArchiveResource::create(WTFMove(buffer), imageURL, type, emptyString(), emptyString()));
+    Vector<uint8_t> data;
+    data.append(buffer->data(), buffer->size());
+    auto blob = Blob::create(WTFMove(data), type);
+    ASSERT(frame.document());
+    String blobURL = DOMURL::createObjectURL(*frame.document(), blob);
+
+    fragment = frame.editor().createFragmentForImageAndURL(blobURL);
     return fragment;
 }
 
@@ -598,7 +629,7 @@ bool Editor::WebContentReader::readURL(const URL& url, const String& title)
         return false;
 
     auto anchor = frame.document()->createElement(HTMLNames::aTag, false);
-    anchor->setAttribute(HTMLNames::hrefAttr, url.string());
+    anchor->setAttributeWithoutSynchronization(HTMLNames::hrefAttr, url.string());
     anchor->appendChild(frame.document()->createTextNode([title precomposedStringWithCanonicalMapping]));
 
     fragment = frame.document()->createDocumentFragment();
@@ -647,6 +678,17 @@ RefPtr<DocumentFragment> Editor::createFragmentForImageResourceAndAddResource(Re
     return WTFMove(fragment);
 }
 
+Ref<DocumentFragment> Editor::createFragmentForImageAndURL(const String& url)
+{
+    auto imageElement = HTMLImageElement::create(*m_frame.document());
+    imageElement->setAttributeWithoutSynchronization(HTMLNames::srcAttr, url);
+
+    auto fragment = document().createDocumentFragment();
+    fragment->appendChild(imageElement);
+
+    return fragment;
+}
+
 RefPtr<DocumentFragment> Editor::createFragmentAndAddResources(NSAttributedString *string)
 {
     if (!m_frame.page() || !document().isHTMLDocument())
@@ -659,11 +701,10 @@ RefPtr<DocumentFragment> Editor::createFragmentAndAddResources(NSAttributedStrin
     if (!wasDeferringCallbacks)
         m_frame.page()->setDefersLoading(true);
 
-    Vector<RefPtr<ArchiveResource>> resources;
-    RefPtr<DocumentFragment> fragment = client()->documentFragmentFromAttributedString(string, resources);
+    auto fragmentAndResources = createFragment(string);
 
     if (DocumentLoader* loader = m_frame.loader().documentLoader()) {
-        for (auto& resource : resources) {
+        for (auto& resource : fragmentAndResources.resources) {
             if (resource)
                 loader->addArchiveResource(resource.releaseNonNull());
         }
@@ -672,7 +713,7 @@ RefPtr<DocumentFragment> Editor::createFragmentAndAddResources(NSAttributedStrin
     if (!wasDeferringCallbacks)
         m_frame.page()->setDefersLoading(false);
 
-    return fragment;
+    return WTFMove(fragmentAndResources.fragment);
 }
 
 void Editor::replaceSelectionWithAttributedString(NSAttributedString *attributedString, MailBlockquoteHandling mailBlockquoteHandling)

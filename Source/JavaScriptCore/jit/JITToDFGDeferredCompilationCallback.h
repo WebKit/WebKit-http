@@ -23,13 +23,11 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef JITToDFGDeferredCompilationCallback_h
-#define JITToDFGDeferredCompilationCallback_h
+#pragma once
 
 #if ENABLE(DFG_JIT)
 
 #include "DeferredCompilationCallback.h"
-#include <wtf/PassRefPtr.h>
 
 namespace JSC {
 
@@ -51,6 +49,3 @@ public:
 } // namespace JSC
 
 #endif // ENABLE(DFG_JIT)
-
-#endif // JITToDFGDeferredCompilationCallback_h
-

@@ -795,7 +795,7 @@ void PDFPlugin::createPasswordEntryForm()
 
     Document* document = webFrame()->coreFrame()->document();
     m_passwordContainer = document->createElement(divTag, false);
-    m_passwordContainer->setAttribute(idAttr, "passwordContainer");
+    m_passwordContainer->setAttributeWithoutSynchronization(idAttr, AtomicString("passwordContainer", AtomicString::ConstructFromLiteral));
 
     m_passwordField = PDFPluginPasswordField::create(m_pdfLayerController.get(), this);
     m_passwordField->attach(m_passwordContainer.get());
@@ -963,10 +963,10 @@ void PDFPlugin::didEvaluateJavaScript(uint64_t, const WTF::String&)
 
 static NSUInteger modifierFlagsFromWebEvent(const WebEvent& event)
 {
-    return (event.shiftKey() ? NSShiftKeyMask : 0)
-        | (event.controlKey() ? NSControlKeyMask : 0)
-        | (event.altKey() ? NSAlternateKeyMask : 0)
-        | (event.metaKey() ? NSCommandKeyMask : 0);
+    return (event.shiftKey() ? NSEventModifierFlagShift : 0)
+        | (event.controlKey() ? NSEventModifierFlagControl : 0)
+        | (event.altKey() ? NSEventModifierFlagOption : 0)
+        | (event.metaKey() ? NSEventModifierFlagCommand : 0);
 }
     
 static bool getEventTypeFromWebEvent(const WebEvent& event, NSEventType& eventType)
@@ -975,10 +975,10 @@ static bool getEventTypeFromWebEvent(const WebEvent& event, NSEventType& eventTy
     case WebEvent::MouseDown:
         switch (static_cast<const WebMouseEvent&>(event).button()) {
         case WebMouseEvent::LeftButton:
-            eventType = NSLeftMouseDown;
+            eventType = NSEventTypeLeftMouseDown;
             return true;
         case WebMouseEvent::RightButton:
-            eventType = NSRightMouseDown;
+            eventType = NSEventTypeRightMouseDown;
             return true;
         default:
             return false;
@@ -986,10 +986,10 @@ static bool getEventTypeFromWebEvent(const WebEvent& event, NSEventType& eventTy
     case WebEvent::MouseUp:
         switch (static_cast<const WebMouseEvent&>(event).button()) {
         case WebMouseEvent::LeftButton:
-            eventType = NSLeftMouseUp;
+            eventType = NSEventTypeLeftMouseUp;
             return true;
         case WebMouseEvent::RightButton:
-            eventType = NSRightMouseUp;
+            eventType = NSEventTypeRightMouseUp;
             return true;
         default:
             return false;
@@ -997,13 +997,13 @@ static bool getEventTypeFromWebEvent(const WebEvent& event, NSEventType& eventTy
     case WebEvent::MouseMove:
         switch (static_cast<const WebMouseEvent&>(event).button()) {
         case WebMouseEvent::LeftButton:
-            eventType = NSLeftMouseDragged;
+            eventType = NSEventTypeLeftMouseDragged;
             return true;
         case WebMouseEvent::RightButton:
-            eventType = NSRightMouseDragged;
+            eventType = NSEventTypeRightMouseDragged;
             return true;
         case WebMouseEvent::NoButton:
-            eventType = NSMouseMoved;
+            eventType = NSEventTypeMouseMoved;
             return true;
         default:
             return false;
@@ -1592,7 +1592,7 @@ void PDFPlugin::scrollToPoint(IntPoint scrollPoint)
 {
     Frame* frame = pluginView()->frame();
     float scale = frame->page()->pageScaleFactor();
-    scrollPoint.scale(scale, scale);
+    scrollPoint.scale(scale);
     frame->view()->scrollToOffsetWithoutAnimation(scrollPoint);
 }
 
@@ -1756,11 +1756,11 @@ bool PDFPlugin::HUD::mouseEvent(PageOverlay&, const PlatformMouseEvent& event)
 
     switch (event.type()) {
     case PlatformEvent::MouseMoved:
-        return [pdfLayerController mouseDragged:eventWithType(NSLeftMouseDragged) inHUDWithBounds:HUDRectInRootViewCoordinates];
+        return [pdfLayerController mouseDragged:eventWithType(NSEventTypeLeftMouseDragged) inHUDWithBounds:HUDRectInRootViewCoordinates];
     case PlatformEvent::MousePressed:
-        return [pdfLayerController mouseDown:eventWithType(NSLeftMouseDown) inHUDWithBounds:HUDRectInRootViewCoordinates];
+        return [pdfLayerController mouseDown:eventWithType(NSEventTypeLeftMouseDown) inHUDWithBounds:HUDRectInRootViewCoordinates];
     case PlatformEvent::MouseReleased:
-        return [pdfLayerController mouseUp:eventWithType(NSLeftMouseUp) inHUDWithBounds:HUDRectInRootViewCoordinates];
+        return [pdfLayerController mouseUp:eventWithType(NSEventTypeLeftMouseUp) inHUDWithBounds:HUDRectInRootViewCoordinates];
     default:
         break;
     }

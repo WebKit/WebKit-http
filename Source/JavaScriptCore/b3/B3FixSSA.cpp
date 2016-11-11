@@ -30,9 +30,7 @@
 
 #include "B3BasicBlockInlines.h"
 #include "B3BreakCriticalEdges.h"
-#include "B3ControlValue.h"
 #include "B3Dominators.h"
-#include "B3IndexSet.h"
 #include "B3InsertionSetInlines.h"
 #include "B3PhaseScope.h"
 #include "B3ProcedureInlines.h"
@@ -42,6 +40,7 @@
 #include "B3Variable.h"
 #include "B3VariableValue.h"
 #include <wtf/CommaPrinter.h>
+#include <wtf/IndexSet.h>
 
 namespace JSC { namespace B3 {
 

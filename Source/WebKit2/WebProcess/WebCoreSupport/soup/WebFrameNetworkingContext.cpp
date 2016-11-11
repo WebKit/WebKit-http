@@ -27,6 +27,7 @@
 #include "config.h"
 #include "WebFrameNetworkingContext.h"
 
+#include "NetworkSession.h"
 #include "SessionTracker.h"
 #include "WebFrame.h"
 #include "WebPage.h"
@@ -35,7 +36,6 @@
 #include <WebCore/SessionID.h>
 #include <WebCore/Settings.h>
 #include <WebCore/SoupNetworkSession.h>
-#include <wtf/NeverDestroyed.h>
 
 using namespace WebCore;
 
@@ -44,11 +44,13 @@ namespace WebKit {
 void WebFrameNetworkingContext::ensurePrivateBrowsingSession(SessionID sessionID)
 {
     ASSERT(isMainThread());
+    ASSERT(sessionID.isEphemeral());
 
-    if (SessionTracker::storageSession(sessionID))
+    if (NetworkStorageSession::storageSession(sessionID))
         return;
 
-    SessionTracker::setSession(sessionID, NetworkStorageSession::createPrivateBrowsingSession(sessionID, String::number(sessionID.sessionID())));
+    NetworkStorageSession::ensurePrivateBrowsingSession(sessionID, String::number(sessionID.sessionID()));
+    SessionTracker::setSession(sessionID, NetworkSession::create(sessionID));
 }
 
 void WebFrameNetworkingContext::setCookieAcceptPolicyForAllContexts(HTTPCookieAcceptPolicy policy)
@@ -69,10 +71,7 @@ void WebFrameNetworkingContext::setCookieAcceptPolicyForAllContexts(HTTPCookieAc
     SoupCookieJar* cookieJar = WebCore::soupCookieJar();
     soup_cookie_jar_set_accept_policy(cookieJar, soupPolicy);
 
-    SoupNetworkSession& soupSession = NetworkStorageSession::defaultStorageSession().soupNetworkSession();
-    soup_cookie_jar_set_accept_policy(soupSession.cookieJar(), soupPolicy);
-
-    SessionTracker::forEachNetworkStorageSession([&] (const NetworkStorageSession& session) {
+    NetworkStorageSession::forEach([&] (const NetworkStorageSession& session) {
         soup_cookie_jar_set_accept_policy(session.soupNetworkSession().cookieJar(), soupPolicy);
     });
 }
@@ -85,7 +84,7 @@ WebFrameNetworkingContext::WebFrameNetworkingContext(WebFrame* frame)
 NetworkStorageSession& WebFrameNetworkingContext::storageSession() const
 {
     if (frame() && frame()->page()->usesEphemeralSession())
-        return *SessionTracker::storageSession(SessionID::legacyPrivateSessionID());
+        return *NetworkStorageSession::storageSession(SessionID::legacyPrivateSessionID());
 
     return NetworkStorageSession::defaultStorageSession();
 }

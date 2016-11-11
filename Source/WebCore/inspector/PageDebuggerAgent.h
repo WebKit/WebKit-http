@@ -29,8 +29,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef PageDebuggerAgent_h
-#define PageDebuggerAgent_h
+#pragma once
 
 #include "WebDebuggerAgent.h"
 
@@ -63,7 +62,7 @@ private:
     void muteConsole() override;
     void unmuteConsole() override;
 
-    void breakpointActionLog(JSC::ExecState&, const String&) final;
+    void breakpointActionLog(JSC::ExecState&, const String&) override;
 
     Inspector::InjectedScript injectedScriptForEval(ErrorString&, const int* executionContextId) override;
     void setOverlayMessage(ErrorString&, const String*) final;
@@ -75,5 +74,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // !defined(PageDebuggerAgent_h)

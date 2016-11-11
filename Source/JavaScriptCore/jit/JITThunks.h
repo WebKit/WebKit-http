@@ -23,25 +23,25 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef JITThunks_h
-#define JITThunks_h
+#pragma once
 
 #if ENABLE(JIT)
 
 #include "CallData.h"
 #include "Intrinsic.h"
-#include "LowLevelInterpreter.h"
 #include "MacroAssemblerCodeRef.h"
 #include "ThunkGenerator.h"
 #include "Weak.h"
 #include "WeakHandleOwner.h"
-#include "WeakInlines.h"
 #include <tuple>
 #include <wtf/HashMap.h>
-#include <wtf/RefPtr.h>
 #include <wtf/ThreadingPrimitives.h>
+#include <wtf/text/StringHash.h>
 
 namespace JSC {
+namespace DOMJIT {
+class Signature;
+}
 
 class VM;
 class NativeExecutable;
@@ -60,7 +60,7 @@ public:
     MacroAssemblerCodeRef ctiStub(VM*, ThunkGenerator);
 
     NativeExecutable* hostFunctionStub(VM*, NativeFunction, NativeFunction constructor, const String& name);
-    NativeExecutable* hostFunctionStub(VM*, NativeFunction, NativeFunction constructor, ThunkGenerator, Intrinsic, const String& name);
+    NativeExecutable* hostFunctionStub(VM*, NativeFunction, NativeFunction constructor, ThunkGenerator, Intrinsic, const DOMJIT::Signature*, const String& name);
     NativeExecutable* hostFunctionStub(VM*, NativeFunction, ThunkGenerator, Intrinsic, const String& name);
 
     void clearHostFunctionStubs();
@@ -110,6 +110,3 @@ private:
 } // namespace JSC
 
 #endif // ENABLE(JIT)
-
-#endif // JITThunks_h
-

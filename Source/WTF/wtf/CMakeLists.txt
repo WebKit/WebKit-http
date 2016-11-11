@@ -2,14 +2,17 @@ set(WTF_HEADERS
     ASCIICType.h
     Assertions.h
     Atomics.h
+    AutomaticThread.h
     BackwardsGraph.h
     Bag.h
     BagToHashMap.h
     BitVector.h
     Bitmap.h
+    Brigand.h
     BubbleSort.h
     BumpPointerAllocator.h
     ByteOrder.h
+    ClockType.h
     CompilationThread.h
     Compiler.h
     Condition.h
@@ -45,6 +48,10 @@ set(WTF_HEADERS
     HashTable.h
     HashTraits.h
     HexNumber.h
+    IndexMap.h
+    IndexSet.h
+    IndexSparseSet.h
+    IndexedContainerIterator.h
     IteratorAdaptors.h
     IteratorRange.h
     ListHashSet.h
@@ -58,6 +65,7 @@ set(WTF_HEADERS
     MessageQueue.h
     MetaAllocator.h
     MetaAllocatorHandle.h
+    MonotonicTime.h
     Noncopyable.h
     NumberOfCores.h
     OSAllocator.h
@@ -95,6 +103,7 @@ set(WTF_HEADERS
     SharedTask.h
     SaturatedArithmetic.h
     ScopedLambda.h
+    Seconds.h
     SegmentedVector.h
     SmallPtrSet.h
     StackBounds.h
@@ -110,13 +119,16 @@ set(WTF_HEADERS
     ThreadSpecific.h
     Threading.h
     ThreadingPrimitives.h
+    TimeWithDynamicClockType.h
     TinyPtrSet.h
     UniqueRef.h
     VMTags.h
     ValueCheck.h
+    Variant.h
     Vector.h
     VectorTraits.h
     WTFThreadData.h
+    WallTime.h
     WeakPtr.h
     WordLock.h
     WorkQueue.h
@@ -140,6 +152,7 @@ set(WTF_HEADERS
     text/CString.h
     text/IntegerToStringConversion.h
     text/LChar.h
+    text/LineBreakIteratorPoolICU.h
     text/StringBuffer.h
     text/StringCommon.h
     text/StringHash.h
@@ -147,8 +160,14 @@ set(WTF_HEADERS
     text/StringView.h
     text/SymbolImpl.h
     text/SymbolRegistry.h
+    text/TextBreakIterator.h
+    text/TextBreakIteratorInternalICU.h
     text/UniquedStringImpl.h
     text/WTFString.h
+
+    text/icu/UTextProvider.h
+    text/icu/UTextProviderLatin1.h
+    text/icu/UTextProviderUTF16.h
 
     threads/BinarySemaphore.h
 
@@ -160,7 +179,9 @@ set(WTF_HEADERS
 set(WTF_SOURCES
     Assertions.cpp
     Atomics.cpp
+    AutomaticThread.cpp
     BitVector.cpp
+    ClockType.cpp
     CompilationThread.cpp
     CrossThreadCopier.cpp
     CryptographicUtilities.cpp
@@ -180,6 +201,7 @@ set(WTF_SOURCES
     MainThread.cpp
     MediaTime.cpp
     MetaAllocator.cpp
+    MonotonicTime.cpp
     NumberOfCores.cpp
     OSRandomSource.cpp
     PageBlock.cpp
@@ -192,12 +214,15 @@ set(WTF_SOURCES
     RefCountedLeakCounter.cpp
     RunLoop.cpp
     SHA1.cpp
+    Seconds.cpp
     SixCharacterHash.cpp
     StackBounds.cpp
     StackStats.cpp
     StringPrintStream.cpp
     Threading.cpp
+    TimeWithDynamicClockType.cpp
     WTFThreadData.cpp
+    WallTime.cpp
     WordLock.cpp
     WorkQueue.cpp
     dtoa.cpp
@@ -221,7 +246,12 @@ set(WTF_SOURCES
     text/StringStatics.cpp
     text/StringView.cpp
     text/SymbolRegistry.cpp
+    text/TextBreakIterator.cpp
     text/WTFString.cpp
+
+    text/icu/UTextProvider.cpp
+    text/icu/UTextProviderLatin1.cpp
+    text/icu/UTextProviderUTF16.cpp
 
     threads/BinarySemaphore.cpp
 
@@ -234,6 +264,7 @@ set(WTF_INCLUDE_DIRECTORIES
     "${WTF_DIR}/wtf"
     "${WTF_DIR}/wtf/dtoa"
     "${WTF_DIR}/wtf/text"
+    "${WTF_DIR}/wtf/text/icu"
     "${WTF_DIR}/wtf/threads"
     "${WTF_DIR}/wtf/unicode"
     "${THIRDPARTY_DIR}"
@@ -265,6 +296,7 @@ set(WTF_SYSTEM_INCLUDE_DIRECTORIES
     ${ICU_INCLUDE_DIRS}
 )
 list(APPEND WTF_LIBRARIES
+    ${ICU_DATA_LIBRARIES}
     ${ICU_I18N_LIBRARIES}
     ${ICU_LIBRARIES}
 )
@@ -298,13 +330,12 @@ if (MSVC)
     add_custom_command(
         TARGET WTF
         PRE_BUILD
-        COMMAND ${PERL_EXECUTABLE} ${WEBKIT_LIBRARIES_DIR}/tools/scripts/auto-version.pl ${DERIVED_SOURCES_WEBKIT_DIR}
+        COMMAND ${PERL_EXECUTABLE} ${WEBKIT_LIBRARIES_DIR}/tools/scripts/auto-version.pl ${DERIVED_SOURCES_DIR}
         VERBATIM)
 
     add_custom_command(
         TARGET WTF
         POST_BUILD
-        COMMAND ${PERL_EXECUTABLE} ${WEBKIT_LIBRARIES_DIR}/tools/scripts/version-stamp.pl ${DERIVED_SOURCES_WEBKIT_DIR} $<TARGET_FILE:WTF>
+        COMMAND ${PERL_EXECUTABLE} ${WEBKIT_LIBRARIES_DIR}/tools/scripts/version-stamp.pl ${DERIVED_SOURCES_DIR} $<TARGET_FILE:WTF>
         VERBATIM)
-
 endif ()

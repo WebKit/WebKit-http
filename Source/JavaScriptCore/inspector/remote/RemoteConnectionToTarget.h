@@ -23,10 +23,9 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#if ENABLE(REMOTE_INSPECTOR)
+#pragma once
 
-#ifndef RemoteConnectionToTarget_h
-#define RemoteConnectionToTarget_h
+#if ENABLE(REMOTE_INSPECTOR)
 
 #import "InspectorFrontendChannel.h"
 #import "RemoteConnectionToTarget.h"
@@ -50,9 +49,9 @@ public:
 
     // Main API.
     bool setup(bool isAutomaticInspection = false, bool automaticallyPause = false);
-    virtual void sendMessageToTarget(NSString *);
-    virtual void close();
-    virtual void targetClosed();
+    void sendMessageToTarget(NSString *);
+    void close();
+    void targetClosed();
 
     Optional<unsigned> targetIdentifier() const;
     NSString *connectionIdentifier() const;
@@ -64,7 +63,7 @@ public:
 
     // FrontendChannel overrides.
     ConnectionType connectionType() const override { return ConnectionType::Remote; }
-    bool sendMessageToFrontend(const String&) override;
+    void sendMessageToFrontend(const String&) override;
 
 private:
     void dispatchAsyncOnTarget(void (^block)());
@@ -92,7 +91,5 @@ private:
 };
 
 } // namespace Inspector
-
-#endif // RemoteConnectionToTarget_h
 
 #endif // ENABLE(REMOTE_INSPECTOR)

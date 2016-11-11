@@ -423,7 +423,7 @@ void WebFrameLoaderClient::dispatchDidReceiveTitle(const StringWithDirection& ti
         frameLoadDelegate->didReceiveTitle(webView, BString(title.string()), m_webFrame);
 }
 
-void WebFrameLoaderClient::dispatchDidCommitLoad()
+void WebFrameLoaderClient::dispatchDidCommitLoad(Optional<HasInsecureContent>)
 {
     WebView* webView = m_webFrame->webView();
     COMPtr<IWebFrameLoadDelegate> frameLoadDelegate;
@@ -469,7 +469,7 @@ void WebFrameLoaderClient::dispatchDidFinishLoad()
         frameLoadDelegate->didFinishLoadForFrame(webView, m_webFrame);
 }
 
-void WebFrameLoaderClient::dispatchDidLayout(LayoutMilestones milestones)
+void WebFrameLoaderClient::dispatchDidReachLayoutMilestone(LayoutMilestones milestones)
 {
     WebView* webView = m_webFrame->webView();
 
@@ -740,13 +740,6 @@ void WebFrameLoaderClient::updateGlobalHistoryRedirectLinks()
             BString sourceURL(loader->clientRedirectSourceForHistory());
             BString destURL(loader->clientRedirectDestinationForHistory());
             historyDelegate->didPerformClientRedirectFromURL(webView, sourceURL, destURL, m_webFrame);
-        } else {
-            if (history) {
-                if (COMPtr<IWebHistoryItem> iWebHistoryItem = history->itemForURLString(loader->clientRedirectSourceForHistory())) {
-                    COMPtr<WebHistoryItem> webHistoryItem(Query, iWebHistoryItem);
-                    webHistoryItem->historyItem()->addRedirectURL(loader->clientRedirectDestinationForHistory());
-                }
-            }
         }
     }
 
@@ -755,13 +748,6 @@ void WebFrameLoaderClient::updateGlobalHistoryRedirectLinks()
             BString sourceURL(loader->serverRedirectSourceForHistory());
             BString destURL(loader->serverRedirectDestinationForHistory());
             historyDelegate->didPerformServerRedirectFromURL(webView, sourceURL, destURL, m_webFrame);
-        } else {
-            if (history) {
-                if (COMPtr<IWebHistoryItem> iWebHistoryItem = history->itemForURLString(loader->serverRedirectSourceForHistory())) {
-                    COMPtr<WebHistoryItem> webHistoryItem(Query, iWebHistoryItem);
-                    webHistoryItem->historyItem()->addRedirectURL(loader->serverRedirectDestinationForHistory());
-                }
-            }
         }
     }
 }
@@ -974,7 +960,7 @@ void WebFrameLoaderClient::setTitle(const StringWithDirection& title, const URL&
 
 void WebFrameLoaderClient::savePlatformDataToCachedFrame(CachedFrame* cachedFrame)
 {
-#if USE(CFNETWORK)
+#if USE(CFURLCONNECTION)
     Frame* coreFrame = core(m_webFrame);
     if (!coreFrame)
         return;
@@ -1070,20 +1056,20 @@ ObjectContentType WebFrameLoaderClient::objectContentType(const URL& url, const 
     }
 
     if (mimeType.isEmpty())
-        return ObjectContentFrame; // Go ahead and hope that we can display the content.
+        return ObjectContentType::Frame; // Go ahead and hope that we can display the content.
 
     bool plugInSupportsMIMEType = PluginDatabase::installedPlugins()->isMIMETypeRegistered(mimeType);
 
     if (MIMETypeRegistry::isSupportedImageMIMEType(mimeType))
-        return WebCore::ObjectContentImage;
+        return WebCore::ObjectContentType::Image;
 
     if (plugInSupportsMIMEType)
-        return WebCore::ObjectContentNetscapePlugin;
+        return WebCore::ObjectContentType::PlugIn;
 
     if (MIMETypeRegistry::isSupportedNonImageMIMEType(mimeType))
-        return WebCore::ObjectContentFrame;
+        return WebCore::ObjectContentType::Frame;
 
-    return WebCore::ObjectContentNone;
+    return WebCore::ObjectContentType::None;
 }
 
 void WebFrameLoaderClient::dispatchDidFailToStartPlugin(const PluginView* pluginView) const

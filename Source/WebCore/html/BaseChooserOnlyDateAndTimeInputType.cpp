@@ -24,8 +24,9 @@
  */
 
 #include "config.h"
-#if ENABLE(DATE_AND_TIME_INPUT_TYPES)
 #include "BaseChooserOnlyDateAndTimeInputType.h"
+
+#if ENABLE(DATE_AND_TIME_INPUT_TYPES)
 
 #include "Chrome.h"
 #include "HTMLDivElement.h"
@@ -43,7 +44,7 @@ BaseChooserOnlyDateAndTimeInputType::~BaseChooserOnlyDateAndTimeInputType()
     closeDateTimeChooser();
 }
 
-void BaseChooserOnlyDateAndTimeInputType::handleDOMActivateEvent(Event*)
+void BaseChooserOnlyDateAndTimeInputType::handleDOMActivateEvent(Event&)
 {
     if (element().isDisabledOrReadOnly() || !element().renderer() || !ScriptController::processingUserGesture())
         return;
@@ -77,7 +78,7 @@ void BaseChooserOnlyDateAndTimeInputType::updateAppearance()
         // Need to put something to keep text baseline.
         displayValue = ASCIILiteral(" ");
     }
-    downcast<HTMLElement>(*node).setInnerText(displayValue, ASSERT_NO_EXCEPTION);
+    downcast<HTMLElement>(*node).setInnerText(displayValue);
 }
 
 void BaseChooserOnlyDateAndTimeInputType::setValue(const String& value, bool valueChanged, TextFieldEventBehavior eventBehavior)
@@ -108,17 +109,17 @@ void BaseChooserOnlyDateAndTimeInputType::closeDateTimeChooser()
         m_dateTimeChooser->endChooser();
 }
 
-void BaseChooserOnlyDateAndTimeInputType::handleKeydownEvent(KeyboardEvent* event)
+void BaseChooserOnlyDateAndTimeInputType::handleKeydownEvent(KeyboardEvent& event)
 {
     BaseClickableWithKeyInputType::handleKeydownEvent(element(), event);
 }
 
-void BaseChooserOnlyDateAndTimeInputType::handleKeypressEvent(KeyboardEvent* event)
+void BaseChooserOnlyDateAndTimeInputType::handleKeypressEvent(KeyboardEvent& event)
 {
     BaseClickableWithKeyInputType::handleKeypressEvent(element(), event);
 }
 
-void BaseChooserOnlyDateAndTimeInputType::handleKeyupEvent(KeyboardEvent* event)
+void BaseChooserOnlyDateAndTimeInputType::handleKeyupEvent(KeyboardEvent& event)
 {
     BaseClickableWithKeyInputType::handleKeyupEvent(*this, event);
 }

@@ -36,6 +36,7 @@
 #include "BlobURL.h"
 #include "FileReaderLoaderClient.h"
 #include "HTTPHeaderNames.h"
+#include "ResourceError.h"
 #include "ResourceRequest.h"
 #include "ResourceResponse.h"
 #include "ScriptExecutionContext.h"
@@ -56,7 +57,7 @@ FileReaderLoader::FileReaderLoader(ReadType readType, FileReaderLoaderClient* cl
     : m_readType(readType)
     , m_client(client)
     , m_isRawDataConverted(false)
-    , m_stringResult("")
+    , m_stringResult(emptyString())
     , m_variableLength(false)
     , m_bytesLoaded(0)
     , m_totalBytes(0)
@@ -73,6 +74,8 @@ FileReaderLoader::~FileReaderLoader()
 
 void FileReaderLoader::start(ScriptExecutionContext* scriptExecutionContext, Blob& blob)
 {
+    ASSERT(scriptExecutionContext);
+
     // The blob is read by routing through the request handling layer given a temporary public url.
     m_urlForReading = BlobURL::createPublicURL(scriptExecutionContext->securityOrigin());
     if (m_urlForReading.isEmpty()) {
@@ -86,18 +89,16 @@ void FileReaderLoader::start(ScriptExecutionContext* scriptExecutionContext, Blo
     request.setHTTPMethod("GET");
 
     ThreadableLoaderOptions options;
-    options.setSendLoadCallbacks(SendCallbacks);
-    options.setSniffContent(DoNotSniffContent);
-    options.setDataBufferingPolicy(DoNotBufferData);
-    options.preflightPolicy = ConsiderPreflight;
-    options.setAllowCredentials(AllowStoredCredentials);
-    options.crossOriginRequestPolicy = DenyCrossOriginRequests;
+    options.sendLoadCallbacks = SendCallbacks;
+    options.dataBufferingPolicy = DoNotBufferData;
+    options.credentials = FetchOptions::Credentials::Include;
+    options.mode = FetchOptions::Mode::SameOrigin;
     options.contentSecurityPolicyEnforcement = ContentSecurityPolicyEnforcement::DoNotEnforce;
 
     if (m_client)
-        m_loader = ThreadableLoader::create(scriptExecutionContext, this, request, options);
+        m_loader = ThreadableLoader::create(*scriptExecutionContext, *this, WTFMove(request), options);
     else
-        ThreadableLoader::loadResourceSynchronously(scriptExecutionContext, request, *this, options);
+        ThreadableLoader::loadResourceSynchronously(*scriptExecutionContext, WTFMove(request), *this, options);
 }
 
 void FileReaderLoader::cancel()
@@ -121,7 +122,7 @@ void FileReaderLoader::cleanup()
     // If we get any error, we do not need to keep a buffer around.
     if (m_errorCode) {
         m_rawData = nullptr;
-        m_stringResult = "";
+        m_stringResult = emptyString();
     }
 }
 
@@ -227,13 +228,13 @@ void FileReaderLoader::didFinishLoading(unsigned long, double)
         m_client->didFinishLoading();
 }
 
-void FileReaderLoader::didFail(const ResourceError&)
+void FileReaderLoader::didFail(const ResourceError& error)
 {
     // If we're aborting, do not proceed with normal error handling since it is covered in aborting code.
     if (m_errorCode == FileError::ABORT_ERR)
         return;
 
-    failed(FileError::NOT_READABLE_ERR);
+    failed(toErrorCode(static_cast<BlobResourceHandle::Error>(error.errorCode())));
 }
 
 void FileReaderLoader::failed(int errorCode)
@@ -244,13 +245,21 @@ void FileReaderLoader::failed(int errorCode)
         m_client->didFail(m_errorCode);
 }
 
+FileError::ErrorCode FileReaderLoader::toErrorCode(BlobResourceHandle::Error error)
+{
+    switch (error) {
+    case BlobResourceHandle::Error::NotFoundError:
+        return FileError::NOT_FOUND_ERR;
+    default:
+        return FileError::NOT_READABLE_ERR;
+    }
+}
+
 FileError::ErrorCode FileReaderLoader::httpStatusCodeToErrorCode(int httpStatusCode)
 {
     switch (httpStatusCode) {
     case 403:
         return FileError::SECURITY_ERR;
-    case 404:
-        return FileError::NOT_FOUND_ERR;
     default:
         return FileError::NOT_READABLE_ERR;
     }

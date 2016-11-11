@@ -33,8 +33,8 @@
 #include "RenderThemeGadget.h"
 #include "ScrollView.h"
 #include "Scrollbar.h"
+#include <cstdlib>
 #include <gtk/gtk.h>
-#include <wtf/NeverDestroyed.h>
 
 namespace WebCore {
 
@@ -57,11 +57,7 @@ static void themeChangedCallback()
 ScrollbarThemeGtk::ScrollbarThemeGtk()
 {
 #if GTK_CHECK_VERSION(3, 20, 0)
-#if USE(COORDINATED_GRAPHICS_THREADED)
-    m_usesOverlayScrollbars = true;
-#else
     m_usesOverlayScrollbars = g_strcmp0(g_getenv("GTK_OVERLAY_SCROLLING"), "0");
-#endif
 #endif
     static bool themeMonitorInitialized = false;
     if (!themeMonitorInitialized) {
@@ -481,10 +477,12 @@ bool ScrollbarThemeGtk::paint(Scrollbar& scrollbar, GraphicsContext& graphicsCon
     if (!rect.intersects(damageRect))
         return true;
 
+    bool scrollbarOnLeft = scrollbar.scrollableArea().shouldPlaceBlockDirectionScrollbarOnLeft();
+
     RenderThemeGadget::Info info = { RenderThemeGadget::Type::Scrollbar, "scrollbar", scrollbarPartStateFlags(scrollbar, AllParts, true), { } };
     if (scrollbar.orientation() == VerticalScrollbar) {
         info.classList.append("vertical");
-        info.classList.append("right");
+        info.classList.append(scrollbarOnLeft ? "left" : "right");
     } else {
         info.classList.append("horizontal");
         info.classList.append("bottom");
@@ -530,14 +528,40 @@ bool ScrollbarThemeGtk::paint(Scrollbar& scrollbar, GraphicsContext& graphicsCon
         children, scrollbarGadget.get());
     RenderThemeGadget* troughGadget = contentsGadget->child(troughPosition);
 
+    IntSize preferredSize = contentsGadget->preferredSize();
+    std::unique_ptr<RenderThemeGadget> sliderGadget;
+    int thumbSize = thumbLength(scrollbar);
+    if (thumbSize) {
+        info.name = "slider";
+        info.state = scrollbarPartStateFlags(scrollbar, ThumbPart);
+        sliderGadget = RenderThemeGadget::create(info, troughGadget);
+        preferredSize = preferredSize.expandedTo(sliderGadget->preferredSize());
+    }
+    preferredSize += scrollbarGadget->preferredSize() - scrollbarGadget->minimumSize();
+
+    FloatRect contentsRect(rect);
+    // When using overlay scrollbars we always claim the size of the scrollbar when hovered, so when
+    // drawing the indicator we need to adjust the rectangle to its actual size in indicator mode.
+    if (scrollbar.orientation() == VerticalScrollbar) {
+        if (rect.width() != preferredSize.width()) {
+            if (!scrollbarOnLeft)
+                contentsRect.move(std::abs(rect.width() - preferredSize.width()), 0);
+            contentsRect.setWidth(preferredSize.width());
+        }
+    } else {
+        if (rect.height() != preferredSize.height()) {
+            contentsRect.move(0, std::abs(rect.height() - preferredSize.height()));
+            contentsRect.setHeight(preferredSize.height());
+        }
+    }
+
     if (opacity != 1) {
         graphicsContext.save();
         graphicsContext.clip(damageRect);
         graphicsContext.beginTransparencyLayer(opacity);
     }
 
-    FloatRect contentsRect;
-    scrollbarGadget->render(graphicsContext.platformContext()->cr(), rect, &contentsRect);
+    scrollbarGadget->render(graphicsContext.platformContext()->cr(), contentsRect, &contentsRect);
     contentsGadget->render(graphicsContext.platformContext()->cr(), contentsRect, &contentsRect);
 
     if (steppers.contains(RenderThemeScrollbarGadget::Steppers::Backward)) {
@@ -611,25 +635,15 @@ bool ScrollbarThemeGtk::paint(Scrollbar& scrollbar, GraphicsContext& graphicsCon
     }
 
     troughGadget->render(graphicsContext.platformContext()->cr(), contentsRect, &contentsRect);
-
-    if (int thumbSize = thumbLength(scrollbar)) {
-        info.name = "slider";
-        info.state = scrollbarPartStateFlags(scrollbar, ThumbPart);
-        auto sliderGadget = RenderThemeGadget::create(info, troughGadget);
-
-        // When using overlay scrollbars we always claim the size of the scrollbar when hovered, so when
-        // drawing the indicator we need to adjust the rectangle to its actual size in indicator mode.
-        bool isIndicator = m_usesOverlayScrollbars && scrollbar.hoveredPart() == NoPart;
+    if (sliderGadget) {
         if (scrollbar.orientation() == VerticalScrollbar) {
-            int sliderWidth = sliderGadget->preferredSize().width();
-            contentsRect.move(isIndicator ? contentsRect.width() - sliderWidth : 0, thumbPosition(scrollbar));
-            contentsRect.setWidth(sliderWidth);
+            contentsRect.move(0, thumbPosition(scrollbar));
+            contentsRect.setWidth(sliderGadget->preferredSize().width());
             contentsRect.setHeight(thumbSize);
         } else {
-            int sliderHeight = sliderGadget->preferredSize().height();
-            contentsRect.move(thumbPosition(scrollbar), isIndicator ? contentsRect.height() - sliderHeight : 0);
+            contentsRect.move(thumbPosition(scrollbar), 0);
             contentsRect.setWidth(thumbSize);
-            contentsRect.setHeight(sliderHeight);
+            contentsRect.setHeight(sliderGadget->preferredSize().height());
         }
         if (contentsRect.intersects(damageRect))
             sliderGadget->render(graphicsContext.platformContext()->cr(), contentsRect);
@@ -855,10 +869,9 @@ int ScrollbarThemeGtk::scrollbarThickness(ScrollbarControlSize)
     auto contentsGadget = std::make_unique<RenderThemeBoxGadget>(info, GTK_ORIENTATION_VERTICAL, children, scrollbarGadget.get());
     info.name = "slider";
     auto sliderGadget = RenderThemeGadget::create(info, contentsGadget->child(troughPositon));
-    IntSize preferredSize = scrollbarGadget->preferredSize();
     IntSize contentsPreferredSize = contentsGadget->preferredSize();
     contentsPreferredSize = contentsPreferredSize.expandedTo(sliderGadget->preferredSize());
-    preferredSize += contentsPreferredSize;
+    IntSize preferredSize = contentsPreferredSize + scrollbarGadget->preferredSize() - scrollbarGadget->minimumSize();
 
     return preferredSize.width();
 }

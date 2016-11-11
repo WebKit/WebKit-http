@@ -1,7 +1,8 @@
 /*
  *  Copyright (C) 2007 OpenedHand
  *  Copyright (C) 2007 Alp Toker <alp@atoker.com>
- *  Copyright (C) 2009, 2010, 2011, 2012 Igalia S.L
+ *  Copyright (C) 2009, 2010, 2011, 2012, 2015, 2016 Igalia S.L
+ *  Copyright (C) 2015, 2016 Metrological Group B.V.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
@@ -46,13 +47,8 @@ using namespace WebCore;
 #else
 #define GST_CAPS_FORMAT "{ xRGB, ARGB }"
 #endif
-#if GST_CHECK_VERSION(1, 1, 0)
-#define GST_FEATURED_CAPS GST_VIDEO_CAPS_MAKE_WITH_FEATURES(GST_CAPS_FEATURE_META_GST_VIDEO_GL_TEXTURE_UPLOAD_META, GST_CAPS_FORMAT) ";"
-#else
-#define GST_FEATURED_CAPS
-#endif
 
-#define WEBKIT_VIDEO_SINK_PAD_CAPS GST_FEATURED_CAPS GST_VIDEO_CAPS_MAKE(GST_CAPS_FORMAT)
+#define WEBKIT_VIDEO_SINK_PAD_CAPS GST_VIDEO_CAPS_MAKE_WITH_FEATURES(GST_CAPS_FEATURE_META_GST_VIDEO_GL_TEXTURE_UPLOAD_META, GST_CAPS_FORMAT) ";" GST_VIDEO_CAPS_MAKE(GST_CAPS_FORMAT)
 
 static GstStaticPadTemplate s_sinkTemplate = GST_STATIC_PAD_TEMPLATE("sink", GST_PAD_SINK, GST_PAD_ALWAYS, GST_STATIC_CAPS(WEBKIT_VIDEO_SINK_PAD_CAPS));
 
@@ -62,6 +58,7 @@ GST_DEBUG_CATEGORY_STATIC(webkitVideoSinkDebug);
 
 enum {
     REPAINT_REQUESTED,
+    DRAIN,
     LAST_SIGNAL
 };
 
@@ -98,6 +95,12 @@ public:
         m_timer.stop();
         m_dataCondition.notifyOne();
 #endif
+    }
+
+    void drain()
+    {
+        LockHolder locker(m_sampleMutex);
+        m_sample = nullptr;
     }
 
     bool requestRender(WebKitVideoSink* sink, GstBuffer* buffer)
@@ -348,10 +351,42 @@ static gboolean webkitVideoSinkProposeAllocation(GstBaseSink* baseSink, GstQuery
 
     gst_query_add_allocation_meta(query, GST_VIDEO_META_API_TYPE, 0);
     gst_query_add_allocation_meta(query, GST_VIDEO_CROP_META_API_TYPE, 0);
-#if GST_CHECK_VERSION(1, 1, 0)
     gst_query_add_allocation_meta(query, GST_VIDEO_GL_TEXTURE_UPLOAD_META_API_TYPE, 0);
-#endif
     return TRUE;
+}
+
+static gboolean webkitVideoSinkQuery(GstBaseSink* baseSink, GstQuery* query)
+{
+    WebKitVideoSink* sink = WEBKIT_VIDEO_SINK(baseSink);
+
+    switch (GST_QUERY_TYPE(query)) {
+    case GST_QUERY_DRAIN:
+        GST_OBJECT_LOCK(sink);
+        g_signal_emit(sink, webkitVideoSinkSignals[DRAIN], 0);
+        GST_OBJECT_UNLOCK(sink);
+        return TRUE;
+    default:
+        return GST_CALL_PARENT_WITH_DEFAULT(GST_BASE_SINK_CLASS, query, (baseSink, query), TRUE);
+    }
+}
+
+static gboolean webkitVideoSinkEvent(GstBaseSink* baseSink, GstEvent* event)
+{
+    switch (GST_EVENT_TYPE(event)) {
+    case GST_EVENT_FLUSH_START: {
+        WebKitVideoSink* sink = WEBKIT_VIDEO_SINK(baseSink);
+        sink->priv->scheduler.drain();
+
+        GST_DEBUG_OBJECT(sink, "Flush-start, emitting DRAIN signal and releasing m_sample");
+
+        GST_OBJECT_LOCK(sink);
+        g_signal_emit(sink, webkitVideoSinkSignals[DRAIN], 0);
+        GST_OBJECT_UNLOCK(sink);
+        }
+        FALLTHROUGH;
+    default:
+        return GST_CALL_PARENT_WITH_DEFAULT(GST_BASE_SINK_CLASS, event, (baseSink, event), TRUE);
+    }
 }
 
 static void webkit_video_sink_class_init(WebKitVideoSinkClass* klass)
@@ -375,6 +410,8 @@ static void webkit_video_sink_class_init(WebKitVideoSinkClass* klass)
     baseSinkClass->start = webkitVideoSinkStart;
     baseSinkClass->set_caps = webkitVideoSinkSetCaps;
     baseSinkClass->propose_allocation = webkitVideoSinkProposeAllocation;
+    baseSinkClass->query = webkitVideoSinkQuery;
+    baseSinkClass->event = webkitVideoSinkEvent;
 
     webkitVideoSinkSignals[REPAINT_REQUESTED] = g_signal_new("repaint-requested",
             G_TYPE_FROM_CLASS(klass),
@@ -386,6 +423,16 @@ static void webkit_video_sink_class_init(WebKitVideoSinkClass* klass)
             G_TYPE_NONE, // Return type
             1, // Only one parameter
             GST_TYPE_SAMPLE);
+
+    webkitVideoSinkSignals[DRAIN] = g_signal_new("drain",
+        G_TYPE_FROM_CLASS(klass),
+        static_cast<GSignalFlags>(G_SIGNAL_RUN_LAST | G_SIGNAL_ACTION),
+        0, // Class offset.
+        0, // Accumulator.
+        0, // Accumulator data.
+        g_cclosure_marshal_generic,
+        G_TYPE_NONE, // Return type.
+        0); // No parameters.
 }
 
 

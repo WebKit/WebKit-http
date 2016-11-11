@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef GCAwareJITStubRoutine_h
-#define GCAwareJITStubRoutine_h
+#pragma once
 
 #if ENABLE(JIT)
 
@@ -32,7 +31,6 @@
 #include "JSObject.h"
 #include "JSString.h"
 #include "WriteBarrier.h"
-#include <wtf/RefCounted.h>
 #include <wtf/Vector.h>
 
 namespace JSC {
@@ -134,6 +132,3 @@ PassRefPtr<JITStubRoutine> createJITStubRoutine(
 } // namespace JSC
 
 #endif // ENABLE(JIT)
-
-#endif // GCAwareJITStubRoutine_h
-

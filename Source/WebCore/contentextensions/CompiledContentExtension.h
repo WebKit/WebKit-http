@@ -23,15 +23,13 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef CompiledContentExtension_h
-#define CompiledContentExtension_h
+#pragma once
 
 #if ENABLE(CONTENT_EXTENSIONS)
 
 #include "ContentExtensionRule.h"
 #include "DFABytecode.h"
 #include <wtf/ThreadSafeRefCounted.h>
-#include <wtf/Vector.h>
 
 namespace WebCore {
 namespace ContentExtensions {
@@ -54,4 +52,3 @@ public:
 } // namespace WebCore
 
 #endif // ENABLE(CONTENT_EXTENSIONS)
-#endif // CompiledContentExtension_h

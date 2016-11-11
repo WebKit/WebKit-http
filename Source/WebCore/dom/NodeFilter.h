@@ -22,11 +22,9 @@
  *
  */
 
-#ifndef NodeFilter_h
-#define NodeFilter_h
+#pragma once
 
 #include <wtf/RefCounted.h>
-#include <wtf/RefPtr.h>
 
 namespace WebCore {
 
@@ -71,5 +69,3 @@ public:
 };
 
 } // namespace WebCore
-
-#endif // NodeFilter_h

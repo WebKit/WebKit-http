@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebProcessCreationParameters_h
-#define WebProcessCreationParameters_h
+#pragma once
 
 #include "CacheModel.h"
 #include "SandboxExtension.h"
@@ -50,8 +49,8 @@ class Data;
 }
 
 namespace IPC {
-class ArgumentDecoder;
-class ArgumentEncoder;
+class Decoder;
+class Encoder;
 }
 
 namespace WebKit {
@@ -60,8 +59,8 @@ struct WebProcessCreationParameters {
     WebProcessCreationParameters();
     ~WebProcessCreationParameters();
 
-    void encode(IPC::ArgumentEncoder&) const;
-    static bool decode(IPC::ArgumentDecoder&, WebProcessCreationParameters&);
+    void encode(IPC::Encoder&) const;
+    static bool decode(IPC::Decoder&, WebProcessCreationParameters&);
 
     String injectedBundlePath;
     SandboxExtension::Handle injectedBundlePathExtensionHandle;
@@ -108,6 +107,7 @@ struct WebProcessCreationParameters {
     bool shouldSuppressMemoryPressureHandler { false };
     bool shouldUseFontSmoothing;
     bool resourceLoadStatisticsEnabled { false };
+    bool urlParserEnabled { false };
 
     Vector<String> fontWhitelist;
 
@@ -123,7 +123,7 @@ struct WebProcessCreationParameters {
 
     double defaultRequestTimeoutInterval;
 
-#if PLATFORM(COCOA) || USE(CFNETWORK)
+#if PLATFORM(COCOA) || USE(CFURLCONNECTION)
     String uiProcessBundleIdentifier;
 #endif
 
@@ -166,8 +166,14 @@ struct WebProcessCreationParameters {
 #if TARGET_OS_IPHONE || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100)
     RetainPtr<CFDataRef> networkATSContext;
 #endif
+
+#if OS(LINUX)
+    IPC::Attachment memoryPressureMonitorHandle;
+#endif
+
+#if PLATFORM(WAYLAND)
+    String waylandCompositorDisplayName;
+#endif
 };
 
 } // namespace WebKit
-
-#endif // WebProcessCreationParameters_h

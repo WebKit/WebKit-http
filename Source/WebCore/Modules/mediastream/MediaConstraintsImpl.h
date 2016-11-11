@@ -35,31 +35,48 @@
 
 #include "ExceptionBase.h"
 #include "MediaConstraints.h"
-#include <wtf/HashMap.h>
 #include <wtf/Vector.h>
 
 namespace WebCore {
-class Dictionary;
 
-class MediaConstraintsImpl : public MediaConstraints {
+struct MediaConstraintsData {
+    MediaConstraintsData() = default;
+    MediaConstraintsData(MediaTrackConstraintSetMap&& mandatoryConstraints, Vector<MediaTrackConstraintSetMap>&& advancedConstraints, bool isValid)
+        : mandatoryConstraints(WTFMove(mandatoryConstraints))
+        , advancedConstraints(WTFMove(advancedConstraints))
+        , isValid(isValid)
+    {
+    }
+
+    MediaTrackConstraintSetMap mandatoryConstraints;
+    Vector<MediaTrackConstraintSetMap> advancedConstraints;
+    bool isValid { false };
+};
+
+class MediaConstraintsImpl final : public MediaConstraints {
 public:
-    static Ref<MediaConstraintsImpl> create();
-    static RefPtr<MediaConstraintsImpl> create(const Dictionary&);
+    static Ref<MediaConstraintsImpl> create(MediaTrackConstraintSetMap&& mandatoryConstraints, Vector<MediaTrackConstraintSetMap>&& advancedConstraints, bool isValid);
+    WEBCORE_EXPORT static Ref<MediaConstraintsImpl> create(const MediaConstraintsData&);
 
-    virtual ~MediaConstraintsImpl();
-    bool initialize(const Dictionary&);
+    MediaConstraintsImpl() = default;
+    virtual ~MediaConstraintsImpl() = default;
 
-    void getMandatoryConstraints(Vector<MediaConstraint>&) const override;
-    void getOptionalConstraints(Vector<MediaConstraint>&) const override;
-
-    bool getMandatoryConstraintValue(const String& name, String& value) const override;
-    bool getOptionalConstraintValue(const String& name, String& value) const override;
+    const MediaTrackConstraintSetMap& mandatoryConstraints() const final { return m_data.mandatoryConstraints; }
+    const Vector<MediaTrackConstraintSetMap>& advancedConstraints() const final { return m_data.advancedConstraints; }
+    bool isValid() const final { return m_data.isValid; }
+    const MediaConstraintsData& data() const { return m_data; }
 
 private:
-    MediaConstraintsImpl() { }
+    MediaConstraintsImpl(MediaTrackConstraintSetMap&& mandatoryConstraints, Vector<MediaTrackConstraintSetMap>&& advancedConstraints, bool isValid)
+        : m_data({ WTFMove(mandatoryConstraints), WTFMove(advancedConstraints), isValid })
+    {
+    }
+    explicit MediaConstraintsImpl(const MediaConstraintsData& data)
+        : m_data(data)
+    {
+    }
 
-    HashMap<String, String> m_mandatoryConstraints;
-    Vector<MediaConstraint> m_optionalConstraints;
+    MediaConstraintsData m_data;
 };
 
 } // namespace WebCore

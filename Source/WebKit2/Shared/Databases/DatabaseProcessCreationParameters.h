@@ -33,8 +33,8 @@
 #if ENABLE(DATABASE_PROCESS)
 
 namespace IPC {
-class ArgumentDecoder;
-class ArgumentEncoder;
+class Decoder;
+class Encoder;
 }
 
 namespace WebKit {
@@ -42,8 +42,8 @@ namespace WebKit {
 struct DatabaseProcessCreationParameters {
     DatabaseProcessCreationParameters();
 
-    void encode(IPC::ArgumentEncoder&) const;
-    static bool decode(IPC::ArgumentDecoder&, DatabaseProcessCreationParameters&);
+    void encode(IPC::Encoder&) const;
+    static bool decode(IPC::Decoder&, DatabaseProcessCreationParameters&);
 
 #if ENABLE(INDEXED_DATABASE)
     String indexedDatabaseDirectory;

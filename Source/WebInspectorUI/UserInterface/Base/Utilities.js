@@ -25,6 +25,7 @@
 
 var emDash = "\u2014";
 var enDash = "\u2013";
+var figureDash = "\u2012";
 var ellipsis = "\u2026";
 
 Object.defineProperty(Object, "shallowCopy",
@@ -46,12 +47,19 @@ Object.defineProperty(Object, "shallowEqual",
     {
         // Checks if two objects have the same top-level properties.
 
+        // Only objects can proceed.
+        if (!(a instanceof Object) || !(b instanceof Object))
+            return false;
+
         // Check for strict equality in case they are the same object.
         if (a === b)
             return true;
 
-        // Only objects can proceed. null is an object, but Object.keys throws for null.
-        if (typeof a !== "object" || typeof b !== "object" || a === null || b === null)
+        // Use an optimized version of shallowEqual for arrays.
+        if (Array.isArray(a) && Array.isArray(b))
+            return Array.shallowEqual(a, b);
+
+        if (a.constructor !== b.constructor)
             return false;
 
         var aKeys = Object.keys(a);
@@ -428,6 +436,9 @@ Object.defineProperty(Array, "shallowEqual",
 {
     value: function(a, b)
     {
+        if (!Array.isArray(a) || !Array.isArray(b))
+            return false;
+
         if (a === b)
             return true;
 
@@ -466,6 +477,21 @@ Object.defineProperty(Array.prototype, "remove",
                     return;
             }
         }
+    }
+});
+
+Object.defineProperty(Array.prototype, "toggleIncludes",
+{
+    value: function(value, force)
+    {
+        let exists = this.includes(value);
+        if (exists === !!force)
+            return;
+
+        if (exists)
+            this.remove(value);
+        else
+            this.push(value);
     }
 });
 
@@ -917,6 +943,14 @@ Object.defineProperty(String.prototype, "toCamelCase",
     }
 });
 
+Object.defineProperty(String.prototype, "hasMatchingEscapedQuotes",
+{
+    value: function()
+    {
+        return /^\"(?:[^\"\\]|\\.)*\"$/.test(this) || /^\'(?:[^\'\\]|\\.)*\'$/.test(this);
+    }
+});
+
 Object.defineProperty(Math, "roundTo",
 {
     value: function(num, step)
@@ -1025,6 +1059,32 @@ Object.defineProperty(Number, "bytesToString",
         if (higherResolution || Math.abs(megabytes) < 10)
             return WebInspector.UIString("%.2f MB").format(megabytes);
         return WebInspector.UIString("%.1f MB").format(megabytes);
+    }
+});
+
+Object.defineProperty(Number, "abbreviate",
+{
+    value: function(num)
+    {
+        if (num < 1000)
+            return num;
+
+        if (num < 1000000)
+            return WebInspector.UIString("%.1fK").format(Math.round(num / 100) / 10);
+
+        if (num < 1000000000)
+            return WebInspector.UIString("%.1fM").format(Math.round(num / 100000) / 10);
+
+        return WebInspector.UIString("%.1fB").format(Math.round(num / 100000000) / 10);
+    }
+});
+
+Object.defineProperty(Number.prototype, "maxDecimals",
+{
+    value(decimals)
+    {
+        let power = 10 ** decimals;
+        return Math.round(this * power) / power;
     }
 });
 
@@ -1350,6 +1410,29 @@ function isWebKitInternalScript(url)
 function isFunctionStringNativeCode(str)
 {
     return str.endsWith("{\n    [native code]\n}");
+}
+
+function isTextLikelyMinified(content)
+{
+    const autoFormatMaxCharactersToCheck = 5000;
+    const autoFormatWhitespaceRatio = 0.2;
+
+    let whitespaceScore = 0;
+    let size = Math.min(autoFormatMaxCharactersToCheck, content.length);
+
+    for (let i = 0; i < size; i++) {
+        let char = content[i];
+
+        if (char === " ")
+            whitespaceScore++;
+        else if (char === "\t")
+            whitespaceScore += 4;
+        else if (char === "\n")
+            whitespaceScore += 8;
+    }
+
+    let ratio = whitespaceScore / size;
+    return ratio < autoFormatWhitespaceRatio;
 }
 
 function doubleQuotedString(str)

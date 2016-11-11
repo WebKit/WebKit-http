@@ -37,6 +37,7 @@
 
     <script src="Base/WebInspector.js"></script>
     <script src="Base/InspectorFrontendHostStub.js"></script>
+    <script src="Base/Platform.js"></script>
     <script src="Base/LinkedList.js"></script>
     <script src="Base/ListMultimap.js"></script>
     <script src="Base/Object.js"></script>
@@ -57,11 +58,13 @@
 
     <script src="Protocol/ProtocolTracer.js"></script>
     <script src="Protocol/LoggingProtocolTracer.js"></script>
-
     <script src="Protocol/InspectorBackend.js"></script>
+
+    <script src="Protocol/Connection.js"></script>
     <script src="Protocol/InspectorFrontendAPI.js"></script>
     <script src="Protocol/LoadInspectorBackendCommands.js"></script>
     <script src="Protocol/MessageDispatcher.js"></script>
+    <script src="Protocol/Target.js"></script>
 
     <script src="Protocol/InspectorObserver.js"></script>
     <script src="Protocol/CSSObserver.js"></script>
@@ -76,6 +79,7 @@
     <script src="Protocol/ReplayObserver.js"></script>
     <script src="Protocol/RuntimeObserver.js"></script>
     <script src="Protocol/TimelineObserver.js"></script>
+    <script src="Protocol/WorkerObserver.js"></script>
 
     <script src="Models/BreakpointAction.js"></script>
     <script src="Models/ConsoleMessage.js"></script>
@@ -97,6 +101,8 @@
     <script src="Models/CSSStyleSheet.js"></script>
     <script src="Models/CallFrame.js"></script>
     <script src="Models/CallingContextTree.js"></script>
+    <script src="Models/CallingContextTreeNode.js"></script>
+    <script src="Models/Collection.js"></script>
     <script src="Models/CollectionEntry.js"></script>
     <script src="Models/CollectionEntryPreview.js"></script>
     <script src="Models/Color.js"></script>
@@ -107,6 +113,7 @@
     <script src="Models/DOMNodeStyles.js"></script>
     <script src="Models/DOMStorageObject.js"></script>
     <script src="Models/DOMTree.js"></script>
+    <script src="Models/DebuggerData.js"></script>
     <script src="Models/ExecutionContext.js"></script>
     <script src="Models/ExecutionContextList.js"></script>
     <script src="Models/FPSInstrument.js"></script>
@@ -146,6 +153,7 @@
     <script src="Models/ResourceQueryMatch.js"></script>
     <script src="Models/ResourceQueryResult.js"></script>
     <script src="Models/ResourceTimelineRecord.js"></script>
+    <script src="Models/ResourceTimingData.js"></script>
     <script src="Models/Revision.js"></script>
     <script src="Models/ScopeChainNode.js"></script>
     <script src="Models/Script.js"></script>
@@ -159,6 +167,7 @@
     <script src="Models/TextRange.js"></script>
     <script src="Models/TimelineMarker.js"></script>
     <script src="Models/TimelineRecording.js"></script>
+    <script src="Models/WrappedPromise.js"></script>
 
     <script src="Proxies/FormatterWorkerProxy.js"></script>
     <script src="Proxies/HeapSnapshotDiffProxy.js"></script>
@@ -179,7 +188,9 @@
     <script src="Controllers/ReplayManager.js"></script>
     <script src="Controllers/RuntimeManager.js"></script>
     <script src="Controllers/StorageManager.js"></script>
+    <script src="Controllers/TargetManager.js"></script>
     <script src="Controllers/TimelineManager.js"></script>
+    <script src="Controllers/WorkerManager.js"></script>
 
     <script src="Controllers/Formatter.js"></script>
     <script src="Controllers/ResourceQueryController.js"></script>

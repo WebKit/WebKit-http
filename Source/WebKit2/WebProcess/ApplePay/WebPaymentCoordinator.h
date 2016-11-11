@@ -56,7 +56,8 @@ private:
     bool supportsVersion(unsigned version) override;
     bool canMakePayments() override;
     void canMakePaymentsWithActiveCard(const String& merchantIdentifier, const String& domainName, std::function<void (bool)> completionHandler) override;
-    void showPaymentUI(const WebCore::URL& originatingURL, const Vector<WebCore::URL>& linkIconURLs, const WebCore::PaymentRequest&) override;
+    void openPaymentSetup(const String& merchantIdentifier, const String& domainName, std::function<void (bool)> completionHandler) override;
+    bool showPaymentUI(const WebCore::URL& originatingURL, const Vector<WebCore::URL>& linkIconURLs, const WebCore::PaymentRequest&) override;
     void completeMerchantValidation(const WebCore::PaymentMerchantSession&) override;
     void completeShippingMethodSelection(WebCore::PaymentAuthorizationStatus, Optional<WebCore::PaymentRequest::TotalAndLineItems> newTotalAndItems) override;
     void completeShippingContactSelection(WebCore::PaymentAuthorizationStatus, const Vector<WebCore::PaymentRequest::ShippingMethod>&, Optional<WebCore::PaymentRequest::TotalAndLineItems> newTotalAndItems) override;
@@ -67,7 +68,7 @@ private:
     void paymentCoordinatorDestroyed() override;
 
     // IPC::MessageReceiver.
-    void didReceiveMessage(IPC::Connection&, IPC::MessageDecoder&) override;
+    void didReceiveMessage(IPC::Connection&, IPC::Decoder&) override;
 
     // Message handlers.
     void validateMerchant(const String& validationURLString);
@@ -77,12 +78,14 @@ private:
     void didSelectPaymentMethod(const WebCore::PaymentMethod&);
     void didCancelPayment();
     void canMakePaymentsWithActiveCardReply(uint64_t requestID, bool canMakePayments);
+    void openPaymentSetupReply(uint64_t requestID, bool result);
 
     WebCore::PaymentCoordinator& paymentCoordinator();
 
     WebPage& m_webPage;
 
     HashMap<uint64_t, std::function<void (bool)>> m_pendingCanMakePaymentsWithActiveCardCallbacks;
+    HashMap<uint64_t, std::function<void (bool)>> m_pendingOpenPaymentSetupCallbacks;
 };
 
 }

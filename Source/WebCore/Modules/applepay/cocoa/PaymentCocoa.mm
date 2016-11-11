@@ -28,9 +28,9 @@
 
 #if ENABLE(APPLE_PAY)
 
+#import "PassKitSPI.h"
 #import "PaymentContact.h"
 #import "PaymentMethod.h"
-#import <PassKit/PassKit.h>
 #import <runtime/JSONObject.h>
 
 namespace WebCore {
@@ -53,7 +53,6 @@ static RetainPtr<NSDictionary> toDictionary(PKPaymentToken *paymentToken)
 static RetainPtr<NSDictionary> toDictionary(PKPayment *payment)
 {
     ASSERT(payment);
-    (void)payment;
 
     auto result = adoptNS([[NSMutableDictionary alloc] init]);
 

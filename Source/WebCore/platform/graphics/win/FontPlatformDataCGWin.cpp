@@ -2,7 +2,7 @@
  * This file is part of the internal font implementation. It should not be included by anyone other than
  * FontMac.cpp, FontWin.cpp and Font.cpp.
  *
- * Copyright (C) 2006, 2007, 2008, 2009 Apple Inc.
+ * Copyright (C) 2006-2009, 2016 Apple Inc.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -23,6 +23,8 @@
 
 #include "config.h"
 #include "FontPlatformData.h"
+
+#if USE(CG)
 
 #include "SharedGDIObject.h"
 #include <ApplicationServices/ApplicationServices.h>
@@ -120,12 +122,9 @@ void FontPlatformData::platformDataInit(HFONT font, float size, HDC hdc, WCHAR* 
 FontPlatformData::FontPlatformData(GDIObject<HFONT> hfont, CGFontRef font, float size, bool bold, bool oblique, bool useGDI)
     : m_syntheticBold(bold)
     , m_syntheticOblique(oblique)
-    , m_orientation(Horizontal)
     , m_size(size)
-    , m_widthVariant(RegularWidth)
     , m_font(SharedGDIObject<HFONT>::create(WTFMove(hfont)))
     , m_cgFont(font)
-    , m_isColorBitmapFont(false)
     , m_useGDI(useGDI)
 {
 }
@@ -138,3 +137,5 @@ bool FontPlatformData::platformIsEqual(const FontPlatformData& other) const
 }
 
 }
+
+#endif

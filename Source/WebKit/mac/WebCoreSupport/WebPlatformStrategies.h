@@ -30,12 +30,11 @@
 #include <WebCore/LoaderStrategy.h>
 #include <WebCore/PasteboardStrategy.h>
 #include <WebCore/PlatformStrategies.h>
-#include <WebCore/PluginStrategy.h>
 
 struct PasteboardImage;
 struct PasteboardWebContent;
 
-class WebPlatformStrategies : public WebCore::PlatformStrategies, private WebCore::CookiesStrategy, private WebCore::PasteboardStrategy, private WebCore::PluginStrategy {
+class WebPlatformStrategies : public WebCore::PlatformStrategies, private WebCore::CookiesStrategy, private WebCore::PasteboardStrategy {
 public:
     static void initializeIfNecessary();
     
@@ -46,7 +45,6 @@ private:
     WebCore::CookiesStrategy* createCookiesStrategy() override;
     WebCore::LoaderStrategy* createLoaderStrategy() override;
     WebCore::PasteboardStrategy* createPasteboardStrategy() override;
-    WebCore::PluginStrategy* createPluginStrategy() override;
     WebCore::BlobRegistry* createBlobRegistry() override;
 
     // WebCore::CookiesStrategy
@@ -58,15 +56,6 @@ private:
     bool getRawCookies(const WebCore::NetworkStorageSession&, const WebCore::URL& firstParty, const WebCore::URL&, Vector<WebCore::Cookie>&) override;
     void deleteCookie(const WebCore::NetworkStorageSession&, const WebCore::URL&, const String&) override;
     void addCookie(const WebCore::NetworkStorageSession&, const WebCore::URL&, const WebCore::Cookie&) override;
-
-    // WebCore::PluginStrategy
-    void refreshPlugins() override;
-    void getPluginInfo(const WebCore::Page*, Vector<WebCore::PluginInfo>&) override;
-    void getWebVisiblePluginInfo(const WebCore::Page*, Vector<WebCore::PluginInfo>&) override;
-#if PLATFORM(MAC)
-    void setPluginLoadClientPolicy(WebCore::PluginLoadClientPolicy, const String&, const String&, const String&) override;
-    void clearPluginClientPolicies() override;
-#endif
 
     // WebCore::PasteboardStrategy
 #if PLATFORM(IOS)
@@ -91,7 +80,7 @@ private:
     long addTypes(const Vector<String>& pasteboardTypes, const String& pasteboardName) override;
     long setTypes(const Vector<String>& pasteboardTypes, const String& pasteboardName) override;
     long copy(const String& fromPasteboard, const String& toPasteboard) override;
-    long setBufferForType(PassRefPtr<WebCore::SharedBuffer>, const String& pasteboardType, const String& pasteboardName) override;
+    long setBufferForType(WebCore::SharedBuffer*, const String& pasteboardType, const String& pasteboardName) override;
     long setPathnamesForType(const Vector<String>&, const String& pasteboardType, const String& pasteboardName) override;
     long setStringForType(const String&, const String& pasteboardType, const String& pasteboardName) override;
 };

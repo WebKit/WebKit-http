@@ -148,31 +148,6 @@ void Procedure::resetValueOwners()
 
 void Procedure::resetReachability()
 {
-    if (shouldValidateIR()) {
-        // Validate the basic properties that we need for resetting reachability. We often reset
-        // reachability before IR validation, so without this mini-validation, you would crash inside
-        // B3::resetReachability() without getting any IR dump.
-
-        BasicBlock* badBlock = nullptr;
-        for (BasicBlock* block : *this) {
-            if (!block->size()) {
-                badBlock = block;
-                break;
-            }
-
-            if (!block->last()->as<ControlValue>()) {
-                badBlock = block;
-                break;
-            }
-        }
-
-        if (badBlock) {
-            dataLog("FATAL: Invalid basic block ", *badBlock, " while running Procedure::resetReachability().\n");
-            dataLog(*this);
-            RELEASE_ASSERT_NOT_REACHED();
-        }
-    }
-    
     recomputePredecessors(m_blocks);
     
     // The common case is that this does not find any dead blocks.
@@ -305,6 +280,11 @@ bool Procedure::isFastConstant(const ValueKey& constant)
     return m_fastConstants.contains(constant);
 }
 
+CCallHelpers::Label Procedure::entrypointLabel(unsigned index) const
+{
+    return m_code->entrypointLabel(index);
+}
+
 void* Procedure::addDataSection(size_t size)
 {
     if (!size)
@@ -315,14 +295,19 @@ void* Procedure::addDataSection(size_t size)
     return result;
 }
 
-unsigned Procedure::callArgAreaSize() const
+unsigned Procedure::callArgAreaSizeInBytes() const
 {
-    return code().callArgAreaSize();
+    return code().callArgAreaSizeInBytes();
 }
 
-void Procedure::requestCallArgAreaSize(unsigned size)
+void Procedure::requestCallArgAreaSizeInBytes(unsigned size)
 {
-    code().requestCallArgAreaSize(size);
+    code().requestCallArgAreaSizeInBytes(size);
+}
+
+void Procedure::pinRegister(Reg reg)
+{
+    code().pinRegister(reg);
 }
 
 unsigned Procedure::frameSize() const
@@ -361,6 +346,11 @@ void Procedure::setBlockOrderImpl(Vector<BasicBlock*>& blocks)
         block->m_index = i;
         m_blocks[i] = std::unique_ptr<BasicBlock>(block);
     }
+}
+
+void Procedure::setWasmBoundsCheckGenerator(RefPtr<WasmBoundsCheckGenerator> generator)
+{
+    code().setWasmBoundsCheckGenerator(generator);
 }
 
 } } // namespace JSC::B3

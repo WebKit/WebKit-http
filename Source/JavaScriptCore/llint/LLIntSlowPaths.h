@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef LLIntSlowPaths_h
-#define LLIntSlowPaths_h
+#pragma once
 
 #include "CommonSlowPaths.h"
 #include <wtf/StdLibExtras.h>
@@ -104,6 +103,8 @@ LLINT_SLOW_PATH_HIDDEN_DECL(slow_path_new_func);
 LLINT_SLOW_PATH_HIDDEN_DECL(slow_path_new_func_exp);
 LLINT_SLOW_PATH_HIDDEN_DECL(slow_path_new_generator_func);
 LLINT_SLOW_PATH_HIDDEN_DECL(slow_path_new_generator_func_exp);
+LLINT_SLOW_PATH_HIDDEN_DECL(slow_path_new_async_func);
+LLINT_SLOW_PATH_HIDDEN_DECL(slow_path_new_async_func_exp);
 LLINT_SLOW_PATH_HIDDEN_DECL(slow_path_set_function_name);
 LLINT_SLOW_PATH_HIDDEN_DECL(slow_path_call);
 LLINT_SLOW_PATH_HIDDEN_DECL(slow_path_construct);
@@ -117,7 +118,6 @@ LLINT_SLOW_PATH_HIDDEN_DECL(slow_path_tear_off_arguments);
 LLINT_SLOW_PATH_HIDDEN_DECL(slow_path_strcat);
 LLINT_SLOW_PATH_HIDDEN_DECL(slow_path_to_primitive);
 LLINT_SLOW_PATH_HIDDEN_DECL(slow_path_throw);
-LLINT_SLOW_PATH_HIDDEN_DECL(slow_path_throw_static_error);
 LLINT_SLOW_PATH_HIDDEN_DECL(slow_path_handle_watchdog_timer);
 LLINT_SLOW_PATH_HIDDEN_DECL(slow_path_debug);
 LLINT_SLOW_PATH_HIDDEN_DECL(slow_path_handle_exception);
@@ -133,6 +133,3 @@ extern "C" SlowPathReturnType llint_stack_check_at_vm_entry(VM*, Register*) WTF_
 extern "C" NO_RETURN_DUE_TO_CRASH void llint_crash() WTF_INTERNAL;
 
 } } // namespace JSC::LLInt
-
-#endif // LLIntSlowPaths_h
-

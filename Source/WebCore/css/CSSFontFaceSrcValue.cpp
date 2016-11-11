@@ -85,12 +85,6 @@ String CSSFontFaceSrcValue::customCSSText() const
     return result.toString();
 }
 
-void CSSFontFaceSrcValue::addSubresourceStyleURLs(ListHashSet<URL>& urls, const StyleSheetContents* styleSheet) const
-{
-    if (!isLocal())
-        addSubresourceURL(urls, styleSheet->completeURL(m_resource));
-}
-
 bool CSSFontFaceSrcValue::traverseSubresources(const std::function<bool (const CachedResource&)>& handler) const
 {
     if (!m_cachedFont)
@@ -104,11 +98,11 @@ CachedFont* CSSFontFaceSrcValue::cachedFont(Document* document, bool isSVG, bool
         return m_cachedFont.get();
 
     ResourceLoaderOptions options = CachedResourceLoader::defaultCachedResourceOptions();
-    options.setContentSecurityPolicyImposition(isInitiatingElementInUserAgentShadowTree ? ContentSecurityPolicyImposition::SkipPolicyCheck : ContentSecurityPolicyImposition::DoPolicyCheck);
+    options.contentSecurityPolicyImposition = isInitiatingElementInUserAgentShadowTree ? ContentSecurityPolicyImposition::SkipPolicyCheck : ContentSecurityPolicyImposition::DoPolicyCheck;
 
     CachedResourceRequest request(ResourceRequest(document->completeURL(m_resource)), options);
     request.setInitiator(cachedResourceRequestInitiators().css);
-    m_cachedFont = document->cachedResourceLoader().requestFont(request, isSVG);
+    m_cachedFont = document->cachedResourceLoader().requestFont(WTFMove(request), isSVG);
     return m_cachedFont.get();
 }
 

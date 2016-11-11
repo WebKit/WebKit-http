@@ -31,7 +31,6 @@
 #include "MessageSender.h"
 #include <WebCore/UserActivity.h>
 #include <wtf/HashMap.h>
-#include <wtf/RetainPtr.h>
 #include <wtf/RunLoop.h>
 #include <wtf/text/StringHash.h>
 #include <wtf/text/WTFString.h>
@@ -65,6 +64,7 @@ public:
     void addMessageReceiver(IPC::StringReference messageReceiverName, uint64_t destinationID, IPC::MessageReceiver&);
     void removeMessageReceiver(IPC::StringReference messageReceiverName, uint64_t destinationID);
     void removeMessageReceiver(IPC::StringReference messageReceiverName);
+    void removeMessageReceiver(IPC::MessageReceiver&);
 
     void setProcessSuppressionEnabled(bool);
 
@@ -101,7 +101,7 @@ protected:
     static void stopNSAppRunLoop();
 #endif
 
-    void didReceiveMessage(IPC::Connection&, IPC::MessageDecoder&) override;
+    void didReceiveMessage(IPC::Connection&, IPC::Decoder&) override;
 
 private:
     // IPC::MessageSender

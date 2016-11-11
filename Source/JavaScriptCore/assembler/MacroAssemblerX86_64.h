@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef MacroAssemblerX86_64_h
-#define MacroAssemblerX86_64_h
+#pragma once
 
 #if ENABLE(ASSEMBLER) && CPU(X86_64)
 
@@ -38,10 +37,14 @@ namespace JSC {
 
 class MacroAssemblerX86_64 : public MacroAssemblerX86Common {
 public:
+    static const unsigned numGPRs = 16;
+    static const unsigned numFPRs = 16;
+    
     static const Scale ScalePtr = TimesEight;
 
     using MacroAssemblerX86Common::add32;
     using MacroAssemblerX86Common::and32;
+    using MacroAssemblerX86Common::branch32;
     using MacroAssemblerX86Common::branchAdd32;
     using MacroAssemblerX86Common::or32;
     using MacroAssemblerX86Common::sub32;
@@ -137,8 +140,9 @@ public:
     
     void store8(TrustedImm32 imm, void* address)
     {
+        TrustedImm32 imm8(static_cast<int8_t>(imm.m_value));
         move(TrustedImmPtr(address), scratchRegister());
-        store8(imm, Address(scratchRegister()));
+        store8(imm8, Address(scratchRegister()));
     }
 
     void store8(RegisterID reg, void* address)
@@ -824,6 +828,12 @@ public:
         m_assembler.cmpq_rm(right, address.offset, address.base, address.index, address.scale);
         return Jump(m_assembler.jCC(x86Condition(cond)));
     }
+    
+    Jump branch32(RelationalCondition cond, AbsoluteAddress left, RegisterID right)
+    {
+        load32(left.m_ptr, scratchRegister());
+        return branch32(cond, scratchRegister(), right);
+    }
 
     Jump branchPtr(RelationalCondition cond, BaseIndex left, RegisterID right)
     {
@@ -1217,15 +1227,17 @@ public:
     using MacroAssemblerX86Common::branchTest8;
     Jump branchTest8(ResultCondition cond, ExtendedAddress address, TrustedImm32 mask = TrustedImm32(-1))
     {
+        TrustedImm32 mask8(static_cast<int8_t>(mask.m_value));
         TrustedImmPtr addr(reinterpret_cast<void*>(address.offset));
         MacroAssemblerX86Common::move(addr, scratchRegister());
-        return MacroAssemblerX86Common::branchTest8(cond, BaseIndex(scratchRegister(), address.base, TimesOne), mask);
+        return MacroAssemblerX86Common::branchTest8(cond, BaseIndex(scratchRegister(), address.base, TimesOne), mask8);
     }
     
     Jump branchTest8(ResultCondition cond, AbsoluteAddress address, TrustedImm32 mask = TrustedImm32(-1))
     {
+        TrustedImm32 mask8(static_cast<int8_t>(mask.m_value));
         MacroAssemblerX86Common::move(TrustedImmPtr(address.m_ptr), scratchRegister());
-        return MacroAssemblerX86Common::branchTest8(cond, Address(scratchRegister()), mask);
+        return MacroAssemblerX86Common::branchTest8(cond, Address(scratchRegister()), mask8);
     }
 
     void convertInt64ToDouble(RegisterID src, FPRegisterID dest)
@@ -1349,5 +1361,3 @@ private:
 } // namespace JSC
 
 #endif // ENABLE(ASSEMBLER)
-
-#endif // MacroAssemblerX86_64_h

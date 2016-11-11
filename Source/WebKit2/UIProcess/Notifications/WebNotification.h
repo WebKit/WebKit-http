@@ -28,16 +28,8 @@
 
 #include "APIObject.h"
 #include "APISecurityOrigin.h"
-#include <wtf/PassRefPtr.h>
 #include <wtf/RefPtr.h>
 #include <wtf/text/WTFString.h>
-
-namespace IPC {
-
-class ArgumentDecoder;
-class ArgumentEncoder;
-
-} // namespace IPC
 
 namespace WebKit {
 

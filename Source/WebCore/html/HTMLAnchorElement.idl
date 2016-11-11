@@ -24,35 +24,14 @@ interface HTMLAnchorElement : HTMLElement {
     [Conditional=DOWNLOAD_ATTRIBUTE, EnabledAtRuntime=DownloadAttribute, Reflect] attribute DOMString download;
     [Reflect] attribute DOMString hreflang;
     [Reflect] attribute DOMString name;
-
-    // FIXME: This is supposed to be:
-    // [PutForwards=value] readonly attribute DOMTokenList ping;
-    [Reflect] attribute DOMString ping;
-
+    [Reflect] attribute USVString ping;
     [Reflect] attribute DOMString rel;
     [Reflect] attribute DOMString rev;
     [Reflect] attribute DOMString shape;
     [Reflect] attribute DOMString target;
     [Reflect] attribute DOMString type;
 
-#if defined(LANGUAGE_OBJECTIVE_C) && LANGUAGE_OBJECTIVE_C
-    [Reflect] attribute DOMString accessKey;
-#endif
-
-#if defined(LANGUAGE_OBJECTIVE_C) && LANGUAGE_OBJECTIVE_C
-    readonly attribute DOMString text;
-#else
-    [SetterRaisesException]  attribute DOMString text;
-#endif
-
-#if defined(LANGUAGE_JAVASCRIPT) && LANGUAGE_JAVASCRIPT
-    [NotEnumerable] DOMString toString();
-#endif
-
-#if defined(LANGUAGE_OBJECTIVE_C) && LANGUAGE_OBJECTIVE_C
-    // Objective-C extension:
-    readonly attribute URL absoluteLinkURL;
-#endif
+    [CEReactions] attribute DOMString text;
 
     [PutForwards=value] readonly attribute DOMTokenList relList;
 };

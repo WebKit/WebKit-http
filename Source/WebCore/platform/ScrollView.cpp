@@ -83,48 +83,33 @@ void ScrollView::removeChild(Widget& child)
 
 bool ScrollView::setHasHorizontalScrollbar(bool hasBar, bool* contentSizeAffected)
 {
-    ASSERT(!hasBar || !avoidScrollbarCreation());
-    if (hasBar && !m_horizontalScrollbar) {
-        m_horizontalScrollbar = createScrollbar(HorizontalScrollbar);
-        addChild(m_horizontalScrollbar.get());
-        didAddScrollbar(m_horizontalScrollbar.get(), HorizontalScrollbar);
-        m_horizontalScrollbar->styleChanged();
-        if (contentSizeAffected)
-            *contentSizeAffected = !m_horizontalScrollbar->isOverlayScrollbar();
-        return true;
-    }
-    
-    if (!hasBar && m_horizontalScrollbar) {
-        bool wasOverlayScrollbar = m_horizontalScrollbar->isOverlayScrollbar();
-        willRemoveScrollbar(m_horizontalScrollbar.get(), HorizontalScrollbar);
-        removeChild(*m_horizontalScrollbar);
-        m_horizontalScrollbar = nullptr;
-        if (contentSizeAffected)
-            *contentSizeAffected = !wasOverlayScrollbar;
-        return true;
-    }
-
-    return false;
+    return setHasScrollbarInternal(m_horizontalScrollbar, HorizontalScrollbar, hasBar, contentSizeAffected);
 }
 
 bool ScrollView::setHasVerticalScrollbar(bool hasBar, bool* contentSizeAffected)
 {
+    return setHasScrollbarInternal(m_verticalScrollbar, VerticalScrollbar, hasBar, contentSizeAffected);
+}
+
+bool ScrollView::setHasScrollbarInternal(RefPtr<Scrollbar>& scrollbar, ScrollbarOrientation orientation, bool hasBar, bool* contentSizeAffected)
+{
     ASSERT(!hasBar || !avoidScrollbarCreation());
-    if (hasBar && !m_verticalScrollbar) {
-        m_verticalScrollbar = createScrollbar(VerticalScrollbar);
-        addChild(m_verticalScrollbar.get());
-        didAddScrollbar(m_verticalScrollbar.get(), VerticalScrollbar);
-        m_verticalScrollbar->styleChanged();
+
+    if (hasBar && !scrollbar) {
+        scrollbar = createScrollbar(orientation);
+        addChild(scrollbar.get());
+        didAddScrollbar(scrollbar.get(), orientation);
+        scrollbar->styleChanged();
         if (contentSizeAffected)
-            *contentSizeAffected = !m_verticalScrollbar->isOverlayScrollbar();
+            *contentSizeAffected = !scrollbar->isOverlayScrollbar();
         return true;
     }
     
-    if (!hasBar && m_verticalScrollbar) {
-        bool wasOverlayScrollbar = m_verticalScrollbar->isOverlayScrollbar();
-        willRemoveScrollbar(m_verticalScrollbar.get(), VerticalScrollbar);
-        removeChild(*m_verticalScrollbar);
-        m_verticalScrollbar = nullptr;
+    if (!hasBar && scrollbar) {
+        bool wasOverlayScrollbar = scrollbar->isOverlayScrollbar();
+        willRemoveScrollbar(scrollbar.get(), orientation);
+        removeChild(*scrollbar);
+        scrollbar = nullptr;
         if (contentSizeAffected)
             *contentSizeAffected = !wasOverlayScrollbar;
         return true;
@@ -133,7 +118,7 @@ bool ScrollView::setHasVerticalScrollbar(bool hasBar, bool* contentSizeAffected)
     return false;
 }
 
-PassRefPtr<Scrollbar> ScrollView::createScrollbar(ScrollbarOrientation orientation)
+Ref<Scrollbar> ScrollView::createScrollbar(ScrollbarOrientation orientation)
 {
     return Scrollbar::createNativeScrollbar(*this, orientation, RegularScrollbar);
 }
@@ -262,18 +247,18 @@ IntRect ScrollView::unobscuredContentRect(VisibleContentRectIncludesScrollbars s
 
 IntRect ScrollView::unobscuredContentRectInternal(VisibleContentRectIncludesScrollbars scrollbarInclusion) const
 {
-    FloatSize visibleContentSize = unscaledUnobscuredVisibleContentSize(scrollbarInclusion);
+    FloatSize visibleContentSize = sizeForUnobscuredContent(scrollbarInclusion);
     visibleContentSize.scale(1 / visibleContentScaleFactor());
     return IntRect(m_scrollPosition, expandedIntSize(visibleContentSize));
 }
 
-IntSize ScrollView::unscaledVisibleContentSizeIncludingObscuredArea(VisibleContentRectIncludesScrollbars scrollbarInclusion) const
+IntSize ScrollView::sizeForVisibleContent(VisibleContentRectIncludesScrollbars scrollbarInclusion) const
 {
     if (platformWidget())
         return platformVisibleContentSizeIncludingObscuredArea(scrollbarInclusion == IncludeScrollbars);
 
 #if USE(COORDINATED_GRAPHICS)
-    if (!m_fixedVisibleContentRect.isEmpty())
+    if (m_useFixedLayout && !m_fixedVisibleContentRect.isEmpty())
         return m_fixedVisibleContentRect.size();
 #endif
 
@@ -284,15 +269,15 @@ IntSize ScrollView::unscaledVisibleContentSizeIncludingObscuredArea(VisibleConte
     return IntSize(width() - scrollbarSpace.width(), height() - scrollbarSpace.height()).expandedTo(IntSize());
 }
     
-IntSize ScrollView::unscaledUnobscuredVisibleContentSize(VisibleContentRectIncludesScrollbars scrollbarInclusion) const
+IntSize ScrollView::sizeForUnobscuredContent(VisibleContentRectIncludesScrollbars scrollbarInclusion) const
 {
-    IntSize visibleContentSize = unscaledVisibleContentSizeIncludingObscuredArea(scrollbarInclusion);
-
     if (platformWidget())
         return platformVisibleContentSize(scrollbarInclusion == IncludeScrollbars);
 
+    IntSize visibleContentSize = sizeForVisibleContent(scrollbarInclusion);
+
 #if USE(COORDINATED_GRAPHICS)
-    if (!m_fixedVisibleContentRect.isEmpty())
+    if (m_useFixedLayout && !m_fixedVisibleContentRect.isEmpty())
         return visibleContentSize;
 #endif
 
@@ -318,7 +303,7 @@ IntRect ScrollView::visibleContentRectInternal(VisibleContentRectIncludesScrollb
         return platformVisibleContentRect(scrollbarInclusion == IncludeScrollbars);
 
 #if USE(COORDINATED_GRAPHICS)
-    if (!m_fixedVisibleContentRect.isEmpty())
+    if (m_useFixedLayout && !m_fixedVisibleContentRect.isEmpty())
         return m_fixedVisibleContentRect;
 #endif
 
@@ -327,7 +312,7 @@ IntRect ScrollView::visibleContentRectInternal(VisibleContentRectIncludesScrollb
 
 IntSize ScrollView::layoutSize() const
 {
-    return m_fixedLayoutSize.isEmpty() || !m_useFixedLayout ? unscaledUnobscuredVisibleContentSize(ExcludeScrollbars) : m_fixedLayoutSize;
+    return m_fixedLayoutSize.isEmpty() || !m_useFixedLayout ? sizeForUnobscuredContent() : m_fixedLayoutSize;
 }
 
 IntSize ScrollView::fixedLayoutSize() const

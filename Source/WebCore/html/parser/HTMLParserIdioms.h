@@ -22,12 +22,13 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef HTMLParserIdioms_h
-#define HTMLParserIdioms_h
+#pragma once
 
 #include <unicode/uchar.h>
 #include <wtf/Forward.h>
 #include <wtf/Optional.h>
+#include <wtf/Vector.h>
+#include <wtf/text/StringView.h>
 
 namespace WebCore {
 
@@ -61,10 +62,22 @@ double parseToDoubleForNumberType(const String&);
 double parseToDoubleForNumberType(const String&, double fallbackValue);
 
 // http://www.whatwg.org/specs/web-apps/current-work/#rules-for-parsing-integers
-WEBCORE_EXPORT Optional<int> parseHTMLInteger(const String&);
+WEBCORE_EXPORT Optional<int> parseHTMLInteger(StringView);
 
 // http://www.whatwg.org/specs/web-apps/current-work/#rules-for-parsing-non-negative-integers
-WEBCORE_EXPORT Optional<int> parseHTMLNonNegativeInteger(const String&);
+WEBCORE_EXPORT Optional<unsigned> parseHTMLNonNegativeInteger(StringView);
+
+// https://html.spec.whatwg.org/#valid-non-negative-integer
+Optional<int> parseValidHTMLNonNegativeInteger(StringView);
+
+// https://html.spec.whatwg.org/#valid-floating-point-number
+Optional<double> parseValidHTMLFloatingPointNumber(StringView);
+
+// https://html.spec.whatwg.org/multipage/infrastructure.html#rules-for-parsing-floating-point-number-values
+Vector<double> parseHTMLListOfOfFloatingPointNumberValues(StringView);
+
+// https://html.spec.whatwg.org/multipage/semantics.html#attr-meta-http-equiv-refresh
+bool parseMetaHTTPEquivRefresh(const StringView&, double& delay, String& url);
 
 // https://html.spec.whatwg.org/multipage/infrastructure.html#cors-settings-attribute
 String parseCORSSettingsAttribute(const AtomicString&);
@@ -119,7 +132,7 @@ inline unsigned limitToOnlyHTMLNonNegativeNumbersGreaterThanZero(unsigned value,
     return (value > 0 && value <= maxHTMLNonNegativeInteger) ? value : defaultValue;
 }
 
-inline unsigned limitToOnlyHTMLNonNegativeNumbersGreaterThanZero(const String& stringValue, unsigned defaultValue = 1)
+inline unsigned limitToOnlyHTMLNonNegativeNumbersGreaterThanZero(StringView stringValue, unsigned defaultValue = 1)
 {
     ASSERT(defaultValue > 0);
     ASSERT(defaultValue <= maxHTMLNonNegativeInteger);
@@ -137,7 +150,7 @@ inline unsigned limitToOnlyHTMLNonNegative(unsigned value, unsigned defaultValue
     return value <= maxHTMLNonNegativeInteger ? value : defaultValue;
 }
 
-inline unsigned limitToOnlyHTMLNonNegative(const String& stringValue, unsigned defaultValue = 0)
+inline unsigned limitToOnlyHTMLNonNegative(StringView stringValue, unsigned defaultValue = 0)
 {
     ASSERT(defaultValue <= maxHTMLNonNegativeInteger);
     unsigned value = parseHTMLNonNegativeInteger(stringValue).valueOr(defaultValue);
@@ -145,6 +158,4 @@ inline unsigned limitToOnlyHTMLNonNegative(const String& stringValue, unsigned d
     return value;
 }
 
-}
-
-#endif
+} // namespace WebCore

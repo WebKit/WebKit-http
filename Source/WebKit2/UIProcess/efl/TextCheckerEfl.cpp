@@ -32,9 +32,9 @@
 #include "TextCheckerState.h"
 
 #if ENABLE(SPELLCHECK)
-#include "TextBreakIterator.h"
 #include "TextCheckerClientEfl.h"
 #include "WebTextChecker.h"
+#include <wtf/text/TextBreakIterator.h>
 #endif
 
 using namespace WebCore;
@@ -55,6 +55,18 @@ const TextCheckerState& TextChecker::state()
     didInitializeState = true;
 
     return textCheckerState;
+}
+    
+static bool testingModeEnabled = false;
+    
+void TextChecker::setTestingMode(bool enabled)
+{
+    testingModeEnabled = enabled;
+}
+    
+bool TextChecker::isTestingMode()
+{
+    return testingModeEnabled;
 }
 
 bool TextChecker::isContinuousSpellCheckingAllowed()

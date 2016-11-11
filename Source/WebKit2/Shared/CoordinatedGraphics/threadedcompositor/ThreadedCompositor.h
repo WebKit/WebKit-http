@@ -28,16 +28,14 @@
 
 #if USE(COORDINATED_GRAPHICS_THREADED)
 
+#include "CompositingRunLoop.h"
 #include "CoordinatedGraphicsScene.h"
-#include "SimpleViewportController.h"
 #include <WebCore/GLContext.h>
 #include <WebCore/IntSize.h>
-#include <WebCore/TransformationMatrix.h>
-#include <wtf/Condition.h>
+#include <WebCore/TextureMapper.h>
 #include <wtf/FastMalloc.h>
 #include <wtf/Noncopyable.h>
 #include <wtf/ThreadSafeRefCounted.h>
-#include <wtf/Threading.h>
 
 namespace WebCore {
 struct CoordinatedGraphicsState;
@@ -45,74 +43,63 @@ struct CoordinatedGraphicsState;
 
 namespace WebKit {
 
-class CompositingRunLoop;
 class CoordinatedGraphicsScene;
 class CoordinatedGraphicsSceneClient;
 
-class ThreadedCompositor : public SimpleViewportController::Client, public CoordinatedGraphicsSceneClient, public ThreadSafeRefCounted<ThreadedCompositor> {
+class ThreadedCompositor : public CoordinatedGraphicsSceneClient, public ThreadSafeRefCounted<ThreadedCompositor> {
     WTF_MAKE_NONCOPYABLE(ThreadedCompositor);
     WTF_MAKE_FAST_ALLOCATED;
 public:
     class Client {
     public:
-        virtual void setVisibleContentsRect(const WebCore::FloatRect&, const WebCore::FloatPoint&, float) = 0;
-        virtual void purgeBackingStores() = 0;
         virtual void renderNextFrame() = 0;
         virtual void commitScrollOffset(uint32_t layerID, const WebCore::IntSize& offset) = 0;
     };
 
-    static Ref<ThreadedCompositor> create(Client*);
+    enum class ShouldDoFrameSync { No, Yes };
+
+    static Ref<ThreadedCompositor> create(Client&, uint64_t nativeSurfaceHandle = 0, ShouldDoFrameSync = ShouldDoFrameSync::Yes, WebCore::TextureMapper::PaintFlags = 0);
     virtual ~ThreadedCompositor();
 
     void setNativeSurfaceHandleForCompositing(uint64_t);
-    void setDeviceScaleFactor(float);
+    void setScaleFactor(float);
+    void setScrollPosition(const WebCore::IntPoint&, float scale);
+    void setViewportSize(const WebCore::IntSize&, float scale);
+    void setDrawsBackground(bool);
 
     void updateSceneState(const WebCore::CoordinatedGraphicsState&);
 
-    void didChangeViewportSize(const WebCore::IntSize&);
-    void didChangeViewportAttribute(const WebCore::ViewportAttributes&);
-    void didChangeContentsSize(const WebCore::IntSize&);
-    void scrollTo(const WebCore::IntPoint&);
-    void scrollBy(const WebCore::IntSize&);
+    void invalidate();
+
+    void forceRepaint();
 
 private:
-    ThreadedCompositor(Client*);
+    ThreadedCompositor(Client&, uint64_t nativeSurfaceHandle, ShouldDoFrameSync, WebCore::TextureMapper::PaintFlags);
 
     // CoordinatedGraphicsSceneClient
-    void purgeBackingStores() override;
     void renderNextFrame() override;
     void updateViewport() override;
     void commitScrollOffset(uint32_t layerID, const WebCore::IntSize& offset) override;
 
     void renderLayerTree();
     void scheduleDisplayImmediately();
-    void didChangeVisibleRect() override;
 
-    bool tryEnsureGLContext();
-    WebCore::GLContext* glContext();
+    bool makeContextCurrent();
 
-    void createCompositingThread();
-    void runCompositingThread();
-    void terminateCompositingThread();
-    static void compositingThreadEntry(void*);
-
-    Client* m_client;
+    Client& m_client;
     RefPtr<CoordinatedGraphicsScene> m_scene;
-    std::unique_ptr<SimpleViewportController> m_viewportController;
-
     std::unique_ptr<WebCore::GLContext> m_context;
 
     WebCore::IntSize m_viewportSize;
-    float m_deviceScaleFactor { 1 };
-    uint64_t m_nativeSurfaceHandle { 0 };
+    WebCore::IntPoint m_scrollPosition;
+    float m_scaleFactor { 1 };
+    bool m_drawsBackground { true };
+    uint64_t m_nativeSurfaceHandle;
+    ShouldDoFrameSync m_doFrameSync;
+    WebCore::TextureMapper::PaintFlags m_paintFlags { 0 };
+    bool m_needsResize { false };
 
     std::unique_ptr<CompositingRunLoop> m_compositingRunLoop;
-
-    ThreadIdentifier m_threadIdentifier { 0 };
-    Condition m_initializeRunLoopCondition;
-    Lock m_initializeRunLoopConditionMutex;
-    Condition m_terminateRunLoopCondition;
-    Lock m_terminateRunLoopConditionMutex;
 };
 
 } // namespace WebKit

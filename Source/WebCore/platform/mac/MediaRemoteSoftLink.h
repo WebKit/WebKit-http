@@ -39,6 +39,8 @@ SOFT_LINK_FUNCTION_FOR_HEADER(WebCore, MediaRemote, MRMediaRemoteRemoveCommandHa
 #define MRMediaRemoteRemoveCommandHandlerBlock softLink_MediaRemote_MRMediaRemoteRemoveCommandHandlerBlock
 SOFT_LINK_FUNCTION_FOR_HEADER(WebCore, MediaRemote, MRMediaRemoteSetSupportedCommands, void, (CFArrayRef commands, MROriginRef origin, dispatch_queue_t replyQ, void(^completion)(MRMediaRemoteError err)), (commands, origin, replyQ, completion))
 #define MRMediaRemoteSetSupportedCommands softLink_MediaRemote_MRMediaRemoteSetSupportedCommands
+SOFT_LINK_FUNCTION_MAY_FAIL_FOR_HEADER(WebCore, MediaRemote, MRMediaRemoteSetNowPlayingVisibility, void, (MROriginRef origin, MRNowPlayingClientVisibility visibility), (origin, visibility))
+#define MRMediaRemoteSetNowPlayingVisibility softLink_MediaRemote_MRMediaRemoteSetNowPlayingVisibility
 SOFT_LINK_FUNCTION_FOR_HEADER(WebCore, MediaRemote, MRMediaRemoteCommandInfoCreate, MRMediaRemoteCommandInfoRef, (CFAllocatorRef allocator), (allocator));
 #define MRMediaRemoteCommandInfoCreate softLink_MediaRemote_MRMediaRemoteCommandInfoCreate
 SOFT_LINK_FUNCTION_FOR_HEADER(WebCore, MediaRemote, MRMediaRemoteCommandInfoSetCommand, void, (MRMediaRemoteCommandInfoRef commandInfo, MRMediaRemoteCommand command), (commandInfo, command))
@@ -53,6 +55,8 @@ SOFT_LINK_FUNCTION_FOR_HEADER(WebCore, MediaRemote, MRMediaRemoteSetNowPlayingIn
 #define MRMediaRemoteSetNowPlayingInfo softLink_MediaRemote_MRMediaRemoteSetNowPlayingInfo
 SOFT_LINK_FUNCTION_FOR_HEADER(WebCore, MediaRemote, MRMediaRemoteSetNowPlayingApplicationPlaybackStateForOrigin, void, (MROriginRef origin, MRPlaybackState playbackState, dispatch_queue_t replyQ, void(^completion)(MRMediaRemoteError)), (origin, playbackState, replyQ, completion))
 #define MRMediaRemoteSetNowPlayingApplicationPlaybackStateForOrigin softLink_MediaRemote_MRMediaRemoteSetNowPlayingApplicationPlaybackStateForOrigin
+SOFT_LINK_FUNCTION_MAY_FAIL_FOR_HEADER(WebCore, MediaRemote, MRMediaRemoteSetParentApplication, void, (MROriginRef origin, CFStringRef parentAppDisplayID), (origin, parentAppDisplayID))
+#define MRMediaRemoteSetParentApplication softLink_MediaRemote_MRMediaRemoteSetParentApplication
 SOFT_LINK_CONSTANT_FOR_HEADER(WebCore, MediaRemote, kMRMediaRemoteNowPlayingInfoTitle, CFStringRef);
 #define kMRMediaRemoteNowPlayingInfoTitle get_MediaRemote_kMRMediaRemoteNowPlayingInfoTitle()
 SOFT_LINK_CONSTANT_FOR_HEADER(WebCore, MediaRemote, kMRMediaRemoteNowPlayingInfoDuration, CFStringRef);
@@ -61,5 +65,7 @@ SOFT_LINK_CONSTANT_FOR_HEADER(WebCore, MediaRemote, kMRMediaRemoteNowPlayingInfo
 #define kMRMediaRemoteNowPlayingInfoElapsedTime get_MediaRemote_kMRMediaRemoteNowPlayingInfoElapsedTime()
 SOFT_LINK_CONSTANT_FOR_HEADER(WebCore, MediaRemote, kMRMediaRemoteNowPlayingInfoPlaybackRate, CFStringRef);
 #define kMRMediaRemoteNowPlayingInfoPlaybackRate get_MediaRemote_kMRMediaRemoteNowPlayingInfoPlaybackRate()
+SOFT_LINK_CONSTANT_FOR_HEADER(WebCore, MediaRemote, kMRMediaRemoteOptionPlaybackPosition, CFStringRef);
+#define kMRMediaRemoteOptionPlaybackPosition get_MediaRemote_kMRMediaRemoteOptionPlaybackPosition()
 
 #endif // USE(MEDIAREMOTE)

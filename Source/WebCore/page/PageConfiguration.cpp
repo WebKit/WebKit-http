@@ -31,14 +31,16 @@
 #include "DatabaseProvider.h"
 #include "DiagnosticLoggingClient.h"
 #include "EditorClient.h"
+#include "PluginInfoProvider.h"
 #include "SocketProvider.h"
 #include "StorageNamespaceProvider.h"
 #include "UserContentController.h"
+#include "ValidationMessageClient.h"
 #include "VisitedLinkStore.h"
 
 namespace WebCore {
 
-PageConfiguration::PageConfiguration(UniqueRef<EditorClient>&& editorClient, UniqueRef<SocketProvider>&& socketProvider)
+PageConfiguration::PageConfiguration(UniqueRef<EditorClient>&& editorClient, Ref<SocketProvider>&& socketProvider)
     : editorClient(WTFMove(editorClient))
     , socketProvider(WTFMove(socketProvider))
 {

@@ -43,6 +43,7 @@
 
 namespace WebCore {
 
+class CaptureDevice;
 class MediaStreamPrivate;
 class RealtimeMediaSource;
 class MediaStreamSourcesQueryClient;
@@ -53,20 +54,19 @@ public:
     RealtimeMediaSourceCenterOwr();
     ~RealtimeMediaSourceCenterOwr();
 
-    void validateRequestConstraints(MediaStreamCreationClient*, RefPtr<MediaConstraints>& audioConstraints, RefPtr<MediaConstraints>& videoConstraints) override;
+    void validateRequestConstraints(ValidConstraintsHandler validHandler, InvalidConstraintsHandler invalidHandler, const MediaConstraints& audioConstraints, const MediaConstraints& videoConstraints) final;
 
-    void createMediaStream(PassRefPtr<MediaStreamCreationClient>, PassRefPtr<MediaConstraints> audioConstraints, PassRefPtr<MediaConstraints> videoConstraints) override;
-    void createMediaStream(MediaStreamCreationClient*, const String& audioDeviceID, const String& videoDeviceID) override;
+    void createMediaStream(NewMediaStreamHandler, const String& audioDeviceID, const String& videoDeviceID, const MediaConstraints* videoConstraints, const MediaConstraints* audioConstraints) final;
 
-    bool getMediaStreamTrackSources(PassRefPtr<MediaStreamTrackSourcesRequestClient>) override;
+    Vector<CaptureDevice> getMediaStreamDevices() final;
 
     void mediaSourcesAvailable(GList* sources);
-    RefPtr<TrackSourceInfo> sourceWithUID(const String&, RealtimeMediaSource::Type, MediaConstraints*) override;
 
 private:
     PassRefPtr<RealtimeMediaSource> firstSource(RealtimeMediaSource::Type);
     RealtimeMediaSourceOwrMap m_sourceMap;
-    RefPtr<MediaStreamCreationClient> m_client;
+    ValidConstraintsHandler m_validConstraintsHandler;
+    InvalidConstraintsHandler m_invalidConstraintsHandler;
 };
 
 } // namespace WebCore

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2010, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef JSInterfaceJIT_h
-#define JSInterfaceJIT_h
+#pragma once
 
 #include "BytecodeConventions.h"
 #include "CCallHelpers.h"
@@ -33,10 +32,8 @@
 #include "JITCode.h"
 #include "JITOperations.h"
 #include "JSCJSValue.h"
-#include "JSStack.h"
 #include "JSString.h"
 #include "MacroAssembler.h"
-#include <wtf/Vector.h>
 
 #if ENABLE(JIT)
 
@@ -71,10 +68,10 @@ namespace JSC {
 
         Jump emitJumpIfNotType(RegisterID baseReg, JSType);
 
-        void emitGetFromCallFrameHeaderPtr(JSStack::CallFrameHeaderEntry, RegisterID to, RegisterID from = callFrameRegister);
-        void emitPutToCallFrameHeader(RegisterID from, JSStack::CallFrameHeaderEntry);
-        void emitPutToCallFrameHeader(void* value, JSStack::CallFrameHeaderEntry);
-        void emitPutCellToCallFrameHeader(RegisterID from, JSStack::CallFrameHeaderEntry);
+        void emitGetFromCallFrameHeaderPtr(int entry, RegisterID to, RegisterID from = callFrameRegister);
+        void emitPutToCallFrameHeader(RegisterID from, int entry);
+        void emitPutToCallFrameHeader(void* value, int entry);
+        void emitPutCellToCallFrameHeader(RegisterID from, int entry);
 
         inline Address payloadFor(int index, RegisterID base = callFrameRegister);
         inline Address intPayloadFor(int index, RegisterID base = callFrameRegister);
@@ -221,12 +218,12 @@ namespace JSC {
         return branch8(NotEqual, Address(baseReg, JSCell::typeInfoTypeOffset()), TrustedImm32(type));
     }
 
-    ALWAYS_INLINE void JSInterfaceJIT::emitGetFromCallFrameHeaderPtr(JSStack::CallFrameHeaderEntry entry, RegisterID to, RegisterID from)
+    ALWAYS_INLINE void JSInterfaceJIT::emitGetFromCallFrameHeaderPtr(int entry, RegisterID to, RegisterID from)
     {
         loadPtr(Address(from, entry * sizeof(Register)), to);
     }
 
-    ALWAYS_INLINE void JSInterfaceJIT::emitPutToCallFrameHeader(RegisterID from, JSStack::CallFrameHeaderEntry entry)
+    ALWAYS_INLINE void JSInterfaceJIT::emitPutToCallFrameHeader(RegisterID from, int entry)
     {
 #if USE(JSVALUE32_64)
         storePtr(from, payloadFor(entry, callFrameRegister));
@@ -235,12 +232,12 @@ namespace JSC {
 #endif
     }
 
-    ALWAYS_INLINE void JSInterfaceJIT::emitPutToCallFrameHeader(void* value, JSStack::CallFrameHeaderEntry entry)
+    ALWAYS_INLINE void JSInterfaceJIT::emitPutToCallFrameHeader(void* value, int entry)
     {
         storePtr(TrustedImmPtr(value), Address(callFrameRegister, entry * sizeof(Register)));
     }
 
-    ALWAYS_INLINE void JSInterfaceJIT::emitPutCellToCallFrameHeader(RegisterID from, JSStack::CallFrameHeaderEntry entry)
+    ALWAYS_INLINE void JSInterfaceJIT::emitPutCellToCallFrameHeader(RegisterID from, int entry)
     {
 #if USE(JSVALUE32_64)
         store32(TrustedImm32(JSValue::CellTag), tagFor(entry, callFrameRegister));
@@ -259,5 +256,3 @@ namespace JSC {
 } // namespace JSC
 
 #endif // ENABLE(JIT)
-
-#endif // JSInterfaceJIT_h

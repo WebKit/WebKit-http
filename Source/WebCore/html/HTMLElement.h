@@ -20,8 +20,7 @@
  *
  */
 
-#ifndef HTMLElement_h
-#define HTMLElement_h
+#pragma once
 
 #include "StyledElement.h"
 
@@ -32,12 +31,6 @@ class FormNamedItem;
 class HTMLCollection;
 class HTMLFormElement;
 
-enum TranslateAttributeMode {
-    TranslateAttributeYes,
-    TranslateAttributeNo,
-    TranslateAttributeInherit
-};
-
 class HTMLElement : public StyledElement {
 public:
     static Ref<HTMLElement> create(const QualifiedName& tagName, Document&);
@@ -46,43 +39,37 @@ public:
 
     int tabIndex() const override;
 
-    void setInnerText(const String&, ExceptionCode&);
-    void setOuterText(const String&, ExceptionCode&);
-
-    Element* insertAdjacentElement(const String& where, Element& newChild, ExceptionCode&);
-    void insertAdjacentHTML(const String& where, const String& html, ExceptionCode&);
-    void insertAdjacentText(const String& where, const String& text, ExceptionCode&);
+    WEBCORE_EXPORT ExceptionOr<void> setInnerText(const String&);
+    WEBCORE_EXPORT ExceptionOr<void> setOuterText(const String&);
 
     virtual bool hasCustomFocusLogic() const;
     bool supportsFocus() const override;
 
-    String contentEditable() const;
-    void setContentEditable(const String&, ExceptionCode&);
+    WEBCORE_EXPORT String contentEditable() const;
+    WEBCORE_EXPORT ExceptionOr<void> setContentEditable(const String&);
 
     static Editability editabilityFromContentEditableAttr(const Node&);
 
     virtual bool draggable() const;
-    void setDraggable(bool);
+    WEBCORE_EXPORT void setDraggable(bool);
 
-    bool spellcheck() const;
-    void setSpellcheck(bool);
+    WEBCORE_EXPORT bool spellcheck() const;
+    WEBCORE_EXPORT void setSpellcheck(bool);
 
-    bool translate() const;
-    void setTranslate(bool);
+    WEBCORE_EXPORT bool translate() const;
+    WEBCORE_EXPORT void setTranslate(bool);
 
-    void click();
+    WEBCORE_EXPORT void click();
 
     void accessKeyAction(bool sendMouseEvents) override;
-
-    bool ieForbidsInsertHTML() const;
 
     bool rendererIsNeeded(const RenderStyle&) override;
     RenderPtr<RenderElement> createElementRenderer(RenderStyle&&, const RenderTreePosition&) override;
 
     HTMLFormElement* form() const { return virtualForm(); }
 
-    const AtomicString& dir() const;
-    void setDir(const AtomicString&);
+    WEBCORE_EXPORT const AtomicString& dir() const;
+    WEBCORE_EXPORT void setDir(const AtomicString&);
 
     bool hasDirectionAuto() const;
     TextDirection directionalityIfhasDirAutoAttribute(bool& isAuto) const;
@@ -100,6 +87,10 @@ public:
     bool hasTagName(const HTMLQualifiedName& name) const { return hasLocalName(name.localName()); }
 
     static const AtomicString& eventNameForEventHandlerAttribute(const QualifiedName& attributeName);
+
+    // Only some element types can be disabled: https://html.spec.whatwg.org/multipage/scripting.html#concept-element-disabled
+    bool canBeActuallyDisabled() const;
+    bool isActuallyDisabled() const;
 
 protected:
     HTMLElement(const QualifiedName& tagName, Document&, ConstructionType);
@@ -130,15 +121,12 @@ private:
 
     virtual HTMLFormElement* virtualForm() const;
 
-    Node* insertAdjacent(const String& where, Ref<Node>&& newChild, ExceptionCode&);
-    Ref<DocumentFragment> textToFragment(const String&, ExceptionCode&);
+    ExceptionOr<Ref<DocumentFragment>> textToFragment(const String&);
 
     void dirAttributeChanged(const AtomicString&);
     void adjustDirectionalityIfNeededAfterChildAttributeChanged(Element* child);
     void adjustDirectionalityIfNeededAfterChildrenChanged(Element* beforeChange, ChildChangeType);
     TextDirection directionality(Node** strongDirectionalityTextNode= 0) const;
-
-    TranslateAttributeMode translateAttributeMode() const;
 
     static void populateEventHandlerNameMap(EventHandlerNameMap&, const QualifiedName* const table[], size_t tableSize);
     static EventHandlerNameMap createEventHandlerNameMap();
@@ -167,5 +155,3 @@ SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::HTMLElement)
 SPECIALIZE_TYPE_TRAITS_END()
 
 #include "HTMLElementTypeHelpers.h"
-
-#endif // HTMLElement_h

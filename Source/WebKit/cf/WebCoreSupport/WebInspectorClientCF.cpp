@@ -27,8 +27,8 @@
 // before including any other files. Failing to include config.h will leave
 // USE_CF undefined, causing build failures in this
 // file. But Mac doesn't have a config.h for WebKit, so we can't include the
-// Windows one here. For now we can just define USE_CF and
-// USE_CFNETWORK manually, but we need a better long-term solution.
+// Windows one here. For now we can just define USE_CF manually,
+// but we need a better long-term solution.
 #ifndef USE_CF
 #define USE_CF 1
 #endif
@@ -55,7 +55,6 @@
 #include <WebCore/Page.h>
 
 #include <wtf/RetainPtr.h>
-#include <wtf/Vector.h>
 #include <wtf/text/WTFString.h>
 
 using namespace WebCore;
@@ -82,7 +81,7 @@ static void populateSetting(const String& key, String* setting)
     else if (type == CFBooleanGetTypeID())
         *setting = static_cast<bool>(CFBooleanGetValue(static_cast<CFBooleanRef>(value.get()))) ? "true" : "false";
     else
-        *setting = "";
+        *setting = emptyString();
 }
 
 static void storeSetting(const String& key, const String& setting)
@@ -90,9 +89,9 @@ static void storeSetting(const String& key, const String& setting)
     CFPreferencesSetAppValue(createKeyForPreferences(key).get(), setting.createCFString().get(), kCFPreferencesCurrentApplication);
 }
 
-bool WebInspectorClient::sendMessageToFrontend(const String& message)
+void WebInspectorClient::sendMessageToFrontend(const String& message)
 {
-    return doDispatchMessageOnFrontendPage(m_frontendPage, message);
+    doDispatchMessageOnFrontendPage(m_frontendPage, message);
 }
 
 bool WebInspectorClient::inspectorAttachDisabled()

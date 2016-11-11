@@ -34,7 +34,6 @@
 #include "DFGMayExit.h"
 #include "JSCInlines.h"
 #include <wtf/Assertions.h>
-#include <wtf/BitVector.h>
 
 namespace JSC { namespace DFG {
 
@@ -266,6 +265,10 @@ public:
                     VALIDATE((node), !!node->child1());
                     VALIDATE((node), !!node->child2());
                     break;
+                case CompareEqPtr:
+                    VALIDATE((node), !!node->child1());
+                    VALIDATE((node), !!node->cellOperand()->value() && node->cellOperand()->value().isCell());
+                    break;
                 case CheckStructure:
                 case StringFromCharCode:
                     VALIDATE((node), !!node->child1());
@@ -299,8 +302,17 @@ public:
                     break;
                 case GetByOffset:
                 case PutByOffset:
-                    VALIDATE((node), node->child1().node() == node->child2().node() || node->child1()->result() == NodeResultStorage);
+                    // FIXME: We should be able to validate that GetByOffset and PutByOffset are
+                    // using the same object for storage and base. I think this means finally
+                    // splitting these nodes into two node types, one for inline and one for
+                    // out-of-line. The out-of-line one will require that the first node is storage,
+                    // while the inline one will not take a storage child at all.
+                    // https://bugs.webkit.org/show_bug.cgi?id=159602
                     break;
+                case HasOwnProperty: {
+                    VALIDATE((node), !!m_graph.m_vm.hasOwnPropertyCache());
+                    break;
+                }
                 default:
                     break;
                 }
@@ -473,17 +485,17 @@ private:
                 block->variablesAtHead.numberOfLocals());
             
             for (size_t i = 0; i < block->variablesAtHead.numberOfArguments(); ++i) {
-                VALIDATE((virtualRegisterForArgument(i), block), !block->variablesAtHead.argument(i) || block->variablesAtHead.argument(i)->hasVariableAccessData(m_graph));
+                VALIDATE((virtualRegisterForArgument(i), block), !block->variablesAtHead.argument(i) || block->variablesAtHead.argument(i)->accessesStack(m_graph));
                 if (m_graph.m_form == ThreadedCPS)
-                    VALIDATE((virtualRegisterForArgument(i), block), !block->variablesAtTail.argument(i) || block->variablesAtTail.argument(i)->hasVariableAccessData(m_graph));
+                    VALIDATE((virtualRegisterForArgument(i), block), !block->variablesAtTail.argument(i) || block->variablesAtTail.argument(i)->accessesStack(m_graph));
                 
                 getLocalPositions.argument(i) = notSet;
                 setLocalPositions.argument(i) = notSet;
             }
             for (size_t i = 0; i < block->variablesAtHead.numberOfLocals(); ++i) {
-                VALIDATE((virtualRegisterForLocal(i), block), !block->variablesAtHead.local(i) || block->variablesAtHead.local(i)->hasVariableAccessData(m_graph));
+                VALIDATE((virtualRegisterForLocal(i), block), !block->variablesAtHead.local(i) || block->variablesAtHead.local(i)->accessesStack(m_graph));
                 if (m_graph.m_form == ThreadedCPS)
-                    VALIDATE((virtualRegisterForLocal(i), block), !block->variablesAtTail.local(i) || block->variablesAtTail.local(i)->hasVariableAccessData(m_graph));
+                    VALIDATE((virtualRegisterForLocal(i), block), !block->variablesAtTail.local(i) || block->variablesAtTail.local(i)->accessesStack(m_graph));
 
                 getLocalPositions.local(i) = notSet;
                 setLocalPositions.local(i) = notSet;
@@ -658,6 +670,7 @@ private:
                 case PhantomNewGeneratorFunction:
                 case PhantomCreateActivation:
                 case PhantomDirectArguments:
+                case PhantomCreateRest:
                 case PhantomClonedArguments:
                 case MovHint:
                 case Upsilon:

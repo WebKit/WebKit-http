@@ -30,9 +30,7 @@
 #include "FrameSelection.h"
 #include "FrameTree.h"
 #include "HTMLAnchorElement.h"
-#include "HTMLAreaElement.h"
 #include "HTMLAttachmentElement.h"
-#include "HTMLAudioElement.h"
 #include "HTMLEmbedElement.h"
 #include "HTMLImageElement.h"
 #include "HTMLInputElement.h"
@@ -127,7 +125,7 @@ static Node* moveOutOfUserAgentShadowTree(Node& node)
 {
     if (node.isInShadowTree()) {
         if (ShadowRoot* root = node.containingShadowRoot()) {
-            if (root->type() == ShadowRoot::Type::UserAgent)
+            if (root->mode() == ShadowRootMode::UserAgent)
                 return root->host();
         }
     }
@@ -313,7 +311,7 @@ String HitTestResult::altDisplayString() const
     
     if (is<HTMLImageElement>(*m_innerNonSharedNode)) {
         HTMLImageElement& image = downcast<HTMLImageElement>(*m_innerNonSharedNode);
-        return displayString(image.fastGetAttribute(altAttr), m_innerNonSharedNode.get());
+        return displayString(image.attributeWithoutSynchronization(altAttr), m_innerNonSharedNode.get());
     }
     
     if (is<HTMLInputElement>(*m_innerNonSharedNode)) {
@@ -470,7 +468,7 @@ void HitTestResult::toggleMediaFullscreenState() const
 #if ENABLE(VIDEO)
     if (HTMLMediaElement* mediaElement = this->mediaElement()) {
         if (mediaElement->isVideo() && mediaElement->supportsFullscreen(HTMLMediaElementEnums::VideoFullscreenModeStandard)) {
-            UserGestureIndicator indicator(DefinitelyProcessingUserGesture, &mediaElement->document());
+            UserGestureIndicator indicator(ProcessingUserGesture, &mediaElement->document());
             mediaElement->toggleStandardFullscreenState();
         }
     }
@@ -484,7 +482,7 @@ void HitTestResult::enterFullscreenForVideo() const
     if (is<HTMLVideoElement>(mediaElement)) {
         HTMLVideoElement& videoElement = downcast<HTMLVideoElement>(*mediaElement);
         if (!videoElement.isFullscreen() && mediaElement->supportsFullscreen(HTMLMediaElementEnums::VideoFullscreenModeStandard)) {
-            UserGestureIndicator indicator(DefinitelyProcessingUserGesture, &mediaElement->document());
+            UserGestureIndicator indicator(ProcessingUserGesture, &mediaElement->document());
             videoElement.enterFullscreen();
         }
     }
@@ -786,6 +784,14 @@ Element* HitTestResult::innerNonSharedElement() const
     return node->parentElement();
 }
 
+const AtomicString& HitTestResult::URLElementDownloadAttribute() const
+{
+    auto* urlElement = URLElement();
+    if (!is<HTMLAnchorElement>(urlElement))
+        return nullAtom;
+    return urlElement->attributeWithoutSynchronization(HTMLNames::downloadAttr);
+}
+
 bool HitTestResult::mediaSupportsEnhancedFullscreen() const
 {
 #if PLATFORM(MAC) && ENABLE(VIDEO) && ENABLE(VIDEO_PRESENTATION_MODE)
@@ -814,7 +820,7 @@ void HitTestResult::toggleEnhancedFullscreenForVideo() const
         return;
 
     HTMLVideoElement& videoElement = downcast<HTMLVideoElement>(*mediaElement);
-    UserGestureIndicator indicator(DefinitelyProcessingUserGesture, &mediaElement->document());
+    UserGestureIndicator indicator(ProcessingUserGesture, &mediaElement->document());
     if (videoElement.fullscreenMode() == HTMLMediaElementEnums::VideoFullscreenModePictureInPicture)
         videoElement.exitFullscreen();
     else

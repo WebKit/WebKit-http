@@ -24,84 +24,44 @@
     JSGenerateToNativeObject,
     ExportMacro=WEBCORE_EXPORT,
 ] interface Element : Node {
-
-    // DOM Level 1 Core
-
     readonly attribute DOMString? tagName;
 
-    // FIXME: Using "undefined" as default parameter value is wrong.
-    DOMString? getAttribute(optional DOMString name = "undefined");
+    [DOMJIT=ReadDOM] DOMString? getAttribute(DOMString name);
 
-    [ObjCLegacyUnnamedParameters, RaisesException, InvokesCustomElementLifecycleCallbacks]
+    [CEReactions, MayThrowException] void setAttribute(DOMString name, DOMString value);
 
-    // FIXME: Using "undefined" as default parameter value is wrong.
-    void setAttribute(optional DOMString name = "undefined", optional DOMString value = "undefined");
+    [CEReactions] void removeAttribute(DOMString name);
+    [DOMJIT=ReadDOM] Attr? getAttributeNode(DOMString name);
 
-    // FIXME: Using "undefined" as default parameter value is wrong.
-    [InvokesCustomElementLifecycleCallbacks] void removeAttribute(optional DOMString name = "undefined");
-    Attr getAttributeNode(optional DOMString name = "undefined");
+    [CEReactions, MayThrowException] Attr? setAttributeNode(Attr newAttr);
+    [CEReactions, MayThrowException] Attr removeAttributeNode(Attr oldAttr);
 
-    [RaisesException, InvokesCustomElementLifecycleCallbacks] Attr setAttributeNode(Attr newAttr);
-    [RaisesException, InvokesCustomElementLifecycleCallbacks] Attr removeAttributeNode(Attr oldAttr);
+    [DOMJIT=ReadDOM] HTMLCollection getElementsByTagName(DOMString name);
 
-#if defined(LANGUAGE_OBJECTIVE_C) && LANGUAGE_OBJECTIVE_C
-    [ImplementedAs=getElementsByTagNameForObjC] NodeList getElementsByTagName(optional DOMString name);
-#else
-    // FIXME: Using "undefined" as default parameter value is wrong.
-    HTMLCollection getElementsByTagName(optional DOMString name = "undefined");
-#endif
-
-#if !defined(LANGUAGE_OBJECTIVE_C)
-    // For ObjC this is defined on Node for legacy support.
     readonly attribute NamedNodeMap attributes;
-    boolean hasAttributes();
-#endif
+    [DOMJIT=ReadDOM] boolean hasAttributes();
 
-    // DOM Level 2 Core
+    DOMString? getAttributeNS(DOMString? namespaceURI, DOMString localName);
 
-    // FIXME: Using "undefined" as default parameter value is wrong.
-    [ObjCLegacyUnnamedParameters] DOMString? getAttributeNS(optional DOMString? namespaceURI = null, optional DOMString localName = "undefined");
+    [CEReactions, MayThrowException] void setAttributeNS(DOMString? namespaceURI, DOMString qualifiedName, DOMString value);
+    [CEReactions] void removeAttributeNS(DOMString? namespaceURI, DOMString localName);
 
-    [ObjCLegacyUnnamedParameters, RaisesException, InvokesCustomElementLifecycleCallbacks]
+    HTMLCollection getElementsByTagNameNS(DOMString? namespaceURI, DOMString localName);
 
-    // FIXME: Using "undefined" as default parameter value is wrong.
-    void setAttributeNS(optional DOMString? namespaceURI = null, optional DOMString qualifiedName = "undefined", optional DOMString value = "undefined");
-
-    [ObjCLegacyUnnamedParameters, InvokesCustomElementLifecycleCallbacks] void removeAttributeNS(DOMString? namespaceURI, DOMString localName);
-
-#if defined(LANGUAGE_OBJECTIVE_C) && LANGUAGE_OBJECTIVE_C
-    [ObjCLegacyUnnamedParameters, ImplementedAs=getElementsByTagNameNSForObjC] NodeList getElementsByTagNameNS(optional DOMString namespaceURI, optional DOMString localName);
-#else
-    // FIXME: Using "undefined" as default parameter value is wrong.
-    HTMLCollection getElementsByTagNameNS(optional DOMString? namespaceURI = null, optional DOMString localName = "undefined");
-#endif
-
-    // FIXME: Using "undefined" as default parameter value is wrong.
-    [ObjCLegacyUnnamedParameters] Attr getAttributeNodeNS(optional DOMString? namespaceURI = null, optional DOMString localName = "undefined");
-    [RaisesException, InvokesCustomElementLifecycleCallbacks] Attr setAttributeNodeNS(Attr newAttr);
+    Attr? getAttributeNodeNS(DOMString? namespaceURI, DOMString localName);
+    [CEReactions, MayThrowException] Attr? setAttributeNodeNS(Attr newAttr);
     boolean hasAttribute(DOMString name);
-    // FIXME: Using "undefined" as default parameter value is wrong.
-    [ObjCLegacyUnnamedParameters] boolean hasAttributeNS(optional DOMString? namespaceURI = null, optional DOMString localName = "undefined");
+
+    boolean hasAttributeNS(DOMString? namespaceURI, DOMString localName);
 
     [ImplementedAs=cssomStyle] readonly attribute CSSStyleDeclaration style;
 
-    // DOM 4
-#if !defined(LANGUAGE_OBJECTIVE_C) || !LANGUAGE_OBJECTIVE_C
-    [Reflect] attribute DOMString id;
-#endif
+    [CEReactions, Reflect] attribute DOMString id;
 
-    // Common extensions
+    readonly attribute DOMString? namespaceURI;
+    readonly attribute DOMString? prefix;
+    readonly attribute DOMString localName;
 
-#if defined(LANGUAGE_OBJECTIVE_C) && LANGUAGE_OBJECTIVE_C
-    readonly attribute long offsetLeft;
-    readonly attribute long offsetTop;
-    readonly attribute long offsetWidth;
-    readonly attribute long offsetHeight;
-    readonly attribute long clientLeft;
-    readonly attribute long clientTop;
-    readonly attribute long clientWidth;
-    readonly attribute long clientHeight;
-#else
     readonly attribute double offsetLeft;
     readonly attribute double offsetTop;
     readonly attribute double offsetWidth;
@@ -110,60 +70,46 @@
     readonly attribute double clientTop;
     readonly attribute double clientWidth;
     readonly attribute double clientHeight;
-#endif
 
-    attribute long scrollLeft;
-    attribute long scrollTop;
+    attribute long scrollLeft; // FIXME: should be unrestricted double
+    attribute long scrollTop; // FIXME: should be unrestricted double
     readonly attribute long scrollWidth;
     readonly attribute long scrollHeight;
 
     [ImplementedAs=bindingsOffsetParent] readonly attribute Element offsetParent;
 
-#if defined(LANGUAGE_OBJECTIVE_C) && LANGUAGE_OBJECTIVE_C || defined(LANGUAGE_GOBJECT) && LANGUAGE_GOBJECT
-    void focus();
-    void blur();
-#endif
-
     void scrollIntoView(optional boolean alignWithTop = true);
 
-    // WebKit extensions
-
     void scrollIntoViewIfNeeded(optional boolean centerIfNeeded = true);
+
+    [ImplementedAs=scrollTo] void scroll(optional ScrollToOptions options);
+    [ImplementedAs=scrollTo] void scroll(unrestricted double x, unrestricted double y);
+
+    void scrollTo(optional ScrollToOptions options);
+    void scrollTo(unrestricted double x, unrestricted double y);
+
+    void scrollBy(optional ScrollToOptions option);
+    void scrollBy(unrestricted double x, unrestricted double y);
+
     void scrollByLines(optional long lines = 0);
     void scrollByPages(optional long pages = 0);
 
-    // HTML 5
-#if defined(LANGUAGE_OBJECTIVE_C) && LANGUAGE_OBJECTIVE_C
-    [ImplementedAs=getElementsByClassNameForObjC] NodeList getElementsByClassName(optional DOMString name);
-#else
-    // FIXME: Using "undefined" as default parameter value is wrong.
-    HTMLCollection getElementsByClassName(optional DOMString name = "undefined");
-#endif
-    [TreatNullAs=EmptyString, SetterRaisesException] attribute DOMString innerHTML;
-    [TreatNullAs=EmptyString, SetterRaisesException] attribute DOMString outerHTML;
+    sequence<DOMString> getAttributeNames();
 
+    HTMLCollection getElementsByClassName(DOMString name);
+    [CEReactions, TreatNullAs=EmptyString, SetterMayThrowException] attribute DOMString innerHTML;
+    [CEReactions, TreatNullAs=EmptyString, SetterMayThrowException] attribute DOMString outerHTML;
 
-    [Reflect=class] attribute DOMString className;
+    [CEReactions, Reflect=class] attribute DOMString className;
     [PutForwards=value] readonly attribute DOMTokenList classList;
 
-#if defined(LANGUAGE_JAVASCRIPT) && LANGUAGE_JAVASCRIPT
-    readonly attribute DOMStringMap dataset;
-#endif
+    [MayThrowException] boolean matches(DOMString selectors);
+    [MayThrowException] Element? closest(DOMString selectors);
+    [ImplementedAs=matches, MayThrowException] boolean webkitMatchesSelector(DOMString selectors);
 
-    [RaisesException] boolean matches(DOMString selectors);
-    [RaisesException] Element closest(DOMString selectors);    
-    [ImplementedAs=matches, RaisesException] boolean webkitMatchesSelector(DOMString selectors);
-
-#if defined(LANGUAGE_JAVASCRIPT) && LANGUAGE_JAVASCRIPT
     // CSSOM View Module API
     ClientRectList getClientRects();
     ClientRect getBoundingClientRect();
-#endif
-
-#if defined(LANGUAGE_OBJECTIVE_C) && LANGUAGE_OBJECTIVE_C
-    // Objective-C extensions
-    readonly attribute DOMString innerText;
-#endif
 
 #if defined(ENABLE_FULLSCREEN_API) && ENABLE_FULLSCREEN_API
     // Mozilla version
@@ -175,8 +121,12 @@
 #endif
 
 #if defined(ENABLE_INDIE_UI) && ENABLE_INDIE_UI
-    [Reflect] attribute DOMString uiactions;
+    [CEReactions, Reflect] attribute DOMString uiactions;
 #endif
+
+    [CEReactions, MayThrowException] Element? insertAdjacentElement(DOMString where, Element element);
+    [CEReactions, MayThrowException] void insertAdjacentHTML(DOMString where, DOMString html);
+    [MayThrowException] void insertAdjacentText(DOMString where, DOMString text);
 
     [Conditional=POINTER_LOCK] void requestPointerLock();
 
@@ -185,11 +135,9 @@
     [Conditional=CSS_REGIONS] sequence<Range> webkitGetRegionFlowRanges();
 
     // Shadow DOM API
-#if defined(LANGUAGE_JAVASCRIPT) && LANGUAGE_JAVASCRIPT
-    [EnabledAtRuntime=ShadowDOM, RaisesException] ShadowRoot attachShadow(ShadowRootInit init);
+    [EnabledAtRuntime=ShadowDOM, MayThrowException] ShadowRoot attachShadow(ShadowRootInit init);
     [EnabledAtRuntime=ShadowDOM, ImplementedAs=shadowRootForBindings, CallWith=ScriptState] readonly attribute ShadowRoot shadowRoot;
-    [EnabledAtRuntime=ShadowDOM, Reflect] attribute DOMString slot;
-#endif
+    [CEReactions, EnabledAtRuntime=ShadowDOM, Reflect] attribute DOMString slot;
 
     // Event Handlers
 
@@ -197,6 +145,7 @@
     // FIXME: Should these be exposed on Window as well (and therefore moved to GlobalEventHandlers.idl)?
     [NotEnumerable] attribute EventHandler onbeforecopy;
     [NotEnumerable] attribute EventHandler onbeforecut;
+    [NotEnumerable] attribute EventHandler onbeforeinput;
     [NotEnumerable] attribute EventHandler onbeforepaste;
     [NotEnumerable] attribute EventHandler oncopy;
     [NotEnumerable] attribute EventHandler oncut;
@@ -225,21 +174,18 @@
 
     // Unique to Element
     [NotEnumerable] attribute EventHandler onbeforeload;
-    [NotEnumerable, Conditional=ENCRYPTED_MEDIA] attribute EventHandler onwebkitkeyadded;
-    [NotEnumerable, Conditional=ENCRYPTED_MEDIA] attribute EventHandler onwebkitkeyerror;
-    [NotEnumerable, Conditional=ENCRYPTED_MEDIA] attribute EventHandler onwebkitkeymessage;
-    [NotEnumerable, Conditional=ENCRYPTED_MEDIA|ENCRYPTED_MEDIA_V2] attribute EventHandler onwebkitneedkey;
+    [NotEnumerable, Conditional=LEGACY_ENCRYPTED_MEDIA] attribute EventHandler onwebkitneedkey;
     [NotEnumerable, Conditional=VIDEO_PRESENTATION_MODE] attribute EventHandler onwebkitpresentationmodechanged;
     [NotEnumerable, Conditional=WIRELESS_PLAYBACK_TARGET] attribute EventHandler onwebkitcurrentplaybacktargetiswirelesschanged;
     [NotEnumerable, Conditional=WIRELESS_PLAYBACK_TARGET] attribute EventHandler onwebkitplaybacktargetavailabilitychanged;
 };
 
-enum ShadowRootMode { "open", "closed" };
-
 dictionary ShadowRootInit {
     required ShadowRootMode mode;
 };
 
+Element implements Animatable;
 Element implements ChildNode;
-Element implements ParentNode;
 Element implements NonDocumentTypeChildNode;
+Element implements ParentNode;
+Element implements Slotable;

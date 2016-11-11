@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef DFGVariableAccessData_h
-#define DFGVariableAccessData_h
+#pragma once
 
 #if ENABLE(DFG_JIT)
 
@@ -37,7 +36,6 @@
 #include "SpeculatedType.h"
 #include "VirtualRegister.h"
 #include <wtf/UnionFind.h>
-#include <wtf/Vector.h>
 
 namespace JSC { namespace DFG {
 
@@ -227,5 +225,3 @@ private:
 } } // namespace JSC::DFG
 
 #endif // ENABLE(DFG_JIT)
-
-#endif // DFGVariableAccessData_h

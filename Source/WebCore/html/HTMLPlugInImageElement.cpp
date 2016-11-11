@@ -23,6 +23,7 @@
 
 #include "Chrome.h"
 #include "ChromeClient.h"
+#include "ContentSecurityPolicy.h"
 #include "Event.h"
 #include "EventHandler.h"
 #include "EventNames.h"
@@ -138,7 +139,7 @@ void HTMLPlugInImageElement::setDisplayState(DisplayState state)
     if (state == RestartingWithPendingMouseClick || state == Restarting) {
         m_isRestartedPlugin = true;
         m_snapshotDecision = NeverSnapshot;
-        setNeedsStyleRecalc(SyntheticStyleChange);
+        invalidateStyleAndLayerComposition();
         if (displayState() == DisplayingSnapshot)
             m_removeSnapshotTimer.startOneShot(removeSnapshotTimerDelay);
     }
@@ -161,7 +162,7 @@ bool HTMLPlugInImageElement::isImageType()
 
     if (Frame* frame = document().frame()) {
         URL completedURL = document().completeURL(m_url);
-        return frame->loader().client().objectContentType(completedURL, m_serviceType) == ObjectContentImage;
+        return frame->loader().client().objectContentType(completedURL, m_serviceType) == ObjectContentType::Image;
     }
 
     return Image::supportsType(m_serviceType);
@@ -182,7 +183,7 @@ bool HTMLPlugInImageElement::allowedToLoadFrameURL(const String& url)
 
 // We don't use m_url, or m_serviceType as they may not be the final values
 // that <object> uses depending on <param> values.
-bool HTMLPlugInImageElement::wouldLoadAsNetscapePlugin(const String& url, const String& serviceType)
+bool HTMLPlugInImageElement::wouldLoadAsPlugIn(const String& url, const String& serviceType)
 {
     ASSERT(document().frame());
     URL completedURL;
@@ -190,14 +191,14 @@ bool HTMLPlugInImageElement::wouldLoadAsNetscapePlugin(const String& url, const 
         completedURL = document().completeURL(url);
 
     FrameLoader& frameLoader = document().frame()->loader();
-    if (frameLoader.client().objectContentType(completedURL, serviceType) == ObjectContentNetscapePlugin)
+    if (frameLoader.client().objectContentType(completedURL, serviceType) == ObjectContentType::PlugIn)
         return true;
     return false;
 }
 
 RenderPtr<RenderElement> HTMLPlugInImageElement::createElementRenderer(RenderStyle&& style, const RenderTreePosition& insertionPosition)
 {
-    ASSERT(!document().inPageCache());
+    ASSERT(document().pageCacheState() == Document::NotInPageCache);
 
     if (displayState() >= PreparingPluginReplacement)
         return HTMLPlugInElement::createElementRenderer(WTFMove(style), insertionPosition);
@@ -238,13 +239,13 @@ bool HTMLPlugInImageElement::childShouldCreateRenderer(const Node& child) const
 bool HTMLPlugInImageElement::willRecalcStyle(Style::Change change)
 {
     // Make sure style recalcs scheduled by a child shadow tree don't trigger reconstruction and cause flicker.
-    if (change == Style::NoChange && styleChangeType() == NoStyleChange)
+    if (change == Style::NoChange && styleValidity() == Style::Validity::Valid)
         return true;
 
     // FIXME: There shoudn't be need to force render tree reconstruction here.
     // It is only done because loading and load event dispatching is tied to render tree construction.
     if (!useFallbackContent() && needsWidgetUpdate() && renderer() && !isImageType() && (displayState() != DisplayingSnapshot))
-        setNeedsStyleRecalc(ReconstructRenderTree);
+        invalidateStyleAndRenderersForSubtree();
     return true;
 }
 
@@ -294,7 +295,7 @@ void HTMLPlugInImageElement::updateWidgetIfNecessary()
     if (!renderEmbeddedObject() || renderEmbeddedObject()->isPluginUnavailable())
         return;
 
-    updateWidget(CreateOnlyNonNetscapePlugins);
+    updateWidget(CreatePlugins::No);
 }
 
 void HTMLPlugInImageElement::finishParsingChildren()
@@ -305,7 +306,7 @@ void HTMLPlugInImageElement::finishParsingChildren()
 
     setNeedsWidgetUpdate(true);
     if (inDocument())
-        setNeedsStyleRecalc();
+        invalidateStyleForSubtree();
 }
 
 void HTMLPlugInImageElement::didMoveToNewDocument(Document* oldDocument)
@@ -331,7 +332,7 @@ void HTMLPlugInImageElement::prepareForDocumentSuspension()
 
 void HTMLPlugInImageElement::resumeFromDocumentSuspension()
 {
-    setNeedsStyleRecalc(ReconstructRenderTree);
+    invalidateStyleAndRenderersForSubtree();
 
     HTMLPlugInElement::resumeFromDocumentSuspension();
 }
@@ -391,9 +392,11 @@ void HTMLPlugInImageElement::didAddUserAgentShadowRoot(ShadowRoot* root)
 
     ScriptController& scriptController = document().frame()->script();
     JSDOMGlobalObject* globalObject = JSC::jsCast<JSDOMGlobalObject*>(scriptController.globalObject(isolatedWorld));
-    JSC::ExecState* exec = globalObject->globalExec();
 
-    JSC::JSLockHolder lock(exec);
+    JSC::VM& vm = globalObject->vm();
+    JSC::JSLockHolder lock(vm);
+    auto scope = DECLARE_CATCH_SCOPE(vm);
+    JSC::ExecState* exec = globalObject->globalExec();
 
     JSC::MarkedArgumentBuffer argList;
     argList.append(toJS(exec, globalObject, root));
@@ -407,8 +410,8 @@ void HTMLPlugInImageElement::didAddUserAgentShadowRoot(ShadowRoot* root)
     // It is expected the JS file provides a createOverlay(shadowRoot, title, subtitle) function.
     JSC::JSObject* overlay = globalObject->get(exec, JSC::Identifier::fromString(exec, "createOverlay")).toObject(exec);
     if (!overlay) {
-        ASSERT(exec->hadException());
-        exec->clearException();
+        ASSERT(scope.exception());
+        scope.clearException();
         return;
     }
     JSC::CallData callData;
@@ -417,7 +420,7 @@ void HTMLPlugInImageElement::didAddUserAgentShadowRoot(ShadowRoot* root)
         return;
 
     JSC::call(exec, overlay, callType, callData, globalObject, argList);
-    exec->clearException();
+    scope.clearException();
 }
 
 bool HTMLPlugInImageElement::partOfSnapshotOverlay(const Node* node) const
@@ -426,15 +429,20 @@ bool HTMLPlugInImageElement::partOfSnapshotOverlay(const Node* node) const
     ShadowRoot* shadow = userAgentShadowRoot();
     if (!shadow)
         return false;
-    RefPtr<Element> snapshotLabel = shadow->querySelector(selector.get(), ASSERT_NO_EXCEPTION);
-    return node && snapshotLabel && (node == snapshotLabel.get() || node->isDescendantOf(snapshotLabel.get()));
+    if (!node)
+        return false;
+    auto queryResult = shadow->querySelector(selector.get());
+    if (queryResult.hasException())
+        return false;
+    auto* snapshotLabel = queryResult.releaseReturnValue();
+    return snapshotLabel && snapshotLabel->contains(node);
 }
 
 void HTMLPlugInImageElement::removeSnapshotTimerFired()
 {
     m_snapshotImage = nullptr;
     m_isRestartedPlugin = false;
-    setNeedsStyleRecalc(SyntheticStyleChange);
+    invalidateStyleAndLayerComposition();
     if (renderer())
         renderer()->repaint();
 }
@@ -479,7 +487,7 @@ void HTMLPlugInImageElement::userDidClickSnapshot(PassRefPtr<MouseEvent> event, 
         m_pendingClickEventFromSnapshot = event;
 
     String plugInOrigin = m_loadedUrl.host();
-    if (document().page() && !SchemeRegistry::shouldTreatURLSchemeAsLocal(document().page()->mainFrame().document()->baseURL().protocol()) && document().page()->settings().autostartOriginPlugInSnapshottingEnabled())
+    if (document().page() && !SchemeRegistry::shouldTreatURLSchemeAsLocal(document().page()->mainFrame().document()->baseURL().protocol().toStringWithoutCopying()) && document().page()->settings().autostartOriginPlugInSnapshottingEnabled())
         document().page()->plugInClient()->didStartFromOrigin(document().page()->mainFrame().document()->baseURL().host(), plugInOrigin, loadedMimeType(), document().page()->sessionID());
 
     LOG(Plugins, "%p User clicked on snapshotted plug-in. Restart.", this);
@@ -512,7 +520,7 @@ void HTMLPlugInImageElement::restartSnapshottedPlugIn()
         return;
 
     setDisplayState(Restarting);
-    setNeedsStyleRecalc(ReconstructRenderTree);
+    invalidateStyleAndRenderersForSubtree();
 }
 
 void HTMLPlugInImageElement::dispatchPendingMouseClick()
@@ -586,9 +594,9 @@ bool HTMLPlugInImageElement::isTopLevelFullPagePlugin(const RenderEmbeddedObject
     auto& style = renderer.style();
     IntSize visibleSize = frame.view()->visibleSize();
     LayoutRect contentRect = renderer.contentBoxRect();
-    int contentWidth = contentRect.width();
-    int contentHeight = contentRect.height();
-    return is100Percent(style.width()) && is100Percent(style.height()) && contentWidth * contentHeight > visibleSize.area() * sizingFullPageAreaRatioThreshold;
+    float contentWidth = contentRect.width();
+    float contentHeight = contentRect.height();
+    return is100Percent(style.width()) && is100Percent(style.height()) && contentWidth * contentHeight > visibleSize.area().unsafeGet() * sizingFullPageAreaRatioThreshold;
 }
     
 void HTMLPlugInImageElement::checkSnapshotStatus()
@@ -698,7 +706,7 @@ void HTMLPlugInImageElement::subframeLoaderWillCreatePlugIn(const URL& url)
         return;
     }
 
-    if (!SchemeRegistry::shouldTreatURLSchemeAsLocal(m_loadedUrl.protocol()) && !m_loadedUrl.host().isEmpty() && m_loadedUrl.host() == document().page()->mainFrame().document()->baseURL().host()) {
+    if (!SchemeRegistry::shouldTreatURLSchemeAsLocal(m_loadedUrl.protocol().toStringWithoutCopying()) && !m_loadedUrl.host().isEmpty() && m_loadedUrl.host() == document().page()->mainFrame().document()->baseURL().host()) {
         LOG(Plugins, "%p Plug-in is served from page's domain, set to play", this);
         m_snapshotDecision = NeverSnapshot;
         return;
@@ -754,12 +762,12 @@ void HTMLPlugInImageElement::subframeLoaderDidCreatePlugIn(const Widget& widget)
     }
 }
 
-void HTMLPlugInImageElement::defaultEventHandler(Event* event)
+void HTMLPlugInImageElement::defaultEventHandler(Event& event)
 {
     RenderElement* r = renderer();
     if (r && r->isEmbeddedObject()) {
-        if (displayState() == WaitingForSnapshot && is<MouseEvent>(*event) && event->type() == eventNames().clickEvent) {
-            MouseEvent& mouseEvent = downcast<MouseEvent>(*event);
+        if (displayState() == WaitingForSnapshot && is<MouseEvent>(event) && event.type() == eventNames().clickEvent) {
+            MouseEvent& mouseEvent = downcast<MouseEvent>(event);
             if (mouseEvent.button() == LeftButton) {
                 userDidClickSnapshot(&mouseEvent, true);
                 mouseEvent.setDefaultHandled();
@@ -770,8 +778,39 @@ void HTMLPlugInImageElement::defaultEventHandler(Event* event)
     HTMLPlugInElement::defaultEventHandler(event);
 }
 
+bool HTMLPlugInImageElement::allowedToLoadPluginContent(const String& url, const String& mimeType) const
+{
+    // Elements in user agent show tree should load whatever the embedding document policy is.
+    if (isInUserAgentShadowTree())
+        return true;
+
+    URL completedURL;
+    if (!url.isEmpty())
+        completedURL = document().completeURL(url);
+
+    ASSERT(document().contentSecurityPolicy());
+    const ContentSecurityPolicy& contentSecurityPolicy = *document().contentSecurityPolicy();
+
+    contentSecurityPolicy.upgradeInsecureRequestIfNeeded(completedURL, ContentSecurityPolicy::InsecureRequestType::Load);
+
+    if (!contentSecurityPolicy.allowObjectFromSource(completedURL))
+        return false;
+
+    auto& declaredMimeType = document().isPluginDocument() && document().ownerElement() ?
+        document().ownerElement()->attributeWithoutSynchronization(HTMLNames::typeAttr) : attributeWithoutSynchronization(HTMLNames::typeAttr);
+    return contentSecurityPolicy.allowPluginType(mimeType, declaredMimeType, completedURL);
+}
+
 bool HTMLPlugInImageElement::requestObject(const String& url, const String& mimeType, const Vector<String>& paramNames, const Vector<String>& paramValues)
 {
+    if (url.isEmpty() && mimeType.isEmpty())
+        return false;
+
+    if (!allowedToLoadPluginContent(url, mimeType)) {
+        renderEmbeddedObject()->setPluginUnavailabilityReason(RenderEmbeddedObject::PluginBlockedByContentSecurityPolicy);
+        return false;
+    }
+
     if (HTMLPlugInElement::requestObject(url, mimeType, paramNames, paramValues))
         return true;
     

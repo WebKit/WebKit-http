@@ -1,7 +1,7 @@
 /*
  *  Copyright (C) 2000 Harri Porten (porten@kde.org)
  *  Copyright (C) 2006 Jon Shier (jshier@iastate.edu)
- *  Copyright (C) 2003-2009, 2014 Apple Inc. All rights reseved.
+ *  Copyright (C) 2003-2009, 2014, 2016 Apple Inc. All rights reseved.
  *  Copyright (C) 2006 Alexey Proskuryakov (ap@webkit.org)
  *  Copyright (c) 2015 Canon Inc. All rights reserved.
  *
@@ -32,13 +32,13 @@
 #include "JSDOMGlobalObjectTask.h"
 #include "JSDOMWindowCustom.h"
 #include "JSMainThreadExecState.h"
-#include "JSModuleLoader.h"
 #include "JSNode.h"
 #include "Language.h"
 #include "Logging.h"
 #include "Page.h"
 #include "RuntimeApplicationChecks.h"
 #include "ScriptController.h"
+#include "ScriptModuleLoader.h"
 #include "SecurityOrigin.h"
 #include "Settings.h"
 #include "WebCoreJSClientData.h"
@@ -49,22 +49,15 @@
 
 #if PLATFORM(IOS)
 #include "ChromeClient.h"
-#include "WebSafeGCActivityCallbackIOS.h"
-#include "WebSafeIncrementalSweeperIOS.h"
 #endif
 
 using namespace JSC;
 
 namespace WebCore {
 
-static bool shouldAllowAccessFrom(const JSGlobalObject* thisObject, ExecState* exec)
-{
-    return BindingSecurity::shouldAllowAccessToDOMWindow(exec, asJSDOMWindow(thisObject)->wrapped());
-}
-
 const ClassInfo JSDOMWindowBase::s_info = { "Window", &JSDOMGlobalObject::s_info, 0, CREATE_METHOD_TABLE(JSDOMWindowBase) };
 
-const GlobalObjectMethodTable JSDOMWindowBase::s_globalObjectMethodTable = { &shouldAllowAccessFrom, &supportsRichSourceInfo, &shouldInterruptScript, &javaScriptRuntimeFlags, &queueTaskToEventLoop, &shouldInterruptScriptBeforeTimeout, &moduleLoaderResolve, &moduleLoaderFetch, nullptr, nullptr, &moduleLoaderEvaluate, &defaultLanguage };
+const GlobalObjectMethodTable JSDOMWindowBase::s_globalObjectMethodTable = { &supportsRichSourceInfo, &shouldInterruptScript, &javaScriptRuntimeFlags, &queueTaskToEventLoop, &shouldInterruptScriptBeforeTimeout, &moduleLoaderResolve, &moduleLoaderFetch, nullptr, nullptr, &moduleLoaderEvaluate, &defaultLanguage };
 
 JSDOMWindowBase::JSDOMWindowBase(VM& vm, Structure* structure, RefPtr<DOMWindow>&& window, JSDOMWindowShell* shell)
     : JSDOMGlobalObject(vm, structure, shell->world(), &s_globalObjectMethodTable)
@@ -197,13 +190,15 @@ public:
     void call()
     {
         Ref<JSDOMWindowMicrotaskCallback> protectedThis(*this);
-        JSLockHolder lock(m_globalObject->vm());
+        VM& vm = m_globalObject->vm();
+        JSLockHolder lock(vm);
+        auto scope = DECLARE_THROW_SCOPE(vm);
 
         ExecState* exec = m_globalObject->globalExec();
 
         JSMainThreadExecState::runTask(exec, m_task);
 
-        ASSERT(!exec->hadException());
+        ASSERT_UNUSED(scope, !scope.exception());
     }
 
 private:
@@ -247,13 +242,11 @@ VM& JSDOMWindowBase::commonVM()
     if (!vm) {
         ScriptController::initializeThreading();
         vm = &VM::createLeaked(LargeHeap).leakRef();
+        vm->heap.acquireAccess(); // At any time, we may do things that affect the GC.
 #if !PLATFORM(IOS)
         vm->setExclusiveThread(std::this_thread::get_id());
 #else
-        vm->heap.setFullActivityCallback(WebSafeFullGCActivityCallback::create(&vm->heap));
-        vm->heap.setEdenActivityCallback(WebSafeEdenGCActivityCallback::create(&vm->heap));
-
-        vm->heap.setIncrementalSweeper(std::make_unique<WebSafeIncrementalSweeper>(&vm->heap));
+        vm->heap.setRunLoop(WebThreadRunLoop());
         vm->heap.machineThreads().addCurrentThread();
 #endif
 
@@ -323,29 +316,29 @@ void JSDOMWindowBase::fireFrameClearedWatchpointsForWindow(DOMWindow* window)
 }
 
 
-JSC::JSInternalPromise* JSDOMWindowBase::moduleLoaderResolve(JSC::JSGlobalObject* globalObject, JSC::ExecState* exec, JSC::JSValue moduleName, JSC::JSValue importerModuleKey)
+JSC::JSInternalPromise* JSDOMWindowBase::moduleLoaderResolve(JSC::JSGlobalObject* globalObject, JSC::ExecState* exec, JSC::JSModuleLoader* moduleLoader, JSC::JSValue moduleName, JSC::JSValue importerModuleKey, JSC::JSValue initiator)
 {
     JSDOMWindowBase* thisObject = JSC::jsCast<JSDOMWindowBase*>(globalObject);
     if (RefPtr<Document> document = thisObject->wrapped().document())
-        return document->moduleLoader()->resolve(globalObject, exec, moduleName, importerModuleKey);
+        return document->moduleLoader()->resolve(globalObject, exec, moduleLoader, moduleName, importerModuleKey, initiator);
     JSC::JSInternalPromiseDeferred* deferred = JSC::JSInternalPromiseDeferred::create(exec, globalObject);
     return deferred->reject(exec, jsUndefined());
 }
 
-JSC::JSInternalPromise* JSDOMWindowBase::moduleLoaderFetch(JSC::JSGlobalObject* globalObject, JSC::ExecState* exec, JSC::JSValue moduleKey)
+JSC::JSInternalPromise* JSDOMWindowBase::moduleLoaderFetch(JSC::JSGlobalObject* globalObject, JSC::ExecState* exec, JSC::JSModuleLoader* moduleLoader, JSC::JSValue moduleKey, JSC::JSValue initiator)
 {
     JSDOMWindowBase* thisObject = JSC::jsCast<JSDOMWindowBase*>(globalObject);
     if (RefPtr<Document> document = thisObject->wrapped().document())
-        return document->moduleLoader()->fetch(globalObject, exec, moduleKey);
+        return document->moduleLoader()->fetch(globalObject, exec, moduleLoader, moduleKey, initiator);
     JSC::JSInternalPromiseDeferred* deferred = JSC::JSInternalPromiseDeferred::create(exec, globalObject);
     return deferred->reject(exec, jsUndefined());
 }
 
-JSC::JSValue JSDOMWindowBase::moduleLoaderEvaluate(JSC::JSGlobalObject* globalObject, JSC::ExecState* exec, JSC::JSValue moduleKey, JSC::JSValue moduleRecord)
+JSC::JSValue JSDOMWindowBase::moduleLoaderEvaluate(JSC::JSGlobalObject* globalObject, JSC::ExecState* exec, JSC::JSModuleLoader* moduleLoader, JSC::JSValue moduleKey, JSC::JSValue moduleRecord, JSC::JSValue initiator)
 {
     JSDOMWindowBase* thisObject = JSC::jsCast<JSDOMWindowBase*>(globalObject);
     if (RefPtr<Document> document = thisObject->wrapped().document())
-        return document->moduleLoader()->evaluate(globalObject, exec, moduleKey, moduleRecord);
+        return document->moduleLoader()->evaluate(globalObject, exec, moduleLoader, moduleKey, moduleRecord, initiator);
     return JSC::jsUndefined();
 }
 

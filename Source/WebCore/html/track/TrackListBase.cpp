@@ -46,6 +46,16 @@ TrackListBase::TrackListBase(HTMLMediaElement* element, ScriptExecutionContext* 
 
 TrackListBase::~TrackListBase()
 {
+    clearElement();
+}
+
+void TrackListBase::clearElement()
+{
+    m_element = nullptr;
+    for (auto& track : m_inbandTracks) {
+        track->setMediaElement(nullptr);
+        track->clearClient();
+    }
 }
 
 Element* TrackListBase::element() const
@@ -63,8 +73,10 @@ void TrackListBase::remove(TrackBase& track, bool scheduleEvent)
     size_t index = m_inbandTracks.find(&track);
     ASSERT(index != notFound);
 
-    ASSERT(track.mediaElement() == m_element);
-    track.setMediaElement(nullptr);
+    if (track.mediaElement()) {
+        ASSERT(track.mediaElement() == m_element);
+        track.setMediaElement(nullptr);
+    }
 
     Ref<TrackBase> trackRef = *m_inbandTracks[index];
 

@@ -43,18 +43,19 @@ WebInspector.TabBrowser = class TabBrowser extends WebInspector.View
         if (this._detailsSidebar) {
             this._detailsSidebar.addEventListener(WebInspector.Sidebar.Event.CollapsedStateDidChange, this._sidebarCollapsedStateDidChange, this);
             this._detailsSidebar.addEventListener(WebInspector.Sidebar.Event.SidebarPanelSelected, this._sidebarPanelSelected, this);
+            this._detailsSidebar.addEventListener(WebInspector.Sidebar.Event.WidthDidChange, this._detailsSidebarWidthDidChange, this);
         }
 
         this._contentViewContainer = new WebInspector.ContentViewContainer;
         this.addSubview(this._contentViewContainer);
 
-        let showNextTab = () => { this._showNextTab(); }
-        let showPreviousTab = () => { this._showPreviousTab(); }
+        let showNextTab = () => { this._showNextTab(); };
+        let showPreviousTab = () => { this._showPreviousTab(); };
         let closeCurrentTab = () => {
             let selectedTabBarItem = this._tabBar.selectedTabBarItem;
-            if (this._tabBar.tabBarItems.length > 2 || !selectedTabBarItem.isDefaultTab)
+            if (this._tabBar.tabBarItems.length > 3 || !selectedTabBarItem.isDefaultTab)
                 this._tabBar.removeTabBarItem(selectedTabBarItem);
-        }
+        };
 
         this._closeCurrentTabKeyboardShortuct = new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.CommandOrControl | WebInspector.KeyboardShortcut.Modifier.Shift, "W", closeCurrentTab);
 
@@ -67,8 +68,6 @@ WebInspector.TabBrowser = class TabBrowser extends WebInspector.View
         this._showNextTabKeyboardShortcut3.implicitlyPreventsDefault = false;
         this._showPreviousTabKeyboardShortcut3 = new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.CommandOrControl | WebInspector.KeyboardShortcut.Modifier.Shift, WebInspector.KeyboardShortcut.Key.Left, this._showPreviousTabCheckingForEditableField.bind(this));
         this._showPreviousTabKeyboardShortcut3.implicitlyPreventsDefault = false;
-
-        this._tabBar.newTabItem = new WebInspector.TabBarItem("Images/NewTabPlus.svg", WebInspector.UIString("Create a new tab"), true);
 
         this._tabBar.addEventListener(WebInspector.TabBar.Event.TabBarItemSelected, this._tabBarItemSelected, this);
         this._tabBar.addEventListener(WebInspector.TabBar.Event.TabBarItemRemoved, this._tabBarItemRemoved, this);
@@ -128,7 +127,7 @@ WebInspector.TabBrowser = class TabBrowser extends WebInspector.View
         if (!(tabContentView instanceof WebInspector.TabContentView))
             return false;
 
-        var tabBarItem = tabContentView.tabBarItem;
+        let tabBarItem = tabContentView.tabBarItem;
 
         console.assert(tabBarItem instanceof WebInspector.TabBarItem);
         if (!(tabBarItem instanceof WebInspector.TabBarItem))
@@ -154,7 +153,7 @@ WebInspector.TabBrowser = class TabBrowser extends WebInspector.View
         else
             this._tabBar.addTabBarItem(tabBarItem, doNotAnimate);
 
-        console.assert(this._recentTabContentViews.length === this._tabBar.tabBarItems.length - (this._tabBar.newTabItem ? 1 : 0));
+        console.assert(this._recentTabContentViews.length === this._tabBar.normalTabCount);
         console.assert(!this.selectedTabContentView || this.selectedTabContentView === this._recentTabContentViews[0]);
 
         return true;
@@ -192,27 +191,41 @@ WebInspector.TabBrowser = class TabBrowser extends WebInspector.View
 
         this._tabBar.removeTabBarItem(tabContentView.tabBarItem, doNotAnimate);
 
-        console.assert(this._recentTabContentViews.length === this._tabBar.tabBarItems.length - (this._tabBar.newTabItem ? 1 : 0));
+        console.assert(this._recentTabContentViews.length === this._tabBar.normalTabCount);
         console.assert(!this.selectedTabContentView || this.selectedTabContentView === this._recentTabContentViews[0]);
 
         return true;
+    }
+
+    // Protected
+
+    layout()
+    {
+        if (this.layoutReason !== WebInspector.View.LayoutReason.Resize)
+            return;
+
+        for (let tabContentView of this._recentTabContentViews)
+            tabContentView[WebInspector.TabBrowser.NeedsResizeLayoutSymbol] = tabContentView !== this.selectedTabContentView;
     }
 
     // Private
 
     _tabBarItemSelected(event)
     {
-        var tabContentView = this._tabBar.selectedTabBarItem ? this._tabBar.selectedTabBarItem.representedObject : null;
+        let tabContentView = this._tabBar.selectedTabBarItem ? this._tabBar.selectedTabBarItem.representedObject : null;
 
         if (tabContentView) {
-            this._recentTabContentViews.remove(tabContentView);
-            this._recentTabContentViews.unshift(tabContentView);
+            let isSettingsTab = tabContentView instanceof WebInspector.SettingsTabContentView;
+            if (!isSettingsTab) {
+                this._recentTabContentViews.remove(tabContentView);
+                this._recentTabContentViews.unshift(tabContentView);
+            }
 
             this._contentViewContainer.showContentView(tabContentView);
 
             console.assert(this.selectedTabContentView);
-            console.assert(this._recentTabContentViews.length === this._tabBar.tabBarItems.length - (this._tabBar.newTabItem ? 1 : 0));
-            console.assert(this.selectedTabContentView === this._recentTabContentViews[0]);
+            console.assert(this._recentTabContentViews.length === this._tabBar.normalTabCount);
+            console.assert(this.selectedTabContentView === this._recentTabContentViews[0] || isSettingsTab);
         } else {
             this._contentViewContainer.closeAllContentViews();
 
@@ -222,12 +235,18 @@ WebInspector.TabBrowser = class TabBrowser extends WebInspector.View
         this._showNavigationSidebarPanelForTabContentView(tabContentView);
         this._showDetailsSidebarPanelsForTabContentView(tabContentView);
 
+        // If the tab browser was resized prior to showing the tab, the new tab needs to perform a resize layout.
+        if (tabContentView && tabContentView[WebInspector.TabBrowser.NeedsResizeLayoutSymbol]) {
+            tabContentView[WebInspector.TabBrowser.NeedsResizeLayoutSymbol] = false;
+            tabContentView.updateLayout(WebInspector.View.LayoutReason.Resize);
+        }
+
         this.dispatchEventToListeners(WebInspector.TabBrowser.Event.SelectedTabContentViewDidChange);
     }
 
     _tabBarItemRemoved(event)
     {
-        var tabContentView = event.data.tabBarItem.representedObject;
+        let tabContentView = event.data.tabBarItem.representedObject;
 
         console.assert(tabContentView);
         if (!tabContentView)
@@ -238,7 +257,7 @@ WebInspector.TabBrowser = class TabBrowser extends WebInspector.View
 
         tabContentView.parentTabBrowser = null;
 
-        console.assert(this._recentTabContentViews.length === this._tabBar.tabBarItems.length - (this._tabBar.newTabItem ? 1 : 0));
+        console.assert(this._recentTabContentViews.length === this._tabBar.normalTabCount);
         console.assert(!this.selectedTabContentView || this.selectedTabContentView === this._recentTabContentViews[0]);
     }
 
@@ -273,6 +292,19 @@ WebInspector.TabBrowser = class TabBrowser extends WebInspector.View
             tabContentView.navigationSidebarCollapsedSetting.value = this._navigationSidebar.collapsed;
         else if (event.target === this._detailsSidebar && !tabContentView.managesDetailsSidebarPanels)
             tabContentView.detailsSidebarCollapsedSetting.value = this._detailsSidebar.collapsed;
+    }
+
+    _detailsSidebarWidthDidChange(event)
+    {
+        if (this._ignoreSidebarEvents)
+            return;
+
+        let tabContentView = this.selectedTabContentView;
+        if (!tabContentView)
+            return;
+
+        if (event.target === this._detailsSidebar && event.data)
+            tabContentView.detailsSidebarWidthSetting.value = event.data.newWidth;
     }
 
     _showNavigationSidebarPanelForTabContentView(tabContentView)
@@ -322,6 +354,9 @@ WebInspector.TabBrowser = class TabBrowser extends WebInspector.View
             this._ignoreSidebarEvents = false;
             return;
         }
+
+        if (tabContentView.detailsSidebarWidthSetting.value)
+            this._detailsSidebar.width = tabContentView.detailsSidebarWidthSetting.value;
 
         if (tabContentView.managesDetailsSidebarPanels) {
             tabContentView.showDetailsSidebarPanels();
@@ -376,6 +411,8 @@ WebInspector.TabBrowser = class TabBrowser extends WebInspector.View
         event.preventDefault();
     }
 };
+
+WebInspector.TabBrowser.NeedsResizeLayoutSymbol = Symbol("needs-resize-layout");
 
 WebInspector.TabBrowser.Event = {
     SelectedTabContentViewDidChange: "tab-browser-selected-tab-content-view-did-change"

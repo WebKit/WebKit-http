@@ -34,7 +34,6 @@
 #include "TiledBacking.h"
 #include "Timer.h"
 #include <wtf/Deque.h>
-#include <wtf/HashMap.h>
 #include <wtf/Noncopyable.h>
 #include <wtf/RetainPtr.h>
 
@@ -83,6 +82,7 @@ public:
 
     FloatRect visibleRect() const override { return m_visibleRect; }
     FloatRect coverageRect() const override { return m_coverageRect; }
+    Optional<FloatRect> layoutViewportRect() const { return m_layoutViewportRect; }
 
     unsigned blankPixelCount() const;
     static unsigned blankPixelCountForTiles(const PlatformLayerList&, const FloatRect&, const IntPoint&);
@@ -94,7 +94,7 @@ public:
 
     float deviceScaleFactor() const { return m_deviceScaleFactor; }
 
-    Color tileDebugBorderColor() const { return m_tileDebugBorderColor; }
+    const Color& tileDebugBorderColor() const { return m_tileDebugBorderColor; }
     float tileDebugBorderWidth() const { return m_tileDebugBorderWidth; }
     ScrollingModeIndication indicatorMode() const { return m_indicatorMode; }
 
@@ -141,6 +141,7 @@ private:
 
     // TiledBacking member functions.
     void setVisibleRect(const FloatRect&) override;
+    void setLayoutViewportRect(Optional<FloatRect>) override;
     void setCoverageRect(const FloatRect&) override;
     bool tilesWouldChangeForCoverageRect(const FloatRect&) const override;
     void setTiledScrollingIndicatorPosition(const FloatPoint&) override;
@@ -191,6 +192,7 @@ private:
     std::unique_ptr<TileGrid> m_zoomedOutTileGrid;
 
     FloatRect m_visibleRect; // Only used for scroll performance logging.
+    Optional<FloatRect> m_layoutViewportRect; // Only used by the tiled scrolling indicator.
     FloatRect m_coverageRect;
     IntRect m_boundsAtLastRevalidate;
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2013, 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2013, 2015-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,17 +23,16 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef CommonSlowPaths_h
-#define CommonSlowPaths_h
+#pragma once
 
 #include "CodeBlock.h"
 #include "CodeSpecializationKind.h"
 #include "ExceptionHelpers.h"
-#include "JSStackInlines.h"
+#include "FunctionCodeBlock.h"
 #include "SlowPathReturnType.h"
 #include "StackAlignment.h"
 #include "Symbol.h"
-#include "VM.h"
+#include "VMInlines.h"
 #include <wtf/StdLibExtras.h>
 
 namespace JSC {
@@ -52,7 +51,7 @@ struct ArityCheckData {
     void* thunkToCall;
 };
 
-ALWAYS_INLINE int arityCheckFor(ExecState* exec, JSStack* stack, CodeSpecializationKind kind)
+ALWAYS_INLINE int arityCheckFor(ExecState* exec, VM& vm, CodeSpecializationKind kind)
 {
     JSFunction* callee = jsCast<JSFunction*>(exec->callee());
     ASSERT(!callee->isHostFunction());
@@ -60,20 +59,24 @@ ALWAYS_INLINE int arityCheckFor(ExecState* exec, JSStack* stack, CodeSpecializat
     int argumentCountIncludingThis = exec->argumentCountIncludingThis();
     
     ASSERT(argumentCountIncludingThis < newCodeBlock->numParameters());
-    int frameSize = argumentCountIncludingThis + JSStack::CallFrameHeaderSize;
+    int frameSize = argumentCountIncludingThis + CallFrame::headerSizeInRegisters;
     int alignedFrameSizeForParameters = WTF::roundUpToMultipleOf(stackAlignmentRegisters(),
-        newCodeBlock->numParameters() + JSStack::CallFrameHeaderSize);
+        newCodeBlock->numParameters() + CallFrame::headerSizeInRegisters);
     int paddedStackSpace = alignedFrameSizeForParameters - frameSize;
+    
+    Register* newStack = exec->registers() - WTF::roundUpToMultipleOf(stackAlignmentRegisters(), paddedStackSpace);
 
-    if (!stack->ensureCapacityFor(exec->registers() - paddedStackSpace % stackAlignmentRegisters()))
+    if (UNLIKELY(!vm.ensureStackCapacityFor(newStack)))
         return -1;
     return paddedStackSpace;
 }
 
 inline bool opIn(ExecState* exec, JSValue propName, JSValue baseVal)
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     if (!baseVal.isObject()) {
-        exec->vm().throwException(exec, createInvalidInParameterError(exec, baseVal));
+        throwException(exec, scope, createInvalidInParameterError(exec, baseVal));
         return false;
     }
 
@@ -84,8 +87,7 @@ inline bool opIn(ExecState* exec, JSValue propName, JSValue baseVal)
         return baseObj->hasProperty(exec, i);
 
     auto property = propName.toPropertyKey(exec);
-    if (exec->vm().exception())
-        return false;
+    RETURN_IF_EXCEPTION(scope, false);
     return baseObj->hasProperty(exec, property);
 }
 
@@ -220,6 +222,7 @@ SLOW_PATH_HIDDEN_DECL(slow_path_mul);
 SLOW_PATH_HIDDEN_DECL(slow_path_sub);
 SLOW_PATH_HIDDEN_DECL(slow_path_div);
 SLOW_PATH_HIDDEN_DECL(slow_path_mod);
+SLOW_PATH_HIDDEN_DECL(slow_path_pow);
 SLOW_PATH_HIDDEN_DECL(slow_path_lshift);
 SLOW_PATH_HIDDEN_DECL(slow_path_rshift);
 SLOW_PATH_HIDDEN_DECL(slow_path_urshift);
@@ -246,17 +249,16 @@ SLOW_PATH_HIDDEN_DECL(slow_path_next_generic_enumerator_pname);
 SLOW_PATH_HIDDEN_DECL(slow_path_to_index_string);
 SLOW_PATH_HIDDEN_DECL(slow_path_profile_type_clear_log);
 SLOW_PATH_HIDDEN_DECL(slow_path_assert);
-SLOW_PATH_HIDDEN_DECL(slow_path_save);
-SLOW_PATH_HIDDEN_DECL(slow_path_resume);
 SLOW_PATH_HIDDEN_DECL(slow_path_create_lexical_environment);
 SLOW_PATH_HIDDEN_DECL(slow_path_push_with_scope);
 SLOW_PATH_HIDDEN_DECL(slow_path_resolve_scope);
-SLOW_PATH_HIDDEN_DECL(slow_path_copy_rest);
+SLOW_PATH_HIDDEN_DECL(slow_path_create_rest);
 SLOW_PATH_HIDDEN_DECL(slow_path_get_by_id_with_this);
 SLOW_PATH_HIDDEN_DECL(slow_path_get_by_val_with_this);
 SLOW_PATH_HIDDEN_DECL(slow_path_put_by_id_with_this);
 SLOW_PATH_HIDDEN_DECL(slow_path_put_by_val_with_this);
+SLOW_PATH_HIDDEN_DECL(slow_path_define_data_property);
+SLOW_PATH_HIDDEN_DECL(slow_path_define_accessor_property);
+SLOW_PATH_HIDDEN_DECL(slow_path_throw_static_error);
 
 } // namespace JSC
-
-#endif // CommonSlowPaths_h

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -42,26 +42,27 @@ uint16_t JSNodeFilter::acceptNode(Node* node)
 {
     Ref<JSNodeFilter> protectedThis(*this);
 
-    JSLockHolder lock(m_data->globalObject()->vm());
+    VM& vm = m_data->globalObject()->vm();
+    JSLockHolder lock(vm);
+    auto scope = DECLARE_THROW_SCOPE(vm);
 
     ExecState* state = m_data->globalObject()->globalExec();
     MarkedArgumentBuffer args;
     args.append(toJS(state, m_data->globalObject(), node));
-    if (state->hadException())
-        return NodeFilter::FILTER_REJECT;
+    RETURN_IF_EXCEPTION(scope, NodeFilter::FILTER_REJECT);
 
-    NakedPtr<Exception> returnedException;
+    NakedPtr<JSC::Exception> returnedException;
     JSValue value = m_data->invokeCallback(args, JSCallbackData::CallbackType::FunctionOrObject, Identifier::fromString(state, "acceptNode"), returnedException);
+    ASSERT(!scope.exception() || returnedException);
     if (returnedException) {
         // Rethrow exception.
-        state->vm().throwException(state, returnedException);
+        throwException(state, scope, returnedException);
 
         return NodeFilter::FILTER_REJECT;
     }
 
-    uint16_t result = convert<uint16_t>(*state, value, NormalConversion);
-    if (state->hadException())
-        return NodeFilter::FILTER_REJECT;
+    auto result = convert<IDLUnsignedShort>(*state, value, IntegerConversionConfiguration::Normal);
+    RETURN_IF_EXCEPTION(scope, NodeFilter::FILTER_REJECT);
 
     return result;
 }

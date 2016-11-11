@@ -32,11 +32,11 @@
 #include "ClassInfo.h"
 #include "Error.h"
 #include "JSArrayBufferViewInlines.h"
-#include "JSCJSValueInlines.h"
+#include "JSCInlines.h"
 #include "JSDataView.h"
 #include "JSGenericTypedArrayViewInlines.h"
 #include "JSTypedArrays.h"
-
+#include "TypedArrayController.h"
 #include <wtf/RefPtr.h>
 
 using namespace JSC;
@@ -101,9 +101,11 @@ inline TypedArrayType toTypedArrayType(JSTypedArrayType type)
 
 static JSObject* createTypedArray(ExecState* exec, JSTypedArrayType type, RefPtr<ArrayBuffer>&& buffer, size_t offset, size_t length)
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     JSGlobalObject* globalObject = exec->lexicalGlobalObject();
     if (!buffer) {
-        exec->vm().throwException(exec, createOutOfMemoryError(exec));
+        throwOutOfMemoryError(exec, scope);
         return nullptr;
     }
     switch (type) {
@@ -238,7 +240,7 @@ void* JSObjectGetTypedArrayBytesPtr(JSContextRef ctx, JSObjectRef objectRef, JSV
     JSObject* object = toJS(objectRef);
 
     if (JSArrayBufferView* typedArray = jsDynamicCast<JSArrayBufferView*>(object)) {
-        ArrayBuffer* buffer = typedArray->buffer();
+        ArrayBuffer* buffer = typedArray->possiblySharedBuffer();
         buffer->pinAndLock();
         return buffer->data();
     }
@@ -282,7 +284,7 @@ JSObjectRef JSObjectGetTypedArrayBuffer(JSContextRef ctx, JSObjectRef objectRef,
     JSObject* object = toJS(objectRef);
 
     if (JSArrayBufferView* typedArray = jsDynamicCast<JSArrayBufferView*>(object))
-        return toRef(exec->vm().m_typedArrayController->toJS(exec, typedArray->globalObject(), typedArray->buffer()));
+        return toRef(exec->vm().m_typedArrayController->toJS(exec, typedArray->globalObject(), typedArray->possiblySharedBuffer()));
 
     return nullptr;
 }
@@ -297,7 +299,7 @@ JSObjectRef JSObjectMakeArrayBufferWithBytesNoCopy(JSContextRef ctx, void* bytes
             bytesDeallocator(p, deallocatorContext);
     });
 
-    JSArrayBuffer* jsBuffer = JSArrayBuffer::create(exec->vm(), exec->lexicalGlobalObject()->arrayBufferStructure(), WTFMove(buffer));
+    JSArrayBuffer* jsBuffer = JSArrayBuffer::create(exec->vm(), exec->lexicalGlobalObject()->arrayBufferStructure(ArrayBufferSharingMode::Default), WTFMove(buffer));
     if (handleExceptionIfNeeded(exec, exception) == ExceptionStatus::DidThrow)
         return nullptr;
 

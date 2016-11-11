@@ -84,7 +84,7 @@ class BuiltinsSeparateImplementationGenerator(BuiltinsGenerator):
                 ("JavaScriptCore", "builtins/BuiltinExecutables.h"),
             ),
             (["JavaScriptCore", "WebCore"],
-                ("JavaScriptCore", "runtime/Executable.h"),
+                ("JavaScriptCore", "heap/HeapInlines.h"),
             ),
             (["JavaScriptCore", "WebCore"],
                 ("JavaScriptCore", "runtime/JSCellInlines.h"),

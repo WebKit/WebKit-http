@@ -216,9 +216,9 @@ RefPtr<WebColorPicker> PageClientImpl::createColorPicker(WebPageProxy* page, con
     return WebColorPickerGtk::create(*page, color, rect);
 }
 
-void PageClientImpl::enterAcceleratedCompositingMode(const LayerTreeContext&)
+void PageClientImpl::enterAcceleratedCompositingMode(const LayerTreeContext& layerTreeContext)
 {
-    webkitWebViewBaseEnterAcceleratedCompositingMode(WEBKIT_WEB_VIEW_BASE(m_viewWidget));
+    webkitWebViewBaseEnterAcceleratedCompositingMode(WEBKIT_WEB_VIEW_BASE(m_viewWidget), layerTreeContext);
 }
 
 void PageClientImpl::exitAcceleratedCompositingMode()
@@ -226,19 +226,14 @@ void PageClientImpl::exitAcceleratedCompositingMode()
     webkitWebViewBaseExitAcceleratedCompositingMode(WEBKIT_WEB_VIEW_BASE(m_viewWidget));
 }
 
-void PageClientImpl::willEnterAcceleratedCompositingMode()
+void PageClientImpl::updateAcceleratedCompositingMode(const LayerTreeContext& layerTreeContext)
 {
-    webkitWebViewBaseWillEnterAcceleratedCompositingMode(WEBKIT_WEB_VIEW_BASE(m_viewWidget));
-}
-
-void PageClientImpl::updateAcceleratedCompositingMode(const LayerTreeContext&)
-{
-    notImplemented();
+    webkitWebViewBaseUpdateAcceleratedCompositingMode(WEBKIT_WEB_VIEW_BASE(m_viewWidget), layerTreeContext);
 }
 
 void PageClientImpl::pageClosed()
 {
-    notImplemented();
+    webkitWebViewBasePageClosed(WEBKIT_WEB_VIEW_BASE(m_viewWidget));
 }
 
 void PageClientImpl::preferencesDidChange()
@@ -259,10 +254,10 @@ void PageClientImpl::didChangeContentSize(const IntSize& size)
 }
 
 #if ENABLE(DRAG_SUPPORT)
-void PageClientImpl::startDrag(const WebCore::DragData& dragData, PassRefPtr<ShareableBitmap> dragImage)
+void PageClientImpl::startDrag(Ref<SelectionData>&& selection, DragOperation dragOperation, RefPtr<ShareableBitmap>&& dragImage)
 {
     WebKitWebViewBase* webView = WEBKIT_WEB_VIEW_BASE(m_viewWidget);
-    webkitWebViewBaseDragAndDropHandler(webView).startDrag(dragData, dragImage);
+    webkitWebViewBaseDragAndDropHandler(webView).startDrag(WTFMove(selection), dragOperation, WTFMove(dragImage));
 
     // A drag starting should prevent a double-click from happening. This might
     // happen if a drag is followed very quickly by another click (like in the WTR).

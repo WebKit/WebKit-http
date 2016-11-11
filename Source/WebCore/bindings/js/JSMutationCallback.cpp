@@ -82,12 +82,12 @@ void JSMutationCallback::call(const Vector<Ref<MutationRecord>>& mutations, Muta
     JSValue jsObserver = toJS(exec, globalObject, observer);
 
     MarkedArgumentBuffer args;
-    args.append(jsArray(exec, globalObject, mutations));
+    args.append(toJS<IDLSequence<IDLInterface<MutationRecord>>>(*exec, *globalObject, mutations));
     args.append(jsObserver);
 
     InspectorInstrumentationCookie cookie = JSMainThreadExecState::instrumentFunctionCall(context, callType, callData);
 
-    NakedPtr<Exception> exception;
+    NakedPtr<JSC::Exception> exception;
     JSMainThreadExecState::profiledCall(exec, JSC::ProfilingReason::Other, callback, callType, callData, jsObserver, args, exception);
 
     InspectorInstrumentation::didCallFunction(cookie, context);

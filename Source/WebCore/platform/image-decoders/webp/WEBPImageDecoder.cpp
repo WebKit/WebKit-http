@@ -45,8 +45,7 @@ inline WEBP_CSP_MODE outputMode(bool hasAlpha) { return hasAlpha ? MODE_bgrA : M
 
 namespace WebCore {
 
-WEBPImageDecoder::WEBPImageDecoder(ImageSource::AlphaOption alphaOption,
-                                   ImageSource::GammaAndColorProfileOption gammaAndColorProfileOption)
+WEBPImageDecoder::WEBPImageDecoder(AlphaOption alphaOption, GammaAndColorProfileOption gammaAndColorProfileOption)
     : ImageDecoder(alphaOption, gammaAndColorProfileOption)
     , m_decoder(0)
     , m_hasAlpha(false)
@@ -78,13 +77,11 @@ ImageFrame* WEBPImageDecoder::frameBufferAtIndex(size_t index)
     if (index)
         return 0;
 
-    if (m_frameBufferCache.isEmpty()) {
+    if (m_frameBufferCache.isEmpty())
         m_frameBufferCache.resize(1);
-        m_frameBufferCache[0].setPremultiplyAlpha(m_premultiplyAlpha);
-    }
 
     ImageFrame& frame = m_frameBufferCache[0];
-    if (frame.status() != ImageFrame::FrameComplete)
+    if (!frame.isComplete())
         decode(false);
     return &frame;
 }
@@ -115,7 +112,7 @@ bool WEBPImageDecoder::decode(bool onlySize)
             return setFailed();
         m_hasAlpha = false;
 #endif
-        if (!setSize(width, height))
+        if (!setSize(IntSize(width, height)))
             return setFailed();
     }
 
@@ -125,22 +122,21 @@ bool WEBPImageDecoder::decode(bool onlySize)
 
     ASSERT(!m_frameBufferCache.isEmpty());
     ImageFrame& buffer = m_frameBufferCache[0];
-    ASSERT(buffer.status() != ImageFrame::FrameComplete);
+    ASSERT(!buffer.isComplete());
 
-    if (buffer.status() == ImageFrame::FrameEmpty) {
-        if (!buffer.setSize(size().width(), size().height()))
+    if (buffer.isEmpty()) {
+        if (!buffer.initialize(size(), m_premultiplyAlpha))
             return setFailed();
-        buffer.setStatus(ImageFrame::FramePartial);
+        buffer.setDecoding(ImageFrame::Decoding::Partial);
         buffer.setHasAlpha(m_hasAlpha);
-        buffer.setOriginalFrameRect(IntRect(IntPoint(), size()));
     }
 
     if (!m_decoder) {
         WEBP_CSP_MODE mode = outputMode(m_hasAlpha);
         if (!m_premultiplyAlpha)
             mode = outputMode(false);
-        int rowStride = size().width() * sizeof(ImageFrame::PixelData);
-        uint8_t* output = reinterpret_cast<uint8_t*>(buffer.getAddr(0, 0));
+        int rowStride = size().width() * sizeof(RGBA32);
+        uint8_t* output = reinterpret_cast<uint8_t*>(buffer.backingStore()->pixelAt(0, 0));
         int outputSize = size().height() * rowStride;
         m_decoder = WebPINewRGB(mode, output, outputSize, rowStride);
         if (!m_decoder)
@@ -149,7 +145,7 @@ bool WEBPImageDecoder::decode(bool onlySize)
 
     switch (WebPIUpdate(m_decoder, dataBytes, dataSize)) {
     case VP8_STATUS_OK:
-        buffer.setStatus(ImageFrame::FrameComplete);
+        buffer.setDecoding(ImageFrame::Decoding::Complete);
         clear();
         return true;
     case VP8_STATUS_SUSPENDED:

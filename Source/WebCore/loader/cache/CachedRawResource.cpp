@@ -32,13 +32,12 @@
 #include "HTTPHeaderNames.h"
 #include "SharedBuffer.h"
 #include "SubresourceLoader.h"
-#include <wtf/PassRefPtr.h>
 #include <wtf/text/StringView.h>
 
 namespace WebCore {
 
-CachedRawResource::CachedRawResource(ResourceRequest& resourceRequest, Type type, SessionID sessionID)
-    : CachedResource(resourceRequest, type, sessionID)
+CachedRawResource::CachedRawResource(CachedResourceRequest&& request, Type type, SessionID sessionID)
+    : CachedResource(WTFMove(request), type, sessionID)
     , m_identifier(0)
     , m_allowEncodedDataReplacement(true)
 {
@@ -116,10 +115,10 @@ void CachedRawResource::notifyClientsDataWasReceived(const char* data, unsigned 
     CachedResourceHandle<CachedRawResource> protectedThis(this);
     CachedResourceClientWalker<CachedRawResourceClient> w(m_clients);
     while (CachedRawResourceClient* c = w.next())
-        c->dataReceived(this, data, length);
+        c->dataReceived(*this, data, length);
 }
 
-void CachedRawResource::didAddClient(CachedResourceClient* c)
+void CachedRawResource::didAddClient(CachedResourceClient& c)
 {
     if (!hasClient(c))
         return;
@@ -127,12 +126,12 @@ void CachedRawResource::didAddClient(CachedResourceClient* c)
     // this resource to be evicted from the cache and all clients to be removed,
     // so a protector is necessary.
     CachedResourceHandle<CachedRawResource> protectedThis(this);
-    CachedRawResourceClient* client = static_cast<CachedRawResourceClient*>(c);
+    CachedRawResourceClient& client = static_cast<CachedRawResourceClient&>(c);
     size_t redirectCount = m_redirectChain.size();
     for (size_t i = 0; i < redirectCount; i++) {
         RedirectPair redirect = m_redirectChain[i];
         ResourceRequest request(redirect.m_request);
-        client->redirectReceived(this, request, redirect.m_redirectResponse);
+        client.redirectReceived(*this, request, redirect.m_redirectResponse);
         if (!hasClient(c))
             return;
     }
@@ -146,12 +145,12 @@ void CachedRawResource::didAddClient(CachedResourceClient* c)
             ASSERT(!validationInProgress());
             response.setSource(ResourceResponse::Source::MemoryCache);
         }
-        client->responseReceived(this, response);
+        client.responseReceived(*this, response);
     }
     if (!hasClient(c))
         return;
     if (m_data)
-        client->dataReceived(this, m_data->data(), m_data->size());
+        client.dataReceived(*this, m_data->data(), m_data->size());
     if (!hasClient(c))
        return;
     CachedResource::didAddClient(client);
@@ -169,7 +168,7 @@ void CachedRawResource::redirectReceived(ResourceRequest& request, const Resourc
     if (!response.isNull()) {
         CachedResourceClientWalker<CachedRawResourceClient> w(m_clients);
         while (CachedRawResourceClient* c = w.next())
-            c->redirectReceived(this, request, response);
+            c->redirectReceived(*this, request, response);
         m_redirectChain.append(RedirectPair(request, response));
     }
     CachedResource::redirectReceived(request, response);
@@ -183,14 +182,14 @@ void CachedRawResource::responseReceived(const ResourceResponse& response)
     CachedResource::responseReceived(response);
     CachedResourceClientWalker<CachedRawResourceClient> w(m_clients);
     while (CachedRawResourceClient* c = w.next())
-        c->responseReceived(this, m_response);
+        c->responseReceived(*this, m_response);
 }
 
 bool CachedRawResource::shouldCacheResponse(const ResourceResponse& response)
 {
     CachedResourceClientWalker<CachedRawResourceClient> w(m_clients);
     while (CachedRawResourceClient* c = w.next()) {
-        if (!c->shouldCacheResponse(this, response))
+        if (!c->shouldCacheResponse(*this, response))
             return false;
     }
     return true;
@@ -200,7 +199,7 @@ void CachedRawResource::didSendData(unsigned long long bytesSent, unsigned long 
 {
     CachedResourceClientWalker<CachedRawResourceClient> w(m_clients);
     while (CachedRawResourceClient* c = w.next())
-        c->dataSent(this, bytesSent, totalBytesToBeSent);
+        c->dataSent(*this, bytesSent, totalBytesToBeSent);
 }
 
 void CachedRawResource::switchClientsToRevalidatedResource()
@@ -220,7 +219,7 @@ void CachedRawResource::setDefersLoading(bool defers)
 
 void CachedRawResource::setDataBufferingPolicy(DataBufferingPolicy dataBufferingPolicy)
 {
-    m_options.setDataBufferingPolicy(dataBufferingPolicy);
+    m_options.dataBufferingPolicy = dataBufferingPolicy;
 }
 
 static bool shouldIgnoreHeaderForCacheReuse(HTTPHeaderName name)

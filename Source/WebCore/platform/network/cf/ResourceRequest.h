@@ -31,7 +31,7 @@
 
 OBJC_CLASS NSURLRequest;
 
-#if PLATFORM(COCOA) || USE(CFNETWORK)
+#if PLATFORM(COCOA) || USE(CFURLCONNECTION)
 typedef const struct _CFURLRequest* CFURLRequestRef;
 typedef const struct __CFURLStorageSession* CFURLStorageSessionRef;
 #endif
@@ -61,7 +61,7 @@ public:
     {
     }
     
-#if USE(CFNETWORK)
+#if USE(CFURLCONNECTION)
 #if PLATFORM(COCOA)
     WEBCORE_EXPORT ResourceRequest(NSURLRequest *);
     void updateNSURLRequest();
@@ -83,11 +83,8 @@ public:
 
     WEBCORE_EXPORT void updateFromDelegatePreservingOldProperties(const ResourceRequest&);
 
-#if PLATFORM(MAC)
-    void applyWebArchiveHackForMail();
-#endif
 #if PLATFORM(COCOA)
-#if USE(CFNETWORK)
+#if USE(CFURLCONNECTION)
     bool encodingRequiresPlatformData() const { return m_httpBody || m_cfRequest; }
 #else
     bool encodingRequiresPlatformData() const { return m_httpBody || m_nsRequest; }
@@ -108,7 +105,7 @@ public:
     void setDomainForCachePartition(const String& domain) { m_cachePartition = partitionName(domain); }
 #endif
 
-#if PLATFORM(COCOA) || USE(CFNETWORK)
+#if PLATFORM(COCOA) || USE(CFURLCONNECTION)
     WEBCORE_EXPORT CFURLRequestRef cfURLRequest(HTTPBodyUpdatePolicy) const;
     void setStorageSession(CFURLStorageSessionRef);
 #endif
@@ -128,7 +125,7 @@ private:
 
     void doPlatformSetAsIsolatedCopy(const ResourceRequest&);
 
-#if USE(CFNETWORK)
+#if USE(CFURLCONNECTION)
     RetainPtr<CFURLRequestRef> m_cfRequest;
 #endif
 #if PLATFORM(COCOA)

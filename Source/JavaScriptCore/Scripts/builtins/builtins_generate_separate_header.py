@@ -51,7 +51,6 @@ class BuiltinsSeparateHeaderGenerator(BuiltinsGenerator):
     def generate_output(self):
         args = {
             'namespace': self.model().framework.setting('namespace'),
-            'headerGuard': self.output_filename().replace('.', '_'),
             'macroPrefix': self.macro_prefix(),
             'objectName': self.object.object_name,
             'objectMacro': self.object.object_name.upper(),
@@ -62,7 +61,7 @@ class BuiltinsSeparateHeaderGenerator(BuiltinsGenerator):
         sections = []
         sections.append(self.generate_license())
         sections.append(Template(Templates.DoNotEditWarning).substitute(args))
-        sections.append(Template(Templates.HeaderIncludeGuardTop).substitute(args))
+        sections.append(Template(Templates.HeaderIncludeGuard).substitute(args))
         if conditional_guard is not None:
             sections.append("#if %s" % conditional_guard)
         sections.append(self.generate_secondary_header_includes())
@@ -79,7 +78,6 @@ class BuiltinsSeparateHeaderGenerator(BuiltinsGenerator):
         sections.append(Template(Templates.NamespaceBottom).substitute(args))
         if conditional_guard is not None:
             sections.append("#endif // %s" % conditional_guard)
-        sections.append(Template(Templates.HeaderIncludeGuardBottom).substitute(args))
 
         return "\n\n".join(sections)
 

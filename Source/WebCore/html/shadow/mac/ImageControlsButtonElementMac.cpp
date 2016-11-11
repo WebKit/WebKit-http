@@ -96,7 +96,7 @@ RefPtr<ImageControlsButtonElementMac> ImageControlsButtonElementMac::tryCreate(D
         return nullptr;
 
     auto button = adoptRef(*new ImageControlsButtonElementMac(document));
-    button->setAttribute(HTMLNames::classAttr, "x-webkit-image-controls-button");
+    button->setAttributeWithoutSynchronization(HTMLNames::classAttr, AtomicString("x-webkit-image-controls-button", AtomicString::ConstructFromLiteral));
 
     IntSize positionOffset = document.page()->theme().imageControlsButtonPositionOffset();
     button->setInlineStyleProperty(CSSPropertyTop, positionOffset.height(), CSSPrimitiveValue::CSS_PX);
@@ -107,9 +107,9 @@ RefPtr<ImageControlsButtonElementMac> ImageControlsButtonElementMac::tryCreate(D
     return WTFMove(button);
 }
 
-void ImageControlsButtonElementMac::defaultEventHandler(Event* event)
+void ImageControlsButtonElementMac::defaultEventHandler(Event& event)
 {
-    if (event->type() == eventNames().clickEvent) {
+    if (event.type() == eventNames().clickEvent) {
         Frame* frame = document().frame();
         if (!frame)
             return;
@@ -118,8 +118,8 @@ void ImageControlsButtonElementMac::defaultEventHandler(Event* event)
         if (!page)
             return;
 
-        page->contextMenuController().showImageControlsMenu(event);
-        event->setDefaultHandled();
+        page->contextMenuController().showImageControlsMenu(&event);
+        event.setDefaultHandled();
         return;
     }
 

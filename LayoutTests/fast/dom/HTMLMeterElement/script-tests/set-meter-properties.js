@@ -77,22 +77,22 @@ shouldBe("m.high", "200.0");
 shouldBe("m.optimum", "12.5");
 
 debug("Set value to invalid value");
-shouldThrow('m.value = "value";', '"Error: NotSupportedError: DOM Exception 9"');
+shouldThrowErrorName('m.value = "value";', 'TypeError');
 
 debug("Set min to NaN");
-shouldThrow('m.min = NaN;', '"Error: NotSupportedError: DOM Exception 9"');
+shouldThrowErrorName('m.min = NaN;', 'TypeError');
 
 debug("Set max to Infinity");
-shouldThrow('m.max = Infinity;', '"Error: NotSupportedError: DOM Exception 9"');
+shouldThrowErrorName('m.max = Infinity;', 'TypeError');
 
 debug("Set low to invalid value");
-shouldThrow('m.low = "low";', '"Error: NotSupportedError: DOM Exception 9"');
+shouldThrowErrorName('m.low = "low";', 'TypeError');
 
 debug("Set high to NaN");
-shouldThrow('m.high = NaN;', '"Error: NotSupportedError: DOM Exception 9"');
+shouldThrowErrorName('m.high = NaN;', 'TypeError');
 
 debug("Set optimum to Infinity");
-shouldThrow('m.optimum = Infinity;', '"Error: NotSupportedError: DOM Exception 9"');
+shouldThrowErrorName('m.optimum = Infinity;', 'TypeError');
 
 debug("Set attributes to valid numbers");
 m.setAttribute("min", 0);

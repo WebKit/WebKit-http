@@ -44,6 +44,20 @@ TextTrackList::TextTrackList(HTMLMediaElement* element, ScriptExecutionContext* 
 
 TextTrackList::~TextTrackList()
 {
+    clearElement();
+}
+
+void TextTrackList::clearElement()
+{
+    TrackListBase::clearElement();
+    for (auto& track : m_elementTracks) {
+        track->setMediaElement(nullptr);
+        track->clearClient();
+    }
+    for (auto& track : m_addTrackTracks) {
+        track->setMediaElement(nullptr);
+        track->clearClient();
+    }
 }
 
 unsigned TextTrackList::length() const

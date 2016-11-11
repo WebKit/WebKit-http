@@ -1,72 +1,67 @@
 /*
- * Copyright (C) 2012 Google Inc.  All rights reserved.
- * Copyright (C) 2013 Apple Inc.  All rights reserved.
+ * Copyright (C) 2016 Metrological Group B.V.
+ * Copyright (C) 2016 Igalia S.L.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
  * are met:
+ *
  * 1. Redistributions of source code must retain the above copyright
  *    notice, this list of conditions and the following disclaimer.
- * 2. Redistributions in binary form must reproduce the above copyright
- *    notice, this list of conditions and the following disclaimer in the
- *    documentation and/or other materials provided with the distribution.
+ * 2. Redistributions in binary form must reproduce the above
+ *    copyright notice, this list of conditions and the following
+ *    disclaimer in the documentation and/or other materials provided
+ *    with the distribution.
  *
- * THIS SOFTWARE IS PROVIDED BY APPLE INC. ``AS IS'' AND ANY
- * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
- * PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL APPLE INC. OR
- * CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
- * EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
- * PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
- * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
- * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ * "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+ * A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ * HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ * SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+ * LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ * DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ * THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef MediaKeyMessageEvent_h
-#define MediaKeyMessageEvent_h
+#pragma once
 
-#if ENABLE(ENCRYPTED_MEDIA_V2)
+#if ENABLE(ENCRYPTED_MEDIA)
 
 #include "Event.h"
-#include "MediaKeyError.h"
+#include "MediaKeyMessageEventInit.h"
+#include "MediaKeyMessageType.h"
+#include <runtime/ArrayBuffer.h>
 
 namespace WebCore {
 
-struct MediaKeyMessageEventInit : public EventInit {
-    RefPtr<Uint8Array> message;
-    String destinationURL;
-};
-
-class MediaKeyMessageEvent : public Event {
+class MediaKeyMessageEvent final : public Event {
 public:
+    using Type = MediaKeyMessageType;
+    using Init = MediaKeyMessageEventInit;
+
     virtual ~MediaKeyMessageEvent();
 
-    static Ref<MediaKeyMessageEvent> create(const AtomicString& type, Uint8Array* message, const String& destinationURL)
+    static Ref<MediaKeyMessageEvent> create(const AtomicString& type, const MediaKeyMessageEventInit& initializer, IsTrusted isTrusted = IsTrusted::No)
     {
-        return adoptRef(*new MediaKeyMessageEvent(type, message, destinationURL));
+        return adoptRef(*new MediaKeyMessageEvent(type, initializer, isTrusted));
     }
 
-    static Ref<MediaKeyMessageEvent> createForBindings(const AtomicString& type, const MediaKeyMessageEventInit& initializer)
-    {
-        return adoptRef(*new MediaKeyMessageEvent(type, initializer));
-    }
-
-    EventInterface eventInterface() const override;
-
-    Uint8Array* message() const { return m_message.get(); }
-    String destinationURL() const { return m_destinationURL; }
+    Type messageType() const { return m_messageType; }
+    RefPtr<JSC::ArrayBuffer> message() const { return m_message; }
 
 private:
-    MediaKeyMessageEvent(const AtomicString& type, Uint8Array* message, const String& destinationURL);
-    MediaKeyMessageEvent(const AtomicString& type, const MediaKeyMessageEventInit& initializer);
+    MediaKeyMessageEvent(const AtomicString&, const MediaKeyMessageEventInit&, IsTrusted);
 
-    RefPtr<Uint8Array> m_message;
-    String m_destinationURL;
+    // Event
+    EventInterface eventInterface() const override;
+
+    MediaKeyMessageType m_messageType;
+    RefPtr<JSC::ArrayBuffer> m_message;
 };
 
 } // namespace WebCore
 
-#endif
-#endif
+#endif // ENABLE(ENCRYPTED_MEDIA)

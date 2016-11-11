@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ScrollingTreeFrameScrollingNodeMac_h
-#define ScrollingTreeFrameScrollingNodeMac_h
+#pragma once
 
 #if ENABLE(ASYNC_SCROLLING) && PLATFORM(MAC)
 
@@ -48,8 +47,9 @@ private:
     void releaseReferencesToScrollerImpsOnTheMainThread();
 
     // ScrollingTreeNode member functions.
-    void updateBeforeChildren(const ScrollingStateNode&) override;
-    void updateAfterChildren(const ScrollingStateNode&) override;
+    void commitStateBeforeChildren(const ScrollingStateNode&) override;
+    void commitStateAfterChildren(const ScrollingStateNode&) override;
+
     void handleWheelEvent(const PlatformWheelEvent&) override;
 
     // ScrollController member functions.
@@ -71,7 +71,7 @@ private:
 
     void updateLayersAfterViewportChange(const FloatRect& fixedPositionRect, double scale) override;
 
-    void setScrollLayerPosition(const FloatPoint&) override;
+    void setScrollLayerPosition(const FloatPoint&, const FloatRect& layoutViewport) override;
 
     FloatPoint minimumScrollPosition() const override;
     FloatPoint maximumScrollPosition() const override;
@@ -114,5 +114,3 @@ private:
 } // namespace WebCore
 
 #endif // ENABLE(ASYNC_SCROLLING) && PLATFORM(MAC)
-
-#endif // ScrollingTreeFrameScrollingNodeMac_h

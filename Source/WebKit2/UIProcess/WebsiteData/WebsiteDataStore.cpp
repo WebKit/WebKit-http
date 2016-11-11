@@ -40,6 +40,7 @@
 #include <WebCore/HTMLMediaElement.h>
 #include <WebCore/OriginLock.h>
 #include <WebCore/SecurityOrigin.h>
+#include <WebCore/SecurityOriginData.h>
 #include <wtf/RunLoop.h>
 
 #if ENABLE(NETSCAPE_PLUGIN_API)
@@ -231,7 +232,7 @@ void WebsiteDataStore::fetchData(OptionSet<WebsiteDataType> dataTypes, OptionSet
             if (pendingCallbacks)
                 return;
 
-            RunLoop::main().dispatch([callbackAggregator = Ref<CallbackAggregator>(*this)]() mutable {
+            RunLoop::main().dispatch([callbackAggregator = makeRef(*this)]() mutable {
 
                 WTF::Vector<WebsiteDataRecord> records;
                 records.reserveInitialCapacity(callbackAggregator->m_websiteDataRecords.size());
@@ -1125,7 +1126,7 @@ void WebsiteDataStore::removeMediaKeys(const String& mediaKeysStorageDirectory, 
     ASSERT(!mediaKeysStorageDirectory.isEmpty());
 
     for (const auto& origin : origins) {
-        auto mediaKeyDirectory = WebCore::pathByAppendingComponent(mediaKeysStorageDirectory, origin->databaseIdentifier());
+        auto mediaKeyDirectory = WebCore::pathByAppendingComponent(mediaKeysStorageDirectory, WebCore::SecurityOriginData::fromSecurityOrigin(*origin).databaseIdentifier());
         auto mediaKeyFile = computeMediaKeyFile(mediaKeyDirectory);
 
         WebCore::deleteFile(mediaKeyFile);

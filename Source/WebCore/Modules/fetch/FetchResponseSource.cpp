@@ -29,7 +29,7 @@
 #include "config.h"
 #include "FetchResponseSource.h"
 
-#if ENABLE(FETCH_API) && ENABLE(STREAMS_API)
+#if ENABLE(FETCH_API) && ENABLE(READABLE_STREAM_API)
 
 #include "FetchResponse.h"
 
@@ -57,30 +57,31 @@ void FetchResponseSource::setInactive()
 
 void FetchResponseSource::doStart()
 {
-    // FIXME: We should consume body only if stream reader requested data, i.e. is disturbed.
-    // We might need a callback to be notified of the stream being disturbed.
     m_response.consumeBodyAsStream();
+}
+
+void FetchResponseSource::doPull()
+{
+    m_response.feedStream();
 }
 
 void FetchResponseSource::doCancel()
 {
     m_isCancelling = true;
-    static_cast<ActiveDOMObject&>(m_response).stop();
+    m_response.cancel();
 }
 
 void FetchResponseSource::close()
 {
-    ASSERT(isStarting());
     controller().close();
     clean();
 }
 void FetchResponseSource::error(const String& value)
 {
-    ASSERT(isStarting());
     controller().error(value);
     clean();
 }
 
 } // namespace WebCore
 
-#endif // ENABLE(FETCH_API) && ENABLE(STREAMS_API)
+#endif // ENABLE(FETCH_API) && ENABLE(READABLE_STREAM_API)

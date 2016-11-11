@@ -31,7 +31,6 @@
 #include "LocalizedStrings.h"
 #include "MouseEvent.h"
 #include "NodeTraversal.h"
-#include "Settings.h"
 #include "SpatialNavigation.h"
 
 namespace WebCore {
@@ -53,17 +52,17 @@ String RadioInputType::valueMissingText() const
     return validationMessageValueMissingForRadioText();
 }
 
-void RadioInputType::handleClickEvent(MouseEvent* event)
+void RadioInputType::handleClickEvent(MouseEvent& event)
 {
-    event->setDefaultHandled();
+    event.setDefaultHandled();
 }
 
-void RadioInputType::handleKeydownEvent(KeyboardEvent* event)
+void RadioInputType::handleKeydownEvent(KeyboardEvent& event)
 {
     BaseCheckableInputType::handleKeydownEvent(event);
-    if (event->defaultHandled())
+    if (event.defaultHandled())
         return;
-    const String& key = event->keyIdentifier();
+    const String& key = event.keyIdentifier();
     if (key != "Up" && key != "Down" && key != "Left" && key != "Right")
         return;
 
@@ -91,16 +90,16 @@ void RadioInputType::handleKeydownEvent(KeyboardEvent* event)
             break;
         if (inputElement->isRadioButton() && inputElement->name() == element().name() && inputElement->isFocusable()) {
             element().document().setFocusedElement(inputElement.get());
-            inputElement->dispatchSimulatedClick(event, SendNoEvents, DoNotShowPressedLook);
-            event->setDefaultHandled();
+            inputElement->dispatchSimulatedClick(&event, SendNoEvents, DoNotShowPressedLook);
+            event.setDefaultHandled();
             return;
         }
     }
 }
 
-void RadioInputType::handleKeyupEvent(KeyboardEvent* event)
+void RadioInputType::handleKeyupEvent(KeyboardEvent& event)
 {
-    const String& key = event->keyIdentifier();
+    const String& key = event.keyIdentifier();
     if (key != "U+0020")
         return;
     // If an unselected radio is tabbed into (because the entire group has nothing
@@ -110,7 +109,7 @@ void RadioInputType::handleKeyupEvent(KeyboardEvent* event)
     dispatchSimulatedClickIfActive(event);
 }
 
-bool RadioInputType::isKeyboardFocusable(KeyboardEvent* event) const
+bool RadioInputType::isKeyboardFocusable(KeyboardEvent& event) const
 {
     if (!InputType::isKeyboardFocusable(event))
         return false;

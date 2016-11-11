@@ -35,7 +35,7 @@ namespace WebCore {
 static NSHTTPCookieStorage *cookieStorage(const NetworkStorageSession&);
 }
 
-#if !USE(CFNETWORK)
+#if !USE(CFURLCONNECTION)
 
 #import "Cookie.h"
 #import "CookieStorage.h"
@@ -155,9 +155,9 @@ static String cookiesForSession(const NetworkStorageSession& session, const URL&
         if (!cookiesBuilder.isEmpty())
             cookiesBuilder.appendLiteral("; ");
 
-        cookiesBuilder.append(String([cookie name]));
+        cookiesBuilder.append([cookie name]);
         cookiesBuilder.append('=');
-        cookiesBuilder.append(String([cookie value]));
+        cookiesBuilder.append([cookie value]);
     }
     return cookiesBuilder.toString();
 
@@ -280,12 +280,12 @@ void addCookie(const NetworkStorageSession& session, const URL& url, const Cooki
         NSHTTPCookieExpires: [NSDate dateWithTimeIntervalSince1970:cookie.expires / 1000.0],
     }];
 
-#if !USE(CFNETWORK)
+#if !USE(CFURLCONNECTION)
     if (!cookieStorage) {
         [WebCore::cookieStorage(session) setCookie:httpCookie];
         return;
     }
-#endif // !USE(CFNETWORK)
+#endif // !USE(CFURLCONNECTION)
 
     CFHTTPCookieStorageSetCookie(cookieStorage.get(), [httpCookie _CFHTTPCookie]);
 
@@ -311,7 +311,7 @@ void deleteAllCookies(const NetworkStorageSession& session)
 
 }
 
-#endif // !USE(CFNETWORK)
+#endif // !USE(CFURLCONNECTION)
 
 namespace WebCore {
 
@@ -352,7 +352,6 @@ void deleteCookiesForHostnames(const NetworkStorageSession& session, const Vecto
 
     END_BLOCK_OBJC_EXCEPTIONS;
 }
-
 
 void deleteAllCookiesModifiedSince(const NetworkStorageSession& session, std::chrono::system_clock::time_point timePoint)
 {

@@ -1,5 +1,6 @@
 /*
- *  Copyright (C) 2012 Igalia S.L
+ *  Copyright (C) 2012, 2015, 2016 Igalia S.L
+ *  Copyright (C) 2015, 2016 Metrological Group B.V.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
@@ -16,27 +17,13 @@
  *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+#pragma once
+
 #include "Logging.h"
 
 #include <gst/gst.h>
 #include <gst/video/video-format.h>
 #include <gst/video/video-info.h>
-
-#define LOG_MEDIA_MESSAGE(...) do { \
-    GST_DEBUG(__VA_ARGS__); \
-    LOG_VERBOSE(Media, __VA_ARGS__); } while (0)
-
-#define ERROR_MEDIA_MESSAGE(...) do { \
-    GST_ERROR(__VA_ARGS__); \
-    LOG_VERBOSE(Media, __VA_ARGS__); } while (0)
-
-#define INFO_MEDIA_MESSAGE(...) do { \
-    GST_INFO(__VA_ARGS__); \
-    LOG_VERBOSE(Media, __VA_ARGS__); } while (0)
-
-#define WARN_MEDIA_MESSAGE(...) do { \
-    GST_WARNING(__VA_ARGS__); \
-    LOG_VERBOSE(Media, __VA_ARGS__); } while (0)
 
 namespace WebCore {
 
@@ -77,4 +64,8 @@ bool initializeGStreamer();
 unsigned getGstPlayFlag(const char* nick);
 GstClockTime toGstClockTime(float time);
 bool gstRegistryHasElementForMediaType(GList* elementFactories, const char* capsString);
+
+#if GST_CHECK_VERSION(1, 5, 3) && ENABLE(LEGACY_ENCRYPTED_MEDIA)
+GstElement* createGstDecryptor(const gchar* protectionSystem);
+#endif
 }

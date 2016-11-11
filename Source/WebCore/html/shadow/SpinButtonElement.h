@@ -24,8 +24,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
  
-#ifndef SpinButtonElement_h
-#define SpinButtonElement_h
+#pragma once
 
 #include "HTMLDivElement.h"
 #include "PopupOpeningObserver.h"
@@ -64,7 +63,7 @@ public:
     bool willRespondToMouseMoveEvents() override;
     bool willRespondToMouseClickEvents() override;
 
-    void forwardEvent(Event*);
+    void forwardEvent(Event&);
 
 private:
     SpinButtonElement(Document&, SpinButtonOwner&);
@@ -73,7 +72,7 @@ private:
     bool isSpinButtonElement() const override { return true; }
     bool isDisabledFormControl() const override { return shadowHost() && shadowHost()->isDisabledFormControl(); }
     bool matchesReadWritePseudoClass() const override;
-    void defaultEventHandler(Event*) override;
+    void defaultEventHandler(Event&) override;
     void willOpenPopup() override;
     void doStepAction(int);
     void startRepeatingTimer();
@@ -96,5 +95,3 @@ SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::SpinButtonElement)
     static bool isType(const WebCore::Element& element) { return element.isSpinButtonElement(); }
     static bool isType(const WebCore::Node& node) { return is<WebCore::Element>(node) && isType(downcast<WebCore::Element>(node)); }
 SPECIALIZE_TYPE_TRAITS_END()
-
-#endif // SpinButtonElement_h

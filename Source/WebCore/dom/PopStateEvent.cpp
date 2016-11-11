@@ -33,9 +33,9 @@
 
 namespace WebCore {
 
-PopStateEvent::PopStateEvent(const AtomicString& type, const PopStateEventInit& initializer)
-    : Event(type, initializer)
-    , m_state(initializer.state)
+PopStateEvent::PopStateEvent(JSC::ExecState& state, const AtomicString& type, const Init& initializer, IsTrusted isTrusted)
+    : Event(type, initializer, isTrusted)
+    , m_state(state.vm(), initializer.state)
 {
 }
 
@@ -55,9 +55,14 @@ Ref<PopStateEvent> PopStateEvent::create(RefPtr<SerializedScriptValue>&& seriali
     return adoptRef(*new PopStateEvent(WTFMove(serializedState), history));
 }
 
-Ref<PopStateEvent> PopStateEvent::createForBindings(const AtomicString& type, const PopStateEventInit& initializer)
+Ref<PopStateEvent> PopStateEvent::create(JSC::ExecState& state, const AtomicString& type, const Init& initializer, IsTrusted isTrusted)
 {
-    return adoptRef(*new PopStateEvent(type, initializer));
+    return adoptRef(*new PopStateEvent(state, type, initializer, isTrusted));
+}
+
+Ref<PopStateEvent> PopStateEvent::createForBindings()
+{
+    return adoptRef(*new PopStateEvent);
 }
 
 RefPtr<SerializedScriptValue> PopStateEvent::trySerializeState(JSC::ExecState* exec)
@@ -65,7 +70,7 @@ RefPtr<SerializedScriptValue> PopStateEvent::trySerializeState(JSC::ExecState* e
     ASSERT(!m_state.hasNoValue());
     
     if (!m_serializedState && !m_triedToSerialize) {
-        m_serializedState = SerializedScriptValue::create(exec, m_state.jsValue(), nullptr, nullptr, NonThrowing);
+        m_serializedState = SerializedScriptValue::create(*exec, m_state.jsValue(), NonThrowing);
         m_triedToSerialize = true;
     }
     

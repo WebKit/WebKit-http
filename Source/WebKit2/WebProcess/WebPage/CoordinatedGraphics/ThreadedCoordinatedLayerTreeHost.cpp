@@ -30,6 +30,8 @@
 #include "ThreadedCoordinatedLayerTreeHost.h"
 
 #if USE(COORDINATED_GRAPHICS_THREADED)
+
+#include "AcceleratedSurface.h"
 #include "WebPage.h"
 #include <WebCore/FrameView.h>
 #include <WebCore/MainFrame.h>
@@ -50,44 +52,87 @@ ThreadedCoordinatedLayerTreeHost::~ThreadedCoordinatedLayerTreeHost()
 ThreadedCoordinatedLayerTreeHost::ThreadedCoordinatedLayerTreeHost(WebPage& webPage)
     : CoordinatedLayerTreeHost(webPage)
     , m_compositorClient(*this)
-    , m_compositor(ThreadedCompositor::create(&m_compositorClient))
+    , m_surface(AcceleratedSurface::create(webPage))
 {
+    if (m_surface) {
+        TextureMapper::PaintFlags paintFlags = 0;
+
+        if (m_surface->shouldPaintMirrored())
+            paintFlags |= TextureMapper::PaintingMirrored;
+
+        // Do not do frame sync when rendering offscreen in the web process to ensure that SwapBuffers never blocks.
+        // Rendering to the actual screen will happen later anyway since the UI process schedules a redraw for every update,
+        // the compositor will take care of syncing to vblank.
+        m_compositor = ThreadedCompositor::create(m_compositorClient, m_surface->window(), ThreadedCompositor::ShouldDoFrameSync::No, paintFlags);
+        m_layerTreeContext.contextID = m_surface->surfaceID();
+    } else
+        m_compositor = ThreadedCompositor::create(m_compositorClient);
 }
 
-void ThreadedCoordinatedLayerTreeHost::scrollNonCompositedContents(const WebCore::IntRect& rect)
+void ThreadedCoordinatedLayerTreeHost::invalidate()
 {
-    m_compositor->scrollTo(rect.location());
-    scheduleLayerFlush();
+    m_compositor->invalidate();
+    CoordinatedLayerTreeHost::invalidate();
+    m_surface = nullptr;
 }
 
-void ThreadedCoordinatedLayerTreeHost::contentsSizeChanged(const WebCore::IntSize& newSize)
+void ThreadedCoordinatedLayerTreeHost::forceRepaint()
 {
-    m_compositor->didChangeContentsSize(newSize);
+    CoordinatedLayerTreeHost::forceRepaint();
+    m_compositor->forceRepaint();
+}
+
+void ThreadedCoordinatedLayerTreeHost::scrollNonCompositedContents(const IntRect& rect)
+{
+    FrameView* frameView = m_webPage.mainFrameView();
+    if (!frameView || !frameView->delegatesScrolling())
+        return;
+
+    m_viewportController.didScroll(rect.location());
+    didChangeViewport();
+}
+
+void ThreadedCoordinatedLayerTreeHost::contentsSizeChanged(const IntSize& newSize)
+{
+    m_viewportController.didChangeContentsSize(newSize);
+    didChangeViewport();
 }
 
 void ThreadedCoordinatedLayerTreeHost::deviceOrPageScaleFactorChanged()
 {
+    if (m_surface && m_surface->resize(m_webPage.size()))
+        m_layerTreeContext.contextID = m_surface->surfaceID();
+
     CoordinatedLayerTreeHost::deviceOrPageScaleFactorChanged();
-    m_compositor->setDeviceScaleFactor(m_webPage.deviceScaleFactor());
+    m_compositor->setScaleFactor(m_webPage.deviceScaleFactor() * m_viewportController.pageScaleFactor());
+}
+
+void ThreadedCoordinatedLayerTreeHost::pageBackgroundTransparencyChanged()
+{
+    CoordinatedLayerTreeHost::pageBackgroundTransparencyChanged();
+    m_compositor->setDrawsBackground(m_webPage.drawsBackground());
 }
 
 void ThreadedCoordinatedLayerTreeHost::sizeDidChange(const IntSize& size)
 {
+    if (m_surface && m_surface->resize(size))
+        m_layerTreeContext.contextID = m_surface->surfaceID();
+
     CoordinatedLayerTreeHost::sizeDidChange(size);
-    m_compositor->didChangeViewportSize(size);
+    m_viewportController.didChangeViewportSize(size);
+    IntSize scaledSize(size);
+    scaledSize.scale(m_webPage.deviceScaleFactor());
+    m_compositor->setViewportSize(scaledSize, m_webPage.deviceScaleFactor() * m_viewportController.pageScaleFactor());
+    didChangeViewport();
 }
 
-void ThreadedCoordinatedLayerTreeHost::didChangeViewportProperties(const WebCore::ViewportAttributes& attr)
+void ThreadedCoordinatedLayerTreeHost::didChangeViewportProperties(const ViewportAttributes& attr)
 {
-    m_compositor->didChangeViewportAttribute(attr);
+    m_viewportController.didChangeViewportAttributes(attr);
+    didChangeViewport();
 }
 
-void ThreadedCoordinatedLayerTreeHost::didScaleFactorChanged(float scale, const IntPoint& origin)
-{
-    m_webPage.scalePage(scale, origin);
-}
-
-#if PLATFORM(GTK)
+#if PLATFORM(GTK) && PLATFORM(X11) && !USE(REDIRECTED_XCOMPOSITE_WINDOW)
 void ThreadedCoordinatedLayerTreeHost::setNativeSurfaceHandleForCompositing(uint64_t handle)
 {
     m_layerTreeContext.contextID = handle;
@@ -96,19 +141,38 @@ void ThreadedCoordinatedLayerTreeHost::setNativeSurfaceHandleForCompositing(uint
 }
 #endif
 
-void ThreadedCoordinatedLayerTreeHost::setVisibleContentsRect(const FloatRect& rect, const FloatPoint& trajectoryVector, float scale)
+void ThreadedCoordinatedLayerTreeHost::didChangeViewport()
 {
-    CoordinatedLayerTreeHost::setVisibleContentsRect(rect, trajectoryVector);
-    if (m_lastScrollPosition != roundedIntPoint(rect.location())) {
-        m_lastScrollPosition = roundedIntPoint(rect.location());
+    FloatRect visibleRect(m_viewportController.visibleContentsRect());
+    if (visibleRect.isEmpty())
+        return;
 
-        if (!m_webPage.corePage()->mainFrame().view()->useFixedLayout())
-            m_webPage.corePage()->mainFrame().view()->notifyScrollPositionChanged(m_lastScrollPosition);
+    // When using non overlay scrollbars, the contents size doesn't include the scrollbars, but we need to include them
+    // in the visible area used by the compositor to ensure that the scrollbar layers are also updated.
+    // See https://bugs.webkit.org/show_bug.cgi?id=160450.
+    FrameView* view = m_webPage.corePage()->mainFrame().view();
+    Scrollbar* scrollbar = view->verticalScrollbar();
+    if (scrollbar && !scrollbar->isOverlayScrollbar())
+        visibleRect.expand(scrollbar->width(), 0);
+    scrollbar = view->horizontalScrollbar();
+    if (scrollbar && !scrollbar->isOverlayScrollbar())
+        visibleRect.expand(0, scrollbar->height());
+
+    CoordinatedLayerTreeHost::setVisibleContentsRect(visibleRect, FloatPoint::zero());
+
+    float pageScale = m_viewportController.pageScaleFactor();
+    IntPoint scrollPosition = roundedIntPoint(visibleRect.location());
+    if (m_lastScrollPosition != scrollPosition) {
+        m_lastScrollPosition = scrollPosition;
+        m_compositor->setScrollPosition(m_lastScrollPosition, m_webPage.deviceScaleFactor() * pageScale);
+
+        if (!view->useFixedLayout())
+            view->notifyScrollPositionChanged(m_lastScrollPosition);
     }
 
-    if (m_lastScaleFactor != scale) {
-        m_lastScaleFactor = scale;
-        didScaleFactorChanged(m_lastScaleFactor, m_lastScrollPosition);
+    if (m_lastPageScaleFactor != pageScale) {
+        m_lastPageScaleFactor = pageScale;
+        m_webPage.scalePage(pageScale, m_lastScrollPosition);
     }
 }
 

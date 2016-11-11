@@ -24,8 +24,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef MediaControls_h
-#define MediaControls_h
+#pragma once
 
 #if ENABLE(VIDEO)
 
@@ -110,9 +109,9 @@ class MediaControls : public HTMLDivElement {
 protected:
     explicit MediaControls(Document&);
 
-    void defaultEventHandler(Event*) override;
+    void defaultEventHandler(Event&) override;
 
-    virtual bool containsRelatedTarget(Event*);
+    virtual bool containsRelatedTarget(Event&);
 
     void setSliderVolume();
 
@@ -152,8 +151,6 @@ inline MediaControls* toMediaControls(Node* node)
 // This will catch anyone doing an unneccessary cast.
 void toMediaControls(const MediaControls*);
 
-}
+} // namespace WebCore
 
-#endif
-
-#endif
+#endif // ENABLE(VIDEO)

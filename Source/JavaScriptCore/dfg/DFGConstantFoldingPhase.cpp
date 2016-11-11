@@ -71,6 +71,7 @@ public:
             // It's now possible to simplify basic blocks by placing an Unreachable terminator right
             // after anything that invalidates AI.
             bool didClipBlock = false;
+            Vector<Node*> nodesToDelete;
             for (BasicBlock* block : m_graph.blocksInNaturalOrder()) {
                 m_state.beginBasicBlock(block);
                 for (unsigned nodeIndex = 0; nodeIndex < block->size(); ++nodeIndex) {
@@ -83,7 +84,7 @@ public:
                     if (!m_state.isValid()) {
                         NodeOrigin origin = block->at(nodeIndex)->origin;
                         for (unsigned killIndex = nodeIndex; killIndex < block->size(); ++killIndex)
-                            m_graph.m_allocator.free(block->at(killIndex));
+                            nodesToDelete.append(block->at(killIndex));
                         block->resize(nodeIndex);
                         block->appendNode(m_graph, SpecNone, Unreachable, origin);
                         didClipBlock = true;
@@ -96,6 +97,12 @@ public:
 
             if (didClipBlock) {
                 changed = true;
+
+                m_graph.invalidateNodeLiveness();
+
+                for (Node* node : nodesToDelete)
+                    m_graph.deleteNode(node);
+
                 m_graph.invalidateCFG();
                 m_graph.resetReachability();
                 m_graph.killUnreachableBlocks();
@@ -145,6 +152,28 @@ private:
                     set = node->structureSet();
                 if (value.m_structure.isSubsetOf(set)) {
                     m_interpreter.execute(indexInBlock); // Catch the fact that we may filter on cell.
+                    node->remove();
+                    eliminated = true;
+                    break;
+                }
+                break;
+            }
+
+            case CheckDOM: {
+                JSValue constant = m_state.forNode(node->child1()).value();
+                if (constant) {
+                    if (constant.isCell() && constant.asCell()->inherits(node->classInfo())) {
+                        m_interpreter.execute(indexInBlock);
+                        node->remove();
+                        eliminated = true;
+                        break;
+                    }
+                }
+
+                AbstractValue& value = m_state.forNode(node->child1());
+
+                if (value.m_structure.isSubClassOf(node->classInfo())) {
+                    m_interpreter.execute(indexInBlock);
                     node->remove();
                     eliminated = true;
                     break;
@@ -245,25 +274,20 @@ private:
                 break;
             }
 
-            case CheckIdent: {
+            case CheckStringIdent: {
                 UniquedStringImpl* uid = node->uidOperand();
                 const UniquedStringImpl* constantUid = nullptr;
 
                 JSValue childConstant = m_state.forNode(node->child1()).value();
                 if (childConstant) {
-                    if (uid->isSymbol()) {
-                        if (childConstant.isSymbol())
-                            constantUid = asSymbol(childConstant)->privateName().uid();
-                    } else {
-                        if (childConstant.isString()) {
-                            if (const auto* impl = asString(childConstant)->tryGetValueImpl()) {
-                                // Edge filtering requires that a value here should be StringIdent.
-                                // However, a constant value propagated in DFG is not filtered.
-                                // So here, we check the propagated value is actually an atomic string.
-                                // And if it's not, we just ignore.
-                                if (impl->isAtomic())
-                                    constantUid = static_cast<const UniquedStringImpl*>(impl);
-                            }
+                    if (childConstant.isString()) {
+                        if (const auto* impl = asString(childConstant)->tryGetValueImpl()) {
+                            // Edge filtering requires that a value here should be StringIdent.
+                            // However, a constant value propagated in DFG is not filtered.
+                            // So here, we check the propagated value is actually an atomic string.
+                            // And if it's not, we just ignore.
+                            if (impl->isAtomic())
+                                constantUid = static_cast<const UniquedStringImpl*>(impl);
                         }
                     }
                 }
@@ -290,9 +314,11 @@ private:
                 
             case GetMyArgumentByVal:
             case GetMyArgumentByValOutOfBounds: {
-                JSValue index = m_state.forNode(node->child2()).value();
-                if (!index || !index.isInt32())
+                JSValue indexValue = m_state.forNode(node->child2()).value();
+                if (!indexValue || !indexValue.isInt32())
                     break;
+
+                unsigned index = indexValue.asUInt32() + node->numberOfArgumentsToSkip();
                 
                 Node* arguments = node->child1().node();
                 InlineCallFrame* inlineCallFrame = arguments->origin.semantic.inlineCallFrame;
@@ -311,10 +337,10 @@ private:
                 // GetMyArgumentByVal in such statically-out-of-bounds accesses; we just lose CFA unless
                 // GCSE removes the access entirely.
                 if (inlineCallFrame) {
-                    if (index.asUInt32() >= inlineCallFrame->arguments.size() - 1)
+                    if (index >= inlineCallFrame->arguments.size() - 1)
                         break;
                 } else {
-                    if (index.asUInt32() >= m_state.variables().numberOfArguments() - 1)
+                    if (index >= m_state.variables().numberOfArguments() - 1)
                         break;
                 }
                 
@@ -325,15 +351,14 @@ private:
                     data = m_graph.m_stackAccessData.add(
                         VirtualRegister(
                             inlineCallFrame->stackOffset +
-                            CallFrame::argumentOffset(index.asInt32())),
+                            CallFrame::argumentOffset(index)),
                         FlushedJSValue);
                 } else {
                     data = m_graph.m_stackAccessData.add(
-                        virtualRegisterForArgument(index.asInt32() + 1), FlushedJSValue);
+                        virtualRegisterForArgument(index + 1), FlushedJSValue);
                 }
                 
-                if (inlineCallFrame && !inlineCallFrame->isVarargs()
-                    && index.asUInt32() < inlineCallFrame->arguments.size() - 1) {
+                if (inlineCallFrame && !inlineCallFrame->isVarargs() && index < inlineCallFrame->arguments.size() - 1) {
                     node->convertToGetStack(data);
                     eliminated = true;
                     break;
@@ -424,6 +449,7 @@ private:
                 break;
             }
         
+            case PureGetById:
             case GetById:
             case GetByIdFlush: {
                 Edge childEdge = node->child1();
@@ -434,6 +460,9 @@ private:
 
                 m_interpreter.execute(indexInBlock); // Push CFA over this node after we get the state before.
                 alreadyHandled = true; // Don't allow the default constant folder to do things to this.
+
+                if (!Options::useAccessInlining())
+                    break;
 
                 if (baseValue.m_structure.isTop() || baseValue.m_structure.isClobbered()
                     || (node->child1().useKind() == UntypedUse || (baseValue.m_type & ~SpecCell)))
@@ -489,6 +518,9 @@ private:
 
                 m_interpreter.execute(indexInBlock); // Push CFA over this node after we get the state before.
                 alreadyHandled = true; // Don't allow the default constant folder to do things to this.
+
+                if (!Options::useAccessInlining())
+                    break;
 
                 if (baseValue.m_structure.isTop() || baseValue.m_structure.isClobbered())
                     break;

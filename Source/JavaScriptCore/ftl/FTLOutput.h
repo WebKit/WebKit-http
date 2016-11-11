@@ -23,26 +23,18 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef FTLOutput_h
-#define FTLOutput_h
+#pragma once
 
 #include "DFGCommon.h"
 
 #if ENABLE(FTL_JIT)
 
-#include "B3ArgumentRegValue.h"
 #include "B3BasicBlockInlines.h"
 #include "B3CCallValue.h"
 #include "B3Compilation.h"
-#include "B3Const32Value.h"
-#include "B3ConstPtrValue.h"
-#include "B3ControlValue.h"
-#include "B3MemoryValue.h"
+#include "B3FrequentedBlock.h"
 #include "B3Procedure.h"
-#include "B3SlotBaseValue.h"
 #include "B3SwitchValue.h"
-#include "B3UpsilonValue.h"
-#include "B3ValueInlines.h"
 #include "FTLAbbreviatedTypes.h"
 #include "FTLAbstractHeapRepository.h"
 #include "FTLCommonValues.h"
@@ -64,7 +56,14 @@
 
 namespace JSC {
 
-namespace DFG { struct Node; }
+namespace DFG {
+struct Node;
+} // namespace DFG
+
+namespace B3 {
+class FenceValue;
+class SlotBaseValue;
+} // namespace B3
 
 namespace FTL {
 
@@ -106,9 +105,19 @@ public:
     LValue constBool(bool value);
     LValue constInt32(int32_t value);
     template<typename T>
-    LValue constIntPtr(T* value) { return m_block->appendNew<B3::ConstPtrValue>(m_proc, origin(), value); }
+    LValue constIntPtr(T* value)
+    {
+        if (sizeof(void*) == 8)
+            return constInt64(bitwise_cast<intptr_t>(value));
+        return constInt32(bitwise_cast<intptr_t>(value));
+    }
     template<typename T>
-    LValue constIntPtr(T value) { return m_block->appendNew<B3::ConstPtrValue>(m_proc, origin(), value); }
+    LValue constIntPtr(T value)
+    {
+        if (sizeof(void*) == 8)
+            return constInt64(static_cast<intptr_t>(value));
+        return constInt32(static_cast<intptr_t>(value));
+    }
     LValue constInt64(int64_t value);
     LValue constDouble(double value);
 
@@ -154,6 +163,7 @@ public:
 
     LValue doubleSin(LValue);
     LValue doubleCos(LValue);
+    LValue doubleTan(LValue);
 
     LValue doublePow(LValue base, LValue exponent);
     LValue doublePowi(LValue base, LValue exponent);
@@ -179,6 +189,7 @@ public:
 
     LValue load(TypedPointer, LType);
     void store(LValue, TypedPointer);
+    B3::FenceValue* fence();
 
     LValue load8SignExt32(TypedPointer);
     LValue load8ZeroExt32(TypedPointer);
@@ -275,7 +286,7 @@ public:
         return heap.baseIndex(*this, base, index, indexAsConstant, offset);
     }
 
-    TypedPointer absolute(void* address);
+    TypedPointer absolute(const void* address);
 
     LValue load8SignExt32(LValue base, const AbstractHeap& field) { return load8SignExt32(address(base, field)); }
     LValue load8ZeroExt32(LValue base, const AbstractHeap& field) { return load8ZeroExt32(address(base, field)); }
@@ -354,8 +365,7 @@ public:
     LValue callWithoutSideEffects(B3::Type type, Function function, LValue arg1, Args... args)
     {
         return m_block->appendNew<B3::CCallValue>(m_proc, type, origin(), B3::Effects::none(),
-            m_block->appendNew<B3::ConstPtrValue>(m_proc, origin(), bitwise_cast<void*>(function)),
-            arg1, args...);
+            constIntPtr(bitwise_cast<void*>(function)), arg1, args...);
     }
 
     template<typename FunctionType>
@@ -378,8 +388,8 @@ public:
     template<typename VectorType>
     void switchInstruction(LValue value, const VectorType& cases, LBasicBlock fallThrough, Weight fallThroughWeight)
     {
-        B3::SwitchValue* switchValue = m_block->appendNew<B3::SwitchValue>(
-            m_proc, origin(), value, B3::FrequentedBlock(fallThrough));
+        B3::SwitchValue* switchValue = m_block->appendNew<B3::SwitchValue>(m_proc, origin(), value);
+        switchValue->setFallThrough(B3::FrequentedBlock(fallThrough));
         for (const SwitchCase& switchCase : cases) {
             int64_t value = switchCase.value()->asInt();
             B3::FrequentedBlock target(switchCase.target(), switchCase.weight().frequencyClass());
@@ -390,6 +400,8 @@ public:
     void ret(LValue);
 
     void unreachable();
+    
+    void appendSuccessor(WeightedTarget);
 
     B3::CheckValue* speculate(LValue);
     B3::CheckValue* speculateAdd(LValue, LValue);
@@ -439,11 +451,6 @@ inline LValue Output::phi(LType type, const VectorType& vector)
     return phiNode;
 }
 
-inline void Output::addIncomingToPhi(LValue phi, ValueFromBlock value)
-{
-    value.value()->as<B3::UpsilonValue>()->setPhi(phi);
-}
-
 template<typename... Params>
 inline void Output::addIncomingToPhi(LValue phi, ValueFromBlock value, Params... theRest)
 {
@@ -458,5 +465,3 @@ inline void Output::addIncomingToPhi(LValue phi, ValueFromBlock value, Params...
 } } // namespace JSC::FTL
 
 #endif // ENABLE(FTL_JIT)
-
-#endif // FTLOutput_h

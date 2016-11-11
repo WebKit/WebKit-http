@@ -23,13 +23,10 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebGLVertexArrayObjectBase_h
-#define WebGLVertexArrayObjectBase_h
+#pragma once
 
 #include "WebGLBuffer.h"
 #include "WebGLContextObject.h"
-
-#include <wtf/PassRefPtr.h>
 
 namespace WebCore {
 
@@ -97,5 +94,3 @@ protected:
 };
     
 } // namespace WebCore
-
-#endif // WebGLVertexArrayObjectBase_h

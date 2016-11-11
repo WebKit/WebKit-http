@@ -66,22 +66,22 @@ Ref<HTMLOptionElement> HTMLOptionElement::create(const QualifiedName& tagName, D
     return adoptRef(*new HTMLOptionElement(tagName, document));
 }
 
-RefPtr<HTMLOptionElement> HTMLOptionElement::createForJSConstructor(Document& document, const String& data, const String& value,
-        bool defaultSelected, bool selected, ExceptionCode& ec)
+ExceptionOr<Ref<HTMLOptionElement>> HTMLOptionElement::createForJSConstructor(Document& document,
+    const String& data, const String& value, bool defaultSelected, bool selected)
 {
     Ref<HTMLOptionElement> element = adoptRef(*new HTMLOptionElement(optionTag, document));
 
     auto text = Text::create(document, data.isNull() ? emptyString() : data);
 
-    ec = 0;
+    ExceptionCode ec = 0;
     element->appendChild(text, ec);
     if (ec)
-        return nullptr;
+        return Exception { ec };
 
     if (!value.isNull())
         element->setValue(value);
     if (defaultSelected)
-        element->setAttribute(selectedAttr, emptyAtom);
+        element->setAttributeWithoutSynchronization(selectedAttr, emptyAtom);
     element->setSelected(selected);
 
     return WTFMove(element);
@@ -98,7 +98,7 @@ bool HTMLOptionElement::isFocusable() const
 
 bool HTMLOptionElement::matchesDefaultPseudoClass() const
 {
-    return fastHasAttribute(selectedAttr);
+    return hasAttributeWithoutSynchronization(selectedAttr);
 }
 
 String HTMLOptionElement::text() const
@@ -110,7 +110,7 @@ String HTMLOptionElement::text() const
     return document().displayStringModifiedByEncoding(text).stripWhiteSpace(isHTMLSpace).simplifyWhiteSpace(isHTMLSpace);
 }
 
-void HTMLOptionElement::setText(const String &text, ExceptionCode& ec)
+void HTMLOptionElement::setText(const String &text)
 {
     Ref<HTMLOptionElement> protectedThis(*this);
 
@@ -127,7 +127,7 @@ void HTMLOptionElement::setText(const String &text, ExceptionCode& ec)
         downcast<Text>(*child).setData(text);
     else {
         removeChildren();
-        appendChild(Text::create(document(), text), ec);
+        appendChild(Text::create(document(), text), ASSERT_NO_EXCEPTION);
     }
     
     if (selectIsMenuList && select->selectedIndex() != oldSelectedIndex)
@@ -174,12 +174,12 @@ void HTMLOptionElement::parseAttribute(const QualifiedName& name, const AtomicSt
         bool oldDisabled = m_disabled;
         m_disabled = !value.isNull();
         if (oldDisabled != m_disabled) {
-            setNeedsStyleRecalc();
+            invalidateStyleForSubtree();
             if (renderer() && renderer()->style().hasAppearance())
                 renderer()->theme().stateChanged(*renderer(), ControlStates::EnabledState);
         }
     } else if (name == selectedAttr) {
-        setNeedsStyleRecalc();
+        invalidateStyleForSubtree();
 
         // FIXME: This doesn't match what the HTML specification says.
         // The specification implies that removing the selected attribute or
@@ -194,7 +194,7 @@ void HTMLOptionElement::parseAttribute(const QualifiedName& name, const AtomicSt
 
 String HTMLOptionElement::value() const
 {
-    const AtomicString& value = fastGetAttribute(valueAttr);
+    const AtomicString& value = attributeWithoutSynchronization(valueAttr);
     if (!value.isNull())
         return value;
     return collectOptionInnerText().stripWhiteSpace(isHTMLSpace).simplifyWhiteSpace(isHTMLSpace);
@@ -202,7 +202,7 @@ String HTMLOptionElement::value() const
 
 void HTMLOptionElement::setValue(const String& value)
 {
-    setAttribute(valueAttr, value);
+    setAttributeWithoutSynchronization(valueAttr, value);
 }
 
 bool HTMLOptionElement::selected()
@@ -229,7 +229,7 @@ void HTMLOptionElement::setSelectedState(bool selected)
         return;
 
     m_isSelected = selected;
-    setNeedsStyleRecalc();
+    invalidateStyleForSubtree();
 
     if (HTMLSelectElement* select = ownerSelectElement())
         select->invalidateSelectedItems();
@@ -272,7 +272,7 @@ HTMLSelectElement* HTMLOptionElement::ownerSelectElement() const
 
 String HTMLOptionElement::label() const
 {
-    String label = fastGetAttribute(labelAttr);
+    String label = attributeWithoutSynchronization(labelAttr);
     if (!label.isNull())
         return label.stripWhiteSpace(isHTMLSpace);
     return collectOptionInnerText().stripWhiteSpace(isHTMLSpace).simplifyWhiteSpace(isHTMLSpace);
@@ -280,7 +280,7 @@ String HTMLOptionElement::label() const
 
 void HTMLOptionElement::setLabel(const String& label)
 {
-    setAttribute(labelAttr, label);
+    setAttributeWithoutSynchronization(labelAttr, label);
 }
 
 void HTMLOptionElement::willResetComputedStyle()
@@ -316,6 +316,7 @@ Node::InsertionNotificationRequest HTMLOptionElement::insertedInto(ContainerNode
 {
     if (HTMLSelectElement* select = ownerSelectElement()) {
         select->setRecalcListItems();
+        select->updateValidity();
         // Do not call selected() since calling updateListItemSelectedStates()
         // at this time won't do the right thing. (Why, exactly?)
         // FIXME: Might be better to call this unconditionally, always passing m_isSelected,

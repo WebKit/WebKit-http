@@ -19,33 +19,26 @@
  */
 
 interface HTMLFrameElement : HTMLElement {
-
     [Reflect] attribute DOMString frameBorder;
-    [Reflect] attribute DOMString longDesc;
+    [Reflect, URL] attribute USVString longDesc;
 
-    // FIXME: These should use [TreatNullAs=EmptyString].
-    [Reflect] attribute DOMString marginHeight;
-    [Reflect] attribute DOMString marginWidth;
+    [Reflect, TreatNullAs=EmptyString] attribute DOMString marginHeight;
+    [Reflect, TreatNullAs=EmptyString] attribute DOMString marginWidth;
 
     [Reflect] attribute DOMString name;
     [Reflect] attribute boolean noResize;
     [Reflect] attribute DOMString scrolling;
-    [Reflect, URL] attribute DOMString src;
+    [Reflect, URL] attribute USVString src;
 
-    // Introduced in DOM Level 2:
     [CheckSecurityForNode] readonly attribute Document contentDocument;
 
-    // Extensions
     readonly attribute DOMWindow contentWindow;
 
-#if !defined(LANGUAGE_OBJECTIVE_C) || !LANGUAGE_OBJECTIVE_C
-    [CheckSecurityForNode, RaisesException] SVGDocument getSVGDocument();
-#endif
+    [CheckSecurityForNode, MayThrowException] Document getSVGDocument();
 
+    // FIXME: No other browser has this attribute.
     [CustomSetter] attribute DOMString location;
 
     readonly attribute long width;
     readonly attribute long height;
-
 };
-

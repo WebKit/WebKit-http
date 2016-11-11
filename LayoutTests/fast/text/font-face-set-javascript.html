@@ -16,6 +16,13 @@ var fontFace5 = new FontFace("family5", "url('../../resources/Ahem.otf')", {});
 shouldThrow("new FontFaceSet()");
 shouldBe("new FontFaceSet([]).size", "0");
 shouldBe("new FontFaceSet([fontFace1]).size", "1");
+shouldThrowErrorName("new FontFaceSet(1)", "TypeError");
+shouldThrowErrorName("new FontFaceSet('hello')", "TypeError");
+shouldBe("new FontFaceSet(new Set([fontFace1])).size", "1");
+shouldBe("x = { [Symbol.iterator]: function*() { yield fontFace1; yield fontFace2; } }; new FontFaceSet(x).size", "2");
+shouldThrowErrorName("x = { [Symbol.iterator]: 1 }; new FontFaceSet(x)", "TypeError");
+shouldThrowErrorName("x = { [Symbol.iterator]: null }; new FontFaceSet(x)", "TypeError");
+shouldThrowErrorName("x = { [Symbol.iterator]: function*() { yield fontFace1; throw {name: 'SomeError', toString: () => 'Some error'}; } }; new FontFaceSet(x)", "SomeError");
 
 var fontFaceSet = new FontFaceSet([]);
 shouldBeEqualToString("fontFaceSet.status", "loaded");
@@ -24,7 +31,7 @@ var iterator = fontFaceSet.entries();
 var item = iterator.next();
 shouldBeFalse("item.done");
 shouldBe("item.value.length", "2");
-shouldBe("item.value[0]", "0");
+shouldBe("item.value[0]", "fontFace1");
 shouldBe("item.value[1]", "fontFace1");
 item = iterator.next();
 shouldBeTrue("item.done");
@@ -43,6 +50,15 @@ shouldBeFalse("item.done");
 shouldBe("item.value", "fontFace1");
 item = iterator.next();
 shouldBeTrue("item.done");
+
+var value1, value2, set;
+fontFaceSet.forEach(function(v1, v2, s){
+    value1 = v1;
+    value2 = v2;
+    set = s;
+    shouldBe("fontFaceSet", "set");
+    shouldBe("value1", "value2");
+});
 
 shouldBe("fontFaceSet.add(fontFace2)", "fontFaceSet");
 shouldBe("fontFaceSet.size", "2");
@@ -126,7 +142,7 @@ fontFaceSet.load("garbage").then(function(arg) {
     finishJSTest();
 }).then(function(arg) {
     item = arg;
-    shouldBe("item", "[fontFace3, fontFace4]");
+    shouldBe("item", "[fontFace3]");
     fontFaceSet.add(fontFace4);
     fontFaceSet.load("16px family3");
     return fontFaceSet.ready;
@@ -147,9 +163,15 @@ fontFaceSet.load("garbage").then(function(arg) {
 }).then(function(arg) {
     item = arg;
     shouldBe("item", "fontFaceSet");
-    finishJSTest();
 }, function(arg) {
     testFailed("Ready attribute should never fail");
+}).then(function() {
+    return Object.getOwnPropertyDescriptor(Object.getPrototypeOf(fontFaceSet), 'ready').get.apply(fontFace5);
+}).then(function(arg) {
+    testFailed("Ready attribute should be rejected when used with an object which is not FontFaceSet");
+    finishJSTest();
+}, function(arg) {
+    testPassed("" + arg);
     finishJSTest();
 });
 shouldBeEqualToString("fontFaceSet.status", "loaded");

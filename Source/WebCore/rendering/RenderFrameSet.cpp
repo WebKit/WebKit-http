@@ -67,19 +67,22 @@ RenderFrameSet::GridAxis::GridAxis()
 {
 }
 
-static Color borderStartEdgeColor()
+static const Color& borderStartEdgeColor()
 {
-    return Color(170, 170, 170);
+    static NeverDestroyed<Color> color(170, 170, 170);
+    return color;
 }
 
-static Color borderEndEdgeColor()
+static const Color& borderEndEdgeColor()
 {
-    return Color::black;
+    static NeverDestroyed<Color> color = Color::black;
+    return color;
 }
 
-static Color borderFillColor()
+static const Color& borderFillColor()
 {
-    return Color(208, 208, 208);
+    static NeverDestroyed<Color> color(208, 208, 208);
+    return color;
 }
 
 void RenderFrameSet::paintColumnBorder(const PaintInfo& paintInfo, const IntRect& borderRect)
@@ -531,10 +534,10 @@ void RenderFrameSet::positionFrames()
     }
 
     // all the remaining frames are hidden to avoid ugly spurious unflowed frames
-    for (; child; child = child->nextSiblingBox()) {
-        child->setWidth(0);
-        child->setHeight(0);
-        child->clearNeedsLayout();
+    for (auto* descendant = child; descendant; descendant = downcast<RenderBox>(RenderObjectTraversal::next(*descendant, this))) {
+        descendant->setWidth(0);
+        descendant->setHeight(0);
+        descendant->clearNeedsLayout();
     }
 }
 
@@ -677,7 +680,7 @@ void RenderFrameSet::continueResizing(GridAxis& axis, int position)
     setNeedsLayout();
 }
 
-bool RenderFrameSet::userResize(MouseEvent* evt)
+bool RenderFrameSet::userResize(MouseEvent& event)
 {
     if (flattenFrameSet())
         return false;
@@ -685,8 +688,8 @@ bool RenderFrameSet::userResize(MouseEvent* evt)
     if (!m_isResizing) {
         if (needsLayout())
             return false;
-        if (evt->type() == eventNames().mousedownEvent && evt->button() == LeftButton) {
-            FloatPoint localPos = absoluteToLocal(evt->absoluteLocation(), UseTransforms);
+        if (event.type() == eventNames().mousedownEvent && event.button() == LeftButton) {
+            FloatPoint localPos = absoluteToLocal(event.absoluteLocation(), UseTransforms);
             startResizing(m_cols, localPos.x());
             startResizing(m_rows, localPos.y());
             if (m_cols.m_splitBeingResized != noSplit || m_rows.m_splitBeingResized != noSplit) {
@@ -695,11 +698,11 @@ bool RenderFrameSet::userResize(MouseEvent* evt)
             }
         }
     } else {
-        if (evt->type() == eventNames().mousemoveEvent || (evt->type() == eventNames().mouseupEvent && evt->button() == LeftButton)) {
-            FloatPoint localPos = absoluteToLocal(evt->absoluteLocation(), UseTransforms);
+        if (event.type() == eventNames().mousemoveEvent || (event.type() == eventNames().mouseupEvent && event.button() == LeftButton)) {
+            FloatPoint localPos = absoluteToLocal(event.absoluteLocation(), UseTransforms);
             continueResizing(m_cols, localPos.x());
             continueResizing(m_rows, localPos.y());
-            if (evt->type() == eventNames().mouseupEvent && evt->button() == LeftButton) {
+            if (event.type() == eventNames().mouseupEvent && event.button() == LeftButton) {
                 setIsResizing(false);
                 return true;
             }

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009-2010, 2014-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2009-2010, 2014-2016 Apple Inc. All rights reserved.
  * Copyright (C) 2010 University of Szeged
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,8 +24,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef MacroAssemblerARMv7_h
-#define MacroAssemblerARMv7_h
+#pragma once
 
 #if ENABLE(ASSEMBLER)
 
@@ -42,6 +41,9 @@ class MacroAssemblerARMv7 : public AbstractMacroAssembler<ARMv7Assembler, MacroA
     inline ARMRegisters::FPSingleRegisterID fpTempRegisterAsSingle() { return ARMRegisters::asSingle(fpTempRegister); }
 
 public:
+    static const unsigned numGPRs = 16;
+    static const unsigned numFPRs = 16;
+    
     MacroAssemblerARMv7()
         : m_makeJumpPatchable(false)
     {
@@ -459,6 +461,11 @@ public:
         m_assembler.sub(dest, dest, src);
     }
 
+    void sub32(RegisterID left, RegisterID right, RegisterID dest)
+    {
+        m_assembler.sub(dest, left, right);
+    }
+
     void sub32(TrustedImm32 imm, RegisterID dest)
     {
         ARMThumbImmediate armImm = ARMThumbImmediate::makeUInt12OrEncodedImm(imm.m_value);
@@ -829,13 +836,15 @@ public:
     
     void store8(TrustedImm32 imm, void* address)
     {
-        move(imm, dataTempRegister);
+        TrustedImm32 imm8(static_cast<int8_t>(imm.m_value));
+        move(imm8, dataTempRegister);
         store8(dataTempRegister, address);
     }
     
     void store8(TrustedImm32 imm, Address address)
     {
-        move(imm, dataTempRegister);
+        TrustedImm32 imm8(static_cast<int8_t>(imm.m_value));
+        move(imm8, dataTempRegister);
         store8(dataTempRegister, address);
     }
     
@@ -1345,6 +1354,11 @@ public:
         return ARMv7Assembler::maxJumpReplacementSize();
     }
 
+    static ptrdiff_t patchableJumpSize()
+    {
+        return ARMv7Assembler::patchableJumpSize();
+    }
+
     // Forwards / external control flow operations:
     //
     // This set of jump and conditional branch operations return a Jump
@@ -1476,42 +1490,46 @@ public:
 
     Jump branch8(RelationalCondition cond, RegisterID left, TrustedImm32 right)
     {
-        compare32AndSetFlags(left, right);
+        TrustedImm32 right8 = MacroAssemblerHelpers::mask8OnCondition(*this, cond, right);
+        compare32AndSetFlags(left, right8);
         return Jump(makeBranch(cond));
     }
 
     Jump branch8(RelationalCondition cond, Address left, TrustedImm32 right)
     {
-        ASSERT(!(0xffffff00 & right.m_value));
         // use addressTempRegister incase the branch8 we call uses dataTempRegister. :-/
-        load8(left, addressTempRegister);
-        return branch8(cond, addressTempRegister, right);
+        TrustedImm32 right8 = MacroAssemblerHelpers::mask8OnCondition(*this, cond, right);
+        MacroAssemblerHelpers::load8OnCondition(*this, cond, left, addressTempRegister);
+        return branch8(cond, addressTempRegister, right8);
     }
 
     Jump branch8(RelationalCondition cond, BaseIndex left, TrustedImm32 right)
     {
-        ASSERT(!(0xffffff00 & right.m_value));
         // use addressTempRegister incase the branch32 we call uses dataTempRegister. :-/
-        load8(left, addressTempRegister);
-        return branch32(cond, addressTempRegister, right);
+        TrustedImm32 right8 = MacroAssemblerHelpers::mask8OnCondition(*this, cond, right);
+        MacroAssemblerHelpers::load8OnCondition(*this, cond, left, addressTempRegister);
+        return branch32(cond, addressTempRegister, right8);
     }
     
     Jump branch8(RelationalCondition cond, AbsoluteAddress address, TrustedImm32 right)
     {
         // Use addressTempRegister instead of dataTempRegister, since branch32 uses dataTempRegister.
+        TrustedImm32 right8 = MacroAssemblerHelpers::mask8OnCondition(*this, cond, right);
         move(TrustedImmPtr(address.m_ptr), addressTempRegister);
-        load8(Address(addressTempRegister), addressTempRegister);
-        return branch32(cond, addressTempRegister, right);
+        MacroAssemblerHelpers::load8OnCondition(*this, cond, Address(addressTempRegister), addressTempRegister);
+        return branch32(cond, addressTempRegister, right8);
     }
     
     Jump branchTest32(ResultCondition cond, RegisterID reg, RegisterID mask)
     {
+        ASSERT(cond == Zero || cond == NonZero || cond == Signed || cond == PositiveOrZero);
         m_assembler.tst(reg, mask);
         return Jump(makeBranch(cond));
     }
 
     Jump branchTest32(ResultCondition cond, RegisterID reg, TrustedImm32 mask = TrustedImm32(-1))
     {
+        ASSERT(cond == Zero || cond == NonZero || cond == Signed || cond == PositiveOrZero);
         test32(reg, mask);
         return Jump(makeBranch(cond));
     }
@@ -1533,23 +1551,26 @@ public:
     Jump branchTest8(ResultCondition cond, BaseIndex address, TrustedImm32 mask = TrustedImm32(-1))
     {
         // use addressTempRegister incase the branchTest8 we call uses dataTempRegister. :-/
-        load8(address, addressTempRegister);
-        return branchTest32(cond, addressTempRegister, mask);
+        TrustedImm32 mask8 = MacroAssemblerHelpers::mask8OnCondition(*this, cond, mask);
+        MacroAssemblerHelpers::load8OnCondition(*this, cond, address, addressTempRegister);
+        return branchTest32(cond, addressTempRegister, mask8);
     }
 
     Jump branchTest8(ResultCondition cond, Address address, TrustedImm32 mask = TrustedImm32(-1))
     {
         // use addressTempRegister incase the branchTest8 we call uses dataTempRegister. :-/
-        load8(address, addressTempRegister);
-        return branchTest32(cond, addressTempRegister, mask);
+        TrustedImm32 mask8 = MacroAssemblerHelpers::mask8OnCondition(*this, cond, mask);
+        MacroAssemblerHelpers::load8OnCondition(*this, cond, address, addressTempRegister);
+        return branchTest32(cond, addressTempRegister, mask8);
     }
 
     Jump branchTest8(ResultCondition cond, AbsoluteAddress address, TrustedImm32 mask = TrustedImm32(-1))
     {
         // use addressTempRegister incase the branchTest8 we call uses dataTempRegister. :-/
+        TrustedImm32 mask8 = MacroAssemblerHelpers::mask8OnCondition(*this, cond, mask);
         move(TrustedImmPtr(address.m_ptr), addressTempRegister);
-        load8(Address(addressTempRegister), addressTempRegister);
-        return branchTest32(cond, addressTempRegister, mask);
+        MacroAssemblerHelpers::load8OnCondition(*this, cond, Address(addressTempRegister), addressTempRegister);
+        return branchTest32(cond, addressTempRegister, mask8);
     }
 
     void jump(RegisterID target)
@@ -1776,8 +1797,9 @@ public:
 
     void compare8(RelationalCondition cond, Address left, TrustedImm32 right, RegisterID dest)
     {
-        load8(left, addressTempRegister);
-        compare32(cond, addressTempRegister, right, dest);
+        TrustedImm32 right8 = MacroAssemblerHelpers::mask8OnCondition(*this, cond, right);
+        MacroAssemblerHelpers::load8OnCondition(*this, cond, left, addressTempRegister);
+        compare32(cond, addressTempRegister, right8, dest);
     }
 
     void compare32(RelationalCondition cond, RegisterID left, TrustedImm32 right, RegisterID dest)
@@ -1803,8 +1825,9 @@ public:
 
     void test8(ResultCondition cond, Address address, TrustedImm32 mask, RegisterID dest)
     {
-        load8(address, dataTempRegister);
-        test32(dataTempRegister, mask);
+        TrustedImm32 mask8 = MacroAssemblerHelpers::mask8OnCondition(*this, cond, mask);
+        MacroAssemblerHelpers::load8OnCondition(*this, cond, address, dataTempRegister);
+        test32(dataTempRegister, mask8);
         m_assembler.it(armV7Condition(cond), false);
         m_assembler.mov(dest, ARMThumbImmediate::makeUInt16(1));
         m_assembler.mov(dest, ARMThumbImmediate::makeUInt16(0));
@@ -2109,5 +2132,3 @@ private:
 } // namespace JSC
 
 #endif // ENABLE(ASSEMBLER)
-
-#endif // MacroAssemblerARMv7_h

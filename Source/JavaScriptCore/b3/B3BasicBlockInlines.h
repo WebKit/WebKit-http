@@ -23,14 +23,13 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef B3BasicBlockInlines_h
-#define B3BasicBlockInlines_h
+#pragma once
 
 #if ENABLE(B3_JIT)
 
 #include "B3BasicBlock.h"
-#include "B3ControlValue.h"
 #include "B3ProcedureInlines.h"
+#include "B3Value.h"
 
 namespace JSC { namespace B3 {
 
@@ -58,54 +57,42 @@ ValueType* BasicBlock::replaceLastWithNew(Procedure& procedure, Arguments... arg
     return result;
 }
 
-inline unsigned BasicBlock::numSuccessors() const
+inline const FrequentedBlock& BasicBlock::taken() const
 {
-    return last()->as<ControlValue>()->numSuccessors();
+    ASSERT(last()->opcode() == Jump || last()->opcode() == Branch);
+    return m_successors[0];
 }
 
-inline const FrequentedBlock& BasicBlock::successor(unsigned index) const
+inline FrequentedBlock& BasicBlock::taken()
 {
-    return last()->as<ControlValue>()->successor(index);
+    ASSERT(last()->opcode() == Jump || last()->opcode() == Branch);
+    return m_successors[0];
 }
 
-inline FrequentedBlock& BasicBlock::successor(unsigned index)
+inline const FrequentedBlock& BasicBlock::notTaken() const
 {
-    return last()->as<ControlValue>()->successor(index);
+    ASSERT(last()->opcode() == Branch);
+    return m_successors[1];
 }
 
-inline const BasicBlock::SuccessorList& BasicBlock::successors() const
+inline FrequentedBlock& BasicBlock::notTaken()
 {
-    return last()->as<ControlValue>()->successors();
+    ASSERT(last()->opcode() == Branch);
+    return m_successors[1];
 }
 
-inline BasicBlock::SuccessorList& BasicBlock::successors()
+inline const FrequentedBlock& BasicBlock::fallThrough() const
 {
-    return last()->as<ControlValue>()->successors();
+    ASSERT(last()->opcode() == Branch || last()->opcode() == Switch);
+    return m_successors.last();
 }
 
-inline BasicBlock* BasicBlock::successorBlock(unsigned index) const
+inline FrequentedBlock& BasicBlock::fallThrough()
 {
-    return successor(index).block();
-}
-
-inline BasicBlock*& BasicBlock::successorBlock(unsigned index)
-{
-    return successor(index).block();
-}
-
-inline SuccessorCollection<BasicBlock, BasicBlock::SuccessorList> BasicBlock::successorBlocks()
-{
-    return SuccessorCollection<BasicBlock, SuccessorList>(successors());
-}
-
-inline SuccessorCollection<const BasicBlock, const BasicBlock::SuccessorList> BasicBlock::successorBlocks() const
-{
-    return SuccessorCollection<const BasicBlock, const SuccessorList>(successors());
+    ASSERT(last()->opcode() == Branch || last()->opcode() == Switch);
+    return m_successors.last();
 }
 
 } } // namespace JSC::B3
 
 #endif // ENABLE(B3_JIT)
-
-#endif // B3BasicBlockInlines_h
-

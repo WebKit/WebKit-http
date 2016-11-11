@@ -41,16 +41,17 @@ class EarlyWarningSystemTask(PatchAnalysisTask):
     def validate(self):
         self._patch = self._delegate.refetch_patch(self._patch)
         if self._patch.is_obsolete():
+            self.error = "Patch is obsolete."
             return False
         if self._patch.bug().is_closed():
+            self.error = "Bug is already closed."
             return False
         if self._patch.review() == "-":
+            self.error = "Patch is marked r-."
             return False
         return True
 
     def run(self):
-        if not self.validate():
-            raise PatchIsNotValid(self._patch)
         if not self._clean():
             return False
         if not self._update():

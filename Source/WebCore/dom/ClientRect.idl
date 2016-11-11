@@ -34,5 +34,6 @@
     readonly attribute unrestricted float left;
     readonly attribute unrestricted float width;
     readonly attribute unrestricted float height;
-};
 
+    serializer = { attribute };
+};

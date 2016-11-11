@@ -36,6 +36,8 @@
 
 namespace WebKit {
 
+static WebPaymentCoordinatorProxy* activePaymentCoordinatorProxy;
+
 WebPaymentCoordinatorProxy::WebPaymentCoordinatorProxy(WebPageProxy& webPageProxy)
     : m_webPageProxy(webPageProxy)
     , m_weakPtrFactory(this)
@@ -47,6 +49,9 @@ WebPaymentCoordinatorProxy::WebPaymentCoordinatorProxy(WebPageProxy& webPageProx
 
 WebPaymentCoordinatorProxy::~WebPaymentCoordinatorProxy()
 {
+    if (activePaymentCoordinatorProxy == this)
+        activePaymentCoordinatorProxy = nullptr;
+
     if (m_state != State::Idle)
         hidePaymentUI();
 
@@ -70,10 +75,29 @@ void WebPaymentCoordinatorProxy::canMakePaymentsWithActiveCard(const String& mer
     });
 }
 
-void WebPaymentCoordinatorProxy::showPaymentUI(const String& originatingURLString, const Vector<String>& linkIconURLStrings, const WebCore::PaymentRequest& paymentRequest)
+void WebPaymentCoordinatorProxy::openPaymentSetup(const String& merchantIdentifier, const String& domainName, uint64_t requestID)
+{
+    auto weakThis = m_weakPtrFactory.createWeakPtr();
+    platformOpenPaymentSetup(merchantIdentifier, domainName, [weakThis, requestID](bool result) {
+        auto paymentCoordinatorProxy = weakThis.get();
+        if (!paymentCoordinatorProxy)
+            return;
+
+        paymentCoordinatorProxy->m_webPageProxy.send(Messages::WebPaymentCoordinator::OpenPaymentSetupReply(requestID, result));
+    });
+}
+
+void WebPaymentCoordinatorProxy::showPaymentUI(const String& originatingURLString, const Vector<String>& linkIconURLStrings, const WebCore::PaymentRequest& paymentRequest, bool& result)
 {
     // FIXME: Make this a message check.
     ASSERT(canBegin());
+
+    if (activePaymentCoordinatorProxy) {
+        activePaymentCoordinatorProxy->hidePaymentUI();
+        activePaymentCoordinatorProxy->didCancelPayment();
+    }
+
+    activePaymentCoordinatorProxy = this;
 
     m_state = State::Activating;
 
@@ -92,6 +116,8 @@ void WebPaymentCoordinatorProxy::showPaymentUI(const String& originatingURLStrin
 
         m_state = State::Active;
     });
+
+    result = true;
 }
 
 static bool isValidEnum(WebCore::PaymentAuthorizationStatus status)
@@ -185,6 +211,11 @@ void WebPaymentCoordinatorProxy::completePaymentSession(uint32_t opaqueStatus)
     RELEASE_ASSERT(isValidEnum(status));
 
     platformCompletePaymentSession(status);
+
+    if (!WebCore::isFinalStateStatus(status)) {
+        m_state = State::Active;
+        return;
+    }
 
     didReachFinalState();
 }
@@ -315,6 +346,9 @@ void WebPaymentCoordinatorProxy::didReachFinalState()
 {
     m_state = State::Idle;
     m_merchantValidationState = MerchantValidationState::Idle;
+
+    ASSERT(activePaymentCoordinatorProxy == this);
+    activePaymentCoordinatorProxy = nullptr;
 }
 
 }

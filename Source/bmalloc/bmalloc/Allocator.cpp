@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014, 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -64,12 +64,27 @@ void* Allocator::tryAllocate(size_t size)
 
 void* Allocator::allocate(size_t alignment, size_t size)
 {
+    bool crashOnFailure = true;
+    return allocateImpl(alignment, size, crashOnFailure);
+}
+
+void* Allocator::tryAllocate(size_t alignment, size_t size)
+{
+    bool crashOnFailure = false;
+    return allocateImpl(alignment, size, crashOnFailure);
+}
+
+void* Allocator::allocateImpl(size_t alignment, size_t size, bool crashOnFailure)
+{
     BASSERT(isPowerOfTwo(alignment));
 
     if (!m_isBmallocEnabled) {
         void* result = nullptr;
-        if (posix_memalign(&result, alignment, size))
+        if (posix_memalign(&result, alignment, size)) {
+            if (crashOnFailure)
+                BCRASH();
             return nullptr;
+        }
         return result;
     }
 
@@ -80,13 +95,20 @@ void* Allocator::allocate(size_t alignment, size_t size)
         return allocate(roundUpToMultipleOf(alignment, size));
 
     std::lock_guard<StaticMutex> lock(PerProcess<Heap>::mutex());
-    return PerProcess<Heap>::getFastCase()->allocateLarge(lock, alignment, size);
+    Heap* heap = PerProcess<Heap>::getFastCase();
+    if (crashOnFailure)
+        return heap->allocateLarge(lock, alignment, size);
+    return heap->tryAllocateLarge(lock, alignment, size);
 }
 
 void* Allocator::reallocate(void* object, size_t newSize)
 {
-    if (!m_isBmallocEnabled)
-        return realloc(object, newSize);
+    if (!m_isBmallocEnabled) {
+        void* result = realloc(object, newSize);
+        if (!result)
+            BCRASH();
+        return result;
+    }
 
     size_t oldSize = 0;
     switch (objectType(object)) {
@@ -171,8 +193,12 @@ NO_INLINE void* Allocator::allocateLogSizeClass(size_t size)
 
 void* Allocator::allocateSlowCase(size_t size)
 {
-    if (!m_isBmallocEnabled)
-        return malloc(size);
+    if (!m_isBmallocEnabled) {
+        void* result = malloc(size);
+        if (!result)
+            BCRASH();
+        return result;
+    }
 
     if (size <= maskSizeClassMax) {
         size_t sizeClass = bmalloc::maskSizeClass(size);

@@ -136,16 +136,24 @@ void printInternal(PrintStream& out, LocationKind kind)
         out.print("TypedArrayByteOffsetLoc");
         return;
         
-    case VarInjectionWatchpointLoc:
-        out.print("VarInjectionWatchpointLoc");
-        return;
-        
     case StructureLoc:
         out.print("StructureLoc");
         return;
 
     case RegExpObjectLastIndexLoc:
         out.print("RegExpObjectLastIndexLoc");
+        return;
+    case MapBucketLoc:
+        out.print("MapBucketLoc");
+        return;
+    case JSMapGetLoc:
+        out.print("JSMapGetLoc");
+        return;
+    case MapHasLoc:
+        out.print("MapHasLoc");
+        return;
+    case DOMStateLoc:
+        out.print("DOMStateLoc");
         return;
     }
     

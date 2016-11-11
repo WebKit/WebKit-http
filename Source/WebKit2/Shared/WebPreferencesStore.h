@@ -26,8 +26,8 @@
 #ifndef WebPreferencesStore_h
 #define WebPreferencesStore_h
 
-#include "ArgumentDecoder.h"
-#include "ArgumentEncoder.h"
+#include "Decoder.h"
+#include "Encoder.h"
 #include <wtf/HashMap.h>
 #include <wtf/text/StringHash.h>
 #include <wtf/text/WTFString.h>
@@ -37,8 +37,8 @@ namespace WebKit {
 struct WebPreferencesStore {
     WebPreferencesStore();
 
-    void encode(IPC::ArgumentEncoder&) const;
-    static bool decode(IPC::ArgumentDecoder&, WebPreferencesStore&);
+    void encode(IPC::Encoder&) const;
+    static bool decode(IPC::Decoder&, WebPreferencesStore&);
 
     // NOTE: The getters in this class have non-standard names to aid in the use of the preference macros.
 
@@ -72,8 +72,8 @@ struct WebPreferencesStore {
             Double,
         };
 
-        void encode(IPC::ArgumentEncoder&) const;
-        static bool decode(IPC::ArgumentDecoder&, Value&);
+        void encode(IPC::Encoder&) const;
+        static bool decode(IPC::Decoder&, Value&);
 
         explicit Value() : m_type(Type::None) { }
         explicit Value(const String& value) : m_type(Type::String), m_string(value) { }

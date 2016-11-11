@@ -39,6 +39,8 @@ namespace WebCore {
 
 DocumentRuleSets::DocumentRuleSets()
 {
+    m_authorStyle = std::make_unique<RuleSet>();
+    m_authorStyle->disableAutoShrinkToFit();
 }
 
 DocumentRuleSets::~DocumentRuleSets()
@@ -78,6 +80,7 @@ static std::unique_ptr<RuleSet> makeRuleSet(const Vector<RuleFeature>& rules)
 
 void DocumentRuleSets::resetAuthorStyle()
 {
+    m_isAuthorStyleDefined = true;
     m_authorStyle = std::make_unique<RuleSet>();
     m_authorStyle->disableAutoShrinkToFit();
 }
@@ -117,6 +120,8 @@ void DocumentRuleSets::collectFeatures() const
 
     m_ancestorClassRuleSets.clear();
     m_ancestorAttributeRuleSetsForHTML.clear();
+
+    m_features.shrinkToFit();
 }
 
 RuleSet* DocumentRuleSets::ancestorClassRules(AtomicStringImpl* className) const

@@ -45,7 +45,6 @@
 #include "PageCache.h"
 #include "RuntimeApplicationChecks.h"
 #include "StorageMap.h"
-#include "TextAutosizer.h"
 #include <limits>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/StdLibExtras.h>
@@ -83,7 +82,6 @@ bool Settings::gAVFoundationNSURLSessionEnabled = true;
 
 #if PLATFORM(COCOA)
 bool Settings::gQTKitEnabled = false;
-bool Settings::gCookieStoragePartitioningEnabled = false;
 #endif
 
 bool Settings::gMockScrollbarsEnabled = false;
@@ -92,6 +90,7 @@ bool Settings::gMockScrollAnimatorEnabled = false;
 
 #if ENABLE(MEDIA_STREAM)
 bool Settings::gMockCaptureDevicesEnabled = false;
+bool Settings::gMediaCaptureRequiresSecureConnection = true;
 #endif
 
 #if PLATFORM(WIN)
@@ -133,6 +132,12 @@ static EditingBehaviorType editingBehaviorTypeForPlatform()
     ;
 }
 
+#if PLATFORM(COCOA)
+static const bool defaultYouTubeFlashPluginReplacementEnabled = true;
+#else
+static const bool defaultYouTubeFlashPluginReplacementEnabled = false;
+#endif
+
 #if PLATFORM(IOS)
 static const bool defaultFixedPositionCreatesStackingContext = true;
 static const bool defaultFixedBackgroundsPaintRelativeToDocument = true;
@@ -146,6 +151,7 @@ static const bool defaultShouldRespectImageOrientation = true;
 static const bool defaultImageSubsamplingEnabled = true;
 static const bool defaultScrollingTreeIncludesFrames = true;
 static const bool defaultMediaControlsScaleWithPageZoom = true;
+static const bool defaultQuickTimePluginReplacementEnabled = true;
 #else
 static const bool defaultFixedPositionCreatesStackingContext = false;
 static const bool defaultFixedBackgroundsPaintRelativeToDocument = false;
@@ -159,7 +165,10 @@ static const bool defaultShouldRespectImageOrientation = false;
 static const bool defaultImageSubsamplingEnabled = false;
 static const bool defaultScrollingTreeIncludesFrames = false;
 static const bool defaultMediaControlsScaleWithPageZoom = true;
+static const bool defaultQuickTimePluginReplacementEnabled = false;
 #endif
+
+static const bool defaultRequiresUserGestureToLoadVideo = true;
 
 static const bool defaultAllowsPictureInPictureMediaPlayback = true;
 
@@ -184,9 +193,6 @@ Settings::Settings(Page* page)
     , m_storageBlockingPolicy(SecurityOrigin::AllowAllStorage)
     , m_layoutInterval(layoutScheduleThreshold)
     , m_minimumDOMTimerInterval(DOMTimer::defaultMinimumInterval())
-#if ENABLE(TEXT_AUTOSIZING)
-    , m_textAutosizingFontScaleFactor(1)
-#endif
     SETTINGS_INITIALIZER_LIST
     , m_isJavaEnabled(false)
     , m_isJavaEnabledForLocalFiles(true)
@@ -321,22 +327,6 @@ void Settings::setPictographFontFamily(const AtomicString& family, UScriptCode s
     if (changes)
         invalidateAfterGenericFamilyChange(m_page);
 }
-
-#if ENABLE(TEXT_AUTOSIZING)
-void Settings::setTextAutosizingFontScaleFactor(float fontScaleFactor)
-{
-    m_textAutosizingFontScaleFactor = fontScaleFactor;
-
-    if (!m_page)
-        return;
-
-    // FIXME: I wonder if this needs to traverse frames like in WebViewImpl::resize, or whether there is only one document per Settings instance?
-    for (Frame* frame = m_page->mainFrame(); frame; frame = frame->tree().traverseNext())
-        frame->document()->textAutosizer()->recalculateMultipliers();
-
-    m_page->setNeedsRecalcStyleInAllFrames();
-}
-#endif
 
 float Settings::defaultMinimumZoomFontSize()
 {
@@ -592,11 +582,6 @@ void Settings::setQTKitEnabled(bool enabled)
     gQTKitEnabled = enabled;
     HTMLMediaElement::resetMediaEngines();
 }
-    
-void Settings::setCookieStoragePartitioningEnabled(bool enabled)
-{
-    gCookieStoragePartitioningEnabled = enabled;
-}
 #endif
 
 #if ENABLE(MEDIA_STREAM)
@@ -609,6 +594,16 @@ void Settings::setMockCaptureDevicesEnabled(bool enabled)
 {
     gMockCaptureDevicesEnabled = enabled;
     MockRealtimeMediaSourceCenter::setMockRealtimeMediaSourceCenterEnabled(enabled);
+}
+
+bool Settings::mediaCaptureRequiresSecureConnection() const
+{
+    return gMediaCaptureRequiresSecureConnection;
+}
+
+void Settings::setMediaCaptureRequiresSecureConnection(bool mediaCaptureRequiresSecureConnection)
+{
+    gMediaCaptureRequiresSecureConnection = mediaCaptureRequiresSecureConnection;
 }
 #endif
 

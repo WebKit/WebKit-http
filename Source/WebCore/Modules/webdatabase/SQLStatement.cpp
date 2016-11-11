@@ -40,7 +40,7 @@
 #include <wtf/text/CString.h>
 
 
-// The Life-Cycle of a SQLStatement i.e. Who's keeping the SQLStatement alive? 
+// The Life-Cycle of a SQLStatement i.e. Who's keeping the SQLStatement alive?
 // ==========================================================================
 // The RefPtr chain goes something like this:
 //
@@ -74,11 +74,11 @@
 
 namespace WebCore {
 
-SQLStatement::SQLStatement(Database& database, const String& statement, const Vector<SQLValue>& arguments, PassRefPtr<SQLStatementCallback> callback, PassRefPtr<SQLStatementErrorCallback> errorCallback, int permissions)
+SQLStatement::SQLStatement(Database& database, const String& statement, const Vector<SQLValue>& arguments, RefPtr<SQLStatementCallback>&& callback, RefPtr<SQLStatementErrorCallback>&& errorCallback, int permissions)
     : m_statement(statement.isolatedCopy())
     , m_arguments(arguments)
-    , m_statementCallbackWrapper(callback, database.scriptExecutionContext())
-    , m_statementErrorCallbackWrapper(errorCallback, database.scriptExecutionContext())
+    , m_statementCallbackWrapper(WTFMove(callback), database.scriptExecutionContext())
+    , m_statementErrorCallbackWrapper(WTFMove(errorCallback), database.scriptExecutionContext())
     , m_permissions(permissions)
 {
 }
@@ -87,14 +87,14 @@ SQLStatement::~SQLStatement()
 {
 }
 
-PassRefPtr<SQLError> SQLStatement::sqlError() const
+SQLError* SQLStatement::sqlError() const
 {
-    return m_error;
+    return m_error.get();
 }
 
-PassRefPtr<SQLResultSet> SQLStatement::sqlResultSet() const
+SQLResultSet* SQLStatement::sqlResultSet() const
 {
-    return m_resultSet;
+    return m_resultSet.get();
 }
 
 bool SQLStatement::execute(Database& db)
@@ -154,14 +154,14 @@ bool SQLStatement::execute(Database& db)
     switch (result) {
     case SQLITE_ROW: {
         int columnCount = statement.columnCount();
-        SQLResultSetRowList* rows = resultSet->rows();
+        auto& rows = resultSet->rows();
 
         for (int i = 0; i < columnCount; i++)
-            rows->addColumn(statement.getColumnName(i));
+            rows.addColumn(statement.getColumnName(i));
 
         do {
             for (int i = 0; i < columnCount; i++)
-                rows->addResult(statement.getColumnValue(i));
+                rows.addResult(statement.getColumnValue(i));
 
             result = statement.step();
         } while (result == SQLITE_ROW);

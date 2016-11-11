@@ -28,10 +28,10 @@
 
 #include "MessageReceiver.h"
 #include "NetworkProcessSupplement.h"
-#include "NetworkSession.h"
 #include "WebProcessSupplement.h"
 #include <WebCore/AuthenticationChallenge.h>
 #include <wtf/Forward.h>
+#include <wtf/Function.h>
 #include <wtf/HashMap.h>
 
 namespace WebCore {
@@ -48,6 +48,14 @@ class DownloadID;
 class PendingDownload;
 class WebFrame;
 
+enum class AuthenticationChallengeDisposition {
+    UseCredential,
+    PerformDefaultHandling,
+    Cancel,
+    RejectProtectionSpace
+};
+typedef Function<void(AuthenticationChallengeDisposition, const WebCore::Credential&)> ChallengeCompletionHandler;
+
 class AuthenticationManager : public WebProcessSupplement, public NetworkProcessSupplement, public IPC::MessageReceiver {
     WTF_MAKE_NONCOPYABLE(AuthenticationManager);
 public:
@@ -58,7 +66,9 @@ public:
 #if USE(NETWORK_SESSION)
     void didReceiveAuthenticationChallenge(uint64_t pageID, uint64_t frameID, const WebCore::AuthenticationChallenge&, ChallengeCompletionHandler&&);
     void didReceiveAuthenticationChallenge(PendingDownload&, const WebCore::AuthenticationChallenge&, ChallengeCompletionHandler&&);
+#if USE(PROTECTION_SPACE_AUTH_CALLBACK)
     void continueCanAuthenticateAgainstProtectionSpace(DownloadID, bool canAuthenticate);
+#endif
 #endif
     // Called for resources in the WebProcess (NetworkProcess disabled)
     void didReceiveAuthenticationChallenge(WebFrame*, const WebCore::AuthenticationChallenge&);
@@ -92,7 +102,7 @@ private:
     };
     
     // IPC::MessageReceiver
-    void didReceiveMessage(IPC::Connection&, IPC::MessageDecoder&) override;
+    void didReceiveMessage(IPC::Connection&, IPC::Decoder&) override;
 
     bool tryUseCertificateInfoForChallenge(const WebCore::AuthenticationChallenge&, const WebCore::CertificateInfo&, const ChallengeCompletionHandler&);
 

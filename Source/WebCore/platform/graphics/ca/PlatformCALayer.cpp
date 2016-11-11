@@ -26,13 +26,19 @@
 #include "config.h"
 #include "PlatformCALayer.h"
 
+#if USE(CA)
+
+#include <CoreFoundation/CoreFoundation.h>
+#include <CoreText/CoreText.h>
 #include "GraphicsContextCG.h"
 #include "LayerPool.h"
 #include "PlatformCALayerClient.h"
 #include "TextStream.h"
 #include <wtf/StringExtras.h>
 
-#if USE(CA)
+#if PLATFORM(WIN)
+#include "CoreTextSPIWin.h"
+#endif
 
 namespace WebCore {
 
@@ -121,12 +127,16 @@ void PlatformCALayer::flipContext(CGContextRef context, CGFloat height)
 // This function is needed to work around a bug in Windows CG <rdar://problem/22703470>
 void PlatformCALayer::drawTextAtPoint(CGContextRef context, CGFloat x, CGFloat y, CGSize scale, CGFloat fontSize, const char* text, size_t length) const
 {
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-    CGContextSetTextMatrix(context, CGAffineTransformMakeScale(scale.width, scale.height));
-    CGContextSelectFont(context, "Helvetica", fontSize, kCGEncodingMacRoman);
-    CGContextShowTextAtPoint(context, x, y, text, length);
-#pragma clang diagnostic pop
+    auto matrix = CGAffineTransformMakeScale(scale.width, scale.height);
+    auto font = adoptCF(CTFontCreateWithName(CFSTR("Helvetica"), fontSize, &matrix));
+    CFTypeRef keys[] = { kCTFontAttributeName, kCTForegroundColorFromContextAttributeName };
+    CFTypeRef values[] = { font.get(), kCFBooleanTrue };
+    auto attributes = adoptCF(CFDictionaryCreate(kCFAllocatorDefault, keys, values, WTF_ARRAY_LENGTH(keys), &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks));
+    auto string = adoptCF(CFStringCreateWithBytesNoCopy(kCFAllocatorDefault, reinterpret_cast<const UInt8*>(text), length, kCFStringEncodingUTF8, false, kCFAllocatorNull));
+    auto attributedString = adoptCF(CFAttributedStringCreate(kCFAllocatorDefault, string.get(), attributes.get()));
+    auto line = adoptCF(CTLineCreateWithAttributedString(attributedString.get()));
+    CGContextSetTextPosition(context, x, y);
+    CTLineDraw(line.get(), context);
 }
 
 PassRefPtr<PlatformCALayer> PlatformCALayer::createCompatibleLayerOrTakeFromPool(PlatformCALayer::LayerType layerType, PlatformCALayerClient* client, IntSize size)

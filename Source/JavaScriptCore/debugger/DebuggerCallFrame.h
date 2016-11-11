@@ -26,15 +26,13 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
  
-#ifndef DebuggerCallFrame_h
-#define DebuggerCallFrame_h
+#pragma once
 
 #include "CallFrame.h"
 #include "DebuggerPrimitives.h"
 #include "ShadowChicken.h"
 #include "Strong.h"
 #include <wtf/NakedPtr.h>
-#include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
 #include <wtf/text/TextPosition.h>
 
@@ -90,5 +88,3 @@ private:
 };
 
 } // namespace JSC
-
-#endif // DebuggerCallFrame_h

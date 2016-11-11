@@ -52,7 +52,8 @@ private:
 };
 
 // Custom StylePropertyShorthand functions.
-StylePropertyShorthand animationShorthandForParsing(CSSPropertyID);
+StylePropertyShorthand animationShorthandForParsing();
+StylePropertyShorthand transitionShorthandForParsing();
 StylePropertyShorthand borderAbridgedShorthand();
 
 // Returns empty value if the property is not a shorthand.

@@ -37,10 +37,12 @@ WebInspector.CSSStyleDeclarationTextEditor = class CSSStyleDeclarationTextEditor
 
         this._mouseDownCursorPosition = null;
 
+        this._propertyVisibilityMode = WebInspector.CSSStyleDeclarationTextEditor.PropertyVisibilityMode.ShowAll;
         this._showsImplicitProperties = true;
         this._alwaysShowPropertyNames = {};
         this._filterResultPropertyNames = null;
         this._sortProperties = false;
+        this._hasActiveInlineSwatchEditor = false;
 
         this._linePrefixWhitespace = "";
 
@@ -86,25 +88,18 @@ WebInspector.CSSStyleDeclarationTextEditor = class CSSStyleDeclarationTextEditor
             this._codeMirror.on("focus", this._editorFocused.bind(this));
 
         this.style = style;
+        this._shownProperties = [];
     }
 
     // Public
 
-    get delegate()
-    {
-        return this._delegate;
-    }
-
+    get delegate() { return this._delegate; }
     set delegate(delegate)
     {
         this._delegate = delegate || null;
     }
 
-    get style()
-    {
-        return this._style;
-    }
-
+    get style() { return this._style; }
     set style(style)
     {
         if (this._style === style)
@@ -129,13 +124,14 @@ WebInspector.CSSStyleDeclarationTextEditor = class CSSStyleDeclarationTextEditor
         this._resetContent();
     }
 
+    get shownProperties() { return this._shownProperties; }
+
     get focused()
     {
         return this._codeMirror.getWrapperElement().classList.contains("CodeMirror-focused");
     }
 
-    get alwaysShowPropertyNames()
-    {
+    get alwaysShowPropertyNames() {
         return Object.keys(this._alwaysShowPropertyNames);
     }
 
@@ -146,11 +142,18 @@ WebInspector.CSSStyleDeclarationTextEditor = class CSSStyleDeclarationTextEditor
         this._resetContent();
     }
 
-    get showsImplicitProperties()
+    get propertyVisibilityMode() { return this._propertyVisibilityMode; }
+    set propertyVisibilityMode(propertyVisibilityMode)
     {
-        return this._showsImplicitProperties;
+        if (this._propertyVisibilityMode === propertyVisibilityMode)
+            return;
+
+        this._propertyVisibilityMode = propertyVisibilityMode;
+
+        this._resetContent();
     }
 
+    get showsImplicitProperties() { return this._showsImplicitProperties; }
     set showsImplicitProperties(showsImplicitProperties)
     {
         if (this._showsImplicitProperties === showsImplicitProperties)
@@ -161,11 +164,7 @@ WebInspector.CSSStyleDeclarationTextEditor = class CSSStyleDeclarationTextEditor
         this._resetContent();
     }
 
-    get sortProperties()
-    {
-        return this._sortProperties;
-    }
-
+    get sortProperties() { return this._sortProperties; }
     set sortProperties(sortProperties)
     {
         if (this._sortProperties === sortProperties)
@@ -270,7 +269,7 @@ WebInspector.CSSStyleDeclarationTextEditor = class CSSStyleDeclarationTextEditor
         for (var property of propertiesList) {
             if (property.__filterResultClassName) {
                 property.__filterResultClassName = null;
-                this._updateTextMarkerForPropertyIfNeeded(property)
+                this._updateTextMarkerForPropertyIfNeeded(property);
             }
         }
     }
@@ -567,7 +566,7 @@ WebInspector.CSSStyleDeclarationTextEditor = class CSSStyleDeclarationTextEditor
                     if (trimmedPreviousLine.includes(";"))
                         previousHead = trimmedPreviousLine.lastIndexOf(";");
                 }
-                
+
                 codeMirror.setSelection({line: cursor.line, ch: previousAnchor}, {line: cursor.line, ch: previousHead});
                 return;
             }
@@ -773,6 +772,8 @@ WebInspector.CSSStyleDeclarationTextEditor = class CSSStyleDeclarationTextEditor
 
     _updateTextMarkers(nonatomic)
     {
+        console.assert(!this._hasActiveInlineSwatchEditor, "We should never be recreating markers when we an active inline swatch editor.");
+
         function update()
         {
             this._clearTextMarkers(true);
@@ -856,6 +857,8 @@ WebInspector.CSSStyleDeclarationTextEditor = class CSSStyleDeclarationTextEditor
         function createSwatch(swatch, marker, valueObject, valueString)
         {
             swatch.addEventListener(WebInspector.InlineSwatch.Event.ValueChanged, this._inlineSwatchValueChanged, this);
+            swatch.addEventListener(WebInspector.InlineSwatch.Event.Activated, this._inlineSwatchActivated, this);
+            swatch.addEventListener(WebInspector.InlineSwatch.Event.Deactivated, this._inlineSwatchDeactivated, this);
 
             let codeMirrorTextMarker = marker.codeMirrorTextMarker;
             let codeMirrorTextMarkerRange = codeMirrorTextMarker.find();
@@ -885,6 +888,12 @@ WebInspector.CSSStyleDeclarationTextEditor = class CSSStyleDeclarationTextEditor
             createCodeMirrorCubicBezierTextMarkers(this._codeMirror, range, (marker, bezier, bezierString) => {
                 let swatch = new WebInspector.InlineSwatch(WebInspector.InlineSwatch.Type.Bezier, bezier, this._codeMirror.getOption("readOnly"));
                 createSwatch.call(this, swatch, marker, bezier, bezierString);
+            });
+
+            // Look for spring strings and add swatches in front of them.
+            createCodeMirrorSpringTextMarkers(this._codeMirror, range, (marker, spring, springString) => {
+                let swatch = new WebInspector.InlineSwatch(WebInspector.InlineSwatch.Type.Spring, spring, this._codeMirror.getOption("readOnly"));
+                createSwatch.call(this, swatch, marker, spring, springString);
             });
         }
 
@@ -1182,24 +1191,57 @@ WebInspector.CSSStyleDeclarationTextEditor = class CSSStyleDeclarationTextEditor
 
     _iterateOverProperties(onlyVisibleProperties, callback)
     {
-        var properties = onlyVisibleProperties ? this._style.visibleProperties : this._style.properties;
+        let properties = onlyVisibleProperties ? this._style.visibleProperties : this._style.properties;
 
+        let filterFunction = (property) => property; // Identity function.
         if (this._filterResultPropertyNames) {
-            properties = properties.filter(function(property) {
-                return (!property.implicit || this._showsImplicitProperties) && property.name in this._filterResultPropertyNames;
-            }, this);
+            filterFunction = (property) => {
+                if (!property.variable && this._propertyVisibilityMode === WebInspector.CSSStyleDeclarationTextEditor.PropertyVisibilityMode.HideNonVariables)
+                    return false;
 
-            if (this._sortProperties)
-                properties.sort(function(a, b) { return a.name.localeCompare(b.name); });
+                if (property.variable && this._propertyVisibilityMode === WebInspector.CSSStyleDeclarationTextEditor.PropertyVisibilityMode.HideVariables)
+                    return false;
+
+                if (property.implicit && !this._showsImplicitProperties)
+                    return false;
+
+                if (!(property.name in this._filterResultPropertyNames))
+                    return false;
+
+                return true;
+            };
         } else if (!onlyVisibleProperties) {
             // Filter based on options only when all properties are used.
-            properties = properties.filter(function(property) {
-                return !property.implicit || this._showsImplicitProperties || property.canonicalName in this._alwaysShowPropertyNames;
-            }, this);
+            filterFunction = (property) => {
+                switch (this._propertyVisibilityMode) {
+                case WebInspector.CSSStyleDeclarationTextEditor.PropertyVisibilityMode.HideNonVariables:
+                    if (!property.variable)
+                        return false;
 
-            if (this._sortProperties)
-                properties.sort(function(a, b) { return a.name.localeCompare(b.name); });
+                    break;
+                case WebInspector.CSSStyleDeclarationTextEditor.PropertyVisibilityMode.HideVariables:
+                    if (property.variable)
+                        return false;
+
+                    break;
+
+                case WebInspector.CSSStyleDeclarationTextEditor.PropertyVisibilityMode.ShowAll:
+                    break;
+
+                default:
+                    console.error("Invalid property visibility mode");
+                    break;
+                }
+
+                return !property.implicit || this._showsImplicitProperties || property.canonicalName in this._alwaysShowPropertyNames;
+            };
         }
+
+        properties = properties.filter(filterFunction);
+        if (this._sortProperties)
+            properties.sort((a, b) => a.name.localeCompare(b.name));
+
+        this._shownProperties = properties;
 
         for (var i = 0; i < properties.length; ++i) {
             if (callback.call(this, properties[i], i === properties.length - 1))
@@ -1288,6 +1330,8 @@ WebInspector.CSSStyleDeclarationTextEditor = class CSSStyleDeclarationTextEditor
 
     _inlineSwatchValueChanged(event)
     {
+        console.assert(this._hasActiveInlineSwatchEditor);
+
         let swatch = event && event.target;
         console.assert(swatch);
         if (!swatch)
@@ -1306,28 +1350,6 @@ WebInspector.CSSStyleDeclarationTextEditor = class CSSStyleDeclarationTextEditor
 
         function update()
         {
-            // The original text marker might have been cleared by a style update,
-            // in this case we need to find the new text marker so we know the
-            // right range for the new style text.
-            if (!textMarker || !textMarker.find()) {
-                textMarker = null;
-
-                let marks = this._codeMirror.findMarksAt(range.from);
-                if (!marks.length)
-                    return;
-
-                for (let mark of marks) {
-                    let type = WebInspector.TextMarker.textMarkerForCodeMirrorTextMarker(mark).type;
-                    if (type !== WebInspector.TextMarker.Type.Color && type !== WebInspector.TextMarker.Type.Gradient && type !== WebInspector.TextMarker.Type.CubicBezier)
-                        continue;
-                    textMarker = mark;
-                    break;
-                }
-            }
-
-            if (!textMarker)
-                return;
-
             // Sometimes we still might find a stale text marker with findMarksAt.
             range = textMarker.find();
             if (!range)
@@ -1349,6 +1371,16 @@ WebInspector.CSSStyleDeclarationTextEditor = class CSSStyleDeclarationTextEditor
         this._codeMirror.operation(update.bind(this));
     }
 
+    _inlineSwatchActivated()
+    {
+        this._hasActiveInlineSwatchEditor = true;
+    }
+
+    _inlineSwatchDeactivated()
+    {
+        this._hasActiveInlineSwatchEditor = false;
+    }    
+
     _propertyOverriddenStatusChanged(event)
     {
         this._updateTextMarkerForPropertyIfNeeded(event.target);
@@ -1360,6 +1392,15 @@ WebInspector.CSSStyleDeclarationTextEditor = class CSSStyleDeclarationTextEditor
         // the completion hint and prevent further interaction with the completion.
         if (this._completionController.isShowingCompletions())
             return;
+
+        if (this._hasActiveInlineSwatchEditor)
+            return;
+
+        // Don't try to update the document after just modifying a swatch.
+        if (this._ignoreNextPropertiesChanged) {
+            this._ignoreNextPropertiesChanged = false;
+            return;
+        }
 
         // Reset the content if the text is different and we are not focused.
         if (!this.focused && (!this._style.text || this._style.text !== this._formattedContent())) {
@@ -1425,12 +1466,11 @@ WebInspector.CSSStyleDeclarationTextEditor = class CSSStyleDeclarationTextEditor
 
     _formattedContentFromEditor()
     {
-        // FIXME: <rdar://problem/10593948> Provide a way to change the tab width in the Web Inspector
-        var indentString = "    ";
-        var builder = new FormatterContentBuilder(indentString);
-        var formatter = new WebInspector.Formatter(this._codeMirror, builder);
-        var start = {line: 0, ch: 0};
-        var end = {line: this._codeMirror.lineCount() - 1};
+        let indentString = WebInspector.indentString();
+        let builder = new FormatterContentBuilder(indentString);
+        let formatter = new WebInspector.Formatter(this._codeMirror, builder);
+        let start = {line: 0, ch: 0};
+        let end = {line: this._codeMirror.lineCount() - 1};
         formatter.format(start, end);
 
         return builder.formattedContent.trim();
@@ -1502,8 +1542,8 @@ WebInspector.CSSStyleDeclarationTextEditor = class CSSStyleDeclarationTextEditor
             let selectionHead = this._codeMirror.getCursor("head");
             let whitespaceRegex = /\s+/g;
 
-            // FIXME: <rdar://problem/10593948> Provide a way to change the tab width in the Web Inspector
-            this._linePrefixWhitespace = "    ";
+            this._linePrefixWhitespace = WebInspector.indentString();
+
             let styleTextPrefixWhitespace = styleText.match(/^\s*/);
 
             // If there is a match and the style text contains a newline, attempt to pull out the prefix whitespace
@@ -1660,6 +1700,12 @@ WebInspector.CSSStyleDeclarationTextEditor = class CSSStyleDeclarationTextEditor
 WebInspector.CSSStyleDeclarationTextEditor.Event = {
     ContentChanged: "css-style-declaration-text-editor-content-changed",
     Blurred: "css-style-declaration-text-editor-blurred"
+};
+
+WebInspector.CSSStyleDeclarationTextEditor.PropertyVisibilityMode = {
+    ShowAll: Symbol("variable-visibility-show-all"),
+    HideVariables: Symbol("variable-visibility-hide-variables"),
+    HideNonVariables: Symbol("variable-visibility-hide-non-variables"),
 };
 
 WebInspector.CSSStyleDeclarationTextEditor.PrefixWhitespace = "\n";

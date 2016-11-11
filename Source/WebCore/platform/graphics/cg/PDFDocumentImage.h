@@ -30,6 +30,7 @@
 #include "FloatRect.h"
 #include "GraphicsTypes.h"
 #include "Image.h"
+#include "Settings.h"
 
 #if USE(CG)
 
@@ -52,6 +53,8 @@ public:
         return adoptRef(new PDFDocumentImage(observer));
     }
 
+    void setPdfImageCachingPolicy(PDFImageCachingPolicy);
+
 private:
     PDFDocumentImage(ImageObserver*);
     virtual ~PDFDocumentImage();
@@ -72,7 +75,7 @@ private:
     void draw(GraphicsContext&, const FloatRect& dstRect, const FloatRect& srcRect, CompositeOperator, BlendMode, ImageOrientationDescription) override;
 
     // FIXME: Implement this to be less conservative.
-    bool currentFrameKnownToBeOpaque() override { return false; }
+    bool currentFrameKnownToBeOpaque() const override { return false; }
 
     void dump(TextStream&) const override;
 
@@ -81,8 +84,11 @@ private:
     unsigned pageCount() const;
     void drawPDFPage(GraphicsContext&);
 
+    void decodedSizeChanged(size_t newCachedBytes);
     void updateCachedImageIfNeeded(GraphicsContext&, const FloatRect& dstRect, const FloatRect& srcRect);
     bool cacheParametersMatch(GraphicsContext&, const FloatRect& dstRect, const FloatRect& srcRect) const;
+
+    PDFImageCachingPolicy m_pdfImageCachingPolicy { PDFImageCachingDefault };
 
 #if USE(PDFKIT_FOR_PDFDOCUMENTIMAGE)
     RetainPtr<PDFDocument> m_document;
@@ -91,6 +97,7 @@ private:
 #endif
 
     std::unique_ptr<ImageBuffer> m_cachedImageBuffer;
+    FloatRect m_cachedImageRect;
     AffineTransform m_cachedTransform;
     FloatSize m_cachedDestinationSize;
     FloatRect m_cachedSourceRect;
@@ -102,6 +109,8 @@ private:
 };
 
 }
+
+SPECIALIZE_TYPE_TRAITS_IMAGE(PDFDocumentImage)
 
 #endif // USE(CG)
 

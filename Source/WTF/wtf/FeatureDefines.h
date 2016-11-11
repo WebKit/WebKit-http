@@ -34,19 +34,19 @@
  *  - "1" enables the feature by default. The feature can still be disabled for a specific port or environment.
  *
  * The feature defaults in this file are only taken into account if the (port specific) build system
- * has not enabled or disabled a particular feature. 
+ * has not enabled or disabled a particular feature.
  *
  * Use this file to define ENABLE() macros only. Do not use this file to define USE() or macros !
  *
  * Only define a macro if it was not defined before - always check for !defined first.
- * 
+ *
  * Keep the file sorted by the name of the defines. As an exception you can change the order
  * to allow interdependencies between the default values.
- * 
+ *
  * Below are a few potential commands to take advantage of this file running from the Source/WTF directory
  *
  * Get the list of feature defines: grep -o "ENABLE_\(\w\+\)" wtf/FeatureDefines.h | sort | uniq
- * Get the list of features enabled by default for a PLATFORM(XXX): gcc -E -dM -I. -DWTF_PLATFORM_XXX "wtf/Platform.h" | grep "ENABLE_\w\+ 1" | cut -d' ' -f2 | sort 
+ * Get the list of features enabled by default for a PLATFORM(XXX): gcc -E -dM -I. -DWTF_PLATFORM_XXX "wtf/Platform.h" | grep "ENABLE_\w\+ 1" | cut -d' ' -f2 | sort
  */
 
 /* FIXME: Move out the PLATFORM specific rules into platform specific files. */
@@ -64,10 +64,6 @@
 
 #if !defined(ENABLE_CONTEXT_MENUS)
 #define ENABLE_CONTEXT_MENUS 0
-#endif
-
-#if !defined(ENABLE_CSS_IMAGE_SET)
-#define ENABLE_CSS_IMAGE_SET 1
 #endif
 
 #if !defined(ENABLE_CURSOR_SUPPORT)
@@ -102,8 +98,8 @@
 #define ENABLE_IOS_GESTURE_EVENTS 1
 #endif
 
-#if !defined(ENABLE_IOS_TEXT_AUTOSIZING)
-#define ENABLE_IOS_TEXT_AUTOSIZING 1
+#if !defined(ENABLE_TEXT_AUTOSIZING)
+#define ENABLE_TEXT_AUTOSIZING 1
 #endif
 
 #if !defined(ENABLE_IOS_TOUCH_EVENTS) && USE(APPLE_INTERNAL_SDK)
@@ -157,7 +153,7 @@ the public iOS SDK. We will also need to update the FeatureDefines.xcconfig file
 #endif
 
 #if !defined(ENABLE_WEBASSEMBLY)
-#define ENABLE_WEBASSEMBLY 0
+#define ENABLE_WEBASSEMBLY (defined(ENABLE_B3_JIT) && ENABLE_B3_JIT)
 #endif
 
 #if !defined(ENABLE_WEBGL)
@@ -177,19 +173,12 @@ the public iOS SDK. We will also need to update the FeatureDefines.xcconfig file
 #define ENABLE_CONTENT_EXTENSIONS 1
 #endif
 
-#if !defined(ENABLE_CSS_IMAGE_SET)
-#define ENABLE_CSS_IMAGE_SET 1
-#endif
-
 #if !defined(ENABLE_DASHBOARD_SUPPORT)
 #define ENABLE_DASHBOARD_SUPPORT 1
 #endif
 
-#if !defined(ENABLE_ENCRYPTED_MEDIA)
-#define ENABLE_ENCRYPTED_MEDIA 1
-#endif
-#if !defined(ENABLE_ENCRYPTED_MEDIA_V2)
-#define ENABLE_ENCRYPTED_MEDIA_V2 1
+#if !defined(ENABLE_LEGACY_ENCRYPTED_MEDIA)
+#define ENABLE_LEGACY_ENCRYPTED_MEDIA 1
 #endif
 
 #if !defined(ENABLE_FULLSCREEN_API)
@@ -220,6 +209,10 @@ the public iOS SDK. We will also need to update the FeatureDefines.xcconfig file
 
 #if !defined(ENABLE_VIEW_MODE_CSS_MEDIA)
 #define ENABLE_VIEW_MODE_CSS_MEDIA 0
+#endif
+
+#if !defined(ENABLE_WEBASSEMBLY)
+#define ENABLE_WEBASSEMBLY (defined(ENABLE_B3_JIT) && ENABLE_B3_JIT)
 #endif
 
 #if !defined(ENABLE_WEB_ARCHIVE)
@@ -254,12 +247,20 @@ the public iOS SDK. We will also need to update the FeatureDefines.xcconfig file
 #define ENABLE_MAC_GESTURE_EVENTS 1
 #endif
 
+#if !defined(ENABLE_KEYBOARD_CODE_ATTRIBUTE)
+#define ENABLE_KEYBOARD_CODE_ATTRIBUTE 1
+#endif
+
 #endif /* PLATFORM(MAC) */
 
 #if PLATFORM(COCOA)
 
 #if !defined(ENABLE_DATA_DETECTION)
 #define ENABLE_DATA_DETECTION 1
+#endif
+
+#if !defined(ENABLE_KEYBOARD_KEY_ATTRIBUTE)
+#define ENABLE_KEYBOARD_KEY_ATTRIBUTE 1
 #endif
 
 #endif /* PLATFORM(COCOA) */
@@ -344,10 +345,6 @@ the public iOS SDK. We will also need to update the FeatureDefines.xcconfig file
 #define ENABLE_APNG 1
 #endif
 
-#if !defined(ENABLE_BATTERY_STATUS)
-#define ENABLE_BATTERY_STATUS 0
-#endif
-
 #if !defined(ENABLE_CANVAS_PATH)
 #define ENABLE_CANVAS_PATH 1
 #endif
@@ -362,6 +359,10 @@ the public iOS SDK. We will also need to update the FeatureDefines.xcconfig file
 
 #if !defined(ENABLE_ES6_MODULES)
 #define ENABLE_ES6_MODULES 0
+#endif
+
+#if !defined(ENABLE_ES2017_ASYNCFUNCTION_SYNTAX)
+#define ENABLE_ES2017_ASYNCFUNCTION_SYNTAX 0
 #endif
 
 #if !defined(ENABLE_CONTENT_EXTENSIONS)
@@ -398,10 +399,6 @@ the public iOS SDK. We will also need to update the FeatureDefines.xcconfig file
 
 #if !defined(ENABLE_CSS_IMAGE_RESOLUTION)
 #define ENABLE_CSS_IMAGE_RESOLUTION 0
-#endif
-
-#if !defined(ENABLE_CSS_IMAGE_SET)
-#define ENABLE_CSS_IMAGE_SET 0
 #endif
 
 #if !defined(ENABLE_CURSOR_SUPPORT)
@@ -442,10 +439,6 @@ the public iOS SDK. We will also need to update the FeatureDefines.xcconfig file
 
 #if !defined(ENABLE_ENCRYPTED_MEDIA)
 #define ENABLE_ENCRYPTED_MEDIA 0
-#endif
-
-#if !defined(ENABLE_ENCRYPTED_MEDIA_V2)
-#define ENABLE_ENCRYPTED_MEDIA_V2 0
 #endif
 
 #if !defined(ENABLE_FETCH_API)
@@ -548,6 +541,10 @@ the public iOS SDK. We will also need to update the FeatureDefines.xcconfig file
 
 #if !defined(ENABLE_LEGACY_CSS_VENDOR_PREFIXES)
 #define ENABLE_LEGACY_CSS_VENDOR_PREFIXES 0
+#endif
+
+#if !defined(ENABLE_LEGACY_ENCRYPTED_MEDIA)
+#define ENABLE_LEGACY_ENCRYPTED_MEDIA 0
 #endif
 
 #if !defined(ENABLE_LEGACY_NOTIFICATIONS)
@@ -680,20 +677,31 @@ the public iOS SDK. We will also need to update the FeatureDefines.xcconfig file
 #define ENABLE_SPELLCHECK 0
 #endif
 
-#if !defined(ENABLE_STREAMS_API)
+#if !defined(ENABLE_READABLE_STREAM_API)
 #if PLATFORM(WIN)
-#define ENABLE_STREAMS_API 0
+#define ENABLE_READABLE_STREAM_API 0
 #else
-#define ENABLE_STREAMS_API 1
+#define ENABLE_READABLE_STREAM_API 1
+#endif
+#if !defined(ENABLE_READABLE_BYTE_STREAM_API)
+#if PLATFORM(WIN)
+#define ENABLE_READABLE_BYTE_STREAM_API 0
+#else
+#define ENABLE_READABLE_BYTE_STREAM_API 1
+#endif
+#endif
+#endif
+
+#if !defined(ENABLE_WRITABLE_STREAM_API)
+#if PLATFORM(WIN)
+#define ENABLE_WRITABLE_STREAM_API 0
+#else
+#define ENABLE_WRITABLE_STREAM_API 1
 #endif
 #endif
 
 #if !defined(ENABLE_SVG_FONTS)
 #define ENABLE_SVG_FONTS 1
-#endif
-
-#if !defined(ENABLE_TEXT_AUTOSIZING)
-#define ENABLE_TEXT_AUTOSIZING 0
 #endif
 
 #if !defined(ENABLE_TEXT_CARET)
@@ -774,6 +782,14 @@ the public iOS SDK. We will also need to update the FeatureDefines.xcconfig file
 
 #if !defined(ENABLE_XSLT)
 #define ENABLE_XSLT 1
+#endif
+
+#if !defined(ENABLE_KEYBOARD_KEY_ATTRIBUTE)
+#define ENABLE_KEYBOARD_KEY_ATTRIBUTE 0
+#endif
+
+#if !defined(ENABLE_KEYBOARD_CODE_ATTRIBUTE)
+#define ENABLE_KEYBOARD_CODE_ATTRIBUTE 0
 #endif
 
 /* Asserts, invariants for macro definitions */

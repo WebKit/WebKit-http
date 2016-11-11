@@ -82,8 +82,8 @@ struct OptionItem {
     bool disabled { false };
     int parentGroupID { 0 };
 
-    void encode(IPC::ArgumentEncoder&) const;
-    static bool decode(IPC::ArgumentDecoder&, OptionItem&);
+    void encode(IPC::Encoder&) const;
+    static bool decode(IPC::Decoder&, OptionItem&);
 };
 
 struct AssistedNodeInformation {
@@ -91,6 +91,7 @@ struct AssistedNodeInformation {
     WebCore::IntRect selectionRect;
     double minimumScaleFactor { -INFINITY };
     double maximumScaleFactor { INFINITY };
+    double maximumScaleFactorIgnoringAlwaysScalable { INFINITY };
     double nodeFontSize { 0 };
     bool hasNextNode { false };
     bool hasPreviousNode { false };
@@ -99,7 +100,7 @@ struct AssistedNodeInformation {
     bool isMultiSelect { false };
     bool isReadOnly {false };
     bool allowsUserScaling { false };
-    bool allowsUserScalingIgnoringForceAlwaysScaling { false };
+    bool allowsUserScalingIgnoringAlwaysScalable { false };
     bool insideFixedPosition { false };
     WebAutocapitalizeType autocapitalizeType { WebAutocapitalizeTypeDefault };
     InputType elementType { InputType::None };
@@ -111,8 +112,8 @@ struct AssistedNodeInformation {
     String title;
     WebCore::AutofillFieldName autofillFieldName { WebCore::AutofillFieldName::None };
 
-    void encode(IPC::ArgumentEncoder&) const;
-    static bool decode(IPC::ArgumentDecoder&, AssistedNodeInformation&);
+    void encode(IPC::Encoder&) const;
+    static bool decode(IPC::Decoder&, AssistedNodeInformation&);
 };
 #endif
 

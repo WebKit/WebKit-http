@@ -37,6 +37,9 @@
 #if USE(CG)
 typedef struct CGPattern* CGPatternRef;
 typedef CGPatternRef PlatformPatternPtr;
+#elif USE(DIRECT2D)
+interface ID2D1BitmapBrush;
+typedef ID2D1BitmapBrush* PlatformPatternPtr;
 #elif USE(CAIRO)
 #include <cairo.h>
 typedef cairo_pattern_t* PlatformPatternPtr;
@@ -47,6 +50,7 @@ typedef void* PlatformPatternPtr;
 namespace WebCore {
 
 class AffineTransform;
+class GraphicsContext;
 class Image;
 
 class Pattern final : public RefCounted<Pattern> {
@@ -58,8 +62,12 @@ public:
 
     void platformDestroy();
 
-    // Pattern space is an abstract space that maps to the default user space by the transformation 'userSpaceTransformation' 
+    // Pattern space is an abstract space that maps to the default user space by the transformation 'userSpaceTransformation'
+#if !USE(DIRECT2D)
     PlatformPatternPtr createPlatformPattern(const AffineTransform& userSpaceTransformation) const;
+#else
+    PlatformPatternPtr createPlatformPattern(const GraphicsContext&, float alpha, const AffineTransform& userSpaceTransformation) const;
+#endif
     void setPatternSpaceTransform(const AffineTransform& patternSpaceTransformation);
     const AffineTransform& getPatternSpaceTransform() { return m_patternSpaceTransformation; };
     void setPlatformPatternSpaceTransform();

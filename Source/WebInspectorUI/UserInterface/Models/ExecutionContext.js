@@ -25,13 +25,15 @@
 
 WebInspector.ExecutionContext = class ExecutionContext extends WebInspector.Object
 {
-    constructor(id, name, isPageContext, frame)
+    constructor(target, id, name, isPageContext, frame)
     {
         super();
 
+        console.assert(target instanceof WebInspector.Target);
         console.assert(typeof id === "number" || id === WebInspector.RuntimeManager.TopLevelExecutionContextIdentifier);
         console.assert(typeof name === "string");
 
+        this._target = target;
         this._id = id;
         this._name = name;
         this._isPageContext = isPageContext || false;
@@ -40,23 +42,9 @@ WebInspector.ExecutionContext = class ExecutionContext extends WebInspector.Obje
 
     // Public
 
-    get id()
-    {
-        return this._id;
-    }
-
-    get name()
-    {
-        return this._name;
-    }
-
-    get isPageContext()
-    {
-        return this._isPageContext;
-    }
-
-    get frame()
-    {
-        return this._frame;
-    }
+    get target() { return this._target; }
+    get id() { return this._id; }
+    get name() { return this._name; }
+    get isPageContext() { return this._isPageContext; }
+    get frame() { return this._frame; }
 };

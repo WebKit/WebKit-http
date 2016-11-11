@@ -42,8 +42,8 @@ Ref<DatabaseToWebProcessConnection> DatabaseToWebProcessConnection::create(IPC::
 }
 
 DatabaseToWebProcessConnection::DatabaseToWebProcessConnection(IPC::Connection::Identifier connectionIdentifier)
+    : m_connection(IPC::Connection::createServerConnection(connectionIdentifier, *this))
 {
-    m_connection = IPC::Connection::createServerConnection(connectionIdentifier, *this);
     m_connection->setOnlySendMessagesAsDispatchWhenWaitingForSyncReplyWhenProcessingSuchAMessage(true);
     m_connection->open();
 }
@@ -53,7 +53,7 @@ DatabaseToWebProcessConnection::~DatabaseToWebProcessConnection()
 
 }
 
-void DatabaseToWebProcessConnection::didReceiveMessage(IPC::Connection& connection, IPC::MessageDecoder& decoder)
+void DatabaseToWebProcessConnection::didReceiveMessage(IPC::Connection& connection, IPC::Decoder& decoder)
 {
     if (decoder.messageReceiverName() == Messages::DatabaseToWebProcessConnection::messageReceiverName()) {
         didReceiveDatabaseToWebProcessConnectionMessage(connection, decoder);
@@ -72,7 +72,7 @@ void DatabaseToWebProcessConnection::didReceiveMessage(IPC::Connection& connecti
     ASSERT_NOT_REACHED();
 }
 
-void DatabaseToWebProcessConnection::didReceiveSyncMessage(IPC::Connection& connection, IPC::MessageDecoder& decoder, std::unique_ptr<IPC::MessageEncoder>& replyEncoder)
+void DatabaseToWebProcessConnection::didReceiveSyncMessage(IPC::Connection& connection, IPC::Decoder& decoder, std::unique_ptr<IPC::Encoder>& replyEncoder)
 {
     if (decoder.messageReceiverName() == Messages::DatabaseToWebProcessConnection::messageReceiverName()) {
         didReceiveSyncDatabaseToWebProcessConnectionMessage(connection, decoder, replyEncoder);

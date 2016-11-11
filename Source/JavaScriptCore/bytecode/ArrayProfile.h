@@ -23,13 +23,11 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef ArrayProfile_h
-#define ArrayProfile_h
+#pragma once
 
 #include "ConcurrentJITLock.h"
 #include "JSArray.h"
 #include "Structure.h"
-#include <wtf/HashMap.h>
 #include <wtf/SegmentedVector.h>
 
 namespace JSC {
@@ -250,6 +248,3 @@ private:
 typedef SegmentedVector<ArrayProfile, 4> ArrayProfileVector;
 
 } // namespace JSC
-
-#endif // ArrayProfile_h
-

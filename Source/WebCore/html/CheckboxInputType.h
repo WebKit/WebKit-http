@@ -28,8 +28,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef CheckboxInputType_h
-#define CheckboxInputType_h
+#pragma once
 
 #include "BaseCheckableInputType.h"
 
@@ -43,7 +42,7 @@ private:
     const AtomicString& formControlType() const override;
     bool valueMissing(const String&) const override;
     String valueMissingText() const override;
-    void handleKeyupEvent(KeyboardEvent*) override;
+    void handleKeyupEvent(KeyboardEvent&) override;
     void willDispatchClick(InputElementClickState&) override;
     void didDispatchClick(Event*, const InputElementClickState&) override;
     bool isCheckbox() const override;
@@ -52,5 +51,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // CheckboxInputType_h

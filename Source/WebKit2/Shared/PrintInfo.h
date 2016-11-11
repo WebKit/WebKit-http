@@ -38,8 +38,8 @@ class NSPrintInfo;
 #endif
 
 namespace IPC {
-    class ArgumentDecoder;
-    class ArgumentEncoder;
+class Decoder;
+class Encoder;
 }
 
 namespace WebKit {
@@ -67,8 +67,8 @@ struct PrintInfo {
     PrintMode printMode;
 #endif
 
-    void encode(IPC::ArgumentEncoder&) const;
-    static bool decode(IPC::ArgumentDecoder&, PrintInfo&);
+    void encode(IPC::Encoder&) const;
+    static bool decode(IPC::Decoder&, PrintInfo&);
 };
 
 }

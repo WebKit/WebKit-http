@@ -42,12 +42,14 @@
 #include "DFGWorklist.h"
 #include "Disassembler.h"
 #include "ErrorInstance.h"
+#include "EvalCodeBlock.h"
 #include "Exception.h"
 #include "FTLThunks.h"
+#include "FunctionCodeBlock.h"
 #include "FunctionConstructor.h"
 #include "GCActivityCallback.h"
-#include "GeneratorFrame.h"
 #include "GetterSetter.h"
+#include "HasOwnPropertyCache.h"
 #include "Heap.h"
 #include "HeapIterationScope.h"
 #include "HeapProfiler.h"
@@ -64,19 +66,21 @@
 #include "JSFunction.h"
 #include "JSGlobalObjectFunctions.h"
 #include "JSInternalPromiseDeferred.h"
-#include "JSLexicalEnvironment.h"
 #include "JSLock.h"
+#include "JSMap.h"
 #include "JSPromiseDeferred.h"
 #include "JSPropertyNameEnumerator.h"
 #include "JSTemplateRegistryKey.h"
 #include "JSWithScope.h"
+#include "LLIntData.h"
 #include "Lexer.h"
 #include "Lookup.h"
-#include "MapData.h"
+#include "ModuleProgramCodeBlock.h"
 #include "NativeStdFunctionCell.h"
 #include "Nodes.h"
 #include "Parser.h"
 #include "ProfilerDatabase.h"
+#include "ProgramCodeBlock.h"
 #include "PropertyMapHashTable.h"
 #include "RegExpCache.h"
 #include "RegExpObject.h"
@@ -97,14 +101,20 @@
 #include "Watchdog.h"
 #include "WeakGCMapInlines.h"
 #include "WeakMapData.h"
+#include "WebAssemblyCodeBlock.h"
 #include <wtf/CurrentTime.h>
 #include <wtf/ProcessID.h>
-#include <wtf/RetainPtr.h>
+#include <wtf/SimpleStats.h>
 #include <wtf/StringPrintStream.h>
 #include <wtf/Threading.h>
 #include <wtf/WTFThreadData.h>
 #include <wtf/text/AtomicStringTable.h>
 #include <wtf/text/SymbolRegistry.h>
+
+#if !ENABLE(JIT)
+#include "CLoopStack.h"
+#include "CLoopStackInlines.h"
+#endif
 
 #if ENABLE(DFG_JIT)
 #include "ConservativeRoots.h"
@@ -160,8 +170,10 @@ VM::VM(VMType vmType, HeapType heapType)
     , m_atomicStringTable(vmType == Default ? wtfThreadData().atomicStringTable() : new AtomicStringTable)
     , propertyNames(nullptr)
     , emptyList(new MarkedArgumentBuffer)
+    , machineCodeBytesPerBytecodeWordForBaselineJIT(std::make_unique<SimpleStats>())
     , customGetterSetterFunctionMap(*this)
     , stringCache(*this)
+    , symbolImplToSymbolMap(*this)
     , prototypeMap(*this)
     , interpreter(0)
     , jsArrayClassInfo(JSArray::info())
@@ -185,10 +197,6 @@ VM::VM(VMType vmType, HeapType heapType)
     , m_initializingObjectClass(0)
 #endif
     , m_stackPointerAtVMEntry(0)
-    , m_stackLimit(0)
-#if !ENABLE(JIT)
-    , m_jsStackLimit(0)
-#endif
     , m_codeCache(std::make_unique<CodeCache>())
     , m_builtinExecutables(std::make_unique<BuiltinExecutables>(*this))
     , m_typeProfilerEnabledCount(0)
@@ -197,10 +205,7 @@ VM::VM(VMType vmType, HeapType heapType)
 {
     interpreter = new Interpreter(*this);
     StackBounds stack = wtfThreadData().stack();
-    updateReservedZoneSize(Options::reservedZoneSize());
-#if !ENABLE(JIT)
-    interpreter->stack().setReservedZoneSize(Options::reservedZoneSize());
-#endif
+    updateSoftReservedZoneSize(Options::softReservedZoneSize());
     setLastStackTop(stack.origin());
 
     // Need to be careful to keep everything consistent here
@@ -243,7 +248,6 @@ VM::VM(VMType vmType, HeapType heapType)
     inferredTypeStructure.set(*this, InferredType::createStructure(*this, 0, jsNull()));
     inferredTypeTableStructure.set(*this, InferredTypeTable::createStructure(*this, 0, jsNull()));
     functionRareDataStructure.set(*this, FunctionRareData::createStructure(*this, 0, jsNull()));
-    generatorFrameStructure.set(*this, GeneratorFrame::createStructure(*this, 0, jsNull()));
     exceptionStructure.set(*this, Exception::createStructure(*this, 0, jsNull()));
     promiseDeferredStructure.set(*this, JSPromiseDeferred::createStructure(*this, 0, jsNull()));
     internalPromiseDeferredStructure.set(*this, JSInternalPromiseDeferred::createStructure(*this, 0, jsNull()));
@@ -254,6 +258,10 @@ VM::VM(VMType vmType, HeapType heapType)
 #if ENABLE(WEBASSEMBLY)
     webAssemblyCodeBlockStructure.set(*this, WebAssemblyCodeBlock::createStructure(*this, 0, jsNull()));
 #endif
+    hashMapBucketSetStructure.set(*this, HashMapBucket<HashMapBucketDataKey>::createStructure(*this, 0, jsNull()));
+    hashMapBucketMapStructure.set(*this, HashMapBucket<HashMapBucketDataKeyValue>::createStructure(*this, 0, jsNull()));
+    hashMapImplSetStructure.set(*this, HashMapImpl<HashMapBucket<HashMapBucketDataKey>>::createStructure(*this, 0, jsNull()));
+    hashMapImplMapStructure.set(*this, HashMapImpl<HashMapBucket<HashMapBucketDataKeyValue>>::createStructure(*this, 0, jsNull()));
 
     iterationTerminator.set(*this, JSFinalObject::create(*this, JSFinalObject::createStructure(*this, 0, jsNull(), 1)));
     nativeStdFunctionCellStructure.set(*this, NativeStdFunctionCell::createStructure(*this, 0, jsNull()));
@@ -351,7 +359,8 @@ VM::~VM()
     // Make sure concurrent compilations are done, but don't install them, since there is
     // no point to doing so.
     for (unsigned i = DFG::numberOfWorklists(); i--;) {
-        if (DFG::Worklist* worklist = DFG::worklistForIndexOrNull(i)) {
+        if (DFG::Worklist* worklist = DFG::existingWorklistForIndexOrNull(i)) {
+            worklist->removeNonCompilingPlansForVM(*this);
             worklist->waitUntilAllPlansForVMAreReady(*this);
             worklist->removeAllReadyPlansForVM(*this);
         }
@@ -507,17 +516,17 @@ static ThunkGenerator thunkGeneratorForIntrinsic(Intrinsic intrinsic)
 
 NativeExecutable* VM::getHostFunction(NativeFunction function, NativeFunction constructor, const String& name)
 {
-    return getHostFunction(function, NoIntrinsic, constructor, name);
+    return getHostFunction(function, NoIntrinsic, constructor, nullptr, name);
 }
 
-NativeExecutable* VM::getHostFunction(NativeFunction function, Intrinsic intrinsic, NativeFunction constructor, const String& name)
+NativeExecutable* VM::getHostFunction(NativeFunction function, Intrinsic intrinsic, NativeFunction constructor, const DOMJIT::Signature* signature, const String& name)
 {
 #if ENABLE(JIT)
     if (canUseJIT()) {
         return jitStubs->hostFunctionStub(
             this, function, constructor,
             intrinsic != NoIntrinsic ? thunkGeneratorForIntrinsic(intrinsic) : 0,
-            intrinsic, name);
+            intrinsic, signature, name);
     }
 #else // ENABLE(JIT)
     UNUSED_PARAM(intrinsic);
@@ -525,7 +534,7 @@ NativeExecutable* VM::getHostFunction(NativeFunction function, Intrinsic intrins
     return NativeExecutable::create(*this,
         adoptRef(new NativeJITCode(MacroAssemblerCodeRef::createLLIntCodeRef(llint_native_call_trampoline), JITCode::HostCallThunk)), function,
         adoptRef(new NativeJITCode(MacroAssemblerCodeRef::createLLIntCodeRef(llint_native_construct_trampoline), JITCode::HostCallThunk)), constructor,
-        NoIntrinsic, name);
+        NoIntrinsic, signature, name);
 }
 
 VM::ClientData::~ClientData()
@@ -613,17 +622,20 @@ JSObject* VM::throwException(ExecState* exec, JSObject* error)
 void VM::setStackPointerAtVMEntry(void* sp)
 {
     m_stackPointerAtVMEntry = sp;
-    updateStackLimit();
+    updateStackLimits();
 }
 
-size_t VM::updateReservedZoneSize(size_t reservedZoneSize)
+size_t VM::updateSoftReservedZoneSize(size_t softReservedZoneSize)
 {
-    size_t oldReservedZoneSize = m_reservedZoneSize;
-    m_reservedZoneSize = reservedZoneSize;
+    size_t oldSoftReservedZoneSize = m_currentSoftReservedZoneSize;
+    m_currentSoftReservedZoneSize = softReservedZoneSize;
+#if !ENABLE(JIT)
+    interpreter->cloopStack().setSoftReservedZoneSize(softReservedZoneSize);
+#endif
 
-    updateStackLimit();
+    updateStackLimits();
 
-    return oldReservedZoneSize;
+    return oldSoftReservedZoneSize;
 }
 
 #if PLATFORM(WIN)
@@ -651,23 +663,34 @@ static void preCommitStackMemory(void* stackLimit)
 }
 #endif
 
-inline void VM::updateStackLimit()
+inline void VM::updateStackLimits()
 {
 #if PLATFORM(WIN)
-    void* lastStackLimit = m_stackLimit;
+    void* lastSoftStackLimit = m_softStackLimit;
 #endif
 
+    size_t reservedZoneSize = Options::reservedZoneSize();
     if (m_stackPointerAtVMEntry) {
         ASSERT(wtfThreadData().stack().isGrowingDownward());
         char* startOfStack = reinterpret_cast<char*>(m_stackPointerAtVMEntry);
-        m_stackLimit = wtfThreadData().stack().recursionLimit(startOfStack, Options::maxPerThreadStackUsage(), m_reservedZoneSize);
+        m_softStackLimit = wtfThreadData().stack().recursionLimit(startOfStack, Options::maxPerThreadStackUsage(), m_currentSoftReservedZoneSize);
+        m_stackLimit = wtfThreadData().stack().recursionLimit(startOfStack, Options::maxPerThreadStackUsage(), reservedZoneSize);
     } else {
-        m_stackLimit = wtfThreadData().stack().recursionLimit(m_reservedZoneSize);
+        m_softStackLimit = wtfThreadData().stack().recursionLimit(m_currentSoftReservedZoneSize);
+        m_stackLimit = wtfThreadData().stack().recursionLimit(reservedZoneSize);
     }
 
 #if PLATFORM(WIN)
-    if (lastStackLimit != m_stackLimit)
-        preCommitStackMemory(m_stackLimit);
+    // We only need to precommit stack memory dictated by the VM::m_softStackLimit limit.
+    // This is because VM::m_softStackLimit applies to stack usage by LLINT asm or JIT
+    // generated code which can allocate stack space that the C++ compiler does not know
+    // about. As such, we have to precommit that stack memory manually.
+    //
+    // In contrast, we do not need to worry about VM::m_stackLimit because that limit is
+    // used exclusively by C++ code, and the C++ compiler will automatically commit the
+    // needed stack pages.
+    if (lastSoftStackLimit != m_softStackLimit)
+        preCommitStackMemory(m_softStackLimit);
 #endif
 }
 
@@ -843,10 +866,59 @@ void sanitizeStackForVM(VM* vm)
 {
     logSanitizeStack(vm);
 #if !ENABLE(JIT)
-    vm->interpreter->stack().sanitizeStack();
+    vm->interpreter->cloopStack().sanitizeStack();
 #else
     sanitizeStackForVMImpl(vm);
 #endif
 }
+
+size_t VM::committedStackByteCount()
+{
+#if ENABLE(JIT)
+    // When using the C stack, we don't know how many stack pages are actually
+    // committed. So, we use the current stack usage as an estimate.
+    ASSERT(wtfThreadData().stack().isGrowingDownward());
+    int8_t* current = reinterpret_cast<int8_t*>(&current);
+    int8_t* high = reinterpret_cast<int8_t*>(wtfThreadData().stack().origin());
+    return high - current;
+#else
+    return CLoopStack::committedByteCount();
+#endif
+}
+
+#if !ENABLE(JIT)
+bool VM::ensureStackCapacityForCLoop(Register* newTopOfStack)
+{
+    return interpreter->cloopStack().ensureCapacityFor(newTopOfStack);
+}
+
+bool VM::isSafeToRecurseSoftCLoop() const
+{
+    return interpreter->cloopStack().isSafeToRecurse();
+}
+#endif // !ENABLE(JIT)
+
+#if ENABLE(EXCEPTION_SCOPE_VERIFICATION)
+void VM::verifyExceptionCheckNeedIsSatisfied(unsigned recursionDepth, ExceptionEventLocation& location)
+{
+    if (!Options::validateExceptionChecks())
+        return;
+
+    if (UNLIKELY(m_needExceptionCheck)) {
+        auto throwDepth = m_simulatedThrowPointRecursionDepth;
+        auto& throwLocation = m_simulatedThrowPointLocation;
+
+        dataLog(
+            "ERROR: Unchecked JS exception:\n"
+            "    This scope can throw a JS exception: ", throwLocation, "\n"
+            "        (ExceptionScope::m_recursionDepth was ", throwDepth, ")\n"
+            "    But the exception was unchecked as of this scope: ", location, "\n"
+            "        (ExceptionScope::m_recursionDepth was ", recursionDepth, ")\n"
+            "\n");
+
+        RELEASE_ASSERT(!m_needExceptionCheck);
+    }
+}
+#endif
 
 } // namespace JSC

@@ -30,7 +30,6 @@
 #include "WKAPICast.h"
 #include "WebPreferences.h"
 #include <WebCore/Settings.h>
-#include <wtf/PassRefPtr.h>
 #include <wtf/RefPtr.h>
 
 using namespace WebKit;
@@ -734,6 +733,16 @@ bool WKPreferencesGetFileAccessFromFileURLsAllowed(WKPreferencesRef preferencesR
     return toImpl(preferencesRef)->allowFileAccessFromFileURLs();
 }
 
+void WKPreferencesSetNeedsStorageAccessFromFileURLsQuirk(WKPreferencesRef preferencesRef, bool needsQuirk)
+{
+    toImpl(preferencesRef)->setNeedsStorageAccessFromFileURLsQuirk(needsQuirk);
+}
+
+bool WKPreferencesGetNeedsStorageAccessFromFileURLsQuirk(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->needsStorageAccessFromFileURLsQuirk();
+}
+
 void WKPreferencesSetHixie76WebSocketProtocolEnabled(WKPreferencesRef, bool /*enabled*/)
 {
 }
@@ -1262,6 +1271,16 @@ bool WKPreferencesGetNewBlockInsideInlineModelEnabled(WKPreferencesRef preferenc
     return toImpl(preferencesRef)->newBlockInsideInlineModelEnabled();
 }
 
+void WKPreferencesSetNewCSSParserEnabled(WKPreferencesRef preferencesRef, bool flag)
+{
+    toImpl(preferencesRef)->setNewCSSParserEnabled(flag);
+}
+
+bool WKPreferencesGetNewCSSParserEnabled(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->newCSSParserEnabled();
+}
+
 void WKPreferencesSetSubpixelCSSOMElementMetricsEnabled(WKPreferencesRef preferencesRef, bool flag)
 {
     toImpl(preferencesRef)->setSubpixelCSSOMElementMetricsEnabled(flag);
@@ -1492,6 +1511,16 @@ bool WKPreferencesGetMockCaptureDevicesEnabled(WKPreferencesRef preferencesRef)
     return toImpl(preferencesRef)->mockCaptureDevicesEnabled();
 }
 
+void WKPreferencesSetMediaCaptureRequiresSecureConnection(WKPreferencesRef preferencesRef, bool enabled)
+{
+    toImpl(preferencesRef)->setMediaCaptureRequiresSecureConnection(enabled);
+}
+
+bool WKPreferencesGetMediaCaptureRequiresSecureConnection(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->mediaCaptureRequiresSecureConnection();
+}
+
 void WKPreferencesSetFetchAPIEnabled(WKPreferencesRef preferencesRef, bool flag)
 {
     toImpl(preferencesRef)->setFetchAPIEnabled(flag);
@@ -1530,4 +1559,24 @@ void WKPreferencesSetAllowsPictureInPictureMediaPlayback(WKPreferencesRef prefer
 bool WKPreferencesGetAllowsPictureInPictureMediaPlayback(WKPreferencesRef preferencesRef)
 {
     return toImpl(preferencesRef)->allowsPictureInPictureMediaPlayback();
+}
+
+WK_EXPORT bool WKPreferencesGetApplePayEnabled(WKPreferencesRef preferencesRef)
+{
+    return WebKit::toImpl(preferencesRef)->applePayEnabled();
+}
+
+void WKPreferencesSetApplePayEnabled(WKPreferencesRef preferencesRef, bool enabled)
+{
+    WebKit::toImpl(preferencesRef)->setApplePayEnabled(enabled);
+}
+
+bool WKPreferencesGetApplePayCapabilityDisclosureAllowed(WKPreferencesRef preferencesRef)
+{
+    return WebKit::toImpl(preferencesRef)->applePayCapabilityDisclosureAllowed();
+}
+
+void WKPreferencesSetApplePayCapabilityDisclosureAllowed(WKPreferencesRef preferencesRef, bool allowed)
+{
+    WebKit::toImpl(preferencesRef)->setApplePayCapabilityDisclosureAllowed(allowed);
 }

@@ -33,6 +33,10 @@
 #define DYLD_IOS_VERSION_10_0 0x000A0000
 #endif
 
+#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED < 101200
+#define DYLD_MACOSX_VERSION_10_12 0x000A0C00
+#endif
+
 #else
 
 #define DYLD_IOS_VERSION_3_0 0x00030000
@@ -43,6 +47,12 @@
 #define DYLD_IOS_VERSION_9_0 0x00090000
 #define DYLD_IOS_VERSION_10_0 0x000A0000
 
+#define DYLD_MACOSX_VERSION_10_12 0x000A0C00
+
 #endif
 
-extern "C" uint32_t dyld_get_program_sdk_version();
+WTF_EXTERN_C_BEGIN
+
+uint32_t dyld_get_program_sdk_version();
+
+WTF_EXTERN_C_END

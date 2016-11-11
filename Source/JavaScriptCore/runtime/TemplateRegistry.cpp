@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2015 Yusuke Suzuki <utatane.tea@gmail.com>.
+ * Copyright (C) 2016 Apple Inc. All Rights Reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,10 +27,9 @@
 #include "config.h"
 #include "TemplateRegistry.h"
 
-#include "JSCJSValueInlines.h"
+#include "JSCInlines.h"
 #include "JSGlobalObject.h"
 #include "ObjectConstructor.h"
-#include "StructureInlines.h"
 #include "WeakGCMapInlines.h"
 
 namespace JSC {
@@ -46,13 +46,12 @@ JSArray* TemplateRegistry::getTemplateObject(ExecState* exec, const TemplateRegi
         return cached;
 
     VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     unsigned count = templateKey.cookedStrings().size();
     JSArray* templateObject = constructEmptyArray(exec, nullptr, count);
-    if (UNLIKELY(vm.exception()))
-        return nullptr;
+    RETURN_IF_EXCEPTION(scope, nullptr);
     JSArray* rawObject = constructEmptyArray(exec, nullptr, count);
-    if (UNLIKELY(vm.exception()))
-        return nullptr;
+    RETURN_IF_EXCEPTION(scope, nullptr);
 
     for (unsigned index = 0; index < count; ++index) {
         templateObject->putDirectIndex(exec, index, jsString(exec, templateKey.cookedStrings()[index]), ReadOnly | DontDelete, PutDirectIndexLikePutDirect);
@@ -60,12 +59,12 @@ JSArray* TemplateRegistry::getTemplateObject(ExecState* exec, const TemplateRegi
     }
 
     objectConstructorFreeze(exec, rawObject);
-    ASSERT(!exec->hadException());
+    ASSERT(!scope.exception());
 
     templateObject->putDirect(vm, exec->propertyNames().raw, rawObject, ReadOnly | DontEnum | DontDelete);
 
     objectConstructorFreeze(exec, templateObject);
-    ASSERT(!exec->hadException());
+    ASSERT(!scope.exception());
 
     m_templateMap.set(templateKey, templateObject);
 

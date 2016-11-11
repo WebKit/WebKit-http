@@ -21,15 +21,14 @@
  *
  */
 
-#ifndef MouseRelatedEvent_h
-#define MouseRelatedEvent_h
+#pragma once
 
 #include "LayoutPoint.h"
 #include "UIEventWithKeyState.h"
 
 namespace WebCore {
 
-struct MouseRelatedEventInit : public UIEventWithKeyStateInit {
+struct MouseRelatedEventInit : public EventModifierInit {
     int screenX { 0 };
     int screenY { 0 };
 };
@@ -57,8 +56,8 @@ public:
     int pageX() const final;
     int pageY() const final;
     virtual const LayoutPoint& pageLocation() const;
-    int x() const;
-    int y() const;
+    WEBCORE_EXPORT int x() const;
+    WEBCORE_EXPORT int y() const;
 
     // Page point in "absolute" coordinates (i.e. post-zoomed, page-relative coords,
     // usable with RenderObject::absoluteToLocal).
@@ -67,13 +66,13 @@ public:
 
 protected:
     MouseRelatedEvent();
-    MouseRelatedEvent(const AtomicString& type, bool canBubble, bool cancelable, double timestamp, AbstractView*,
+    MouseRelatedEvent(const AtomicString& type, bool canBubble, bool cancelable, double timestamp, DOMWindow*,
         int detail, const IntPoint& screenLocation, const IntPoint& windowLocation,
 #if ENABLE(POINTER_LOCK)
         const IntPoint& movementDelta,
 #endif
         bool ctrlKey, bool altKey, bool shiftKey, bool metaKey, bool isSimulated = false);
-    MouseRelatedEvent(const AtomicString& type, const MouseRelatedEventInit&);
+    MouseRelatedEvent(const AtomicString& type, const MouseRelatedEventInit&, IsTrusted = IsTrusted::No);
 
     void initCoordinates();
     void initCoordinates(const LayoutPoint& clientLocation);
@@ -101,5 +100,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // MouseRelatedEvent_h

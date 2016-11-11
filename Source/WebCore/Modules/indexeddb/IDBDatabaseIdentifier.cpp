@@ -31,7 +31,6 @@
 #include "FileSystem.h"
 #include "SecurityOrigin.h"
 #include <wtf/Ref.h>
-#include <wtf/RefCounted.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
@@ -64,16 +63,16 @@ String IDBDatabaseIdentifier::databaseDirectoryRelativeToRoot(const String& root
 
 String IDBDatabaseIdentifier::databaseDirectoryRelativeToRoot(const SecurityOriginData& topLevelOrigin, const SecurityOriginData& openingOrigin, const String& rootDirectory)
 {
-    String mainFrameDirectory = pathByAppendingComponent(rootDirectory, topLevelOrigin.securityOrigin()->databaseIdentifier());
+    String mainFrameDirectory = pathByAppendingComponent(rootDirectory, topLevelOrigin.databaseIdentifier());
 
     // If the opening origin and main frame origins are the same, there is no partitioning.
     if (openingOrigin == topLevelOrigin)
         return mainFrameDirectory;
 
-    return pathByAppendingComponent(mainFrameDirectory, openingOrigin.securityOrigin()->databaseIdentifier());
+    return pathByAppendingComponent(mainFrameDirectory, openingOrigin.databaseIdentifier());
 }
 
-#ifndef NDEBUG
+#if !LOG_DISABLED
 String IDBDatabaseIdentifier::debugString() const
 {
     return makeString(m_databaseName, "@", m_openingOrigin.debugString(), ":", m_mainFrameOrigin.debugString());

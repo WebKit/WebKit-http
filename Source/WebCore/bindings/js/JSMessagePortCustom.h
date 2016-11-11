@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2009 Google Inc. All rights reserved.
+ * Copyright (C) 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -28,8 +29,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef JSMessagePortCustom_h
-#define JSMessagePortCustom_h
+#pragma once
 
 #include "MessagePort.h"
 #include <runtime/Error.h>
@@ -39,32 +39,26 @@
 
 namespace WebCore {
 
-    typedef int ExceptionCode;
+void extractTransferables(JSC::ExecState&, JSC::JSValue, Vector<RefPtr<MessagePort>>&, Vector<RefPtr<JSC::ArrayBuffer>>&);
 
-    // Helper function which pulls the values out of a JS sequence and into a MessagePortArray.
-    // Also validates the elements per sections 4.1.13 and 4.1.15 of the WebIDL spec and section 8.3.3 of the HTML5 spec.
-    // May generate an exception via the passed ExecState.
-    void fillMessagePortArray(JSC::ExecState&, JSC::JSValue, MessagePortArray&, ArrayBufferArray&);
+// Helper function to convert from JS postMessage arguments to WebCore postMessage arguments.
+template<typename T> inline JSC::JSValue handlePostMessage(JSC::ExecState& state, T& object)
+{
+    JSC::VM& vm = state.vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
 
-    // Helper function to convert from JS postMessage arguments to WebCore postMessage arguments.
-    template <typename T>
-    inline JSC::JSValue handlePostMessage(JSC::ExecState& state, T* impl)
-    {
-        if (UNLIKELY(state.argumentCount() < 1))
-            return state.vm().throwException(&state, createNotEnoughArgumentsError(&state));
+    if (UNLIKELY(state.argumentCount() < 1))
+        return throwException(&state, scope, createNotEnoughArgumentsError(&state));
 
-        MessagePortArray portArray;
-        ArrayBufferArray arrayBufferArray;
-        fillMessagePortArray(state, state.argument(1), portArray, arrayBufferArray);
-        auto message = SerializedScriptValue::create(&state, state.uncheckedArgument(0), &portArray, &arrayBufferArray);
-        if (state.hadException())
-            return JSC::jsUndefined();
+    Vector<RefPtr<MessagePort>> messagePortArray;
+    Vector<RefPtr<JSC::ArrayBuffer>> arrayBufferArray;
+    extractTransferables(state, state.argument(1), messagePortArray, arrayBufferArray);
 
-        ExceptionCode ec = 0;
-        impl->postMessage(WTFMove(message), &portArray, ec);
-        setDOMException(&state, ec);
-        return JSC::jsUndefined();
-    }
+    auto message = SerializedScriptValue::create(state, state.uncheckedArgument(0), messagePortArray, WTFMove(arrayBufferArray));
+    RETURN_IF_EXCEPTION(scope, JSC::JSValue());
+
+    propagateException(state, scope, object.postMessage(WTFMove(message), WTFMove(messagePortArray)));
+    return JSC::jsUndefined();
+}
 
 }
-#endif // JSMessagePortCustom_h

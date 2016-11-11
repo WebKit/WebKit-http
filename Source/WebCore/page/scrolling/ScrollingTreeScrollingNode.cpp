@@ -42,7 +42,7 @@ ScrollingTreeScrollingNode::~ScrollingTreeScrollingNode()
 {
 }
 
-void ScrollingTreeScrollingNode::updateBeforeChildren(const ScrollingStateNode& stateNode)
+void ScrollingTreeScrollingNode::commitStateBeforeChildren(const ScrollingStateNode& stateNode)
 {
     const ScrollingStateScrollingNode& state = downcast<ScrollingStateScrollingNode>(stateNode);
 
@@ -85,7 +85,7 @@ void ScrollingTreeScrollingNode::updateBeforeChildren(const ScrollingStateNode& 
         m_scrollableAreaParameters = state.scrollableAreaParameters();
 }
 
-void ScrollingTreeScrollingNode::updateAfterChildren(const ScrollingStateNode& stateNode)
+void ScrollingTreeScrollingNode::commitStateAfterChildren(const ScrollingStateNode& stateNode)
 {
     const ScrollingStateScrollingNode& scrollingStateNode = downcast<ScrollingStateScrollingNode>(stateNode);
     if (scrollingStateNode.hasChangedProperty(ScrollingStateScrollingNode::RequestedScrollPosition))
@@ -109,8 +109,8 @@ void ScrollingTreeScrollingNode::setScrollPosition(const FloatPoint& scrollPosit
 
 void ScrollingTreeScrollingNode::setScrollPositionWithoutContentEdgeConstraints(const FloatPoint& scrollPosition)
 {
-    setScrollLayerPosition(scrollPosition);
-    scrollingTree().scrollingTreeNodeDidScroll(scrollingNodeID(), scrollPosition);
+    setScrollLayerPosition(scrollPosition, { });
+    scrollingTree().scrollingTreeNodeDidScroll(scrollingNodeID(), scrollPosition, Nullopt);
 }
 
 FloatPoint ScrollingTreeScrollingNode::minimumScrollPosition() const

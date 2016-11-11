@@ -34,9 +34,6 @@
 #include "JSObject.h"
 #include "VM.h"
 
-#include <wtf/RetainPtr.h>
-#include <wtf/WTFThreadData.h>
-
 #if PLATFORM(EFL)
 #include <wtf/MainThread.h>
 #elif USE(GLIB)
@@ -53,12 +50,7 @@ const double timerSlop = 2.0; // Fudge factor to avoid performance cost of reset
 
 #if USE(CF)
 GCActivityCallback::GCActivityCallback(Heap* heap)
-    : GCActivityCallback(heap->vm(), CFRunLoopGetCurrent())
-{
-}
-
-GCActivityCallback::GCActivityCallback(Heap* heap, CFRunLoopRef runLoop)
-    : GCActivityCallback(heap->vm(), runLoop)
+    : GCActivityCallback(heap->vm())
 {
 }
 #elif PLATFORM(EFL)

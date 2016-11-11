@@ -41,19 +41,19 @@ dictionary FontFaceDescriptors {
 
 [
     ConstructorCallWith=Document&ScriptState,
-    ConstructorRaisesException,
+    ConstructorMayThrowException,
     Constructor(DOMString family, any source, optional FontFaceDescriptors descriptors)
 ] interface FontFace {
-    [SetterRaisesException] attribute DOMString family;
-    [SetterRaisesException] attribute DOMString style;
-    [SetterRaisesException] attribute DOMString weight;
-    [SetterRaisesException] attribute DOMString stretch;
-    [SetterRaisesException] attribute DOMString unicodeRange;
-    [SetterRaisesException] attribute DOMString variant;
-    [SetterRaisesException] attribute DOMString featureSettings;
+    [SetterMayThrowException] attribute DOMString family;
+    [SetterMayThrowException] attribute DOMString style;
+    [SetterMayThrowException] attribute DOMString weight;
+    [SetterMayThrowException] attribute DOMString stretch;
+    [SetterMayThrowException] attribute DOMString unicodeRange;
+    [SetterMayThrowException] attribute DOMString variant;
+    [SetterMayThrowException] attribute DOMString featureSettings;
 
     readonly attribute FontFaceLoadStatus status;
 
-    [Custom] Promise load();
-    [CachedAttribute, CustomGetter] readonly attribute Object loaded;
+    [Custom] Promise<FontFace> load();
+    [CachedAttribute, CustomGetter] readonly attribute Promise<FontFace> loaded;
 };

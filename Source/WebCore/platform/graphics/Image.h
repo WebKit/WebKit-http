@@ -32,7 +32,7 @@
 #include "FloatSize.h"
 #include "GraphicsTypes.h"
 #include "ImageOrientation.h"
-#include "NativeImagePtr.h"
+#include "NativeImage.h"
 #include <wtf/Optional.h>
 #include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
@@ -88,7 +88,7 @@ public:
     virtual bool isSVGImage() const { return false; }
     virtual bool isPDFDocumentImage() const { return false; }
 
-    virtual bool currentFrameKnownToBeOpaque() = 0;
+    virtual bool currentFrameKnownToBeOpaque() const = 0;
     virtual bool isAnimated() const { return false; }
 
     // Derived classes should override this if they can assure that 
@@ -126,10 +126,10 @@ public:
 
     // Animation begins whenever someone draws the image, so startAnimation() is not normally called.
     // It will automatically pause once all observers no longer want to render the image anywhere.
-    enum CatchUpAnimation { DoNotCatchUp, CatchUp };
-    virtual void startAnimation(CatchUpAnimation = CatchUp) { }
+    virtual void startAnimation() { }
     virtual void stopAnimation() {}
     virtual void resetAnimation() {}
+    virtual void newFrameNativeImageAvailableAtIndex(size_t) { }
     
     // Typically the CachedImage that owns us.
     ImageObserver* imageObserver() const { return m_imageObserver; }
@@ -137,23 +137,21 @@ public:
 
     enum TileRule { StretchTile, RoundTile, SpaceTile, RepeatTile };
 
-    virtual NativeImagePtr nativeImageForCurrentFrame() { return nullptr; }
-    virtual ImageOrientation orientationForCurrentFrame() { return ImageOrientation(); }
+    virtual NativeImagePtr nativeImage(const GraphicsContext* = nullptr) { return nullptr; }
+    virtual NativeImagePtr nativeImageOfSize(const IntSize&, const GraphicsContext* = nullptr) { return nullptr; }
+    virtual NativeImagePtr nativeImageForCurrentFrame(const GraphicsContext* = nullptr) { return nullptr; }
+    virtual ImageOrientation orientationForCurrentFrame() const { return ImageOrientation(); }
+    virtual Vector<NativeImagePtr> framesNativeImages() { return { }; }
 
     // Accessors for native image formats.
 
 #if USE(APPKIT)
-    virtual NSImage* getNSImage() { return nullptr; }
+    virtual NSImage *nsImage() { return nullptr; }
+    virtual RetainPtr<NSImage> snapshotNSImage() { return nullptr; }
 #endif
 
 #if PLATFORM(COCOA)
-    virtual CFDataRef getTIFFRepresentation() { return nullptr; }
-#endif
-
-#if USE(CG)
-    virtual CGImageRef getCGImageRef() { return nullptr; }
-    virtual CGImageRef getFirstCGImageRefOfSize(const IntSize&) { return nullptr; }
-    virtual RetainPtr<CFArrayRef> getCGImageArray() { return nullptr; }
+    virtual CFDataRef tiffRepresentation() { return nullptr; }
 #endif
 
 #if PLATFORM(WIN)
@@ -169,8 +167,8 @@ public:
     virtual Evas_Object* getEvasObject(Evas*) { return nullptr; }
 #endif
 
-    virtual void drawPattern(GraphicsContext&, const FloatRect& srcRect, const AffineTransform& patternTransform,
-        const FloatPoint& phase, const FloatSize& spacing, CompositeOperator, const FloatRect& destRect, BlendMode = BlendModeNormal);
+    virtual void drawPattern(GraphicsContext&, const FloatRect& destRect, const FloatRect& srcRect, const AffineTransform& patternTransform,
+        const FloatPoint& phase, const FloatSize& spacing, CompositeOperator, BlendMode = BlendModeNormal);
 
 #if ENABLE(IMAGE_DECODER_DOWN_SAMPLING)
     FloatRect adjustSourceRectForDownSampling(const FloatRect& srcRect, const IntSize& scaledSize) const;
@@ -195,8 +193,8 @@ protected:
     void drawTiled(GraphicsContext&, const FloatRect& dstRect, const FloatRect& srcRect, const FloatSize& tileScaleFactor, TileRule hRule, TileRule vRule, CompositeOperator);
 
     // Supporting tiled drawing
-    virtual Color singlePixelSolidColor() { return Color(); }
-    
+    virtual Color singlePixelSolidColor() const { return Color(); }
+
 private:
     RefPtr<SharedBuffer> m_encodedImageData;
     ImageObserver* m_imageObserver;

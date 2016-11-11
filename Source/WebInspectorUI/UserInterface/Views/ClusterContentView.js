@@ -62,16 +62,22 @@ WebInspector.ClusterContentView = class ClusterContentView extends WebInspector.
 
     shown()
     {
+        super.shown();
+
         this._contentViewContainer.shown();
     }
 
     hidden()
     {
+        super.hidden();
+
         this._contentViewContainer.hidden();
     }
 
     closed()
     {
+        super.closed();
+
         this._contentViewContainer.closeAllContentViews();
 
         WebInspector.ContentView.removeEventListener(null, null, this);
@@ -95,6 +101,13 @@ WebInspector.ClusterContentView = class ClusterContentView extends WebInspector.
     goForward()
     {
         this._contentViewContainer.goForward();
+    }
+
+    get scrollableElements()
+    {
+        if (!this._contentViewContainer.currentContentView)
+            return [];
+        return this._contentViewContainer.currentContentView.scrollableElements;
     }
 
     get selectionPathComponents()

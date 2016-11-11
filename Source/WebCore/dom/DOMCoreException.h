@@ -26,8 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef DOMCoreException_h
-#define DOMCoreException_h
+#pragma once
 
 #include "ExceptionBase.h"
 
@@ -39,21 +38,16 @@ public:
     {
         return adoptRef(*new DOMCoreException(description));
     }
-
-    static Ref<DOMCoreException> createWithDescriptionAsMessage(const ExceptionCodeDescription& description)
-    {
-        return adoptRef(*new DOMCoreException(description, ExceptionBase::MessageSource::UseDescription));
-    }
+    static Ref<DOMCoreException> create(const String& message, const String& name);
 
     static bool initializeDescription(ExceptionCode, ExceptionCodeDescription*);
 
 protected:
-    explicit DOMCoreException(const ExceptionCodeDescription& description, ExceptionBase::MessageSource messageSource = MessageSource::ConstructMessage)
-        : ExceptionBase(description, messageSource)
+    DOMCoreException(ExceptionCode, const String& message, const String& name);
+    explicit DOMCoreException(const ExceptionCodeDescription& description)
+        : ExceptionBase(description)
     {
     }
 };
 
 } // namespace WebCore
-
-#endif // DOMCoreException_h

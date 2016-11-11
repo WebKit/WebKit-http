@@ -30,8 +30,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ImageInputType_h
-#define ImageInputType_h
+#pragma once
 
 #include "BaseButtonInputType.h"
 #include "IntPoint.h"
@@ -48,7 +47,7 @@ private:
     bool appendFormData(FormDataList&, bool) const override;
     bool supportsValidation() const override;
     RenderPtr<RenderElement> createInputRenderer(RenderStyle&&) override;
-    void handleDOMActivateEvent(Event*) override;
+    void handleDOMActivateEvent(Event&) override;
     void altAttributeChanged() override;
     void srcAttributeChanged() override;
     void attach() override;
@@ -64,5 +63,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // ImageInputType_h

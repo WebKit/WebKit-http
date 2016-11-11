@@ -29,11 +29,11 @@
 #if ENABLE(B3_JIT)
 
 #include "B3BasicBlock.h"
-#include "B3IndexSet.h"
 #include "B3InsertionSetInlines.h"
 #include "B3PhaseScope.h"
 #include "B3UseCounts.h"
 #include "B3ValueInlines.h"
+#include <wtf/IndexSet.h>
 
 namespace JSC { namespace B3 {
 
@@ -302,6 +302,7 @@ private:
                 case Abs:
                 case Ceil:
                 case Floor:
+                case Neg:
                 case Sqrt: {
                     Value* child = value->child(0);
                     if (canBeTransformedToFloat(child)) {

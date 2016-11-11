@@ -27,6 +27,7 @@
 #include "WebProcessPool.h"
 
 #include "NetworkProcessCreationParameters.h"
+#include "NetworkProcessMessages.h"
 #include "WebCookieManagerProxy.h"
 #include "WebSoupCustomProtocolRequestManager.h"
 #include <WebCore/Language.h>
@@ -40,9 +41,14 @@ void WebProcessPool::platformInitializeNetworkProcess(NetworkProcessCreationPara
     parameters.ignoreTLSErrors = m_ignoreTLSErrors;
     parameters.languages = WebCore::userPreferredLanguages();
     parameters.urlSchemesRegisteredForCustomProtocols = supplement<WebSoupCustomProtocolRequestManager>()->registeredSchemesForCustomProtocols();
-#if ENABLE(NETWORK_CACHE)
     parameters.shouldEnableNetworkCacheEfficacyLogging = false;
-#endif
+}
+
+void WebProcessPool::setIgnoreTLSErrors(bool ignoreTLSErrors)
+{
+    m_ignoreTLSErrors = ignoreTLSErrors;
+    if (networkProcess())
+        networkProcess()->send(Messages::NetworkProcess::SetIgnoreTLSErrors(m_ignoreTLSErrors), 0);
 }
 
 }

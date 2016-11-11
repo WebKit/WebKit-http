@@ -77,10 +77,17 @@ WebView* kit(WebCore::Page*);
 WebCore::Page* core(IWebView*);
 
 interface IDropTargetHelper;
+#if USE(DIRECT2D)
+interface ID2D1Bitmap;
+interface ID2D1BitmapRenderTarget;
+interface ID2D1GdiInteropRenderTarget;
+interface ID2D1HwndRenderTarget;
+interface ID2D1RenderTarget;
+#endif
 
 class WebView 
     : public IWebView
-    , public IWebViewPrivate3
+    , public IWebViewPrivate4
     , public IWebIBActions
     , public IWebViewCSS
     , public IWebViewEditing
@@ -392,6 +399,9 @@ public:
     HRESULT STDMETHODCALLTYPE layerTreeAsString(_Deref_opt_out_ BSTR*);
     HRESULT STDMETHODCALLTYPE findString(_In_ BSTR, WebFindOptions, _Deref_opt_out_ BOOL*);
 
+    // IWebViewPrivate4
+    HRESULT STDMETHODCALLTYPE setVisibilityState(WebPageVisibilityState);
+
     // WebView
     bool shouldUseEmbeddedView(const WTF::String& mimeType) const;
 
@@ -414,6 +424,7 @@ public:
     bool keyDown(WPARAM, LPARAM, bool systemKeyDown = false);
     bool keyUp(WPARAM, LPARAM, bool systemKeyDown = false);
     bool keyPress(WPARAM, LPARAM, bool systemKeyDown = false);
+    void paintWithDirect2D();
     void paint(HDC, LPARAM);
     void paintIntoWindow(HDC bitmapDC, HDC windowDC, const WebCore::IntRect& dirtyRect);
     bool ensureBackingStore();
@@ -616,6 +627,12 @@ protected:
 
     HMENU m_currentContextMenu { nullptr };
     RefPtr<WebCore::SharedGDIObject<HBITMAP>> m_backingStoreBitmap;
+#if USE(DIRECT2D)
+    COMPtr<ID2D1HwndRenderTarget> m_renderTarget;
+    COMPtr<ID2D1Bitmap> m_backingStoreD2DBitmap;
+    COMPtr<ID2D1BitmapRenderTarget> m_backingStoreRenderTarget;
+    COMPtr<ID2D1GdiInteropRenderTarget> m_backingStoreGdiInterop;
+#endif
     SIZE m_backingStoreSize;
     RefPtr<WebCore::SharedGDIObject<HRGN>> m_backingStoreDirtyRegion;
 

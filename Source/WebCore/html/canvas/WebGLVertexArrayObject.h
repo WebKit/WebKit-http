@@ -23,17 +23,13 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef WebGLVertexArrayObject_h
-#define WebGLVertexArrayObject_h
+#pragma once
 
 #if ENABLE(WEBGL2)
 
 #include "WebGLBuffer.h"
 #include "WebGLContextObject.h"
 #include "WebGLVertexArrayObjectBase.h"
-
-#include <wtf/PassRefPtr.h>
-#include <wtf/RefCounted.h>
 
 namespace WebCore {
 
@@ -51,6 +47,4 @@ private:
 
 } // namespace WebCore
 
-#endif // WEBGL2
-
-#endif // WebGLVertexArrayObject_h
+#endif // ENABLE(WEBGL2)

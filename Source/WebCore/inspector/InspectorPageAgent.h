@@ -29,8 +29,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef InspectorPageAgent_h
-#define InspectorPageAgent_h
+#pragma once
 
 #include "InspectorWebAgentBase.h"
 #include "IntSize.h"
@@ -121,7 +120,7 @@ public:
     void didClearWindowObjectInWorld(Frame*, DOMWrapperWorld&);
     void domContentEventFired();
     void loadEventFired();
-    void frameNavigated(DocumentLoader*);
+    void frameNavigated(Frame&);
     void frameDetached(Frame&);
     void loaderDetachedFromFrame(DocumentLoader&);
     void frameStartedLoading(Frame&);
@@ -131,7 +130,7 @@ public:
     void willRunJavaScriptDialog(const String& message);
     void didRunJavaScriptDialog();
     void applyEmulatedMedia(String&);
-    void didPaint(RenderObject*, const LayoutRect&);
+    void didPaint(RenderObject&, const LayoutRect&);
     void didLayout();
     void didScroll();
     void didRecalculateStyle();
@@ -188,7 +187,4 @@ private:
     RefPtr<Inspector::InspectorObject> m_scriptsToEvaluateOnLoad;
 };
 
-
 } // namespace WebCore
-
-#endif // !defined(InspectorPagerAgent_h)

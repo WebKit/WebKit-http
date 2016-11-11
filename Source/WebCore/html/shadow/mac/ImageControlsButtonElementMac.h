@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ImageControlsButtonElementMac_h
-#define ImageControlsButtonElementMac_h
+#pragma once
 
 #include "HTMLDivElement.h"
 
@@ -41,7 +40,7 @@ public:
 private:
     ImageControlsButtonElementMac(Document&);
 
-    void defaultEventHandler(Event*) override;
+    void defaultEventHandler(Event&) override;
     RenderPtr<RenderElement> createElementRenderer(RenderStyle&&, const RenderTreePosition&) override;
 
     bool isImageControlsButtonElement() const override { return true; }
@@ -50,5 +49,3 @@ private:
 } // namespace WebCore
 
 #endif // ENABLE(SERVICE_CONTROLS)
-
-#endif // ImageControlsButtonElementMac_h

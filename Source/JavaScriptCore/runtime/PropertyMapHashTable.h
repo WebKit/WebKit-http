@@ -18,14 +18,12 @@
  *
  */
 
-#ifndef PropertyMapHashTable_h
-#define PropertyMapHashTable_h
+#pragma once
 
 #include "JSExportMacros.h"
 #include "PropertyOffset.h"
 #include "Structure.h"
 #include "WriteBarrier.h"
-#include <wtf/CryptographicallyRandomNumber.h>
 #include <wtf/HashTable.h>
 #include <wtf/MathExtras.h>
 #include <wtf/Vector.h>
@@ -560,5 +558,3 @@ inline bool PropertyTable::canInsert()
 }
 
 } // namespace JSC
-
-#endif // PropertyMapHashTable_h

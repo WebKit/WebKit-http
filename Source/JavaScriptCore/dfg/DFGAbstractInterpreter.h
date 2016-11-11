@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef DFGAbstractInterpreter_h
-#define DFGAbstractInterpreter_h
+#pragma once
 
 #if ENABLE(DFG_JIT)
 
@@ -32,6 +31,7 @@
 #include "DFGBranchDirection.h"
 #include "DFGGraph.h"
 #include "DFGNode.h"
+#include "DFGNodeFlowProjection.h"
 #include "DFGPhiChildren.h"
 
 namespace JSC { namespace DFG {
@@ -42,7 +42,7 @@ public:
     AbstractInterpreter(Graph&, AbstractStateType&);
     ~AbstractInterpreter();
     
-    AbstractValue& forNode(Node* node)
+    AbstractValue& forNode(NodeFlowProjection node)
     {
         return m_state.forNode(node);
     }
@@ -82,7 +82,7 @@ public:
     // This is guaranteed to be equivalent to doing:
     //
     // state.startExecuting()
-    // state.executeEdges(index);
+    // state.executeEdges(node);
     // result = state.executeEffects(index);
     bool execute(unsigned indexInBlock);
     bool execute(Node*);
@@ -95,8 +95,7 @@ public:
     // on all edges of the node. You can skip this step, if you have already used
     // filterEdgeByUse() (or some equivalent) on each edge.
     void executeEdges(Node*);
-    void executeEdges(unsigned indexInBlock);
-    
+
     void executeKnownEdgeTypes(Node*);
     
     ALWAYS_INLINE void filterEdgeByUse(Edge& edge)
@@ -136,10 +135,17 @@ public:
         return filterByValue(forNode(node), value);
     }
     
+    template<typename T>
+    FiltrationResult filterClassInfo(T node, const ClassInfo* classInfo)
+    {
+        return filterClassInfo(forNode(node), classInfo);
+    }
+
     FiltrationResult filter(AbstractValue&, const StructureSet&, SpeculatedType admittedTypes = SpecNone);
     FiltrationResult filterArrayModes(AbstractValue&, ArrayModes);
     FiltrationResult filter(AbstractValue&, SpeculatedType);
     FiltrationResult filterByValue(AbstractValue&, FrozenValue);
+    FiltrationResult filterClassInfo(AbstractValue&, const ClassInfo*);
     
     PhiChildren* phiChildren() { return m_phiChildren.get(); }
     
@@ -187,6 +193,7 @@ private:
     
     void verifyEdge(Node*, Edge);
     void verifyEdges(Node*);
+    void executeDoubleUnaryOpEffects(Node*, double(*equivalentFunction)(double));
     
     CodeBlock* m_codeBlock;
     Graph& m_graph;
@@ -197,6 +204,3 @@ private:
 } } // namespace JSC::DFG
 
 #endif // ENABLE(DFG_JIT)
-
-#endif // DFGAbstractInterpreter_h
-

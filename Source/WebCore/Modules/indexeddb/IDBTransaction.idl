@@ -25,17 +25,19 @@
  */
 
 [
-    Conditional=INDEXED_DATABASE,
     ActiveDOMObject,
+    Conditional=INDEXED_DATABASE,
     EnabledAtRuntime=IndexedDB,
+    JSCustomMarkFunction,
     SkipVTableValidation,
 ] interface IDBTransaction : EventTarget {
-    readonly attribute DOMString mode;
+    readonly attribute DOMStringList objectStoreNames;
+    readonly attribute IDBTransactionMode mode;
     readonly attribute IDBDatabase db;
     readonly attribute DOMError error;
 
-    [RaisesExceptionWithMessage] IDBObjectStore objectStore (DOMString name);
-    [RaisesExceptionWithMessage] void abort ();
+    [MayThrowException] IDBObjectStore objectStore(DOMString name);
+    [MayThrowException] void abort();
 
     attribute EventHandler onabort;
     attribute EventHandler oncomplete;

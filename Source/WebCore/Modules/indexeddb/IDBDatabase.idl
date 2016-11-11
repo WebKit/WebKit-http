@@ -34,14 +34,23 @@
     readonly attribute unsigned long long version;
     readonly attribute DOMStringList objectStoreNames;
 
-    [Custom, RaisesExceptionWithMessage] IDBObjectStore createObjectStore(DOMString name, optional Dictionary options);
-    [RaisesExceptionWithMessage] void deleteObjectStore(DOMString name);
-    [Custom, CallWith=ScriptExecutionContext, RaisesExceptionWithMessage] IDBTransaction transaction(DOMString storeName, optional DOMString mode);
-    [Custom, CallWith=ScriptExecutionContext, RaisesExceptionWithMessage] IDBTransaction transaction(sequence<DOMString> storeNames, optional DOMString mode);
+    [MayThrowException] IDBObjectStore createObjectStore(DOMString name, optional IDBObjectStoreParameters parameters);
+    [MayThrowException] void deleteObjectStore(DOMString name);
+
+    [MayThrowException] IDBTransaction transaction((DOMString or sequence<DOMString>) storeNames, optional IDBTransactionMode mode = "readonly");
+
+    // FIXME: This is not part of the spec, but is needed for compatibility.
+    // See https://github.com/w3c/IndexedDB/issues/85
+    [MayThrowException] IDBTransaction transaction(DOMStringList storeNames, optional IDBTransactionMode mode = "readonly");
     void close();
 
     attribute EventHandler onabort;
+    attribute EventHandler onclose;
     attribute EventHandler onerror;
     attribute EventHandler onversionchange;
 };
 
+dictionary IDBObjectStoreParameters {
+    (DOMString or sequence<DOMString>)? keyPath = null;
+    boolean autoIncrement = false;
+};

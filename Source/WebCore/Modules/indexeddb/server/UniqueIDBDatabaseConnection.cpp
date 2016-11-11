@@ -135,7 +135,7 @@ void UniqueIDBDatabaseConnection::establishTransaction(const IDBTransactionInfo&
 {
     LOG(IndexedDB, "UniqueIDBDatabaseConnection::establishTransaction - %s - %" PRIu64, m_openRequestIdentifier.loggingString().utf8().data(), m_identifier);
 
-    ASSERT(info.mode() != IndexedDB::TransactionMode::VersionChange);
+    ASSERT(info.mode() != IDBTransactionMode::Versionchange);
 
     // No transactions should ever come from the client after the client has already told us
     // the connection is closing.
@@ -151,11 +151,11 @@ void UniqueIDBDatabaseConnection::didAbortTransaction(UniqueIDBDatabaseTransacti
     LOG(IndexedDB, "UniqueIDBDatabaseConnection::didAbortTransaction - %s - %" PRIu64, m_openRequestIdentifier.loggingString().utf8().data(), m_identifier);
 
     auto transactionIdentifier = transaction.info().identifier();
+    auto takenTransaction = m_transactionMap.take(transactionIdentifier);
 
-    ASSERT(m_transactionMap.contains(transactionIdentifier));
-    m_transactionMap.remove(transactionIdentifier);
-
-    m_connectionToClient.didAbortTransaction(transactionIdentifier, error);
+    ASSERT(takenTransaction || m_database.hardClosedForUserDelete());
+    if (takenTransaction)
+        m_connectionToClient.didAbortTransaction(transactionIdentifier, error);
 }
 
 void UniqueIDBDatabaseConnection::didCommitTransaction(UniqueIDBDatabaseTransaction& transaction, const IDBError& error)
@@ -184,6 +184,13 @@ void UniqueIDBDatabaseConnection::didDeleteObjectStore(const IDBResultData& resu
     m_connectionToClient.didDeleteObjectStore(resultData);
 }
 
+void UniqueIDBDatabaseConnection::didRenameObjectStore(const IDBResultData& resultData)
+{
+    LOG(IndexedDB, "UniqueIDBDatabaseConnection::didRenameObjectStore");
+
+    m_connectionToClient.didRenameObjectStore(resultData);
+}
+
 void UniqueIDBDatabaseConnection::didClearObjectStore(const IDBResultData& resultData)
 {
     LOG(IndexedDB, "UniqueIDBDatabaseConnection::didClearObjectStore");
@@ -203,6 +210,13 @@ void UniqueIDBDatabaseConnection::didDeleteIndex(const IDBResultData& resultData
     LOG(IndexedDB, "UniqueIDBDatabaseConnection::didDeleteIndex");
 
     m_connectionToClient.didDeleteIndex(resultData);
+}
+
+void UniqueIDBDatabaseConnection::didRenameIndex(const IDBResultData& resultData)
+{
+    LOG(IndexedDB, "UniqueIDBDatabaseConnection::didRenameIndex");
+
+    m_connectionToClient.didRenameIndex(resultData);
 }
 
 } // namespace IDBServer

@@ -27,7 +27,6 @@
 #include "StyleRule.h"
 #include <wtf/Forward.h>
 #include <wtf/HashMap.h>
-#include <wtf/HashSet.h>
 #include <wtf/text/AtomicString.h>
 #include <wtf/text/CString.h>
 
@@ -193,7 +192,6 @@ public:
     unsigned ruleCount() const { return m_ruleCount; }
 
     bool hasShadowPseudoElementRules() const;
-    void copyShadowPseudoElementRulesFrom(const RuleSet&);
 
 private:
     void addChildRules(const Vector<RefPtr<StyleRuleBase>>&, const MediaQueryEvaluator& medium, StyleResolver*, bool hasDocumentSecurityOrigin, bool isInitiatingElementInUserAgentShadowTree, AddRuleFlags);

@@ -1,6 +1,6 @@
 /*
- * Copyright (C) 2011, 2013 Google Inc.  All rights reserved.
- * Copyright (C) 2011-2014 Apple Inc.  All rights reserved.
+ * Copyright (C) 2011, 2013 Google Inc. All rights reserved.
+ * Copyright (C) 2011-2014 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -85,13 +85,13 @@ static const AtomicString& forcedKeyword()
 
 TextTrack* TextTrack::captionMenuOffItem()
 {
-    static TextTrack& off = TextTrack::create(0, 0, "off menu item", "", "", "").leakRef();
+    static TextTrack& off = TextTrack::create(nullptr, nullptr, "off menu item", emptyAtom, emptyAtom, emptyAtom).leakRef();
     return &off;
 }
 
 TextTrack* TextTrack::captionMenuAutomaticItem()
 {
-    static TextTrack& automatic = TextTrack::create(0, 0, "automatic menu item", "", "", "").leakRef();
+    static TextTrack& automatic = TextTrack::create(nullptr, nullptr, "automatic menu item", emptyAtom, emptyAtom, emptyAtom).leakRef();
     return &automatic;
 }
 
@@ -202,6 +202,11 @@ void TextTrack::setKind(Kind newKind)
 
 void TextTrack::setKindKeywordIgnoringASCIICase(StringView keyword)
 {
+    if (keyword.isNull()) {
+        // The missing value default is the subtitles state.
+        setKind(Kind::Subtitles);
+        return;
+    }
     if (equalLettersIgnoringASCIICase(keyword, "captions"))
         setKind(Kind::Captions);
     else if (equalLettersIgnoringASCIICase(keyword, "chapters"))
@@ -214,14 +219,10 @@ void TextTrack::setKindKeywordIgnoringASCIICase(StringView keyword)
         setKind(Kind::Metadata);
     else if (equalLettersIgnoringASCIICase(keyword, "subtitles"))
         setKind(Kind::Subtitles);
-#if !ENABLE(MEDIA_SOURCE)
-    // FIXME: This preserves the behavior of an older version of this code before refactoring.
-    // !ENABLE(MEDIA_SOURCE): unknown keywords all get turned into Subtitles.
-    // ENABLE(MEDIA_SOURCE): unknown keywords leave the old value for kind untouched.
-    // I am not sure that either of those is the correct behavior; should test and fix.
-    else
-        setKind(Kind::Subtitles);
-#endif
+    else {
+        // The invalid value default is the metadata state.
+        setKind(Kind::Metadata);
+    }
 }
 
 void TextTrack::setMode(Mode mode)
@@ -289,27 +290,20 @@ TextTrackCueList* TextTrack::activeCues() const
     return m_cues->activeCues();
 }
 
-void TextTrack::addCue(PassRefPtr<TextTrackCue> prpCue, ExceptionCode& ec)
+ExceptionOr<void> TextTrack::addCue(Ref<TextTrackCue>&& cue)
 {
-    if (!prpCue)
-        return;
-
-    RefPtr<TextTrackCue> cue = prpCue;
-
     // 4.7.10.12.6 Text tracks exposing in-band metadata
     // The UA will use DataCue to expose only text track cue objects that belong to a text track that has a text
     // track kind of metadata.
     // If a DataCue is added to a TextTrack via the addCue() method but the text track does not have its text
     // track kind set to metadata, throw a InvalidNodeTypeError exception and don't add the cue to the TextTrackList
     // of the TextTrack.
-    if (cue->cueType() == TextTrackCue::Data && m_kind != Kind::Metadata) {
-        ec = INVALID_NODE_TYPE_ERR;
-        return;
-    }
+    if (cue->cueType() == TextTrackCue::Data && m_kind != Kind::Metadata)
+        return Exception { INVALID_NODE_TYPE_ERR };
 
     // TODO(93143): Add spec-compliant behavior for negative time values.
     if (!cue->startMediaTime().isValid() || !cue->endMediaTime().isValid() || cue->startMediaTime() < MediaTime::zeroTime() || cue->endMediaTime() < MediaTime::zeroTime())
-        return;
+        return { };
 
     // 4.8.10.12.5 Text track API
 
@@ -319,41 +313,38 @@ void TextTrack::addCue(PassRefPtr<TextTrackCue> prpCue, ExceptionCode& ec)
     // list of cues.
     TextTrack* cueTrack = cue->track();
     if (cueTrack && cueTrack != this)
-        cueTrack->removeCue(cue.get(), ASSERT_NO_EXCEPTION);
+        cueTrack->removeCue(cue.get());
 
     // 2. Add cue to the method's TextTrack object's text track's text track list of cues.
     cue->setTrack(this);
-    ensureTextTrackCueList().add(cue);
+    ensureTextTrackCueList().add(cue.ptr());
     
     if (m_client)
-        m_client->textTrackAddCue(this, cue.get());
+        m_client->textTrackAddCue(this, cue);
+
+    return { };
 }
 
-void TextTrack::removeCue(TextTrackCue* cue, ExceptionCode& ec)
+ExceptionOr<void> TextTrack::removeCue(TextTrackCue& cue)
 {
-    if (!cue)
-        return;
-
     // 4.8.10.12.5 Text track API
 
     // The removeCue(cue) method of TextTrack objects, when invoked, must run the following steps:
 
     // 1. If the given cue is not currently listed in the method's TextTrack 
     // object's text track's text track list of cues, then throw a NotFoundError exception.
-    if (cue->track() != this) {
-        ec = NOT_FOUND_ERR;
-        return;
-    }
+    if (cue.track() != this)
+        return Exception { NOT_FOUND_ERR };
 
     // 2. Remove cue from the method's TextTrack object's text track's text track list of cues.
-    if (!m_cues || !m_cues->remove(cue)) {
-        ec = INVALID_STATE_ERR;
-        return;
-    }
+    if (!m_cues || !m_cues->remove(&cue))
+        return Exception { INVALID_STATE_ERR };
 
-    cue->setTrack(0);
+    cue.setTrack(nullptr);
     if (m_client)
         m_client->textTrackRemoveCue(this, cue);
+
+    return { };
 }
 
 VTTRegionList& TextTrack::ensureVTTRegionList()
@@ -377,54 +368,50 @@ VTTRegionList* TextTrack::regions()
     return &ensureVTTRegionList();
 }
 
-void TextTrack::addRegion(PassRefPtr<VTTRegion> prpRegion)
+void TextTrack::addRegion(RefPtr<VTTRegion>&& region)
 {
-    if (!prpRegion)
+    if (!region)
         return;
 
-    RefPtr<VTTRegion> region = prpRegion;
-    VTTRegionList& regionList = ensureVTTRegionList();
+    auto& regionList = ensureVTTRegionList();
 
     // 1. If the given region is in a text track list of regions, then remove
     // region from that text track list of regions.
-    TextTrack* regionTrack = region->track();
+    auto* regionTrack = region->track();
     if (regionTrack && regionTrack != this)
-        regionTrack->removeRegion(region.get(), ASSERT_NO_EXCEPTION);
+        regionTrack->removeRegion(region.get());
 
     // 2. If the method's TextTrack object's text track list of regions contains
     // a region with the same identifier as region replace the values of that
     // region's width, height, anchor point, viewport anchor point and scroll
     // attributes with those of region.
-    VTTRegion* existingRegion = regionList.getRegionById(region->id());
+    auto* existingRegion = regionList.getRegionById(region->id());
     if (existingRegion) {
-        existingRegion->updateParametersFromRegion(region.get());
+        existingRegion->updateParametersFromRegion(*region);
         return;
     }
 
     // Otherwise: add region to the method's TextTrack object's text track
     // list of regions.
     region->setTrack(this);
-    regionList.add(region);
+    regionList.add(WTFMove(region));
 }
 
-void TextTrack::removeRegion(VTTRegion* region, ExceptionCode &ec)
+ExceptionOr<void> TextTrack::removeRegion(VTTRegion* region)
 {
     if (!region)
-        return;
+        return { };
 
     // 1. If the given region is not currently listed in the method's TextTrack
     // object's text track list of regions, then throw a NotFoundError exception.
-    if (region->track() != this) {
-        ec = NOT_FOUND_ERR;
-        return;
-    }
+    if (region->track() != this)
+        return Exception { NOT_FOUND_ERR };
 
-    if (!m_regions || !m_regions->remove(region)) {
-        ec = INVALID_STATE_ERR;
-        return;
-    }
+    if (!m_regions || !m_regions->remove(region))
+        return Exception { INVALID_STATE_ERR };
 
-    region->setTrack(0);
+    region->setTrack(nullptr);
+    return { };
 }
 
 void TextTrack::cueWillChange(TextTrackCue* cue)
@@ -434,7 +421,7 @@ void TextTrack::cueWillChange(TextTrackCue* cue)
 
     // The cue may need to be repositioned in the media element's interval tree, may need to
     // be re-rendered, etc, so remove it before the modification...
-    m_client->textTrackRemoveCue(this, cue);
+    m_client->textTrackRemoveCue(this, *cue);
 }
 
 void TextTrack::cueDidChange(TextTrackCue* cue)
@@ -446,7 +433,7 @@ void TextTrack::cueDidChange(TextTrackCue* cue)
     ensureTextTrackCueList().updateCueIndex(cue);
 
     // ... and add it back again.
-    m_client->textTrackAddCue(this, cue);
+    m_client->textTrackAddCue(this, *cue);
 }
 
 int TextTrack::trackIndex()

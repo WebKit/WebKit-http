@@ -23,8 +23,7 @@
  *
  */
 
-#ifndef HTMLTableColElement_h
-#define HTMLTableColElement_h
+#pragma once
 
 #include "HTMLTablePartElement.h"
 
@@ -35,21 +34,19 @@ public:
     static Ref<HTMLTableColElement> create(const QualifiedName& tagName, Document&);
 
     unsigned span() const { return m_span; }
-    void setSpan(unsigned);
+    WEBCORE_EXPORT void setSpan(unsigned);
 
     String width() const;
 
 private:
     HTMLTableColElement(const QualifiedName& tagName, Document&);
 
-    void parseAttribute(const QualifiedName&, const AtomicString&) override;
-    bool isPresentationAttribute(const QualifiedName&) const override;
-    void collectStyleForPresentationAttribute(const QualifiedName&, const AtomicString&, MutableStyleProperties&) override;
-    const StyleProperties* additionalPresentationAttributeStyle() const override;
+    void parseAttribute(const QualifiedName&, const AtomicString&) final;
+    bool isPresentationAttribute(const QualifiedName&) const final;
+    void collectStyleForPresentationAttribute(const QualifiedName&, const AtomicString&, MutableStyleProperties&) final;
+    const StyleProperties* additionalPresentationAttributeStyle() const final;
 
     unsigned m_span;
 };
 
 } //namespace
-
-#endif

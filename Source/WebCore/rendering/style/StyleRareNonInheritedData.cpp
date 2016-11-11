@@ -37,7 +37,7 @@
 namespace WebCore {
 
 StyleRareNonInheritedData::StyleRareNonInheritedData()
-    : opacity(RenderStyle::initialOpacity())
+    : m_opacity(RenderStyle::initialOpacity())
     , m_aspectRatioDenominator(RenderStyle::initialAspectRatioDenominator())
     , m_aspectRatioNumerator(RenderStyle::initialAspectRatioNumerator())
     , m_perspective(RenderStyle::initialPerspective())
@@ -64,11 +64,9 @@ StyleRareNonInheritedData::StyleRareNonInheritedData()
     , m_willChange(RenderStyle::initialWillChange())
     , m_mask(FillLayer(MaskFillLayer))
     , m_objectPosition(RenderStyle::initialObjectPosition())
-#if ENABLE(CSS_SHAPES)
     , m_shapeOutside(RenderStyle::initialShapeOutside())
     , m_shapeMargin(RenderStyle::initialShapeMargin())
     , m_shapeImageThreshold(RenderStyle::initialShapeImageThreshold())
-#endif
     , m_clipPath(RenderStyle::initialClipPath())
     , m_visitedLinkBackgroundColor(RenderStyle::initialBackgroundColor())
     , m_order(RenderStyle::initialOrder())
@@ -98,11 +96,14 @@ StyleRareNonInheritedData::StyleRareNonInheritedData()
     , m_borderFit(RenderStyle::initialBorderFit())
     , m_textCombine(RenderStyle::initialTextCombine())
     , m_textDecorationStyle(RenderStyle::initialTextDecorationStyle())
-    , m_runningAcceleratedAnimation(false)
     , m_aspectRatioType(RenderStyle::initialAspectRatioType())
 #if ENABLE(CSS_COMPOSITING)
     , m_effectiveBlendMode(RenderStyle::initialBlendMode())
     , m_isolation(RenderStyle::initialIsolation())
+#endif
+#if ENABLE(APPLE_PAY)
+    , m_applePayButtonStyle(static_cast<unsigned>(RenderStyle::initialApplePayButtonStyle()))
+    , m_applePayButtonType(static_cast<unsigned>(RenderStyle::initialApplePayButtonType()))
 #endif
     , m_objectFit(RenderStyle::initialObjectFit())
     , m_breakBefore(RenderStyle::initialBreakBetween())
@@ -117,7 +118,7 @@ StyleRareNonInheritedData::StyleRareNonInheritedData()
 
 inline StyleRareNonInheritedData::StyleRareNonInheritedData(const StyleRareNonInheritedData& o)
     : RefCounted<StyleRareNonInheritedData>()
-    , opacity(o.opacity)
+    , m_opacity(o.m_opacity)
     , m_aspectRatioDenominator(o.m_aspectRatioDenominator)
     , m_aspectRatioNumerator(o.m_aspectRatioNumerator)
     , m_perspective(o.m_perspective)
@@ -153,11 +154,9 @@ inline StyleRareNonInheritedData::StyleRareNonInheritedData(const StyleRareNonIn
     , m_maskBoxImage(o.m_maskBoxImage)
     , m_pageSize(o.m_pageSize)
     , m_objectPosition(o.m_objectPosition)
-#if ENABLE(CSS_SHAPES)
     , m_shapeOutside(o.m_shapeOutside)
     , m_shapeMargin(o.m_shapeMargin)
     , m_shapeImageThreshold(o.m_shapeImageThreshold)
-#endif
     , m_clipPath(o.m_clipPath)
     , m_textDecorationColor(o.m_textDecorationColor)
     , m_visitedLinkTextDecorationColor(o.m_visitedLinkTextDecorationColor)
@@ -194,11 +193,14 @@ inline StyleRareNonInheritedData::StyleRareNonInheritedData(const StyleRareNonIn
     , m_borderFit(o.m_borderFit)
     , m_textCombine(o.m_textCombine)
     , m_textDecorationStyle(o.m_textDecorationStyle)
-    , m_runningAcceleratedAnimation(o.m_runningAcceleratedAnimation)
     , m_aspectRatioType(o.m_aspectRatioType)
 #if ENABLE(CSS_COMPOSITING)
     , m_effectiveBlendMode(o.m_effectiveBlendMode)
     , m_isolation(o.m_isolation)
+#endif
+#if ENABLE(APPLE_PAY)
+    , m_applePayButtonStyle(o.m_applePayButtonStyle)
+    , m_applePayButtonType(o.m_applePayButtonType)
 #endif
     , m_objectFit(o.m_objectFit)
     , m_breakBefore(o.m_breakBefore)
@@ -221,7 +223,7 @@ StyleRareNonInheritedData::~StyleRareNonInheritedData()
 
 bool StyleRareNonInheritedData::operator==(const StyleRareNonInheritedData& o) const
 {
-    return opacity == o.opacity
+    return m_opacity == o.m_opacity
         && m_aspectRatioDenominator == o.m_aspectRatioDenominator
         && m_aspectRatioNumerator == o.m_aspectRatioNumerator
         && m_perspective == o.m_perspective
@@ -260,11 +262,9 @@ bool StyleRareNonInheritedData::operator==(const StyleRareNonInheritedData& o) c
         && m_maskBoxImage == o.m_maskBoxImage
         && m_pageSize == o.m_pageSize
         && m_objectPosition == o.m_objectPosition
-#if ENABLE(CSS_SHAPES)
         && arePointingToEqualData(m_shapeOutside, o.m_shapeOutside)
         && m_shapeMargin == o.m_shapeMargin
         && m_shapeImageThreshold == o.m_shapeImageThreshold
-#endif
         && arePointingToEqualData(m_clipPath, o.m_clipPath)
         && m_textDecorationColor == o.m_textDecorationColor
         && m_visitedLinkTextDecorationColor == o.m_visitedLinkTextDecorationColor
@@ -301,10 +301,13 @@ bool StyleRareNonInheritedData::operator==(const StyleRareNonInheritedData& o) c
 #if ENABLE(CSS_SCROLL_SNAP)
         && m_scrollSnapType == o.m_scrollSnapType
 #endif
-        && !m_runningAcceleratedAnimation && !o.m_runningAcceleratedAnimation
 #if ENABLE(CSS_COMPOSITING)
         && m_effectiveBlendMode == o.m_effectiveBlendMode
         && m_isolation == o.m_isolation
+#endif
+#if ENABLE(APPLE_PAY)
+        && m_applePayButtonStyle == o.m_applePayButtonStyle
+        && m_applePayButtonType == o.m_applePayButtonType
 #endif
         && m_aspectRatioType == o.m_aspectRatioType
         && m_objectFit == o.m_objectFit

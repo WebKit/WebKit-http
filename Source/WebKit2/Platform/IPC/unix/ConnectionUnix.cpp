@@ -245,7 +245,7 @@ bool Connection::processMessage()
     if (messageInfo.isMessageBodyIsOutOfLine())
         messageBody = reinterpret_cast<uint8_t*>(oolMessageBody->data());
 
-    auto decoder = std::make_unique<MessageDecoder>(DataReference(messageBody, messageInfo.bodySize()), WTFMove(attachments));
+    auto decoder = std::make_unique<Decoder>(DataReference(messageBody, messageInfo.bodySize()), WTFMove(attachments));
 
     processIncomingMessage(WTFMove(decoder));
 
@@ -308,11 +308,9 @@ static ssize_t readBytesFromSocket(int socketDescriptor, Vector<uint8_t>& buffer
                 memcpy(fileDescriptors.data() + previousFileDescriptorsSize, CMSG_DATA(controlMessage), sizeof(int) * fileDescriptorsCount);
 
                 for (size_t i = 0; i < fileDescriptorsCount; ++i) {
-                    while (fcntl(fileDescriptors[previousFileDescriptorsSize + i], F_SETFD, FD_CLOEXEC) == -1) {
-                        if (errno != EINTR) {
-                            ASSERT_NOT_REACHED();
-                            break;
-                        }
+                    if (!setCloseOnExec(fileDescriptors[previousFileDescriptorsSize + i])) {
+                        ASSERT_NOT_REACHED();
+                        break;
                     }
                 }
                 break;
@@ -404,7 +402,7 @@ bool Connection::platformCanSendOutgoingMessages() const
     return m_isConnected;
 }
 
-bool Connection::sendOutgoingMessage(std::unique_ptr<MessageEncoder> encoder)
+bool Connection::sendOutgoingMessage(std::unique_ptr<Encoder> encoder)
 {
     COMPILE_ASSERT(sizeof(MessageInfo) + attachmentMaxAmount * sizeof(size_t) <= messageMaxSize, AttachmentsFitToMessageInline);
 
@@ -532,28 +530,26 @@ Connection::SocketPair Connection::createPlatformConnection(unsigned options)
 
     if (options & SetCloexecOnServer) {
         // Don't expose the child socket to the parent process.
-        while (fcntl(sockets[1], F_SETFD, FD_CLOEXEC)  == -1)
-            RELEASE_ASSERT(errno != EINTR);
+        if (!setCloseOnExec(sockets[1]))
+            RELEASE_ASSERT_NOT_REACHED();
     }
 
     if (options & SetCloexecOnClient) {
         // Don't expose the parent socket to potential future children.
-        while (fcntl(sockets[0], F_SETFD, FD_CLOEXEC) == -1)
-            RELEASE_ASSERT(errno != EINTR);
+        if (!setCloseOnExec(sockets[0]))
+            RELEASE_ASSERT_NOT_REACHED();
     }
 
     SocketPair socketPair = { sockets[0], sockets[1] };
     return socketPair;
 }
-    
-void Connection::willSendSyncMessage(unsigned flags)
+
+void Connection::willSendSyncMessage(OptionSet<SendSyncOption>)
 {
-    UNUSED_PARAM(flags);
 }
-    
-void Connection::didReceiveSyncReply(unsigned flags)
+
+void Connection::didReceiveSyncReply(OptionSet<SendSyncOption>)
 {
-    UNUSED_PARAM(flags);    
 }
 
 } // namespace IPC

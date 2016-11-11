@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -55,8 +55,7 @@ using namespace WebKit;
 @interface WKImmediateActionController () <QLPreviewMenuItemDelegate>
 @end
 
-@interface WKAnimationController : NSObject <NSImmediateActionAnimationController> {
-}
+@interface WKAnimationController : NSObject <NSImmediateActionAnimationController>
 @end
 
 @implementation WKAnimationController
@@ -197,7 +196,7 @@ using namespace WebKit;
     // FIXME: Connection can be null if the process is closed; we should clean up better in that case.
     if (_state == ImmediateActionState::Pending) {
         if (auto* connection = _page->process().connection()) {
-            bool receivedReply = connection->waitForAndDispatchImmediately<Messages::WebPageProxy::DidPerformImmediateActionHitTest>(_page->pageID(), std::chrono::milliseconds(500));
+            bool receivedReply = connection->waitForAndDispatchImmediately<Messages::WebPageProxy::DidPerformImmediateActionHitTest>(_page->pageID(), Seconds::fromMilliseconds(500));
             if (!receivedReply)
                 _state = ImmediateActionState::TimedOut;
         }
@@ -270,10 +269,8 @@ using namespace WebKit;
 
 - (id <NSImmediateActionAnimationController>)_defaultAnimationController
 {
-    if (_contentPreventsDefault) {
-        RetainPtr<WKAnimationController> dummyController = [[WKAnimationController alloc] init];
-        return dummyController.get();
-    }
+    if (_contentPreventsDefault)
+        return [[[WKAnimationController alloc] init] autorelease];
 
     RefPtr<API::HitTestResult> hitTestResult = [self _webHitTestResult];
 

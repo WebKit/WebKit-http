@@ -28,8 +28,9 @@
 
 #if ENABLE(SUBTLE_CRYPTO)
 
-#include "CryptoAlgorithmAesCbcParams.h"
+#include "CryptoAlgorithmAesCbcParamsDeprecated.h"
 #include "CryptoAlgorithmAesKeyGenParams.h"
+#include "CryptoAlgorithmAesKeyGenParamsDeprecated.h"
 #include "CryptoKeyAES.h"
 #include "CryptoKeyDataOctetSequence.h"
 #include "ExceptionCode.h"
@@ -37,6 +38,11 @@
 namespace WebCore {
 
 const char* const CryptoAlgorithmAES_CBC::s_name = "AES-CBC";
+
+static inline bool usagesAreInvalidForCryptoAlgorithmAES_CBC(CryptoKeyUsage usages)
+{
+    return usages & (CryptoKeyUsageSign | CryptoKeyUsageVerify | CryptoKeyUsageDeriveKey | CryptoKeyUsageDeriveBits);
+}
 
 CryptoAlgorithmAES_CBC::CryptoAlgorithmAES_CBC()
 {
@@ -46,9 +52,9 @@ CryptoAlgorithmAES_CBC::~CryptoAlgorithmAES_CBC()
 {
 }
 
-std::unique_ptr<CryptoAlgorithm> CryptoAlgorithmAES_CBC::create()
+Ref<CryptoAlgorithm> CryptoAlgorithmAES_CBC::create()
 {
-    return std::unique_ptr<CryptoAlgorithm>(new CryptoAlgorithmAES_CBC);
+    return adoptRef(*new CryptoAlgorithmAES_CBC);
 }
 
 CryptoAlgorithmIdentifier CryptoAlgorithmAES_CBC::identifier() const
@@ -56,7 +62,7 @@ CryptoAlgorithmIdentifier CryptoAlgorithmAES_CBC::identifier() const
     return s_identifier;
 }
 
-bool CryptoAlgorithmAES_CBC::keyAlgorithmMatches(const CryptoAlgorithmAesCbcParams&, const CryptoKey& key) const
+bool CryptoAlgorithmAES_CBC::keyAlgorithmMatches(const CryptoAlgorithmAesCbcParamsDeprecated&, const CryptoKey& key) const
 {
     if (key.algorithmIdentifier() != s_identifier)
         return false;
@@ -65,9 +71,66 @@ bool CryptoAlgorithmAES_CBC::keyAlgorithmMatches(const CryptoAlgorithmAesCbcPara
     return true;
 }
 
-void CryptoAlgorithmAES_CBC::encrypt(const CryptoAlgorithmParameters& parameters, const CryptoKey& key, const CryptoOperationData& data, VectorCallback&& callback, VoidCallback&& failureCallback, ExceptionCode& ec)
+void CryptoAlgorithmAES_CBC::generateKey(const std::unique_ptr<CryptoAlgorithmParameters>&& parameters, bool extractable, CryptoKeyUsage usages, KeyOrKeyPairCallback&& callback, ExceptionCallback&& exceptionCallback, ScriptExecutionContext*)
 {
-    const CryptoAlgorithmAesCbcParams& aesCBCParameters = downcast<CryptoAlgorithmAesCbcParams>(parameters);
+    const auto& aesParameters = downcast<CryptoAlgorithmAesKeyGenParams>(*parameters);
+
+    if (usagesAreInvalidForCryptoAlgorithmAES_CBC(usages)) {
+        exceptionCallback(SYNTAX_ERR);
+        return;
+    }
+
+    auto result = CryptoKeyAES::generate(CryptoAlgorithmIdentifier::AES_CBC, aesParameters.length, extractable, usages);
+    if (!result) {
+        exceptionCallback(OperationError);
+        return;
+    }
+
+    callback(result.get(), nullptr);
+}
+
+void CryptoAlgorithmAES_CBC::importKey(SubtleCrypto::KeyFormat format, KeyData&& data, const std::unique_ptr<CryptoAlgorithmParameters>&& parameters, bool extractable, CryptoKeyUsage usages, KeyCallback&& callback, ExceptionCallback&& exceptionCallback)
+{
+    if (usagesAreInvalidForCryptoAlgorithmAES_CBC(usages)) {
+        exceptionCallback(SYNTAX_ERR);
+        return;
+    }
+
+    RefPtr<CryptoKeyAES> result;
+    switch (format) {
+    case SubtleCrypto::KeyFormat::Raw:
+        result = CryptoKeyAES::importRaw(parameters->identifier, WTFMove(WTF::get<Vector<uint8_t>>(data)), extractable, usages);
+        break;
+    case SubtleCrypto::KeyFormat::Jwk: {
+        auto checkAlgCallback = [](size_t length, const Optional<String>& alg) -> bool {
+            switch (length) {
+            case CryptoKeyAES::s_length128:
+                return !alg || alg.value() == "A128CBC";
+            case CryptoKeyAES::s_length192:
+                return !alg || alg.value() == "A192CBC";
+            case CryptoKeyAES::s_length256:
+                return !alg || alg.value() == "A256CBC";
+            }
+            return false;
+        };
+        result = CryptoKeyAES::importJwk(parameters->identifier, WTFMove(WTF::get<JsonWebKey>(data)), extractable, usages, WTFMove(checkAlgCallback));
+        break;
+    }
+    default:
+        exceptionCallback(NOT_SUPPORTED_ERR);
+        return;
+    }
+    if (!result) {
+        exceptionCallback(DataError);
+        return;
+    }
+
+    callback(*result);
+}
+
+void CryptoAlgorithmAES_CBC::encrypt(const CryptoAlgorithmParametersDeprecated& parameters, const CryptoKey& key, const CryptoOperationData& data, VectorCallback&& callback, VoidCallback&& failureCallback, ExceptionCode& ec)
+{
+    const CryptoAlgorithmAesCbcParamsDeprecated& aesCBCParameters = downcast<CryptoAlgorithmAesCbcParamsDeprecated>(parameters);
 
     if (!keyAlgorithmMatches(aesCBCParameters, key)) {
         ec = NOT_SUPPORTED_ERR;
@@ -77,9 +140,9 @@ void CryptoAlgorithmAES_CBC::encrypt(const CryptoAlgorithmParameters& parameters
     platformEncrypt(aesCBCParameters, downcast<CryptoKeyAES>(key), data, WTFMove(callback), WTFMove(failureCallback), ec);
 }
 
-void CryptoAlgorithmAES_CBC::decrypt(const CryptoAlgorithmParameters& parameters, const CryptoKey& key, const CryptoOperationData& data, VectorCallback&& callback, VoidCallback&& failureCallback, ExceptionCode& ec)
+void CryptoAlgorithmAES_CBC::decrypt(const CryptoAlgorithmParametersDeprecated& parameters, const CryptoKey& key, const CryptoOperationData& data, VectorCallback&& callback, VoidCallback&& failureCallback, ExceptionCode& ec)
 {
-    const CryptoAlgorithmAesCbcParams& aesCBCParameters = downcast<CryptoAlgorithmAesCbcParams>(parameters);
+    const CryptoAlgorithmAesCbcParamsDeprecated& aesCBCParameters = downcast<CryptoAlgorithmAesCbcParamsDeprecated>(parameters);
 
     if (!keyAlgorithmMatches(aesCBCParameters, key)) {
         ec = NOT_SUPPORTED_ERR;
@@ -89,9 +152,9 @@ void CryptoAlgorithmAES_CBC::decrypt(const CryptoAlgorithmParameters& parameters
     platformDecrypt(aesCBCParameters, downcast<CryptoKeyAES>(key), data, WTFMove(callback), WTFMove(failureCallback), ec);
 }
 
-void CryptoAlgorithmAES_CBC::generateKey(const CryptoAlgorithmParameters& parameters, bool extractable, CryptoKeyUsage usages, KeyOrKeyPairCallback&& callback, VoidCallback&& failureCallback, ExceptionCode&)
+void CryptoAlgorithmAES_CBC::generateKey(const CryptoAlgorithmParametersDeprecated& parameters, bool extractable, CryptoKeyUsage usages, KeyOrKeyPairCallback&& callback, VoidCallback&& failureCallback, ExceptionCode&, ScriptExecutionContext*)
 {
-    const CryptoAlgorithmAesKeyGenParams& aesParameters = downcast<CryptoAlgorithmAesKeyGenParams>(parameters);
+    const CryptoAlgorithmAesKeyGenParamsDeprecated& aesParameters = downcast<CryptoAlgorithmAesKeyGenParamsDeprecated>(parameters);
 
     RefPtr<CryptoKeyAES> result = CryptoKeyAES::generate(CryptoAlgorithmIdentifier::AES_CBC, aesParameters.length, extractable, usages);
     if (!result) {
@@ -102,7 +165,7 @@ void CryptoAlgorithmAES_CBC::generateKey(const CryptoAlgorithmParameters& parame
     callback(result.get(), nullptr);
 }
 
-void CryptoAlgorithmAES_CBC::importKey(const CryptoAlgorithmParameters&, const CryptoKeyData& keyData, bool extractable, CryptoKeyUsage usage, KeyCallback&& callback, VoidCallback&&, ExceptionCode& ec)
+void CryptoAlgorithmAES_CBC::importKey(const CryptoAlgorithmParametersDeprecated&, const CryptoKeyData& keyData, bool extractable, CryptoKeyUsage usage, KeyCallback&& callback, VoidCallback&&, ExceptionCode& ec)
 {
     if (!is<CryptoKeyDataOctetSequence>(keyData)) {
         ec = NOT_SUPPORTED_ERR;

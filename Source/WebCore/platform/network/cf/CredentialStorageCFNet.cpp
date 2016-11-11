@@ -26,7 +26,7 @@
 #include "config.h"
 #include "CredentialStorage.h"
 
-#if USE(CFNETWORK)
+#if USE(CFURLCONNECTION)
 
 #include "AuthenticationCF.h"
 #include "CFNetworkSPI.h"
@@ -79,4 +79,4 @@ void CredentialStorage::saveToPersistentStorage(const ProtectionSpace& protectio
 
 } // namespace WebCore
 
-#endif // USE(CFNETWORK)
+#endif // USE(CFURLCONNECTION)

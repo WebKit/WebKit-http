@@ -28,7 +28,7 @@ WebInspector.NewTabContentView = class NewTabContentView extends WebInspector.Ta
     constructor(identifier)
     {
         let {image, title} = WebInspector.NewTabContentView.tabInfo();
-        let tabBarItem = new WebInspector.TabBarItem(image, title);
+        let tabBarItem = new WebInspector.GeneralTabBarItem(image, title);
         tabBarItem.isDefaultTab = true;
 
         super(identifier || "new-tab", "new-tab", tabBarItem);
@@ -124,7 +124,7 @@ WebInspector.NewTabContentView = class NewTabContentView extends WebInspector.Ta
             referencedView: this,
             shouldReplaceTab: !canCreateAdditionalTabs || !WebInspector.modifierKeys.metaKey,
             shouldShowNewTab: !WebInspector.modifierKeys.metaKey
-        }
+        };
         WebInspector.createNewTabWithType(tabType, options);
     }
 
@@ -134,7 +134,7 @@ WebInspector.NewTabContentView = class NewTabContentView extends WebInspector.Ta
         let allowedTabClasses = allTabClasses.filter((tabClass) => tabClass.isTabAllowed() && !tabClass.isEphemeral());
         allowedTabClasses.sort((a, b) => a.tabInfo().title.localeCompare(b.tabInfo().title));
 
-        if (Object.shallowEqual(this._shownTabClasses, allowedTabClasses))
+        if (Array.shallowEqual(this._shownTabClasses, allowedTabClasses))
             return;
 
         this._shownTabClasses = allowedTabClasses;

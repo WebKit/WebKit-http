@@ -34,7 +34,6 @@
 #include "RenderBlockFlow.h"
 #include <wtf/HashCountedSet.h>
 #include <wtf/ListHashSet.h>
-#include <wtf/PassRefPtr.h>
 
 namespace WebCore {
 
@@ -61,7 +60,7 @@ class RenderFlowThread: public RenderBlockFlow {
 public:
     virtual ~RenderFlowThread() { }
 
-    virtual void removeFlowChildInfo(RenderObject*);
+    virtual void removeFlowChildInfo(RenderElement*);
 #ifndef NDEBUG
     bool hasChildInfo(RenderObject* child) const { return is<RenderBox>(child) && m_regionRangeMap.contains(downcast<RenderBox>(child)); }
 #endif
@@ -93,9 +92,9 @@ public:
     // location in the tree.
     virtual RenderObject* resolveMovedChild(RenderObject* child) const { return child; }
     // Called when a descendant of the flow thread has been inserted.
-    virtual void flowThreadDescendantInserted(RenderObject*) { }
+    virtual void flowThreadDescendantInserted(RenderObject&) { }
     // Called when a sibling or descendant of the flow thread is about to be removed.
-    virtual void flowThreadRelativeWillBeRemoved(RenderObject*) { }
+    virtual void flowThreadRelativeWillBeRemoved(RenderObject&) { }
     // Called when a descendant box's layout is finished and it has been positioned within its container.
     virtual void flowThreadDescendantBoxLaidOut(RenderBox*) { }
 

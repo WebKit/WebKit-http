@@ -6,11 +6,15 @@ list(APPEND WebKit2_SOURCES
 
     NetworkProcess/Downloads/efl/DownloadSoupErrorsEfl.cpp
 
-    NetworkProcess/Downloads/soup/DownloadSoup.cpp
+    NetworkProcess/cache/NetworkCacheCodersSoup.cpp
+    NetworkProcess/cache/NetworkCacheDataSoup.cpp
+    NetworkProcess/cache/NetworkCacheIOChannelSoup.cpp
 
     NetworkProcess/efl/NetworkProcessMainEfl.cpp
 
+    NetworkProcess/soup/NetworkDataTaskSoup.cpp
     NetworkProcess/soup/NetworkProcessSoup.cpp
+    NetworkProcess/soup/NetworkSessionSoup.cpp
     NetworkProcess/soup/RemoteNetworkingContextSoup.cpp
 
     Platform/IPC/unix/AttachmentUnix.cpp
@@ -47,6 +51,7 @@ list(APPEND WebKit2_SOURCES
     Shared/efl/NativeWebWheelEventEfl.cpp
     Shared/efl/ProcessExecutablePathEfl.cpp
     Shared/efl/WebEventFactory.cpp
+    Shared/efl/WebKit2InitializeEFL.cpp
 
     Shared/linux/WebMemorySamplerLinux.cpp
 
@@ -54,10 +59,13 @@ list(APPEND WebKit2_SOURCES
 
     Shared/unix/ChildProcessMain.cpp
 
+    UIProcess/AcceleratedDrawingAreaProxy.cpp
     UIProcess/BackingStore.cpp
     UIProcess/DefaultUndoController.cpp
     UIProcess/LegacySessionStateCodingNone.cpp
     UIProcess/WebResourceLoadStatisticsStore.cpp
+    UIProcess/WebTextChecker.cpp
+    UIProcess/WebTextCheckerClient.cpp
 
     UIProcess/API/C/CoordinatedGraphics/WKView.cpp
 
@@ -112,7 +120,6 @@ list(APPEND WebKit2_SOURCES
     UIProcess/API/efl/ewk_view.cpp
     UIProcess/API/efl/ewk_window_features.cpp
 
-    UIProcess/CoordinatedGraphics/CoordinatedDrawingAreaProxy.cpp
     UIProcess/CoordinatedGraphics/CoordinatedLayerTreeHostProxy.cpp
     UIProcess/CoordinatedGraphics/PageViewportController.cpp
     UIProcess/CoordinatedGraphics/WebPageProxyCoordinatedGraphics.cpp
@@ -136,7 +143,6 @@ list(APPEND WebKit2_SOURCES
 
     UIProcess/cairo/BackingStoreCairo.cpp
 
-    UIProcess/efl/BatteryProvider.cpp
     UIProcess/efl/ContextHistoryClientEfl.cpp
     UIProcess/efl/ContextMenuClientEfl.cpp
     UIProcess/efl/DownloadManagerEfl.cpp
@@ -171,6 +177,8 @@ list(APPEND WebKit2_SOURCES
     UIProcess/gstreamer/InstallMissingMediaPluginsPermissionRequest.cpp
     UIProcess/gstreamer/WebPageProxyGStreamer.cpp
 
+    UIProcess/linux/MemoryPressureMonitor.cpp
+
     UIProcess/soup/WebCookieManagerProxySoup.cpp
     UIProcess/soup/WebProcessPoolSoup.cpp
 
@@ -196,11 +204,11 @@ list(APPEND WebKit2_SOURCES
 
     WebProcess/WebCoreSupport/soup/WebFrameNetworkingContext.cpp
 
+    WebProcess/WebPage/AcceleratedDrawingArea.cpp
     WebProcess/WebPage/DrawingAreaImpl.cpp
 
     WebProcess/WebPage/CoordinatedGraphics/AreaAllocator.cpp
     WebProcess/WebPage/CoordinatedGraphics/CompositingCoordinator.cpp
-    WebProcess/WebPage/CoordinatedGraphics/CoordinatedDrawingArea.cpp
     WebProcess/WebPage/CoordinatedGraphics/CoordinatedLayerTreeHost.cpp
     WebProcess/WebPage/CoordinatedGraphics/UpdateAtlas.cpp
     WebProcess/WebPage/CoordinatedGraphics/WebPageCoordinatedGraphics.cpp
@@ -238,6 +246,7 @@ list(APPEND WebKit2_INCLUDE_DIRECTORIES
     "${WEBKIT2_DIR}/NetworkProcess/CustomProtocols/soup"
     "${WEBKIT2_DIR}/NetworkProcess/Downloads/soup"
     "${WEBKIT2_DIR}/NetworkProcess/efl"
+    "${WEBKIT2_DIR}/NetworkProcess/soup"
     "${WEBKIT2_DIR}/NetworkProcess/unix"
     "${WEBKIT2_DIR}/Platform/efl"
     "${WEBKIT2_DIR}/Shared/API/c/efl"
@@ -256,6 +265,7 @@ list(APPEND WebKit2_INCLUDE_DIRECTORIES
     "${WEBKIT2_DIR}/UIProcess/CoordinatedGraphics"
     "${WEBKIT2_DIR}/UIProcess/Network/CustomProtocols/soup"
     "${WEBKIT2_DIR}/UIProcess/efl"
+    "${WEBKIT2_DIR}/UIProcess/linux"
     "${WEBKIT2_DIR}/UIProcess/soup"
     "${WEBKIT2_DIR}/WebProcess/efl"
     "${WEBKIT2_DIR}/WebProcess/soup"
@@ -566,14 +576,5 @@ if (ENABLE_ACCESSIBILITY)
     )
     list(APPEND WebKit2_LIBRARIES
         ${ATK_LIBRARIES}
-    )
-endif ()
-
-if (ENABLE_BATTERY_STATUS)
-    list(APPEND WebKit2_LIBRARIES
-        ${ELDBUS_LIBRARIES}
-    )
-    list(APPEND WebKit2_SYSTEM_INCLUDE_DIRECTORIES
-        ${ELDBUS_INCLUDE_DIRS}
     )
 endif ()

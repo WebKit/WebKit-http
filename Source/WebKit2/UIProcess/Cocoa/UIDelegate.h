@@ -81,11 +81,11 @@ private:
         void fullscreenMayReturnToInline(WebKit::WebPageProxy*) override;
         void didEnterFullscreen(WebKit::WebPageProxy*) override;
         void didExitFullscreen(WebKit::WebPageProxy*) override;
-        void runJavaScriptAlert(WebKit::WebPageProxy*, const WTF::String&, WebKit::WebFrameProxy*, const WebCore::SecurityOriginData&, std::function<void ()> completionHandler) override;
-        void runJavaScriptConfirm(WebKit::WebPageProxy*, const WTF::String&, WebKit::WebFrameProxy*, const WebCore::SecurityOriginData&, std::function<void (bool)> completionHandler) override;
-        void runJavaScriptPrompt(WebKit::WebPageProxy*, const WTF::String&, const WTF::String&, WebKit::WebFrameProxy*, const WebCore::SecurityOriginData&, std::function<void (const WTF::String&)> completionHandler) override;
-        void exceededDatabaseQuota(WebPageProxy*, WebFrameProxy*, API::SecurityOrigin*, const WTF::String& databaseName, const WTF::String& displayName, unsigned long long currentQuota, unsigned long long currentOriginUsage, unsigned long long currentUsage, unsigned long long expectedUsage, std::function<void (unsigned long long)>) override;
-        void reachedApplicationCacheOriginQuota(WebPageProxy*, const WebCore::SecurityOrigin&, uint64_t currentQuota, uint64_t totalBytesNeeded, std::function<void (unsigned long long)> completionHandler) override;
+        void runJavaScriptAlert(WebKit::WebPageProxy*, const WTF::String&, WebKit::WebFrameProxy*, const WebCore::SecurityOriginData&, Function<void ()>&& completionHandler) override;
+        void runJavaScriptConfirm(WebKit::WebPageProxy*, const WTF::String&, WebKit::WebFrameProxy*, const WebCore::SecurityOriginData&, Function<void (bool)>&& completionHandler) override;
+        void runJavaScriptPrompt(WebKit::WebPageProxy*, const WTF::String&, const WTF::String&, WebKit::WebFrameProxy*, const WebCore::SecurityOriginData&, Function<void (const WTF::String&)>&& completionHandler) override;
+        void exceededDatabaseQuota(WebPageProxy*, WebFrameProxy*, API::SecurityOrigin*, const WTF::String& databaseName, const WTF::String& displayName, unsigned long long currentQuota, unsigned long long currentOriginUsage, unsigned long long currentUsage, unsigned long long expectedUsage, Function<void (unsigned long long)>&& completionHandler) override;
+        void reachedApplicationCacheOriginQuota(WebPageProxy*, const WebCore::SecurityOrigin&, uint64_t currentQuota, uint64_t totalBytesNeeded, Function<void (unsigned long long)>&& completionHandler) override;
 #if PLATFORM(MAC)
         bool runOpenPanel(WebPageProxy*, WebFrameProxy*, const WebCore::SecurityOriginData&, API::OpenPanelParameters*, WebOpenPanelResultListenerProxy*) override;
 #endif
@@ -97,7 +97,10 @@ private:
         RetainPtr<NSArray> actionsForElement(_WKActivatedElementInfo *, RetainPtr<NSArray> defaultActions) override;
         void didNotHandleTapAsClick(const WebCore::IntPoint&) override;
         UIViewController *presentingViewController() override;
-#endif
+#endif // PLATFORM(IOS)
+
+        NSDictionary *dataDetectionContext() override;
+
         void imageOrMediaDocumentSizeChanged(const WebCore::IntSize&) override;
 
         UIDelegate& m_uiDelegate;
@@ -130,6 +133,7 @@ private:
         bool webViewDidNotHandleTapAsClickAtPoint : 1;
         bool presentingViewControllerForWebView : 1;
 #endif
+        bool dataDetectionContextForWebView : 1;
         bool webViewImageOrMediaDocumentSizeChanged : 1;
 
 #if ENABLE(CONTEXT_MENUS)

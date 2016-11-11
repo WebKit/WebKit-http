@@ -1,8 +1,8 @@
 if (${WTF_PLATFORM_WIN_CAIRO})
     add_definitions(-DUSE_CAIRO=1 -DUSE_CURL=1 -DWEBKIT_EXPORTS=1)
     list(APPEND WebKit_INCLUDE_DIRECTORIES
+        ${CAIRO_INCLUDE_DIRS}
         "${WEBKIT_LIBRARIES_DIR}/include"
-        "${WEBKIT_LIBRARIES_DIR}/include/cairo"
         "${WEBKIT_LIBRARIES_DIR}/include/sqlite"
         "${WEBCORE_DIR}/platform/graphics/cairo"
     )
@@ -25,6 +25,8 @@ else ()
         PRIVATE CFNetwork${DEBUG_SUFFIX}
         PRIVATE CoreFoundation${DEBUG_SUFFIX}
         PRIVATE CoreGraphics${DEBUG_SUFFIX}
+        PRIVATE CoreText${DEBUG_SUFFIX}
+        PRIVATE QuartzCore${DEBUG_SUFFIX}
         PRIVATE SQLite3${DEBUG_SUFFIX}
         PRIVATE WebKitSystemInterface${DEBUG_SUFFIX}
         PRIVATE libdispatch${DEBUG_SUFFIX}
@@ -142,6 +144,7 @@ list(APPEND WebKit_SOURCES_Classes
     win/AccessibleDocument.cpp
     win/AccessibleImage.cpp
     win/AccessibleTextImpl.cpp
+    win/BackForwardList.cpp
     win/CFDictionaryPropertyBag.cpp
     win/DOMCSSClasses.cpp
     win/DOMCoreClasses.cpp
@@ -246,6 +249,8 @@ list(APPEND WebKit_SOURCES_WebCoreSupport
     win/WebCoreSupport/WebInspectorDelegate.h
     win/WebCoreSupport/WebPlatformStrategies.cpp
     win/WebCoreSupport/WebPlatformStrategies.h
+    win/WebCoreSupport/WebPluginInfoProvider.cpp
+    win/WebCoreSupport/WebPluginInfoProvider.h
     win/WebCoreSupport/WebVisitedLinkStore.cpp
     win/WebCoreSupport/WebVisitedLinkStore.h
 )
@@ -371,7 +376,14 @@ set(WEBKIT_IDL_DEPENDENCIES
     win/Interfaces/Accessible2/AccessibleText.idl
     win/Interfaces/Accessible2/AccessibleText2.idl
     win/Interfaces/Accessible2/IA2CommonTypes.idl
+    "${DERIVED_SOURCES_WEBKIT_DIR}/include/autoversion.h"
 )
+
+add_custom_command(
+    OUTPUT ${DERIVED_SOURCES_WEBKIT_DIR}/include/autoversion.h
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+    COMMAND ${PERL_EXECUTABLE} ${WEBKIT_LIBRARIES_DIR}/tools/scripts/auto-version.pl ${DERIVED_SOURCES_WEBKIT_DIR}
+    VERBATIM)
 
 GENERATE_INTERFACE(win/Interfaces/WebKit.idl ${MIDL_DEFINES} "${WEBKIT_IDL_DEPENDENCIES}")
 GENERATE_INTERFACE(win/Interfaces/Accessible2/AccessibleApplication.idl ${MIDL_DEFINES} "${WEBKIT_IDL_DEPENDENCIES}")
@@ -410,6 +422,9 @@ list(APPEND WebKit_LIBRARIES
     PRIVATE Comctl32
     PRIVATE Comsupp
     PRIVATE Crypt32
+    PRIVATE D2d1
+    PRIVATE Dwrite
+    PRIVATE dxguid
     PRIVATE Iphlpapi
     PRIVATE Psapi
     PRIVATE Rpcrt4
@@ -419,6 +434,7 @@ list(APPEND WebKit_LIBRARIES
     PRIVATE Winmm
     PRIVATE WebKitGUID${DEBUG_SUFFIX}
     PRIVATE WebCoreDerivedSources${DEBUG_SUFFIX}
+    PRIVATE WindowsCodecs
 )
 
 if (ENABLE_GRAPHICS_CONTEXT_3D)

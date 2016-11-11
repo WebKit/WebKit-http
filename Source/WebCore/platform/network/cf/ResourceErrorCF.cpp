@@ -26,7 +26,7 @@
 #include "config.h"
 #include "ResourceError.h"
 
-#if USE(CFNETWORK)
+#if USE(CFURLCONNECTION)
 
 #include "URL.h"
 #include <CoreFoundation/CFError.h>
@@ -218,4 +218,4 @@ ResourceError::operator CFStreamError() const
 
 } // namespace WebCore
 
-#endif // USE(CFNETWORK)
+#endif // USE(CFURLCONNECTION)

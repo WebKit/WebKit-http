@@ -30,24 +30,18 @@
 #include "NetworkResourcesData.h"
 
 #include "CachedResource.h"
-#include "DOMImplementation.h"
+#include "MIMETypeRegistry.h"
 #include "ResourceResponse.h"
 #include "SharedBuffer.h"
 #include "TextResourceDecoder.h"
-
-namespace {
-// 100MB
-static const size_t maximumResourcesContentSize = 100 * 1000 * 1000;
-
-// 10MB
-static const size_t maximumSingleResourceContentSize = 10 * 1000 * 1000;
-}
 
 using namespace Inspector;
 
 namespace WebCore {
 
-// ResourceData
+static const size_t maximumResourcesContentSize = 100 * 1000 * 1000; // 100MB
+static const size_t maximumSingleResourceContentSize = 10 * 1000 * 1000; // 10MB
+
 NetworkResourcesData::ResourceData::ResourceData(const String& requestId, const String& loaderId)
     : m_requestId(requestId)
     , m_loaderId(loaderId)
@@ -117,7 +111,6 @@ size_t NetworkResourcesData::ResourceData::decodeDataToContent()
     return contentSizeInBytes(m_content) - dataLength;
 }
 
-// NetworkResourcesData
 NetworkResourcesData::NetworkResourcesData()
     : m_contentSize(0)
     , m_maximumResourcesContentSize(maximumResourcesContentSize)
@@ -141,7 +134,7 @@ static RefPtr<TextResourceDecoder> createOtherResourceTextDecoder(const String& 
     RefPtr<TextResourceDecoder> decoder;
     if (!textEncodingName.isEmpty())
         decoder = TextResourceDecoder::create("text/plain", textEncodingName);
-    else if (DOMImplementation::isXMLMIMEType(mimeType)) {
+    else if (MIMETypeRegistry::isXMLMIMEType(mimeType)) {
         decoder = TextResourceDecoder::create("application/xml");
         decoder->useLenientXMLDecoding();
     } else if (equalLettersIgnoringASCIICase(mimeType, "text/html"))
@@ -190,7 +183,7 @@ void NetworkResourcesData::setResourceContent(const String& requestId, const Str
         return;
     if (ensureFreeSpace(dataLength) && !resourceData->isContentEvicted()) {
         // We can not be sure that we didn't try to save this request data while it was loading, so remove it, if any.
-        if (resourceData->hasContent())
+        if (resourceData->hasContent() || resourceData->hasData())
             m_contentSize -= resourceData->removeContent();
         m_requestIdsDeque.append(requestId);
         resourceData->setContent(content, base64Encoded);

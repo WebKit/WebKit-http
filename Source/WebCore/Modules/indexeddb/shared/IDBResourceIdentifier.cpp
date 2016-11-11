@@ -52,13 +52,6 @@ IDBResourceIdentifier::IDBResourceIdentifier()
 {
 }
 
-IDBResourceIdentifier::IDBResourceIdentifier(uint64_t connectionIdentifier)
-    : m_idbConnectionIdentifier(connectionIdentifier)
-    , m_resourceNumber(nextClientResourceNumber())
-{
-}
-
-
 IDBResourceIdentifier::IDBResourceIdentifier(uint64_t connectionIdentifier, uint64_t resourceIdentifier)
     : m_idbConnectionIdentifier(connectionIdentifier)
     , m_resourceNumber(resourceIdentifier)
@@ -104,7 +97,7 @@ bool IDBResourceIdentifier::isHashTableDeletedValue() const
         && m_resourceNumber == std::numeric_limits<uint64_t>::max();
 }
 
-#ifndef NDEBUG
+#if !LOG_DISABLED
 String IDBResourceIdentifier::loggingString() const
 {
     return String::format("<%" PRIu64", %" PRIu64">", m_idbConnectionIdentifier, m_resourceNumber);

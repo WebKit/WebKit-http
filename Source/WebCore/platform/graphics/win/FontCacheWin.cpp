@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006, 2007, 2008, 2013-2014 Apple Inc.  All rights reserved.
+ * Copyright (C) 2006-2008, 2013-2014 Apple Inc.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -45,6 +45,10 @@
 #include "CoreGraphicsSPI.h"
 #include <ApplicationServices/ApplicationServices.h>
 #include <WebKitSystemInterface/WebKitSystemInterface.h>
+#endif
+
+#if USE(DIRECT2D)
+#include <dwrite.h>
 #endif
 
 using std::min;
@@ -96,6 +100,24 @@ static int CALLBACK linkedFontEnumProc(CONST LOGFONT* logFont, CONST TEXTMETRIC*
     return false;
 }
 
+WEBCORE_EXPORT void appendLinkedFonts(WCHAR* linkedFonts, unsigned length, Vector<String>* result)
+{
+    unsigned i = 0;
+    while (i < length) {
+        while (i < length && linkedFonts[i] != ',')
+            i++;
+        // Break if we did not find a comma.
+        if (i == length)
+            break;
+        i++;
+        unsigned j = i;
+        while (j < length && linkedFonts[j])
+            j++;
+        result->append(String(linkedFonts + i, j - i));
+        i = j + 1;
+    }
+}
+
 static const Vector<String>* getLinkedFonts(String& family)
 {
     static HashMap<String, Vector<String>*> systemLinkMap;
@@ -106,7 +128,7 @@ static const Vector<String>* getLinkedFonts(String& family)
     result = new Vector<String>;
     systemLinkMap.set(family, result);
     HKEY fontLinkKey = nullptr;
-    if (FAILED(RegOpenKeyEx(HKEY_LOCAL_MACHINE, L"Software\\Microsoft\\Windows NT\\CurrentVersion\\FontLink\\SystemLink", 0, KEY_READ, &fontLinkKey)))
+    if (::RegOpenKeyEx(HKEY_LOCAL_MACHINE, L"Software\\Microsoft\\Windows NT\\CurrentVersion\\FontLink\\SystemLink", 0, KEY_READ, &fontLinkKey) != ERROR_SUCCESS)
         return result;
 
     DWORD linkedFontsBufferSize = 0;
@@ -116,19 +138,9 @@ static const Vector<String>* getLinkedFonts(String& family)
     }
 
     WCHAR* linkedFonts = reinterpret_cast<WCHAR*>(malloc(linkedFontsBufferSize));
-    if (SUCCEEDED(RegQueryValueEx(fontLinkKey, family.charactersWithNullTermination().data(), 0, NULL, reinterpret_cast<BYTE*>(linkedFonts), &linkedFontsBufferSize))) {
-        unsigned i = 0;
+    if (::RegQueryValueEx(fontLinkKey, family.charactersWithNullTermination().data(), 0, nullptr, reinterpret_cast<BYTE*>(linkedFonts), &linkedFontsBufferSize) == ERROR_SUCCESS) {
         unsigned length = linkedFontsBufferSize / sizeof(*linkedFonts);
-        while (i < length) {
-            while (i < length && linkedFonts[i] != ',')
-                i++;
-            i++;
-            unsigned j = i;
-            while (j < length && linkedFonts[j])
-                j++;
-            result->append(String(linkedFonts + i, j - i));
-            i = j + 1;
-        }
+        appendLinkedFonts(linkedFonts, length, result);
     }
     free(linkedFonts);
     RegCloseKey(fontLinkKey);
@@ -541,6 +553,7 @@ static int CALLBACK traitsInFamilyEnumProc(CONST LOGFONT* logFont, CONST TEXTMET
     procData->m_traitsMasks.add(traitsMask);
     return 1;
 }
+
 Vector<FontTraitsMask> FontCache::getTraitsInFamily(const AtomicString& familyName)
 {
     HWndDC hdc(0);
@@ -591,6 +604,8 @@ std::unique_ptr<FontPlatformData> FontCache::createFontPlatformData(const FontDe
 
 #if USE(CG)
     bool fontCreationFailed = !result->cgFont();
+#elif USE(DIRECT2D)
+    bool fontCreationFailed = !result->dwFont();
 #elif USE(CAIRO)
     bool fontCreationFailed = !result->scaledFont();
 #endif

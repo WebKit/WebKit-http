@@ -26,7 +26,7 @@
 #include "config.h"
 #include "LoaderRunLoopCF.h"
 
-#if USE(CFNETWORK)
+#if USE(CFURLCONNECTION)
 
 #include <CoreFoundation/CoreFoundation.h>
 #include <limits>
@@ -35,7 +35,6 @@
 #include <wtf/Condition.h>
 #include <wtf/Lock.h>
 #include <wtf/MainThread.h>
-#include <wtf/NeverDestroyed.h>
 #include <wtf/Threading.h>
 
 namespace WebCore {
@@ -88,4 +87,4 @@ CFRunLoopRef loaderRunLoop()
 
 } // namespace WebCore
 
-#endif // USE(CFNETWORK)
+#endif // USE(CFURLCONNECTION)

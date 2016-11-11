@@ -26,9 +26,8 @@
 #include "config.h"
 #include "PrintInfo.h"
 
-#include "ArgumentDecoder.h"
-#include "ArgumentEncoder.h"
-#include "Arguments.h"
+#include "Decoder.h"
+#include "Encoder.h"
 
 #if PLATFORM(GTK)
 #include "ArgumentCodersGtk.h"
@@ -43,7 +42,7 @@ PrintInfo::PrintInfo()
 {
 }
 
-void PrintInfo::encode(IPC::ArgumentEncoder& encoder) const
+void PrintInfo::encode(IPC::Encoder& encoder) const
 {
     encoder << pageSetupScaleFactor;
     encoder << availablePaperWidth;
@@ -56,7 +55,7 @@ void PrintInfo::encode(IPC::ArgumentEncoder& encoder) const
 #endif
 }
 
-bool PrintInfo::decode(IPC::ArgumentDecoder& decoder, PrintInfo& info)
+bool PrintInfo::decode(IPC::Decoder& decoder, PrintInfo& info)
 {
     if (!decoder.decode(info.pageSetupScaleFactor))
         return false;

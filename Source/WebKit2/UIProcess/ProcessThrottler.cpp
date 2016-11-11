@@ -26,6 +26,7 @@
 #include "config.h"
 #include "ProcessThrottler.h"
 
+#include "Logging.h"
 #include "ProcessThrottlerClient.h"
 
 namespace WebKit {
@@ -46,7 +47,7 @@ AssertionState ProcessThrottler::assertionState()
     ASSERT(!m_suspendTimer.isActive());
     
     if (m_foregroundCounter.value())
-        return AssertionState::Foreground;
+        return m_process.alwaysRunsAtBackgroundPriority() ? AssertionState::Background : AssertionState::Foreground;
     if (m_backgroundCounter.value())
         return AssertionState::Background;
     return AssertionState::Suspended;
@@ -57,7 +58,7 @@ void ProcessThrottler::updateAssertionNow()
     m_suspendTimer.stop();
     if (m_assertion) {
         if (m_assertion->state() != assertionState())
-            LOG_ALWAYS(true, "%p - ProcessThrottler::updateAssertionNow() updating process assertion state to %u (foregroundActivities: %lu, backgroundActivities: %lu)", this, assertionState(), m_foregroundCounter.value(), m_backgroundCounter.value());
+            RELEASE_LOG(ProcessSuspension, "%p - ProcessThrottler::updateAssertionNow() updating process assertion state to %u (foregroundActivities: %lu, backgroundActivities: %lu)", this, assertionState(), m_foregroundCounter.value(), m_backgroundCounter.value());
         m_assertion->setState(assertionState());
         m_process.didSetAssertionState(assertionState());
     }
@@ -70,7 +71,7 @@ void ProcessThrottler::updateAssertion()
     // in the background for too long.
     if (m_assertion && m_assertion->state() != AssertionState::Suspended && !m_foregroundCounter.value() && !m_backgroundCounter.value()) {
         ++m_suspendMessageCount;
-        LOG_ALWAYS(true, "%p - ProcessThrottler::updateAssertion() sending PrepareToSuspend IPC", this);
+        RELEASE_LOG(ProcessSuspension, "%p - ProcessThrottler::updateAssertion() sending PrepareToSuspend IPC", this);
         m_process.sendPrepareToSuspend();
         m_suspendTimer.startOneShot(processSuspensionTimeout);
         m_assertion->setState(AssertionState::Background);

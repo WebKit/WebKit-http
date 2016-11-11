@@ -23,10 +23,9 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebCoreResourceHandleAsOperationQueueDelegate_h
-#define WebCoreResourceHandleAsOperationQueueDelegate_h
+#pragma once
 
-#if !USE(CFNETWORK)
+#if !USE(CFURLCONNECTION)
 
 #include "WebCoreResourceHandleAsDelegate.h"
 #include <dispatch/dispatch.h>
@@ -59,5 +58,4 @@ class ResourceHandle;
 
 @end
 
-#endif // !USE(CFNETWORK)
-#endif // WebCoreResourceHandleAsOperationQueueDelegate_h
+#endif // !USE(CFURLCONNECTION)

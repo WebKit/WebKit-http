@@ -23,15 +23,12 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef JITStubRoutine_h
-#define JITStubRoutine_h
+#pragma once
 
 #if ENABLE(JIT)
 
 #include "ExecutableAllocator.h"
 #include "MacroAssemblerCodeRef.h"
-#include <wtf/RefCounted.h>
-#include <wtf/Vector.h>
 
 namespace JSC {
 
@@ -160,6 +157,3 @@ protected:
 } // namespace JSC
 
 #endif // ENABLE(JIT)
-
-#endif // JITStubRoutine_h
-

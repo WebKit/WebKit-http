@@ -53,33 +53,31 @@ struct BidiIsolatedRun {
 class InlineIterator {
 public:
     InlineIterator()
-        : m_root(nullptr)
-        , m_renderer(nullptr)
-        , m_nextBreakablePosition(-1)
-        , m_pos(0)
-        , m_refersToEndOfPreviousNode(false)
     {
     }
 
     InlineIterator(RenderElement* root, RenderObject* o, unsigned p)
         : m_root(root)
         , m_renderer(o)
-        , m_nextBreakablePosition(-1)
         , m_pos(p)
         , m_refersToEndOfPreviousNode(false)
     {
     }
 
-    void clear() { moveTo(nullptr, 0); }
-
-    void moveToStartOf(RenderObject* object)
+    void clear()
+    {
+        setRenderer(nullptr);
+        setOffset(0);
+        setNextBreakablePosition(std::numeric_limits<unsigned>::max());
+    }
+    void moveToStartOf(RenderObject& object)
     {
         moveTo(object, 0);
     }
 
-    void moveTo(RenderObject* object, unsigned offset, int nextBreak = -1)
+    void moveTo(RenderObject& object, unsigned offset, Optional<unsigned> nextBreak = Optional<unsigned>())
     {
-        setRenderer(object);
+        setRenderer(&object);
         setOffset(offset);
         setNextBreakablePosition(nextBreak);
     }
@@ -89,8 +87,8 @@ public:
     unsigned offset() const { return m_pos; }
     void setOffset(unsigned position);
     RenderElement* root() const { return m_root; }
-    int nextBreakablePosition() const { return m_nextBreakablePosition; }
-    void setNextBreakablePosition(int position) { m_nextBreakablePosition = position; }
+    Optional<unsigned> nextBreakablePosition() const { return m_nextBreakablePosition; }
+    void setNextBreakablePosition(Optional<unsigned> position) { m_nextBreakablePosition = position; }
     bool refersToEndOfPreviousNode() const { return m_refersToEndOfPreviousNode; }
     void setRefersToEndOfPreviousNode();
 
@@ -118,18 +116,18 @@ private:
 
     UCharDirection surrogateTextDirection(UChar currentCodeUnit) const;
 
-    RenderElement* m_root;
-    RenderObject* m_renderer;
+    RenderElement* m_root { nullptr };
+    RenderObject* m_renderer { nullptr };
 
-    int m_nextBreakablePosition;
-    unsigned m_pos;
+    Optional<unsigned> m_nextBreakablePosition;
+    unsigned m_pos { 0 };
 
     // There are a couple places where we want to decrement an InlineIterator.
     // Usually this take the form of decrementing m_pos; however, m_pos might be 0.
     // However, we shouldn't ever need to decrement an InlineIterator more than
     // once, so rather than implementing a decrement() function which traverses
     // nodes, we can simply keep track of this state and handle it.
-    bool m_refersToEndOfPreviousNode;
+    bool m_refersToEndOfPreviousNode { false };
 };
 
 inline bool operator==(const InlineIterator& it1, const InlineIterator& it2)
@@ -403,8 +401,12 @@ inline void InlineIterator::increment(InlineBidiResolver* resolver)
         if (m_pos < downcast<RenderText>(*m_renderer).textLength())
             return;
     }
-    // bidiNext can return nullptr, so use moveTo instead of moveToStartOf
-    moveTo(bidiNextSkippingEmptyInlines(*m_root, m_renderer, resolver), 0);
+    // bidiNext can return nullptr
+    RenderObject* bidiNext = bidiNextSkippingEmptyInlines(*m_root, m_renderer, resolver);
+    if (bidiNext)
+        moveToStartOf(*bidiNext);
+    else
+        clear();
 }
 
 inline void InlineIterator::fastDecrement()

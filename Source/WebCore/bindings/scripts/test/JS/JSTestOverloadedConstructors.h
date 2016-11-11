@@ -28,7 +28,7 @@ namespace WebCore {
 
 class JSTestOverloadedConstructors : public JSDOMWrapper<TestOverloadedConstructors> {
 public:
-    typedef JSDOMWrapper<TestOverloadedConstructors> Base;
+    using Base = JSDOMWrapper<TestOverloadedConstructors>;
     static JSTestOverloadedConstructors* create(JSC::Structure* structure, JSDOMGlobalObject* globalObject, Ref<TestOverloadedConstructors>&& impl)
     {
         JSTestOverloadedConstructors* ptr = new (NotNull, JSC::allocateCell<JSTestOverloadedConstructors>(globalObject->vm().heap)) JSTestOverloadedConstructors(structure, *globalObject, WTFMove(impl));
@@ -82,5 +82,9 @@ inline JSC::JSValue toJS(JSC::ExecState* state, JSDOMGlobalObject* globalObject,
 JSC::JSValue toJSNewlyCreated(JSC::ExecState*, JSDOMGlobalObject*, Ref<TestOverloadedConstructors>&&);
 inline JSC::JSValue toJSNewlyCreated(JSC::ExecState* state, JSDOMGlobalObject* globalObject, RefPtr<TestOverloadedConstructors>&& impl) { return impl ? toJSNewlyCreated(state, globalObject, impl.releaseNonNull()) : JSC::jsNull(); }
 
+template<> struct JSDOMWrapperConverterTraits<TestOverloadedConstructors> {
+    using WrapperClass = JSTestOverloadedConstructors;
+    using ToWrappedReturnType = TestOverloadedConstructors*;
+};
 
 } // namespace WebCore

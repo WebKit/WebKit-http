@@ -26,7 +26,7 @@
 #import "config.h"
 #import "Download.h"
 
-#if !USE(CFNETWORK) && !USE(NETWORK_SESSION)
+#if !USE(CFURLCONNECTION) && !USE(NETWORK_SESSION)
 
 #import <WebCore/AuthenticationChallenge.h>
 #import <WebCore/AuthenticationMac.h>
@@ -49,7 +49,7 @@ using namespace WebCore;
 
 namespace WebKit {
 
-void Download::start()
+void Download::startNetworkLoad()
 {
     ASSERT(!m_nsURLDownload);
     ASSERT(!m_delegate);
@@ -64,7 +64,7 @@ void Download::start()
     [m_nsURLDownload setDeletesFileUponFailure:NO];
 }
 
-void Download::startWithHandle(ResourceHandle* handle, const ResourceResponse& response)
+void Download::startNetworkLoadWithHandle(ResourceHandle* handle, const ResourceResponse& response)
 {
     ASSERT(!m_nsURLDownload);
     ASSERT(!m_delegate);
@@ -109,7 +109,7 @@ void Download::resume(const IPC::DataReference& resumeData, const String& path, 
     [m_nsURLDownload setDeletesFileUponFailure:NO];
 }
 
-void Download::cancel()
+void Download::platformCancelNetworkLoad()
 {
     [m_nsURLDownload cancel];
 
@@ -119,11 +119,10 @@ void Download::cancel()
 
 void Download::platformInvalidate()
 {
-    ASSERT(m_nsURLDownload);
-    ASSERT(m_delegate);
-
-    [m_delegate invalidate];
-    m_delegate = nullptr;
+    if (m_delegate) {
+        [m_delegate invalidate];
+        m_delegate = nullptr;
+    }
     m_nsURLDownload = nullptr;
 }
 
@@ -273,4 +272,4 @@ static void dispatchOnMainThread(void (^block)())
 
 @end
 
-#endif // !USE(CFNETWORK) && !USE(NETWORK_SESSION)
+#endif // !USE(CFURLCONNECTION) && !USE(NETWORK_SESSION)

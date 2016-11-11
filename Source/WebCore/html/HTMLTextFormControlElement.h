@@ -22,8 +22,7 @@
  *
  */
 
-#ifndef HTMLTextFormControlElement_h
-#define HTMLTextFormControlElement_h
+#pragma once
 
 #include "HTMLFormControlElementWithState.h"
 
@@ -40,15 +39,18 @@ enum TextFieldEventBehavior { DispatchNoEvent, DispatchChangeEvent, DispatchInpu
 
 class HTMLTextFormControlElement : public HTMLFormControlElementWithState {
 public:
-    // Common flag for HTMLInputElement::tooLong() and HTMLTextAreaElement::tooLong().
+    // Common flag for HTMLInputElement::tooLong() / tooShort() and HTMLTextAreaElement::tooLong() / tooShort().
     enum NeedsToCheckDirtyFlag {CheckDirtyFlag, IgnoreDirtyFlag};
 
     virtual ~HTMLTextFormControlElement();
 
     void didEditInnerTextValue();
-    void forwardEvent(Event*);
+    void forwardEvent(Event&);
 
-    void setMaxLengthForBindings(int, ExceptionCode&);
+    int maxLength() const { return m_maxLength; }
+    WEBCORE_EXPORT ExceptionOr<void> setMaxLength(int);
+    int minLength() const { return m_minLength; }
+    ExceptionOr<void> setMinLength(int);
 
     InsertionNotificationRequest insertedInto(ContainerNode&) override;
 
@@ -61,17 +63,17 @@ public:
 
     int indexForVisiblePosition(const VisiblePosition&) const;
     WEBCORE_EXPORT VisiblePosition visiblePositionForIndex(int index) const;
-    int selectionStart() const;
-    int selectionEnd() const;
-    const AtomicString& selectionDirection() const;
-    void setSelectionStart(int);
-    void setSelectionEnd(int);
-    void setSelectionDirection(const String&);
-    void select(const AXTextStateChangeIntent& = AXTextStateChangeIntent());
-    virtual void setRangeText(const String& replacement, ExceptionCode&);
-    virtual void setRangeText(const String& replacement, unsigned start, unsigned end, const String& selectionMode, ExceptionCode&);
+    WEBCORE_EXPORT int selectionStart() const;
+    WEBCORE_EXPORT int selectionEnd() const;
+    WEBCORE_EXPORT const AtomicString& selectionDirection() const;
+    WEBCORE_EXPORT void setSelectionStart(int);
+    WEBCORE_EXPORT void setSelectionEnd(int);
+    WEBCORE_EXPORT void setSelectionDirection(const String&);
+    WEBCORE_EXPORT void select(const AXTextStateChangeIntent& = AXTextStateChangeIntent());
+    WEBCORE_EXPORT virtual ExceptionOr<void> setRangeText(const String& replacement);
+    WEBCORE_EXPORT virtual ExceptionOr<void> setRangeText(const String& replacement, unsigned start, unsigned end, const String& selectionMode);
     void setSelectionRange(int start, int end, const String& direction, const AXTextStateChangeIntent& = AXTextStateChangeIntent());
-    void setSelectionRange(int start, int end, TextFieldSelectionDirection = SelectionHasNoDirection, const AXTextStateChangeIntent& = AXTextStateChangeIntent());
+    WEBCORE_EXPORT void setSelectionRange(int start, int end, TextFieldSelectionDirection = SelectionHasNoDirection, const AXTextStateChangeIntent& = AXTextStateChangeIntent());
     PassRefPtr<Range> selection() const;
     String selectedText() const;
 
@@ -124,6 +126,9 @@ protected:
 
     void adjustInnerTextStyle(const RenderStyle& parentStyle, RenderStyle& textBlockStyle) const;
 
+    void internalSetMaxLength(int maxLength) { m_maxLength = maxLength; }
+    void internalSetMinLength(int minLength) { m_minLength = minLength; }
+
 private:
     TextFieldSelectionDirection cachedSelectionDirection() const { return static_cast<TextFieldSelectionDirection>(m_cachedSelectionDirection); }
 
@@ -146,14 +151,17 @@ private:
 
     bool placeholderShouldBeVisible() const;
 
+    unsigned m_cachedSelectionDirection : 2;
+    unsigned m_lastChangeWasUserEdit : 1;
+    unsigned m_isPlaceholderVisible : 1;
+
     String m_textAsOfLastFormControlChangeEvent;
 
     int m_cachedSelectionStart;
     int m_cachedSelectionEnd;
 
-    unsigned char m_cachedSelectionDirection : 2;
-    unsigned char m_lastChangeWasUserEdit : 1;
-    unsigned char m_isPlaceholderVisible : 1;
+    int m_maxLength { -1 };
+    int m_minLength { -1 };
 };
 
 HTMLTextFormControlElement* enclosingTextFormControl(const Position&);
@@ -164,5 +172,3 @@ SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::HTMLTextFormControlElement)
     static bool isType(const WebCore::Element& element) { return element.isTextFormControl(); }
     static bool isType(const WebCore::Node& node) { return is<WebCore::Element>(node) && isType(downcast<WebCore::Element>(node)); }
 SPECIALIZE_TYPE_TRAITS_END()
-
-#endif

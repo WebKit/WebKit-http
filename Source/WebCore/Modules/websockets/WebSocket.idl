@@ -32,17 +32,16 @@
 [
     ActiveDOMObject,
     Conditional=WEB_SOCKETS,
-    Constructor(DOMString url, optional sequence<DOMString> protocols = []),
-    Constructor(DOMString url, DOMString protocol),
-    ConstructorRaisesException,
+    Constructor(USVString url, optional sequence<DOMString> protocols = []),
+    Constructor(USVString url, DOMString protocol),
+    ConstructorMayThrowException,
     ConstructorCallWith=ScriptExecutionContext,
     EnabledAtRuntime,
     Exposed=(Window,Worker),
 ] interface WebSocket : EventTarget {
-    readonly attribute DOMString URL; // Lowercased .url is the one in the spec, but leaving .URL for compatibility reasons.
-    readonly attribute DOMString url;
+    readonly attribute USVString URL; // Lowercased .url is the one in the spec, but leaving .URL for compatibility reasons.
+    readonly attribute USVString url;
 
-    // ready state
     const unsigned short CONNECTING = 0;
     const unsigned short OPEN = 1;
     const unsigned short CLOSING = 2;
@@ -51,7 +50,6 @@
 
     readonly attribute unsigned long bufferedAmount;
 
-    // networking
     attribute EventHandler onopen;
     attribute EventHandler onmessage;
     attribute EventHandler onerror;
@@ -60,12 +58,12 @@
     readonly attribute DOMString? protocol;
     readonly attribute DOMString? extensions;
 
-    [SetterRaisesException] attribute DOMString binaryType;
+    [SetterMayThrowException] attribute DOMString binaryType;
 
-    [RaisesException] void send(ArrayBuffer data);
-    [RaisesException] void send(ArrayBufferView data);
-    [RaisesException] void send(Blob data);
-    [RaisesException] void send(DOMString data);
+    [MayThrowException] void send(ArrayBuffer data);
+    [MayThrowException] void send(ArrayBufferView data);
+    [MayThrowException] void send(Blob data);
+    [MayThrowException] void send(USVString data);
 
-    [RaisesException] void close([Clamp] optional unsigned short code, optional DOMString reason);
+    [MayThrowException] void close([Clamp] optional unsigned short code, optional DOMString reason);
 };

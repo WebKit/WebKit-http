@@ -1,0 +1,3795 @@
+2016-11-10  JF Bastien  <jfbastien@apple.com>
+
+        ASSERTION FAILED: length > offset encountered with wasm.yaml/wasm/js-api/test_Module.js.default-wasm
+        https://bugs.webkit.org/show_bug.cgi?id=164597
+
+        Reviewed by Keith Miller.
+
+        Trim the array buffer before returning it: it's optimistically
+        over-allocated to avoid growing all the time, but when parsed it
+        can't have extra content.
+
+        * wasm/Builder_WebAssemblyBinary.js:
+        (export.const.Binary):
+        * wasm/LowLevelBinary.js:
+        (export.default.LowLevelBinary.prototype.get return):
+
+2016-11-10  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: DataView / TypedArray methods should throw RangeErrors for negative numbers (ToIndex)
+        https://bugs.webkit.org/show_bug.cgi?id=164450
+
+        Reviewed by Darin Adler.
+
+        * stress/dataview-typedarray-toindex.js: Added.
+        Tests for all cases where ToIndex should be used.
+
+        * test262.yaml:
+        New passing tests.
+
+2016-11-10  Mark Lam  <mark.lam@apple.com>
+
+        Graph::methodOfGettingAValueProfileFor() should be returning the profile for the operand node.
+        https://bugs.webkit.org/show_bug.cgi?id=164600
+        <rdar://problem/28828676>
+
+        Reviewed by Filip Pizlo.
+
+        * stress/osr-exit-on-op-negate-should-no-fail-assertions.js: Added.
+
+2016-11-08  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Avoid cloned arguments allocation in ArrayPrototype methods
+        https://bugs.webkit.org/show_bug.cgi?id=164502
+
+        Reviewed by Saam Barati.
+
+        * stress/argument-intrinsic-basic.js: Added.
+        (shouldBe):
+        (builtin.createBuiltin):
+        * stress/argument-intrinsic-inlining-with-result-escape.js: Added.
+        (shouldBe):
+        (builtin.createBuiltin):
+        (escape):
+        * stress/argument-intrinsic-nested-inlining.js: Added.
+        (shouldBe):
+        (builtin.createBuiltin):
+        (builtinCaller1):
+        (builtinCaller2):
+        (escape):
+        * stress/argument-intrinsic-not-convert-to-get-argument.js: Added.
+        (shouldBe):
+        (builtin.createBuiltin):
+        * stress/argument-intrinsic-with-stack-write.js: Added.
+        (shouldBe):
+        (builtin.createBuiltin):
+
+2016-11-09  Saam Barati  <sbarati@apple.com>
+
+        Math.min()/Math.max() with no arguments is lowered incorrectly in the BytecodeParser
+        https://bugs.webkit.org/show_bug.cgi?id=164464
+        <rdar://problem/29131452>
+
+        Reviewed by Darin Adler.
+
+        * stress/math-max-min-no-arguments.js: Added.
+        (assert):
+        (min):
+        (max):
+        (test):
+
+2016-11-09  Saam Barati  <sbarati@apple.com>
+
+        TypeProfiler and running GC collection on another thread don't play nicely with each other
+        https://bugs.webkit.org/show_bug.cgi?id=164441
+        <rdar://problem/29132174>
+
+        Reviewed by Geoffrey Garen.
+
+        * typeProfiler/type-profiler-gc.js: Added.
+        (bar):
+        (foo):
+
+2016-11-04  Mark Lam  <mark.lam@apple.com>
+
+        Error description code should be able to handle Symbol values.
+        https://bugs.webkit.org/show_bug.cgi?id=164436
+        <rdar://problem/29115583>
+
+        Reviewed by Filip Pizlo and Saam Barati.
+
+        * stress/error-description-on-symbols-should-not-crash.js: Added.
+
+2016-11-03  Geoffrey Garen  <ggaren@apple.com>
+
+        EvalCodeCache should not give up in strict mode and other cases
+        https://bugs.webkit.org/show_bug.cgi?id=164357
+
+        Reviewed by Michael Saboff.
+
+        * microbenchmarks/eval-cached.js: Added. 45x faster now.
+        * stress/eval-cached.js: Added. Try running the same eval text in a bunch
+        of different scopes and verify that we access the right scope.
+
+2016-11-04  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly JS API: implement more sections
+        https://bugs.webkit.org/show_bug.cgi?id=164023
+
+        Reviewed by Keith Miller.
+
+        On the JSC side:
+
+         - Put in parser stubs for all WebAssembly sections.
+         - Parse Import, Export sections.
+         - Use tryReserveCapacity instead of reserve, and bail out of the parser if it fails. This prevents the parser from bringing everything down when faced with a malicious input.
+         - Encapsulate all parsed module information into its own structure, making it easier to pass around (from parser to Plan to Module to Instance).
+         - Create WasmFormat.cpp to hold parsed module information's dtor to avoid including WasmMemory.h needlessly.
+         - parseCode: avoid overflow through function size.
+         - Remove all remainders of polyfill-prototype-1, and update license.
+         - Add missing WasmOps.h and WasmValidateInlines.h auto-generation for cmake build.
+
+        On the Builder.js testing side:
+
+         - Implement Type, Import (function only), Export (function only) sections.
+         - Check section order and uniqueness.
+         - Optionally auto-generate the Type section from subsequent Export / Import / Code entries.
+         - Allow re-exporting an import.
+
+        * wasm/Builder.js: build type, import, and export sections
+        (const._normalizeFunctionSignature):
+        * wasm/Builder_WebAssemblyBinary.js: Added. Forked from Builder.js
+        (const.emitters.Type):
+        (const.emitters.Import):
+        (const.emitters.Function):
+        (const.emitters.Table):
+        (const.emitters.Memory):
+        (const.emitters.Global):
+        (const.emitters.Export):
+        (const.emitters.Start):
+        (const.emitters.Element):
+        (const.emitters.Code):
+        (const.emitters.Data):
+        (export.const.Binary):
+        * wasm/LowLevelBinary.js: Add a few useful outputs
+        (export.default.LowLevelBinary.prototype.varuint1):
+        (export.default.LowLevelBinary.prototype.varint7):
+        * wasm/WASM.js: value type and external kind helpers
+        * wasm/assert.js: array element-wise equality comparison
+        (const._eq):
+        * wasm/js-api/test_Module.js:
+        (ModuleWithImports):
+        * wasm/self-test/test_BuilderJSON.js: many more tests for all the new Builder APIs, and update to some older tests which now require a Type section or rejiggered Function signature
+        (const.assertOpThrows):
+        (SectionsWithSameCustomName):
+        (TwoTypeSections):
+        (EmptyImportSection):
+        (ImportBeforeTypeSections):
+        * wasm/self-test/test_BuilderWebAssembly.js: remove a test which wasn't helpful and is now obsolete
+        (CustomSection):
+
+2016-11-03  Mark Lam  <mark.lam@apple.com>
+
+        ClonedArguments need to also support haveABadTime mode.
+        https://bugs.webkit.org/show_bug.cgi?id=164200
+        <rdar://problem/27211336>
+
+        Reviewed by Geoffrey Garen.
+
+        * stress/have-a-bad-time-with-arguments.js: Added.
+
+2016-11-03  Filip Pizlo  <fpizlo@apple.com>
+
+        DFG plays fast and loose with the shadow values of a Phi
+        https://bugs.webkit.org/show_bug.cgi?id=164309
+
+        Reviewed by Saam Barati.
+        
+        This test demonstrates why the DFG needs to recognize the shadow value of a Phi.
+
+        * stress/dfg-ssa-swap.js: Added.
+        (foo):
+
+2016-11-03  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r208364.
+        https://bugs.webkit.org/show_bug.cgi?id=164402
+
+        broke the build (Requested by smfr on #webkit).
+
+        Reverted changeset:
+
+        "DFG plays fast and loose with the shadow values of a Phi"
+        https://bugs.webkit.org/show_bug.cgi?id=164309
+        http://trac.webkit.org/changeset/208364
+
+2016-11-03  Filip Pizlo  <fpizlo@apple.com>
+
+        DFG plays fast and loose with the shadow values of a Phi
+        https://bugs.webkit.org/show_bug.cgi?id=164309
+
+        Reviewed by Saam Barati.
+        
+        This test demonstrates why the DFG needs to recognize the shadow value of a Phi.
+
+        * stress/dfg-ssa-swap.js: Added.
+        (foo):
+
+2016-11-03  Saam Barati  <sbarati@apple.com>
+
+        Asking for a value profile prediction should be defensive against not finding a value profile
+        https://bugs.webkit.org/show_bug.cgi?id=164306
+
+        Reviewed by Mark Lam.
+
+        * stress/inlined-tail-call-in-inlined-setter-should-not-crash-when-getting-value-profile.js: Added.
+        (let.o.set foo):
+        (bar):
+
+2016-11-02  Saam Barati  <sbarati@apple.com>
+
+        Allocation elimination of rest parameter doesn't take into account indexed properties on Array.prototype/Object.prototype
+        https://bugs.webkit.org/show_bug.cgi?id=164301
+
+        Reviewed by Geoffrey Garen.
+
+        * stress/rest-parameter-allocation-elimination-watchpoints-2.js: Added.
+        (assert):
+        (foo):
+        * stress/rest-parameter-allocation-elimination-watchpoints-3.js: Added.
+        (assert):
+        (foo):
+        * stress/rest-parameter-allocation-elimination-watchpoints-4.js: Added.
+        (assert):
+        (foo):
+        * stress/rest-parameter-allocation-elimination-watchpoints-5.js: Added.
+        (assert):
+        (foo):
+        * stress/rest-parameter-allocation-elimination-watchpoints-6.js: Added.
+        (assert):
+        (foo):
+        * stress/rest-parameter-allocation-elimination-watchpoints.js: Added.
+        (assert):
+        (foo):
+
+2016-11-01  Saam Barati  <sbarati@apple.com>
+
+        We should be able to eliminate rest parameter allocations
+        https://bugs.webkit.org/show_bug.cgi?id=163925
+
+        Reviewed by Filip Pizlo.
+
+        * microbenchmarks/rest-parameter-allocation-elimination.js: Added.
+        (assert):
+        (test1.bar):
+        (test1):
+        (test2.jaz):
+        (test2.jaz2.kaz):
+        (test2.jaz2):
+        (test2):
+        (test3.foo):
+        (test3.baz):
+        (test3.jaz):
+        (test3):
+        (test4.baz):
+        (test4.jaz):
+        (test4):
+        (test5.baz):
+        (test5.jaz):
+        (test5):
+        (test6.baz):
+        (test6.jaz):
+        (test6):
+        (test7.baz):
+        (test7.jaz):
+        (test7.check):
+        (test7):
+        (test8.baz):
+        (test8.jaz):
+        (test8.check):
+        (test8):
+        (test9.baz):
+        (test9.jaz):
+        (test9.check):
+        (test9):
+        (test10.baz):
+        (test10.jaz):
+        (test10):
+        (test11.bar):
+        (test11.foo):
+        (test11.makeArguments):
+        (test11.):
+        (test12):
+        (test12.bar):
+        (test12.foo):
+        (test12.makeArguments):
+        (test12.):
+        (test13.bar):
+        (test13.top):
+        (test13.foo):
+        (test13.makeArguments):
+        (test13.):
+        (test13):
+        (test14.bar):
+        (test14.top):
+        (test14.foo):
+        (test14.makeArguments):
+        (test14.):
+        (test14):
+        (test15.bar):
+        (test15.top):
+        (test15.foo):
+        (test15.makeArguments):
+        (test15.):
+        (test15):
+
+2016-11-01  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r208208 and r208210.
+        https://bugs.webkit.org/show_bug.cgi?id=164276
+
+        This change caused 28 JSC test failures. (Requested by
+        ryanhaddad on #webkit).
+
+        Reverted changesets:
+
+        "We should be able to eliminate rest parameter allocations"
+        https://bugs.webkit.org/show_bug.cgi?id=163925
+        http://trac.webkit.org/changeset/208208
+
+        "Fix the EFL build."
+        http://trac.webkit.org/changeset/208210
+
+2016-10-31  Filip Pizlo  <fpizlo@apple.com>
+
+        JSC should support SharedArrayBuffer
+        https://bugs.webkit.org/show_bug.cgi?id=163986
+
+        Reviewed by Keith Miller.
+        
+        This adds our own test for the various corner cases of SharedArrayBuffer. This test is meant to
+        check all of the things that don't require concurrency.
+
+        * stress/SharedArrayBuffer.js: Added.
+        (checkAtomics):
+        (shouldFail):
+        (Symbol):
+        (runAtomic):
+
+2016-10-31  Saam Barati  <sbarati@apple.com>
+
+        We should be able to eliminate rest parameter allocations
+        https://bugs.webkit.org/show_bug.cgi?id=163925
+
+        Reviewed by Filip Pizlo.
+
+        * microbenchmarks/rest-parameter-allocation-elimination.js: Added.
+        (assert):
+        (test1.bar):
+        (test1):
+        (test2.jaz):
+        (test2.jaz2.kaz):
+        (test2.jaz2):
+        (test2):
+        (test3.foo):
+        (test3.baz):
+        (test3.jaz):
+        (test3):
+        (test4.baz):
+        (test4.jaz):
+        (test4):
+        (test5.baz):
+        (test5.jaz):
+        (test5):
+        (test6.baz):
+        (test6.jaz):
+        (test6):
+        (test7.baz):
+        (test7.jaz):
+        (test7.check):
+        (test7):
+        (test8.baz):
+        (test8.jaz):
+        (test8.check):
+        (test8):
+        (test9.baz):
+        (test9.jaz):
+        (test9.check):
+        (test9):
+        (test10.baz):
+        (test10.jaz):
+        (test10):
+        (test11.bar):
+        (test11.foo):
+        (test11.makeArguments):
+        (test11.):
+        (test12):
+        (test12.bar):
+        (test12.foo):
+        (test12.makeArguments):
+        (test12.):
+        (test13.bar):
+        (test13.top):
+        (test13.foo):
+        (test13.makeArguments):
+        (test13.):
+        (test13):
+        (test14.bar):
+        (test14.top):
+        (test14.foo):
+        (test14.makeArguments):
+        (test14.):
+        (test14):
+        (test15.bar):
+        (test15.top):
+        (test15.foo):
+        (test15.makeArguments):
+        (test15.):
+        (test15):
+
+2016-10-31  Saam Barati  <sbarati@apple.com>
+
+        Debug JSC test microbenchmarks/pure-get-by-id-cse-2.js timing out
+        https://bugs.webkit.org/show_bug.cgi?id=164227
+
+        Unreviewed timeout fix.
+
+        * microbenchmarks/pure-get-by-id-cse-2.js:
+
+2016-10-31  Keith Miller  <keith_miller@apple.com>
+
+        autogenerated files from wasm.json should be in derived sources.
+        https://bugs.webkit.org/show_bug.cgi?id=164152
+
+        Reviewed by Filip Pizlo.
+
+        Delete generation script since it is no longer used.
+
+        * wasm/generate-wasmops-header.js: Removed.
+
+2016-10-29  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] JSON.stringify should handle Proxy which is non JSArray but isArray is true
+        https://bugs.webkit.org/show_bug.cgi?id=164123
+
+        Reviewed by Mark Lam.
+
+        * stress/json-stringify-with-non-jsarray-array.js: Added.
+        (shouldBe):
+        (shouldBe.JSON.stringify.new.Proxy):
+
+2016-10-29  Saam Barati  <sbarati@apple.com>
+
+        We should have a way of profiling when a get_by_id is pure and to emit a PureGetById in the DFG/FTL
+        https://bugs.webkit.org/show_bug.cgi?id=163305
+
+        Reviewed by Keith Miller.
+
+        * microbenchmarks/pure-get-by-id-cse-2.js: Added.
+        (foo):
+        * microbenchmarks/pure-get-by-id-cse.js: Added.
+        (foo):
+        * stress/pure-get-by-id-cse-correctness.js: Added.
+        (assert):
+        (foo):
+        * stress/pure-get-by-id-on-non-object.js: Added.
+        (assert):
+        (foo):
+
+2016-10-28  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Skip JSTests/microbenchmarks/dense-set.js on memory limited devices
+        https://bugs.webkit.org/show_bug.cgi?id=164128
+
+        Reviewed by Mark Lam.
+
+        * microbenchmarks/dense-set.js:
+
+2016-10-20  Caitlin Potter  <caitp@igalia.com>
+
+        [JSC] implement runtime for async functions
+        https://bugs.webkit.org/show_bug.cgi?id=163760
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/async-await-basic.js: Added.
+        (shouldBe):
+        (shouldBeAsync):
+        (shouldThrow):
+        (shouldThrowAsync):
+        (shouldThrowSyntaxError):
+        (let.AsyncFunction.async):
+        (async.asyncFunctionForProto):
+        (Object.getPrototypeOf.async):
+        (Object.getPrototypeOf.async.method):
+        (async):
+        (async.method):
+        (async.asyncNonConstructorDecl):
+        (shouldThrow.new.async):
+        (shouldThrow.new.async.nonConstructor):
+        (async.asyncDecl):
+        (async.f):
+        (MyError):
+        (async.asyncDeclThrower):
+        (shouldThrowAsync.async):
+        (resolveLater):
+        (rejectLater):
+        (async.resumeAfterNormal):
+        (O.async.resumeAfterNormal):
+        (resumeAfterNormalArrow.async):
+        (async.resumeAfterThrow):
+        (O.async.resumeAfterThrow):
+        (resumeAfterThrowArrow.async):
+        (catch):
+        * stress/async-await-module-reserved-word.js: Added.
+        (shouldThrow):
+        (SyntaxError.Canstring_appeared_hereawait.checkModuleSyntaxError.String.raw.await):
+        (checkModuleSyntaxError.String.raw.await):
+        (checkModuleSyntaxError.String.raw.async.await):
+        (SyntaxError.Cannot.declare.named):
+        * stress/async-await-mozilla.js: Added.
+        (shouldBe):
+        (shouldBeAsync):
+        (shouldThrow):
+        (shouldThrowAsync):
+        (assert):
+        (shouldThrowSyntaxError):
+        (mozSemantics.async.empty):
+        (mozSemantics.async.simpleReturn):
+        (mozSemantics.async.simpleAwait):
+        (mozSemantics.async.simpleAwaitAsync):
+        (mozSemantics.async.returnOtherAsync):
+        (mozSemantics.async.simpleThrower):
+        (mozSemantics.async.delegatedThrower):
+        (mozSemantics.async.tryCatch):
+        (mozSemantics.async.tryCatchThrow):
+        (mozSemantics.async.wellFinally):
+        (mozSemantics.async.finallyMayFail):
+        (mozSemantics.async.embedded.async.inner):
+        (mozSemantics.async.embedded):
+        (mozSemantics.async.fib):
+        (mozSemantics.async.isOdd.async.isEven):
+        (mozSemantics.async.isOdd):
+        (mozSemantics.hardcoreFib.async.fib2):
+        (mozSemantics.namedAsyncExpr.async.simple):
+        (mozSemantics.async.executionOrder.async.first):
+        (mozSemantics.async.executionOrder.async.second):
+        (mozSemantics.async.executionOrder.async.third):
+        (mozSemantics.async.executionOrder):
+        (mozSemantics.async.miscellaneous):
+        (mozSemantics.thrower):
+        (mozSemantics.async.defaultArgs):
+        (mozSemantics.shouldThrow):
+        (mozSemantics):
+        (mozMethods.X):
+        (mozMethods.X.prototype.async.getValue):
+        (mozMethods.X.prototype.setValue):
+        (mozMethods.X.prototype.async.increment):
+        (mozMethods.X.prototype.async.getBaseClassName):
+        (mozMethods.X.async.getStaticValue):
+        (mozMethods.Y.prototype.async.getBaseClassName):
+        (mozMethods.Y):
+        (mozFunctionNameInferrence.async.test):
+        (mozSyntaxErrors):
+        * stress/async-await-reserved-word.js: Added.
+        (assert):
+        (shouldThrowSyntaxError):
+        (AsyncFunction.async):
+        * stress/async_arrow_functions_lexical_arguments_binding.js: Added.
+        (shouldBe):
+        (shouldBeAsync):
+        (shouldThrowAsync):
+        (noArgumentsArrow2.async):
+        * stress/async_arrow_functions_lexical_new.target_binding.js: Added.
+        (shouldBe):
+        (shouldBeAsync):
+        (shouldThrowAsync):
+        (C1):
+        (C2):
+        (shouldThrowAsync.async):
+        * stress/async_arrow_functions_lexical_super_binding.js: Added.
+        (shouldBe):
+        (shouldBeAsync):
+        (BaseClass.prototype.baseClassValue):
+        (BaseClass.prototype.get property):
+        (BaseClass):
+        (ChildClass.prototype.asyncSuperProp):
+        (ChildClass.prototype.asyncSuperProp2):
+        (ChildClass):
+        (ChildClass2):
+        * stress/async_arrow_functions_lexical_this_binding.js: Added.
+        (shouldBe):
+        (shouldBeAsync):
+        (d.y):
+
+2016-10-28  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Skip 2 JS stress tests on memory limited devices
+        https://bugs.webkit.org/show_bug.cgi?id=164125
+
+        Unreviewed quick fix to unbreak JSCOnly ARM bots as soon as possible.
+
+        * stress/joined-strings-should-not-exceed-max-string-length.js:
+        * stress/string-prototype-replace-should-throw-out-of-memory-error-when-using-too-much-memory.js:
+
+2016-10-27  Caitlin Potter  <caitp@igalia.com>
+
+        [JSC] forbid lexical redeclaration of generator formal parameters
+        https://bugs.webkit.org/show_bug.cgi?id=163930
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/async-await-syntax.js:
+        * stress/generator-syntax.js:
+        (testSyntaxError.gen):
+        (testSyntaxError.arguments):
+        (testSyntaxError.eval):
+        * test262.yaml:
+
+2016-10-26  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly API: implement Instance
+
+        As described in: https://github.com/WebAssembly/design/blob/master/JS.md#webassemblyinstance-objects
+
+         - Take ownership of Wasm::Plan's compilation result when successfully creating a JSWebAssemblyModule object.
+         - Construct a basic Instance with a Module.
+         - Handle second argument (importObject) of WebAssembly.Instance.
+         - Add reference text from the spec to WebAssembly.Module's code.
+         - Expose and test an empty 'exports' ModuleNamespaceObject on WebAssembly.Instance.
+
+        The implementation isn't complete yet: it relies on further work for which I've filed bugs.
+
+        WebAssembly API: implement Instance
+        https://bugs.webkit.org/show_bug.cgi?id=163998
+
+        Reviewed by Keith Miller.
+
+        * wasm/js-api/test_Instance.js: Added.
+        (EmptyModule): use the Builder, create the simplest Module possible, and create an Instance from it
+        * wasm/js-api/test_basic_api.js:
+        (const.c.in.constructorProperties.switch): basic tests of the API
+
+2016-10-26  Mark Lam  <mark.lam@apple.com>
+
+        JSGenericTypedArrayView::set() should check for exceptions.
+        https://bugs.webkit.org/show_bug.cgi?id=164007
+        <rdar://problem/28853775>
+
+        Reviewed by Filip Pizlo.
+
+        * stress/typed-array-view-set-should-not-crash-on-exception.js: Added.
+
+2016-10-25  Mark Lam  <mark.lam@apple.com>
+
+        String.prototype.replace() should throw an OutOfMemoryError when using too much memory.
+        https://bugs.webkit.org/show_bug.cgi?id=163996
+        <rdar://problem/28263117>
+
+        Reviewed by Geoffrey Garen.
+
+        * stress/string-prototype-replace-should-throw-out-of-memory-error-when-using-too-much-memory.js: Added.
+
+2016-10-25  Mark Lam  <mark.lam@apple.com>
+
+        JSStringJoiner::joinedLength() should limit joined string lengths to INT_MAX.
+        https://bugs.webkit.org/show_bug.cgi?id=163937
+        <rdar://problem/28642990>
+
+        Reviewed by Geoffrey Garen.
+
+        * stress/joined-strings-should-not-exceed-max-string-length.js: Added.
+
+2016-10-25  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly JS API: simple Module test
+        https://bugs.webkit.org/show_bug.cgi?id=163963
+
+        Reviewed by Filip Pizlo.
+
+        * wasm/LowLevelBinary.js:
+        (export.default.LowLevelBinary.prototype.get return): get the ArrayBuffer
+        (export.default.LowLevelBinary.prototype.hexdump): Deleted.
+        (export.default.LowLevelBinary.prototype._maybeGrow): Deleted.
+        * wasm/js-api/test_Module.js: Added.
+        (EmptyModule): The most basic module possible
+
+2016-10-25  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly JS API: implement Module
+
+        This implementation allows us to:
+         - Syncrhonously create a WebAssembly.Module with a typed array.
+         - Creates a compilation plan.
+         - Parse the Module and creates corresponding code.
+         - Throw WebAssembly.CompileError with mildly helpful [*] error messages on
+           failure.
+
+        Consult the API documentation for expected behavior: https://github.com/WebAssembly/design/blob/master/JS.md#webassemblymodule-constructor
+
+        For now the implementation discards the generated code.
+
+        The next steps will be:
+         - Expose a Module's exports.
+         - Implement WebAssembly.Instance, which allows instantiating and running a
+           compiled Module.
+         - Beef up the testing infrastructure under JSTests/wasm so that more complex
+           modules can be created and tested (instead of writing the bits by hand).
+
+        This patch also:
+         - Adds assert.instanceof in assert.js.
+         - Refactors Wasm::Parser and friends to accept const uint8_t* as well as a
+           Vector, to avoid copying when invoked synchronously.
+         - Remove useless Structure from some of the wasm constructors: they're already
+           on the JSGlobalObject, visited properly and all.
+         - Fix off-by-one error in parsing: Parser::parseUInt32 failed if the integer
+           was exactly at end of file.
+
+         [*] On error messages while parsing: I filed https://bugs.webkit.org/show_bug.cgi?id=163919
+
+        WebAssembly JS API: implement Module
+        https://bugs.webkit.org/show_bug.cgi?id=163903
+
+        Reviewed by Keith Miller.
+
+        * wasm/assert.js: use underscore in name, and remove when exporting to avoid clasing with builtin names
+        (const._notUndef):
+        (const._isUndef):
+        (const._eq):
+        (const._ge):
+        (const._throws):
+        * wasm/js-api/test_basic_api.js: test the WebAssembly.Module API
+        (const.c.in.constructorProperties.switch):
+
+2016-10-25  Keith Miller  <keith_miller@apple.com>
+
+        Add trivial Wasm conversion opcodes
+        https://bugs.webkit.org/show_bug.cgi?id=163950
+
+        Reviewed by Filip Pizlo.
+
+        This patch differentiates between Wasm opcodes that are trivially mapped to a B3 opcode and
+        those that are not.  Some of the Wasm opcodes that are currently a non-simple opcode will
+        become simple as we add B3 opcodes for Wasm operations.  The remaining opcodes will need to
+        be added via patchpoints in a later patch.
+
+        * wasm/generate-wasmops-header.js:
+        (const.template.pragma.once.ENABLE.WEBASSEMBLY.include.cstdint.namespace.JSC.namespace.Wasm.inline.bool.isSimple):
+        * wasm/wasm.json:
+
+2016-10-24  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Arrow functions with concise bodies cannot return regular expressions
+        https://bugs.webkit.org/show_bug.cgi?id=163162
+
+        Reviewed by Filip Pizlo.
+
+        * ChakraCore/test/Operators/instanceof.baseline-jsc:
+        * ChakraCore/test/Regex/nul_character.baseline-jsc:
+        * ChakraCore/test/es5/Lex_u3.baseline-jsc:
+        * stress/parse-regexp-as-token.js: Added.
+        (shouldBe):
+
+2016-10-24  Keith Miller  <keith_miller@apple.com>
+
+        Wasm should support floating point operations.
+        https://bugs.webkit.org/show_bug.cgi?id=163770
+
+        Reviewed by Michael Saboff.
+
+        Add appropriate b3op names for floating point wasm bytecodes, where they exist.
+        Also, fix some WASM => Wasm in WasmOps.h generator script that I missed
+        the first time I made the change.
+
+        * wasm/generate-wasmops-header.js:
+        (const.template.pragma.once.ENABLE.WEBASSEMBLY.include.cstdint.namespace.JSC.namespace.WASM.template.typename.Int.inline.bool.isValidOpType): Deleted.
+        (const.template.pragma.once.ENABLE.WEBASSEMBLY.include.cstdint.namespace.JSC.namespace.WASM.enum.BinaryOpType): Deleted.
+        (const.template.pragma.once.ENABLE.WEBASSEMBLY.include.cstdint.namespace.JSC.namespace.WASM.enum.UnaryOpType): Deleted.
+        (const.template.pragma.once.ENABLE.WEBASSEMBLY.include.cstdint.namespace.JSC.namespace.WASM.enum.LoadOpType): Deleted.
+        (const.template.pragma.once.ENABLE.WEBASSEMBLY.include.cstdint.namespace.JSC.namespace.WASM.enum.StoreOpType): Deleted.
+        (const.template.pragma.once.ENABLE.WEBASSEMBLY.include.cstdint.namespace.JSC.namespace.WASM.undef.CREATE_ENUM_VALUE.inline.bool.isControlOp): Deleted.
+        * wasm/wasm.json:
+
+2016-10-21  Saam Barati  <sbarati@apple.com>
+
+        SpeculativeJIT::compileTryGetById needs to pass in NeedsToSpill along both the cell speculation and untyped speculation path
+        https://bugs.webkit.org/show_bug.cgi?id=163622
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/try-get-by-id-should-spill-registers-dfg.js: Added.
+        (let.f.createBuiltin):
+
+2016-10-21  Caitlin Potter  <caitp@igalia.com>
+
+        [JSC] don't crash when arguments to `new Function()` produce unexpected AST
+        https://bugs.webkit.org/show_bug.cgi?id=163748
+
+        Reviewed by Mark Lam.
+
+        * stress/regress-163748.js: Added.
+        (assert):
+        (shouldThrowSyntaxError):
+        (GeneratorFunction):
+
+2016-10-20  Keith Miller  <keith_miller@apple.com>
+
+        Add support for WASM calls
+        https://bugs.webkit.org/show_bug.cgi?id=161727
+
+        Reviewed by Filip Pizlo and Michael Saboff.
+
+        Add members of the Call category to the WASMOps special group.
+
+        * wasm/generate-wasmops-header.js:
+
+2016-10-20  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Drop isEnvironmentRecord type info flag and use JSType information instead
+        https://bugs.webkit.org/show_bug.cgi?id=163761
+
+        Reviewed by Keith Miller.
+
+        * modules/string-prototype-module-scope.js: Added.
+        (shouldBe):
+        (catch):
+        (refer):
+        * stress/string-prototype-scopes-global-lexical-environment-strict.js: Added.
+        (shouldBe):
+        (catch):
+        * stress/string-prototype-scopes-global-lexical-environment.js: Added.
+        (shouldBe):
+        (catch):
+        * stress/string-prototype-scopes-strict.js: Added.
+        (shouldBe):
+        (catch):
+        (try.refer):
+        (refer):
+        * stress/string-prototype-scopes.js: Added.
+        (shouldBe):
+        (catch):
+        (try.refer):
+        (refer):
+        (object.toString):
+        (with):
+
+2016-10-20  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly API: implement exception constructors properly
+
+         - Rename WebAssemblyObject to JSWebAssembly for consistency.
+         - WebAssembly object now has its own prototype: add WebAssemblyPrototype, and
+           use it to register JSWebAssembly's function properties through auto-generated
+           .lut.h, instead of manually.
+         - The error constructors used to throw (e.g. `new WebAssembly.CompileError()`).
+         - Register WebAssembly's constructors from the global object, and hold a
+           reference to their structure and prototype so that invoking the constructor
+           can use the structure directly from the global object.
+         - Add a prototype base field to global object creation. Previous ones all had
+           Object's prototype as their base, but WebAssembly's error constructors have
+           Error as their base.
+         - Test for the error object's correctness.
+         - Add missing #if ENABLE(WEBASSEMBLY)
+
+        WebAssembly API: implement exception constructors properly
+        https://bugs.webkit.org/show_bug.cgi?id=163699
+
+        Reviewed by Keith Miller.
+
+        * wasm/js-api/test_basic_api.js:
+        (const.c.in.constructorProperties): more tests
+
+2016-10-20  Caitlin Potter  <caitp@igalia.com>
+
+        [JSC] disallow references to `await` in AsyncFunction formal parameters
+        https://bugs.webkit.org/show_bug.cgi?id=163694
+
+        Reviewed by Saam Barati.
+
+        * stress/async-await-syntax.js:
+
+2016-10-20  Keith Miller  <keith_miller@apple.com>
+
+        Invalid assertion in arguments elimination
+        https://bugs.webkit.org/show_bug.cgi?id=163740
+        <rdar://problem/27911462>
+
+        Reviewed by Michael Saboff.
+
+        * stress/direct-arguments-osr-entry.js: Added.
+        (foo.):
+        (foo):
+
+2016-10-20  Caitlin Potter  <caitp@igalia.com>
+
+        [JSC] throw TypeError when constructing dynamically created JSGeneratorFunction
+        https://bugs.webkit.org/show_bug.cgi?id=163714
+
+        Reviewed by Mark Lam.
+
+        Add missing test coverage that dynamically created
+        JSGeneratorFunctions can not be constructed.
+
+        * stress/generator-function-constructor.js:
+        (shouldThrow):
+
+2016-10-19  JF Bastien  <jfbastien@apple.com>
+
+        JavaScript WebAssembly API: baby steps
+
+         - Expand WebAssembly constructors into their own files. This requires a lot of
+           boilerplate, as well as adding the .lut.h files. All of the
+           JSWebAssembly*.{h,cpp}, as well as Constructor and Prototype files, are
+           currently the same between the 4 specified WebAssembly constructors. It'll be
+           easy to implement individual functions on constructed objects as per the
+           spec, and have each of these files diverge. The error constructors are also
+           similar, except that their instance derives from ErrorInstance.
+         - Use constructor macro when initializing the global object.
+         - Dramatically improve testing of the WebAssembly API by checking for
+           properties specified in the spec [*].
+         - Clean up assert.js' exception testing.
+         - Fix a copy-paste bug in wasm.json: floating-point const return values were
+           swapped.
+
+        [*] https://github.com/WebAssembly/design/blob/master/JS.md
+
+        Implement more of the JavaScript WebAssembly API
+        https://bugs.webkit.org/show_bug.cgi?id=163571
+
+        Reviewed by Keith Miller.
+
+        * wasm/assert.js:
+        (export.const.isUndef): add this useful helper
+        (export.const.throws): fold other throw checks into this one, and check message as well
+        * wasm/js-api/test_basic_api.js:
+        (const.checkOwnPropertyDescriptor): check own property descriptor follows the spec
+        * wasm/self-test/test_BuilderJSON.js:
+        (const.assertOpThrows): use new assert API
+        (CheckedOpcodeArgumentsTooMany): ditto
+        (CheckedOpcodeArgumentsNotEnough): ditto
+        (CallInvalid): ditto
+        (I32ConstInvalid): ditto
+        (F32ConstInvalid): ditto (and this caugth the JSON copy-paste bug)
+        (F64ConstInvalid): ditto
+        * wasm/self-test/test_LowLevelBinary_varint.js: use new assert API
+        * wasm/self-test/test_LowLevelBinary_varuint.js: use new assert API
+        * wasm/utilities.js: add "global" object, used in basic API test (to access global.WebAssembly).
+        * wasm/wasm.json: fix copy-paste
+
+2016-10-19  Caitlin Potter  <caitp@igalia.com>
+
+        [JSC] forbid "use strict" directive in generator functions with non-simple parameters
+        https://bugs.webkit.org/show_bug.cgi?id=163683
+
+        Reviewed by Geoffrey Garen.
+
+        Update various generator*-non-simple-param.js tests to be passing.
+
+        * test262.yaml:
+
+2016-10-18  Mark Lam  <mark.lam@apple.com>
+
+        Invoking Object.prototype.__proto__ accessors directly should throw a TypeError.
+        https://bugs.webkit.org/show_bug.cgi?id=154377
+        <rdar://problem/27330808>
+
+        Reviewed by Filip Pizlo and Saam Barati.
+
+        * stress/object-prototype-proto-accessors-should-throw-on-undefined-this.js: Added.
+
+2016-10-18  Keith Miller  <keith_miller@apple.com>
+
+        GetByVal to GetById conversion in the DFG is incorrect for getters with control flow
+        https://bugs.webkit.org/show_bug.cgi?id=163629
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/get-by-val-to-id-with-getter.js: Added.
+        (foo):
+        (o.get hello):
+
+2016-10-15  Filip Pizlo  <fpizlo@apple.com>
+
+        DFG and FTL should be able to use DirectCall ICs when they proved the callee or its executable
+        https://bugs.webkit.org/show_bug.cgi?id=163371
+
+        Reviewed by Geoffrey Garen and Saam Barati.
+        
+        Add microbenchmarks for all of the cases that this patch optimizes.
+
+        * microbenchmarks/direct-call-arity-mismatch.js: Added.
+        (foo):
+        (bar):
+        * microbenchmarks/direct-call.js: Added.
+        (foo):
+        (bar):
+        * microbenchmarks/direct-construct-arity-mismatch.js: Added.
+        (Foo):
+        (bar):
+        * microbenchmarks/direct-construct.js: Added.
+        (Foo):
+        (bar):
+        * microbenchmarks/direct-tail-call-arity-mismatch.js: Added.
+        (foo):
+        (bar):
+        * microbenchmarks/direct-tail-call-inlined-caller-arity-mismatch.js: Added.
+        (foo):
+        (bar):
+        (baz):
+        * microbenchmarks/direct-tail-call-inlined-caller.js: Added.
+        (foo):
+        (bar):
+        (baz):
+        * microbenchmarks/direct-tail-call.js: Added.
+        (foo):
+        (bar):
+
+2016-10-18  Caitlin Potter  <caitp@igalia.com>
+
+        [JSC] ES6 Method functions should not have prototype
+        https://bugs.webkit.org/show_bug.cgi?id=162530
+
+        Reviewed by Saam Barati.
+
+        Fix test262 expectations about MethodDefinitions
+
+        * ChakraCore/test/strict/05.arguments_sm.baseline-jsc:
+        * stress/reflect-set.js:
+        * test262.yaml:
+
+2016-10-17  Keith Miller  <keith_miller@apple.com>
+
+        Add support for WASM Memory.
+        https://bugs.webkit.org/show_bug.cgi?id=161710
+
+        Reviewed by Geoffrey Garen.
+
+        Add store and load opcodes to wasm.json. Additionally, add new
+        enums for those opcodes in the generator.
+
+        * stress/wasm/generate-wasmops-header.js:
+        (const.template.pragma.once.ENABLE.WEBASSEMBLY.include.cstdint.namespace.JSC.namespace.WASM.enum.LoadOpType):
+        (const.template.pragma.once.ENABLE.WEBASSEMBLY.include.cstdint.namespace.JSC.namespace.WASM.enum.StoreOpType):
+
+2016-10-17  Saam Barati  <sbarati@apple.com>
+
+        Add more tests for the double->String conversion in ValueAdd constant folding
+        https://bugs.webkit.org/show_bug.cgi?id=163517
+
+        Reviewed by Yusuke Suzuki.
+
+        * microbenchmarks/string-add-constant-folding.js:
+        (test):
+
+2016-10-17  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly JS API: implement basic stub
+
+        Implement the global WebAssembly JavaScript object, and its constructor +
+        function properties as described in:
+          https://github.com/WebAssembly/design/blob/master/JS.md
+
+        These don't do anything at the moment, the parent bug will take care of adding
+        more functionality and associated tests.
+
+        WebAssembly JS API: implement basic stub
+        https://bugs.webkit.org/show_bug.cgi?id=163404
+
+        Reviewed by Keith Miller.
+
+        * wasm.yaml:
+        * wasm/js-api/test_basic_api.js: Added.
+        (const.f.of.functionProperties.WebAssembly.f.undefined.throw.new.Error.Couldn.const.c.of.constructorProperties.WebAssembly.c.undefined.throw.new.Error.Couldn):
+        (const.c.of.constructorProperties.catch):
+
+2016-10-17  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [DOMJIT] Use DOMJIT::Patchpoint in IC
+        https://bugs.webkit.org/show_bug.cgi?id=163223
+
+        Reviewed by Saam Barati.
+
+        * stress/domjit-exception-ic.js: Added.
+        (shouldBe):
+        (access):
+        * stress/domjit-exception.js: Added.
+        (shouldBe):
+        (access):
+        * stress/domjit-getter-complex-with-incorrect-object.js: Added.
+        (shouldThrow):
+        (access):
+        (i.shouldThrow):
+        * stress/domjit-getter-complex.js: Added.
+        (shouldBe):
+        (access):
+        * stress/domjit-getter-try-catch-getter-as-get-by-id-register-restoration.js: Added.
+        (assert):
+        (bar):
+        (foo):
+
+2016-10-15  Saam Barati  <sbarati@apple.com>
+
+        Assertion failed under operationToLowerCase with a rope with zero length
+        https://bugs.webkit.org/show_bug.cgi?id=163314
+
+        Reviewed by Mark Lam.
+
+        * stress/to-lower-case-intrinsic-on-empty-rope.js: Added.
+        (assert):
+        (returnRope.helper):
+        (returnRope):
+        (lower):
+
+2016-10-14  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] op_negate should with any type
+        https://bugs.webkit.org/show_bug.cgi?id=162587
+
+        Reviewed by Saam Barati.
+
+        * stress/arith-abs-to-arith-negate-range-optimizaton.js: Added.
+        Cover OSR Exits when converting Math.abs() into ArithNegate.
+
+        * stress/arith-negate-on-various-types.js: Added.
+        Cover ArithNegate with all types.
+
+2016-10-14  JF Bastien  <jfbastien@apple.com>
+
+        Basic WebAssembly testing
+
+        Create a small DSL in JavaScript which can build WebAssembly binary modules based on the JSON description of the format as described in:
+        https://github.com/WebAssembly/design/blob/master/BinaryEncoding.md
+
+        This DSL can then be used to write small text description of valid and invalid WebAssembly binaries, making testing the JSC implementation much easier.
+
+        Details and example in README.md.
+
+        Basic WebAssembly testing
+        https://bugs.webkit.org/show_bug.cgi?id=163267
+
+        Reviewed by Keith Miller.
+
+        * stress/wasm/wasm.json: Removed.
+        * wasm.yaml: Added.
+        * wasm/Builder.js: Added.
+        (const._isValidValue):
+        (const._BuildWebAssemblyBinary):
+        (export.default.Builder):
+        (export.default.Builder.prototype.setChecked):
+        (export.default.Builder.prototype.setPreamble):
+        (export.default.Builder.prototype._registerSectionBuilders.switch.case.string_appeared_here.this.section):
+        (export.default.Builder.prototype._registerSectionBuilders.this.Unknown):
+        (export.default.Builder.prototype._registerSectionBuilders):
+        (export.default.Builder.prototype._addSection):
+        (export.default.Builder.prototype.optimize):
+        (export.default.Builder.prototype.json):
+        (export.default.Builder.prototype.AsmJS):
+        (export.default.Builder.prototype.WebAssembly):
+        * wasm/LowLevelBinary.js: Added.
+        (const._getterRangeCheck):
+        (const._hexdump):
+        (export.default.LowLevelBinary):
+        (export.default.LowLevelBinary.prototype.newPatchable):
+        (export.default.LowLevelBinary.prototype.hexdump):
+        (export.default.LowLevelBinary.prototype._maybeGrow):
+        (export.default.LowLevelBinary.prototype._push8):
+        (export.default.LowLevelBinary.prototype.uint8):
+        (export.default.LowLevelBinary.prototype.uint16):
+        (export.default.LowLevelBinary.prototype.uint32):
+        (export.default.LowLevelBinary.prototype.varuint):
+        (export.default.LowLevelBinary.prototype.varint):
+        (export.default.LowLevelBinary.prototype.varuint7):
+        (export.default.LowLevelBinary.prototype.string):
+        (export.default.LowLevelBinary.prototype.getSize):
+        (export.default.LowLevelBinary.prototype.getUint8):
+        (export.default.LowLevelBinary.prototype.getUint16):
+        (export.default.LowLevelBinary.prototype.getUint32):
+        (export.default.LowLevelBinary.prototype.getVaruint):
+        (export.default.LowLevelBinary.prototype.getVarint):
+        (export.default.LowLevelBinary.prototype.getVaruint7):
+        (export.default.LowLevelBinary.prototype.getString):
+        (PatchableLowLevelBinary):
+        (PatchableLowLevelBinary.prototype._push8):
+        (PatchableLowLevelBinary.prototype.apply):
+        * wasm/README.md: Added.
+        * wasm/WASM.js: Added.
+        * wasm/assert.js: Added.
+        (export.const.notUndef):
+        (export.const.eq):
+        (export.const.ge):
+        (export.const.throwsError):
+        (export.const.throwsRangeError):
+        * wasm/generate-wasmops-header.js: Renamed from JSTests/stress/wasm/generate-wasmops-header.js.
+        * wasm/self-test/test_BuilderJSON.js: Added.
+        (const.assertOpThrows):
+        (EmptyModule):
+        (CustomMagicNumber):
+        (CustomVersion):
+        (CustomSection):
+        (CustomSectionAllBytes):
+        (CustomSectionInvalidByte):
+        (TwoCustomSections):
+        (EmptyCodeSection):
+        (CodeSectionWithEmptyFunction):
+        (CodeSectionWithEmptyFunctionWithParameters):
+        (InvalidFunctionParameters):
+        (SimpleFunction):
+        (TwoSimpleFunctions):
+        (TwoBuildersAtTheSameTime):
+        (CheckedOpcodeArgumentsTooMany):
+        (CheckedOpcodeArgumentsNotEnough):
+        (CallNoArguments):
+        (CallInvalid):
+        (I32ConstInvalid):
+        (F32ConstInvalid):
+        (F64ConstInvalid):
+        (CallManyFromStack):
+        (OpcodeAdd):
+        (OpcodeUnreachable):
+        (OpcodeUnreachableCombinations):
+        (OpcodeSelect):
+        * wasm/self-test/test_BuilderWebAssembly.js: Added.
+        (EmptyModule):
+        (CustomSection):
+        (Basic):
+        * wasm/self-test/test_LowLevelBinary_encode.js: Added.
+        * wasm/self-test/test_LowLevelBinary_string.js: Added.
+        * wasm/self-test/test_LowLevelBinary_uint16.js: Added.
+        * wasm/self-test/test_LowLevelBinary_uint32.js: Added.
+        * wasm/self-test/test_LowLevelBinary_uint8.js: Added.
+        * wasm/self-test/test_LowLevelBinary_varint.js: Added.
+        * wasm/self-test/test_LowLevelBinary_varuint.js: Added.
+        * wasm/self-test/test_LowLevelBinary_varuint7.js: Added.
+        * wasm/self-test/test_WASM.js: Added.
+        * wasm/test.sh: Added.
+        * wasm/utilities.js: Added.
+        (const._read.filename.switch):
+        (const._load.filename.switch):
+        (const._json.filename.switch):
+        * wasm/wasm.json: Added.
+
+2016-10-14  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: @isConstructor incorrectly thinks Math.cos is a constructor
+        https://bugs.webkit.org/show_bug.cgi?id=163437
+
+        Reviewed by Saam Barati.
+
+        * stress/is-constructor.js: Added.
+        (assert):
+        (prototype.assert):
+        New test to cover the @isConstructor builtin.
+
+        * test262.yaml:
+        Test now passes.
+
+2016-10-14  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r207322.
+
+        This change caused JSC test failures
+
+        Reverted changeset:
+
+        "Fix Array.prototype.splice ES6 compliance."
+        https://bugs.webkit.org/show_bug.cgi?id=163372
+        http://trac.webkit.org/changeset/207322
+
+2016-10-14  Mark Lam  <mark.lam@apple.com>
+
+        JSON.parse should not modify frozen objects.
+        https://bugs.webkit.org/show_bug.cgi?id=163430
+
+        Reviewed by Saam Barati.
+
+        * stress/json-parse-on-frozen-object.js: Added.
+
+2016-10-14  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: Failure with RegExp.prototype.compile when pattern is undefined
+        https://bugs.webkit.org/show_bug.cgi?id=163431
+
+        Reviewed by Yusuke Suzuki.
+
+        * test262.yaml:
+
+2016-10-13  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Exception message for expressions with multiple bracket accesses is inconsistent / incorrect
+        https://bugs.webkit.org/show_bug.cgi?id=163426
+
+        Reviewed by Geoffrey Garen.
+
+        * ChakraCore/test/Error/CallNonFunction_3.baseline-jsc:
+        * ChakraCore/test/Object/null.baseline-jsc:
+        * stress/exception-in-to-property-key-should-be-handled-early.js:
+        Better exception messages.
+
+2016-10-13  Mark Lam  <mark.lam@apple.com>
+
+        Fix Array.prototype.splice ES6 compliance.
+        https://bugs.webkit.org/show_bug.cgi?id=163372
+
+        Reviewed by Geoffrey Garen and Yusuke Suzuki.
+
+        * stress/array-splice-on-frozen-object.js: Added.
+
+2016-10-12  Keith Miller  <keith_miller@apple.com>
+
+        Handle non-function, non-undefined comparator in Array.prototype.sort
+        https://bugs.webkit.org/show_bug.cgi?id=163085
+
+        Reviewed by Yusuke Suzuki.
+
+        * ChakraCore/test/Array/array_sort.baseline-jsc:
+        * stress/array-sort-bad-comparator.js: Added.
+        (test):
+
+2016-10-12  Mark Lam  <mark.lam@apple.com>
+
+        Array.prototype.slice should not modify frozen objects.
+        https://bugs.webkit.org/show_bug.cgi?id=163338
+
+        Reviewed by Filip Pizlo.
+
+        * stress/array-slice-on-frozen-object.js: Added.
+
+2016-10-11  Mark Lam  <mark.lam@apple.com>
+
+        Array.prototype.concat should not modify frozen objects.
+        https://bugs.webkit.org/show_bug.cgi?id=163302
+
+        Reviewed by Filip Pizlo.
+
+        * stress/array-concat-on-frozen-object.js: Added.
+
+2016-10-11  Saam Barati  <sbarati@apple.com>
+
+        ValueAdd should be constant folded if the operands are constant String,Primitive or Primitive,String
+        https://bugs.webkit.org/show_bug.cgi?id=163182
+
+        Reviewed by Filip Pizlo.
+
+        * microbenchmarks/string-add-constant-folding.js: Added.
+        (assert):
+        (runTests):
+        (add):
+        (test):
+
+2016-10-07  Mark Lam  <mark.lam@apple.com>
+
+        Object.freeze() and seal() should throw if [[PreventExtensions]]() fails.
+        https://bugs.webkit.org/show_bug.cgi?id=163160
+
+        Reviewed by Saam Barati.
+
+        * stress/object-freeze-with-proxy-preventExtensions.js: Added.
+        * stress/object-seal-with-proxy-preventExtensions.js: Added.
+
+2016-10-05  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [DOMJIT] Add initial CheckDOM and CallDOM implementations
+        https://bugs.webkit.org/show_bug.cgi?id=162941
+
+        Reviewed by Filip Pizlo.
+
+        * stress/domjit-getter-poly.js: Added.
+        (shouldBe):
+        (access):
+        * stress/domjit-getter-proto.js: Added.
+        (shouldBe):
+        (access):
+        * stress/domjit-getter-super-poly.js: Added.
+        (shouldBe):
+        (access):
+        * stress/domjit-getter.js: Added.
+        (shouldBe):
+        (access):
+
+2016-10-04  Saam Barati  <sbarati@apple.com>
+
+        String.prototype.toLowerCase should be a DFG/FTL intrinsic
+        https://bugs.webkit.org/show_bug.cgi?id=162887
+
+        Reviewed by Filip Pizlo and Yusuke Suzuki.
+
+        * microbenchmarks/to-lower-case.js: Added.
+        (assert):
+        (foo):
+        (bar):
+        * stress/to-lower-case.js: Added.
+        (assert):
+        (foo):
+
+2016-10-04  JF Bastien  <jfbastien@apple.com>
+
+        WebAssembly: handle a few corner cases
+        https://bugs.webkit.org/show_bug.cgi?id=162884
+
+        Reviewed by Keith Miller.
+
+        * stress/wasm/generate-wasmops-header.js:
+        (const.opcodeIterator): max opcode value
+
+2016-10-03  JF Bastien  <jfbastien@apple.com>
+
+        Auto-generate WASMOps.h, share with testing JSON file
+        https://bugs.webkit.org/show_bug.cgi?id=162870
+
+        Reviewed by Keith Miller.
+
+        * stress/wasm/to-c++.js: Added. Generates WASMOps.h, siilar to the current one but with more data.
+        (const.opcode_iterator):
+        (opcode_macroizer):
+        * stress/wasm/wasm.json: Added. Data from 0xC binary format version.
+
+2016-10-03  Saam Barati  <sbarati@apple.com>
+
+        MapHash should speculate on the type of its child node
+        https://bugs.webkit.org/show_bug.cgi?id=161922
+
+        Reviewed by Filip Pizlo.
+
+        * microbenchmarks/map-key-well-typed.js: Added.
+        (assert):
+        (intKey):
+        (doubleKey):
+        (objectKey):
+        (stringKey):
+        (booleanKey):
+        (symbolKey):
+        (cellKey):
+        (assert.doubleKey):
+        (assert.booleanKey):
+
+2016-10-03  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [ES6] GeneratorFunction (a.k.a. GeneratorWrapperFunction)'s prototype object does not have constructor property
+        https://bugs.webkit.org/show_bug.cgi?id=162849
+
+        Reviewed by Geoffrey Garen.
+
+        * test262.yaml:
+
+2016-10-01  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [ES6] Align attributes of Generator related properties to spec
+        https://bugs.webkit.org/show_bug.cgi?id=162839
+
+        Reviewed by Saam Barati.
+
+        * test262.yaml:
+
+2016-10-01  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [ES6] GeneratorFunction constructor should instantiate generator function
+        https://bugs.webkit.org/show_bug.cgi?id=162838
+
+        Reviewed by Saam Barati.
+
+        * stress/generator-function-constructor-is-subclassible.js: Added.
+        (shouldBe):
+        (GeneratorFunction):
+        (prototype.hello):
+        * stress/generator-function-constructor.js:
+        * test262.yaml:
+
+2016-09-30  Saam Barati  <sbarati@apple.com>
+
+        Arrow functions should not allow duplicate parameter names
+        https://bugs.webkit.org/show_bug.cgi?id=162741
+
+        Reviewed by Filip Pizlo.
+
+        * test262.yaml:
+
+2016-09-30  Saam Barati  <sbarati@apple.com>
+
+        Make some microbenchmarks run for less time.
+
+        Rubber stamped by Filip Pizlo.
+
+        * microbenchmarks/bound-function-construction-performance.js:
+        (foo):
+        * microbenchmarks/getter-richards-try-catch.js:
+
+2016-09-29  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Arrow functions do not infer name from computed property but normal functions do
+        https://bugs.webkit.org/show_bug.cgi?id=162720
+
+        Reviewed by Saam Barati.
+
+        * stress/inferred-names.js:
+
+2016-09-29  Mark Lam  <mark.lam@apple.com>
+
+        Break some slow running tests into smaller bits so they don't time out.
+        https://bugs.webkit.org/show_bug.cgi?id=162743
+
+        Reviewed by Keith Miller.
+
+        The following tests have shown to be slow running:
+            op_div.js
+            op_lshift.js
+            op_mod.js
+            op_mul.js
+            op_rshift.js
+            op_sub.js
+            op_urshift
+
+        These tests auto-generate permutations of values to apply to binary operations.
+        They also test the operations with 3 permutations of value types:
+            1. VarVar - both operands variables
+            2. VarConst - variable operand 1, constant / literal operand 2
+            3. ConstVar - constant / literal operand 1, variable operand 2
+
+        We can prevent these tests from timing out by breaking each up to only run 1 of
+        the 3 permutations of value types.
+
+        * stress/op_div-ConstVar.js: Added.
+        * stress/op_div-VarConst.js: Added.
+        * stress/op_div-VarVar.js: Copied from JSTests/stress/op_div.js.
+        (o1.valueOf): Deleted.
+        * stress/op_div.js: Removed.
+        * stress/op_lshift-ConstVar.js: Added.
+        * stress/op_lshift-VarConst.js: Added.
+        * stress/op_lshift-VarVar.js: Copied from JSTests/stress/op_lshift.js.
+        (o1.valueOf): Deleted.
+        * stress/op_lshift.js: Removed.
+        * stress/op_mod-ConstVar.js: Added.
+        * stress/op_mod-VarConst.js: Added.
+        * stress/op_mod-VarVar.js: Copied from JSTests/stress/op_mod.js.
+        (o1.valueOf): Deleted.
+        * stress/op_mod.js: Removed.
+        * stress/op_mul-ConstVar.js: Added.
+        * stress/op_mul-VarConst.js: Added.
+        * stress/op_mul-VarVar.js: Copied from JSTests/stress/op_mul.js.
+        (o1.valueOf): Deleted.
+        * stress/op_mul.js: Removed.
+        * stress/op_rshift-ConstVar.js: Added.
+        * stress/op_rshift-VarConst.js: Added.
+        * stress/op_rshift-VarVar.js: Copied from JSTests/stress/op_rshift.js.
+        (o1.valueOf): Deleted.
+        * stress/op_rshift.js: Removed.
+        * stress/op_sub-ConstVar.js: Added.
+        * stress/op_sub-VarConst.js: Added.
+        * stress/op_sub-VarVar.js: Copied from JSTests/stress/op_sub.js.
+        (o1.valueOf): Deleted.
+        * stress/op_sub.js: Removed.
+        * stress/op_urshift-ConstVar.js: Added.
+        * stress/op_urshift-VarConst.js: Added.
+        * stress/op_urshift-VarVar.js: Copied from JSTests/stress/op_urshift.js.
+        (o1.valueOf): Deleted.
+        * stress/op_urshift.js: Removed.
+        * stress/resources/binary-op-values.js: Added.
+        (o1.valueOf):
+
+2016-09-29  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: class and function names should be inferred in assignment
+        https://bugs.webkit.org/show_bug.cgi?id=146262
+
+        Reviewed by Saam Barati.
+
+        * stress/arrowfunction-name.js: Added.
+        Quick tests for arrow function names.
+
+        * stress/inferred-names.js: Added.
+        General test for inferred function names.
+
+        * test262.yaml:
+        Pass many tests checking inferred function names.
+
+2016-09-29  Saam Barati  <sbarati@apple.com>
+
+        We don't properly propagate non-simple-parameter-list when parsing a setter
+        https://bugs.webkit.org/show_bug.cgi?id=160483
+
+        Reviewed by Joseph Pecoraro.
+
+        * test262.yaml:
+
+2016-09-28  Saam Barati  <sbarati@apple.com>
+
+        stringProtoFuncRepeatCharacter will return `null` when it should not
+        https://bugs.webkit.org/show_bug.cgi?id=161944
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/pad-start-calls-repeat-character-with-double.js: Added.
+        (logLinesWithContext):
+
+2016-09-27  Filip Pizlo  <fpizlo@apple.com>
+
+        B3::lowerMacros forgets to before->updatePredecessorsAfter() when lowering ChillMod on ARM64
+        https://bugs.webkit.org/show_bug.cgi?id=162644
+
+        Reviewed by Keith Miller.
+
+        * stress/chill-mod-chill-mod.js: Added.
+        (foo):
+
+2016-09-26  Csaba Osztrogonác  <oszi@inf.u-szeged.hu>
+
+        Skip stress/string-joining-long-strings-should-not-crash.js on memory limited devices
+        https://bugs.webkit.org/show_bug.cgi?id=162386
+
+        Unreviewed, relanding r206317 after typo fix.
+
+        * stress/string-joining-long-strings-should-not-crash.js:
+
+2016-09-24  Caitlin Potter  <caitp@igalia.com>
+
+        [JSTests] fix test262 expectations following r206333
+        https://bugs.webkit.org/show_bug.cgi?id=162533
+
+        Reviewed by Yusuke Suzuki.
+
+        * test262.yaml:
+
+2016-09-23  Caitlin Potter  <caitp@igalia.com>
+
+        [JSC] Implement parsing of Async Functions
+        https://bugs.webkit.org/show_bug.cgi?id=161409
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/async-await-syntax.js: Added.
+        (testSyntax):
+        (testSyntaxError):
+        (testTopLevelAsyncAwaitSyntaxSloppyMode.testSyntax):
+        (testTopLevelAsyncAwaitSyntaxSloppyMode):
+        (testTopLevelAsyncAwaitSyntaxStrictMode):
+        (testTopLevelAsyncAwaitSyntaxStrictMode.testSyntax):
+        (testNestedAsyncAwaitSyntax.async):
+        (testNestedAsyncAwaitSyntax.foo):
+        (testTopLevelAsyncAwaitSyntaxSloppyMode.testSyntaxError):
+
+2016-09-23  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r206317.
+
+        This change caused timeouts on El Capitan Release JSC tests
+
+        Reverted changeset:
+
+        "Skip stress/string-joining-long-strings-should-not-crash.js
+        on memory limited devices"
+        https://bugs.webkit.org/show_bug.cgi?id=162386
+        http://trac.webkit.org/changeset/206317
+
+2016-09-23  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Skip mozilla-tests.yaml/js1_5/Array/regress-157652 on memory limited devices
+        https://bugs.webkit.org/show_bug.cgi?id=162381
+
+        Reviewed by Mark Lam.
+
+        * mozilla/mozilla-tests.yaml:
+
+2016-09-23  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Skip stress/string-joining-long-strings-should-not-crash.js on memory limited devices
+        https://bugs.webkit.org/show_bug.cgi?id=162386
+
+        Reviewed by Mark Lam.
+
+        * stress/string-joining-long-strings-should-not-crash.js:
+
+2016-09-22  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] Use an inline cache to generate op_negate
+        https://bugs.webkit.org/show_bug.cgi?id=162371
+
+        Reviewed by Saam Barati.
+
+        * stress/op-negate-inline-cache.js: Added.
+
+2016-09-22  Mark Lam  <mark.lam@apple.com>
+
+        Array.prototype.join should do overflow checks on string joins.
+        https://bugs.webkit.org/show_bug.cgi?id=162459
+
+        Reviewed by Saam Barati.
+
+        * stress/array-join-on-strings-need-overflow-checks.js: Added.
+        (assert):
+        (catch):
+
+2016-09-22  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: Function length should be number of parameters before parameters with default values
+        https://bugs.webkit.org/show_bug.cgi?id=162377
+
+        Reviewed by Saam Barati.
+
+        * stress/es6-default-parameters.js:
+        Add our own tests for function lengths with default parameters.
+
+        * test262.yaml:
+        We now pass all dflt-length tests.
+
+2016-09-20  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] Do not use EagerRun on tests counting recompilation
+        https://bugs.webkit.org/show_bug.cgi?id=162248
+
+        Reviewed by Geoffrey Garen.
+
+        This patch adds defaultNoEagerRun to all the tests
+        for which recompilation is the symptom of a bug.
+        The reason is that an OSR Exit can be unrelated to the tested
+        nodes when we are running in Eager mode.
+
+        * stress/arith-abs-on-various-types.js:
+        * stress/arith-ceil-on-various-types.js:
+        * stress/arith-clz32-on-various-types.js:
+        * stress/arith-cos-on-various-types.js:
+        * stress/arith-floor-on-various-types.js:
+        * stress/arith-fround-on-various-types.js:
+        * stress/arith-log-on-various-types.js:
+        * stress/arith-round-on-various-types.js:
+        * stress/arith-sin-on-various-types.js:
+        * stress/arith-sqrt-on-various-types.js:
+        * stress/arith-tan-on-various-types.js:
+        * stress/arith-trunc-on-various-types.js:
+
+        * stress/compare-strict-eq-on-various-types.js:
+        (testAllTypesCall):
+        The value 2 came from the other tests.
+        CompareStrictEq supports many more cases, the worst case
+        is bool->int->int52->number->polymorphic.
+
+2016-09-20  Filip Pizlo  <fpizlo@apple.com>
+
+        Make MarkedBlock state tracking support overlapped allocation and marking state
+        https://bugs.webkit.org/show_bug.cgi?id=161581
+
+        Reviewed by Geoffrey Garen.
+        
+        Add a microbenchmark for why we want to reclaim empty blocks from other allocators.
+
+        * microbenchmarks/switching-size-classes.js: Added.
+
+2016-09-20  Saam Barati  <sbarati@apple.com>
+
+        Unreviewed, added test for x86 32-bit failure for HasOwnProperty node in DFG.
+
+        * stress/has-own-property-called-on-non-object.js: Added.
+        (let.objs):
+        (new.String):
+        (foo):
+
+2016-09-20  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Add `typeof value === "symbol"` handling to bytecode compiler
+        https://bugs.webkit.org/show_bug.cgi?id=162253
+
+        Reviewed by Sam Weinig.
+
+        * microbenchmarks/is-symbol-mixed.js: Added.
+        (isSymbol):
+        (i.let.pair.of.list.String):
+        * microbenchmarks/is-symbol.js: Added.
+        (isSymbol):
+
+2016-09-19  Saam Barati  <sbarati@apple.com>
+
+        Make HasOwnProperty faster
+        https://bugs.webkit.org/show_bug.cgi?id=161708
+
+        Reviewed by Geoffrey Garen.
+
+        * microbenchmarks/has-own-property-name-cache.js: Added.
+        (foo):
+        * stress/has-own-property-cache-basics.js: Added.
+        (assert):
+        (foo):
+        * stress/has-own-property-name-cache-string-keys.js: Added.
+        (assert):
+        (foo):
+        * stress/has-own-property-name-cache-symbol-keys.js: Added.
+        (assert):
+        (foo):
+        * stress/has-own-property-name-cache-symbols-and-strings.js: Added.
+        (assert):
+        (foo):
+
+2016-09-19  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] Make the rounding-related nodes support any type
+        https://bugs.webkit.org/show_bug.cgi?id=161895
+
+        Reviewed by Geoffrey Garen.
+
+        * stress/arith-ceil-on-various-types.js: Added.
+        * stress/arith-floor-on-various-types.js: Added.
+        * stress/arith-round-on-various-types.js: Added.
+        * stress/arith-trunc-on-various-types.js: Added.
+
+2016-09-18  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Do not need to use defineProperty to define methods for object literals
+        https://bugs.webkit.org/show_bug.cgi?id=162111
+
+        Reviewed by Saam Barati.
+
+        * stress/object-literal-methods.js: Added.
+        (shouldBe):
+        (throw.new.Error.let.object.get name):
+        (throw.new.Error):
+        (shouldBe.let.object.get name):
+        (shouldBe.let.object.get prototype):
+        (shouldBe.let.object.get 42):
+
+2016-09-16  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [DFG] Introduce IsCellWithType node and unify IsJSArray, IsRegExpObject and newly added IsProxyObject
+        https://bugs.webkit.org/show_bug.cgi?id=162000
+
+        Reviewed by Filip Pizlo.
+
+        * microbenchmarks/is-array-for-array.js: Added.
+        (isArray):
+        * microbenchmarks/is-array-for-mixed-case.js: Added.
+        (isArray):
+        * microbenchmarks/is-array-for-non-array-object.js: Added.
+        (isArray):
+        * microbenchmarks/is-array-for-proxy.js: Added.
+        (isArray):
+        (isArray.proxy.throw.new.Error.isArray):
+        (isArray.proxy.throw.new.Error):
+
+2016-09-16  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed, gardening test262 results
+
+        Some tests are now passed with JSC, but marked as failed.
+
+        * test262.yaml:
+
+2016-09-16  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: Various Constructors length properties should be configurable
+        https://bugs.webkit.org/show_bug.cgi?id=161998
+
+        Reviewed by Saam Barati.
+
+        * test262.yaml:
+
+2016-09-15  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r205931.
+        https://bugs.webkit.org/show_bug.cgi?id=162021
+
+        Tests for this change fail on 32-bit JSC bots (Requested by
+        ryanhaddad on #webkit).
+
+        Reverted changeset:
+
+        "[JSC] Make the rounding-related nodes support any type"
+        https://bugs.webkit.org/show_bug.cgi?id=161895
+        http://trac.webkit.org/changeset/205931
+
+2016-09-15  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: Should be a SyntaxError for duplicate parameter names in function with default parameters
+        https://bugs.webkit.org/show_bug.cgi?id=162013
+
+        Reviewed by Saam Barati.
+
+        * stress/es6-default-parameters.js:
+        * test262.yaml:
+
+2016-09-14  Joseph Pecoraro  <pecoraro@apple.com>
+
+        ASSERT_NOT_REACHED when using spread inside an array literal with Function.prototype.apply
+        https://bugs.webkit.org/show_bug.cgi?id=162003
+
+        Reviewed by Saam Barati.
+
+        * stress/spread-calling.js:
+        * test262.yaml:
+
+2016-09-14  Michael Saboff  <msaboff@apple.com>
+
+        YARR doesn't check for invalid flags for literal regular expressions
+        https://bugs.webkit.org/show_bug.cgi?id=161995
+
+        Reviewed by Mark Lam.
+
+        New test.
+
+        * stress/regress-161995.js: Added.
+        (testStatic):
+        (catch):
+
+2016-09-14  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: TypedArray constructors length should be 3 and configurable
+        https://bugs.webkit.org/show_bug.cgi?id=161955
+
+        Reviewed by Mark Lam.
+
+        * test262.yaml:
+
+2016-09-14  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] Make the rounding-related nodes support any type
+        https://bugs.webkit.org/show_bug.cgi?id=161895
+
+        Reviewed by Geoffrey Garen.
+
+        * stress/arith-ceil-on-various-types.js: Added.
+        * stress/arith-floor-on-various-types.js: Added.
+        * stress/arith-round-on-various-types.js: Added.
+        * stress/arith-trunc-on-various-types.js: Added.
+
+2016-09-14  Joseph Pecoraro  <pecoraro@apple.com>
+
+        TaggedTemplateString function calls should emit tail position calls
+        https://bugs.webkit.org/show_bug.cgi?id=161948
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/tail-call-recognize.js:
+        (runTests):
+        Ensure a tagged template string function call is tail call.
+
+        * test262.yaml:
+        These now pass.
+
+2016-09-14  Joseph Pecoraro  <pecoraro@apple.com>
+
+        test262: Array.prototype.slice should always set length
+        https://bugs.webkit.org/show_bug.cgi?id=161953
+
+        Reviewed by Mark Lam.
+
+        * test262.yaml:
+
+2016-09-13  JF Bastien  <jfbastien@apple.com>
+
+        Support jsc shell builtin `read`
+        https://bugs.webkit.org/show_bug.cgi?id=161662
+
+        Reviewed by Keith Miller.
+
+        * stress/jsc-read.js: Added.
+        (test): test `read` and `readFile` shell builtins, in string and binary mode.
+
+2016-09-12  Skachkov Oleksandr  <gskachkov@gmail.com>
+
+        ES6: Classes: Should be allowed to create a static method with name "arguments"
+        https://bugs.webkit.org/show_bug.cgi?id=152985
+
+        Reviewed by Keith Miller.
+
+        * test262.yaml:
+
+2016-09-12  Saam Barati  <sbarati@apple.com>
+
+        Speed up Function.prototype.bind a bit by making it a builtin
+        https://bugs.webkit.org/show_bug.cgi?id=161879
+
+        Reviewed by Filip Pizlo.
+
+        * microbenchmarks/function-bind-inlining.js: Added.
+        (assert):
+        (test):
+        (test2):
+        (foo):
+        * microbenchmarks/function-bind-no-inlining.js: Added.
+        (assert):
+        (test):
+        (test2):
+        (foo):
+
+2016-09-12  Saam Barati  <sbarati@apple.com>
+
+        HashMapImpl should take into account m_deleteCount in its load factor and it should be able to rehash the table to be smaller
+        https://bugs.webkit.org/show_bug.cgi?id=161640
+
+        Reviewed by Geoffrey Garen.
+
+        * microbenchmarks/map-rehash.js: Added.
+        * stress/map-delete.js: Added.
+        (assert):
+        * stress/map-rehash-2.js: Added.
+        (assert):
+        * stress/map-rehash.js: Added.
+        (assert):
+
+2016-09-12  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed, fix tests for different libm environments
+        https://bugs.webkit.org/show_bug.cgi?id=161857
+
+        * stress/ftl-arithtan.js:
+
+2016-09-12  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] Use GetArrayLength for JSArray.length even when the array type is undecided
+        https://bugs.webkit.org/show_bug.cgi?id=161671
+
+        Reviewed by Geoffrey Garen.
+
+        * stress/get-array-length-on-undecided.js: Added.
+
+2016-09-12  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [DFG][FTL] Add ArithTan
+        https://bugs.webkit.org/show_bug.cgi?id=161857
+
+        Reviewed by Filip Pizlo.
+
+        * microbenchmarks/tan.js: Added.
+        * stress/arith-tan-on-various-types.js: Added.
+        (let.validInputTypedTestCases.validInputTestCases.map):
+        (isIdentical):
+        (opaqueTanNoArgument):
+        (testNoArgument):
+        (opaqueAllTypesTan):
+        (testAllTypesCall):
+        (testTangleTypeCall):
+        (testConstant):
+        (opaqueTanForSideEffects):
+        (testSideEffect.let.testObject.valueOf):
+        (testSideEffect):
+        (opaqueTanForCSE):
+        (testCSE.let.testObject.valueOf):
+        (testCSE):
+        (opaqueTanForDCE):
+        (testDCE.let.testObject.valueOf):
+        (testDCE):
+        (testException.opaqueTanWithException):
+        (testException):
+        * stress/ftl-arithtan.js: Added.
+        (foo):
+
+2016-09-12  Saam Barati  <sbarati@apple.com>
+
+        MapHash should do constant folding when it has a constant argument and its legal to hash that value
+        https://bugs.webkit.org/show_bug.cgi?id=161639
+
+        Reviewed by Filip Pizlo.
+
+        * microbenchmarks/map-constant-key.js: Added.
+        (assert):
+        (test):
+        (foo):
+
+2016-09-12  Michael Saboff  <msaboff@apple.com>
+
+        JSC test timeout: ChakraCore.yaml/ChakraCore/test/Bugs/bug56026_trycatch.js.default
+        https://bugs.webkit.org/show_bug.cgi?id=161863
+
+        Reviewed by Saam Barati.
+
+        * ChakraCore.yaml:
+        Disabled Bugs/bug56026_trycatch.js.
+
+2016-09-09  Michael Saboff  <msaboff@apple.com>
+
+        Unreviewed, rolling r205759 back in with a fix.
+
+        The expectation file, JSTests/ChakraCore/test/Lib/tostring.baseline-jsc,
+        should be named "toString.baseline-jsc".
+
+        * ChakraCore/test/Lib/toString.baseline-jsc: Copied from JSTests/ChakraCore/test/Lib/tostring.baseline-jsc.
+        * ChakraCore/test/Lib/tostring.baseline-jsc: Removed.
+
+2016-09-09  Michael Saboff  <msaboff@apple.com>
+
+        Disable three flakey Chakra Tests
+        https://bugs.webkit.org/show_bug.cgi?id=161807
+
+        Reviewed by Saam Barati.
+
+        * ChakraCore.yaml: Disabled the flakey tests
+        ChakraCore/test/Array/protoLookup_native.js
+        ChakraCore/test/LetConst/delete.js
+        ChakraCore/test/fieldopts/fieldhoist_sideeffect.js
+
+2016-09-08  Saam Barati  <sbarati@apple.com>
+
+        We should inline operationConvertJSValueToBoolean into JIT code
+        https://bugs.webkit.org/show_bug.cgi?id=161729
+
+        Reviewed by Filip Pizlo.
+
+        * stress/value-to-boolean.js: Added.
+        (assert):
+        (test1):
+        (test2):
+        (test3):
+
+2016-09-08  Mark Lam  <mark.lam@apple.com>
+
+        REGRESSION (r205569?): 32-bit JSC test timeout: stress/rest-parameter-many-arguments.js.dfg-maximal-flush-validate-no-cjit
+        https://bugs.webkit.org/show_bug.cgi?id=161756
+
+        Reviewed by Saam Barati.
+
+        It looks like the 32-bit JSC bot is just too slow at running this test with the
+        dfg-maximal-flush-validate-no-cjit configuration.  We'll try excluding that
+        configuration.
+
+        * stress/rest-parameter-many-arguments.js:
+
+2016-09-08  JF Bastien  <jfbastien@apple.com>
+
+        Delete older WebAssembly tests
+        https://bugs.webkit.org/show_bug.cgi?id=161758
+
+        Reviewed by Filip Pizlo.
+
+        They're not running, rely on the older polyfill prototype, and the older code was deleted in: https://trac.webkit.org/changeset/204180
+
+        * stress/wasm-arithmetic-float32.js: Removed.
+        * stress/wasm-arithmetic-float64.js: Removed.
+        * stress/wasm-arithmetic-int32.js: Removed.
+        * stress/wasm-calls.js: Removed.
+        * stress/wasm-comma.js: Removed.
+        * stress/wasm-control-flow.js: Removed.
+        * stress/wasm-globals.js: Removed.
+        * stress/wasm-linear-memory.js: Removed.
+        * stress/wasm-locals.js: Removed.
+        * stress/wasm-relational.js: Removed.
+        * stress/wasm-type-conversion.js: Removed.
+        * stress/wasm/arithmetic-float32.wasm: Removed.
+        * stress/wasm/arithmetic-float64.wasm: Removed.
+        * stress/wasm/arithmetic-int32.wasm: Removed.
+        * stress/wasm/calls.wasm: Removed.
+        * stress/wasm/comma.wasm: Removed.
+        * stress/wasm/control-flow.wasm: Removed.
+        * stress/wasm/globals.wasm: Removed.
+        * stress/wasm/linear-memory.wasm: Removed.
+        * stress/wasm/locals.wasm: Removed.
+        * stress/wasm/relational.wasm: Removed.
+        * stress/wasm/type-conversion.wasm: Removed.
+
+2016-09-08  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Exception fuzz tests fail
+        https://bugs.webkit.org/show_bug.cgi?id=140928
+
+        Reviewed by Mark Lam.
+
+        Unskip tests.
+
+        * exceptionFuzz.yaml:
+
+2016-09-06  Saam Barati  <sbarati@apple.com>
+
+        ProxyObject's structure should not have ObjectPrototype as its prototype and it should not have special behavior for intercepting "__proto__"
+        https://bugs.webkit.org/show_bug.cgi?id=161558
+
+        Reviewed by Benjamin Poulain.
+
+        * stress/proxy-get-prototype-of.js:
+        * stress/proxy-set-prototype-of.js:
+        (let.handler.setPrototypeOf): Deleted.
+        * stress/proxy-underscore-proto.js: Added.
+        (assert):
+
+2016-09-06  Saam Barati  <sbarati@apple.com>
+
+        Make JSMap and JSSet faster
+        https://bugs.webkit.org/show_bug.cgi?id=160989
+
+        Reviewed by Filip Pizlo.
+
+        * microbenchmarks/dense-set.js: Added.
+        (bench):
+        * microbenchmarks/large-map-iteration-with-additions.js: Added.
+        (bar):
+        (foo):
+        * microbenchmarks/large-map-iteration-with-mutation.js: Added.
+        (bar):
+        (foo):
+        * microbenchmarks/large-map-iteration.js: Added.
+        (bar):
+        (foo):
+        * microbenchmarks/map-get-get-cse.js: Added.
+        (bar):
+        (foo):
+        * microbenchmarks/map-has-get-cse-opportunity.js: Added.
+        (bar):
+        (foo):
+        * microbenchmarks/sparse-set.js: Added.
+        (bench):
+        * stress/map-cse-correctness.js: Added.
+        (assert):
+        (testHas):
+        (testGet):
+        (foo):
+        * stress/map-iteration.js: Added.
+        (assert):
+        (test1):
+        (test2):
+        (test3):
+        (test4):
+        (test5):
+        (test6):
+        (test7):
+        (test8):
+        (test9):
+        (test10):
+        (test11):
+        (test12):
+        (test13):
+        (test14):
+        (test15):
+        (test16):
+        (test17):
+        (test18):
+
+2016-09-06  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] Make ArithClz32 work with Cell arguments
+        https://bugs.webkit.org/show_bug.cgi?id=161369
+
+        Reviewed by Geoffrey Garen.
+
+        * stress/arith-clz32-on-various-types.js: Added.
+
+2016-09-06  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r205504.
+        https://bugs.webkit.org/show_bug.cgi?id=161645
+
+        Broke the iOS device build (Requested by ryanhaddad on
+        #webkit).
+
+        Reverted changeset:
+
+        "Make JSMap and JSSet faster"
+        https://bugs.webkit.org/show_bug.cgi?id=160989
+        http://trac.webkit.org/changeset/205504
+
+2016-09-06  Saam Barati  <sbarati@apple.com>
+
+        Make JSMap and JSSet faster
+        https://bugs.webkit.org/show_bug.cgi?id=160989
+
+        Reviewed by Filip Pizlo.
+
+        * microbenchmarks/dense-set.js: Added.
+        (bench):
+        * microbenchmarks/large-map-iteration-with-additions.js: Added.
+        (bar):
+        (foo):
+        * microbenchmarks/large-map-iteration-with-mutation.js: Added.
+        (bar):
+        (foo):
+        * microbenchmarks/large-map-iteration.js: Added.
+        (bar):
+        (foo):
+        * microbenchmarks/map-get-get-cse.js: Added.
+        (bar):
+        (foo):
+        * microbenchmarks/map-has-get-cse-opportunity.js: Added.
+        (bar):
+        (foo):
+        * microbenchmarks/sparse-set.js: Added.
+        (bench):
+        * stress/map-cse-correctness.js: Added.
+        (assert):
+        (testHas):
+        (testGet):
+        (foo):
+        * stress/map-iteration.js: Added.
+        (assert):
+        (test1):
+        (test2):
+        (test3):
+        (test4):
+        (test5):
+        (test6):
+        (test7):
+        (test8):
+        (test9):
+        (test10):
+        (test11):
+        (test12):
+        (test13):
+        (test14):
+        (test15):
+        (test16):
+        (test17):
+        (test18):
+
+2016-08-31  Filip Pizlo  <fpizlo@apple.com>
+
+        Butterflies should be allocated in Auxiliary MarkedSpace instead of CopiedSpace and we should rewrite as much of the GC as needed to make this not a regression
+        https://bugs.webkit.org/show_bug.cgi?id=160125
+
+        Reviewed by Geoffrey Garen and Keith Miller.
+        
+        Most of the things I did properly covered by existing tests, but I found some simple cases of
+        unshifting that had sketchy coverage.
+
+        * stress/array-storage-array-unshift.js: Added.
+        * stress/contiguous-array-unshift.js: Added.
+        * stress/double-array-unshift.js: Added.
+        * stress/int32-array-unshift.js: Added.
+
+2016-09-02  Michael Saboff  <msaboff@apple.com>
+
+        Unreviewed fix after importing Chakra test
+
+        * ChakraCore.yaml: Skipped ChakraCore/test/UnifiedRegex/crazy.js because the original
+        test contained tab characters.  I removed the tabs before landing.  This test depended
+        on the tab characters and now fails after they were removed.
+        test.
+
+2016-09-01  Michael Saboff  <msaboff@apple.com>
+
+        Import Chakra tests to JSC
+        https://bugs.webkit.org/show_bug.cgi?id=154697
+
+        Reviewed by Saam Barati.
+
+        Added Chakra tests.  All these tests are under Chakra/test.  This is the same layout
+        for tests in the Chakra tree.
+
+        Created a ChakraCore.yaml file to be used with run-jsc-stress-tests.  This file contains
+        the tests that are run when the original Chakra runtests.py script is run.  That script
+        is the test driver for *nix platforms and does not attempt to run all tests or all
+        variations of tests.  The runtest.py driver consults rlexe.xml files in each test
+        subdirectory to determine the test to run, the options to pass to the test and how to
+        determine pass/fail of the test.  With runtests.py as the start, tests that didn't
+        pass directly where either skipped, with a message describing why or through 
+        adjustments to the test infrastructure, as described below, where made to pass.
+        
+        The only modification to the test infrastrucutre are:
+
+         1) Added simple mapping of Chakra expected exception text to JSC expected text in
+            test/UnitTestFramework/UnitTestFramework.js.  It would make sense to also
+            map some JSC specific exception text to more generic text for the cases where
+            that text contains indetifier names or other source specific strings and the
+            Chakra equivolent exception texts are generic.  
+ 
+         2) Created JSC specific expected text files where it is clear that the text work
+            as expected on JSC but the test output is different.  Typically the differences
+            fall into three categories, different exception output, different output from
+            toString() of a function, slight numeric differences, and test that rely on
+            iteration order.
+
+         3) Stripped the CR's from the CR-LF line terminations of the files.  
+
+        No actual test .js files were modified.
+
+        * ChakraCore: Added.
+        * ChakraCore.yaml: Added.
+        * ChakraCore/CONTRIBUTING.md: Added.
+        * ChakraCore/LICENSE.txt: Added.
+        * ChakraCore/README.md: Added.
+        * ChakraCore/THIRD-PARTY-NOTICES.txt: Added.
+        * ChakraCore/test: Added this directory and the tests included therein.
+
+2016-09-01  JF Bastien  <jfbastien@apple.com>
+
+        GetByIdWithThis/GetByValWithThis should have ValueProfiles so that they can predict their result types
+        https://bugs.webkit.org/show_bug.cgi?id=160922
+
+        Reviewed by Keith Miller.
+
+        Benchmark GetBy{Id,Val}WithThis in monomorphic and polymorphic uses.
+        The value profile is used by the calc functions, which do some mild math with the result.
+        These benchmarks get ~4% faster with value profiling.
+
+        * microbenchmarks/super-get-by-id-with-this-monomorphic.js: Added.
+        (A):
+        (A.prototype.set value):
+        (A.prototype.get value):
+        (B.prototype.set value):
+        (B.prototype.get value):
+        (B):
+        (const.bench):
+        * microbenchmarks/super-get-by-id-with-this-polymorphic.js: Added.
+        (A):
+        (A.prototype.set value):
+        (A.prototype.get value):
+        (B.prototype.set value):
+        (B.prototype.get value):
+        (B):
+        (const.bench):
+        * microbenchmarks/super-get-by-val-with-this-monomorphic.js: Added.
+        (value):
+        (A):
+        (A.prototype.set v):
+        (A.prototype.get v):
+        (B.prototype.set v):
+        (B.prototype.get v):
+        (B):
+        (const.bench):
+        * microbenchmarks/super-get-by-val-with-this-polymorphic.js: Added.
+        (value):
+        (A):
+        (A.prototype.set v):
+        (A.prototype.get v):
+        (B.prototype.set v):
+        (B.prototype.get v):
+        (B):
+        (const.bench):
+
+2016-09-01  Benjamin Poulain  <bpoulain@apple.com>
+
+        arith-abs-on-various-types.js is flaky
+
+        Unreviewed.
+
+        * stress/arith-abs-on-various-types.js:
+        Two compilation is too small for the worst case.
+        Math.abs() can be typed integer->number->untyped if we are very unlucky.
+
+2016-09-01  Filip Pizlo  <fpizlo@apple.com>
+
+        ObjectAllocationSinkingPhase::insertOSRHintsForUpdate() fails to emit updated hints in some cases
+        https://bugs.webkit.org/show_bug.cgi?id=161492
+
+        Reviewed by Mark Lam.
+        
+        This bug affected function->activation references but not object->object field references,
+        because object->object field references are !neededForMaterialization(). So, the object
+        test always passed but the activation/function test used to always fail. It passes now.
+
+        * stress/materialize-activation-referenced-from-phantom-function.js: Added.
+        (bar):
+        (inc):
+        (dec):
+        (foo):
+        (test):
+        * stress/materialize-object-referenced-from-phantom-object.js: Added.
+        (bar):
+        (foo):
+        (test):
+
+2016-08-31  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        stress/random-53bit.js.ftl-no-cjit-no-inline-validate sometimes fails
+        https://bugs.webkit.org/show_bug.cgi?id=161436
+
+        Reviewed by Filip Pizlo.
+
+        The test checks Math.random() correctly produces 53bit random values.
+        The test can fail by design, but this should be fairly rare.
+
+        However, when introducing, we wrap the `test()` with 1e4 to ensure the FTL compilation, and this
+        increases the failure rate. By increasing the MAX in the test, we make the failures much more rare case.
+
+        And we also add getRandomSeed() and setRandomSeed(seed) JSC shell helpers to dump more useful information
+        and reproduce the situation easily.
+
+        * stress/random-53bit.js:
+        (test):
+
+2016-08-29  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] Improve ArithAbs with polymorphic input
+        https://bugs.webkit.org/show_bug.cgi?id=161286
+
+        Reviewed by Saam Barati.
+
+        * stress/arith-abs-on-various-types.js: Added.
+        New tests.
+
+        * stress/arith-cos-on-various-types.js:
+        * stress/arith-fround-on-various-types.js:
+        * stress/arith-log-on-various-types.js:
+        * stress/arith-sin-on-various-types.js:
+        * stress/arith-sqrt-on-various-types.js:
+        Extend the existing tests to cover the DCE case.
+
+2016-08-26  Benjamin Poulain  <benjamin@webkit.org>
+
+        [JSC] Implement CompareStrictEq(String, Untyped) in FTL
+        https://bugs.webkit.org/show_bug.cgi?id=161229
+
+        Reviewed by Geoffrey Garen.
+
+        * stress/compare-strict-eq-on-various-types.js: Added.
+
+2016-08-26  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [ES6] newPromiseCapabilities should check the given argument is constructor
+        https://bugs.webkit.org/show_bug.cgi?id=161226
+
+        Reviewed by Mark Lam.
+
+        The arrow function should not be a constructor. So the error should be raised.
+
+        * stress/new-promise-capabilities-requires-constructor.js: Added.
+        (shouldThrow):
+
+2016-08-25  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] Clean up the abstract interpreter for cos/sin/sqrt/fround/log
+        https://bugs.webkit.org/show_bug.cgi?id=161181
+
+        Reviewed by Geoffrey Garen.
+
+        Extend the tests to constants.
+        Add no-argument cases where needed.
+
+        * stress/arith-cos-on-various-types.js:
+        * stress/arith-fround-on-various-types.js:
+        * stress/arith-log-on-various-types.js:
+        * stress/arith-sin-on-various-types.js:
+        * stress/arith-sqrt-on-various-types.js:
+
+2016-08-25  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [DFG][FTL] Implement ES6 Generators in DFG / FTL
+        https://bugs.webkit.org/show_bug.cgi?id=152723
+
+        Reviewed by Filip Pizlo.
+
+        * stress/generator-fib-ftl-and-array.js: Added.
+        (fib):
+        * stress/generator-fib-ftl-and-object.js: Added.
+        (fib):
+        * stress/generator-fib-ftl-and-string.js: Added.
+        (fib):
+        * stress/generator-fib-ftl.js: Added.
+        (fib):
+        * stress/generator-frame-empty.js: Added.
+        (shouldThrow):
+        (shouldThrow.fib):
+        * stress/generator-reduced-save-point-put-to-scope.js: Added.
+        (shouldBe):
+        (gen):
+        * stress/generator-transfer-register-beyond-mutiple-yields.js: Added.
+        (shouldBe):
+        (gen):
+
+2016-08-25  JF Bastien  <jfbastien@apple.com>
+
+        TryGetById should have a ValueProfile so that it can predict its output type
+        https://bugs.webkit.org/show_bug.cgi?id=160921
+
+        Reviewed by Saam Barati.
+
+        * microbenchmarks/try-get-by-id-basic.js: Added.
+        (const.check):
+        (const.bench.f.const.fooPlusBar.createBuiltin):
+        * microbenchmarks/try-get-by-id-polymorphic.js: Added.
+        (const.check):
+        (fooPlusBar.createBuiltin):
+        (bench):
+
+2016-08-25  Caio Lima  <ticaiolima@gmail.com>
+
+        NewRegexp should not prevent inlining
+        https://bugs.webkit.org/show_bug.cgi?id=154808
+
+        Reviewed by Geoffrey Garen.
+
+        Added test where functions with NewRegExp can be inlined right now.
+
+        * stress/new-regex-inline.js: Added.
+        (assert):
+        (testRegexpInline):
+        (toInlineGlobal):
+        (withRegexp):
+        (inlineRegexpNotGlobal):
+        (toInlineRecursive):
+        (regexpContainsRecursive):
+
+2016-08-24  Benjamin Poulain  <benjamin@webkit.org>
+
+        [JSC] Make FRound work with any type
+        https://bugs.webkit.org/show_bug.cgi?id=161129
+
+        Reviewed by Geoffrey Garen.
+
+        * stress/arith-fround-on-various-types.js: Added.
+
+2016-08-24  Filip Pizlo  <fpizlo@apple.com>
+
+        Unreviewed, roll out r204901, r204897, r204866, r204856, r204854.
+
+        * stress/array-storage-array-unshift.js: Removed.
+        * stress/contiguous-array-unshift.js: Removed.
+        * stress/double-array-unshift.js: Removed.
+        * stress/int32-array-unshift.js: Removed.
+
+2016-08-24  Skachkov Oleksandr  <gskachkov@gmail.com>
+
+        [ES2016] Allow assignment in for-in head in not-strict mode
+        https://bugs.webkit.org/show_bug.cgi?id=160955
+
+        Reviewed by Saam Barati.
+
+        * stress/for-in-tests.js:
+        (foo):
+        (boo):
+        (catch):
+
+2016-08-23  Benjamin Poulain  <benjamin@webkit.org>
+
+        [JSC] Make ArithLog works with any type
+        https://bugs.webkit.org/show_bug.cgi?id=161110
+
+        Reviewed by Geoffrey Garen.
+
+        * stress/arith-log-on-various-types.js: Added.
+
+2016-08-23  Saam Barati  <sbarati@apple.com>
+
+        JSC should have a "microbenchmarks" directory instead of "regress" directory
+        https://bugs.webkit.org/show_bug.cgi?id=161096
+
+        Rubber stamped by Mark Lam.
+
+        * microbenchmarks: Copied from LayoutTests/js/regress/script-tests.
+
+2016-08-23  Keith Miller  <keith_miller@apple.com>
+
+        %TypedArray%.prototype.slice needs to check that the source and destination have not been detached.
+        https://bugs.webkit.org/show_bug.cgi?id=161031
+        <rdar://problem/27937019>
+
+        Reviewed by Geoffrey Garen.
+
+        * stress/typedarray-slice.js:
+        (get let):
+        (get try):
+        (testSpeciesWithTransferring):
+
+2016-08-22  Filip Pizlo  <fpizlo@apple.com>
+
+        Butterflies should be allocated in Auxiliary MarkedSpace instead of CopiedSpace and we should rewrite as much of the GC as needed to make this not a regression
+        https://bugs.webkit.org/show_bug.cgi?id=160125
+
+        Reviewed by Geoffrey Garen.
+        
+        Most of the things I did properly covered by existing tests, but I found some simple cases of
+        unshifting that had sketchy coverage.
+
+        * stress/array-storage-array-unshift.js: Added.
+        * stress/contiguous-array-unshift.js: Added.
+        * stress/double-array-unshift.js: Added.
+        * stress/int32-array-unshift.js: Added.
+
+2016-08-23  Keith Miller  <keith_miller@apple.com>
+
+        Update/add new test262 tests
+        https://bugs.webkit.org/show_bug.cgi?id=161098
+
+        Reviewed by Saam Barati.
+
+        * test262.yaml:
+        * test262/test/annexB/language/statements/for-in/bare-initializer.js: Added.
+        * test262/test/annexB/language/statements/for-in/const-initializer.js: Added.
+        * test262/test/annexB/language/statements/for-in/let-initializer.js: Added.
+        * test262/test/annexB/language/statements/for-in/nonstrict-initializer.js: Added.
+        (a):
+        * test262/test/annenxB/language/statements/for-in/strict-initializer.js: Added.
+        * test262/test/annexB/language/statements/for-in/var-arraybindingpattern-initializer.js: Added.
+        * test262/test/annexB/language/statements/for-in/var-objectbindingpattern-initializer.js: Added.
+        * test262/test/built-ins/AsyncFunction/AsyncFunction-construct.js: Added.
+        (AsyncFunction.async.foo):
+        * test262/test/built-ins/AsyncFunction/AsyncFunction-is-extensible.js: Added.
+        (AsyncFunction.async):
+        * test262/test/built-ins/AsyncFunction/AsyncFunction-is-subclass.js: Added.
+        (async.foo):
+        * test262/test/built-ins/AsyncFunction/AsyncFunction-length.js: Added.
+        (AsyncFunction.async.foo):
+        * test262/test/built-ins/AsyncFunction/AsyncFunction-name.js: Added.
+        (AsyncFunction.async.foo):
+        * test262/test/built-ins/AsyncFunction/AsyncFunction-prototype.js: Added.
+        (AsyncFunction.async.foo):
+        * test262/test/built-ins/AsyncFunction/AsyncFunction.js: Added.
+        (AsyncFunction.async.foo):
+        * test262/test/built-ins/AsyncFunction/AsyncFunctionPrototype-is-extensible.js: Added.
+        (AsyncFunction.async.foo):
+        * test262/test/built-ins/AsyncFunction/AsyncFunctionPrototype-prototype.js: Added.
+        (AsyncFunction.async.foo):
+        * test262/test/built-ins/AsyncFunction/AsyncFunctionPrototype-to-string.js: Added.
+        (AsyncFunction.async.foo):
+        * test262/test/built-ins/AsyncFunction/instance-construct.js: Added.
+        (async.foo):
+        * test262/test/built-ins/AsyncFunction/instance-has-name.js: Added.
+        (async.foo):
+        * test262/test/built-ins/AsyncFunction/instance-length.js: Added.
+        (async.l0):
+        (async.l1):
+        (async.l2):
+        * test262/test/built-ins/AsyncFunction/instance-prototype-property.js: Added.
+        (async.foo):
+        * test262/test/built-ins/AsyncFunction/is-not-a-global.js: Added.
+        * test262/test/built-ins/DataView/prototype/getFloat32/detached-buffer-after-toindex-byteoffset.js: Renamed from JSTests/test262/test/built-ins/DataView/prototype/getFloat32/detached-buffer-after-integer-byteoffset.js.
+        * test262/test/built-ins/DataView/prototype/getFloat32/detached-buffer-before-outofrange-byteoffset.js:
+        * test262/test/built-ins/DataView/prototype/getFloat64/detached-buffer-after-toindex-byteoffset.js: Renamed from JSTests/test262/test/built-ins/DataView/prototype/getFloat64/detached-buffer-after-integer-byteoffset.js.
+        * test262/test/built-ins/DataView/prototype/getFloat64/detached-buffer-before-outofrange-byteoffset.js:
+        * test262/test/built-ins/DataView/prototype/getInt16/detached-buffer-after-toindex-byteoffset.js: Renamed from JSTests/test262/test/built-ins/DataView/prototype/getInt16/detached-buffer-after-integer-byteoffset.js.
+        * test262/test/built-ins/DataView/prototype/getInt16/detached-buffer-before-outofrange-byteoffset.js:
+        * test262/test/built-ins/DataView/prototype/getInt32/detached-buffer-after-toindex-byteoffset.js: Renamed from JSTests/test262/test/built-ins/DataView/prototype/getInt32/detached-buffer-after-integer-byteoffset.js.
+        * test262/test/built-ins/DataView/prototype/getInt32/detached-buffer-before-outofrange-byteoffset.js:
+        * test262/test/built-ins/DataView/prototype/getInt8/detached-buffer-after-toindex-byteoffset.js: Renamed from JSTests/test262/test/built-ins/DataView/prototype/getInt8/detached-buffer-after-integer-byteoffset.js.
+        * test262/test/built-ins/DataView/prototype/getInt8/detached-buffer-before-outofrange-byteoffset.js:
+        * test262/test/built-ins/DataView/prototype/getUint16/detached-buffer-after-toindex-byteoffset.js: Renamed from JSTests/test262/test/built-ins/DataView/prototype/getUint16/detached-buffer-after-integer-byteoffset.js.
+        * test262/test/built-ins/DataView/prototype/getUint16/detached-buffer-before-outofrange-byteoffset.js:
+        * test262/test/built-ins/DataView/prototype/getUint32/detached-buffer-after-toindex-byteoffset.js: Renamed from JSTests/test262/test/built-ins/DataView/prototype/getUint32/detached-buffer-after-integer-byteoffset.js.
+        * test262/test/built-ins/DataView/prototype/getUint32/detached-buffer-before-outofrange-byteoffset.js:
+        * test262/test/built-ins/DataView/prototype/getUint8/detached-buffer-after-toindex-byteoffset.js: Renamed from JSTests/test262/test/built-ins/DataView/prototype/getUint8/detached-buffer-after-integer-byteoffset.js.
+        * test262/test/built-ins/DataView/prototype/getUint8/detached-buffer-before-outofrange-byteoffset.js:
+        * test262/test/built-ins/DataView/prototype/setFloat32/detached-buffer-after-toindex-byteoffset.js: Renamed from JSTests/test262/test/built-ins/DataView/prototype/setFloat32/detached-buffer-after-integer-byteoffset.js.
+        * test262/test/built-ins/DataView/prototype/setFloat32/detached-buffer-before-outofrange-byteoffset.js:
+        * test262/test/built-ins/DataView/prototype/setFloat32/index-check-before-value-conversion.js:
+        * test262/test/built-ins/DataView/prototype/setFloat32/range-check-after-value-conversion.js:
+        * test262/test/built-ins/DataView/prototype/setFloat64/detached-buffer-after-toindex-byteoffset.js: Renamed from JSTests/test262/test/built-ins/DataView/prototype/setFloat64/detached-buffer-after-integer-byteoffset.js.
+        * test262/test/built-ins/DataView/prototype/setFloat64/detached-buffer-before-outofrange-byteoffset.js:
+        * test262/test/built-ins/DataView/prototype/setFloat64/index-check-before-value-conversion.js:
+        * test262/test/built-ins/DataView/prototype/setFloat64/range-check-after-value-conversion.js:
+        * test262/test/built-ins/DataView/prototype/setInt16/detached-buffer-after-toindex-byteoffset.js: Renamed from JSTests/test262/test/built-ins/DataView/prototype/setInt16/detached-buffer-after-integer-byteoffset.js.
+        * test262/test/built-ins/DataView/prototype/setInt16/detached-buffer-before-outofrange-byteoffset.js:
+        * test262/test/built-ins/DataView/prototype/setInt16/index-check-before-value-conversion.js:
+        * test262/test/built-ins/DataView/prototype/setInt16/range-check-after-value-conversion.js:
+        * test262/test/built-ins/DataView/prototype/setInt32/detached-buffer-after-toindex-byteoffset.js: Renamed from JSTests/test262/test/built-ins/DataView/prototype/setInt32/detached-buffer-after-integer-byteoffset.js.
+        * test262/test/built-ins/DataView/prototype/setInt32/detached-buffer-before-outofrange-byteoffset.js:
+        * test262/test/built-ins/DataView/prototype/setInt32/index-check-before-value-conversion.js:
+        * test262/test/built-ins/DataView/prototype/setInt32/range-check-after-value-conversion.js:
+        * test262/test/built-ins/DataView/prototype/setInt8/detached-buffer-after-toindex-byteoffset.js: Renamed from JSTests/test262/test/built-ins/DataView/prototype/setInt8/detached-buffer-after-integer-byteoffset.js.
+        * test262/test/built-ins/DataView/prototype/setInt8/detached-buffer-before-outofrange-byteoffset.js:
+        * test262/test/built-ins/DataView/prototype/setInt8/index-check-before-value-conversion.js:
+        * test262/test/built-ins/DataView/prototype/setInt8/range-check-after-value-conversion.js:
+        * test262/test/built-ins/DataView/prototype/setUint16/detached-buffer-after-toindex-byteoffset.js: Renamed from JSTests/test262/test/built-ins/DataView/prototype/setUint16/detached-buffer-after-integer-byteoffset.js.
+        * test262/test/built-ins/DataView/prototype/setUint16/detached-buffer-before-outofrange-byteoffset.js:
+        * test262/test/built-ins/DataView/prototype/setUint16/index-check-before-value-conversion.js:
+        * test262/test/built-ins/DataView/prototype/setUint16/range-check-after-value-conversion.js:
+        * test262/test/built-ins/DataView/prototype/setUint32/detached-buffer-after-toindex-byteoffset.js: Renamed from JSTests/test262/test/built-ins/DataView/prototype/setUint32/detached-buffer-after-integer-byteoffset.js.
+        * test262/test/built-ins/DataView/prototype/setUint32/detached-buffer-before-outofrange-byteoffset.js:
+        * test262/test/built-ins/DataView/prototype/setUint32/index-check-before-value-conversion.js:
+        * test262/test/built-ins/DataView/prototype/setUint32/range-check-after-value-conversion.js:
+        * test262/test/built-ins/DataView/prototype/setUint8/detached-buffer-after-toindex-byteoffset.js: Renamed from JSTests/test262/test/built-ins/DataView/prototype/setUint8/detached-buffer-after-integer-byteoffset.js.
+        * test262/test/built-ins/DataView/prototype/setUint8/detached-buffer-before-outofrange-byteoffset.js:
+        * test262/test/built-ins/DataView/prototype/setUint8/index-check-before-value-conversion.js:
+        * test262/test/built-ins/DataView/prototype/setUint8/range-check-after-value-conversion.js:
+        * test262/test/built-ins/Function/prototype/bind/instance-construct-newtarget-boundtarget-bound.js: Added.
+        (A):
+        * test262/test/built-ins/Function/prototype/bind/instance-construct-newtarget-boundtarget.js: Added.
+        (A):
+        * test262/test/built-ins/Function/prototype/bind/instance-construct-newtarget-self-new.js: Added.
+        (A):
+        * test262/test/built-ins/Function/prototype/bind/instance-construct-newtarget-self-reflect.js: Added.
+        (A):
+        * test262/test/built-ins/Function/prototype/toString/AsyncFunction.js: Added.
+        (async.f):
+        * test262/test/built-ins/Function/prototype/toString/async-function-declaration.js: Added.
+        (async.f):
+        * test262/test/built-ins/Function/prototype/toString/async-function-expression.js: Added.
+        (let.f.async.f):
+        * test262/test/built-ins/Function/prototype/toString/async-method.js: Added.
+        (let.f.async.f):
+        (let.g.async.string_appeared_here):
+        * test262/test/built-ins/JSON/parse/reviver-array-define-prop-err.js: Added.
+        (defineProperty):
+        * test262/test/built-ins/JSON/parse/reviver-array-delete-err.js: Added.
+        (deleteProperty):
+        * test262/test/built-ins/JSON/parse/reviver-array-length-coerce-err.js: Added.
+        (uncoercible.valueOf):
+        (get if):
+        * test262/test/built-ins/JSON/parse/reviver-array-length-get-err.js: Added.
+        (get if):
+        * test262/test/built-ins/JSON/parse/reviver-call-err.js: Added.
+        * test262/test/built-ins/JSON/parse/reviver-get-name-err.js: Added.
+        (thrower):
+        * test262/test/built-ins/JSON/parse/reviver-object-define-prop-err.js: Added.
+        (defineProperty):
+        * test262/test/built-ins/JSON/parse/reviver-object-delete-err.js: Added.
+        (deleteProperty):
+        * test262/test/built-ins/JSON/parse/reviver-object-own-keys-err.js: Added.
+        (ownKeys):
+        * test262/test/built-ins/Number/prototype/toExponential/infinity.js: Added.
+        * test262/test/built-ins/Number/prototype/toExponential/nan.js: Added.
+        * test262/test/built-ins/Number/prototype/toExponential/prop-desc.js: Added.
+        * test262/test/built-ins/Number/prototype/toExponential/return-abrupt-tointeger-fractiondigits-symbol.js: Added.
+        * test262/test/built-ins/Number/prototype/toExponential/return-abrupt-tointeger-fractiondigits.js: Added.
+        (fd1.valueOf):
+        (fd2.toString):
+        * test262/test/built-ins/Number/prototype/toExponential/return-values.js: Added.
+        * test262/test/built-ins/Number/prototype/toExponential/this-is-0-fractiondigits-is-0.js: Added.
+        * test262/test/built-ins/Number/prototype/toExponential/this-is-0-fractiondigits-is-not-0.js: Added.
+        * test262/test/built-ins/Number/prototype/toExponential/this-type-not-number-or-number-object.js: Added.
+        * test262/test/built-ins/Number/prototype/toExponential/tointeger-fractiondigits.js: Added.
+        * test262/test/built-ins/Number/prototype/toExponential/undefined-fractiondigits.js: Added.
+        * test262/test/built-ins/Object/getOwnPropertyDescriptors/duplicate-keys.js:
+        * test262/test/built-ins/Object/getOwnPropertyDescriptors/proxy-undefined-descriptor.js: Added.
+        (badProxyHandlers.allowProxyTraps.getOwnPropertyDescriptor):
+        (badProxyHandlers.allowProxyTraps.ownKeys):
+        * test262/test/built-ins/Proxy/setPrototypeOf/boolean-trap-result-extensible-target.js: Removed.
+        (setPrototypeOf): Deleted.
+        * test262/test/built-ins/Proxy/setPrototypeOf/internals-call-order.js: Added.
+        (target.new.Proxy.Object.create.isExtensible):
+        (target.new.Proxy.Object.create.getPrototypeOf):
+        (target.new.Proxy.Object.create):
+        (setPrototypeOf):
+        * test262/test/built-ins/Proxy/setPrototypeOf/not-extensible-target-not-same-target-prototype.js:
+        (setPrototypeOf):
+        * test262/test/built-ins/Proxy/setPrototypeOf/not-extensible-target-same-target-prototype.js:
+        (setPrototypeOf):
+        * test262/test/built-ins/Proxy/setPrototypeOf/not-extensible-trap-is-false-return-false.js: Removed.
+        (setPrototypeOf): Deleted.
+        * test262/test/built-ins/Proxy/setPrototypeOf/return-abrupt-from-get-trap.js: Added.
+        * test262/test/built-ins/Proxy/setPrototypeOf/return-abrupt-from-isextensible-target.js: Added.
+        (isExtensible):
+        (setPrototypeOf):
+        * test262/test/built-ins/Proxy/setPrototypeOf/return-abrupt-from-target-getprototypeof.js: Added.
+        (getPrototypeOf):
+        (setPrototypeOf):
+        * test262/test/built-ins/Proxy/setPrototypeOf/return-abrupt-from-trap.js: Renamed from JSTests/test262/test/built-ins/Proxy/setPrototypeOf/return-is-abrupt.js.
+        (setPrototypeOf):
+        * test262/test/built-ins/Proxy/setPrototypeOf/return-is-abrupt.js:
+        (setPrototypeOf): Deleted.
+        * test262/test/built-ins/Proxy/setPrototypeOf/toboolean-trap-result-false.js: Added.
+        (isExtensible):
+        (setPrototypeOf):
+        * test262/test/built-ins/Proxy/setPrototypeOf/toboolean-trap-result-true-target-is-extensible.js: Added.
+        (isExtensible):
+        (getPrototypeOf):
+        (setPrototypeOf):
+        * test262/test/built-ins/Proxy/setPrototypeOf/trap-is-not-callable.js:
+        * test262/test/built-ins/Proxy/setPrototypeOf/trap-is-undefined-or-null.js: Added.
+        (setPrototypeOf):
+        * test262/test/built-ins/Proxy/setPrototypeOf/trap-is-undefined.js: Removed.
+        * test262/test/built-ins/RegExp/lastIndex.js: Added.
+        * test262/test/built-ins/RegExp/prototype/global/15.10.7.2-1.js: Removed.
+        * test262/test/built-ins/RegExp/prototype/global/this-val-invalid-obj.js: Added.
+        (get Object):
+        * test262/test/built-ins/RegExp/prototype/global/this-val-non-obj.js: Added.
+        (get Object):
+        * test262/test/built-ins/RegExp/prototype/global/this-val-regexp-prototype.js: Added.
+        * test262/test/built-ins/RegExp/prototype/ignoreCase/15.10.7.3-1.js: Removed.
+        * test262/test/built-ins/RegExp/prototype/ignoreCase/this-val-invalid-obj.js: Added.
+        (get Object):
+        * test262/test/built-ins/RegExp/prototype/ignoreCase/this-val-non-obj.js: Added.
+        (get Object):
+        * test262/test/built-ins/RegExp/prototype/ignoreCase/this-val-regexp-prototype.js: Added.
+        * test262/test/built-ins/RegExp/prototype/lastIndex/15.10.7.5-1.js: Removed.
+        * test262/test/built-ins/RegExp/prototype/lastIndex/15.10.7.5-2.js: Removed.
+        * test262/test/built-ins/RegExp/prototype/lastIndex/S15.10.7.5_A8.js: Removed.
+        (__re.hasOwnProperty): Deleted.
+        (__re.propertyIsEnumerable): Deleted.
+        (count.0): Deleted.
+        * test262/test/built-ins/RegExp/prototype/lastIndex/S15.10.7.5_A9.js: Removed.
+        (__re.hasOwnProperty): Deleted.
+        (catch): Deleted.
+        * test262/test/built-ins/RegExp/prototype/multiline/15.10.7.4-1.js: Removed.
+        * test262/test/built-ins/RegExp/prototype/multiline/this-val-invalid-obj.js: Added.
+        (get Object):
+        * test262/test/built-ins/RegExp/prototype/multiline/this-val-non-obj.js: Added.
+        (get Object):
+        * test262/test/built-ins/RegExp/prototype/multiline/this-val-regexp-prototype.js: Added.
+        * test262/test/built-ins/RegExp/prototype/no-regexp-matcher.js: Added.
+        * test262/test/built-ins/RegExp/prototype/source/15.10.7.1-1.js: Removed.
+        * test262/test/built-ins/RegExp/prototype/source/this-val-invalid-obj.js: Added.
+        (get Object):
+        * test262/test/built-ins/RegExp/prototype/source/this-val-non-obj.js: Added.
+        (get Object):
+        * test262/test/built-ins/RegExp/prototype/source/this-val-regexp-prototype.js: Added.
+        * test262/test/built-ins/RegExp/prototype/source/value-empty.js: Added.
+        * test262/test/built-ins/RegExp/prototype/source/value-line-terminator.js: Added.
+        * test262/test/built-ins/RegExp/prototype/source/value-u.js: Added.
+        * test262/test/built-ins/RegExp/prototype/source/value.js: Added.
+        * test262/test/built-ins/RegExp/prototype/sticky/this-val-invalid-obj.js: Renamed from JSTests/test262/test/built-ins/RegExp/prototype/sticky/this-invalid-obj.js.
+        * test262/test/built-ins/RegExp/prototype/sticky/this-val-non-obj.js: Renamed from JSTests/test262/test/built-ins/RegExp/prototype/sticky/this-non-obj.js.
+        * test262/test/built-ins/RegExp/prototype/sticky/this-val-regexp-prototype.js: Added.
+        * test262/test/built-ins/RegExp/prototype/sticky/this-val-regexp.js: Renamed from JSTests/test262/test/built-ins/RegExp/prototype/sticky/this-regexp.js.
+        * test262/test/built-ins/RegExp/prototype/unicode/this-val-invalid-obj.js: Renamed from JSTests/test262/test/built-ins/RegExp/prototype/unicode/this-invald-obj.js.
+        * test262/test/built-ins/RegExp/prototype/unicode/this-val-non-obj.js: Renamed from JSTests/test262/test/built-ins/RegExp/prototype/unicode/this-non-obj.js.
+        * test262/test/built-ins/RegExp/prototype/unicode/this-val-regexp-prototype.js: Added.
+        * test262/test/built-ins/RegExp/prototype/unicode/this-val-regexp.js: Renamed from JSTests/test262/test/built-ins/RegExp/prototype/unicode/this-regexp.js.
+        * test262/test/built-ins/String/numeric-properties.js: Added.
+        * test262/test/intl402/DateTimeFormat/prototype/formatToParts/date-is-infinity-throws.js: Added.
+        * test262/test/intl402/DateTimeFormat/prototype/formatToParts/date-is-nan-throws.js: Added.
+        * test262/test/intl402/DateTimeFormat/prototype/formatToParts/formatToParts.js: Added.
+        * test262/test/intl402/DateTimeFormat/prototype/formatToParts/length.js: Added.
+        * test262/test/intl402/DateTimeFormat/prototype/formatToParts/main.js: Added.
+        (reduce):
+        (compareFTPtoFormat):
+        * test262/test/intl402/DateTimeFormat/prototype/formatToParts/name.js: Added.
+        * test262/test/intl402/DateTimeFormat/prototype/formatToParts/return-abrupt-tonumber-date.js: Added.
+        (obj1.valueOf):
+        (obj2.toString):
+        * test262/test/intl402/DateTimeFormat/prototype/formatToParts/this-has-not-internal-throws.js: Added.
+        * test262/test/intl402/DateTimeFormat/prototype/formatToParts/this-is-not-object-throws.js: Added.
+        * test262/test/intl402/NumberFormat/prototype/formatToParts/formatToParts.js: Added.
+        * test262/test/intl402/NumberFormat/prototype/formatToParts/length.js: Added.
+        * test262/test/intl402/NumberFormat/prototype/formatToParts/main.js: Added.
+        (reduce):
+        (compareFTPtoFormat):
+        * test262/test/intl402/NumberFormat/prototype/formatToParts/name.js: Added.
+        * test262/test/intl402/NumberFormat/prototype/formatToParts/return-abrupt-tonumber.js: Added.
+        (obj1.valueOf):
+        (obj2.toString):
+        * test262/test/intl402/NumberFormat/prototype/formatToParts/this-has-not-internal-throws.js: Added.
+        * test262/test/intl402/NumberFormat/prototype/formatToParts/this-is-not-object-throws.js: Added.
+        * test262/test/language/arguments-object/10.6-10-c-ii-2-s.js:
+        (foo): Deleted.
+        * test262/test/language/arguments-object/unmapped/via-params-dflt.js: Added.
+        (dflt):
+        * test262/test/language/arguments-object/unmapped/via-params-dstr.js: Added.
+        (dstr):
+        * test262/test/language/arguments-object/unmapped/via-params-rest.js: Added.
+        (rest):
+        * test262/test/language/arguments-object/unmapped/via-strict.js: Renamed from JSTests/test262/test/language/arguments-object/10.6-10-c-ii-2-s.js.
+        (foo):
+        * test262/test/language/block-scope/syntax/redeclaration-global/allowed-to-redeclare-function-declaration-with-function-declaration.js:
+        (f): Deleted.
+        * test262/test/language/eval-code/direct/super-call-arrow.js: Added.
+        (catch):
+        * test262/test/language/eval-code/direct/super-call-fn.js: Added.
+        (f):
+        * test262/test/language/eval-code/direct/super-call.js: Added.
+        (catch):
+        * test262/test/language/eval-code/direct/super-prop-arrow.js: Added.
+        (catch):
+        * test262/test/language/eval-code/direct/super-prop-method.js: Added.
+        (o.method):
+        * test262/test/language/eval-code/direct/super-prop.js: Added.
+        (catch):
+        * test262/test/language/eval-code/indirect/super-call.js: Added.
+        (catch):
+        (try.m):
+        * test262/test/language/eval-code/indirect/super-prop.js: Added.
+        (catch):
+        (try.m):
+        * test262/test/language/expressions/arrow-function/params-trailing-comma-length.js: Added.
+        (assert.sameValue):
+        * test262/test/language/expressions/arrow-function/params-trailing-comma.js: Added.
+        * test262/test/language/expressions/async-arrow-function/arrow-returns-promise.js: Added.
+        (p.then):
+        * test262/test/language/expressions/async-arrow-function/early-errors-arrow-NSPL-with-USD.js: Added.
+        (async):
+        * test262/test/language/expressions/async-arrow-function/early-errors-arrow-arguments-in-formal-parameters.js: Added.
+        (async):
+        * test262/test/language/expressions/async-arrow-function/early-errors-arrow-await-in-formals-default.js: Added.
+        (async):
+        * test262/test/language/expressions/async-arrow-function/early-errors-arrow-await-in-formals.js: Added.
+        (async):
+        * test262/test/language/expressions/async-arrow-function/early-errors-arrow-body-contains-super-call.js: Added.
+        (async):
+        * test262/test/language/expressions/async-arrow-function/early-errors-arrow-body-contains-super-property.js: Added.
+        (async):
+        * test262/test/language/expressions/async-arrow-function/early-errors-arrow-duplicate-parameters.js: Added.
+        (async):
+        * test262/test/language/expressions/async-arrow-function/early-errors-arrow-eval-in-formal-parameters.js: Added.
+        (async):
+        * test262/test/language/expressions/async-arrow-function/early-errors-arrow-formals-body-duplicate.js: Added.
+        (async):
+        * test262/test/language/expressions/async-arrow-function/early-errors-arrow-formals-contains-super-call.js: Added.
+        (async.foo.super):
+        * test262/test/language/expressions/async-arrow-function/early-errors-arrow-formals-contains-super-property.js: Added.
+        (async):
+        * test262/test/language/expressions/async-function/early-errors-expression-NSPL-with-USD.js: Added.
+        (async):
+        * test262/test/language/expressions/async-function/early-errors-expression-binding-identifier-arguments.js: Added.
+        (async.arguments):
+        * test262/test/language/expressions/async-function/early-errors-expression-binding-identifier-eval.js: Added.
+        (async.eval):
+        * test262/test/language/expressions/async-function/early-errors-expression-body-contains-super-call.js: Added.
+        (async.foo):
+        * test262/test/language/expressions/async-function/early-errors-expression-body-contains-super-property.js: Added.
+        (async.foo):
+        * test262/test/language/expressions/async-function/early-errors-expression-eval-in-formal-parameters.js: Added.
+        (async.foo):
+        * test262/test/language/expressions/async-function/early-errors-expression-formals-body-duplicate.js: Added.
+        (async.foo):
+        * test262/test/language/expressions/async-function/early-errors-expression-formals-contains-super-call.js: Added.
+        (async.foo):
+        * test262/test/language/expressions/async-function/early-errors-expression-formals-contains-super-property.js: Added.
+        (async.foo):
+        * test262/test/language/expressions/async-function/early-errors-expression-not-simple-assignment-target.js: Added.
+        (async.foo):
+        * test262/test/language/expressions/async-function/expression-returns-promise.js: Added.
+        (p.async):
+        * test262/test/language/expressions/async-function/syntax-expression-is-PrimaryExpression.js: Added.
+        (async.foo):
+        * test262/test/language/expressions/await/await-BindingIdentifier-in-global.js: Added.
+        (async.await):
+        * test262/test/language/expressions/await/await-BindingIdentifier-nested.js: Added.
+        (async.foo.await):
+        (async.foo):
+        * test262/test/language/expressions/await/await-awaits-thenable-not-callable.js: Added.
+        (async.foo):
+        * test262/test/language/expressions/await/await-awaits-thenables-that-throw.js: Added.
+        (thenable.then):
+        (async.foo):
+        * test262/test/language/expressions/await/await-awaits-thenables.js: Added.
+        (thenable.then):
+        (async.foo):
+        * test262/test/language/expressions/await/await-in-function.js: Added.
+        (foo):
+        * test262/test/language/expressions/await/await-in-generator.js: Added.
+        (foo):
+        * test262/test/language/expressions/await/await-in-global.js: Added.
+        * test262/test/language/expressions/await/await-in-nested-function.js: Added.
+        (async.foo.bar):
+        (async.foo):
+        * test262/test/language/expressions/await/await-in-nested-generator.js: Added.
+        (async.foo.bar):
+        (async.foo):
+        * test262/test/language/expressions/await/await-throws-rejections.js: Added.
+        (async.foo):
+        * test262/test/language/expressions/await/early-errors-await-not-simple-assignment-target.js: Added.
+        (async.foo):
+        * test262/test/language/expressions/await/no-operand.js: Added.
+        (async.foo):
+        * test262/test/language/expressions/await/syntax-await-has-UnaryExpression-with-MultiplicativeExpression.js: Added.
+        (async.foo):
+        * test262/test/language/expressions/await/syntax-await-has-UnaryExpression.js: Added.
+        (async.foo):
+        * test262/test/language/expressions/call/trailing-comma.js: Added.
+        (foo):
+        * test262/test/language/expressions/function/arguments-with-arguments-fn.js: Added.
+        (f):
+        * test262/test/language/expressions/function/arguments-with-arguments-lex.js: Added.
+        (f):
+        * test262/test/language/expressions/function/params-trailing-comma-arguments.js: Added.
+        (f1):
+        (f2):
+        * test262/test/language/expressions/function/params-trailing-comma-length.js: Added.
+        (assert.sameValue):
+        * test262/test/language/expressions/function/params-trailing-comma.js: Added.
+        * test262/test/language/expressions/generators/arguments-with-arguments-fn.js: Added.
+        (g):
+        * test262/test/language/expressions/generators/arguments-with-arguments-lex.js: Added.
+        (g):
+        * test262/test/language/expressions/generators/params-trailing-comma-arguments.js: Added.
+        (f1):
+        (f2):
+        * test262/test/language/expressions/generators/params-trailing-comma-length.js: Added.
+        (assert.sameValue):
+        * test262/test/language/expressions/generators/params-trailing-comma.js: Added.
+        * test262/test/language/expressions/object/computed-property-evaluation-order.js: Added.
+        * test262/test/language/expressions/object/method-definition/async-super-call-body.js: Added.
+        (sup.method):
+        (child.async.method):
+        * test262/test/language/expressions/object/method-definition/async-super-call-param.js: Added.
+        (sup.method):
+        (child.async.method.x.super.method):
+        * test262/test/language/expressions/object/method-definition/early-errors-object-method-NSPL-with-USD.js: Added.
+        (foo):
+        * test262/test/language/expressions/object/method-definition/early-errors-object-method-arguments-in-formal-parameters.js: Added.
+        (async.foo):
+        * test262/test/language/expressions/object/method-definition/early-errors-object-method-await-in-formals-default.js: Added.
+        (async.foo):
+        * test262/test/language/expressions/object/method-definition/early-errors-object-method-await-in-formals.js: Added.
+        (async.foo):
+        * test262/test/language/expressions/object/method-definition/early-errors-object-method-body-contains-super-call.js: Added.
+        (async.foo):
+        * test262/test/language/expressions/object/method-definition/early-errors-object-method-duplicate-parameters.js: Added.
+        (async.foo):
+        * test262/test/language/expressions/object/method-definition/early-errors-object-method-eval-in-formal-parameters.js: Added.
+        (async.foo):
+        * test262/test/language/expressions/object/method-definition/early-errors-object-method-formals-body-duplicate.js: Added.
+        (async.foo):
+        * test262/test/language/expressions/object/method-definition/early-errors-object-method-formals-contains-super-call.js: Added.
+        (async.foo.foo.super):
+        * test262/test/language/expressions/object/method-definition/object-method-returns-promise.js: Added.
+        (obj.async.method):
+        * test262/test/language/expressions/object/method-definition/params-trailing-comma-arguments.js: Added.
+        (obj.f1):
+        (obj.f2):
+        * test262/test/language/expressions/object/method-definition/params-trailing-comma-length.js: Added.
+        (obj.one):
+        (obj.two):
+        * test262/test/language/expressions/object/method-definition/params-trailing-comma-rest.js: Added.
+        (m):
+        * test262/test/language/expressions/object/method-definition/params-trailing-comma.js: Added.
+        (one):
+        (two):
+        * test262/test/language/global-code/decl-func-dup.js: Renamed from JSTests/test262/test/language/block-scope/syntax/redeclaration-global/allowed-to-redeclare-function-declaration-with-function-declaration.js.
+        (f):
+        * test262/test/language/global-code/decl-func.js: Added.
+        (brandNew):
+        * test262/test/language/global-code/decl-lex-configurable-global.js: Added.
+        * test262/test/language/global-code/decl-lex-deletion.js: Added.
+        (test262class):
+        * test262/test/language/global-code/decl-lex-restricted-global.js: Added.
+        * test262/test/language/global-code/decl-lex.js: Added.
+        (test262class):
+        * test262/test/language/global-code/decl-var.js: Added.
+        * test262/test/language/global-code/return.js: Added.
+        * test262/test/language/global-code/script-decl-func-dups.js: Added.
+        * test262/test/language/global-code/script-decl-func-err-non-configurable.js: Added.
+        * test262/test/language/global-code/script-decl-func-err-non-extensible.js: Added.
+        * test262/test/language/global-code/script-decl-func.js: Added.
+        * test262/test/language/global-code/script-decl-lex-deletion.js: Added.
+        * test262/test/language/global-code/script-decl-lex-lex.js: Added.
+        (test262Class):
+        * test262/test/language/global-code/script-decl-lex-restricted-global.js: Added.
+        * test262/test/language/global-code/script-decl-lex-var.js: Added.
+        (test262Fn):
+        * test262/test/language/global-code/script-decl-lex.js: Added.
+        * test262/test/language/global-code/script-decl-var-collision.js: Added.
+        (test262Class):
+        * test262/test/language/global-code/script-decl-var-err.js: Added.
+        * test262/test/language/global-code/script-decl-var.js: Added.
+        * test262/test/language/global-code/super-call-arrow.js: Added.
+        * test262/test/language/global-code/super-call.js: Added.
+        * test262/test/language/global-code/super-prop-arrow.js: Added.
+        * test262/test/language/global-code/super-prop.js: Added.
+        * test262/test/language/global-code/yield-non-strict.js: Added.
+        (catch):
+        * test262/test/language/global-code/yield-strict.js: Added.
+        * test262/test/language/literals/regexp/lastIndex.js: Added.
+        * test262/test/language/literals/regexp/u-unicode-esc-bounds.js:
+        * test262/test/language/literals/regexp/y-assertion-start.js: Added.
+        * test262/test/language/module-code/instn-star-err-not-found-faulty_FIXTURE.js:
+        * test262/test/language/module-code/instn-star-err-not-found.js:
+        * test262/test/language/module-code/namespace/internals/get-own-property-str-found-init.js:
+        * test262/test/language/module-code/parse-err-return.js: Added.
+        * test262/test/language/module-code/parse-err-yield.js: Added.
+        * test262/test/language/rest-parameters/params-trailing-comma-rest.js: Added.
+        * test262/test/language/statements/async-function/declaration-returns-promise.js: Added.
+        (async.foo):
+        * test262/test/language/statements/async-function/early-errors-declaration-NSPL-with-USD.js: Added.
+        (async.foo):
+        * test262/test/language/statements/async-function/early-errors-declaration-arguments-in-formal-parameters.js: Added.
+        (async.foo):
+        * test262/test/language/statements/async-function/early-errors-declaration-await-in-formals-default.js: Added.
+        (async.foo):
+        * test262/test/language/statements/async-function/early-errors-declaration-await-in-formals.js: Added.
+        (async.foo):
+        * test262/test/language/statements/async-function/early-errors-declaration-binding-identifier-arguments.js: Added.
+        (async.arguments):
+        * test262/test/language/statements/async-function/early-errors-declaration-binding-identifier-eval.js: Added.
+        (async.eval):
+        * test262/test/language/statements/async-function/early-errors-declaration-body-contains-super-call.js: Added.
+        (async.foo):
+        * test262/test/language/statements/async-function/early-errors-declaration-body-contains-super-property.js: Added.
+        (async.foo):
+        * test262/test/language/statements/async-function/early-errors-declaration-duplicate-parameters.js: Added.
+        (async.foo):
+        * test262/test/language/statements/async-function/early-errors-declaration-eval-in-formal-parameters.js: Added.
+        (async.foo):
+        * test262/test/language/statements/async-function/early-errors-declaration-formals-body-duplicate.js: Added.
+        (async.foo):
+        * test262/test/language/statements/async-function/early-errors-declaration-formals-contains-super-call.js: Added.
+        (async.foo):
+        * test262/test/language/statements/async-function/early-errors-declaration-formals-contains-super-property.js: Added.
+        (async.foo):
+        * test262/test/language/statements/async-function/early-errors-no-async-generator.js: Added.
+        (async.foo):
+        * test262/test/language/statements/async-function/evaluation-body-that-returns-after-await.js: Added.
+        (async.foo):
+        (foo.then):
+        * test262/test/language/statements/async-function/evaluation-body-that-returns.js: Added.
+        (async.foo):
+        (foo.then):
+        * test262/test/language/statements/async-function/evaluation-body-that-throws-after-await.js: Added.
+        (async.foo):
+        (foo.then):
+        * test262/test/language/statements/async-function/evaluation-body-that-throws.js: Added.
+        (async.foo):
+        (foo.then):
+        * test262/test/language/statements/async-function/evaluation-body.js: Added.
+        (async.foo):
+        * test262/test/language/statements/async-function/evaluation-default-that-throws.js: Added.
+        (async.foo):
+        (foo.then):
+        * test262/test/language/statements/async-function/evaluation-mapped-arguments.js: Added.
+        (async.foo):
+        * test262/test/language/statements/async-function/evaluation-this-value-global.js: Added.
+        (async.foo):
+        * test262/test/language/statements/async-function/evaluation-this-value-passed.js: Added.
+        (async.foo):
+        * test262/test/language/statements/async-function/evaluation-unmapped-arguments.js: Added.
+        (async.foo):
+        * test262/test/language/statements/async-function/syntax-declaration-line-terminators-allowed.js: Added.
+        (async.foo):
+        * test262/test/language/statements/async-function/syntax-declaration-no-line-terminator.js: Added.
+        (async.foo):
+        * test262/test/language/statements/async-function/syntax-declaration.js: Added.
+        (async.foo):
+        (foo.then):
+        * test262/test/language/statements/class/definition/class-method-returns-promise.js: Added.
+        (Foo.prototype.async.method):
+        (Foo):
+        * test262/test/language/statements/class/definition/early-errors-class-method-NSPL-with-USD.js: Added.
+        (Foo.prototype.async.bar):
+        (Foo):
+        * test262/test/language/statements/class/definition/early-errors-class-method-arguments-in-formal-parameters.js: Added.
+        (Foo.prototype.async.foo):
+        (Foo):
+        * test262/test/language/statements/class/definition/early-errors-class-method-await-in-formals-default.js: Added.
+        (Foo.prototype.async.foo):
+        (Foo):
+        * test262/test/language/statements/class/definition/early-errors-class-method-await-in-formals.js: Added.
+        (Foo.prototype.async.foo):
+        (Foo):
+        * test262/test/language/statements/class/definition/early-errors-class-method-body-contains-super-call.js: Added.
+        (Foo.prototype.async.foo):
+        (Foo):
+        * test262/test/language/statements/class/definition/early-errors-class-method-duplicate-parameters.js: Added.
+        (Foo.prototype.async.foo):
+        (Foo):
+        * test262/test/language/statements/class/definition/early-errors-class-method-eval-in-formal-parameters.js: Added.
+        (Foo.prototype.async.foo):
+        (Foo):
+        * test262/test/language/statements/class/definition/early-errors-class-method-formals-body-duplicate.js: Added.
+        (Foo.async.foo):
+        (Foo):
+        * test262/test/language/statements/class/definition/early-errors-class-method-formals-contains-super-call.js: Added.
+        (Foo.prototype.async.foo):
+        (Foo):
+        * test262/test/language/statements/class/definition/methods-async-super-call-body.js: Added.
+        (A.prototype.async.method):
+        (A):
+        (B.prototype.async.method):
+        (B):
+        * test262/test/language/statements/class/definition/methods-async-super-call-param.js: Added.
+        (A.prototype.async.method):
+        (A):
+        (B.prototype.async.method):
+        (B):
+        * test262/test/language/statements/class/definition/params-trailing-comma-arguments.js: Added.
+        (C.prototype.f1):
+        (C.prototype.f2):
+        (C):
+        * test262/test/language/statements/class/definition/params-trailing-comma-length.js: Added.
+        (C.prototype.one):
+        (C.prototype.two):
+        (C):
+        * test262/test/language/statements/class/definition/params-trailing-comma-rest.js: Added.
+        (C.prototype.m):
+        (C):
+        * test262/test/language/statements/class/definition/params-trailing-comma.js: Added.
+        (C.prototype.one):
+        (C.prototype.two):
+        (C):
+        * test262/test/language/statements/function/arguments-with-arguments-fn.js: Added.
+        (f):
+        * test262/test/language/statements/function/arguments-with-arguments-lex.js: Added.
+        (f):
+        * test262/test/language/statements/function/params-trailing-comma-arguments.js: Added.
+        (f1):
+        (f2):
+        * test262/test/language/statements/function/params-trailing-comma-length.js: Added.
+        (one):
+        (two):
+        * test262/test/language/statements/function/params-trailing-comma.js: Added.
+        (one):
+        (two):
+        * test262/test/language/statements/generators/arguments-with-arguments-fn.js: Added.
+        (g):
+        * test262/test/language/statements/generators/arguments-with-arguments-lex.js: Added.
+        (g):
+        * test262/test/language/statements/generators/params-trailing-comma-length.js: Added.
+        (one):
+        (two):
+        * test262/test/language/statements/generators/params-trailing-comma.js: Added.
+        (one):
+        (two):
+        * test262/test262-Revision.txt:
+
+2016-08-23  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] Make Math.cos() and Math.sin() work with any argument type
+        https://bugs.webkit.org/show_bug.cgi?id=161069
+
+        Reviewed by Geoffrey Garen.
+
+        * stress/arith-cos-on-various-types.js: Added.
+        * stress/arith-sin-on-various-types.js: Added.
+
+2016-08-23  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [ES6] Module namespace object's Symbol.iterator method should only accept module namespace objects
+        https://bugs.webkit.org/show_bug.cgi?id=161097
+
+        Reviewed by Keith Miller.
+
+        * test262.yaml:
+
+2016-08-22  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [ES6] Modules' `export default function/class` should be declaration
+        https://bugs.webkit.org/show_bug.cgi?id=160499
+
+        Reviewed by Saam Barati.
+
+        Add several module tests. And flip the failed tests flags in test262.
+
+        * modules/export-default-function-name-in-assignment-expression.js: Added.
+        (export.default):
+        * modules/export-default-function-name-in-class-declaration.js: Added.
+        * modules/export-default-function-name-in-function-declaration.js: Added.
+        (export.default):
+        * modules/export-default-function-name-in-generator-declaration.js: Added.
+        (export.default):
+        * stress/method-name.js: Added.
+        (testSyntax):
+        (testSyntaxError):
+        (testSyntaxError.Hello.prototype.hello.hello):
+        (testSyntaxError.Hello):
+        (SyntaxError.Unexpected.identifier.string_appeared_here.Expected.an.opening.string_appeared_here.before.a.method.testSyntaxError.let.obj.hello.hello):
+        (testSyntaxError.Hello.prototype.get hello):
+        (testSyntaxError.Hello.prototype.set hello):
+        * test262.yaml:
+
+2016-08-22  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [ES6] Module should not allow HTML comments
+        https://bugs.webkit.org/show_bug.cgi?id=161041
+
+        Reviewed by Saam Barati.
+
+        * modules/html-comments.js: Added.
+        (shouldThrow):
+        * test262.yaml:
+
+2016-08-21  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [DFG] Should not fixup AnyIntUse in 32_64
+        https://bugs.webkit.org/show_bug.cgi?id=161029
+
+        Reviewed by Saam Barati.
+
+        * typeProfiler/int52-dfg.js: Added.
+        (test):
+
+2016-08-21  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed, rolling out r204697
+        https://bugs.webkit.org/show_bug.cgi?id=161029
+
+        * typeProfiler/int52-dfg.js: Removed.
+        (test): Deleted.
+        * typeProfiler/number-filter-dfg.js: Removed.
+        (test): Deleted.
+
+2016-08-21  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [DFG] Should not fixup AnyIntUse in 32_64
+        https://bugs.webkit.org/show_bug.cgi?id=161029
+
+        Reviewed by Saam Barati.
+
+        * typeProfiler/int52-dfg.js: Added.
+        (test):
+        * typeProfiler/number-filter-dfg.js: Added.
+        (test):
+
+2016-08-19  Benjamin Poulain  <bpoulain@apple.com>
+
+        [JSC] ArithSqrt should work with any argument type
+        https://bugs.webkit.org/show_bug.cgi?id=160954
+
+        Reviewed by Saam Barati.
+
+        * stress/arith-sqrt-on-various-types.js: Added.
+        (let.validInputTypedTestCases.validInputTestCases.map):
+        (isIdentical):
+        (opaqueAllTypesSqrt):
+        (testAllTypesCall):
+        (testSingleTypeCall):
+        (opaqueSqrtForSideEffects):
+        (testSideEffect.let.testObject.valueOf):
+        (testSideEffect):
+        (opaqueSqrtForCSE):
+        (testCSE.let.testObject.valueOf):
+        (testCSE):
+        (testException.opaqueSqrtWithException):
+        (testException):
+
+2016-08-19  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Make custom Error properties (line, column, sourceURL) configurable and writable
+        https://bugs.webkit.org/show_bug.cgi?id=160984
+        <rdar://problem/27905979>
+
+        Reviewed by Saam Barati.
+
+        * stress/native-error-properties.js: Added.
+        (assert):
+        (shouldNotThrow):
+
+        (checkEmptyErrorPropertiesDescriptors):
+        (checkNonEmptyErrorPropertiesDescriptors):
+        The spec only describes the "message" property, so
+        ensure it has the right descriptor attributes.
+
+        (checkErrorPropertiesWritable):
+        Ensure common error property names are writable.
+        In strict mode this would have thrown an exception
+        if they were readonly.
+
+2016-08-18  Mark Lam  <mark.lam@apple.com>
+
+        ScopedArguments is using the wrong owner object for a write barrier.
+        https://bugs.webkit.org/show_bug.cgi?id=160976
+        <rdar://problem/27328506>
+
+        Reviewed by Keith Miller.
+
+        * stress/scoped-arguments-write-barrier-should-be-on-scope-object.js: Added.
+
+2016-08-17  JF Bastien  <jfbastien@apple.com>
+
+        We allow assignments to const variables when in a for-in/for-of loop
+        https://bugs.webkit.org/show_bug.cgi?id=156673
+
+        Reviewed by Filip Pizlo.
+
+        * stress/for-in-of-const.js: Added.
+        (expect_nothrow):
+        (expect_throw):
+        (capture):
+
+2016-08-17  Mark Lam  <mark.lam@apple.com>
+
+        Remove an invalid assertion in the DFG backend's GetById emitter.
+        https://bugs.webkit.org/show_bug.cgi?id=160925
+        <rdar://problem/27248961>
+
+        Reviewed by Filip Pizlo.
+
+        * stress/dfg-get-by-id-should-not-assert-non-null-prediction.js: Added.
+
+2016-08-16  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r204464.
+
+        This is no longer needed after r204495.
+
+        Reverted changeset:
+
+        "Skip failing test mozilla/ecma/LexicalConventions/7.7.3.js"
+        https://bugs.webkit.org/show_bug.cgi?id=160662
+        http://trac.webkit.org/changeset/204464
+
+2016-08-15  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Skip failing test mozilla/ecma/LexicalConventions/7.7.3.js
+        https://bugs.webkit.org/show_bug.cgi?id=160662
+
+        Unreviewed test gardening.
+
+        * mozilla/ecma/LexicalConventions/7.7.3.js:
+
+2016-08-14  Skachkov Oleksandr  <gskachkov@gmail.com>
+
+        [2016] Set correct status for test262 after implementation of Object.values&Object.entries
+        https://bugs.webkit.org/show_bug.cgi?id=160844
+
+        Reviewed by Saam Barati.
+
+        Patch contains fix statuses of specs in the test262 test collection after implementation of 
+        Object.values and Object.entries functions. Also patch contains small fixes in tests of the 
+        tests for Object.values/entries functions.
+
+        * stress/object-entries.js:
+        (Object.getOwnPropertyDescriptor):
+        * stress/object-values.js:
+        (Object.getOwnPropertyDescriptor):
+        * test262.yaml:
+
+2016-08-12  Saam Barati  <sbarati@apple.com>
+
+        Inline store loop for CopyRest in DFG and FTL for certain array modes
+        https://bugs.webkit.org/show_bug.cgi?id=159612
+
+        Reviewed by Filip Pizlo.
+
+        * stress/rest-parameter-having-a-bad-time.js: Added.
+        * stress/rest-parameter-many-arguments.js: Added.
+        * stress/rest-parameter-various-types.js: Added.
+
+2016-08-12  Skachkov Oleksandr  <gskachkov@gmail.com>
+
+        [ES2016] Implement Object.entries
+        https://bugs.webkit.org/show_bug.cgi?id=160412
+
+        Reviewed by Saam Barati.
+
+        Patch contains tests for Object.entries function and 
+        fix of wrong tests for Object.values function.
+
+        * stress/object-entries.js: 
+        (compare):
+        (string_appeared_here.forEach):
+        (const.getInvokedFunctions.):
+        (const.getInvokedFunctions):
+        (Array.prototype.push):
+        * stress/object-values.js:
+
+2016-08-11  Mark Lam  <mark.lam@apple.com>
+
+        OverridesHasInstance should not branch across register allocations.
+        https://bugs.webkit.org/show_bug.cgi?id=160792
+        <rdar://problem/27361778>
+
+        Reviewed by Benjamin Poulain.
+
+        * stress/OverrideHasInstance-should-not-branch-across-register-allocations.js: Added.
+
+2016-08-11  Mark Lam  <mark.lam@apple.com>
+
+        The jsc shell's Element host constructor should throw if it fails to construct an object.
+        https://bugs.webkit.org/show_bug.cgi?id=160773
+        <rdar://problem/27328608>
+
+        Reviewed by Saam Barati.
+
+        * stress/generational-opaque-roots.js:
+
+2016-08-11  Mark Lam  <mark.lam@apple.com>
+
+        Disallow synchronous sweeping for eden GCs.
+        https://bugs.webkit.org/show_bug.cgi?id=160716
+
+        Reviewed by Geoffrey Garen.
+
+        * stress/eden-gc-with-retired-blocks.js: Added.
+        - This test is just in case we add back support for eden GCs with synchronous
+          sweeping in the future.
+
+2016-08-10  Michael Saboff  <msaboff@apple.com>
+
+        Baseline GetByVal and PutByVal for cache ID stubs need to handle exceptions
+        https://bugs.webkit.org/show_bug.cgi?id=160749
+
+        Reviewed by Filip Pizlo.
+
+        New test that causes baseline GetByValWithCachedId and PutByValWithCachedId
+        stubs to be generated and then throws exceptions for those stub to handle
+        to verify that they are properly handled.
+
+        * stress/regress-160749.js: Added.
+        (testCachedGetByVal.):
+        (testCachedGetByVal.get for):
+        (testCachedGetByVal):
+        (testCachedPutByVal.):
+        (testCachedPutByVal.set for):
+        (testCachedPutByVal):
+
+2016-08-10  Mark Lam  <mark.lam@apple.com>
+
+        DFG's flushForTerminal() needs to add PhantomLocals for bytecode live locals.
+        https://bugs.webkit.org/show_bug.cgi?id=160755
+        <rdar://problem/27488507>
+
+        Reviewed by Filip Pizlo.
+
+        * stress/need-bytecode-liveness-for-unreachable-blocks-at-dfg-time.js: Added.
+
+2016-08-09  Skachkov Oleksandr  <gskachkov@gmail.com>
+
+        [ES2016] Implement Object.values
+        https://bugs.webkit.org/show_bug.cgi?id=160410
+
+        Reviewed by Saam Barati, Yusuke Suzuki.
+
+        * stress/object-values.js: Added.
+        (compare):
+        (string_appeared_here.forEach):
+        (const.getInvokedFunctions.):
+        (const.getInvokedFunctions):
+        (Array.prototype.push):
+
+2016-08-09  Saam Barati  <sbarati@apple.com>
+
+        JSBoundFunction should lazily generate its name string
+        https://bugs.webkit.org/show_bug.cgi?id=160678
+        <rdar://problem/27043194>
+
+        Reviewed by Mark Lam.
+
+        * stress/bound-function-lazy-name-generation.js: Added.
+        (assert):
+        (test.let.f):
+        (test.f):
+        (test):
+
+2016-08-08  Mark Lam  <mark.lam@apple.com>
+
+        ASSERTION FAILED: hasInlineStorage() in JSFinalObject::visitChildren().
+        https://bugs.webkit.org/show_bug.cgi?id=160666
+
+        Reviewed by Keith Miller.
+
+        * stress/object-constructor-should-be-new-target-aware.js:
+
+2016-08-07  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [ES6] Module namespace object should not allow unset IC
+        https://bugs.webkit.org/show_bug.cgi?id=160553
+
+        Reviewed by Saam Barati.
+
+        * modules/namespace-object-get-property.js: Added.
+        (import.as.ns.from.string_appeared_here.shouldThrow):
+        * modules/namespace-object-has-property.js: Added.
+        * modules/namespace-object-inline-caching.js: Added.
+        (import.as.A.from.string_appeared_here.import.as.B.from.string_appeared_here.lookup):
+        (shouldBe.lookup.lookup):
+        (shouldBe.lookup):
+        * modules/namespace-object-inline-caching/a.js: Added.
+        * modules/namespace-object-inline-caching/b.js: Added.
+        * modules/namespace-object-try-get.js: Added.
+        (import.as.ns.from.string_appeared_here.tryGetByIdText):
+        (tryGetByIdTextStrict):
+        * modules/namespace-object-typed-array-fast-path.js: Added.
+        * test262.yaml:
+
+2016-08-05  Saam Barati  <sbarati@apple.com>
+
+        various math operations don't properly check for an exception after calling toNumber() on the lhs
+        https://bugs.webkit.org/show_bug.cgi?id=160154
+
+        Reviewed by Mark Lam.
+
+        * stress/to-number-throws-correct-exception.js: Added.
+        (test.let.test.runTest.):
+        (test.let.test.runTest.get f):
+        (test.let.test.runTest):
+        (test.let.test):
+        (test):
+        (test2.runTest.):
+        (test2.runTest.get f):
+        (test2.runTest):
+        (test2):
+
+2016-08-05  Saam Barati  <sbarati@apple.com>
+
+        Assertion failure when accessing TDZ variable in catch through eval
+        https://bugs.webkit.org/show_bug.cgi?id=160554
+
+        Reviewed by Mark Lam and Keith Miller.
+
+        * stress/catch-variables-under-tdz.js: Added.
+        (test):
+
+2016-08-04  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [ES6] JSModuleNamespaceObject's Symbol.iterator function should have name
+        https://bugs.webkit.org/show_bug.cgi?id=160549
+
+        Reviewed by Saam Barati.
+
+        * modules/namespace-object-symbol-iterator-name.js: Added.
+        * test262.yaml:
+
+2016-08-04  Keith Miller  <keith_miller@apple.com>
+
+        ASSERTION FAILED: !hasInstanceValueNode->isCellConstant() || defaultHasInstanceFunction == hasInstanceValueNode->asCell()
+        https://bugs.webkit.org/show_bug.cgi?id=160562
+
+        Reviewed by Mark Lam.
+
+        * stress/instanceof-late-constant-folding.js: Added.
+        (Constructor):
+        (value):
+        (body):
+
+2016-08-04  Caitlin Potter  <caitp@igalia.com>
+
+        [JSC] fix generator-syntax.js JSTest again after yield grammar fix
+        https://bugs.webkit.org/show_bug.cgi?id=160550
+
+        Reviewed by Yusuke Suzuki.
+
+        * stress/generator-syntax.js:
+        (testYieldBindingIdentifier):
+
+2016-08-03  Caitlin Potter  <caitp@igalia.com>
+
+        Clarify SyntaxErrors around yield and unskip tests
+        https://bugs.webkit.org/show_bug.cgi?id=158460
+
+        Reviewed by Saam Barati.
+
+        Fix and unskip tests which erroneously asserted that `yield` is not a
+        valid BindingIdentifier, and improve error message for YieldExpressions
+        occuring in Arrow formal parameters.
+
+        * stress/generator-syntax.js:
+        * stress/yield-out-of-generator.js:
+
+2016-08-03  Filip Pizlo  <fpizlo@apple.com>
+
+        REGRESSION(r203368): broke some test262 tests
+        https://bugs.webkit.org/show_bug.cgi?id=160479
+
+        Reviewed by Mark Lam.
+        
+        Added a stress test for this case, since we don't always run test262.
+
+        * stress/freeze-setter.js: Added.
+        (let.o.set foo):
+
+2016-08-03  Saam Barati  <sbarati@apple.com>
+
+        Implement nested rest destructuring w.r.t the ES7 spec
+        https://bugs.webkit.org/show_bug.cgi?id=160423
+
+        Reviewed by Filip Pizlo.
+
+        * stress/destructuring-rest-element.js: Added.
+        (assert):
+        (test):
+        (arr):
+        (eq):
+        (gen):
+        (fakeGen.return.Symbol.iterator):
+        (fakeGen):
+        * stress/rest-elements.js:
+        (testSyntaxError.String.raw):
+        * stress/rest-parameter-is-destructuring.js: Added.
+        (assert):
+        (test):
+        (foo):
+        (bar):
+        * test262.yaml:
+
+2016-08-02  Saam Barati  <sbarati@apple.com>
+
+        Rename Changelog to ChangeLog
+
+        Rubber stamped by Keith Miller.
+
+        * Changelog: Removed.
+
+2016-08-02  Saam Barati  <sbarati@apple.com>
+
+        update a class extending null w.r.t the ES7 spec
+        https://bugs.webkit.org/show_bug.cgi?id=160417
+
+        Reviewed by Keith Miller.
+
+        * Changelog:
+        * stress/class-derived-from-null.js: Added.
+        (assert):
+        (test):
+        (test1.C):
+        (test1):
+        (jsNull):
+        (test2.C):
+        (test2):
+        (test3.C):
+        (test3.D):
+        (test3.E):
+        (test3):
+        (test4.E):
+        (test4):
+        (test5.E):
+        (test5):
+        (test6.Base):
+        (test6.D):
+        (test6.E):
+        (test6.F):
+        (test6.G):
+        (test6):
+        * test262.yaml:
+
+2016-08-01  Filip Pizlo  <fpizlo@apple.com>
+
+        Rationalize varargs stack overflow checks
+        https://bugs.webkit.org/show_bug.cgi?id=160425
+
+        Reviewed by Michael Saboff.
+
+        * stress/arity-check-ftl-throw-more-args.js: Added.
+        (catch):
+
+2016-08-01  Keith Miller  <keith_miller@apple.com>
+
+        We should not keep the JavaScript tests inside the Source/JavaScriptCore/ directory.
+        https://bugs.webkit.org/show_bug.cgi?id=160372
+
+        Rubber stamped by Geoffrey Garen.
+
+        This patch moves all the JavaScript tests from Source/JavaScriptCore/tests to
+        a new top level directory, JSTests. Having the tests in the Source directory
+        was both confusing an inconvenient for people that just want to checkout the
+        source code of WebKit. Since there is no other obvious place to put all the
+        JavaScript tests a new top level directory seemed the most sensible.
+
+        * tests/: Deleted.

@@ -33,7 +33,6 @@
 #include "FrameSelection.h"
 #include "FrameView.h"
 #include "GraphicsContext.h"
-#include "HTMLInputElement.h"
 #include "HTMLNames.h"
 #include "HitTestLocation.h"
 #include "HitTestResult.h"
@@ -68,17 +67,14 @@
 #include "RenderView.h"
 #include "Settings.h"
 #include "ShadowRoot.h"
-#include "TextBreakIterator.h"
+#include "ShapeOutsideInfo.h"
+#include <wtf/text/TextBreakIterator.h>
 #include "TransformState.h"
 
 #include <wtf/NeverDestroyed.h>
 #include <wtf/Optional.h>
 #include <wtf/StackStats.h>
 #include <wtf/TemporaryChange.h>
-
-#if ENABLE(CSS_SHAPES)
-#include "ShapeOutsideInfo.h"
-#endif
 
 using namespace WTF;
 using namespace Unicode;
@@ -772,7 +768,7 @@ void RenderBlock::removeLeftoverAnonymousBlock(RenderBlock* child)
     child->m_next = 0;
 
     // Remove all the information in the flow thread associated with the leftover anonymous block.
-    child->removeFromRenderFlowThread();
+    child->resetFlowThreadStateOnRemoval();
 
     child->setParent(0);
     child->setPreviousSibling(0);
@@ -816,9 +812,6 @@ void RenderBlock::dropAnonymousBoxChild(RenderBlock& parent, RenderBlock& child)
 {
     parent.setNeedsLayoutAndPrefWidthsRecalc();
     parent.setChildrenInline(child.childrenInline());
-    if (auto* childFlowThread = child.flowThreadContainingBlock())
-        childFlowThread->removeFlowChildInfo(&child);
-
     RenderObject* nextSibling = child.nextSibling();
     parent.removeChildInternal(child, child.hasLayer() ? NotifyChildren : DontNotifyChildren);
     child.moveAllChildrenTo(&parent, nextSibling, child.hasLayer());
@@ -2179,6 +2172,8 @@ LayoutUnit RenderBlock::logicalLeftSelectionOffset(RenderBlock& rootBlock, Layou
         ASSERT(currentCache);
         auto info = currentCache->containingBlockInfo(*cb);
         cb = info.block();
+        if (!cb)
+            break;
         currentCache = info.cache();
     }
     return logicalLeft;
@@ -2201,6 +2196,8 @@ LayoutUnit RenderBlock::logicalRightSelectionOffset(RenderBlock& rootBlock, Layo
         ASSERT(currentCache);
         auto info = currentCache->containingBlockInfo(*cb);
         cb = info.block();
+        if (!cb)
+            break;
         currentCache = info.cache();
     }
     return logicalRight;
@@ -2246,10 +2243,14 @@ TrackedRendererListHashSet* RenderBlock::positionedObjects() const
 void RenderBlock::insertPositionedObject(RenderBox& positioned)
 {
     ASSERT(!isAnonymousBlock());
-
     if (positioned.isRenderFlowThread())
         return;
-
+    // FIXME: Find out if we can do this as part of positioned.setChildNeedsLayout(MarkOnlyThis)
+    if (positioned.needsLayout()) {
+        // We should turn this bit on only while in layout.
+        ASSERT(posChildNeedsLayout() || view().frameView().isInLayout());
+        setPosChildNeedsLayoutBit(true);
+    }
     positionedDescendantsMap().addDescendant(*this, positioned, isRenderView() ? PositionedDescendantsMap::MoveDescendantToEnd::Yes
         : PositionedDescendantsMap::MoveDescendantToEnd::No);
 }
@@ -2750,7 +2751,9 @@ void RenderBlock::computePreferredLogicalWidths()
 {
     ASSERT(preferredLogicalWidthsDirty());
 
-    updateFirstLetter();
+    // FIXME: Do not even try to reshuffle first letter renderers when we are not in layout
+    // until after webkit.org/b/163848 is fixed.
+    updateFirstLetter(view().frameView().isInRenderTreeLayout() ? RenderTreeMutationIsAllowed::Yes : RenderTreeMutationIsAllowed::No);
 
     m_minPreferredLogicalWidth = 0;
     m_maxPreferredLogicalWidth = 0;
@@ -3300,7 +3303,7 @@ void RenderBlock::getFirstLetter(RenderObject*& firstLetter, RenderElement*& fir
         firstLetterContainer = nullptr;
 }
 
-void RenderBlock::updateFirstLetter()
+void RenderBlock::updateFirstLetter(RenderTreeMutationIsAllowed mutationAllowedOrNot)
 {
     RenderObject* firstLetterObj;
     RenderElement* firstLetterContainer;
@@ -3321,6 +3324,8 @@ void RenderBlock::updateFirstLetter()
     if (!is<RenderText>(*firstLetterObj))
         return;
 
+    if (mutationAllowedOrNot != RenderTreeMutationIsAllowed::Yes)
+        return;
     // Our layout state is not valid for the repaints we are going to trigger by
     // adding and removing children of firstLetterContainer.
     LayoutStateDisabler layoutStateDisabler(view());
@@ -3370,6 +3375,28 @@ RenderFlowThread* RenderBlock::locateFlowThreadContainingBlock() const
 
     ASSERT(rareData->m_flowThreadContainingBlock.value() == RenderBox::locateFlowThreadContainingBlock());
     return rareData->m_flowThreadContainingBlock.value();
+}
+
+void RenderBlock::invalidateFlowThreadContainingBlockIncludingDescendants()
+{
+    if (flowThreadState() == NotInsideFlowThread)
+        return;
+
+    if (cachedFlowThreadContainingBlockNeedsUpdate())
+        return;
+
+    auto* flowThread = cachedFlowThreadContainingBlock();
+    setCachedFlowThreadContainingBlockNeedsUpdate();
+
+    if (flowThread)
+        flowThread->removeFlowChildInfo(this);
+
+    for (auto& child : childrenOfType<RenderElement>(*this)) {
+        if (flowThread)
+            flowThread->removeFlowChildInfo(&child);
+        if (is<RenderBlock>(child))
+            downcast<RenderBlock>(child).invalidateFlowThreadContainingBlockIncludingDescendants();
+    }
 }
 
 LayoutUnit RenderBlock::paginationStrut() const
@@ -3485,7 +3512,7 @@ void RenderBlock::updateHitTestResult(HitTestResult& result, const LayoutPoint& 
     }
 }
 
-LayoutRect RenderBlock::localCaretRect(InlineBox* inlineBox, int caretOffset, LayoutUnit* extraWidthToEndOfLine)
+LayoutRect RenderBlock::localCaretRect(InlineBox* inlineBox, unsigned caretOffset, LayoutUnit* extraWidthToEndOfLine)
 {
     // Do the normal calculation in most cases.
     if (firstChild())
@@ -3546,9 +3573,17 @@ void RenderBlock::addFocusRingRects(Vector<LayoutRect>& rects, const LayoutPoint
         inlineElementContinuation()->addFocusRingRects(rects, flooredLayoutPoint(LayoutPoint(additionalOffset + inlineElementContinuation()->containingBlock()->location() - location())), paintContainer);
 }
 
-RenderBox* RenderBlock::createAnonymousBoxWithSameTypeAs(const RenderObject* parent) const
+std::unique_ptr<RenderBlock> RenderBlock::createAnonymousBlockWithStyleAndDisplay(Document& document, const RenderStyle& style, EDisplay display)
 {
-    return createAnonymousWithParentRendererAndDisplay(parent, style().display());
+    // FIXME: Do we need to convert all our inline displays to block-type in the anonymous logic ?
+    std::unique_ptr<RenderBlock> newBox;
+    if (display == FLEX || display == INLINE_FLEX)
+        newBox = std::make_unique<RenderFlexibleBox>(document, RenderStyle::createAnonymousStyleWithDisplay(style, FLEX));
+    else
+        newBox = std::make_unique<RenderBlockFlow>(document, RenderStyle::createAnonymousStyleWithDisplay(style, BLOCK));
+    
+    newBox->initializeStyle();
+    return newBox;
 }
 
 LayoutUnit RenderBlock::offsetFromLogicalTopOfFirstPage() const
@@ -3789,39 +3824,31 @@ TextRun RenderBlock::constructTextRun(const String& string, const RenderStyle& s
     return constructTextRun(StringView(string), style, expansion, flags);
 }
 
-TextRun RenderBlock::constructTextRun(const RenderText* text, const RenderStyle& style, ExpansionBehavior expansion)
+TextRun RenderBlock::constructTextRun(const AtomicString& atomicString, const RenderStyle& style, ExpansionBehavior expansion, TextRunFlags flags)
 {
-    return constructTextRun(text->stringView(), style, expansion);
+    return constructTextRun(StringView(atomicString), style, expansion, flags);
 }
 
-TextRun RenderBlock::constructTextRun(const RenderText* text, unsigned offset, unsigned length, const RenderStyle& style, ExpansionBehavior expansion)
+TextRun RenderBlock::constructTextRun(const RenderText& text, const RenderStyle& style, ExpansionBehavior expansion)
+{
+    return constructTextRun(text.stringView(), style, expansion);
+}
+
+TextRun RenderBlock::constructTextRun(const RenderText& text, unsigned offset, unsigned length, const RenderStyle& style, ExpansionBehavior expansion)
 {
     unsigned stop = offset + length;
-    ASSERT(stop <= text->textLength());
-    return constructTextRun(text->stringView(offset, stop), style, expansion);
+    ASSERT(stop <= text.textLength());
+    return constructTextRun(text.stringView(offset, stop), style, expansion);
 }
 
-TextRun RenderBlock::constructTextRun(const LChar* characters, int length, const RenderStyle& style, ExpansionBehavior expansion)
+TextRun RenderBlock::constructTextRun(const LChar* characters, unsigned length, const RenderStyle& style, ExpansionBehavior expansion)
 {
     return constructTextRun(StringView(characters, length), style, expansion);
 }
 
-TextRun RenderBlock::constructTextRun(const UChar* characters, int length, const RenderStyle& style, ExpansionBehavior expansion)
+TextRun RenderBlock::constructTextRun(const UChar* characters, unsigned length, const RenderStyle& style, ExpansionBehavior expansion)
 {
     return constructTextRun(StringView(characters, length), style, expansion);
-}
-
-RenderBlock* RenderBlock::createAnonymousWithParentRendererAndDisplay(const RenderObject* parent, EDisplay display)
-{
-    // FIXME: Do we need to convert all our inline displays to block-type in the anonymous logic ?
-    RenderBlock* newBox;
-    if (display == FLEX || display == INLINE_FLEX)
-        newBox = new RenderFlexibleBox(parent->document(), RenderStyle::createAnonymousStyleWithDisplay(parent->style(), FLEX));
-    else
-        newBox = new RenderBlockFlow(parent->document(), RenderStyle::createAnonymousStyleWithDisplay(parent->style(), BLOCK));
-
-    newBox->initializeStyle();
-    return newBox;
 }
 
 #ifndef NDEBUG

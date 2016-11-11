@@ -53,7 +53,7 @@ Ref<SVGTRefElement> SVGTRefElement::create(const QualifiedName& tagName, Documen
     return element;
 }
 
-class SVGTRefTargetEventListener : public EventListener {
+class SVGTRefTargetEventListener final : public EventListener {
 public:
     static Ref<SVGTRefTargetEventListener> create(SVGTRefElement& trefElement)
     {
@@ -72,8 +72,8 @@ public:
 private:
     explicit SVGTRefTargetEventListener(SVGTRefElement& trefElement);
 
-    void handleEvent(ScriptExecutionContext*, Event*) override;
-    bool operator==(const EventListener&) const override;
+    void handleEvent(ScriptExecutionContext*, Event*) final;
+    bool operator==(const EventListener&) const final;
 
     SVGTRefElement& m_trefElement;
     RefPtr<Element> m_target;

@@ -27,10 +27,10 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ScriptDebugListener_h
-#define ScriptDebugListener_h
+#pragma once
 
 #include "debugger/Debugger.h"
+#include "parser/SourceProvider.h"
 #include <wtf/text/WTFString.h>
 
 namespace Inspector {
@@ -44,6 +44,7 @@ public:
         String source;
         String sourceURL;
         String sourceMappingURL;
+        RefPtr<JSC::SourceProvider> sourceProvider;
         int startLine {0};
         int startColumn {0};
         int endLine {0};
@@ -64,5 +65,3 @@ public:
 };
 
 } // namespace Inspector
-
-#endif // ScriptDebugListener_h

@@ -31,10 +31,6 @@
 
 #include "ActiveDOMObject.h"
 #include "MediaDevices.h"
-#include "MediaStreamCreationClient.h"
-#include "MediaStreamTrackSourcesRequestClient.h"
-#include "UserMediaPermissionCheck.h"
-#include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
 #include <wtf/text/WTFString.h>
 
@@ -42,11 +38,12 @@ namespace WebCore {
 
 class Document;
 class Frame;
+class MediaDevicesEnumerationRequest;
 class SecurityOrigin;
 
 typedef int ExceptionCode;
 
-class MediaDevicesRequest : public MediaStreamTrackSourcesRequestClient, public UserMediaPermissionCheckClient, public ContextDestructionObserver {
+class MediaDevicesRequest : public RefCounted<MediaDevicesRequest>, private ContextDestructionObserver {
 public:
     static RefPtr<MediaDevicesRequest> create(Document*, MediaDevices::EnumerateDevicesPromise&&, ExceptionCode&);
 
@@ -59,24 +56,16 @@ public:
 private:
     MediaDevicesRequest(ScriptExecutionContext*, MediaDevices::EnumerateDevicesPromise&&);
 
-    // MediaStreamTrackSourcesRequestClient
-    const String& requestOrigin() const final;
-    void didCompleteTrackSourceInfoRequest(const TrackSourceInfoVector&) final;
-
     // ContextDestructionObserver
     void contextDestroyed() final;
-
-    // UserMediaPermissionCheckClient
-    void didCompletePermissionCheck(const String&, bool) final;
 
     String hashID(const String&);
 
     MediaDevices::EnumerateDevicesPromise m_promise;
     RefPtr<MediaDevicesRequest> m_protector;
-    RefPtr<UserMediaPermissionCheck> m_permissionCheck;
+    RefPtr<MediaDevicesEnumerationRequest> m_enumerationRequest;
 
     String m_idHashSalt;
-    bool m_havePersistentPermission { false };
 };
 
 } // namespace WebCore

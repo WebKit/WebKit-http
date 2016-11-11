@@ -58,25 +58,19 @@ public:
     NPRemoteObjectMap* npRemoteObjectMap() const { return m_npRemoteObjectMap.get(); }
 
     bool supportsAsynchronousPluginInitialization() const { return m_supportsAsynchronousPluginInitialization; }
-    WebCore::AudioHardwareActivityType audioHardwareActivity() const { return m_audioHardwareActivity; }
     
 private:
     PluginProcessConnection(PluginProcessConnectionManager*, uint64_t pluginProcessToken, IPC::Connection::Identifier connectionIdentifier, bool supportsAsynchronousInitialization);
 
     // IPC::Connection::Client
-    void didReceiveMessage(IPC::Connection&, IPC::MessageDecoder&) override;
-    void didReceiveSyncMessage(IPC::Connection&, IPC::MessageDecoder&, std::unique_ptr<IPC::MessageEncoder>&) override;
+    void didReceiveMessage(IPC::Connection&, IPC::Decoder&) override;
+    void didReceiveSyncMessage(IPC::Connection&, IPC::Decoder&, std::unique_ptr<IPC::Encoder>&) override;
     void didClose(IPC::Connection&) override;
     void didReceiveInvalidMessage(IPC::Connection&, IPC::StringReference messageReceiverName, IPC::StringReference messageName) override;
-    IPC::ProcessType localProcessType() override { return IPC::ProcessType::Web; }
-    IPC::ProcessType remoteProcessType() override { return IPC::ProcessType::Plugin; }
 
     // Message handlers.
-    void didReceivePluginProcessConnectionMessage(IPC::Connection&, IPC::MessageDecoder&);
-    void didReceiveSyncPluginProcessConnectionMessage(IPC::Connection&, IPC::MessageDecoder&, std::unique_ptr<IPC::MessageEncoder>&);
+    void didReceiveSyncPluginProcessConnectionMessage(IPC::Connection&, IPC::Decoder&, std::unique_ptr<IPC::Encoder>&);
     void setException(const String&);
-    void audioHardwareDidBecomeActive();
-    void audioHardwareDidBecomeInactive();
 
     PluginProcessConnectionManager* m_pluginProcessConnectionManager;
     uint64_t m_pluginProcessToken;
@@ -90,7 +84,6 @@ private:
     RefPtr<NPRemoteObjectMap> m_npRemoteObjectMap;
     
     bool m_supportsAsynchronousPluginInitialization;
-    WebCore::AudioHardwareActivityType m_audioHardwareActivity;
 };
 
 } // namespace WebKit

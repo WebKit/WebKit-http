@@ -30,8 +30,7 @@
 
 #import "WebPageProxy.h"
 #import "WebPaymentCoordinatorProxyCocoa.h"
-#import <Foundation/NSExtension.h>
-#import <PassKit/PKPaymentAuthorizationViewController_Private.h>
+#import <WebCore/PassKitSPI.h>
 #import <WebCore/SoftLinking.h>
 
 SOFT_LINK_PRIVATE_FRAMEWORK(PassKit)
@@ -43,7 +42,7 @@ namespace WebKit {
 
 void WebPaymentCoordinatorProxy::platformShowPaymentUI(const WebCore::URL& originatingURL, const Vector<WebCore::URL>& linkIconURLStrings, const WebCore::PaymentRequest& request, std::function<void (bool)> completionHandler)
 {
-    auto paymentRequest = toPKPaymentRequest(originatingURL, linkIconURLStrings, request);
+    auto paymentRequest = toPKPaymentRequest(m_webPageProxy, originatingURL, linkIconURLStrings, request);
 
     auto showPaymentUIRequestSeed = m_showPaymentUIRequestSeed;
     auto weakThis = m_weakPtrFactory.createWeakPtr();
@@ -75,6 +74,12 @@ void WebPaymentCoordinatorProxy::platformShowPaymentUI(const WebCore::URL& origi
 
         ASSERT(!paymentCoordinatorProxy->m_sheetWindow);
         paymentCoordinatorProxy->m_sheetWindow = [NSWindow windowWithContentViewController:viewController];
+
+        paymentCoordinatorProxy->m_sheetWindowWillCloseObserver = [[NSNotificationCenter defaultCenter] addObserverForName:NSWindowWillCloseNotification object:paymentCoordinatorProxy->m_sheetWindow.get() queue:nil usingBlock:[paymentCoordinatorProxy](NSNotification *) {
+            paymentCoordinatorProxy->hidePaymentUI();
+            paymentCoordinatorProxy->didReachFinalState();
+        }];
+
         [paymentCoordinatorProxy->m_webPageProxy.platformWindow() beginSheet:paymentCoordinatorProxy->m_sheetWindow.get() completionHandler:nullptr];
 
         completionHandler(true);
@@ -96,6 +101,9 @@ void WebPaymentCoordinatorProxy::hidePaymentUI()
     ASSERT(m_paymentAuthorizationViewControllerDelegate);
     ASSERT(m_sheetWindow);
 
+    [[NSNotificationCenter defaultCenter] removeObserver:m_sheetWindowWillCloseObserver.get()];
+    m_sheetWindowWillCloseObserver = nullptr;
+
     [[m_sheetWindow sheetParent] endSheet:m_sheetWindow.get()];
     [m_paymentAuthorizationViewController setDelegate:nil];
     [m_paymentAuthorizationViewController setPrivateDelegate:nil];
@@ -109,45 +117,4 @@ void WebPaymentCoordinatorProxy::hidePaymentUI()
 
 }
 
-extern "C" {
-WK_EXPORT bool WKPreferencesGetApplePayEnabled(WKPreferencesRef preferencesRef);
-WK_EXPORT void WKPreferencesSetApplePayEnabled(WKPreferencesRef preferencesRef, bool enabled);
-
-WK_EXPORT bool WKPreferencesGetApplePayCapabilityDisclosureAllowed(WKPreferencesRef preferencesRef);
-WK_EXPORT void WKPreferencesSetApplePayCapabilityDisclosureAllowed(WKPreferencesRef preferencesRef, bool allowed);
-
-// FIXME: Get rid of these in favor of the ones that mention Apple Pay.
-WK_EXPORT bool WKPreferencesGetPaymentsEnabled(WKPreferencesRef preferencesRef);
-WK_EXPORT void WKPreferencesSetPaymentsEnabled(WKPreferencesRef preferencesRef, bool enabled);
-}
-
-WK_EXPORT bool WKPreferencesGetApplePayEnabled(WKPreferencesRef preferencesRef)
-{
-    return WebKit::toImpl(preferencesRef)->applePayEnabled();
-}
-
-void WKPreferencesSetApplePayEnabled(WKPreferencesRef preferencesRef, bool enabled)
-{
-    WebKit::toImpl(preferencesRef)->setApplePayEnabled(enabled);
-}
-
-bool WKPreferencesGetApplePayCapabilityDisclosureAllowed(WKPreferencesRef preferencesRef)
-{
-    return WebKit::toImpl(preferencesRef)->applePayCapabilityDisclosureAllowed();
-}
-
-void WKPreferencesSetApplePayCapabilityDisclosureAllowed(WKPreferencesRef preferencesRef, bool allowed)
-{
-    WebKit::toImpl(preferencesRef)->setApplePayCapabilityDisclosureAllowed(allowed);
-}
-
-bool WKPreferencesGetPaymentsEnabled(WKPreferencesRef preferencesRef)
-{
-    return WKPreferencesGetApplePayEnabled(preferencesRef);
-}
-
-void WKPreferencesSetPaymentsEnabled(WKPreferencesRef preferencesRef, bool enabled)
-{
-    WKPreferencesSetApplePayEnabled(preferencesRef, enabled);
-}
 #endif

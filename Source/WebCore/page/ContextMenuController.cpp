@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006, 2007 Apple Inc. All rights reserved.
+ * Copyright (C) 2006-2007, 2016 Apple Inc. All rights reserved.
  * Copyright (C) 2010 Igalia S.L
  *
  * Redistribution and use in source and binary forms, with or without
@@ -223,6 +223,8 @@ void ContextMenuController::contextMenuItemSelected(ContextMenuAction action, co
     if (!frame)
         return;
 
+    Ref<Frame> protector(*frame);
+
     switch (action) {
     case ContextMenuItemTagOpenLinkInNewWindow:
         openNewWindow(m_context.hitTestResult().absoluteLinkURL(), frame, ShouldOpenExternalURLsPolicy::ShouldAllowExternalSchemes);
@@ -370,7 +372,7 @@ void ContextMenuController::contextMenuItemSelected(ContextMenuAction action, co
 
             Document* document = frame->document();
             ASSERT(document);
-            RefPtr<ReplaceSelectionCommand> command = ReplaceSelectionCommand::create(*document, createFragmentFromMarkup(*document, title, ""), replaceOptions);
+            RefPtr<ReplaceSelectionCommand> command = ReplaceSelectionCommand::create(*document, createFragmentFromMarkup(*document, title, emptyString()), replaceOptions);
             applyCommand(command);
             frame->selection().revealSelection(SelectionRevealMode::Reveal, ScrollAlignment::alignToEdgeIfNeeded);
         }
@@ -411,10 +413,10 @@ void ContextMenuController::contextMenuItemSelected(ContextMenuAction action, co
     case ContextMenuItemTagStartSpeaking: {
         RefPtr<Range> selectedRange = frame->selection().toNormalizedRange();
         if (!selectedRange || selectedRange->collapsed()) {
-            Document& document = m_context.hitTestResult().innerNonSharedNode()->document();
+            auto& document = m_context.hitTestResult().innerNonSharedNode()->document();
             selectedRange = document.createRange();
-            if (document.documentElement())
-                selectedRange->selectNode(*document.documentElement(), IGNORE_EXCEPTION);
+            if (auto* element = document.documentElement())
+                selectedRange->selectNode(*element);
         }
         m_client.speak(plainText(selectedRange.get()));
         break;
@@ -1434,7 +1436,7 @@ void ContextMenuController::showContextMenuAt(Frame* frame, const IntPoint& clic
     clearContextMenu();
     
     // Simulate a click in the middle of the accessibility object.
-    PlatformMouseEvent mouseEvent(clickPoint, clickPoint, RightButton, PlatformEvent::MousePressed, 1, false, false, false, false, currentTime(), ForceAtClick);
+    PlatformMouseEvent mouseEvent(clickPoint, clickPoint, RightButton, PlatformEvent::MousePressed, 1, false, false, false, false, currentTime(), ForceAtClick, NoTap);
     frame->eventHandler().handleMousePressEvent(mouseEvent);
     bool handled = frame->eventHandler().sendContextMenuEvent(mouseEvent);
     if (handled)

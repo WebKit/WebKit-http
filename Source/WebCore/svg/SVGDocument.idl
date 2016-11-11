@@ -19,12 +19,6 @@
  * Boston, MA 02110-1301, USA.
  */
 
-// FIXME: This interface no longer exists in SVG2.
-interface SVGDocument : XMLDocument {
-    readonly attribute SVGSVGElement        rootElement;
-
-    // Overwrite the one in events::DocumentEvent
-    // FIXME: Using "undefined" as default parameter value is wrong.
-    [RaisesException] Event createEvent(optional DOMString eventType = "undefined");
+partial interface Document {
+    readonly attribute SVGSVGElement? rootElement;
 };
-

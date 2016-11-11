@@ -36,7 +36,6 @@
 #include "ScriptCallStackFactory.h"
 #include "ScriptObject.h"
 #include <wtf/CurrentTime.h>
-#include <wtf/text/StringBuilder.h>
 #include <wtf/text/WTFString.h>
 
 namespace Inspector {
@@ -65,6 +64,11 @@ void InspectorConsoleAgent::willDestroyFrontendAndBackend(DisconnectReason)
 {
     String errorString;
     disable(errorString);
+}
+
+void InspectorConsoleAgent::discardValues()
+{
+    m_consoleMessages.clear();
 }
 
 void InspectorConsoleAgent::enable(ErrorString&)

@@ -60,7 +60,6 @@ function installDependenciesWithBrew {
          flex \
          gettext \
          gobject-introspection \
-         icu4c \
          intltool \
          itstool \
          libcroco \
@@ -76,6 +75,16 @@ function installDependenciesWithBrew {
          xz
 }
 
+# If the package $1 is available, prints it. Otherwise prints $2.
+# Useful for handling when a package is renamed on new versions of Debian/Ubuntu.
+function aptIfElse {
+    if apt-cache show $1 &>/dev/null; then
+        echo $1
+    else
+        echo $2
+    fi
+}
+
 function installDependenciesWithApt {
     # These are dependencies necessary for building WebKitGTK+.
     packages=" \
@@ -87,6 +96,7 @@ function installDependenciesWithApt {
         cmake \
         flex \
         gawk \
+        geoclue-2.0 \
         gnome-common \
         gperf \
         gtk-doc-tools \
@@ -96,24 +106,23 @@ function installDependenciesWithApt {
         libedit-dev \
         libenchant-dev \
         libfaad-dev \
-        libgeoclue-dev \
+        $(aptIfElse libgcrypt20-dev libgcrypt11-dev) \
+        $(aptIfElse libgeoclue-2-dev libgeoclue-dev) \
         libgirepository1.0-dev \
         libgl1-mesa-dev \
         libgl1-mesa-glx \
-        libgnutls28-dev \
         libgtk2.0-dev \
         libgtk-3-dev \
+        libgstreamer1.0-dev \
+        libgstreamer-plugins-base1.0-dev \
         libgudev-1.0-dev \
-        libharfbuzz-dev \
         libhyphen-dev \
-        libicu-dev \
         libjpeg-dev \
         libmpg123-dev \
         libnotify-dev \
         libopus-dev \
-        liborc-0.4-dev \
         libpango1.0-dev \
-        libpng12-dev \
+        $(aptIfElse libpng-dev libpng12-dev) \
         libpulse-dev \
         librsvg2-dev \
         libsecret-1-dev \
@@ -126,8 +135,10 @@ function installDependenciesWithApt {
         libxcomposite-dev \
         libxt-dev \
         libxtst-dev \
+        libxslt1-dev \
         libwayland-dev \
         ninja-build \
+        patch \
         ruby \
         xfonts-utils"
 
@@ -137,9 +148,12 @@ function installDependenciesWithApt {
         curl \
         dbus-x11 \
         libapache2-mod-bw \
+        $(aptIfElse libapache2-mod-php7.0 libapache2-mod-php5) \
         libgpg-error-dev \
+        psmisc \
         pulseaudio-utils \
         python-gi \
+        python-psutil \
         ruby \
         ruby-json \
         ruby-highline \
@@ -150,6 +164,7 @@ function installDependenciesWithApt {
     packages="$packages \
         git \
         gobject-introspection \
+        gsettings-desktop-schemas-dev \
         icon-naming-utils \
         libcroco3-dev \
         libdrm-dev \
@@ -158,15 +173,15 @@ function installDependenciesWithApt {
         libevdev-dev \
         libexpat1-dev \
         libgbm-dev \
-        libgcrypt11-dev \
         libgles2-mesa-dev \
+        libgnutls28-dev \
         libgpg-error-dev \
         libjson-glib-dev \
         libinput-dev \
         libmtdev-dev \
-        liborc-0.4-dev \
         libp11-kit-dev \
         libpciaccess-dev \
+        libproxy-dev \
         libssl-dev \
         libtiff5-dev \
         libv4l-dev \
@@ -176,8 +191,6 @@ function installDependenciesWithApt {
         libxkbfile-dev \
         libtool-bin \
         libudev-dev \
-        llvm \
-        llvm-dev \
         python-dev \
         ragel \
         x11proto-bigreqs-dev \
@@ -200,8 +213,6 @@ function installDependenciesWithApt {
         subversion"
 
     apt-get install $packages
-
-    installPHPWithApt
 }
 
 function installDependenciesWithPacman {
@@ -222,6 +233,8 @@ function installDependenciesWithPacman {
         gperf \
         grep \
         groff \
+        gstreamer \
+        gst-plugins-base-libs \
         gzip \
         hyphen \
         libtool \
@@ -243,17 +256,14 @@ function installDependenciesWithPacman {
         gobject-introspection \
         mesa \
         mesa-libgl \
-        gnutls \
         gtk2 \
         gtk3 \
         libsystemd \
-        harfbuzz \
-        harfbuzz-icu \
-        icu \
         libjpeg-turbo \
         mpg123 \
         opus \
         pango \
+        libgcrypt \
         libnotify \
         libpng \
         libpulse \
@@ -267,11 +277,11 @@ function installDependenciesWithPacman {
         libwebp \
         libxcomposite \
         libxt \
+        libxslt \
         libxtst \
         ninja \
         ruby \
         xorg-font-utils \
-        orc \
         wayland"
 
     # These are dependencies necessary for running tests.
@@ -284,8 +294,10 @@ function installDependenciesWithPacman {
         hunspell-en \
         php-apache \
         libgpg-error \
+        psmisc \
         pulseaudio \
         python-gobject \
+        python2-psutil \
         ruby \
         ruby-highline \
         weston \
@@ -296,23 +308,24 @@ function installDependenciesWithPacman {
     packages="$packages \
         expat \
         git \
+        gnutls \
         gobject-introspection \
+        gsettings-desktop-schemas \
         icon-naming-utils \
         libcroco \
         libdrm \
         libepoxy \
         libevdev \
-        libgcrypt \
         libgpg-error \
         libinput \
         p11-kit \
         libpciaccess \
+        libproxy \
         libtiff \
         libxfixes \
         libxfont \
         libxcb \
         libxkbfile \
-        llvm \
         mtdev \
         python2 \
         python2-lxml \
@@ -353,8 +366,6 @@ function installDependenciesWithDnf {
         cmake \
         enchant-devel \
         flex \
-        fontconfig-devel \
-        freetype-devel \
         gcc-c++ \
         geoclue2-devel \
         gettext-devel \
@@ -365,35 +376,34 @@ function installDependenciesWithDnf {
         gtk-doc \
         gtk2-devel \
         gtk3-devel \
-        harfbuzz-devel \
         hyphen-devel \
-	json-glib-devel \
+        intltool \
+        json-glib-devel \
         libXt-devel \
         libXtst-devel \
+        libxslt-devel \
         libedit-devel \
+        libgcrypt-devel \
         libgudev1-devel \
-        libicu-devel \
         libjpeg-turbo-devel \
         libnotify-devel \
         libpng-devel \
         libsecret-devel \
         libsoup-devel \
-	libv4l-devel \
+        libv4l-devel \
         libwebp-devel \
         libwayland-client-devel \
         libwayland-server-devel \
-        llvm \
-        llvm-devel \
-        llvm-static \
         mesa-libGL-devel \
         ninja-build \
-	openssl-devel \
+        openssl-devel \
+        patch \
         pcre-devel \
         perl-Switch \
         perl-version \
-	pulseaudio-libs-devel \
+        pulseaudio-libs-devel \
         python-devel \
-        orc-devel \
+        redhat-rpm-config \
         ruby \
         sqlite-devel"
 
@@ -408,8 +418,10 @@ function installDependenciesWithDnf {
         mod_ssl \
         perl-CGI \
         php \
+        psmisc \
         pulseaudio-utils \
         pygobject3-base \
+        python2-psutil \
         ruby \
         rubygem-json \
         rubygem-highline \
@@ -423,6 +435,8 @@ function installDependenciesWithDnf {
         docbook-utils-pdf \
         git \
         gobject-introspection \
+        gnutls-devel \
+        gsettings-desktop-schemas-devel \
         icon-naming-utils \
         itstool \
         libXfont-devel \
@@ -430,11 +444,11 @@ function installDependenciesWithDnf {
         libdrm-devel \
         libepoxy-devel \
         libevdev-devel
-        libgcrypt-devel \
         libgpg-error-devel \
         libinput-devel \
         libp11-devel \
         libpciaccess-devel \
+        libproxy-devel \
         libtiff-devel \
         libxcb-devel \
         libxkbfile-devel \
@@ -453,17 +467,6 @@ function installDependenciesWithDnf {
         subversion"
 
     dnf install $packages
-}
-
-function installPHPWithApt {
-    if [ -f "/etc/os-release" ]; then
-        ubuntu_version=`grep VERSION_ID /etc/os-release`
-        if [[ $ubuntu_version == *VERSION_ID=\"16.04* ]]; then
-            apt-get install libapache2-mod-php7.0
-        else
-            apt-get install libapache2-mod-php5
-        fi
-    fi
 }
 
 checkInstaller

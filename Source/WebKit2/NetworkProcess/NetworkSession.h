@@ -23,19 +23,12 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef NetworkSession_h
-#define NetworkSession_h
+#pragma once
 
-#if PLATFORM(COCOA)
-OBJC_CLASS NSURLSession;
-OBJC_CLASS NSOperationQueue;
-OBJC_CLASS WKNetworkSessionDelegate;
-#endif
+#if USE(NETWORK_SESSION)
 
-#include "DownloadID.h"
-#include "NetworkDataTask.h"
 #include <WebCore/SessionID.h>
-#include <wtf/HashMap.h>
+#include <wtf/HashSet.h>
 #include <wtf/Ref.h>
 #include <wtf/RefCounted.h>
 
@@ -46,55 +39,31 @@ class NetworkStorageSession;
 namespace WebKit {
 
 class CustomProtocolManager;
+class NetworkDataTask;
 
 class NetworkSession : public RefCounted<NetworkSession> {
-    friend class NetworkDataTask;
 public:
-    enum class Type {
-        Normal,
-        Ephemeral
-    };
-
-    static Ref<NetworkSession> create(Type, WebCore::SessionID, CustomProtocolManager*, std::unique_ptr<WebCore::NetworkStorageSession>);
+    static Ref<NetworkSession> create(WebCore::SessionID, CustomProtocolManager* = nullptr);
     static NetworkSession& defaultSession();
-    ~NetworkSession();
+    virtual ~NetworkSession();
 
-    void invalidateAndCancel();
+    virtual void invalidateAndCancel();
+    virtual void clearCredentials() { };
 
     WebCore::SessionID sessionID() const { return m_sessionID; }
-    WebCore::NetworkStorageSession& networkStorageSession();
+    WebCore::NetworkStorageSession& networkStorageSession() const;
 
-    static void setCustomProtocolManager(CustomProtocolManager*);
-#if PLATFORM(COCOA)
-    static void setSourceApplicationAuditTokenData(RetainPtr<CFDataRef>&&);
-#endif
+    void registerNetworkDataTask(NetworkDataTask& task) { m_dataTaskSet.add(&task); }
+    void unregisterNetworkDataTask(NetworkDataTask& task) { m_dataTaskSet.remove(&task); }
 
-    void clearCredentials();
-
-    NetworkDataTask* dataTaskForIdentifier(NetworkDataTask::TaskIdentifier, WebCore::StoredCredentials);
-
-    void addDownloadID(NetworkDataTask::TaskIdentifier, DownloadID);
-    DownloadID downloadID(NetworkDataTask::TaskIdentifier);
-    DownloadID takeDownloadID(NetworkDataTask::TaskIdentifier);
-    
-private:
-    NetworkSession(Type, WebCore::SessionID, CustomProtocolManager*, std::unique_ptr<WebCore::NetworkStorageSession>);
+protected:
+    NetworkSession(WebCore::SessionID);
 
     WebCore::SessionID m_sessionID;
-    std::unique_ptr<WebCore::NetworkStorageSession> m_networkStorageSession;
 
-    HashMap<NetworkDataTask::TaskIdentifier, NetworkDataTask*> m_dataTaskMapWithCredentials;
-    HashMap<NetworkDataTask::TaskIdentifier, NetworkDataTask*> m_dataTaskMapWithoutCredentials;
-    HashMap<NetworkDataTask::TaskIdentifier, DownloadID> m_downloadMap;
-
-#if PLATFORM(COCOA)
-    RetainPtr<NSURLSession> m_sessionWithCredentialStorage;
-    RetainPtr<WKNetworkSessionDelegate> m_sessionWithCredentialStorageDelegate;
-    RetainPtr<NSURLSession> m_sessionWithoutCredentialStorage;
-    RetainPtr<WKNetworkSessionDelegate> m_sessionWithoutCredentialStorageDelegate;
-#endif
+    HashSet<NetworkDataTask*> m_dataTaskSet;
 };
 
 } // namespace WebKit
 
-#endif // NetworkSession_h
+#endif // USE(NETWORK_SESSION)

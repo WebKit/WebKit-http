@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,9 +23,9 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef JSArrayBufferConstructor_h
-#define JSArrayBufferConstructor_h
+#pragma once
 
+#include "ArrayBuffer.h"
 #include "InternalFunction.h"
 
 namespace JSC {
@@ -38,22 +38,24 @@ public:
     typedef InternalFunction Base;
 
 protected:
-    JSArrayBufferConstructor(VM&, Structure*);
+    JSArrayBufferConstructor(VM&, Structure*, ArrayBufferSharingMode);
     void finishCreation(VM&, JSArrayBufferPrototype*, GetterSetter* speciesSymbol);
 
 public:
-    static JSArrayBufferConstructor* create(VM&, Structure*, JSArrayBufferPrototype*, GetterSetter* speciesSymbol);
+    static JSArrayBufferConstructor* create(VM&, Structure*, JSArrayBufferPrototype*, GetterSetter* speciesSymbol, ArrayBufferSharingMode);
     
     DECLARE_INFO;
     
     static Structure* createStructure(VM&, JSGlobalObject*, JSValue prototype);
+    
+    ArrayBufferSharingMode sharingMode() const { return m_sharingMode; }
 
 protected:
     static ConstructType getConstructData(JSCell*, ConstructData&);
     static CallType getCallData(JSCell*, CallData&);
+
+private:
+    ArrayBufferSharingMode m_sharingMode;
 };
 
 } // namespace JSC
-
-#endif // JSArrayBufferConstructor_h
-

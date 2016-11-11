@@ -196,13 +196,14 @@ static EncodedJSValue JSC_HOST_CALL consoleProtoFuncTrace(ExecState* exec)
 
 static EncodedJSValue JSC_HOST_CALL consoleProtoFuncAssert(ExecState* exec)
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     ConsoleClient* client = exec->lexicalGlobalObject()->consoleClient();
     if (!client)
         return JSValue::encode(jsUndefined());
 
     bool condition = exec->argument(0).toBoolean(exec);
-    if (exec->hadException())
-        return JSValue::encode(jsUndefined());
+    RETURN_IF_EXCEPTION(scope, encodedJSValue());
 
     if (condition)
         return JSValue::encode(jsUndefined());
@@ -225,6 +226,8 @@ static EncodedJSValue JSC_HOST_CALL consoleProtoFuncCount(ExecState* exec)
 
 static EncodedJSValue JSC_HOST_CALL consoleProtoFuncProfile(ExecState* exec)
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     ConsoleClient* client = exec->lexicalGlobalObject()->consoleClient();
     if (!client)
         return JSValue::encode(jsUndefined());
@@ -236,8 +239,7 @@ static EncodedJSValue JSC_HOST_CALL consoleProtoFuncProfile(ExecState* exec)
     }
 
     const String& title(valueToStringWithUndefinedOrNullCheck(exec, exec->argument(0)));
-    if (exec->hadException())
-        return JSValue::encode(jsUndefined());
+    RETURN_IF_EXCEPTION(scope, encodedJSValue());
 
     client->profile(exec, title);
     return JSValue::encode(jsUndefined());
@@ -245,6 +247,8 @@ static EncodedJSValue JSC_HOST_CALL consoleProtoFuncProfile(ExecState* exec)
 
 static EncodedJSValue JSC_HOST_CALL consoleProtoFuncProfileEnd(ExecState* exec)
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     ConsoleClient* client = exec->lexicalGlobalObject()->consoleClient();
     if (!client)
         return JSValue::encode(jsUndefined());
@@ -256,8 +260,7 @@ static EncodedJSValue JSC_HOST_CALL consoleProtoFuncProfileEnd(ExecState* exec)
     }
 
     const String& title(valueToStringWithUndefinedOrNullCheck(exec, exec->argument(0)));
-    if (exec->hadException())
-        return JSValue::encode(jsUndefined());
+    RETURN_IF_EXCEPTION(scope, encodedJSValue());
 
     client->profileEnd(exec, title);
     return JSValue::encode(jsUndefined());
@@ -265,6 +268,8 @@ static EncodedJSValue JSC_HOST_CALL consoleProtoFuncProfileEnd(ExecState* exec)
 
 static EncodedJSValue JSC_HOST_CALL consoleProtoFuncTakeHeapSnapshot(ExecState* exec)
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     ConsoleClient* client = exec->lexicalGlobalObject()->consoleClient();
     if (!client)
         return JSValue::encode(jsUndefined());
@@ -276,8 +281,7 @@ static EncodedJSValue JSC_HOST_CALL consoleProtoFuncTakeHeapSnapshot(ExecState* 
     }
 
     const String& title(valueToStringWithUndefinedOrNullCheck(exec, exec->argument(0)));
-    if (exec->hadException())
-        return JSValue::encode(jsUndefined());
+    RETURN_IF_EXCEPTION(scope, encodedJSValue());
 
     client->takeHeapSnapshot(exec, title);
     return JSValue::encode(jsUndefined());
@@ -292,6 +296,8 @@ static String valueOrDefaultLabelString(ExecState* exec, JSValue value)
 
 static EncodedJSValue JSC_HOST_CALL consoleProtoFuncTime(ExecState* exec)
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     ConsoleClient* client = exec->lexicalGlobalObject()->consoleClient();
     if (!client)
         return JSValue::encode(jsUndefined());
@@ -301,8 +307,7 @@ static EncodedJSValue JSC_HOST_CALL consoleProtoFuncTime(ExecState* exec)
         title = ASCIILiteral("default");
     else {
         title = valueOrDefaultLabelString(exec, exec->argument(0));
-        if (exec->hadException())
-            return JSValue::encode(jsUndefined());
+        RETURN_IF_EXCEPTION(scope, encodedJSValue());
     }
 
     client->time(exec, title);
@@ -311,6 +316,8 @@ static EncodedJSValue JSC_HOST_CALL consoleProtoFuncTime(ExecState* exec)
 
 static EncodedJSValue JSC_HOST_CALL consoleProtoFuncTimeEnd(ExecState* exec)
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     ConsoleClient* client = exec->lexicalGlobalObject()->consoleClient();
     if (!client)
         return JSValue::encode(jsUndefined());
@@ -320,8 +327,7 @@ static EncodedJSValue JSC_HOST_CALL consoleProtoFuncTimeEnd(ExecState* exec)
         title =  ASCIILiteral("default");
     else {
         title = valueOrDefaultLabelString(exec, exec->argument(0));
-        if (exec->hadException())
-            return JSValue::encode(jsUndefined());
+        RETURN_IF_EXCEPTION(scope, encodedJSValue());
     }
 
     client->timeEnd(exec, title);

@@ -30,6 +30,8 @@
 
 #include "IDBCursorInfo.h"
 #include "IDBDatabase.h"
+#include "IDBGetRecordData.h"
+#include "IDBIterateCursorData.h"
 #include "IDBKeyRangeData.h"
 #include "IDBOpenDBRequest.h"
 #include "IDBRequestData.h"
@@ -58,7 +60,7 @@ void IDBConnectionProxy::deref()
     m_connectionToServer.deref();
 }
 
-RefPtr<IDBOpenDBRequest> IDBConnectionProxy::openDatabase(ScriptExecutionContext& context, const IDBDatabaseIdentifier& databaseIdentifier, uint64_t version)
+Ref<IDBOpenDBRequest> IDBConnectionProxy::openDatabase(ScriptExecutionContext& context, const IDBDatabaseIdentifier& databaseIdentifier, uint64_t version)
 {
     RefPtr<IDBOpenDBRequest> request;
     {
@@ -71,10 +73,10 @@ RefPtr<IDBOpenDBRequest> IDBConnectionProxy::openDatabase(ScriptExecutionContext
 
     callConnectionOnMainThread(&IDBConnectionToServer::openDatabase, IDBRequestData(*this, *request));
 
-    return request;
+    return request.releaseNonNull();
 }
 
-RefPtr<IDBOpenDBRequest> IDBConnectionProxy::deleteDatabase(ScriptExecutionContext& context, const IDBDatabaseIdentifier& databaseIdentifier)
+Ref<IDBOpenDBRequest> IDBConnectionProxy::deleteDatabase(ScriptExecutionContext& context, const IDBDatabaseIdentifier& databaseIdentifier)
 {
     RefPtr<IDBOpenDBRequest> request;
     {
@@ -87,7 +89,7 @@ RefPtr<IDBOpenDBRequest> IDBConnectionProxy::deleteDatabase(ScriptExecutionConte
 
     callConnectionOnMainThread(&IDBConnectionToServer::deleteDatabase, IDBRequestData(*this, *request));
 
-    return request;
+    return request.releaseNonNull();
 }
 
 void IDBConnectionProxy::didOpenDatabase(const IDBResultData& resultData)
@@ -118,15 +120,31 @@ void IDBConnectionProxy::completeOpenDBRequest(const IDBResultData& resultData)
 
 void IDBConnectionProxy::createObjectStore(TransactionOperation& operation, const IDBObjectStoreInfo& info)
 {
-    const IDBRequestData requestData(operation);
+    const IDBRequestData requestData { operation };
     saveOperation(operation);
 
     callConnectionOnMainThread(&IDBConnectionToServer::createObjectStore, requestData, info);
 }
 
+void IDBConnectionProxy::renameObjectStore(TransactionOperation& operation, uint64_t objectStoreIdentifier, const String& newName)
+{
+    const IDBRequestData requestData { operation };
+    saveOperation(operation);
+
+    callConnectionOnMainThread(&IDBConnectionToServer::renameObjectStore, requestData, objectStoreIdentifier, newName);
+}
+
+void IDBConnectionProxy::renameIndex(TransactionOperation& operation, uint64_t objectStoreIdentifier, uint64_t indexIdentifier, const String& newName)
+{
+    const IDBRequestData requestData { operation };
+    saveOperation(operation);
+
+    callConnectionOnMainThread(&IDBConnectionToServer::renameIndex, requestData, objectStoreIdentifier, indexIdentifier, newName);
+}
+
 void IDBConnectionProxy::deleteObjectStore(TransactionOperation& operation, const String& objectStoreName)
 {
-    const IDBRequestData requestData(operation);
+    const IDBRequestData requestData { operation };
     saveOperation(operation);
 
     callConnectionOnMainThread(&IDBConnectionToServer::deleteObjectStore, requestData, objectStoreName);
@@ -134,7 +152,7 @@ void IDBConnectionProxy::deleteObjectStore(TransactionOperation& operation, cons
 
 void IDBConnectionProxy::clearObjectStore(TransactionOperation& operation, uint64_t objectStoreIdentifier)
 {
-    const IDBRequestData requestData(operation);
+    const IDBRequestData requestData { operation };
     saveOperation(operation);
 
     callConnectionOnMainThread(&IDBConnectionToServer::clearObjectStore, requestData, objectStoreIdentifier);
@@ -142,7 +160,7 @@ void IDBConnectionProxy::clearObjectStore(TransactionOperation& operation, uint6
 
 void IDBConnectionProxy::createIndex(TransactionOperation& operation, const IDBIndexInfo& info)
 {
-    const IDBRequestData requestData(operation);
+    const IDBRequestData requestData { operation };
     saveOperation(operation);
 
     callConnectionOnMainThread(&IDBConnectionToServer::createIndex, requestData, info);
@@ -150,7 +168,7 @@ void IDBConnectionProxy::createIndex(TransactionOperation& operation, const IDBI
 
 void IDBConnectionProxy::deleteIndex(TransactionOperation& operation, uint64_t objectStoreIdentifier, const String& indexName)
 {
-    const IDBRequestData requestData(operation);
+    const IDBRequestData requestData { operation };
     saveOperation(operation);
 
     callConnectionOnMainThread(&IDBConnectionToServer::deleteIndex, requestData, WTFMove(objectStoreIdentifier), indexName);
@@ -158,23 +176,31 @@ void IDBConnectionProxy::deleteIndex(TransactionOperation& operation, uint64_t o
 
 void IDBConnectionProxy::putOrAdd(TransactionOperation& operation, IDBKeyData&& keyData, const IDBValue& value, const IndexedDB::ObjectStoreOverwriteMode mode)
 {
-    const IDBRequestData requestData(operation);
+    const IDBRequestData requestData { operation };
     saveOperation(operation);
 
     callConnectionOnMainThread(&IDBConnectionToServer::putOrAdd, requestData, keyData, value, mode);
 }
 
-void IDBConnectionProxy::getRecord(TransactionOperation& operation, const IDBKeyRangeData& keyRange)
+void IDBConnectionProxy::getRecord(TransactionOperation& operation, const IDBGetRecordData& getRecordData)
 {
-    const IDBRequestData requestData(operation);
+    const IDBRequestData requestData { operation };
     saveOperation(operation);
 
-    callConnectionOnMainThread(&IDBConnectionToServer::getRecord, requestData, keyRange);
+    callConnectionOnMainThread(&IDBConnectionToServer::getRecord, requestData, getRecordData);
+}
+
+void IDBConnectionProxy::getAllRecords(TransactionOperation& operation, const IDBGetAllRecordsData& getAllRecordsData)
+{
+    const IDBRequestData requestData { operation };
+    saveOperation(operation);
+
+    callConnectionOnMainThread(&IDBConnectionToServer::getAllRecords, requestData, getAllRecordsData);
 }
 
 void IDBConnectionProxy::getCount(TransactionOperation& operation, const IDBKeyRangeData& keyRange)
 {
-    const IDBRequestData requestData(operation);
+    const IDBRequestData requestData { operation };
     saveOperation(operation);
 
     callConnectionOnMainThread(&IDBConnectionToServer::getCount, requestData, keyRange);
@@ -182,7 +208,7 @@ void IDBConnectionProxy::getCount(TransactionOperation& operation, const IDBKeyR
 
 void IDBConnectionProxy::deleteRecord(TransactionOperation& operation, const IDBKeyRangeData& keyRange)
 {
-    const IDBRequestData requestData(operation);
+    const IDBRequestData requestData { operation };
     saveOperation(operation);
 
     callConnectionOnMainThread(&IDBConnectionToServer::deleteRecord, requestData, keyRange);
@@ -190,18 +216,18 @@ void IDBConnectionProxy::deleteRecord(TransactionOperation& operation, const IDB
 
 void IDBConnectionProxy::openCursor(TransactionOperation& operation, const IDBCursorInfo& info)
 {
-    const IDBRequestData requestData(operation);
+    const IDBRequestData requestData { operation };
     saveOperation(operation);
 
     callConnectionOnMainThread(&IDBConnectionToServer::openCursor, requestData, info);
 }
 
-void IDBConnectionProxy::iterateCursor(TransactionOperation& operation, const IDBKeyData& key, unsigned long count)
+void IDBConnectionProxy::iterateCursor(TransactionOperation& operation, const IDBIterateCursorData& data)
 {
-    const IDBRequestData requestData(operation);
+    const IDBRequestData requestData { operation };
     saveOperation(operation);
 
-    callConnectionOnMainThread(&IDBConnectionToServer::iterateCursor, requestData, key, count);
+    callConnectionOnMainThread(&IDBConnectionToServer::iterateCursor, requestData, data);
 }
 
 void IDBConnectionProxy::saveOperation(TransactionOperation& operation)
@@ -223,7 +249,7 @@ void IDBConnectionProxy::completeOperation(const IDBResultData& resultData)
     if (!operation)
         return;
 
-    operation->performCompleteOnOriginThread(resultData);
+    operation->performCompleteOnOriginThread(resultData, WTFMove(operation));
 }
 
 void IDBConnectionProxy::abortOpenAndUpgradeNeeded(uint64_t databaseConnectionIdentifier, const IDBResourceIdentifier& transactionIdentifier)
@@ -384,6 +410,48 @@ void IDBConnectionProxy::didCloseFromServer(uint64_t databaseConnectionIdentifie
 void IDBConnectionProxy::confirmDidCloseFromServer(IDBDatabase& database)
 {
     callConnectionOnMainThread(&IDBConnectionToServer::confirmDidCloseFromServer, database.databaseConnectionIdentifier());
+}
+
+void IDBConnectionProxy::connectionToServerLost(const IDBError& error)
+{
+    Vector<uint64_t> databaseConnectionIdentifiers;
+    {
+        Locker<Lock> locker(m_databaseConnectionMapLock);
+        copyKeysToVector(m_databaseConnectionMap, databaseConnectionIdentifiers);
+    }
+
+    for (auto connectionIdentifier : databaseConnectionIdentifiers) {
+        RefPtr<IDBDatabase> database;
+        {
+            Locker<Lock> locker(m_databaseConnectionMapLock);
+            database = m_databaseConnectionMap.get(connectionIdentifier);
+        }
+
+        if (!database)
+            continue;
+
+        database->performCallbackOnOriginThread(*database, &IDBDatabase::connectionToServerLost, error);
+    }
+
+    Vector<IDBResourceIdentifier> openDBRequestIdentifiers;
+    {
+        Locker<Lock> locker(m_openDBRequestMapLock);
+        copyKeysToVector(m_openDBRequestMap, openDBRequestIdentifiers);
+    }
+
+    for (auto& requestIdentifier : openDBRequestIdentifiers) {
+        RefPtr<IDBOpenDBRequest> request;
+        {
+            Locker<Lock> locker(m_openDBRequestMapLock);
+            request = m_openDBRequestMap.get(requestIdentifier);
+        }
+
+        if (!request)
+            continue;
+
+        auto result = IDBResultData::error(requestIdentifier, error);
+        request->performCallbackOnOriginThread(*request, &IDBOpenDBRequest::requestCompleted, result);
+    }
 }
 
 void IDBConnectionProxy::scheduleMainThreadTasks()

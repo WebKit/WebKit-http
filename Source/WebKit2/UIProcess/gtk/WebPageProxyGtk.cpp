@@ -31,9 +31,10 @@
 #include "PageClientImpl.h"
 #include "WebKitWebViewBasePrivate.h"
 #include "WebPageMessages.h"
+#include "WebPasteboardProxy.h"
 #include "WebProcessProxy.h"
 #include "WebsiteDataStore.h"
-#include <WebCore/UserAgentGtk.h>
+#include <WebCore/UserAgent.h>
 #include <gtk/gtkx.h>
 #include <wtf/NeverDestroyed.h>
 
@@ -79,6 +80,8 @@ void WebPageProxy::editorStateChanged(const EditorState& editorState)
     
     if (editorState.shouldIgnoreCompositionSelectionChange)
         return;
+    if (m_editorState.selectionIsRange)
+        WebPasteboardProxy::singleton().setPrimarySelectionOwner(focusedFrame());
     m_pageClient.selectionDidChange();
 }
 

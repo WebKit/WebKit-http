@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef AirCCallSpecial_h
-#define AirCCallSpecial_h
+#pragma once
 
 #if ENABLE(B3_JIT)
 
@@ -58,8 +57,8 @@ protected:
     bool admitsStack(Inst&, unsigned argIndex) override;
     void reportUsedRegisters(Inst&, const RegisterSet&) override;
     CCallHelpers::Jump generate(Inst&, CCallHelpers&, GenerationContext&) override;
-    const RegisterSet& extraEarlyClobberedRegs(Inst&) override;
-    const RegisterSet& extraClobberedRegs(Inst&) override;
+    RegisterSet extraEarlyClobberedRegs(Inst&) override;
+    RegisterSet extraClobberedRegs(Inst&) override;
 
     void dumpImpl(PrintStream&) const override;
     void deepDumpImpl(PrintStream&) const override;
@@ -83,6 +82,3 @@ private:
 } } } // namespace JSC::B3::Air
 
 #endif // ENABLE(B3_JIT)
-
-#endif // AirCCallSpecial_h
-

@@ -26,8 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef AccessibilityNodeObject_h
-#define AccessibilityNodeObject_h
+#pragma once
 
 #include "AccessibilityObject.h"
 #include "LayoutRect.h"
@@ -37,23 +36,8 @@ namespace WebCore {
     
 class AXObjectCache;
 class Element;
-class Frame;
-class FrameView;
-class HitTestResult;
-class HTMLAnchorElement;
-class HTMLAreaElement;
-class HTMLElement;
 class HTMLLabelElement;
-class HTMLMapElement;
-class HTMLSelectElement;
-class IntPoint;
-class IntSize;
 class Node;
-class RenderListBox;
-class RenderTextControl;
-class RenderView;
-class VisibleSelection;
-class Widget;
 
 enum MouseButtonListenerResultFilter {
     ExcludeBodyElement = 1,
@@ -183,7 +167,9 @@ protected:
     void changeValueByStep(bool increase);
     // This returns true if it's focusable but it's not content editable and it's not a control or ARIA control.
     bool isGenericFocusableElement() const;
+    bool isLabelable() const;
     HTMLLabelElement* labelForElement(Element*) const;
+    String textForLabelElement(Element*) const;
     String ariaAccessibilityDescription() const;
     void ariaLabeledByElements(Vector<Element*>& elements) const;
     String accessibilityDescriptionForElements(Vector<Element*> &elements) const;
@@ -193,6 +179,7 @@ protected:
     Element* menuElementForMenuButton() const;
     Element* menuItemElementForMenu() const;
     AccessibilityObject* menuButtonForMenu() const;
+    AccessibilityObject* captionForFigure() const;
 
 private:
     bool isAccessibilityNodeObject() const final { return true; }
@@ -212,5 +199,3 @@ private:
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_ACCESSIBILITY(AccessibilityNodeObject, isAccessibilityNodeObject())
-
-#endif // AccessibilityNodeObject_h

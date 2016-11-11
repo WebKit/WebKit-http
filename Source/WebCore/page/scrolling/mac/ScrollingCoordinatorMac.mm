@@ -42,7 +42,6 @@
 #include "ScrollingTreeStickyNode.h"
 #include "TiledBacking.h"
 #include <wtf/MainThread.h>
-#include <wtf/PassRefPtr.h>
 
 namespace WebCore {
 
@@ -118,7 +117,7 @@ void ScrollingCoordinatorMac::commitTreeState()
 
     ScrollingThread::dispatch([threadedScrollingTree, unprotectedTreeState] {
         std::unique_ptr<ScrollingStateTree> treeState(unprotectedTreeState);
-        threadedScrollingTree->commitNewTreeState(WTFMove(treeState));
+        threadedScrollingTree->commitTreeState(WTFMove(treeState));
     });
 
     updateTiledScrollingIndicator();

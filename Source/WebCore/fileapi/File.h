@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef File_h
-#define File_h
+#pragma once
 
 #include "Blob.h"
 #include <wtf/Optional.h>
@@ -66,7 +65,7 @@ public:
 
     const String& path() const { return m_path; }
     const String& name() const { return m_name; }
-    double lastModified() const;
+    WEBCORE_EXPORT double lastModified() const;
 
     static String contentTypeForFile(const String& path);
 
@@ -89,7 +88,6 @@ private:
     String m_path;
     String m_name;
 
-    Optional<String> m_overrideFilename;
     Optional<int64_t> m_overrideLastModifiedDate;
 };
 
@@ -98,5 +96,3 @@ private:
 SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::File)
     static bool isType(const WebCore::Blob& blob) { return blob.isFile(); }
 SPECIALIZE_TYPE_TRAITS_END()
-
-#endif // File_h

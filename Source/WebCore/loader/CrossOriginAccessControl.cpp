@@ -51,8 +51,6 @@ bool isOnAccessControlSimpleRequestHeaderWhitelist(HTTPHeaderName name, const St
     case HTTPHeaderName::Accept:
     case HTTPHeaderName::AcceptLanguage:
     case HTTPHeaderName::ContentLanguage:
-    case HTTPHeaderName::Origin:
-    case HTTPHeaderName::Referer:
         return true;
     case HTTPHeaderName::ContentType: {
         // Preflight is required for MIME types that can not be sent via form submission.
@@ -105,30 +103,41 @@ void updateRequestForAccessControl(ResourceRequest& request, SecurityOrigin& sec
     request.setHTTPOrigin(securityOrigin.toString());
 }
 
-ResourceRequest createAccessControlPreflightRequest(const ResourceRequest& request, SecurityOrigin& securityOrigin)
+ResourceRequest createAccessControlPreflightRequest(const ResourceRequest& request, SecurityOrigin& securityOrigin, const String& referrer)
 {
     ResourceRequest preflightRequest(request.url());
     updateRequestForAccessControl(preflightRequest, securityOrigin, DoNotAllowStoredCredentials);
     preflightRequest.setHTTPMethod("OPTIONS");
     preflightRequest.setHTTPHeaderField(HTTPHeaderName::AccessControlRequestMethod, request.httpMethod());
     preflightRequest.setPriority(request.priority());
+    if (!referrer.isNull())
+        preflightRequest.setHTTPReferrer(referrer);
 
     const HTTPHeaderMap& requestHeaderFields = request.httpHeaderFields();
 
     if (!requestHeaderFields.isEmpty()) {
+        Vector<String> unsafeHeaders;
+        for (const auto& headerField : requestHeaderFields.commonHeaders()) {
+            if (!isCrossOriginSafeRequestHeader(headerField.key, headerField.value))
+                unsafeHeaders.append(httpHeaderNameString(headerField.key).toStringWithoutCopying().convertToASCIILowercase());
+        }
+        for (const auto& headerField : requestHeaderFields.uncommonHeaders())
+            unsafeHeaders.append(headerField.key.convertToASCIILowercase());
+
+        std::sort(unsafeHeaders.begin(), unsafeHeaders.end(), WTF::codePointCompareLessThan);
+
         StringBuilder headerBuffer;
-        
+
         bool appendComma = false;
-        for (const auto& headerField : requestHeaderFields) {
+        for (const auto& headerField : unsafeHeaders) {
             if (appendComma)
-                headerBuffer.appendLiteral(", ");
+                headerBuffer.append(',');
             else
                 appendComma = true;
-            
-            headerBuffer.append(headerField.key);
-        }
 
-        preflightRequest.setHTTPHeaderField(HTTPHeaderName::AccessControlRequestHeaders, headerBuffer.toString().convertToASCIILowercase());
+            headerBuffer.append(headerField);
+        }
+        preflightRequest.setHTTPHeaderField(HTTPHeaderName::AccessControlRequestHeaders, headerBuffer.toString());
     }
 
     return preflightRequest;
@@ -136,7 +145,7 @@ ResourceRequest createAccessControlPreflightRequest(const ResourceRequest& reque
 
 bool isValidCrossOriginRedirectionURL(const URL& redirectURL)
 {
-    return SchemeRegistry::shouldTreatURLSchemeAsCORSEnabled(redirectURL.protocol())
+    return SchemeRegistry::shouldTreatURLSchemeAsCORSEnabled(redirectURL.protocol().toStringWithoutCopying())
         && redirectURL.user().isEmpty()
         && redirectURL.pass().isEmpty();
 }
@@ -178,17 +187,6 @@ bool passesAccessControlCheck(const ResourceResponse& response, StoredCredential
     }
 
     return true;
-}
-
-void parseAccessControlExposeHeadersAllowList(const String& headerValue, HTTPHeaderSet& headerSet)
-{
-    Vector<String> headers;
-    headerValue.split(',', false, headers);
-    for (auto& header : headers) {
-        String strippedHeader = header.stripWhiteSpace();
-        if (!strippedHeader.isEmpty())
-            headerSet.add(strippedHeader);
-    }
 }
 
 } // namespace WebCore

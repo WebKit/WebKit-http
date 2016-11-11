@@ -6,12 +6,15 @@ HTMLEvents interfaceName=Event
 AnimationEvent
 BeforeLoadEvent
 BeforeUnloadEvent
+ClipboardEvent
 CloseEvent
 CompositionEvent
 CustomEvent
 ErrorEvent
 FocusEvent
 HashChangeEvent
+InputEvent
+InputEvents interfaceName=InputEvent
 KeyboardEvent
 KeyboardEvents interfaceName=KeyboardEvent
 MessageEvent
@@ -56,9 +59,8 @@ DeviceMotionEvent conditional=DEVICE_ORIENTATION
 DeviceOrientationEvent conditional=DEVICE_ORIENTATION
 DeviceProximityEvent conditional=PROXIMITY_EVENTS
 OrientationEvent interfaceName=Event, conditional=ORIENTATION_EVENTS
-MediaKeyEvent conditional=ENCRYPTED_MEDIA
-MediaKeyMessageEvent conditional=ENCRYPTED_MEDIA_V2
-MediaKeyNeededEvent conditional=ENCRYPTED_MEDIA_V2
+WebKitMediaKeyMessageEvent conditional=LEGACY_ENCRYPTED_MEDIA
+WebKitMediaKeyNeededEvent conditional=LEGACY_ENCRYPTED_MEDIA
 TrackEvent conditional=VIDEO_TRACK
 AutocompleteErrorEvent conditional=REQUEST_AUTOCOMPLETE
 CSSFontFaceLoadEvent conditional=FONT_LOAD_EVENTS
@@ -67,4 +69,6 @@ UIRequestEvent conditional=INDIE_UI
 GestureEvent conditional=IOS_GESTURE_EVENTS|MAC_GESTURE_EVENTS
 WebKitPlaybackTargetAvailabilityEvent conditional=WIRELESS_PLAYBACK_TARGET
 GamepadEvent conditional=GAMEPAD
-
+OverconstrainedErrorEvent conditional=MEDIA_STREAM
+MediaEncryptedEvent conditional=ENCRYPTED_MEDIA
+MediaKeyMessageEvent conditional=ENCRYPTED_MEDIA

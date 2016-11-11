@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef SimpleTypedArrayController_h
-#define SimpleTypedArrayController_h
+#pragma once
 
 #include "Handle.h"
 #include "TypedArrayController.h"
@@ -54,6 +53,7 @@ public:
     
     JSArrayBuffer* toJS(ExecState*, JSGlobalObject*, ArrayBuffer*) override;
     void registerWrapper(JSGlobalObject*, ArrayBuffer*, JSArrayBuffer*) override;
+    bool isAtomicsWaitAllowedOnCurrentThread() override;
 
 private:
     class JSArrayBufferOwner : public WeakHandleOwner {
@@ -66,6 +66,3 @@ private:
 };
 
 } // namespace JSC
-
-#endif // SimpleTypedArrayController_h
-

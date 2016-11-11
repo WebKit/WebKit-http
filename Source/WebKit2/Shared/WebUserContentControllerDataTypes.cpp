@@ -30,14 +30,14 @@
 
 namespace WebKit {
 
-void WebUserScriptData::encode(IPC::ArgumentEncoder& encoder) const
+void WebUserScriptData::encode(IPC::Encoder& encoder) const
 {
     encoder << identifier;
     encoder << worldIdentifier;
     encoder << userScript;
 }
 
-bool WebUserScriptData::decode(IPC::ArgumentDecoder& decoder, WebUserScriptData& data)
+bool WebUserScriptData::decode(IPC::Decoder& decoder, WebUserScriptData& data)
 {
     if (!decoder.decode(data.identifier))
         return false;
@@ -48,14 +48,14 @@ bool WebUserScriptData::decode(IPC::ArgumentDecoder& decoder, WebUserScriptData&
     return true;
 }
 
-void WebUserStyleSheetData::encode(IPC::ArgumentEncoder& encoder) const
+void WebUserStyleSheetData::encode(IPC::Encoder& encoder) const
 {
     encoder << identifier;
     encoder << worldIdentifier;
     encoder << userStyleSheet;
 }
 
-bool WebUserStyleSheetData::decode(IPC::ArgumentDecoder& decoder, WebUserStyleSheetData& data)
+bool WebUserStyleSheetData::decode(IPC::Decoder& decoder, WebUserStyleSheetData& data)
 {
     if (!decoder.decode(data.identifier))
         return false;
@@ -67,14 +67,14 @@ bool WebUserStyleSheetData::decode(IPC::ArgumentDecoder& decoder, WebUserStyleSh
 }
 
 
-void WebScriptMessageHandlerData::encode(IPC::ArgumentEncoder& encoder) const
+void WebScriptMessageHandlerData::encode(IPC::Encoder& encoder) const
 {
     encoder << identifier;
     encoder << worldIdentifier;
     encoder << name;
 }
 
-bool WebScriptMessageHandlerData::decode(IPC::ArgumentDecoder& decoder, WebScriptMessageHandlerData& data)
+bool WebScriptMessageHandlerData::decode(IPC::Decoder& decoder, WebScriptMessageHandlerData& data)
 {
     if (!decoder.decode(data.identifier))
         return false;

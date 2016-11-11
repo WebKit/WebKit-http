@@ -161,7 +161,7 @@ bool RenderWidget::updateWidgetGeometry()
     return setWidgetGeometry(absoluteContentBox);
 }
 
-void RenderWidget::setWidget(PassRefPtr<Widget> widget)
+void RenderWidget::setWidget(RefPtr<Widget>&& widget)
 {
     if (widget == m_widget)
         return;
@@ -241,7 +241,7 @@ void RenderWidget::paintContents(PaintInfo& paintInfo, const LayoutPoint& paintO
         FrameView& frameView = downcast<FrameView>(*m_widget);
         bool runOverlapTests = !frameView.useSlowRepaintsIfNotOverlapped();
         if (paintInfo.overlapTestRequests && runOverlapTests) {
-            ASSERT(!paintInfo.overlapTestRequests->contains(this));
+            ASSERT(!paintInfo.overlapTestRequests->contains(this) || (paintInfo.overlapTestRequests->get(this) == m_widget->frameRect()));
             paintInfo.overlapTestRequests->set(this, m_widget->frameRect());
         }
     }

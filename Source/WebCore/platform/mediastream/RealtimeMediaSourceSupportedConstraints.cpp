@@ -35,7 +35,7 @@
 
 namespace WebCore {
 
-const AtomicString& RealtimeMediaSourceSupportedConstraints::nameForConstraint(MediaConstraintType constraint) const
+const AtomicString& RealtimeMediaSourceSupportedConstraints::nameForConstraint(MediaConstraintType constraint)
 {
     static NeverDestroyed<AtomicString> unknownConstraintName(emptyString());
     static NeverDestroyed<AtomicString> widthConstraintName("width");
@@ -75,9 +75,12 @@ const AtomicString& RealtimeMediaSourceSupportedConstraints::nameForConstraint(M
     case MediaConstraintType::GroupId:
         return groupIdConstraintName;
     }
+
+    ASSERT_NOT_REACHED();
+    return emptyAtom;
 }
 
-MediaConstraintType RealtimeMediaSourceSupportedConstraints::constraintFromName(const String& constraintName) const
+MediaConstraintType RealtimeMediaSourceSupportedConstraints::constraintFromName(const String& constraintName)
 {
     static NeverDestroyed<HashMap<AtomicString, MediaConstraintType>> nameToConstraintMap;
     HashMap<AtomicString, MediaConstraintType>& nameToConstraintMapValue = nameToConstraintMap.get();
@@ -126,6 +129,9 @@ bool RealtimeMediaSourceSupportedConstraints::supportsConstraint(MediaConstraint
     case MediaConstraintType::GroupId:
         return supportsGroupId();
     }
+
+    ASSERT_NOT_REACHED();
+    return false;
 }
 
 } // namespace WebCore

@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2012 Google Inc. All rights reserved.
+ * Copyright (C) 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -37,6 +38,7 @@
 #include "JSDOMBinding.h"
 #include "JSDictionary.h"
 #include "JSFile.h"
+#include "ScriptExecutionContext.h"
 #include "WebKitBlobBuilder.h"
 #include <runtime/Error.h>
 #include <runtime/JSArray.h>
@@ -51,8 +53,8 @@ namespace WebCore {
 JSValue toJSNewlyCreated(JSC::ExecState*, JSDOMGlobalObject* globalObject, Ref<Blob>&& blob)
 {
     if (is<File>(blob))
-        return CREATE_DOM_WRAPPER(globalObject, File, WTFMove(blob));
-    return createWrapper<JSBlob>(globalObject, WTFMove(blob));
+        return createWrapper<File>(globalObject, WTFMove(blob));
+    return createWrapper<Blob>(globalObject, WTFMove(blob));
 }
 
 JSValue toJS(ExecState* state, JSDOMGlobalObject* globalObject, Blob& blob)
@@ -60,52 +62,54 @@ JSValue toJS(ExecState* state, JSDOMGlobalObject* globalObject, Blob& blob)
     return wrap(state, globalObject, blob);
 }
 
-EncodedJSValue JSC_HOST_CALL constructJSBlob(ExecState* exec)
+EncodedJSValue JSC_HOST_CALL constructJSBlob(ExecState& exec)
 {
-    DOMConstructorObject* jsConstructor = jsCast<DOMConstructorObject*>(exec->callee());
+    VM& vm = exec.vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
+    DOMConstructorObject* jsConstructor = jsCast<DOMConstructorObject*>(exec.callee());
+    ASSERT(jsConstructor);
+
     ScriptExecutionContext* context = jsConstructor->scriptExecutionContext();
     if (!context)
-        return throwVMError(exec, createReferenceError(exec, "Blob constructor associated document is unavailable"));
+        return throwConstructorScriptExecutionContextUnavailableError(exec, scope, "Blob");
 
-    if (!exec->argumentCount()) {
-        return JSValue::encode(CREATE_DOM_WRAPPER(jsConstructor->globalObject(), Blob, Blob::create()));
+    if (!exec.argumentCount()) {
+        return JSValue::encode(createWrapper<Blob>(jsConstructor->globalObject(), Blob::create()));
     }
 
     unsigned blobPartsLength = 0;
-    JSObject* blobParts = toJSSequence(exec, exec->argument(0), blobPartsLength);
-    if (exec->hadException())
-        return JSValue::encode(jsUndefined());
+    JSObject* blobParts = toJSSequence(exec, exec.uncheckedArgument(0), blobPartsLength);
+    RETURN_IF_EXCEPTION(scope, encodedJSValue());
     ASSERT(blobParts);
 
     String type;
     String endings = ASCIILiteral("transparent");
 
-    if (exec->argumentCount() > 1) {
-        JSValue blobPropertyBagValue = exec->argument(1);
+    if (exec.argumentCount() > 1) {
+        JSValue blobPropertyBagValue = exec.uncheckedArgument(1);
 
         if (!blobPropertyBagValue.isObject())
-            return throwVMError(exec, createTypeError(exec, "Second argument of the constructor is not of type Object"));
+            return throwVMTypeError(&exec, scope, "Second argument of the constructor is not of type Object");
 
         // Given the above test, this will always yield an object.
-        JSObject* blobPropertyBagObject = blobPropertyBagValue.toObject(exec);
+        JSObject* blobPropertyBagObject = blobPropertyBagValue.toObject(&exec);
 
         // Create the dictionary wrapper from the initializer object.
-        JSDictionary dictionary(exec, blobPropertyBagObject);
+        JSDictionary dictionary(&exec, blobPropertyBagObject);
 
         // Attempt to get the endings property and validate it.
         bool containsEndings = dictionary.get("endings", endings);
-        if (exec->hadException())
-            return JSValue::encode(jsUndefined());
+        RETURN_IF_EXCEPTION(scope, encodedJSValue());
 
         if (containsEndings) {
             if (endings != "transparent" && endings != "native")
-                return throwVMError(exec, createTypeError(exec, "The endings property must be either \"transparent\" or \"native\""));
+                return throwVMTypeError(&exec, scope, "The endings property must be either \"transparent\" or \"native\"");
         }
 
         // Attempt to get the type property.
         dictionary.get("type", type);
-        if (exec->hadException())
-            return JSValue::encode(jsUndefined());
+        RETURN_IF_EXCEPTION(scope, encodedJSValue());
     }
 
     ASSERT(endings == "transparent" || endings == "native");
@@ -113,26 +117,24 @@ EncodedJSValue JSC_HOST_CALL constructJSBlob(ExecState* exec)
     BlobBuilder blobBuilder;
 
     for (unsigned i = 0; i < blobPartsLength; ++i) {
-        JSValue item = blobParts->get(exec, i);
-        if (exec->hadException())
-            return JSValue::encode(jsUndefined());
+        JSValue item = blobParts->get(&exec, i);
+        RETURN_IF_EXCEPTION(scope, encodedJSValue());
 
-        if (ArrayBuffer* arrayBuffer = toArrayBuffer(item))
+        if (ArrayBuffer* arrayBuffer = toUnsharedArrayBuffer(item))
             blobBuilder.append(arrayBuffer);
-        else if (auto arrayBufferView = toArrayBufferView(item))
+        else if (auto arrayBufferView = toUnsharedArrayBufferView(item))
             blobBuilder.append(WTFMove(arrayBufferView));
         else if (Blob* blob = JSBlob::toWrapped(item))
             blobBuilder.append(blob);
         else {
-            String string = item.toString(exec)->value(exec);
-            if (exec->hadException())
-                return JSValue::encode(jsUndefined());
+            String string = item.toWTFString(&exec);
+            RETURN_IF_EXCEPTION(scope, encodedJSValue());
             blobBuilder.append(string, endings);
         }
     }
 
     auto blob = Blob::create(blobBuilder.finalize(), Blob::normalizedContentType(type));
-    return JSValue::encode(CREATE_DOM_WRAPPER(jsConstructor->globalObject(), Blob, WTFMove(blob)));
+    return JSValue::encode(createWrapper<Blob>(jsConstructor->globalObject(), WTFMove(blob)));
 }
 
 } // namespace WebCore

@@ -46,7 +46,7 @@ inline static const AtomicString* linkAttribute(const Element& element)
     if (!element.isLink())
         return 0;
     if (element.isHTMLElement())
-        return &element.fastGetAttribute(HTMLNames::hrefAttr);
+        return &element.attributeWithoutSynchronization(HTMLNames::hrefAttr);
     if (element.isSVGElement())
         return &element.getAttribute(XLinkNames::hrefAttr);
     return 0;
@@ -63,7 +63,7 @@ void VisitedLinkState::invalidateStyleForAllLinks()
         return;
     for (auto& element : descendantsOfType<Element>(m_document)) {
         if (element.isLink())
-            element.setNeedsStyleRecalc();
+            element.invalidateStyleForSubtree();
     }
 }
 
@@ -82,7 +82,7 @@ void VisitedLinkState::invalidateStyleForLink(LinkHash linkHash)
         return;
     for (auto& element : descendantsOfType<Element>(m_document)) {
         if (linkHashForElement(m_document, element) == linkHash)
-            element.setNeedsStyleRecalc();
+            element.invalidateStyleForSubtree();
     }
 }
 

@@ -19,27 +19,16 @@
  */
 
 [
+    CustomCall,
     CustomNamedSetter,
     JSCustomGetOwnPropertySlotAndDescriptor,
-    CustomCall,
 ] interface HTMLEmbedElement : HTMLElement {
-[Reflect] attribute DOMString align;
-#if defined(LANGUAGE_JAVASCRIPT) && LANGUAGE_JAVASCRIPT
-[Reflect] attribute DOMString height;
-#else
-[Reflect] attribute long height;
-#endif
-[Reflect] attribute DOMString name;
-[Reflect, URL] attribute DOMString src;
-[Reflect] attribute DOMString type;
-#if defined(LANGUAGE_JAVASCRIPT) && LANGUAGE_JAVASCRIPT
-[Reflect] attribute DOMString width;
-#else
-[Reflect] attribute long width;
-#endif
+    [Reflect] attribute DOMString align;
+    [Reflect] attribute DOMString height;
+    [Reflect] attribute DOMString name;
+    [Reflect, URL] attribute USVString src;
+    [Reflect] attribute DOMString type;
+    [Reflect] attribute DOMString width;
 
-#if !defined(LANGUAGE_OBJECTIVE_C) || !LANGUAGE_OBJECTIVE_C
-[CheckSecurityForNode, RaisesException] SVGDocument getSVGDocument();
-#endif
+    [CheckSecurityForNode, MayThrowException] Document getSVGDocument();
 };
-

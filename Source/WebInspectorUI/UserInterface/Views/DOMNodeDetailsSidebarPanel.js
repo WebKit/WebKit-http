@@ -32,6 +32,7 @@ WebInspector.DOMNodeDetailsSidebarPanel = class DOMNodeDetailsSidebarPanel exten
         WebInspector.domTreeManager.addEventListener(WebInspector.DOMTreeManager.Event.AttributeModified, this._attributesChanged, this);
         WebInspector.domTreeManager.addEventListener(WebInspector.DOMTreeManager.Event.AttributeRemoved, this._attributesChanged, this);
         WebInspector.domTreeManager.addEventListener(WebInspector.DOMTreeManager.Event.CharacterDataModified, this._characterDataModified, this);
+        WebInspector.domTreeManager.addEventListener(WebInspector.DOMTreeManager.Event.CustomElementStateChanged, this._customElementStateChanged, this);
 
         this.element.classList.add("dom-node");
 
@@ -73,6 +74,8 @@ WebInspector.DOMNodeDetailsSidebarPanel = class DOMNodeDetailsSidebarPanel exten
             this._accessibilityNodeExpandedRow = new WebInspector.DetailsSectionSimpleRow(WebInspector.UIString("Expanded"));
             this._accessibilityNodeFlowsRow = new WebInspector.DetailsSectionSimpleRow(WebInspector.UIString("Flows"));
             this._accessibilityNodeFocusedRow = new WebInspector.DetailsSectionSimpleRow(WebInspector.UIString("Focused"));
+            this._accessibilityNodeHeadingLevelRow = new WebInspector.DetailsSectionSimpleRow(WebInspector.UIString("Heading Level"));
+            this._accessibilityNodehierarchyLevelRow = new WebInspector.DetailsSectionSimpleRow(WebInspector.UIString("Hierarchy Level"));
             this._accessibilityNodeIgnoredRow = new WebInspector.DetailsSectionSimpleRow(WebInspector.UIString("Ignored"));
             this._accessibilityNodeInvalidRow = new WebInspector.DetailsSectionSimpleRow(WebInspector.UIString("Invalid"));
             this._accessibilityNodeLiveRegionStatusRow = new WebInspector.DetailsSectionSimpleRow(WebInspector.UIString("Live"));
@@ -94,19 +97,14 @@ WebInspector.DOMNodeDetailsSidebarPanel = class DOMNodeDetailsSidebarPanel exten
         }
     }
 
-    // Public
+    // Protected
 
-    refresh()
+    layout()
     {
-        var domNode = this.domNode;
-        if (!domNode)
+        if (!this.domNode)
             return;
 
-        this._identityNodeTypeRow.value = this._nodeTypeDisplayName();
-        this._identityNodeNameRow.value = domNode.nodeNameInCorrectCase();
-        this._identityNodeValueRow.value = domNode.nodeValue();
-        this._identityNodeContentSecurityPolicyHashRow.value = domNode.contentSecurityPolicyHash();
-
+        this._refreshIdentity();
         this._refreshAttributes();
         this._refreshProperties();
         this._refreshEventListeners();
@@ -118,6 +116,15 @@ WebInspector.DOMNodeDetailsSidebarPanel = class DOMNodeDetailsSidebarPanel exten
     _accessibilitySupported()
     {
         return window.DOMAgent && DOMAgent.getAccessibilityPropertiesForNode;
+    }
+
+    _refreshIdentity()
+    {
+        const domNode = this.domNode;
+        this._identityNodeTypeRow.value = this._nodeTypeDisplayName();
+        this._identityNodeNameRow.value = domNode.nodeNameInCorrectCase();
+        this._identityNodeValueRow.value = domNode.nodeValue();
+        this._identityNodeContentSecurityPolicyHashRow.value = domNode.contentSecurityPolicyHash();
     }
 
     _refreshAttributes()
@@ -207,7 +214,7 @@ WebInspector.DOMNodeDetailsSidebarPanel = class DOMNodeDetailsSidebarPanel exten
                 objectTree.showOnlyProperties();
 
                 var detailsSection = new WebInspector.DetailsSection(prototype.description.hash + "-prototype-properties", title, null, null, true);
-                detailsSection.groups[0].rows = [new WebInspector.DetailsSectionPropertiesRow(objectTree)];
+                detailsSection.groups[0].rows = [new WebInspector.ObjectPropertiesDetailSectionRow(objectTree, detailsSection)];
 
                 element.appendChild(detailsSection.element);
             }
@@ -302,15 +309,15 @@ WebInspector.DOMNodeDetailsSidebarPanel = class DOMNodeDetailsSidebarPanel exten
         }
 
         function linkListForNodeIds(nodeIds) {
-            if (!nodeIds) 
+            if (!nodeIds)
                 return null;
 
             const itemsToShow = 5;
             let hasLinks = false;
             let listItemCount = 0;
             let container = document.createElement("div");
-            container.classList.add("list-container")
-            let linkList = container.createChild("ul", "node-link-list");            
+            container.classList.add("list-container");
+            let linkList = container.createChild("ul", "node-link-list");
             let initiallyHiddenItems = [];
             for (let nodeId of nodeIds) {
                 let node = WebInspector.domTreeManager.nodeForId(nodeId);
@@ -320,10 +327,10 @@ WebInspector.DOMNodeDetailsSidebarPanel = class DOMNodeDetailsSidebarPanel exten
                 hasLinks = true;
                 let li = linkList.createChild("li");
                 li.appendChild(link);
-                if (listItemCount >= itemsToShow) {  
+                if (listItemCount >= itemsToShow) {
                     li.hidden = true;
                     initiallyHiddenItems.push(li);
-                } 
+                }
                 listItemCount++;
             }
             container.appendChild(linkList);
@@ -331,11 +338,11 @@ WebInspector.DOMNodeDetailsSidebarPanel = class DOMNodeDetailsSidebarPanel exten
                 let moreNodesButton = container.createChild("button", "expand-list-button");
                 moreNodesButton.textContent = WebInspector.UIString("%d More\u2026").format(listItemCount - itemsToShow);
                 moreNodesButton.addEventListener("click", () => {
-                    initiallyHiddenItems.forEach((element) => element.hidden = false);
+                    initiallyHiddenItems.forEach((element) => { element.hidden = false; });
                     moreNodesButton.remove();
                 });
             }
-            if (hasLinks) 
+            if (hasLinks)
                 return container;
 
             return null;
@@ -365,9 +372,8 @@ WebInspector.DOMNodeDetailsSidebarPanel = class DOMNodeDetailsSidebarPanel exten
 
                 // Accessibility tree children are not a 1:1 mapping with DOM tree children.
                 var childNodeLinkList = linkListForNodeIds(accessibilityProperties.childNodeIds);
-                
                 var controlledNodeLinkList = linkListForNodeIds(accessibilityProperties.controlledNodeIds);
-                
+
                 var current = "";
                 switch (accessibilityProperties.current) {
                 case DOMAgent.AccessibilityPropertiesCurrent.True:
@@ -391,12 +397,12 @@ WebInspector.DOMNodeDetailsSidebarPanel = class DOMNodeDetailsSidebarPanel exten
                 default:
                     current = "";
                 }
-                
+
                 var disabled = booleanValueToLocalizedStringIfTrue("disabled");
                 var expanded = booleanValueToLocalizedStringIfPropertyDefined("expanded");
                 var flowedNodeLinkList = linkListForNodeIds(accessibilityProperties.flowedNodeIds);
                 var focused = booleanValueToLocalizedStringIfPropertyDefined("focused");
-                
+
                 var ignored = "";
                 if (accessibilityProperties.ignored) {
                     ignored = WebInspector.UIString("Yes");
@@ -419,7 +425,7 @@ WebInspector.DOMNodeDetailsSidebarPanel = class DOMNodeDetailsSidebarPanel exten
                 var liveRegionStatus = "";
                 var liveRegionStatusNode = null;
                 var liveRegionStatusToken = accessibilityProperties.liveRegionStatus;
-                switch(liveRegionStatusToken) {
+                switch (liveRegionStatusToken) {
                 case DOMAgent.AccessibilityPropertiesLiveRegionStatus.Assertive:
                     liveRegionStatus = WebInspector.UIString("Assertive");
                     break;
@@ -435,7 +441,7 @@ WebInspector.DOMNodeDetailsSidebarPanel = class DOMNodeDetailsSidebarPanel exten
                     if (liveRegionRelevant && liveRegionRelevant.length) {
                         // @aria-relevant="all" is exposed as ["additions","removals","text"], in order.
                         // This order is controlled in WebCore and expected in WebInspectorUI.
-                        if (liveRegionRelevant.length === 3 
+                        if (liveRegionRelevant.length === 3
                             && liveRegionRelevant[0] === DOMAgent.LiveRegionRelevant.Additions
                             && liveRegionRelevant[1] === DOMAgent.LiveRegionRelevant.Removals
                             && liveRegionRelevant[2] === DOMAgent.LiveRegionRelevant.Text)
@@ -490,18 +496,45 @@ WebInspector.DOMNodeDetailsSidebarPanel = class DOMNodeDetailsSidebarPanel exten
                 var required = booleanValueToLocalizedStringIfPropertyDefined("required");
 
                 var role = accessibilityProperties.role;
+                let hasPopup = accessibilityProperties.isPopupButton;
+                let roleType = null;
+                let buttonType = null;
+                let buttonTypePopupString = WebInspector.UIString("popup");
+                let buttonTypeToggleString = WebInspector.UIString("toggle")
+                let buttonTypePopupToggleString = WebInspector.UIString("popup, toggle")
+
                 if (role === "" || role === "unknown")
                     role = WebInspector.UIString("No exact ARIA role match.");
                 else if (role) {
+                    if (role === "button") {
+                        if (pressed)
+                            buttonType = buttonTypeToggleString;
+
+                        // In cases where an element is a toggle button, but it also has
+                        // aria-haspopup, we concatenate the button types. If it is just
+                        // a popup button, we only include "popup".
+                        if (hasPopup)
+                            buttonType = buttonType ? buttonTypePopupToggleString : buttonTypePopupString;
+                    }
+
                     if (!domNode.getAttribute("role"))
-                        role = WebInspector.UIString("%s (default)").format(role);
-                    else if (domNode.getAttribute("role") !== role)
-                        role = WebInspector.UIString("%s (computed)").format(role);
+                        roleType = WebInspector.UIString("default");
+                    else if (buttonType || domNode.getAttribute("role") !== role)
+                        roleType = WebInspector.UIString("computed");
+
+                    if (buttonType && roleType)
+                        role = WebInspector.UIString("%s (%s, %s)").format(role, buttonType, roleType);
+                    else if (roleType || buttonType) {
+                        let extraInfo = roleType || buttonType;
+                        role = WebInspector.UIString("%s (%s)").format(role, extraInfo);
+                    }
                 }
 
                 var selected = booleanValueToLocalizedStringIfTrue("selected");
                 var selectedChildNodeLinkList = linkListForNodeIds(accessibilityProperties.selectedChildNodeIds);
 
+                var headingLevel = accessibilityProperties.headingLevel;
+                var hierarchyLevel = accessibilityProperties.hierarchyLevel;
                 // Assign all the properties to their respective views.
                 this._accessibilityNodeActiveDescendantRow.value = activeDescendantLink || "";
                 this._accessibilityNodeBusyRow.value = busy;
@@ -513,11 +546,13 @@ WebInspector.DOMNodeDetailsSidebarPanel = class DOMNodeDetailsSidebarPanel exten
                 this._accessibilityNodeExpandedRow.value = expanded;
                 this._accessibilityNodeFlowsRow.value = flowedNodeLinkList || "";
                 this._accessibilityNodeFocusedRow.value = focused;
+                this._accessibilityNodeHeadingLevelRow.value = headingLevel || "";
+                this._accessibilityNodehierarchyLevelRow.value = hierarchyLevel || "";
                 this._accessibilityNodeIgnoredRow.value = ignored;
                 this._accessibilityNodeInvalidRow.value = invalid;
                 this._accessibilityNodeLabelRow.value = label;
                 this._accessibilityNodeLiveRegionStatusRow.value = liveRegionStatusNode || liveRegionStatus;
-                
+
                 // Row label changes based on whether the value is a delegate node link.
                 this._accessibilityNodeMouseEventRow.label = mouseEventNodeLink ? WebInspector.UIString("Click Listener") : WebInspector.UIString("Clickable");
                 this._accessibilityNodeMouseEventRow.value = mouseEventNodeLink || mouseEventTextValue;
@@ -533,7 +568,7 @@ WebInspector.DOMNodeDetailsSidebarPanel = class DOMNodeDetailsSidebarPanel exten
                 this._accessibilityNodeSelectedChildrenRow.label = WebInspector.UIString("Selected Items");
                 this._accessibilityNodeSelectedChildrenRow.value = selectedChildNodeLinkList || "";
                 if (selectedChildNodeLinkList && accessibilityProperties.selectedChildNodeIds.length === 1)
-                    this._accessibilityNodeSelectedChildrenRow.label = WebInspector.UIString("Selected Item");                
+                    this._accessibilityNodeSelectedChildrenRow.label = WebInspector.UIString("Selected Item");
 
                 // Display order, not alphabetical as above.
                 this._accessibilityGroup.rows = [
@@ -550,6 +585,8 @@ WebInspector.DOMNodeDetailsSidebarPanel = class DOMNodeDetailsSidebarPanel exten
                     this._accessibilityNodeFlowsRow,
                     this._accessibilityNodeMouseEventRow,
                     this._accessibilityNodeFocusedRow,
+                    this._accessibilityNodeHeadingLevelRow,
+                    this._accessibilityNodehierarchyLevelRow,
                     this._accessibilityNodeBusyRow,
                     this._accessibilityNodeLiveRegionStatusRow,
                     this._accessibilityNodeCurrentRow,
@@ -593,11 +630,21 @@ WebInspector.DOMNodeDetailsSidebarPanel = class DOMNodeDetailsSidebarPanel exten
         this._identityNodeValueRow.value = this.domNode.nodeValue();
     }
 
+    _customElementStateChanged(event)
+    {
+        if (event.data.node !== this.domNode)
+            return;
+        this._refreshIdentity();
+    }
+
     _nodeTypeDisplayName()
     {
         switch (this.domNode.nodeType()) {
-        case Node.ELEMENT_NODE:
-            return WebInspector.UIString("Element");
+        case Node.ELEMENT_NODE: {
+            const nodeName = WebInspector.UIString("Element");
+            const state = this._customElementState();
+            return state === null ? nodeName : `${nodeName} (${state})`;
+        }
         case Node.TEXT_NODE:
             return WebInspector.UIString("Text Node");
         case Node.COMMENT_NODE:
@@ -616,6 +663,23 @@ WebInspector.DOMNodeDetailsSidebarPanel = class DOMNodeDetailsSidebarPanel exten
             console.error("Unknown DOM node type: ", this.domNode.nodeType());
             return this.domNode.nodeType();
         }
+    }
+
+    _customElementState()
+    {
+        const state = this.domNode.customElementState();
+        switch (state) {
+        case WebInspector.DOMNode.CustomElementState.Builtin:
+            return null;
+        case WebInspector.DOMNode.CustomElementState.Custom:
+            return WebInspector.UIString("Custom");
+        case WebInspector.DOMNode.CustomElementState.Waiting:
+            return WebInspector.UIString("Waiting to be upgraded");
+        case WebInspector.DOMNode.CustomElementState.Failed:
+            return WebInspector.UIString("Failed to upgrade");
+        }
+        console.error("Unknown DOM custom element state: ", state);
+        return null;
     }
 
     _createAttributesDataGrid()

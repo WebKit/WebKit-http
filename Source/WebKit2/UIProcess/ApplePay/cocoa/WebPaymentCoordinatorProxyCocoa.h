@@ -27,8 +27,7 @@
 
 #if ENABLE(APPLE_PAY)
 
-#import <PassKit/PKPaymentAuthorizationViewController.h>
-#import <PassKit/PKPaymentAuthorizationViewController_Private.h>
+#import <WebCore/PassKitSPI.h>
 #import <WebCore/PaymentHeaders.h>
 #import <wtf/BlockPtr.h>
 
@@ -37,9 +36,10 @@ class URL;
 }
 
 namespace WebKit {
+class WebPageProxy;
 class WebPaymentCoordinatorProxy;
 
-RetainPtr<PKPaymentRequest> toPKPaymentRequest(const WebCore::URL& originatingURL, const Vector<WebCore::URL>& linkIconURLs, const WebCore::PaymentRequest&);
+RetainPtr<PKPaymentRequest> toPKPaymentRequest(WebPageProxy&, const WebCore::URL& originatingURL, const Vector<WebCore::URL>& linkIconURLs, const WebCore::PaymentRequest&);
 
 }
 
@@ -51,7 +51,7 @@ RetainPtr<PKPaymentRequest> toPKPaymentRequest(const WebCore::URL& originatingUR
 
     BlockPtr<void (PKPaymentMerchantSession *, NSError *)> _sessionBlock;
 
-    BOOL _authorized;
+    BOOL _didReachFinalState;
     BlockPtr<void (PKPaymentAuthorizationStatus)> _paymentAuthorizedCompletion;
     BlockPtr<void (NSArray *)> _didSelectPaymentMethodCompletion;
     BlockPtr<void (PKPaymentAuthorizationStatus, NSArray *)> _didSelectShippingMethodCompletion;

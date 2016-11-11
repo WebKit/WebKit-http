@@ -29,8 +29,8 @@
 #include "CacheValidation.h"
 #include "CertificateInfo.h"
 #include "HTTPHeaderMap.h"
+#include "NetworkLoadTiming.h"
 #include "ParsedContentRange.h"
-#include "ResourceLoadTiming.h"
 #include "URL.h"
 
 namespace WebCore {
@@ -57,12 +57,16 @@ public:
         String httpStatusText;
         String httpVersion;
         HTTPHeaderMap httpHeaderFields;
-        ResourceLoadTiming resourceLoadTiming;
+        NetworkLoadTiming networkLoadTiming;
         Type type;
+        bool isRedirected;
     };
 
     CrossThreadData crossThreadData() const;
     static ResourceResponse fromCrossThreadData(CrossThreadData&&);
+
+    enum class Tainting { Basic, Cors, Opaque };
+    static ResourceResponse filterResponse(const ResourceResponse&, Tainting);
 
     bool isNull() const { return m_isNull; }
     WEBCORE_EXPORT bool isHTTP() const;
@@ -95,7 +99,7 @@ public:
     String httpHeaderField(const String& name) const;
     WEBCORE_EXPORT String httpHeaderField(HTTPHeaderName) const;
     WEBCORE_EXPORT void setHTTPHeaderField(const String& name, const String& value);
-    void setHTTPHeaderField(HTTPHeaderName, const String& value);
+    WEBCORE_EXPORT void setHTTPHeaderField(HTTPHeaderName, const String& value);
 
     void addHTTPHeaderField(HTTPHeaderName, const String& value);
     void addHTTPHeaderField(const String& name, const String& value);
@@ -111,7 +115,7 @@ public:
     WEBCORE_EXPORT String suggestedFilename() const;
 
     WEBCORE_EXPORT void includeCertificateInfo() const;
-    WEBCORE_EXPORT const Optional<CertificateInfo>& certificateInfo() const { return m_certificateInfo; };
+    const Optional<CertificateInfo>& certificateInfo() const { return m_certificateInfo; };
     
     // These functions return parsed values of the corresponding response headers.
     // NaN means that the header was not present or had invalid value.
@@ -131,7 +135,7 @@ public:
     WEBCORE_EXPORT Source source() const;
     WEBCORE_EXPORT void setSource(Source);
 
-    ResourceLoadTiming& resourceLoadTiming() const { return m_resourceLoadTiming; }
+    NetworkLoadTiming& networkLoadTiming() const { return m_networkLoadTiming; }
 
     // The ResourceResponse subclass may "shadow" this method to provide platform-specific memory usage information
     unsigned memoryUsage() const
@@ -183,7 +187,7 @@ protected:
     AtomicString m_httpStatusText;
     AtomicString m_httpVersion;
     HTTPHeaderMap m_httpHeaderFields;
-    mutable ResourceLoadTiming m_resourceLoadTiming;
+    mutable NetworkLoadTiming m_networkLoadTiming;
 
     mutable Optional<CertificateInfo> m_certificateInfo;
 
@@ -228,7 +232,12 @@ void ResourceResponseBase::encode(Encoder& encoder) const
     encoder << m_httpStatusText;
     encoder << m_httpVersion;
     encoder << m_httpHeaderFields;
-    encoder << m_resourceLoadTiming;
+
+    // We don't want to put the networkLoadTiming info
+    // into the disk cache, because we will never use the old info.
+    if (Encoder::isIPCEncoder)
+        encoder << m_networkLoadTiming;
+
     encoder << m_httpStatusCode;
     encoder << m_certificateInfo;
     encoder.encodeEnum(m_source);
@@ -262,7 +271,8 @@ bool ResourceResponseBase::decode(Decoder& decoder, ResourceResponseBase& respon
         return false;
     if (!decoder.decode(response.m_httpHeaderFields))
         return false;
-    if (!decoder.decode(response.m_resourceLoadTiming))
+    // The networkLoadTiming info is only send over IPC and not stored in disk cache.
+    if (Decoder::isIPCDecoder && !decoder.decode(response.m_networkLoadTiming))
         return false;
     if (!decoder.decode(response.m_httpStatusCode))
         return false;

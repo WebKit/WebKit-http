@@ -34,10 +34,13 @@
 
 namespace WebCore {
 
-class DOMCSSNamespace : public RefCounted<DOMCSSNamespace> {
+class Document;
+
+class DOMCSSNamespace final : public RefCounted<DOMCSSNamespace> {
 public:
-    static bool supports(const String& property, const String& value);
-    static bool supports(const String& conditionText);
+    static bool supports(Document&, const String& property, const String& value);
+    static bool supports(Document&, const String& conditionText);
+    static String escape(const String& ident);
 };
 
 }

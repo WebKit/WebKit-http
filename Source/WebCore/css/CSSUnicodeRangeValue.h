@@ -27,11 +27,10 @@
 #define CSSUnicodeRangeValue_h
 
 #include "CSSValue.h"
-#include <wtf/PassRefPtr.h>
 
 namespace WebCore {
 
-class CSSUnicodeRangeValue : public CSSValue {
+class CSSUnicodeRangeValue final : public CSSValue {
 public:
     static Ref<CSSUnicodeRangeValue> create(UChar32 from, UChar32 to)
     {

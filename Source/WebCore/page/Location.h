@@ -26,15 +26,12 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef Location_h
-#define Location_h
+#pragma once
 
 #include "DOMStringList.h"
 #include "DOMWindowProperty.h"
+#include "ExceptionOr.h"
 #include "ScriptWrappable.h"
-#include <wtf/PassRefPtr.h>
-#include <wtf/RefCounted.h>
-#include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
@@ -55,7 +52,7 @@ public:
     void replace(DOMWindow& activeWindow, DOMWindow& firstWindow, const String&);
     void reload(DOMWindow& activeWindow);
 
-    void setProtocol(DOMWindow& activeWindow, DOMWindow& firstWindow, const String&, ExceptionCode&);
+    ExceptionOr<void> setProtocol(DOMWindow& activeWindow, DOMWindow& firstWindow, const String&);
     String protocol() const;
     void setHost(DOMWindow& activeWindow, DOMWindow& firstWindow, const String&);
     String host() const;
@@ -73,7 +70,7 @@ public:
 
     String toString() const { return href(); }
 
-    Ref<DOMStringList> ancestorOrigins() const;
+    Vector<String> ancestorOrigins() const;
 
 private:
     explicit Location(Frame*);
@@ -84,5 +81,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // Location_h

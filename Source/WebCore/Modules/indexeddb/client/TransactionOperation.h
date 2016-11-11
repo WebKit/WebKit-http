@@ -62,14 +62,17 @@ public:
         m_performFunction = { };
     }
 
-    void performCompleteOnOriginThread(const IDBResultData& data)
+    void performCompleteOnOriginThread(const IDBResultData& data, RefPtr<TransactionOperation>&& lastRef)
     {
         ASSERT(isMainThread());
 
         if (m_originThreadID == currentThread())
             completed(data);
-        else
+        else {
             m_transaction->performCallbackOnOriginThread(*this, &TransactionOperation::completed, data);
+            m_transaction->callFunctionOnOriginThread([lastRef = WTFMove(lastRef)]() {
+            });
+        }
     }
 
     void completed(const IDBResultData& data)
@@ -188,6 +191,19 @@ RefPtr<TransactionOperation> createTransactionOperation(
     const P2& parameter2)
 {
     auto operation = new TransactionOperationImpl<MP1, MP2>(transaction, complete, perform, parameter1, parameter2);
+    return adoptRef(operation);
+}
+
+template<typename MP1, typename P1, typename MP2, typename P2, typename MP3, typename P3>
+RefPtr<TransactionOperation> createTransactionOperation(
+    IDBTransaction& transaction,
+    void (IDBTransaction::*complete)(const IDBResultData&),
+    void (IDBTransaction::*perform)(TransactionOperation&, MP1, MP2, MP3),
+    const P1& parameter1,
+    const P2& parameter2,
+    const P3& parameter3)
+{
+    auto operation = new TransactionOperationImpl<MP1, MP2, MP3>(transaction, complete, perform, parameter1, parameter2, parameter3);
     return adoptRef(operation);
 }
 

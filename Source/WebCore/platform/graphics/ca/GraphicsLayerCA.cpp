@@ -27,6 +27,8 @@
 
 #include "GraphicsLayerCA.h"
 
+#if USE(CA)
+
 #include "Animation.h"
 #include "DisplayListRecorder.h"
 #include "DisplayListReplayer.h"
@@ -66,6 +68,11 @@
 #if PLATFORM(WIN)
 #include "PlatformCAAnimationWin.h"
 #include "PlatformCALayerWin.h"
+#endif
+
+#if COMPILER(MSVC)
+// See https://msdn.microsoft.com/en-us/library/1wea5zwe.aspx
+#pragma warning(disable: 4701)
 #endif
 
 namespace WebCore {
@@ -779,6 +786,7 @@ bool GraphicsLayerCA::setBackdropFilters(const FilterOperations& filterOperation
         // FIXME: This would clear the backdrop filters if we had a software implementation.
         clearBackdropFilters();
     }
+
     noteLayerPropertyChanged(BackdropFiltersChanged);
     return canCompositeFilters;
 }
@@ -996,7 +1004,7 @@ void GraphicsLayerCA::setContentsToSolidColor(const Color& color)
     
     bool contentsLayerChanged = false;
 
-    if (m_contentsSolidColor.isValid() && m_contentsSolidColor.alpha()) {
+    if (m_contentsSolidColor.isVisible()) {
         if (!m_contentsLayer || m_contentsLayerPurpose != ContentsLayerForBackgroundColor) {
             m_contentsLayerPurpose = ContentsLayerForBackgroundColor;
             m_contentsLayer = createPlatformCALayer(PlatformCALayer::LayerTypeLayer, this);
@@ -1364,8 +1372,8 @@ void GraphicsLayerCA::recursiveCommitChanges(const CommitState& commitState, con
     // Use having a transform as a key to making the tile wash layer. If every layer gets a wash,
     // they start to obscure useful information.
     if ((!m_transform.isIdentity() || m_usingTiledBacking) && !m_visibleTileWashLayer) {
-        static Color washFillColor(255, 0, 0, 50);
-        static Color washBorderColor(255, 0, 0, 100);
+        static NeverDestroyed<Color> washFillColor(255, 0, 0, 50);
+        static NeverDestroyed<Color> washBorderColor(255, 0, 0, 100);
         
         m_visibleTileWashLayer = createPlatformCALayer(PlatformCALayer::LayerTypeLayer, this);
         String name = String::format("Visible Tile Wash Layer %p", m_visibleTileWashLayer->platformLayer());
@@ -1963,6 +1971,7 @@ void GraphicsLayerCA::updateBackdropFilters()
         return;
     }
 
+    bool madeLayer = !m_backdropLayer;
     if (!m_backdropLayer) {
         m_backdropLayer = createPlatformCALayer(PlatformCALayer::LayerTypeBackdropLayer, this);
         m_backdropLayer->setAnchorPoint(FloatPoint3D());
@@ -1979,6 +1988,9 @@ void GraphicsLayerCA::updateBackdropFilters()
             cloneLayer->setFilters(m_backdropFilters);
         }
     }
+
+    if (madeLayer)
+        updateBackdropFiltersRect();
 }
 
 void GraphicsLayerCA::updateBackdropFiltersRect()
@@ -2059,6 +2071,7 @@ void GraphicsLayerCA::ensureStructuralLayer(StructuralLayerPurpose purpose)
         | BackfaceVisibilityChanged
         | FiltersChanged
         | BackdropFiltersChanged
+        | MaskLayerChanged
         | OpacityChanged;
 
     if (purpose == NoStructuralLayer) {
@@ -2322,7 +2335,7 @@ void GraphicsLayerCA::updateContentsImage()
         // but then what if the layer size changes?
         m_contentsLayer->setMinificationFilter(PlatformCALayer::Trilinear);
         m_contentsLayer->setContents(m_pendingContentsImage.get());
-        m_pendingContentsImage = 0;
+        m_pendingContentsImage = nullptr;
 
         if (m_contentsLayerClones) {
             LayerMap::const_iterator end = m_contentsLayerClones->end();
@@ -2565,7 +2578,7 @@ GraphicsLayerCA::CloneID GraphicsLayerCA::ReplicaState::cloneID() const
         currChar = (currChar << 1) | m_replicaBranches[i];
     }
     
-    return String::adopt(result);
+    return String::adopt(WTFMove(result));
 }
 
 PassRefPtr<PlatformCALayer> GraphicsLayerCA::replicatedLayerRoot(ReplicaState& replicaState)
@@ -3398,7 +3411,7 @@ String GraphicsLayerCA::replayDisplayListAsText(DisplayList::AsTextFlags flags) 
 {
     auto it = layerDisplayListMap().find(this);
     if (it != layerDisplayListMap().end()) {
-        TextStream stream;
+        TextStream stream(TextStream::LineMode::MultipleLine, TextStream::Formatting::SVGStyleRect);
         
         TextStream::GroupScope scope(stream);
         stream.dumpProperty("clip", it->value.first);
@@ -3496,7 +3509,7 @@ void GraphicsLayerCA::dumpAdditionalProperties(TextStream& textStream, int inden
 
     if (behavior & LayerTreeAsTextDebug) {
         writeIndent(textStream, indent + 1);
-        textStream << "(acceleratetes drawing " << m_acceleratesDrawing << ")\n";
+        textStream << "(accelerates drawing " << m_acceleratesDrawing << ")\n";
         writeIndent(textStream, indent + 1);
         textStream << "(uses display-list drawing " << m_usesDisplayListDrawing << ")\n";
     }
@@ -3988,3 +4001,5 @@ double GraphicsLayerCA::backingStoreMemoryEstimate() const
 }
 
 } // namespace WebCore
+
+#endif

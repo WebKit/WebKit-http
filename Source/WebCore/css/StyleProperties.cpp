@@ -26,6 +26,7 @@
 #include "CSSComputedStyleDeclaration.h"
 #include "CSSCustomPropertyValue.h"
 #include "CSSParser.h"
+#include "CSSPendingSubstitutionValue.h"
 #include "CSSValueKeywords.h"
 #include "CSSValueList.h"
 #include "CSSValuePool.h"
@@ -76,7 +77,7 @@ MutableStyleProperties::MutableStyleProperties(CSSParserMode cssParserMode)
 }
 
 MutableStyleProperties::MutableStyleProperties(const CSSProperty* properties, unsigned length)
-    : StyleProperties(CSSStrictMode)
+    : StyleProperties(HTMLStandardMode)
 {
     m_propertyVector.reserveInitialCapacity(length);
     for (unsigned i = 0; i < length; ++i)
@@ -125,6 +126,17 @@ String StyleProperties::getPropertyValue(CSSPropertyID propertyID) const
     RefPtr<CSSValue> value = getPropertyCSSValue(propertyID);
     if (value)
         return value->cssText();
+
+    const StylePropertyShorthand& shorthand = shorthandForProperty(propertyID);
+    if (shorthand.length()) {
+        RefPtr<CSSValue> value = getPropertyCSSValueInternal(shorthand.properties()[0]);
+        if (!value)
+            return String();
+        if (value->isVariableDependentValue())
+            return value->cssText();
+        if (value->isPendingSubstitutionValue())
+            return downcast<CSSPendingSubstitutionValue>(*value).shorthandValue()->cssText();
+    }
 
     // Shorthand and 4-values properties
     switch (propertyID) {
@@ -208,10 +220,6 @@ String StyleProperties::getPropertyValue(CSSPropertyID propertyID) const
         return getShorthandValue(perspectiveOriginShorthand());
     case CSSPropertyTransformOrigin:
         return getShorthandValue(transformOriginShorthand());
-    case CSSPropertyWebkitTransition:
-        return getLayeredShorthandValue(webkitTransitionShorthand());
-    case CSSPropertyWebkitAnimation:
-        return getLayeredShorthandValue(webkitAnimationShorthand());
     case CSSPropertyMarker: {
         RefPtr<CSSValue> value = getPropertyCSSValueInternal(CSSPropertyMarkerStart);
         if (value)
@@ -236,9 +244,6 @@ String StyleProperties::getCustomPropertyValue(const String& propertyName) const
 String StyleProperties::borderSpacingValue(const StylePropertyShorthand& shorthand) const
 {
     RefPtr<CSSValue> horizontalValue = getPropertyCSSValueInternal(shorthand.properties()[0]);
-    if (horizontalValue && horizontalValue->isVariableDependentValue())
-        return horizontalValue->cssText();
-    
     RefPtr<CSSValue> verticalValue = getPropertyCSSValueInternal(shorthand.properties()[1]);
 
     // While standard border-spacing property does not allow specifying border-spacing-vertical without
@@ -389,8 +394,6 @@ String StyleProperties::getLayeredShorthandValue(const StylePropertyShorthand& s
             // http://www.w3.org/TR/cssom-1/#serialize-a-css-declaration-block.
             return String();
         }
-        if (values[i]->isVariableDependentValue())
-            return values[i]->cssText();
         if (values[i]->isBaseValueList())
             numLayers = std::max(downcast<CSSValueList>(*values[i]).length(), numLayers);
         else
@@ -445,8 +448,8 @@ String StyleProperties::getLayeredShorthandValue(const StylePropertyShorthand& s
                         if (!is<CSSPrimitiveValue>(*value) || !is<CSSPrimitiveValue>(*yValue))
                             continue;
 
-                        CSSValueID xId = downcast<CSSPrimitiveValue>(*value).getValueID();
-                        CSSValueID yId = downcast<CSSPrimitiveValue>(*yValue).getValueID();
+                        CSSValueID xId = downcast<CSSPrimitiveValue>(*value).valueID();
+                        CSSValueID yId = downcast<CSSPrimitiveValue>(*yValue).valueID();
                         if (xId != yId) {
                             if (xId == CSSValueRepeat && yId == CSSValueNoRepeat) {
                                 useRepeatXShorthand = true;
@@ -529,8 +532,6 @@ String StyleProperties::getShorthandValue(const StylePropertyShorthand& shorthan
             RefPtr<CSSValue> value = getPropertyCSSValueInternal(shorthand.properties()[i]);
             if (!value)
                 return String();
-            if (value->isVariableDependentValue())
-                return value->cssText();
             String valueText = value->cssText();
             if (!i)
                 commonValue = valueText;
@@ -558,11 +559,9 @@ String StyleProperties::getCommonValue(const StylePropertyShorthand& shorthand) 
     bool lastPropertyWasImportant = false;
     for (unsigned i = 0; i < shorthand.length(); ++i) {
         RefPtr<CSSValue> value = getPropertyCSSValueInternal(shorthand.properties()[i]);
-        // FIXME: CSSInitialValue::cssText should generate the right value.
         if (!value)
             return String();
-        if (value->isVariableDependentValue())
-            return value->cssText();
+        // FIXME: CSSInitialValue::cssText should generate the right value.
         String text = value->cssText();
         if (text.isNull())
             return String();
@@ -615,6 +614,7 @@ RefPtr<CSSValue> StyleProperties::getPropertyCSSValue(CSSPropertyID propertyID) 
         if (dependentValue.propertyID() != propertyID)
             return CSSCustomPropertyValue::createInvalid(); // Have to return special "pending-substitution" value.
     }
+
     return value;
 }
 
@@ -639,6 +639,7 @@ bool MutableStyleProperties::removeShorthandProperty(CSSPropertyID propertyID)
     StylePropertyShorthand shorthand = shorthandForProperty(propertyID);
     if (!shorthand.length())
         return false;
+
     return removePropertiesInSet(shorthand.properties(), shorthand.length());
 }
 
@@ -647,14 +648,14 @@ bool MutableStyleProperties::removeProperty(CSSPropertyID propertyID, String* re
     if (removeShorthandProperty(propertyID)) {
         // FIXME: Return an equivalent shorthand when possible.
         if (returnText)
-            *returnText = "";
+            *returnText = emptyString();
         return true;
     }
 
     int foundPropertyIndex = findPropertyIndex(propertyID);
     if (foundPropertyIndex == -1) {
         if (returnText)
-            *returnText = "";
+            *returnText = emptyString();
         return false;
     }
 
@@ -673,7 +674,7 @@ bool MutableStyleProperties::removeCustomProperty(const String& propertyName, St
     int foundPropertyIndex = findCustomPropertyIndex(propertyName);
     if (foundPropertyIndex == -1) {
         if (returnText)
-            *returnText = "";
+            *returnText = emptyString();
         return false;
     }
 
@@ -728,28 +729,37 @@ bool StyleProperties::isPropertyImplicit(CSSPropertyID propertyID) const
     return propertyAt(foundPropertyIndex).isImplicit();
 }
 
-bool MutableStyleProperties::setProperty(CSSPropertyID propertyID, const String& value, bool important, StyleSheetContents* contextStyleSheet)
+bool MutableStyleProperties::setProperty(CSSPropertyID propertyID, const String& value, bool important, CSSParserContext parserContext, StyleSheetContents* contextStyleSheet)
 {
     // Setting the value to an empty string just removes the property in both IE and Gecko.
     // Setting it to null seems to produce less consistent results, but we treat it just the same.
     if (value.isEmpty())
         return removeProperty(propertyID);
 
+    parserContext.mode = cssParserMode();
+
     // When replacing an existing property value, this moves the property to the end of the list.
     // Firefox preserves the position, and MSIE moves the property to the beginning.
-    return CSSParser::parseValue(*this, propertyID, value, important, cssParserMode(), contextStyleSheet) == CSSParser::ParseResult::Changed;
+    return CSSParser::parseValue(*this, propertyID, value, important, parserContext, contextStyleSheet) == CSSParser::ParseResult::Changed;
 }
 
-bool MutableStyleProperties::setCustomProperty(const String& propertyName, const String& value, bool important, StyleSheetContents* contextStyleSheet)
+bool MutableStyleProperties::setProperty(CSSPropertyID propertyID, const String& value, bool important)
+{
+    CSSParserContext parserContext(cssParserMode());
+    return setProperty(propertyID, value, important, parserContext);
+}
+
+bool MutableStyleProperties::setCustomProperty(const String& propertyName, const String& value, bool important, CSSParserContext parserContext, StyleSheetContents* contextStyleSheet)
 {
     // Setting the value to an empty string just removes the property in both IE and Gecko.
     // Setting it to null seems to produce less consistent results, but we treat it just the same.
     if (value.isEmpty())
         return removeCustomProperty(propertyName);
 
+    parserContext.mode = cssParserMode();
     // When replacing an existing property value, this moves the property to the end of the list.
     // Firefox preserves the position, and MSIE moves the property to the beginning.
-    return CSSParser::parseCustomPropertyValue(*this, propertyName, value, important, cssParserMode(), contextStyleSheet) == CSSParser::ParseResult::Changed;
+    return CSSParser::parseCustomPropertyValue(*this, propertyName, value, important, parserContext, contextStyleSheet) == CSSParser::ParseResult::Changed;
 }
 
 void MutableStyleProperties::setProperty(CSSPropertyID propertyID, RefPtr<CSSValue>&& value, bool important)
@@ -801,16 +811,13 @@ bool MutableStyleProperties::setProperty(CSSPropertyID propertyID, CSSPropertyID
     return setProperty(CSSProperty(propertyID, CSSValuePool::singleton().createIdentifierValue(identifier), important));
 }
 
-bool MutableStyleProperties::parseDeclaration(const String& styleDeclaration, StyleSheetContents* contextStyleSheet)
+bool MutableStyleProperties::parseDeclaration(const String& styleDeclaration, CSSParserContext context, StyleSheetContents* contextStyleSheet)
 {
     auto oldProperties = WTFMove(m_propertyVector);
     m_propertyVector.clear();
 
-    CSSParserContext context(cssParserMode());
-    if (contextStyleSheet) {
-        context = contextStyleSheet->parserContext();
-        context.mode = cssParserMode();
-    }
+    context.mode = cssParserMode();
+
     CSSParser parser(context);
     parser.parseDeclaration(*this, styleDeclaration, 0, contextStyleSheet);
 
@@ -837,12 +844,7 @@ bool MutableStyleProperties::addParsedProperty(const CSSProperty& property)
             return setProperty(property);
         return false;
     }
-    
-    // Only add properties that have no !important counterpart present
-    if (!propertyIsImportant(property.id()) || property.isImportant())
-        return setProperty(property);
-    
-    return false;
+    return setProperty(property);
 }
 
 String StyleProperties::asText() const
@@ -870,6 +872,10 @@ String StyleProperties::asText() const
             auto& dependentValue = downcast<CSSVariableDependentValue>(*property.value());
             if (dependentValue.propertyID() != propertyID)
                 shorthandPropertyID = dependentValue.propertyID();
+        } else if (property.value() && property.value()->isPendingSubstitutionValue()) {
+            auto& substitutionValue = downcast<CSSPendingSubstitutionValue>(*property.value());
+            shorthandPropertyID = substitutionValue.shorthandPropertyId();
+            value = substitutionValue.shorthandValue()->cssText();
         } else {
             switch (propertyID) {
             case CSSPropertyAnimationName:
@@ -972,16 +978,6 @@ String StyleProperties::asText() const
             case CSSPropertyTransitionDelay:
                 shorthandPropertyID = CSSPropertyTransition;
                 break;
-            case CSSPropertyWebkitAnimationName:
-            case CSSPropertyWebkitAnimationDuration:
-            case CSSPropertyWebkitAnimationTimingFunction:
-            case CSSPropertyWebkitAnimationDelay:
-            case CSSPropertyWebkitAnimationIterationCount:
-            case CSSPropertyWebkitAnimationDirection:
-            case CSSPropertyWebkitAnimationFillMode:
-            case CSSPropertyWebkitAnimationPlayState:
-                shorthandPropertyID = CSSPropertyWebkitAnimation;
-                break;
             case CSSPropertyFlexDirection:
             case CSSPropertyFlexWrap:
                 shorthandPropertyID = CSSPropertyFlexFlow;
@@ -1010,12 +1006,6 @@ String StyleProperties::asText() const
             case CSSPropertyTransformOriginY:
             case CSSPropertyTransformOriginZ:
                 shorthandPropertyID = CSSPropertyTransformOrigin;
-                break;
-            case CSSPropertyWebkitTransitionProperty:
-            case CSSPropertyWebkitTransitionDuration:
-            case CSSPropertyWebkitTransitionTimingFunction:
-            case CSSPropertyWebkitTransitionDelay:
-                shorthandPropertyID = CSSPropertyWebkitTransition;
                 break;
             default:
                 break;
@@ -1135,13 +1125,6 @@ void MutableStyleProperties::mergeAndOverrideOnConflict(const StyleProperties& o
     unsigned size = other.propertyCount();
     for (unsigned i = 0; i < size; ++i)
         addParsedProperty(other.propertyAt(i).toCSSProperty());
-}
-
-void StyleProperties::addSubresourceStyleURLs(ListHashSet<URL>& urls, StyleSheetContents* contextStyleSheet) const
-{
-    unsigned size = propertyCount();
-    for (unsigned i = 0; i < size; ++i)
-        propertyAt(i).value()->addSubresourceStyleURLs(urls, contextStyleSheet);
 }
 
 bool StyleProperties::traverseSubresources(const std::function<bool (const CachedResource&)>& handler) const

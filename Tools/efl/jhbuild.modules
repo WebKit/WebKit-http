@@ -14,7 +14,7 @@
       <dep package="glib"/>
       <dep package="glib-networking"/>
       <dep package="libsoup"/>
-      <dep package="elementary"/>
+      <dep package="efl"/>
       <dep package="libxml2"/>
       <dep package="libxslt"/>
       <dep package="gstreamer"/>
@@ -46,7 +46,7 @@
   <repository type="tarball" name="enlightenment.fr"
       href="http://git.enlightenment.fr/cgit.cgi/svn/"/>
   <repository type="tarball" name="xmlsoft.org"
-      href="ftp://xmlsoft.org"/> 
+      href="ftp://xmlsoft.org"/>
   <repository type="tarball" name="download.enlightenment.org"
       href="http://download.enlightenment.org"/>
   <repository type="tarball" name="gstreamer"
@@ -159,38 +159,25 @@
             md5sum="e75e303b4f7756c2b16203a57ac87eba"/>
   </autotools>
 
- <autotools id="harfbuzz" autogen-sh="configure">
-   <branch module="software/harfbuzz/release/harfbuzz-0.9.35.tar.bz2" version="0.9.35"
+  <autotools id="harfbuzz" autogen-sh="configure">
+    <branch module="software/harfbuzz/release/harfbuzz-0.9.35.tar.bz2" version="0.9.35"
            checkoutdir="harfbuzz-0.9.35"
            repo="freedesktop.org"
            hash="sha256:0aa1a8aba6f502321cf6fef3c9d2c73dde48389c5ed1d3615a7691944c2a06ed">
-   </branch>
- </autotools>
+    </branch>
+  </autotools>
 
   <autotools id="efl" autogen-sh="configure"
-             autogenargs="--disable-fribidi --disable-audio --disable-libmount --disable-physics --enable-lua-old --enable-i-really-know-what-i-am-doing-and-that-this-will-probably-break-things-and-i-will-fix-them-myself-and-send-patches-abb">
+             autogenargs="--disable-fribidi --disable-audio --disable-libmount --disable-physics --enable-i-really-know-what-i-am-doing-and-that-this-will-probably-break-things-and-i-will-fix-them-myself-and-send-patches-abb">
     <dependencies>
       <dep package="fontconfig"/>
       <dep package="gstreamer"/>
       <dep package="gst-plugins-base"/>
     </dependencies>
-    <branch module="rel/libs/efl/efl-1.17.0.tar.gz" version="1.17.0"
+    <branch module="rel/libs/efl/efl-1.18.1.tar.gz" version="1.18.1"
             repo="download.enlightenment.org"
-            hash="sha256:046ff2c5fe769d749278f9d3e5b85e25cb4d1070bd1b8b54ee6831d81739f3c5">
-      <patch file="ecore_remove_warnings.patch" strip="1"/>
+            hash="sha256:008640c51e90481797984d0cb58a077af746922fb179b4af91ca591c37ad112d">
     </branch>
-  </autotools>
-
-  <autotools id="elementary"
-             autogen-sh="configure"
-             autogenargs="--disable-emap --disable-eweather --with-elementary-web-backend=none">
-    <branch module="rel/libs/elementary/elementary-1.17.0.tar.gz" version="1.17.0"
-            repo="download.enlightenment.org"
-            hash="sha256:0004a3038968073f3e7599294933fab72226162d0436dce35d9ec4d3b0478267">
-    </branch>
-    <dependencies>
-        <dep package="efl"/>
-    </dependencies>
   </autotools>
 
   <autotools id="libxml2"
@@ -310,9 +297,9 @@
     <dependencies>
       <dep package="gstreamer"/>
     </dependencies>
-    <branch repo="nice.freedesktop.org" module="releases/libnice-0.1.10.tar.gz" checkoutdir="libnice" version="0.1.10"
-            hash="sha256:1dbfb663b730889ae8cab13a2913fe557d581f70b513c918bbbd0b7d3eefebc9"
-            md5sum="27b62d0093ce29a39df1c6fcf0bb4396" size="903083">
+    <branch repo="nice.freedesktop.org" module="releases/libnice-0.1.13.tar.gz" checkoutdir="libnice" version="0.1.13"
+            hash="sha256:61112d9f3be933a827c8365f20551563953af6718057928f51f487bfe88419e1"
+            md5sum="3226faeaf48a9150ada00da2e2865959" size="912374">
     </branch>
   </autotools>
 
@@ -321,10 +308,9 @@
       <dep package="gst-plugins-openwebrtc"/>
       <dep package="libnice"/>
      </dependencies>
-    <branch repo="github.com" module="EricssonResearch/openwebrtc/archive/13516c7f79a0c48bb411464f7613d4b426c70f5b.tar.gz" checkoutdir="openwebrtc" version="13516c7f79a0c48bb411464f7613d4b426c70f5b"
-            hash="sha256:c849d36d97c17a198a5d9c180f13f14c7897c9236e2384ea11029e23b09b59ac"
-            md5sum="13516c7f79a0c48bb411464f7613d4b426c70f5b.tar.gz" size="258936">
-      <patch file="openwebrtc-clang-warning-fix.patch" strip="1"/>
+    <branch repo="github.com" module="EricssonResearch/openwebrtc/archive/f511ea1fa79a33fa3d52bfd1c0969c28084aeb35.tar.gz" checkoutdir="openwebrtc" version="f511ea1fa79a33fa3d52bfd1c0969c28084aeb35"
+            hash="sha256:af80b80512b5f5a6b82b4cf43afa28da9c94c86800f6fadd10762361079fb5e3"
+            md5sum="4555d20821af8f5334f74b4f0327f178" size="296143">
     </branch>
   </autotools>
 

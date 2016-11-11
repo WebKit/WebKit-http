@@ -60,7 +60,7 @@ JSValue toJS(ExecState* exec, JSDOMGlobalObject* globalObject, EventTarget& targ
     if (value.inherits(JS##interfaceName::info()))                      \
         return &jsCast<JS##interfaceName*>(asObject(value))->wrapped();
 
-EventTarget* JSEventTarget::toWrapped(ExecState&, JSValue value)
+EventTarget* JSEventTarget::toWrapped(JSValue value)
 {
     TRY_TO_UNWRAP_WITH_INTERFACE(DOMWindowShell)
     TRY_TO_UNWRAP_WITH_INTERFACE(DOMWindow)
@@ -73,7 +73,7 @@ EventTarget* JSEventTarget::toWrapped(ExecState&, JSValue value)
 
 std::unique_ptr<JSEventTargetWrapper> jsEventTargetCast(JSValue thisValue)
 {
-    if (auto* target = jsDynamicCast<JSEventTarget*>(thisValue))
+    if (auto* target = jsDynamicDowncast<JSEventTarget*>(thisValue))
         return std::make_unique<JSEventTargetWrapper>(target->wrapped(), *target);
     if (auto* window = toJSDOMWindow(thisValue))
         return std::make_unique<JSEventTargetWrapper>(window->wrapped(), *window);

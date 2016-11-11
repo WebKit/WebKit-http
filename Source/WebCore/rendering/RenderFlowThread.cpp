@@ -47,7 +47,6 @@
 #include "RenderTheme.h"
 #include "RenderView.h"
 #include "TransformState.h"
-#include "WebKitNamedFlow.h"
 #include <wtf/StackStats.h>
 
 namespace WebCore {
@@ -92,7 +91,7 @@ void RenderFlowThread::styleDidChange(StyleDifference diff, const RenderStyle* o
         invalidateRegions();
 }
 
-void RenderFlowThread::removeFlowChildInfo(RenderObject* child)
+void RenderFlowThread::removeFlowChildInfo(RenderElement* child)
 {
     if (is<RenderBlockFlow>(*child))
         removeLineRegionInfo(downcast<RenderBlockFlow>(child));

@@ -32,8 +32,8 @@
 
 #include "APICast.h"
 #include "InspectorValues.h"
+#include "JSCInlines.h"
 #include "JSLock.h"
-#include "StructureInlines.h"
 
 using namespace JSC;
 using namespace Inspector;
@@ -121,10 +121,13 @@ bool ScriptValue::getString(ExecState* scriptState, String& result) const
 
 String ScriptValue::toString(ExecState* scriptState) const
 {
+    VM& vm = scriptState->vm();
+    auto scope = DECLARE_CATCH_SCOPE(vm);
+
     String result = m_value.get().toString(scriptState)->value(scriptState);
     // Handle the case where an exception is thrown as part of invoking toString on the object.
-    if (scriptState->hadException())
-        scriptState->clearException();
+    if (UNLIKELY(scope.exception()))
+        scope.clearException();
     return result;
 }
 
@@ -132,7 +135,7 @@ bool ScriptValue::isEqual(ExecState* scriptState, const ScriptValue& anotherValu
 {
     if (hasNoValue())
         return anotherValue.hasNoValue();
-    return JSValueIsEqual(toRef(scriptState), toRef(scriptState, jsValue()), toRef(scriptState, anotherValue.jsValue()), nullptr);
+    return JSValueIsStrictEqual(toRef(scriptState), toRef(scriptState, jsValue()), toRef(scriptState, anotherValue.jsValue()));
 }
 
 bool ScriptValue::isNull() const

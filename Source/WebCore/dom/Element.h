@@ -3,7 +3,7 @@
  *           (C) 1999 Antti Koivisto (koivisto@kde.org)
  *           (C) 2001 Peter Kelly (pmk@post.com)
  *           (C) 2001 Dirk Mueller (mueller@kde.org)
- * Copyright (C) 2003, 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2013, 2014, 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2003-2016 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -22,15 +22,16 @@
  *
  */
 
-#ifndef Element_h
-#define Element_h
+#pragma once
 
 #include "AXTextStateChangeIntent.h"
 #include "Document.h"
 #include "ElementData.h"
 #include "HTMLNames.h"
 #include "RegionOversetState.h"
+#include "ScrollToOptions.h"
 #include "ScrollTypes.h"
+#include "ShadowRootMode.h"
 #include "SimulatedClickOptions.h"
 #include "StyleChange.h"
 
@@ -38,12 +39,14 @@ namespace WebCore {
 
 class ClientRect;
 class ClientRectList;
+class CustomElementReactionQueue;
 class DatasetDOMStringMap;
 class Dictionary;
 class DOMTokenList;
 class ElementRareData;
 class HTMLDocument;
 class IntSize;
+class JSCustomElementInterface;
 class KeyboardEvent;
 class Locale;
 class PlatformKeyboardEvent;
@@ -52,6 +55,7 @@ class PlatformWheelEvent;
 class PseudoElement;
 class RenderNamedFlowFragment;
 class RenderTreePosition;
+class WebAnimation;
 struct ElementStyle;
 
 enum SpellcheckAttributeState {
@@ -74,20 +78,21 @@ public:
     WEBCORE_EXPORT bool hasAttribute(const QualifiedName&) const;
     WEBCORE_EXPORT const AtomicString& getAttribute(const QualifiedName&) const;
     WEBCORE_EXPORT void setAttribute(const QualifiedName&, const AtomicString& value);
-    void setAttributeWithoutSynchronization(const QualifiedName&, const AtomicString& value);
+    WEBCORE_EXPORT void setAttributeWithoutSynchronization(const QualifiedName&, const AtomicString& value);
     void setSynchronizedLazyAttribute(const QualifiedName&, const AtomicString& value);
     bool removeAttribute(const QualifiedName&);
+    Vector<String> getAttributeNames() const;
 
     // Typed getters and setters for language bindings.
-    int getIntegralAttribute(const QualifiedName& attributeName) const;
-    void setIntegralAttribute(const QualifiedName& attributeName, int value);
-    unsigned getUnsignedIntegralAttribute(const QualifiedName& attributeName) const;
-    void setUnsignedIntegralAttribute(const QualifiedName& attributeName, unsigned value);
+    WEBCORE_EXPORT int getIntegralAttribute(const QualifiedName& attributeName) const;
+    WEBCORE_EXPORT void setIntegralAttribute(const QualifiedName& attributeName, int value);
+    WEBCORE_EXPORT unsigned getUnsignedIntegralAttribute(const QualifiedName& attributeName) const;
+    WEBCORE_EXPORT void setUnsignedIntegralAttribute(const QualifiedName& attributeName, unsigned value);
 
     // Call this to get the value of an attribute that is known not to be the style
     // attribute or one of the SVG animatable attributes.
-    bool fastHasAttribute(const QualifiedName&) const;
-    const AtomicString& fastGetAttribute(const QualifiedName&) const;
+    bool hasAttributeWithoutSynchronization(const QualifiedName&) const;
+    const AtomicString& attributeWithoutSynchronization(const QualifiedName&) const;
 #ifndef NDEBUG
     WEBCORE_EXPORT bool fastAttributeLookupAllowed(const QualifiedName&) const;
 #endif
@@ -95,20 +100,20 @@ public:
 #ifdef DUMP_NODE_STATISTICS
     bool hasNamedNodeMap() const;
 #endif
-    bool hasAttributes() const;
+    WEBCORE_EXPORT bool hasAttributes() const;
     // This variant will not update the potentially invalid attributes. To be used when not interested
     // in style attribute or one of the SVG animation attributes.
     bool hasAttributesWithoutUpdate() const;
 
     WEBCORE_EXPORT bool hasAttribute(const AtomicString& name) const;
-    bool hasAttributeNS(const AtomicString& namespaceURI, const AtomicString& localName) const;
+    WEBCORE_EXPORT bool hasAttributeNS(const AtomicString& namespaceURI, const AtomicString& localName) const;
 
     WEBCORE_EXPORT const AtomicString& getAttribute(const AtomicString& name) const;
-    const AtomicString& getAttributeNS(const AtomicString& namespaceURI, const AtomicString& localName) const;
+    WEBCORE_EXPORT const AtomicString& getAttributeNS(const AtomicString& namespaceURI, const AtomicString& localName) const;
 
-    WEBCORE_EXPORT void setAttribute(const AtomicString& name, const AtomicString& value, ExceptionCode&);
-    static bool parseAttributeName(QualifiedName&, const AtomicString& namespaceURI, const AtomicString& qualifiedName, ExceptionCode&);
-    void setAttributeNS(const AtomicString& namespaceURI, const AtomicString& qualifiedName, const AtomicString& value, ExceptionCode&);
+    WEBCORE_EXPORT ExceptionOr<void> setAttribute(const AtomicString& name, const AtomicString& value);
+    static ExceptionOr<QualifiedName> parseAttributeName(const AtomicString& namespaceURI, const AtomicString& qualifiedName);
+    WEBCORE_EXPORT ExceptionOr<void> setAttributeNS(const AtomicString& namespaceURI, const AtomicString& qualifiedName, const AtomicString& value);
 
     const AtomicString& getIdAttribute() const;
     void setIdAttribute(const AtomicString&);
@@ -129,29 +134,37 @@ public:
     unsigned findAttributeIndexByName(const QualifiedName& name) const { return elementData()->findAttributeIndexByName(name); }
     unsigned findAttributeIndexByName(const AtomicString& name, bool shouldIgnoreAttributeCase) const { return elementData()->findAttributeIndexByName(name, shouldIgnoreAttributeCase); }
 
-    void scrollIntoView(bool alignToTop = true);
+    WEBCORE_EXPORT void scrollIntoView(bool alignToTop = true);
     WEBCORE_EXPORT void scrollIntoViewIfNeeded(bool centerIfNeeded = true);
     WEBCORE_EXPORT void scrollIntoViewIfNotVisible(bool centerIfNotVisible = true);
 
-    void scrollByLines(int lines);
-    void scrollByPages(int pages);
+    void scrollBy(const ScrollToOptions&);
+    void scrollBy(double x, double y);
+    virtual void scrollTo(const ScrollToOptions&);
+    void scrollTo(double x, double y);
 
-    double offsetLeft();
-    double offsetTop();
-    double offsetWidth();
-    double offsetHeight();
+    WEBCORE_EXPORT void scrollByLines(int lines);
+    WEBCORE_EXPORT void scrollByPages(int pages);
+
+    WEBCORE_EXPORT double offsetLeft();
+    WEBCORE_EXPORT double offsetTop();
+    WEBCORE_EXPORT double offsetWidth();
+    WEBCORE_EXPORT double offsetHeight();
 
     bool mayCauseRepaintInsideViewport(const IntRect* visibleRect = nullptr) const;
 
     // FIXME: Replace uses of offsetParent in the platform with calls
     // to the render layer and merge bindingsOffsetParent and offsetParent.
-    Element* bindingsOffsetParent();
+    WEBCORE_EXPORT Element* bindingsOffsetParent();
+
+    const Element* rootElement() const;
 
     Element* offsetParent();
-    double clientLeft();
-    double clientTop();
-    double clientWidth();
-    double clientHeight();
+    WEBCORE_EXPORT double clientLeft();
+    WEBCORE_EXPORT double clientTop();
+    WEBCORE_EXPORT double clientWidth();
+    WEBCORE_EXPORT double clientHeight();
+
     virtual int scrollLeft();
     virtual int scrollTop();
     virtual void setScrollLeft(int);
@@ -169,16 +182,16 @@ public:
     // Returns the absolute bounding box translated into screen coordinates.
     WEBCORE_EXPORT IntRect screenRect() const;
 
-    bool removeAttribute(const AtomicString& name);
-    bool removeAttributeNS(const AtomicString& namespaceURI, const AtomicString& localName);
+    WEBCORE_EXPORT bool removeAttribute(const AtomicString& name);
+    WEBCORE_EXPORT bool removeAttributeNS(const AtomicString& namespaceURI, const AtomicString& localName);
 
     Ref<Attr> detachAttribute(unsigned index);
 
-    RefPtr<Attr> getAttributeNode(const AtomicString& name);
-    RefPtr<Attr> getAttributeNodeNS(const AtomicString& namespaceURI, const AtomicString& localName);
-    RefPtr<Attr> setAttributeNode(Attr&, ExceptionCode&);
-    RefPtr<Attr> setAttributeNodeNS(Attr&, ExceptionCode&);
-    RefPtr<Attr> removeAttributeNode(Attr&, ExceptionCode&);
+    WEBCORE_EXPORT RefPtr<Attr> getAttributeNode(const AtomicString& name);
+    WEBCORE_EXPORT RefPtr<Attr> getAttributeNodeNS(const AtomicString& namespaceURI, const AtomicString& localName);
+    WEBCORE_EXPORT ExceptionOr<RefPtr<Attr>> setAttributeNode(Attr&);
+    WEBCORE_EXPORT ExceptionOr<RefPtr<Attr>> setAttributeNodeNS(Attr&);
+    WEBCORE_EXPORT ExceptionOr<Ref<Attr>> removeAttributeNode(Attr&);
 
     RefPtr<Attr> attrIfExists(const QualifiedName&);
     RefPtr<Attr> attrIfExists(const AtomicString& localName, bool shouldIgnoreAttributeCase);
@@ -205,6 +218,8 @@ public:
     const AtomicString& prefix() const final { return m_tagName.prefix(); }
     const AtomicString& namespaceURI() const final { return m_tagName.namespaceURI(); }
 
+    void setPrefix(const AtomicString&, ExceptionCode&) final;
+
     String nodeName() const override;
 
     Ref<Element> cloneElementWithChildren(Document&);
@@ -213,10 +228,10 @@ public:
     void normalizeAttributes();
     String nodeNamePreservingCase() const;
 
-    void setBooleanAttribute(const QualifiedName& name, bool);
+    WEBCORE_EXPORT void setBooleanAttribute(const QualifiedName& name, bool);
 
     // For exposing to DOM only.
-    NamedNodeMap& attributes() const;
+    WEBCORE_EXPORT NamedNodeMap& attributes() const;
 
     enum AttributeModificationReason {
         ModifiedDirectly,
@@ -253,18 +268,21 @@ public:
     virtual bool rendererIsNeeded(const RenderStyle&);
 
     WEBCORE_EXPORT ShadowRoot* shadowRoot() const;
-    WEBCORE_EXPORT RefPtr<ShadowRoot> createShadowRoot(ExceptionCode&);
+    ShadowRoot* shadowRootForBindings(JSC::ExecState&) const;
 
-    enum class ShadowRootMode { Open, Closed };
     struct ShadowRootInit {
         ShadowRootMode mode;
     };
-
-    ShadowRoot* shadowRootForBindings(JSC::ExecState&) const;
-    RefPtr<ShadowRoot> attachShadow(const ShadowRootInit&, ExceptionCode&);
+    ExceptionOr<ShadowRoot&> attachShadow(const ShadowRootInit&);
 
     ShadowRoot* userAgentShadowRoot() const;
     WEBCORE_EXPORT ShadowRoot& ensureUserAgentShadowRoot();
+
+    void setIsDefinedCustomElement(JSCustomElementInterface&);
+    void setIsFailedCustomElement(JSCustomElementInterface&);
+    void setIsCustomElementUpgradeCandidate();
+    void enqueueToUpgrade(JSCustomElementInterface&);
+    CustomElementReactionQueue* reactionQueue() const;
 
     // FIXME: this should not be virtual, do not override this.
     virtual const AtomicString& shadowPseudoId() const;
@@ -283,14 +301,20 @@ public:
     bool tabIndexSetExplicitly() const;
     virtual bool supportsFocus() const;
     virtual bool isFocusable() const;
-    virtual bool isKeyboardFocusable(KeyboardEvent*) const;
+    virtual bool isKeyboardFocusable(KeyboardEvent&) const;
     virtual bool isMouseFocusable() const;
 
     virtual bool shouldUseInputMethod();
 
     virtual int tabIndex() const;
-    void setTabIndex(int);
+    WEBCORE_EXPORT void setTabIndex(int);
     virtual Element* focusDelegate();
+
+    WEBCORE_EXPORT ExceptionOr<Element*> insertAdjacentElement(const String& where, Element& newChild);
+    WEBCORE_EXPORT ExceptionOr<void> insertAdjacentHTML(const String& where, const String& html);
+    WEBCORE_EXPORT ExceptionOr<void> insertAdjacentText(const String& where, const String& text);
+
+    bool ieForbidsInsertHTML() const;
 
     const RenderStyle* computedStyle(PseudoId = NOPSEUDO) override;
 
@@ -349,12 +373,12 @@ public:
     virtual void updateFocusAppearance(SelectionRestorationMode, SelectionRevealMode = SelectionRevealMode::Reveal);
     virtual void blur();
 
-    String innerHTML() const;
-    String outerHTML() const;
-    void setInnerHTML(const String&, ExceptionCode&);
-    void setOuterHTML(const String&, ExceptionCode&);
+    WEBCORE_EXPORT String innerHTML() const;
+    WEBCORE_EXPORT String outerHTML() const;
+    WEBCORE_EXPORT ExceptionOr<void> setInnerHTML(const String&);
+    WEBCORE_EXPORT ExceptionOr<void> setOuterHTML(const String&);
     WEBCORE_EXPORT String innerText();
-    String outerText();
+    WEBCORE_EXPORT String outerText();
  
     virtual String title() const;
 
@@ -400,11 +424,11 @@ public:
     virtual bool matchesReadWritePseudoClass() const;
     virtual bool matchesIndeterminatePseudoClass() const;
     virtual bool matchesDefaultPseudoClass() const;
-    bool matches(const String& selectors, ExceptionCode&);
-    Element* closest(const String& selectors, ExceptionCode&);
+    WEBCORE_EXPORT ExceptionOr<bool> matches(const String& selectors);
+    WEBCORE_EXPORT ExceptionOr<Element*> closest(const String& selectors);
     virtual bool shouldAppearIndeterminate() const;
 
-    DOMTokenList& classList();
+    WEBCORE_EXPORT DOMTokenList& classList();
 
     DatasetDOMStringMap& dataset();
 
@@ -440,17 +464,17 @@ public:
         LEGACY_MOZILLA_REQUEST = 1 << 1,
     };
     
-    void webkitRequestFullScreen(unsigned short flags);
+    WEBCORE_EXPORT void webkitRequestFullScreen(unsigned short flags);
     WEBCORE_EXPORT bool containsFullScreenElement() const;
     void setContainsFullScreenElement(bool);
     void setContainsFullScreenElementOnAncestorsCrossingFrameBoundaries(bool);
 
     // W3C API
-    void webkitRequestFullscreen();
+    WEBCORE_EXPORT void webkitRequestFullscreen();
 #endif
 
 #if ENABLE(POINTER_LOCK)
-    void requestPointerLock();
+    WEBCORE_EXPORT void requestPointerLock();
 #endif
 
 #if ENABLE(INDIE_UI)
@@ -465,7 +489,7 @@ public:
 #if ENABLE(CSS_REGIONS)
     virtual bool shouldMoveToFlowThread(const RenderStyle&) const;
     
-    const AtomicString& webkitRegionOverset() const;
+    WEBCORE_EXPORT const AtomicString& webkitRegionOverset() const;
     Vector<RefPtr<Range>> webkitGetRegionFlowRanges() const;
 #endif
 
@@ -481,7 +505,6 @@ public:
     bool dispatchWheelEvent(const PlatformWheelEvent&);
     bool dispatchKeyEvent(const PlatformKeyboardEvent&);
     void dispatchSimulatedClick(Event* underlyingEvent, SimulatedClickMouseEventOptions = SendNoEvents, SimulatedClickVisualOptions = ShowPressedLook);
-    void dispatchSimulatedClickForBindings(Event* underlyingEvent);
     void dispatchFocusInEvent(const AtomicString& eventType, RefPtr<Element>&& oldFocusedElement);
     void dispatchFocusOutEvent(const AtomicString& eventType, RefPtr<Element>&& newFocusedElement);
     virtual void dispatchFocusEvent(RefPtr<Element>&& oldFocusedElement, FocusDirection);
@@ -517,6 +540,26 @@ public:
     StyleResolver& styleResolver();
     ElementStyle resolveStyle(const RenderStyle* parentStyle);
 
+    // Invalidates the style of a single element. Style is resolved lazily.
+    // Descendant elements are resolved as needed, for example if an inherited property changes.
+    // This should be called whenever an element changes in a manner that can affect its style.
+    void invalidateStyle();
+
+    // As above but also call RenderElement::setStyle with StyleDifferenceRecompositeLayer flag for
+    // the element even when the style doesn't change. This is mostly needed by the animation code.
+    WEBCORE_EXPORT void invalidateStyleAndLayerComposition();
+
+    // Invalidate the element and all its descendants. This is used when there is some sort of change
+    // in the tree that may affect the style of any of the descendants and we don't know how to optimize
+    // the case to limit the scope. This is expensive and should be avoided.
+    void invalidateStyleForSubtree();
+
+    // Invalidates renderers for the element and all its descendants causing them to be torn down
+    // and rebuild during style resolution. Style is also recomputed. This is used in code dealing with
+    // custom (not style based) renderers. This is expensive and should be avoided.
+    // Elements newly added to the tree are also in this state.
+    void invalidateStyleAndRenderersForSubtree();
+
     bool hasDisplayContents() const;
     void setHasDisplayContents(bool);
 
@@ -529,6 +572,12 @@ public:
     void setIsNamedFlowContentElement();
     void clearIsNamedFlowContentElement();
 
+#if ENABLE(WEB_ANIMATIONS)
+    Vector<WebAnimation*> getAnimations();
+#endif
+
+    Element* findAnchorElementForLink(String& outAnchorName);
+
 protected:
     Element(const QualifiedName&, Document&, ConstructionType);
 
@@ -537,6 +586,7 @@ protected:
     void childrenChanged(const ChildChange&) override;
     void removeAllEventListeners() final;
     virtual void parserDidSetAttributes();
+    void didMoveToNewDocument(Document*) override;
 
     void clearTabIndexExplicitlyIfNeeded();
     void setTabIndexExplicitly(int);
@@ -548,7 +598,7 @@ protected:
 
     void addShadowRoot(Ref<ShadowRoot>&&);
 
-    static void mergeWithNextTextNode(Text& node, ExceptionCode&);
+    static ExceptionOr<void> mergeWithNextTextNode(Text&);
 
 private:
     bool isTextNode() const;
@@ -586,9 +636,10 @@ private:
     void updateIdForDocument(HTMLDocument&, const AtomicString& oldId, const AtomicString& newId, HTMLDocumentNamedItemMapsUpdatingCondition);
     void updateLabel(TreeScope&, const AtomicString& oldForAttributeValue, const AtomicString& newForAttributeValue);
 
+    ExceptionOr<Node*> insertAdjacent(const String& where, Ref<Node>&& newChild);
+
     void scrollByUnits(int units, ScrollGranularity);
 
-    void setPrefix(const AtomicString&, ExceptionCode&) final;
     NodeType nodeType() const final;
     bool childTypeAllowed(NodeType) const final;
 
@@ -662,13 +713,24 @@ inline Element* Node::parentElement() const
     return is<Element>(parent) ? downcast<Element>(parent) : nullptr;
 }
 
-inline bool Element::fastHasAttribute(const QualifiedName& name) const
+inline const Element* Element::rootElement() const
+{
+    if (inDocument())
+        return document().documentElement();
+
+    const Element* highest = this;
+    while (highest->parentElement())
+        highest = highest->parentElement();
+    return highest;
+}
+
+inline bool Element::hasAttributeWithoutSynchronization(const QualifiedName& name) const
 {
     ASSERT(fastAttributeLookupAllowed(name));
     return elementData() && findAttributeByName(name);
 }
 
-inline const AtomicString& Element::fastGetAttribute(const QualifiedName& name) const
+inline const AtomicString& Element::attributeWithoutSynchronization(const QualifiedName& name) const
 {
     ASSERT(fastAttributeLookupAllowed(name));
     if (elementData()) {
@@ -704,7 +766,7 @@ inline const AtomicString& Element::getNameAttribute() const
 
 inline void Element::setIdAttribute(const AtomicString& value)
 {
-    setAttribute(HTMLNames::idAttr, value);
+    setAttributeWithoutSynchronization(HTMLNames::idAttr, value);
 }
 
 inline const SpaceSplitString& Element::classNames() const
@@ -765,7 +827,7 @@ inline void Element::setHasFocusWithin(bool flag)
         return;
     setFlag(flag, HasFocusWithin);
     if (styleAffectedByFocusWithin())
-        setNeedsStyleRecalc();
+        invalidateStyleForSubtree();
 }
 
 } // namespace WebCore
@@ -773,5 +835,3 @@ inline void Element::setHasFocusWithin(bool flag)
 SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::Element)
     static bool isType(const WebCore::Node& node) { return node.isElementNode(); }
 SPECIALIZE_TYPE_TRAITS_END()
-
-#endif

@@ -37,6 +37,7 @@
 #include "QuotesData.h"
 #include "RenderObject.h"
 #include "RenderTheme.h"
+#include "RuntimeEnabledFeatures.h"
 #include "ScaleTransformOperation.h"
 #include "ShadowData.h"
 #include "StyleImage.h"
@@ -51,19 +52,15 @@
 #include <wtf/StdLibExtras.h>
 #include <algorithm>
 
-#if ENABLE(IOS_TEXT_AUTOSIZING)
-#include <wtf/text/StringHash.h>
-#endif
-
 #if ENABLE(TEXT_AUTOSIZING)
-#include "TextAutosizer.h"
+#include <wtf/text/StringHash.h>
 #endif
 
 namespace WebCore {
 
 struct SameSizeAsBorderValue {
     float m_width;
-    RGBA32 m_color;
+    Color m_color;
     int m_restBits;
 };
 
@@ -80,7 +77,7 @@ struct SameSizeAsRenderStyle {
     struct NonInheritedFlags {
         uint64_t m_flags;
     } noninherited_flags;
-#if !ASSERT_DISABLED
+#if !ASSERT_DISABLED || ENABLE(SECURITY_ASSERTIONS)
     bool deletionCheck;
 #endif
 };
@@ -184,9 +181,18 @@ RenderStyle::RenderStyle(const RenderStyle& other, CloneTag)
 
 RenderStyle::~RenderStyle()
 {
-#if !ASSERT_DISABLED
-    ASSERT(!m_deletionHasBegun);
+#if !ASSERT_DISABLED || ENABLE(SECURITY_ASSERTIONS)
+    ASSERT_WITH_SECURITY_IMPLICATION(!m_deletionHasBegun);
     m_deletionHasBegun = true;
+#endif
+}
+
+bool RenderStyle::isCSSGridLayoutEnabled()
+{
+#if ENABLE(CSS_GRID_LAYOUT)
+    return RuntimeEnabledFeatures::sharedFeatures().isCSSGridLayoutEnabled();
+#else
+    return false;
 #endif
 }
 
@@ -378,7 +384,7 @@ bool RenderStyle::inheritedNotEqual(const RenderStyle* other) const
            || rareInheritedData != other->rareInheritedData;
 }
 
-#if ENABLE(IOS_TEXT_AUTOSIZING)
+#if ENABLE(TEXT_AUTOSIZING)
 
 static inline unsigned computeFontHash(const FontCascade& font)
 {
@@ -433,7 +439,7 @@ bool RenderStyle::equalForTextAutosizing(const RenderStyle& other) const
         && rareNonInheritedData->textOverflow == other.rareNonInheritedData->textOverflow;
 }
 
-#endif // ENABLE(IOS_TEXT_AUTOSIZING)
+#endif // ENABLE(TEXT_AUTOSIZING)
 
 bool RenderStyle::inheritedDataShared(const RenderStyle* other) const
 {
@@ -535,10 +541,8 @@ bool RenderStyle::changeRequiresLayout(const RenderStyle& other, unsigned& chang
         if (rareNonInheritedData->m_regionFragment != other.rareNonInheritedData->m_regionFragment)
             return true;
 
-#if ENABLE(CSS_SHAPES)
         if (rareNonInheritedData->m_shapeMargin != other.rareNonInheritedData->m_shapeMargin)
             return true;
-#endif
 
         if (rareNonInheritedData->m_deprecatedFlexibleBox != other.rareNonInheritedData->m_deprecatedFlexibleBox)
             return true;
@@ -597,7 +601,7 @@ bool RenderStyle::changeRequiresLayout(const RenderStyle& other, unsigned& chang
 #endif
             || rareInheritedData->m_effectiveZoom != other.rareInheritedData->m_effectiveZoom
             || rareInheritedData->m_textZoom != other.rareInheritedData->m_textZoom
-#if ENABLE(IOS_TEXT_AUTOSIZING)
+#if ENABLE(TEXT_AUTOSIZING)
             || rareInheritedData->textSizeAdjust != other.rareInheritedData->textSizeAdjust
 #endif
             || rareInheritedData->wordBreak != other.rareInheritedData->wordBreak
@@ -638,13 +642,8 @@ bool RenderStyle::changeRequiresLayout(const RenderStyle& other, unsigned& chang
             return true;
     }
 
-#if ENABLE(TEXT_AUTOSIZING)
-    if (visual->m_textAutosizingMultiplier != other.visual->m_textAutosizingMultiplier)
-        return true;
-#endif
-
     if (inherited->line_height != other.inherited->line_height
-#if ENABLE(IOS_TEXT_AUTOSIZING)
+#if ENABLE(TEXT_AUTOSIZING)
         || inherited->specifiedLineHeight != other.inherited->specifiedLineHeight
 #endif
         || inherited->fontCascade != other.inherited->fontCascade
@@ -796,7 +795,7 @@ bool RenderStyle::changeRequiresLayerRepaint(const RenderStyle& other, unsigned&
         return true;
 #endif
 
-    if (rareNonInheritedData->opacity != other.rareNonInheritedData->opacity) {
+    if (rareNonInheritedData->m_opacity != other.rareNonInheritedData->m_opacity) {
         changedContextSensitiveProperties |= ContextSensitivePropertyOpacity;
         // Don't return; keep looking for another change.
     }
@@ -837,10 +836,8 @@ bool RenderStyle::changeRequiresRepaint(const RenderStyle& other, unsigned& chan
         || rareInheritedData->m_imageRendering != other.rareInheritedData->m_imageRendering)
         return true;
 
-#if ENABLE(CSS_SHAPES)
     if (rareNonInheritedData->m_shapeOutside != other.rareNonInheritedData->m_shapeOutside)
         return true;
-#endif
 
     // FIXME: this should probably be moved to changeRequiresLayerRepaint().
     if (rareNonInheritedData->m_clipPath != other.rareNonInheritedData->m_clipPath) {
@@ -948,27 +945,27 @@ void RenderStyle::setClip(Length top, Length right, Length bottom, Length left)
     data->clip.left() = left;
 }
 
-void RenderStyle::addCursor(PassRefPtr<StyleImage> image, const IntPoint& hotSpot)
+void RenderStyle::addCursor(RefPtr<StyleImage>&& image, const IntPoint& hotSpot)
 {
     if (!rareInheritedData.access()->cursorData)
         rareInheritedData.access()->cursorData = CursorList::create();
-    rareInheritedData.access()->cursorData->append(CursorData(image, hotSpot));
+    rareInheritedData.access()->cursorData->append(CursorData(WTFMove(image), hotSpot));
 }
 
-void RenderStyle::setCursorList(PassRefPtr<CursorList> other)
+void RenderStyle::setCursorList(RefPtr<CursorList>&& list)
 {
-    rareInheritedData.access()->cursorData = other;
+    rareInheritedData.access()->cursorData = WTFMove(list);
 }
 
-void RenderStyle::setQuotes(PassRefPtr<QuotesData> q)
+void RenderStyle::setQuotes(RefPtr<QuotesData>&& q)
 {
     if (rareInheritedData->quotes == q || (rareInheritedData->quotes && q && *rareInheritedData->quotes == *q))
         return;
 
-    rareInheritedData.access()->quotes = q;
+    rareInheritedData.access()->quotes = WTFMove(q);
 }
 
-void RenderStyle::setWillChange(PassRefPtr<WillChangeData> willChangeData)
+void RenderStyle::setWillChange(RefPtr<WillChangeData>&& willChangeData)
 {
     if (arePointingToEqualData(rareNonInheritedData->m_willChange.get(), willChangeData.get()))
         return;
@@ -1001,7 +998,7 @@ void RenderStyle::appendContent(std::unique_ptr<ContentData> contentData)
         content = WTFMove(contentData);
 }
 
-void RenderStyle::setContent(PassRefPtr<StyleImage> image, bool add)
+void RenderStyle::setContent(RefPtr<StyleImage>&& image, bool add)
 {
     if (!image)
         return;
@@ -1011,7 +1008,7 @@ void RenderStyle::setContent(PassRefPtr<StyleImage> image, bool add)
         return;
     }
 
-    rareNonInheritedData.access()->m_content = std::make_unique<ImageContentData>(image);
+    rareNonInheritedData.access()->m_content = std::make_unique<ImageContentData>(WTFMove(image));
     if (!rareNonInheritedData.access()->m_altText.isNull())
         rareNonInheritedData.access()->m_content->setAltText(rareNonInheritedData.access()->m_altText);
 }
@@ -1182,16 +1179,31 @@ static RoundedRect::Radii calcRadiiFor(const BorderData& border, const LayoutSiz
 }
 
 StyleImage* RenderStyle::listStyleImage() const { return rareInheritedData->listStyleImage.get(); }
-void RenderStyle::setListStyleImage(PassRefPtr<StyleImage> v)
+void RenderStyle::setListStyleImage(RefPtr<StyleImage>&& v)
 {
     if (rareInheritedData->listStyleImage != v)
-        rareInheritedData.access()->listStyleImage = v;
+        rareInheritedData.access()->listStyleImage = WTFMove(v);
 }
 
-Color RenderStyle::color() const { return inherited->color; }
-Color RenderStyle::visitedLinkColor() const { return inherited->visitedLinkColor; }
-void RenderStyle::setColor(const Color& v) { SET_VAR(inherited, color, v); }
-void RenderStyle::setVisitedLinkColor(const Color& v) { SET_VAR(inherited, visitedLinkColor, v); }
+const Color& RenderStyle::color() const
+{
+    return inherited->color;
+}
+
+const Color& RenderStyle::visitedLinkColor() const
+{
+    return inherited->visitedLinkColor;
+}
+
+void RenderStyle::setColor(const Color& v)
+{
+    SET_VAR(inherited, color, v);
+}
+
+void RenderStyle::setVisitedLinkColor(const Color& v)
+{
+    SET_VAR(inherited, visitedLinkColor, v);
+}
 
 float RenderStyle::horizontalBorderSpacing() const { return inherited->horizontal_border_spacing; }
 float RenderStyle::verticalBorderSpacing() const { return inherited->vertical_border_spacing; }
@@ -1343,7 +1355,7 @@ const Vector<StyleDashboardRegion>& RenderStyle::noneDashboardRegions()
 
     if (!noneListInitialized) {
         StyleDashboardRegion region;
-        region.label = "";
+        region.label = emptyString();
         region.offset.top()  = Length();
         region.offset.right() = Length();
         region.offset.bottom() = Length();
@@ -1460,7 +1472,7 @@ bool RenderStyle::setFontDescription(const FontCascadeDescription& v)
     return false;
 }
 
-#if ENABLE(IOS_TEXT_AUTOSIZING)
+#if ENABLE(TEXT_AUTOSIZING)
 const Length& RenderStyle::specifiedLineHeight() const { return inherited->specifiedLineHeight; }
 void RenderStyle::setSpecifiedLineHeight(Length v) { SET_VAR(inherited, specifiedLineHeight, v); }
 #else
@@ -1469,17 +1481,7 @@ const Length& RenderStyle::specifiedLineHeight() const { return inherited->line_
 
 Length RenderStyle::lineHeight() const
 {
-    const Length& lh = inherited->line_height;
-#if ENABLE(TEXT_AUTOSIZING)
-    // Unlike fontDescription().computedSize() and hence fontSize(), this is
-    // recalculated on demand as we only store the specified line height.
-    // FIXME: Should consider scaling the fixed part of any calc expressions
-    // too, though this involves messily poking into CalcExpressionLength.
-    float multiplier = textAutosizingMultiplier();
-    if (multiplier > 1 && lh.isFixed())
-        return Length(TextAutosizer::computeAutosizedFontSize(lh.value(), multiplier), Fixed);
-#endif
-    return lh;
+    return inherited->line_height;
 }
 void RenderStyle::setLineHeight(Length specifiedLineHeight) { SET_VAR(inherited, line_height, specifiedLineHeight); }
 
@@ -1540,17 +1542,21 @@ void RenderStyle::setFontSize(float size)
     description.setSpecifiedSize(size);
     description.setComputedSize(size);
 
-#if ENABLE(TEXT_AUTOSIZING)
-    float multiplier = textAutosizingMultiplier();
-    if (multiplier > 1) {
-        float autosizedFontSize = TextAutosizer::computeAutosizedFontSize(size, multiplier);
-        description.setComputedSize(min(maximumAllowedFontSize, autosizedFontSize));
-    }
-#endif
+    setFontDescription(description);
+    fontCascade().update(currentFontSelector);
+}
+
+#if ENABLE(VARIATION_FONTS)
+void RenderStyle::setFontVariationSettings(FontVariationSettings settings)
+{
+    FontSelector* currentFontSelector = fontCascade().fontSelector();
+    auto description = fontDescription();
+    description.setVariationSettings(WTFMove(settings));
 
     setFontDescription(description);
     fontCascade().update(currentFontSelector);
 }
+#endif
 
 void RenderStyle::getShadowExtent(const ShadowData* shadow, LayoutUnit &top, LayoutUnit &right, LayoutUnit &bottom, LayoutUnit &left) const
 {
@@ -1673,7 +1679,7 @@ Color RenderStyle::colorIncludingFallback(int colorProperty, bool visitedLink) c
 
     if (!result.isValid()) {
         if (!visitedLink && (borderStyle == INSET || borderStyle == OUTSET || borderStyle == RIDGE || borderStyle == GROOVE))
-            result.setRGB(238, 238, 238);
+            result = Color(238, 238, 238);
         else
             result = visitedLink ? visitedLinkColor() : color();
     }
@@ -1701,7 +1707,7 @@ Color RenderStyle::visitedDependentColor(int colorProperty) const
         return unvisitedColor;
 
     // Take the alpha from the unvisited color, but get the RGB values from the visited color.
-    return Color(visitedColor.red(), visitedColor.green(), visitedColor.blue(), unvisitedColor.alpha());
+    return visitedColor.colorWithAlpha(unvisitedColor.alphaAsFloat());
 }
 
 const BorderValue& RenderStyle::borderBefore() const
@@ -1873,11 +1879,11 @@ std::pair<FontOrientation, NonCJKGlyphOrientation> RenderStyle::fontAndGlyphOrie
     }
 }
 
-void RenderStyle::setBorderImageSource(PassRefPtr<StyleImage> image)
+void RenderStyle::setBorderImageSource(RefPtr<StyleImage>&& image)
 {
     if (surround->border.m_image.image() == image.get())
         return;
-    surround.access()->border.m_image.setImage(image);
+    surround.access()->border.m_image.setImage(WTFMove(image));
 }
 
 void RenderStyle::setBorderImageSlices(LengthBox slices)
@@ -2030,10 +2036,10 @@ void RenderStyle::checkVariablesInCustomProperties()
     auto& customProperties = rareInheritedData.access()->m_customProperties.access()->values();
     HashSet<AtomicString> invalidProperties;
     for (auto entry : customProperties) {
-        if (!entry.value->isVariableDependentValue())
+        if (!entry.value->containsVariables())
             continue;
         HashSet<AtomicString> seenProperties;
-        downcast<CSSVariableDependentValue>(*entry.value).checkVariablesForCycles(entry.key, customProperties, seenProperties, invalidProperties);
+        entry.value->checkVariablesForCycles(entry.key, customProperties, seenProperties, invalidProperties);
     }
     
     // Now insert invalid values.
@@ -2047,20 +2053,15 @@ void RenderStyle::checkVariablesInCustomProperties()
     // invalid values if they failed, we can perform variable substitution on the valid values.
     Vector<Ref<CSSCustomPropertyValue>> resolvedValues;
     for (auto entry : customProperties) {
-        if (!entry.value->isVariableDependentValue())
+        if (!entry.value->containsVariables())
             continue;
-        
-        CSSParserValueList parserList;
-        if (!downcast<CSSVariableDependentValue>(*entry.value).valueList().buildParserValueListSubstitutingVariables(&parserList, customProperties))
-            resolvedValues.append(CSSCustomPropertyValue::create(entry.key, CSSCustomPropertyValue::createInvalid()));
-        else
-            resolvedValues.append(CSSCustomPropertyValue::create(entry.key, CSSValueList::createFromParserValueList(parserList)));
+        entry.value->resolveVariableReferences(customProperties, resolvedValues);
     }
     
     // With all results computed, we can now mutate our table to eliminate the variables and
     // hold the final values. This way when we inherit, we don't end up resubstituting variables, etc.
     for (auto& resolvedValue : resolvedValues)
-        customProperties.set(resolvedValue->name(), resolvedValue->value());
+        customProperties.set(resolvedValue->name(), resolvedValue.copyRef());
 
     rareInheritedData.access()->m_customProperties.access()->setContainsVariables(false);
 }

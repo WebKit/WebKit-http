@@ -251,14 +251,11 @@ public:
             recalcSections();
     }
 
-    static RenderTable* createAnonymousWithParentRenderer(const RenderObject*);
-    RenderBox* createAnonymousBoxWithSameTypeAs(const RenderObject* parent) const override
-    {
-        return createAnonymousWithParentRenderer(parent);
-    }
+    static std::unique_ptr<RenderTable> createAnonymousWithParentRenderer(const RenderElement&);
+    std::unique_ptr<RenderBox> createAnonymousBoxWithSameTypeAs(const RenderBox& renderer) const override;
 
-    const BorderValue& tableStartBorderAdjoiningCell(const RenderTableCell*) const;
-    const BorderValue& tableEndBorderAdjoiningCell(const RenderTableCell*) const;
+    const BorderValue& tableStartBorderAdjoiningCell(const RenderTableCell&) const;
+    const BorderValue& tableEndBorderAdjoiningCell(const RenderTableCell&) const;
 
     void addCaption(const RenderTableCaption*);
     void removeCaption(const RenderTableCaption*);
@@ -277,6 +274,8 @@ protected:
     void simplifiedNormalFlowLayout() final;
 
 private:
+    static std::unique_ptr<RenderTable> createTableWithStyle(Document&, const RenderStyle&);
+
     const char* renderName() const override { return "RenderTable"; }
 
     bool isTable() const final { return true; }
@@ -304,7 +303,7 @@ private:
     void invalidateCachedColumnOffsets();
 
     RenderBlock* firstLineBlock() const final;
-    void updateFirstLetter() final;
+    void updateFirstLetter(RenderTreeMutationIsAllowed = RenderTreeMutationIsAllowed::Yes) final;
     
     void updateLogicalWidth() final;
 
@@ -320,7 +319,9 @@ private:
 
     void recalcCollapsedBorders();
     void recalcSections() const;
-    void layoutCaption(RenderTableCaption*);
+    enum class BottomCaptionLayoutPhase { Yes, No };
+    void layoutCaptions(BottomCaptionLayoutPhase = BottomCaptionLayoutPhase::No);
+    void layoutCaption(RenderTableCaption&);
 
     void distributeExtraLogicalHeight(LayoutUnit extraLogicalHeight);
 
@@ -376,6 +377,13 @@ inline RenderTableSection* RenderTable::topSection() const
     if (m_firstBody)
         return m_firstBody;
     return m_foot;
+}
+
+inline bool isDirectionSame(const RenderBox* tableItem, const RenderBox* otherTableItem) { return tableItem && otherTableItem ? tableItem->style().direction() == otherTableItem->style().direction() : true; }
+
+inline std::unique_ptr<RenderBox> RenderTable::createAnonymousBoxWithSameTypeAs(const RenderBox& renderer) const
+{
+    return RenderTable::createTableWithStyle(renderer.document(), renderer.style());
 }
 
 } // namespace WebCore

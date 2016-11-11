@@ -66,6 +66,7 @@
 #if PLATFORM(MAC)
     [coder encodeBool:self.javaEnabled forKey:@"javaEnabled"];
     [coder encodeBool:self.plugInsEnabled forKey:@"plugInsEnabled"];
+    [coder encodeBool:self.tabFocusesLinks forKey:@"tabFocusesLinks"];
 #endif
 }
 
@@ -81,6 +82,7 @@
 #if PLATFORM(MAC)
     self.javaEnabled = [coder decodeBoolForKey:@"javaEnabled"];
     self.plugInsEnabled = [coder decodeBoolForKey:@"plugInsEnabled"];
+    self.tabFocusesLinks = [coder decodeBoolForKey:@"tabFocusesLinks"];
 #endif
 
     return self;
@@ -138,6 +140,16 @@
 - (void)setPlugInsEnabled:(BOOL)plugInsEnabled
 {
     _preferences->setPluginsEnabled(plugInsEnabled);
+}
+
+- (BOOL)tabFocusesLinks
+{
+    return _preferences->tabsToLinks();
+}
+
+- (void)setTabFocusesLinks:(BOOL)tabFocusesLinks
+{
+    _preferences->setTabsToLinks(tabFocusesLinks);
 }
 
 #endif
@@ -301,6 +313,26 @@ static _WKStorageBlockingPolicy toAPI(WebCore::SecurityOrigin::StorageBlockingPo
 - (void)_setDisplayListDrawingEnabled:(BOOL)displayListDrawingEnabled
 {
     _preferences->setDisplayListDrawingEnabled(displayListDrawingEnabled);
+}
+
+- (BOOL)_visualViewportEnabled
+{
+    return _preferences->visualViewportEnabled();
+}
+
+- (void)_setVisualViewportEnabled:(BOOL)_visualViewportEnabled
+{
+    _preferences->setVisualViewportEnabled(_visualViewportEnabled);
+}
+
+- (BOOL)_asyncImageDecodingEnabled
+{
+    return _preferences->asyncImageDecodingEnabled();
+}
+
+- (void)_setAsyncImageDecodingEnabled:(BOOL)_asyncImageDecodingEnabled
+{
+    _preferences->setAsyncImageDecodingEnabled(_asyncImageDecodingEnabled);
 }
 
 - (BOOL)_textAutosizingEnabled

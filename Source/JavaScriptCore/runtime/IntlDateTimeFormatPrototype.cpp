@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2015 Andy VanWagoner (thetalecrafter@gmail.com)
+ * Copyright (C) 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -34,10 +35,8 @@
 #include "IntlDateTimeFormat.h"
 #include "IntlObject.h"
 #include "JSBoundFunction.h"
-#include "JSCJSValueInlines.h"
-#include "JSCellInlines.h"
-#include "JSObject.h"
-#include "StructureInlines.h"
+#include "JSCInlines.h"
+#include "JSObjectInlines.h"
 
 namespace JSC {
 
@@ -83,6 +82,8 @@ void IntlDateTimeFormatPrototype::finishCreation(VM& vm, Structure*)
 
 static EncodedJSValue JSC_HOST_CALL IntlDateTimeFormatFuncFormatDateTime(ExecState* state)
 {
+    VM& vm = state->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     // 12.3.4 DateTime Format Functions (ECMA-402 2.0)
     // 1. Let dtf be the this value.
     // 2. Assert: Type(dtf) is Object and dtf has an [[initializedDateTimeFormat]] internal slot whose value is true.
@@ -100,8 +101,7 @@ static EncodedJSValue JSC_HOST_CALL IntlDateTimeFormatFuncFormatDateTime(ExecSta
         // a. Let x be ToNumber(date).
         value = date.toNumber(state);
         // b. ReturnIfAbrupt(x).
-        if (state->hadException())
-            return JSValue::encode(jsUndefined());
+        RETURN_IF_EXCEPTION(scope, encodedJSValue());
     }
 
     // 5. Return FormatDateTime(dtf, x).
@@ -110,6 +110,9 @@ static EncodedJSValue JSC_HOST_CALL IntlDateTimeFormatFuncFormatDateTime(ExecSta
 
 EncodedJSValue JSC_HOST_CALL IntlDateTimeFormatPrototypeGetterFormat(ExecState* state)
 {
+    VM& vm = state->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     // 12.3.3 Intl.DateTimeFormat.prototype.format (ECMA-402 2.0)
     // 1. Let dtf be this DateTimeFormat object.
     IntlDateTimeFormat* dtf = jsDynamicCast<IntlDateTimeFormat*>(state->thisValue());
@@ -117,28 +120,26 @@ EncodedJSValue JSC_HOST_CALL IntlDateTimeFormatPrototypeGetterFormat(ExecState* 
     // FIXME: Workaround to provide compatibility with ECMA-402 1.0 call/apply patterns.
     // https://bugs.webkit.org/show_bug.cgi?id=153679
     if (!dtf)
-        dtf = jsDynamicCast<IntlDateTimeFormat*>(state->thisValue().get(state, state->vm().propertyNames->builtinNames().intlSubstituteValuePrivateName()));
+        dtf = jsDynamicCast<IntlDateTimeFormat*>(state->thisValue().get(state, vm.propertyNames->builtinNames().intlSubstituteValuePrivateName()));
 
     // 2. ReturnIfAbrupt(dtf).
     if (!dtf)
-        return JSValue::encode(throwTypeError(state, ASCIILiteral("Intl.DateTimeFormat.prototype.format called on value that's not an object initialized as a DateTimeFormat")));
+        return JSValue::encode(throwTypeError(state, scope, ASCIILiteral("Intl.DateTimeFormat.prototype.format called on value that's not an object initialized as a DateTimeFormat")));
 
     JSBoundFunction* boundFormat = dtf->boundFormat();
     // 3. If the [[boundFormat]] internal slot of this DateTimeFormat object is undefined,
     if (!boundFormat) {
-        VM& vm = state->vm();
         JSGlobalObject* globalObject = dtf->globalObject();
         // a. Let F be a new built-in function object as defined in 12.3.4.
         // b. The value of F’s length property is 1. (Note: F’s length property was 0 in ECMA-402 1.0)
         JSFunction* targetObject = JSFunction::create(vm, globalObject, 1, ASCIILiteral("format"), IntlDateTimeFormatFuncFormatDateTime, NoIntrinsic);
         JSArray* boundArgs = JSArray::tryCreateUninitialized(vm, globalObject->arrayStructureForIndexingTypeDuringAllocation(ArrayWithUndecided), 0);
         if (!boundArgs)
-            return JSValue::encode(throwOutOfMemoryError(state));
+            return JSValue::encode(throwOutOfMemoryError(state, scope));
 
         // c. Let bf be BoundFunctionCreate(F, «this value»).
         boundFormat = JSBoundFunction::create(vm, state, globalObject, targetObject, dtf, boundArgs, 1, ASCIILiteral("format"));
-        if (vm.exception())
-            return JSValue::encode(JSValue());
+        RETURN_IF_EXCEPTION(scope, encodedJSValue());
         // d. Set dtf.[[boundFormat]] to bf.
         dtf->setBoundFormat(vm, boundFormat);
     }
@@ -148,16 +149,19 @@ EncodedJSValue JSC_HOST_CALL IntlDateTimeFormatPrototypeGetterFormat(ExecState* 
 
 EncodedJSValue JSC_HOST_CALL IntlDateTimeFormatPrototypeFuncResolvedOptions(ExecState* state)
 {
+    VM& vm = state->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     // 12.3.5 Intl.DateTimeFormat.prototype.resolvedOptions() (ECMA-402 2.0)
     IntlDateTimeFormat* dateTimeFormat = jsDynamicCast<IntlDateTimeFormat*>(state->thisValue());
 
     // FIXME: Workaround to provide compatibility with ECMA-402 1.0 call/apply patterns.
     // https://bugs.webkit.org/show_bug.cgi?id=153679
     if (!dateTimeFormat)
-        dateTimeFormat = jsDynamicCast<IntlDateTimeFormat*>(state->thisValue().get(state, state->vm().propertyNames->builtinNames().intlSubstituteValuePrivateName()));
+        dateTimeFormat = jsDynamicCast<IntlDateTimeFormat*>(state->thisValue().get(state, vm.propertyNames->builtinNames().intlSubstituteValuePrivateName()));
 
     if (!dateTimeFormat)
-        return JSValue::encode(throwTypeError(state, ASCIILiteral("Intl.DateTimeFormat.prototype.resolvedOptions called on value that's not an object initialized as a DateTimeFormat")));
+        return JSValue::encode(throwTypeError(state, scope, ASCIILiteral("Intl.DateTimeFormat.prototype.resolvedOptions called on value that's not an object initialized as a DateTimeFormat")));
 
     return JSValue::encode(dateTimeFormat->resolvedOptions(*state));
 }

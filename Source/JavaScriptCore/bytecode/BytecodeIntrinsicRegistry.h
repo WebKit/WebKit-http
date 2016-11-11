@@ -24,11 +24,9 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef BytecodeIntrinsicRegistry_h
-#define BytecodeIntrinsicRegistry_h
+#pragma once
 
 #include "Identifier.h"
-#include <wtf/HashTable.h>
 #include <wtf/Noncopyable.h>
 
 namespace JSC {
@@ -40,28 +38,38 @@ class RegisterID;
 class Identifier;
 
 #define JSC_COMMON_BYTECODE_INTRINSIC_FUNCTIONS_EACH_NAME(macro) \
+    macro(argument) \
     macro(argumentCount) \
     macro(assert) \
     macro(isObject) \
     macro(isJSArray) \
+    macro(isProxyObject) \
+    macro(isDerivedArray) \
+    macro(isRegExpObject) \
+    macro(isMap) \
+    macro(isSet) \
     macro(tailCallForwardArguments) \
+    macro(throwTypeError) \
+    macro(throwRangeError) \
+    macro(throwOutOfMemoryError) \
     macro(tryGetById) \
     macro(putByValDirect) \
     macro(toNumber) \
-    macro(toString)
+    macro(toString) \
+    macro(newArrayWithSize) \
 
 #define JSC_COMMON_BYTECODE_INTRINSIC_CONSTANTS_EACH_NAME(macro) \
     macro(undefined) \
     macro(Infinity) \
-    macro(arrayIterationKindKey) \
-    macro(arrayIterationKindValue) \
-    macro(arrayIterationKindKeyValue) \
+    macro(iterationKindKey) \
+    macro(iterationKindValue) \
+    macro(iterationKindKeyValue) \
     macro(MAX_STRING_LENGTH) \
     macro(MAX_SAFE_INTEGER) \
     macro(ModuleFetch) \
     macro(ModuleTranslate) \
     macro(ModuleInstantiate) \
-    macro(ModuleResolveDependencies) \
+    macro(ModuleSatisfy) \
     macro(ModuleLink) \
     macro(ModuleReady) \
     macro(promiseStatePending) \
@@ -97,5 +105,3 @@ private:
 };
 
 } // namespace JSC
-
-#endif // BytecodeIntrinsicRegistry_h

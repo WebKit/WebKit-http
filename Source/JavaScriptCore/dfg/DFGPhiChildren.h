@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef DFGPhiChildren_h
-#define DFGPhiChildren_h
+#pragma once
 
 #if ENABLE(DFG_JIT)
 
@@ -37,6 +36,7 @@ namespace JSC { namespace DFG {
 class Graph;
 
 class PhiChildren {
+    WTF_MAKE_FAST_ALLOCATED;
 public:
     typedef Vector<Node*, 3> List;
     
@@ -87,6 +87,3 @@ private:
 } } // namespace JSC::DFG
 
 #endif // ENABLE(DFG_JIT)
-
-#endif // DFGPhiChildren_h
-

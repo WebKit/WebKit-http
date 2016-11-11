@@ -30,6 +30,8 @@
 # THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use strict;
+use FindBin;
+use lib "$FindBin::Bin/../bindings/scripts";
 
 use StaticString;
 use Config;
@@ -1173,8 +1175,8 @@ sub printWrapperFunctions
 static JSDOMObject* create${JSInterfaceName}Wrapper(JSDOMGlobalObject* globalObject, Ref<$parameters{namespace}Element>&& element)
 {
     if (element->is$parameters{fallbackInterfaceName}())
-        return CREATE_DOM_WRAPPER(globalObject, $parameters{fallbackInterfaceName}, WTFMove(element));
-    return CREATE_DOM_WRAPPER(globalObject, ${JSInterfaceName}, WTFMove(element));
+        return createWrapper<$parameters{fallbackInterfaceName}>(globalObject, WTFMove(element));
+    return createWrapper<${JSInterfaceName}>(globalObject, WTFMove(element));
 }
 
 END
@@ -1184,8 +1186,8 @@ END
 static JSDOMObject* create$enabledTags{$tagName}{interfaceName}Wrapper(JSDOMGlobalObject* globalObject, Ref<$parameters{namespace}Element>&& element)
 {
     if (element->is$parameters{fallbackInterfaceName}())
-        return CREATE_DOM_WRAPPER(globalObject, $parameters{fallbackInterfaceName}, WTFMove(element));
-    return CREATE_DOM_WRAPPER(globalObject, ${JSInterfaceName}, WTFMove(element));
+        return createWrapper<$parameters{fallbackInterfaceName}>(globalObject, WTFMove(element));
+    return createWrapper<${JSInterfaceName}>(globalObject, WTFMove(element));
 }
 
 END
@@ -1197,10 +1199,10 @@ static JSDOMObject* create${JSInterfaceName}Wrapper(JSDOMGlobalObject* globalObj
 {
     if (!RuntimeEnabledFeatures::sharedFeatures().${runtimeConditional}Enabled()) {
         ASSERT(element->is$parameters{fallbackInterfaceName}());
-        return CREATE_DOM_WRAPPER(globalObject, $parameters{fallbackJSInterfaceName}, WTFMove(element));
+        return createWrapper<$parameters{fallbackJSInterfaceName}>(globalObject, WTFMove(element));
     }
 
-    return CREATE_DOM_WRAPPER(globalObject, ${JSInterfaceName}, WTFMove(element));
+    return createWrapper<${JSInterfaceName}>(globalObject, WTFMove(element));
 }
 END
     ;
@@ -1208,7 +1210,7 @@ END
             print F <<END
 static JSDOMObject* create${JSInterfaceName}Wrapper(JSDOMGlobalObject* globalObject, Ref<$parameters{namespace}Element>&& element)
 {
-    return CREATE_DOM_WRAPPER(globalObject, ${JSInterfaceName}, WTFMove(element));
+    return createWrapper<${JSInterfaceName}>(globalObject, WTFMove(element));
 }
 
 END
@@ -1322,16 +1324,14 @@ END
 
     if ($parameters{customElementInterfaceName}) {
         print F <<END
-#if ENABLE(CUSTOM_ELEMENTS)
-    if (element->isUnresolvedCustomElement())
-        return CREATE_DOM_WRAPPER(globalObject, $parameters{customElementInterfaceName}, WTFMove(element));
-#endif
+    if (element->isCustomElementUpgradeCandidate())
+        return createWrapper<$parameters{customElementInterfaceName}>(globalObject, WTFMove(element));
 END
 ;
     }
 
     print F <<END
-    return CREATE_DOM_WRAPPER(globalObject, $parameters{fallbackJSInterfaceName}, WTFMove(element));
+    return createWrapper<$parameters{fallbackJSInterfaceName}>(globalObject, WTFMove(element));
 }
 
 }

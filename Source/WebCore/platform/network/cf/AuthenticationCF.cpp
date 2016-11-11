@@ -26,7 +26,7 @@
 #include "config.h"
 #include "AuthenticationCF.h"
 
-#if USE(CFNETWORK)
+#if USE(CFURLCONNECTION)
 
 #include "AuthenticationChallenge.h"
 #include "AuthenticationClient.h"
@@ -38,31 +38,18 @@
 
 namespace WebCore {
 
-AuthenticationChallenge::AuthenticationChallenge(const ProtectionSpace& protectionSpace,
-                                                 const Credential& proposedCredential,
-                                                 unsigned previousFailureCount,
-                                                 const ResourceResponse& response,
-                                                 const ResourceError& error)
-    : AuthenticationChallengeBase(protectionSpace,
-                                  proposedCredential,
-                                  previousFailureCount,
-                                  response,
-                                  error)
+AuthenticationChallenge::AuthenticationChallenge(const ProtectionSpace& protectionSpace, const Credential& proposedCredential, unsigned previousFailureCount, const ResourceResponse& response, const ResourceError& error)
+    : AuthenticationChallengeBase(protectionSpace, proposedCredential, previousFailureCount, response, error)
 {
 }
 
-AuthenticationChallenge::AuthenticationChallenge(CFURLAuthChallengeRef cfChallenge,
-                                                 AuthenticationClient* authenticationClient)
+AuthenticationChallenge::AuthenticationChallenge(CFURLAuthChallengeRef cfChallenge, AuthenticationClient* authenticationClient)
 #if PLATFORM(COCOA)
-    : AuthenticationChallengeBase(ProtectionSpace(CFURLAuthChallengeGetProtectionSpace(cfChallenge)),
-                                  Credential(CFURLAuthChallengeGetProposedCredential(cfChallenge)),
+    : AuthenticationChallengeBase(ProtectionSpace(CFURLAuthChallengeGetProtectionSpace(cfChallenge)), Credential(CFURLAuthChallengeGetProposedCredential(cfChallenge)),
 #else
-    : AuthenticationChallengeBase(core(CFURLAuthChallengeGetProtectionSpace(cfChallenge)),
-                                  core(CFURLAuthChallengeGetProposedCredential(cfChallenge)),
+    : AuthenticationChallengeBase(core(CFURLAuthChallengeGetProtectionSpace(cfChallenge)), core(CFURLAuthChallengeGetProposedCredential(cfChallenge)),
 #endif
-                                  CFURLAuthChallengeGetPreviousFailureCount(cfChallenge),
-                                  (CFURLResponseRef)CFURLAuthChallengeGetFailureResponse(cfChallenge),
-                                  CFURLAuthChallengeGetError(cfChallenge))
+        CFURLAuthChallengeGetPreviousFailureCount(cfChallenge), (CFURLResponseRef)CFURLAuthChallengeGetFailureResponse(cfChallenge), CFURLAuthChallengeGetError(cfChallenge))
     , m_authenticationClient(authenticationClient)
     , m_cfChallenge(cfChallenge)
 {
@@ -98,7 +85,6 @@ CFURLAuthChallengeRef createCF(const AuthenticationChallenge& coreChallenge)
 #else
     RetainPtr<CFURLCredentialRef> credential = adoptCF(createCF(coreChallenge.proposedCredential()));
     RetainPtr<CFURLProtectionSpaceRef> protectionSpace = adoptCF(createCF(coreChallenge.protectionSpace()));
-
     CFURLAuthChallengeRef result = CFURLAuthChallengeCreate(0, protectionSpace.get(), credential.get(),
 #endif
                                         coreChallenge.previousFailureCount(),
@@ -106,8 +92,6 @@ CFURLAuthChallengeRef createCF(const AuthenticationChallenge& coreChallenge)
                                         coreChallenge.error());
     return result;
 }
-
-#if PLATFORM(WIN)
 
 CFURLCredentialRef createCF(const Credential& coreCredential)
 {
@@ -290,8 +274,7 @@ ProtectionSpace core(CFURLProtectionSpaceRef cfSpace)
                            CFURLProtectionSpaceGetRealm(cfSpace),
                            scheme);
 }
-#endif // PLATFORM(WIN)
 
-};
+}
 
-#endif // USE(CFNETWORK)
+#endif // USE(CFURLCONNECTION)

@@ -1,4 +1,47 @@
 =================
+WebKitGTK+ 2.15.1
+=================
+
+What's new in WebKitGTK+ 2.15.1?
+
+  - GObject DOM bindings API marked as unstable has been removed.
+  - Expose WebKitDOMHTMLInputElement APIs for form autofill.
+  - Properly update WebKitWebView and WebKitWebPage URI properties when request is modified by
+    WebKitWebPage:send-request signal.
+  - Switch to use GMenu internally in the context menu implementation.
+  - Dot not leak the default WebKitWebsiteDataManager in WebKitWebContext.
+  - The network backend now always sniff contents for Downloads.
+  - Use eglGetPlatformDisplay when available instead of eglGetDisplay.
+  - Avoid strstr() when checking (E)GL extensions.
+  - Fix the build with ENABLE_OPENGL=OFF and allow to build on Wayland without OpenGL again.
+  - Fix several crashes and rendering issues.
+
+=================
+WebKitGTK+ 2.13.4
+=================
+
+What's new in WebKitGTK+ 2.13.4?
+
+  - Switched to use the threaded compositor. Accelerated compositing mode is now always enabled by default
+    and happens in a separate thread in the web process.
+  - Make web view background colors work in accelerated compositing mode.
+  - Fix several crashes and rendering issues.
+
+=================
+WebKitGTK+ 2.13.3
+=================
+
+What's new in WebKitGTK+ 2.13.3?
+
+  - Fix Web Process deadlocks when loading HLS videos.
+  - Make videos work when painted into a canvas when accelerated compositing is enabled.
+  - Fix flickering with animated GIFs.
+  - Fix a Web Process crash when video repaint is requested with GStreamer GL enabled.
+  - Reduce the amount of file descriptors that the Web Process keeps open.
+  - Make memory pressure handler work when cgroups are not available.
+  - Fix several crashes and rendering issues.
+
+=================
 WebKitGTK+ 2.13.2
 =================
 

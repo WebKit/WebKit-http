@@ -51,6 +51,7 @@ public:
     IndexValueStore(bool unique);
 
     const IDBKeyData* lowestValueForKey(const IDBKeyData&) const;
+    Vector<IDBKeyData> allValuesForKey(const IDBKeyData&, uint32_t limit) const;
     uint64_t countForKey(const IDBKeyData&) const;
     IDBKeyData lowestKeyWithRecordInRange(const IDBKeyRangeData&) const;
     bool contains(const IDBKeyData&) const;
@@ -98,7 +99,7 @@ public:
     Iterator find(const IDBKeyData&, const IDBKeyData& primaryKey);
     Iterator reverseFind(const IDBKeyData&, const IDBKeyData& primaryKey, CursorDuplicity);
 
-#ifndef NDEBUG
+#if !LOG_DISABLED
     String loggingString() const;
 #endif
 

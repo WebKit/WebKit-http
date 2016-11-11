@@ -18,8 +18,7 @@
  *
  */
 
-#ifndef HTMLProgressElement_h
-#define HTMLProgressElement_h
+#pragma once
 
 #include "LabelableElement.h"
 
@@ -36,37 +35,35 @@ public:
     static Ref<HTMLProgressElement> create(const QualifiedName&, Document&);
 
     double value() const;
-    void setValue(double, ExceptionCode&);
+    void setValue(double);
 
     double max() const;
-    void setMax(double, ExceptionCode&);
+    void setMax(double);
 
     double position() const;
-
-    bool canContainRangeEndPoint() const override { return false; }
 
 private:
     HTMLProgressElement(const QualifiedName&, Document&);
     virtual ~HTMLProgressElement();
 
-    bool shouldAppearIndeterminate() const override;
-    bool supportLabels() const override { return true; }
+    bool shouldAppearIndeterminate() const final;
+    bool supportLabels() const final { return true; }
 
-    RenderPtr<RenderElement> createElementRenderer(RenderStyle&&, const RenderTreePosition&) override;
-    bool childShouldCreateRenderer(const Node&) const override;
+    RenderPtr<RenderElement> createElementRenderer(RenderStyle&&, const RenderTreePosition&) final;
+    bool childShouldCreateRenderer(const Node&) const final;
     RenderProgress* renderProgress() const;
 
-    void parseAttribute(const QualifiedName&, const AtomicString&) override;
+    void parseAttribute(const QualifiedName&, const AtomicString&) final;
 
-    void didAttachRenderers() override;
+    void didAttachRenderers() final;
 
     void didElementStateChange();
-    void didAddUserAgentShadowRoot(ShadowRoot*) override;
+    void didAddUserAgentShadowRoot(ShadowRoot*) final;
     bool isDeterminate() const;
+
+    bool canContainRangeEndPoint() const final { return false; }
 
     ProgressValueElement* m_value;
 };
 
 } // namespace
-
-#endif

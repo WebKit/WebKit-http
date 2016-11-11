@@ -37,7 +37,7 @@
 
 namespace WebCore {
 
-#if USE(CFNETWORK)
+#if USE(CFURLCONNECTION)
 
 ResourceRequest::ResourceRequest(NSURLRequest *nsRequest)
     : ResourceRequestBase()
@@ -50,12 +50,6 @@ void ResourceRequest::updateNSURLRequest()
 {
     if (m_cfRequest)
         m_nsRequest = adoptNS([[NSURLRequest alloc] _initWithCFURLRequest:m_cfRequest.get()]);
-}
-
-void ResourceRequest::applyWebArchiveHackForMail()
-{
-    // Hack because Mail checks for this property to detect data / archive loads
-    _CFURLRequestSetProtocolProperty(cfURLRequest(DoNotUpdateHTTPBody), CFSTR("WebDataRequest"), CFSTR(""));
 }
 
 #endif

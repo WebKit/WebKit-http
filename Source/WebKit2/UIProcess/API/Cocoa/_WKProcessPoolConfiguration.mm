@@ -92,6 +92,16 @@
     _processPoolConfiguration->setDiskCacheSpeculativeValidationEnabled(enabled);
 }
 
+- (BOOL)ignoreSynchronousMessagingTimeoutsForTesting
+{
+    return _processPoolConfiguration->ignoreSynchronousMessagingTimeoutsForTesting();
+}
+
+- (void)setIgnoreSynchronousMessagingTimeoutsForTesting:(BOOL)ignoreSynchronousMessagingTimeoutsForTesting
+{
+    _processPoolConfiguration->setIgnoreSynchronousMessagingTimeoutsForTesting(ignoreSynchronousMessagingTimeoutsForTesting);
+}
+
 - (NSArray *)cachePartitionedURLSchemes
 {
     auto schemes = _processPoolConfiguration->cachePartitionedURLSchemes();
@@ -140,6 +150,48 @@
 
     _processPoolConfiguration->setAlwaysRevalidatedURLSchemes(WTFMove(schemes));
 }
+
+- (NSString *)sourceApplicationBundleIdentifier
+{
+    return _processPoolConfiguration->sourceApplicationBundleIdentifier();
+}
+
+- (void)setSourceApplicationBundleIdentifier:(NSString *)sourceApplicationBundleIdentifier
+{
+    _processPoolConfiguration->setSourceApplicationBundleIdentifier(sourceApplicationBundleIdentifier);
+}
+
+- (NSString *)sourceApplicationSecondaryIdentifier
+{
+    return _processPoolConfiguration->sourceApplicationSecondaryIdentifier();
+}
+
+- (void)setSourceApplicationSecondaryIdentifier:(NSString *)sourceApplicationSecondaryIdentifier
+{
+    _processPoolConfiguration->setSourceApplicationSecondaryIdentifier(sourceApplicationSecondaryIdentifier);
+}
+
+#if PLATFORM(IOS)
+- (NSString *)CTDataConnectionServiceType
+{
+    return _processPoolConfiguration->ctDataConnectionServiceType();
+}
+
+- (void)setCTDataConnectionServiceType:(NSString *)ctDataConnectionServiceType
+{
+    _processPoolConfiguration->setCTDataConnectionServiceType(ctDataConnectionServiceType);
+}
+
+- (BOOL)alwaysRunsAtBackgroundPriority
+{
+    return _processPoolConfiguration->alwaysRunsAtBackgroundPriority();
+}
+
+- (void)setAlwaysRunsAtBackgroundPriority:(BOOL)alwaysRunsAtBackgroundPriority
+{
+    _processPoolConfiguration->setAlwaysRunsAtBackgroundPriority(alwaysRunsAtBackgroundPriority);
+}
+#endif
 
 - (NSString *)description
 {

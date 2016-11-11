@@ -28,6 +28,7 @@
 #include "CSSFontSelector.h"
 #include "Chrome.h"
 #include "ChromeClient.h"
+#include "ControlStates.h"
 #include "Document.h"
 #include "EventHandler.h"
 #include "FloatQuad.h"
@@ -35,7 +36,6 @@
 #include "Frame.h"
 #include "FrameView.h"
 #include "GraphicsContext.h"
-#include "HTMLAnchorElement.h"
 #include "HTMLBodyElement.h"
 #include "HTMLButtonElement.h"
 #include "HTMLFrameOwnerElement.h"
@@ -109,6 +109,25 @@ static OverrideSizeMap* gExtraBlockOffsetMap = nullptr;
 static const int autoscrollBeltSize = 20;
 static const unsigned backgroundObscurationTestMaxDepth = 4;
 
+using ControlStatesRendererMap = HashMap<const RenderObject*, std::unique_ptr<ControlStates>>;
+static ControlStatesRendererMap& controlStatesRendererMap()
+{
+    static NeverDestroyed<ControlStatesRendererMap> map;
+    return map;
+}
+
+static ControlStates* controlStatesForRenderer(const RenderBox& renderer)
+{
+    return controlStatesRendererMap().ensure(&renderer, [] {
+        return std::make_unique<ControlStates>();
+    }).iterator->value.get();
+}
+
+static void removeControlStatesForRenderer(const RenderBox& renderer)
+{
+    controlStatesRendererMap().remove(&renderer);
+}
+
 bool RenderBox::s_hadOverflowClip = false;
 
 static bool skipBodyBackground(const RenderBox* bodyElementRenderer)
@@ -124,18 +143,12 @@ static bool skipBodyBackground(const RenderBox* bodyElementRenderer)
 
 RenderBox::RenderBox(Element& element, RenderStyle&& style, BaseTypeFlags baseTypeFlags)
     : RenderBoxModelObject(element, WTFMove(style), baseTypeFlags)
-    , m_minPreferredLogicalWidth(-1)
-    , m_maxPreferredLogicalWidth(-1)
-    , m_inlineBoxWrapper(nullptr)
 {
     setIsBox();
 }
 
 RenderBox::RenderBox(Document& document, RenderStyle&& style, BaseTypeFlags baseTypeFlags)
     : RenderBoxModelObject(document, WTFMove(style), baseTypeFlags)
-    , m_minPreferredLogicalWidth(-1)
-    , m_maxPreferredLogicalWidth(-1)
-    , m_inlineBoxWrapper(nullptr)
 {
     setIsBox();
 }
@@ -153,13 +166,10 @@ RenderBox::~RenderBox()
 
     RenderBlock::removePercentHeightDescendantIfNeeded(*this);
 
-#if ENABLE(CSS_SHAPES)
     ShapeOutsideInfo::removeInfo(*this);
-#endif
 
     view().unscheduleLazyRepaint(*this);
-    if (hasControlStatesForRenderer(this))
-        removeControlStatesForRenderer(this);
+    removeControlStatesForRenderer(*this);
 }
 
 RenderRegion* RenderBox::clampToStartAndEndRegions(RenderRegion* region) const
@@ -401,6 +411,8 @@ void RenderBox::styleDidChange(StyleDifference diff, const RenderStyle* oldStyle
                 rootStyleChanged = true;
             }
             setNeedsLayoutAndPrefWidthsRecalc();
+
+            view().frameView().topContentDirectionDidChange();
         }
 
         if (viewStyle.writingMode() != newStyle.writingMode() && (isDocElementRenderer || !documentElementRenderer->style().hasExplicitlySetWritingMode())) {
@@ -445,10 +457,8 @@ void RenderBox::styleDidChange(StyleDifference diff, const RenderStyle* oldStyle
             view().compositor().rootOrBodyStyleChanged(*this, oldStyle);
     }
 
-#if ENABLE(CSS_SHAPES)
     if ((oldStyle && oldStyle->shapeOutside()) || style().shapeOutside())
         updateShapeOutsideInfoAfterStyleChange(style(), oldStyle);
-#endif
 }
 
 void RenderBox::willBeRemovedFromTree()
@@ -461,8 +471,6 @@ void RenderBox::willBeRemovedFromTree()
     RenderBoxModelObject::willBeRemovedFromTree();
 }
     
-
-#if ENABLE(CSS_SHAPES)
 void RenderBox::updateShapeOutsideInfoAfterStyleChange(const RenderStyle& style, const RenderStyle* oldStyle)
 {
     const ShapeValue* shapeOutside = style.shapeOutside();
@@ -486,7 +494,6 @@ void RenderBox::updateShapeOutsideInfoAfterStyleChange(const RenderStyle& style,
     if (shapeOutside || shapeOutside != oldShapeOutside)
         markShapeOutsideDependentsForLayout();
 }
-#endif
 
 void RenderBox::updateFromStyle()
 {
@@ -1349,15 +1356,9 @@ void RenderBox::paintBoxDecorations(PaintInfo& paintInfo, const LayoutPoint& pai
 
     // If we have a native theme appearance, paint that before painting our background.
     // The theme will tell us whether or not we should also paint the CSS background.
-    ControlStates* controlStates = nullptr;
     bool borderOrBackgroundPaintingIsNeeded = true;
     if (style().hasAppearance()) {
-        if (hasControlStatesForRenderer(this))
-            controlStates = controlStatesForRenderer(this);
-        else {
-            controlStates = new ControlStates();
-            addControlStatesForRenderer(this, controlStates);
-        }
+        ControlStates* controlStates = controlStatesForRenderer(*this);
         borderOrBackgroundPaintingIsNeeded = theme().paint(*this, *controlStates, paintInfo, paintRect);
         if (controlStates->needsRepaint())
             view().scheduleLazyRepaint(*this);
@@ -1401,7 +1402,7 @@ bool RenderBox::getBackgroundPaintedExtent(const LayoutPoint& paintOffset, Layou
     LayoutRect backgroundRect = snappedIntRect(borderBoxRect());
 
     Color backgroundColor = style().visitedDependentColor(CSSPropertyBackgroundColor);
-    if (backgroundColor.isValid() && backgroundColor.alpha()) {
+    if (backgroundColor.isVisible()) {
         paintedExtent = backgroundRect;
         return true;
     }
@@ -1422,7 +1423,7 @@ bool RenderBox::backgroundIsKnownToBeOpaqueInRect(const LayoutRect& localRect) c
         return false;
 
     Color backgroundColor = style().visitedDependentColor(CSSPropertyBackgroundColor);
-    if (!backgroundColor.isValid() || backgroundColor.hasAlpha())
+    if (!backgroundColor.isOpaque())
         return false;
 
     // If the element has appearance, it might be painted by theme.
@@ -1467,10 +1468,8 @@ static bool isCandidateForOpaquenessTest(const RenderBox& childBox)
         return false;
     if (childStyle.visibility() != VISIBLE)
         return false;
-#if ENABLE(CSS_SHAPES)
     if (childStyle.shapeOutside())
         return false;
-#endif
     if (!childBox.width() || !childBox.height())
         return false;
     if (RenderLayer* childLayer = childBox.layer()) {
@@ -1544,10 +1543,10 @@ bool RenderBox::backgroundHasOpaqueTopLayer() const
     if (fillLayer->hasOpaqueImage(*this) && fillLayer->hasRepeatXY() && fillLayer->image()->canRender(this, style().effectiveZoom()))
         return true;
 
-    // If there is only one layer and no image, check whether the background color is opaque
+    // If there is only one layer and no image, check whether the background color is opaque.
     if (!fillLayer->next() && !fillLayer->hasImage()) {
         Color bgColor = style().visitedDependentColor(CSSPropertyBackgroundColor);
-        if (bgColor.isValid() && bgColor.alpha() == 255)
+        if (bgColor.isOpaque())
             return true;
     }
 
@@ -1700,13 +1699,11 @@ void RenderBox::imageChanged(WrappedImagePtr image, const IntRect*)
         return;
     }
 
-#if ENABLE(CSS_SHAPES)
     ShapeValue* shapeOutsideValue = style().shapeOutside();
     if (!view().frameView().isInRenderTreeLayout() && isFloating() && shapeOutsideValue && shapeOutsideValue->image() && shapeOutsideValue->image()->data() == image) {
         ShapeOutsideInfo::ensureInfo(*this).markShapeAsDirty();
         markShapeOutsideDependentsForLayout();
     }
-#endif
 
     bool didFullRepaint = repaintLayerRectsForImage(image, style().backgroundLayers(), true);
     if (!didFullRepaint)
@@ -2133,13 +2130,14 @@ std::unique_ptr<InlineElementBox> RenderBox::createInlineBox()
 
 void RenderBox::dirtyLineBoxes(bool fullLayout)
 {
-    if (m_inlineBoxWrapper) {
-        if (fullLayout) {
-            delete m_inlineBoxWrapper;
-            m_inlineBoxWrapper = nullptr;
-        } else
-            m_inlineBoxWrapper->dirtyLineBoxes();
-    }
+    if (!m_inlineBoxWrapper)
+        return;
+    
+    if (fullLayout) {
+        delete m_inlineBoxWrapper;
+        m_inlineBoxWrapper = nullptr;
+    } else
+        m_inlineBoxWrapper->dirtyLineBoxes();
 }
 
 void RenderBox::positionLineBox(InlineElementBox& box)
@@ -2175,12 +2173,13 @@ void RenderBox::positionLineBox(InlineElementBox& box)
 
 void RenderBox::deleteLineBoxWrapper()
 {
-    if (m_inlineBoxWrapper) {
-        if (!documentBeingDestroyed())
-            m_inlineBoxWrapper->removeFromParent();
-        delete m_inlineBoxWrapper;
-        m_inlineBoxWrapper = nullptr;
-    }
+    if (!m_inlineBoxWrapper)
+        return;
+    
+    if (!documentBeingDestroyed())
+        m_inlineBoxWrapper->removeFromParent();
+    delete m_inlineBoxWrapper;
+    m_inlineBoxWrapper = nullptr;
 }
 
 LayoutRect RenderBox::clippedOverflowRectForRepaint(const RenderLayerModelObject* repaintContainer) const
@@ -2408,19 +2407,20 @@ void RenderBox::computeLogicalWidthInRegion(LogicalExtentComputedValues& compute
         return;
     }
 
+    LayoutUnit containerWidthInInlineDirection = containerLogicalWidth;
+    if (hasPerpendicularContainingBlock)
+        containerWidthInInlineDirection = perpendicularContainingBlockLogicalHeight();
+
     // Width calculations
     if (treatAsReplaced) {
         computedValues.m_extent = logicalWidthLength.value() + borderAndPaddingLogicalWidth();
 #if ENABLE(CSS_GRID_LAYOUT)
-    } else if (parent()->isRenderGrid() && style().logicalWidth().isAuto() && style().logicalMinWidth().isAuto() && style().overflowX() == OVISIBLE && containerLogicalWidth < minPreferredLogicalWidth()) {
+    } else if (parent()->isRenderGrid() && style().logicalWidth().isAuto() && style().logicalMinWidth().isAuto() && style().overflowX() == OVISIBLE && containerWidthInInlineDirection < minPreferredLogicalWidth()) {
         // TODO (lajava) Move this logic to the LayoutGrid class.
         // Implied minimum size of Grid items.
-        computedValues.m_extent = constrainLogicalWidthInRegionByMinMax(minPreferredLogicalWidth(), containerLogicalWidth, cb);
+        computedValues.m_extent = constrainLogicalWidthInRegionByMinMax(minPreferredLogicalWidth(), containerWidthInInlineDirection, cb);
 #endif
     } else {
-        LayoutUnit containerWidthInInlineDirection = containerLogicalWidth;
-        if (hasPerpendicularContainingBlock)
-            containerWidthInInlineDirection = perpendicularContainingBlockLogicalHeight();
         LayoutUnit preferredWidth = computeLogicalWidthInRegionUsing(MainOrPreferredSize, styleToUse.logicalWidth(), containerWidthInInlineDirection, cb, region);
         computedValues.m_extent = constrainLogicalWidthInRegionByMinMax(preferredWidth, containerWidthInInlineDirection, cb, region);
     }
@@ -2441,6 +2441,10 @@ void RenderBox::computeLogicalWidthInRegion(LogicalExtentComputedValues& compute
     
     if (!hasPerpendicularContainingBlock && containerLogicalWidth && containerLogicalWidth != (computedValues.m_extent + computedValues.m_margins.m_start + computedValues.m_margins.m_end)
         && !isFloating() && !isInline() && !cb.isFlexibleBoxIncludingDeprecated()
+#if ENABLE(MATHML)
+        // RenderMathMLBlocks take the size of their content so we must not adjust the margin to fill the container size.
+        && !cb.isRenderMathMLBlock()
+#endif
 #if ENABLE(CSS_GRID_LAYOUT)
         && !cb.isRenderGrid()
 #endif
@@ -2588,6 +2592,12 @@ bool RenderBox::sizesLogicalWidthToFitContent(SizeType widthType) const
             return true;
     }
 
+#if ENABLE(MATHML)
+    // RenderMathMLBlocks take the size of their content, not of their container.
+    if (parent()->isRenderMathMLBlock())
+        return true;
+#endif
+
     // Flexible box items should shrink wrap, so we lay them out at their intrinsic widths.
     // In the case of columns that have a stretch alignment, we layout at the stretched size
     // to avoid an extra layout when applying alignment.
@@ -2654,7 +2664,7 @@ void RenderBox::computeInlineDirectionMargins(const RenderBlock& containingBlock
     // Case Three: The object is being pushed to the end of the containing block's available logical width.
     bool pushToEndFromTextAlign = !marginEndLength.isAuto() && ((!containingBlockStyle.isLeftToRightDirection() && containingBlockStyle.textAlign() == WEBKIT_LEFT)
         || (containingBlockStyle.isLeftToRightDirection() && containingBlockStyle.textAlign() == WEBKIT_RIGHT));
-    if ((marginStartLength.isAuto() && childWidth < containerWidth) || pushToEndFromTextAlign) {
+    if ((marginStartLength.isAuto() || pushToEndFromTextAlign) && childWidth < containerWidth) {
         marginEnd = valueForLength(marginEndLength, containerWidth);
         marginStart = containerWidth - childWidth - marginEnd;
         return;
@@ -2989,6 +2999,8 @@ Optional<LayoutUnit> RenderBox::computePercentageLogicalHeight(const Length& hei
 #if ENABLE(CSS_GRID_LAYOUT)
     else if (hasOverrideContainingBlockLogicalHeight())
         availableHeight = overrideContainingBlockContentLogicalHeight();
+    else if (cb->isGridItem() && cb->hasOverrideLogicalContentHeight())
+        availableHeight = cb->overrideLogicalContentHeight();
 #endif
     else if (is<RenderTableCell>(*cb)) {
         if (!skippedAutoHeightContainingBlock) {
@@ -4355,7 +4367,7 @@ void RenderBox::computePositionedLogicalHeightReplaced(LogicalExtentComputedValu
     computedValues.m_position = logicalTopPos;
 }
 
-LayoutRect RenderBox::localCaretRect(InlineBox* box, int caretOffset, LayoutUnit* extraWidthToEndOfLine)
+LayoutRect RenderBox::localCaretRect(InlineBox* box, unsigned caretOffset, LayoutUnit* extraWidthToEndOfLine)
 {
     // VisiblePositions at offsets inside containers either a) refer to the positions before/after
     // those containers (tables and select elements) or b) refer to the position inside an empty block.
@@ -5102,7 +5114,7 @@ RenderObject* RenderBox::splitAnonymousBoxesAroundChild(RenderObject* beforeChil
 
             // We have to split the parent box into two boxes and move children
             // from |beforeChild| to end into the new post box.
-            RenderBox* postBox = boxToSplit.createAnonymousBoxWithSameTypeAs(this);
+            auto* postBox = boxToSplit.createAnonymousBoxWithSameTypeAs(*this).release();
             postBox->setChildrenInline(boxToSplit.childrenInline());
             RenderBox* parentBox = downcast<RenderBox>(boxToSplit.parent());
             // We need to invalidate the |parentBox| before inserting the new node

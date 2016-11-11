@@ -42,9 +42,9 @@ CryptoAlgorithmSHA224::~CryptoAlgorithmSHA224()
 {
 }
 
-std::unique_ptr<CryptoAlgorithm> CryptoAlgorithmSHA224::create()
+Ref<CryptoAlgorithm> CryptoAlgorithmSHA224::create()
 {
-    return std::unique_ptr<CryptoAlgorithm>(new CryptoAlgorithmSHA224);
+    return adoptRef(*new CryptoAlgorithmSHA224);
 }
 
 CryptoAlgorithmIdentifier CryptoAlgorithmSHA224::identifier() const
@@ -52,7 +52,7 @@ CryptoAlgorithmIdentifier CryptoAlgorithmSHA224::identifier() const
     return s_identifier;
 }
 
-void CryptoAlgorithmSHA224::digest(const CryptoAlgorithmParameters&, const CryptoOperationData& data, VectorCallback&& callback, VoidCallback&& failureCallback, ExceptionCode&)
+void CryptoAlgorithmSHA224::digest(const CryptoAlgorithmParametersDeprecated&, const CryptoOperationData& data, VectorCallback&& callback, VoidCallback&& failureCallback, ExceptionCode&)
 {
     std::unique_ptr<CryptoDigest> digest = CryptoDigest::create(CryptoDigest::Algorithm::SHA_224);
     if (!digest) {

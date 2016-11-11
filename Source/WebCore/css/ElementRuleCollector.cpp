@@ -37,7 +37,6 @@
 #include "CSSValueKeywords.h"
 #include "HTMLElement.h"
 #include "HTMLSlotElement.h"
-#include "InspectorInstrumentation.h"
 #include "NodeRenderStyle.h"
 #include "RenderRegion.h"
 #include "SVGElement.h"
@@ -45,8 +44,8 @@
 #include "SelectorFilter.h"
 #include "ShadowRoot.h"
 #include "StyleProperties.h"
+#include "StyleScope.h"
 #include "StyledElement.h"
-
 #include <wtf/TemporaryChange.h>
 
 namespace WebCore {
@@ -69,7 +68,7 @@ static const StyleProperties& rightToLeftDeclaration()
 
 class MatchRequest {
 public:
-    MatchRequest(const RuleSet* ruleSet, bool includeEmptyRules = false, unsigned treeContextOrdinal = 0)
+    MatchRequest(const RuleSet* ruleSet, bool includeEmptyRules = false, int treeContextOrdinal = 0)
         : ruleSet(ruleSet)
         , includeEmptyRules(includeEmptyRules)
         , treeContextOrdinal(treeContextOrdinal)
@@ -77,12 +76,12 @@ public:
     }
     const RuleSet* ruleSet;
     const bool includeEmptyRules;
-    unsigned treeContextOrdinal;
+    int treeContextOrdinal;
 };
 
 ElementRuleCollector::ElementRuleCollector(const Element& element, const DocumentRuleSets& ruleSets, const SelectorFilter* selectorFilter)
     : m_element(element)
-    , m_authorStyle(*ruleSets.authorStyle())
+    , m_authorStyle(ruleSets.authorStyle())
     , m_userStyle(ruleSets.userStyle())
     , m_selectorFilter(selectorFilter)
 {
@@ -109,7 +108,7 @@ const Vector<RefPtr<StyleRule>>& ElementRuleCollector::matchedRuleList() const
     return m_matchedRuleList;
 }
 
-inline void ElementRuleCollector::addMatchedRule(const RuleData& ruleData, unsigned specificity, unsigned treeContextOrdinal, StyleResolver::RuleRange& ruleRange)
+inline void ElementRuleCollector::addMatchedRule(const RuleData& ruleData, unsigned specificity, int treeContextOrdinal, StyleResolver::RuleRange& ruleRange)
 {
     // Update our first/last rule indices in the matched rules array.
     ++ruleRange.lastRuleIndex;
@@ -142,17 +141,9 @@ void ElementRuleCollector::collectMatchingRules(const MatchRequest& matchRequest
     ASSERT(matchRequest.ruleSet);
     ASSERT_WITH_MESSAGE(!(m_mode == SelectorChecker::Mode::CollectingRulesIgnoringVirtualPseudoElements && m_pseudoStyleRequest.pseudoId != NOPSEUDO), "When in StyleInvalidation or SharingRules, SelectorChecker does not try to match the pseudo ID. While ElementRuleCollector supports matching a particular pseudoId in this case, this would indicate a error at the call site since matching a particular element should be unnecessary.");
 
-#if ENABLE(VIDEO_TRACK)
-    if (m_element.isWebVTTElement())
-        collectMatchingRulesForList(matchRequest.ruleSet->cuePseudoRules(), matchRequest, ruleRange);
-#endif
-
     auto* shadowRoot = m_element.containingShadowRoot();
-    if (shadowRoot && shadowRoot->type() == ShadowRoot::Type::UserAgent) {
-        const AtomicString& pseudoId = m_element.shadowPseudoId();
-        if (!pseudoId.isEmpty())
-            collectMatchingRulesForList(matchRequest.ruleSet->shadowPseudoElementRules(pseudoId.impl()), matchRequest, ruleRange);
-    }
+    if (shadowRoot && shadowRoot->mode() == ShadowRootMode::UserAgent)
+        collectMatchingShadowPseudoElementRules(matchRequest, ruleRange);
 
     // We need to collect the rules for id, class, tag, and everything else into a buffer and
     // then sort the buffer.
@@ -222,10 +213,25 @@ void ElementRuleCollector::matchAuthorRules(bool includeEmptyRules)
     if (parent && parent->shadowRoot())
         matchSlottedPseudoElementRules(matchRequest, ruleRange);
 
-    if (m_element.shadowRoot())
+    if (m_element.shadowRoot() && m_pseudoStyleRequest.pseudoId == NOPSEUDO)
         matchHostPseudoClassRules(matchRequest, ruleRange);
 
+    if (m_element.isInShadowTree())
+        matchAuthorShadowPseudoElementRules(matchRequest, ruleRange);
+
     sortAndTransferMatchedRules();
+}
+
+void ElementRuleCollector::matchAuthorShadowPseudoElementRules(const MatchRequest& matchRequest, StyleResolver::RuleRange& ruleRange)
+{
+    ASSERT(m_element.isInShadowTree());
+    auto& shadowRoot = *m_element.containingShadowRoot();
+    if (shadowRoot.mode() != ShadowRootMode::UserAgent)
+        return;
+    // Look up shadow pseudo elements also from the host scope author style as they are web-exposed.
+    auto& hostAuthorRules = Style::Scope::forNode(*shadowRoot.host()).resolver().ruleSets().authorStyle();
+    MatchRequest hostAuthorRequest { &hostAuthorRules, matchRequest.includeEmptyRules, matchRequest.treeContextOrdinal - 1 };
+    collectMatchingShadowPseudoElementRules(hostAuthorRequest, ruleRange);
 }
 
 void ElementRuleCollector::matchHostPseudoClassRules(MatchRequest& matchRequest, StyleResolver::RuleRange& ruleRange)
@@ -234,7 +240,7 @@ void ElementRuleCollector::matchHostPseudoClassRules(MatchRequest& matchRequest,
 
     matchRequest.treeContextOrdinal++;
 
-    auto& shadowAuthorStyle = *m_element.shadowRoot()->styleResolver().ruleSets().authorStyle();
+    auto& shadowAuthorStyle = m_element.shadowRoot()->styleScope().resolver().ruleSets().authorStyle();
     auto& shadowHostRules = shadowAuthorStyle.hostPseudoClassRules();
     if (shadowHostRules.isEmpty())
         return;
@@ -265,12 +271,11 @@ void ElementRuleCollector::matchSlottedPseudoElementRules(MatchRequest& matchReq
 
         // In nested case the slot may itself be assigned to a slot. Collect ::slotted rules from all the nested trees.
         maybeSlotted = slot;
-        auto* shadowAuthorStyle = hostShadowRoot->styleResolver().ruleSets().authorStyle();
-        if (!shadowAuthorStyle)
+        if (!hostShadowRoot->styleScope().resolver().ruleSets().isAuthorStyleDefined())
             continue;
         // Find out if there are any ::slotted rules in the shadow tree matching the current slot.
         // FIXME: This is really part of the slot style and could be cached when resolving it.
-        ElementRuleCollector collector(*slot, *shadowAuthorStyle, nullptr);
+        ElementRuleCollector collector(*slot, hostShadowRoot->styleScope().resolver().ruleSets().authorStyle(), nullptr);
         auto slottedPseudoElementRules = collector.collectSlottedPseudoElementRulesForSlot(matchRequest.includeEmptyRules);
         if (!slottedPseudoElementRules)
             continue;
@@ -282,6 +287,22 @@ void ElementRuleCollector::matchSlottedPseudoElementRules(MatchRequest& matchReq
 
         m_keepAliveSlottedPseudoElementRules.append(WTFMove(slottedPseudoElementRules));
     }
+}
+
+void ElementRuleCollector::collectMatchingShadowPseudoElementRules(const MatchRequest& matchRequest, StyleResolver::RuleRange& ruleRange)
+{
+    ASSERT(matchRequest.ruleSet);
+    ASSERT(m_element.containingShadowRoot()->mode() == ShadowRootMode::UserAgent);
+
+    auto& rules = *matchRequest.ruleSet;
+#if ENABLE(VIDEO_TRACK)
+    // FXIME: WebVTT should not be done by styling UA shadow trees like this.
+    if (m_element.isWebVTTElement())
+        collectMatchingRulesForList(rules.cuePseudoRules(), matchRequest, ruleRange);
+#endif
+    auto& pseudoId = m_element.shadowPseudoId();
+    if (!pseudoId.isEmpty())
+        collectMatchingRulesForList(rules.shadowPseudoElementRules(pseudoId.impl()), matchRequest, ruleRange);
 }
 
 std::unique_ptr<RuleSet::RuleDataVector> ElementRuleCollector::collectSlottedPseudoElementRulesForSlot(bool includeEmptyRules)

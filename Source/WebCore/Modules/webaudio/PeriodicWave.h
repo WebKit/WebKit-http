@@ -32,7 +32,6 @@
 #include "AudioArray.h"
 #include <memory>
 #include <runtime/Float32Array.h>
-#include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
 #include <wtf/Vector.h>
@@ -64,9 +63,16 @@ public:
     float sampleRate() const { return m_sampleRate; }
 
 private:
+    enum class Type {
+        Sine,
+        Square,
+        Sawtooth,
+        Triangle,
+    };
+
     explicit PeriodicWave(float sampleRate);
 
-    void generateBasicWaveform(int);
+    void generateBasicWaveform(Type);
 
     float m_sampleRate;
     unsigned m_periodicWaveSize;

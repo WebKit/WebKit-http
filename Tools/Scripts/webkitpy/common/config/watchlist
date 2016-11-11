@@ -166,9 +166,6 @@
         "Editing": {
             "filename": r"Source/WebCore/editing/",
         },
-        "Battery": {
-            "filename": r"Source/WebCore/Modules/battery",
-        },
         "WTF": {
             "filename": r"Source/WTF/wtf",
         },
@@ -222,6 +219,10 @@
         "JSBuiltinsGenerator": {
             "filename": r"Source/JavaScriptCore/Scripts/builtins"
                         r"|Source/JavaScriptCore/Scripts/generate-js-builtins\.py",
+        },
+        "WasmJSON": {
+            "filename": r"Source/JavaScriptCore/wasm/wasm\.json"
+                        r"|JSTests/wasm/wasm\.json",
         },
         "MediaStream": {
             "filename": r"Source/WebCore/Modules/mediastream"
@@ -353,25 +354,24 @@
         "Animation" : [ "simon.fraser@apple.com", "dino@apple.com", "dstockwell@chromium.org" ],
         "Animometer" : [ "sabouhallawa@apple.com" ],
         "AppleMacPublicApi": [ "timothy@apple.com" ],
-        "Battery": [ "gyuyoung.kim@webkit.org" ],
-        "BindingsScripts": [ "cdumez@apple.com", "cgarcia@igalia.com" ],
+        "BindingsScripts": [ "cdumez@apple.com" ],
         "CMake": [ "rakuco@webkit.org", "gyuyoung.kim@webkit.org", "ryuan.choi@gmail.com", "sergio.correia@openbossa.org", "mcatanzaro@igalia.com" ],
         "CoordinatedGraphics" : [ "noam@webkit.org", "zeno@webkit.org", "cmarcelo@webkit.org", "luiz@webkit.org", "ryuan.choi@gmail.com", "sergio.correia@openbossa.org", "gyuyoung.kim@webkit.org" ],
         "ConsoleUsage" : [ "mkwst@chromium.org" ],
-        "ContentSecurityPolicyFiles|ContentSecurityPolicyUsage" : [ "mkwst@chromium.org" ],
+        "ContentSecurityPolicyFiles|ContentSecurityPolicyUsage" : [ "mkwst@chromium.org", "dbates@webkit.org" ],
         "CoreAnimation" : [ "simon.fraser@apple.com" ],
         "CSS": [ "alexis@webkit.org", "macpherson@chromium.org", "esprehn+autocc@chromium.org", "glenn@skynav.com", "gyuyoung.kim@webkit.org" ],
         "CSSGridLayout": [ "svillar@igalia.com", "jfernandez@igalia.com", "rego@igalia.com" ],
         "cURLNetwork": [ "galpeter@inf.u-szeged.hu" ],
-        "DOM": [ "esprehn+autocc@chromium.org", "kangil.han@samsung.com", "cdumez@apple.com" ],
+        "DOM": [ "esprehn+autocc@chromium.org", "kangil.han@samsung.com", "cdumez@apple.com", "dbates@webkit.org" ],
         "DOMAttributes": [ "cmarcelo@webkit.org", "cdumez@apple.com" ],
         "EFL": [ "gyuyoung.kim@webkit.org", "ryuan.choi@gmail.com", "sergio.correia@openbossa.org" ],
         "EFLWebKit2PlatformSpecific": [ "gyuyoung.kim@webkit.org", "ryuan.choi@gmail.com", "sergio.correia@openbossa.org" ],
         "EFLWebKit2PublicAPI": [ "gyuyoung.kim@webkit.org", "ryuan.choi@gmail.com", "sergio.correia@openbossa.org" ],
         "Editing": [ "mifenton@rim.com" ],
         "Filters": [ "dino@apple.com", "kondapallykalyan@gmail.com" ],
-        "Forms": [ "tkent@chromium.org", "mifenton@rim.com", "cdumez@apple.com" ],
-        "FrameLoader": [ "japhet@chromium.org", "cdumez@apple.com" ],
+        "Forms": [ "tkent@chromium.org", "mifenton@rim.com", "cdumez@apple.com", "dbates@webkit.org" ],
+        "FrameLoader": [ "japhet@chromium.org", "cdumez@apple.com", "dbates@webkit.org" ],
         "Geolocation": [ "benjamin@webkit.org" ],
         "GraphicsLayer": [ "simon.fraser@apple.com", "kondapallykalyan@gmail.com", "sergio.correia@openbossa.org" ],
         "GStreamerGraphics": [ "alexis@webkit.org", "pnormand@igalia.com", "gns@gnome.org", "mrobinson@webkit.org", "cgarcia@igalia.com", "calvaris@igalia.com", "vjaquez@igalia.com", "agomez@igalia.com" ],
@@ -380,10 +380,10 @@
         "HTML": [ "esprehn+autocc@chromium.org", "gyuyoung.kim@webkit.org", "cdumez@apple.com" ],
         "History": [ "cdumez@apple.com" ],
         "IndexedDB": [ "beidson@apple.com", "alecflett@chromium.org", "jsbell@chromium.org" ],
-        "Loader": [ "japhet@chromium.org", "cdumez@apple.com" ],
+        "Loader": [ "japhet@chromium.org", "cdumez@apple.com", "dbates@webkit.org" ],
         "JavaScriptCore": [ "keith_miller@apple.com", "sbarati@apple.com", "mark.lam@apple.com", "msaboff@apple.com" ],
         "MacAndIOSTextLayoutAndRendering": [ "mmaxfield@apple.com" ],
-        "MathML": [ "dbarton@mathscribe.com", "mrobinson@webkit.org", "fred.wang@free.fr" ],
+        "MathML": [ "dbarton@mathscribe.com", "fred.wang@free.fr" ],
         "Media": [ "eric.carlson@apple.com", "jer.noble@apple.com", "glenn@skynav.com", "philipj@opera.com", "sergio.correia@openbossa.org" ],
         "MSEEME": [ "eric.carlson@apple.com", "calvaris@igalia.com" ],
         "NetworkCache": [ "cgarcia@igalia.com", "cdumez@apple.com" ],
@@ -402,7 +402,7 @@
         "SoupNetwork": [ "gns@gnome.org", "mrobinson@webkit.org", "danw@gnome.org", "cgarcia@igalia.com", "berto@igalia.com", "mcatanzaro@igalia.com" ],
         "TextureMapper" : [ "noam@webkit.org", "cmarcelo@webkit.org", "luiz@webkit.org", "kondapallykalyan@gmail.com" ],
         "TouchAdjustment" : [ "allan.jensen@digia.com" ],
-        "WTF": [ "benjamin@webkit.org", "cmarcelo@webkit.org", "cdumez@apple.com" ],
+        "WTF": [ "benjamin@webkit.org", "cmarcelo@webkit.org", "cdumez@apple.com", "dbates@webkit.org" ],
         "WebGL": [ "dino@apple.com", "kondapallykalyan@gmail.com", "graouts@webkit.org" ],
         "WebIDL": [ "esprehn+autocc@chromium.org", "cdumez@apple.com", "kondapallykalyan@gmail.com" ],
         "WebInspectorAPI": [ "timothy@apple.com", "joepeck@webkit.org" ],
@@ -429,5 +429,6 @@
         "WebInspectorGenerator": [ "This patch modifies the inspector protocol generator. Please ensure that you have rebaselined any generator test results (i.e., by running `Tools/Scripts/run-inspector-generator-tests --reset-results`)" ],
         "WebReplayGenerator": [ "This patch modifies the WEB_REPLAY inputs generator. Please ensure that you have rebaselined any generator test results (i.e., by running `Tools/Scripts/run-input-generator-tests --reset-results`)" ],
         "JSBuiltinsGenerator": [ "This patch modifies the JS builtins code generator. Please ensure that you have rebaselined any generator test results (i.e., by running `Tools/Scripts/run-builtins-generator-tests --reset-results`)" ],
+        "WasmJSON": [ "This patch modifies one of the wasm.json files. Please ensure that any changes in one have been mirrored to the other. You can find the wasm.json files at \"Source/JavaScriptCore/wasm/wasm.json\" and \"JSTests/wasm/wasm.json\"." ],
     },
 }

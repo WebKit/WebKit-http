@@ -339,8 +339,8 @@ class CommitQueue(PatchProcessingQueue, StepSequenceErrorHandler, CommitQueueTas
                 return True
             self._unlock_patch(patch)
             return False
-        except PatchIsNotValid:
-            self._did_error(patch, "%s did not process patch." % self.name)
+        except PatchIsNotValid as error:
+            self._did_error(patch, "%s did not process patch. Reason: %s" % (self.name, error.failure_message))
             return False
         except ScriptError, e:
             validator = CommitterValidator(self._tool)
@@ -445,6 +445,7 @@ class AbstractReviewQueue(PatchProcessingQueue, StepSequenceErrorHandler):
         return self._next_patch()
 
     def process_work_item(self, patch):
+        self._update_status("Started processing patch", patch)
         passed = self.review_patch(patch)
         if passed:
             self._did_pass(patch)
@@ -477,8 +478,8 @@ class StyleQueue(AbstractReviewQueue, StyleQueueTaskDelegate):
         except UnableToApplyPatch, e:
             self._did_error(patch, "%s unable to apply patch." % self.name)
             return False
-        except PatchIsNotValid:
-            self._did_error(patch, "%s did not process patch." % self.name)
+        except PatchIsNotValid as error:
+            self._did_error(patch, "%s did not process patch. Reason: %s" % (self.name, error.failure_message))
             return False
         except ScriptError, e:
             output = re.sub(r'Failed to run .+ exit_code: 1', '', e.output)

@@ -30,8 +30,8 @@
 #include <wtf/Vector.h>
 
 namespace IPC {
-class ArgumentDecoder;
-class ArgumentEncoder;
+class Decoder;
+class Encoder;
 }
 
 namespace WebKit {
@@ -41,8 +41,8 @@ public:
     void append(CFDataRef);
     CFDataRef decodedData() const;
     void clear();
-    void encode(IPC::ArgumentEncoder&) const;
-    static bool decode(IPC::ArgumentDecoder&, QuickLookDocumentData&);
+    void encode(IPC::Encoder&) const;
+    static bool decode(IPC::Decoder&, QuickLookDocumentData&);
 
 private:
     Vector<RetainPtr<CFDataRef>, 1> m_data;

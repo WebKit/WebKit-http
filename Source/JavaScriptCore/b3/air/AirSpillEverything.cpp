@@ -33,15 +33,17 @@
 #include "AirInsertionSet.h"
 #include "AirInstInlines.h"
 #include "AirLiveness.h"
+#include "AirPadInterference.h"
 #include "AirPhaseScope.h"
-#include "AirRegisterPriority.h"
-#include "B3IndexMap.h"
+#include <wtf/IndexMap.h>
 
 namespace JSC { namespace B3 { namespace Air {
 
 void spillEverything(Code& code)
 {
     PhaseScope phaseScope(code, "spillEverything");
+    
+    padInterference(code);
 
     // We want to know the set of registers used at every point in every basic block.
     IndexMap<BasicBlock, Vector<RegisterSet>> usedRegisters(code.size());
@@ -129,7 +131,7 @@ void spillEverything(Code& code)
                     switch (role) {
                     case Arg::Use:
                     case Arg::ColdUse:
-                        for (Reg reg : regsInPriorityOrder(type)) {
+                        for (Reg reg : code.regsInPriorityOrder(type)) {
                             if (!setBefore.get(reg)) {
                                 setBefore.set(reg);
                                 chosenReg = reg;
@@ -139,7 +141,7 @@ void spillEverything(Code& code)
                         break;
                     case Arg::Def:
                     case Arg::ZDef:
-                        for (Reg reg : regsInPriorityOrder(type)) {
+                        for (Reg reg : code.regsInPriorityOrder(type)) {
                             if (!setAfter.get(reg)) {
                                 setAfter.set(reg);
                                 chosenReg = reg;
@@ -153,7 +155,7 @@ void spillEverything(Code& code)
                     case Arg::LateColdUse:
                     case Arg::Scratch:
                     case Arg::EarlyDef:
-                        for (Reg reg : regsInPriorityOrder(type)) {
+                        for (Reg reg : code.regsInPriorityOrder(type)) {
                             if (!setBefore.get(reg) && !setAfter.get(reg)) {
                                 setAfter.set(reg);
                                 setBefore.set(reg);

@@ -27,47 +27,123 @@
 #include "Download.h"
 
 #include "AuthenticationManager.h"
+#include "BlobDownloadClient.h"
 #include "Connection.h"
 #include "DataReference.h"
 #include "DownloadManager.h"
 #include "DownloadProxyMessages.h"
+#include "Logging.h"
+#include "NetworkDataTask.h"
 #include "SandboxExtension.h"
 #include "WebCoreArgumentCoders.h"
 #include <WebCore/NotImplemented.h>
 
-#if !USE(NETWORK_SESSION)
-#include "DownloadAuthenticationClient.h"
-#endif
-
 using namespace WebCore;
+
+#define RELEASE_LOG_IF_ALLOWED(fmt, ...) RELEASE_LOG_IF(isAlwaysOnLoggingAllowed(), Network, "%p - Download::" fmt, this, ##__VA_ARGS__)
 
 namespace WebKit {
 
-#if USE(NETWORK_SESSION) && PLATFORM(COCOA)
-Download::Download(DownloadManager& downloadManager, DownloadID downloadID, NSURLSessionDownloadTask* download, const String& suggestedName)
-#else
-Download::Download(DownloadManager& downloadManager, DownloadID downloadID, const ResourceRequest& request, const String& suggestedName)
-#endif
+#if USE(NETWORK_SESSION)
+Download::Download(DownloadManager& downloadManager, DownloadID downloadID, NetworkDataTask& download, const SessionID& sessionID, const String& suggestedName)
     : m_downloadManager(downloadManager)
     , m_downloadID(downloadID)
-#if !USE(NETWORK_SESSION)
-    , m_request(request)
-#endif
-#if USE(NETWORK_SESSION) && PLATFORM(COCOA)
-    , m_download(download)
-#endif
+    , m_download(&download)
+    , m_sessionID(sessionID)
     , m_suggestedName(suggestedName)
 {
     ASSERT(m_downloadID.downloadID());
 
     m_downloadManager.didCreateDownload();
 }
+#if PLATFORM(COCOA)
+Download::Download(DownloadManager& downloadManager, DownloadID downloadID, NSURLSessionDownloadTask* download, const SessionID& sessionID, const String& suggestedName)
+    : m_downloadManager(downloadManager)
+    , m_downloadID(downloadID)
+    , m_downloadTask(download)
+    , m_sessionID(sessionID)
+    , m_suggestedName(suggestedName)
+{
+    ASSERT(m_downloadID.downloadID());
+
+    m_downloadManager.didCreateDownload();
+}
+#endif
+#else
+Download::Download(DownloadManager& downloadManager, DownloadID downloadID, const ResourceRequest& request, const String& suggestedName)
+    : m_downloadManager(downloadManager)
+    , m_downloadID(downloadID)
+    , m_request(request)
+    , m_suggestedName(suggestedName)
+{
+    ASSERT(m_downloadID.downloadID());
+
+    m_downloadManager.didCreateDownload();
+}
+#endif // USE(NETWORK_SESSION)
 
 Download::~Download()
 {
+#if !USE(NETWORK_SESSION)
+    for (auto& fileReference : m_blobFileReferences)
+        fileReference->revokeFileAccess();
+
+    if (m_resourceHandle) {
+        m_resourceHandle->clearClient();
+        m_resourceHandle->cancel();
+        m_resourceHandle = nullptr;
+    }
+    m_downloadClient = nullptr;
+
     platformInvalidate();
+#endif
 
     m_downloadManager.didDestroyDownload();
+}
+
+#if !USE(NETWORK_SESSION)
+void Download::start()
+{
+    if (m_request.url().protocolIsBlob()) {
+        m_downloadClient = std::make_unique<BlobDownloadClient>(*this);
+        m_resourceHandle = ResourceHandle::create(nullptr, m_request, m_downloadClient.get(), false, false);
+        didStart();
+        return;
+    }
+
+    startNetworkLoad();
+}
+
+void Download::startWithHandle(ResourceHandle* handle, const ResourceResponse& response)
+{
+    if (m_request.url().protocolIsBlob()) {
+        m_downloadClient = std::make_unique<BlobDownloadClient>(*this);
+        m_resourceHandle = ResourceHandle::create(nullptr, m_request, m_downloadClient.get(), false, false);
+        didStart();
+        return;
+    }
+
+    startNetworkLoadWithHandle(handle, response);
+}
+#endif
+
+void Download::cancel()
+{
+#if USE(NETWORK_SESSION)
+    if (m_download) {
+        m_download->cancel();
+        didCancel({ });
+        return;
+    }
+#else
+    if (m_request.url().protocolIsBlob()) {
+        auto resourceHandle = WTFMove(m_resourceHandle);
+        resourceHandle->cancel();
+        static_cast<BlobDownloadClient*>(m_downloadClient.get())->didCancel();
+        return;
+    }
+#endif
+    platformCancelNetworkLoad();
 }
 
 #if !USE(NETWORK_SESSION)
@@ -75,23 +151,17 @@ void Download::didStart()
 {
     send(Messages::DownloadProxy::DidStart(m_request, m_suggestedName));
 }
-#endif
 
-#if !USE(NETWORK_SESSION)
 void Download::didReceiveAuthenticationChallenge(const AuthenticationChallenge& authenticationChallenge)
 {
     m_downloadManager.downloadsAuthenticationManager().didReceiveAuthenticationChallenge(*this, authenticationChallenge);
 }
-#endif
 
 void Download::didReceiveResponse(const ResourceResponse& response)
 {
-    send(Messages::DownloadProxy::DidReceiveResponse(response));
-}
+    RELEASE_LOG_IF_ALLOWED("didReceiveResponse: Created (id = %" PRIu64 ")", downloadID().downloadID());
 
-void Download::didReceiveData(uint64_t length)
-{
-    send(Messages::DownloadProxy::DidReceiveData(length));
+    send(Messages::DownloadProxy::DidReceiveResponse(response));
 }
 
 bool Download::shouldDecodeSourceDataOfMIMEType(const String& mimeType)
@@ -103,7 +173,6 @@ bool Download::shouldDecodeSourceDataOfMIMEType(const String& mimeType)
     return result;
 }
 
-#if !USE(NETWORK_SESSION)
 String Download::decideDestinationWithSuggestedFilename(const String& filename, bool& allowOverwrite)
 {
     String destination;
@@ -117,6 +186,32 @@ String Download::decideDestinationWithSuggestedFilename(const String& filename, 
 
     return destination;
 }
+
+void Download::decideDestinationWithSuggestedFilenameAsync(const String& suggestedFilename)
+{
+    send(Messages::DownloadProxy::DecideDestinationWithSuggestedFilenameAsync(downloadID(), suggestedFilename));
+}
+
+void Download::didDecideDownloadDestination(const String& destinationPath, const SandboxExtension::Handle& sandboxExtensionHandle, bool allowOverwrite)
+{
+    ASSERT(!m_sandboxExtension);
+    m_sandboxExtension = SandboxExtension::create(sandboxExtensionHandle);
+    if (m_sandboxExtension)
+        m_sandboxExtension->consume();
+
+    if (m_request.url().protocolIsBlob()) {
+        static_cast<BlobDownloadClient*>(m_downloadClient.get())->didDecideDownloadDestination(destinationPath, allowOverwrite);
+        return;
+    }
+
+    // For now, only Blob URL downloads go through this code path.
+    ASSERT_NOT_REACHED();
+}
+
+void Download::continueDidReceiveResponse()
+{
+    m_resourceHandle->continueDidReceiveResponse();
+}
 #endif
 
 void Download::didCreateDestination(const String& path)
@@ -124,9 +219,23 @@ void Download::didCreateDestination(const String& path)
     send(Messages::DownloadProxy::DidCreateDestination(path));
 }
 
+void Download::didReceiveData(uint64_t length)
+{
+    if (!m_hasReceivedData) {
+        RELEASE_LOG_IF_ALLOWED("didReceiveData: Started receiving data (id = %" PRIu64 ")", downloadID().downloadID());
+        m_hasReceivedData = true;
+    }
+
+    send(Messages::DownloadProxy::DidReceiveData(length));
+}
+
 void Download::didFinish()
 {
+    RELEASE_LOG_IF_ALLOWED("didFinish: (id = %" PRIu64 ")", downloadID().downloadID());
+
+#if !USE(NETWORK_SESSION)
     platformDidFinish();
+#endif
 
     send(Messages::DownloadProxy::DidFinish());
 
@@ -140,6 +249,9 @@ void Download::didFinish()
 
 void Download::didFail(const ResourceError& error, const IPC::DataReference& resumeData)
 {
+    RELEASE_LOG_IF_ALLOWED("didFail: (id = %" PRIu64 ", isTimeout = %d, isCancellation = %d, errCode = %d)",
+        downloadID().downloadID(), error.isTimeout(), error.isCancellation(), error.errorCode());
+
     send(Messages::DownloadProxy::DidFail(error, resumeData));
 
     if (m_sandboxExtension) {
@@ -151,6 +263,8 @@ void Download::didFail(const ResourceError& error, const IPC::DataReference& res
 
 void Download::didCancel(const IPC::DataReference& resumeData)
 {
+    RELEASE_LOG_IF_ALLOWED("didCancel: (id = %" PRIu64 ")", downloadID().downloadID());
+
     send(Messages::DownloadProxy::DidCancel(resumeData));
 
     if (m_sandboxExtension) {
@@ -169,5 +283,20 @@ uint64_t Download::messageSenderDestinationID()
 {
     return m_downloadID.downloadID();
 }
+
+bool Download::isAlwaysOnLoggingAllowed() const
+{
+#if USE(NETWORK_SESSION) && PLATFORM(COCOA)
+    return m_sessionID.isAlwaysOnLoggingAllowed();
+#else
+    return false;
+#endif
+}
+
+#if !PLATFORM(COCOA)
+void Download::platformCancelNetworkLoad()
+{
+}
+#endif
 
 } // namespace WebKit

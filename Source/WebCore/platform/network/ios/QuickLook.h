@@ -33,7 +33,7 @@
 #import <objc/objc-runtime.h>
 #import <wtf/RefPtr.h>
 
-#if USE(CFNETWORK)
+#if USE(CFURLCONNECTION)
 #include "CFNetworkSPI.h"
 #endif
 
@@ -81,7 +81,7 @@ public:
     WEBCORE_EXPORT static bool shouldCreateForMIMEType(const String&);
 
     static std::unique_ptr<QuickLookHandle> create(ResourceHandle*, NSURLConnection *, NSURLResponse *, id delegate);
-#if USE(CFNETWORK)
+#if USE(CFURLCONNECTION)
     static std::unique_ptr<QuickLookHandle> create(ResourceHandle*, SynchronousResourceHandleCFURLConnectionDelegate*, CFURLResponseRef);
 #endif
     // FIXME: Use of ResourceLoader here is a platform violation.
@@ -95,7 +95,7 @@ public:
     WEBCORE_EXPORT void didFail();
 
     WEBCORE_EXPORT NSURLResponse *nsResponse();
-#if USE(CFNETWORK)
+#if USE(CFURLCONNECTION)
     CFURLResponseRef cfResponse();
 #endif
 

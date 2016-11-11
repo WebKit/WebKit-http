@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ScrollingTreeNode_h
-#define ScrollingTreeNode_h
+#pragma once
 
 #if ENABLE(ASYNC_SCROLLING)
 
@@ -53,8 +52,8 @@ public:
     bool isFrameScrollingNode() const { return nodeType() == FrameScrollingNode; }
     bool isOverflowScrollingNode() const { return nodeType() == OverflowScrollingNode; }
 
-    virtual void updateBeforeChildren(const ScrollingStateNode&) = 0;
-    virtual void updateAfterChildren(const ScrollingStateNode&) { }
+    virtual void commitStateBeforeChildren(const ScrollingStateNode&) = 0;
+    virtual void commitStateAfterChildren(const ScrollingStateNode&) { }
 
     virtual void updateLayersAfterAncestorChange(const ScrollingTreeNode& changedNode, const FloatRect& fixedPositionRect, const FloatSize& cumulativeDelta) = 0;
 
@@ -90,5 +89,3 @@ SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::ToValueTypeName) \
 SPECIALIZE_TYPE_TRAITS_END()
 
 #endif // ENABLE(ASYNC_SCROLLING)
-
-#endif // ScrollingTreeNode_h

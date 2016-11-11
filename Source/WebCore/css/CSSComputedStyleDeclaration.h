@@ -18,8 +18,7 @@
  * 02110-1301  USA
  */
 
-#ifndef CSSComputedStyleDeclaration_h
-#define CSSComputedStyleDeclaration_h
+#pragma once
 
 #include "CSSStyleDeclaration.h"
 #include "RenderStyleConstants.h"
@@ -31,6 +30,7 @@ namespace WebCore {
 class CSSPrimitiveValue;
 class CSSValueList;
 class Color;
+class Element;
 class FilterOperations;
 class MutableStyleProperties;
 class Node;
@@ -47,86 +47,83 @@ enum AdjustPixelValuesForComputedStyle { AdjustPixelValues, DoNotAdjustPixelValu
 
 class ComputedStyleExtractor {
 public:
-    ComputedStyleExtractor(PassRefPtr<Node>, bool allowVisitedStyle = false, PseudoId = NOPSEUDO);
+    ComputedStyleExtractor(Node*, bool allowVisitedStyle = false, PseudoId = NOPSEUDO);
+    ComputedStyleExtractor(Element*, bool allowVisitedStyle = false, PseudoId = NOPSEUDO);
 
-    RefPtr<CSSValue> propertyValue(CSSPropertyID, EUpdateLayout = UpdateLayout) const;
-    String customPropertyText(const String& propertyName) const;
-    RefPtr<CSSValue> customPropertyValue(const String& propertyName) const;
+    RefPtr<CSSValue> propertyValue(CSSPropertyID, EUpdateLayout = UpdateLayout);
+    String customPropertyText(const String& propertyName);
+    RefPtr<CSSValue> customPropertyValue(const String& propertyName);
 
     // Helper methods for HTML editing.
-    Ref<MutableStyleProperties> copyPropertiesInSet(const CSSPropertyID* set, unsigned length) const;
-    Ref<MutableStyleProperties> copyProperties() const;
-    RefPtr<CSSPrimitiveValue> getFontSizeCSSValuePreferringKeyword() const;
-    bool useFixedFontDefaultSize() const;
-    bool propertyMatches(CSSPropertyID, const CSSValue*) const;
+    Ref<MutableStyleProperties> copyPropertiesInSet(const CSSPropertyID* set, unsigned length);
+    Ref<MutableStyleProperties> copyProperties();
+    RefPtr<CSSPrimitiveValue> getFontSizeCSSValuePreferringKeyword();
+    bool useFixedFontDefaultSize();
+    bool propertyMatches(CSSPropertyID, const CSSValue*);
 
     static Ref<CSSValue> valueForFilter(const RenderStyle&, const FilterOperations&, AdjustPixelValuesForComputedStyle = AdjustPixelValues);
 
 private:
-    // The styled node is either the node passed into computedPropertyValue, or the
+    // The styled element is either the element passed into computedPropertyValue, or the
     // PseudoElement for :before and :after if they exist.
-    // FIXME: This should be styledElement since in JS getComputedStyle only works
-    // on Elements, but right now editing creates these for text nodes. We should fix that.
-    Node* styledNode() const;
+    Element* styledElement();
 
-    RefPtr<CSSValue> svgPropertyValue(CSSPropertyID, EUpdateLayout) const;
+    RefPtr<CSSValue> svgPropertyValue(CSSPropertyID, EUpdateLayout);
     RefPtr<SVGPaint> adjustSVGPaintForCurrentColor(RefPtr<SVGPaint>&&, const RenderStyle*) const;
 
     static Ref<CSSValue> valueForShadow(const ShadowData*, CSSPropertyID, const RenderStyle&, AdjustPixelValuesForComputedStyle = AdjustPixelValues);
     RefPtr<CSSPrimitiveValue> currentColorOrValidColor(const RenderStyle*, const Color&) const;
 
-    RefPtr<CSSValueList> getCSSPropertyValuesForShorthandProperties(const StylePropertyShorthand&) const;
-    RefPtr<CSSValueList> getCSSPropertyValuesForSidesShorthand(const StylePropertyShorthand&) const;
-    RefPtr<CSSValueList> getBackgroundShorthandValue() const;
-    RefPtr<CSSValueList> getCSSPropertyValuesForGridShorthand(const StylePropertyShorthand&) const;
+    RefPtr<CSSValueList> getCSSPropertyValuesForShorthandProperties(const StylePropertyShorthand&);
+    RefPtr<CSSValueList> getCSSPropertyValuesForSidesShorthand(const StylePropertyShorthand&);
+    Ref<CSSValueList> getBackgroundShorthandValue();
+    RefPtr<CSSValueList> getCSSPropertyValuesForGridShorthand(const StylePropertyShorthand&);
 
-    RefPtr<Node> m_node;
+    RefPtr<Element> m_element;
     PseudoId m_pseudoElementSpecifier;
     bool m_allowVisitedStyle;
 };
 
 class CSSComputedStyleDeclaration final : public CSSStyleDeclaration {
 public:
-    static Ref<CSSComputedStyleDeclaration> create(PassRefPtr<Node> node, bool allowVisitedStyle = false, const String& pseudoElementName = String())
+    static Ref<CSSComputedStyleDeclaration> create(Element& element, bool allowVisitedStyle = false, const String& pseudoElementName = String())
     {
-        return adoptRef(*new CSSComputedStyleDeclaration(node, allowVisitedStyle, pseudoElementName));
+        return adoptRef(*new CSSComputedStyleDeclaration(element, allowVisitedStyle, pseudoElementName));
     }
     virtual ~CSSComputedStyleDeclaration();
 
-    WEBCORE_EXPORT void ref() override;
-    WEBCORE_EXPORT void deref() override;
+    WEBCORE_EXPORT void ref() final;
+    WEBCORE_EXPORT void deref() final;
 
     String getPropertyValue(CSSPropertyID) const;
 
 private:
-    WEBCORE_EXPORT CSSComputedStyleDeclaration(PassRefPtr<Node>, bool allowVisitedStyle, const String&);
+    WEBCORE_EXPORT CSSComputedStyleDeclaration(Element&, bool allowVisitedStyle, const String&);
 
     // CSSOM functions. Don't make these public.
-    CSSRule* parentRule() const override;
-    unsigned length() const override;
-    String item(unsigned index) const override;
-    RefPtr<CSSValue> getPropertyCSSValue(const String& propertyName) override;
-    String getPropertyValue(const String& propertyName) override;
-    String getPropertyPriority(const String& propertyName) override;
-    String getPropertyShorthand(const String& propertyName) override;
-    bool isPropertyImplicit(const String& propertyName) override;
-    void setProperty(const String& propertyName, const String& value, const String& priority, ExceptionCode&) override;
-    String removeProperty(const String& propertyName, ExceptionCode&) override;
-    String cssText() const override;
-    void setCssText(const String&, ExceptionCode&) override;
-    RefPtr<CSSValue> getPropertyCSSValueInternal(CSSPropertyID) override;
-    String getPropertyValueInternal(CSSPropertyID) override;
-    bool setPropertyInternal(CSSPropertyID, const String& value, bool important, ExceptionCode&) override;
-    Ref<MutableStyleProperties> copyProperties() const override;
+    CSSRule* parentRule() const final;
+    unsigned length() const final;
+    String item(unsigned index) const final;
+    RefPtr<CSSValue> getPropertyCSSValue(const String& propertyName) final;
+    String getPropertyValue(const String& propertyName) final;
+    String getPropertyPriority(const String& propertyName) final;
+    String getPropertyShorthand(const String& propertyName) final;
+    bool isPropertyImplicit(const String& propertyName) final;
+    ExceptionOr<void> setProperty(const String& propertyName, const String& value, const String& priority) final;
+    ExceptionOr<String> removeProperty(const String& propertyName) final;
+    String cssText() const final;
+    ExceptionOr<void> setCssText(const String&) final;
+    RefPtr<CSSValue> getPropertyCSSValueInternal(CSSPropertyID) final;
+    String getPropertyValueInternal(CSSPropertyID) final;
+    ExceptionOr<bool> setPropertyInternal(CSSPropertyID, const String& value, bool important) final;
+    Ref<MutableStyleProperties> copyProperties() const final;
 
     RefPtr<CSSValue> getPropertyCSSValue(CSSPropertyID, EUpdateLayout = UpdateLayout) const;
 
-    RefPtr<Node> m_node;
+    mutable Ref<Element> m_element;
     PseudoId m_pseudoElementSpecifier;
     bool m_allowVisitedStyle;
     unsigned m_refCount;
 };
 
 } // namespace WebCore
-
-#endif // CSSComputedStyleDeclaration_h

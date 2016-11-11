@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef JIT_h
-#define JIT_h
+#pragma once
 
 #if ENABLE(JIT)
 
@@ -40,16 +39,16 @@
 
 #include "CodeBlock.h"
 #include "CompactJITCodeMap.h"
-#include "Interpreter.h"
 #include "JITDisassembler.h"
 #include "JITInlineCacheGenerator.h"
+#include "JITMathIC.h"
 #include "JSInterfaceJIT.h"
-#include "Opcode.h"
 #include "PCToCodeOriginMap.h"
-#include "ResultType.h"
 #include "UnusedPointer.h"
 
 namespace JSC {
+
+    enum OpcodeID : unsigned;
 
     class ArrayAllocationProfile;
     class CallLinkInfo;
@@ -58,8 +57,6 @@ namespace JSC {
     class JIT;
     class Identifier;
     class Interpreter;
-    class JSScope;
-    class JSStack;
     class MarkedAllocator;
     class Register;
     class StructureChain;
@@ -249,14 +246,7 @@ namespace JSC {
             jit.privateCompileHasIndexedProperty(byValInfo, returnAddress, arrayMode);
         }
 
-        static CodeRef compileCTINativeCall(VM* vm, NativeFunction func)
-        {
-            if (!vm->canUseJIT()) {
-                return CodeRef::createLLIntCodeRef(llint_native_call_trampoline);
-            }
-            JIT jit(vm, 0);
-            return jit.privateCompileCTINativeCall(vm, func);
-        }
+        static CodeRef compileCTINativeCall(VM*, NativeFunction);
 
         static unsigned frameRegisterCountFor(CodeBlock*);
         static int stackPointerOffsetFor(CodeBlock*);
@@ -343,9 +333,6 @@ namespace JSC {
         void emitWriteBarrier(JSCell* owner, unsigned value, WriteBarrierMode);
         void emitWriteBarrier(JSCell* owner);
 
-        template<typename StructureType> // StructureType can be RegisterID or ImmPtr.
-        void emitAllocateJSObject(RegisterID allocator, StructureType, RegisterID result, RegisterID scratch);
-        
         // This assumes that the value to profile is in regT0 and that regT3 is available for
         // scratch.
         void emitValueProfilingSite(ValueProfile*);
@@ -399,10 +386,10 @@ namespace JSC {
         JumpList emitFloatTypedArrayPutByVal(Instruction*, PatchableJump& badType, TypedArrayType);
 
         // Identifier check helper for GetByVal and PutByVal.
-        void emitIdentifierCheck(RegisterID cell, RegisterID scratch, const Identifier&, JumpList& slowCases);
+        void emitByValIdentifierCheck(ByValInfo*, RegisterID cell, RegisterID scratch, const Identifier&, JumpList& slowCases);
 
-        JITGetByIdGenerator emitGetByValWithCachedId(Instruction*, const Identifier&, Jump& fastDoneCase, Jump& slowDoneCase, JumpList& slowCases);
-        JITPutByIdGenerator emitPutByValWithCachedId(Instruction*, PutKind, const Identifier&, JumpList& doneCases, JumpList& slowCases);
+        JITGetByIdGenerator emitGetByValWithCachedId(ByValInfo*, Instruction*, const Identifier&, Jump& fastDoneCase, Jump& slowDoneCase, JumpList& slowCases);
+        JITPutByIdGenerator emitPutByValWithCachedId(ByValInfo*, Instruction*, PutKind, const Identifier&, JumpList& doneCases, JumpList& slowCases);
 
         enum FinalObjectMode { MayBeFinal, KnownNotFinal };
 
@@ -436,7 +423,6 @@ namespace JSC {
         void compileGetByIdHotPath(const Identifier*);
 
         // Arithmetic opcode helpers
-        void emitSub32Constant(int dst, int op, int32_t constant, ResultType opType);
         void emitBinaryDoubleOp(OpcodeID, int dst, int op1, int op2, OperandTypes, JumpList& notInt32Op1, JumpList& notInt32Op2, bool op1IsInRegisters = true, bool op2IsInRegisters = true);
 
 #else // USE(JSVALUE32_64)
@@ -497,13 +483,12 @@ namespace JSC {
         void emit_op_create_direct_arguments(Instruction*);
         void emit_op_create_scoped_arguments(Instruction*);
         void emit_op_create_cloned_arguments(Instruction*);
+        void emit_op_get_argument(Instruction*);
         void emit_op_argument_count(Instruction*);
-        void emit_op_copy_rest(Instruction*);
+        void emit_op_create_rest(Instruction*);
         void emit_op_get_rest_length(Instruction*);
         void emit_op_check_tdz(Instruction*);
         void emit_op_assert(Instruction*);
-        void emit_op_save(Instruction*);
-        void emit_op_resume(Instruction*);
         void emit_op_debug(Instruction*);
         void emit_op_del_by_id(Instruction*);
         void emit_op_del_by_val(Instruction*);
@@ -528,9 +513,8 @@ namespace JSC {
         void emit_op_is_undefined(Instruction*);
         void emit_op_is_boolean(Instruction*);
         void emit_op_is_number(Instruction*);
-        void emit_op_is_string(Instruction*);
-        void emit_op_is_jsarray(Instruction*);
         void emit_op_is_object(Instruction*);
+        void emit_op_is_cell_with_type(Instruction*);
         void emit_op_jeq_null(Instruction*);
         void emit_op_jfalse(Instruction*);
         void emit_op_jmp(Instruction*);
@@ -561,12 +545,15 @@ namespace JSC {
         void emit_op_new_func_exp(Instruction*);
         void emit_op_new_generator_func(Instruction*);
         void emit_op_new_generator_func_exp(Instruction*);
+        void emit_op_new_async_func(Instruction*);
+        void emit_op_new_async_func_exp(Instruction*);
         void emit_op_new_object(Instruction*);
         void emit_op_new_regexp(Instruction*);
         void emit_op_not(Instruction*);
         void emit_op_nstricteq(Instruction*);
         void emit_op_dec(Instruction*);
         void emit_op_inc(Instruction*);
+        void emit_op_pow(Instruction*);
         void emit_op_profile_type(Instruction*);
         void emit_op_profile_control_flow(Instruction*);
         void emit_op_push_with_scope(Instruction*);
@@ -582,6 +569,8 @@ namespace JSC {
         void emit_op_put_getter_setter_by_id(Instruction*);
         void emit_op_put_getter_by_val(Instruction*);
         void emit_op_put_setter_by_val(Instruction*);
+        void emit_op_define_data_property(Instruction*);
+        void emit_op_define_accessor_property(Instruction*);
         void emit_op_ret(Instruction*);
         void emit_op_rshift(Instruction*);
         void emit_op_set_function_name(Instruction*);
@@ -637,7 +626,6 @@ namespace JSC {
         void emitSlow_op_get_argument_by_val(Instruction*, Vector<SlowCaseEntry>::iterator&);
         void emitSlow_op_instanceof(Instruction*, Vector<SlowCaseEntry>::iterator&);
         void emitSlow_op_instanceof_custom(Instruction*, Vector<SlowCaseEntry>::iterator&);
-        void emitSlow_op_jfalse(Instruction*, Vector<SlowCaseEntry>::iterator&);
         void emitSlow_op_jless(Instruction*, Vector<SlowCaseEntry>::iterator&);
         void emitSlow_op_jlesseq(Instruction*, Vector<SlowCaseEntry>::iterator&);
         void emitSlow_op_jgreater(Instruction*, Vector<SlowCaseEntry>::iterator&);
@@ -706,11 +694,21 @@ namespace JSC {
 
         void emitInitRegister(int dst);
 
-        void emitPutIntToCallFrameHeader(RegisterID from, JSStack::CallFrameHeaderEntry);
+        void emitPutIntToCallFrameHeader(RegisterID from, int entry);
 
         JSValue getConstantOperand(int src);
         bool isOperandConstantInt(int src);
         bool isOperandConstantChar(int src);
+
+        template <typename Generator, typename ProfiledFunction, typename NonProfiledFunction>
+        void emitMathICFast(JITUnaryMathIC<Generator>*, Instruction*, ProfiledFunction, NonProfiledFunction);
+        template <typename Generator, typename ProfiledFunction, typename NonProfiledFunction>
+        void emitMathICFast(JITBinaryMathIC<Generator>*, Instruction*, ProfiledFunction, NonProfiledFunction);
+
+        template <typename Generator, typename ProfiledRepatchFunction, typename ProfiledFunction, typename RepatchFunction>
+        void emitMathICSlow(JITBinaryMathIC<Generator>*, Instruction*, ProfiledRepatchFunction, ProfiledFunction, RepatchFunction);
+        template <typename Generator, typename ProfiledRepatchFunction, typename ProfiledFunction, typename RepatchFunction>
+        void emitMathICSlow(JITUnaryMathIC<Generator>*, Instruction*, ProfiledRepatchFunction, ProfiledFunction, RepatchFunction);
 
         Jump getSlowCase(Vector<SlowCaseEntry>::iterator& iter)
         {
@@ -755,6 +753,7 @@ namespace JSC {
         MacroAssembler::Call callOperation(J_JITOperation_EC, int, JSCell*);
         MacroAssembler::Call callOperation(V_JITOperation_EC, JSCell*);
         MacroAssembler::Call callOperation(J_JITOperation_EJ, int, GPRReg);
+        MacroAssembler::Call callOperation(J_JITOperation_EJ, JSValueRegs, JSValueRegs);
 #if USE(JSVALUE64)
         MacroAssembler::Call callOperation(J_JITOperation_ESsiJI, int, StructureStubInfo*, GPRReg, UniquedStringImpl*);
         MacroAssembler::Call callOperation(WithProfileTag, J_JITOperation_ESsiJI, int, StructureStubInfo*, GPRReg, UniquedStringImpl*);
@@ -764,7 +763,11 @@ namespace JSC {
 #endif
         MacroAssembler::Call callOperation(J_JITOperation_EJI, int, GPRReg, UniquedStringImpl*);
         MacroAssembler::Call callOperation(J_JITOperation_EJJ, int, GPRReg, GPRReg);
-        MacroAssembler::Call callOperation(J_JITOperation_EJJRp, JSValueRegs, JSValueRegs, JSValueRegs, ResultProfile*);
+        MacroAssembler::Call callOperation(J_JITOperation_EJArp, JSValueRegs, JSValueRegs, ArithProfile*);
+        MacroAssembler::Call callOperation(J_JITOperation_EJJArp, JSValueRegs, JSValueRegs, JSValueRegs, ArithProfile*);
+        MacroAssembler::Call callOperation(J_JITOperation_EJJ, JSValueRegs, JSValueRegs, JSValueRegs);
+        MacroAssembler::Call callOperation(J_JITOperation_EJMic, JSValueRegs, JSValueRegs, TrustedImmPtr);
+        MacroAssembler::Call callOperation(J_JITOperation_EJJMic, JSValueRegs, JSValueRegs, JSValueRegs, TrustedImmPtr);
         MacroAssembler::Call callOperation(J_JITOperation_EJJAp, int, GPRReg, GPRReg, ArrayProfile*);
         MacroAssembler::Call callOperation(J_JITOperation_EJJBy, int, GPRReg, GPRReg, ByValInfo*);
         MacroAssembler::Call callOperation(Z_JITOperation_EJOJ, GPRReg, GPRReg, GPRReg);
@@ -938,6 +941,7 @@ namespace JSC {
 
         JumpList m_exceptionChecks;
         JumpList m_exceptionChecksWithCallFrameRollback;
+        Label m_exceptionHandler;
 
         unsigned m_getByIdIndex;
         unsigned m_putByIdIndex;
@@ -954,6 +958,9 @@ namespace JSC {
 
         PCToCodeOriginMapBuilder m_pcToCodeOriginMapBuilder;
 
+        HashMap<Instruction*, void*> m_instructionToMathIC;
+        HashMap<Instruction*, MathICGenerationState> m_instructionToMathICGenerationState;
+
         bool m_canBeOptimized;
         bool m_canBeOptimizedOrInlined;
         bool m_shouldEmitProfiling;
@@ -962,5 +969,3 @@ namespace JSC {
 } // namespace JSC
 
 #endif // ENABLE(JIT)
-
-#endif // JIT_h

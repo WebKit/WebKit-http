@@ -30,10 +30,17 @@
 
 [
     Conditional=WEB_RTC,
-    ConstructorTemplate=Event
+    Constructor(DOMString type, RTCTrackEventInit eventInitDict),
 ] interface RTCTrackEvent : Event {
-   [InitializedByEventConstructor] readonly attribute RTCRtpReceiver receiver;
-   [InitializedByEventConstructor] readonly attribute MediaStreamTrack track;
-   [InitializedByEventConstructor] readonly attribute MediaStream[] streams;
-   [InitializedByEventConstructor] readonly attribute RTCRtpTransceiver transceiver;
+    readonly attribute RTCRtpReceiver receiver;
+    readonly attribute MediaStreamTrack track;
+    readonly attribute FrozenArray<MediaStream> streams;
+    readonly attribute RTCRtpTransceiver transceiver;
+};
+
+dictionary RTCTrackEventInit : EventInit {
+    required RTCRtpReceiver receiver;
+    required MediaStreamTrack track;
+    sequence<MediaStream> streams = [];
+    required RTCRtpTransceiver transceiver;
 };

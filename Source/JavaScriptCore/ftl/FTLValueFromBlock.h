@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef FTLValueFromBlock_h
-#define FTLValueFromBlock_h
+#pragma once
 
 #if ENABLE(FTL_JIT)
 
@@ -45,6 +44,8 @@ public:
         , m_block(block)
     {
     }
+    
+    explicit operator bool() const { return m_value || m_block; }
 
     LValue value() const { return m_value; }
     LBasicBlock block() const { return m_block; }
@@ -57,6 +58,3 @@ private:
 } } // namespace JSC::FTL
 
 #endif // ENABLE(FTL_JIT)
-
-#endif // FTLValueFromBlock_h
-

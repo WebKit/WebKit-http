@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef FontFaceSet_h
-#define FontFaceSet_h
+#pragma once
 
 #include "ActiveDOMObject.h"
 #include "CSSFontFaceSet.h"
@@ -49,7 +48,7 @@ public:
 
     typedef DOMPromise<Vector<RefPtr<FontFace>>> LoadPromise;
     void load(const String& font, const String& text, LoadPromise&&);
-    bool check(const String& font, const String& text, ExceptionCode&);
+    ExceptionOr<bool> check(const String& font, const String& text);
 
     enum class LoadStatus { Loading, Loaded };
     LoadStatus status() const;
@@ -111,9 +110,7 @@ private:
     Ref<CSSFontFaceSet> m_backing;
     HashMap<RefPtr<CSSFontFace>, Vector<Ref<PendingPromise>>> m_pendingPromises;
     Optional<ReadyPromise> m_promise;
-    bool m_isReady { false };
+    bool m_isReady { true };
 };
 
 }
-
-#endif

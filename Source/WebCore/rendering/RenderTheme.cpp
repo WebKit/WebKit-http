@@ -42,7 +42,6 @@
 #include "PaintInfo.h"
 #include "RenderStyle.h"
 #include "RenderView.h"
-#include "Settings.h"
 #include "SpinButtonElement.h"
 #include "StringTruncator.h"
 #include "TextControlInnerElements.h"
@@ -253,6 +252,10 @@ void RenderTheme::adjustStyle(StyleResolver& styleResolver, RenderStyle& style, 
 #endif
     case CapsLockIndicatorPart:
         return adjustCapsLockIndicatorStyle(styleResolver, style, element);
+#if ENABLE(APPLE_PAY)
+    case ApplePayButtonPart:
+        return adjustApplePayButtonStyle(styleResolver, style, element);
+#endif
 #if ENABLE(ATTACHMENT_ELEMENT)
     case AttachmentPart:
         return adjustAttachmentStyle(styleResolver, style, element);
@@ -401,6 +404,10 @@ bool RenderTheme::paint(const RenderBox& box, ControlStates& controlStates, cons
 #endif
     case CapsLockIndicatorPart:
         return paintCapsLockIndicator(box, paintInfo, integralSnappedRect);
+#if ENABLE(APPLE_PAY)
+    case ApplePayButtonPart:
+        return paintApplePayButton(box, paintInfo, integralSnappedRect);
+#endif
 #if ENABLE(ATTACHMENT_ELEMENT)
     case AttachmentPart:
         return paintAttachment(box, paintInfo, integralSnappedRect);
@@ -1282,14 +1289,14 @@ Color RenderTheme::tapHighlightColor()
 // Value chosen by observation. This can be tweaked.
 static const int minColorContrastValue = 1300;
 // For transparent or translucent background color, use lightening.
-static const int minDisabledColorAlphaValue = 128;
+static const float minDisabledColorAlphaValue = 0.5;
 
 Color RenderTheme::disabledTextColor(const Color& textColor, const Color& backgroundColor) const
 {
     // The explicit check for black is an optimization for the 99% case (black on white).
     // This also means that black on black will turn into grey on black when disabled.
     Color disabledColor;
-    if (textColor.rgb() == Color::black || backgroundColor.alpha() < minDisabledColorAlphaValue || differenceSquared(textColor, Color::white) > differenceSquared(backgroundColor, Color::white))
+    if (Color::isBlackColor(textColor) || backgroundColor.alphaAsFloat() < minDisabledColorAlphaValue || differenceSquared(textColor, Color::white) > differenceSquared(backgroundColor, Color::white))
         disabledColor = textColor.light();
     else
         disabledColor = textColor.dark();
@@ -1335,5 +1342,15 @@ String RenderTheme::fileListNameForWidth(const FileList* fileList, const FontCas
 
     return StringTruncator::centerTruncate(string, width, font);
 }
+
+#if ENABLE(TOUCH_EVENTS)
+Color RenderTheme::platformTapHighlightColor() const
+{
+    // This color is expected to be drawn on a semi-transparent overlay,
+    // making it more transparent than its alpha value indicates.
+    static NeverDestroyed<const Color> defaultTapHighlightColor = Color(0, 0, 0, 102);
+    return defaultTapHighlightColor;
+}
+#endif
 
 } // namespace WebCore

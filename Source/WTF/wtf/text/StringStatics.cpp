@@ -69,12 +69,9 @@ unsigned StringImpl::nextHashForSymbol()
 
 WTF_EXPORTDATA DEFINE_GLOBAL(AtomicString, nullAtom)
 WTF_EXPORTDATA DEFINE_GLOBAL(AtomicString, emptyAtom)
-WTF_EXPORTDATA DEFINE_GLOBAL(AtomicString, textAtom)
-WTF_EXPORTDATA DEFINE_GLOBAL(AtomicString, commentAtom)
 WTF_EXPORTDATA DEFINE_GLOBAL(AtomicString, starAtom)
 WTF_EXPORTDATA DEFINE_GLOBAL(AtomicString, xmlAtom)
 WTF_EXPORTDATA DEFINE_GLOBAL(AtomicString, xmlnsAtom)
-WTF_EXPORTDATA DEFINE_GLOBAL(AtomicString, xlinkAtom)
 
 NEVER_INLINE unsigned StringImpl::hashSlowCase() const
 {
@@ -83,6 +80,17 @@ NEVER_INLINE unsigned StringImpl::hashSlowCase() const
     else
         setHash(StringHasher::computeHashAndMaskTop8Bits(m_data16, m_length));
     return existingHash();
+}
+
+unsigned StringImpl::concurrentHash() const
+{
+    unsigned hash;
+    if (is8Bit())
+        hash = StringHasher::computeHashAndMaskTop8Bits(m_data8, m_length);
+    else
+        hash = StringHasher::computeHashAndMaskTop8Bits(m_data16, m_length);
+    ASSERT(((hash << s_flagCount) >> s_flagCount) == hash);
+    return hash;
 }
 
 void AtomicString::init()
@@ -95,12 +103,9 @@ void AtomicString::init()
         // Use placement new to initialize the globals.
         new (NotNull, (void*)&nullAtom) AtomicString;
         new (NotNull, (void*)&emptyAtom) AtomicString("");
-        new (NotNull, (void*)&textAtom) AtomicString("#text", AtomicString::ConstructFromLiteral);
-        new (NotNull, (void*)&commentAtom) AtomicString("#comment", AtomicString::ConstructFromLiteral);
         new (NotNull, (void*)&starAtom) AtomicString("*", AtomicString::ConstructFromLiteral);
         new (NotNull, (void*)&xmlAtom) AtomicString("xml", AtomicString::ConstructFromLiteral);
         new (NotNull, (void*)&xmlnsAtom) AtomicString("xmlns", AtomicString::ConstructFromLiteral);
-        new (NotNull, (void*)&xlinkAtom) AtomicString("xlink", AtomicString::ConstructFromLiteral);
 
         initialized = true;
     }

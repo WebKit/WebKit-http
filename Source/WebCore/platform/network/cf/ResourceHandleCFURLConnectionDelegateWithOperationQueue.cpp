@@ -26,7 +26,7 @@
 #include "config.h"
 #include "ResourceHandleCFURLConnectionDelegateWithOperationQueue.h"
 
-#if USE(CFNETWORK)
+#if USE(CFURLCONNECTION)
 
 #include "AuthenticationCF.h"
 #include "AuthenticationChallenge.h"
@@ -156,7 +156,7 @@ void ResourceHandleCFURLConnectionDelegateWithOperationQueue::didReceiveResponse
         
         ResourceResponse resourceResponse(cfResponse);
 #if ENABLE(WEB_TIMING)
-        ResourceHandle::getConnectionTimingData(connection, resourceResponse.resourceLoadTiming());
+        ResourceHandle::getConnectionTimingData(connection, resourceResponse.networkLoadTiming());
 #else
         UNUSED_PARAM(connection);
 #endif
@@ -347,4 +347,4 @@ void ResourceHandleCFURLConnectionDelegateWithOperationQueue::continueCanAuthent
 #endif // USE(PROTECTION_SPACE_AUTH_CALLBACK)
 } // namespace WebCore
 
-#endif // USE(CFNETWORK)
+#endif // USE(CFURLCONNECTION)

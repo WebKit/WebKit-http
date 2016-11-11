@@ -49,7 +49,7 @@ public:
     ReadyState readyState();
     void setReadyState(ReadyState);
 
-    TextTrack* track();
+    LoadableTextTrack& track();
 
     void scheduleLoad();
 
@@ -78,10 +78,9 @@ private:
     void textTrackKindChanged(TextTrack*) final;
     void textTrackAddCues(TextTrack*, const TextTrackCueList*) final;
     void textTrackRemoveCues(TextTrack*, const TextTrackCueList*) final;
-    void textTrackAddCue(TextTrack*, PassRefPtr<TextTrackCue>) final;
-    void textTrackRemoveCue(TextTrack*, PassRefPtr<TextTrackCue>) final;
+    void textTrackAddCue(TextTrack*, TextTrackCue&) final;
+    void textTrackRemoveCue(TextTrack*, TextTrackCue&) final;
 
-    LoadableTextTrack& ensureTrack();
     bool canLoadURL(const URL&);
 
     RefPtr<LoadableTextTrack> m_track;

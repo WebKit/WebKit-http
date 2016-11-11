@@ -19,58 +19,39 @@
  * Boston, MA 02110-1301, USA.
  */
 
-// Introduced in DOM Level 3:
 [
-    ConstructorConditional=DOM4_EVENTS_CONSTRUCTOR,
-    ConstructorTemplate=Event,
+    Constructor(DOMString type, optional WheelEventInit eventInitDict),
 ] interface WheelEvent : MouseEvent {
     // DeltaModeCode
-    const unsigned long              DOM_DELTA_PIXEL = 0x00;
-    const unsigned long              DOM_DELTA_LINE  = 0x01;
-    const unsigned long              DOM_DELTA_PAGE  = 0x02;
+    const unsigned long DOM_DELTA_PIXEL = 0x00;
+    const unsigned long DOM_DELTA_LINE = 0x01;
+    const unsigned long DOM_DELTA_PAGE = 0x02;
 
-    [InitializedByEventConstructor] readonly attribute unrestricted double deltaX;
-    [InitializedByEventConstructor] readonly attribute unrestricted double deltaY;
-    [InitializedByEventConstructor] readonly attribute unrestricted double deltaZ;
-    [InitializedByEventConstructor] readonly attribute unsigned long deltaMode;
+    readonly attribute unrestricted double deltaX;
+    readonly attribute unrestricted double deltaY;
+    readonly attribute unrestricted double deltaZ;
+    readonly attribute unsigned long deltaMode;
 
     // Legacy MouseWheelEvent API replaced by standard WheelEvent API.
-    [InitializedByEventConstructor] readonly attribute long wheelDeltaX;
-    [InitializedByEventConstructor] readonly attribute long wheelDeltaY;
+    readonly attribute long wheelDeltaX;
+    readonly attribute long wheelDeltaY;
     readonly attribute long wheelDelta;
 
-    // WebKit Extension
     readonly attribute boolean webkitDirectionInvertedFromDevice;
 
-#if defined(LANGUAGE_OBJECTIVE_C) && LANGUAGE_OBJECTIVE_C
-    readonly attribute boolean isHorizontal;
-#endif /* defined(LANGUAGE_OBJECTIVE_C) */
+    void initWebKitWheelEvent(optional long wheelDeltaX = 0, optional long wheelDeltaY = 0, optional DOMWindow? view = null,
+        optional long screenX = 0, optional long screenY = 0, optional long clientX = 0, optional long clientY = 0,
+        optional boolean ctrlKey = false, optional boolean altKey = false,
+        optional boolean shiftKey = false, optional boolean metaKey = false);
+};
 
-#if !defined(LANGUAGE_JAVASCRIPT) || !LANGUAGE_JAVASCRIPT
-    void initWheelEvent(optional long wheelDeltaX,
-                        optional long wheelDeltaY,
-                        optional DOMWindow? view,
-                        optional long screenX,
-                        optional long screenY,
-                        optional long clientX,
-                        optional long clientY,
-                        optional boolean ctrlKey,
-                        optional boolean altKey,
-                        optional boolean shiftKey,
-                        optional boolean metaKey);
-#endif /* !defined(LANGUAGE_JAVASCRIPT) */
+dictionary WheelEventInit : MouseEventInit {
+    double deltaX = 0.0;
+    double deltaY = 0.0;
+    double deltaZ = 0.0;
+    unsigned long deltaMode = 0;
 
-#if defined(LANGUAGE_JAVASCRIPT) && LANGUAGE_JAVASCRIPT
-    void initWebKitWheelEvent(optional long wheelDeltaX = 0,
-                              optional long wheelDeltaY = 0,
-                              optional DOMWindow? view = null,
-                              optional long screenX = 0,
-                              optional long screenY = 0,
-                              optional long clientX = 0,
-                              optional long clientY = 0,
-                              optional boolean ctrlKey = false,
-                              optional boolean altKey = false,
-                              optional boolean shiftKey = false,
-                              optional boolean metaKey = false);
-#endif /* defined(LANGUAGE_JAVASCRIPT) */
+    // Legacy members that we still support for backward compatibility.
+    long wheelDeltaX = 0;
+    long wheelDeltaY = 0;
 };

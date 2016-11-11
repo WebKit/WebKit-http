@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2014, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,7 +26,6 @@
 #include "config.h"
 #include "ErrorHandlingScope.h"
 
-#include "Interpreter.h"
 #include "Options.h"
 #include "VM.h"
 
@@ -36,20 +35,14 @@ ErrorHandlingScope::ErrorHandlingScope(VM& vm)
     : m_vm(vm)
 {
     RELEASE_ASSERT(m_vm.stackPointerAtVMEntry());
-    size_t newReservedZoneSize = Options::errorModeReservedZoneSize();
-    m_savedReservedZoneSize = m_vm.updateReservedZoneSize(newReservedZoneSize);
-#if !ENABLE(JIT)
-    m_vm.interpreter->stack().setReservedZoneSize(newReservedZoneSize);
-#endif
+    size_t newSoftReservedZoneSize = Options::reservedZoneSize();
+    m_savedSoftReservedZoneSize = m_vm.updateSoftReservedZoneSize(newSoftReservedZoneSize);
 }
 
 ErrorHandlingScope::~ErrorHandlingScope()
 {
     RELEASE_ASSERT(m_vm.stackPointerAtVMEntry());
-    m_vm.updateReservedZoneSize(m_savedReservedZoneSize);
-#if !ENABLE(JIT)
-    m_vm.interpreter->stack().setReservedZoneSize(m_savedReservedZoneSize);
-#endif
+    m_vm.updateSoftReservedZoneSize(m_savedSoftReservedZoneSize);
 }
 
 } // namespace JSC

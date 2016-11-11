@@ -28,24 +28,29 @@
 
 #if ENABLE(TOUCH_EVENTS)
 
-#include "Arguments.h"
 #include "WebCoreArgumentCoders.h"
 
 using namespace WebCore;
 
 namespace WebKit {
 
-void WebPlatformTouchPoint::encode(IPC::ArgumentEncoder& encoder) const
+void WebPlatformTouchPoint::encode(IPC::Encoder& encoder) const
 {
     encoder << m_identifier;
     encoder << m_location;
     encoder << m_phase;
 #if ENABLE(IOS_TOUCH_EVENTS)
+    encoder << m_radiusX;
+    encoder << m_radiusY;
+    encoder << m_rotationAngle;
     encoder << m_force;
+    encoder << m_altitudeAngle;
+    encoder << m_azimuthAngle;
+    encoder << m_touchType;
 #endif
 }
 
-bool WebPlatformTouchPoint::decode(IPC::ArgumentDecoder& decoder, WebPlatformTouchPoint& result)
+bool WebPlatformTouchPoint::decode(IPC::Decoder& decoder, WebPlatformTouchPoint& result)
 {
     if (!decoder.decode(result.m_identifier))
         return false;
@@ -54,7 +59,19 @@ bool WebPlatformTouchPoint::decode(IPC::ArgumentDecoder& decoder, WebPlatformTou
     if (!decoder.decode(result.m_phase))
         return false;
 #if ENABLE(IOS_TOUCH_EVENTS)
+    if (!decoder.decode(result.m_radiusX))
+        return false;
+    if (!decoder.decode(result.m_radiusY))
+        return false;
+    if (!decoder.decode(result.m_rotationAngle))
+        return false;
     if (!decoder.decode(result.m_force))
+        return false;
+    if (!decoder.decode(result.m_altitudeAngle))
+        return false;
+    if (!decoder.decode(result.m_azimuthAngle))
+        return false;
+    if (!decoder.decode(result.m_touchType))
         return false;
 #endif
     return true;

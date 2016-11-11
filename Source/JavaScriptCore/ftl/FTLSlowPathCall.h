@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef FTLSlowPathCall_h
-#define FTLSlowPathCall_h
+#pragma once
 
 #if ENABLE(FTL_JIT)
 
@@ -103,7 +102,7 @@ SlowPathCall callOperation(
     if (callSiteIndex) {
         jit.store32(
             CCallHelpers::TrustedImm32(callSiteIndex.bits()),
-            CCallHelpers::tagFor(JSStack::ArgumentCount));
+            CCallHelpers::tagFor(CallFrameSlot::argumentCount));
     }
     return callOperation(usedRegisters, jit, exceptionTarget, function, resultGPR, arguments...);
 }
@@ -123,6 +122,3 @@ SlowPathCall callOperation(
 } } // namespace JSC::FTL
 
 #endif // ENABLE(FTL_JIT)
-
-#endif // FTLSlowPathCall_h
-

@@ -429,7 +429,7 @@ HRESULT DOMHTMLElement::idName(__deref_opt_out BSTR* result)
         return E_POINTER;
 
     ASSERT(is<HTMLElement>(m_element));
-    String idString = downcast<HTMLElement>(m_element)->getAttribute(idAttr);
+    String idString = downcast<HTMLElement>(m_element)->attributeWithoutSynchronization(idAttr);
     *result = BString(idString).release();
     return S_OK;
 }
@@ -514,8 +514,7 @@ HRESULT DOMHTMLElement::setInnerHTML(_In_ BSTR html)
     ASSERT(is<HTMLElement>(m_element));
     HTMLElement* htmlElement = downcast<HTMLElement>(m_element);
     String htmlString(html, SysStringLen(html));
-    ExceptionCode ec = 0;
-    htmlElement->setInnerHTML(htmlString, ec);
+    htmlElement->setInnerHTML(htmlString);
     return S_OK;
 }
         
@@ -534,8 +533,7 @@ HRESULT DOMHTMLElement::setInnerText(_In_ BSTR text)
     ASSERT(is<HTMLElement>(m_element));
     HTMLElement* htmlElement = downcast<HTMLElement>(m_element);
     WTF::String textString(text, SysStringLen(text));
-    WebCore::ExceptionCode ec = 0;
-    htmlElement->setInnerText(textString, ec);
+    htmlElement->setInnerText(textString);
     return S_OK;
 }
 

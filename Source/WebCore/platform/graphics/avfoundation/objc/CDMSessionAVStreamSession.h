@@ -31,7 +31,7 @@
 #include <wtf/RetainPtr.h>
 #include <wtf/WeakPtr.h>
 
-#if ENABLE(ENCRYPTED_MEDIA_V2) && ENABLE(MEDIA_SOURCE)
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA) && ENABLE(MEDIA_SOURCE)
 
 OBJC_CLASS AVStreamSession;
 OBJC_CLASS WebCDMSessionAVStreamSessionObserver;
@@ -58,7 +58,7 @@ public:
     void setStreamSession(AVStreamSession*);
 
 protected:
-    PassRefPtr<Uint8Array> generateKeyReleaseMessage(unsigned short& errorCode, uint32_t systemCode);
+    PassRefPtr<Uint8Array> generateKeyReleaseMessage(unsigned short& errorCode, uint32_t& systemCode);
 
     WeakPtrFactory<CDMSessionAVStreamSession> m_weakPtrFactory;
     RetainPtr<AVStreamSession> m_streamSession;

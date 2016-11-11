@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef MacroAssemblerX86_h
-#define MacroAssemblerX86_h
+#pragma once
 
 #if ENABLE(ASSEMBLER) && CPU(X86)
 
@@ -34,6 +33,9 @@ namespace JSC {
 
 class MacroAssemblerX86 : public MacroAssemblerX86Common {
 public:
+    static const unsigned numGPRs = 8;
+    static const unsigned numFPRs = 8;
+    
     static const Scale ScalePtr = TimesFour;
 
     using MacroAssemblerX86Common::add32;
@@ -160,8 +162,8 @@ public:
 
     void store8(TrustedImm32 imm, void* address)
     {
-        ASSERT(-128 <= imm.m_value && imm.m_value < 128);
-        m_assembler.movb_i8m(imm.m_value, address);
+        TrustedImm32 imm8(static_cast<int8_t>(imm.m_value));
+        m_assembler.movb_i8m(imm8.m_value, address);
     }
     
     void moveDoubleToInts(FPRegisterID src, RegisterID dest1, RegisterID dest2)
@@ -237,17 +239,18 @@ public:
     
     Jump branch8(RelationalCondition cond, AbsoluteAddress left, TrustedImm32 right)
     {
-        m_assembler.cmpb_im(right.m_value, left.m_ptr);
+        TrustedImm32 right8(static_cast<int8_t>(right.m_value));
+        m_assembler.cmpb_im(right8.m_value, left.m_ptr);
         return Jump(m_assembler.jCC(x86Condition(cond)));
     }
 
     Jump branchTest8(ResultCondition cond, AbsoluteAddress address, TrustedImm32 mask = TrustedImm32(-1))
     {
-        ASSERT(mask.m_value >= -128 && mask.m_value <= 255);
-        if (mask.m_value == -1)
+        TrustedImm32 mask8(static_cast<int8_t>(mask.m_value));
+        if (mask8.m_value == -1)
             m_assembler.cmpb_im(0, address.m_ptr);
         else
-            m_assembler.testb_im(mask.m_value, address.m_ptr);
+            m_assembler.testb_im(mask8.m_value, address.m_ptr);
         return Jump(m_assembler.jCC(x86Condition(cond)));
     }
 
@@ -370,5 +373,3 @@ private:
 } // namespace JSC
 
 #endif // ENABLE(ASSEMBLER)
-
-#endif // MacroAssemblerX86_h

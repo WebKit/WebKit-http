@@ -31,6 +31,7 @@
 #include "DOMHTMLClasses.h"
 #include "WebKitGraphics.h"
 
+#include <WebCore/Attr.h>
 #include <WebCore/BString.h>
 #include <WebCore/COMPtr.h>
 #include <WebCore/DOMWindow.h>
@@ -441,9 +442,15 @@ HRESULT DOMNode::dispatchEvent(_In_opt_ IDOMEvent* evt, _Out_ BOOL* result)
     if (FAILED(hr))
         return hr;
 
-    WebCore::ExceptionCode ec = 0;
-    *result = m_node->dispatchEventForBindings(domEvent->coreEvent(), ec) ? TRUE : FALSE;
-    return ec ? E_FAIL : S_OK;
+    if (!domEvent->coreEvent())
+        return E_FAIL;
+
+    auto dispatchResult = m_node->dispatchEventForBindings(*domEvent->coreEvent());
+    if (dispatchResult.hasException())
+        return E_FAIL;
+
+    *result = dispatchResult.releaseReturnValue();
+    return S_OK;
 }
 
 // DOMNode - DOMNode ----------------------------------------------------------
@@ -635,9 +642,11 @@ HRESULT DOMDocument::createElement(_In_ BSTR tagName, _COM_Outptr_opt_ IDOMEleme
         return E_FAIL;
 
     String tagNameString(tagName);
-    ExceptionCode ec;
-    *result = DOMElement::createInstance(m_document->createElementForBindings(tagNameString, ec).get());
-    return *result ? S_OK : E_FAIL;
+    auto createElementResult = m_document->createElementForBindings(tagNameString);
+    if (createElementResult.hasException())
+        return E_FAIL;
+    *result = DOMElement::createInstance(createElementResult.releaseReturnValue().ptr());
+    return S_OK;
 }
 
 HRESULT DOMDocument::createDocumentFragment(_COM_Outptr_opt_ IDOMDocumentFragment** result)
@@ -791,6 +800,8 @@ HRESULT DOMDocument::getComputedStyle(_In_opt_ IDOMElement* elt, _In_ BSTR pseud
     if (FAILED(hr))
         return hr;
     Element* element = domEle->element();
+    if (!element)
+        return E_FAIL;
 
     WebCore::DOMWindow* dv = m_document->defaultView();
     String pseudoEltString(pseudoElt);
@@ -798,7 +809,7 @@ HRESULT DOMDocument::getComputedStyle(_In_opt_ IDOMElement* elt, _In_ BSTR pseud
     if (!dv)
         return E_FAIL;
     
-    *result = DOMCSSStyleDeclaration::createInstance(dv->getComputedStyle(element, pseudoEltString.impl()).get());
+    *result = DOMCSSStyleDeclaration::createInstance(dv->getComputedStyle(*element, pseudoEltString.impl()).ptr());
     return *result ? S_OK : E_FAIL;
 }
 
@@ -812,8 +823,11 @@ HRESULT DOMDocument::createEvent(_In_ BSTR eventType, _COM_Outptr_opt_ IDOMEvent
 
     String eventTypeString(eventType, SysStringLen(eventType));
     WebCore::ExceptionCode ec = 0;
-    *result = DOMEvent::createInstance(m_document->createEvent(eventTypeString, ec));
-    return *result ? S_OK : E_FAIL;
+    auto createEventResult = m_document->createEvent(eventTypeString);
+    if (createEventResult.hasException())
+        return E_FAIL;
+    *result = DOMEvent::createInstance(createEventResult.releaseReturnValue());
+    return S_OK;
 }
 
 // DOMDocument - DOMDocument --------------------------------------------------
@@ -938,9 +952,15 @@ HRESULT DOMWindow::dispatchEvent(_In_opt_ IDOMEvent* evt, _Out_ BOOL* result)
     if (FAILED(hr))
         return hr;
 
-    WebCore::ExceptionCode ec = 0;
-    *result = m_window->dispatchEventForBindings(domEvent->coreEvent(), ec) ? TRUE : FALSE;
-    return ec ? E_FAIL : S_OK;
+    if (!domEvent->coreEvent())
+        return E_FAIL;
+
+    auto dispatchResult = m_window->dispatchEventForBindings(*domEvent->coreEvent());
+    if (dispatchResult.hasException())
+        return E_FAIL;
+
+    *result = dispatchResult.releaseReturnValue();
+    return S_OK;
 }
 
 
@@ -1062,9 +1082,8 @@ HRESULT DOMElement::setAttribute(_In_ BSTR name, _In_ BSTR value)
 
     WTF::String nameString(name, SysStringLen(name));
     WTF::String valueString(value, SysStringLen(value));
-    WebCore::ExceptionCode ec = 0;
-    m_element->setAttribute(nameString, valueString, ec);
-    return ec ? E_FAIL : S_OK;
+    auto result = m_element->setAttribute(nameString, valueString);
+    return result.hasException() ? E_FAIL : S_OK;
 }
     
 HRESULT DOMElement::removeAttribute(_In_ BSTR /*name*/)

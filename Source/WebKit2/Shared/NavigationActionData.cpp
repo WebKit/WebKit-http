@@ -27,25 +27,26 @@
 #include "NavigationActionData.h"
 
 #include "ArgumentCoders.h"
-#include "ArgumentDecoder.h"
-#include "ArgumentEncoder.h"
+#include "Decoder.h"
+#include "Encoder.h"
 
 using namespace WebCore;
 
 namespace WebKit {
 
-void NavigationActionData::encode(IPC::ArgumentEncoder& encoder) const
+void NavigationActionData::encode(IPC::Encoder& encoder) const
 {
     encoder.encodeEnum(navigationType);
     encoder.encodeEnum(modifiers);
     encoder.encodeEnum(mouseButton);
-    encoder << isProcessingUserGesture;
+    encoder.encodeEnum(syntheticClickType);
+    encoder << userGestureTokenIdentifier;
     encoder << canHandleRequest;
     encoder.encodeEnum(shouldOpenExternalURLsPolicy);
     encoder << downloadAttribute;
 }
 
-bool NavigationActionData::decode(IPC::ArgumentDecoder& decoder, NavigationActionData& result)
+bool NavigationActionData::decode(IPC::Decoder& decoder, NavigationActionData& result)
 {
     if (!decoder.decodeEnum(result.navigationType))
         return false;
@@ -53,7 +54,9 @@ bool NavigationActionData::decode(IPC::ArgumentDecoder& decoder, NavigationActio
         return false;
     if (!decoder.decodeEnum(result.mouseButton))
         return false;
-    if (!decoder.decode(result.isProcessingUserGesture))
+    if (!decoder.decodeEnum(result.syntheticClickType))
+        return false;
+    if (!decoder.decode(result.userGestureTokenIdentifier))
         return false;
     if (!decoder.decode(result.canHandleRequest))
         return false;

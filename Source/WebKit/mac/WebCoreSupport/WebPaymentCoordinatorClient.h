@@ -39,7 +39,8 @@ private:
     bool supportsVersion(unsigned) override;
     bool canMakePayments() override;
     void canMakePaymentsWithActiveCard(const String&, const String&, std::function<void (bool)> completionHandler) override;
-    void showPaymentUI(const WebCore::URL&, const Vector<WebCore::URL>& linkIconURLs, const WebCore::PaymentRequest&) override;
+    void openPaymentSetup(const String& merchantIdentifier, const String& domainName, std::function<void (bool)> completionHandler) override;
+    bool showPaymentUI(const WebCore::URL&, const Vector<WebCore::URL>& linkIconURLs, const WebCore::PaymentRequest&) override;
     void completeMerchantValidation(const WebCore::PaymentMerchantSession&) override;
     void completeShippingMethodSelection(WebCore::PaymentAuthorizationStatus, Optional<WebCore::PaymentRequest::TotalAndLineItems> newTotalAndItems) override;
     void completeShippingContactSelection(WebCore::PaymentAuthorizationStatus, const Vector<WebCore::PaymentRequest::ShippingMethod>&, Optional<WebCore::PaymentRequest::TotalAndLineItems> newTotalAndItems) override;

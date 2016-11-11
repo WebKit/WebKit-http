@@ -31,7 +31,6 @@
 #include "Editor.h"
 #include "ExceptionCodePlaceholder.h"
 #include "Frame.h"
-#include "HTMLBRElement.h"
 #include "HTMLBodyElement.h"
 #include "HTMLDListElement.h"
 #include "HTMLDivElement.h"
@@ -40,7 +39,6 @@
 #include "HTMLLIElement.h"
 #include "HTMLNames.h"
 #include "HTMLOListElement.h"
-#include "HTMLObjectElement.h"
 #include "HTMLParagraphElement.h"
 #include "HTMLSpanElement.h"
 #include "HTMLTableElement.h"
@@ -104,7 +102,10 @@ int comparePositions(const Position& a, const Position& b)
             bias = 1;
     }
 
-    int result = Range::compareBoundaryPoints(nodeA, offsetA, nodeB, offsetB, IGNORE_EXCEPTION);
+    auto comparisonResult = Range::compareBoundaryPoints(nodeA, offsetA, nodeB, offsetB);
+    if (comparisonResult.hasException())
+        return bias;
+    auto result = comparisonResult.releaseReturnValue();
     return result ? result : bias;
 }
 
@@ -914,7 +915,7 @@ Ref<HTMLElement> createHTMLElement(Document& document, const AtomicString& tagNa
 
 bool isTabSpanNode(const Node* node)
 {
-    return is<HTMLSpanElement>(node) && downcast<HTMLSpanElement>(*node).fastGetAttribute(classAttr) == AppleTabSpanClass;
+    return is<HTMLSpanElement>(node) && downcast<HTMLSpanElement>(*node).attributeWithoutSynchronization(classAttr) == AppleTabSpanClass;
 }
 
 bool isTabSpanTextNode(const Node* node)
@@ -931,7 +932,7 @@ static Ref<Element> createTabSpanElement(Document& document, Text& tabTextNode)
 {
     auto spanElement = document.createElement(spanTag, false);
 
-    spanElement->setAttribute(classAttr, AppleTabSpanClass);
+    spanElement->setAttributeWithoutSynchronization(classAttr, AppleTabSpanClass);
     spanElement->setAttribute(styleAttr, "white-space:pre");
 
     spanElement->appendChild(tabTextNode, ASSERT_NO_EXCEPTION);
@@ -1000,7 +1001,7 @@ bool isMailBlockquote(const Node* node)
     ASSERT(node);
     if (!node->hasTagName(blockquoteTag))
         return false;
-    return downcast<HTMLElement>(*node).fastGetAttribute(typeAttr) == "cite";
+    return downcast<HTMLElement>(*node).attributeWithoutSynchronization(typeAttr) == "cite";
 }
 
 int caretMinOffset(const Node& node)
@@ -1127,7 +1128,7 @@ VisiblePosition visiblePositionForIndexUsingCharacterIterator(Node& node, int in
         return { firstPositionInOrBeforeNode(&node), DOWNSTREAM };
 
     RefPtr<Range> range = Range::create(node.document());
-    range->selectNodeContents(node, IGNORE_EXCEPTION);
+    range->selectNodeContents(node);
     CharacterIterator it(*range);
     it.advance(index - 1);
     return { it.atEnd() ? range->endPosition() : it.range()->endPosition(), UPSTREAM };
@@ -1144,8 +1145,9 @@ static bool isVisiblyAdjacent(const Position& first, const Position& second)
 // Call this function to determine whether a node is visibly fit inside selectedRange
 bool isNodeVisiblyContainedWithin(Node& node, const Range& range)
 {
-    // If the node is inside the range, then it surely is contained within
-    if (range.compareNode(node, IGNORE_EXCEPTION) == Range::NODE_INSIDE)
+    // If the node is inside the range, then it surely is contained within.
+    auto comparisonResult = range.compareNode(node);
+    if (!comparisonResult.hasException() && comparisonResult.releaseReturnValue() == Range::NODE_INSIDE)
         return true;
 
     bool startIsVisuallySame = visiblePositionBeforeNode(node) == range.startPosition();

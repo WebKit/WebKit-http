@@ -27,14 +27,10 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef Crypto_h
-#define Crypto_h
+#pragma once
 
 #include "ContextDestructionObserver.h"
-#include <wtf/Forward.h>
-#include <wtf/PassRefPtr.h>
-#include <wtf/RefCounted.h>
-#include <wtf/RefPtr.h>
+#include "ExceptionOr.h"
 
 namespace JSC {
 class ArrayBufferView;
@@ -42,32 +38,32 @@ class ArrayBufferView;
 
 namespace WebCore {
 
-typedef int ExceptionCode;
-
-class Document;
 class SubtleCrypto;
+class WebKitSubtleCrypto;
 
 class Crypto : public ContextDestructionObserver, public RefCounted<Crypto> {
 public:
-    static Ref<Crypto> create(Document& document) { return adoptRef(*new Crypto(document)); }
+    static Ref<Crypto> create(ScriptExecutionContext& context) { return adoptRef(*new Crypto(context)); }
     virtual ~Crypto();
 
-    Document* document() const;
-
-    void getRandomValues(JSC::ArrayBufferView*, ExceptionCode&);
+    ExceptionOr<void> getRandomValues(JSC::ArrayBufferView&);
 
 #if ENABLE(SUBTLE_CRYPTO)
-    SubtleCrypto* subtle();
+    SubtleCrypto& subtle();
+
+    // Will be deprecated.
+    ExceptionOr<WebKitSubtleCrypto&> webkitSubtle();
 #endif
 
 private:
-    Crypto(Document&);
+    Crypto(ScriptExecutionContext&);
 
 #if ENABLE(SUBTLE_CRYPTO)
-    RefPtr<SubtleCrypto> m_subtle;
+    Ref<SubtleCrypto> m_subtle;
+
+    // Will be deprecated.
+    RefPtr<WebKitSubtleCrypto> m_webkitSubtle;
 #endif
 };
 
 }
-
-#endif

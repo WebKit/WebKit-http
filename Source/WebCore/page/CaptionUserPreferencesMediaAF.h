@@ -23,15 +23,13 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef CaptionUserPreferencesMediaAF_h
-#define CaptionUserPreferencesMediaAF_h
+#pragma once
 
 #if ENABLE(VIDEO_TRACK)
 
 #include "CSSPropertyNames.h"
 #include "CaptionUserPreferences.h"
 #include "Color.h"
-#include <wtf/HashSet.h>
 
 namespace WebCore {
 
@@ -93,7 +91,6 @@ private:
 #endif
 };
 
-}
-#endif
+} // namespace WebCore
 
-#endif
+#endif // ENABLE(VIDEO_TRACK)

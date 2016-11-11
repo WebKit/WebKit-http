@@ -23,13 +23,11 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef DFGToFTLForOSREntryDeferredCompilationCallback_h
-#define DFGToFTLForOSREntryDeferredCompilationCallback_h
+#pragma once
 
 #if ENABLE(FTL_JIT)
 
 #include "DeferredCompilationCallback.h"
-#include <wtf/PassRefPtr.h>
 #include <wtf/RefPtr.h>
 
 namespace JSC {
@@ -57,6 +55,3 @@ private:
 } } // namespace JSC::DFG
 
 #endif // ENABLE(FTL_JIT)
-
-#endif // DFGToFTLForOSREntryDeferredCompilationCallback_h
-

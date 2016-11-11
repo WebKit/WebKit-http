@@ -21,8 +21,7 @@
  *
  */
 
-#ifndef DocumentType_h
-#define DocumentType_h
+#pragma once
 
 #include "Node.h"
 
@@ -37,14 +36,9 @@ public:
         return adoptRef(*new DocumentType(document, name, publicId, systemId));
     }
 
-    // These are needed by ObjC / GObject bindings for backward compatibility.
-    NamedNodeMap* entitiesForBindings() const { return nullptr; }
-    NamedNodeMap* notationsForBindings() const { return nullptr; }
-
     const String& name() const { return m_name; }
     const String& publicId() const { return m_publicId; }
     const String& systemId() const { return m_systemId; }
-    const String& internalSubset() const { return m_subset; }
 
 private:
     DocumentType(Document&, const String& name, const String& publicId, const String& systemId);
@@ -56,7 +50,6 @@ private:
     String m_name;
     String m_publicId;
     String m_systemId;
-    String m_subset;
 };
 
 } // namespace WebCore
@@ -64,5 +57,3 @@ private:
 SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::DocumentType)
     static bool isType(const WebCore::Node& node) { return node.nodeType() == WebCore::Node::DOCUMENT_TYPE_NODE; }
 SPECIALIZE_TYPE_TRAITS_END()
-
-#endif

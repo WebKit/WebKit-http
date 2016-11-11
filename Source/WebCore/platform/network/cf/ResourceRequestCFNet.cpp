@@ -34,7 +34,7 @@
 #include "PublicSuffix.h"
 #endif
 
-#if USE(CFNETWORK)
+#if USE(CFURLCONNECTION)
 #include "FormDataStreamCFNet.h"
 #include <CFNetwork/CFURLRequestPriv.h>
 #include <wtf/text/CString.h>
@@ -59,7 +59,7 @@ bool ResourceRequest::s_httpPipeliningEnabled = true;
 bool ResourceRequest::s_httpPipeliningEnabled = false;
 #endif
 
-#if USE(CFNETWORK)
+#if USE(CFURLCONNECTION)
 
 typedef void (*CFURLRequestSetContentDispositionEncodingFallbackArrayFunction)(CFMutableURLRequestRef, CFArrayRef);
 typedef CFArrayRef (*CFURLRequestCopyContentDispositionEncodingFallbackArrayFunction)(CFURLRequestRef);
@@ -189,6 +189,12 @@ void ResourceRequest::doUpdatePlatformRequest()
 #endif
 }
 
+// FIXME: We should use a switch based on ResourceRequestCachePolicy parameter
+static inline CFURLRequestCachePolicy toPlatformRequestCachePolicy(ResourceRequestCachePolicy policy)
+{
+    return static_cast<CFURLRequestCachePolicy>((policy <= ReturnCacheDataDontLoad) ? policy : ReloadIgnoringCacheData);
+}
+
 void ResourceRequest::doUpdatePlatformHTTPBody()
 {
     CFMutableURLRequestRef cfRequest;
@@ -199,7 +205,7 @@ void ResourceRequest::doUpdatePlatformHTTPBody()
         cfRequest = CFURLRequestCreateMutableCopy(0, m_cfRequest.get());
         CFURLRequestSetURL(cfRequest, url.get());
         CFURLRequestSetMainDocumentURL(cfRequest, firstPartyForCookies.get());
-        CFURLRequestSetCachePolicy(cfRequest, (CFURLRequestCachePolicy)cachePolicy());
+        CFURLRequestSetCachePolicy(cfRequest, toPlatformRequestCachePolicy(cachePolicy()));
         CFURLRequestSetTimeoutInterval(cfRequest, timeoutInterval());
     } else
         cfRequest = CFURLRequestCreateMutable(0, url.get(), (CFURLRequestCachePolicy)cachePolicy(), timeoutInterval(), firstPartyForCookies.get());
@@ -248,7 +254,8 @@ void ResourceRequest::doUpdateResourceRequest()
 
     m_url = CFURLRequestGetURL(m_cfRequest.get());
 
-    m_cachePolicy = (ResourceRequestCachePolicy)CFURLRequestGetCachePolicy(m_cfRequest.get());
+    if (!m_cachePolicy)
+        m_cachePolicy = (ResourceRequestCachePolicy)CFURLRequestGetCachePolicy(m_cfRequest.get());
     m_timeoutInterval = CFURLRequestGetTimeoutInterval(m_cfRequest.get());
     m_firstPartyForCookies = CFURLRequestGetMainDocumentURL(m_cfRequest.get());
     if (CFStringRef method = CFURLRequestCopyHTTPRequestMethod(m_cfRequest.get())) {
@@ -322,7 +329,7 @@ void ResourceRequest::setStorageSession(CFURLStorageSessionRef storageSession)
 #endif
 }
 
-#endif // USE(CFNETWORK)
+#endif // USE(CFURLCONNECTION)
 
 void ResourceRequest::updateFromDelegatePreservingOldProperties(const ResourceRequest& delegateProvidedRequest)
 {
@@ -331,6 +338,7 @@ void ResourceRequest::updateFromDelegatePreservingOldProperties(const ResourceRe
     RefPtr<FormData> oldHTTPBody = httpBody();
     bool isHiddenFromInspector = hiddenFromInspector();
     auto oldRequester = requester();
+    auto oldInitiatorIdentifier = initiatorIdentifier();
 
     *this = delegateProvidedRequest;
 
@@ -338,6 +346,7 @@ void ResourceRequest::updateFromDelegatePreservingOldProperties(const ResourceRe
     setHTTPBody(WTFMove(oldHTTPBody));
     setHiddenFromInspector(isHiddenFromInspector);
     setRequester(oldRequester);
+    setInitiatorIdentifier(oldInitiatorIdentifier);
 }
 
 bool ResourceRequest::httpPipeliningEnabled()

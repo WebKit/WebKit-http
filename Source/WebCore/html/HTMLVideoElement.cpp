@@ -138,7 +138,7 @@ void HTMLVideoElement::parseAttribute(const QualifiedName& name, const AtomicStr
 #if PLATFORM(IOS) && ENABLE(WIRELESS_PLAYBACK_TARGET)
         if (name == webkitairplayAttr) {
             bool disabled = false;
-            if (equalLettersIgnoringASCIICase(fastGetAttribute(HTMLNames::webkitairplayAttr), "deny"))
+            if (equalLettersIgnoringASCIICase(attributeWithoutSynchronization(HTMLNames::webkitairplayAttr), "deny"))
                 disabled = true;
             mediaSession().setWirelessVideoPlaybackDisabled(*this, disabled);
         }
@@ -213,7 +213,7 @@ bool HTMLVideoElement::isURLAttribute(const Attribute& attribute) const
 
 const AtomicString& HTMLVideoElement::imageSourceURL() const
 {
-    const AtomicString& url = getAttribute(posterAttr);
+    const AtomicString& url = attributeWithoutSynchronization(posterAttr);
     if (!stripLeadingAndTrailingHTMLSpaces(url).isEmpty())
         return url;
     return m_defaultPosterURL;
@@ -295,19 +295,18 @@ NativeImagePtr HTMLVideoElement::nativeImageForCurrentTime()
     return player()->nativeImageForCurrentTime();
 }
 
-void HTMLVideoElement::webkitEnterFullscreen(ExceptionCode& ec)
+ExceptionOr<void> HTMLVideoElement::webkitEnterFullscreen()
 {
     if (isFullscreen())
-        return;
+        return { };
 
     // Generate an exception if this isn't called in response to a user gesture, or if the 
     // element does not support fullscreen.
-    if (!mediaSession().fullscreenPermitted(*this) || !supportsFullscreen(HTMLMediaElementEnums::VideoFullscreenModeStandard)) {
-        ec = INVALID_STATE_ERR;
-        return;
-    }
+    if (!mediaSession().fullscreenPermitted(*this) || !supportsFullscreen(HTMLMediaElementEnums::VideoFullscreenModeStandard))
+        return Exception { INVALID_STATE_ERR };
 
     enterFullscreen();
+    return { };
 }
 
 void HTMLVideoElement::webkitExitFullscreen()

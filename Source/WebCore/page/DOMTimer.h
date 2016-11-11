@@ -24,10 +24,10 @@
  *
  */
 
-#ifndef DOMTimer_h
-#define DOMTimer_h
+#pragma once
 
 #include "SuspendableTimer.h"
+#include "UserGestureIndicator.h"
 #include <memory>
 #include <wtf/RefCounted.h>
 
@@ -35,9 +35,7 @@ namespace WebCore {
 
 class DOMTimerFireState;
 class Document;
-class Element;
 class HTMLPlugInElement;
-class IntRect;
 class ScheduledAction;
 
 class DOMTimer final : public RefCounted<DOMTimer>, public SuspendableTimer {
@@ -90,10 +88,7 @@ private:
     std::chrono::milliseconds m_originalInterval;
     TimerThrottleState m_throttleState;
     std::chrono::milliseconds m_currentTimerInterval;
-    bool m_shouldForwardUserGesture;
+    RefPtr<UserGestureToken> m_userGestureTokenToForward;
 };
 
 } // namespace WebCore
-
-#endif // DOMTimer_h
-

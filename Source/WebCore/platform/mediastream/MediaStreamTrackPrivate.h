@@ -37,6 +37,7 @@ namespace WebCore {
 
 class AudioSourceProvider;
 class GraphicsContext;
+class MediaSample;
 class MediaSourceSettings;
 class RealtimeMediaSourceCapabilities;
 
@@ -50,10 +51,11 @@ public:
         virtual void trackMutedChanged(MediaStreamTrackPrivate&) = 0;
         virtual void trackSettingsChanged(MediaStreamTrackPrivate&) = 0;
         virtual void trackEnabledChanged(MediaStreamTrackPrivate&) = 0;
+        virtual void sampleBufferUpdated(MediaStreamTrackPrivate&, MediaSample&) { };
     };
-    
-    static RefPtr<MediaStreamTrackPrivate> create(RefPtr<RealtimeMediaSource>&&);
-    static RefPtr<MediaStreamTrackPrivate> create(RefPtr<RealtimeMediaSource>&&, const String& id);
+
+    static Ref<MediaStreamTrackPrivate> create(Ref<RealtimeMediaSource>&&);
+    static Ref<MediaStreamTrackPrivate> create(Ref<RealtimeMediaSource>&&, String&& id);
 
     virtual ~MediaStreamTrackPrivate();
 
@@ -67,7 +69,7 @@ public:
     bool isProducingData() { return m_source->isProducingData(); }
 
     bool muted() const;
-    void setMuted(bool muted) const { m_source->setMuted(muted); }
+    void setMuted(bool muted) { m_source->setMuted(muted); }
 
     bool readonly() const;
     bool remote() const;
@@ -75,9 +77,9 @@ public:
     bool enabled() const { return m_isEnabled; }
     void setEnabled(bool);
 
-    RefPtr<MediaStreamTrackPrivate> clone();
+    Ref<MediaStreamTrackPrivate> clone();
 
-    RealtimeMediaSource& source() const { return *m_source.get(); }
+    RealtimeMediaSource& source() { return m_source.get(); }
     RealtimeMediaSource::Type type() const;
 
     void endTrack();
@@ -89,7 +91,7 @@ public:
     RefPtr<RealtimeMediaSourceCapabilities> capabilities() const;
 
     RefPtr<MediaConstraints> constraints() const;
-    void applyConstraints(const MediaConstraints&);
+    void applyConstraints(const MediaConstraints&, RealtimeMediaSource::SuccessHandler, RealtimeMediaSource::FailureHandler);
 
     AudioSourceProvider* audioSourceProvider();
 
@@ -97,16 +99,17 @@ public:
 
 private:
     explicit MediaStreamTrackPrivate(const MediaStreamTrackPrivate&);
-    MediaStreamTrackPrivate(RefPtr<RealtimeMediaSource>&&, const String& id);
+    MediaStreamTrackPrivate(Ref<RealtimeMediaSource>&&, String&& id);
 
     // RealtimeMediaSourceObserver
     void sourceStopped() final;
     void sourceMutedChanged() final;
     void sourceSettingsChanged() final;
     bool preventSourceFromStopping() final;
+    void sourceHasMoreMediaData(MediaSample&) final;
 
     Vector<Observer*> m_observers;
-    RefPtr<RealtimeMediaSource> m_source;
+    Ref<RealtimeMediaSource> m_source;
     RefPtr<MediaConstraints> m_constraints;
 
     String m_id;

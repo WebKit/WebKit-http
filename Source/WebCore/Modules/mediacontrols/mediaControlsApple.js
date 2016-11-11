@@ -42,6 +42,7 @@ function Controller(root, video, host)
     this.updateHasVideo();
     this.updateWirelessTargetAvailable();
     this.updateWirelessPlaybackStatus();
+    this.updatePictureInPicturePlaceholder();
     this.scheduleUpdateLayoutForDisplayedWidth();
 
     this.listenFor(this.root, 'resize', this.handleRootResize);
@@ -118,7 +119,8 @@ Controller.prototype = {
         out: 'out',
         pictureInPictureButton: 'picture-in-picture-button',
         placeholderShowing: 'placeholder-showing',
-        usesLTRUserInterfaceLayoutDirection: 'uses-ltr-user-interface-layout-direction'
+        usesLTRUserInterfaceLayoutDirection: 'uses-ltr-user-interface-layout-direction',
+        appleTV: 'appletv',
     },
     KeyCodes: {
         enter: 13,
@@ -133,7 +135,7 @@ Controller.prototype = {
         right: 39,
         down: 40
     },
-    MinimumTimelineWidth: 100,
+    MinimumTimelineWidth: 80,
     ButtonWidth: 32,
 
     extend: function(child)
@@ -301,16 +303,19 @@ Controller.prototype = {
         return this.shouldHaveControls() || (this.video.textTracks && this.video.textTracks.length) || this.currentPlaybackTargetIsWireless();
     },
 
-    shouldHaveControls: function()
+    shouldShowControls: function()
     {
         if (!this.isAudio() && !this.host.allowsInlineMediaPlayback)
             return true;
 
-        if (this.isFullScreen() || this.presentationMode() === 'picture-in-picture' || this.currentPlaybackTargetIsWireless())
-            return true;
-
-        return this.video.controls;
+        return this.video.controls || this.isFullScreen();
     },
+
+    shouldHaveControls: function()
+    {
+        return this.shouldShowControls() || this.isFullScreen() || this.presentationMode() === 'picture-in-picture' || this.currentPlaybackTargetIsWireless();
+    },
+    
 
     setNeedsTimelineMetricsUpdate: function()
     {
@@ -417,6 +422,7 @@ Controller.prototype = {
         this.listenFor(timeline, 'mousemove', this.handleTimelineMouseMove);
         this.listenFor(timeline, 'mousedown', this.handleTimelineMouseDown);
         this.listenFor(timeline, 'mouseup', this.handleTimelineMouseUp);
+        this.listenFor(timeline, 'keydown', this.handleTimelineKeyDown);
         timeline.step = .01;
 
         this.timelineContextName = "_webkit-media-controls-timeline-" + this.host.generateUUID();
@@ -443,6 +449,8 @@ Controller.prototype = {
         var muteButton = this.controls.muteButton = document.createElement('button');
         muteButton.setAttribute('pseudo', '-webkit-media-controls-mute-button');
         muteButton.setAttribute('aria-label', this.UIString('Mute'));
+        // Make the mute button a checkbox since it only has on/off states.
+        muteButton.setAttribute('role', 'checkbox');
         this.listenFor(muteButton, 'click', this.handleMuteButtonClicked);
 
         var minButton = this.controls.minButton = document.createElement('button');
@@ -471,8 +479,9 @@ Controller.prototype = {
         volume.type = 'range';
         volume.min = 0;
         volume.max = 1;
-        volume.step = .01;
+        volume.step = .05;
         this.listenFor(volume, 'input', this.handleVolumeSliderInput);
+        this.listenFor(volume, 'change', this.handleVolumeSliderChange);
         this.listenFor(volume, 'mousedown', this.handleVolumeSliderMouseDown);
         this.listenFor(volume, 'mouseup', this.handleVolumeSliderMouseUp);
 
@@ -670,7 +679,7 @@ Controller.prototype = {
         this.updateLayoutForDisplayedWidth();
         this.setNeedsTimelineMetricsUpdate();
 
-        if (this.shouldHaveControls()) {
+        if (this.shouldShowControls()) {
             this.controls.panel.classList.add(this.ClassNames.show);
             this.controls.panel.classList.remove(this.ClassNames.hidden);
             this.resetHideControlsTimer();
@@ -859,6 +868,36 @@ Controller.prototype = {
         } else
             this.controls.pictureInPictureButton.classList.add(this.ClassNames.hidden);
     },
+    
+    timelineStepFromVideoDuration: function()
+    {
+        var step;
+        var duration = this.video.duration;
+        if (duration <= 10)
+            step = .5;
+        else if (duration <= 60)
+            step = 1;
+        else if (duration <= 600)
+            step = 10;
+        else if (duration <= 3600)
+            step = 30;
+        else
+            step = 60;
+        
+        return step;
+    },
+    
+    incrementTimelineValue: function()
+    {
+        var value = this.video.currentTime + this.timelineStepFromVideoDuration();
+        return value > this.video.duration ? this.video.duration : value;
+    },
+
+    decrementTimelineValue: function()
+    {
+        var value = this.video.currentTime - this.timelineStepFromVideoDuration();
+        return value < 0 ? 0 : value;
+    },
 
     showInlinePlaybackPlaceholderWhenSafe: function() {
         if (this.presentationMode() != 'picture-in-picture')
@@ -871,7 +910,13 @@ Controller.prototype = {
             setTimeout(this.showInlinePlaybackPlaceholderWhenSafe.bind(this), this.PlaceholderPollingDelay);
     },
 
-    handlePresentationModeChange: function(event)
+    shouldReturnVideoLayerToInline: function()
+    {
+        var presentationMode = this.presentationMode();
+        return presentationMode === 'inline' || presentationMode === 'fullscreen';
+    },
+
+    updatePictureInPicturePlaceholder: function()
     {
         var presentationMode = this.presentationMode();
 
@@ -907,13 +952,17 @@ Controller.prototype = {
                 this.controls.pictureInPictureButton.classList.remove(this.ClassNames.returnFromPictureInPicture);
                 break;
         }
+    },
 
+    handlePresentationModeChange: function(event)
+    {
+        this.updatePictureInPicturePlaceholder();
         this.updateControls();
         this.updateCaptionContainer();
         this.resetHideControlsTimer();
-        if (presentationMode != 'fullscreen' && this.video.paused && this.controlsAreHidden())
+        if (this.presentationMode() != 'fullscreen' && this.video.paused && this.controlsAreHidden())
             this.showControls();
-        this.host.setPreparedForInline(presentationMode === 'inline')
+        this.host.setPreparedToReturnVideoLayerToInline(this.shouldReturnVideoLayerToInline());
     },
 
     handleFullscreenChange: function(event)
@@ -1118,12 +1167,22 @@ Controller.prototype = {
     {
         this.scrubbing = false;
     },
+    
+    handleTimelineKeyDown: function(event)
+    {
+        if (event.keyCode == this.KeyCodes.left)
+            this.controls.timeline.value = this.decrementTimelineValue();
+        else if (event.keyCode == this.KeyCodes.right)
+            this.controls.timeline.value = this.incrementTimelineValue();
+    },
 
     handleMuteButtonClicked: function(event)
     {
         this.video.muted = !this.video.muted;
         if (this.video.muted)
-            this.controls.muteButton.setAttribute('aria-label', this.UIString('Unmute'));
+            this.controls.muteButton.setAttribute('aria-checked', 'true');
+        else
+            this.controls.muteButton.setAttribute('aria-checked', 'false');
         this.drawVolumeBackground();
         return true;
     },
@@ -1137,7 +1196,7 @@ Controller.prototype = {
     {
         if (this.video.muted) {
             this.video.muted = false;
-            this.controls.muteButton.setAttribute('aria-label', this.UIString('Mute'));
+            this.controls.muteButton.setAttribute('aria-checked', 'false');
         }
         this.video.volume = 0;
         return true;
@@ -1147,19 +1206,30 @@ Controller.prototype = {
     {
         if (this.video.muted) {
             this.video.muted = false;
-            this.controls.muteButton.setAttribute('aria-label', this.UIString('Mute'));
+            this.controls.muteButton.setAttribute('aria-checked', 'false');
         }
         this.video.volume = 1;
     },
 
-    handleVolumeSliderInput: function(event)
+    updateVideoVolume: function()
     {
         if (this.video.muted) {
             this.video.muted = false;
-            this.controls.muteButton.setAttribute('aria-label', this.UIString('Mute'));
+            this.controls.muteButton.setAttribute('aria-checked', 'false');
         }
         this.video.volume = this.controls.volume.value;
+        this.controls.volume.setAttribute('aria-valuetext', `${parseInt(this.controls.volume.value * 100)}%`);
+    },
+
+    handleVolumeSliderInput: function(event)
+    {
+        this.updateVideoVolume();
         this.drawVolumeBackground();
+    },
+    
+    handleVolumeSliderChange: function(event)
+    {
+        this.updateVideoVolume();
     },
 
     handleVolumeSliderMouseDown: function(event)
@@ -1503,6 +1573,25 @@ Controller.prototype = {
 
         ctx.restore();
     },
+    
+    formatTimeDescription: function(time)
+    {
+        if (isNaN(time))
+            time = 0;
+        var absTime = Math.abs(time);
+        var intSeconds = Math.floor(absTime % 60).toFixed(0);
+        var intMinutes = Math.floor((absTime / 60) % 60).toFixed(0);
+        var intHours = Math.floor(absTime / (60 * 60)).toFixed(0);
+        
+        var secondString = intSeconds == 1 ? 'Second' : 'Seconds';
+        var minuteString = intMinutes == 1 ? 'Minute' : 'Minutes';
+        var hourString = intHours == 1 ? 'Hour' : 'Hours';
+        if (intHours > 0)
+            return `${intHours} ${this.UIString(hourString)}, ${intMinutes} ${this.UIString(minuteString)}, ${intSeconds} ${this.UIString(secondString)}`;
+        if (intMinutes > 0)
+            return `${intMinutes} ${this.UIString(minuteString)}, ${intSeconds} ${this.UIString(secondString)}`;
+        return `${intSeconds} ${this.UIString(secondString)}`;
+    },
 
     formatTime: function(time)
     {
@@ -1704,8 +1793,15 @@ Controller.prototype = {
         var currentTime = this.video.currentTime;
         var timeRemaining = currentTime - this.video.duration;
         this.currentTimeClone.innerText = this.controls.currentTime.innerText = this.formatTime(currentTime);
+        this.controls.currentTime.setAttribute('aria-label', `${this.UIString('Elapsed')} ${this.formatTimeDescription(currentTime)}`);
         this.controls.timeline.value = this.video.currentTime;
         this.remainingTimeClone.innerText = this.controls.remainingTime.innerText = this.formatTime(timeRemaining);
+        this.controls.remainingTime.setAttribute('aria-label', `${this.UIString('Remaining')} ${this.formatTimeDescription(timeRemaining)}`);
+        
+        // Mark the timeline value in percentage format in accessibility.
+        var timeElapsedPercent = currentTime / this.video.duration;
+        timeElapsedPercent = Math.max(Math.min(1, timeElapsedPercent), 0);
+        this.controls.timeline.setAttribute('aria-valuetext', `${parseInt(timeElapsedPercent * 100)}%`);
     },
     
     updateControlsWhileScrubbing: function()
@@ -2079,6 +2175,7 @@ Controller.prototype = {
             this.controls.muteButton.classList.remove(this.ClassNames.muted);
             this.controls.volume.value = this.video.volume;
         }
+        this.controls.volume.setAttribute('aria-valuetext', `${parseInt(this.controls.volume.value * 100)}%`);
         this.drawVolumeBackground();
     },
 
@@ -2153,6 +2250,7 @@ Controller.prototype = {
             this.controls.inlinePlaybackPlaceholderTextTop.innerText = deviceType;
             this.controls.inlinePlaybackPlaceholderTextBottom.innerText = deviceName;
             this.controls.inlinePlaybackPlaceholder.setAttribute('aria-label', deviceType + ", " + deviceName);
+            this.controls.inlinePlaybackPlaceholder.classList.add(this.ClassNames.appleTV);
             this.controls.inlinePlaybackPlaceholder.classList.remove(this.ClassNames.hidden);
             this.controls.wirelessTargetPicker.classList.add(this.ClassNames.playing);
             if (!this.isFullScreen() && (this.video.offsetWidth <= 250 || this.video.offsetHeight <= 200)) {
@@ -2170,6 +2268,7 @@ Controller.prototype = {
             this.showControls();
         } else {
             this.controls.inlinePlaybackPlaceholder.classList.add(this.ClassNames.hidden);
+            this.controls.inlinePlaybackPlaceholder.classList.remove(this.ClassNames.appleTV);
             this.controls.wirelessTargetPicker.classList.remove(this.ClassNames.playing);
             this.controls.volumeBox.classList.remove(this.ClassNames.hidden);
             this.controls.muteBox.classList.remove(this.ClassNames.hidden);
@@ -2288,33 +2387,37 @@ Controller.prototype = {
             {
                 name: "Show Controls",
                 object: this.showControlsButton,
-                extraProperties: ["hidden"]
+                extraProperties: ["hidden"],
             },
             {
                 name: "Status Display",
                 object: this.controls.statusDisplay,
                 styleValues: ["display"],
-                extraProperties: ["textContent"]
+                extraProperties: ["textContent"],
             },
             {
                 name: "Play Button",
-                object: this.controls.playButton
+                object: this.controls.playButton,
+                extraProperties: ["hidden"],
             },
             {
                 name: "Rewind Button",
-                object: this.controls.rewindButton
+                object: this.controls.rewindButton,
+                extraProperties: ["hidden"],
             },
             {
                 name: "Timeline Box",
-                object: this.controls.timelineBox
+                object: this.controls.timelineBox,
             },
             {
                 name: "Mute Box",
-                object: this.controls.muteBox
+                object: this.controls.muteBox,
+                extraProperties: ["hidden"],
             },
             {
                 name: "Fullscreen Button",
-                object: this.controls.fullscreenButton
+                object: this.controls.fullscreenButton,
+                extraProperties: ["hidden"],
             },
             {
                 name: "AppleTV Device Picker",
@@ -2325,15 +2428,49 @@ Controller.prototype = {
             {
                 name: "Picture-in-picture Button",
                 object: this.controls.pictureInPictureButton,
-                extraProperties: ["parentElement"],
+                extraProperties: ["parentElement", "hidden"],
+            },
+            {
+                name: "Caption Button",
+                object: this.controls.captionButton,
+                extraProperties: ["hidden"],
+            },
+            {
+                name: "Timeline",
+                object: this.controls.timeline,
+                extraProperties: ["hidden"],
+            },
+            {
+                name: "Current Time",
+                object: this.controls.currentTime,
+                extraProperties: ["hidden"],
+            },
+            {
+                name: "Thumbnail Track",
+                object: this.controls.thumbnailTrack,
+                extraProperties: ["hidden"],
+            },
+            {
+                name: "Time Remaining",
+                object: this.controls.remainingTime,
+                extraProperties: ["hidden"],
             },
             {
                 name: "Track Menu",
-                object: this.captionMenu
+                object: this.captionMenu,
             },
             {
                 name: "Inline playback placeholder",
                 object: this.controls.inlinePlaybackPlaceholder,
+            },
+            {
+                name: "Media Controls Panel",
+                object: this.controls.panel,
+                extraProperties: ["hidden"],
+            },
+            {
+                name: "Control Base Element",
+                object: this.base || null,
             },
         ];
 

@@ -55,35 +55,12 @@ WebInspector.TextRange = class TextRange extends WebInspector.Object
 
     // Public
 
-    get startLine()
-    {
-        return this._startLine;
-    }
-
-    get startColumn()
-    {
-        return this._startColumn;
-    }
-
-    get endLine()
-    {
-        return this._endLine;
-    }
-
-    get endColumn()
-    {
-        return this._endColumn;
-    }
-
-    get startOffset()
-    {
-        return this._startOffset;
-    }
-
-    get endOffset()
-    {
-        return this._endOffset;
-    }
+    get startLine() { return this._startLine; }
+    get startColumn() { return this._startColumn; }
+    get endLine() { return this._endLine; }
+    get endColumn() { return this._endColumn; }
+    get startOffset() { return this._startOffset; }
+    get endOffset() { return this._endOffset; }
 
     startPosition()
     {
@@ -118,5 +95,19 @@ WebInspector.TextRange = class TextRange extends WebInspector.Object
             lastNewLineOffset = text.indexOf("\n", lastNewLineOffset) + 1;
 
         this._endOffset = lastNewLineOffset + this._endColumn;
+    }
+
+    contains(line, column)
+    {
+        console.assert(!isNaN(this._startLine), "TextRange needs line/column data");
+
+        if (line < this._startLine || line > this._endLine)
+            return false;
+        if (line === this._startLine && column < this._startColumn)
+            return false;
+        if (line === this._endLine && column > this._endColumn)
+            return false;
+
+        return true;
     }
 };

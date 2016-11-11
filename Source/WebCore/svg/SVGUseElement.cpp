@@ -79,7 +79,7 @@ Ref<SVGUseElement> SVGUseElement::create(const QualifiedName& tagName, Document&
 SVGUseElement::~SVGUseElement()
 {
     if (m_externalDocument)
-        m_externalDocument->removeClient(this);
+        m_externalDocument->removeClient(*this);
 }
 
 void SVGUseElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
@@ -514,7 +514,7 @@ void SVGUseElement::invalidateShadowTree()
     if (m_shadowTreeNeedsUpdate)
         return;
     m_shadowTreeNeedsUpdate = true;
-    setNeedsStyleRecalc(ReconstructRenderTree);
+    invalidateStyleAndRenderersForSubtree();
     invalidateDependentShadowTrees();
 }
 
@@ -535,12 +535,12 @@ bool SVGUseElement::selfHasRelativeLengths() const
     return targetClone && targetClone->hasRelativeLengths();
 }
 
-void SVGUseElement::notifyFinished(CachedResource* resource)
+void SVGUseElement::notifyFinished(CachedResource& resource)
 {
     invalidateShadowTree();
-    if (resource->errorOccurred())
+    if (resource.errorOccurred())
         dispatchEvent(Event::create(eventNames().errorEvent, false, false));
-    else if (!resource->wasCanceled())
+    else if (!resource.wasCanceled())
         SVGExternalResourcesRequired::dispatchLoadEvent(this);
 }
 
@@ -563,19 +563,19 @@ void SVGUseElement::updateExternalDocument()
         return;
 
     if (m_externalDocument)
-        m_externalDocument->removeClient(this);
+        m_externalDocument->removeClient(*this);
 
     if (externalDocumentURL.isNull())
         m_externalDocument = nullptr;
     else {
         ResourceLoaderOptions options = CachedResourceLoader::defaultCachedResourceOptions();
-        options.setContentSecurityPolicyImposition(isInUserAgentShadowTree() ? ContentSecurityPolicyImposition::SkipPolicyCheck : ContentSecurityPolicyImposition::DoPolicyCheck);
-
+        options.contentSecurityPolicyImposition = isInUserAgentShadowTree() ? ContentSecurityPolicyImposition::SkipPolicyCheck : ContentSecurityPolicyImposition::DoPolicyCheck;
+        options.mode = FetchOptions::Mode::SameOrigin;
         CachedResourceRequest request { ResourceRequest { externalDocumentURL }, options };
         request.setInitiator(this);
-        m_externalDocument = document().cachedResourceLoader().requestSVGDocument(request);
+        m_externalDocument = document().cachedResourceLoader().requestSVGDocument(WTFMove(request));
         if (m_externalDocument)
-            m_externalDocument->addClient(this);
+            m_externalDocument->addClient(*this);
     }
 
     invalidateShadowTree();

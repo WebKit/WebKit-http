@@ -265,12 +265,12 @@ void MediaControlsApple::setMediaController(MediaControllerInterface* controller
         m_closedCaptionsContainer->setMediaController(controller);
 }
 
-void MediaControlsApple::defaultEventHandler(Event* event)
+void MediaControlsApple::defaultEventHandler(Event& event)
 {
-    if (event->type() == eventNames().clickEvent) {
+    if (event.type() == eventNames().clickEvent) {
         if (m_closedCaptionsContainer && m_closedCaptionsContainer->isShowing()) {
             hideClosedCaptionTrackList();
-            event->setDefaultHandled();
+            event.setDefaultHandled();
         }
     }
 
@@ -380,9 +380,9 @@ void MediaControlsApple::updateCurrentTimeDisplay()
         return;
 
     // Allow the theme to format the time.
-    m_currentTimeDisplay->setInnerText(page->theme().formatMediaControlsCurrentTime(now, duration), IGNORE_EXCEPTION);
+    m_currentTimeDisplay->setInnerText(page->theme().formatMediaControlsCurrentTime(now, duration));
     m_currentTimeDisplay->setCurrentValue(now);
-    m_timeRemainingDisplay->setInnerText(page->theme().formatMediaControlsRemainingTime(now, duration), IGNORE_EXCEPTION);
+    m_timeRemainingDisplay->setInnerText(page->theme().formatMediaControlsRemainingTime(now, duration));
     m_timeRemainingDisplay->setCurrentValue(now - duration);
 }
 
@@ -555,15 +555,15 @@ bool MediaControlsApple::shouldClosedCaptionsContainerPreventPageScrolling(int w
     return false;
 }
 
-void MediaControlsApple::handleClickEvent(Event* event)
+void MediaControlsApple::handleClickEvent(Event& event)
 {
-    Node* currentTarget = event->currentTarget()->toNode();
-    Node* target = event->target()->toNode();
+    Node* currentTarget = event.currentTarget()->toNode();
+    Node* target = event.target()->toNode();
 
     if ((currentTarget == &document() && !shadowHost()->contains(target)) || (currentTarget == this && !m_closedCaptionsContainer->contains(target))) {
         hideClosedCaptionTrackList();
-        event->stopImmediatePropagation();
-        event->setDefaultHandled();
+        event.stopImmediatePropagation();
+        event.setDefaultHandled();
     }
 }
 
@@ -589,7 +589,7 @@ MediaControlsAppleEventListener& MediaControlsApple::eventListener()
 void MediaControlsAppleEventListener::handleEvent(ScriptExecutionContext*, Event* event)
 {
     if (event->type() == eventNames().clickEvent)
-        m_mediaControls->handleClickEvent(event);
+        m_mediaControls->handleClickEvent(*event);
     else if (eventNames().isWheelEventType(event->type()) && is<WheelEvent>(*event)) {
         WheelEvent& wheelEvent = downcast<WheelEvent>(*event);
         if (m_mediaControls->shouldClosedCaptionsContainerPreventPageScrolling(wheelEvent.wheelDeltaY()))

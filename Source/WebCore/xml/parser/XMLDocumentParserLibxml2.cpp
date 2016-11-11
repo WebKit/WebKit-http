@@ -45,6 +45,7 @@
 #include "HTMLNames.h"
 #include "HTMLStyleElement.h"
 #include "HTMLTemplateElement.h"
+#include "LoadableClassicScript.h"
 #include "Page.h"
 #include "ProcessingInstruction.h"
 #include "ResourceError.h"
@@ -54,6 +55,7 @@
 #include "ScriptSourceCode.h"
 #include "SecurityOrigin.h"
 #include "Settings.h"
+#include "StyleScope.h"
 #include "TextResourceDecoder.h"
 #include "TransformSource.h"
 #include "XMLNSNames.h"
@@ -463,7 +465,7 @@ static void* openFunc(const char* uri)
         // FIXME: We should restore the original global error handler as well.
 
         if (cachedResourceLoader->frame())
-            cachedResourceLoader->frame()->loader().loadResourceSynchronously(url, AllowStoredCredentials, DoNotAskClientForCrossOriginCredentials, error, response, data);
+            cachedResourceLoader->frame()->loader().loadResourceSynchronously(url, AllowStoredCredentials, ClientCredentialPolicy::MayAskClientForCredentials, error, response, data);
     }
 
     // We have to check the URL again after the load to catch redirects.
@@ -664,7 +666,7 @@ XMLDocumentParser::~XMLDocumentParser()
 
     // FIXME: m_pendingScript handling should be moved into XMLDocumentParser.cpp!
     if (m_pendingScript)
-        m_pendingScript->removeClient(this);
+        m_pendingScript->removeClient(*this);
 }
 
 void XMLDocumentParser::doWrite(const String& parseString)
@@ -737,11 +739,13 @@ static inline void handleNamespaceAttributes(Vector<Attribute>& prefixedAttribut
         if (namespaces[i].prefix)
             namespaceQName = "xmlns:" + toString(namespaces[i].prefix);
 
-        QualifiedName parsedName = anyName;
-        if (!Element::parseAttributeName(parsedName, XMLNSNames::xmlnsNamespaceURI, namespaceQName, ec))
+        auto result = Element::parseAttributeName(XMLNSNames::xmlnsNamespaceURI, namespaceQName);
+        if (result.hasException()) {
+            ec = result.releaseException().code();
             return;
-        
-        prefixedAttributes.append(Attribute(parsedName, namespaceURI));
+        }
+
+        prefixedAttributes.append(Attribute(result.releaseReturnValue(), namespaceURI));
     }
 }
 
@@ -761,14 +765,16 @@ static inline void handleElementAttributes(Vector<Attribute>& prefixedAttributes
         int valueLength = static_cast<int>(attributes[i].end - attributes[i].value);
         AtomicString attrValue = toAtomicString(attributes[i].value, valueLength);
         String attrPrefix = toString(attributes[i].prefix);
-        AtomicString attrURI = attrPrefix.isEmpty() ? AtomicString() : toAtomicString(attributes[i].uri);
+        AtomicString attrURI = attrPrefix.isEmpty() ? nullAtom : toAtomicString(attributes[i].uri);
         AtomicString attrQName = attrPrefix.isEmpty() ? toAtomicString(attributes[i].localname) : attrPrefix + ":" + toString(attributes[i].localname);
 
-        QualifiedName parsedName = anyName;
-        if (!Element::parseAttributeName(parsedName, attrURI, attrQName, ec))
+        auto result = Element::parseAttributeName(attrURI, attrQName);
+        if (result.hasException()) {
+            ec = result.releaseException().code();
             return;
+        }
 
-        prefixedAttributes.append(Attribute(parsedName, attrValue));
+        prefixedAttributes.append(Attribute(result.releaseReturnValue(), attrValue));
     }
 }
 
@@ -886,7 +892,7 @@ void XMLDocumentParser::endElementNs()
 
     if (!scriptingContentIsAllowed(parserContentPolicy()) && is<Element>(*node) && toScriptElementIfPossible(downcast<Element>(node.get()))) {
         popCurrentNode();
-        node->remove(IGNORE_EXCEPTION);
+        node->remove();
         return;
     }
 
@@ -920,10 +926,12 @@ void XMLDocumentParser::endElementNs()
 
         if (scriptElement->readyToBeParserExecuted())
             scriptElement->executeScript(ScriptSourceCode(scriptElement->scriptContent(), document()->url(), m_scriptStartPosition));
-        else if (scriptElement->willBeParserExecuted()) {
-            m_pendingScript = scriptElement->cachedScript();
+        else if (scriptElement->willBeParserExecuted() && scriptElement->loadableScript() && is<LoadableClassicScript>(*scriptElement->loadableScript())) {
+            // FIXME: Allow "module" scripts for XML documents.
+            // https://bugs.webkit.org/show_bug.cgi?id=161651
+            m_pendingScript = &downcast<LoadableClassicScript>(*scriptElement->loadableScript()).cachedScript();
             m_scriptElement = &element;
-            m_pendingScript->addClient(this);
+            m_pendingScript->addClient(*this);
 
             // m_pendingScript will be 0 if script was already loaded and addClient() executed it.
             if (m_pendingScript)
@@ -992,12 +1000,10 @@ void XMLDocumentParser::processingInstruction(const xmlChar* target, const xmlCh
     if (!updateLeafTextNode())
         return;
 
-    // ### handle exceptions
-    ExceptionCode ec = 0;
-    Ref<ProcessingInstruction> pi = *m_currentNode->document().createProcessingInstruction(
-        toString(target), toString(data), ec);
-    if (ec)
+    auto result = m_currentNode->document().createProcessingInstruction(toString(target), toString(data));
+    if (result.hasException())
         return;
+    auto pi = result.releaseReturnValue();
 
     pi->setCreatedByParser(true);
 
@@ -1007,6 +1013,7 @@ void XMLDocumentParser::processingInstruction(const xmlChar* target, const xmlCh
 
     if (pi->isCSS())
         m_sawCSS = true;
+
 #if ENABLE(XSLT)
     m_sawXSLTransform = !m_sawFirstElement && pi->isXSL();
     if (m_sawXSLTransform && !document()->transformSourceDocument())
@@ -1062,9 +1069,9 @@ void XMLDocumentParser::startDocument(const xmlChar* version, const xmlChar* enc
     }
 
     if (version)
-        document()->setXMLVersion(toString(version), ASSERT_NO_EXCEPTION);
+        document()->setXMLVersion(toString(version));
     if (standalone != StandaloneUnspecified)
-        document()->setXMLStandalone(standaloneInfo == StandaloneYes, ASSERT_NO_EXCEPTION);
+        document()->setXMLStandalone(standaloneInfo == StandaloneYes);
     if (encoding)
         document()->setXMLEncoding(toString(encoding));
     document()->setHasXMLDeclaration(true);
@@ -1210,7 +1217,7 @@ static size_t convertUTF16EntityToUTF8(const UChar* utf16Entity, size_t numberOf
         return 0;
 
     // Even though we must pass the length, libxml expects the entity string to be null terminated.
-    ASSERT(target > originalTarget + 1);
+    ASSERT(target >= originalTarget + 1);
     *target = '\0';
     return target - originalTarget;
 }
@@ -1308,6 +1315,7 @@ static void externalSubsetHandler(void* closure, const xmlChar*, const xmlChar* 
         || (extId == "-//W3C//DTD XHTML Basic 1.0//EN")
         || (extId == "-//W3C//DTD XHTML 1.1 plus MathML 2.0//EN")
         || (extId == "-//W3C//DTD XHTML 1.1 plus MathML 2.0 plus SVG 1.1//EN")
+        || (extId == "-//W3C//DTD MathML 2.0//EN")
         || (extId == "-//WAPFORUM//DTD XHTML Mobile 1.0//EN")
         || (extId == "-//WAPFORUM//DTD XHTML Mobile 1.1//EN")
         || (extId == "-//WAPFORUM//DTD XHTML Mobile 1.2//EN"))
@@ -1382,7 +1390,7 @@ void XMLDocumentParser::doEnd()
         document()->setTransformSource(std::make_unique<TransformSource>(doc));
 
         document()->setParsing(false); // Make the document think it's done, so it will apply XSL stylesheets.
-        document()->styleResolverChanged(RecalcStyleImmediately);
+        document()->styleScope().didChangeActiveStyleSheetCandidates();
 
         // styleResolverChanged() call can detach the parser and null out its document.
         // In that case, we just bail out.

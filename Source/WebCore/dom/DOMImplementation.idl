@@ -19,36 +19,16 @@
  */
 
 [
+    ExportToWrappedFunction,
     GenerateIsReachable=ImplDocument,
     ImplementationLacksVTable,
 ] interface DOMImplementation {
-
-    // DOM Level 1
-
-    // FIXME: Using "undefined" as default parameter value is wrong.
-    [ObjCLegacyUnnamedParameters] boolean hasFeature(optional DOMString feature = "undefined",
-        [TreatNullAs=EmptyString] optional DOMString version = "undefined");
-
-    // DOM Level 2
-
-    [ObjCLegacyUnnamedParameters, RaisesException, NewObject] DocumentType createDocumentType(optional DOMString? qualifiedName = null, optional DOMString? publicId = null, optional DOMString? systemId = null);
-
-    [NewObject, ObjCLegacyUnnamedParameters, RaisesException]
-#if defined(LANGUAGE_OBJECTIVE_C) && LANGUAGE_OBJECTIVE_C || defined(LANGUAGE_GOBJECT) && LANGUAGE_GOBJECT
-        Document
-#else
-        XMLDocument
-#endif
-        // FIXME: Using "undefined" as default parameter value is wrong.
-        createDocument(optional DOMString? namespaceURI = null, [TreatNullAs=EmptyString] optional DOMString qualifiedName = "undefined", optional DocumentType? doctype = null);
-
-    // DOMImplementationCSS interface from DOM Level 2 CSS
-
-    // FIXME: Using "undefined" as default parameter value is wrong.
-    [ObjCLegacyUnnamedParameters, RaisesException] CSSStyleSheet createCSSStyleSheet(optional DOMString title = "undefined", optional DOMString media = "undefined");
-
-    // HTMLDOMImplementation interface from DOM Level 2 HTML
-
+    [NewObject, MayThrowException] DocumentType createDocumentType(DOMString qualifiedName, DOMString publicId, DOMString systemId);
+    [NewObject, MayThrowException] XMLDocument createDocument(DOMString? namespaceURI, [TreatNullAs=EmptyString] DOMString qualifiedName, optional DocumentType? doctype = null);
     [NewObject] HTMLDocument createHTMLDocument(optional DOMString title);
 
+    boolean hasFeature();
+
+    // FIXME: Using "undefined" as default parameter value is wrong.
+    CSSStyleSheet createCSSStyleSheet(optional DOMString title = "undefined", optional DOMString media = "undefined");
 };

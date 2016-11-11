@@ -23,12 +23,12 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef SecurityOriginData_h
-#define SecurityOriginData_h
+#pragma once
 
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
+
 class Frame;
 class SecurityOrigin;
 
@@ -43,14 +43,18 @@ struct SecurityOriginData {
 
     String protocol;
     String host;
-    int port { 0 };
+    Optional<uint16_t> port;
 
     WEBCORE_EXPORT SecurityOriginData isolatedCopy() const;
 
+    // Serialize the security origin to a string that could be used as part of
+    // file names. This format should be used in storage APIs only.
+    WEBCORE_EXPORT String databaseIdentifier() const;
+    
     template<class Encoder> void encode(Encoder&) const;
     template<class Decoder> static bool decode(Decoder&, SecurityOriginData&);
 
-#ifndef NDEBUG
+#if !LOG_DISABLED
     String debugString() const;
 #endif
 };
@@ -79,5 +83,3 @@ bool SecurityOriginData::decode(Decoder& decoder, SecurityOriginData& securityOr
 }
 
 } // namespace WebCore
-
-#endif // SecurityOriginData_h

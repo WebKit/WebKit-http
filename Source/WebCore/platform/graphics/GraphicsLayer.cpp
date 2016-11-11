@@ -894,6 +894,7 @@ TextStream& operator<<(TextStream& ts, const WebCore::GraphicsLayer::CustomAppea
 {
     switch (customAppearance) {
     case GraphicsLayer::CustomAppearance::NoCustomAppearance: ts << "none"; break;
+    case GraphicsLayer::CustomAppearance::ScrollingOverhang: ts << "scrolling-overhang"; break;
     case GraphicsLayer::CustomAppearance::ScrollingShadow: ts << "scrolling-shadow"; break;
     case GraphicsLayer::CustomAppearance::LightBackdropAppearance: ts << "light-backdrop"; break;
     case GraphicsLayer::CustomAppearance::DarkBackdropAppearance: ts << "dark-backdrop"; break;
@@ -903,7 +904,7 @@ TextStream& operator<<(TextStream& ts, const WebCore::GraphicsLayer::CustomAppea
 
 String GraphicsLayer::layerTreeAsText(LayerTreeAsTextBehavior behavior) const
 {
-    TextStream ts;
+    TextStream ts(TextStream::LineMode::MultipleLine, TextStream::Formatting::SVGStyleRect);
 
     dumpLayer(ts, 0, behavior);
     return ts.release();

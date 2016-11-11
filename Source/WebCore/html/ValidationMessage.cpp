@@ -76,13 +76,21 @@ ValidationMessageClient* ValidationMessage::validationMessageClient() const
 
 void ValidationMessage::updateValidationMessage(const String& message)
 {
+    // We want to hide the validation message as soon as the user starts
+    // typing, even if a constraint is still violated. Thefore, we hide the message instead
+    // of updating it if it is already visible.
+    if (isVisible()) {
+        requestToHideMessage();
+        return;
+    }
+
     String updatedMessage = message;
     if (!validationMessageClient()) {
         // HTML5 specification doesn't ask UA to show the title attribute value
         // with the validationMessage. However, this behavior is same as Opera
         // and the specification describes such behavior as an example.
         if (!updatedMessage.isEmpty()) {
-            const AtomicString& title = m_element->fastGetAttribute(titleAttr);
+            const AtomicString& title = m_element->attributeWithoutSynchronization(titleAttr);
             if (!title.isEmpty())
                 updatedMessage = updatedMessage + '\n' + title;
         }
@@ -129,7 +137,7 @@ void ValidationMessage::setMessageDOMAndStartTimer()
             if (i < lines.size() - 1)
                 m_messageBody->appendChild(HTMLBRElement::create(document), ASSERT_NO_EXCEPTION);
         } else
-            m_messageHeading->setInnerText(lines[i], ASSERT_NO_EXCEPTION);
+            m_messageHeading->setInnerText(lines[i]);
     }
 
     int magnification = document.page() ? document.page()->settings().validationMessageTimerMagnification() : -1;

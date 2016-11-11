@@ -33,22 +33,16 @@
 #include "StyleSharingResolver.h"
 #include "StyleUpdate.h"
 #include <wtf/Function.h>
-#include <wtf/HashMap.h>
 #include <wtf/RefPtr.h>
 
 namespace WebCore {
 
-class ContainerNode;
 class Document;
 class Element;
-class HTMLSlotElement;
 class Node;
 class RenderStyle;
-class Settings;
 class ShadowRoot;
 class StyleResolver;
-class Text;
-class TreeChange;
 
 namespace Style {
 

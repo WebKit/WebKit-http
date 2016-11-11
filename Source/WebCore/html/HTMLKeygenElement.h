@@ -21,8 +21,7 @@
  *
  */
 
-#ifndef HTMLKeygenElement_h
-#define HTMLKeygenElement_h
+#pragma once
 
 #include "HTMLFormControlElementWithState.h"
 
@@ -40,26 +39,24 @@ public:
 private:
     HTMLKeygenElement(const QualifiedName&, Document&, HTMLFormElement*);
 
-    bool computeWillValidate() const override { return false; }
-    bool canStartSelection() const override { return false; }
+    bool computeWillValidate() const final { return false; }
+    bool canStartSelection() const final { return false; }
 
-    void parseAttribute(const QualifiedName&, const AtomicString&) override;
+    void parseAttribute(const QualifiedName&, const AtomicString&) final;
 
-    bool appendFormData(FormDataList&, bool) override;
-    const AtomicString& formControlType() const override;
-    bool isOptionalFormControl() const override { return false; }
+    bool appendFormData(FormDataList&, bool) final;
+    const AtomicString& formControlType() const final;
+    bool isOptionalFormControl() const final { return false; }
 
-    bool isEnumeratable() const override { return true; }
-    bool supportLabels() const override { return true; }
+    bool isEnumeratable() const final { return true; }
+    bool supportLabels() const final { return true; }
 
-    void reset() override;
-    bool shouldSaveAndRestoreFormControlState() const override;
+    void reset() final;
+    bool shouldSaveAndRestoreFormControlState() const final;
 
     bool isKeytypeRSA() const;
 
     HTMLSelectElement* shadowSelect() const;
 };
 
-} //namespace
-
-#endif
+} // namespace WebCore

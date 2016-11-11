@@ -37,7 +37,6 @@
 #include <runtime/VMEntryScope.h>
 #include <runtime/Watchdog.h>
 #include <wtf/Ref.h>
-#include <wtf/RefCountedLeakCounter.h>
 
 using namespace JSC;
 
@@ -80,7 +79,12 @@ void JSEventListener::handleEvent(ScriptExecutionContext* scriptExecutionContext
     if (!scriptExecutionContext || scriptExecutionContext->isJSExecutionForbidden())
         return;
 
-    JSLockHolder lock(scriptExecutionContext->vm());
+    VM& vm = scriptExecutionContext->vm();
+    JSLockHolder lock(vm);
+    auto scope = DECLARE_CATCH_SCOPE(vm);
+    // See https://dom.spec.whatwg.org/#dispatching-events spec on calling handleEvent.
+    // "If this throws an exception, report the exception." It should not propagate the
+    // exception.
 
     JSObject* jsFunction = this->jsFunction(scriptExecutionContext);
     if (!jsFunction)
@@ -110,6 +114,14 @@ void JSEventListener::handleEvent(ScriptExecutionContext* scriptExecutionContext
     // If jsFunction is not actually a function, see if it implements the EventListener interface and use that
     if (callType == CallType::None) {
         handleEventFunction = jsFunction->get(exec, Identifier::fromString(exec, "handleEvent"));
+        if (UNLIKELY(scope.exception())) {
+            auto* exception = scope.exception();
+            scope.clearException();
+
+            event->target()->uncaughtExceptionInEventHandler();
+            reportException(exec, exception);
+            return;
+        }
         callType = getCallData(handleEventFunction, callData);
     }
 
@@ -122,13 +134,12 @@ void JSEventListener::handleEvent(ScriptExecutionContext* scriptExecutionContext
         Event* savedEvent = globalObject->currentEvent();
         globalObject->setCurrentEvent(event);
 
-        VM& vm = globalObject->vm();
         VMEntryScope entryScope(vm, vm.entryScope ? vm.entryScope->globalObject() : globalObject);
 
         InspectorInstrumentationCookie cookie = JSMainThreadExecState::instrumentFunctionCall(scriptExecutionContext, callType, callData);
 
         JSValue thisValue = handleEventFunction == jsFunction ? toJS(exec, globalObject, event->currentTarget()) : jsFunction;
-        NakedPtr<Exception> exception;
+        NakedPtr<JSC::Exception> exception;
         JSValue retval = scriptExecutionContext->isDocument()
             ? JSMainThreadExecState::profiledCall(exec, JSC::ProfilingReason::Other, handleEventFunction, callType, callData, thisValue, args, exception)
             : JSC::profiledCall(exec, JSC::ProfilingReason::Other, handleEventFunction, callType, callData, thisValue, args, exception);
@@ -139,7 +150,7 @@ void JSEventListener::handleEvent(ScriptExecutionContext* scriptExecutionContext
 
         if (is<WorkerGlobalScope>(*scriptExecutionContext)) {
             auto scriptController = downcast<WorkerGlobalScope>(*scriptExecutionContext).script();
-            bool terminatorCausedException = (exec->hadException() && isTerminatedExecutionException(exec->exception()));
+            bool terminatorCausedException = (scope.exception() && isTerminatedExecutionException(scope.exception()));
             if (terminatorCausedException || scriptController->isTerminatingExecution())
                 scriptController->forbidExecution();
         }
@@ -195,7 +206,7 @@ static inline RefPtr<JSEventListener> createEventListenerForEventHandlerAttribut
 
 JSC::JSValue eventHandlerAttribute(EventTarget& target, const AtomicString& eventType)
 {
-    return eventHandlerAttribute(target.getAttributeEventListener(eventType), *target.scriptExecutionContext());
+    return eventHandlerAttribute(target.attributeEventListener(eventType), *target.scriptExecutionContext());
 }
 
 void setEventHandlerAttribute(JSC::ExecState& state, JSC::JSObject& wrapper, EventTarget& target, const AtomicString& eventType, JSC::JSValue value)
@@ -228,14 +239,14 @@ void setWindowEventHandlerAttribute(JSC::ExecState& state, JSC::JSObject& wrappe
 JSC::JSValue documentEventHandlerAttribute(HTMLElement& element, const AtomicString& eventType)
 {
     auto& document = element.document();
-    return eventHandlerAttribute(document.getAttributeEventListener(eventType), document);
+    return eventHandlerAttribute(document.attributeEventListener(eventType), document);
 }
 
 void setDocumentEventHandlerAttribute(JSC::ExecState& state, JSC::JSObject& wrapper, HTMLElement& element, const AtomicString& eventType, JSC::JSValue value)
 {
     ASSERT(wrapper.globalObject());
     auto& document = element.document();
-    auto* documentWrapper = jsDocumentCast(toJS(&state, JSC::jsCast<JSDOMGlobalObject*>(wrapper.globalObject()), document));
+    auto* documentWrapper = JSC::jsCast<JSDocument*>(toJS(&state, JSC::jsCast<JSDOMGlobalObject*>(wrapper.globalObject()), document));
     ASSERT(documentWrapper);
     document.setAttributeEventListener(eventType, createEventListenerForEventHandlerAttribute(state, value, *documentWrapper));
 }

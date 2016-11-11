@@ -26,7 +26,6 @@
 #include "config.h"
 #include "ScriptRunner.h"
 
-#include "CachedScript.h"
 #include "Element.h"
 #include "PendingScript.h"
 #include "ScriptElement.h"
@@ -41,33 +40,42 @@ ScriptRunner::ScriptRunner(Document& document)
 
 ScriptRunner::~ScriptRunner()
 {
-    for (size_t i = 0; i < m_scriptsToExecuteSoon.size(); ++i)
+    for (auto& pendingScript : m_scriptsToExecuteSoon) {
+        UNUSED_PARAM(pendingScript);
         m_document.decrementLoadEventDelayCount();
-    for (size_t i = 0; i < m_scriptsToExecuteInOrder.size(); ++i)
+    }
+    for (auto& pendingScript : m_scriptsToExecuteInOrder) {
+        if (pendingScript->watchingForLoad())
+            pendingScript->clearClient();
         m_document.decrementLoadEventDelayCount();
-    for (unsigned i = 0; i < m_pendingAsyncScripts.size(); ++i)
+    }
+    for (auto& pendingScript : m_pendingAsyncScripts) {
+        if (pendingScript->watchingForLoad())
+            const_cast<PendingScript&>(pendingScript.get()).clearClient();
         m_document.decrementLoadEventDelayCount();
+    }
 }
 
-void ScriptRunner::queueScriptForExecution(ScriptElement* scriptElement, CachedResourceHandle<CachedScript> cachedScript, ExecutionType executionType)
+void ScriptRunner::queueScriptForExecution(ScriptElement* scriptElement, LoadableScript& loadableScript, ExecutionType executionType)
 {
     ASSERT(scriptElement);
-    ASSERT(cachedScript.get());
 
     Element& element = scriptElement->element();
     ASSERT(element.inDocument());
 
     m_document.incrementLoadEventDelayCount();
 
+    Ref<PendingScript> pendingScript = PendingScript::create(element, loadableScript);
     switch (executionType) {
     case ASYNC_EXECUTION:
-        m_pendingAsyncScripts.add(scriptElement, PendingScript(&element, cachedScript.get()));
+        m_pendingAsyncScripts.add(pendingScript.copyRef());
         break;
 
     case IN_ORDER_EXECUTION:
-        m_scriptsToExecuteInOrder.append(PendingScript(&element, cachedScript.get()));
+        m_scriptsToExecuteInOrder.append(pendingScript.copyRef());
         break;
     }
+    pendingScript->setClient(this);
 }
 
 void ScriptRunner::suspend()
@@ -81,18 +89,17 @@ void ScriptRunner::resume()
         m_timer.startOneShot(0);
 }
 
-void ScriptRunner::notifyScriptReady(ScriptElement* scriptElement, ExecutionType executionType)
+void ScriptRunner::notifyFinished(PendingScript& pendingScript)
 {
-    switch (executionType) {
-    case ASYNC_EXECUTION:
-        ASSERT(m_pendingAsyncScripts.contains(scriptElement));
-        m_scriptsToExecuteSoon.append(m_pendingAsyncScripts.take(scriptElement));
-        break;
-
-    case IN_ORDER_EXECUTION:
+    auto* scriptElement = toScriptElementIfPossible(&pendingScript.element());
+    ASSERT(scriptElement);
+    if (scriptElement->willExecuteInOrder())
         ASSERT(!m_scriptsToExecuteInOrder.isEmpty());
-        break;
+    else {
+        ASSERT(m_pendingAsyncScripts.contains(pendingScript));
+        m_scriptsToExecuteSoon.append(m_pendingAsyncScripts.take(pendingScript)->ptr());
     }
+    pendingScript.clearClient();
     m_timer.startOneShot(0);
 }
 
@@ -100,23 +107,25 @@ void ScriptRunner::timerFired()
 {
     Ref<Document> protect(m_document);
 
-    Vector<PendingScript> scripts;
+    Vector<RefPtr<PendingScript>> scripts;
     scripts.swap(m_scriptsToExecuteSoon);
 
     size_t numInOrderScriptsToExecute = 0;
-    for (; numInOrderScriptsToExecute < m_scriptsToExecuteInOrder.size() && m_scriptsToExecuteInOrder[numInOrderScriptsToExecute].cachedScript()->isLoaded(); ++numInOrderScriptsToExecute)
-        scripts.append(m_scriptsToExecuteInOrder[numInOrderScriptsToExecute]);
+    for (; numInOrderScriptsToExecute < m_scriptsToExecuteInOrder.size() && m_scriptsToExecuteInOrder[numInOrderScriptsToExecute]->isLoaded(); ++numInOrderScriptsToExecute)
+        scripts.append(m_scriptsToExecuteInOrder[numInOrderScriptsToExecute].ptr());
     if (numInOrderScriptsToExecute)
         m_scriptsToExecuteInOrder.remove(0, numInOrderScriptsToExecute);
 
-    for (auto& script : scripts) {
-        CachedScript* cachedScript = script.cachedScript();
-        RefPtr<Element> element = script.releaseElementAndClear();
-        ASSERT(element);
+    for (auto& currentScript : scripts) {
+        auto script = WTFMove(currentScript);
+        ASSERT(script);
         // Paper over https://bugs.webkit.org/show_bug.cgi?id=144050
-        if (!element)
+        if (!script)
             continue;
-        toScriptElementIfPossible(element.get())->execute(cachedScript);
+        auto* scriptElement = toScriptElementIfPossible(&script->element());
+        ASSERT(scriptElement);
+        ASSERT(script->needsLoading());
+        scriptElement->executeScriptForScriptRunner(*script);
         m_document.decrementLoadEventDelayCount();
     }
 }

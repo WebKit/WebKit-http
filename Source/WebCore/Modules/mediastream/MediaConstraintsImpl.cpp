@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2012 Google Inc. All rights reserved.
+ * Copyright (C) 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -35,121 +36,19 @@
 #include "MediaConstraintsImpl.h"
 
 #include "ArrayValue.h"
-#include "Dictionary.h"
 #include "ExceptionCode.h"
-#include <wtf/HashMap.h>
+#include "Logging.h"
 
 namespace WebCore {
 
-RefPtr<MediaConstraintsImpl> MediaConstraintsImpl::create(const Dictionary& constraints)
+Ref<MediaConstraintsImpl> MediaConstraintsImpl::create(MediaTrackConstraintSetMap&& mandatoryConstraints, Vector<MediaTrackConstraintSetMap>&& advancedConstraints, bool isValid)
 {
-    RefPtr<MediaConstraintsImpl> object = adoptRef(*new MediaConstraintsImpl());
-    if (!object->initialize(constraints))
-        return nullptr;
-    return object;
+    return adoptRef(*new MediaConstraintsImpl(WTFMove(mandatoryConstraints), WTFMove(advancedConstraints), isValid));
 }
 
-Ref<MediaConstraintsImpl> MediaConstraintsImpl::create()
+Ref<MediaConstraintsImpl> MediaConstraintsImpl::create(const MediaConstraintsData& data)
 {
-    return adoptRef(*new MediaConstraintsImpl());
-}
-
-bool MediaConstraintsImpl::initialize(const Dictionary& constraints)
-{
-    if (constraints.isUndefinedOrNull())
-        return true;
-
-    Vector<String> names;
-    constraints.getOwnPropertyNames(names);
-
-    String mandatory = ASCIILiteral("mandatory");
-    String optional = ASCIILiteral("optional");
-
-    for (auto& name : names) {
-        if (name != mandatory && name != optional)
-            return false;
-    }
-
-    if (names.contains(mandatory)) {
-        Dictionary mandatoryConstraints;
-        bool ok = constraints.get(mandatory, mandatoryConstraints);
-        if (!ok || mandatoryConstraints.isUndefinedOrNull())
-            return false;
-
-        ok = mandatoryConstraints.getOwnPropertiesAsStringHashMap(m_mandatoryConstraints);
-        if (!ok)
-            return false;
-    }
-
-    if (names.contains(optional)) {
-        ArrayValue optionalConstraints;
-        bool ok = constraints.get(optional, optionalConstraints);
-        if (!ok || optionalConstraints.isUndefinedOrNull())
-            return false;
-
-        size_t numberOfConstraints;
-        ok = optionalConstraints.length(numberOfConstraints);
-        if (!ok)
-            return false;
-
-        for (size_t i = 0; i < numberOfConstraints; ++i) {
-            Dictionary constraint;
-            ok = optionalConstraints.get(i, constraint);
-            if (!ok || constraint.isUndefinedOrNull())
-                return false;
-            Vector<String> localNames;
-            constraint.getOwnPropertyNames(localNames);
-            if (localNames.size() != 1)
-                return false;
-            String key = localNames[0];
-            String value;
-            ok = constraint.get(key, value);
-            if (!ok)
-                return false;
-            m_optionalConstraints.append(MediaConstraint(key, value));
-        }
-    }
-
-    return true;
-}
-
-MediaConstraintsImpl::~MediaConstraintsImpl()
-{
-}
-
-void MediaConstraintsImpl::getMandatoryConstraints(Vector<MediaConstraint>& constraints) const
-{
-    constraints.clear();
-    for (auto& constraint : m_mandatoryConstraints)
-        constraints.append(MediaConstraint(constraint.key, constraint.value));
-}
-
-void MediaConstraintsImpl::getOptionalConstraints(Vector<MediaConstraint>& constraints) const
-{
-    constraints.clear();
-    constraints.appendRange(m_optionalConstraints.begin(), m_optionalConstraints.end());
-}
-
-bool MediaConstraintsImpl::getMandatoryConstraintValue(const String& name, String& value) const
-{
-    HashMap<String, String>::const_iterator i = m_mandatoryConstraints.find(name);
-    if (i == m_mandatoryConstraints.end())
-        return false;
-
-    value = i->value;
-    return true;
-}
-
-bool MediaConstraintsImpl::getOptionalConstraintValue(const String& name, String& value) const
-{
-    for (auto& constraint : m_optionalConstraints) {
-        if (constraint.m_name == name) {
-            value = constraint.m_value;
-            return true;
-        }
-    }
-
-    return false;
+    return adoptRef(*new MediaConstraintsImpl(data));
 }
 
 } // namespace WebCore

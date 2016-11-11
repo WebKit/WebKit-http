@@ -20,7 +20,12 @@ function main() {
         var router = new PageRouter();
         var chartsToolbar = new ChartsToolbar;
 
-        var summaryPage = manifest.summary ? new SummaryPage(manifest.summary) : null;
+        var summaryPages = [];
+        if (manifest.summaryPages) {
+            for (var summaryPage of manifest.summaryPages)
+                summaryPages.push(new SummaryPage(summaryPage));
+        }
+
         var chartsPage = new ChartsPage(chartsToolbar);
         var analysisCategoryPage = new AnalysisCategoryPage();
 
@@ -30,25 +35,29 @@ function main() {
         var analysisTaskPage = new AnalysisTaskPage();
         analysisTaskPage.setParentPage(analysisCategoryPage);
 
+        var buildRequestQueuePage = new BuildRequestQueuePage();
+        buildRequestQueuePage.setParentPage(analysisCategoryPage);
+
         var heading = new Heading(manifest.siteTitle);
-        heading.addPageGroup([summaryPage, chartsPage, analysisCategoryPage].filter(function (page) { return page; }));
+        heading.addPageGroup(summaryPages.concat([chartsPage, analysisCategoryPage]));
 
         heading.setTitle(manifest.siteTitle);
         heading.addPageGroup(dashboardPages);
 
         var router = new PageRouter();
-        if(summaryPage)
+        for (var summaryPage of summaryPages)
             router.addPage(summaryPage);
         router.addPage(chartsPage);
         router.addPage(createAnalysisTaskPage);
         router.addPage(analysisTaskPage);
+        router.addPage(buildRequestQueuePage);
         router.addPage(analysisCategoryPage);
         for (var page of dashboardPages)
             router.addPage(page);
 
-        if (summaryPage)
-            router.setDefaultPage(summaryPage);
-        else if (dashboardPages)
+        if (summaryPages.length)
+            router.setDefaultPage(summaryPages[0]);
+        else if (dashboardPages.length)
             router.setDefaultPage(dashboardPages[0]);
         else
             router.setDefaultPage(chartsPage);

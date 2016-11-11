@@ -35,8 +35,6 @@ WebInspector.LayerTreeDetailsSidebarPanel = class LayerTreeDetailsSidebarPanel e
 
         WebInspector.showShadowDOMSetting.addEventListener(WebInspector.Setting.Event.Changed, this._showShadowDOMSettingChanged, this);
 
-        window.addEventListener("resize", this._windowResized.bind(this));
-
         this._buildLayerInfoSection();
         this._buildDataGridSection();
         this._buildBottomBar();
@@ -50,8 +48,6 @@ WebInspector.LayerTreeDetailsSidebarPanel = class LayerTreeDetailsSidebarPanel e
 
         console.assert(this.parentSidebar);
 
-        this.needsRefresh();
-
         super.shown();
     }
 
@@ -62,7 +58,16 @@ WebInspector.LayerTreeDetailsSidebarPanel = class LayerTreeDetailsSidebarPanel e
         super.hidden();
     }
 
-    refresh()
+    // DOMDetailsSidebarPanel Overrides
+
+    supportsDOMNode(nodeToInspect)
+    {
+        return WebInspector.layerTreeManager.supported && nodeToInspect.nodeType() === Node.ELEMENT_NODE;
+    }
+
+    // Protected
+
+    layout()
     {
         if (!this.domNode)
             return;
@@ -73,30 +78,17 @@ WebInspector.LayerTreeDetailsSidebarPanel = class LayerTreeDetailsSidebarPanel e
         });
     }
 
-    // DOMDetailsSidebarPanel Overrides
-
-    supportsDOMNode(nodeToInspect)
-    {
-        return WebInspector.layerTreeManager.supported && nodeToInspect.nodeType() === Node.ELEMENT_NODE;
-    }
-
     // Private
 
     _layerTreeDidChange(event)
     {
-        this.needsRefresh();
+        this.needsLayout();
     }
 
     _showShadowDOMSettingChanged(event)
     {
         if (this.selected)
             this._updateDisplayWithLayers(this._layerForNode, this._unfilteredChildLayers);
-    }
-
-    _windowResized(event)
-    {
-        if (this._popover && this._popover.visible)
-            this._updatePopoverForSelectedNode();
     }
 
     _buildLayerInfoSection()
@@ -332,8 +324,10 @@ WebInspector.LayerTreeDetailsSidebarPanel = class LayerTreeDetailsSidebarPanel e
             return;
 
         var popover = this._popover;
-        if (!popover)
+        if (!popover) {
             popover = this._popover = new WebInspector.Popover;
+            popover.windowResizeHandler = () => { this._updatePopoverForSelectedNode(); };
+        }
 
         var targetFrame = WebInspector.Rect.rectFromClientRect(dataGridNode.element.getBoundingClientRect());
 
@@ -404,7 +398,7 @@ WebInspector.LayerTreeDetailsSidebarPanel = class LayerTreeDetailsSidebarPanel e
         if (compositingReasons.overflowScrollingTouch)
             addReason(WebInspector.UIString("Element has “-webkit-overflow-scrolling: touch” style"));
         if (compositingReasons.stacking)
-            addReason(WebInspector.UIString("Element establishes a stacking context"));
+            addReason(WebInspector.UIString("Element may overlap another compositing element"));
         if (compositingReasons.overlap)
             addReason(WebInspector.UIString("Element overlaps other compositing element"));
         if (compositingReasons.negativeZIndexChildren)

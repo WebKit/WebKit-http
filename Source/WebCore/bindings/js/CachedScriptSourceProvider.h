@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef CachedScriptSourceProvider_h
-#define CachedScriptSourceProvider_h
+#pragma once
 
 #include "CachedResourceClient.h"
 #include "CachedResourceHandle.h"
@@ -41,7 +40,7 @@ public:
 
     virtual ~CachedScriptSourceProvider()
     {
-        m_cachedScript->removeClient(this);
+        m_cachedScript->removeClient(*this);
     }
 
     unsigned hash() const override { return m_cachedScript->scriptHash(); }
@@ -49,10 +48,10 @@ public:
 
 private:
     CachedScriptSourceProvider(CachedScript* cachedScript)
-        : SourceProvider(cachedScript->response().url(), TextPosition::minimumPosition())
+        : SourceProvider(cachedScript->response().url(), TextPosition::minimumPosition(), JSC::SourceProviderSourceType::Program)
         , m_cachedScript(cachedScript)
     {
-        m_cachedScript->addClient(this);
+        m_cachedScript->addClient(*this);
     }
 
     CachedResourceHandle<CachedScript> m_cachedScript;
@@ -64,5 +63,3 @@ inline JSC::SourceCode makeSource(CachedScript* cachedScript)
 }
 
 } // namespace WebCore
-
-#endif // CachedScriptSourceProvider_h

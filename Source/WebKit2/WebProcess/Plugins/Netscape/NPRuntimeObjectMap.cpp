@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2010, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -42,7 +42,6 @@
 #include <WebCore/DOMWrapperWorld.h>
 #include <WebCore/Frame.h>
 #include <WebCore/Page.h>
-#include <WebCore/PageThrottler.h>
 #include <WebCore/ScriptController.h>
 #include <wtf/NeverDestroyed.h>
 
@@ -189,15 +188,6 @@ bool NPRuntimeObjectMap::evaluate(NPObject* npObject, const String& scriptString
     if (!globalObject)
         return false;
 
-#if PLATFORM(COCOA)
-    if (m_pluginView && !m_pluginView->isBeingDestroyed()) {
-        if (Page* page = m_pluginView->frame()->page()) {
-            if (m_pluginView->audioHardwareActivity() != WebCore::AudioHardwareActivityType::IsInactive)
-                page->pageThrottler().pluginDidEvaluateWhileAudioIsPlaying();
-        }
-    }
-#endif
-
     ExecState* exec = globalObject->globalExec();
     
     JSLockHolder lock(exec);
@@ -274,12 +264,15 @@ void NPRuntimeObjectMap::setGlobalException(const String& exceptionString)
     
 void NPRuntimeObjectMap::moveGlobalExceptionToExecState(ExecState* exec)
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     if (globalExceptionString().isNull())
         return;
 
     {
-        JSLockHolder lock(exec);
-        exec->vm().throwException(exec, createError(exec, globalExceptionString()));
+        JSLockHolder lock(vm);
+        throwException(exec, scope, createError(exec, globalExceptionString()));
     }
     
     globalExceptionString() = String();

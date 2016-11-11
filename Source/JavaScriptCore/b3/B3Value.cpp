@@ -29,9 +29,10 @@
 #if ENABLE(B3_JIT)
 
 #include "B3ArgumentRegValue.h"
+#include "B3BasicBlockInlines.h"
 #include "B3BottomProvider.h"
 #include "B3CCallValue.h"
-#include "B3ControlValue.h"
+#include "B3FenceValue.h"
 #include "B3MemoryValue.h"
 #include "B3OriginDump.h"
 #include "B3ProcedureInlines.h"
@@ -42,6 +43,7 @@
 #include "B3ValueKeyInlines.h"
 #include "B3VariableValue.h"
 #include <wtf/CommaPrinter.h>
+#include <wtf/ListDump.h>
 #include <wtf/StringPrintStream.h>
 
 namespace JSC { namespace B3 {
@@ -125,11 +127,55 @@ void Value::replaceWithPhi()
     this->m_index = index;
 }
 
+void Value::replaceWithJump(BasicBlock* owner, FrequentedBlock target)
+{
+    RELEASE_ASSERT(owner->last() == this);
+    
+    unsigned index = m_index;
+    Origin origin = m_origin;
+    
+    this->~Value();
+    
+    new (this) Value(Jump, Void, origin);
+    
+    this->owner = owner;
+    this->m_index = index;
+    
+    owner->setSuccessors(target);
+}
+
+void Value::replaceWithOops(BasicBlock* owner)
+{
+    RELEASE_ASSERT(owner->last() == this);
+    
+    unsigned index = m_index;
+    Origin origin = m_origin;
+    
+    this->~Value();
+    
+    new (this) Value(Oops, Void, origin);
+    
+    this->owner = owner;
+    this->m_index = index;
+    
+    owner->clearSuccessors();
+}
+
+void Value::replaceWithJump(FrequentedBlock target)
+{
+    replaceWithJump(owner, target);
+}
+
+void Value::replaceWithOops()
+{
+    replaceWithOops(owner);
+}
+
 void Value::dump(PrintStream& out) const
 {
     bool isConstant = false;
 
-    switch (m_opcode) {
+    switch (opcode()) {
     case Const32:
         out.print("$", asInt32(), "(");
         isConstant = true;
@@ -169,7 +215,7 @@ void Value::dumpChildren(CommaPrinter& comma, PrintStream& out) const
 
 void Value::deepDump(const Procedure* proc, PrintStream& out) const
 {
-    out.print(m_type, " ", dumpPrefix, m_index, " = ", m_opcode);
+    out.print(m_type, " ", dumpPrefix, m_index, " = ", m_kind);
 
     out.print("(");
     CommaPrinter comma;
@@ -187,6 +233,19 @@ void Value::deepDump(const Procedure* proc, PrintStream& out) const
     }
 
     out.print(")");
+}
+
+void Value::dumpSuccessors(const BasicBlock* block, PrintStream& out) const
+{
+    // Note that this must not crash if we have the wrong number of successors, since someone
+    // debugging a number-of-successors bug will probably want to dump IR!
+    
+    if (opcode() == Branch && block->numSuccessors() == 2) {
+        out.print("Then:", block->taken(), ", Else:", block->notTaken());
+        return;
+    }
+    
+    out.print(listDump(block->successors()));
 }
 
 Value* Value::negConstant(Procedure&) const
@@ -378,8 +437,10 @@ Value* Value::invertedCompare(Procedure& proc) const
 {
     if (!numChildren())
         return nullptr;
-    if (Optional<Opcode> invertedOpcode = B3::invertedCompare(opcode(), child(0)->type()))
+    if (Optional<Opcode> invertedOpcode = B3::invertedCompare(opcode(), child(0)->type())) {
+        ASSERT(!kind().hasExtraBits());
         return proc.add<Value>(*invertedOpcode, type(), origin(), children());
+    }
     return nullptr;
 }
 
@@ -473,8 +534,6 @@ Effects Value::effects() const
     case Sub:
     case Mul:
     case Neg:
-    case ChillDiv:
-    case ChillMod:
     case BitAnd:
     case BitOr:
     case BitXor:
@@ -527,6 +586,27 @@ Effects Value::effects() const
         result.writes = as<MemoryValue>()->range();
         result.controlDependent = true;
         break;
+    case WasmAddress:
+        result.readsPinned = true;
+        break;
+    case Fence: {
+        const FenceValue* fence = as<FenceValue>();
+        result.reads = fence->read;
+        result.writes = fence->write;
+        
+        // Prevent killing of fences that claim not to write anything. It's a bit weird that we use
+        // local state as the way to do this, but it happens to work: we must assume that we cannot
+        // kill writesLocalState unless we understands exactly what the instruction is doing (like
+        // the way that fixSSA understands Set/Get and the way that reduceStrength and others
+        // understand Upsilon). This would only become a problem if we had some analysis that was
+        // looking to use the writesLocalState bit to invalidate a CSE over local state operations.
+        // Then a Fence would look block, say, the elimination of a redundant Get. But it like
+        // that's not at all how our optimizations for Set/Get/Upsilon/Phi work - they grok their
+        // operations deeply enough that they have no need to check this bit - so this cheat is
+        // fine.
+        result.writesLocalState = true;
+        break;
+    }
     case CCall:
         result = as<CCallValue>()->effects;
         break;
@@ -537,9 +617,11 @@ Effects Value::effects() const
     case CheckSub:
     case CheckMul:
     case Check:
+        result = Effects::forCheck();
+        break;
+    case WasmBoundsCheck:
+        result.readsPinned = true;
         result.exitsSideways = true;
-        // The program could read anything after exiting, and it's on us to declare this.
-        result.reads = HeapRange::top();
         break;
     case Upsilon:
     case Set:
@@ -554,8 +636,13 @@ Effects Value::effects() const
     case Switch:
     case Return:
     case Oops:
+    case EntrySwitch:
         result.terminal = true;
         break;
+    }
+    if (traps()) {
+        result.exitsSideways = true;
+        result.reads = HeapRange::top();
     }
     return result;
 }
@@ -564,7 +651,7 @@ ValueKey Value::key() const
 {
     switch (opcode()) {
     case FramePointer:
-        return ValueKey(opcode(), type());
+        return ValueKey(kind(), type());
     case Identity:
     case Abs:
     case Ceil:
@@ -583,14 +670,12 @@ ValueKey Value::key() const
     case Check:
     case BitwiseCast:
     case Neg:
-        return ValueKey(opcode(), type(), child(0));
+        return ValueKey(kind(), type(), child(0));
     case Add:
     case Sub:
     case Mul:
     case Div:
     case Mod:
-    case ChillDiv:
-    case ChillMod:
     case BitAnd:
     case BitOr:
     case BitXor:
@@ -609,9 +694,9 @@ ValueKey Value::key() const
     case CheckAdd:
     case CheckSub:
     case CheckMul:
-        return ValueKey(opcode(), type(), child(0), child(1));
+        return ValueKey(kind(), type(), child(0), child(1));
     case Select:
-        return ValueKey(opcode(), type(), child(0), child(1), child(2));
+        return ValueKey(kind(), type(), child(0), child(1), child(2));
     case Const32:
         return ValueKey(Const32, type(), static_cast<int64_t>(asInt32()));
     case Const64:
@@ -641,13 +726,28 @@ void Value::performSubstitution()
     }
 }
 
+bool Value::isFree() const
+{
+    switch (opcode()) {
+    case Const32:
+    case Const64:
+    case ConstDouble:
+    case ConstFloat:
+    case Identity:
+    case Nop:
+        return true;
+    default:
+        return false;
+    }
+}
+
 void Value::dumpMeta(CommaPrinter&, PrintStream&) const
 {
 }
 
-Type Value::typeFor(Opcode opcode, Value* firstChild, Value* secondChild)
+Type Value::typeFor(Kind kind, Value* firstChild, Value* secondChild)
 {
-    switch (opcode) {
+    switch (kind.opcode()) {
     case Identity:
     case Add:
     case Sub:
@@ -655,8 +755,6 @@ Type Value::typeFor(Opcode opcode, Value* firstChild, Value* secondChild)
     case Div:
     case Mod:
     case Neg:
-    case ChillDiv:
-    case ChillMod:
     case BitAnd:
     case BitOr:
     case BitXor:
@@ -676,7 +774,6 @@ Type Value::typeFor(Opcode opcode, Value* firstChild, Value* secondChild)
         return pointerType();
     case SExt8:
     case SExt16:
-    case Trunc:
     case Equal:
     case NotEqual:
     case LessThan:
@@ -689,6 +786,8 @@ Type Value::typeFor(Opcode opcode, Value* firstChild, Value* secondChild)
     case BelowEqual:
     case EqualOrUnordered:
         return Int32;
+    case Trunc:
+        return firstChild->type() == Int64 ? Int32 : Float;
     case SExt32:
     case ZExt32:
         return Int64;
@@ -713,6 +812,12 @@ Type Value::typeFor(Opcode opcode, Value* firstChild, Value* secondChild)
         }
         return Void;
     case Nop:
+    case Jump:
+    case Branch:
+    case Return:
+    case Oops:
+    case EntrySwitch:
+    case WasmBoundsCheck:
         return Void;
     case Select:
         ASSERT(secondChild);
@@ -722,9 +827,9 @@ Type Value::typeFor(Opcode opcode, Value* firstChild, Value* secondChild)
     }
 }
 
-void Value::badOpcode(Opcode opcode, unsigned numArgs)
+void Value::badKind(Kind kind, unsigned numArgs)
 {
-    dataLog("Bad opcode ", opcode, " with ", numArgs, " args.\n");
+    dataLog("Bad kind ", kind, " with ", numArgs, " args.\n");
     RELEASE_ASSERT_NOT_REACHED();
 }
 

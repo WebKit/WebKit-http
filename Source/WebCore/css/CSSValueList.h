@@ -22,11 +22,11 @@
 #define CSSValueList_h
 
 #include "CSSValue.h"
-#include <wtf/PassRefPtr.h>
 #include <wtf/Vector.h>
 
 namespace WebCore {
 
+class CSSCustomPropertyValue;
 struct CSSParserValue;
 class CSSParserValueList;
 
@@ -72,8 +72,6 @@ public:
     String customCSSText() const;
     bool equals(const CSSValueList&) const;
     bool equals(const CSSValue&) const;
-
-    void addSubresourceStyleURLs(ListHashSet<URL>&, const StyleSheetContents*) const;
 
     bool traverseSubresources(const std::function<bool (const CachedResource&)>& handler) const;
     

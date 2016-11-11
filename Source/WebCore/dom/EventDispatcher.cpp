@@ -33,11 +33,9 @@
 #include "HTMLInputElement.h"
 #include "MouseEvent.h"
 #include "NoEventDispatchAssertion.h"
-#include "PseudoElement.h"
 #include "ScopedEventQueue.h"
 #include "ShadowRoot.h"
 #include "TouchEvent.h"
-#include <wtf/NeverDestroyed.h>
 
 namespace WebCore {
 
@@ -88,7 +86,7 @@ static void callDefaultEventHandlersInTheBubblingOrder(Event& event, const Event
         return;
 
     // Non-bubbling events call only one default event handler, the one for the target.
-    path.contextAt(0).node()->defaultEventHandler(&event);
+    path.contextAt(0).node()->defaultEventHandler(event);
     ASSERT(!event.defaultPrevented());
 
     if (event.defaultHandled() || !event.bubbles())
@@ -96,7 +94,7 @@ static void callDefaultEventHandlersInTheBubblingOrder(Event& event, const Event
 
     size_t size = path.size();
     for (size_t i = 1; i < size; ++i) {
-        path.contextAt(i).node()->defaultEventHandler(&event);
+        path.contextAt(i).node()->defaultEventHandler(event);
         ASSERT(!event.defaultPrevented());
         if (event.defaultHandled())
             return;
@@ -187,7 +185,8 @@ bool EventDispatcher::dispatchEvent(Node* origin, Event& event)
 
     event.setTarget(EventPath::eventTargetRespectingTargetRules(*node));
     event.setCurrentTarget(nullptr);
-    event.setEventPhase(0);
+    event.resetPropagationFlags();
+    event.setEventPhase(Event::NONE);
 
     if (clickHandlingState.stateful)
         downcast<HTMLInputElement>(*node).didDispatchClickEvent(event, clickHandlingState);

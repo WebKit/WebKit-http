@@ -35,8 +35,7 @@
  *
  * ***** END LICENSE BLOCK ***** */
 
-#ifndef GIFImageReader_h
-#define GIFImageReader_h
+#pragma once
 
 // Define ourselves as the clientPtr.  Mozilla just hacked their C++ callback class into this old C decoder,
 // so we will too.
@@ -155,7 +154,7 @@ public:
     unsigned width;
     unsigned height;
     int tpixel; // Index of transparent pixel.
-    WebCore::ImageFrame::FrameDisposalMethod disposalMethod; // Restore to background, leave in place, etc.
+    WebCore::ImageFrame::DisposalMethod disposalMethod; // Restore to background, leave in place, etc.
     size_t localColormapPosition; // Per-image colormap.
     int localColormapSize; // Size of local colormap array.
     int datasize;
@@ -174,7 +173,7 @@ public:
         , width(0)
         , height(0)
         , tpixel(0)
-        , disposalMethod(WebCore::ImageFrame::DisposeNotSpecified)
+        , disposalMethod(WebCore::ImageFrame::DisposalMethod::Unspecified)
         , localColormapPosition(0)
         , localColormapSize(0)
         , datasize(0)
@@ -323,5 +322,3 @@ private:
     RefPtr<WebCore::SharedBuffer> m_data;
     bool m_parseCompleted;
 };
-
-#endif

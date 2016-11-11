@@ -31,18 +31,20 @@
 
 #include "ActiveDOMObject.h"
 #include "EventTarget.h"
+#include "JSDOMPromise.h"
 #include "MediaStreamTrackPrivate.h"
 #include "RealtimeMediaSource.h"
 #include "ScriptWrappable.h"
+#include <wtf/Optional.h>
 #include <wtf/RefPtr.h>
 #include <wtf/Vector.h>
+#include <wtf/WeakPtr.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
 class AudioSourceProvider;
-class Dictionary;
-class MediaConstraintsImpl;
+class MediaConstraints;
 class MediaSourceSettings;
 class MediaTrackConstraints;
 
@@ -54,7 +56,7 @@ public:
         virtual void trackDidEnd() = 0;
     };
 
-    static Ref<MediaStreamTrack> create(ScriptExecutionContext&, MediaStreamTrackPrivate&);
+    static Ref<MediaStreamTrack> create(ScriptExecutionContext&, Ref<MediaStreamTrackPrivate>&&);
     virtual ~MediaStreamTrack();
 
     const AtomicString& kind() const;
@@ -73,16 +75,17 @@ public:
 
     bool ended() const;
 
-    RefPtr<MediaStreamTrack> clone();
+    Ref<MediaStreamTrack> clone();
     void stopProducingData();
 
     RefPtr<MediaTrackConstraints> getConstraints() const;
     RefPtr<MediaSourceSettings> getSettings() const;
     RefPtr<RealtimeMediaSourceCapabilities> getCapabilities() const;
-    void applyConstraints(const Dictionary&);
+
+    void applyConstraints(Ref<MediaConstraints>&&, DOMPromise<void>&&);
     void applyConstraints(const MediaConstraints&);
 
-    RealtimeMediaSource& source() const { return m_private->source(); }
+    RealtimeMediaSource& source() { return m_private->source(); }
     MediaStreamTrackPrivate& privateTrack() { return m_private.get(); }
 
     AudioSourceProvider* audioSourceProvider();
@@ -98,7 +101,7 @@ public:
     using RefCounted<MediaStreamTrack>::deref;
 
 private:
-    MediaStreamTrack(ScriptExecutionContext&, MediaStreamTrackPrivate&);
+    MediaStreamTrack(ScriptExecutionContext&, Ref<MediaStreamTrackPrivate>&&);
     explicit MediaStreamTrack(MediaStreamTrack&);
 
     void configureTrackRendering();
@@ -118,10 +121,14 @@ private:
     void trackSettingsChanged(MediaStreamTrackPrivate&) override;
     void trackEnabledChanged(MediaStreamTrackPrivate&) override;
 
+    WeakPtr<MediaStreamTrack> createWeakPtr() { return m_weakPtrFactory.createWeakPtr(); }
+
     Vector<Observer*> m_observers;
     Ref<MediaStreamTrackPrivate> m_private;
 
-    RefPtr<MediaConstraintsImpl> m_constraints;
+    RefPtr<MediaConstraints> m_constraints;
+    Optional<DOMPromise<void>> m_promise;
+    WeakPtrFactory<MediaStreamTrack> m_weakPtrFactory;
 
     bool m_ended { false };
 };

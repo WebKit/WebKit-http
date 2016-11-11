@@ -44,7 +44,6 @@
 #import "Page.h"
 #import "ResourceError.h"
 #import "ResourceResponse.h"
-#import "Settings.h"
 #import "SharedBuffer.h"
 #import "SubresourceLoader.h"
 #import "WebCoreResourceHandleAsDelegate.h"
@@ -58,7 +57,7 @@
 #import <wtf/text/Base64.h>
 #import <wtf/text/CString.h>
 
-#if USE(CFNETWORK)
+#if USE(CFURLCONNECTION)
 #if USE(APPLE_INTERNAL_SDK)
 #import <CFNetwork/CFURLConnectionPriv.h>
 #endif
@@ -66,7 +65,7 @@ typedef struct _CFURLConnection* CFURLConnectionRef;
 extern "C" {
 CFDictionaryRef _CFURLConnectionCopyTimingData(CFURLConnectionRef);
 }
-#endif // USE(CFNETWORK)
+#endif // USE(CFURLCONNECTION)
 
 #if PLATFORM(IOS)
 #import "CFNetworkSPI.h"
@@ -90,7 +89,7 @@ using namespace WebCore;
 
 namespace WebCore {
     
-#if !USE(CFNETWORK)
+#if !USE(CFURLCONNECTION)
     
 static void applyBasicAuthorizationHeader(ResourceRequest& request, const Credential& credential)
 {
@@ -329,7 +328,7 @@ void ResourceHandle::platformSetDefersLoading(bool defers)
         [d->m_connection setDefersCallbacks:defers];
 }
 
-#if !USE(CFNETWORK)
+#if !USE(CFURLCONNECTION)
 
 void ResourceHandle::schedule(SchedulePair& pair)
 {
@@ -731,20 +730,20 @@ void ResourceHandle::continueWillCacheResponse(NSCachedURLResponse *response)
     [(id)delegate() continueWillCacheResponse:response];
 }
     
-#endif // !USE(CFNETWORK)
+#endif // !USE(CFURLCONNECTION)
     
 #if ENABLE(WEB_TIMING)
 
-#if USE(CFNETWORK)
+#if USE(CFURLCONNECTION)
     
-void ResourceHandle::getConnectionTimingData(CFURLConnectionRef connection, ResourceLoadTiming& timing)
+void ResourceHandle::getConnectionTimingData(CFURLConnectionRef connection, NetworkLoadTiming& timing)
 {
     copyTimingData((__bridge NSDictionary*)adoptCF(_CFURLConnectionCopyTimingData(connection)).get(), timing);
 }
     
 #else
     
-void ResourceHandle::getConnectionTimingData(NSURLConnection *connection, ResourceLoadTiming& timing)
+void ResourceHandle::getConnectionTimingData(NSURLConnection *connection, NetworkLoadTiming& timing)
 {
     copyTimingData([connection _timingData], timing);
 }

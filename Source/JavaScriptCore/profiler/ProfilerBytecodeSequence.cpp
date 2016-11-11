@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012, 2013, 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2014, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,9 +27,10 @@
 #include "ProfilerBytecodeSequence.h"
 
 #include "CodeBlock.h"
+#include "Interpreter.h"
+#include "JSCInlines.h"
 #include "JSGlobalObject.h"
 #include "Operands.h"
-#include "JSCInlines.h"
 #include <wtf/StringPrintStream.h>
 
 namespace JSC { namespace Profiler {
@@ -78,16 +79,15 @@ const Bytecode& BytecodeSequence::forBytecodeIndex(unsigned bytecodeIndex) const
 void BytecodeSequence::addSequenceProperties(ExecState* exec, JSObject* result) const
 {
     VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     JSArray* header = constructEmptyArray(exec, 0);
-    if (UNLIKELY(vm.exception()))
-        return;
+    RETURN_IF_EXCEPTION(scope, void());
     for (unsigned i = 0; i < m_header.size(); ++i)
         header->putDirectIndex(exec, i, jsString(exec, String::fromUTF8(m_header[i])));
     result->putDirect(vm, exec->propertyNames().header, header);
     
     JSArray* sequence = constructEmptyArray(exec, 0);
-    if (UNLIKELY(vm.exception()))
-        return;
+    RETURN_IF_EXCEPTION(scope, void());
     for (unsigned i = 0; i < m_sequence.size(); ++i)
         sequence->putDirectIndex(exec, i, m_sequence[i].toJS(exec));
     result->putDirect(vm, exec->propertyNames().bytecode, sequence);

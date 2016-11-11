@@ -26,13 +26,12 @@
 #include "config.h"
 #include "CSSSelector.h"
 
-#include "CSSOMUtils.h"
+#include "CSSMarkup.h"
 #include "CSSSelectorList.h"
 #include "HTMLNames.h"
 #include "SelectorPseudoTypeMap.h"
 #include <wtf/Assertions.h>
 #include <wtf/HashMap.h>
-#include <wtf/NeverDestroyed.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/Vector.h>
 #include <wtf/text/AtomicStringHash.h>
@@ -47,10 +46,11 @@ struct SameSizeAsCSSSelector {
     void* unionPointer;
 };
 
+static_assert(CSSSelector::RelationType::Subselector == 0, "Subselector must be 0 for consumeCombinator.");
 static_assert(sizeof(CSSSelector) == sizeof(SameSizeAsCSSSelector), "CSSSelector should remain small.");
 
 CSSSelector::CSSSelector(const QualifiedName& tagQName, bool tagIsForNamespaceRule)
-    : m_relation(Descendant)
+    : m_relation(DescendantSpace)
     , m_match(Tag)
     , m_pseudoType(0)
     , m_parsedNth(false)
@@ -60,9 +60,6 @@ CSSSelector::CSSSelector(const QualifiedName& tagQName, bool tagIsForNamespaceRu
     , m_hasNameWithCase(false)
     , m_isForPage(false)
     , m_tagIsForNamespaceRule(tagIsForNamespaceRule)
-#if ENABLE(CSS_SELECTORS_LEVEL4)
-    , m_descendantDoubleChildSyntax(false)
-#endif
     , m_caseInsensitiveAttributeValueMatching(false)
 #if !ASSERT_WITH_SECURITY_IMPLICATION_DISABLED
     , m_destructorHasBeenCalled(false)
@@ -643,11 +640,9 @@ String CSSSelector::selectorText(const String& rightSide) const
             case CSSSelector::PseudoClassHost:
                 str.appendLiteral(":host");
                 break;
-#if ENABLE(CUSTOM_ELEMENTS)
             case CSSSelector::PseudoClassDefined:
                 str.appendLiteral(":defined");
                 break;
-#endif
             case CSSSelector::PseudoClassUnknown:
                 ASSERT_NOT_REACHED();
             }
@@ -669,7 +664,7 @@ String CSSSelector::selectorText(const String& rightSide) const
         } else if (cs->isAttributeSelector()) {
             str.append('[');
             const AtomicString& prefix = cs->attribute().prefix();
-            if (!prefix.isNull()) {
+            if (!prefix.isEmpty()) {
                 str.append(prefix);
                 str.append('|');
             }
@@ -721,18 +716,14 @@ String CSSSelector::selectorText(const String& rightSide) const
             }
         }
 
-        if (cs->relation() != CSSSelector::SubSelector || !cs->tagHistory())
+        if (cs->relation() != CSSSelector::Subselector || !cs->tagHistory())
             break;
         cs = cs->tagHistory();
     }
 
     if (const CSSSelector* tagHistory = cs->tagHistory()) {
         switch (cs->relation()) {
-        case CSSSelector::Descendant:
-#if ENABLE(CSS_SELECTORS_LEVEL4)
-            if (cs->m_descendantDoubleChildSyntax)
-                return tagHistory->selectorText(" >> " + str.toString() + rightSide);
-#endif
+        case CSSSelector::DescendantSpace:
             return tagHistory->selectorText(" " + str.toString() + rightSide);
         case CSSSelector::Child:
             return tagHistory->selectorText(" > " + str.toString() + rightSide);
@@ -740,7 +731,11 @@ String CSSSelector::selectorText(const String& rightSide) const
             return tagHistory->selectorText(" + " + str.toString() + rightSide);
         case CSSSelector::IndirectAdjacent:
             return tagHistory->selectorText(" ~ " + str.toString() + rightSide);
-        case CSSSelector::SubSelector:
+#if ENABLE(CSS_SELECTORS_LEVEL4)
+        case CSSSelector::DescendantDoubleChild:
+            return tagHistory->selectorText(" >> " + str.toString() + rightSide);
+#endif
+        case CSSSelector::Subselector:
             ASSERT_NOT_REACHED();
 #if ASSERT_DISABLED
             FALLTHROUGH;
@@ -759,6 +754,14 @@ void CSSSelector::setAttribute(const QualifiedName& value, bool isCaseInsensitiv
     m_data.m_rareData->m_attributeCanonicalLocalName = isCaseInsensitive ? value.localName().convertToASCIILowercase() : value.localName();
 }
 
+void CSSSelector::setAttribute(const QualifiedName& value, bool convertToLowercase, AttributeMatchType matchType)
+{
+    createRareData();
+    m_data.m_rareData->m_attribute = value;
+    m_data.m_rareData->m_attributeCanonicalLocalName = convertToLowercase ? value.localName().convertToASCIILowercase() : value.localName();
+    m_caseInsensitiveAttributeValueMatching = matchType == CaseInsensitive;
+}
+    
 void CSSSelector::setArgument(const AtomicString& value)
 {
     createRareData();
@@ -777,6 +780,16 @@ void CSSSelector::setSelectorList(std::unique_ptr<CSSSelectorList> selectorList)
     m_data.m_rareData->m_selectorList = WTFMove(selectorList);
 }
 
+void CSSSelector::setNth(int a, int b)
+{
+    createRareData();
+    m_parsedNth = true; // FIXME-NEWPARSER: Can remove this parsed boolean once old parser is gone.
+    m_data.m_rareData->m_a = a;
+    m_data.m_rareData->m_b = b;
+}
+    
+// FIXME-NEWPARSER: All the code to parse nth-child stuff can be removed when
+// the new parser is enabled.
 bool CSSSelector::parseNth() const
 {
     if (!m_hasRareData)

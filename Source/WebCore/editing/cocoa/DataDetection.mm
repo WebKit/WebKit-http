@@ -29,6 +29,7 @@
 #import "Attr.h"
 #import "CSSStyleDeclaration.h"
 #import "DataDetectorsSPI.h"
+#import "DataDetectorsUISPI.h"
 #import "ElementAncestorIterator.h"
 #import "ElementTraversal.h"
 #import "FrameView.h"
@@ -155,9 +156,9 @@ bool DataDetection::isDataDetectorLink(Element& element)
         return false;
 
 #if __IPHONE_OS_VERSION_MIN_REQUIRED >= 100000
-    return [softLink_DataDetectorsCore_DDURLTapAndHoldSchemes() containsObject:(NSString *)downcast<HTMLAnchorElement>(element).href().protocol().convertToASCIILowercase()];
+    return [softLink_DataDetectorsCore_DDURLTapAndHoldSchemes() containsObject:(NSString *)downcast<HTMLAnchorElement>(element).href().protocol().toStringWithoutCopying().convertToASCIILowercase()];
 #else
-    if (equalIgnoringASCIICase(element.fastGetAttribute(x_apple_data_detectorsAttr), "true"))
+    if (equalIgnoringASCIICase(element.attributeWithoutSynchronization(x_apple_data_detectorsAttr), "true"))
         return true;
     URL url = downcast<HTMLAnchorElement>(element).href();
     return url.protocolIs("mailto") || url.protocolIs("tel");
@@ -166,12 +167,12 @@ bool DataDetection::isDataDetectorLink(Element& element)
 
 bool DataDetection::requiresExtendedContext(Element& element)
 {
-    return equalIgnoringASCIICase(element.fastGetAttribute(x_apple_data_detectors_typeAttr), "calendar-event");
+    return equalIgnoringASCIICase(element.attributeWithoutSynchronization(x_apple_data_detectors_typeAttr), "calendar-event");
 }
 
 String DataDetection::dataDetectorIdentifier(Element& element)
 {
-    return element.fastGetAttribute(x_apple_data_detectors_resultAttr);
+    return element.attributeWithoutSynchronization(x_apple_data_detectors_resultAttr);
 }
 
 bool DataDetection::shouldCancelDefaultAction(Element& element)
@@ -183,7 +184,7 @@ bool DataDetection::shouldCancelDefaultAction(Element& element)
     if (softLink_DataDetectorsCore_DDShouldImmediatelyShowActionSheetForURL(downcast<HTMLAnchorElement>(element).href()))
         return true;
     
-    const AtomicString& resultAttribute = element.fastGetAttribute(x_apple_data_detectors_resultAttr);
+    const AtomicString& resultAttribute = element.attributeWithoutSynchronization(x_apple_data_detectors_resultAttr);
     if (resultAttribute.isEmpty())
         return false;
     NSArray *results = element.document().frame()->dataDetectionResults();
@@ -201,7 +202,7 @@ bool DataDetection::shouldCancelDefaultAction(Element& element)
 #else
     if (!is<HTMLAnchorElement>(element))
         return false;
-    if (!equalIgnoringASCIICase(element.fastGetAttribute(x_apple_data_detectorsAttr), "true"))
+    if (!equalIgnoringASCIICase(element.attributeWithoutSynchronization(x_apple_data_detectorsAttr), "true"))
         return false;
     String type = element.getAttribute(x_apple_data_detectors_typeAttr).convertToASCIILowercase();
     if (type == "misc" || type == "calendar-event" || type == "telephone")
@@ -259,7 +260,7 @@ static void removeResultLinksFromAnchor(Element& element)
     if (!elementParent)
         return;
     
-    bool elementIsDDAnchor = is<HTMLAnchorElement>(element) && equalIgnoringASCIICase(element.fastGetAttribute(x_apple_data_detectorsAttr), "true");
+    bool elementIsDDAnchor = is<HTMLAnchorElement>(element) && equalIgnoringASCIICase(element.attributeWithoutSynchronization(x_apple_data_detectorsAttr), "true");
     if (!elementIsDDAnchor)
         return;
 
@@ -276,7 +277,7 @@ static bool searchForLinkRemovingExistingDDLinks(Node& startNode, Node& endNode,
     for (Node* node = &startNode; node; node = NodeTraversal::next(*node, &startNode)) {
         if (is<HTMLAnchorElement>(*node)) {
             auto& anchor = downcast<HTMLAnchorElement>(*node);
-            if (!equalIgnoringASCIICase(anchor.fastGetAttribute(x_apple_data_detectorsAttr), "true"))
+            if (!equalIgnoringASCIICase(anchor.attributeWithoutSynchronization(x_apple_data_detectorsAttr), "true"))
                 return true;
             removeResultLinksFromAnchor(anchor);
             didModifyDOM = true;
@@ -286,7 +287,7 @@ static bool searchForLinkRemovingExistingDDLinks(Node& startNode, Node& endNode,
             // If we found the end node and no link, return false unless an ancestor node is a link.
             // The only ancestors not tested at this point are in the direct line from self's parent to the top.
             for (auto& anchor : ancestorsOfType<HTMLAnchorElement>(startNode)) {
-                if (!equalIgnoringASCIICase(anchor.fastGetAttribute(x_apple_data_detectorsAttr), "true"))
+                if (!equalIgnoringASCIICase(anchor.attributeWithoutSynchronization(x_apple_data_detectorsAttr), "true"))
                     return true;
                 removeResultLinksFromAnchor(anchor);
                 didModifyDOM = true;
@@ -429,7 +430,7 @@ static inline CFComparisonResult queryOffsetCompare(DDQueryOffset o1, DDQueryOff
     return kCFCompareEqualTo;
 }
 
-NSArray *DataDetection::detectContentInRange(RefPtr<Range>& contextRange, DataDetectorTypes types)
+NSArray *DataDetection::detectContentInRange(RefPtr<Range>& contextRange, DataDetectorTypes types, NSDictionary *context)
 {
     RetainPtr<DDScannerRef> scanner = adoptCF(softLink_DataDetectorsCore_DDScannerCreate(DDScannerTypeStandard, 0, nullptr));
     RetainPtr<DDScanQueryRef> scanQuery = adoptCF(softLink_DataDetectorsCore_DDScanQueryCreate(NULL));
@@ -443,15 +444,15 @@ NSArray *DataDetection::detectContentInRange(RefPtr<Range>& contextRange, DataDe
     // FIXME: we should add a timeout to this call to make sure it doesn't take too much time.
     if (!softLink_DataDetectorsCore_DDScannerScanQuery(scanner.get(), scanQuery.get()))
         return nil;
-    
+
     RetainPtr<CFArrayRef> scannerResults = adoptCF(softLink_DataDetectorsCore_DDScannerCopyResultsWithOptions(scanner.get(), get_DataDetectorsCore_DDScannerCopyResultsOptionsForPassiveUse() | DDScannerCopyResultsOptionsCoalesceSignatures));
     if (!scannerResults)
         return nil;
-    
+
     CFIndex resultCount = CFArrayGetCount(scannerResults.get());
     if (!resultCount)
         return nil;
-    
+
     Vector<RetainPtr<DDResultRef>> allResults;
     Vector<RetainPtr<NSIndexPath>> indexPaths;
     NSInteger currentTopLevelIndex = 0;
@@ -519,7 +520,7 @@ NSArray *DataDetection::detectContentInRange(RefPtr<Range>& contextRange, DataDe
     }
     
     auto tz = adoptCF(CFTimeZoneCopyDefault());
-    NSDate *referenceDate = [NSDate date];
+    NSDate *referenceDate = [context objectForKey:getkDataDetectorsReferenceDateKey()] ?: [NSDate date];
     Text* lastTextNodeToUpdate = nullptr;
     String lastNodeContent;
     size_t contentOffset = 0;
@@ -633,9 +634,9 @@ NSArray *DataDetection::detectContentInRange(RefPtr<Range>& contextRange, DataDe
             }
             anchorElement->appendChild(WTFMove(newTextNode));
             // Add a special attribute to mark this URLification as the result of data detectors.
-            anchorElement->setAttribute(x_apple_data_detectorsAttr, "true");
-            anchorElement->setAttribute(x_apple_data_detectors_typeAttr, dataDetectorTypeForCategory(softLink_DataDetectorsCore_DDResultGetCategory(coreResult)));
-            anchorElement->setAttribute(x_apple_data_detectors_resultAttr, identifier);
+            anchorElement->setAttributeWithoutSynchronization(x_apple_data_detectorsAttr, AtomicString("true", AtomicString::ConstructFromLiteral));
+            anchorElement->setAttributeWithoutSynchronization(x_apple_data_detectors_typeAttr, dataDetectorTypeForCategory(softLink_DataDetectorsCore_DDResultGetCategory(coreResult)));
+            anchorElement->setAttributeWithoutSynchronization(x_apple_data_detectors_resultAttr, identifier);
 
             parentNode->insertBefore(WTFMove(anchorElement), &currentTextNode);
 
@@ -652,7 +653,7 @@ NSArray *DataDetection::detectContentInRange(RefPtr<Range>& contextRange, DataDe
 }
 
 #else
-NSArray *DataDetection::detectContentInRange(RefPtr<Range>&, DataDetectorTypes)
+NSArray *DataDetection::detectContentInRange(RefPtr<Range>&, DataDetectorTypes, NSDictionary *)
 {
     return nil;
 }

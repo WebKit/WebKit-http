@@ -135,7 +135,7 @@ WebInspector.LogContentView = class LogContentView extends WebInspector.ContentV
 
         // Nest the message.
         var type = messageView instanceof WebInspector.ConsoleCommandView ? null : messageView.message.type;
-        if (type !== WebInspector.ConsoleMessage.MessageType.EndGroup) {
+        if (this._nestingLevel && type !== WebInspector.ConsoleMessage.MessageType.EndGroup) {
             var x = 16 * this._nestingLevel;
             var messageElement = messageView.element;
             messageElement.style.left = x + "px";
@@ -287,7 +287,9 @@ WebInspector.LogContentView = class LogContentView extends WebInspector.ContentV
             return;
         }
 
-        this._logViewController.startNewSession();
+        const isFirstSession = false;
+        const newSessionReason = event.data.wasReloaded ? WebInspector.ConsoleSession.NewSessionReason.PageReloaded : WebInspector.ConsoleSession.NewSessionReason.PageNavigated;
+        this._logViewController.startNewSession(isFirstSession, {newSessionReason, timestamp: event.data.timestamp});
 
         this._clearProvisionalState();
     }
@@ -296,7 +298,7 @@ WebInspector.LogContentView = class LogContentView extends WebInspector.ContentV
     {
         var messageLevel;
 
-        switch(level) {
+        switch (level) {
         case WebInspector.ConsoleMessage.MessageLevel.Warning:
             messageLevel = WebInspector.LogContentView.Scopes.Warnings;
             break;
@@ -333,7 +335,7 @@ WebInspector.LogContentView = class LogContentView extends WebInspector.ContentV
     }
 
     _previousMessageRepeatCountUpdated(event)
-    {        
+    {
         if (this._logViewController.updatePreviousMessageRepeatCount(event.data.count) && this._lastMessageView)
             this._markScopeBarItemUnread(this._lastMessageView.message.level);
     }
@@ -346,11 +348,32 @@ WebInspector.LogContentView = class LogContentView extends WebInspector.ContentV
             return;
         }
 
+        // In the case that there are selected messages, only clear that selection if the right-click
+        // is not on the element or descendants of the selected messages.
+        if (this._selectedMessages.length && !this._selectedMessages.some(element => event.target.isSelfOrDescendant(element))) {
+            this._clearMessagesSelection();
+            this._mousedown(event);
+        }
+
+        // If there are no selected messages, right-clicking will not reset the current mouse state
+        // meaning that when the context menu is dismissed, console messages will be selected when
+        // the user moves the mouse even though no buttons are pressed.
+        if (!this._selectedMessages.length)
+            this._mouseup(event);
+
         // We don't want to show the custom menu for links in the console.
         if (event.target.enclosingNodeOrSelfWithNodeName("a"))
             return;
 
         let contextMenu = WebInspector.ContextMenu.createFromEvent(event);
+
+        if (this._selectedMessages.length) {
+            contextMenu.appendItem(WebInspector.UIString("Copy Selected"), () => {
+                InspectorFrontendHost.copyText(this._formatMessagesAsData(true));
+            });
+            contextMenu.appendSeparator();
+        }
+
         contextMenu.appendItem(WebInspector.UIString("Clear Log"), this._clearLog.bind(this));
         contextMenu.appendSeparator();
 
@@ -360,7 +383,7 @@ WebInspector.LogContentView = class LogContentView extends WebInspector.ContentV
 
     _mousedown(event)
     {
-        if (event.button !== 0 || event.ctrlKey)
+        if (this._selectedMessages.length && (event.button !== 0 || event.ctrlKey))
             return;
 
         if (event.defaultPrevented) {
@@ -659,7 +682,7 @@ WebInspector.LogContentView = class LogContentView extends WebInspector.ContentV
     _scopeBarSelectionDidChange(event)
     {
         var item = this._scopeBar.selectedItems[0];
-        
+
         if (item.id === WebInspector.LogContentView.Scopes.All) {
             for (var item of this._scopeBar.items)
                 item.element.classList.remove("unread");
@@ -829,6 +852,7 @@ WebInspector.LogContentView = class LogContentView extends WebInspector.ContentV
             if (this._isMessageVisible(messages[i]))
                 return messages[i];
         }
+        return null;
     }
 
     _nextMessage(message)
@@ -838,6 +862,7 @@ WebInspector.LogContentView = class LogContentView extends WebInspector.ContentV
             if (this._isMessageVisible(messages[i]))
                 return messages[i];
         }
+        return null;
     }
 
     _clearFocusableChildren()
@@ -893,7 +918,7 @@ WebInspector.LogContentView = class LogContentView extends WebInspector.ContentV
             var match = searchRegex.exec(text);
             while (match) {
                 numberOfResults++;
-                matchRanges.push({ offset: match.index, length: match[0].length });
+                matchRanges.push({offset: match.index, length: match[0].length});
                 match = searchRegex.exec(text);
             }
 

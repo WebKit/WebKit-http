@@ -23,13 +23,12 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef B3FixSSA_h
-#define B3FixSSA_h
+#pragma once
 
 #if ENABLE(B3_JIT)
 
-#include "B3IndexSet.h"
 #include "B3Value.h"
+#include <wtf/IndexSet.h>
 #include <wtf/Vector.h>
 
 namespace JSC { namespace B3 {
@@ -47,6 +46,3 @@ bool fixSSA(Procedure&);
 } } // namespace JSC::B3
 
 #endif // ENABLE(B3_JIT)
-
-#endif // B3FixSSA_h
-

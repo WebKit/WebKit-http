@@ -74,6 +74,7 @@ SQLiteIDBCursor::SQLiteIDBCursor(SQLiteIDBTransaction& transaction, const IDBCur
     , m_objectStoreID(info.objectStoreIdentifier())
     , m_indexID(info.cursorSource() == IndexedDB::CursorSource::Index ? info.sourceIdentifier() : IDBIndexInfo::InvalidId)
     , m_cursorDirection(info.cursorDirection())
+    , m_cursorType(info.cursorType())
     , m_keyRange(info.range())
 {
     ASSERT(m_objectStoreID);
@@ -85,6 +86,7 @@ SQLiteIDBCursor::SQLiteIDBCursor(SQLiteIDBTransaction& transaction, const uint64
     , m_objectStoreID(objectStoreID)
     , m_indexID(indexID ? indexID : IDBIndexInfo::InvalidId)
     , m_cursorDirection(IndexedDB::CursorDirection::Next)
+    , m_cursorType(IndexedDB::CursorType::KeyAndValue)
     , m_keyRange(range)
     , m_backingStoreCursor(true)
 {
@@ -112,7 +114,7 @@ static String buildIndexStatement(const IDBKeyRangeData& keyRange, IndexedDB::Cu
 {
     StringBuilder builder;
 
-    builder.appendLiteral("SELECT rowid, key, value FROM IndexRecords WHERE indexID = ? AND key ");
+    builder.appendLiteral("SELECT rowid, key, value FROM IndexRecords WHERE indexID = ? AND objectStoreID = ? AND key ");
     if (!keyRange.lowerKey.isNull() && !keyRange.lowerOpen)
         builder.appendLiteral(">=");
     else
@@ -260,19 +262,26 @@ bool SQLiteIDBCursor::bindArguments()
 {
     LOG(IndexedDB, "Cursor is binding lower key '%s' and upper key '%s'", m_currentLowerKey.loggingString().utf8().data(), m_currentUpperKey.loggingString().utf8().data());
 
-    if (m_statement->bindInt64(1, m_boundID) != SQLITE_OK) {
+    int currentBindArgument = 1;
+
+    if (m_statement->bindInt64(currentBindArgument++, m_boundID) != SQLITE_OK) {
         LOG_ERROR("Could not bind id argument (bound ID)");
         return false;
     }
 
+    if (m_indexID != IDBIndexInfo::InvalidId && m_statement->bindInt64(currentBindArgument++, m_objectStoreID) != SQLITE_OK) {
+        LOG_ERROR("Could not bind object store id argument for an index cursor");
+        return false;
+    }
+
     RefPtr<SharedBuffer> buffer = serializeIDBKeyData(m_currentLowerKey);
-    if (m_statement->bindBlob(2, buffer->data(), buffer->size()) != SQLITE_OK) {
+    if (m_statement->bindBlob(currentBindArgument++, buffer->data(), buffer->size()) != SQLITE_OK) {
         LOG_ERROR("Could not create cursor statement (lower key)");
         return false;
     }
 
     buffer = serializeIDBKeyData(m_currentUpperKey);
-    if (m_statement->bindBlob(3, buffer->data(), buffer->size()) != SQLITE_OK) {
+    if (m_statement->bindBlob(currentBindArgument++, buffer->data(), buffer->size()) != SQLITE_OK) {
         LOG_ERROR("Could not create cursor statement (upper key)");
         return false;
     }
@@ -389,7 +398,8 @@ SQLiteIDBCursor::AdvanceResult SQLiteIDBCursor::internalAdvanceOnce()
             return AdvanceResult::Failure;
         }
 
-        m_currentValue = std::make_unique<IDBValue>(ThreadSafeDataBuffer::adoptVector(keyData), blobURLs, blobFilePaths);
+        if (m_cursorType == IndexedDB::CursorType::KeyAndValue)
+            m_currentValue = std::make_unique<IDBValue>(ThreadSafeDataBuffer::adoptVector(keyData), blobURLs, blobFilePaths);
     } else {
         if (!deserializeIDBKeyData(keyData.data(), keyData.size(), m_currentPrimaryKey)) {
             LOG_ERROR("Unable to deserialize value data from database while advancing index cursor");
@@ -430,7 +440,7 @@ SQLiteIDBCursor::AdvanceResult SQLiteIDBCursor::internalAdvanceOnce()
     return AdvanceResult::Success;
 }
 
-bool SQLiteIDBCursor::iterate(const WebCore::IDBKeyData& targetKey)
+bool SQLiteIDBCursor::iterate(const IDBKeyData& targetKey, const IDBKeyData& targetPrimaryKey)
 {
     ASSERT(m_transaction->sqliteTransaction());
     ASSERT(m_statement);
@@ -453,6 +463,22 @@ bool SQLiteIDBCursor::iterate(const WebCore::IDBKeyData& targetKey)
             break;
 
         result = advance(1);
+    }
+
+    if (targetPrimaryKey.isValid()) {
+        while (!m_completed && !m_currentKey.compare(targetKey)) {
+            if (!result)
+                return false;
+
+            // Search for the next primary key >= the primary target if the cursor is a Next cursor, or the next key <= if the cursor is a Previous cursor.
+            if (m_cursorDirection == IndexedDB::CursorDirection::Next || m_cursorDirection == IndexedDB::CursorDirection::NextNoDuplicate) {
+                if (m_currentPrimaryKey.compare(targetPrimaryKey) >= 0)
+                    break;
+            } else if (m_currentPrimaryKey.compare(targetPrimaryKey) <= 0)
+                break;
+
+            result = advance(1);
+        }
     }
 
     return result;

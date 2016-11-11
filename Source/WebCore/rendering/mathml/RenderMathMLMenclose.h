@@ -24,10 +24,10 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef RenderMathMLMenclose_h
-#define RenderMathMLMenclose_h
+#pragma once
 
 #if ENABLE(MATHML)
+
 #include "MathMLMencloseElement.h"
 #include "RenderMathMLRow.h"
 
@@ -35,21 +35,25 @@ namespace WebCore {
 
 class RenderMathMLMenclose final: public RenderMathMLRow {
 public:
-    RenderMathMLMenclose(Element&, RenderStyle&&);
+    RenderMathMLMenclose(MathMLMencloseElement&, RenderStyle&&);
 
 private:
     const char* renderName() const final { return "RenderMathMLMenclose"; }
     void computePreferredLogicalWidths() final;
     void layoutBlock(bool relayoutChildren, LayoutUnit pageLogicalHeight = 0) final;
-    Optional<int> firstLineBaseline() const final;
     void paint(PaintInfo&, const LayoutPoint&) final;
 
     LayoutUnit ruleThickness() const;
-    bool hasNotation(MathMLMencloseElement::MencloseNotationFlag notationFlag) const { return downcast<MathMLMencloseElement>(element())->hasNotation(notationFlag); }
+    bool hasNotation(MathMLMencloseElement::MencloseNotationFlag notationFlag) const { return downcast<MathMLMencloseElement>(element()).hasNotation(notationFlag); }
 
-    void getSpaceAroundContent(LayoutUnit contentWidth, LayoutUnit contentHeight, LayoutUnit& leftSpace, LayoutUnit& rightSpace, LayoutUnit& topSpace, LayoutUnit& bottomSpace) const;
+    struct SpaceAroundContent {
+        LayoutUnit left;
+        LayoutUnit right;
+        LayoutUnit top;
+        LayoutUnit bottom;
+    };
+    SpaceAroundContent spaceAroundContent(LayoutUnit contentWidth, LayoutUnit contentHeight) const;
 
-    LayoutUnit m_ascent;
     LayoutRect m_contentRect;
 };
 
@@ -58,4 +62,3 @@ private:
 SPECIALIZE_TYPE_TRAITS_RENDER_OBJECT(RenderMathMLMenclose, isRenderMathMLMenclose())
 
 #endif // ENABLE(MATHML)
-#endif // RenderMathMLMenclose_h

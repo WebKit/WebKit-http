@@ -36,7 +36,6 @@
 #include "SharedBuffer.h"
 #include <mutex>
 #include <wtf/text/CString.h>
-#include <wtf/text/StringBuilder.h>
 
 namespace WebCore {
 
@@ -114,7 +113,7 @@ void MockContentFilter::finishedAddingData()
 Ref<SharedBuffer> MockContentFilter::replacementData() const
 {
     ASSERT(didBlockData());
-    return SharedBuffer::create(m_replacementData.data(), m_replacementData.size()).leakRef();
+    return SharedBuffer::create(m_replacementData.data(), m_replacementData.size());
 }
 
 ContentFilterUnblockHandler MockContentFilter::unblockHandler() const

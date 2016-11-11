@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef ValueRecovery_h
-#define ValueRecovery_h
+#pragma once
 
 #include "DFGMinifiedID.h"
 #include "DataFormat.h"
@@ -376,6 +375,33 @@ public:
     JSValue recover(ExecState*) const;
     
 #if ENABLE(JIT)
+    template<typename Func>
+    void forEachReg(const Func& func)
+    {
+        switch (m_technique) {
+        case InGPR:
+        case UnboxedInt32InGPR:
+        case UnboxedBooleanInGPR:
+        case UnboxedCellInGPR:
+        case UnboxedInt52InGPR:
+        case UnboxedStrictInt52InGPR:
+            func(gpr());
+            return;
+        case InFPR:
+        case UnboxedDoubleInFPR:
+            func(fpr());
+            return;
+#if USE(JSVALUE32_64)
+        case InPair:
+            func(jsValueRegs().payloadGPR());
+            func(jsValueRegs().tagGPR());
+            return;
+#endif
+        default:
+            return;
+        }
+    }
+    
     void dumpInContext(PrintStream& out, DumpContext* context) const;
     void dump(PrintStream& out) const;
 #endif
@@ -398,5 +424,3 @@ private:
 };
 
 } // namespace JSC
-
-#endif // ValueRecovery_h

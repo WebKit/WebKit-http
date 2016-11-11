@@ -69,9 +69,11 @@ public:
     void didCommitTransaction(UniqueIDBDatabaseTransaction&, const IDBError&);
     void didCreateObjectStore(const IDBResultData&);
     void didDeleteObjectStore(const IDBResultData&);
+    void didRenameObjectStore(const IDBResultData&);
     void didClearObjectStore(const IDBResultData&);
     void didCreateIndex(const IDBResultData&);
     void didDeleteIndex(const IDBResultData&);
+    void didRenameIndex(const IDBResultData&);
     void didFireVersionChangeEvent(const IDBResourceIdentifier& requestIdentifier);
     void didFinishHandlingVersionChange(const IDBResourceIdentifier& transactionIdentifier);
     void confirmDidCloseFromServer();

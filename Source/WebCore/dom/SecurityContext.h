@@ -24,8 +24,7 @@
  *
  */
 
-#ifndef SecurityContext_h
-#define SecurityContext_h
+#pragma once
 
 #include <memory>
 #include <wtf/Forward.h>
@@ -75,6 +74,8 @@ public:
     WEBCORE_EXPORT SecurityOrigin* securityOrigin() const;
 
     static SandboxFlags parseSandboxPolicy(const String& policy, String& invalidTokensErrorMessage);
+    static bool isSupportedSandboxPolicy(StringView);
+
     bool foundMixedContent() const { return m_foundMixedContent; }
     void setFoundMixedContent() { m_foundMixedContent = true; }
     bool geolocationAccessed() const { return m_geolocationAccessed; }
@@ -99,5 +100,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // SecurityContext_h

@@ -38,12 +38,12 @@
 
 namespace WebCore {
 
-class EmptyRealtimeMediaSource : public RealtimeMediaSource {
+class EmptyRealtimeMediaSource final : public RealtimeMediaSource {
 public:
     static Ref<EmptyRealtimeMediaSource> create() { return adoptRef(*new EmptyRealtimeMediaSource()); }
 
-    RefPtr<RealtimeMediaSourceCapabilities> capabilities() override { return nullptr; }
-    const RealtimeMediaSourceSettings& settings() override { return m_sourceSettings; }
+    RefPtr<RealtimeMediaSourceCapabilities> capabilities() const final { return nullptr; }
+    const RealtimeMediaSourceSettings& settings() const final { return m_sourceSettings; }
 
 private:
     EmptyRealtimeMediaSource()
@@ -57,7 +57,7 @@ class EmptyMediaEndpoint : public MediaEndpoint {
 public:
     EmptyMediaEndpoint(MediaEndpointClient&) { }
 
-    void setConfiguration(RefPtr<MediaEndpointConfiguration>&&) override { }
+    void setConfiguration(MediaEndpointConfiguration&&) override { }
 
     void generateDtlsInfo() override { }
     MediaPayloadVector getDefaultAudioPayloads() override { return MediaPayloadVector(); }
@@ -67,10 +67,11 @@ public:
     UpdateResult updateReceiveConfiguration(MediaEndpointSessionConfiguration*, bool) override { return UpdateResult::Failed; }
     UpdateResult updateSendConfiguration(MediaEndpointSessionConfiguration*, const RealtimeMediaSourceMap&, bool) override { return UpdateResult::Failed; }
 
-    void addRemoteCandidate(IceCandidate&, const String&, const String&, const String&) override { }
+    void addRemoteCandidate(const IceCandidate&, const String&, const String&, const String&) override { }
 
     Ref<RealtimeMediaSource> createMutedRemoteSource(const String&, RealtimeMediaSource::Type) override { return EmptyRealtimeMediaSource::create(); }
     void replaceSendSource(RealtimeMediaSource&, const String&) override { }
+    void replaceMutedRemoteSourceMid(const String&, const String&) override { };
 
     void stop() override { }
 };

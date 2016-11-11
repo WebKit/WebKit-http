@@ -23,34 +23,26 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef HTMLScriptRunnerHost_h
-#define HTMLScriptRunnerHost_h
-
-#include <wtf/Forward.h>
+#pragma once
 
 namespace WebCore {
 
-class CachedResource;
-class Element;
 class HTMLInputStream;
-class ScriptSourceCode;
+class PendingScript;
 
 class HTMLScriptRunnerHost {
 public:
     virtual ~HTMLScriptRunnerHost() { }
 
     // Implementors should call cachedResource->addClient() here or soon after.
-    virtual void watchForLoad(CachedResource*) = 0;
+    virtual void watchForLoad(PendingScript&) = 0;
     // Implementors must call cachedResource->removeClient() immediately.
-    virtual void stopWatchingForLoad(CachedResource*) = 0;
+    virtual void stopWatchingForLoad(PendingScript&) = 0;
 
     virtual HTMLInputStream& inputStream() = 0;
 
     virtual bool hasPreloadScanner() const = 0;
-    virtual void appendCurrentInputStreamToPreloadScannerAndScan() = 0;
-    
+    virtual void appendCurrentInputStreamToPreloadScannerAndScan() = 0;    
 };
 
-}
-
-#endif
+} // namespace WebCore

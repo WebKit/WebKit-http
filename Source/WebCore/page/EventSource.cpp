@@ -58,24 +58,19 @@ inline EventSource::EventSource(ScriptExecutionContext& context, const URL& url,
 {
 }
 
-RefPtr<EventSource> EventSource::create(ScriptExecutionContext& context, const String& url, const Init& eventSourceInit, ExceptionCode& ec)
+ExceptionOr<Ref<EventSource>> EventSource::create(ScriptExecutionContext& context, const String& url, const Init& eventSourceInit)
 {
-    if (url.isEmpty()) {
-        ec = SYNTAX_ERR;
-        return nullptr;
-    }
+    if (url.isEmpty())
+        return Exception { SYNTAX_ERR };
 
     URL fullURL = context.completeURL(url);
-    if (!fullURL.isValid()) {
-        ec = SYNTAX_ERR;
-        return nullptr;
-    }
+    if (!fullURL.isValid())
+        return Exception { SYNTAX_ERR };
 
-    // FIXME: Convert this to check the isolated world's Content Security Policy once webkit.org/b/104520 is solved.
-    if (!context.contentSecurityPolicy()->allowConnectToSource(fullURL, context.shouldBypassMainWorldContentSecurityPolicy())) {
+    // FIXME: Convert this to check the isolated world's Content Security Policy once webkit.org/b/104520 is resolved.
+    if (!context.shouldBypassMainWorldContentSecurityPolicy() && !context.contentSecurityPolicy()->allowConnectToSource(fullURL)) {
         // FIXME: Should this be throwing an exception?
-        ec = SECURITY_ERR;
-        return nullptr;
+        return Exception { SECURITY_ERR };
     }
 
     auto source = adoptRef(*new EventSource(context, fullURL, eventSourceInit));
@@ -103,19 +98,17 @@ void EventSource::connect()
     if (!m_lastEventId.isEmpty())
         request.setHTTPHeaderField(HTTPHeaderName::LastEventID, m_lastEventId);
 
-    SecurityOrigin& origin = *scriptExecutionContext()->securityOrigin();
-
     ThreadableLoaderOptions options;
-    options.setSendLoadCallbacks(SendCallbacks);
-    options.setSniffContent(DoNotSniffContent);
-    options.setAllowCredentials((origin.canRequest(m_url) || m_withCredentials) ? AllowStoredCredentials : DoNotAllowStoredCredentials);
-    options.setCredentialRequest(m_withCredentials ? ClientRequestedCredentials : ClientDidNotRequestCredentials);
+    options.sendLoadCallbacks = SendCallbacks;
+    options.credentials = m_withCredentials ? FetchOptions::Credentials::Include : FetchOptions::Credentials::SameOrigin;
     options.preflightPolicy = PreventPreflight;
-    options.crossOriginRequestPolicy = UseAccessControl;
-    options.setDataBufferingPolicy(DoNotBufferData);
+    options.mode = FetchOptions::Mode::Cors;
+    options.cache = FetchOptions::Cache::NoStore;
+    options.dataBufferingPolicy = DoNotBufferData;
     options.contentSecurityPolicyEnforcement = scriptExecutionContext()->shouldBypassMainWorldContentSecurityPolicy() ? ContentSecurityPolicyEnforcement::DoNotEnforce : ContentSecurityPolicyEnforcement::EnforceConnectSrcDirective;
 
-    m_loader = ThreadableLoader::create(scriptExecutionContext(), this, request, options);
+    ASSERT(scriptExecutionContext());
+    m_loader = ThreadableLoader::create(*scriptExecutionContext(), *this, WTFMove(request), options);
 
     // FIXME: Can we just use m_loader for this, null it out when it's no longer in flight, and eliminate the m_requestInFlight member?
     if (m_loader)

@@ -21,8 +21,7 @@
  *
  */
 
-#ifndef HTMLLegendElement_h
-#define HTMLLegendElement_h
+#pragma once
 
 #include "HTMLElement.h"
 
@@ -40,11 +39,9 @@ private:
     // Control in the legend's fieldset that gets focus and access key.
     HTMLFormControlElement* associatedControl();
 
-    void accessKeyAction(bool sendMouseEvents) override;
-    void focus(bool restorePreviousSelection, FocusDirection) override;
-    HTMLFormElement* virtualForm() const override;
+    void accessKeyAction(bool sendMouseEvents) final;
+    void focus(bool restorePreviousSelection, FocusDirection) final;
+    HTMLFormElement* virtualForm() const final;
 };
 
-} //namespace
-
-#endif
+} // namespace WebCore

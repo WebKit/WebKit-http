@@ -22,7 +22,6 @@
 #include "config.h"
 #include "StyleRule.h"
 
-#include "CSSCharsetRule.h"
 #include "CSSFontFaceRule.h"
 #include "CSSImportRule.h"
 #include "CSSKeyframeRule.h"
@@ -90,9 +89,16 @@ void StyleRuleBase::destroy()
         delete downcast<StyleRuleViewport>(this);
         return;
 #endif
-    case Unknown:
-    case Charset:
+    case Namespace:
+        delete downcast<StyleRuleNamespace>(this);
+        return;
     case Keyframe:
+        delete downcast<StyleKeyframe>(this);
+        return;
+    case Charset:
+        delete downcast<StyleRuleCharset>(this);
+        return;
+    case Unknown:
 #if !ENABLE(CSS_REGIONS)
     case Region:
 #endif
@@ -126,7 +132,8 @@ Ref<StyleRuleBase> StyleRuleBase::copy() const
         return downcast<StyleRuleViewport>(*this).copy();
 #endif
     case Import:
-        // FIXME: Copy import rules.
+    case Namespace:
+        // FIXME: Copy import and namespace rules.
         break;
     case Unknown:
     case Charset:
@@ -179,6 +186,7 @@ RefPtr<CSSRule> StyleRuleBase::createCSSOMWrapper(CSSStyleSheet* parentSheet, CS
 #endif
     case Unknown:
     case Charset:
+    case Namespace: // FIXME: Add support for CSSNamespaceRule.
     case Keyframe:
 #if !ENABLE(CSS_REGIONS)
     case Region:
@@ -364,6 +372,12 @@ StyleRuleRegion::StyleRuleRegion(Vector<std::unique_ptr<CSSParserSelector>>* sel
     m_selectorList.adoptSelectorVector(*selectors);
 }
 
+StyleRuleRegion::StyleRuleRegion(CSSSelectorList& selectors, Vector<RefPtr<StyleRuleBase>>& adoptRules)
+    : StyleRuleGroup(Region, adoptRules)
+    , m_selectorList(WTFMove(selectors))
+{
+}
+    
 StyleRuleRegion::StyleRuleRegion(const StyleRuleRegion& o)
     : StyleRuleGroup(o)
     , m_selectorList(o.m_selectorList)
@@ -395,5 +409,37 @@ MutableStyleProperties& StyleRuleViewport::mutableProperties()
     return static_cast<MutableStyleProperties&>(m_properties.get());
 }
 #endif // ENABLE(CSS_DEVICE_ADAPTATION)
+
+StyleRuleCharset::StyleRuleCharset()
+    : StyleRuleBase(Charset, 0)
+{
+}
+
+StyleRuleCharset::StyleRuleCharset(const StyleRuleCharset& o)
+    : StyleRuleBase(o)
+{
+}
+
+StyleRuleCharset::~StyleRuleCharset()
+{
+}
+
+StyleRuleNamespace::StyleRuleNamespace(AtomicString prefix, AtomicString uri)
+    : StyleRuleBase(Namespace, 0)
+    , m_prefix(prefix)
+    , m_uri(uri)
+{
+}
+
+StyleRuleNamespace::StyleRuleNamespace(const StyleRuleNamespace& o)
+    : StyleRuleBase(o)
+    , m_prefix(o.m_prefix)
+    , m_uri(o.m_uri)
+{
+}
+
+StyleRuleNamespace::~StyleRuleNamespace()
+{
+}
 
 } // namespace WebCore

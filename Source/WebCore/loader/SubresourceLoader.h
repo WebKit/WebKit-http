@@ -6,13 +6,13 @@
  * are met:
  *
  * 1.  Redistributions of source code must retain the above copyright
- *     notice, this list of conditions and the following disclaimer. 
+ *     notice, this list of conditions and the following disclaimer.
  * 2.  Redistributions in binary form must reproduce the above copyright
  *     notice, this list of conditions and the following disclaimer in the
- *     documentation and/or other materials provided with the distribution. 
+ *     documentation and/or other materials provided with the distribution.
  * 3.  Neither the name of Apple Inc. ("Apple") nor the names of
  *     its contributors may be used to endorse or promote products derived
- *     from this software without specific prior written permission. 
+ *     from this software without specific prior written permission.
  *
  * THIS SOFTWARE IS PROVIDED BY APPLE AND ITS CONTRIBUTORS "AS IS" AND ANY
  * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
@@ -51,12 +51,15 @@ public:
     bool isSubresourceLoader() override;
     CachedResource* cachedResource();
 
+    SecurityOrigin* origin() { return m_origin.get(); }
 #if PLATFORM(IOS)
     bool startLoading() override;
 
     // FIXME: What is an "iOS" original request? Why is it necessary?
     const ResourceRequest& iOSOriginalRequest() const override { return m_iOSOriginalRequest; }
 #endif
+
+    unsigned redirectCount() const { return m_redirectCount; }
 
 private:
     SubresourceLoader(Frame&, CachedResource&, const ResourceLoaderOptions&);
@@ -73,10 +76,10 @@ private:
     void willCancel(const ResourceError&) override;
     void didCancel(const ResourceError&) override;
 
-#if PLATFORM(COCOA) && !USE(CFNETWORK)
+#if PLATFORM(COCOA) && !USE(CFURLCONNECTION)
     NSCachedURLResponse *willCacheResponse(ResourceHandle*, NSCachedURLResponse*) override;
 #endif
-#if PLATFORM(COCOA) && USE(CFNETWORK)
+#if PLATFORM(COCOA) && USE(CFURLCONNECTION)
     CFCachedURLResponseRef willCacheResponse(ResourceHandle*, CFCachedURLResponseRef) override;
 #endif
 
@@ -91,7 +94,8 @@ private:
 #endif
 
     bool checkForHTTPStatusCodeError();
-    bool checkCrossOriginAccessControl(const ResourceRequest&, const ResourceResponse&, ResourceRequest& newRequest);
+    bool checkResponseCrossOriginAccessControl(const ResourceResponse&, String&);
+    bool checkRedirectionCrossOriginAccessControl(const ResourceRequest& previousRequest, const ResourceResponse&, ResourceRequest& newRequest, String&);
 
     void didReceiveDataOrBuffer(const char*, int, RefPtr<SharedBuffer>&&, long long encodedDataLength, DataPayloadType);
 
@@ -126,6 +130,7 @@ private:
     SubresourceLoaderState m_state;
     Optional<RequestCountTracker> m_requestCountTracker;
     RefPtr<SecurityOrigin> m_origin;
+    unsigned m_redirectCount { 0 };
 };
 
 }

@@ -36,6 +36,7 @@
 #include "ImplicitAnimation.h"
 #include "KeyframeAnimation.h"
 #include "RenderBox.h"
+#include "StylePendingResources.h"
 
 namespace WebCore {
 
@@ -60,7 +61,7 @@ bool ImplicitAnimation::shouldSendEventForListener(Document::ListenerType inList
     return m_object->document().hasListenerType(inListenerType);
 }
 
-bool ImplicitAnimation::animate(CompositeAnimation*, RenderElement*, const RenderStyle*, const RenderStyle* targetStyle, std::unique_ptr<RenderStyle>& animatedStyle)
+bool ImplicitAnimation::animate(CompositeAnimation*, RenderElement*, const RenderStyle*, const RenderStyle* targetStyle, std::unique_ptr<RenderStyle>& animatedStyle, bool& didBlendStyle)
 {
     // If we get this far and the animation is done, it means we are cleaning up a just finished animation.
     // So just return. Everything is already all cleaned up.
@@ -78,20 +79,14 @@ bool ImplicitAnimation::animate(CompositeAnimation*, RenderElement*, const Rende
     if (!animatedStyle)
         animatedStyle = RenderStyle::clonePtr(*targetStyle);
 
-    bool needsAnim = CSSPropertyAnimation::blendProperties(this, m_animatingProperty, animatedStyle.get(), m_fromStyle.get(), m_toStyle.get(), progress());
+    CSSPropertyAnimation::blendProperties(this, m_animatingProperty, animatedStyle.get(), m_fromStyle.get(), m_toStyle.get(), progress());
     // FIXME: we also need to detect cases where we have to software animate for other reasons,
     // such as a child using inheriting the transform. https://bugs.webkit.org/show_bug.cgi?id=23902
-    if (!needsAnim) {
-        // If we are running an accelerated animation, set a flag in the style which causes the style
-        // to compare as different to any other style. This ensures that changes to the property
-        // that is animating are correctly detected during the animation (e.g. when a transition
-        // gets interrupted).
-        // FIXME: still need this hack?
-        animatedStyle->setIsRunningAcceleratedAnimation();
-    }
 
     // Fire the start timeout if needed
     fireAnimationEventsIfNeeded();
+    
+    didBlendStyle = true;
     return state() != oldState;
 }
 
@@ -187,7 +182,7 @@ bool ImplicitAnimation::sendTransitionEvent(const AtomicString& eventType, doubl
             // Dispatch the event
             RefPtr<Element> element = m_object->element();
 
-            ASSERT(!element || !element->document().inPageCache());
+            ASSERT(!element || element->document().pageCacheState() == Document::NotInPageCache);
             if (!element)
                 return false;
 
@@ -211,6 +206,9 @@ void ImplicitAnimation::reset(const RenderStyle* to)
     ASSERT(m_fromStyle);
 
     m_toStyle = RenderStyle::clonePtr(*to);
+
+    if (m_object && m_object->element())
+        Style::loadPendingResources(*m_toStyle, m_object->element()->document(), m_object->element());
 
     // Restart the transition
     if (m_fromStyle && m_toStyle)

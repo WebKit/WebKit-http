@@ -37,20 +37,6 @@
 
 #if WK_API_ENABLED
 
-static bool isDoneWithNavigation;
-
-@interface IndexedDBNavigationDelegate : NSObject <WKNavigationDelegate>
-@end
-
-@implementation IndexedDBNavigationDelegate
-
-- (void)webView:(WKWebView *)webView didFinishNavigation:(WKNavigation *)navigation
-{
-    isDoneWithNavigation = true;
-}
-
-@end
-
 static bool receivedScriptMessage;
 static RetainPtr<WKScriptMessage> lastScriptMessage;
 
@@ -72,9 +58,6 @@ TEST(IndexedDB, IndexedDBPersistence)
     RetainPtr<IndexedDBMessageHandler> handler = adoptNS([[IndexedDBMessageHandler alloc] init]);
     RetainPtr<WKWebViewConfiguration> configuration = adoptNS([[WKWebViewConfiguration alloc] init]);
     [[configuration userContentController] addScriptMessageHandler:handler.get() name:@"testHandler"];
-
-    // Allow file URLs to load non-file resources
-    [configuration _setAllowUniversalAccessFromFileURLs:YES];
 
     RetainPtr<WKWebView> webView = adoptNS([[WKWebView alloc] initWithFrame:NSMakeRect(0, 0, 800, 600) configuration:configuration.get()]);
 

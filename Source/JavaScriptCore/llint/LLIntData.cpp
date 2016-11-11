@@ -26,6 +26,7 @@
 #include "config.h"
 #include "LLIntData.h"
 
+#include "ArithProfile.h"
 #include "BytecodeConventions.h"
 #include "CodeBlock.h"
 #include "CodeType.h"
@@ -96,18 +97,18 @@ void Data::performAssertions(VM& vm)
 
     STATIC_ASSERT(sizeof(void*) == PtrSize);
     STATIC_ASSERT(sizeof(Register) == SlotSize);
-    STATIC_ASSERT(JSStack::CallFrameHeaderSize == CallFrameHeaderSlots);
+    STATIC_ASSERT(CallFrame::headerSizeInRegisters == CallFrameHeaderSlots);
 
     ASSERT(!CallFrame::callerFrameOffset());
-    STATIC_ASSERT(JSStack::CallerFrameAndPCSize == (PtrSize * 2) / SlotSize);
+    STATIC_ASSERT(CallerFrameAndPC::sizeInRegisters == (PtrSize * 2) / SlotSize);
     ASSERT(CallFrame::returnPCOffset() == CallFrame::callerFrameOffset() + PtrSize);
-    ASSERT(JSStack::CodeBlock * sizeof(Register) == CallFrame::returnPCOffset() + PtrSize);
-    STATIC_ASSERT(JSStack::Callee * sizeof(Register) == JSStack::CodeBlock * sizeof(Register) + SlotSize);
-    STATIC_ASSERT(JSStack::ArgumentCount * sizeof(Register) == JSStack::Callee * sizeof(Register) + SlotSize);
-    STATIC_ASSERT(JSStack::ThisArgument * sizeof(Register) == JSStack::ArgumentCount * sizeof(Register) + SlotSize);
-    STATIC_ASSERT(JSStack::CallFrameHeaderSize == JSStack::ThisArgument);
+    ASSERT(CallFrameSlot::codeBlock * sizeof(Register) == CallFrame::returnPCOffset() + PtrSize);
+    STATIC_ASSERT(CallFrameSlot::callee * sizeof(Register) == CallFrameSlot::codeBlock * sizeof(Register) + SlotSize);
+    STATIC_ASSERT(CallFrameSlot::argumentCount * sizeof(Register) == CallFrameSlot::callee * sizeof(Register) + SlotSize);
+    STATIC_ASSERT(CallFrameSlot::thisArgument * sizeof(Register) == CallFrameSlot::argumentCount * sizeof(Register) + SlotSize);
+    STATIC_ASSERT(CallFrame::headerSizeInRegisters == CallFrameSlot::thisArgument);
 
-    ASSERT(CallFrame::argumentOffsetIncludingThis(0) == JSStack::ThisArgument);
+    ASSERT(CallFrame::argumentOffsetIncludingThis(0) == CallFrameSlot::thisArgument);
 
 #if CPU(BIG_ENDIAN)
     ASSERT(OBJECT_OFFSETOF(EncodedValueDescriptor, asBits.tag) == 0);
@@ -158,16 +159,18 @@ void Data::performAssertions(VM& vm)
     STATIC_ASSERT(ObjectType == 20);
     STATIC_ASSERT(FinalObjectType == 21);
     STATIC_ASSERT(JSFunctionType == 23);
-    STATIC_ASSERT(ArrayType == 29);
-    STATIC_ASSERT(Int8ArrayType == 100);
-    STATIC_ASSERT(Int16ArrayType == 101);
-    STATIC_ASSERT(Int32ArrayType == 102);
-    STATIC_ASSERT(Uint8ArrayType == 103);
-    STATIC_ASSERT(Uint8ClampedArrayType == 104);
-    STATIC_ASSERT(Uint16ArrayType == 105);
-    STATIC_ASSERT(Uint32ArrayType == 106);
-    STATIC_ASSERT(Float32ArrayType == 107);
-    STATIC_ASSERT(Float64ArrayType == 108);
+    STATIC_ASSERT(ArrayType == 31);
+    STATIC_ASSERT(DerivedArrayType == 32);
+    STATIC_ASSERT(ProxyObjectType == 50);
+    STATIC_ASSERT(Int8ArrayType == 33);
+    STATIC_ASSERT(Int16ArrayType == 34);
+    STATIC_ASSERT(Int32ArrayType == 35);
+    STATIC_ASSERT(Uint8ArrayType == 36);
+    STATIC_ASSERT(Uint8ClampedArrayType == 37);
+    STATIC_ASSERT(Uint16ArrayType == 38);
+    STATIC_ASSERT(Uint32ArrayType == 39);
+    STATIC_ASSERT(Float32ArrayType == 40);
+    STATIC_ASSERT(Float64ArrayType == 41);
     STATIC_ASSERT(MasqueradesAsUndefined == 1);
     STATIC_ASSERT(ImplementsDefaultHasInstance == 2);
     STATIC_ASSERT(FirstConstantRegisterIndex == 0x40000000);
@@ -210,7 +213,8 @@ void Data::performAssertions(VM& vm)
     STATIC_ASSERT(GetPutInfo::initializationShift == 10);
     STATIC_ASSERT(GetPutInfo::initializationBits == 0xffc00);
 
-    STATIC_ASSERT(MarkedBlock::blockMask == ~static_cast<decltype(MarkedBlock::blockMask)>(0x3fff));
+    STATIC_ASSERT(MarkedBlock::blockSize == 16 * 1024);
+    STATIC_ASSERT(blackThreshold == 0);
 
     ASSERT(bitwise_cast<uintptr_t>(ShadowChicken::Packet::tailMarker()) == static_cast<uintptr_t>(0x7a11));
 
@@ -223,6 +227,47 @@ void Data::performAssertions(VM& vm)
 #endif
 
     ASSERT(StringImpl::s_hashFlag8BitBuffer == 8);
+
+    {
+        uint32_t bits = 0x120000;
+        UNUSED_PARAM(bits);
+        ArithProfile arithProfile;
+        arithProfile.lhsSawInt32();
+        arithProfile.rhsSawInt32();
+        ASSERT(arithProfile.bits() == bits);
+        ASSERT(ArithProfile::fromInt(bits).lhsObservedType().isOnlyInt32());
+        ASSERT(ArithProfile::fromInt(bits).rhsObservedType().isOnlyInt32());
+    }
+    {
+        uint32_t bits = 0x220000;
+        UNUSED_PARAM(bits);
+        ArithProfile arithProfile;
+        arithProfile.lhsSawNumber();
+        arithProfile.rhsSawInt32();
+        ASSERT(arithProfile.bits() == bits);
+        ASSERT(ArithProfile::fromInt(bits).lhsObservedType().isOnlyNumber());
+        ASSERT(ArithProfile::fromInt(bits).rhsObservedType().isOnlyInt32());
+    }
+    {
+        uint32_t bits = 0x240000;
+        UNUSED_PARAM(bits);
+        ArithProfile arithProfile;
+        arithProfile.lhsSawNumber();
+        arithProfile.rhsSawNumber();
+        ASSERT(arithProfile.bits() == bits);
+        ASSERT(ArithProfile::fromInt(bits).lhsObservedType().isOnlyNumber());
+        ASSERT(ArithProfile::fromInt(bits).rhsObservedType().isOnlyNumber());
+    }
+    {
+        uint32_t bits = 0x140000;
+        UNUSED_PARAM(bits);
+        ArithProfile arithProfile;
+        arithProfile.lhsSawInt32();
+        arithProfile.rhsSawNumber();
+        ASSERT(arithProfile.bits() == bits);
+        ASSERT(ArithProfile::fromInt(bits).lhsObservedType().isOnlyInt32());
+        ASSERT(ArithProfile::fromInt(bits).rhsObservedType().isOnlyNumber());
+    }
 }
 #if COMPILER(CLANG)
 #pragma clang diagnostic pop

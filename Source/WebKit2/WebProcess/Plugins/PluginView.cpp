@@ -59,7 +59,6 @@
 #include <WebCore/NetscapePlugInStreamLoader.h>
 #include <WebCore/NetworkingContext.h>
 #include <WebCore/Page.h>
-#include <WebCore/PageThrottler.h>
 #include <WebCore/PlatformMouseEvent.h>
 #include <WebCore/ProtectionSpace.h>
 #include <WebCore/ProxyServer.h>
@@ -535,29 +534,17 @@ void PluginView::webPageDestroyed()
     m_webPage = 0;
 }
 
-void PluginView::viewStateDidChange(ViewState::Flags changed)
+void PluginView::activityStateDidChange(ActivityState::Flags changed)
 {
     if (!m_plugin || !m_isInitialized)
         return;
 
-    if (changed & ViewState::IsVisibleOrOccluded)
+    if (changed & ActivityState::IsVisibleOrOccluded)
         m_plugin->windowVisibilityChanged(m_webPage->isVisibleOrOccluded());
-    if (changed & ViewState::WindowIsActive)
+    if (changed & ActivityState::WindowIsActive)
         m_plugin->windowFocusChanged(m_webPage->windowIsFocused());
 }
 
-WebCore::AudioHardwareActivityType PluginView::audioHardwareActivity() const
-{
-    if (!m_isInitialized || !m_plugin)
-        return AudioHardwareActivityType::IsInactive;
-    
-#if PLATFORM(COCOA)
-    return m_plugin->audioHardwareActivity();
-#else
-    return AudioHardwareActivityType::Unknown;
-#endif
-}
-    
 #if PLATFORM(COCOA)
 void PluginView::setDeviceScaleFactor(float scaleFactor)
 {
@@ -663,7 +650,7 @@ void PluginView::didInitializePlugin()
     if (m_pluginElement->displayState() < HTMLPlugInElement::Restarting) {
         if (m_plugin->pluginLayer() && frame()) {
             frame()->view()->enterCompositingMode();
-            m_pluginElement->setNeedsStyleRecalc(SyntheticStyleChange);
+            m_pluginElement->invalidateStyleAndLayerComposition();
         }
         if (frame() && !frame()->settings().maximumPlugInSnapshotAttempts()) {
             beginSnapshottingRunningPlugin();
@@ -673,7 +660,7 @@ void PluginView::didInitializePlugin()
     } else {
         if (m_plugin->pluginLayer() && frame()) {
             frame()->view()->enterCompositingMode();
-            m_pluginElement->setNeedsStyleRecalc(SyntheticStyleChange);
+            m_pluginElement->invalidateStyleAndLayerComposition();
         }
         if (m_pluginElement->displayState() == HTMLPlugInElement::RestartingWithPendingMouseClick)
             m_pluginElement->dispatchPendingMouseClick();
@@ -1218,7 +1205,7 @@ void PluginView::performFrameLoadURLRequest(URLRequest* request)
         return;
     }
 
-    UserGestureIndicator gestureIndicator(request->allowPopups() ? DefinitelyProcessingUserGesture : PossiblyProcessingUserGesture);
+    UserGestureIndicator gestureIndicator(request->allowPopups() ? Optional<ProcessingUserGestureState>(ProcessingUserGesture) : Nullopt);
 
     // First, try to find a target frame.
     Frame* targetFrame = frame->loader().findFrameForNavigation(request->target());
@@ -1513,7 +1500,7 @@ bool PluginView::evaluate(NPObject* npObject, const String& scriptString, NPVari
     // protect the plug-in view from destruction.
     NPRuntimeObjectMap::PluginProtector pluginProtector(&m_npRuntimeObjectMap);
 
-    UserGestureIndicator gestureIndicator(allowPopups ? DefinitelyProcessingUserGesture : PossiblyProcessingUserGesture);
+    UserGestureIndicator gestureIndicator(allowPopups ? Optional<ProcessingUserGestureState>(ProcessingUserGesture) : Nullopt);
     return m_npRuntimeObjectMap.evaluate(npObject, scriptString, result);
 }
 
@@ -1531,7 +1518,7 @@ bool PluginView::isMuted() const
     if (!frame() || !frame()->page())
         return false;
 
-    return frame()->page()->isMuted();
+    return frame()->page()->isAudioMuted();
 }
 #endif
 
@@ -1570,7 +1557,7 @@ void PluginView::pluginProcessCrashed()
     if (!is<RenderEmbeddedObject>(renderer))
         return;
 
-    m_pluginElement->setNeedsStyleRecalc(SyntheticStyleChange);
+    m_pluginElement->invalidateStyleAndLayerComposition();
 
     downcast<RenderEmbeddedObject>(*renderer).setPluginUnavailabilityReason(RenderEmbeddedObject::PluginCrashed);
 
@@ -1615,12 +1602,12 @@ String PluginView::proxiesForURL(const String& urlString)
 
 String PluginView::cookiesForURL(const String& urlString)
 {
-    return cookies(&m_pluginElement->document(), URL(URL(), urlString));
+    return cookies(m_pluginElement->document(), URL(URL(), urlString));
 }
 
 void PluginView::setCookiesForURL(const String& urlString, const String& cookieString)
 {
-    setCookies(&m_pluginElement->document(), URL(URL(), urlString), cookieString);
+    setCookies(m_pluginElement->document(), URL(URL(), urlString), cookieString);
 }
 
 bool PluginView::getAuthenticationInfo(const ProtectionSpace& protectionSpace, String& username, String& password)
@@ -1730,7 +1717,7 @@ void PluginView::windowedPluginVisibilityDidChange(bool isVisible, uint64_t wind
 #if PLATFORM(COCOA)
 static bool isAlmostSolidColor(BitmapImage* bitmap)
 {
-    CGImageRef image = bitmap->getCGImageRef();
+    CGImageRef image = bitmap->nativeImage().get();
     ASSERT(CGImageGetBitsPerComponent(image) == 8);
 
     CGBitmapInfo imageInfo = CGImageGetBitmapInfo(image);

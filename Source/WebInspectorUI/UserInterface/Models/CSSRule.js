@@ -67,8 +67,8 @@ WebInspector.CSSRule = class CSSRule extends WebInspector.Object
 
         var changed = false;
         if (!dontFireEvents) {
-            changed = this._selectorText !== selectorText || !Object.shallowEqual(this._selectors, selectors) ||
-                !Object.shallowEqual(this._matchedSelectorIndices, matchedSelectorIndices) || this._style !== style ||
+            changed = this._selectorText !== selectorText || !Array.shallowEqual(this._selectors, selectors) ||
+                !Array.shallowEqual(this._matchedSelectorIndices, matchedSelectorIndices) || this._style !== style ||
                 !!this._sourceCodeLocation !== !!sourceCodeLocation || this._mediaList.length !== mediaList.length;
             // FIXME: Look for differences in the media list arrays.
         }
@@ -155,6 +155,14 @@ WebInspector.CSSRule = class CSSRule extends WebInspector.Object
         return this._matchedSelectorText;
     }
 
+    hasMatchedPseudoElementSelector()
+    {
+        if (this.nodeStyles && this.nodeStyles.node && this.nodeStyles.node.isPseudoElement())
+            return true;
+
+        return this.matchedSelectors.some((selector) => selector.isPseudoElementSelector());
+    }
+
     get style()
     {
         return this._style;
@@ -168,7 +176,7 @@ WebInspector.CSSRule = class CSSRule extends WebInspector.Object
     get mediaText()
     {
         if (!this._mediaList.length)
-            return;
+            return "";
 
         let mediaText = "";
         for (let media of this._mediaList)

@@ -30,14 +30,13 @@
     readonly attribute unsigned long length;
     getter DOMString? item(unsigned long index);
     boolean contains(DOMString token);
-    [RaisesException] void add(DOMString... tokens);
-    [RaisesException] void remove(DOMString... tokens);
-    [RaisesException] boolean toggle(DOMString token, optional boolean force);
+    [CEReactions, MayThrowException] void add(DOMString... tokens);
+    [CEReactions, MayThrowException] void remove(DOMString... tokens);
+    [CEReactions, MayThrowException] boolean toggle(DOMString token, optional boolean force);
+    [CEReactions, MayThrowException] void replace(DOMString token, DOMString newToken);
+    [MayThrowException] boolean supports(DOMString token);
 
-    attribute DOMString value;
+    iterable<DOMString>;
 
-#if defined(LANGUAGE_JAVASCRIPT) && LANGUAGE_JAVASCRIPT
-    [NotEnumerable] DOMString toString();
-#endif
+    [CEReactions] stringifier attribute DOMString value;
 };
-

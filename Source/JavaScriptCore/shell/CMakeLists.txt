@@ -33,10 +33,10 @@ if (JSC_LINK_FLAGS)
 endif ()
 
 if (SHOULD_INSTALL_JS_SHELL)
-    install(TARGETS jsc DESTINATION "${EXEC_INSTALL_DIR}")
+    install(TARGETS jsc DESTINATION "${LIBEXEC_INSTALL_DIR}")
 endif ()
 
-if (WIN32)
+if (TARGET jscLib)
     add_dependencies(jsc jscLib)
 endif ()
 
@@ -49,10 +49,17 @@ if (NOT WIN32)
         ../b3/air/testair.cpp
     )
 
+    set(TESTWASM_SOURCES
+        ../testWasm.cpp
+    )
+
     add_executable(testb3 ${TESTB3_SOURCES})
     target_link_libraries(testb3 ${JSC_LIBRARIES})
 
     add_executable(testair ${TESTAIR_SOURCES})
     target_link_libraries(testair ${JSC_LIBRARIES})
+
+    add_executable(testWASM ${TESTWASM_SOURCES})
+    target_link_libraries(testWASM ${JSC_LIBRARIES})
 
 endif ()

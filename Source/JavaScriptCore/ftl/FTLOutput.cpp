@@ -28,8 +28,19 @@
 
 #if ENABLE(FTL_JIT)
 
+#include "B3ArgumentRegValue.h"
+#include "B3BasicBlockInlines.h"
+#include "B3CCallValue.h"
+#include "B3Const32Value.h"
+#include "B3ConstPtrValue.h"
+#include "B3FenceValue.h"
 #include "B3MathExtras.h"
+#include "B3MemoryValue.h"
+#include "B3SlotBaseValue.h"
 #include "B3StackmapGenerationParams.h"
+#include "B3SwitchValue.h"
+#include "B3UpsilonValue.h"
+#include "B3ValueInlines.h"
 #include "SuperSampler.h"
 
 namespace JSC { namespace FTL {
@@ -90,7 +101,9 @@ SlotBaseValue* Output::lockedStackSlot(size_t bytes)
 
 LValue Output::constBool(bool value)
 {
-    return m_block->appendNew<B3::Const32Value>(m_proc, origin(), value);
+    if (value)
+        return booleanTrue;
+    return booleanFalse;
 }
 
 LValue Output::constInt32(int32_t value)
@@ -115,6 +128,10 @@ LValue Output::phi(LType type)
 
 LValue Output::add(LValue left, LValue right)
 {
+    if (Value* result = left->addConstant(m_proc, right)) {
+        m_block->append(result);
+        return result;
+    }
     return m_block->appendNew<B3::Value>(m_proc, B3::Add, origin(), left, right);
 }
 
@@ -135,7 +152,7 @@ LValue Output::div(LValue left, LValue right)
 
 LValue Output::chillDiv(LValue left, LValue right)
 {
-    return m_block->appendNew<B3::Value>(m_proc, B3::ChillDiv, origin(), left, right);
+    return m_block->appendNew<B3::Value>(m_proc, chill(B3::Div), origin(), left, right);
 }
 
 LValue Output::mod(LValue left, LValue right)
@@ -145,7 +162,7 @@ LValue Output::mod(LValue left, LValue right)
 
 LValue Output::chillMod(LValue left, LValue right)
 {
-    return m_block->appendNew<B3::Value>(m_proc, B3::ChillMod, origin(), left, right);
+    return m_block->appendNew<B3::Value>(m_proc, chill(B3::Mod), origin(), left, right);
 }
 
 LValue Output::neg(LValue value)
@@ -195,17 +212,32 @@ LValue Output::bitXor(LValue left, LValue right)
 
 LValue Output::shl(LValue left, LValue right)
 {
-    return m_block->appendNew<B3::Value>(m_proc, B3::Shl, origin(), left, castToInt32(right));
+    right = castToInt32(right);
+    if (Value* result = left->shlConstant(m_proc, right)) {
+        m_block->append(result);
+        return result;
+    }
+    return m_block->appendNew<B3::Value>(m_proc, B3::Shl, origin(), left, right);
 }
 
 LValue Output::aShr(LValue left, LValue right)
 {
-    return m_block->appendNew<B3::Value>(m_proc, B3::SShr, origin(), left, castToInt32(right));
+    right = castToInt32(right);
+    if (Value* result = left->sShrConstant(m_proc, right)) {
+        m_block->append(result);
+        return result;
+    }
+    return m_block->appendNew<B3::Value>(m_proc, B3::SShr, origin(), left, right);
 }
 
 LValue Output::lShr(LValue left, LValue right)
 {
-    return m_block->appendNew<B3::Value>(m_proc, B3::ZShr, origin(), left, castToInt32(right));
+    right = castToInt32(right);
+    if (Value* result = left->zShrConstant(m_proc, right)) {
+        m_block->append(result);
+        return result;
+    }
+    return m_block->appendNew<B3::Value>(m_proc, B3::ZShr, origin(), left, right);
 }
 
 LValue Output::bitNot(LValue value)
@@ -266,6 +298,12 @@ LValue Output::doubleCos(LValue value)
 {
     double (*cosDouble)(double) = cos;
     return callWithoutSideEffects(B3::Double, cosDouble, value);
+}
+
+LValue Output::doubleTan(LValue value)
+{
+    double (*tanDouble)(double) = tan;
+    return callWithoutSideEffects(B3::Double, tanDouble, value);
 }
 
 LValue Output::doublePow(LValue xOperand, LValue yOperand)
@@ -333,6 +371,8 @@ LValue Output::zeroExt(LValue value, LType type)
 {
     if (value->type() == type)
         return value;
+    if (value->hasInt32())
+        return m_block->appendIntConstant(m_proc, origin(), Int64, static_cast<uint64_t>(static_cast<uint32_t>(value->asInt32())));
     return m_block->appendNew<B3::Value>(m_proc, B3::ZExt32, origin(), value);
 }
 
@@ -348,8 +388,11 @@ LValue Output::unsignedToDouble(LValue value)
 
 LValue Output::castToInt32(LValue value)
 {
-    return value->type() == B3::Int32 ? value :
-        m_block->appendNew<B3::Value>(m_proc, B3::Trunc, origin(), value);
+    if (value->type() == Int32)
+        return value;
+    if (value->hasInt64())
+        return constInt32(static_cast<int32_t>(value->asInt64()));
+    return m_block->appendNew<B3::Value>(m_proc, B3::Trunc, origin(), value);
 }
 
 LValue Output::doubleToFloat(LValue value)
@@ -403,6 +446,11 @@ void Output::store(LValue value, TypedPointer pointer)
     m_heaps->decorateMemory(pointer.heap(), store);
 }
 
+FenceValue* Output::fence()
+{
+    return m_block->appendNew<FenceValue>(m_proc, origin());
+}
+
 void Output::store32As8(LValue value, TypedPointer pointer)
 {
     LValue store = m_block->appendNew<MemoryValue>(m_proc, Store8, origin(), value, pointer.value());
@@ -443,51 +491,81 @@ LValue Output::baseIndex(LValue base, LValue index, Scale scale, ptrdiff_t offse
 
 LValue Output::equal(LValue left, LValue right)
 {
+    TriState result = left->equalConstant(right);
+    if (result != MixedTriState)
+        return constBool(result == TrueTriState);
     return m_block->appendNew<B3::Value>(m_proc, B3::Equal, origin(), left, right);
 }
 
 LValue Output::notEqual(LValue left, LValue right)
 {
+    TriState result = left->notEqualConstant(right);
+    if (result != MixedTriState)
+        return constBool(result == TrueTriState);
     return m_block->appendNew<B3::Value>(m_proc, B3::NotEqual, origin(), left, right);
 }
 
 LValue Output::above(LValue left, LValue right)
 {
+    TriState result = left->aboveConstant(right);
+    if (result != MixedTriState)
+        return constBool(result == TrueTriState);
     return m_block->appendNew<B3::Value>(m_proc, B3::Above, origin(), left, right);
 }
 
 LValue Output::aboveOrEqual(LValue left, LValue right)
 {
+    TriState result = left->aboveEqualConstant(right);
+    if (result != MixedTriState)
+        return constBool(result == TrueTriState);
     return m_block->appendNew<B3::Value>(m_proc, B3::AboveEqual, origin(), left, right);
 }
 
 LValue Output::below(LValue left, LValue right)
 {
+    TriState result = left->belowConstant(right);
+    if (result != MixedTriState)
+        return constBool(result == TrueTriState);
     return m_block->appendNew<B3::Value>(m_proc, B3::Below, origin(), left, right);
 }
 
 LValue Output::belowOrEqual(LValue left, LValue right)
 {
+    TriState result = left->belowEqualConstant(right);
+    if (result != MixedTriState)
+        return constBool(result == TrueTriState);
     return m_block->appendNew<B3::Value>(m_proc, B3::BelowEqual, origin(), left, right);
 }
 
 LValue Output::greaterThan(LValue left, LValue right)
 {
+    TriState result = left->greaterThanConstant(right);
+    if (result != MixedTriState)
+        return constBool(result == TrueTriState);
     return m_block->appendNew<B3::Value>(m_proc, B3::GreaterThan, origin(), left, right);
 }
 
 LValue Output::greaterThanOrEqual(LValue left, LValue right)
 {
+    TriState result = left->greaterEqualConstant(right);
+    if (result != MixedTriState)
+        return constBool(result == TrueTriState);
     return m_block->appendNew<B3::Value>(m_proc, B3::GreaterEqual, origin(), left, right);
 }
 
 LValue Output::lessThan(LValue left, LValue right)
 {
+    TriState result = left->lessThanConstant(right);
+    if (result != MixedTriState)
+        return constBool(result == TrueTriState);
     return m_block->appendNew<B3::Value>(m_proc, B3::LessThan, origin(), left, right);
 }
 
 LValue Output::lessThanOrEqual(LValue left, LValue right)
 {
+    TriState result = left->lessEqualConstant(right);
+    if (result != MixedTriState)
+        return constBool(result == TrueTriState);
     return m_block->appendNew<B3::Value>(m_proc, B3::LessEqual, origin(), left, right);
 }
 
@@ -573,17 +651,23 @@ LValue Output::notZero64(LValue value)
 
 LValue Output::select(LValue value, LValue taken, LValue notTaken)
 {
+    if (value->hasInt32()) {
+        if (value->asInt32())
+            return taken;
+        else
+            return notTaken;
+    }
     return m_block->appendNew<B3::Value>(m_proc, B3::Select, origin(), value, taken, notTaken);
 }
 
 void Output::jump(LBasicBlock destination)
 {
-    m_block->appendNew<B3::ControlValue>(m_proc, B3::Jump, origin(), B3::FrequentedBlock(destination));
+    m_block->appendNewControlValue(m_proc, B3::Jump, origin(), B3::FrequentedBlock(destination));
 }
 
 void Output::branch(LValue condition, LBasicBlock taken, Weight takenWeight, LBasicBlock notTaken, Weight notTakenWeight)
 {
-    m_block->appendNew<ControlValue>(
+    m_block->appendNewControlValue(
         m_proc, B3::Branch, origin(), condition,
         FrequentedBlock(taken, takenWeight.frequencyClass()),
         FrequentedBlock(notTaken, notTakenWeight.frequencyClass()));
@@ -603,12 +687,17 @@ void Output::check(LValue condition, WeightedTarget taken)
 
 void Output::ret(LValue value)
 {
-    m_block->appendNew<B3::ControlValue>(m_proc, B3::Return, origin(), value);
+    m_block->appendNewControlValue(m_proc, B3::Return, origin(), value);
 }
 
 void Output::unreachable()
 {
-    m_block->appendNew<B3::ControlValue>(m_proc, B3::Oops, origin());
+    m_block->appendNewControlValue(m_proc, B3::Oops, origin());
+}
+
+void Output::appendSuccessor(WeightedTarget target)
+{
+    m_block->appendSuccessor(target.frequentedBlock());
 }
 
 CheckValue* Output::speculate(LValue value)
@@ -638,7 +727,7 @@ PatchpointValue* Output::patchpoint(LType type)
 
 void Output::trap()
 {
-    m_block->appendNew<B3::ControlValue>(m_proc, B3::Oops, origin());
+    m_block->appendNewControlValue(m_proc, B3::Oops, origin());
 }
 
 ValueFromBlock Output::anchor(LValue value)
@@ -712,7 +801,7 @@ void Output::store(LValue value, TypedPointer pointer, StoreType type)
     RELEASE_ASSERT_NOT_REACHED();
 }
 
-TypedPointer Output::absolute(void* address)
+TypedPointer Output::absolute(const void* address)
 {
     return TypedPointer(m_heaps->absolute[address], constIntPtr(address));
 }
@@ -727,6 +816,12 @@ void Output::decrementSuperSamplerCount()
 {
     TypedPointer counter = absolute(bitwise_cast<void*>(&g_superSamplerCount));
     store32(sub(load32(counter), int32One), counter);
+}
+
+void Output::addIncomingToPhi(LValue phi, ValueFromBlock value)
+{
+    if (value)
+        value.value()->as<B3::UpsilonValue>()->setPhi(phi);
 }
 
 } } // namespace JSC::FTL

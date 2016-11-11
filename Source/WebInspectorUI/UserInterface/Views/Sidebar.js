@@ -147,7 +147,6 @@ WebInspector.Sidebar = class Sidebar extends WebInspector.View
             if (this._selectedSidebarPanel.visible) {
                 this._selectedSidebarPanel.shown();
                 this._selectedSidebarPanel.visibilityDidChange();
-                this._recalculateWidth(this._selectedSidebarPanel.savedWidth);
             }
         }
 
@@ -200,10 +199,9 @@ WebInspector.Sidebar = class Sidebar extends WebInspector.View
             this._navigationBar.needsLayout();
 
         if (this._selectedSidebarPanel) {
-            if (this._selectedSidebarPanel.visible) {
+            if (this._selectedSidebarPanel.visible)
                 this._selectedSidebarPanel.shown();
-                this._recalculateWidth(this._selectedSidebarPanel.savedWidth);
-            } else
+            else
                 this._selectedSidebarPanel.hidden();
 
             this._selectedSidebarPanel.visibilityDidChange();
@@ -266,16 +264,16 @@ WebInspector.Sidebar = class Sidebar extends WebInspector.View
     _recalculateWidth(newWidth = this.width)
     {
         // Need to add 1 because of the 1px border-right.
-        newWidth = Number.constrain(newWidth, this.minimumWidth + 1, this.maximumWidth);
-        this.element.style.width = Math.ceil(newWidth) + "px";
+        newWidth = Math.ceil(Number.constrain(newWidth, this.minimumWidth + 1, this.maximumWidth));
+        this.element.style.width = `${newWidth}px`;
 
         if (!this.collapsed && this._navigationBar)
             this._navigationBar.needsLayout();
 
         if (!this.collapsed && this._selectedSidebarPanel)
-            this._selectedSidebarPanel.updateLayout(WebInspector.View.LayoutReason.Resize);
+            this._selectedSidebarPanel.updateLayoutIfNeeded(WebInspector.View.LayoutReason.Resize);
 
-        this.dispatchEventToListeners(WebInspector.Sidebar.Event.WidthDidChange);
+        this.dispatchEventToListeners(WebInspector.Sidebar.Event.WidthDidChange, {newWidth});
     }
 
     _navigationItemSelected(event)

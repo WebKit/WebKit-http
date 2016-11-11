@@ -22,54 +22,41 @@
  *
  */
 
-#ifndef NamedNodeMap_h
-#define NamedNodeMap_h
+#pragma once
 
+#include "ExceptionOr.h"
 #include "ScriptWrappable.h"
-#include <wtf/RefPtr.h>
-#include <wtf/text/AtomicString.h>
 
 namespace WebCore {
 
-class Node;
+class Attr;
 class Element;
-
-typedef int ExceptionCode;
 
 class NamedNodeMap : public ScriptWrappable {
     WTF_MAKE_FAST_ALLOCATED;
-    friend class Element;
 public:
     explicit NamedNodeMap(Element& element)
         : m_element(element)
     {
-        // Only supports NamedNodeMaps with Element associated, DocumentType.entities and DocumentType.notations are not supported yet.
     }
 
-    void ref();
-    void deref();
+    WEBCORE_EXPORT void ref();
+    WEBCORE_EXPORT void deref();
 
-    // Public DOM interface.
+    WEBCORE_EXPORT unsigned length() const;
+    WEBCORE_EXPORT RefPtr<Attr> item(unsigned index) const;
+    WEBCORE_EXPORT RefPtr<Attr> getNamedItem(const AtomicString&) const;
+    WEBCORE_EXPORT RefPtr<Attr> getNamedItemNS(const AtomicString& namespaceURI, const AtomicString& localName) const;
+    WEBCORE_EXPORT ExceptionOr<RefPtr<Attr>> setNamedItem(Attr&);
+    WEBCORE_EXPORT ExceptionOr<Ref<Attr>> removeNamedItem(const AtomicString& name);
+    WEBCORE_EXPORT ExceptionOr<Ref<Attr>> removeNamedItemNS(const AtomicString& namespaceURI, const AtomicString& localName);
 
-    RefPtr<Node> getNamedItem(const AtomicString&) const;
-    RefPtr<Node> removeNamedItem(const AtomicString& name, ExceptionCode&);
-    Vector<AtomicString> supportedPropertyNames();
+    Vector<String> supportedPropertyNames() const;
 
-    RefPtr<Node> getNamedItemNS(const AtomicString& namespaceURI, const AtomicString& localName) const;
-    RefPtr<Node> removeNamedItemNS(const AtomicString& namespaceURI, const AtomicString& localName, ExceptionCode&);
-
-    RefPtr<Node> setNamedItem(Node&, ExceptionCode&);
-    RefPtr<Node> setNamedItemNS(Node&, ExceptionCode&);
-
-    RefPtr<Node> item(unsigned index) const;
-    unsigned length() const;
-
-    Element& element() const { return m_element; }
+    Element& element() { return m_element; }
 
 private:
     Element& m_element;
 };
 
 } // namespace WebCore
-
-#endif // NamedNodeMap_h

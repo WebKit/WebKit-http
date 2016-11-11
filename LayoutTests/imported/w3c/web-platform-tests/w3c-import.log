@@ -18,7 +18,11 @@ List of files:
 /LayoutTests/imported/w3c/web-platform-tests/CONTRIBUTING.md
 /LayoutTests/imported/w3c/web-platform-tests/LICENSE
 /LayoutTests/imported/w3c/web-platform-tests/README.md
+/LayoutTests/imported/w3c/web-platform-tests/check_stability.py
+/LayoutTests/imported/w3c/web-platform-tests/ci_lint.sh
+/LayoutTests/imported/w3c/web-platform-tests/ci_stability.sh
 /LayoutTests/imported/w3c/web-platform-tests/config.default.json
+/LayoutTests/imported/w3c/web-platform-tests/diff-manifest.py
 /LayoutTests/imported/w3c/web-platform-tests/lint
 /LayoutTests/imported/w3c/web-platform-tests/lint.whitelist
 /LayoutTests/imported/w3c/web-platform-tests/manifest

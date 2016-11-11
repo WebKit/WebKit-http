@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef B3VariableValue_h
-#define B3VariableValue_h
+#pragma once
 
 #if ENABLE(B3_JIT)
 
@@ -36,7 +35,7 @@ class Variable;
 
 class JS_EXPORT_PRIVATE VariableValue : public Value {
 public:
-    static bool accepts(Opcode opcode) { return opcode == Get || opcode == Set; }
+    static bool accepts(Kind kind) { return kind == Get || kind == Set; }
 
     ~VariableValue();
 
@@ -51,10 +50,10 @@ private:
     friend class Procedure;
 
     // Use this for Set.
-    VariableValue(Opcode, Origin, Variable*, Value*);
+    VariableValue(Kind, Origin, Variable*, Value*);
 
     // Use this for Get.
-    VariableValue(Opcode, Origin, Variable*);
+    VariableValue(Kind, Origin, Variable*);
 
     Variable* m_variable;
 };
@@ -62,6 +61,3 @@ private:
 } } // namespace JSC::B3
 
 #endif // ENABLE(B3_JIT)
-
-#endif // B3VariableValue_h
-

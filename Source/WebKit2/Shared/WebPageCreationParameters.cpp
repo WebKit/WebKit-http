@@ -30,10 +30,10 @@
 
 namespace WebKit {
 
-void WebPageCreationParameters::encode(IPC::ArgumentEncoder& encoder) const
+void WebPageCreationParameters::encode(IPC::Encoder& encoder) const
 {
     encoder << viewSize;
-    encoder << viewState;
+    encoder << activityState;
 
     encoder << store;
     encoder.encodeEnum(drawingAreaType);
@@ -83,17 +83,19 @@ void WebPageCreationParameters::encode(IPC::ArgumentEncoder& encoder) const
     encoder << screenSize;
     encoder << availableScreenSize;
     encoder << textAutosizingWidth;
+    encoder << ignoresViewportScaleLimits;
 #endif
     encoder << appleMailPaginationQuirkEnabled;
     encoder << shouldScaleViewToFitDocument;
     encoder.encodeEnum(userInterfaceLayoutDirection);
+    encoder.encodeEnum(observedLayoutMilestones);
 }
 
-bool WebPageCreationParameters::decode(IPC::ArgumentDecoder& decoder, WebPageCreationParameters& parameters)
+bool WebPageCreationParameters::decode(IPC::Decoder& decoder, WebPageCreationParameters& parameters)
 {
     if (!decoder.decode(parameters.viewSize))
         return false;
-    if (!decoder.decode(parameters.viewState))
+    if (!decoder.decode(parameters.activityState))
         return false;
     if (!decoder.decode(parameters.store))
         return false;
@@ -187,6 +189,8 @@ bool WebPageCreationParameters::decode(IPC::ArgumentDecoder& decoder, WebPageCre
         return false;
     if (!decoder.decode(parameters.textAutosizingWidth))
         return false;
+    if (!decoder.decode(parameters.ignoresViewportScaleLimits))
+        return false;
 #endif
 
     if (!decoder.decode(parameters.appleMailPaginationQuirkEnabled))
@@ -196,6 +200,8 @@ bool WebPageCreationParameters::decode(IPC::ArgumentDecoder& decoder, WebPageCre
         return false;
 
     if (!decoder.decodeEnum(parameters.userInterfaceLayoutDirection))
+        return false;
+    if (!decoder.decodeEnum(parameters.observedLayoutMilestones))
         return false;
 
     return true;

@@ -47,6 +47,10 @@
 #include "SVGURIReference.h"
 #endif
 
+#if USE(DIRECT2D)
+#include <dwrite.h>
+#endif
+
 namespace WebCore {
 
 inline void CSSFontFaceSource::setStatus(Status newStatus)
@@ -84,7 +88,7 @@ CSSFontFaceSource::CSSFontFaceSource(CSSFontFace& owner, const String& familyNam
 
     // This may synchronously call fontLoaded().
     if (m_font)
-        m_font->addClient(this);
+        m_font->addClient(*this);
 
     if (status() == Status::Pending && (!m_font || m_font->isLoaded())) {
         setStatus(Status::Loading);
@@ -98,7 +102,7 @@ CSSFontFaceSource::CSSFontFaceSource(CSSFontFace& owner, const String& familyNam
 CSSFontFaceSource::~CSSFontFaceSource()
 {
     if (m_font)
-        m_font->removeClient(this);
+        m_font->removeClient(*this);
 }
 
 void CSSFontFaceSource::fontLoaded(CachedFont& loadedFont)

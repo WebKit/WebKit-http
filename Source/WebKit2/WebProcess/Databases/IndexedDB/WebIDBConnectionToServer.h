@@ -53,15 +53,18 @@ public:
     void didFinishHandlingVersionChangeTransaction(uint64_t databaseConnectionIdentifier, const WebCore::IDBResourceIdentifier&) final;
     void createObjectStore(const WebCore::IDBRequestData&, const WebCore::IDBObjectStoreInfo&) final;
     void deleteObjectStore(const WebCore::IDBRequestData&, const String& objectStoreName) final;
+    void renameObjectStore(const WebCore::IDBRequestData&, uint64_t objectStoreIdentifier, const String& newName) final;
     void clearObjectStore(const WebCore::IDBRequestData&, uint64_t objectStoreIdentifier) final;
     void createIndex(const WebCore::IDBRequestData&, const WebCore::IDBIndexInfo&) final;
     void deleteIndex(const WebCore::IDBRequestData&, uint64_t objectStoreIdentifier, const String& indexName) final;
+    void renameIndex(const WebCore::IDBRequestData&, uint64_t objectStoreIdentifier, uint64_t indexIdentifier, const String& newName) final;
     void putOrAdd(const WebCore::IDBRequestData&, const WebCore::IDBKeyData&, const WebCore::IDBValue&, const WebCore::IndexedDB::ObjectStoreOverwriteMode) final;
-    void getRecord(const WebCore::IDBRequestData&, const WebCore::IDBKeyRangeData&) final;
+    void getRecord(const WebCore::IDBRequestData&, const WebCore::IDBGetRecordData&) final;
+    void getAllRecords(const WebCore::IDBRequestData&, const WebCore::IDBGetAllRecordsData&) final;
     void getCount(const WebCore::IDBRequestData&, const WebCore::IDBKeyRangeData&) final;
     void deleteRecord(const WebCore::IDBRequestData&, const WebCore::IDBKeyRangeData&) final;
     void openCursor(const WebCore::IDBRequestData&, const WebCore::IDBCursorInfo&) final;
-    void iterateCursor(const WebCore::IDBRequestData&, const WebCore::IDBKeyData&, unsigned long count) final;
+    void iterateCursor(const WebCore::IDBRequestData&, const WebCore::IDBIterateCursorData&) final;
     void establishTransaction(uint64_t databaseConnectionIdentifier, const WebCore::IDBTransactionInfo&) final;
     void databaseConnectionClosed(uint64_t databaseConnectionIdentifier) final;
     void abortOpenAndUpgradeNeeded(uint64_t databaseConnectionIdentifier, const WebCore::IDBResourceIdentifier& transactionIdentifier) final;
@@ -81,11 +84,14 @@ public:
     void didCommitTransaction(const WebCore::IDBResourceIdentifier& transactionIdentifier, const WebCore::IDBError&);
     void didCreateObjectStore(const WebCore::IDBResultData&);
     void didDeleteObjectStore(const WebCore::IDBResultData&);
+    void didRenameObjectStore(const WebCore::IDBResultData&);
     void didClearObjectStore(const WebCore::IDBResultData&);
     void didCreateIndex(const WebCore::IDBResultData&);
     void didDeleteIndex(const WebCore::IDBResultData&);
+    void didRenameIndex(const WebCore::IDBResultData&);
     void didPutOrAdd(const WebCore::IDBResultData&);
     void didGetRecord(const WebIDBResult&);
+    void didGetAllRecords(const WebIDBResult&);
     void didGetCount(const WebCore::IDBResultData&);
     void didDeleteRecord(const WebCore::IDBResultData&);
     void didOpenCursor(const WebIDBResult&);
@@ -96,7 +102,9 @@ public:
     void notifyOpenDBRequestBlocked(const WebCore::IDBResourceIdentifier& requestIdentifier, uint64_t oldVersion, uint64_t newVersion);
     void didGetAllDatabaseNames(uint64_t callbackID, const Vector<String>& databaseNames);
 
-    void didReceiveMessage(IPC::Connection&, IPC::MessageDecoder&);
+    void didReceiveMessage(IPC::Connection&, IPC::Decoder&);
+
+    void connectionToServerLost();
 
 private:
     WebIDBConnectionToServer();

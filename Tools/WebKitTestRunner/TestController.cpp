@@ -31,6 +31,7 @@
 #include "PlatformWebView.h"
 #include "StringFunctions.h"
 #include "TestInvocation.h"
+#include "WebCoreTestSupport.h"
 #include <WebCore/UUID.h>
 #include <WebKit/WKArray.h>
 #include <WebKit/WKAuthenticationChallenge.h>
@@ -47,6 +48,7 @@
 #include <WebKit/WKNotificationManager.h>
 #include <WebKit/WKNotificationPermissionRequest.h>
 #include <WebKit/WKNumber.h>
+#include <WebKit/WKOpenPanelResultListener.h>
 #include <WebKit/WKPageGroup.h>
 #include <WebKit/WKPageInjectedBundleClient.h>
 #include <WebKit/WKPagePrivate.h>
@@ -55,6 +57,7 @@
 #include <WebKit/WKProtectionSpace.h>
 #include <WebKit/WKRetainPtr.h>
 #include <WebKit/WKSecurityOriginRef.h>
+#include <WebKit/WKTextChecker.h>
 #include <WebKit/WKUserMediaPermissionCheck.h>
 #include <algorithm>
 #include <cstdio>
@@ -78,10 +81,6 @@
 #include <WebKit/WKPagePrivateMac.h>
 #endif
 
-#if !PLATFORM(COCOA)
-#include <WebKit/WKTextChecker.h>
-#endif
-
 namespace WTR {
 
 const unsigned TestController::viewWidth = 800;
@@ -90,11 +89,7 @@ const unsigned TestController::viewHeight = 600;
 const unsigned TestController::w3cSVGViewWidth = 480;
 const unsigned TestController::w3cSVGViewHeight = 360;
 
-#if ASAN_ENABLED
-const double TestController::shortTimeout = 10.0;
-#else
-const double TestController::shortTimeout = 5.0;
-#endif
+const double TestController::defaultShortTimeout = 5.0;
 
 const double TestController::noTimeout = -1;
 
@@ -151,6 +146,12 @@ static bool runBeforeUnloadConfirmPanel(WKPageRef page, WKStringRef message, WKF
 {
     printf("CONFIRM NAVIGATION: %s\n", toSTD(message).c_str());
     return TestController::singleton().beforeUnloadReturnValue();
+}
+
+static void runOpenPanel(WKPageRef page, WKFrameRef frame, WKOpenPanelParametersRef parameters, WKOpenPanelResultListenerRef resultListenerRef, const void*)
+{
+    printf("OPEN FILE PANEL\n");
+    WKOpenPanelResultListenerCancel(resultListenerRef);
 }
 
 void TestController::runModal(WKPageRef page, const void* clientInfo)
@@ -235,7 +236,7 @@ WKPageRef TestController::createOtherPage(WKPageRef oldPage, WKPageConfiguration
         0, // didDraw
         0, // pageDidScroll
         0, // exceededDatabaseQuota
-        0, // runOpenPanel
+        runOpenPanel,
         decidePolicyForGeolocationPermissionRequest,
         0, // headerHeight
         0, // footerHeight
@@ -363,6 +364,9 @@ void TestController::initialize(int argc, const char* argv[])
     initializeInjectedBundlePath();
     initializeTestPluginDirectory();
 
+#if PLATFORM(MAC)
+    WebCoreTestSupport::installMockGamepadProvider();
+#endif
     WKRetainPtr<WKStringRef> pageGroupIdentifier(AdoptWK, WKStringCreateWithUTF8CString("WebKitTestRunnerPageGroup"));
     m_pageGroup.adopt(WKPageGroupCreateWithIdentifier(pageGroupIdentifier.get()));
 }
@@ -500,7 +504,7 @@ void TestController::createWebViewWithOptions(const TestOptions& options)
         0, // didDraw
         0, // pageDidScroll
         0, // exceededDatabaseQuota,
-        0, // runOpenPanel
+        runOpenPanel,
         decidePolicyForGeolocationPermissionRequest,
         0, // headerHeight
         0, // footerHeight
@@ -681,6 +685,8 @@ void TestController::resetPreferencesToConsistentValues(const TestOptions& optio
 
     WKCookieManagerDeleteAllCookies(WKContextGetCookieManager(m_context.get()));
 
+    WKPreferencesSetMockCaptureDevicesEnabled(preferences, true);
+
     platformResetPreferencesToConsistentValues();
 }
 
@@ -746,6 +752,8 @@ bool TestController::resetStateToConsistentValues(const TestOptions& options)
     m_mainWebView->setWindowFrame(WKRectMake(rect.origin.x, rect.origin.y, TestController::viewWidth, TestController::viewHeight));
 #endif
 
+    WKPageSetMuted(m_mainWebView->page(), true);
+
     // Reset notification permissions
     m_webNotificationProvider.reset();
 
@@ -763,8 +771,11 @@ bool TestController::resetStateToConsistentValues(const TestOptions& options)
     // Reset Custom Policy Delegate.
     setCustomPolicyDelegate(false, false);
 
+    m_shouldDownloadUndisplayableMIMETypes = false;
+
     m_workQueueManager.clearWorkQueue();
 
+    m_rejectsProtectionSpaceAndContinueForAuthenticationChallenges = false;
     m_handlesAuthenticationChallenges = false;
     m_authenticationUsername = String();
     m_authenticationPassword = String();
@@ -784,9 +795,11 @@ bool TestController::resetStateToConsistentValues(const TestOptions& options)
     m_shouldDecideNavigationPolicyAfterDelay = false;
 
     setNavigationGesturesEnabled(false);
+    
+    setIgnoresViewportScaleLimits(options.ignoresViewportScaleLimits);
 
     WKPageLoadURL(m_mainWebView->page(), blankURL());
-    runUntil(m_doneResetting, shortTimeout);
+    runUntil(m_doneResetting, m_currentInvocation->shortTimeout());
     return m_doneResetting;
 }
 
@@ -800,7 +813,7 @@ void TestController::reattachPageToWebProcess()
     // Loading a web page is the only way to reattach an existing page to a process.
     m_doneResetting = false;
     WKPageLoadURL(m_mainWebView->page(), blankURL());
-    runUntil(m_doneResetting, shortTimeout);
+    runUntil(m_doneResetting, m_currentInvocation->shortTimeout());
 }
 
 const char* TestController::webProcessName()
@@ -937,6 +950,10 @@ static void updateTestOptionsFromTestHeader(TestOptions& testOptions, const std:
             testOptions.useMockScrollbars = parseBooleanTestHeaderValue(value);
         if (key == "needsSiteSpecificQuirks")
             testOptions.needsSiteSpecificQuirks = parseBooleanTestHeaderValue(value);
+        if (key == "ignoresViewportScaleLimits")
+            testOptions.ignoresViewportScaleLimits = parseBooleanTestHeaderValue(value);
+        if (key == "useCharacterSelectionGranularity")
+            testOptions.useCharacterSelectionGranularity = parseBooleanTestHeaderValue(value);
         pairStart = pairEnd + 1;
     }
 }
@@ -1067,6 +1084,7 @@ TestCommand parseInputLine(const std::string& inputLine)
 
 bool TestController::runTest(const char* inputLine)
 {
+    WKTextCheckerSetTestingMode(true);
     TestCommand command = parseInputLine(std::string(inputLine));
 
     m_state = RunningTest;
@@ -1467,23 +1485,15 @@ WKRetainPtr<WKTypeRef> TestController::getInjectedBundleInitializationUserData()
 
 void TestController::networkProcessDidCrash()
 {
-#if PLATFORM(COCOA)
     pid_t pid = WKContextGetNetworkProcessIdentifier(m_context.get());
     fprintf(stderr, "#CRASHED - %s (pid %ld)\n", networkProcessName(), static_cast<long>(pid));
-#else
-    fprintf(stderr, "#CRASHED - %s\n", networkProcessName());
-#endif
     exit(1);
 }
 
 void TestController::databaseProcessDidCrash()
 {
-#if PLATFORM(COCOA)
     pid_t pid = WKContextGetDatabaseProcessIdentifier(m_context.get());
     fprintf(stderr, "#CRASHED - %s (pid %ld)\n", databaseProcessName(), static_cast<long>(pid));
-#else
-    fprintf(stderr, "#CRASHED - %s\n", databaseProcessName());
-#endif
     exit(1);
 }
 
@@ -1607,6 +1617,12 @@ void TestController::didReceiveAuthenticationChallenge(WKPageRef page, WKAuthent
         return;
     }
 
+    if (m_rejectsProtectionSpaceAndContinueForAuthenticationChallenges) {
+        m_currentInvocation->outputText("Simulating reject protection space and continue for authentication challenge\n");
+        WKAuthenticationDecisionListenerRejectProtectionSpaceAndContinue(decisionListener);
+        return;
+    }
+
     std::string host = toSTD(adoptWK(WKProtectionSpaceCopyHost(protectionSpace)).get());
     int port = WKProtectionSpaceGetPort(protectionSpace);
     String message = String::format("%s:%d - didReceiveAuthenticationChallenge - ", host.c_str(), port);
@@ -1661,14 +1677,25 @@ void TestController::downloadDidStart(WKContextRef context, WKDownloadRef downlo
 
 WKStringRef TestController::decideDestinationWithSuggestedFilename(WKContextRef, WKDownloadRef, WKStringRef filename, bool*& allowOverwrite)
 {
+    String suggestedFilename = toWTFString(filename);
+
     StringBuilder builder;
     builder.append("Downloading URL with suggested filename \"");
-    builder.append(toWTFString(filename));
+    builder.append(suggestedFilename);
     builder.append("\"\n");
 
     m_currentInvocation->outputText(builder.toString());
 
-    return nullptr;
+    const char* dumpRenderTreeTemp = libraryPathForTesting();
+    if (!dumpRenderTreeTemp)
+        return nullptr;
+
+    *allowOverwrite = true;
+    String temporaryFolder = String::fromUTF8(dumpRenderTreeTemp);
+    if (suggestedFilename.isEmpty())
+        suggestedFilename = "Unknown";
+
+    return toWK(temporaryFolder + "/" + suggestedFilename).leakRef();
 }
 
 void TestController::downloadDidFinish(WKContextRef, WKDownloadRef)
@@ -1710,12 +1737,8 @@ void TestController::processDidCrash()
     // This function can be called multiple times when crash logs are being saved on Windows, so
     // ensure we only print the crashed message once.
     if (!m_didPrintWebProcessCrashedMessage) {
-#if PLATFORM(COCOA)
         pid_t pid = WKPageGetProcessIdentifier(m_mainWebView->page());
         fprintf(stderr, "#CRASHED - %s (pid %ld)\n", webProcessName(), static_cast<long>(pid));
-#else
-        fprintf(stderr, "#CRASHED - %s\n", webProcessName());
-#endif
         fflush(stderr);
         m_didPrintWebProcessCrashedMessage = true;
     }
@@ -1938,26 +1961,32 @@ void TestController::decidePolicyForUserMediaPermissionRequestIfPossible()
         if (settings)
             persistentPermission = settings->persistentPermission();
 
+        if (!m_isUserMediaPermissionAllowed && !persistentPermission) {
+            WKUserMediaPermissionRequestDeny(request, kWKPermissionDenied);
+            continue;
+        }
+
         WKRetainPtr<WKArrayRef> audioDeviceUIDs = WKUserMediaPermissionRequestAudioDeviceUIDs(request);
         WKRetainPtr<WKArrayRef> videoDeviceUIDs = WKUserMediaPermissionRequestVideoDeviceUIDs(request);
 
-        if ((m_isUserMediaPermissionAllowed || persistentPermission) && (WKArrayGetSize(videoDeviceUIDs.get()) || WKArrayGetSize(audioDeviceUIDs.get()))) {
-            WKRetainPtr<WKStringRef> videoDeviceUID;
-            if (WKArrayGetSize(videoDeviceUIDs.get()))
-                videoDeviceUID = reinterpret_cast<WKStringRef>(WKArrayGetItemAtIndex(videoDeviceUIDs.get(), 0));
-            else
-                videoDeviceUID = WKStringCreateWithUTF8CString("");
+        if (!WKArrayGetSize(videoDeviceUIDs.get()) && !WKArrayGetSize(audioDeviceUIDs.get())) {
+            WKUserMediaPermissionRequestDeny(request, kWKNoConstraints);
+            continue;
+        }
 
-            WKRetainPtr<WKStringRef> audioDeviceUID;
-            if (WKArrayGetSize(audioDeviceUIDs.get()))
-                audioDeviceUID = reinterpret_cast<WKStringRef>(WKArrayGetItemAtIndex(audioDeviceUIDs.get(), 0));
-            else
-                audioDeviceUID = WKStringCreateWithUTF8CString("");
+        WKRetainPtr<WKStringRef> videoDeviceUID;
+        if (WKArrayGetSize(videoDeviceUIDs.get()))
+            videoDeviceUID = reinterpret_cast<WKStringRef>(WKArrayGetItemAtIndex(videoDeviceUIDs.get(), 0));
+        else
+            videoDeviceUID = WKStringCreateWithUTF8CString("");
 
-            WKUserMediaPermissionRequestAllow(request, audioDeviceUID.get(), videoDeviceUID.get());
+        WKRetainPtr<WKStringRef> audioDeviceUID;
+        if (WKArrayGetSize(audioDeviceUIDs.get()))
+            audioDeviceUID = reinterpret_cast<WKStringRef>(WKArrayGetItemAtIndex(audioDeviceUIDs.get(), 0));
+        else
+            audioDeviceUID = WKStringCreateWithUTF8CString("");
 
-        } else
-            WKUserMediaPermissionRequestDeny(request);
+        WKUserMediaPermissionRequestAllow(request, audioDeviceUID.get(), videoDeviceUID.get());
     }
     m_userMediaPermissionRequests.clear();
 }
@@ -2034,7 +2063,10 @@ void TestController::decidePolicyForNavigationResponse(WKNavigationResponseRef n
         return;
     }
 
-    WKFramePolicyListenerIgnore(listener);
+    if (m_shouldDownloadUndisplayableMIMETypes)
+        WKFramePolicyListenerDownload(listener);
+    else
+        WKFramePolicyListenerIgnore(listener);
 }
 
 void TestController::didNavigateWithNavigationData(WKContextRef, WKPageRef, WKNavigationDataRef navigationData, WKFrameRef frame, const void* clientInfo)
@@ -2122,6 +2154,11 @@ void TestController::didUpdateHistoryTitle(WKStringRef title, WKURLRef URL, WKFr
 void TestController::setNavigationGesturesEnabled(bool value)
 {
     m_mainWebView->setNavigationGesturesEnabled(value);
+}
+
+void TestController::setIgnoresViewportScaleLimits(bool ignoresViewportScaleLimits)
+{
+    WKPageSetIgnoresViewportScaleLimits(m_mainWebView->page(), ignoresViewportScaleLimits);
 }
 
 #if !PLATFORM(COCOA)

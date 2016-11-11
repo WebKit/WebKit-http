@@ -60,6 +60,7 @@ class MessagePort;
 class PublicURLManager;
 class ResourceRequest;
 class SecurityOrigin;
+class SocketProvider;
 class URL;
 
 namespace IDBClient {
@@ -87,6 +88,11 @@ public:
 #if ENABLE(INDEXED_DATABASE)
     virtual IDBClient::IDBConnectionProxy* idbConnectionProxy() = 0;
 #endif
+#if ENABLE(WEB_SOCKETS)
+    virtual SocketProvider* socketProvider() = 0;
+#endif
+
+    virtual String resourceRequestIdentifier() const { return String(); };
 
     bool sanitizeScriptError(String& errorMessage, int& lineNumber, int& columnNumber, String& sourceURL, Deprecated::ScriptValue& error, CachedScript* = nullptr);
     void reportException(const String& errorMessage, int lineNumber, int columnNumber, const String& sourceURL, JSC::Exception*, RefPtr<Inspector::ScriptCallStack>&&, CachedScript* = nullptr);
@@ -128,7 +134,7 @@ public:
     void createdMessagePort(MessagePort&);
     void destroyedMessagePort(MessagePort&);
 
-    virtual void didLoadResourceSynchronously(const ResourceRequest&);
+    virtual void didLoadResourceSynchronously();
 
     void ref() { refScriptExecutionContext(); }
     void deref() { derefScriptExecutionContext(); }

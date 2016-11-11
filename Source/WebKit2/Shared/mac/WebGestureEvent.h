@@ -36,8 +36,8 @@
 #include <wtf/text/WTFString.h>
 
 namespace IPC {
-class ArgumentDecoder;
-class ArgumentEncoder;
+class Decoder;
+class Encoder;
 }
 
 namespace WebKit {
@@ -59,8 +59,8 @@ public:
     float gestureScale() const { return m_gestureScale; }
     float gestureRotation() const { return m_gestureRotation; }
 
-    void encode(IPC::ArgumentEncoder&) const;
-    static bool decode(IPC::ArgumentDecoder&, WebGestureEvent&);
+    void encode(IPC::Encoder&) const;
+    static bool decode(IPC::Decoder&, WebGestureEvent&);
     
 private:
     bool isGestureEventType(Type) const;

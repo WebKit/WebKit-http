@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010, 2011, 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebFrameLoaderClient_h
-#define WebFrameLoaderClient_h
+#pragma once
 
 #include <WebCore/FrameLoaderClient.h>
 
@@ -97,13 +96,13 @@ private:
     void dispatchDidReceiveIcon() override;
     void dispatchDidStartProvisionalLoad() override;
     void dispatchDidReceiveTitle(const WebCore::StringWithDirection&) override;
-    void dispatchDidCommitLoad() override;
+    void dispatchDidCommitLoad(Optional<WebCore::HasInsecureContent>) override;
     void dispatchDidFailProvisionalLoad(const WebCore::ResourceError&) override;
     void dispatchDidFailLoad(const WebCore::ResourceError&) override;
     void dispatchDidFinishDocumentLoad() override;
     void dispatchDidFinishLoad() override;
 
-    void dispatchDidLayout(WebCore::LayoutMilestones) override;
+    void dispatchDidReachLayoutMilestone(WebCore::LayoutMilestones) override;
     void dispatchDidLayout() override;
 
     WebCore::Frame* dispatchCreatePage(const WebCore::NavigationAction&) override;
@@ -149,6 +148,9 @@ private:
     WebCore::ResourceError blockedByContentBlockerError(const WebCore::ResourceRequest&) override;
     WebCore::ResourceError cannotShowURLError(const WebCore::ResourceRequest&) override;
     WebCore::ResourceError interruptedForPolicyChangeError(const WebCore::ResourceRequest&) override;
+#if ENABLE(CONTENT_FILTERING)
+    WebCore::ResourceError blockedByContentFilterError(const WebCore::ResourceRequest&) override;
+#endif
     
     WebCore::ResourceError cannotShowMIMETypeError(const WebCore::ResourceResponse&) override;
     WebCore::ResourceError fileDoesNotExistError(const WebCore::ResourceResponse&) override;
@@ -221,6 +223,8 @@ private:
     RemoteAXObjectRef accessibilityRemoteObject() override;
     
     NSCachedURLResponse* willCacheResponse(WebCore::DocumentLoader*, unsigned long identifier, NSCachedURLResponse*) const override;
+
+    NSDictionary *dataDetectionContext() override;
 #endif
 
     bool shouldAlwaysUsePluginDocument(const String& /*mimeType*/) const override;
@@ -266,5 +270,3 @@ inline WebFrameLoaderClient* toWebFrameLoaderClient(WebCore::FrameLoaderClient& 
 }
 
 } // namespace WebKit
-
-#endif // WebFrameLoaderClient_h

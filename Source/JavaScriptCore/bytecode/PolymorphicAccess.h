@@ -23,21 +23,23 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef PolymorphicAccess_h
-#define PolymorphicAccess_h
+#pragma once
 
 #if ENABLE(JIT)
 
 #include "CodeOrigin.h"
+#include "JITStubRoutine.h"
 #include "JSFunctionInlines.h"
 #include "MacroAssembler.h"
 #include "ObjectPropertyConditionSet.h"
-#include "Opcode.h"
 #include "ScratchRegisterAllocator.h"
 #include "Structure.h"
 #include <wtf/Vector.h>
 
 namespace JSC {
+namespace DOMJIT {
+class GetterSetter;
+}
 
 class CodeBlock;
 class PolymorphicAccess;
@@ -131,7 +133,8 @@ public:
         bool viaProxy = false,
         WatchpointSet* additionalSet = nullptr,
         PropertySlot::GetValueFunc = nullptr,
-        JSObject* customSlotBase = nullptr);
+        JSObject* customSlotBase = nullptr,
+        DOMJIT::GetterSetter* = nullptr);
     
     static std::unique_ptr<AccessCase> megamorphicLoad(VM&, JSCell* owner);
     
@@ -185,6 +188,12 @@ public:
     Intrinsic intrinsic() const
     {
         return intrinsicFunction()->intrinsic();
+    }
+
+    DOMJIT::GetterSetter* domJIT() const
+    {
+        ASSERT(m_rareData);
+        return m_rareData->domJIT;
     }
 
     WatchpointSet* additionalSet() const
@@ -268,6 +277,7 @@ private:
     
     void generateImpl(AccessGenerationState&);
     void emitIntrinsicGetter(AccessGenerationState&);
+    void emitDOMJITGetter(AccessGenerationState&, GPRReg baseForGetGPR);
     
     AccessType m_type { Load };
     State m_state { Primordial };
@@ -285,6 +295,7 @@ private:
     public:
         RareData()
             : viaProxy(false)
+            , domJIT(nullptr)
         {
             customAccessor.opaque = nullptr;
         }
@@ -301,6 +312,7 @@ private:
         } customAccessor;
         WriteBarrier<JSObject> customSlotBase;
         WriteBarrier<JSFunction> intrinsicFunction;
+        DOMJIT::GetterSetter* domJIT;
     };
 
     std::unique_ptr<RareData> m_rareData;
@@ -461,19 +473,28 @@ struct AccessGenerationState {
     void restoreScratch();
     void succeed();
 
-    void calculateLiveRegistersForCallAndExceptionHandling(const RegisterSet& extra = RegisterSet());
+    struct SpillState {
+        SpillState() = default;
+        SpillState(RegisterSet&& regs, unsigned usedStackBytes)
+            : spilledRegisters(WTFMove(regs))
+            , numberOfStackBytesUsedForRegisterPreservation(usedStackBytes)
+        {
+        }
 
-    void preserveLiveRegistersToStackForCall(const RegisterSet& extra = RegisterSet());
+        RegisterSet spilledRegisters { };
+        unsigned numberOfStackBytesUsedForRegisterPreservation { std::numeric_limits<unsigned>::max() };
 
-    void restoreLiveRegistersFromStackForCall(bool isGetter = false);
-    void restoreLiveRegistersFromStackForCallWithThrownException();
-    void restoreLiveRegistersFromStackForCall(const RegisterSet& dontRestore);
+        bool isEmpty() const { return numberOfStackBytesUsedForRegisterPreservation == std::numeric_limits<unsigned>::max(); }
+    };
 
-    const RegisterSet& liveRegistersForCall()
-    {
-        RELEASE_ASSERT(m_calculatedRegistersForCallAndExceptionHandling);
-        return m_liveRegistersForCall;
-    }
+    const RegisterSet& calculateLiveRegistersForCallAndExceptionHandling();
+
+    SpillState preserveLiveRegistersToStackForCall(const RegisterSet& extra = RegisterSet());
+
+    void restoreLiveRegistersFromStackForCallWithThrownException(const SpillState&);
+    void restoreLiveRegistersFromStackForCall(const SpillState&, const RegisterSet& dontRestore = RegisterSet());
+
+    const RegisterSet& liveRegistersForCall();
 
     CallSiteIndex callSiteIndexForExceptionHandlingOrOriginal();
     CallSiteIndex callSiteIndexForExceptionHandling()
@@ -484,29 +505,30 @@ struct AccessGenerationState {
         return m_callSiteIndex;
     }
 
-    const HandlerInfo& originalExceptionHandler() const;
-    unsigned numberOfStackBytesUsedForRegisterPreservation() const
-    {
-        RELEASE_ASSERT(m_calculatedRegistersForCallAndExceptionHandling);
-        return m_numberOfStackBytesUsedForRegisterPreservation;
-    }
+    const HandlerInfo& originalExceptionHandler();
 
     bool needsToRestoreRegistersIfException() const { return m_needsToRestoreRegistersIfException; }
     CallSiteIndex originalCallSiteIndex() const;
     
     void emitExplicitExceptionHandler();
+
+    void setSpillStateForJSGetterSetter(SpillState& spillState)
+    {
+        if (!m_spillStateForJSGetterSetter.isEmpty()) {
+            ASSERT(m_spillStateForJSGetterSetter.numberOfStackBytesUsedForRegisterPreservation == spillState.numberOfStackBytesUsedForRegisterPreservation);
+            ASSERT(m_spillStateForJSGetterSetter.spilledRegisters == spillState.spilledRegisters);
+        }
+        m_spillStateForJSGetterSetter = spillState;
+    }
+    SpillState spillStateForJSGetterSetter() const { return m_spillStateForJSGetterSetter; }
     
 private:
-    const RegisterSet& liveRegistersToPreserveAtExceptionHandlingCallSite()
-    {
-        RELEASE_ASSERT(m_calculatedRegistersForCallAndExceptionHandling);
-        return m_liveRegistersToPreserveAtExceptionHandlingCallSite;
-    }
+    const RegisterSet& liveRegistersToPreserveAtExceptionHandlingCallSite();
     
     RegisterSet m_liveRegistersToPreserveAtExceptionHandlingCallSite;
     RegisterSet m_liveRegistersForCall;
     CallSiteIndex m_callSiteIndex { CallSiteIndex(std::numeric_limits<unsigned>::max()) };
-    unsigned m_numberOfStackBytesUsedForRegisterPreservation { std::numeric_limits<unsigned>::max() };
+    SpillState m_spillStateForJSGetterSetter;
     bool m_calculatedRegistersForCallAndExceptionHandling : 1;
     bool m_needsToRestoreRegistersIfException : 1;
     bool m_calculatedCallSiteIndex : 1;
@@ -523,6 +545,3 @@ void printInternal(PrintStream&, JSC::AccessCase::State);
 } // namespace WTF
 
 #endif // ENABLE(JIT)
-
-#endif // PolymorphicAccess_h
-

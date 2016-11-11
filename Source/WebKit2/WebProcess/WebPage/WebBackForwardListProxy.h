@@ -28,7 +28,6 @@
 
 #include <WebCore/BackForwardClient.h>
 #include <wtf/HashSet.h>
-#include <wtf/PassRefPtr.h>
 
 namespace WebKit {
 
@@ -58,15 +57,7 @@ private:
     int backListCount() override;
     int forwardListCount() override;
 
-    virtual bool isActive();
-
     void close() override;
-
-#if PLATFORM(IOS)
-    unsigned current() override;
-    void setCurrent(unsigned newCurrent) override;
-    bool clearAllPageCaches() override;
-#endif
 
     WebPage* m_page;
     HashSet<uint64_t> m_associatedItemIDs;

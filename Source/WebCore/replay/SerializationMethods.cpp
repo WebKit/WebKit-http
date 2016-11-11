@@ -253,13 +253,17 @@ EncodedValue EncodingTraits<PlatformKeyboardEvent>::encodeValue(const PlatformKe
 
     ENCODE_TYPE_WITH_KEY(encodedValue, double, timestamp, input.timestamp());
     ENCODE_TYPE_WITH_KEY(encodedValue, PlatformEvent::Type, type, input.type());
-    ENCODE_TYPE_WITH_KEY(encodedValue, PlatformEvent::Modifiers, modifiers, static_cast<PlatformEvent::Modifiers>(input.modifiers()));
+    ENCODE_TYPE_WITH_KEY(encodedValue, PlatformEvent::Modifier, modifiers, input.modifiers());
     ENCODE_TYPE_WITH_KEY(encodedValue, String, text, input.text());
     ENCODE_TYPE_WITH_KEY(encodedValue, String, unmodifiedText, input.unmodifiedText());
+#if ENABLE(KEYBOARD_KEY_ATTRIBUTE)
+    ENCODE_TYPE_WITH_KEY(encodedValue, String, key, input.key());
+#endif
+#if ENABLE(KEYBOARD_CODE_ATTRIBUTE)
+    ENCODE_TYPE_WITH_KEY(encodedValue, String, code, input.code());
+#endif
     ENCODE_TYPE_WITH_KEY(encodedValue, String, keyIdentifier, input.keyIdentifier());
     ENCODE_TYPE_WITH_KEY(encodedValue, int, windowsVirtualKeyCode, input.windowsVirtualKeyCode());
-    ENCODE_TYPE_WITH_KEY(encodedValue, int, nativeVirtualKeyCode, input.nativeVirtualKeyCode());
-    ENCODE_TYPE_WITH_KEY(encodedValue, int, macCharCode, input.macCharCode());
     ENCODE_TYPE_WITH_KEY(encodedValue, bool, autoRepeat, input.isAutoRepeat());
     ENCODE_TYPE_WITH_KEY(encodedValue, bool, keypad, input.isKeypad());
     ENCODE_TYPE_WITH_KEY(encodedValue, bool, systemKey, input.isSystemKey());
@@ -274,13 +278,17 @@ bool EncodingTraits<PlatformKeyboardEvent>::decodeValue(EncodedValue& encodedVal
 {
     DECODE_TYPE_WITH_KEY(encodedValue, double, timestamp);
     DECODE_TYPE_WITH_KEY(encodedValue, PlatformEvent::Type, type);
-    DECODE_TYPE_WITH_KEY(encodedValue, PlatformEvent::Modifiers, modifiers);
+    DECODE_TYPE_WITH_KEY(encodedValue, PlatformEvent::Modifier, modifiers);
     DECODE_TYPE_WITH_KEY(encodedValue, String, text);
     DECODE_TYPE_WITH_KEY(encodedValue, String, unmodifiedText);
+#if ENABLE(KEYBOARD_KEY_ATTRIBUTE)
+    DECODE_TYPE_WITH_KEY(encodedValue, String, key);
+#endif
+#if ENABLE(KEYBOARD_CODE_ATTRIBUTE)
+    DECODE_TYPE_WITH_KEY(encodedValue, String, code);
+#endif
     DECODE_TYPE_WITH_KEY(encodedValue, String, keyIdentifier);
     DECODE_TYPE_WITH_KEY(encodedValue, int, windowsVirtualKeyCode);
-    DECODE_TYPE_WITH_KEY(encodedValue, int, nativeVirtualKeyCode);
-    DECODE_TYPE_WITH_KEY(encodedValue, int, macCharCode);
     DECODE_TYPE_WITH_KEY(encodedValue, bool, autoRepeat);
     DECODE_TYPE_WITH_KEY(encodedValue, bool, keypad);
     DECODE_TYPE_WITH_KEY(encodedValue, bool, systemKey);
@@ -289,7 +297,15 @@ bool EncodingTraits<PlatformKeyboardEvent>::decodeValue(EncodedValue& encodedVal
     DECODE_TYPE_WITH_KEY(encodedValue, Vector<KeypressCommand>, commands);
 #endif
 
-    PlatformKeyboardEvent platformEvent = PlatformKeyboardEvent(type, text, unmodifiedText, keyIdentifier, WTF::safeCast<int>(windowsVirtualKeyCode), WTF::safeCast<int>(nativeVirtualKeyCode), WTF::safeCast<int>(macCharCode), autoRepeat, keypad, systemKey, modifiers, timestamp);
+    PlatformKeyboardEvent platformEvent = PlatformKeyboardEvent(type, text, unmodifiedText,
+#if ENABLE(KEYBOARD_KEY_ATTRIBUTE)
+        key,
+#endif
+#if ENABLE(KEYBOARD_CODE_ATTRIBUTE)
+        code,
+#endif
+        keyIdentifier, WTF::safeCast<int>(windowsVirtualKeyCode), autoRepeat, keypad, systemKey, modifiers, timestamp);
+
 #if USE(APPKIT)
     input = std::make_unique<PlatformKeyboardEventAppKit>(platformEvent, handledByInputMethod, commands);
 #else
@@ -338,7 +354,7 @@ bool EncodingTraits<PlatformMouseEvent>::decodeValue(EncodedValue& encodedValue,
     input = std::make_unique<PlatformMouseEvent>(IntPoint(positionX, positionY),
         IntPoint(globalPositionX, globalPositionY),
         button, type, clickCount,
-        shiftKey, ctrlKey, altKey, metaKey, timestamp, force);
+        shiftKey, ctrlKey, altKey, metaKey, timestamp, force, WebCore::NoTap);
     return true;
 }
 
@@ -448,20 +464,10 @@ EncodedValue EncodingTraits<PluginData>::encodeValue(RefPtr<PluginData> input)
     return encodedData;
 }
 
-class DeserializedPluginData : public PluginData {
-public:
-    DeserializedPluginData(Vector<PluginInfo> plugins)
-        : PluginData(plugins)
-    {
-    }
-};
-
-bool EncodingTraits<PluginData>::decodeValue(EncodedValue& encodedData, RefPtr<PluginData>& input)
+bool EncodingTraits<PluginData>::decodeValue(EncodedValue& encodedData, RefPtr<PluginData>&)
 {
-    DECODE_TYPE_WITH_KEY(encodedData, Vector<PluginInfo>, plugins);
-
     // FIXME: This needs to work in terms of web-visible plug-ins.
-    input = adoptRef(new DeserializedPluginData(plugins));
+    DECODE_TYPE_WITH_KEY(encodedData, Vector<PluginInfo>, plugins);
 
     return true;
 }

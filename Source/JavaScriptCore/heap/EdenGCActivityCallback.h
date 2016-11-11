@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef EdenGCActivityCallback_h
-#define EdenGCActivityCallback_h
+#pragma once
 
 #include "GCActivityCallback.h"
 
@@ -37,13 +36,6 @@ public:
     void doCollection() override;
 
 protected:
-#if USE(CF)
-    EdenGCActivityCallback(Heap* heap, CFRunLoopRef runLoop)
-        : GCActivityCallback(heap, runLoop)
-    {
-    }
-#endif
-
     double lastGCLength() override;
     double gcTimeSlice(size_t bytes) override;
     double deathRate() override;
@@ -55,5 +47,3 @@ inline RefPtr<GCActivityCallback> GCActivityCallback::createEdenTimer(Heap* heap
 }
 
 } // namespace JSC
-
-#endif // EdenGCActivityCallback_h

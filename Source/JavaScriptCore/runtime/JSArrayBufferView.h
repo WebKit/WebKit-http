@@ -23,9 +23,9 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef JSArrayBufferView_h
-#define JSArrayBufferView_h
+#pragma once
 
+#include "AuxiliaryBarrier.h"
 #include "JSObject.h"
 
 namespace JSC {
@@ -53,7 +53,7 @@ class LLIntOffsetsExtractor;
 // Typed array views have different modes depending on how big they are and
 // whether the user has done anything that requires a separate backing
 // buffer or the DOM-specified neutering capabilities.
-enum TypedArrayMode {
+enum TypedArrayMode : uint32_t {
     // Small and fast typed array. B is unused, V points to a vector
     // allocated in copied space, and M = FastTypedArray. V's liveness is
     // determined entirely by the view's liveness.
@@ -118,6 +118,9 @@ protected:
         
         JS_EXPORT_PRIVATE ConstructionContext(VM&, Structure*, uint32_t length, uint32_t elementSize, InitializationMode = ZeroFill);
         
+        // This is only for constructing fast typed arrays. It's used by the JIT's slow path.
+        ConstructionContext(Structure*, uint32_t length, void* vector);
+        
         JS_EXPORT_PRIVATE ConstructionContext(
             VM&, Structure*, PassRefPtr<ArrayBuffer>,
             unsigned byteOffset, unsigned length);
@@ -154,9 +157,13 @@ public:
     TypedArrayMode mode() const { return m_mode; }
     bool hasArrayBuffer() const { return JSC::hasArrayBuffer(mode()); }
     
-    ArrayBuffer* buffer();
-    JSArrayBuffer* jsBuffer(ExecState* exec) { return exec->vm().m_typedArrayController->toJS(exec, globalObject(), buffer()); }
-    PassRefPtr<ArrayBufferView> impl();
+    bool isShared();
+    JS_EXPORT_PRIVATE ArrayBuffer* unsharedBuffer();
+    ArrayBuffer* possiblySharedBuffer();
+    JSArrayBuffer* unsharedJSBuffer(ExecState* exec);
+    JSArrayBuffer* possiblySharedJSBuffer(ExecState* exec);
+    PassRefPtr<ArrayBufferView> unsharedImpl();
+    PassRefPtr<ArrayBufferView> possiblySharedImpl();
     bool isNeutered() { return hasArrayBuffer() && !vector(); }
     void neuter();
     
@@ -170,6 +177,8 @@ public:
     static ptrdiff_t offsetOfVector() { return OBJECT_OFFSETOF(JSArrayBufferView, m_vector); }
     static ptrdiff_t offsetOfLength() { return OBJECT_OFFSETOF(JSArrayBufferView, m_length); }
     static ptrdiff_t offsetOfMode() { return OBJECT_OFFSETOF(JSArrayBufferView, m_mode); }
+    
+    static RefPtr<ArrayBufferView> toWrapped(JSValue);
 
 private:
     static void finalize(JSCell*);
@@ -179,7 +188,9 @@ protected:
 
     ArrayBuffer* existingBufferInButterfly();
 
-    CopyBarrier<char> m_vector; // this is really a void*, but void would not work here.
+    static String toStringName(const JSObject*, ExecState*);
+
+    AuxiliaryBarrier<void*> m_vector;
     uint32_t m_length;
     TypedArrayMode m_mode;
 };
@@ -188,9 +199,6 @@ protected:
 
 namespace WTF {
 
-void printInternal(PrintStream&, JSC::TypedArrayMode);
+JS_EXPORT_PRIVATE void printInternal(PrintStream&, JSC::TypedArrayMode);
 
 } // namespace WTF
-
-#endif // JSArrayBufferView_h
-

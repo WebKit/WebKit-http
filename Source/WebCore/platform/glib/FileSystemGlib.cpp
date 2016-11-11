@@ -41,22 +41,17 @@ namespace WebCore {
  * are valid file names. This mean that we cannot just store a file name as-is in a String
  * but we have to escape it.
  * On Windows the GLib file name encoding is always UTF-8 so we can optimize this case. */
-String filenameToString(const char* filename)
+String stringFromFileSystemRepresentation(const char* fileSystemRepresentation)
 {
-    if (!filename)
+    if (!fileSystemRepresentation)
         return String();
 
 #if OS(WINDOWS)
-    return String::fromUTF8(filename);
+    return String::fromUTF8(fileSystemRepresentation);
 #else
-    GUniquePtr<gchar> escapedString(g_uri_escape_string(filename, "/:", false));
+    GUniquePtr<gchar> escapedString(g_uri_escape_string(fileSystemRepresentation, "/:", FALSE));
     return escapedString.get();
 #endif
-}
-
-String stringFromFileSystemRepresentation(const char* fileSystemRepresentation)
-{
-    return filenameToString(fileSystemRepresentation);
 }
 
 static GUniquePtr<char> unescapedFilename(const String& path)
@@ -184,7 +179,7 @@ bool makeAllDirectories(const String& path)
 
 String homeDirectoryPath()
 {
-    return filenameToString(g_get_home_dir());
+    return stringFromFileSystemRepresentation(g_get_home_dir());
 }
 
 String pathGetFileName(const String& pathName)
@@ -232,14 +227,19 @@ CString sharedResourcesPath()
     return cachedPath;
 }
 
-uint64_t getVolumeFreeSizeForPath(const char* path)
+bool getVolumeFreeSpace(const String& path, uint64_t& freeSpace)
 {
-    GRefPtr<GFile> file = adoptGRef(g_file_new_for_path(path));
+    GUniquePtr<gchar> filename = unescapedFilename(path);
+    if (!filename)
+        return false;
+
+    GRefPtr<GFile> file = adoptGRef(g_file_new_for_path(filename.get()));
     GRefPtr<GFileInfo> fileInfo = adoptGRef(g_file_query_filesystem_info(file.get(), G_FILE_ATTRIBUTE_FILESYSTEM_FREE, 0, 0));
     if (!fileInfo)
-        return 0;
+        return false;
 
-    return g_file_info_get_attribute_uint64(fileInfo.get(), G_FILE_ATTRIBUTE_FILESYSTEM_FREE);
+    freeSpace = g_file_info_get_attribute_uint64(fileInfo.get(), G_FILE_ATTRIBUTE_FILESYSTEM_FREE);
+    return !!freeSpace;
 }
 
 String directoryName(const String& path)
@@ -270,7 +270,7 @@ Vector<String> listDirectory(const String& path, const String& filter)
             continue;
 
         GUniquePtr<gchar> entry(g_build_filename(filename.get(), name, nullptr));
-        entries.append(filenameToString(entry.get()));
+        entries.append(stringFromFileSystemRepresentation(entry.get()));
     }
 
     return entries;
@@ -361,6 +361,19 @@ int readFromFile(PlatformFileHandle handle, char* data, int length)
             return bytesRead;
     } while (error && error->code == G_FILE_ERROR_INTR);
     return -1;
+}
+
+bool moveFile(const String& oldPath, const String& newPath)
+{
+    GUniquePtr<gchar> oldFilename = unescapedFilename(oldPath);
+    if (!oldFilename)
+        return false;
+
+    GUniquePtr<gchar> newFilename = unescapedFilename(newPath);
+    if (!newFilename)
+        return false;
+
+    return g_rename(oldFilename.get(), newFilename.get()) != -1;
 }
 
 bool unloadModule(PlatformModule module)

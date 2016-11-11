@@ -28,7 +28,6 @@
 
 #include "APIArray.h"
 #include "APIData.h"
-#include "Arguments.h"
 #include "InjectedBundleScriptWorld.h"
 #include "NotificationPermissionRequestManager.h"
 #include "SessionTracker.h"
@@ -46,6 +45,7 @@
 #include "WebPreferencesStore.h"
 #include "WebProcess.h"
 #include "WebProcessCreationParameters.h"
+#include "WebProcessMessages.h"
 #include "WebProcessPoolMessages.h"
 #include "WebUserContentController.h"
 #include <JavaScriptCore/APICast.h>
@@ -66,6 +66,7 @@
 #include <WebCore/PageGroup.h>
 #include <WebCore/PrintContext.h>
 #include <WebCore/ResourceHandle.h>
+#include <WebCore/RuntimeEnabledFeatures.h>
 #include <WebCore/ScriptController.h>
 #include <WebCore/SecurityOrigin.h>
 #include <WebCore/SecurityPolicy.h>
@@ -75,9 +76,6 @@
 #include <WebCore/UserScript.h>
 #include <WebCore/UserStyleSheet.h>
 
-#if ENABLE(CSS_REGIONS) || ENABLE(CSS_COMPOSITING)
-#include <WebCore/RuntimeEnabledFeatures.h>
-#endif
 
 #if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
 #include "WebNotificationManager.h"
@@ -204,15 +202,19 @@ void InjectedBundle::overrideBoolPreferenceForTestRunner(WebPageGroupProxy* page
         RuntimeEnabledFeatures::sharedFeatures().setCSSGridLayoutEnabled(enabled);
 #endif
 
-#if ENABLE(CUSTOM_ELEMENTS)
     if (preference == "WebKitCustomElementsEnabled")
         RuntimeEnabledFeatures::sharedFeatures().setCustomElementsEnabled(enabled);
-#endif
+
+    if (preference == "WebKitInteractiveFormValidationEnabled")
+        RuntimeEnabledFeatures::sharedFeatures().setInteractiveFormValidationEnabled(enabled);
 
 #if ENABLE(WEBGL2)
     if (preference == "WebKitWebGL2Enabled")
         RuntimeEnabledFeatures::sharedFeatures().setWebGL2Enabled(enabled);
 #endif
+
+    if (preference == "WebKitModernMediaControlsEnabled")
+        RuntimeEnabledFeatures::sharedFeatures().setModernMediaControlsEnabled(enabled);
 
     // Map the names used in LayoutTests with the names used in WebCore::Settings and WebPreferencesStore.
 #define FOR_EACH_OVERRIDE_BOOL_PREFERENCE(macro) \
@@ -233,7 +235,10 @@ void InjectedBundle::overrideBoolPreferenceForTestRunner(WebPageGroupProxy* page
     macro(WebKitEnableCaretBrowsing, CaretBrowsingEnabled, caretBrowsingEnabled) \
     macro(WebKitDisplayImagesKey, LoadsImagesAutomatically, loadsImagesAutomatically) \
     macro(WebKitMediaStreamEnabled, MediaStreamEnabled, mediaStreamEnabled) \
-    macro(WebKitHTTPEquivEnabled, HttpEquivEnabled, httpEquivEnabled)
+    macro(WebKitHTTPEquivEnabled, HttpEquivEnabled, httpEquivEnabled) \
+    macro(WebKitVisualViewportEnabled, VisualViewportEnabled, visualViewportEnabled) \
+    macro(WebKitAsyncImageDecodingEnabled, AsyncImageDecodingEnabled, asyncImageDecodingEnabled) \
+    \
 
 #define OVERRIDE_PREFERENCE_AND_SET_IN_EXISTING_PAGES(TestRunnerName, SettingsName, WebPreferencesName) \
     if (preference == #TestRunnerName) { \
@@ -276,6 +281,13 @@ void InjectedBundle::setAllowFileAccessFromFileURLs(WebPageGroupProxy* pageGroup
         (*iter)->settings().setAllowFileAccessFromFileURLs(enabled);
 }
 
+void InjectedBundle::setNeedsStorageAccessFromFileURLsQuirk(WebPageGroupProxy* pageGroup, bool needsQuirk)
+{
+    const HashSet<Page*>& pages = PageGroup::pageGroup(pageGroup->identifier())->pages();
+    for (auto page : pages)
+        page->settings().setNeedsStorageAccessFromFileURLsQuirk(needsQuirk);
+}
+
 void InjectedBundle::setMinimumLogicalFontSize(WebPageGroupProxy* pageGroup, int size)
 {
     const HashSet<Page*>& pages = PageGroup::pageGroup(pageGroup->identifier())->pages();
@@ -315,6 +327,14 @@ void InjectedBundle::setPrivateBrowsingEnabled(WebPageGroupProxy* pageGroup, boo
     const HashSet<Page*>& pages = PageGroup::pageGroup(pageGroup->identifier())->pages();
     for (HashSet<Page*>::iterator iter = pages.begin(); iter != pages.end(); ++iter)
         (*iter)->enableLegacyPrivateBrowsing(enabled);
+}
+
+void InjectedBundle::setUseDashboardCompatibilityMode(WebPageGroupProxy* pageGroup, bool enabled)
+{
+#if ENABLE(DASHBOARD_SUPPORT)
+    for (auto& page : PageGroup::pageGroup(pageGroup->identifier())->pages())
+        page->settings().setUsesDashboardBackwardCompatibilityMode(enabled);
+#endif
 }
 
 void InjectedBundle::setPopupBlockingEnabled(WebPageGroupProxy* pageGroup, bool enabled)
@@ -559,7 +579,7 @@ uint64_t InjectedBundle::webNotificationID(JSContextRef jsContext, JSValueRef js
 PassRefPtr<API::Data> InjectedBundle::createWebDataFromUint8Array(JSContextRef context, JSValueRef data)
 {
     JSC::ExecState* execState = toJS(context);
-    RefPtr<Uint8Array> arrayData = WebCore::toUint8Array(toJS(execState, data));
+    RefPtr<Uint8Array> arrayData = WebCore::toUnsharedUint8Array(toJS(execState, data));
     return API::Data::create(static_cast<unsigned char*>(arrayData->baseAddress()), arrayData->byteLength());
 }
 

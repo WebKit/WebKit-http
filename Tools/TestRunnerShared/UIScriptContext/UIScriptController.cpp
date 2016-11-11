@@ -1,0 +1,336 @@
+/*
+ * Copyright (C) 2015 Apple Inc. All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ *
+ * THIS SOFTWARE IS PROVIDED BY APPLE INC. AND ITS CONTRIBUTORS ``AS IS''
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+ * THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+ * PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL APPLE INC. OR ITS CONTRIBUTORS
+ * BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+ * THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+#include "config.h"
+#include "UIScriptController.h"
+
+#include "JSUIScriptController.h"
+#include "UIScriptContext.h"
+#include <JavaScriptCore/JSValueRef.h>
+
+namespace WTR {
+
+UIScriptController::UIScriptController(UIScriptContext& context)
+    : m_context(&context)
+{
+}
+
+void UIScriptController::contextDestroyed()
+{
+    m_context = nullptr;
+}
+
+void UIScriptController::makeWindowObject(JSContextRef context, JSObjectRef windowObject, JSValueRef* exception)
+{
+    setProperty(context, windowObject, "uiController", this, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete, exception);
+}
+
+JSClassRef UIScriptController::wrapperClass()
+{
+    return JSUIScriptController::uIScriptControllerClass();
+}
+
+#if !PLATFORM(COCOA)
+void UIScriptController::doAsyncTask(JSValueRef)
+{
+}
+#endif
+
+void UIScriptController::setDidStartFormControlInteractionCallback(JSValueRef callback)
+{
+    m_context->registerCallback(callback, CallbackTypeDidStartFormControlInteraction);
+    platformSetDidStartFormControlInteractionCallback();
+}
+
+JSValueRef UIScriptController::didStartFormControlInteractionCallback() const
+{
+    return m_context->callbackWithID(CallbackTypeDidStartFormControlInteraction);
+}
+
+void UIScriptController::setDidEndFormControlInteractionCallback(JSValueRef callback)
+{
+    m_context->registerCallback(callback, CallbackTypeDidEndFormControlInteraction);
+    platformSetDidEndFormControlInteractionCallback();
+}
+
+JSValueRef UIScriptController::didEndFormControlInteractionCallback() const
+{
+    return m_context->callbackWithID(CallbackTypeDidEndFormControlInteraction);
+}
+    
+void UIScriptController::setDidShowForcePressPreviewCallback(JSValueRef callback)
+{
+    m_context->registerCallback(callback, CallbackTypeDidShowForcePressPreview);
+    platformSetDidShowForcePressPreviewCallback();
+}
+
+JSValueRef UIScriptController::didShowForcePressPreviewCallback() const
+{
+    return m_context->callbackWithID(CallbackTypeDidShowForcePressPreview);
+}
+
+void UIScriptController::setDidDismissForcePressPreviewCallback(JSValueRef callback)
+{
+    m_context->registerCallback(callback, CallbackTypeDidDismissForcePressPreview);
+    platformSetDidDismissForcePressPreviewCallback();
+}
+
+JSValueRef UIScriptController::didDismissForcePressPreviewCallback() const
+{
+    return m_context->callbackWithID(CallbackTypeDidDismissForcePressPreview);
+}
+
+void UIScriptController::setWillBeginZoomingCallback(JSValueRef callback)
+{
+    m_context->registerCallback(callback, CallbackTypeWillBeginZooming);
+    platformSetWillBeginZoomingCallback();
+}
+
+JSValueRef UIScriptController::willBeginZoomingCallback() const
+{
+    return m_context->callbackWithID(CallbackTypeWillBeginZooming);
+}
+
+void UIScriptController::setDidEndZoomingCallback(JSValueRef callback)
+{
+    m_context->registerCallback(callback, CallbackTypeDidEndZooming);
+    platformSetDidEndZoomingCallback();
+}
+
+JSValueRef UIScriptController::didEndZoomingCallback() const
+{
+    return m_context->callbackWithID(CallbackTypeDidEndZooming);
+}
+
+void UIScriptController::setDidEndScrollingCallback(JSValueRef callback)
+{
+    m_context->registerCallback(callback, CallbackTypeDidEndScrolling);
+    platformSetDidEndScrollingCallback();
+}
+
+JSValueRef UIScriptController::didEndScrollingCallback() const
+{
+    return m_context->callbackWithID(CallbackTypeDidEndScrolling);
+}
+
+void UIScriptController::setDidShowKeyboardCallback(JSValueRef callback)
+{
+    m_context->registerCallback(callback, CallbackTypeDidShowKeyboard);
+    platformSetDidShowKeyboardCallback();
+}
+
+JSValueRef UIScriptController::didShowKeyboardCallback() const
+{
+    return m_context->callbackWithID(CallbackTypeDidShowKeyboard);
+}
+
+void UIScriptController::setDidHideKeyboardCallback(JSValueRef callback)
+{
+    m_context->registerCallback(callback, CallbackTypeDidHideKeyboard);
+    platformSetDidHideKeyboardCallback();
+}
+
+JSValueRef UIScriptController::didHideKeyboardCallback() const
+{
+    return m_context->callbackWithID(CallbackTypeDidHideKeyboard);
+}
+
+#if !PLATFORM(COCOA)
+void UIScriptController::zoomToScale(double, JSValueRef)
+{
+}
+
+JSObjectRef UIScriptController::contentsOfUserInterfaceItem(JSStringRef interfaceItem) const
+{
+    return nullptr;
+}
+#endif
+
+#if !PLATFORM(IOS)
+void UIScriptController::touchDownAtPoint(long x, long y, long touchCount, JSValueRef)
+{
+}
+
+void UIScriptController::liftUpAtPoint(long x, long y, long touchCount, JSValueRef)
+{
+}
+
+void UIScriptController::singleTapAtPoint(long x, long y, JSValueRef)
+{
+}
+
+void UIScriptController::doubleTapAtPoint(long x, long y, JSValueRef)
+{
+}
+
+void UIScriptController::dragFromPointToPoint(long startX, long startY, long endX, long endY, double durationSeconds, JSValueRef callback)
+{
+}
+    
+void UIScriptController::longPressAtPoint(long x, long y, JSValueRef)
+{
+}
+
+void UIScriptController::stylusDownAtPoint(long x, long y, float azimuthAngle, float altitudeAngle, float pressure, JSValueRef callback)
+{
+}
+
+void UIScriptController::stylusMoveToPoint(long x, long y, float azimuthAngle, float altitudeAngle, float pressure, JSValueRef callback)
+{
+}
+
+void UIScriptController::stylusUpAtPoint(long x, long y, JSValueRef callback)
+{
+}
+
+void UIScriptController::stylusTapAtPoint(long x, long y, float azimuthAngle, float altitudeAngle, float pressure, JSValueRef callback)
+{
+}
+
+void UIScriptController::sendEventStream(JSStringRef eventsJSON, JSValueRef callback)
+{
+}
+
+void UIScriptController::typeCharacterUsingHardwareKeyboard(JSStringRef, JSValueRef)
+{
+}
+
+void UIScriptController::keyUpUsingHardwareKeyboard(JSStringRef, JSValueRef)
+{
+}
+
+void UIScriptController::selectTextCandidateAtIndex(long, JSValueRef)
+{
+}
+
+void UIScriptController::waitForTextPredictionsViewAndSelectCandidateAtIndex(long, unsigned, float)
+{
+}
+
+void UIScriptController::keyDownUsingHardwareKeyboard(JSStringRef, JSValueRef)
+{
+}
+
+void UIScriptController::dismissFormAccessoryView()
+{
+}
+
+void UIScriptController::selectFormAccessoryPickerRow(long)
+{
+}
+
+void UIScriptController::scrollToOffset(long x, long y)
+{
+}
+
+void UIScriptController::keyboardAccessoryBarNext()
+{
+}
+
+void UIScriptController::keyboardAccessoryBarPrevious()
+{
+}
+
+double UIScriptController::zoomScale() const
+{
+    return 1;
+}
+
+double UIScriptController::minimumZoomScale() const
+{
+    return 1;
+}
+
+double UIScriptController::maximumZoomScale() const
+{
+    return 1;
+}
+
+JSObjectRef UIScriptController::contentVisibleRect() const
+{
+    return nullptr;
+}
+
+JSObjectRef UIScriptController::selectionRangeViewRects() const
+{
+    return nullptr;
+}
+
+void UIScriptController::platformSetDidStartFormControlInteractionCallback()
+{
+}
+
+void UIScriptController::platformSetDidEndFormControlInteractionCallback()
+{
+}
+    
+void UIScriptController::platformSetDidShowForcePressPreviewCallback()
+{
+}
+
+void UIScriptController::platformSetDidDismissForcePressPreviewCallback()
+{
+}
+
+void UIScriptController::platformSetWillBeginZoomingCallback()
+{
+}
+
+void UIScriptController::platformSetDidEndZoomingCallback()
+{
+}
+
+void UIScriptController::platformSetDidEndScrollingCallback()
+{
+}
+
+void UIScriptController::platformSetDidShowKeyboardCallback()
+{
+}
+
+void UIScriptController::platformSetDidHideKeyboardCallback()
+{
+}
+
+void UIScriptController::platformClearAllCallbacks()
+{
+}
+#endif
+
+#if !PLATFORM(MAC)
+
+void UIScriptController::insertText(JSStringRef, int, int)
+{
+}
+
+#endif
+
+void UIScriptController::uiScriptComplete(JSStringRef result)
+{
+    m_context->requestUIScriptCompletion(result);
+    platformClearAllCallbacks();
+}
+
+}

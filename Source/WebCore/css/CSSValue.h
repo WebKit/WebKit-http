@@ -18,11 +18,11 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef CSSValue_h
-#define CSSValue_h
+#pragma once
 
-#include "ExceptionCode.h"
+#include "ExceptionOr.h"
 #include "URLHash.h"
+#include <wtf/HashMap.h>
 #include <wtf/ListHashSet.h>
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
@@ -30,8 +30,10 @@
 
 namespace WebCore {
 
+class CSSCustomPropertyValue;
 class CachedResource;
 class StyleSheetContents;
+
 enum CSSPropertyID : uint16_t;
 
 // FIXME: The current CSSValue and subclasses should be turned into internal types (StyleValue).
@@ -59,11 +61,11 @@ public:
             destroy();
     }
 
-    Type cssValueType() const;
+    WEBCORE_EXPORT Type cssValueType() const;
 
-    String cssText() const;
+    WEBCORE_EXPORT String cssText() const;
 
-    void setCssText(const String&, ExceptionCode&) { } // FIXME: Not implemented.
+    ExceptionOr<void> setCssText(const String&) { return { }; } // FIXME: Not implemented.
 
     bool isPrimitiveValue() const { return m_classType == PrimitiveClass; }
     bool isValueList() const { return m_classType >= ValueListClass; }
@@ -77,19 +79,19 @@ public:
     bool isCrossfadeValue() const { return m_classType == CrossfadeClass; }
     bool isCursorImageValue() const { return m_classType == CursorImageClass; }
     bool isCustomPropertyValue() const { return m_classType == CustomPropertyClass; }
-    bool isInvalidCustomPropertyValue() const;
     bool isVariableDependentValue() const { return m_classType == VariableDependentClass; }
     bool isVariableValue() const { return m_classType == VariableClass; }
     bool isFunctionValue() const { return m_classType == FunctionClass; }
     bool isFontFeatureValue() const { return m_classType == FontFeatureClass; }
+#if ENABLE(VARIATION_FONTS)
+    bool isFontVariationValue() const { return m_classType == FontVariationClass; }
+#endif
     bool isFontFaceSrcValue() const { return m_classType == FontFaceSrcClass; }
     bool isFontValue() const { return m_classType == FontClass; }
     bool isImageGeneratorValue() const { return m_classType >= CanvasClass && m_classType <= RadialGradientClass; }
     bool isGradientValue() const { return m_classType >= LinearGradientClass && m_classType <= RadialGradientClass; }
     bool isNamedImageValue() const { return m_classType == NamedImageClass; }
-#if ENABLE(CSS_IMAGE_SET)
     bool isImageSetValue() const { return m_classType == ImageSetClass; }
-#endif
     bool isImageValue() const { return m_classType == ImageClass; }
     bool isImplicitInitialValue() const;
     bool isInheritedValue() const { return m_classType == InheritedClass; }
@@ -109,7 +111,6 @@ public:
     bool isLineBoxContainValue() const { return m_classType == LineBoxContainClass; }
     bool isCalcValue() const {return m_classType == CalculationClass; }
     bool isFilterImageValue() const { return m_classType == FilterImageClass; }
-    bool isWebKitCSSFilterValue() const { return m_classType == WebKitCSSFilterClass; }
     bool isContentDistributionValue() const { return m_classType == CSSContentDistributionClass; }
 #if ENABLE(CSS_GRID_LAYOUT)
     bool isGridAutoRepeatValue() const { return m_classType == GridAutoRepeatClass; }
@@ -124,6 +125,12 @@ public:
     bool isAnimationTriggerScrollValue() const { return m_classType == AnimationTriggerScrollClass; }
 #endif
 
+    bool isCustomIdentValue() const { return m_classType == CustomIdentClass; }
+    bool isVariableReferenceValue() const { return m_classType == VariableReferenceClass; }
+    bool isPendingSubstitutionValue() const { return m_classType == PendingSubstitutionValueClass; }
+    
+    bool hasVariableReferences() const { return isVariableDependentValue() || isVariableReferenceValue() || isPendingSubstitutionValue(); }
+
     bool isCSSOMSafe() const { return m_isCSSOMSafe; }
     bool isSubtypeExposedToCSSOM() const
     { 
@@ -133,8 +140,6 @@ public:
     }
 
     RefPtr<CSSValue> cloneForCSSOM() const;
-
-    void addSubresourceStyleURLs(ListHashSet<URL>&, const StyleSheetContents*) const;
 
     bool traverseSubresources(const std::function<bool (const CachedResource&)>& handler) const;
 
@@ -168,6 +173,9 @@ protected:
         AspectRatioClass,
         BorderImageSliceClass,
         FontFeatureClass,
+#if ENABLE(VARIATION_FONTS)
+        FontVariationClass,
+#endif
         FontClass,
         FontFaceSrcClass,
         FunctionClass,
@@ -193,16 +201,21 @@ protected:
 #endif
 
         CSSContentDistributionClass,
+        
+        CustomIdentClass,
+
+        // FIXME-NEWPARSER: Unify variables implementation.
         CustomPropertyClass,
         VariableDependentClass,
         VariableClass,
 
+        // New variables implementation.
+        VariableReferenceClass,
+        PendingSubstitutionValueClass,
+
         // List class types must appear after ValueListClass.
         ValueListClass,
-#if ENABLE(CSS_IMAGE_SET)
         ImageSetClass,
-#endif
-        WebKitCSSFilterClass,
         WebKitCSSTransformClass,
 #if ENABLE(CSS_GRID_LAYOUT)
         GridLineNamesClass,
@@ -287,7 +300,7 @@ inline bool compareCSSValue(const Ref<CSSValueType>& first, const Ref<CSSValueTy
     return first.get().equals(second);
 }
 
-typedef HashMap<AtomicString, RefPtr<CSSValue>> CustomPropertyValueMap;
+typedef HashMap<AtomicString, RefPtr<CSSCustomPropertyValue>> CustomPropertyValueMap;
 
 } // namespace WebCore
 
@@ -295,5 +308,3 @@ typedef HashMap<AtomicString, RefPtr<CSSValue>> CustomPropertyValueMap;
 SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::ToValueTypeName) \
     static bool isType(const WebCore::CSSValue& value) { return value.predicate; } \
 SPECIALIZE_TYPE_TRAITS_END()
-
-#endif // CSSValue_h

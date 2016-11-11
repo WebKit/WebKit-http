@@ -96,7 +96,7 @@ bool matchesCURSignature(char* contents)
 
 }
 
-std::unique_ptr<ImageDecoder> ImageDecoder::create(const SharedBuffer& data, ImageSource::AlphaOption alphaOption, ImageSource::GammaAndColorProfileOption gammaAndColorProfileOption)
+std::unique_ptr<ImageDecoder> ImageDecoder::create(const SharedBuffer& data, AlphaOption alphaOption, GammaAndColorProfileOption gammaAndColorProfileOption)
 {
     static const unsigned lengthOfLongestSignature = 14; // To wit: "RIFF????WEBPVP"
     char contents[lengthOfLongestSignature];
@@ -125,109 +125,6 @@ std::unique_ptr<ImageDecoder> ImageDecoder::create(const SharedBuffer& data, Ima
         return std::unique_ptr<ImageDecoder> { std::make_unique<BMPImageDecoder>(alphaOption, gammaAndColorProfileOption) };
 
     return nullptr;
-}
-
-ImageFrame::ImageFrame()
-    : m_hasAlpha(false)
-    , m_status(FrameEmpty)
-    , m_duration(0)
-    , m_disposalMethod(DisposeNotSpecified)
-    , m_premultiplyAlpha(true)
-{
-} 
-
-ImageFrame& ImageFrame::operator=(const ImageFrame& other)
-{
-    if (this == &other)
-        return *this;
-
-    copyBitmapData(other);
-    setOriginalFrameRect(other.originalFrameRect());
-    setStatus(other.status());
-    setDuration(other.duration());
-    setDisposalMethod(other.disposalMethod());
-    setPremultiplyAlpha(other.premultiplyAlpha());
-    return *this;
-}
-
-void ImageFrame::clearPixelData()
-{
-    m_backingStore.clear();
-    m_bytes = 0;
-    m_status = FrameEmpty;
-    // NOTE: Do not reset other members here; clearFrameBufferCache() calls this
-    // to free the bitmap data, but other functions like initFrameBuffer() and
-    // frameComplete() may still need to read other metadata out of this frame
-    // later.
-}
-
-void ImageFrame::zeroFillPixelData()
-{
-    memset(m_bytes, 0, m_size.width() * m_size.height() * sizeof(PixelData));
-    m_hasAlpha = true;
-}
-
-void ImageFrame::zeroFillFrameRect(const IntRect& rect)
-{
-    ASSERT(IntRect(IntPoint(), m_size).contains(rect));
-
-    if (rect.isEmpty())
-        return;
-
-    size_t rectWidthInBytes = rect.width() * sizeof(PixelData);
-    PixelData* start = m_bytes + (rect.y() * width()) + rect.x();
-    for (int i = 0; i < rect.height(); ++i) {
-        memset(start, 0, rectWidthInBytes);
-        start += width();
-    }
-
-    setHasAlpha(true);
-}
-
-bool ImageFrame::copyBitmapData(const ImageFrame& other)
-{
-    if (this == &other)
-        return true;
-
-    m_backingStore = other.m_backingStore;
-    m_bytes = m_backingStore.data();
-    m_size = other.m_size;
-    setHasAlpha(other.m_hasAlpha);
-    return true;
-}
-
-bool ImageFrame::setSize(int newWidth, int newHeight)
-{
-    ASSERT(!width() && !height());
-    size_t backingStoreSize = newWidth * newHeight;
-    if (!m_backingStore.tryReserveCapacity(backingStoreSize))
-        return false;
-    m_backingStore.resize(backingStoreSize);
-    m_bytes = m_backingStore.data();
-    m_size = IntSize(newWidth, newHeight);
-
-    zeroFillPixelData();
-    return true;
-}
-
-bool ImageFrame::hasAlpha() const
-{
-    return m_hasAlpha;
-}
-
-void ImageFrame::setHasAlpha(bool alpha)
-{
-    m_hasAlpha = alpha;
-}
-
-void ImageFrame::setColorProfile(const ColorProfile& colorProfile)
-{
-    m_colorProfile = colorProfile;
-}
-
-void ImageFrame::setStatus(FrameStatus status)
-{
-    m_status = status;
 }
 
 namespace {
@@ -274,14 +171,14 @@ template <MatchType type> int getScaledValue(const Vector<int>& scaledValues, in
 bool ImageDecoder::frameIsCompleteAtIndex(size_t index)
 {
     ImageFrame* buffer = frameBufferAtIndex(index);
-    return buffer && buffer->status() == ImageFrame::FrameComplete;
+    return buffer && buffer->isComplete();
 }
 
 bool ImageDecoder::frameHasAlphaAtIndex(size_t index) const
 {
     if (m_frameBufferCache.size() <= index)
         return true;
-    if (m_frameBufferCache[index].status() == ImageFrame::FrameComplete)
+    if (m_frameBufferCache[index].isComplete())
         return m_frameBufferCache[index].hasAlpha();
     return true;
 }
@@ -291,13 +188,13 @@ unsigned ImageDecoder::frameBytesAtIndex(size_t index) const
     if (m_frameBufferCache.size() <= index)
         return 0;
     // FIXME: Use the dimension of the requested frame.
-    return m_size.area() * sizeof(ImageFrame::PixelData);
+    return (m_size.area() * sizeof(RGBA32)).unsafeGet();
 }
 
 float ImageDecoder::frameDurationAtIndex(size_t index)
 {
     ImageFrame* buffer = frameBufferAtIndex(index);
-    if (!buffer || buffer->status() == ImageFrame::FrameEmpty)
+    if (!buffer || buffer->isEmpty())
         return 0;
     
     // Many annoying ads specify a 0 duration to make an image flash as quickly as possible.
@@ -310,19 +207,19 @@ float ImageDecoder::frameDurationAtIndex(size_t index)
     return duration;
 }
 
-NativeImagePtr ImageDecoder::createFrameImageAtIndex(size_t index, SubsamplingLevel)
+NativeImagePtr ImageDecoder::createFrameImageAtIndex(size_t index, SubsamplingLevel, DecodingMode)
 {
     // Zero-height images can cause problems for some ports. If we have an empty image dimension, just bail.
     if (size().isEmpty())
         return nullptr;
 
     ImageFrame* buffer = frameBufferAtIndex(index);
-    if (!buffer || buffer->status() == ImageFrame::FrameEmpty)
+    if (!buffer || buffer->isEmpty() || !buffer->hasBackingStore())
         return nullptr;
 
     // Return the buffer contents as a native image. For some ports, the data
     // is already in a native container, and this just increments its refcount.
-    return buffer->asNewNativeImage();
+    return buffer->backingStore()->image();
 }
 
 void ImageDecoder::prepareScaleDataIfNecessary()

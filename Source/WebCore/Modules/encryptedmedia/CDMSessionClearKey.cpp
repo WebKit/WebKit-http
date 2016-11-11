@@ -27,16 +27,12 @@
 #include "CDMSessionClearKey.h"
 
 #include "ArrayValue.h"
-#include "CryptoAlgorithm.h"
-#include "CryptoAlgorithmIdentifier.h"
-#include "CryptoAlgorithmParameters.h"
-#include "CryptoKeyDataOctetSequence.h"
 #include "Dictionary.h"
 #include "JSMainThreadExecState.h"
 #include "Logging.h"
-#include "MediaKeyError.h"
 #include "TextEncoding.h"
 #include "UUID.h"
+#include "WebKitMediaKeyError.h"
 #include <runtime/JSGlobalObject.h>
 #include <runtime/JSLock.h>
 #include <runtime/JSONObject.h>
@@ -44,7 +40,7 @@
 #include <wtf/NeverDestroyed.h>
 #include <wtf/text/Base64.h>
 
-#if ENABLE(ENCRYPTED_MEDIA_V2)
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
 
 using namespace JSC;
 
@@ -76,7 +72,7 @@ RefPtr<Uint8Array> CDMSessionClearKey::generateKeyRequest(const String& mimeType
     UNUSED_PARAM(systemCode);
 
     if (!initData) {
-        errorCode = MediaKeyError::MEDIA_KEYERR_CLIENT;
+        errorCode = WebKitMediaKeyError::MEDIA_KEYERR_CLIENT;
         return nullptr;
     }
     m_initData = initData;
@@ -84,7 +80,7 @@ RefPtr<Uint8Array> CDMSessionClearKey::generateKeyRequest(const String& mimeType
     bool sawError = false;
     String keyID = UTF8Encoding().decode(reinterpret_cast_ptr<char*>(m_initData->baseAddress()), m_initData->byteLength(), true, sawError);
     if (sawError) {
-        errorCode = MediaKeyError::MEDIA_KEYERR_CLIENT;
+        errorCode = WebKitMediaKeyError::MEDIA_KEYERR_CLIENT;
         return nullptr;
     }
 
@@ -111,12 +107,13 @@ bool CDMSessionClearKey::update(Uint8Array* rawKeysData, RefPtr<Uint8Array>& nex
 
         VM& vm = clearKeyVM();
         JSLockHolder lock(vm);
+        auto scope = DECLARE_THROW_SCOPE(vm);
         JSGlobalObject* globalObject = JSGlobalObject::create(vm, JSGlobalObject::createStructure(vm, jsNull()));
         ExecState* exec = globalObject->globalExec();
 
         JSLockHolder locker(clearKeyVM());
         JSValue keysDataObject = JSONParse(exec, rawKeysString);
-        if (exec->hadException() || !keysDataObject) {
+        if (scope.exception() || !keysDataObject) {
             LOG(Media, "CDMSessionClearKey::update(%p) - failed: invalid JSON", this);
             break;
         }
@@ -175,7 +172,7 @@ bool CDMSessionClearKey::update(Uint8Array* rawKeysData, RefPtr<Uint8Array>& nex
 
     } while (false);
 
-    errorCode = MediaKeyError::MEDIA_KEYERR_CLIENT;
+    errorCode = WebKitMediaKeyError::MEDIA_KEYERR_CLIENT;
     return false;
 }
 
@@ -186,7 +183,7 @@ RefPtr<ArrayBuffer> CDMSessionClearKey::cachedKeyForKeyID(const String& keyId) c
 
     auto keyData = m_cachedKeys.get(keyId);
     RefPtr<Uint8Array> keyDataArray = Uint8Array::create(keyData.data(), keyData.size());
-    return keyDataArray->buffer();
+    return keyDataArray->unsharedBuffer();
 }
 
 }

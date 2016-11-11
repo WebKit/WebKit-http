@@ -35,6 +35,7 @@
 #import "WebBackForwardListItem.h"
 #import "WebKit2Initialize.h"
 #import "WebPageGroup.h"
+#import "WebPreferencesKeys.h"
 #import "WebProcessPool.h"
 #import "WebViewImpl.h"
 
@@ -53,6 +54,11 @@ using namespace WebCore;
 
 @interface WKView () <WebViewImplDelegate>
 @end
+
+#if HAVE(TOUCH_BAR)
+@interface WKView () <NSTouchBarProvider>
+@end
+#endif
 
 @implementation WKView
 
@@ -968,6 +974,40 @@ Some other editing-related methods still unimplemented:
     [self _gestureEventWasNotHandledByWebCore:event];
 }
 
+- (void)_didHandleAcceptedCandidate
+{
+}
+
+- (void)_didUpdateCandidateListVisibility:(BOOL)visible
+{
+}
+
+#if HAVE(TOUCH_BAR)
+
+@dynamic touchBar;
+
+- (NSTouchBar *)makeTouchBar
+{
+    return _data->_impl->makeTouchBar();
+}
+
+- (NSCandidateListTouchBarItem *)candidateListTouchBarItem
+{
+    return _data->_impl->candidateListTouchBarItem();
+}
+
+- (void)_web_didAddMediaControlsManager:(id)controlsManager
+{
+    [self _addMediaPlaybackControlsView:controlsManager];
+}
+
+- (void)_web_didRemoveMediaControlsManager
+{
+    [self _removeMediaPlaybackControlsView];
+}
+
+#endif // HAVE(TOUCH_BAR)
+
 @end
 
 @implementation WKView (Private)
@@ -987,12 +1027,28 @@ Some other editing-related methods still unimplemented:
     return [self initWithFrame:frame contextRef:contextRef pageGroupRef:pageGroupRef relatedToPage:nil];
 }
 
+#if PLATFORM(MAC)
+static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(NSUserInterfaceLayoutDirection direction)
+{
+    switch (direction) {
+    case NSUserInterfaceLayoutDirectionLeftToRight:
+        return WebCore::UserInterfaceLayoutDirection::LTR;
+    case NSUserInterfaceLayoutDirectionRightToLeft:
+        return WebCore::UserInterfaceLayoutDirection::RTL;
+    }
+    return WebCore::UserInterfaceLayoutDirection::LTR;
+}
+#endif
+
 - (id)initWithFrame:(NSRect)frame contextRef:(WKContextRef)contextRef pageGroupRef:(WKPageGroupRef)pageGroupRef relatedToPage:(WKPageRef)relatedPage
 {
     auto configuration = API::PageConfiguration::create();
     configuration->setProcessPool(toImpl(contextRef));
     configuration->setPageGroup(toImpl(pageGroupRef));
     configuration->setRelatedPage(toImpl(relatedPage));
+#if PLATFORM(MAC)
+    configuration->preferenceValues().set(WebKit::WebPreferencesKey::systemLayoutDirectionKey(), WebKit::WebPreferencesStore::Value(static_cast<uint32_t>(toUserInterfaceLayoutDirection(self.userInterfaceLayoutDirection))));
+#endif
 
     return [self initWithFrame:frame processPool:*toImpl(contextRef) configuration:WTFMove(configuration) webView:nil];
 }
@@ -1442,10 +1498,41 @@ static _WKOverlayScrollbarStyle toAPIScrollbarStyle(WTF::Optional<WebCore::Scrol
     _data->_impl->setUserInterfaceLayoutDirection(userInterfaceLayoutDirection);
 }
 
-@end
-
-#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200 && USE(APPLE_INTERNAL_SDK)
-#import <WebKitAdditions/WKViewAdditions.mm>
+- (BOOL)_wantsMediaPlaybackControlsView
+{
+#if HAVE(TOUCH_BAR)
+    return _data->_impl->clientWantsMediaPlaybackControlsView();
+#else
+    return NO;
 #endif
+}
+
+- (void)_setWantsMediaPlaybackControlsView:(BOOL)wantsMediaPlaybackControlsView
+{
+#if HAVE(TOUCH_BAR)
+    _data->_impl->setClientWantsMediaPlaybackControlsView(wantsMediaPlaybackControlsView);
+#endif
+}
+
+- (AVFunctionBarScrubber *)_mediaPlaybackControlsView
+{
+#if HAVE(TOUCH_BAR)
+    return _data->_impl->clientWantsMediaPlaybackControlsView() ? _data->_impl->mediaPlaybackControlsView() : nil;
+#else
+    return nil;
+#endif
+}
+
+// This method is for subclasses to override.
+- (void)_addMediaPlaybackControlsView:(AVFunctionBarScrubber *)mediaPlaybackControlsView
+{
+}
+
+// This method is for subclasses to override.
+- (void)_removeMediaPlaybackControlsView
+{
+}
+
+@end
 
 #endif // PLATFORM(MAC)

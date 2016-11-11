@@ -105,7 +105,7 @@ static NSString * const WKExplicitBeginTimeFlag = @"WKPlatformCAAnimationExplici
 
 namespace WebKit {
 
-void PlatformCAAnimationRemote::KeyframeValue::encode(IPC::ArgumentEncoder& encoder) const
+void PlatformCAAnimationRemote::KeyframeValue::encode(IPC::Encoder& encoder) const
 {
     encoder.encodeEnum(keyType);
 
@@ -128,7 +128,7 @@ void PlatformCAAnimationRemote::KeyframeValue::encode(IPC::ArgumentEncoder& enco
     }
 }
 
-bool PlatformCAAnimationRemote::KeyframeValue::decode(IPC::ArgumentDecoder& decoder, PlatformCAAnimationRemote::KeyframeValue& value)
+bool PlatformCAAnimationRemote::KeyframeValue::decode(IPC::Decoder& decoder, PlatformCAAnimationRemote::KeyframeValue& value)
 {
     if (!decoder.decodeEnum(value.keyType))
         return false;
@@ -159,7 +159,7 @@ bool PlatformCAAnimationRemote::KeyframeValue::decode(IPC::ArgumentDecoder& deco
     return true;
 }
 
-void PlatformCAAnimationRemote::Properties::encode(IPC::ArgumentEncoder& encoder) const
+void PlatformCAAnimationRemote::Properties::encode(IPC::Encoder& encoder) const
 {
     encoder << keyPath;
     encoder.encodeEnum(animationType);
@@ -204,7 +204,7 @@ void PlatformCAAnimationRemote::Properties::encode(IPC::ArgumentEncoder& encoder
     }
 }
 
-bool PlatformCAAnimationRemote::Properties::decode(IPC::ArgumentDecoder& decoder, PlatformCAAnimationRemote::Properties& properties)
+bool PlatformCAAnimationRemote::Properties::decode(IPC::Decoder& decoder, PlatformCAAnimationRemote::Properties& properties)
 {
     if (!decoder.decode(properties.keyPath))
         return false;

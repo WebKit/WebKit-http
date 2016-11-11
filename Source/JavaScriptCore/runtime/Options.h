@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef Options_h
-#define Options_h
+#pragma once
 
 #include "GCLogging.h"
 #include "JSExportMacros.h"
@@ -109,12 +108,13 @@ typedef const char* optionString;
     v(bool, useJIT,    true, Normal, "allows the baseline JIT to be used if true") \
     v(bool, useDFGJIT, true, Normal, "allows the DFG JIT to be used if true") \
     v(bool, useRegExpJIT, true, Normal, "allows the RegExp JIT to be used if true") \
+    v(bool, useDOMJIT, true, Normal, "allows the DOMJIT to be used if true") \
     \
     v(bool, reportMustSucceedExecutableAllocations, false, Normal, nullptr) \
     \
-    v(unsigned, maxPerThreadStackUsage, 4 * MB, Normal, nullptr) \
-    v(unsigned, reservedZoneSize, 128 * KB, Normal, nullptr) \
-    v(unsigned, errorModeReservedZoneSize, 64 * KB, Normal, nullptr) \
+    v(unsigned, maxPerThreadStackUsage, 4 * MB, Normal, "Max allowed stack usage by the VM") \
+    v(unsigned, softReservedZoneSize, 128 * KB, Normal, "A buffer greater than reservedZoneSize that reserves space for stringifying exceptions.") \
+    v(unsigned, reservedZoneSize, 64 * KB, Normal, "The amount of stack space we guarantee to our clients (and to interal VM code that does not call out to clients).") \
     \
     v(bool, crashIfCantAllocateJITMemory, false, Normal, nullptr) \
     v(unsigned, jitMemoryReservationSize, 0, Normal, "Set this number to change the executable allocation size in ExecutableAllocatorFixedVMPool. (In bytes.)") \
@@ -153,8 +153,8 @@ typedef const char* optionString;
     v(bool, dumpBytecodeAtDFGTime, false, Normal, "dumps bytecode of JS function being DFG compiled") \
     v(bool, dumpGraphAfterParsing, false, Normal, nullptr) \
     v(bool, dumpGraphAtEachPhase, false, Normal, nullptr) \
-    v(bool, dumpDFGGraphAtEachPhase, false, Normal, "dumps the DFG graph at each phase DFG of complitaion (note this excludes DFG graphs during FTL compilation)") \
-    v(bool, dumpDFGFTLGraphAtEachPhase, false, Normal, "dumps the DFG graph at each phase DFG of complitaion when compiling FTL code") \
+    v(bool, dumpDFGGraphAtEachPhase, false, Normal, "dumps the DFG graph at each phase of DFG compilation (note this excludes DFG graphs during FTL compilation)") \
+    v(bool, dumpDFGFTLGraphAtEachPhase, false, Normal, "dumps the DFG graph at each phase of DFG compilation when compiling FTL code") \
     v(bool, dumpB3GraphAtEachPhase, false, Normal, "dumps the B3 graph at each phase of compilation") \
     v(bool, dumpAirGraphAtEachPhase, false, Normal, "dumps the Air graph at each phase of compilation") \
     v(bool, verboseDFGByteCodeParsing, false, Normal, nullptr) \
@@ -173,6 +173,7 @@ typedef const char* optionString;
     v(bool, reportBaselineCompileTimes, false, Normal, "dumps JS function signature and the time it took to BaselineJIT compile") \
     v(bool, reportDFGCompileTimes, false, Normal, "dumps JS function signature and the time it took to DFG and FTL compile") \
     v(bool, reportFTLCompileTimes, false, Normal, "dumps JS function signature and the time it took to FTL compile") \
+    v(bool, reportDFGPhaseTimes, false, Normal, "dumps JS function name and the time is took for each DFG phase") \
     v(bool, reportTotalCompileTimes, false, Normal, nullptr) \
     v(bool, verboseExitProfile, false, Normal, nullptr) \
     v(bool, verboseCFA, false, Normal, nullptr) \
@@ -182,6 +183,14 @@ typedef const char* optionString;
     v(bool, testTheFTL, false, Normal, nullptr) \
     v(bool, verboseSanitizeStack, false, Normal, nullptr) \
     v(bool, useGenerationalGC, true, Normal, nullptr) \
+    v(bool, useConcurrentBarriers, true, Normal, nullptr) \
+    v(bool, forceFencedBarrier, false, Normal, nullptr) \
+    v(bool, scribbleFreeCells, false, Normal, nullptr) \
+    v(double, sizeClassProgression, 1.4, Normal, nullptr) \
+    v(unsigned, largeAllocationCutoff, 100000, Normal, nullptr) \
+    v(bool, dumpSizeClasses, false, Normal, nullptr) \
+    v(bool, useBumpAllocator, true, Normal, nullptr) \
+    v(bool, stealEmptyBlocksFromOtherAllocators, true, Normal, nullptr) \
     v(bool, eagerlyUpdateTopCallFrame, false, Normal, nullptr) \
     \
     v(bool, useOSREntryToDFG, true, Normal, nullptr) \
@@ -293,11 +302,12 @@ typedef const char* optionString;
     v(double, structureCheckVoteRatioForHoisting, 1, Normal, nullptr) \
     v(double, checkArrayVoteRatioForHoisting, 1, Normal, nullptr) \
     \
+    v(unsigned, maximumDirectCallStackSize, 200, Normal, nullptr) \
+    \
     v(unsigned, minimumNumberOfScansBetweenRebalance, 100, Normal, nullptr) \
     v(unsigned, numberOfGCMarkers, computeNumberOfGCMarkers(7), Normal, nullptr) \
     v(unsigned, opaqueRootMergeThreshold, 1000, Normal, nullptr) \
     v(double, minHeapUtilization, 0.8, Normal, nullptr) \
-    v(double, minCopiedBlockUtilization, 0.9, Normal, nullptr) \
     v(double, minMarkedBlockUtilization, 0.9, Normal, nullptr) \
     v(unsigned, slowPathAllocsBetweenGCs, 0, Normal, "force a GC on every Nth slow path alloc, where N is specified by this option") \
     v(bool, deferGCShouldCollectWithProbability, false, Normal, "If true, we perform a collection based on flipping a coin according the probability in the 'deferGCProbability' option when DeferGC is destructed.") \
@@ -322,6 +332,8 @@ typedef const char* optionString;
     v(unsigned, forceRAMSize, 0, Normal, nullptr) \
     v(bool, recordGCPauseTimes, false, Normal, nullptr) \
     v(bool, logHeapStatisticsAtExit, false, Normal, nullptr) \
+    v(bool, forceCodeBlockToJettisonDueToOldAge, false, Normal, "If true, this means that anytime we can jettison a CodeBlock due to old age, we do.") \
+    v(bool, useEagerCodeBlockJettisonTiming, false, Normal, "If true, the time slices for jettisoning a CodeBlock due to old age are shrunk significantly.") \
     \
     v(bool, useTypeProfiler, false, Normal, nullptr) \
     v(bool, useControlFlowProfiler, false, Normal, nullptr) \
@@ -339,6 +351,8 @@ typedef const char* optionString;
     v(bool, useExceptionFuzz, false, Normal, nullptr) \
     v(unsigned, fireExceptionFuzzAt, 0, Normal, nullptr) \
     v(bool, validateDFGExceptionHandling, false, Normal, "Causes the DFG to emit code validating exception handling for each node that can exit") /* This is true by default on Debug builds */\
+    v(bool, dumpSimulatedThrows, false, Normal, "Dumps the call stack at each simulated throw for exception scope verification") \
+    v(bool, validateExceptionChecks, false, Normal, "Verifies that needed exception checks are performed.") \
     \
     v(bool, useExecutableAllocationFuzz, false, Normal, nullptr) \
     v(unsigned, fireExecutableAllocationFuzzAt, 0, Normal, nullptr) \
@@ -377,6 +391,11 @@ typedef const char* optionString;
     \
     v(bool, reportLLIntStats, false, Configurable, "Reports LLInt statistics") \
     v(optionString, llintStatsFile, nullptr, Configurable, "File to collect LLInt statistics in") \
+    \
+    v(bool, useSourceProviderCache, true, Normal, "If false, the parser will not use the source provider cache. It's good to verify everything works when this is false. Because the cache is so successful, it can mask bugs.") \
+    v(bool, useCodeCache, true, Normal, "If false, the unlinked byte code cache will not be used.") \
+    \
+    v(bool, useWebAssembly, false, Normal, "Expose the WebAssembly global object.") \
 
 enum OptionEquivalence {
     SameOption,
@@ -414,6 +433,7 @@ enum OptionEquivalence {
     v(enableExecutableAllocationFuzz, useExecutableAllocationFuzz, SameOption) \
     v(enableOSRExitFuzz, useOSRExitFuzz, SameOption) \
     v(enableDollarVM, useDollarVM, SameOption) \
+    v(enableWebAssembly, useWebAssembly, SameOption) \
 
 class Options {
 public:
@@ -629,5 +649,3 @@ inline GCLogging::Level& Option::gcLogLevelVal()
 }
 
 } // namespace JSC
-
-#endif // Options_h

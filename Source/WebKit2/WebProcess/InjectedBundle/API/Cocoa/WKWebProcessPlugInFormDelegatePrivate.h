@@ -39,12 +39,12 @@
 - (void)_webProcessPlugInBrowserContextController:(WKWebProcessPlugInBrowserContextController *)controller willSendSubmitEventToForm:(WKWebProcessPlugInNodeHandle *)form inFrame:(WKWebProcessPlugInFrame *)sourceFrame targetFrame:(WKWebProcessPlugInFrame *)targetFrame values:(NSDictionary *)values;
 - (void)_webProcessPlugInBrowserContextController:(WKWebProcessPlugInBrowserContextController *)controller textDidChangeInTextField:(WKWebProcessPlugInNodeHandle *)textField inFrame:(WKWebProcessPlugInFrame *)frame initiatedByUserTyping:(BOOL)initiatedByUserTyping;
 
-// The return value is exposed in the UI process via the userObject parameter to -[id <_WKFormDelegate> _webView:willSubmitFormValues:userObject:submissionHandler:].
+// The return value is exposed in the UI process via the userObject parameter to -[id <_WKInputDelegate> _webView:willSubmitFormValues:userObject:submissionHandler:].
 - (NSObject <NSSecureCoding> *)_webProcessPlugInBrowserContextController:(WKWebProcessPlugInBrowserContextController *)controller willSubmitForm:(WKWebProcessPlugInNodeHandle *)form toFrame:(WKWebProcessPlugInFrame *)frame fromFrame:(WKWebProcessPlugInFrame *)sourceFrame withValues:(NSDictionary *)values;
 
 // The return value is exposed in the UI process via the userObject property of the _WKFormInputSession object.
 - (NSObject <NSSecureCoding> *)_webProcessPlugInBrowserContextController:(WKWebProcessPlugInBrowserContextController *)controller willBeginInputSessionForElement:(WKWebProcessPlugInNodeHandle *)node inFrame:(WKWebProcessPlugInFrame *)frame;
-- (NSObject <NSSecureCoding> *)_webProcessPlugInBrowserContextController:(WKWebProcessPlugInBrowserContextController *)controller willBeginInputSessionForElement:(WKWebProcessPlugInNodeHandle *)node inFrame:(WKWebProcessPlugInFrame *)frame userIsInteracting:(BOOL)userIsInteracting WK_API_AVAILABLE(ios(WK_IOS_TBA));
+- (NSObject <NSSecureCoding> *)_webProcessPlugInBrowserContextController:(WKWebProcessPlugInBrowserContextController *)controller willBeginInputSessionForElement:(WKWebProcessPlugInNodeHandle *)node inFrame:(WKWebProcessPlugInFrame *)frame userIsInteracting:(BOOL)userIsInteracting WK_API_AVAILABLE(ios(10.0));
 
 - (BOOL)_webProcessPlugInBrowserContextControllerShouldNotifyOnFormChanges:(WKWebProcessPlugInBrowserContextController *)controller;
 - (void)_webProcessPlugInBrowserContextController:(WKWebProcessPlugInBrowserContextController *)controller didAssociateFormControls:(NSArray *)elements;

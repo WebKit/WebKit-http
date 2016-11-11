@@ -25,10 +25,10 @@
 
 #if PLATFORM(IOS)
 
-#import "DataDetectorsUISPI.h"
 #import "GestureTypes.h"
 #import "WKActionSheet.h"
 #import <UIKit/UIPopoverController.h>
+#import <WebCore/DataDetectorsUISPI.h>
 #import <wtf/RetainPtr.h>
 
 namespace WebKit {
@@ -72,6 +72,7 @@ struct InteractionInformationAtPosition;
 - (RetainPtr<NSArray>)defaultActionsForLinkSheet:(_WKActivatedElementInfo *)elementInfo;
 - (RetainPtr<NSArray>)defaultActionsForImageSheet:(_WKActivatedElementInfo *)elementInfo;
 - (BOOL)isShowingSheet;
+- (NSArray *)currentAvailableActionTitles;
 @end
 
 #endif // PLATFORM(IOS)

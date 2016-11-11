@@ -407,14 +407,18 @@ MediaTime::ComparisonFlags MediaTime::compare(const MediaTime& rhs) const
         return m_timeValueAsDouble < rhs.m_timeValueAsDouble ? LessThan : GreaterThan;
     }
 
+    if (hasDoubleValue() || rhs.hasDoubleValue()) {
+        double a = toDouble();
+        double b = rhs.toDouble();
+        if (a > b)
+            return GreaterThan;
+        if (a < b)
+            return LessThan;
+        return EqualTo;
+    }
+
     MediaTime a = *this;
     MediaTime b = rhs;
-
-    if (a.hasDoubleValue())
-        a.setTimeScale(DefaultTimeScale);
-
-    if (b.hasDoubleValue())
-        b.setTimeScale(DefaultTimeScale);
 
     int64_t rhsWhole = b.m_timeValue / b.m_timeScale;
     int64_t lhsWhole = a.m_timeValue / a.m_timeScale;
@@ -431,6 +435,13 @@ MediaTime::ComparisonFlags MediaTime::compare(const MediaTime& rhs) const
     if (lhsFactor == rhsFactor)
         return EqualTo;
     return lhsFactor > rhsFactor ? GreaterThan : LessThan;
+}
+
+bool MediaTime::isBetween(const MediaTime& a, const MediaTime& b) const
+{
+    if (a > b)
+        return *this > b && *this < a;
+    return *this > a && *this < b;
 }
 
 const MediaTime& MediaTime::zeroTime()

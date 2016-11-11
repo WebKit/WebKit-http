@@ -33,6 +33,7 @@
 
 #include "DOMWrapperWorld.h"
 #include "JSHistory.h"
+#include <heap/HeapInlines.h>
 #include <runtime/JSCJSValueInlines.h>
 
 using namespace JSC;
@@ -63,7 +64,7 @@ JSValue JSPopStateEvent::state(ExecState& state) const
         // Ideally, we would check that the worlds have different privileges but that's not possible yet.
         if (eventState.isObject() && &worldForDOMObject(eventState.getObject()) != &currentWorld(&state)) {
             if (auto serializedValue = event.trySerializeState(&state))
-                eventState = serializedValue->deserialize(&state, globalObject(), nullptr);
+                eventState = serializedValue->deserialize(state, globalObject());
             else
                 eventState = jsNull();
         }
@@ -87,7 +88,7 @@ JSValue JSPopStateEvent::state(ExecState& state) const
         JSHistory* jsHistory = jsCast<JSHistory*>(toJS(&state, globalObject(), *history).asCell());
         result = jsHistory->state(state);
     } else
-        result = event.serializedState()->deserialize(&state, globalObject(), 0);
+        result = event.serializedState()->deserialize(state, globalObject());
 
     return cacheState(state, this, result);
 }

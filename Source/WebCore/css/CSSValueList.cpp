@@ -21,6 +21,7 @@
 #include "config.h"
 #include "CSSValueList.h"
 
+#include "CSSCustomPropertyValue.h"
 #include "CSSFunctionValue.h"
 #include "CSSParserValues.h"
 #include "CSSPrimitiveValue.h"
@@ -155,12 +156,6 @@ bool CSSValueList::equals(const CSSValue& other) const
     return m_values[0].get().equals(other);
 }
 
-void CSSValueList::addSubresourceStyleURLs(ListHashSet<URL>& urls, const StyleSheetContents* styleSheet) const
-{
-    for (unsigned i = 0, size = m_values.size(); i < size; ++i)
-        m_values[i].get().addSubresourceStyleURLs(urls, styleSheet);
-}
-
 bool CSSValueList::traverseSubresources(const std::function<bool (const CachedResource&)>& handler) const
 {
     for (unsigned i = 0; i < m_values.size(); ++i) {
@@ -212,8 +207,8 @@ bool CSSValueList::checkVariablesForCycles(CustomPropertyValueMap& customPropert
             auto& variableValue = downcast<CSSVariableValue>(*value);
             if (seenProperties.contains(variableValue.name()))
                 return false;
-            RefPtr<CSSValue> value = customProperties.get(variableValue.name());
-            if (value && value->isVariableDependentValue() && !downcast<CSSVariableDependentValue>(*value).checkVariablesForCycles(variableValue.name(), customProperties, seenProperties, invalidProperties))
+            RefPtr<CSSCustomPropertyValue> value = customProperties.get(variableValue.name());
+            if (value && value->containsVariables() && !downcast<CSSVariableDependentValue>(*(value->deprecatedValue())).checkVariablesForCycles(variableValue.name(), customProperties, seenProperties, invalidProperties))
                 return false;
 
             // Have to check the fallback values.

@@ -28,8 +28,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WorkerRunLoop_h
-#define WorkerRunLoop_h
+#pragma once
 
 #include "ScriptExecutionContext.h"
 #include <memory>
@@ -64,6 +63,7 @@ namespace WebCore {
         unsigned long createUniqueId() { return ++m_uniqueId; }
 
         static String defaultMode();
+        static String debuggerMode();
 
         class Task {
             WTF_MAKE_NONCOPYABLE(Task); WTF_MAKE_FAST_ALLOCATED;
@@ -92,5 +92,3 @@ namespace WebCore {
     };
 
 } // namespace WebCore
-
-#endif // WorkerRunLoop_h

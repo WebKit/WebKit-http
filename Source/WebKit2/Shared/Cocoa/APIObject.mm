@@ -38,6 +38,7 @@
 #import "WKNSData.h"
 #import "WKNSDictionary.h"
 #import "WKNSError.h"
+#import "WKNSNumber.h"
 #import "WKNSString.h"
 #import "WKNSURL.h"
 #import "WKNSURLAuthenticationChallenge.h"
@@ -71,6 +72,7 @@
 #import "_WKUserContentExtensionStoreInternal.h"
 #import "_WKUserContentFilterInternal.h"
 #import "_WKUserContentWorldInternal.h"
+#import "_WKUserInitiatedActionInternal.h"
 #import "_WKUserStyleSheetInternal.h"
 #import "_WKVisitedLinkStoreInternal.h"
 
@@ -113,6 +115,13 @@ void* Object::newObject(size_t size, Type type)
 
     case Type::BackForwardListItem:
         wrapper = [WKBackForwardListItem alloc];
+        break;
+
+    case Type::Boolean:
+    case Type::Double:
+    case Type::UInt64:
+        wrapper = [WKNSNumber alloc];
+        ((WKNSNumber *)wrapper)->_type = type;
         break;
 
     case Type::Bundle:
@@ -229,6 +238,10 @@ void* Object::newObject(size_t size, Type type)
 
     case Type::UserContentWorld:
         wrapper = [_WKUserContentWorld alloc];
+        break;
+
+    case Type::UserInitiatedAction:
+        wrapper = [_WKUserInitiatedAction alloc];
         break;
 
     case Type::UserScript:

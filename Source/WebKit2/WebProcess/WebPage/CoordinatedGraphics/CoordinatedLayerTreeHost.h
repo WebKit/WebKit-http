@@ -59,7 +59,6 @@ protected:
 
     void setVisibleContentsRect(const WebCore::FloatRect&, const WebCore::FloatPoint&);
     void renderNextFrame();
-    void purgeBackingStores();
     void commitScrollOffset(uint32_t layerID, const WebCore::IntSize& offset);
 
     WebCore::GraphicsLayerFactory* graphicsLayerFactory() override;
@@ -80,12 +79,12 @@ private:
     void layerFlushTimerFired();
 
 #if USE(COORDINATED_GRAPHICS_MULTIPROCESS)
-    void didReceiveCoordinatedLayerTreeHostMessage(IPC::Connection&, IPC::MessageDecoder&) override;
+    void didReceiveCoordinatedLayerTreeHostMessage(IPC::Connection&, IPC::Decoder&) override;
 #endif
 
     static RefPtr<WebCore::CoordinatedSurface> createCoordinatedSurface(const WebCore::IntSize&, WebCore::CoordinatedSurface::Flags);
 
-    std::unique_ptr<CompositingCoordinator> m_coordinator;
+    CompositingCoordinator m_coordinator;
     bool m_isWaitingForRenderer { true };
     uint64_t m_forceRepaintAsyncCallbackID { 0 };
     RunLoop::Timer<CoordinatedLayerTreeHost> m_layerFlushTimer;

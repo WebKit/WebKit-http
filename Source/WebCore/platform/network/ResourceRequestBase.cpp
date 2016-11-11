@@ -32,7 +32,7 @@
 
 namespace WebCore {
 
-#if !USE(SOUP) && (!PLATFORM(COCOA) || USE(CFNETWORK))
+#if !USE(SOUP) && (!PLATFORM(COCOA) || USE(CFURLCONNECTION))
 double ResourceRequestBase::s_defaultTimeoutInterval = INT_MAX;
 #else
 // Will use NSURLRequest default timeout unless set to a non-zero value with setDefaultTimeoutInterval().
@@ -65,6 +65,7 @@ void ResourceRequestBase::setAsIsolatedCopy(const ResourceRequest& other)
     setHTTPMethod(other.httpMethod().isolatedCopy());
     setPriority(other.priority());
     setRequester(other.requester());
+    setInitiatorIdentifier(other.initiatorIdentifier().isolatedCopy());
 
     updateResourceRequest();
     m_httpHeaderFields = other.httpHeaderFields().isolatedCopy();
@@ -288,6 +289,11 @@ String ResourceRequestBase::httpReferrer() const
     return httpHeaderField(HTTPHeaderName::Referer);
 }
 
+bool ResourceRequestBase::hasHTTPReferrer() const
+{
+    return m_httpHeaderFields.contains(HTTPHeaderName::Referer);
+}
+
 void ResourceRequestBase::setHTTPReferrer(const String& httpReferrer)
 {
     setHTTPHeaderField(HTTPHeaderName::Referer, httpReferrer);
@@ -313,14 +319,24 @@ void ResourceRequestBase::setHTTPOrigin(const String& httpOrigin)
     setHTTPHeaderField(HTTPHeaderName::Origin, httpOrigin);
 }
 
+bool ResourceRequestBase::hasHTTPOrigin() const
+{
+    return m_httpHeaderFields.contains(HTTPHeaderName::Origin);
+}
+
 void ResourceRequestBase::clearHTTPOrigin()
 {
-    updateResourceRequest(); 
+    updateResourceRequest();
 
     m_httpHeaderFields.remove(HTTPHeaderName::Origin);
 
     if (url().protocolIsInHTTPFamily())
         m_platformRequestUpdated = false;
+}
+
+bool ResourceRequestBase::hasHTTPHeader(HTTPHeaderName name) const
+{
+    return m_httpHeaderFields.contains(name);
 }
 
 String ResourceRequestBase::httpUserAgent() const
@@ -449,6 +465,17 @@ void ResourceRequestBase::setPriority(ResourceLoadPriority priority)
         m_platformRequestUpdated = false;
 }
 
+void ResourceRequestBase::addHTTPHeaderFieldIfNotPresent(HTTPHeaderName name, const String& value)
+{
+    updateResourceRequest();
+
+    if (!m_httpHeaderFields.addIfNotPresent(name, value))
+        return;
+
+    if (url().protocolIsInHTTPFamily())
+        m_platformRequestUpdated = false;
+}
+
 void ResourceRequestBase::addHTTPHeaderField(HTTPHeaderName name, const String& value)
 {
     updateResourceRequest();
@@ -462,13 +489,18 @@ void ResourceRequestBase::addHTTPHeaderField(HTTPHeaderName name, const String& 
 void ResourceRequestBase::addHTTPHeaderField(const String& name, const String& value)
 {
     updateResourceRequest();
-    
+
     m_httpHeaderFields.add(name, value);
-    
+
     if (url().protocolIsInHTTPFamily())
         m_platformRequestUpdated = false;
 }
-    
+
+bool ResourceRequestBase::hasHTTPHeaderField(HTTPHeaderName headerName) const
+{
+    return m_httpHeaderFields.contains(headerName);
+}
+
 void ResourceRequestBase::setHTTPHeaderFields(HTTPHeaderMap headerFields)
 {
     updateResourceRequest();
@@ -587,7 +619,7 @@ void ResourceRequestBase::updateResourceRequest(HTTPBodyUpdatePolicy bodyPolicy)
     }
 }
 
-#if !PLATFORM(COCOA) && !USE(CFNETWORK) && !USE(SOUP)
+#if !PLATFORM(COCOA) && !USE(CFURLCONNECTION) && !USE(SOUP)
 unsigned initializeMaximumHTTPConnectionCountPerHost()
 {
     // This is used by the loader to control the number of issued parallel load requests. 

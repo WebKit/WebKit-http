@@ -1,5 +1,5 @@
 # Copyright (c) 2009, 2010, 2011 Google Inc. All rights reserved.
-# Copyright (c) 2009 Apple Inc. All rights reserved.
+# Copyright (c) 2009, 2016 Apple Inc. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions are
@@ -36,9 +36,10 @@ import string
 import sys
 import tempfile
 
+from webkitpy.common.config.urls import svn_server_host, svn_server_realm
 from webkitpy.common.memoized import memoized
 from webkitpy.common.system.executive import Executive, ScriptError
-from webkitpy.common.config.urls import svn_server_host, svn_server_realm
+from webkitpy.common.webkit_finder import WebKitFinder
 
 from .scm import AuthenticationError, SCM, commit_error_handler
 
@@ -235,9 +236,13 @@ class SVN(SCM, SVNRepository):
 
     def revisions_changing_file(self, path, limit=5):
         revisions = []
-        # svn log will exit(1) (and thus self.run will raise) if the path does not exist.
+        # svn log will exit(1) (and thus self.run will raise) if a path is not known to svn.
         log_command = ['log', '--quiet', '--limit=%s' % limit, path]
-        for line in self._run_svn(log_command, cwd=self.checkout_root).splitlines():
+        try:
+            log_output = self._run_svn(log_command, cwd=self.checkout_root)
+        except ScriptError, e:
+            return []
+        for line in log_output.splitlines():
             match = re.search('^r(?P<revision>\d+) ', line)
             if not match:
                 continue
@@ -279,7 +284,7 @@ class SVN(SCM, SVNRepository):
             return ""
         elif changed_files == None:
             changed_files = []
-        script_path = self._filesystem.join(self.checkout_root, "Tools", "Scripts", "svn-create-patch")
+        script_path = WebKitFinder(self._filesystem).path_from_webkit_base("Tools", "Scripts", "svn-create-patch")
         return self.run([script_path, "--no-style"] + changed_files,
             cwd=self.checkout_root, return_stderr=False,
             decode_output=False)

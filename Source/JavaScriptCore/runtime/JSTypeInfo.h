@@ -24,8 +24,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef JSTypeInfo_h
-#define JSTypeInfo_h
+#pragma once
 
 // This file would be called TypeInfo.h, but that conflicts with <typeinfo.h>
 // in the STL on systems without case-sensitive file systems. 
@@ -40,7 +39,6 @@ static const unsigned MasqueradesAsUndefined = 1; // WebCore uses MasqueradesAsU
 static const unsigned ImplementsDefaultHasInstance = 1 << 1;
 static const unsigned TypeOfShouldCallGetCallData = 1 << 2; // Need this flag if you override getCallData() and you want typeof to use this to determine if it should say "function". Currently we always set this flag when we override getCallData().
 static const unsigned OverridesGetOwnPropertySlot = 1 << 3;
-static const unsigned InterceptsGetOwnPropertySlotByIndexEvenWhenLengthIsNotZero = 1 << 4;
 static const unsigned StructureIsImmortal = 1 << 5;
 static const unsigned OverridesToThis = 1 << 6; // If this is false then this returns something other than 'this'. Non-object cells that are visible to JS have this set as do some exotic objects.
 static const unsigned HasStaticPropertyTable = 1 << 7;
@@ -50,8 +48,8 @@ static const unsigned OverridesGetPropertyNames = 1 << 9;
 static const unsigned ProhibitsPropertyCaching = 1 << 10;
 static const unsigned GetOwnPropertySlotIsImpure = 1 << 11;
 static const unsigned NewImpurePropertyFiresWatchpoints = 1 << 12;
-static const unsigned IsEnvironmentRecord = 1 << 13;
 static const unsigned GetOwnPropertySlotIsImpureForPropertyAbsence = 1 << 14;
+static const unsigned InterceptsGetOwnPropertySlotByIndexEvenWhenLengthIsNotZero = 1 << 15;
 
 class TypeInfo {
 public:
@@ -84,7 +82,6 @@ public:
     bool overridesGetOwnPropertySlot() const { return overridesGetOwnPropertySlot(inlineTypeFlags()); }
     static bool overridesGetOwnPropertySlot(InlineTypeFlags flags) { return flags & OverridesGetOwnPropertySlot; }
     static bool hasStaticPropertyTable(InlineTypeFlags flags) { return flags & HasStaticPropertyTable; }
-    bool interceptsGetOwnPropertySlotByIndexEvenWhenLengthIsNotZero() const { return isSetOnFlags1(InterceptsGetOwnPropertySlotByIndexEvenWhenLengthIsNotZero); }
     bool structureIsImmortal() const { return isSetOnFlags1(StructureIsImmortal); }
     bool overridesToThis() const { return isSetOnFlags1(OverridesToThis); }
     bool overridesGetPropertyNames() const { return isSetOnFlags2(OverridesGetPropertyNames); }
@@ -92,7 +89,7 @@ public:
     bool getOwnPropertySlotIsImpure() const { return isSetOnFlags2(GetOwnPropertySlotIsImpure); }
     bool getOwnPropertySlotIsImpureForPropertyAbsence() const { return isSetOnFlags2(GetOwnPropertySlotIsImpureForPropertyAbsence); }
     bool newImpurePropertyFiresWatchpoints() const { return isSetOnFlags2(NewImpurePropertyFiresWatchpoints); }
-    bool isEnvironmentRecord() const { return isSetOnFlags2(IsEnvironmentRecord); }
+    bool interceptsGetOwnPropertySlotByIndexEvenWhenLengthIsNotZero() const { return isSetOnFlags2(InterceptsGetOwnPropertySlotByIndexEvenWhenLengthIsNotZero); }
 
     static ptrdiff_t flagsOffset()
     {
@@ -118,6 +115,4 @@ private:
     unsigned char m_flags2;
 };
 
-}
-
-#endif // JSTypeInfo_h
+} // namespace JSC

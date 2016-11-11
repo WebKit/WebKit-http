@@ -22,8 +22,7 @@
  *
  */
 
-#ifndef StyleRareNonInheritedData_h
-#define StyleRareNonInheritedData_h
+#pragma once
 
 #include "BasicShapes.h"
 #include "CSSPropertyNames.h"
@@ -40,7 +39,6 @@
 #include "StyleSelfAlignmentData.h"
 #include "WillChangeData.h"
 #include <memory>
-#include <wtf/PassRefPtr.h>
 #include <wtf/Vector.h>
 
 namespace WebCore {
@@ -98,11 +96,11 @@ public:
 #if ENABLE(FILTERS_LEVEL_2)
     bool hasBackdropFilters() const;
 #endif
-    bool hasOpacity() const { return opacity < 1; }
+    bool hasOpacity() const { return m_opacity < 1; }
 
     bool hasAnimationsOrTransitions() const { return m_animations || m_transitions; }
 
-    float opacity;
+    float m_opacity;
 
     float m_aspectRatioDenominator;
     float m_aspectRatioNumerator;
@@ -157,11 +155,9 @@ public:
     LengthSize m_pageSize;
     LengthPoint m_objectPosition;
 
-#if ENABLE(CSS_SHAPES)
     RefPtr<ShapeValue> m_shapeOutside;
     Length m_shapeMargin;
     float m_shapeImageThreshold;
-#endif
 
     RefPtr<ClipPathOperation> m_clipPath;
 
@@ -211,13 +207,16 @@ public:
 
     unsigned m_textDecorationStyle : 3; // TextDecorationStyle
 
-    unsigned m_runningAcceleratedAnimation : 1;
-
     unsigned m_aspectRatioType : 2;
 
 #if ENABLE(CSS_COMPOSITING)
     unsigned m_effectiveBlendMode: 5; // EBlendMode
     unsigned m_isolation : 1; // Isolation
+#endif
+
+#if ENABLE(APPLE_PAY)
+    unsigned m_applePayButtonStyle : 2;
+    unsigned m_applePayButtonType : 3;
 #endif
 
     unsigned m_objectFit : 3; // ObjectFit
@@ -237,5 +236,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // StyleRareNonInheritedData_h

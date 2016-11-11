@@ -23,8 +23,7 @@
  *
  */
 
-#ifndef HTMLTableCaptionElement_h
-#define HTMLTableCaptionElement_h
+#pragma once
 
 #include "HTMLElement.h"
 
@@ -37,10 +36,8 @@ public:
 private:
     HTMLTableCaptionElement(const QualifiedName&, Document&);
 
-    bool isPresentationAttribute(const QualifiedName&) const override;
-    void collectStyleForPresentationAttribute(const QualifiedName&, const AtomicString&, MutableStyleProperties&) override;
+    bool isPresentationAttribute(const QualifiedName&) const final;
+    void collectStyleForPresentationAttribute(const QualifiedName&, const AtomicString&, MutableStyleProperties&) final;
 };
 
-} // namespace
-
-#endif
+} // namespace WebCore

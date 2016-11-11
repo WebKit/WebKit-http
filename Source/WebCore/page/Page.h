@@ -20,12 +20,12 @@
 
 #pragma once
 
+#include "ActivityState.h"
 #include "FindOptions.h"
 #include "FrameLoaderTypes.h"
 #include "LayoutMilestones.h"
 #include "LayoutRect.h"
 #include "MediaProducer.h"
-#include "PageThrottler.h"
 #include "PageVisibilityState.h"
 #include "Pagination.h"
 #include "PlatformScreen.h"
@@ -33,8 +33,8 @@
 #include "ScrollTypes.h"
 #include "SessionID.h"
 #include "Supplementable.h"
+#include "Timer.h"
 #include "UserInterfaceLayoutDirection.h"
-#include "ViewState.h"
 #include "ViewportArguments.h"
 #include "WheelEventTestTrigger.h"
 #include <memory>
@@ -42,7 +42,6 @@
 #include <wtf/HashMap.h>
 #include <wtf/HashSet.h>
 #include <wtf/Noncopyable.h>
-#include <wtf/Optional.h>
 #include <wtf/Ref.h>
 #include <wtf/RefCounted.h>
 #include <wtf/UniqueRef.h>
@@ -105,9 +104,9 @@ class PageConfiguration;
 class PageConsoleClient;
 class PageDebuggable;
 class PageGroup;
-class PageThrottler;
 class PlugInClient;
 class PluginData;
+class PluginInfoProvider;
 class PluginViewBase;
 class PointerLockController;
 class ProgressTracker;
@@ -126,7 +125,7 @@ class StorageNamespace;
 class StorageNamespaceProvider;
 class UserContentProvider;
 class ValidationMessageClient;
-class ViewStateChangeObserver;
+class ActivityStateChangeObserver;
 class VisitedLinkStore;
 
 typedef uint64_t LinkHash;
@@ -137,7 +136,6 @@ class Page : public Supplementable<Page> {
     WTF_MAKE_NONCOPYABLE(Page);
     WTF_MAKE_FAST_ALLOCATED;
     friend class Settings;
-    friend class PageThrottler;
 
 public:
     WEBCORE_EXPORT static void updateStyleForAllPagesAfterGlobalChangeInEnvironment();
@@ -155,7 +153,7 @@ public:
     WEBCORE_EXPORT ViewportArguments viewportArguments() const;
 
     static void refreshPlugins(bool reload);
-    WEBCORE_EXPORT PluginData& pluginData() const;
+    WEBCORE_EXPORT PluginData& pluginData();
 
     WEBCORE_EXPORT void setCanStartMedia(bool);
     bool canStartMedia() const { return m_canStartMedia; }
@@ -165,8 +163,6 @@ public:
 
     MainFrame& mainFrame() { return m_mainFrame.get(); }
     const MainFrame& mainFrame() const { return m_mainFrame.get(); }
-
-    bool inPageCache() const;
 
     bool openedByDOM() const;
     void setOpenedByDOM();
@@ -209,7 +205,7 @@ public:
 #if ENABLE(POINTER_LOCK)
     PointerLockController& pointerLockController() const { return *m_pointerLockController; }
 #endif
-    ValidationMessageClient* validationMessageClient() const { return m_validationMessageClient; }
+    ValidationMessageClient* validationMessageClient() const { return m_validationMessageClient.get(); }
 
     WEBCORE_EXPORT ScrollingCoordinator* scrollingCoordinator();
 
@@ -307,7 +303,7 @@ public:
     void setEnclosedInScrollableAncestorView(bool f) { m_enclosedInScrollableAncestorView = f; }
 #endif
 
-#if ENABLE(IOS_TEXT_AUTOSIZING)
+#if ENABLE(TEXT_AUTOSIZING)
     float textAutosizingWidth() const { return m_textAutosizingWidth; }
     void setTextAutosizingWidth(float textAutosizingWidth) { m_textAutosizingWidth = textAutosizingWidth; }
 #endif
@@ -336,21 +332,21 @@ public:
     WEBCORE_EXPORT DiagnosticLoggingClient& diagnosticLoggingClient() const;
 
     // Notifications when the Page starts and stops being presented via a native window.
-    WEBCORE_EXPORT void setViewState(ViewState::Flags);
-    void setPageActivityState(PageActivityState::Flags);
+    WEBCORE_EXPORT void setActivityState(ActivityState::Flags);
+    bool isVisibleAndActive() const;
     WEBCORE_EXPORT void setIsVisible(bool);
     WEBCORE_EXPORT void setIsPrerender();
-    bool isVisible() const { return m_viewState & ViewState::IsVisible; }
+    bool isVisible() const { return m_activityState & ActivityState::IsVisible; }
 
     // Notification that this Page was moved into or out of a native window.
     WEBCORE_EXPORT void setIsInWindow(bool);
-    bool isInWindow() const { return m_viewState & ViewState::IsInWindow; }
+    bool isInWindow() const { return m_activityState & ActivityState::IsInWindow; }
 
     void setIsClosing() { m_isClosing = true; }
     bool isClosing() const { return m_isClosing; }
 
-    void addViewStateChangeObserver(ViewStateChangeObserver&);
-    void removeViewStateChangeObserver(ViewStateChangeObserver&);
+    void addActivityStateChangeObserver(ActivityStateChangeObserver&);
+    void removeActivityStateChangeObserver(ActivityStateChangeObserver&);
 
     WEBCORE_EXPORT void suspendScriptedAnimations();
     WEBCORE_EXPORT void resumeScriptedAnimations();
@@ -438,8 +434,6 @@ public:
     void sawMediaEngine(const String& engineName);
     void resetSeenMediaEngines();
 
-    PageThrottler& pageThrottler() { return m_pageThrottler; }
-
     PageConsoleClient& console() { return *m_consoleClient; }
 
 #if ENABLE(REMOTE_INSPECTOR)
@@ -466,6 +460,8 @@ public:
     StorageNamespaceProvider& storageNamespaceProvider() { return m_storageNamespaceProvider.get(); }
     void setStorageNamespaceProvider(Ref<StorageNamespaceProvider>&&);
 
+    PluginInfoProvider& pluginInfoProvider();
+
     UserContentProvider& userContentProvider();
     WEBCORE_EXPORT void setUserContentProvider(Ref<UserContentProvider>&&);
 
@@ -479,8 +475,10 @@ public:
 
     MediaProducer::MediaStateFlags mediaState() const { return m_mediaState; }
     void updateIsPlayingMedia(uint64_t);
-    bool isMuted() const { return m_muted; }
-    WEBCORE_EXPORT void setMuted(bool);
+    MediaProducer::MutedStateFlags mutedState() const { return m_mutedState; }
+    bool isAudioMuted() const { return m_mutedState & MediaProducer::AudioIsMuted; }
+    bool isMediaCaptureMuted() const { return m_mutedState & MediaProducer::CaptureDevicesAreMuted; };
+    WEBCORE_EXPORT void setMuted(MediaProducer::MutedStateFlags);
 
 #if ENABLE(MEDIA_SESSION)
     WEBCORE_EXPORT void handleMediaEvent(MediaEventType);
@@ -509,6 +507,9 @@ public:
     bool allowsMediaDocumentInlinePlayback() const { return m_allowsMediaDocumentInlinePlayback; }
     WEBCORE_EXPORT void setAllowsMediaDocumentInlinePlayback(bool);
 #endif
+
+    bool allowsPlaybackControlsForAutoplayingAudio() const { return m_allowsPlaybackControlsForAutoplayingAudio; }
+    void setAllowsPlaybackControlsForAutoplayingAudio(bool allowsPlaybackControlsForAutoplayingAudio) { m_allowsPlaybackControlsForAutoplayingAudio = allowsPlaybackControlsForAutoplayingAudio; }
 
 #if ENABLE(INDEXED_DATABASE)
     IDBClient::IDBConnectionToServer& idbConnection();
@@ -585,13 +586,13 @@ private:
     const std::unique_ptr<BackForwardController> m_backForwardController;
     Ref<MainFrame> m_mainFrame;
 
-    mutable RefPtr<PluginData> m_pluginData;
+    RefPtr<PluginData> m_pluginData;
 
     RefPtr<RenderTheme> m_theme;
 
     UniqueRef<EditorClient> m_editorClient;
     PlugInClient* m_plugInClient;
-    ValidationMessageClient* m_validationMessageClient;
+    std::unique_ptr<ValidationMessageClient> m_validationMessageClient;
     std::unique_ptr<DiagnosticLoggingClient> m_diagnosticLoggingClient;
 
     int m_subframeCount;
@@ -605,7 +606,7 @@ private:
     bool m_inLowQualityInterpolationMode;
     bool m_areMemoryCacheClientCallsEnabled;
     float m_mediaVolume;
-    bool m_muted;
+    MediaProducer::MutedStateFlags m_mutedState { MediaProducer::NoneMuted };
 
     float m_pageScaleFactor;
     float m_zoomedOutPageScaleFactor;
@@ -620,7 +621,7 @@ private:
     bool m_enclosedInScrollableAncestorView { false };
 #endif
 
-#if ENABLE(IOS_TEXT_AUTOSIZING)
+#if ENABLE(TEXT_AUTOSIZING)
     float m_textAutosizingWidth;
 #endif
     
@@ -660,8 +661,7 @@ private:
 
     bool m_isEditable;
     bool m_isPrerender;
-    ViewState::Flags m_viewState;
-    PageActivityState::Flags m_pageActivityState;
+    ActivityState::Flags m_activityState;
 
     LayoutMilestones m_requestedLayoutMilestones;
 
@@ -679,7 +679,6 @@ private:
     AlternativeTextClient* m_alternativeTextClient;
 
     bool m_scriptedAnimationsSuspended;
-    PageThrottler m_pageThrottler;
     const std::unique_ptr<PageConsoleClient> m_consoleClient;
 
 #if ENABLE(REMOTE_INSPECTOR)
@@ -696,15 +695,16 @@ private:
     unsigned m_lastSpatialNavigationCandidatesCount;
     unsigned m_forbidPromptsDepth;
 
-    UniqueRef<SocketProvider> m_socketProvider;
+    Ref<SocketProvider> m_socketProvider;
     Ref<ApplicationCacheStorage> m_applicationCacheStorage;
     Ref<DatabaseProvider> m_databaseProvider;
+    Ref<PluginInfoProvider> m_pluginInfoProvider;
     Ref<StorageNamespaceProvider> m_storageNamespaceProvider;
     Ref<UserContentProvider> m_userContentProvider;
     Ref<VisitedLinkStore> m_visitedLinkStore;
     RefPtr<WheelEventTestTrigger> m_testTrigger;
 
-    HashSet<ViewStateChangeObserver*> m_viewStateChangeObservers;
+    HashSet<ActivityStateChangeObserver*> m_activityStateChangeObservers;
 
 #if ENABLE(RESOURCE_USAGE)
     std::unique_ptr<ResourceUsageOverlay> m_resourceUsageOverlay;
@@ -717,6 +717,7 @@ private:
     MediaProducer::MediaStateFlags m_mediaState { MediaProducer::IsNotPlaying };
     
     bool m_allowsMediaDocumentInlinePlayback { false };
+    bool m_allowsPlaybackControlsForAutoplayingAudio { false };
     bool m_showAllPlugins { false };
     bool m_controlledByAutomation { false };
     bool m_resourceCachingDisabled { false };

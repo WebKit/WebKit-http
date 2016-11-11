@@ -29,8 +29,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef SearchInputType_h
-#define SearchInputType_h
+#pragma once
 
 #include "BaseTextInputType.h"
 #include "Timer.h"
@@ -56,7 +55,7 @@ private:
     void destroyShadowSubtree() override;
     HTMLElement* resultsButtonElement() const override;
     HTMLElement* cancelButtonElement() const override;
-    void handleKeydownEvent(KeyboardEvent*) override;
+    void handleKeydownEvent(KeyboardEvent&) override;
     void didSetValueByUserEdit() override;
     bool sizeShouldIncludeDecoration(int defaultSize, int& preferredSize) const override;
     float decorationWidth() const override;
@@ -71,5 +70,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // SearchInputType_h

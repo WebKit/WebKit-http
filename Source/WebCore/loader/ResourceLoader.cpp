@@ -48,7 +48,6 @@
 #include "ResourceError.h"
 #include "ResourceHandle.h"
 #include "SecurityOrigin.h"
-#include "Settings.h"
 #include "SharedBuffer.h"
 #include <wtf/Ref.h>
 
@@ -61,7 +60,7 @@ namespace WebCore {
 ResourceLoader::ResourceLoader(Frame& frame, ResourceLoaderOptions options)
     : m_frame(&frame)
     , m_documentLoader(frame.loader().activeDocumentLoader())
-    , m_defersLoading(options.defersLoadingPolicy() == DefersLoadingPolicy::AllowDefersLoading && frame.page()->defersLoading())
+    , m_defersLoading(options.defersLoadingPolicy == DefersLoadingPolicy::AllowDefersLoading && frame.page()->defersLoading())
     , m_options(options)
 {
 }
@@ -116,6 +115,8 @@ bool ResourceLoader::init(const ResourceRequest& r)
     
     ResourceRequest clientRequest(r);
 
+    m_loadTiming.markStartTimeAndFetchStart();
+
 #if PLATFORM(IOS)
     // If the documentLoader was detached while this ResourceLoader was waiting its turn
     // in ResourceLoadScheduler queue, don't continue.
@@ -125,9 +126,9 @@ bool ResourceLoader::init(const ResourceRequest& r)
     }
 #endif
     
-    m_defersLoading = m_options.defersLoadingPolicy() == DefersLoadingPolicy::AllowDefersLoading && m_frame->page()->defersLoading();
+    m_defersLoading = m_options.defersLoadingPolicy == DefersLoadingPolicy::AllowDefersLoading && m_frame->page()->defersLoading();
 
-    if (m_options.securityCheck() == DoSecurityCheck && !m_frame->document()->securityOrigin()->canDisplay(clientRequest.url())) {
+    if (m_options.securityCheck == DoSecurityCheck && !m_frame->document()->securityOrigin()->canDisplay(clientRequest.url())) {
         FrameLoader::reportLocalLoadFailed(m_frame.get(), clientRequest.url().string());
         releaseResources();
         return false;
@@ -206,12 +207,12 @@ void ResourceLoader::start()
         return;
     }
 
-    m_handle = ResourceHandle::create(frameLoader()->networkingContext(), m_request, this, m_defersLoading, m_options.sniffContent() == SniffContent);
+    m_handle = ResourceHandle::create(frameLoader()->networkingContext(), m_request, this, m_defersLoading, m_options.sniffContent == SniffContent);
 }
 
 void ResourceLoader::setDefersLoading(bool defers)
 {
-    if (m_options.defersLoadingPolicy() == DefersLoadingPolicy::DisallowDefersLoading)
+    if (m_options.defersLoadingPolicy == DefersLoadingPolicy::DisallowDefersLoading)
         return;
 
     m_defersLoading = defers;
@@ -257,6 +258,9 @@ void ResourceLoader::loadDataURL()
         auto dataSize = result.data ? result.data->size() : 0;
 
         ResourceResponse dataResponse { url, result.mimeType, dataSize, result.charset };
+        dataResponse.setHTTPStatusCode(200);
+        dataResponse.setHTTPStatusText(ASCIILiteral("OK"));
+        dataResponse.setHTTPHeaderField(HTTPHeaderName::ContentType, result.contentType);
         protectedThis->didReceiveResponse(dataResponse);
 
         if (!protectedThis->reachedTerminalState() && dataSize)
@@ -268,14 +272,14 @@ void ResourceLoader::loadDataURL()
 }
 
 void ResourceLoader::setDataBufferingPolicy(DataBufferingPolicy dataBufferingPolicy)
-{ 
-    m_options.setDataBufferingPolicy(dataBufferingPolicy); 
+{
+    m_options.dataBufferingPolicy = dataBufferingPolicy;
 
     // Reset any already buffered data
     if (dataBufferingPolicy == DoNotBufferData)
         m_resourceData = nullptr;
 }
-    
+
 void ResourceLoader::willSwitchToSubstituteResource()
 {
     ASSERT(!m_documentLoader->isSubstituteLoadPending(this));
@@ -286,7 +290,7 @@ void ResourceLoader::willSwitchToSubstituteResource()
 
 void ResourceLoader::addDataOrBuffer(const char* data, unsigned length, SharedBuffer* buffer, DataPayloadType dataPayloadType)
 {
-    if (m_options.dataBufferingPolicy() == DoNotBufferData)
+    if (m_options.dataBufferingPolicy == DoNotBufferData)
         return;
 
     if (!m_resourceData || dataPayloadType == DataPayloadWholeResource) {
@@ -336,7 +340,9 @@ void ResourceLoader::willSendRequestInternal(ResourceRequest& request, const Res
     if (frameLoader()) {
         Page* page = frameLoader()->frame().page();
         if (page && m_documentLoader) {
-            if (page->userContentProvider().processContentExtensionRulesForLoad(request, m_resourceType, *m_documentLoader) == ContentExtensions::BlockedStatus::Blocked) {
+            auto blockedStatus = page->userContentProvider().processContentExtensionRulesForLoad(request.url(), m_resourceType, *m_documentLoader);
+            applyBlockedStatusToRequest(blockedStatus, request);
+            if (blockedStatus.blockedLoad) {
                 request = { };
                 didFail(blockedByContentBlockerError());
                 return;
@@ -350,7 +356,7 @@ void ResourceLoader::willSendRequestInternal(ResourceRequest& request, const Res
         return;
     }
 
-    if (m_options.sendLoadCallbacks() == SendCallbacks) {
+    if (m_options.sendLoadCallbacks == SendCallbacks) {
         if (createdResourceIdentifier)
             frameLoader()->notifier().assignIdentifierToInitialRequest(m_identifier, documentLoader(), request);
 
@@ -439,27 +445,23 @@ void ResourceLoader::didReceiveResponse(const ResourceResponse& r)
         if (!m_documentLoader->response().isHttpVersion0_9()) {
             String message = "Cancelled resource load from '" + url.string() + "' because it is using HTTP/0.9 and the document was loaded with a different HTTP version.";
             m_frame->document()->addConsoleMessage(MessageSource::Security, MessageLevel::Error, message, identifier());
-            ResourceError error("", 0, url, message);
+            ResourceError error(emptyString(), 0, url, message);
             didFail(error);
             return;
         }
-        if (!isDefaultPortForProtocol(url.port(), url.protocol())) {
+        if (url.port() && !isDefaultPortForProtocol(url.port().value(), url.protocol())) {
             String message = "Cancelled resource load from '" + url.string() + "' because it is using HTTP/0.9 on a non-default port.";
             m_frame->document()->addConsoleMessage(MessageSource::Security, MessageLevel::Error, message, identifier());
-            ResourceError error("", 0, url, message);
+            ResourceError error(emptyString(), 0, url, message);
             didFail(error);
             return;
         }
-            
-        String message = "Sandboxing '" + m_response.url().string() + "' because it is using HTTP/0.9.";
-        m_frame->document()->addConsoleMessage(MessageSource::Security, MessageLevel::Error, message, m_identifier);
-        frameLoader()->forceSandboxFlags(SandboxScripts | SandboxPlugins);
     }
 
     if (FormData* data = m_request.httpBody())
         data->removeGeneratedFilesIfNeeded();
-        
-    if (m_options.sendLoadCallbacks() == SendCallbacks)
+
+    if (m_options.sendLoadCallbacks == SendCallbacks)
         frameLoader()->notifier().didReceiveResponse(this, m_response);
 }
 
@@ -489,11 +491,11 @@ void ResourceLoader::didReceiveDataOrBuffer(const char* data, unsigned length, R
     Ref<ResourceLoader> protectedThis(*this);
 
     addDataOrBuffer(data, length, buffer.get(), dataPayloadType);
-    
+
     // FIXME: If we get a resource with more than 2B bytes, this code won't do the right thing.
     // However, with today's computers and networking speeds, this won't happen in practice.
     // Could be an issue with a giant local file.
-    if (m_options.sendLoadCallbacks() == SendCallbacks && m_frame)
+    if (m_options.sendLoadCallbacks == SendCallbacks && m_frame)
         frameLoader()->notifier().didReceiveData(this, buffer ? buffer->data() : data, buffer ? buffer->size() : length, static_cast<int>(encodedDataLength));
 }
 
@@ -519,7 +521,7 @@ void ResourceLoader::didFinishLoadingOnePart(double finishTime)
     if (m_notifiedLoadComplete)
         return;
     m_notifiedLoadComplete = true;
-    if (m_options.sendLoadCallbacks() == SendCallbacks)
+    if (m_options.sendLoadCallbacks == SendCallbacks)
         frameLoader()->notifier().didFinishLoad(this, finishTime);
 }
 
@@ -545,7 +547,7 @@ void ResourceLoader::cleanupForError(const ResourceError& error)
     if (m_notifiedLoadComplete)
         return;
     m_notifiedLoadComplete = true;
-    if (m_options.sendLoadCallbacks() == SendCallbacks && m_identifier)
+    if (m_options.sendLoadCallbacks == SendCallbacks && m_identifier)
         frameLoader()->notifier().didFailToLoad(this, error);
 }
 
@@ -678,16 +680,18 @@ void ResourceLoader::cannotShowURL(ResourceHandle*)
 
 bool ResourceLoader::shouldUseCredentialStorage()
 {
-    if (m_options.allowCredentials() == DoNotAllowStoredCredentials)
+    if (m_options.allowCredentials == DoNotAllowStoredCredentials)
         return false;
-    
+
     Ref<ResourceLoader> protectedThis(*this);
     return frameLoader()->client().shouldUseCredentialStorage(documentLoader(), identifier());
 }
 
 bool ResourceLoader::isAllowedToAskUserForCredentials() const
 {
-    return m_options.clientCredentialPolicy() == AskClientForAllCredentials || (m_options.clientCredentialPolicy() == DoNotAskClientForCrossOriginCredentials && m_frame->document()->securityOrigin()->canRequest(originalRequest().url()));
+    if (m_options.clientCredentialPolicy == ClientCredentialPolicy::CannotAskClientForCredentials)
+        return false;
+    return m_options.credentials == FetchOptions::Credentials::Include || (m_options.credentials == FetchOptions::Credentials::SameOrigin && m_frame->document()->securityOrigin()->canRequest(originalRequest().url()));
 }
 
 void ResourceLoader::didReceiveAuthenticationChallenge(const AuthenticationChallenge& challenge)
@@ -698,20 +702,14 @@ void ResourceLoader::didReceiveAuthenticationChallenge(const AuthenticationChall
     // anything including possibly derefing this; one example of this is Radar 3266216.
     Ref<ResourceLoader> protectedThis(*this);
 
-    if (m_options.allowCredentials() == AllowStoredCredentials) {
+    if (m_options.allowCredentials == AllowStoredCredentials) {
         if (isAllowedToAskUserForCredentials()) {
             frameLoader()->notifier().didReceiveAuthenticationChallenge(this, challenge);
             return;
         }
     }
-    // Only these platforms provide a way to continue without credentials.
-    // If we can't continue with credentials, we need to cancel the load altogether.
-#if PLATFORM(COCOA) || USE(CFNETWORK) || USE(CURL) || PLATFORM(GTK) || PLATFORM(EFL)
     challenge.authenticationClient()->receivedRequestToContinueWithoutCredential(challenge);
     ASSERT(!m_handle || !m_handle->hasAuthenticationChallenge());
-#else
-    didFail(blockedError());
-#endif
 }
 
 #if USE(PROTECTION_SPACE_AUTH_CALLBACK)
@@ -738,7 +736,7 @@ void ResourceLoader::receivedCancellation(const AuthenticationChallenge&)
     cancel();
 }
 
-#if PLATFORM(COCOA) && !USE(CFNETWORK)
+#if PLATFORM(COCOA) && !USE(CFURLCONNECTION)
 
 void ResourceLoader::schedule(SchedulePair& pair)
 {

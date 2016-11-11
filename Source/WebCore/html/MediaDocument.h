@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef MediaDocument_h
-#define MediaDocument_h
+#pragma once
 
 #if ENABLE(VIDEO)
 
@@ -49,7 +48,7 @@ private:
 
     Ref<DocumentParser> createParser() override;
 
-    void defaultEventHandler(Event*) override;
+    void defaultEventHandler(Event&) override;
 
     void replaceMediaElementTimerFired();
 
@@ -64,5 +63,4 @@ SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::MediaDocument)
     static bool isType(const WebCore::Node& node) { return is<WebCore::Document>(node) && isType(downcast<WebCore::Document>(node)); }
 SPECIALIZE_TYPE_TRAITS_END()
 
-#endif
-#endif
+#endif // ENABLE(VIDEO)

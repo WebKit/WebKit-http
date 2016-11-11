@@ -40,7 +40,6 @@
 #include <wtf/HashSet.h>
 #include <wtf/Lock.h>
 #include <wtf/MainThread.h>
-#include <wtf/NeverDestroyed.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/StringExtras.h>
 
@@ -116,7 +115,7 @@ static bool didExtendTextCodecMaps;
 static HashSet<const char*>* japaneseEncodings;
 static HashSet<const char*>* nonBackslashEncodings;
 
-static const char* const textEncodingNameBlacklist[] = { "UTF-7" };
+static const char* const textEncodingNameBlacklist[] = { "UTF-7", "BOCU-1", "SCSU" };
 
 #if ERROR_DISABLED
 
@@ -198,9 +197,8 @@ static void pruneBlacklistedCodecs()
     }
 }
 
-static void buildBaseTextCodecMaps()
+static void buildBaseTextCodecMaps(const std::lock_guard<StaticLock>&)
 {
-    ASSERT(isMainThread());
     ASSERT(!textCodecMap);
     ASSERT(!textEncodingNameMap);
 
@@ -321,10 +319,10 @@ const char* atomicCanonicalTextEncodingName(const char* name)
     if (!name || !name[0])
         return nullptr;
 
-    if (!textEncodingNameMap)
-        buildBaseTextCodecMaps();
-
     std::lock_guard<StaticLock> lock(encodingRegistryMutex);
+
+    if (!textEncodingNameMap)
+        buildBaseTextCodecMaps(lock);
 
     if (const char* atomicName = textEncodingNameMap->get(name))
         return atomicName;

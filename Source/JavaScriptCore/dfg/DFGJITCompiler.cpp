@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2013-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2011, 2013-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -108,7 +108,7 @@ void JITCompiler::compileEntry()
     // check) which will be dependent on stack layout. (We'd need to account for this in
     // both normal return code and when jumping to an exception handler).
     emitFunctionPrologue();
-    emitPutToCallFrameHeader(m_codeBlock, JSStack::CodeBlock);
+    emitPutToCallFrameHeader(m_codeBlock, CallFrameSlot::codeBlock);
 }
 
 void JITCompiler::compileSetupRegistersForEntry()
@@ -276,11 +276,29 @@ void JITCompiler::link(LinkBuffer& linkBuffer)
     
     for (unsigned i = 0; i < m_jsCalls.size(); ++i) {
         JSCallRecord& record = m_jsCalls[i];
-        CallLinkInfo& info = *record.m_info;
-        linkBuffer.link(record.m_slowCall, FunctionPtr(m_vm->getCTIStub(linkCallThunkGenerator).code().executableAddress()));
-        info.setCallLocations(linkBuffer.locationOfNearCall(record.m_slowCall),
-            linkBuffer.locationOf(record.m_targetToCheck),
-            linkBuffer.locationOfNearCall(record.m_fastCall));
+        CallLinkInfo& info = *record.info;
+        linkBuffer.link(record.slowCall, FunctionPtr(m_vm->getCTIStub(linkCallThunkGenerator).code().executableAddress()));
+        info.setCallLocations(
+            CodeLocationLabel(linkBuffer.locationOfNearCall(record.slowCall)),
+            CodeLocationLabel(linkBuffer.locationOf(record.targetToCheck)),
+            linkBuffer.locationOfNearCall(record.fastCall));
+    }
+    
+    for (JSDirectCallRecord& record : m_jsDirectCalls) {
+        CallLinkInfo& info = *record.info;
+        linkBuffer.link(record.call, linkBuffer.locationOf(record.slowPath));
+        info.setCallLocations(
+            CodeLocationLabel(),
+            linkBuffer.locationOf(record.slowPath),
+            linkBuffer.locationOfNearCall(record.call));
+    }
+    
+    for (JSDirectTailCallRecord& record : m_jsDirectTailCalls) {
+        CallLinkInfo& info = *record.info;
+        info.setCallLocations(
+            linkBuffer.locationOf(record.patchableJump),
+            linkBuffer.locationOf(record.slowPath),
+            linkBuffer.locationOfNearCall(record.call));
     }
     
     MacroAssemblerCodeRef osrExitThunk = vm()->getCTIStub(osrExitGenerationThunkGenerator);
@@ -342,7 +360,7 @@ void JITCompiler::compile()
 
     // Plant a check that sufficient space is available in the JSStack.
     addPtr(TrustedImm32(virtualRegisterForLocal(m_graph.requiredRegisterCountForExecutionAndExit() - 1).offset() * sizeof(Register)), GPRInfo::callFrameRegister, GPRInfo::regT1);
-    Jump stackOverflow = branchPtr(Above, AbsoluteAddress(m_vm->addressOfStackLimit()), GPRInfo::regT1);
+    Jump stackOverflow = branchPtr(Above, AbsoluteAddress(m_vm->addressOfSoftStackLimit()), GPRInfo::regT1);
 
     addPtr(TrustedImm32(m_graph.stackPointerOffset() * sizeof(Register)), GPRInfo::callFrameRegister, stackPointerRegister);
     checkStackPointerAlignment();
@@ -366,7 +384,7 @@ void JITCompiler::compile()
 
     // Generate slow path code.
     m_speculative->runSlowPathGenerators(m_pcToCodeOriginMapBuilder);
-    m_pcToCodeOriginMapBuilder.appendItem(label(), PCToCodeOriginMapBuilder::defaultCodeOrigin());
+    m_pcToCodeOriginMapBuilder.appendItem(labelIgnoringWatchpoints(), PCToCodeOriginMapBuilder::defaultCodeOrigin());
     
     compileExceptionHandlers();
     linkOSRExits();
@@ -405,7 +423,7 @@ void JITCompiler::compileFunction()
     Label fromArityCheck(this);
     // Plant a check that sufficient space is available in the JSStack.
     addPtr(TrustedImm32(virtualRegisterForLocal(m_graph.requiredRegisterCountForExecutionAndExit() - 1).offset() * sizeof(Register)), GPRInfo::callFrameRegister, GPRInfo::regT1);
-    Jump stackOverflow = branchPtr(Above, AbsoluteAddress(m_vm->addressOfStackLimit()), GPRInfo::regT1);
+    Jump stackOverflow = branchPtr(Above, AbsoluteAddress(m_vm->addressOfSoftStackLimit()), GPRInfo::regT1);
 
     // Move the stack pointer down to accommodate locals
     addPtr(TrustedImm32(m_graph.stackPointerOffset() * sizeof(Register)), GPRInfo::callFrameRegister, stackPointerRegister);
@@ -443,7 +461,7 @@ void JITCompiler::compileFunction()
     m_arityCheck = label();
     compileEntry();
 
-    load32(AssemblyHelpers::payloadFor((VirtualRegister)JSStack::ArgumentCount), GPRInfo::regT1);
+    load32(AssemblyHelpers::payloadFor((VirtualRegister)CallFrameSlot::argumentCount), GPRInfo::regT1);
     branch32(AboveOrEqual, GPRInfo::regT1, TrustedImm32(m_codeBlock->numParameters())).linkTo(fromArityCheck, this);
     emitStoreCodeOrigin(CodeOrigin(0));
     if (maxFrameExtentForSlowPathCall)
@@ -459,7 +477,7 @@ void JITCompiler::compileFunction()
     
     // Generate slow path code.
     m_speculative->runSlowPathGenerators(m_pcToCodeOriginMapBuilder);
-    m_pcToCodeOriginMapBuilder.appendItem(label(), PCToCodeOriginMapBuilder::defaultCodeOrigin());
+    m_pcToCodeOriginMapBuilder.appendItem(labelIgnoringWatchpoints(), PCToCodeOriginMapBuilder::defaultCodeOrigin());
     
     compileExceptionHandlers();
     linkOSRExits();
@@ -570,7 +588,7 @@ void JITCompiler::noticeOSREntry(BasicBlock& basicBlock, JITCompiler::Label bloc
 
 void JITCompiler::appendExceptionHandlingOSRExit(ExitKind kind, unsigned eventStreamIndex, CodeOrigin opCatchOrigin, HandlerInfo* exceptionHandler, CallSiteIndex callSite, MacroAssembler::JumpList jumpsToFail)
 {
-    OSRExit exit(kind, JSValueRegs(), graph().methodOfGettingAValueProfileFor(nullptr), m_speculative.get(), eventStreamIndex);
+    OSRExit exit(kind, JSValueRegs(), MethodOfGettingAValueProfile(), m_speculative.get(), eventStreamIndex);
     exit.m_codeOrigin = opCatchOrigin;
     exit.m_exceptionHandlerCallSiteIndex = callSite;
     OSRExitCompilationInfo& exitInfo = appendExitInfo(jumpsToFail);
@@ -604,7 +622,7 @@ void JITCompiler::exceptionCheck()
     HandlerInfo* exceptionHandler;
     bool willCatchException = m_graph.willCatchExceptionInMachineFrame(m_speculative->m_currentNode->origin.forExit, opCatchOrigin, exceptionHandler); 
     if (willCatchException) {
-        unsigned streamIndex = m_speculative->m_outOfLineStreamIndex != UINT_MAX ? m_speculative->m_outOfLineStreamIndex : m_speculative->m_stream->size();
+        unsigned streamIndex = m_speculative->m_outOfLineStreamIndex ? *m_speculative->m_outOfLineStreamIndex : m_speculative->m_stream->size();
         MacroAssembler::Jump hadException = emitNonPatchableExceptionCheck();
         // We assume here that this is called after callOpeartion()/appendCall() is called.
         appendExceptionHandlingOSRExit(ExceptionCheck, streamIndex, opCatchOrigin, exceptionHandler, m_jitCode->common.lastCallSite(), hadException);

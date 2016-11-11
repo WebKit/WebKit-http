@@ -18,30 +18,28 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef SVGLengthList_h
-#define SVGLengthList_h
+#pragma once
 
 #include "SVGLength.h"
 #include <wtf/Vector.h>
 
 namespace WebCore {
 
-class SVGLengthList : public Vector<SVGLength> {
-public:
-    SVGLengthList() { }
+template<typename T> 
+class SVGPropertyTearOff;
 
-    void parse(const String& value, SVGLengthMode); 
+class SVGLengthList final : public Vector<SVGLength> {
+public:
+    void parse(const String& value, SVGLengthMode);
     String valueAsString() const;
 };
 
-template<>
-struct SVGPropertyTraits<SVGLengthList> {
-    typedef SVGLength ListItemType;
+template<> struct SVGPropertyTraits<SVGLengthList> {
+    using ListItemType = SVGLength;
+    using ListItemTearOff = SVGPropertyTearOff<SVGLength>;
 
     static SVGLengthList initialValue() { return SVGLengthList(); }
     static String toString(const SVGLengthList& type) { return type.valueAsString(); }
 };
 
 } // namespace WebCore
-
-#endif

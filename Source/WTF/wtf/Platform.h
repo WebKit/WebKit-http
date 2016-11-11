@@ -302,7 +302,6 @@
 /* Only one of these will be defined. */
 #if !defined(WTF_CPU_ARM_TRADITIONAL) && !defined(WTF_CPU_ARM_THUMB2)
 #  if defined(thumb2) || defined(__thumb2__) \
-    || (defined(__ARM_ARCH_ISA_THUMB) && __ARM_ARCH_ISA_THUMB == 2) \
     || ((defined(__thumb) || defined(__thumb__)) && WTF_THUMB_ARCH_VERSION == 4)
 #    define WTF_CPU_ARM_TRADITIONAL 0
 #    define WTF_CPU_ARM_THUMB2 1
@@ -446,6 +445,8 @@
 #define WTF_PLATFORM_EFL 1
 #elif defined(BUILDING_GTK__)
 #define WTF_PLATFORM_GTK 1
+#elif defined(BUILDING_JSCONLY__)
+/* JSCOnly does not provide PLATFORM() macro */
 #elif OS(MAC_OS_X)
 #define WTF_PLATFORM_MAC 1
 #elif OS(IOS)
@@ -481,10 +482,10 @@
 /* Graphics engines */
 
 /* USE(CG) and PLATFORM(CI) */
-#if PLATFORM(COCOA) || (PLATFORM(WIN) && !USE(WINGDI) && !PLATFORM(WIN_CAIRO))
+#if PLATFORM(COCOA) || (PLATFORM(WIN) && !USE(WINGDI) && !PLATFORM(WIN_CAIRO) && !USE(DIRECT2D))
 #define USE_CG 1
 #endif
-#if PLATFORM(COCOA) || (PLATFORM(WIN) && USE(CG))
+#if PLATFORM(COCOA) || (PLATFORM(WIN) && USE(CG) && !USE(DIRECT2D))
 #define USE_CA 1
 #endif
 
@@ -560,8 +561,11 @@
 
 #if PLATFORM(IOS)
 
-#if USE(APPLE_INTERNAL_SDK) && __IPHONE_OS_VERSION_MIN_REQUIRED < 100000
-#define USE_CFNETWORK 1
+#if USE(APPLE_INTERNAL_SDK) \
+    && ((TARGET_OS_IOS && __IPHONE_OS_VERSION_MAX_ALLOWED < 100000) \
+     || (PLATFORM(APPLETV) && __TV_OS_VERSION_MAX_ALLOWED < 100000) \
+     || (PLATFORM(WATCHOS) && __WATCH_OS_VERSION_MAX_ALLOWED < 30000))
+#define USE_CFURLCONNECTION 1
 #endif
 
 #define HAVE_NETWORK_EXTENSION 1
@@ -593,11 +597,7 @@
 #endif
 
 #if PLATFORM(WIN) && !USE(WINGDI) && !PLATFORM(WIN_CAIRO)
-#define USE_CFNETWORK 1
-#endif
-
-#if USE(CFNETWORK) || PLATFORM(COCOA)
-#define USE_CFURLCACHE 1
+#define USE_CFURLCONNECTION 1
 #endif
 
 #if !defined(HAVE_ACCESSIBILITY)
@@ -606,20 +606,26 @@
 #endif
 #endif /* !defined(HAVE_ACCESSIBILITY) */
 
-#if OS(UNIX)
+/* FIXME: Remove after CMake build enabled on Darwin */
+#if OS(DARWIN)
 #define HAVE_ERRNO_H 1
 #define HAVE_LANGINFO_H 1
+#define HAVE_LOCALTIME_R 1
 #define HAVE_MMAP 1
 #define HAVE_SIGNAL_H 1
+#define HAVE_STAT_BIRTHTIME 1
 #define HAVE_STRINGS_H 1
+#define HAVE_STRNSTR 1
 #define HAVE_SYS_PARAM_H 1
 #define HAVE_SYS_TIME_H 1 
+#define HAVE_TM_GMTOFF 1
+#define HAVE_TM_ZONE 1
+#define HAVE_TIMEGM 1
+#endif /* OS(DARWIN) */
+
+#if OS(UNIX)
 #define USE_PTHREADS 1
 #endif /* OS(UNIX) */
-
-#if (OS(FREEBSD) || OS(OPENBSD)) && !defined(__GLIBC__)
-#define HAVE_PTHREAD_NP_H 1
-#endif
 
 #if !defined(HAVE_VASPRINTF)
 #if !COMPILER(MSVC) && !COMPILER(MINGW)
@@ -627,24 +633,7 @@
 #endif
 #endif
 
-#if !defined(HAVE_STRNSTR)
-#if OS(DARWIN) || (OS(FREEBSD) && !defined(__GLIBC__))
-#define HAVE_STRNSTR 1
-#endif
-#endif
-
-#if (OS(DARWIN) || OS(FREEBSD) || OS(NETBSD)) && !defined(__GLIBC__)
-#define HAVE_STAT_BIRTHTIME 1
-#endif
-
-#if !OS(WINDOWS) && !OS(SOLARIS)
-#define HAVE_TM_GMTOFF 1
-#define HAVE_TM_ZONE 1
-#define HAVE_TIMEGM 1
-#endif
-
 #if OS(DARWIN)
-
 #define HAVE_DISPATCH_H 1
 #define HAVE_MADV_FREE 1
 #define HAVE_MADV_FREE_REUSE 1
@@ -662,18 +651,6 @@
 #endif
 
 #endif /* OS(DARWIN) */
-
-#if OS(WINDOWS)
-
-#define HAVE_SYS_TIMEB_H 1
-#define HAVE_ALIGNED_MALLOC 1
-#define HAVE_ISDEBUGGERPRESENT 1
-
-#endif
-
-#if OS(WINDOWS)
-#define HAVE_VIRTUALALLOC 1
-#endif
 
 #if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 100000)
 #define HAVE_CFNETWORK_STORAGE_PARTITIONING 1
@@ -744,7 +721,11 @@
 #define USE_ARMV7_DISASSEMBLER 1
 #endif
 
-#if !defined(ENABLE_DISASSEMBLER) && (USE(UDIS86) || USE(ARMV7_DISASSEMBLER) || USE(ARM64_DISASSEMBLER))
+#if !defined(USE_ARM_LLVM_DISASSEMBLER) && ENABLE(JIT) && CPU(ARM_TRADITIONAL) && HAVE(LLVM)
+#define USE_ARM_LLVM_DISASSEMBLER 1
+#endif
+
+#if !defined(ENABLE_DISASSEMBLER) && (USE(UDIS86) || USE(ARMV7_DISASSEMBLER) || USE(ARM64_DISASSEMBLER) || USE(ARM_LLVM_DISASSEMBLER))
 #define ENABLE_DISASSEMBLER 1
 #endif
 
@@ -771,8 +752,8 @@
 #define ENABLE_CONCURRENT_JIT 1
 #endif
 
-/* This controls whether B3 is built. It will not be used unless FTL_USES_B3 is enabled. */
-#if ENABLE(FTL_JIT)
+/* This controls whether B3 is built. B3 is needed for FTL JIT and WebAssembly */
+#if ENABLE(FTL_JIT) || ENABLE(WEBASSEMBLY)
 #define ENABLE_B3_JIT 1
 #endif
 
@@ -915,6 +896,14 @@
 #define ENABLE_MASM_PROBE 0
 #endif
 
+#ifndef ENABLE_EXCEPTION_SCOPE_VERIFICATION
+#ifdef NDEBUG
+#define ENABLE_EXCEPTION_SCOPE_VERIFICATION 0
+#else
+#define ENABLE_EXCEPTION_SCOPE_VERIFICATION 1
+#endif
+#endif
+
 /* Pick which allocator to use; we only need an executable allocator if the assembler is compiled in.
    On non-Windows x86-64, iOS, and ARM64 we use a single fixed mmap, on other platforms we mmap on demand. */
 #if ENABLE(ASSEMBLER)
@@ -958,13 +947,9 @@
 #define USE_TEXTURE_MAPPER_GL 1
 #endif
 
-/* Compositing on the UI-process in WebKit2 */
 #if PLATFORM(COCOA)
 #define USE_PROTECTION_SPACE_AUTH_CALLBACK 1
 #endif
-
-/* Set up a define for a common error that is intended to cause a build error -- thus the space after Error. */
-#define WTF_PLATFORM_CFNETWORK Error USE_macro_should_be_used_with_CFNETWORK
 
 #if PLATFORM(COCOA) && HAVE(ACCESSIBILITY)
 #define USE_ACCESSIBILITY_CONTEXT_MENUS 1
@@ -1152,7 +1137,7 @@
 #define HAVE_NS_ACTIVITY 1
 #endif
 
-#if (OS(DARWIN) && USE(CG)) || USE(FREETYPE) || (PLATFORM(WIN) && (USE(CG) || USE(CAIRO)))
+#if (OS(DARWIN) && USE(CG)) || (USE(FREETYPE) && !PLATFORM(GTK)) || (PLATFORM(WIN) && (USE(CG) || USE(CAIRO)))
 #undef ENABLE_OPENTYPE_MATH
 #define ENABLE_OPENTYPE_MATH 1
 #endif
@@ -1172,7 +1157,8 @@
 #define HAVE_COREANIMATION_FENCES 1
 #endif
 
-#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 100000)
+/* FIXME: Enable USE_OS_LOG when building with the public iOS 10 SDK once we fix <rdar://problem/27758343>. */
+#if (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 100000 && USE(APPLE_INTERNAL_SDK))
 #define USE_OS_LOG 1
 #if USE(APPLE_INTERNAL_SDK)
 #define USE_OS_STATE 1
@@ -1214,6 +1200,11 @@
 
 #if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200
 #define USE_MEDIAREMOTE 1
+#endif
+
+#if COMPILER(MSVC)
+/* Enable strict runtime stack buffer checks. */
+#pragma strict_gs_check(on)
 #endif
 
 #endif /* WTF_Platform_h */

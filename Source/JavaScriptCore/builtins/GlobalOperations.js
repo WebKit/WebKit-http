@@ -45,8 +45,7 @@ function toLength(target)
 
     var length = @toInteger(target);
     // originally Math.min(Math.max(length, 0), maxSafeInteger));
-    return length > 0 ? (length < @MAX_SAFE_INTEGER? length : @MAX_SAFE_INTEGER) : 0;
-
+    return length > 0 ? (length < @MAX_SAFE_INTEGER ? length : @MAX_SAFE_INTEGER) : 0;
 }
 
 @globalPrivate
@@ -72,11 +71,11 @@ function speciesConstructor(obj, defaultConstructor)
     if (constructor === @undefined)
         return defaultConstructor;
     if (!@isObject(constructor))
-        throw new @TypeError("|this|.constructor is not an Object or undefined");
+        @throwTypeError("|this|.constructor is not an Object or undefined");
     constructor = constructor.@speciesSymbol;
     if (constructor == null)
         return defaultConstructor;
     if (@isConstructor(constructor))
         return constructor;
-    throw new @TypeError("|this|.constructor[Symbol.species] is not a constructor");
+    @throwTypeError("|this|.constructor[Symbol.species] is not a constructor");
 }

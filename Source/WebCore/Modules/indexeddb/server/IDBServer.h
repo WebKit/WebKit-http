@@ -35,7 +35,6 @@
 #include <wtf/CrossThreadTask.h>
 #include <wtf/HashMap.h>
 #include <wtf/Lock.h>
-#include <wtf/MessageQueue.h>
 #include <wtf/Ref.h>
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
@@ -45,6 +44,8 @@ namespace WebCore {
 class IDBCursorInfo;
 class IDBRequestData;
 class IDBValue;
+
+struct IDBGetRecordData;
 
 namespace IDBServer {
 
@@ -65,16 +66,19 @@ public:
     WEBCORE_EXPORT void commitTransaction(const IDBResourceIdentifier&);
     WEBCORE_EXPORT void didFinishHandlingVersionChangeTransaction(uint64_t databaseConnectionIdentifier, const IDBResourceIdentifier&);
     WEBCORE_EXPORT void createObjectStore(const IDBRequestData&, const IDBObjectStoreInfo&);
+    WEBCORE_EXPORT void renameObjectStore(const IDBRequestData&, uint64_t objectStoreIdentifier, const String& newName);
     WEBCORE_EXPORT void deleteObjectStore(const IDBRequestData&, const String& objectStoreName);
     WEBCORE_EXPORT void clearObjectStore(const IDBRequestData&, uint64_t objectStoreIdentifier);
     WEBCORE_EXPORT void createIndex(const IDBRequestData&, const IDBIndexInfo&);
     WEBCORE_EXPORT void deleteIndex(const IDBRequestData&, uint64_t objectStoreIdentifier, const String& indexName);
+    WEBCORE_EXPORT void renameIndex(const IDBRequestData&, uint64_t objectStoreIdentifier, uint64_t indexIdentifier, const String& newName);
     WEBCORE_EXPORT void putOrAdd(const IDBRequestData&, const IDBKeyData&, const IDBValue&, IndexedDB::ObjectStoreOverwriteMode);
-    WEBCORE_EXPORT void getRecord(const IDBRequestData&, const IDBKeyRangeData&);
+    WEBCORE_EXPORT void getRecord(const IDBRequestData&, const IDBGetRecordData&);
+    WEBCORE_EXPORT void getAllRecords(const IDBRequestData&, const IDBGetAllRecordsData&);
     WEBCORE_EXPORT void getCount(const IDBRequestData&, const IDBKeyRangeData&);
     WEBCORE_EXPORT void deleteRecord(const IDBRequestData&, const IDBKeyRangeData&);
     WEBCORE_EXPORT void openCursor(const IDBRequestData&, const IDBCursorInfo&);
-    WEBCORE_EXPORT void iterateCursor(const IDBRequestData&, const IDBKeyData&, unsigned long count);
+    WEBCORE_EXPORT void iterateCursor(const IDBRequestData&, const IDBIterateCursorData&);
 
     WEBCORE_EXPORT void establishTransaction(uint64_t databaseConnectionIdentifier, const IDBTransactionInfo&);
     WEBCORE_EXPORT void databaseConnectionClosed(uint64_t databaseConnectionIdentifier);

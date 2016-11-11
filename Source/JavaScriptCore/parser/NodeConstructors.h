@@ -18,11 +18,11 @@
  *
  */
 
-#ifndef NodeConstructors_h
-#define NodeConstructors_h
+#pragma once
 
 #include "Nodes.h"
 #include "Lexer.h"
+#include "Opcode.h"
 #include "Parser.h"
 
 namespace JSC {
@@ -497,6 +497,11 @@ namespace JSC {
     {
     }
 
+    inline PowNode::PowNode(const JSTokenLocation& location, ExpressionNode* expr1, ExpressionNode* expr2, bool rightHasAssignments)
+        : BinaryOpNode(location, ResultType::numberType(), expr1, expr2, op_pow, rightHasAssignments)
+    {
+    }
+
     inline MultNode::MultNode(const JSTokenLocation& location, ExpressionNode* expr1, ExpressionNode* expr2, bool rightHasAssignments)
         : BinaryOpNode(location, ResultType::numberType(), expr1, expr2, op_mul, rightHasAssignments)
     {
@@ -932,6 +937,12 @@ namespace JSC {
     {
     }
 
+    inline AwaitExprNode::AwaitExprNode(const JSTokenLocation& location, ExpressionNode* argument)
+        : ExpressionNode(location)
+        , m_argument(argument)
+    {
+    }
+
     inline ClassDeclNode::ClassDeclNode(const JSTokenLocation& location, ExpressionNode* classDeclaration)
         : StatementNode(location)
         , m_classDeclaration(classDeclaration)
@@ -1043,13 +1054,12 @@ namespace JSC {
     {
     }
 
-    inline RestParameterNode::RestParameterNode(const Identifier& name, unsigned numParametersToSkip, const JSTextPosition& start, const JSTextPosition& end)
+    inline RestParameterNode::RestParameterNode(DestructuringPatternNode* pattern, unsigned numParametersToSkip)
         : DestructuringPatternNode()
-        , m_name(name)
+        , m_pattern(pattern)
         , m_numParametersToSkip(numParametersToSkip)
-        , m_divotStart(start)
-        , m_divotEnd(end)
     {
+        ASSERT(!pattern->isRestParameter());
     }
 
     inline DestructuringAssignmentNode::DestructuringAssignmentNode(const JSTokenLocation& location, DestructuringPatternNode* bindings, ExpressionNode* initializer)
@@ -1060,5 +1070,3 @@ namespace JSC {
     }
     
 } // namespace JSC
-
-#endif // NodeConstructors_h

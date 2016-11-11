@@ -43,6 +43,7 @@
 #import <AVFoundation/AVTime.h>
 #import <QuartzCore/CALayer.h>
 #import <objc_runtime.h>
+#import <wtf/Deque.h>
 #import <wtf/MainThread.h>
 #import <wtf/NeverDestroyed.h>
 
@@ -92,31 +93,6 @@ SOFT_LINK_CONSTANT(AVFoundation, AVAudioTimePitchAlgorithmVarispeed, NSString*)
 @end
 
 #pragma mark -
-#pragma mark AVSampleBufferAudioRenderer
-
-@interface AVSampleBufferAudioRenderer : NSObject
-- (void)setVolume:(float)volume;
-- (void)setMuted:(BOOL)muted;
-@property (nonatomic, copy) NSString *audioTimePitchAlgorithm;
-@end
-
-#pragma mark -
-#pragma mark AVSampleBufferRenderSynchronizer
-
-@interface AVSampleBufferRenderSynchronizer : NSObject
-- (CMTimebaseRef)timebase;
-- (float)rate;
-- (void)setRate:(float)rate;
-- (void)setRate:(float)rate time:(CMTime)time;
-- (NSArray *)renderers;
-- (void)addRenderer:(id)renderer;
-- (void)removeRenderer:(id)renderer atTime:(CMTime)time withCompletionHandler:(void (^)(BOOL didRemoveRenderer))completionHandler;
-- (id)addPeriodicTimeObserverForInterval:(CMTime)interval queue:(dispatch_queue_t)queue usingBlock:(void (^)(CMTime time))block;
-- (id)addBoundaryTimeObserverForTimes:(NSArray *)times queue:(dispatch_queue_t)queue usingBlock:(void (^)(void))block;
-- (void)removeTimeObserver:(id)observer;
-@end
-
-#pragma mark - 
 #pragma mark AVStreamSession
 
 @interface AVStreamSession : NSObject
@@ -141,6 +117,7 @@ static void CMTimebaseEffectiveRateChangedCallback(CMNotificationCenterRef, cons
 MediaPlayerPrivateMediaSourceAVFObjC::MediaPlayerPrivateMediaSourceAVFObjC(MediaPlayer* player)
     : m_player(player)
     , m_weakPtrFactory(this)
+    , m_sizeChangeObserverWeakPtrFactory(this)
     , m_synchronizer(adoptNS([allocAVSampleBufferRenderSynchronizerInstance() init]))
     , m_seekTimer(*this, &MediaPlayerPrivateMediaSourceAVFObjC::seekInternal)
     , m_session(nullptr)
@@ -195,6 +172,7 @@ MediaPlayerPrivateMediaSourceAVFObjC::~MediaPlayerPrivateMediaSourceAVFObjC()
         [m_synchronizer removeTimeObserver:m_timeJumpedObserver.get()];
     if (m_durationObserver)
         [m_synchronizer removeTimeObserver:m_durationObserver.get()];
+    flushPendingSizeChanges();
 
     m_seekTimer.stop();
 }
@@ -343,8 +321,8 @@ bool MediaPlayerPrivateMediaSourceAVFObjC::paused() const
 
 void MediaPlayerPrivateMediaSourceAVFObjC::setVolume(float volume)
 {
-    for (auto it = m_sampleBufferAudioRenderers.begin(), end = m_sampleBufferAudioRenderers.end(); it != end; ++it)
-        [*it setVolume:volume];
+    for (auto pair : m_sampleBufferAudioRendererMap)
+        [pair.key setVolume:volume];
 }
 
 bool MediaPlayerPrivateMediaSourceAVFObjC::supportsScanning() const
@@ -354,16 +332,13 @@ bool MediaPlayerPrivateMediaSourceAVFObjC::supportsScanning() const
 
 void MediaPlayerPrivateMediaSourceAVFObjC::setMuted(bool muted)
 {
-    for (auto it = m_sampleBufferAudioRenderers.begin(), end = m_sampleBufferAudioRenderers.end(); it != end; ++it)
-        [*it setMuted:muted];
+    for (auto pair : m_sampleBufferAudioRendererMap)
+        [pair.key setMuted:muted];
 }
 
 FloatSize MediaPlayerPrivateMediaSourceAVFObjC::naturalSize() const
 {
-    if (!m_mediaSourcePrivate)
-        return FloatSize();
-
-    return m_mediaSourcePrivate->naturalSize();
+    return m_naturalSize;
 }
 
 bool MediaPlayerPrivateMediaSourceAVFObjC::hasVideo() const
@@ -442,6 +417,7 @@ void MediaPlayerPrivateMediaSourceAVFObjC::seekInternal()
 
     LOG(MediaSource, "MediaPlayerPrivateMediaSourceAVFObjC::seekInternal(%p) - seekTime(%s)", this, toString(m_lastSeekTime).utf8().data());
 
+    m_mediaSourcePrivate->willSeek();
     [m_synchronizer setRate:0 time:toCMTime(m_lastSeekTime)];
     m_mediaSourcePrivate->seekToTime(m_lastSeekTime);
 }
@@ -468,12 +444,13 @@ void MediaPlayerPrivateMediaSourceAVFObjC::seekCompleted()
 
 bool MediaPlayerPrivateMediaSourceAVFObjC::seeking() const
 {
-    return m_seeking && !m_seekCompleted;
+    return m_seeking || !m_seekCompleted;
 }
 
 void MediaPlayerPrivateMediaSourceAVFObjC::setRateDouble(double rate)
 {
-    m_rate = rate;
+    // AVSampleBufferRenderSynchronizer does not support negative rate yet.
+    m_rate = std::max<double>(rate, 0);
     if (shouldBePlaying())
         [m_synchronizer setRate:m_rate];
 }
@@ -481,8 +458,8 @@ void MediaPlayerPrivateMediaSourceAVFObjC::setRateDouble(double rate)
 void MediaPlayerPrivateMediaSourceAVFObjC::setPreservesPitch(bool preservesPitch)
 {
     NSString *algorithm = preservesPitch ? AVAudioTimePitchAlgorithmSpectral : AVAudioTimePitchAlgorithmVarispeed;
-    for (auto& renderer : m_sampleBufferAudioRenderers)
-        [renderer setAudioTimePitchAlgorithm:algorithm];
+    for (auto pair : m_sampleBufferAudioRendererMap)
+        [pair.key setAudioTimePitchAlgorithm:algorithm];
 }
 
 MediaPlayer::NetworkState MediaPlayerPrivateMediaSourceAVFObjC::networkState() const
@@ -553,6 +530,11 @@ void MediaPlayerPrivateMediaSourceAVFObjC::acceleratedRenderingStateChanged()
         ensureLayer();
     else
         destroyLayer();
+}
+
+void MediaPlayerPrivateMediaSourceAVFObjC::notifyActiveSourceBuffersChanged()
+{
+    m_player->client().mediaPlayerActiveSourceBuffersChanged(m_player);
 }
 
 MediaPlayer::MovieLoadType MediaPlayerPrivateMediaSourceAVFObjC::movieLoadType() const
@@ -632,7 +614,57 @@ void MediaPlayerPrivateMediaSourceAVFObjC::destroyLayer()
 
 bool MediaPlayerPrivateMediaSourceAVFObjC::shouldBePlaying() const
 {
-    return m_playing && !seeking() && m_readyState >= MediaPlayer::HaveFutureData;
+    return m_playing && !seeking() && allRenderersHaveAvailableSamples() && m_readyState >= MediaPlayer::HaveFutureData;
+}
+
+void MediaPlayerPrivateMediaSourceAVFObjC::setHasAvailableVideoFrame(bool flag)
+{
+    if (m_hasAvailableVideoFrame == flag)
+        return;
+    m_hasAvailableVideoFrame = flag;
+    updateAllRenderersHaveAvailableSamples();
+}
+
+void MediaPlayerPrivateMediaSourceAVFObjC::setHasAvailableAudioSample(AVSampleBufferAudioRenderer* renderer, bool flag)
+{
+    auto iter = m_sampleBufferAudioRendererMap.find(renderer);
+    if (iter == m_sampleBufferAudioRendererMap.end())
+        return;
+
+    auto& properties = iter->value;
+    if (properties.hasAudibleSample == flag)
+        return;
+    properties.hasAudibleSample = flag;
+    updateAllRenderersHaveAvailableSamples();
+}
+
+void MediaPlayerPrivateMediaSourceAVFObjC::updateAllRenderersHaveAvailableSamples()
+{
+    bool allRenderersHaveAvailableSamples = true;
+
+    do {
+        if (m_sampleBufferDisplayLayer && !m_hasAvailableVideoFrame) {
+            allRenderersHaveAvailableSamples = false;
+            break;
+        }
+
+        for (auto& properties : m_sampleBufferAudioRendererMap.values()) {
+            if (!properties.hasAudibleSample) {
+                allRenderersHaveAvailableSamples = false;
+                break;
+            }
+        }
+    } while (0);
+
+    if (m_allRenderersHaveAvailableSamples == allRenderersHaveAvailableSamples)
+        return;
+
+    m_allRenderersHaveAvailableSamples = allRenderersHaveAvailableSamples;
+
+    if (shouldBePlaying() && [m_synchronizer rate] != m_rate)
+        [m_synchronizer setRate:m_rate];
+    else if (!shouldBePlaying() && [m_synchronizer rate])
+        [m_synchronizer setRate:0];
 }
 
 void MediaPlayerPrivateMediaSourceAVFObjC::durationChanged()
@@ -676,12 +708,41 @@ void MediaPlayerPrivateMediaSourceAVFObjC::effectiveRateChanged()
     m_player->rateChanged();
 }
 
-void MediaPlayerPrivateMediaSourceAVFObjC::sizeChanged()
+void MediaPlayerPrivateMediaSourceAVFObjC::sizeWillChangeAtTime(const MediaTime& time, const FloatSize& size)
 {
+    auto weakThis = m_sizeChangeObserverWeakPtrFactory.createWeakPtr();
+    NSArray* times = @[[NSValue valueWithCMTime:toCMTime(time)]];
+    RetainPtr<id> observer = [m_synchronizer addBoundaryTimeObserverForTimes:times queue:dispatch_get_main_queue() usingBlock:[weakThis, size] {
+        if (!weakThis)
+            return;
+        weakThis->m_sizeChangeObservers.removeFirst();
+        weakThis->setNaturalSize(size);
+    }];
+    m_sizeChangeObservers.append(WTFMove(observer));
+
+    if (currentMediaTime() >= time)
+        setNaturalSize(size);
+}
+
+void MediaPlayerPrivateMediaSourceAVFObjC::setNaturalSize(const FloatSize& size)
+{
+    if (size == m_naturalSize)
+        return;
+
+    m_naturalSize = size;
     m_player->sizeChanged();
 }
 
-#if ENABLE(ENCRYPTED_MEDIA_V2)
+void MediaPlayerPrivateMediaSourceAVFObjC::flushPendingSizeChanges()
+{
+    while (!m_sizeChangeObservers.isEmpty()) {
+        RetainPtr<id> observer = m_sizeChangeObservers.takeFirst();
+        [m_synchronizer removeTimeObserver:observer.get()];
+    }
+    m_sizeChangeObserverWeakPtrFactory.revokeAll();
+}
+
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
 AVStreamSession* MediaPlayerPrivateMediaSourceAVFObjC::streamSession()
 {
     if (!getAVStreamSessionClass() || ![getAVStreamSessionClass() instancesRespondToSelector:@selector(initWithStorageDirectoryAtURL:)])
@@ -784,10 +845,10 @@ void MediaPlayerPrivateMediaSourceAVFObjC::removeDisplayLayer(AVSampleBufferDisp
 
 void MediaPlayerPrivateMediaSourceAVFObjC::addAudioRenderer(AVSampleBufferAudioRenderer* audioRenderer)
 {
-    if (m_sampleBufferAudioRenderers.contains(audioRenderer))
+    if (m_sampleBufferAudioRendererMap.contains(audioRenderer))
         return;
 
-    m_sampleBufferAudioRenderers.append(audioRenderer);
+    m_sampleBufferAudioRendererMap.add(audioRenderer, AudioRendererProperties());
 
     [audioRenderer setMuted:m_player->muted()];
     [audioRenderer setVolume:m_player->volume()];
@@ -799,8 +860,8 @@ void MediaPlayerPrivateMediaSourceAVFObjC::addAudioRenderer(AVSampleBufferAudioR
 
 void MediaPlayerPrivateMediaSourceAVFObjC::removeAudioRenderer(AVSampleBufferAudioRenderer* audioRenderer)
 {
-    size_t pos = m_sampleBufferAudioRenderers.find(audioRenderer);
-    if (pos == notFound)
+    auto iter = m_sampleBufferAudioRendererMap.find(audioRenderer);
+    if (iter == m_sampleBufferAudioRendererMap.end())
         return;
 
     CMTime currentTime = CMTimebaseGetTime([m_synchronizer timebase]);
@@ -808,7 +869,7 @@ void MediaPlayerPrivateMediaSourceAVFObjC::removeAudioRenderer(AVSampleBufferAud
         // No-op.
     }];
 
-    m_sampleBufferAudioRenderers.remove(pos);
+    m_sampleBufferAudioRendererMap.remove(iter);
     m_player->client().mediaPlayerRenderingModeChanged(m_player);
 }
 

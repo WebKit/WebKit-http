@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -135,6 +135,11 @@ void WKBundleSetAllowFileAccessFromFileURLs(WKBundleRef bundleRef, WKBundlePageG
     toImpl(bundleRef)->setAllowFileAccessFromFileURLs(toImpl(pageGroupRef), enabled);
 }
 
+void WKBundleSetAllowStorageAccessFromFileURLS(WKBundleRef bundleRef, WKBundlePageGroupRef pageGroupRef, bool needsQuirk)
+{
+    toImpl(bundleRef)->setNeedsStorageAccessFromFileURLsQuirk(toImpl(pageGroupRef), needsQuirk);
+}
+
 void WKBundleSetMinimumLogicalFontSize(WKBundleRef bundleRef, WKBundlePageGroupRef pageGroupRef, int size)
 {
     toImpl(bundleRef)->setMinimumLogicalFontSize(toImpl(pageGroupRef), size);
@@ -158,6 +163,11 @@ void WKBundleSetJavaScriptCanAccessClipboard(WKBundleRef bundleRef, WKBundlePage
 void WKBundleSetPrivateBrowsingEnabled(WKBundleRef bundleRef, WKBundlePageGroupRef pageGroupRef, bool enabled)
 {
     toImpl(bundleRef)->setPrivateBrowsingEnabled(toImpl(pageGroupRef), enabled);
+}
+
+void WKBundleSetUseDashboardCompatibilityMode(WKBundleRef bundleRef, WKBundlePageGroupRef pageGroupRef, bool enabled)
+{
+    toImpl(bundleRef)->setUseDashboardCompatibilityMode(toImpl(pageGroupRef), enabled);
 }
 
 void WKBundleSetPopupBlockingEnabled(WKBundleRef bundleRef, WKBundlePageGroupRef pageGroupRef, bool enabled)

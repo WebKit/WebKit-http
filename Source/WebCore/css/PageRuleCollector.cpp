@@ -58,7 +58,7 @@ bool PageRuleCollector::isFirstPage(int pageIndex) const
 String PageRuleCollector::pageName(int /* pageIndex */) const
 {
     // FIXME: Implement page index to page name mapping.
-    return "";
+    return emptyString();
 }
 
 void PageRuleCollector::matchAllPageRules(int pageIndex)
@@ -70,7 +70,8 @@ void PageRuleCollector::matchAllPageRules(int pageIndex)
     matchPageRules(CSSDefaultStyleSheets::defaultPrintStyle, isLeft, isFirst, page);
     matchPageRules(m_ruleSets.userStyle(), isLeft, isFirst, page);
     // Only consider the global author RuleSet for @page rules, as per the HTML5 spec.
-    matchPageRules(m_ruleSets.authorStyle(), isLeft, isFirst, page);
+    if (m_ruleSets.isAuthorStyleDefined())
+        matchPageRules(&m_ruleSets.authorStyle(), isLeft, isFirst, page);
 }
 
 void PageRuleCollector::matchPageRules(RuleSet* rules, bool isLeftPage, bool isFirstPage, const String& pageName)

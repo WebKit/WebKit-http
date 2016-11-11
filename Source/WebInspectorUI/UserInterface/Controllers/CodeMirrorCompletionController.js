@@ -58,18 +58,26 @@ WebInspector.CodeMirrorCompletionController = class CodeMirrorCompletionControll
             "Cmd-Y": this._handleHideKey.bind(this)
         };
 
+        this._handleBeforeChangeListener = this._handleBeforeChange.bind(this);
         this._handleChangeListener = this._handleChange.bind(this);
         this._handleCursorActivityListener = this._handleCursorActivity.bind(this);
         this._handleHideActionListener = this._handleHideAction.bind(this);
 
         this._codeMirror.addKeyMap(this._keyMap);
 
+        this._codeMirror.on("beforeChange", this._handleBeforeChangeListener);
         this._codeMirror.on("change", this._handleChangeListener);
         this._codeMirror.on("cursorActivity", this._handleCursorActivityListener);
         this._codeMirror.on("blur", this._handleHideActionListener);
         this._codeMirror.on("scroll", this._handleHideActionListener);
 
         this._updatePromise = null;
+
+        this._currentCompletion = null;
+        this._ignoreChange = false;
+        this._ignoreNextCursorActivity = false;
+        this._ignoreNextUndo = false;
+        this._inCompletionActivity = false;
     }
 
     // Public
@@ -86,8 +94,10 @@ WebInspector.CodeMirrorCompletionController = class CodeMirrorCompletionControll
 
     updateCompletions(completions, implicitSuffix)
     {
-        if (isNaN(this._startOffset) || isNaN(this._endOffset) || isNaN(this._lineNumber))
+        if (isNaN(this._startOffset) || isNaN(this._endOffset) || isNaN(this._lineNumber)) {
+            this._inCompletionActivity = false;
             return;
+        }
 
         if (!completions || !completions.length) {
             this.hideCompletions();
@@ -133,7 +143,7 @@ WebInspector.CodeMirrorCompletionController = class CodeMirrorCompletionControll
 
     isCompletionChange(change)
     {
-        return this._ignoreChange || change.origin === WebInspector.CodeMirrorCompletionController.CompletionOrigin || change.origin === WebInspector.CodeMirrorCompletionController.DeleteCompletionOrigin;
+        return this._ignoreChange || this._ignoreNextUndo || change.origin === WebInspector.CodeMirrorCompletionController.CompletionOrigin || change.origin === WebInspector.CodeMirrorCompletionController.DeleteCompletionOrigin;
     }
 
     isShowingCompletions()
@@ -160,8 +170,9 @@ WebInspector.CodeMirrorCompletionController = class CodeMirrorCompletionControll
         this._implicitSuffix = "";
         this._forced = false;
 
-        delete this._currentCompletion;
-        delete this._ignoreNextCursorActivity;
+        this._currentCompletion = null;
+        this._ignoreNextCursorActivity = false;
+        this._inCompletionActivity = false;
 
         this._resolveUpdatePromise(WebInspector.CodeMirrorCompletionController.UpdatePromise.NoCompletionsFound);
     }
@@ -170,6 +181,7 @@ WebInspector.CodeMirrorCompletionController = class CodeMirrorCompletionControll
     {
         this._codeMirror.removeKeyMap(this._keyMap);
 
+        this._codeMirror.off("beforeChange", this._handleBeforeChangeListener);
         this._codeMirror.off("change", this._handleChangeListener);
         this._codeMirror.off("cursorActivity", this._handleCursorActivityListener);
         this._codeMirror.off("blur", this._handleHideActionListener);
@@ -191,6 +203,8 @@ WebInspector.CodeMirrorCompletionController = class CodeMirrorCompletionControll
 
     completionSuggestionsSelectedCompletion(suggestionsView, completionText)
     {
+        this._ignoreNextUndo = true;
+
         this._applyCompletionHint(completionText);
     }
 
@@ -245,15 +259,6 @@ WebInspector.CodeMirrorCompletionController = class CodeMirrorCompletionControll
         this._notifyCompletionsHiddenIfNeededTimeout = setTimeout(notify.bind(this), WebInspector.CodeMirrorCompletionController.CompletionsHiddenDelay);
     }
 
-    _createCompletionHintMarker(position, text)
-    {
-        var container = document.createElement("span");
-        container.classList.add(WebInspector.CodeMirrorCompletionController.CompletionHintStyleClassName);
-        container.textContent = text;
-
-        this._completionHintMarker = this._codeMirror.setUniqueBookmark(position, {widget: container, insertLeft: true});
-    }
-
     _applyCompletionHint(completionText)
     {
         console.assert(completionText);
@@ -262,17 +267,26 @@ WebInspector.CodeMirrorCompletionController = class CodeMirrorCompletionControll
 
         function update()
         {
+            if (!this._inCompletionActivity) {
+                this._inCompletionActivity = true;
+                this._codeMirror.changeGeneration(true);
+            }
+
             this._currentCompletion = completionText;
 
-            this._removeCompletionHint(true, true);
+            this._removeCompletionHint(true);
 
-            var replacementText = this._currentReplacementText;
+            let replacementText = this._currentReplacementText;
 
-            var from = {line: this._lineNumber, ch: this._startOffset};
-            var cursor = {line: this._lineNumber, ch: this._endOffset};
-            var currentText = this._codeMirror.getRange(from, cursor);
+            let from = {line: this._lineNumber, ch: this._startOffset};
+            let cursor = {line: this._lineNumber, ch: this._endOffset};
+            let to = {line: this._lineNumber, ch: this._startOffset + replacementText.length};
 
-            this._createCompletionHintMarker(cursor, replacementText.replace(currentText, ""));
+            this._codeMirror.replaceRange(replacementText, from, cursor, WebInspector.CodeMirrorCompletionController.CompletionOrigin);
+
+            this._codeMirror.setCursor(cursor);
+            if (cursor.ch !== to.ch)
+                this._completionHintMarker = this._codeMirror.markText(cursor, to, {className: WebInspector.CodeMirrorCompletionController.CompletionHintStyleClassName});
         }
 
         this._ignoreChange = true;
@@ -280,14 +294,14 @@ WebInspector.CodeMirrorCompletionController = class CodeMirrorCompletionControll
 
         this._codeMirror.operation(update.bind(this));
 
-        delete this._ignoreChange;
+        this._ignoreChange = false;
     }
 
     _commitCompletionHint()
     {
         function update()
         {
-            this._removeCompletionHint(true, true);
+            this._removeCompletionHint(true);
 
             var replacementText = this._currentReplacementText;
 
@@ -302,8 +316,6 @@ WebInspector.CodeMirrorCompletionController = class CodeMirrorCompletionControll
 
             this._codeMirror.replaceRange(replacementText, from, cursor, WebInspector.CodeMirrorCompletionController.CompletionOrigin);
 
-            // Don't call _removeLastChangeFromHistory here to allow the committed completion to be undone.
-
             this._codeMirror.setCursor(to);
 
             this.hideCompletions();
@@ -314,71 +326,35 @@ WebInspector.CodeMirrorCompletionController = class CodeMirrorCompletionControll
 
         this._codeMirror.operation(update.bind(this));
 
-        delete this._ignoreChange;
+        this._ignoreChange = false;
     }
 
-    _removeLastChangeFromHistory()
-    {
-        var history = this._codeMirror.getHistory();
-
-        // We don't expect a undone history. But if there is one clear it. If could lead to undefined behavior.
-        console.assert(!history.undone.length);
-        history.undone = [];
-
-        // Pop the last item from the done history.
-        console.assert(history.done.length);
-        history.done.pop();
-
-        this._codeMirror.setHistory(history);
-    }
-
-    _removeCompletionHint(nonatomic, dontRestorePrefix)
+    _removeCompletionHint(nonatomic)
     {
         if (!this._completionHintMarker)
             return;
 
         this._notifyCompletionsHiddenSoon();
 
-        function clearMarker(marker)
-        {
-            if (!marker)
-                return;
-
-            var range = marker.find();
-            if (range)
-                marker.clear();
-
-            return null;
-        }
-
         function update()
         {
-            this._completionHintMarker = clearMarker(this._completionHintMarker);
+            this._codeMirror.undo();
 
-            if (dontRestorePrefix)
-                return;
+            let range = this._completionHintMarker.find();
+            if (range)
+                this._completionHintMarker.clear();
 
-            console.assert(!isNaN(this._startOffset));
-            console.assert(!isNaN(this._endOffset));
-            console.assert(!isNaN(this._lineNumber));
-
-            var from = {line: this._lineNumber, ch: this._startOffset};
-            var to = {line: this._lineNumber, ch: this._endOffset};
-
-            this._codeMirror.replaceRange(this._prefix, from, to, WebInspector.CodeMirrorCompletionController.DeleteCompletionOrigin);
-            this._removeLastChangeFromHistory();
-        }
-
-        if (nonatomic) {
-            update.call(this);
-            return;
+            this._completionHintMarker = null;
         }
 
         this._ignoreChange = true;
 
-        this._codeMirror.operation(update.bind(this));
+        if (nonatomic)
+            update.call(this);
+        else
+            this._codeMirror.operation(update.bind(this));
 
-        delete this._ignoreChange;
+        this._ignoreChange = false;
     }
 
     _scanStringForExpression(modeName, string, startOffset, direction, allowMiddleAndEmpty, includeStopCharacter, ignoreInitialUnmatchedOpenBracket, stopCharactersRegex)
@@ -416,7 +392,6 @@ WebInspector.CodeMirrorCompletionController = class CodeMirrorCompletionControll
 
         var bracketStack = [];
         var bracketOffsetStack = [];
-        var lastCloseBracketOffset = NaN;
 
         var startOffset = endOffset;
         var firstOffset = endOffset + direction;
@@ -463,7 +438,7 @@ WebInspector.CodeMirrorCompletionController = class CodeMirrorCompletionControll
             return;
         }
 
-        this._removeCompletionHint(true, true);
+        this._removeCompletionHint(true);
 
         var cursor = this._codeMirror.getCursor();
         var token = this._codeMirror.getTokenAt(cursor);
@@ -538,6 +513,10 @@ WebInspector.CodeMirrorCompletionController = class CodeMirrorCompletionControll
         if (mainToken.state.state === "media" || mainToken.state.state === "top" || mainToken.state.state === "parens")
             return [];
 
+        // Don't complete in the middle of a property name.
+        if (/^[a-z]/i.test(suffix))
+            return [];
+
         var token = mainToken;
         var lineNumber = this._lineNumber;
 
@@ -562,14 +541,24 @@ WebInspector.CodeMirrorCompletionController = class CodeMirrorCompletionControll
             var propertyName = token.string;
 
             // If there is a suffix and it isn't a semicolon, then we should use a space since
-            // the user is editing in the middle.
-            this._implicitSuffix = suffix && suffix !== ";" ? " " : (this._noEndingSemicolon ? "" : ";");
+            // the user is editing in the middle. Likewise if the suffix starts with an open
+            // paren we are changing a function name so don't add a suffix.
+            this._implicitSuffix = " ";
+            if (suffix === ";")
+                this._implicitSuffix = this._noEndingSemicolon ? "" : ";";
+            else if (suffix.startsWith("("))
+                this._implicitSuffix = "";
 
             // Don't use an implicit suffix if it would be the same as the existing suffix.
             if (this._implicitSuffix === suffix)
                 this._implicitSuffix = "";
 
-            return WebInspector.CSSKeywordCompletions.forProperty(propertyName).startsWith(this._prefix);
+            let completions = WebInspector.CSSKeywordCompletions.forProperty(propertyName).startsWith(this._prefix);
+
+            if (suffix.startsWith("("))
+                completions = completions.map((x) => x.replace(/\(\)$/, ""));
+
+            return completions;
         }
 
         this._implicitSuffix = suffix !== ":" ? ": " : "";
@@ -598,13 +587,21 @@ WebInspector.CodeMirrorCompletionController = class CodeMirrorCompletionControll
         var insideParenthesis = localState.lexical.type === ")";
         var insideBrackets = localState.lexical.type === "]";
 
-        var allKeywords = ["break", "case", "catch", "const", "continue", "debugger", "default", "delete", "do", "else", "false", "finally", "for", "function", "if", "in",
-            "Infinity", "instanceof", "NaN", "new", "null", "return", "switch", "this", "throw", "true", "try", "typeof", "undefined", "var", "void", "while", "with"];
+        // FIXME: Include module keywords if we know this is a module environment.
+        // var moduleKeywords = ["default", "export", "import"];
+
+        var allKeywords = [
+            "break", "case", "catch", "class", "const", "continue", "debugger", "default",
+            "delete", "do", "else", "extends", "false", "finally", "for", "function",
+            "if", "in", "Infinity", "instanceof", "let", "NaN", "new", "null", "of",
+            "return", "static", "super", "switch", "this", "throw", "true", "try",
+            "typeof", "undefined", "var", "void", "while", "with", "yield"
+        ];
         var valueKeywords = ["false", "Infinity", "NaN", "null", "this", "true", "undefined"];
 
         var allowedKeywordsInsideBlocks = allKeywords.keySet();
         var allowedKeywordsWhenDeclaringVariable = valueKeywords.keySet();
-        var allowedKeywordsInsideParenthesis = valueKeywords.concat(["function"]).keySet();
+        var allowedKeywordsInsideParenthesis = valueKeywords.concat(["class", "function"]).keySet();
         var allowedKeywordsInsideBrackets = allowedKeywordsInsideParenthesis;
         var allowedKeywordsOnlyInsideSwitch = ["case", "default"].keySet();
 
@@ -668,11 +665,11 @@ WebInspector.CodeMirrorCompletionController = class CodeMirrorCompletionControll
 
         case "(":
             matchVariables();
-            matchKeywords(["catch", "else", "for", "function", "if", "return", "switch", "throw", "while", "with"]);
+            matchKeywords(["catch", "else", "for", "function", "if", "return", "switch", "throw", "while", "with", "yield"]);
             break;
 
         case "{":
-            matchKeywords(["do", "else", "finally", "return", "try"]);
+            matchKeywords(["do", "else", "finally", "return", "try", "yield"]);
             break;
 
         case ":":
@@ -786,12 +783,28 @@ WebInspector.CodeMirrorCompletionController = class CodeMirrorCompletionControll
         this._applyCompletionHint(this._currentCompletion);
     }
 
+    _handleBeforeChange(codeMirror, change)
+    {
+        if (this.isCompletionChange(change))
+            return;
+
+        this._ignoreNextCursorActivity = true;
+
+        if (this.isShowingCompletions())
+            this.hideCompletions();
+    }
+
     _handleChange(codeMirror, change)
     {
         if (this.isCompletionChange(change))
             return;
 
         this._ignoreNextCursorActivity = true;
+
+        if (this._ignoreNextUndo && change.origin === "undo") {
+            this._ignoreNextUndo = false;
+            return;
+        }
 
         if (!change.origin || change.origin.charAt(0) !== "+") {
             this.hideCompletions();
@@ -811,7 +824,7 @@ WebInspector.CodeMirrorCompletionController = class CodeMirrorCompletionControll
             return;
 
         if (this._ignoreNextCursorActivity) {
-            delete this._ignoreNextCursorActivity;
+            this._ignoreNextCursorActivity = false;
             return;
         }
 

@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef B3Const64Value_h
-#define B3Const64Value_h
+#pragma once
 
 #if ENABLE(B3_JIT)
 
@@ -34,7 +33,7 @@ namespace JSC { namespace B3 {
 
 class JS_EXPORT_PRIVATE Const64Value : public Value {
 public:
-    static bool accepts(Opcode opcode) { return opcode == Const64; }
+    static bool accepts(Kind kind) { return kind == Const64; }
     
     ~Const64Value();
     
@@ -92,6 +91,3 @@ private:
 } } // namespace JSC::B3
 
 #endif // ENABLE(B3_JIT)
-
-#endif // B3Const64Value_h
-

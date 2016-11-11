@@ -128,12 +128,6 @@ void printInternal(PrintStream& out, Opcode opcode)
     case Neg:
         out.print("Neg");
         return;
-    case ChillDiv:
-        out.print("ChillDiv");
-        return;
-    case ChillMod:
-        out.print("ChillMod");
-        return;
     case BitAnd:
         out.print("BitAnd");
         return;
@@ -257,6 +251,12 @@ void printInternal(PrintStream& out, Opcode opcode)
     case Store:
         out.print("Store");
         return;
+    case WasmAddress:
+        out.print("WasmAddress");
+        return;
+    case Fence:
+        out.print("Fence");
+        return;
     case CCall:
         out.print("CCall");
         return;
@@ -275,6 +275,9 @@ void printInternal(PrintStream& out, Opcode opcode)
     case Check:
         out.print("Check");
         return;
+    case WasmBoundsCheck:
+        out.print("WasmBoundsCheck");
+        return;
     case Upsilon:
         out.print("Upsilon");
         return;
@@ -289,6 +292,9 @@ void printInternal(PrintStream& out, Opcode opcode)
         return;
     case Switch:
         out.print("Switch");
+        return;
+    case EntrySwitch:
+        out.print("EntrySwitch");
         return;
     case Return:
         out.print("Return");

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010, 2011, 2012, 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2012, 2015-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -59,6 +59,7 @@
 #import <WebCore/BackForwardController.h>
 #import <WebCore/DataDetection.h>
 #import <WebCore/DictionaryLookup.h>
+#import <WebCore/Editor.h>
 #import <WebCore/EventHandler.h>
 #import <WebCore/FocusController.h>
 #import <WebCore/FrameLoader.h>
@@ -70,10 +71,12 @@
 #import <WebCore/KeyboardEvent.h>
 #import <WebCore/MIMETypeRegistry.h>
 #import <WebCore/MainFrame.h>
+#import <WebCore/NetworkStorageSession.h>
 #import <WebCore/NetworkingContext.h>
 #import <WebCore/Page.h>
 #import <WebCore/PageOverlayController.h>
 #import <WebCore/PlatformKeyboardEvent.h>
+#import <WebCore/PlatformMediaSessionManager.h>
 #import <WebCore/PluginDocument.h>
 #import <WebCore/RenderElement.h>
 #import <WebCore/RenderObject.h>
@@ -87,6 +90,7 @@
 #import <WebCore/WindowsKeyboardCodes.h>
 #import <WebCore/htmlediting.h>
 #import <WebKitSystemInterface.h>
+#import <wtf/TemporaryChange.h>
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
 #include <WebCore/MediaPlaybackTargetMac.h>
@@ -138,7 +142,7 @@ void WebPage::platformEditorState(Frame& frame, EditorState& result, IncludePost
 
     postLayoutData.candidateRequestStartPosition = TextIterator::rangeLength(makeRange(paragraphStart, selectionStart).get());
     postLayoutData.selectedTextLength = TextIterator::rangeLength(makeRange(paragraphStart, selectionEnd).get()) - postLayoutData.candidateRequestStartPosition;
-    postLayoutData.paragraphContextForCandidateRequest = plainText(makeRange(paragraphStart, paragraphEnd).get());
+    postLayoutData.paragraphContextForCandidateRequest = plainText(frame.editor().contextRangeForCandidateRequest().get());
     postLayoutData.stringForCandidateRequest = frame.editor().stringForCandidateRequest();
 
     IntRect rectForSelectionCandidates;
@@ -156,6 +160,22 @@ void WebPage::handleAcceptedCandidate(WebCore::TextCheckingResult acceptedCandid
 
     frame->editor().handleAcceptedCandidate(acceptedCandidate);
     send(Messages::WebPageProxy::DidHandleAcceptedCandidate());
+}
+
+void WebPage::requestActiveNowPlayingSessionInfo()
+{
+    bool hasActiveSession = false;
+    String title = emptyString();
+    double duration = NAN;
+    double elapsedTime = NAN;
+    if (auto* sharedManager = WebCore::PlatformMediaSessionManager::sharedManagerIfExists()) {
+        hasActiveSession = sharedManager->hasActiveNowPlayingSession();
+        title = sharedManager->lastUpdatedNowPlayingTitle();
+        duration = sharedManager->lastUpdatedNowPlayingDuration();
+        elapsedTime = sharedManager->lastUpdatedNowPlayingElapsedTime();
+    }
+
+    send(Messages::WebPageProxy::HandleActiveNowPlayingSessionInfoResponse(hasActiveSession, title, duration, elapsedTime));
 }
 
 NSObject *WebPage::accessibilityObjectForMainFramePlugin()
@@ -309,6 +329,8 @@ void WebPage::insertDictatedTextAsync(const String& text, const EditingRange& re
 {
     Frame& frame = m_page->focusController().focusedOrMainFrame();
 
+    Ref<Frame> protector(frame);
+
     if (replacementEditingRange.location != notFound) {
         RefPtr<Range> replacementRange = rangeFromEditingRange(frame, replacementEditingRange);
         if (replacementRange)
@@ -352,7 +374,15 @@ void WebPage::attributedSubstringForCharacterRangeAsync(const EditingRange& edit
         result.string = [attributedString attributedSubstringFromRange:NSMakeRange(0, editingRange.length)];
     }
 
-    send(Messages::WebPageProxy::AttributedStringForCharacterRangeCallback(result, EditingRange(editingRange.location, [result.string length]), callbackID));
+    EditingRange rangeToSend(editingRange.location, [result.string length]);
+    ASSERT(rangeToSend.isValid());
+    if (!rangeToSend.isValid()) {
+        // Send an empty EditingRange as a last resort for <rdar://problem/27078089>.
+        send(Messages::WebPageProxy::AttributedStringForCharacterRangeCallback(result, EditingRange(), callbackID));
+        return;
+    }
+
+    send(Messages::WebPageProxy::AttributedStringForCharacterRangeCallback(result, rangeToSend, callbackID));
 }
 
 void WebPage::fontAtSelection(uint64_t callbackID)
@@ -408,17 +438,24 @@ void WebPage::performDictionaryLookupOfCurrentSelection()
 
 DictionaryPopupInfo WebPage::dictionaryPopupInfoForRange(Frame* frame, Range& range, NSDictionary **options, TextIndicatorPresentationTransition presentationTransition)
 {
+    Editor& editor = frame->editor();
+    editor.setIsGettingDictionaryPopupInfo(true);
+
     DictionaryPopupInfo dictionaryPopupInfo;
-    if (range.text().stripWhiteSpace().isEmpty())
+    if (range.text().stripWhiteSpace().isEmpty()) {
+        editor.setIsGettingDictionaryPopupInfo(false);
         return dictionaryPopupInfo;
+    }
     
     RenderObject* renderer = range.startContainer().renderer();
     const RenderStyle& style = renderer->style();
 
     Vector<FloatQuad> quads;
     range.absoluteTextQuads(quads);
-    if (quads.isEmpty())
+    if (quads.isEmpty()) {
+        editor.setIsGettingDictionaryPopupInfo(false);
         return dictionaryPopupInfo;
+    }
 
     IntRect rangeRect = frame->view()->contentsToWindow(quads[0].enclosingBoundingBox());
 
@@ -448,12 +485,15 @@ DictionaryPopupInfo WebPage::dictionaryPopupInfoForRange(Frame* frame, Range& ra
         indicatorOptions |= TextIndicatorOptionIncludeSnapshotWithSelectionHighlight;
 
     RefPtr<TextIndicator> textIndicator = TextIndicator::createWithRange(range, indicatorOptions, presentationTransition);
-    if (!textIndicator)
+    if (!textIndicator) {
+        editor.setIsGettingDictionaryPopupInfo(false);
         return dictionaryPopupInfo;
+    }
 
     dictionaryPopupInfo.textIndicator = textIndicator->data();
     dictionaryPopupInfo.attributedString = scaledNSAttributedString;
 
+    editor.setIsGettingDictionaryPopupInfo(false);
     return dictionaryPopupInfo;
 }
 
@@ -523,7 +563,7 @@ bool WebPage::performNonEditingBehaviorForSelector(const String& selector, Keybo
 {
     // First give accessibility a chance to handle the event.
     Frame* frame = frameForEvent(event);
-    frame->eventHandler().handleKeyboardSelectionMovementForAccessibility(event);
+    frame->eventHandler().handleKeyboardSelectionMovementForAccessibility(*event);
     if (event->defaultHandled())
         return true;
 

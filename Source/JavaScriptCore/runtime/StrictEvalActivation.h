@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef StrictEvalActivation_h
-#define StrictEvalActivation_h
+#pragma once
 
 #include "JSScope.h"
 
@@ -33,7 +32,7 @@ namespace JSC {
 class StrictEvalActivation : public JSScope {
 public:
     typedef JSScope Base;
-    static const unsigned StructureFlags = Base::StructureFlags | IsEnvironmentRecord | OverridesToThis;
+    static const unsigned StructureFlags = Base::StructureFlags | OverridesToThis;
 
     static StrictEvalActivation* create(ExecState* exec, JSScope* currentScope)
     {
@@ -47,7 +46,7 @@ public:
 
     static Structure* createStructure(VM& vm, JSGlobalObject* globalObject, JSValue prototype)
     {
-        return Structure::create(vm, globalObject, prototype, TypeInfo(ObjectType, StructureFlags), info());
+        return Structure::create(vm, globalObject, prototype, TypeInfo(StrictEvalActivationType, StructureFlags), info());
     }
     
     DECLARE_INFO;
@@ -57,5 +56,3 @@ private:
 };
 
 } // namespace JSC
-
-#endif // StrictEvalActivation_h

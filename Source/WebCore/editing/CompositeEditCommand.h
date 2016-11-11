@@ -35,7 +35,9 @@
 namespace WebCore {
 
 class EditingStyle;
+class DataTransfer;
 class HTMLElement;
+class StaticRange;
 class StyledElement;
 class Text;
 
@@ -103,7 +105,7 @@ public:
 
     void apply();
     bool isFirstCommand(EditCommand* command) { return !m_commands.isEmpty() && m_commands.first() == command; }
-    EditCommandComposition* composition() { return m_composition.get(); }
+    EditCommandComposition* composition() const;
     EditCommandComposition* ensureComposition();
 
     virtual bool isCreateLinkCommand() const;
@@ -113,9 +115,21 @@ public:
     virtual bool shouldRetainAutocorrectionIndicator() const;
     virtual void setShouldRetainAutocorrectionIndicator(bool);
     virtual bool shouldStopCaretBlinking() const { return false; }
+    virtual String inputEventTypeName() const;
+    virtual String inputEventData() const { return { }; }
+    virtual bool isBeforeInputEventCancelable() const { return true; }
+    virtual bool shouldDispatchInputEvents() const { return true; }
+    Vector<RefPtr<StaticRange>> targetRangesForBindings() const;
+    virtual RefPtr<DataTransfer> inputEventDataTransfer() const;
 
 protected:
     explicit CompositeEditCommand(Document&, EditAction = EditActionUnspecified);
+
+    // If willApplyCommand returns false, we won't proceed with applying the command.
+    virtual bool willApplyCommand();
+    virtual void didApplyCommand();
+
+    virtual Vector<RefPtr<StaticRange>> targetRanges() const;
 
     //
     // sugary-sweet convenience functions to help create and apply edit commands in composite commands
@@ -187,6 +201,7 @@ protected:
     void cloneParagraphUnderNewElement(const Position& start, const Position& end, Node* outerNode, Element* blockElement);
     void cleanupAfterDeletion(VisiblePosition destination = VisiblePosition());
     
+    Optional<VisibleSelection> shouldBreakOutOfEmptyListItem() const;
     bool breakOutOfEmptyListItem();
     bool breakOutOfEmptyMailBlockquotedParagraph();
     

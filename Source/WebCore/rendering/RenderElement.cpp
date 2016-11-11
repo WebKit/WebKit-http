@@ -27,7 +27,6 @@
 
 #include "AXObjectCache.h"
 #include "ContentData.h"
-#include "ControlStates.h"
 #include "CursorList.h"
 #include "ElementChildIterator.h"
 #include "EventHandler.h"
@@ -38,6 +37,7 @@
 #include "HTMLAnchorElement.h"
 #include "HTMLBodyElement.h"
 #include "HTMLHtmlElement.h"
+#include "HTMLImageElement.h"
 #include "HTMLNames.h"
 #include "Logging.h"
 #include "Page.h"
@@ -67,6 +67,7 @@
 #include "SVGRenderSupport.h"
 #include "Settings.h"
 #include "ShadowRoot.h"
+#include "StylePendingResources.h"
 #include "StyleResolver.h"
 #include <wtf/MathExtras.h>
 #include <wtf/StackStats.h>
@@ -77,15 +78,20 @@
 
 namespace WebCore {
 
+struct SameSizeAsRenderElement : public RenderObject {
+    uint8_t bitfields0;
+    uint8_t bitfields1;
+    uint8_t bitfields2;
+    void* firstChild;
+    void* lastChild;
+    RenderStyle style;
+};
+
+static_assert(sizeof(RenderElement) == sizeof(SameSizeAsRenderElement), "RenderElement should stay small");
+
 bool RenderElement::s_affectsParentBlock = false;
 bool RenderElement::s_noLongerAffectsParentBlock = false;
     
-static HashMap<const RenderObject*, ControlStates*>& controlStatesRendererMap()
-{
-    static NeverDestroyed<HashMap<const RenderObject*, ControlStates*>> map;
-    return map;
-}
-
 inline RenderElement::RenderElement(ContainerNode& elementOrDocument, RenderStyle&& style, BaseTypeFlags baseTypeFlags)
     : RenderObject(elementOrDocument)
     , m_baseTypeFlags(baseTypeFlags)
@@ -137,12 +143,10 @@ RenderElement::~RenderElement()
         if (StyleImage* maskBoxImage = m_style.maskBoxImage().image())
             maskBoxImage->removeClient(this);
 
-#if ENABLE(CSS_SHAPES)
         if (auto shapeValue = m_style.shapeOutside()) {
             if (auto shapeImage = shapeValue->image())
                 shapeImage->removeClient(this);
         }
-#endif
     }
     if (m_hasPausedImageAnimations)
         view().removeRendererWithPausedImageAnimations(*this);
@@ -157,6 +161,7 @@ RenderPtr<RenderElement> RenderElement::createFor(Element& element, RenderStyle&
     // Otherwise acts as if we didn't support this feature.
     const ContentData* contentData = style.contentData();
     if (contentData && !contentData->next() && is<ImageContentData>(*contentData) && !element.isPseudoElement()) {
+        Style::loadPendingResources(style, element.document(), &element);
         auto& styleImage = downcast<ImageContentData>(*contentData).image();
         auto image = createRenderer<RenderImage>(element, WTFMove(style), const_cast<StyleImage*>(&styleImage));
         image->setIsGeneratedContent();
@@ -360,30 +365,18 @@ void RenderElement::updateImage(StyleImage* oldImage, StyleImage* newImage)
         newImage->addClient(this);
 }
 
-#if ENABLE(CSS_SHAPES)
 void RenderElement::updateShapeImage(const ShapeValue* oldShapeValue, const ShapeValue* newShapeValue)
 {
     if (oldShapeValue || newShapeValue)
         updateImage(oldShapeValue ? oldShapeValue->image() : nullptr, newShapeValue ? newShapeValue->image() : nullptr);
 }
-#endif
 
 void RenderElement::initializeStyle()
 {
+    Style::loadPendingResources(m_style, document(), element());
+
     styleWillChange(StyleDifferenceNewStyle, style());
-
     m_hasInitializedStyle = true;
-
-    updateFillImages(nullptr, m_style.backgroundLayers());
-    updateFillImages(nullptr, m_style.maskLayers());
-
-    updateImage(nullptr, m_style.borderImage().image());
-    updateImage(nullptr, m_style.maskBoxImage().image());
-
-#if ENABLE(CSS_SHAPES)
-    updateShapeImage(nullptr, m_style.shapeOutside());
-#endif
-
     styleDidChange(StyleDifferenceNewStyle, nullptr);
 
     // We shouldn't have any text children that would need styleDidChange at this point.
@@ -409,23 +402,12 @@ void RenderElement::setStyle(RenderStyle&& style, StyleDifference minimalStyleDi
 
     diff = adjustStyleDifference(diff, contextSensitiveProperties);
 
-    styleWillChange(diff, style);
+    Style::loadPendingResources(style, document(), element());
 
+    styleWillChange(diff, style);
     auto oldStyle = WTFMove(m_style);
     m_style = WTFMove(style);
-
-    updateFillImages(oldStyle.backgroundLayers(), m_style.backgroundLayers());
-    updateFillImages(oldStyle.maskLayers(), m_style.maskLayers());
-
-    updateImage(oldStyle.borderImage().image(), m_style.borderImage().image());
-    updateImage(oldStyle.maskBoxImage().image(), m_style.maskBoxImage().image());
-
-#if ENABLE(CSS_SHAPES)
-    updateShapeImage(oldStyle.shapeOutside(), m_style.shapeOutside());
-#endif
-
-    bool doesNotNeedLayout = !parent();
-
+    bool detachedFromParent = !parent();
     styleDidChange(diff, &oldStyle);
 
     // Text renderers use their parent style. Notify them about the change.
@@ -434,9 +416,9 @@ void RenderElement::setStyle(RenderStyle&& style, StyleDifference minimalStyleDi
 
     // FIXME: |this| might be destroyed here. This can currently happen for a RenderTextFragment when
     // its first-letter block gets an update in RenderTextFragment::styleDidChange. For RenderTextFragment(s),
-    // we will safely bail out with the doesNotNeedLayout flag. We might want to broaden this condition
+    // we will safely bail out with the detachedFromParent flag. We might want to broaden this condition
     // in the future as we move renderer changes out of layout and into style changes.
-    if (doesNotNeedLayout)
+    if (detachedFromParent)
         return;
 
     // Now that the layer (if any) has been updated, we need to adjust the diff again,
@@ -492,7 +474,7 @@ void RenderElement::addChild(RenderObject* newChild, RenderObject* beforeChild)
         if (afterChild && afterChild->isAnonymous() && is<RenderTable>(*afterChild) && !afterChild->isBeforeContent())
             table = downcast<RenderTable>(afterChild);
         else {
-            table = RenderTable::createAnonymousWithParentRenderer(this);
+            table = RenderTable::createAnonymousWithParentRenderer(*this).release();
             addChild(table, beforeChild);
         }
         table->addChild(newChild);
@@ -571,6 +553,7 @@ void RenderElement::insertChildInternal(RenderObject* newChild, RenderObject* be
         m_lastChild = newChild;
     }
 
+    newChild->initializeFlowThreadStateOnInsertion();
     if (!documentBeingDestroyed()) {
         if (notifyChildren == NotifyChildren)
             newChild->insertedIntoTree();
@@ -625,6 +608,8 @@ void RenderElement::removeChildInternal(RenderObject& oldChild, NotifyChildrenTy
     if (!documentBeingDestroyed() && notifyChildren == NotifyChildren)
         oldChild.willBeRemovedFromTree();
 
+    oldChild.resetFlowThreadStateOnRemoval();
+
     // WARNING: There should be no code running between willBeRemovedFromTree and the actual removal below.
     // This is needed to avoid race conditions where willBeRemovedFromTree would dirty the tree's structure
     // and the code running here would force an untimely rebuilding, leaving |oldChild| dangling.
@@ -652,6 +637,29 @@ void RenderElement::removeChildInternal(RenderObject& oldChild, NotifyChildrenTy
 
     if (AXObjectCache* cache = document().existingAXObjectCache())
         cache->childrenChanged(this);
+}
+
+RenderBlock* RenderElement::containingBlockForFixedPosition() const
+{
+    auto* renderer = parent();
+    while (renderer && !renderer->canContainFixedPositionObjects())
+        renderer = renderer->parent();
+
+    ASSERT(!renderer || !renderer->isAnonymousBlock());
+    return downcast<RenderBlock>(renderer);
+}
+
+RenderBlock* RenderElement::containingBlockForAbsolutePosition() const
+{
+    // A relatively positioned RenderInline forwards its absolute positioned descendants to
+    // its nearest non-anonymous containing block (to avoid having a positioned objects list in all RenderInlines).
+    auto* renderer = isRenderInline() ? const_cast<RenderElement*>(downcast<RenderElement>(this)) : parent();
+    while (renderer && !renderer->canContainAbsolutelyPositionedObjects())
+        renderer = renderer->parent();
+    // Make sure we only return non-anonymous RenderBlock as containing block.
+    while (renderer && (!is<RenderBlock>(*renderer) || renderer->isAnonymousBlock()))
+        renderer = renderer->containingBlock();
+    return downcast<RenderBlock>(renderer);
 }
 
 static void addLayers(RenderElement& renderer, RenderLayer* parentLayer, RenderElement*& newObject, RenderLayer*& beforeChild)
@@ -963,6 +971,12 @@ static inline bool areCursorsEqual(const RenderStyle* a, const RenderStyle* b)
 
 void RenderElement::styleDidChange(StyleDifference diff, const RenderStyle* oldStyle)
 {
+    updateFillImages(oldStyle ? oldStyle->backgroundLayers() : nullptr, m_style.backgroundLayers());
+    updateFillImages(oldStyle ? oldStyle->maskLayers() : nullptr, m_style.maskLayers());
+    updateImage(oldStyle ? oldStyle->borderImage().image() : nullptr, m_style.borderImage().image());
+    updateImage(oldStyle ? oldStyle->maskBoxImage().image() : nullptr, m_style.maskBoxImage().image());
+    updateShapeImage(oldStyle ? oldStyle->shapeOutside() : nullptr, m_style.shapeOutside());
+
     if (s_affectsParentBlock)
         handleDynamicFloatPositionChange();
 
@@ -1017,9 +1031,6 @@ void RenderElement::styleDidChange(StyleDifference diff, const RenderStyle* oldS
 
 void RenderElement::insertedIntoTree()
 {
-    if (auto* containerFlowThread = parent()->renderNamedFlowThreadWrapper())
-        containerFlowThread->addFlowChild(*this);
-
     // Keep our layer hierarchy updated. Optimize for the common case where we don't have any children
     // and don't have a layer attached to ourselves.
     RenderLayer* layer = nullptr;
@@ -1061,9 +1072,6 @@ void RenderElement::willBeRemovedFromTree()
     if (isOutOfFlowPositioned() && parent()->childrenInline())
         parent()->dirtyLinesFromChangedChild(*this);
 
-    if (auto* containerFlowThread = parent()->renderNamedFlowThreadWrapper())
-        containerFlowThread->removeFlowChild(*this);
-
     RenderObject::willBeRemovedFromTree();
 }
 
@@ -1100,7 +1108,6 @@ void RenderElement::willBeDestroyed()
     if (!documentBeingDestroyed() && view().hasRenderNamedFlowThreads()) {
         // After remove, the object and the associated information should not be in any flow thread.
         for (auto& flowThread : *view().flowThreadController().renderNamedFlowThreadList()) {
-            ASSERT(!flowThread->hasChild(*this));
             ASSERT(!flowThread->hasChildInfo(this));
         }
     }
@@ -1413,7 +1420,7 @@ bool RenderElement::mayCauseRepaintInsideViewport(const IntRect* optionalViewpor
 static bool shouldRepaintForImageAnimation(const RenderElement& renderer, const IntRect& visibleRect)
 {
     const Document& document = renderer.document();
-    if (document.inPageCache())
+    if (document.pageCacheState() != Document::NotInPageCache)
         return false;
     if (document.activeDOMObjectsAreSuspended())
         return false;
@@ -1458,7 +1465,6 @@ void RenderElement::unregisterForVisibleInViewportCallback()
     setIsRegisteredForVisibleInViewportCallback(false);
 
     view().unregisterForVisibleInViewportCallback(*this);
-    m_visibleInViewportState = VisibilityUnknown;
 }
 
 void RenderElement::visibleInViewportStateChanged(VisibleInViewportState state)
@@ -1473,7 +1479,7 @@ void RenderElement::visibleInViewportStateChanged(VisibleInViewportState state)
 
 void RenderElement::newImageAnimationFrameAvailable(CachedImage& image)
 {
-    if (document().inPageCache())
+    if (document().pageCacheState() != Document::NotInPageCache)
         return;
     auto& frameView = view().frameView();
     auto visibleRect = frameView.windowToContents(frameView.windowClipRect());
@@ -1500,38 +1506,6 @@ bool RenderElement::repaintForPausedImageAnimationsIfNeeded(const IntRect& visib
         downcast<RenderBoxModelObject>(*this).contentChanged(ImageChanged);
 
     return true;
-}
-
-RenderNamedFlowThread* RenderElement::renderNamedFlowThreadWrapper()
-{
-    auto* renderer = this;
-    while (renderer && renderer->isAnonymousBlock() && !is<RenderNamedFlowThread>(*renderer))
-        renderer = renderer->parent();
-    return is<RenderNamedFlowThread>(renderer) ? downcast<RenderNamedFlowThread>(renderer) : nullptr;
-}
-
-bool RenderElement::hasControlStatesForRenderer(const RenderObject* o)
-{
-    return controlStatesRendererMap().contains(o);
-}
-
-ControlStates* RenderElement::controlStatesForRenderer(const RenderObject* o)
-{
-    return controlStatesRendererMap().get(o);
-}
-
-void RenderElement::removeControlStatesForRenderer(const RenderObject* o)
-{
-    ControlStates* states = controlStatesRendererMap().get(o);
-    if (states) {
-        controlStatesRendererMap().remove(o);
-        delete states;
-    }
-}
-
-void RenderElement::addControlStatesForRenderer(const RenderObject* o, ControlStates* states)
-{
-    controlStatesRendererMap().add(o, states);
 }
 
 const RenderStyle* RenderElement::getCachedPseudoStyle(PseudoId pseudo, const RenderStyle* parentStyle) const
@@ -1579,13 +1553,17 @@ std::unique_ptr<RenderStyle> RenderElement::getUncachedPseudoStyle(const PseudoS
 
     auto& styleResolver = element()->styleResolver();
 
+    std::unique_ptr<RenderStyle> style;
     if (pseudoStyleRequest.pseudoId == FIRST_LINE_INHERITED) {
-        auto result = styleResolver.styleForElement(*element(), parentStyle).renderStyle;
-        result->setStyleType(FIRST_LINE_INHERITED);
-        return result;
-    }
+        style = styleResolver.styleForElement(*element(), parentStyle).renderStyle;
+        style->setStyleType(FIRST_LINE_INHERITED);
+    } else
+        style = styleResolver.pseudoStyleForElement(*element(), pseudoStyleRequest, *parentStyle);
 
-    return styleResolver.pseudoStyleForElement(*element(), pseudoStyleRequest, *parentStyle);
+    if (style)
+        Style::loadPendingResources(*style, document(), element());
+
+    return style;
 }
 
 Color RenderElement::selectionColor(int colorProperty) const
@@ -1614,7 +1592,7 @@ std::unique_ptr<RenderStyle> RenderElement::selectionPseudoStyle() const
         return nullptr;
 
     if (ShadowRoot* root = element()->containingShadowRoot()) {
-        if (root->type() == ShadowRoot::Type::UserAgent) {
+        if (root->mode() == ShadowRootMode::UserAgent) {
             if (Element* shadowHost = element()->shadowHost())
                 return shadowHost->renderer()->getUncachedPseudoStyle(PseudoStyleRequest(SELECTION));
         }
@@ -2109,7 +2087,7 @@ void RenderElement::paintOutline(PaintInfo& paintInfo, const LayoutRect& paintRe
     EBorderStyle outlineStyle = styleToUse.outlineStyle();
     Color outlineColor = styleToUse.visitedDependentColor(CSSPropertyOutlineColor);
 
-    bool useTransparencyLayer = outlineColor.hasAlpha();
+    bool useTransparencyLayer = !outlineColor.isOpaque();
     if (useTransparencyLayer) {
         if (outlineStyle == SOLID) {
             Path path;
@@ -2120,8 +2098,8 @@ void RenderElement::paintOutline(PaintInfo& paintInfo, const LayoutRect& paintRe
             graphicsContext.fillPath(path);
             return;
         }
-        graphicsContext.beginTransparencyLayer(static_cast<float>(outlineColor.alpha()) / 255);
-        outlineColor = Color(outlineColor.red(), outlineColor.green(), outlineColor.blue());
+        graphicsContext.beginTransparencyLayer(outlineColor.alphaAsFloat());
+        outlineColor = outlineColor.opaqueColor();
     }
 
     float leftOuter = outer.x();
@@ -2171,7 +2149,82 @@ void RenderElement::updateOutlineAutoAncestor(bool hasOutlineAuto)
         downcast<RenderBoxModelObject>(*this).continuation()->updateOutlineAutoAncestor(hasOutlineAuto);
 }
 
-#if ENABLE(IOS_TEXT_AUTOSIZING)
+bool RenderElement::hasOutlineAnnotation() const
+{
+    return element() && element()->isLink() && document().printing();
+}
+
+bool RenderElement::hasSelfPaintingLayer() const
+{
+    if (!hasLayer())
+        return false;
+    auto& layerModelObject = downcast<RenderLayerModelObject>(*this);
+    return layerModelObject.hasSelfPaintingLayer();
+}
+
+bool RenderElement::checkForRepaintDuringLayout() const
+{
+    return !document().view()->needsFullRepaint() && everHadLayout() && !hasSelfPaintingLayer();
+}
+
+RespectImageOrientationEnum RenderElement::shouldRespectImageOrientation() const
+{
+#if USE(CG) || USE(CAIRO)
+    // This can only be enabled for ports which honor the orientation flag in their drawing code.
+    if (document().isImageDocument())
+        return RespectImageOrientation;
+#endif
+    // Respect the image's orientation if it's being used as a full-page image or it's
+    // an <img> and the setting to respect it everywhere is set.
+    return (frame().settings().shouldRespectImageOrientation() && is<HTMLImageElement>(element())) ? RespectImageOrientation : DoNotRespectImageOrientation;
+}
+
+void RenderElement::removeFromRenderFlowThread()
+{
+    ASSERT(flowThreadState() != NotInsideFlowThread);
+    // Sometimes we remove the element from the flow, but it's not destroyed at that time.
+    // It's only until later when we actually destroy it and remove all the children from it.
+    // Currently, that happens for firstLetter elements and list markers.
+    // Pass in the flow thread so that we don't have to look it up for all the children.
+    removeFromRenderFlowThreadIncludingDescendants(true);
+}
+
+void RenderElement::removeFromRenderFlowThreadIncludingDescendants(bool shouldUpdateState)
+{
+    // Once we reach another flow thread we don't need to update the flow thread state
+    // but we have to continue cleanup the flow thread info.
+    if (isRenderFlowThread())
+        shouldUpdateState = false;
+
+    for (auto& child : childrenOfType<RenderObject>(*this)) {
+        if (is<RenderElement>(child)) {
+            downcast<RenderElement>(child).removeFromRenderFlowThreadIncludingDescendants(shouldUpdateState);
+            continue;
+        }
+        if (shouldUpdateState)
+            child.setFlowThreadState(NotInsideFlowThread);
+    }
+
+    // We have to ask for our containing flow thread as it may be above the removed sub-tree.
+    RenderFlowThread* flowThreadContainingBlock = this->flowThreadContainingBlock();
+    while (flowThreadContainingBlock) {
+        flowThreadContainingBlock->removeFlowChildInfo(this);
+
+        if (flowThreadContainingBlock->flowThreadState() == NotInsideFlowThread)
+            break;
+        auto* parent = flowThreadContainingBlock->parent();
+        if (!parent)
+            break;
+        flowThreadContainingBlock = parent->flowThreadContainingBlock();
+    }
+    if (is<RenderBlock>(*this))
+        downcast<RenderBlock>(*this).setCachedFlowThreadContainingBlockNeedsUpdate();
+
+    if (shouldUpdateState)
+        setFlowThreadState(NotInsideFlowThread);
+}
+
+#if ENABLE(TEXT_AUTOSIZING)
 static RenderObject::BlockContentHeightType includeNonFixedHeight(const RenderObject& renderer)
 {
     const RenderStyle& style = renderer.style();
@@ -2244,6 +2297,6 @@ void RenderElement::resetTextAutosizing()
         newFixedDepth = 0;
     }
 }
-#endif // ENABLE(IOS_TEXT_AUTOSIZING)
+#endif // ENABLE(TEXT_AUTOSIZING)
 
 }

@@ -24,14 +24,13 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef HTMLDocumentParser_h
-#define HTMLDocumentParser_h
+#pragma once
 
-#include "CachedResourceClient.h"
 #include "HTMLInputStream.h"
 #include "HTMLScriptRunnerHost.h"
 #include "HTMLSourceTracker.h"
 #include "HTMLTokenizer.h"
+#include "PendingScriptClient.h"
 #include "ScriptableDocumentParser.h"
 #include "XSSAuditor.h"
 #include "XSSAuditorDelegate.h"
@@ -39,6 +38,7 @@
 namespace WebCore {
 
 class DocumentFragment;
+class Element;
 class HTMLDocument;
 class HTMLParserScheduler;
 class HTMLPreloadScanner;
@@ -47,7 +47,7 @@ class HTMLTreeBuilder;
 class HTMLResourcePreloader;
 class PumpSession;
 
-class HTMLDocumentParser : public ScriptableDocumentParser, private HTMLScriptRunnerHost, private CachedResourceClient {
+class HTMLDocumentParser : public ScriptableDocumentParser, private HTMLScriptRunnerHost, private PendingScriptClient {
     WTF_MAKE_FAST_ALLOCATED;
 public:
     static Ref<HTMLDocumentParser> create(HTMLDocument&);
@@ -90,14 +90,14 @@ private:
     bool shouldAssociateConsoleMessagesWithTextPosition() const final;
 
     // HTMLScriptRunnerHost
-    void watchForLoad(CachedResource*) final;
-    void stopWatchingForLoad(CachedResource*) final;
+    void watchForLoad(PendingScript&) final;
+    void stopWatchingForLoad(PendingScript&) final;
     HTMLInputStream& inputStream() final;
     bool hasPreloadScanner() const final;
     void appendCurrentInputStreamToPreloadScannerAndScan() final;
 
-    // CachedResourceClient
-    void notifyFinished(CachedResource*) final;
+    // PendingScriptClient
+    void notifyFinished(PendingScript&) final;
 
     Document* contextForParsingSession();
 
@@ -161,6 +161,4 @@ inline HTMLTreeBuilder& HTMLDocumentParser::treeBuilder()
     return *m_treeBuilder;
 }
 
-}
-
-#endif
+} // namespace WebCore

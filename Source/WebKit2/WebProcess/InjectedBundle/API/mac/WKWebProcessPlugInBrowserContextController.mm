@@ -44,7 +44,7 @@
 #import "WKRetainPtr.h"
 #import "WKStringCF.h"
 #import "WKURLRequestNS.h"
-#import "WKWebProcessPluginFrameInternal.h"
+#import "WKWebProcessPlugInFrameInternal.h"
 #import "WKWebProcessPlugInInternal.h"
 #import "WKWebProcessPlugInFormDelegatePrivate.h"
 #import "WKWebProcessPlugInLoadDelegate.h"
@@ -182,7 +182,7 @@ static void didLayoutForFrame(WKBundlePageRef page, WKBundleFrameRef frame, cons
         [loadDelegate webProcessPlugInBrowserContextController:pluginContextController didLayoutForFrame:wrapper(*toImpl(frame))];
 }
 
-static void didLayout(WKBundlePageRef page, WKLayoutMilestones milestones, WKTypeRef* userData, const void *clientInfo)
+static void didReachLayoutMilestone(WKBundlePageRef page, WKLayoutMilestones milestones, WKTypeRef* userData, const void *clientInfo)
 {
     WKWebProcessPlugInBrowserContextController *pluginContextController = (WKWebProcessPlugInBrowserContextController *)clientInfo;
     auto loadDelegate = pluginContextController->_loadDelegate.get();
@@ -249,7 +249,7 @@ static void setUpPageLoaderClient(WKWebProcessPlugInBrowserContextController *co
     client.userAgentForURL = userAgentForURL;
 
     client.didLayoutForFrame = didLayoutForFrame;
-    client.didLayout = didLayout;
+    client.didLayout = didReachLayoutMilestone;
 
     page.initializeInjectedBundleLoaderClient(&client.base);
 }

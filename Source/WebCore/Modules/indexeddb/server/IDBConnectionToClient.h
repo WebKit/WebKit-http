@@ -55,11 +55,14 @@ public:
     void didCommitTransaction(const IDBResourceIdentifier& transactionIdentifier, const IDBError&);
     void didCreateObjectStore(const IDBResultData&);
     void didDeleteObjectStore(const IDBResultData&);
+    void didRenameObjectStore(const IDBResultData&);
     void didClearObjectStore(const IDBResultData&);
     void didCreateIndex(const IDBResultData&);
     void didDeleteIndex(const IDBResultData&);
+    void didRenameIndex(const IDBResultData&);
     void didPutOrAdd(const IDBResultData&);
     void didGetRecord(const IDBResultData&);
+    void didGetAllRecords(const IDBResultData&);
     void didGetCount(const IDBResultData&);
     void didDeleteRecord(const IDBResultData&);
     void didOpenCursor(const IDBResultData&);

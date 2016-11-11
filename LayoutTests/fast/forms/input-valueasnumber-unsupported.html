@@ -18,14 +18,13 @@ function checkValueAsNumber(type) {
     input.value = '0';
     input.type = type;
     shouldBe('input.valueAsNumber', 'Number.NaN');
-    shouldThrow('input.valueAsNumber = 0', '"Error: InvalidStateError: DOM Exception 11"');
+    shouldThrow('input.valueAsNumber = 0', '"InvalidStateError (DOM Exception 11): The object is in an invalid state."');
 }
 
 checkValueAsNumber('button');
 checkValueAsNumber('checkbox');
 checkValueAsNumber('color');
 checkValueAsNumber('email');
-checkValueAsNumber('file');
 checkValueAsNumber('hidden');
 checkValueAsNumber('image');
 checkValueAsNumber('khtml_isindex');

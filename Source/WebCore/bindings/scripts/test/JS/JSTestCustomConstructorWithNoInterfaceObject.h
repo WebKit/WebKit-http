@@ -28,7 +28,7 @@ namespace WebCore {
 
 class JSTestCustomConstructorWithNoInterfaceObject : public JSDOMWrapper<TestCustomConstructorWithNoInterfaceObject> {
 public:
-    typedef JSDOMWrapper<TestCustomConstructorWithNoInterfaceObject> Base;
+    using Base = JSDOMWrapper<TestCustomConstructorWithNoInterfaceObject>;
     static JSTestCustomConstructorWithNoInterfaceObject* create(JSC::Structure* structure, JSDOMGlobalObject* globalObject, Ref<TestCustomConstructorWithNoInterfaceObject>&& impl)
     {
         JSTestCustomConstructorWithNoInterfaceObject* ptr = new (NotNull, JSC::allocateCell<JSTestCustomConstructorWithNoInterfaceObject>(globalObject->vm().heap)) JSTestCustomConstructorWithNoInterfaceObject(structure, *globalObject, WTFMove(impl));
@@ -82,7 +82,11 @@ JSC::JSValue toJSNewlyCreated(JSC::ExecState*, JSDOMGlobalObject*, Ref<TestCusto
 inline JSC::JSValue toJSNewlyCreated(JSC::ExecState* state, JSDOMGlobalObject* globalObject, RefPtr<TestCustomConstructorWithNoInterfaceObject>&& impl) { return impl ? toJSNewlyCreated(state, globalObject, impl.releaseNonNull()) : JSC::jsNull(); }
 
 // Custom constructor
-JSC::EncodedJSValue JSC_HOST_CALL constructJSTestCustomConstructorWithNoInterfaceObject(JSC::ExecState*);
+JSC::EncodedJSValue JSC_HOST_CALL constructJSTestCustomConstructorWithNoInterfaceObject(JSC::ExecState&);
 
+template<> struct JSDOMWrapperConverterTraits<TestCustomConstructorWithNoInterfaceObject> {
+    using WrapperClass = JSTestCustomConstructorWithNoInterfaceObject;
+    using ToWrappedReturnType = TestCustomConstructorWithNoInterfaceObject*;
+};
 
 } // namespace WebCore

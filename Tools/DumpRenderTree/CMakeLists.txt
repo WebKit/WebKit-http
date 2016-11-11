@@ -1,3 +1,9 @@
+set(WEBKIT_TESTRUNNER_SHARED_DIR "${TOOLS_DIR}/TestRunnerShared/")
+set(WEBKIT_TESTRUNNER_UISCRIPTCONTEXT_DIR "${TOOLS_DIR}/TestRunnerShared/UIScriptContext")
+set(DUMP_RENDER_TREE_BINDINGS_DIR "${TOOLS_DIR}/DumpRenderTree/Bindings")
+
+file(MAKE_DIRECTORY ${DERIVED_SOURCES_DIR}/DumpRenderTree)
+
 set(DumpRenderTree_SOURCES
     AccessibilityController.cpp
     AccessibilityTextMarker.cpp
@@ -9,6 +15,9 @@ set(DumpRenderTree_SOURCES
     PixelDumpSupport.cpp
     TestRunner.cpp
     WorkQueue.cpp
+    ${WEBKIT_TESTRUNNER_UISCRIPTCONTEXT_DIR}/UIScriptContext.cpp
+    ${WEBKIT_TESTRUNNER_UISCRIPTCONTEXT_DIR}/UIScriptController.cpp
+    ${WEBKIT_TESTRUNNER_SHARED_DIR}/Bindings/JSWrapper.cpp
 )
 
 set(DumpRenderTree_LIBRARIES
@@ -48,6 +57,7 @@ set(DumpRenderTree_INCLUDE_DIRECTORIES
     ${JAVASCRIPTCORE_DIR}/bytecode
     ${JAVASCRIPTCORE_DIR}/dfg
     ${JAVASCRIPTCORE_DIR}/disassembler
+    ${JAVASCRIPTCORE_DIR}/domjit
     ${JAVASCRIPTCORE_DIR}/heap
     ${JAVASCRIPTCORE_DIR}/interpreter
     ${JAVASCRIPTCORE_DIR}/jit
@@ -58,6 +68,9 @@ set(DumpRenderTree_INCLUDE_DIRECTORIES
     ${JAVASCRIPTCORE_DIR}/ForwardingHeaders
     ${DERIVED_SOURCES_DIR}/ForwardingHeaders
     ${DERIVED_SOURCES_JAVASCRIPTCORE_DIR}
+    ${DERIVED_SOURCES_DIR}/DumpRenderTree
+    ${WEBKIT_TESTRUNNER_UISCRIPTCONTEXT_DIR}
+    ${WEBKIT_TESTRUNNER_SHARED_DIR}/Bindings
     ${TOOLS_DIR}/DumpRenderTree
     ${WTF_DIR}
     ${CMAKE_SOURCE_DIR}/Source
@@ -68,40 +81,53 @@ set(DumpRenderTree_INCLUDE_DIRECTORIES
     ${WEBCORE_DIR}/testing/js
 )
 
-set(TestNetscapePlugin_SOURCES
-    TestNetscapePlugin/PluginObject.cpp
-    TestNetscapePlugin/PluginTest.cpp
-    TestNetscapePlugin/TestObject.cpp
-    TestNetscapePlugin/main.cpp
+set(TestNetscapePlugIn_SOURCES
+    TestNetscapePlugIn/PluginObject.cpp
+    TestNetscapePlugIn/PluginTest.cpp
+    TestNetscapePlugIn/TestObject.cpp
+    TestNetscapePlugIn/main.cpp
 
-    TestNetscapePlugin/Tests/DocumentOpenInDestroyStream.cpp
-    TestNetscapePlugin/Tests/EvaluateJSAfterRemovingPluginElement.cpp
-    TestNetscapePlugin/Tests/FormValue.cpp
-    TestNetscapePlugin/Tests/GetURLNotifyWithURLThatFailsToLoad.cpp
-    TestNetscapePlugin/Tests/GetURLWithJavaScriptURL.cpp
-    TestNetscapePlugin/Tests/GetURLWithJavaScriptURLDestroyingPlugin.cpp
-    TestNetscapePlugin/Tests/GetUserAgentWithNullNPPFromNPPNew.cpp
-    TestNetscapePlugin/Tests/LogNPPSetWindow.cpp
-    TestNetscapePlugin/Tests/NPDeallocateCalledBeforeNPShutdown.cpp
-    TestNetscapePlugin/Tests/NPPNewFails.cpp
-    TestNetscapePlugin/Tests/NPPSetWindowCalledDuringDestruction.cpp
-    TestNetscapePlugin/Tests/NPRuntimeCallsWithNullNPP.cpp
-    TestNetscapePlugin/Tests/NPRuntimeObjectFromDestroyedPlugin.cpp
-    TestNetscapePlugin/Tests/NPRuntimeRemoveProperty.cpp
-    TestNetscapePlugin/Tests/NullNPPGetValuePointer.cpp
-    TestNetscapePlugin/Tests/PassDifferentNPPStruct.cpp
-    TestNetscapePlugin/Tests/PluginScriptableNPObjectInvokeDefault.cpp
-    TestNetscapePlugin/Tests/PluginScriptableObjectOverridesAllProperties.cpp
-    TestNetscapePlugin/Tests/PrivateBrowsing.cpp
-    TestNetscapePlugin/Tests/ToStringAndValueOfObject.cpp
-    TestNetscapePlugin/Tests/URLRedirect.cpp
+    TestNetscapePlugIn/Tests/DocumentOpenInDestroyStream.cpp
+    TestNetscapePlugIn/Tests/EvaluateJSAfterRemovingPluginElement.cpp
+    TestNetscapePlugIn/Tests/FormValue.cpp
+    TestNetscapePlugIn/Tests/GetURLNotifyWithURLThatFailsToLoad.cpp
+    TestNetscapePlugIn/Tests/GetURLWithJavaScriptURL.cpp
+    TestNetscapePlugIn/Tests/GetURLWithJavaScriptURLDestroyingPlugin.cpp
+    TestNetscapePlugIn/Tests/GetUserAgentWithNullNPPFromNPPNew.cpp
+    TestNetscapePlugIn/Tests/LogNPPSetWindow.cpp
+    TestNetscapePlugIn/Tests/NPDeallocateCalledBeforeNPShutdown.cpp
+    TestNetscapePlugIn/Tests/NPPNewFails.cpp
+    TestNetscapePlugIn/Tests/NPPSetWindowCalledDuringDestruction.cpp
+    TestNetscapePlugIn/Tests/NPRuntimeCallsWithNullNPP.cpp
+    TestNetscapePlugIn/Tests/NPRuntimeObjectFromDestroyedPlugin.cpp
+    TestNetscapePlugIn/Tests/NPRuntimeRemoveProperty.cpp
+    TestNetscapePlugIn/Tests/NullNPPGetValuePointer.cpp
+    TestNetscapePlugIn/Tests/PassDifferentNPPStruct.cpp
+    TestNetscapePlugIn/Tests/PluginScriptableNPObjectInvokeDefault.cpp
+    TestNetscapePlugIn/Tests/PluginScriptableObjectOverridesAllProperties.cpp
+    TestNetscapePlugIn/Tests/PrivateBrowsing.cpp
+    TestNetscapePlugIn/Tests/ToStringAndValueOfObject.cpp
+    TestNetscapePlugIn/Tests/URLRedirect.cpp
 )
 
-set(TestNetscapePlugin_LIBRARIES
+set(TestNetscapePlugIn_LIBRARIES
     JavaScriptCore
     WTF
     WebCoreTestSupport
 )
+
+set(DumpRenderTree_IDL_FILES
+    "${WEBKIT_TESTRUNNER_UISCRIPTCONTEXT_DIR}/Bindings/UIScriptController.idl"
+)
+
+GENERATE_BINDINGS(DumpRenderTreeBindings
+    OUTPUT_SOURCE DumpRenderTree_SOURCES
+    INPUT_FILES ${DumpRenderTree_IDL_FILES}
+    BASE_DIR ${DUMP_RENDER_TREE_BINDINGS_DIR}
+    IDL_INCLUDES Bindings
+    FEATURES ${FEATURE_DEFINES_WITH_SPACE_SEPARATOR}
+    DESTINATION ${DERIVED_SOURCES_DIR}/DumpRenderTree
+    GENERATOR DumpRenderTree)
 
 WEBKIT_INCLUDE_CONFIG_FILES_IF_EXISTS()
 
@@ -109,10 +135,11 @@ include_directories(${DumpRenderTree_INCLUDE_DIRECTORIES})
 
 add_executable(DumpRenderTree ${DumpRenderTree_SOURCES})
 target_link_libraries(DumpRenderTree ${DumpRenderTree_LIBRARIES})
+add_dependencies(DumpRenderTree DumpRenderTreeBindings)
 
 if (ENABLE_NETSCAPE_PLUGIN_API)
-    add_library(TestNetscapePlugin SHARED ${TestNetscapePlugin_SOURCES})
-    target_link_libraries(TestNetscapePlugin ${TestNetscapePlugin_LIBRARIES})
+    add_library(TestNetscapePlugIn SHARED ${TestNetscapePlugIn_SOURCES})
+    target_link_libraries(TestNetscapePlugIn ${TestNetscapePlugIn_LIBRARIES})
 endif ()
 
 if (WIN32)

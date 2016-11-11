@@ -34,6 +34,7 @@
 #include "RenderStyle.h"
 #include "SVGElement.h"
 #include "ShadowRoot.h"
+#include "StyleScope.h"
 #include "StyleUpdate.h"
 #include "StyledElement.h"
 #include "VisitedLinkState.h"
@@ -97,7 +98,7 @@ std::unique_ptr<RenderStyle> SharingResolver::resolve(const Element& searchEleme
         return nullptr;
     if (elementHasDirectionAuto(element))
         return nullptr;
-    if (element.shadowRoot() && !element.shadowRoot()->styleResolver().ruleSets().authorStyle()->hostPseudoClassRules().isEmpty())
+    if (element.shadowRoot() && !element.shadowRoot()->styleScope().resolver().ruleSets().authorStyle().hostPseudoClassRules().isEmpty())
         return nullptr;
 
     Context context {
@@ -114,6 +115,8 @@ std::unique_ptr<RenderStyle> SharingResolver::resolve(const Element& searchEleme
     while (cousinList) {
         shareElement = findSibling(context, cousinList, count);
         if (shareElement)
+            break;
+        if (count >= cStyleSearchThreshold)
             break;
         cousinList = locateCousinList(cousinList->parentElement());
     }
@@ -144,7 +147,7 @@ StyledElement* SharingResolver::findSibling(const Context& context, Node* node, 
             continue;
         if (canShareStyleWithElement(context, downcast<StyledElement>(*node)))
             break;
-        if (count++ == cStyleSearchThreshold)
+        if (count++ >= cStyleSearchThreshold)
             return nullptr;
     }
     return downcast<StyledElement>(node);
@@ -152,8 +155,7 @@ StyledElement* SharingResolver::findSibling(const Context& context, Node* node, 
 
 Node* SharingResolver::locateCousinList(const Element* parent) const
 {
-    const unsigned maximumSearchCount = 10;
-    for (unsigned count = 0; count < maximumSearchCount; ++count) {
+    for (unsigned count = 0; count < cStyleSearchThreshold; ++count) {
         auto* elementSharingParentStyle = m_elementsSharingStyle.get(parent);
         if (!elementSharingParentStyle)
             return nullptr;
@@ -263,13 +265,13 @@ bool SharingResolver::canShareStyleWithElement(const Context& context, const Sty
         return false;
 
     if (candidateElement.elementData() != element.elementData()) {
-        if (candidateElement.fastGetAttribute(HTMLNames::readonlyAttr) != element.fastGetAttribute(HTMLNames::readonlyAttr))
+        if (candidateElement.attributeWithoutSynchronization(HTMLNames::readonlyAttr) != element.attributeWithoutSynchronization(HTMLNames::readonlyAttr))
             return false;
         if (candidateElement.isSVGElement()) {
             if (candidateElement.getAttribute(HTMLNames::typeAttr) != element.getAttribute(HTMLNames::typeAttr))
                 return false;
         } else {
-            if (candidateElement.fastGetAttribute(HTMLNames::typeAttr) != element.fastGetAttribute(HTMLNames::typeAttr))
+            if (candidateElement.attributeWithoutSynchronization(HTMLNames::typeAttr) != element.attributeWithoutSynchronization(HTMLNames::typeAttr))
                 return false;
         }
     }
@@ -286,7 +288,7 @@ bool SharingResolver::canShareStyleWithElement(const Context& context, const Sty
     if (candidateElement.matchesDefaultPseudoClass() != element.matchesDefaultPseudoClass())
         return false;
 
-    if (element.shadowRoot() && !element.shadowRoot()->styleResolver().ruleSets().authorStyle()->hostPseudoClassRules().isEmpty())
+    if (element.shadowRoot() && !element.shadowRoot()->styleScope().resolver().ruleSets().authorStyle().hostPseudoClassRules().isEmpty())
         return false;
 
 #if ENABLE(FULLSCREEN_API)
@@ -310,9 +312,9 @@ bool SharingResolver::sharingCandidateHasIdenticalStyleAffectingAttributes(const
     auto& element = context.element;
     if (element.elementData() == sharingCandidate.elementData())
         return true;
-    if (element.fastGetAttribute(XMLNames::langAttr) != sharingCandidate.fastGetAttribute(XMLNames::langAttr))
+    if (element.attributeWithoutSynchronization(XMLNames::langAttr) != sharingCandidate.attributeWithoutSynchronization(XMLNames::langAttr))
         return false;
-    if (element.fastGetAttribute(HTMLNames::langAttr) != sharingCandidate.fastGetAttribute(HTMLNames::langAttr))
+    if (element.attributeWithoutSynchronization(HTMLNames::langAttr) != sharingCandidate.attributeWithoutSynchronization(HTMLNames::langAttr))
         return false;
 
     if (context.elementAffectedByClassRules) {

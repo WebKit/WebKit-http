@@ -50,11 +50,6 @@
 #include "TemporaryOpenGLSetting.h"
 #include "WebGLRenderingContextBase.h"
 #include <cstring>
-#include <runtime/ArrayBuffer.h>
-#include <runtime/ArrayBufferView.h>
-#include <runtime/Float32Array.h>
-#include <runtime/Int32Array.h>
-#include <runtime/Uint8Array.h>
 #include <wtf/HexNumber.h>
 #include <wtf/MainThread.h>
 #include <wtf/ThreadSpecific.h>
@@ -64,6 +59,7 @@
 
 #if PLATFORM(IOS)
 #import <OpenGLES/ES2/glext.h>
+#import <OpenGLES/ES3/gl.h>
 // From <OpenGLES/glext.h>
 #define GL_RGBA32F_ARB                      0x8814
 #define GL_RGB32F_ARB                       0x8815
@@ -71,7 +67,10 @@
 #if USE(OPENGL_ES_2)
 #include "OpenGLESShims.h"
 #elif PLATFORM(MAC)
+#define GL_DO_NOT_WARN_IF_MULTI_GL_VERSION_HEADERS_INCLUDED
 #include <OpenGL/gl.h>
+#include <OpenGL/gl3.h>
+#undef GL_DO_NOT_WARN_IF_MULTI_GL_VERSION_HEADERS_INCLUDED
 #elif PLATFORM(GTK) || PLATFORM(EFL) || PLATFORM(WIN)
 #include "OpenGLShims.h"
 #endif
@@ -236,10 +235,13 @@ void GraphicsContext3D::prepareTexture()
         resolveMultisamplingIfNecessary();
 
 #if USE(COORDINATED_GRAPHICS_THREADED)
-    std::swap(m_fbo, m_compositorFBO);
     std::swap(m_texture, m_compositorTexture);
+    std::swap(m_texture, m_intermediateTexture);
+    ::glBindFramebuffer(GL_FRAMEBUFFER, m_fbo);
+    ::glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D, m_texture, 0);
+    glFlush();
 
-    if (m_state.boundFBO != m_compositorFBO)
+    if (m_state.boundFBO != m_fbo)
         ::glBindFramebufferEXT(GraphicsContext3D::FRAMEBUFFER, m_state.boundFBO);
     else
         ::glBindFramebufferEXT(GraphicsContext3D::FRAMEBUFFER, m_fbo);
@@ -373,7 +375,7 @@ bool GraphicsContext3D::checkVaryingsPacking(Platform3DObject vertexShader, Plat
     const auto& vertexEntry = m_shaderSourceMap.find(vertexShader)->value;
     const auto& fragmentEntry = m_shaderSourceMap.find(fragmentShader)->value;
 
-    HashMap<String, ShVariableInfo> combinedVaryings;
+    HashMap<String, sh::ShaderVariable> combinedVaryings;
     for (const auto& vertexSymbol : vertexEntry.varyingMap) {
         const String& symbolName = vertexSymbol.key;
         // The varying map includes variables for each index of an array variable.
@@ -386,25 +388,18 @@ bool GraphicsContext3D::checkVaryingsPacking(Platform3DObject vertexShader, Plat
             continue;
 
         const auto& fragmentSymbol = fragmentEntry.varyingMap.find(symbolName);
-        if (fragmentSymbol != fragmentEntry.varyingMap.end()) {
-            ShVariableInfo symbolInfo;
-            symbolInfo.type = (fragmentSymbol->value).type;
-            // The arrays are already split up.
-            symbolInfo.size = (fragmentSymbol->value).size;
-            combinedVaryings.add(symbolName, symbolInfo);
-        }
+        if (fragmentSymbol != fragmentEntry.varyingMap.end())
+            combinedVaryings.add(symbolName, fragmentSymbol->value);
     }
 
     size_t numVaryings = combinedVaryings.size();
     if (!numVaryings)
         return true;
 
-    ShVariableInfo* variables = new ShVariableInfo[numVaryings];
-    int index = 0;
-    for (const auto& varyingSymbol : combinedVaryings) {
-        variables[index] = varyingSymbol.value;
-        index++;
-    }
+    std::vector<sh::ShaderVariable> variables;
+    variables.reserve(combinedVaryings.size());
+    for (const auto& varyingSymbol : combinedVaryings.values())
+        variables.push_back(varyingSymbol);
 
     GC3Dint maxVaryingVectors = 0;
 #if !PLATFORM(IOS) && !((PLATFORM(WIN) || PLATFORM(GTK)) && USE(OPENGL_ES_2))
@@ -414,9 +409,7 @@ bool GraphicsContext3D::checkVaryingsPacking(Platform3DObject vertexShader, Plat
 #else
     ::glGetIntegerv(MAX_VARYING_VECTORS, &maxVaryingVectors);
 #endif
-    int result = ShCheckVariablesWithinPackingLimits(maxVaryingVectors, variables, numVaryings);
-    delete[] variables;
-    return result;
+    return ShCheckVariablesWithinPackingLimits(maxVaryingVectors, variables);
 }
 
 bool GraphicsContext3D::precisionsMatch(Platform3DObject vertexShader, Platform3DObject fragmentShader) const
@@ -428,11 +421,14 @@ bool GraphicsContext3D::precisionsMatch(Platform3DObject vertexShader, Platform3
 
     HashMap<String, sh::GLenum> vertexSymbolPrecisionMap;
 
-    for (const auto& entry : vertexEntry.uniformMap)
-        vertexSymbolPrecisionMap.add(entry.value.mappedName, entry.value.precision);
+    for (const auto& entry : vertexEntry.uniformMap) {
+        const std::string& mappedName = entry.value.mappedName;
+        vertexSymbolPrecisionMap.add(String(mappedName.c_str(), mappedName.length()), entry.value.precision);
+    }
 
     for (const auto& entry : fragmentEntry.uniformMap) {
-        const auto& vertexSymbol = vertexSymbolPrecisionMap.find(entry.value.mappedName);
+        const std::string& mappedName = entry.value.mappedName;
+        const auto& vertexSymbol = vertexSymbolPrecisionMap.find(String(mappedName.c_str(), mappedName.length()));
         if (vertexSymbol != vertexSymbolPrecisionMap.end() && vertexSymbol->value != entry.value.precision)
             return false;
     }
@@ -554,6 +550,26 @@ void GraphicsContext3D::bufferSubData(GC3Denum target, GC3Dintptr offset, GC3Dsi
     makeContextCurrent();
     ::glBufferSubData(target, offset, size, data);
 }
+
+#if PLATFORM(MAC) || PLATFORM(IOS)
+void* GraphicsContext3D::mapBufferRange(GC3Denum target, GC3Dintptr offset, GC3Dsizeiptr length, GC3Dbitfield access)
+{
+    makeContextCurrent();
+    return ::glMapBufferRange(target, offset, length, access);
+}
+
+GC3Dboolean GraphicsContext3D::unmapBuffer(GC3Denum target)
+{
+    makeContextCurrent();
+    return ::glUnmapBuffer(target);
+}
+
+void GraphicsContext3D::copyBufferSubData(GC3Denum readTarget, GC3Denum writeTarget, GC3Dintptr readOffset, GC3Dintptr writeOffset, GC3Dsizeiptr size)
+{
+    makeContextCurrent();
+    ::glCopyBufferSubData(readTarget, writeTarget, readOffset, writeOffset, size);
+}
+#endif
 
 GC3Denum GraphicsContext3D::checkFramebufferStatus(GC3Denum target)
 {
@@ -898,8 +914,10 @@ String GraphicsContext3D::mappedSymbolName(Platform3DObject program, ANGLEShader
 
         const ShaderSymbolMap& symbolMap = result->value.symbolMap(symbolType);
         ShaderSymbolMap::const_iterator symbolEntry = symbolMap.find(name);
-        if (symbolEntry != symbolMap.end())
-            return symbolEntry->value.mappedName;
+        if (symbolEntry != symbolMap.end()) {
+            const std::string& mappedName = symbolEntry->value.mappedName;
+            return String(mappedName.c_str(), mappedName.length());
+        }
     }
 
     if (symbolType == SHADER_SYMBOL_TYPE_ATTRIBUTE && !name.isEmpty()) {
@@ -934,7 +952,7 @@ String GraphicsContext3D::originalSymbolName(Platform3DObject program, ANGLEShad
         
         const ShaderSymbolMap& symbolMap = result->value.symbolMap(symbolType);
         for (const auto& symbolEntry : symbolMap) {
-            if (symbolEntry.value.mappedName == name)
+            if (name == symbolEntry.value.mappedName.c_str())
                 return symbolEntry.key;
         }
     }
@@ -961,7 +979,7 @@ String GraphicsContext3D::mappedSymbolName(Platform3DObject shaders[2], size_t c
             
             const ShaderSymbolMap& symbolMap = result->value.symbolMap(static_cast<enum ANGLEShaderSymbolType>(symbolType));
             for (const auto& symbolEntry : symbolMap) {
-                if (symbolEntry.value.mappedName == name)
+                if (name == symbolEntry.value.mappedName.c_str())
                     return symbolEntry.key;
             }
         }

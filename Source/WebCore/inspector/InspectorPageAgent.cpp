@@ -40,7 +40,6 @@
 #include "CachedScript.h"
 #include "Cookie.h"
 #include "CookieJar.h"
-#include "DOMImplementation.h"
 #include "DOMPatchSupport.h"
 #include "DOMWrapperWorld.h"
 #include "Document.h"
@@ -59,6 +58,7 @@
 #include "InspectorOverlay.h"
 #include "InspectorTimelineAgent.h"
 #include "InstrumentingAgents.h"
+#include "MIMETypeRegistry.h"
 #include "MainFrame.h"
 #include "MemoryCache.h"
 #include "Page.h"
@@ -66,10 +66,10 @@
 #include "ScriptController.h"
 #include "SecurityOrigin.h"
 #include "Settings.h"
+#include "StyleScope.h"
 #include "TextEncoding.h"
 #include "TextResourceDecoder.h"
 #include "UserGestureIndicator.h"
-#include <bindings/ScriptValue.h>
 #include <inspector/ContentSearchUtilities.h>
 #include <inspector/IdentifiersFactory.h>
 #include <inspector/InspectorValues.h>
@@ -128,7 +128,7 @@ static RefPtr<TextResourceDecoder> createXHRTextDecoder(const String& mimeType, 
     RefPtr<TextResourceDecoder> decoder;
     if (!textEncodingName.isEmpty())
         decoder = TextResourceDecoder::create("text/plain", textEncodingName);
-    else if (DOMImplementation::isXMLMIMEType(mimeType)) {
+    else if (MIMETypeRegistry::isXMLMIMEType(mimeType)) {
         decoder = TextResourceDecoder::create("application/xml");
         decoder->useLenientXMLDecoding();
     } else if (equalLettersIgnoringASCIICase(mimeType, "text/html"))
@@ -272,7 +272,7 @@ CachedResource* InspectorPageAgent::cachedResource(Frame* frame, const URL& url)
     if (url.isNull())
         return nullptr;
 
-    CachedResource* cachedResource = frame->document()->cachedResourceLoader().cachedResource(url);
+    CachedResource* cachedResource = frame->document()->cachedResourceLoader().cachedResource(MemoryCache::removeFragmentIdentifierIfNeeded(url));
     if (!cachedResource) {
         ResourceRequest request(url);
 #if ENABLE(CACHE_PARTITIONING)
@@ -419,13 +419,13 @@ void InspectorPageAgent::removeScriptToEvaluateOnLoad(ErrorString& error, const 
 
 void InspectorPageAgent::reload(ErrorString&, const bool* const optionalIgnoreCache, const String* optionalScriptToEvaluateOnLoad)
 {
-    m_pendingScriptToEvaluateOnLoadOnce = optionalScriptToEvaluateOnLoad ? *optionalScriptToEvaluateOnLoad : "";
+    m_pendingScriptToEvaluateOnLoadOnce = optionalScriptToEvaluateOnLoad ? *optionalScriptToEvaluateOnLoad : emptyString();
     m_page.mainFrame().loader().reload(optionalIgnoreCache ? *optionalIgnoreCache : false);
 }
 
 void InspectorPageAgent::navigate(ErrorString&, const String& url)
 {
-    UserGestureIndicator indicator(DefinitelyProcessingUserGesture);
+    UserGestureIndicator indicator(ProcessingUserGesture);
     Frame& frame = m_page.mainFrame();
 
     ResourceRequest resourceRequest(frame.document()->completeURL(url));
@@ -516,16 +516,18 @@ void InspectorPageAgent::getCookies(ErrorString&, RefPtr<Inspector::Protocol::Ar
 
     for (Frame* frame = &mainFrame(); frame; frame = frame->tree().traverseNext()) {
         Document* document = frame->document();
+        if (!document)
+            continue;
 
         for (auto& url : allResourcesURLsForFrame(frame)) {
             Vector<Cookie> docCookiesList;
-            rawCookiesImplemented = getRawCookies(document, URL(ParsedURLString, url), docCookiesList);
+            rawCookiesImplemented = getRawCookies(*document, URL(ParsedURLString, url), docCookiesList);
 
             if (!rawCookiesImplemented) {
                 // FIXME: We need duplication checking for the String representation of cookies.
                 // Exceptions are thrown by cookie() in sandboxed frames. That won't happen here
                 // because "document" is the document of the main frame of the page.
-                stringCookiesList.append(document->cookie(ASSERT_NO_EXCEPTION));
+                stringCookiesList.append(document->cookie().releaseReturnValue());
             } else {
                 for (auto& cookie : docCookiesList) {
                     if (!rawCookiesList.contains(cookie))
@@ -545,8 +547,10 @@ void InspectorPageAgent::getCookies(ErrorString&, RefPtr<Inspector::Protocol::Ar
 void InspectorPageAgent::deleteCookie(ErrorString&, const String& cookieName, const String& url)
 {
     URL parsedURL(ParsedURLString, url);
-    for (Frame* frame = &m_page.mainFrame(); frame; frame = frame->tree().traverseNext())
-        WebCore::deleteCookie(frame->document(), parsedURL, cookieName);
+    for (Frame* frame = &m_page.mainFrame(); frame; frame = frame->tree().traverseNext()) {
+        if (auto* document = frame->document())
+            WebCore::deleteCookie(*document, parsedURL, cookieName);
+    }
 }
 
 void InspectorPageAgent::getResourceTree(ErrorString&, RefPtr<Inspector::Protocol::Page::FrameResourceTree>& object)
@@ -734,13 +738,13 @@ void InspectorPageAgent::loadEventFired()
     m_frontendDispatcher->loadEventFired(timestamp());
 }
 
-void InspectorPageAgent::frameNavigated(DocumentLoader* loader)
+void InspectorPageAgent::frameNavigated(Frame& frame)
 {
-    if (loader->frame()->isMainFrame()) {
+    if (frame.isMainFrame()) {
         m_scriptToEvaluateOnLoadOnce = m_pendingScriptToEvaluateOnLoadOnce;
         m_pendingScriptToEvaluateOnLoadOnce = String();
     }
-    m_frontendDispatcher->frameNavigated(buildObjectForFrame(loader->frame()));
+    m_frontendDispatcher->frameNavigated(buildObjectForFrame(&frame));
 }
 
 void InspectorPageAgent::frameDetached(Frame& frame)
@@ -766,7 +770,7 @@ Frame* InspectorPageAgent::frameForId(const String& frameId)
 String InspectorPageAgent::frameId(Frame* frame)
 {
     if (!frame)
-        return "";
+        return emptyString();
     String identifier = m_frameToIdentifier.get(frame);
     if (identifier.isNull()) {
         identifier = IdentifiersFactory::createIdentifier();
@@ -784,7 +788,7 @@ bool InspectorPageAgent::hasIdForFrame(Frame* frame) const
 String InspectorPageAgent::loaderId(DocumentLoader* loader)
 {
     if (!loader)
-        return "";
+        return emptyString();
     String identifier = m_loaderToIdentifier.get(loader);
     if (identifier.isNull()) {
         identifier = IdentifiersFactory::createIdentifier();
@@ -856,13 +860,13 @@ void InspectorPageAgent::didRunJavaScriptDialog()
     m_frontendDispatcher->javascriptDialogClosed();
 }
 
-void InspectorPageAgent::didPaint(RenderObject* renderer, const LayoutRect& rect)
+void InspectorPageAgent::didPaint(RenderObject& renderer, const LayoutRect& rect)
 {
     if (!m_enabled || !m_showPaintRects)
         return;
 
-    LayoutRect absoluteRect = LayoutRect(renderer->localToAbsoluteQuad(FloatRect(rect)).boundingBox());
-    FrameView* view = renderer->document().view();
+    LayoutRect absoluteRect = LayoutRect(renderer.localToAbsoluteQuad(FloatRect(rect)).boundingBox());
+    FrameView* view = renderer.document().view();
 
     LayoutRect rootRect = absoluteRect;
     if (!view->frame().isMainFrame()) {
@@ -926,7 +930,7 @@ Ref<Inspector::Protocol::Page::Frame> InspectorPageAgent::buildObjectForFrame(Fr
     if (frame->ownerElement()) {
         String name = frame->ownerElement()->getNameAttribute();
         if (name.isEmpty())
-            name = frame->ownerElement()->getAttribute(HTMLNames::idAttr);
+            name = frame->ownerElement()->attributeWithoutSynchronization(HTMLNames::idAttr);
         frameObject->setName(name);
     }
 
@@ -957,6 +961,9 @@ Ref<Inspector::Protocol::Page::FrameResourceTree> InspectorPageAgent::buildObjec
         String sourceMappingURL = InspectorPageAgent::sourceMapURLForResource(cachedResource);
         if (!sourceMappingURL.isEmpty())
             resourceObject->setSourceMapURL(sourceMappingURL);
+        String targetId = cachedResource->resourceRequest().initiatorIdentifier();
+        if (!targetId.isEmpty())
+            resourceObject->setTargetId(targetId);
         subresources->addItem(WTFMove(resourceObject));
     }
 
@@ -997,7 +1004,7 @@ void InspectorPageAgent::setEmulatedMedia(ErrorString&, const String& media)
     m_emulatedMedia = media;
     Document* document = m_page.mainFrame().document();
     if (document) {
-        document->styleResolverChanged(RecalcStyleImmediately);
+        document->styleScope().didChangeStyleSheetEnvironment();
         document->updateLayout();
     }
 }

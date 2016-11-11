@@ -49,7 +49,7 @@ endif ()
 WEBKIT_FRAMEWORK(WebKit)
 
 add_dependencies(WebKit WebCore)
-if (WIN32)
+if (TARGET WebKitGUID)
     add_dependencies(WebKit WebKitGUID)
 endif ()
 
@@ -64,4 +64,3 @@ if (MSVC)
         COMMAND ${PERL_EXECUTABLE} ${WEBKIT_LIBRARIES_DIR}/tools/scripts/version-stamp.pl ${DERIVED_SOURCES_WEBKIT_DIR} $<TARGET_FILE:WebKit>
         VERBATIM)
 endif ()
-

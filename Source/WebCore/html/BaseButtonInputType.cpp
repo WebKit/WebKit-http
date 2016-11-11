@@ -34,7 +34,6 @@
 
 #include "HTMLInputElement.h"
 #include "HTMLNames.h"
-#include "KeyboardEvent.h"
 #include "RenderButton.h"
 
 namespace WebCore {
@@ -64,7 +63,7 @@ bool BaseButtonInputType::storesValueSeparateFromAttribute()
 
 void BaseButtonInputType::setValue(const String& sanitizedValue, bool, TextFieldEventBehavior)
 {
-    element().setAttribute(valueAttr, sanitizedValue);
+    element().setAttributeWithoutSynchronization(valueAttr, sanitizedValue);
 }
 
 } // namespace WebCore

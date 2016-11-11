@@ -87,6 +87,13 @@ WebInspector.ResourceTreeElement = class ResourceTreeElement extends WebInspecto
         return {text: [urlComponents.lastPathComponent, urlComponents.path, this._resource.url]};
     }
 
+    onattach()
+    {
+        super.onattach();
+
+        this.element.addEventListener("contextmenu", this._handleContextMenuEvent.bind(this));
+    }
+
     ondblclick()
     {
         InspectorFrontendHost.openInNewTab(this._resource.url);
@@ -129,13 +136,16 @@ WebInspector.ResourceTreeElement = class ResourceTreeElement extends WebInspecto
     _updateTitles()
     {
         var frame = this._resource.parentFrame;
+        var target = this._resource.target;
+
         var isMainResource = this._resource.isMainResource();
+        var parentResourceHost = target.mainResource ? target.mainResource.urlComponents.host : null;
         if (isMainResource && frame) {
             // When the resource is a main resource, get the host from the current frame's parent frame instead of the current frame.
-            var parentResourceHost = frame.parentFrame ? frame.parentFrame.mainResource.urlComponents.host : null;
+            parentResourceHost = frame.parentFrame ? frame.parentFrame.mainResource.urlComponents.host : null;
         } else if (frame) {
             // When the resource is a normal sub-resource, get the host from the current frame's main resource.
-            var parentResourceHost = frame.mainResource.urlComponents.host;
+            parentResourceHost = frame.mainResource.urlComponents.host;
         }
 
         var urlComponents = this._resource.urlComponents;
@@ -144,11 +154,18 @@ WebInspector.ResourceTreeElement = class ResourceTreeElement extends WebInspecto
         this.mainTitle = WebInspector.displayNameForURL(this._resource.url, urlComponents);
 
         // Show the host as the subtitle if it is different from the main resource or if this is the main frame's main resource.
-        var subtitle = parentResourceHost !== urlComponents.host || frame.isMainFrame() && isMainResource ? WebInspector.displayNameForHost(urlComponents.host) : null;
+        var subtitle = parentResourceHost !== urlComponents.host || frame && frame.isMainFrame() && isMainResource ? WebInspector.displayNameForHost(urlComponents.host) : null;
         this.subtitle = this.mainTitle !== subtitle ? subtitle : null;
 
         if (oldMainTitle !== this.mainTitle)
             this.callFirstAncestorFunction("descendantResourceTreeElementMainTitleDidChange", [this, oldMainTitle]);
+    }
+
+    _handleContextMenuEvent(event)
+    {
+        let contextMenu = WebInspector.ContextMenu.createFromEvent(event);
+
+        WebInspector.appendContextMenuItemsForSourceCode(contextMenu, this._resource);
     }
 
     // Private

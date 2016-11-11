@@ -19,43 +19,35 @@
  */
 
 [
+    CustomCall,
     CustomNamedSetter,
     JSCustomGetOwnPropertySlotAndDescriptor,
-    CustomCall,
 ] interface HTMLObjectElement : HTMLElement {
     readonly attribute HTMLFormElement form;
     [Reflect] attribute DOMString code;
     [Reflect] attribute DOMString align;
     [Reflect] attribute DOMString archive;
-    [Reflect] attribute DOMString border;
-    [Reflect] attribute DOMString codeBase;
+    [Reflect, TreatNullAs=EmptyString] attribute DOMString border;
+    [Reflect, URL] attribute USVString codeBase;
     [Reflect] attribute DOMString codeType;
-    [Reflect, URL] attribute DOMString data;
+    [Reflect, URL] attribute USVString data;
     [Reflect] attribute boolean declare;
     [Reflect] attribute DOMString height;
-    [Reflect] attribute long hspace;
+    [Reflect] attribute unsigned long hspace;
     [Reflect] attribute DOMString name;
     [Reflect] attribute DOMString standby;
     [Reflect] attribute DOMString type;
     [Reflect] attribute DOMString useMap;
-    [Reflect] attribute long vspace;
+    [Reflect] attribute unsigned long vspace;
     [Reflect] attribute DOMString width;
     readonly attribute boolean willValidate;
     readonly attribute ValidityState validity;
     readonly attribute DOMString validationMessage;
     boolean checkValidity();
+    [EnabledAtRuntime=InteractiveFormValidation] boolean reportValidity();
     void setCustomValidity(DOMString? error);
 
-    // Introduced in DOM Level 2:
     [CheckSecurityForNode] readonly attribute Document contentDocument;
 
-#if !defined(LANGUAGE_OBJECTIVE_C) || !LANGUAGE_OBJECTIVE_C
-    [CheckSecurityForNode, RaisesException] SVGDocument getSVGDocument();
-#endif
-
-#if defined(LANGUAGE_OBJECTIVE_C) && LANGUAGE_OBJECTIVE_C
-    // Objective-C extension:
-    readonly attribute URL absoluteImageURL;
-#endif
+    [CheckSecurityForNode, MayThrowException] Document getSVGDocument();
 };
-

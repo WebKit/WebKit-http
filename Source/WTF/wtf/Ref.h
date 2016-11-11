@@ -114,7 +114,7 @@ public:
         return *this;
     }
 
-    // Hash table deleted/empty values, which are only constructed and never copied or destroyed.
+    // Hash table deleted values, which are only constructed and never copied or destroyed.
     Ref(HashTableDeletedValueType) : m_ptr(hashTableDeletedValue()) { }
     bool isHashTableDeletedValue() const { return m_ptr == hashTableDeletedValue(); }
     static T* hashTableDeletedValue() { return reinterpret_cast<T*>(-1); }
@@ -217,6 +217,12 @@ inline Ref<T> adoptRef(T& reference)
     return Ref<T>(reference, Ref<T>::Adopt);
 }
 
+template<typename T>
+inline Ref<T> makeRef(T& reference)
+{
+    return Ref<T>(reference);
+}
+
 template<typename ExpectedType, typename ArgType> inline bool is(Ref<ArgType>& source)
 {
     return is<ExpectedType>(source.get());
@@ -231,6 +237,7 @@ template<typename ExpectedType, typename ArgType> inline bool is(const Ref<ArgTy
 
 using WTF::Ref;
 using WTF::adoptRef;
+using WTF::makeRef;
 using WTF::static_reference_cast;
 
 #endif // WTF_Ref_h

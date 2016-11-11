@@ -3,8 +3,8 @@
 <head>
 <title>Cross-origin CSS: Origin header should be set when fetching stylesheet in cors mode</title>
 
-<script src="/w3c/resources/testharness.js"></script>
-<script src="/w3c/resources/testharnessreport.js"></script>
+<script src="/resources/testharness.js"></script>
+<script src="/resources/testharnessreport.js"></script>
 
 <link id="link-id0" rel="stylesheet" type="text/css" href="/security/resources/get-css-if-origin-header.php?id=id0"></link>
 <link id="link-id1" rel="stylesheet" type="text/css" href="http://localhost:8000/security/resources/get-css-if-origin-header.php?id=id1"></link>
@@ -21,8 +21,7 @@ function checkCSSLoading(id, expectToIncludeOrigin, expectVisibility)
 {
     expectedColor = expectToIncludeOrigin ? "rgb(255, 255, 0)" : "rgb(0, 0, 255)";
     assert_equals(getBackgroundColorForId(id), expectedColor);
-    // FIXME: cssRules should be made visible according resource tainted status, not only based on the resource URL being cross origin.
-    // assert_equals(document.getElementById("link-" + id).sheet.cssRules !== null, expectVisibility);
+    assert_equals(document.getElementById("link-" + id).sheet.cssRules !== null, expectVisibility);
 }
 
 var onloadTest = async_test(" Testing that link element to load stylesheets correctly handle crossorigin mode.");

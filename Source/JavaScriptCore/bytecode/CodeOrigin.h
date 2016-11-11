@@ -23,14 +23,12 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef CodeOrigin_h
-#define CodeOrigin_h
+#pragma once
 
 #include "CallMode.h"
 #include "CodeBlockHash.h"
 #include "CodeSpecializationKind.h"
 #include "WriteBarrier.h"
-#include <wtf/BitVector.h>
 #include <wtf/HashMap.h>
 #include <wtf/PrintStream.h>
 #include <wtf/StdLibExtras.h>
@@ -38,10 +36,9 @@
 
 namespace JSC {
 
+class CodeBlock;
+struct DumpContext;
 struct InlineCallFrame;
-class ExecState;
-class ScriptExecutable;
-class JSFunction;
 
 struct CodeOrigin {
     static const unsigned invalidBytecodeIndex = UINT_MAX;
@@ -158,6 +155,3 @@ template<> struct HashTraits<JSC::CodeOrigin> : SimpleClassHashTraits<JSC::CodeO
 };
 
 } // namespace WTF
-
-#endif // CodeOrigin_h
-

@@ -31,6 +31,7 @@
 #include "config.h"
 #include "PolicyChecker.h"
 
+#include "ContentFilter.h"
 #include "ContentSecurityPolicy.h"
 #include "DOMWindow.h"
 #include "DocumentLoader.h"
@@ -54,10 +55,16 @@ static bool isAllowedByContentSecurityPolicy(const URL& url, const Element* owne
 {
     if (!ownerElement)
         return true;
+    // Elements in user agent show tree should load whatever the embedding document policy is.
+    if (ownerElement->isInUserAgentShadowTree())
+        return true;
+
     auto redirectResponseReceived = didReceiveRedirectResponse ? ContentSecurityPolicy::RedirectResponseReceived::Yes : ContentSecurityPolicy::RedirectResponseReceived::No;
+
+    ASSERT(ownerElement->document().contentSecurityPolicy());
     if (is<HTMLPlugInElement>(ownerElement))
-        return ownerElement->document().contentSecurityPolicy()->allowObjectFromSource(url, ownerElement->isInUserAgentShadowTree(), redirectResponseReceived);
-    return ownerElement->document().contentSecurityPolicy()->allowChildFrameFromSource(url, ownerElement->isInUserAgentShadowTree(), redirectResponseReceived);
+        return ownerElement->document().contentSecurityPolicy()->allowObjectFromSource(url, redirectResponseReceived);
+    return ownerElement->document().contentSecurityPolicy()->allowChildFrameFromSource(url, redirectResponseReceived);
 }
 
 PolicyChecker::PolicyChecker(Frame& frame)
@@ -91,10 +98,15 @@ void PolicyChecker::checkNavigationPolicy(const ResourceRequest& request, bool d
 
     // We are always willing to show alternate content for unreachable URLs;
     // treat it like a reload so it maintains the right state for b/f list.
-    if (loader->substituteData().isValid() && !loader->substituteData().failingURL().isEmpty()) {
+    auto& substituteData = loader->substituteData();
+    if (substituteData.isValid() && !substituteData.failingURL().isEmpty()) {
+        bool shouldContinue = true;
+#if ENABLE(CONTENT_FILTERING)
+        shouldContinue = ContentFilter::continueAfterSubstituteDataRequest(*m_frame.loader().activeDocumentLoader(), substituteData);
+#endif
         if (isBackForwardLoadType(m_loadType))
             m_loadType = FrameLoadType::Reload;
-        function(request, 0, true);
+        function(request, 0, shouldContinue);
         return;
     }
 

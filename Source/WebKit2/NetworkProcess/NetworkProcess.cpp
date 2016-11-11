@@ -39,6 +39,7 @@
 #include "NetworkProcessPlatformStrategies.h"
 #include "NetworkProcessProxyMessages.h"
 #include "NetworkResourceLoader.h"
+#include "NetworkSession.h"
 #include "RemoteNetworkingContext.h"
 #include "SessionTracker.h"
 #include "StatisticsData.h"
@@ -51,13 +52,15 @@
 #include "WebsiteDataType.h"
 #include <WebCore/DNS.h>
 #include <WebCore/DiagnosticLoggingClient.h>
-#include <WebCore/Logging.h>
+#include <WebCore/LogInitialization.h>
+#include <WebCore/NetworkStorageSession.h>
 #include <WebCore/PlatformCookieJar.h>
 #include <WebCore/ResourceRequest.h>
 #include <WebCore/RuntimeApplicationChecks.h>
 #include <WebCore/SecurityOriginData.h>
 #include <WebCore/SecurityOriginHash.h>
 #include <WebCore/SessionID.h>
+#include <WebCore/URLParser.h>
 #include <wtf/OptionSet.h>
 #include <wtf/RunLoop.h>
 #include <wtf/text/CString.h>
@@ -69,6 +72,10 @@
 #if ENABLE(NETWORK_CACHE)
 #include "NetworkCache.h"
 #include "NetworkCacheCoders.h"
+#endif
+
+#if PLATFORM(COCOA)
+#include "NetworkSessionCocoa.h"
 #endif
 
 using namespace WebCore;
@@ -98,8 +105,8 @@ NetworkProcess::NetworkProcess()
     addSupplement<AuthenticationManager>();
     addSupplement<WebCookieManager>();
     addSupplement<CustomProtocolManager>();
-#if USE(NETWORK_SESSION)
-    NetworkSession::setCustomProtocolManager(supplement<CustomProtocolManager>());
+#if USE(NETWORK_SESSION) && PLATFORM(COCOA)
+    NetworkSessionCocoa::setCustomProtocolManager(supplement<CustomProtocolManager>());
 #endif
 }
 
@@ -132,7 +139,7 @@ bool NetworkProcess::shouldTerminate()
     return false;
 }
 
-void NetworkProcess::didReceiveMessage(IPC::Connection& connection, IPC::MessageDecoder& decoder)
+void NetworkProcess::didReceiveMessage(IPC::Connection& connection, IPC::Decoder& decoder)
 {
     if (messageReceiverMap().dispatchMessage(connection, decoder))
         return;
@@ -145,7 +152,7 @@ void NetworkProcess::didReceiveMessage(IPC::Connection& connection, IPC::Message
     didReceiveNetworkProcessMessage(connection, decoder);
 }
 
-void NetworkProcess::didReceiveSyncMessage(IPC::Connection& connection, IPC::MessageDecoder& decoder, std::unique_ptr<IPC::MessageEncoder>& replyEncoder)
+void NetworkProcess::didReceiveSyncMessage(IPC::Connection& connection, IPC::Decoder& decoder, std::unique_ptr<IPC::Encoder>& replyEncoder)
 {
     if (messageReceiverMap().dispatchSyncMessage(connection, decoder, replyEncoder))
         return;
@@ -156,12 +163,12 @@ void NetworkProcess::didReceiveSyncMessage(IPC::Connection& connection, IPC::Mes
 void NetworkProcess::didClose(IPC::Connection&)
 {
     // The UIProcess just exited.
-    RunLoop::current().stop();
+    stopRunLoop();
 }
 
 void NetworkProcess::didReceiveInvalidMessage(IPC::Connection&, IPC::StringReference, IPC::StringReference)
 {
-    RunLoop::current().stop();
+    stopRunLoop();
 }
 
 void NetworkProcess::didCreateDownload()
@@ -193,15 +200,22 @@ void NetworkProcess::lowMemoryHandler(Critical critical)
     WTF::releaseFastMallocFreeMemory();
 }
 
-void NetworkProcess::initializeNetworkProcess(const NetworkProcessCreationParameters& parameters)
+void NetworkProcess::initializeNetworkProcess(NetworkProcessCreationParameters&& parameters)
 {
+    URLParser::setEnabled(parameters.urlParserEnabled);
+
     platformInitializeNetworkProcess(parameters);
 
     WTF::setCurrentThreadIsUserInitiated();
 
     m_suppressMemoryPressureHandler = parameters.shouldSuppressMemoryPressureHandler;
+    m_loadThrottleLatency = parameters.loadThrottleLatency;
     if (!m_suppressMemoryPressureHandler) {
         auto& memoryPressureHandler = MemoryPressureHandler::singleton();
+#if OS(LINUX)
+        if (parameters.memoryPressureMonitorHandle.fileDescriptor() != -1)
+            memoryPressureHandler.setMemoryPressureMonitorHandle(parameters.memoryPressureMonitorHandle.releaseFileDescriptor());
+#endif
         memoryPressureHandler.setLowMemoryHandler([this] (Critical critical, Synchronous) {
             lowMemoryHandler(critical);
         });
@@ -215,14 +229,6 @@ void NetworkProcess::initializeNetworkProcess(const NetworkProcessCreationParame
 
     setCanHandleHTTPSServerTrustEvaluation(parameters.canHandleHTTPSServerTrustEvaluation);
 
-#if PLATFORM(COCOA) || USE(CFNETWORK)
-    SessionTracker::setIdentifierBase(parameters.uiProcessBundleIdentifier);
-#endif
-
-#if USE(NETWORK_SESSION)
-    NetworkSession::setSourceApplicationAuditTokenData(sourceApplicationAuditData());
-#endif
-
     // FIXME: instead of handling this here, a message should be sent later (scales to multiple sessions)
     if (parameters.privateBrowsingEnabled)
         RemoteNetworkingContext::ensurePrivateBrowsingSession(SessionID::legacyPrivateSessionID());
@@ -230,24 +236,16 @@ void NetworkProcess::initializeNetworkProcess(const NetworkProcessCreationParame
     if (parameters.shouldUseTestingNetworkSession)
         NetworkStorageSession::switchToNewTestingSession();
 
-    NetworkProcessSupplementMap::const_iterator it = m_supplements.begin();
-    NetworkProcessSupplementMap::const_iterator end = m_supplements.end();
-    for (; it != end; ++it)
-        it->value->initialize(parameters);
+    for (auto& supplement : m_supplements.values())
+        supplement->initialize(parameters);
 }
 
 void NetworkProcess::initializeConnection(IPC::Connection* connection)
 {
     ChildProcess::initializeConnection(connection);
 
-#if ENABLE(SEC_ITEM_SHIM)
-    SecItemShim::singleton().initializeConnection(connection);
-#endif
-
-    NetworkProcessSupplementMap::const_iterator it = m_supplements.begin();
-    NetworkProcessSupplementMap::const_iterator end = m_supplements.end();
-    for (; it != end; ++it)
-        it->value->initializeConnection(connection);
+    for (auto& supplement : m_supplements.values())
+        supplement->initializeConnection(connection);
 }
 
 void NetworkProcess::createNetworkConnectionToWebProcess()
@@ -338,15 +336,8 @@ static void fetchDiskCacheEntries(SessionID sessionID, OptionSet<WebsiteDataFetc
     }
 #endif
 
-    Vector<WebsiteData::Entry> entries;
-
-#if USE(CFURLCACHE)
-    for (auto& origin : NetworkProcess::cfURLCacheOrigins())
-        entries.append(WebsiteData::Entry { WTFMove(origin), WebsiteDataType::DiskCache, 0 });
-#endif
-
-    RunLoop::main().dispatch([completionHandler = WTFMove(completionHandler), entries = WTFMove(entries)] {
-        completionHandler(entries);
+    RunLoop::main().dispatch([completionHandler = WTFMove(completionHandler)] {
+        completionHandler({ });
     });
 }
 
@@ -376,7 +367,7 @@ void NetworkProcess::fetchWebsiteData(SessionID sessionID, OptionSet<WebsiteData
     }));
 
     if (websiteDataTypes.contains(WebsiteDataType::Cookies)) {
-        if (auto* networkStorageSession = SessionTracker::storageSession(sessionID))
+        if (auto* networkStorageSession = NetworkStorageSession::storageSession(sessionID))
             getHostnamesWithCookies(*networkStorageSession, callbackAggregator->m_websiteData.hostNamesWithCookies);
     }
 
@@ -391,13 +382,13 @@ void NetworkProcess::deleteWebsiteData(SessionID sessionID, OptionSet<WebsiteDat
 {
 #if PLATFORM(COCOA)
     if (websiteDataTypes.contains(WebsiteDataType::HSTSCache)) {
-        if (auto* networkStorageSession = SessionTracker::storageSession(sessionID))
+        if (auto* networkStorageSession = NetworkStorageSession::storageSession(sessionID))
             clearHSTSCache(*networkStorageSession, modifiedSince);
     }
 #endif
 
     if (websiteDataTypes.contains(WebsiteDataType::Cookies)) {
-        if (auto* networkStorageSession = SessionTracker::storageSession(sessionID))
+        if (auto* networkStorageSession = NetworkStorageSession::storageSession(sessionID))
             deleteAllCookiesModifiedSince(*networkStorageSession, modifiedSince);
     }
 
@@ -440,17 +431,13 @@ static void clearDiskCacheEntries(const Vector<SecurityOriginData>& origins, Fun
     }
 #endif
 
-#if USE(CFURLCACHE)
-    NetworkProcess::clearCFURLCacheForOrigins(origins);
-#endif
-
     RunLoop::main().dispatch(WTFMove(completionHandler));
 }
 
 void NetworkProcess::deleteWebsiteDataForOrigins(SessionID sessionID, OptionSet<WebsiteDataType> websiteDataTypes, const Vector<SecurityOriginData>& origins, const Vector<String>& cookieHostNames, uint64_t callbackID)
 {
     if (websiteDataTypes.contains(WebsiteDataType::Cookies)) {
-        if (auto* networkStorageSession = SessionTracker::storageSession(sessionID))
+        if (auto* networkStorageSession = NetworkStorageSession::storageSession(sessionID))
             deleteCookiesForHostnames(*networkStorageSession, cookieHostNames);
     }
 
@@ -466,9 +453,9 @@ void NetworkProcess::deleteWebsiteDataForOrigins(SessionID sessionID, OptionSet<
     completionHandler();
 }
 
-void NetworkProcess::downloadRequest(SessionID sessionID, DownloadID downloadID, const ResourceRequest& request)
+void NetworkProcess::downloadRequest(SessionID sessionID, DownloadID downloadID, const ResourceRequest& request, const String& suggestedFilename)
 {
-    downloadManager().startDownload(sessionID, downloadID, request);
+    downloadManager().startDownload(nullptr, sessionID, downloadID, request, suggestedFilename);
 }
 
 void NetworkProcess::resumeDownload(SessionID sessionID, DownloadID downloadID, const IPC::DataReference& resumeData, const String& path, const WebKit::SandboxExtension::Handle& sandboxExtensionHandle)
@@ -497,10 +484,12 @@ void NetworkProcess::continueCanAuthenticateAgainstProtectionSpace(uint64_t load
 #endif
 
 #if USE(NETWORK_SESSION)
+#if USE(PROTECTION_SPACE_AUTH_CALLBACK)
 void NetworkProcess::continueCanAuthenticateAgainstProtectionSpaceDownload(DownloadID downloadID, bool canAuthenticate)
 {
     downloadManager().continueCanAuthenticateAgainstProtectionSpace(downloadID, canAuthenticate);
 }
+#endif
 
 void NetworkProcess::continueWillSendRequest(DownloadID downloadID, WebCore::ResourceRequest&& request)
 {
@@ -512,15 +501,16 @@ void NetworkProcess::pendingDownloadCanceled(DownloadID downloadID)
     downloadProxyConnection()->send(Messages::DownloadProxy::DidCancel({ }), downloadID.downloadID());
 }
 
-void NetworkProcess::findPendingDownloadLocation(NetworkDataTask& networkDataTask, ResponseCompletionHandler&& completionHandler, const ResourceRequest& updatedRequest)
+void NetworkProcess::findPendingDownloadLocation(NetworkDataTask& networkDataTask, ResponseCompletionHandler&& completionHandler, const ResourceResponse& response)
 {
     uint64_t destinationID = networkDataTask.pendingDownloadID().downloadID();
-    downloadProxyConnection()->send(Messages::DownloadProxy::DidStart(updatedRequest, String()), destinationID);
+    downloadProxyConnection()->send(Messages::DownloadProxy::DidReceiveResponse(response), destinationID);
 
     downloadManager().willDecidePendingDownloadDestination(networkDataTask, WTFMove(completionHandler));
     downloadProxyConnection()->send(Messages::DownloadProxy::DecideDestinationWithSuggestedFilenameAsync(networkDataTask.pendingDownloadID(), networkDataTask.suggestedFilename()), destinationID);
 }
-    
+#endif
+
 void NetworkProcess::continueDecidePendingDownloadDestination(DownloadID downloadID, String destination, const SandboxExtension::Handle& sandboxExtensionHandle, bool allowOverwrite)
 {
     if (destination.isEmpty())
@@ -528,17 +518,39 @@ void NetworkProcess::continueDecidePendingDownloadDestination(DownloadID downloa
     else
         downloadManager().continueDecidePendingDownloadDestination(downloadID, destination, sandboxExtensionHandle, allowOverwrite);
 }
-#endif
 
 void NetworkProcess::setCacheModel(uint32_t cm)
 {
     CacheModel cacheModel = static_cast<CacheModel>(cm);
 
-    if (!m_hasSetCacheModel || cacheModel != m_cacheModel) {
-        m_hasSetCacheModel = true;
-        m_cacheModel = cacheModel;
-        platformSetCacheModel(cacheModel);
+    if (m_hasSetCacheModel && (cacheModel == m_cacheModel))
+        return;
+
+    m_hasSetCacheModel = true;
+    m_cacheModel = cacheModel;
+
+    unsigned urlCacheMemoryCapacity = 0;
+    uint64_t urlCacheDiskCapacity = 0;
+    uint64_t diskFreeSize = 0;
+    if (WebCore::getVolumeFreeSpace(m_diskCacheDirectory, diskFreeSize)) {
+        // As a fudge factor, use 1000 instead of 1024, in case the reported byte
+        // count doesn't align exactly to a megabyte boundary.
+        diskFreeSize /= KB * 1000;
+        calculateURLCacheSizes(cacheModel, diskFreeSize, urlCacheMemoryCapacity, urlCacheDiskCapacity);
     }
+
+    if (m_diskCacheSizeOverride >= 0)
+        urlCacheDiskCapacity = m_diskCacheSizeOverride;
+
+#if ENABLE(NETWORK_CACHE)
+    auto& networkCache = NetworkCache::singleton();
+    if (networkCache.isEnabled()) {
+        networkCache.setCapacity(urlCacheDiskCapacity);
+        return;
+    }
+#endif
+
+    platformSetURLCacheSize(urlCacheMemoryCapacity, urlCacheDiskCapacity);
 }
 
 void NetworkProcess::setCanHandleHTTPSServerTrustEvaluation(bool value)
@@ -595,10 +607,10 @@ void NetworkProcess::processWillSuspendImminently(bool& handled)
 
 void NetworkProcess::prepareToSuspend()
 {
-    LOG_ALWAYS(true, "%p - NetworkProcess::prepareToSuspend()", this);
+    RELEASE_LOG(ProcessSuspension, "%p - NetworkProcess::prepareToSuspend()", this);
     lowMemoryHandler(Critical::Yes);
 
-    LOG_ALWAYS(true, "%p - NetworkProcess::prepareToSuspend() Sending ProcessReadyToSuspend IPC message", this);
+    RELEASE_LOG(ProcessSuspension, "%p - NetworkProcess::prepareToSuspend() Sending ProcessReadyToSuspend IPC message", this);
     parentProcessConnection()->send(Messages::NetworkProcessProxy::ProcessReadyToSuspend(), 0);
 }
 
@@ -608,12 +620,12 @@ void NetworkProcess::cancelPrepareToSuspend()
     // we do not because prepareToSuspend() already replied with a NetworkProcessProxy::ProcessReadyToSuspend
     // message. And NetworkProcessProxy expects to receive either a NetworkProcessProxy::ProcessReadyToSuspend-
     // or NetworkProcessProxy::DidCancelProcessSuspension- message, but not both.
-    LOG_ALWAYS(true, "%p - NetworkProcess::cancelPrepareToSuspend()", this);
+    RELEASE_LOG(ProcessSuspension, "%p - NetworkProcess::cancelPrepareToSuspend()", this);
 }
 
 void NetworkProcess::processDidResume()
 {
-    LOG_ALWAYS(true, "%p - NetworkProcess::processDidResume()", this);
+    RELEASE_LOG(ProcessSuspension, "%p - NetworkProcess::processDidResume()", this);
 }
 
 void NetworkProcess::prefetchDNS(const String& hostname)

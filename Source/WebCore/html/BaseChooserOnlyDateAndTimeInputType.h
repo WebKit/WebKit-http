@@ -23,10 +23,10 @@
  * SUCH DAMAGE.
  */
 
-#ifndef BaseChooserOnlyDateAndTimeInputType_h
-#define BaseChooserOnlyDateAndTimeInputType_h
+#pragma once
 
 #if ENABLE(DATE_AND_TIME_INPUT_TYPES)
+
 #include "BaseClickableWithKeyInputType.h"
 #include "BaseDateAndTimeInputType.h"
 #include "DateTimeChooser.h"
@@ -47,10 +47,10 @@ private:
     void createShadowSubtree() override;
     void detach() override;
     void setValue(const String&, bool valueChanged, TextFieldEventBehavior) override;
-    void handleDOMActivateEvent(Event*) override;
-    void handleKeydownEvent(KeyboardEvent*) override;
-    void handleKeypressEvent(KeyboardEvent*) override;
-    void handleKeyupEvent(KeyboardEvent*) override;
+    void handleDOMActivateEvent(Event&) override;
+    void handleKeydownEvent(KeyboardEvent&) override;
+    void handleKeypressEvent(KeyboardEvent&) override;
+    void handleKeyupEvent(KeyboardEvent&) override;
     void accessKeyAction(bool sendMouseEvents) override;
     bool isMouseFocusable() const override;
 
@@ -61,6 +61,6 @@ private:
     RefPtr<DateTimeChooser> m_dateTimeChooser;
 };
 
-}
-#endif
+} // namespace WebCore
+
 #endif

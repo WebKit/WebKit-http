@@ -35,7 +35,6 @@
 #include "SharedBuffer.h"
 #include "URL.h"
 #include <wtf/NeverDestroyed.h>
-#include <wtf/text/StringBuilder.h>
 
 #define LOG_STATISTICS_TO_FILE 0
 
@@ -154,5 +153,15 @@ void ResourceLoadStatisticsStore::processStatistics(std::function<void(ResourceL
     ASSERT(hasEnoughDataForStatisticsProcessing());
     for (auto& resourceStatistic : m_resourceStatisticsMap.values())
         processFunction(resourceStatistic);
+}
+
+Vector<String> ResourceLoadStatisticsStore::prevalentResourceDomainsWithoutUserInteraction()
+{
+    Vector<String> prevalentResources;
+    for (auto& resourceStatistic : m_resourceStatisticsMap.values()) {
+        if (resourceStatistic.isPrevalentResource && !resourceStatistic.hadUserInteraction)
+            prevalentResources.append(resourceStatistic.highLevelDomain);
+    }
+    return prevalentResources;
 }
 }

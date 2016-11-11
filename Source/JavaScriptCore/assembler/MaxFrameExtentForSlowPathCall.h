@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,10 +23,8 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef MaxFrameExtentForSlowPathCall_h
-#define MaxFrameExtentForSlowPathCall_h
+#pragma once
 
-#include "JSStack.h"
 #include "Register.h"
 #include "StackAlignment.h"
 #include <wtf/Assertions.h>
@@ -83,6 +81,3 @@ COMPILE_ASSERT((maxFrameExtentForSlowPathCall % 16) == 16 - sizeof(CallerFrameAn
 static const size_t maxFrameExtentForSlowPathCallInRegisters = maxFrameExtentForSlowPathCall / sizeof(Register);
 
 } // namespace JSC
-
-#endif // MaxFrameExtentForSlowPathCall_h
-

@@ -39,6 +39,17 @@ endif ()
 string(TOLOWER ${PORT} WEBKIT_PORT_DIR)
 
 # -----------------------------------------------------------------------------
+# Determine the compiler
+# -----------------------------------------------------------------------------
+if (${CMAKE_CXX_COMPILER_ID} STREQUAL "Clang" OR ${CMAKE_CXX_COMPILER_ID} STREQUAL "AppleClang")
+    set(COMPILER_IS_CLANG ON)
+endif ()
+
+if (CMAKE_COMPILER_IS_GNUCXX OR COMPILER_IS_CLANG)
+    set(COMPILER_IS_GCC_OR_CLANG ON)
+endif ()
+
+# -----------------------------------------------------------------------------
 # Determine the target processor
 # -----------------------------------------------------------------------------
 # Use MSVC_CXX_ARCHITECTURE_ID instead of CMAKE_SYSTEM_PROCESSOR when defined,

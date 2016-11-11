@@ -20,28 +20,25 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef CSSGroupingRule_h
-#define CSSGroupingRule_h
+#pragma once
 
 #include "CSSRule.h"
-#include "StyleRule.h"
 #include <memory>
 #include <wtf/Vector.h>
 
 namespace WebCore {
 
 class CSSRuleList;
+class StyleRuleGroup;
 
 class CSSGroupingRule : public CSSRule {
 public:
     virtual ~CSSGroupingRule();
 
-    void reattach(StyleRuleBase&) override;
+    WEBCORE_EXPORT CSSRuleList& cssRules() const;
 
-    CSSRuleList& cssRules() const;
-
-    unsigned insertRule(const String& rule, unsigned index, ExceptionCode&);
-    void deleteRule(unsigned index, ExceptionCode&);
+    WEBCORE_EXPORT ExceptionOr<unsigned> insertRule(const String& rule, unsigned index);
+    WEBCORE_EXPORT ExceptionOr<void> deleteRule(unsigned index);
         
     // For CSSRuleList
     unsigned length() const;
@@ -50,13 +47,15 @@ public:
 protected:
     CSSGroupingRule(StyleRuleGroup& groupRule, CSSStyleSheet* parent);
     
+    void reattach(StyleRuleBase&) override;
+
     void appendCssTextForItems(StringBuilder&) const;
 
     Ref<StyleRuleGroup> m_groupRule;
+
+private:
     mutable Vector<RefPtr<CSSRule>> m_childRuleCSSOMWrappers;
     mutable std::unique_ptr<CSSRuleList> m_ruleListCSSOMWrapper;
 };
 
 } // namespace WebCore
-
-#endif // CSSGroupingRule_h

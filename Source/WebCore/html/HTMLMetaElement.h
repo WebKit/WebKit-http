@@ -20,8 +20,7 @@
  *
  */
 
-#ifndef HTMLMetaElement_h
-#define HTMLMetaElement_h
+#pragma once
 
 #include "HTMLElement.h"
 
@@ -38,12 +37,10 @@ public:
 private:
     HTMLMetaElement(const QualifiedName&, Document&);
 
-    void parseAttribute(const QualifiedName&, const AtomicString&) override;
-    InsertionNotificationRequest insertedInto(ContainerNode&) override;
+    void parseAttribute(const QualifiedName&, const AtomicString&) final;
+    InsertionNotificationRequest insertedInto(ContainerNode&) final;
 
     void process();
 };
 
 } // namespace WebCore
-
-#endif

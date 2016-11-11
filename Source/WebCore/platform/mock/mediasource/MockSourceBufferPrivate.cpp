@@ -20,7 +20,7 @@
  * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
  * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
 #include "config.h"
@@ -39,12 +39,13 @@
 #include <map>
 #include <runtime/ArrayBuffer.h>
 #include <wtf/PrintStream.h>
+#include <wtf/StringPrintStream.h>
 
 namespace WebCore {
 
 class MockMediaSample final : public MediaSample {
 public:
-    static RefPtr<MockMediaSample> create(const MockSampleBox& box) { return adoptRef(new MockMediaSample(box)); }
+    static Ref<MockMediaSample> create(const MockSampleBox& box) { return adoptRef(*new MockMediaSample(box)); }
     virtual ~MockMediaSample() { }
 
 private:
@@ -58,6 +59,7 @@ private:
     MediaTime decodeTime() const override { return m_box.decodeTimestamp(); }
     MediaTime duration() const override { return m_box.duration(); }
     AtomicString trackID() const override { return m_id; }
+    void setTrackID(const String& id) override { m_id = id; }
     size_t sizeInBytes() const override { return sizeof(m_box); }
     SampleFlags flags() const override;
     PlatformSample platformSample() override;
@@ -65,6 +67,9 @@ private:
     void dump(PrintStream&) const override;
     void offsetTimestampsBy(const MediaTime& offset) override { m_box.offsetTimestampsBy(offset); }
     void setTimestamps(const MediaTime& presentationTimestamp, const MediaTime& decodeTimestamp) override { m_box.setTimestamps(presentationTimestamp, decodeTimestamp); }
+    bool isDivisable() const override { return false; }
+    std::pair<RefPtr<MediaSample>, RefPtr<MediaSample>> divide(const MediaTime&) override { return {nullptr, nullptr}; }
+    Ref<MediaSample> createNonDisplayingCopy() const override;
 
     unsigned generation() const { return m_box.generation(); }
 
@@ -75,8 +80,10 @@ private:
 MediaSample::SampleFlags MockMediaSample::flags() const
 {
     unsigned flags = None;
-    if (m_box.flags() & MockSampleBox::IsSync)
+    if (m_box.isSync())
         flags |= IsSync;
+    if (m_box.isNonDisplaying())
+        flags |= IsNonDisplaying;
     return SampleFlags(flags);
 }
 
@@ -89,6 +96,13 @@ PlatformSample MockMediaSample::platformSample()
 void MockMediaSample::dump(PrintStream& out) const
 {
     out.print("{PTS(", presentationTime(), "), DTS(", decodeTime(), "), duration(", duration(), "), flags(", (int)flags(), "), generation(", generation(), ")}");
+}
+
+Ref<MediaSample> MockMediaSample::createNonDisplayingCopy() const
+{
+    auto copy = MockMediaSample::create(m_box);
+    copy->m_box.setFlag(MockSampleBox::IsNonDisplaying);
+    return WTFMove(copy);
 }
 
 class MockMediaDescription final : public MediaDescription {
@@ -198,6 +212,10 @@ void MockSourceBufferPrivate::abort()
 {
 }
 
+void MockSourceBufferPrivate::resetParserState()
+{
+}
+
 void MockSourceBufferPrivate::removedFromMediaSource()
 {
     if (m_mediaSource)
@@ -221,8 +239,14 @@ void MockSourceBufferPrivate::setActive(bool isActive)
         m_mediaSource->sourceBufferPrivateDidChangeActiveState(this, isActive);
 }
 
-void MockSourceBufferPrivate::enqueueSample(PassRefPtr<MediaSample> sample, AtomicString)
+Vector<String> MockSourceBufferPrivate::enqueuedSamplesForTrackID(AtomicString)
 {
+    return m_enqueuedSamples;
+}
+
+void MockSourceBufferPrivate::enqueueSample(PassRefPtr<MediaSample> prpSample, AtomicString)
+{
+    RefPtr<MediaSample> sample = prpSample;
     if (!m_mediaSource || !sample)
         return;
 
@@ -241,6 +265,8 @@ void MockSourceBufferPrivate::enqueueSample(PassRefPtr<MediaSample> sample, Atom
         m_mediaSource->incrementDroppedFrames();
     if (box->isDelayed())
         m_mediaSource->incrementTotalFrameDelayBy(MediaTime(1, 1));
+
+    m_enqueuedSamples.append(toString(sample));
 }
 
 bool MockSourceBufferPrivate::hasVideo() const

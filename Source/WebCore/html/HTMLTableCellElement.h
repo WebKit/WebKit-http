@@ -23,33 +23,35 @@
  *
  */
 
-#ifndef HTMLTableCellElement_h
-#define HTMLTableCellElement_h
+#pragma once
 
 #include "HTMLTablePartElement.h"
 
 namespace WebCore {
 
-class HTMLTableCellElement : public HTMLTablePartElement {
+class HTMLTableCellElement final : public HTMLTablePartElement {
 public:
-    int cellIndex() const;
+    static Ref<HTMLTableCellElement> create(const QualifiedName&, Document&);
+
+    WEBCORE_EXPORT int cellIndex() const;
     unsigned colSpan() const;
-    unsigned colSpanForBindings() const;
+    WEBCORE_EXPORT unsigned colSpanForBindings() const;
     unsigned rowSpan() const;
-    unsigned rowSpanForBindings() const;
+    WEBCORE_EXPORT unsigned rowSpanForBindings() const;
 
     void setCellIndex(int);
-    void setColSpanForBindings(unsigned);
-    void setRowSpanForBindings(unsigned);
+    WEBCORE_EXPORT void setColSpanForBindings(unsigned);
+    WEBCORE_EXPORT void setRowSpanForBindings(unsigned);
 
     String abbr() const;
     String axis() const;
     String headers() const;
-    String scope() const;
+    WEBCORE_EXPORT const AtomicString& scope() const;
+    WEBCORE_EXPORT void setScope(const AtomicString&);
 
     WEBCORE_EXPORT HTMLTableCellElement* cellAbove() const;
 
-protected:
+private:
     HTMLTableCellElement(const QualifiedName&, Document&);
 
     void parseAttribute(const QualifiedName&, const AtomicString&) override;
@@ -68,5 +70,3 @@ SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::HTMLTableCellElement)
     static bool isType(const WebCore::HTMLElement& element) { return element.hasTagName(WebCore::HTMLNames::tdTag) || element.hasTagName(WebCore::HTMLNames::thTag); }
     static bool isType(const WebCore::Node& node) { return is<WebCore::HTMLElement>(node) && isType(downcast<WebCore::HTMLElement>(node)); }
 SPECIALIZE_TYPE_TRAITS_END()
-
-#endif

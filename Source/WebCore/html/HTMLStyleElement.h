@@ -20,8 +20,7 @@
  *
  */
 
-#ifndef HTMLStyleElement_h
-#define HTMLStyleElement_h
+#pragma once
 
 #include "HTMLElement.h"
 #include "InlineStyleSheetOwner.h"
@@ -32,7 +31,8 @@ class HTMLStyleElement;
 class StyleSheet;
 
 template<typename T> class EventSender;
-typedef EventSender<HTMLStyleElement> StyleEventSender;
+
+using StyleEventSender = EventSender<HTMLStyleElement>;
 
 class HTMLStyleElement final : public HTMLElement {
 public:
@@ -41,8 +41,8 @@ public:
 
     CSSStyleSheet* sheet() const { return m_styleSheetOwner.sheet(); }
 
-    bool disabled() const;
-    void setDisabled(bool);
+    WEBCORE_EXPORT bool disabled() const;
+    WEBCORE_EXPORT void setDisabled(bool);
 
     void dispatchPendingEvent(StyleEventSender*);
     static void dispatchPendingLoadEvents();
@@ -50,20 +50,19 @@ public:
 private:
     HTMLStyleElement(const QualifiedName&, Document&, bool createdByParser);
 
-    // overload from HTMLElement
-    void parseAttribute(const QualifiedName&, const AtomicString&) override;
-    InsertionNotificationRequest insertedInto(ContainerNode&) override;
-    void removedFrom(ContainerNode&) override;
-    void childrenChanged(const ChildChange&) override;
+    void parseAttribute(const QualifiedName&, const AtomicString&) final;
+    InsertionNotificationRequest insertedInto(ContainerNode&) final;
+    void removedFrom(ContainerNode&) final;
+    void childrenChanged(const ChildChange&) final;
 
-    void finishParsingChildren() override;
+    void finishParsingChildren() final;
 
     bool isLoading() const { return m_styleSheetOwner.isLoading(); }
-    bool sheetLoaded() override { return m_styleSheetOwner.sheetLoaded(*this); }
-    void notifyLoadedSheetAndAllCriticalSubresources(bool errorOccurred) override;
-    void startLoadingDynamicSheet() override { m_styleSheetOwner.startLoadingDynamicSheet(*this); }
+    bool sheetLoaded() final { return m_styleSheetOwner.sheetLoaded(*this); }
+    void notifyLoadedSheetAndAllCriticalSubresources(bool errorOccurred) final;
+    void startLoadingDynamicSheet() final { m_styleSheetOwner.startLoadingDynamicSheet(*this); }
 
-    void addSubresourceAttributeURLs(ListHashSet<URL>&) const override;
+    void addSubresourceAttributeURLs(ListHashSet<URL>&) const final;
 
     InlineStyleSheetOwner m_styleSheetOwner;
     bool m_firedLoad;
@@ -71,5 +70,3 @@ private:
 };
 
 } //namespace
-
-#endif

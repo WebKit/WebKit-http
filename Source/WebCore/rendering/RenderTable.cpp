@@ -216,7 +216,7 @@ void RenderTable::addChild(RenderObject* child, RenderObject* beforeChild)
     if (beforeChild && !is<RenderTableSection>(*beforeChild) && beforeChild->style().display() != TABLE_CAPTION && beforeChild->style().display() != TABLE_COLUMN_GROUP)
         beforeChild = nullptr;
 
-    RenderTableSection* section = RenderTableSection::createAnonymousWithParentRenderer(this);
+    auto section = RenderTableSection::createAnonymousWithParentRenderer(*this).release();
     addChild(section, beforeChild);
     section->addChild(child);
 }
@@ -381,24 +381,37 @@ LayoutUnit RenderTable::convertStyleLogicalHeightToComputedHeight(const Length& 
     return LayoutUnit();
 }
 
-void RenderTable::layoutCaption(RenderTableCaption* caption)
+void RenderTable::layoutCaption(RenderTableCaption& caption)
 {
-    LayoutRect captionRect(caption->frameRect());
+    LayoutRect captionRect(caption.frameRect());
 
-    if (caption->needsLayout()) {
+    if (caption.needsLayout()) {
         // The margins may not be available but ensure the caption is at least located beneath any previous sibling caption
         // so that it does not mistakenly think any floats in the previous caption intrude into it.
-        caption->setLogicalLocation(LayoutPoint(caption->marginStart(), caption->marginBefore() + logicalHeight()));
+        caption.setLogicalLocation(LayoutPoint(caption.marginStart(), caption.marginBefore() + logicalHeight()));
         // If RenderTableCaption ever gets a layout() function, use it here.
-        caption->layoutIfNeeded();
+        caption.layoutIfNeeded();
     }
     // Apply the margins to the location now that they are definitely available from layout
-    caption->setLogicalLocation(LayoutPoint(caption->marginStart(), caption->marginBefore() + logicalHeight()));
+    caption.setLogicalLocation(LayoutPoint(caption.marginStart(), caption.marginBefore() + logicalHeight()));
 
-    if (!selfNeedsLayout() && caption->checkForRepaintDuringLayout())
-        caption->repaintDuringLayoutIfMoved(captionRect);
+    if (!selfNeedsLayout() && caption.checkForRepaintDuringLayout())
+        caption.repaintDuringLayoutIfMoved(captionRect);
 
-    setLogicalHeight(logicalHeight() + caption->logicalHeight() + caption->marginBefore() + caption->marginAfter());
+    setLogicalHeight(logicalHeight() + caption.logicalHeight() + caption.marginBefore() + caption.marginAfter());
+}
+
+void RenderTable::layoutCaptions(BottomCaptionLayoutPhase bottomCaptionLayoutPhase)
+{
+    if (m_captions.isEmpty())
+        return;
+    // FIXME: Collapse caption margin.
+    for (unsigned i = 0; i < m_captions.size(); ++i) {
+        if ((bottomCaptionLayoutPhase == BottomCaptionLayoutPhase::Yes && m_captions[i]->style().captionSide() != CAPBOTTOM)
+            || (bottomCaptionLayoutPhase == BottomCaptionLayoutPhase::No && m_captions[i]->style().captionSide() == CAPBOTTOM))
+            continue;
+        layoutCaption(*m_captions[i]);
+    }
 }
 
 void RenderTable::distributeExtraLogicalHeight(LayoutUnit extraLogicalHeight)
@@ -417,10 +430,12 @@ void RenderTable::distributeExtraLogicalHeight(LayoutUnit extraLogicalHeight)
 
 void RenderTable::simplifiedNormalFlowLayout()
 {
+    layoutCaptions();
     for (RenderTableSection* section = topSection(); section; section = sectionBelow(section)) {
         section->layoutIfNeeded();
         section->computeOverflowFromCells();
     }
+    layoutCaptions(BottomCaptionLayoutPhase::Yes);
 }
 
 void RenderTable::layout()
@@ -484,17 +499,10 @@ void RenderTable::layout()
     bool sectionMoved = false;
     LayoutUnit movedSectionLogicalTop = 0;
 
-    // FIXME: Collapse caption margin.
-    if (!m_captions.isEmpty()) {
-        for (unsigned i = 0; i < m_captions.size(); i++) {
-            if (m_captions[i]->style().captionSide() == CAPBOTTOM)
-                continue;
-            layoutCaption(m_captions[i]);
-        }
-        if (logicalHeight() != oldTableLogicalTop) {
-            sectionMoved = true;
-            movedSectionLogicalTop = std::min(logicalHeight(), oldTableLogicalTop);
-        }
+    layoutCaptions();
+    if (!m_captions.isEmpty() && logicalHeight() != oldTableLogicalTop) {
+        sectionMoved = true;
+        movedSectionLogicalTop = std::min(logicalHeight(), oldTableLogicalTop);
     }
 
     LayoutUnit borderAndPaddingBefore = borderBefore() + (collapsing ? LayoutUnit() : paddingBefore());
@@ -553,11 +561,7 @@ void RenderTable::layout()
 
     setLogicalHeight(logicalHeight() + borderAndPaddingAfter);
 
-    for (unsigned i = 0; i < m_captions.size(); i++) {
-        if (m_captions[i]->style().captionSide() != CAPBOTTOM)
-            continue;
-        layoutCaption(m_captions[i]);
-    }
+    layoutCaptions(BottomCaptionLayoutPhase::Yes);
 
     if (isOutOfFlowPositioned())
         updateLogicalHeight();
@@ -1458,7 +1462,7 @@ RenderBlock* RenderTable::firstLineBlock() const
     return nullptr;
 }
 
-void RenderTable::updateFirstLetter()
+void RenderTable::updateFirstLetter(RenderTreeMutationIsAllowed)
 {
 }
 
@@ -1555,26 +1559,31 @@ bool RenderTable::nodeAtPoint(const HitTestRequest& request, HitTestResult& resu
     return false;
 }
 
-RenderTable* RenderTable::createAnonymousWithParentRenderer(const RenderObject* parent)
+std::unique_ptr<RenderTable> RenderTable::createTableWithStyle(Document& document, const RenderStyle& style)
 {
-    auto table = new RenderTable(parent->document(), RenderStyle::createAnonymousStyleWithDisplay(parent->style(), parent->style().display() == INLINE ? INLINE_TABLE : TABLE));
+    auto table = std::make_unique<RenderTable>(document, RenderStyle::createAnonymousStyleWithDisplay(style, style.display() == INLINE ? INLINE_TABLE : TABLE));
     table->initializeStyle();
     return table;
 }
 
-const BorderValue& RenderTable::tableStartBorderAdjoiningCell(const RenderTableCell* cell) const
+std::unique_ptr<RenderTable> RenderTable::createAnonymousWithParentRenderer(const RenderElement& parent)
 {
-    ASSERT(cell->isFirstOrLastCellInRow());
-    if (hasSameDirectionAs(cell->row()))
+    return RenderTable::createTableWithStyle(parent.document(), parent.style());
+}
+
+const BorderValue& RenderTable::tableStartBorderAdjoiningCell(const RenderTableCell& cell) const
+{
+    ASSERT(cell.isFirstOrLastCellInRow());
+    if (isDirectionSame(this, cell.row()))
         return style().borderStart();
 
     return style().borderEnd();
 }
 
-const BorderValue& RenderTable::tableEndBorderAdjoiningCell(const RenderTableCell* cell) const
+const BorderValue& RenderTable::tableEndBorderAdjoiningCell(const RenderTableCell& cell) const
 {
-    ASSERT(cell->isFirstOrLastCellInRow());
-    if (hasSameDirectionAs(cell->row()))
+    ASSERT(cell.isFirstOrLastCellInRow());
+    if (isDirectionSame(this, cell.row()))
         return style().borderEnd();
 
     return style().borderStart();

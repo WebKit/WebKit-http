@@ -21,8 +21,7 @@
  *
  */
 
-#ifndef HTMLQuoteElement_h
-#define HTMLQuoteElement_h
+#pragma once
 
 #include <wtf/Forward.h>
 #include "HTMLElement.h"
@@ -36,9 +35,7 @@ public:
 private:
     HTMLQuoteElement(const QualifiedName&, Document&);
 
-    bool isURLAttribute(const Attribute&) const override;
+    bool isURLAttribute(const Attribute&) const final;
 };
 
-} //namespace
-
-#endif
+} // namespace WebCore

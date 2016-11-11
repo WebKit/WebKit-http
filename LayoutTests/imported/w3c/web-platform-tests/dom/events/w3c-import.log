@@ -15,6 +15,7 @@ Property values requiring vendor prefixes:
 None
 ------------------------------------------------------------------------
 List of files:
+/LayoutTests/imported/w3c/web-platform-tests/dom/events/AddEventListenerOptions-once.html
 /LayoutTests/imported/w3c/web-platform-tests/dom/events/AddEventListenerOptions-passive.html
 /LayoutTests/imported/w3c/web-platform-tests/dom/events/CustomEvent.html
 /LayoutTests/imported/w3c/web-platform-tests/dom/events/Event-constants.html
@@ -23,11 +24,13 @@ List of files:
 /LayoutTests/imported/w3c/web-platform-tests/dom/events/Event-defaultPrevented.html
 /LayoutTests/imported/w3c/web-platform-tests/dom/events/Event-dispatch-bubbles-false.html
 /LayoutTests/imported/w3c/web-platform-tests/dom/events/Event-dispatch-bubbles-true.html
+/LayoutTests/imported/w3c/web-platform-tests/dom/events/Event-dispatch-click.html
 /LayoutTests/imported/w3c/web-platform-tests/dom/events/Event-dispatch-detached-click.html
 /LayoutTests/imported/w3c/web-platform-tests/dom/events/Event-dispatch-handlers-changed.html
 /LayoutTests/imported/w3c/web-platform-tests/dom/events/Event-dispatch-multiple-stopPropagation.html
 /LayoutTests/imported/w3c/web-platform-tests/dom/events/Event-dispatch-omitted-capture.html
 /LayoutTests/imported/w3c/web-platform-tests/dom/events/Event-dispatch-order.html
+/LayoutTests/imported/w3c/web-platform-tests/dom/events/Event-dispatch-other-document.html
 /LayoutTests/imported/w3c/web-platform-tests/dom/events/Event-dispatch-propagation-stopped.html
 /LayoutTests/imported/w3c/web-platform-tests/dom/events/Event-dispatch-redispatch.html
 /LayoutTests/imported/w3c/web-platform-tests/dom/events/Event-dispatch-reenter.html

@@ -28,7 +28,7 @@ namespace WebCore {
 
 class JSTestMediaQueryListListener : public JSDOMWrapper<TestMediaQueryListListener> {
 public:
-    typedef JSDOMWrapper<TestMediaQueryListListener> Base;
+    using Base = JSDOMWrapper<TestMediaQueryListListener>;
     static JSTestMediaQueryListListener* create(JSC::Structure* structure, JSDOMGlobalObject* globalObject, Ref<TestMediaQueryListListener>&& impl)
     {
         JSTestMediaQueryListListener* ptr = new (NotNull, JSC::allocateCell<JSTestMediaQueryListListener>(globalObject->vm().heap)) JSTestMediaQueryListListener(structure, *globalObject, WTFMove(impl));
@@ -82,5 +82,9 @@ inline JSC::JSValue toJS(JSC::ExecState* state, JSDOMGlobalObject* globalObject,
 JSC::JSValue toJSNewlyCreated(JSC::ExecState*, JSDOMGlobalObject*, Ref<TestMediaQueryListListener>&&);
 inline JSC::JSValue toJSNewlyCreated(JSC::ExecState* state, JSDOMGlobalObject* globalObject, RefPtr<TestMediaQueryListListener>&& impl) { return impl ? toJSNewlyCreated(state, globalObject, impl.releaseNonNull()) : JSC::jsNull(); }
 
+template<> struct JSDOMWrapperConverterTraits<TestMediaQueryListListener> {
+    using WrapperClass = JSTestMediaQueryListListener;
+    using ToWrappedReturnType = TestMediaQueryListListener*;
+};
 
 } // namespace WebCore

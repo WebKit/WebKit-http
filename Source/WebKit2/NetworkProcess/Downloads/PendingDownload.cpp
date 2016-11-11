@@ -38,11 +38,23 @@ using namespace WebCore;
 
 namespace WebKit {
 
-PendingDownload::PendingDownload(NetworkLoadParameters&& parameters, DownloadID downloadID)
-    : m_networkLoad(std::make_unique<NetworkLoad>(*this, WTFMove(parameters)))
+PendingDownload::PendingDownload(NetworkLoadParameters&& parameters, DownloadID downloadID, NetworkSession& networkSession, const String& suggestedName)
+    : m_networkLoad(std::make_unique<NetworkLoad>(*this, WTFMove(parameters), networkSession))
 {
     m_networkLoad->setPendingDownloadID(downloadID);
     m_networkLoad->setPendingDownload(*this);
+    m_networkLoad->setSuggestedFilename(suggestedName);
+
+    send(Messages::DownloadProxy::DidStart(m_networkLoad->currentRequest(), suggestedName));
+}
+
+PendingDownload::PendingDownload(std::unique_ptr<NetworkLoad>&& networkLoad, DownloadID downloadID, const ResourceRequest& request, const ResourceResponse& response)
+    : m_networkLoad(WTFMove(networkLoad))
+{
+    m_networkLoad->setPendingDownloadID(downloadID);
+    send(Messages::DownloadProxy::DidStart(request, String()));
+
+    m_networkLoad->convertTaskToDownload(*this, request, response);
 }
 
 void PendingDownload::willSendRedirectedRequest(WebCore::ResourceRequest&&, WebCore::ResourceRequest&& redirectRequest, WebCore::ResourceResponse&& redirectResponse)
@@ -55,6 +67,14 @@ void PendingDownload::continueWillSendRequest(WebCore::ResourceRequest&& newRequ
     m_networkLoad->continueWillSendRequest(WTFMove(newRequest));
 }
 
+void PendingDownload::cancel()
+{
+    ASSERT(m_networkLoad);
+    m_networkLoad->cancel();
+    send(Messages::DownloadProxy::DidCancel({ }));
+}
+
+#if USE(PROTECTION_SPACE_AUTH_CALLBACK)
 void PendingDownload::canAuthenticateAgainstProtectionSpaceAsync(const WebCore::ProtectionSpace& protectionSpace)
 {
     send(Messages::DownloadProxy::CanAuthenticateAgainstProtectionSpace(protectionSpace));
@@ -64,12 +84,8 @@ void PendingDownload::continueCanAuthenticateAgainstProtectionSpace(bool canAuth
 {
     m_networkLoad->continueCanAuthenticateAgainstProtectionSpace(canAuthenticate);
 }
+#endif
 
-void PendingDownload::didBecomeDownload()
-{
-    m_networkLoad = nullptr;
-}
-    
 void PendingDownload::didFailLoading(const WebCore::ResourceError& error)
 {
     send(Messages::DownloadProxy::DidFail(error, { }));

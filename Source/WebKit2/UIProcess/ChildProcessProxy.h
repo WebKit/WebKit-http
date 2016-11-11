@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ChildProcessProxy_h
-#define ChildProcessProxy_h
+#pragma once
 
 #include "Connection.h"
 #include "MessageReceiverMap.h"
@@ -41,15 +40,12 @@ public:
     ChildProcessProxy();
     virtual ~ChildProcessProxy();
 
-    // FIXME: This function does an unchecked upcast, and it is only used in a deprecated code path. Would like to get rid of it.
-    static ChildProcessProxy* fromConnection(IPC::Connection*);
-
     void connect();
     void terminate();
 
-    template<typename T> bool send(T&& message, uint64_t destinationID, unsigned messageSendFlags = 0);
-    template<typename T> bool sendSync(T&& message, typename T::Reply&&, uint64_t destinationID, std::chrono::milliseconds timeout = std::chrono::seconds(1), unsigned sendSyncFlags = 0);
-    
+    template<typename T> bool send(T&& message, uint64_t destinationID, OptionSet<IPC::SendOption> sendOptions = { });
+    template<typename T> bool sendSync(T&& message, typename T::Reply&&, uint64_t destinationID, Seconds timeout = Seconds(1), OptionSet<IPC::SendSyncOption> sendSyncOptions = { });
+
     IPC::Connection* connection() const
     {
         ASSERT(m_connection);
@@ -71,7 +67,7 @@ public:
     pid_t processIdentifier() const { return m_processLauncher->processIdentifier(); }
 
     bool canSendMessage() const { return state() != State::Terminated;}
-    bool sendMessage(std::unique_ptr<IPC::MessageEncoder>, unsigned messageSendFlags);
+    bool sendMessage(std::unique_ptr<IPC::Encoder>, OptionSet<IPC::SendOption>);
 
     void shutDownProcess();
 
@@ -79,8 +75,8 @@ protected:
     // ProcessLauncher::Client
     void didFinishLaunching(ProcessLauncher*, IPC::Connection::Identifier) override;
 
-    bool dispatchMessage(IPC::Connection&, IPC::MessageDecoder&);
-    bool dispatchSyncMessage(IPC::Connection&, IPC::MessageDecoder&, std::unique_ptr<IPC::MessageEncoder>&);
+    bool dispatchMessage(IPC::Connection&, IPC::Decoder&);
+    bool dispatchSyncMessage(IPC::Connection&, IPC::Decoder&, std::unique_ptr<IPC::Encoder>&);
     
     virtual void getLaunchOptions(ProcessLauncher::LaunchOptions&);
 
@@ -88,34 +84,32 @@ private:
     virtual void connectionWillOpen(IPC::Connection&);
     virtual void processWillShutDown(IPC::Connection&) = 0;
 
-    Vector<std::pair<std::unique_ptr<IPC::MessageEncoder>, unsigned>> m_pendingMessages;
+    Vector<std::pair<std::unique_ptr<IPC::Encoder>, OptionSet<IPC::SendOption>>> m_pendingMessages;
     RefPtr<ProcessLauncher> m_processLauncher;
     RefPtr<IPC::Connection> m_connection;
     IPC::MessageReceiverMap m_messageReceiverMap;
 };
 
 template<typename T>
-bool ChildProcessProxy::send(T&& message, uint64_t destinationID, unsigned messageSendFlags)
+bool ChildProcessProxy::send(T&& message, uint64_t destinationID, OptionSet<IPC::SendOption> sendOptions)
 {
     COMPILE_ASSERT(!T::isSync, AsyncMessageExpected);
 
-    auto encoder = std::make_unique<IPC::MessageEncoder>(T::receiverName(), T::name(), destinationID);
+    auto encoder = std::make_unique<IPC::Encoder>(T::receiverName(), T::name(), destinationID);
     encoder->encode(message.arguments());
 
-    return sendMessage(WTFMove(encoder), messageSendFlags);
+    return sendMessage(WTFMove(encoder), sendOptions);
 }
 
 template<typename U> 
-bool ChildProcessProxy::sendSync(U&& message, typename U::Reply&& reply, uint64_t destinationID, std::chrono::milliseconds timeout, unsigned sendSyncFlags)
+bool ChildProcessProxy::sendSync(U&& message, typename U::Reply&& reply, uint64_t destinationID, Seconds timeout, OptionSet<IPC::SendSyncOption> sendSyncOptions)
 {
     COMPILE_ASSERT(U::isSync, SyncMessageExpected);
 
     if (!m_connection)
         return false;
 
-    return connection()->sendSync(std::forward<U>(message), WTFMove(reply), destinationID, timeout, sendSyncFlags);
+    return connection()->sendSync(std::forward<U>(message), WTFMove(reply), destinationID, timeout, sendSyncOptions);
 }
 
 } // namespace WebKit
-
-#endif // ChildProcessProxy_h

@@ -62,14 +62,8 @@ unsigned StyleSheetContents::estimatedSizeInBytes() const
 StyleSheetContents::StyleSheetContents(StyleRuleImport* ownerRule, const String& originalURL, const CSSParserContext& context)
     : m_ownerRule(ownerRule)
     , m_originalURL(originalURL)
-    , m_loadCompleted(false)
+    , m_defaultNamespace(starAtom)
     , m_isUserStyleSheet(ownerRule && ownerRule->parentStyleSheet() && ownerRule->parentStyleSheet()->isUserStyleSheet())
-    , m_hasSyntacticallyValidCSSHeader(true)
-    , m_didLoadErrorOccur(false)
-    , m_usesRemUnits(false)
-    , m_usesStyleBasedEditability(false)
-    , m_isMutable(false)
-    , m_isInMemoryCache(false)
     , m_parserContext(context)
 {
 }
@@ -80,16 +74,14 @@ StyleSheetContents::StyleSheetContents(const StyleSheetContents& o)
     , m_originalURL(o.m_originalURL)
     , m_encodingFromCharsetRule(o.m_encodingFromCharsetRule)
     , m_importRules(o.m_importRules.size())
+    , m_namespaceRules(o.m_namespaceRules.size())
     , m_childRules(o.m_childRules.size())
     , m_namespaces(o.m_namespaces)
-    , m_loadCompleted(true)
+    , m_defaultNamespace(o.m_defaultNamespace)
     , m_isUserStyleSheet(o.m_isUserStyleSheet)
+    , m_loadCompleted(true)
     , m_hasSyntacticallyValidCSSHeader(o.m_hasSyntacticallyValidCSSHeader)
-    , m_didLoadErrorOccur(false)
-    , m_usesRemUnits(o.m_usesRemUnits)
     , m_usesStyleBasedEditability(o.m_usesStyleBasedEditability)
-    , m_isMutable(false)
-    , m_isInMemoryCache(false)
     , m_parserContext(o.m_parserContext)
 {
     ASSERT(o.isCacheable());
@@ -142,6 +134,16 @@ void StyleSheetContents::parserAppendRule(Ref<StyleRuleBase>&& rule)
         return;
     }
 
+    if (is<StyleRuleNamespace>(rule)) {
+        // Parser enforces that @namespace rules come before all rules other than
+        // import/charset rules
+        ASSERT(m_childRules.isEmpty());
+        StyleRuleNamespace& namespaceRule = downcast<StyleRuleNamespace>(rule.get());
+        parserAddNamespace(namespaceRule.prefix(), namespaceRule.uri());
+        m_namespaceRules.append(downcast<StyleRuleNamespace>(rule.ptr()));
+        return;
+    }
+
     if (is<StyleRuleMedia>(rule))
         reportMediaQueryWarningIfNeeded(singleOwnerDocument(), downcast<StyleRuleMedia>(rule.get()).mediaQueries());
 
@@ -160,23 +162,24 @@ StyleRuleBase* StyleSheetContents::ruleAt(unsigned index) const
     ASSERT_WITH_SECURITY_IMPLICATION(index < ruleCount());
     
     unsigned childVectorIndex = index;
-    if (hasCharsetRule()) {
-        if (index == 0)
-            return 0;
-        --childVectorIndex;
-    }
     if (childVectorIndex < m_importRules.size())
         return m_importRules[childVectorIndex].get();
 
     childVectorIndex -= m_importRules.size();
+    
+    if (childVectorIndex < m_namespaceRules.size())
+        return m_namespaceRules[childVectorIndex].get();
+    
+    childVectorIndex -= m_namespaceRules.size();
+    
     return m_childRules[childVectorIndex].get();
 }
 
 unsigned StyleSheetContents::ruleCount() const
 {
     unsigned result = 0;
-    result += hasCharsetRule() ? 1 : 0;
     result += m_importRules.size();
+    result += m_namespaceRules.size();
     result += m_childRules.size();
     return result;
 }
@@ -193,6 +196,7 @@ void StyleSheetContents::clearRules()
         m_importRules[i]->clearParentStyleSheet();
     }
     m_importRules.clear();
+    m_namespaceRules.clear();
     m_childRules.clear();
     clearCharsetRule();
 }
@@ -212,15 +216,6 @@ bool StyleSheetContents::wrapperInsertRule(Ref<StyleRuleBase>&& rule, unsigned i
     ASSERT(!rule->isCharsetRule());
     
     unsigned childVectorIndex = index;
-    // m_childRules does not contain @charset which is always in index 0 if it exists.
-    if (hasCharsetRule()) {
-        if (childVectorIndex == 0) {
-            // Nothing can be inserted before @charset.
-            return false;
-        }
-        --childVectorIndex;
-    }
-    
     if (childVectorIndex < m_importRules.size() || (childVectorIndex == m_importRules.size() && rule->isImportRule())) {
         // Inserting non-import rule before @import is not allowed.
         if (!is<StyleRuleImport>(rule))
@@ -236,6 +231,31 @@ bool StyleSheetContents::wrapperInsertRule(Ref<StyleRuleBase>&& rule, unsigned i
         return false;
     childVectorIndex -= m_importRules.size();
 
+    
+    if (childVectorIndex < m_namespaceRules.size() || (childVectorIndex == m_namespaceRules.size() && rule->isNamespaceRule())) {
+        // Inserting non-namespace rules other than import rule before @namespace is
+        // not allowed.
+        if (!is<StyleRuleNamespace>(rule))
+            return false;
+        // Inserting @namespace rule when rules other than import/namespace/charset
+        // are present is not allowed.
+        if (!m_childRules.isEmpty())
+            return false;
+        
+        StyleRuleNamespace& namespaceRule = downcast<StyleRuleNamespace>(rule.get());
+        m_namespaceRules.insert(index, downcast<StyleRuleNamespace>(rule.ptr()));
+        
+        // For now to be compatible with IE and Firefox if a namespace rule with the same
+        // prefix is added, it overwrites previous ones.
+        // FIXME: The eventual correct behavior would be to ensure that the last value in
+        // the list wins.
+        parserAddNamespace(namespaceRule.prefix(), namespaceRule.uri());
+        return true;
+    }
+    if (is<StyleRuleNamespace>(rule))
+        return false;
+    childVectorIndex -= m_namespaceRules.size();
+
     // If the number of selectors would overflow RuleData, we drop the operation.
     if (is<StyleRule>(rule) && downcast<StyleRule>(rule.get()).selectorList().componentCount() > RuleData::maximumSelectorComponentCount)
         return false;
@@ -250,13 +270,6 @@ void StyleSheetContents::wrapperDeleteRule(unsigned index)
     ASSERT_WITH_SECURITY_IMPLICATION(index < ruleCount());
 
     unsigned childVectorIndex = index;
-    if (hasCharsetRule()) {
-        if (childVectorIndex == 0) {
-            clearCharsetRule();
-            return;
-        }
-        --childVectorIndex;
-    }
     if (childVectorIndex < m_importRules.size()) {
         m_importRules[childVectorIndex]->clearParentStyleSheet();
         m_importRules.remove(childVectorIndex);
@@ -264,25 +277,32 @@ void StyleSheetContents::wrapperDeleteRule(unsigned index)
     }
     childVectorIndex -= m_importRules.size();
 
+    if (childVectorIndex < m_namespaceRules.size()) {
+        if (!m_childRules.isEmpty())
+            return;
+        m_namespaceRules.remove(childVectorIndex);
+        return;
+    }
+    childVectorIndex -= m_namespaceRules.size();
+
     m_childRules.remove(childVectorIndex);
 }
 
 void StyleSheetContents::parserAddNamespace(const AtomicString& prefix, const AtomicString& uri)
 {
-    if (uri.isNull() || prefix.isNull())
+    ASSERT(!uri.isNull());
+    if (prefix.isNull()) {
+        m_defaultNamespace = uri;
         return;
+    }
     PrefixNamespaceURIMap::AddResult result = m_namespaces.add(prefix, uri);
     if (result.isNewEntry)
         return;
     result.iterator->value = uri;
 }
 
-const AtomicString& StyleSheetContents::determineNamespace(const AtomicString& prefix)
+const AtomicString& StyleSheetContents::namespaceURIFromPrefix(const AtomicString& prefix)
 {
-    if (prefix.isNull())
-        return nullAtom; // No namespace. If an element/attribute has a namespace, we won't match it.
-    if (prefix == starAtom)
-        return starAtom; // We'll match any namespace.
     PrefixNamespaceURIMap::const_iterator it = m_namespaces.find(prefix);
     if (it == m_namespaces.end())
         return nullAtom;
@@ -409,29 +429,6 @@ URL StyleSheetContents::completeURL(const String& url) const
     return CSSParser::completeURL(m_parserContext, url);
 }
 
-void StyleSheetContents::addSubresourceStyleURLs(ListHashSet<URL>& urls)
-{
-    Deque<StyleSheetContents*> styleSheetQueue;
-    styleSheetQueue.append(this);
-
-    while (!styleSheetQueue.isEmpty()) {
-        StyleSheetContents* styleSheet = styleSheetQueue.takeFirst();
-        
-        for (auto& importRule : styleSheet->m_importRules) {
-            if (importRule->styleSheet()) {
-                styleSheetQueue.append(importRule->styleSheet());
-                addSubresourceURL(urls, importRule->styleSheet()->baseURL());
-            }
-        }
-        for (auto& rule : styleSheet->m_childRules) {
-            if (is<StyleRule>(*rule))
-                downcast<StyleRule>(*rule).properties().addSubresourceStyleURLs(urls, this);
-            else if (is<StyleRuleFontFace>(*rule))
-                downcast<StyleRuleFontFace>(*rule).properties().addSubresourceStyleURLs(urls, this);
-        }
-    }
-}
-
 static bool traverseSubresourcesInRules(const Vector<RefPtr<StyleRuleBase>>& rules, const std::function<bool (const CachedResource&)>& handler)
 {
     for (auto& rule : rules) {
@@ -459,6 +456,7 @@ static bool traverseSubresourcesInRules(const Vector<RefPtr<StyleRuleBase>>& rul
 #endif
         case StyleRuleBase::Page:
         case StyleRuleBase::Keyframes:
+        case StyleRuleBase::Namespace:
         case StyleRuleBase::Unknown:
         case StyleRuleBase::Charset:
         case StyleRuleBase::Keyframe:
@@ -475,9 +473,12 @@ static bool traverseSubresourcesInRules(const Vector<RefPtr<StyleRuleBase>>& rul
 bool StyleSheetContents::traverseSubresources(const std::function<bool (const CachedResource&)>& handler) const
 {
     for (auto& importRule : m_importRules) {
-        if (!importRule->styleSheet())
-            continue;
-        if (traverseSubresourcesInRules(importRule->styleSheet()->m_childRules, handler))
+        if (auto* cachedResource = importRule->cachedCSSStyleSheet()) {
+            if (handler(*cachedResource))
+                return true;
+        }
+        auto* importedStyleSheet = importRule->styleSheet();
+        if (importedStyleSheet && importedStyleSheet->traverseSubresources(handler))
             return true;
     }
     return traverseSubresourcesInRules(m_childRules, handler);
@@ -522,16 +523,15 @@ void StyleSheetContents::unregisterClient(CSSStyleSheet* sheet)
 
 void StyleSheetContents::addedToMemoryCache()
 {
-    ASSERT(!m_isInMemoryCache);
     ASSERT(isCacheable());
-    m_isInMemoryCache = true;
+    ++m_inMemoryCacheCount;
 }
 
 void StyleSheetContents::removedFromMemoryCache()
 {
-    ASSERT(m_isInMemoryCache);
+    ASSERT(m_inMemoryCacheCount);
     ASSERT(isCacheable());
-    m_isInMemoryCache = false;
+    --m_inMemoryCacheCount;
 }
 
 void StyleSheetContents::shrinkToFit()

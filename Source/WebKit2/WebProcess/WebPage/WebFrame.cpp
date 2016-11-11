@@ -28,6 +28,7 @@
 
 #include "APIArray.h"
 #include "DownloadManager.h"
+#include "FrameInfoData.h"
 #include "InjectedBundleFileHandle.h"
 #include "InjectedBundleHitTestResult.h"
 #include "InjectedBundleNodeHandle.h"
@@ -111,7 +112,7 @@ static uint64_t generateListenerID()
 PassRefPtr<WebFrame> WebFrame::createWithCoreMainFrame(WebPage* page, WebCore::Frame* coreFrame)
 {
     auto frame = create(std::unique_ptr<WebFrameLoaderClient>(static_cast<WebFrameLoaderClient*>(&coreFrame->loader().client())));
-    page->send(Messages::WebPageProxy::DidCreateMainFrame(frame->frameID()), page->pageID(), IPC::DispatchMessageEvenWhenWaitingForSyncReply);
+    page->send(Messages::WebPageProxy::DidCreateMainFrame(frame->frameID()), page->pageID(), IPC::SendOption::DispatchMessageEvenWhenWaitingForSyncReply);
 
     frame->m_coreFrame = coreFrame;
     frame->m_coreFrame->tree().setName(String());
@@ -122,7 +123,7 @@ PassRefPtr<WebFrame> WebFrame::createWithCoreMainFrame(WebPage* page, WebCore::F
 PassRefPtr<WebFrame> WebFrame::createSubframe(WebPage* page, const String& frameName, HTMLFrameOwnerElement* ownerElement)
 {
     auto frame = create(std::make_unique<WebFrameLoaderClient>());
-    page->send(Messages::WebPageProxy::DidCreateSubframe(frame->frameID()), page->pageID(), IPC::DispatchMessageEvenWhenWaitingForSyncReply);
+    page->send(Messages::WebPageProxy::DidCreateSubframe(frame->frameID()), page->pageID(), IPC::SendOption::DispatchMessageEvenWhenWaitingForSyncReply);
 
     Ref<WebCore::Frame> coreFrame = Frame::create(page->corePage(), ownerElement, frame->m_frameLoaderClient.get());
     frame->m_coreFrame = coreFrame.ptr();
@@ -194,6 +195,19 @@ WebFrame* WebFrame::fromCoreFrame(Frame& frame)
     return webFrameLoaderClient->webFrame();
 }
 
+FrameInfoData WebFrame::info() const
+{
+    FrameInfoData info;
+
+    info.isMainFrame = isMainFrame();
+    // FIXME: This should use the full request.
+    info.request = ResourceRequest(URL(URL(), url()));
+    info.securityOrigin = SecurityOriginData::fromFrame(m_coreFrame);
+    info.frameID = m_frameID;
+    
+    return info;
+}
+
 void WebFrame::invalidate()
 {
     WebProcess::singleton().removeWebFrame(m_frameID);
@@ -256,7 +270,7 @@ void WebFrame::startDownload(const WebCore::ResourceRequest& request, const Stri
 
     auto& webProcess = WebProcess::singleton();
     SessionID sessionID = page() ? page()->sessionID() : SessionID::defaultSessionID();
-    webProcess.networkConnection()->connection()->send(Messages::NetworkConnectionToWebProcess::StartDownload(sessionID, policyDownloadID, request, suggestedName), 0);
+    webProcess.networkConnection().connection().send(Messages::NetworkConnectionToWebProcess::StartDownload(sessionID, policyDownloadID, request, suggestedName), 0);
 }
 
 void WebFrame::convertMainResourceLoadToDownload(DocumentLoader* documentLoader, SessionID sessionID, const ResourceRequest& request, const ResourceResponse& response)
@@ -278,7 +292,7 @@ void WebFrame::convertMainResourceLoadToDownload(DocumentLoader* documentLoader,
     else
         mainResourceLoadIdentifier = 0;
 
-    webProcess.networkConnection()->connection()->send(Messages::NetworkConnectionToWebProcess::ConvertMainResourceLoadToDownload(sessionID, mainResourceLoadIdentifier, policyDownloadID, request, response), 0);
+    webProcess.networkConnection().connection().send(Messages::NetworkConnectionToWebProcess::ConvertMainResourceLoadToDownload(sessionID, mainResourceLoadIdentifier, policyDownloadID, request, response), 0);
 }
 
 String WebFrame::source() const
@@ -330,9 +344,7 @@ String WebFrame::contentsAsString() const
 
     RefPtr<Range> range = document->createRange();
 
-    ExceptionCode ec = 0;
-    range->selectNode(*documentElement, ec);
-    if (ec)
+    if (range->selectNode(*documentElement).hasException())
         return String();
 
     return plainText(range.get());
@@ -826,7 +838,7 @@ PassRefPtr<ShareableBitmap> WebFrame::createSelectionSnapshot() const
     // if we're compositing this image onto a solid color (e.g. the modern find indicator style).
     auto graphicsContext = sharedSnapshot->createGraphicsContext();
     float deviceScaleFactor = coreFrame()->page()->deviceScaleFactor();
-    graphicsContext->scale(FloatSize(deviceScaleFactor, deviceScaleFactor));
+    graphicsContext->scale(deviceScaleFactor);
     graphicsContext->drawConsumingImageBuffer(WTFMove(snapshot), FloatPoint());
 
     return WTFMove(sharedSnapshot);

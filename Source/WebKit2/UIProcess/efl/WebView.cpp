@@ -29,7 +29,8 @@
 
 #if USE(COORDINATED_GRAPHICS)
 #include "APIPageConfiguration.h"
-#include "CoordinatedDrawingAreaProxy.h"
+#include "AcceleratedDrawingAreaProxy.h"
+#include "ActivityState.h"
 #include "CoordinatedGraphicsScene.h"
 #include "CoordinatedLayerTreeHostProxy.h"
 #include "DownloadManagerEfl.h"
@@ -38,7 +39,6 @@
 #include "InputMethodContextEfl.h"
 #include "NativeWebMouseEvent.h"
 #include "NotImplemented.h"
-#include "ViewState.h"
 #include "WebBackForwardList.h"
 #include "WebBackForwardListItem.h"
 #include "WebContextMenuProxyEfl.h"
@@ -180,7 +180,7 @@ void WebView::setActive(bool active)
         return;
 
     scene->setActive(active);
-    m_page->viewStateDidChange(ViewState::WindowIsActive);
+    m_page->activityStateDidChange(ActivityState::WindowIsActive);
 }
 
 void WebView::setSize(const WebCore::IntSize& size)
@@ -199,7 +199,7 @@ void WebView::setFocused(bool focused)
         return;
 
     m_focused = focused;
-    m_page->viewStateDidChange(ViewState::IsFocused | ViewState::WindowIsActive);
+    m_page->activityStateDidChange(ActivityState::IsFocused | ActivityState::WindowIsActive);
 }
 
 void WebView::setVisible(bool visible)
@@ -208,9 +208,9 @@ void WebView::setVisible(bool visible)
         return;
 
     m_visible = visible;
-    m_page->viewStateDidChange(ViewState::IsVisible);
+    m_page->activityStateDidChange(ActivityState::IsVisible);
 
-    if (CoordinatedDrawingAreaProxy* drawingArea = static_cast<CoordinatedDrawingAreaProxy*>(page()->drawingArea()))
+    if (auto* drawingArea = static_cast<AcceleratedDrawingAreaProxy*>(page()->drawingArea()))
         drawingArea->visibilityDidChange();
 }
 
@@ -368,7 +368,7 @@ AffineTransform WebView::transformToScene() const
 
 CoordinatedGraphicsScene* WebView::coordinatedGraphicsScene()
 {
-    if (CoordinatedDrawingAreaProxy* drawingArea = static_cast<CoordinatedDrawingAreaProxy*>(page()->drawingArea()))
+    if (auto* drawingArea = static_cast<AcceleratedDrawingAreaProxy*>(page()->drawingArea()))
         return drawingArea->coordinatedLayerTreeHostProxy().coordinatedGraphicsScene();
 
     return nullptr;
@@ -376,12 +376,12 @@ CoordinatedGraphicsScene* WebView::coordinatedGraphicsScene()
 
 void WebView::updateViewportSize()
 {
-    if (CoordinatedDrawingAreaProxy* drawingArea = static_cast<CoordinatedDrawingAreaProxy*>(page()->drawingArea())) {
+    if (auto* drawingArea = static_cast<AcceleratedDrawingAreaProxy*>(page()->drawingArea())) {
         // Web Process expects sizes in UI units, and not raw device units.
         drawingArea->setSize(roundedIntSize(dipSize()), IntSize(), IntSize());
         FloatRect visibleContentsRect(contentPosition(), visibleContentsSize());
         visibleContentsRect.intersect(FloatRect(FloatPoint(), contentsSize()));
-        drawingArea->setVisibleContentsRect(visibleContentsRect, FloatPoint());
+        drawingArea->coordinatedLayerTreeHostProxy().setVisibleContentsRect(visibleContentsRect, FloatPoint());
     }
 }
 
@@ -406,7 +406,7 @@ WebCore::FloatSize WebView::visibleContentsSize() const
 
 std::unique_ptr<DrawingAreaProxy> WebView::createDrawingAreaProxy()
 {
-    return std::make_unique<CoordinatedDrawingAreaProxy>(*m_page);
+    return std::make_unique<AcceleratedDrawingAreaProxy>(*m_page);
 }
 
 void WebView::setViewNeedsDisplay(const WebCore::Region& region)

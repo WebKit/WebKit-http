@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011, 2013-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2011, 2013-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -40,6 +40,8 @@
 #include "DFGClobbersExitState.h"
 #include "DFGControlEquivalenceAnalysis.h"
 #include "DFGDominators.h"
+#include "DFGFlowIndexing.h"
+#include "DFGFlowMap.h"
 #include "DFGJITCode.h"
 #include "DFGMayExit.h"
 #include "DFGNaturalLoops.h"
@@ -83,6 +85,9 @@ Graph::Graph(VM& vm, Plan& plan, LongLivedState& longLivedState)
     ASSERT(m_profiledBlock);
     
     m_hasDebuggerEnabled = m_profiledBlock->wasCompiledWithDebuggingOpcodes() || Options::forceDebuggerBytecodeGeneration();
+    
+    m_indexingCache = std::make_unique<FlowIndexing>(*this);
+    m_abstractValuesCache = std::make_unique<FlowMap<AbstractValue>>(*this);
 }
 
 Graph::~Graph()
@@ -231,6 +236,8 @@ void Graph::dump(PrintStream& out, const char* prefix, Node* node, DumpContext* 
         out.print(comma, node->scopeOffset());
     if (node->hasDirectArgumentsOffset())
         out.print(comma, node->capturedArgumentsOffset());
+    if (node->hasArgumentIndex())
+        out.print(comma, node->argumentIndex());
     if (node->hasRegisterPointer())
         out.print(comma, "global", "(", RawPointer(node->variablePointer()), ")");
     if (node->hasIdentifier())
@@ -267,6 +274,8 @@ void Graph::dump(PrintStream& out, const char* prefix, Node* node, DumpContext* 
             }
         }
     }
+    if (node->hasSpeculatedTypeForQuery())
+        out.print(comma, SpeculationDump(node->speculatedTypeForQuery()));
     if (node->hasStorageAccessData()) {
         StorageAccessData& storageAccessData = node->storageAccessData();
         out.print(comma, "id", storageAccessData.identifierNumber, "{", identifiers()[storageAccessData.identifierNumber], "}");
@@ -285,7 +294,7 @@ void Graph::dump(PrintStream& out, const char* prefix, Node* node, DumpContext* 
         for (unsigned i = 0; i < data.variants.size(); ++i)
             out.print(comma, inContext(data.variants[i], context));
     }
-    ASSERT(node->hasVariableAccessData(*this) == node->hasLocal(*this));
+    ASSERT(node->hasVariableAccessData(*this) == node->accessesStack(*this));
     if (node->hasVariableAccessData(*this)) {
         VariableAccessData* variableAccessData = node->tryGetVariableAccessData();
         if (variableAccessData) {
@@ -346,6 +355,11 @@ void Graph::dump(PrintStream& out, const char* prefix, Node* node, DumpContext* 
         out.print(", offset = ", data->offset, ", mandatoryMinimum = ", data->mandatoryMinimum);
         out.print(", limit = ", data->limit);
     }
+    if (node->hasCallDOMGetterData()) {
+        CallDOMGetterData* data = node->callDOMGetterData();
+        out.print(comma, "id", data->identifierNumber, "{", identifiers()[data->identifierNumber], "}");
+        out.print(", domJIT = ", RawPointer(data->domJIT));
+    }
     if (node->isConstant())
         out.print(comma, pointerDumpInContext(node->constant(), context));
     if (node->isJump())
@@ -382,7 +396,7 @@ void Graph::dump(PrintStream& out, const char* prefix, Node* node, DumpContext* 
         out.print(comma, "WasHoisted");
     out.print(")");
 
-    if (node->hasVariableAccessData(*this) && node->tryGetVariableAccessData())
+    if (node->accessesStack(*this) && node->tryGetVariableAccessData())
         out.print("  predicting ", SpeculationDump(node->tryGetVariableAccessData()->prediction()));
     else if (node->hasHeapPrediction())
         out.print("  predicting ", SpeculationDump(node->getHeapPrediction()));
@@ -559,7 +573,7 @@ void Graph::dump(PrintStream& out, DumpContext* context)
             RELEASE_ASSERT(block->ssa);
             out.print("  Availability: ", block->ssa->availabilityAtTail, "\n");
             out.print("  Live: ", nodeListDump(block->ssa->liveAtTail), "\n");
-            out.print("  Values: ", nodeMapDump(block->ssa->valuesAtTail, context), "\n");
+            out.print("  Values: ", nodeValuePairListDump(block->ssa->valuesAtTail, context), "\n");
             break;
         } }
         out.print("\n");
@@ -577,6 +591,72 @@ void Graph::dump(PrintStream& out, DumpContext* context)
         myContext.dump(out);
         out.print("\n");
     }
+}
+
+void Graph::addNodeToMapByIndex(Node* node)
+{
+    if (m_nodeIndexFreeList.isEmpty()) {
+        node->m_index = m_nodesByIndex.size();
+        m_nodesByIndex.append(node);
+        return;
+    }
+    unsigned index = m_nodeIndexFreeList.takeLast();
+    node->m_index = index;
+    ASSERT(!m_nodesByIndex[index]);
+    m_nodesByIndex[index] = node;
+}
+
+void Graph::deleteNode(Node* node)
+{
+    if (validationEnabled() && m_form == SSA) {
+        for (BasicBlock* block : blocksInNaturalOrder()) {
+            DFG_ASSERT(*this, node, !block->ssa->liveAtHead.contains(node));
+            DFG_ASSERT(*this, node, !block->ssa->liveAtTail.contains(node));
+        }
+    }
+
+    RELEASE_ASSERT(m_nodesByIndex[node->m_index] == node);
+    unsigned nodeIndex = node->m_index;
+    m_nodesByIndex[nodeIndex] = nullptr;
+    m_nodeIndexFreeList.append(nodeIndex);
+
+    m_allocator.free(node);
+}
+
+void Graph::packNodeIndices()
+{
+    if (m_nodeIndexFreeList.isEmpty())
+        return;
+
+    unsigned holeIndex = 0;
+    unsigned endIndex = m_nodesByIndex.size();
+
+    while (true) {
+        while (holeIndex < endIndex && m_nodesByIndex[holeIndex])
+            ++holeIndex;
+
+        if (holeIndex == endIndex)
+            break;
+        ASSERT(holeIndex < m_nodesByIndex.size());
+        ASSERT(!m_nodesByIndex[holeIndex]);
+
+        do {
+            --endIndex;
+        } while (!m_nodesByIndex[endIndex] && endIndex > holeIndex);
+
+        if (holeIndex == endIndex)
+            break;
+        ASSERT(endIndex > holeIndex);
+        ASSERT(m_nodesByIndex[endIndex]);
+
+        auto& value = m_nodesByIndex[endIndex];
+        value->m_index = holeIndex;
+        m_nodesByIndex[holeIndex] = WTFMove(value);
+        ++holeIndex;
+    }
+
+    m_nodeIndexFreeList.resize(0);
+    m_nodesByIndex.resize(endIndex);
 }
 
 void Graph::dethread()
@@ -744,19 +824,20 @@ void Graph::computeRefCounts()
 
 void Graph::killBlockAndItsContents(BasicBlock* block)
 {
+    if (auto& ssaData = block->ssa)
+        ssaData->invalidate();
     for (unsigned phiIndex = block->phis.size(); phiIndex--;)
-        m_allocator.free(block->phis[phiIndex]);
-    for (unsigned nodeIndex = block->size(); nodeIndex--;)
-        m_allocator.free(block->at(nodeIndex));
+        deleteNode(block->phis[phiIndex]);
+    for (Node* node : *block)
+        deleteNode(node);
     
     killBlock(block);
 }
 
 void Graph::killUnreachableBlocks()
 {
-    // FIXME: This probably creates dangling references from Upsilons to Phis in SSA.
-    // https://bugs.webkit.org/show_bug.cgi?id=159164
-    
+    invalidateNodeLiveness();
+
     for (BlockIndex blockIndex = 0; blockIndex < numBlocks(); ++blockIndex) {
         BasicBlock* block = this->block(blockIndex);
         if (!block)
@@ -776,6 +857,15 @@ void Graph::invalidateCFG()
     m_controlEquivalenceAnalysis = nullptr;
     m_backwardsDominators = nullptr;
     m_backwardsCFG = nullptr;
+}
+
+void Graph::invalidateNodeLiveness()
+{
+    if (m_form != SSA)
+        return;
+
+    for (BasicBlock* block : blocksInNaturalOrder())
+        block->ssa->invalidate();
 }
 
 void Graph::substituteGetLocal(BasicBlock& block, unsigned startIndexInBlock, VariableAccessData* variableAccessData, Node* newGetLocal)
@@ -1012,19 +1102,19 @@ bool Graph::isLiveInBytecode(VirtualRegister operand, CodeOrigin codeOrigin)
         if (verbose)
             dataLog("reg = ", reg, "\n");
         
-        if (operand.offset() < codeOriginPtr->stackOffset() + JSStack::CallFrameHeaderSize) {
+        if (operand.offset() < codeOriginPtr->stackOffset() + CallFrame::headerSizeInRegisters) {
             if (reg.isArgument()) {
-                RELEASE_ASSERT(reg.offset() < JSStack::CallFrameHeaderSize);
+                RELEASE_ASSERT(reg.offset() < CallFrame::headerSizeInRegisters);
                 
                 if (codeOriginPtr->inlineCallFrame->isClosureCall
-                    && reg.offset() == JSStack::Callee) {
+                    && reg.offset() == CallFrameSlot::callee) {
                     if (verbose)
                         dataLog("Looks like a callee.\n");
                     return true;
                 }
                 
                 if (codeOriginPtr->inlineCallFrame->isVarargs()
-                    && reg.offset() == JSStack::ArgumentCount) {
+                    && reg.offset() == CallFrameSlot::argumentCount) {
                     if (verbose)
                         dataLog("Looks like the argument count.\n");
                     return true;
@@ -1079,6 +1169,13 @@ BitVector Graph::localsLiveInBytecode(CodeOrigin codeOrigin)
             result.quickSet(reg.toLocal());
         });
     return result;
+}
+
+unsigned Graph::parameterSlotsForArgCount(unsigned argCount)
+{
+    size_t frameSize = CallFrame::headerSizeInRegisters + argCount;
+    size_t alignedFrameSize = WTF::roundUpToMultipleOf(stackAlignmentRegisters(), frameSize);
+    return alignedFrameSize - CallerFrameAndPC::sizeInRegisters;
 }
 
 unsigned Graph::frameRegisterCount()
@@ -1516,46 +1613,47 @@ ControlEquivalenceAnalysis& Graph::ensureControlEquivalenceAnalysis()
     return *m_controlEquivalenceAnalysis;
 }
 
-MethodOfGettingAValueProfile Graph::methodOfGettingAValueProfileFor(Node* node)
+MethodOfGettingAValueProfile Graph::methodOfGettingAValueProfileFor(Node* currentNode, Node* operandNode)
 {
-    while (node) {
-        CodeBlock* profiledBlock = baselineCodeBlockFor(node->origin.semantic);
-        
-        if (node->hasLocal(*this)) {
-            ValueProfile* result = [&] () -> ValueProfile* {
-                if (!node->local().isArgument())
-                    return nullptr;
-                int argument = node->local().toArgument();
-                Node* argumentNode = m_arguments[argument];
-                if (!argumentNode)
-                    return nullptr;
-                if (node->variableAccessData() != argumentNode->variableAccessData())
-                    return nullptr;
-                return profiledBlock->valueProfileForArgument(argument);
-            }();
-            if (result)
-                return result;
-            
-            if (node->op() == GetLocal) {
-                return MethodOfGettingAValueProfile::fromLazyOperand(
-                    profiledBlock,
-                    LazyOperandValueProfileKey(
-                        node->origin.semantic.bytecodeIndex, node->local()));
+    for (Node* node = operandNode; node;) {
+        // currentNode is null when we're doing speculation checks for checkArgumentTypes().
+        if (!currentNode || node->origin != currentNode->origin) {
+            CodeBlock* profiledBlock = baselineCodeBlockFor(node->origin.semantic);
+
+            if (node->accessesStack(*this)) {
+                ValueProfile* result = [&] () -> ValueProfile* {
+                    if (!node->local().isArgument())
+                        return nullptr;
+                    int argument = node->local().toArgument();
+                    Node* argumentNode = m_arguments[argument];
+                    if (!argumentNode)
+                        return nullptr;
+                    if (node->variableAccessData() != argumentNode->variableAccessData())
+                        return nullptr;
+                    return profiledBlock->valueProfileForArgument(argument);
+                }();
+                if (result)
+                    return result;
+
+                if (node->op() == GetLocal) {
+                    return MethodOfGettingAValueProfile::fromLazyOperand(
+                        profiledBlock,
+                        LazyOperandValueProfileKey(
+                            node->origin.semantic.bytecodeIndex, node->local()));
+                }
             }
-        }
-        
-        if (node->hasHeapPrediction())
-            return profiledBlock->valueProfileForBytecodeOffset(node->origin.semantic.bytecodeIndex);
-        
-        {
-            ConcurrentJITLocker locker(profiledBlock->m_lock);
+
+            if (node->hasHeapPrediction())
+                return profiledBlock->valueProfileForBytecodeOffset(node->origin.semantic.bytecodeIndex);
+
             if (profiledBlock->hasBaselineJITProfiling()) {
-                if (ResultProfile* result = profiledBlock->resultProfileForBytecodeOffset(locker, node->origin.semantic.bytecodeIndex))
+                if (ArithProfile* result = profiledBlock->arithProfileForBytecodeOffset(node->origin.semantic.bytecodeIndex))
                     return result;
             }
         }
-        
+
         switch (node->op()) {
+        case BooleanToNumber:
         case Identity:
         case ValueRep:
         case DoubleRep:

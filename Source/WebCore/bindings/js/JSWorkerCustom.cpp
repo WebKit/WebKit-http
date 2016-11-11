@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008, 2009 Apple Inc. All Rights Reserved.
+ * Copyright (C) 2008-2009, 2016 Apple Inc. All Rights Reserved.
  * Copyright (C) 2011 Google Inc. All Rights Reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -25,7 +25,6 @@
  */
 
 #include "config.h"
-
 #include "JSWorker.h"
 
 #include "Document.h"
@@ -42,32 +41,29 @@ namespace WebCore {
 
 JSC::JSValue JSWorker::postMessage(JSC::ExecState& state)
 {
-    return handlePostMessage(state, &wrapped());
+    return handlePostMessage(state, wrapped());
 }
 
-EncodedJSValue JSC_HOST_CALL constructJSWorker(ExecState* exec)
+EncodedJSValue JSC_HOST_CALL constructJSWorker(ExecState& state)
 {
-    DOMConstructorObject* jsConstructor = jsCast<DOMConstructorObject*>(exec->callee());
+    VM& vm = state.vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
 
-    if (!exec->argumentCount())
-        return throwVMError(exec, createNotEnoughArgumentsError(exec));
+    ASSERT(jsCast<DOMConstructorObject*>(state.callee()));
+    ASSERT(jsCast<DOMConstructorObject*>(state.callee())->globalObject());
+    auto& globalObject = *jsCast<DOMConstructorObject*>(state.callee())->globalObject();
 
-    String scriptURL = exec->argument(0).toString(exec)->value(exec);
-    if (exec->hadException())
-        return JSValue::encode(JSValue());
+    if (!state.argumentCount())
+        return throwVMError(&state, scope, createNotEnoughArgumentsError(&state));
 
-    // See section 4.8.2 step 14 of WebWorkers for why this is the lexicalGlobalObject. 
-    DOMWindow& window = asJSDOMWindow(exec->lexicalGlobalObject())->wrapped();
+    String scriptURL = state.uncheckedArgument(0).toWTFString(&state);
+    RETURN_IF_EXCEPTION(scope, encodedJSValue());
 
-    ExceptionCode ec = 0;
+    // See section 4.8.2 step 14 of WebWorkers for why this is the lexicalGlobalObject.
+    auto& window = asJSDOMWindow(state.lexicalGlobalObject())->wrapped();
+
     ASSERT(window.document());
-    RefPtr<Worker> worker = Worker::create(*window.document(), scriptURL, ec);
-    if (ec) {
-        setDOMException(exec, ec);
-        return JSValue::encode(JSValue());
-    }
-
-    return JSValue::encode(asObject(toJS(exec, jsConstructor->globalObject(), *worker)));
+    return JSValue::encode(toJSNewlyCreated(state, globalObject, scope, Worker::create(*window.document(), scriptURL, globalObject.runtimeFlags())));
 }
 
 } // namespace WebCore

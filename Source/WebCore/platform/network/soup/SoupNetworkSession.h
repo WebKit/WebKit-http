@@ -26,6 +26,7 @@
 #ifndef SoupNetworkSession_h
 #define SoupNetworkSession_h
 
+#include <functional>
 #include <wtf/Noncopyable.h>
 #include <wtf/Vector.h>
 #include <wtf/glib/GRefPtr.h>
@@ -33,9 +34,14 @@
 
 typedef struct _SoupCache SoupCache;
 typedef struct _SoupCookieJar SoupCookieJar;
+typedef struct _SoupMessage SoupMessage;
+typedef struct _SoupRequest SoupRequest;
 typedef struct _SoupSession SoupSession;
 
 namespace WebCore {
+
+class CertificateInfo;
+class ResourceError;
 
 class SoupNetworkSession {
     WTF_MAKE_NONCOPYABLE(SoupNetworkSession); WTF_MAKE_FAST_ALLOCATED;
@@ -47,27 +53,20 @@ public:
     static std::unique_ptr<SoupNetworkSession> createTestingSession();
     static std::unique_ptr<SoupNetworkSession> createForSoupSession(SoupSession*);
 
-    enum SSLPolicyFlags {
-        SSLStrict = 1 << 0,
-        SSLUseSystemCAFile = 1 << 1
-    };
-    typedef unsigned SSLPolicy;
-
     SoupSession* soupSession() const { return m_soupSession.get(); }
 
     void setCookieJar(SoupCookieJar*);
     SoupCookieJar* cookieJar() const;
 
-    void setCache(SoupCache*);
-    SoupCache* cache() const;
-    static void clearCache(const String& cacheDirectory);
-
-    void setSSLPolicy(SSLPolicy);
-    SSLPolicy sslPolicy() const;
+    static void clearOldSoupCache(const String& cacheDirectory);
 
     void setupHTTPProxyFromEnvironment();
 
     void setAcceptLanguages(const Vector<String>&);
+
+    static void setShouldIgnoreTLSErrors(bool);
+    static void checkTLSErrors(SoupRequest*, SoupMessage*, std::function<void (const ResourceError&)>&&);
+    static void allowSpecificHTTPSCertificateForHost(const CertificateInfo&, const String& host);
 
 private:
     friend class NeverDestroyed<SoupNetworkSession>;

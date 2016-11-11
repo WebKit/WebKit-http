@@ -39,7 +39,6 @@
 #include "StyleInheritedData.h"
 #include <wtf/StackStats.h>
 #include <wtf/StdLibExtras.h>
-#include <wtf/text/StringBuilder.h>
 
 namespace WebCore {
 
@@ -220,11 +219,6 @@ void RenderListItem::updateValueNow() const
     m_isValueUpToDate = true;
 }
 
-bool RenderListItem::isEmpty() const
-{
-    return lastChild() == m_marker;
-}
-
 static RenderBlock* getParentOfFirstLineBox(RenderBlock& current, RenderObject& marker)
 {
     bool inQuirksMode = current.document().inQuirksMode();
@@ -274,6 +268,11 @@ void RenderListItem::insertOrMoveMarkerRendererIfNeeded()
     if (!m_marker)
         return;
 
+    // FIXME: Do not even try to reposition the marker when we are not in layout
+    // until after we fixed webkit.org/b/163789.
+    if (!view().frameView().isInRenderTreeLayout())
+        return;
+
     RenderElement* currentParent = m_marker->parent();
     RenderBlock* newParent = getParentOfFirstLineBox(*this, *m_marker);
     if (!newParent) {
@@ -293,6 +292,11 @@ void RenderListItem::insertOrMoveMarkerRendererIfNeeded()
         // Removing and adding the marker can trigger repainting in
         // containers other than ourselves, so we need to disable LayoutState.
         LayoutStateDisabler layoutStateDisabler(view());
+        // Mark the parent dirty so that when the marker gets inserted into the tree
+        // and dirties ancestors, it stops at the parent.
+        newParent->setChildNeedsLayout(MarkOnlyThis);
+        m_marker->setNeedsLayout(MarkOnlyThis);
+
         m_marker->removeFromParent();
         newParent->addChild(m_marker, firstNonMarkerChild(*newParent));
         m_marker->updateMarginsAndContent();

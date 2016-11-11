@@ -53,7 +53,7 @@ CrossOriginPreflightChecker::CrossOriginPreflightChecker(DocumentThreadableLoade
 CrossOriginPreflightChecker::~CrossOriginPreflightChecker()
 {
     if (m_resource)
-        m_resource->removeClient(this);
+        m_resource->removeClient(*this);
 }
 
 void CrossOriginPreflightChecker::validatePreflightResponse(DocumentThreadableLoader& loader, ResourceRequest&& request, unsigned long identifier, const ResourceResponse& response)
@@ -69,12 +69,12 @@ void CrossOriginPreflightChecker::validatePreflightResponse(DocumentThreadableLo
     }
 
     String description;
-    if (!passesAccessControlCheck(response, loader.options().allowCredentials(), loader.securityOrigin(), description)) {
+    if (!passesAccessControlCheck(response, loader.options().allowCredentials, loader.securityOrigin(), description)) {
         loader.preflightFailure(identifier, ResourceError(errorDomainWebKitInternal, 0, request.url(), description, ResourceError::Type::AccessControl));
         return;
     }
 
-    auto result = std::make_unique<CrossOriginPreflightResultCacheItem>(loader.options().allowCredentials());
+    auto result = std::make_unique<CrossOriginPreflightResultCacheItem>(loader.options().allowCredentials);
     if (!result->parse(response, description)
         || !result->allowsCrossOriginMethod(request.httpMethod(), description)
         || !result->allowsCrossOriginHeaders(request.httpHeaderFields(), description)) {
@@ -86,12 +86,16 @@ void CrossOriginPreflightChecker::validatePreflightResponse(DocumentThreadableLo
     loader.preflightSuccess(WTFMove(request));
 }
 
-void CrossOriginPreflightChecker::notifyFinished(CachedResource* resource)
+void CrossOriginPreflightChecker::notifyFinished(CachedResource& resource)
 {
-    ASSERT_UNUSED(resource, resource == m_resource);
+    ASSERT_UNUSED(resource, &resource == m_resource);
     if (m_resource->loadFailedOrCanceled()) {
         ResourceError preflightError = m_resource->resourceError();
-        preflightError.setType(ResourceError::Type::AccessControl);
+        // If the preflight was cancelled by underlying code, it probably means the request was blocked due to some access control policy.
+        // FIXME:: According fetch, we should just pass the error to the layer above. But this may impact some clients like XHR or EventSource.
+        if (preflightError.isNull() || preflightError.isCancellation() || preflightError.isGeneral())
+            preflightError.setType(ResourceError::Type::AccessControl);
+
         m_loader.preflightFailure(m_resource->identifier(), preflightError);
         return;
     }
@@ -100,25 +104,19 @@ void CrossOriginPreflightChecker::notifyFinished(CachedResource* resource)
 
 void CrossOriginPreflightChecker::startPreflight()
 {
-    auto options = m_loader.options();
-    options.setClientCredentialPolicy(DoNotAskClientForCrossOriginCredentials);
-    options.setSecurityCheck(DoSecurityCheck);
-    // Don't sniff content or send load callbacks for the preflight request.
-    options.setSendLoadCallbacks(DoNotSendCallbacks);
-    options.setSniffContent(DoNotSniffContent);
-    // Keep buffering the data for the preflight request.
-    options.setDataBufferingPolicy(BufferData);
-
+    ResourceLoaderOptions options;
+    options.referrerPolicy = m_loader.options().referrerPolicy;
     options.redirect = FetchOptions::Redirect::Manual;
+    options.contentSecurityPolicyImposition = ContentSecurityPolicyImposition::SkipPolicyCheck;
 
-    CachedResourceRequest preflightRequest(createAccessControlPreflightRequest(m_request, m_loader.securityOrigin()), options);
+    CachedResourceRequest preflightRequest(createAccessControlPreflightRequest(m_request, m_loader.securityOrigin(), m_loader.referrer()), options);
     if (RuntimeEnabledFeatures::sharedFeatures().resourceTimingEnabled())
         preflightRequest.setInitiator(m_loader.options().initiator);
 
     ASSERT(!m_resource);
-    m_resource = m_loader.document().cachedResourceLoader().requestRawResource(preflightRequest);
+    m_resource = m_loader.document().cachedResourceLoader().requestRawResource(WTFMove(preflightRequest));
     if (m_resource)
-        m_resource->addClient(this);
+        m_resource->addClient(*this);
 }
 
 void CrossOriginPreflightChecker::doPreflight(DocumentThreadableLoader& loader, ResourceRequest&& request)
@@ -126,17 +124,29 @@ void CrossOriginPreflightChecker::doPreflight(DocumentThreadableLoader& loader, 
     if (!loader.document().frame())
         return;
 
-    ResourceRequest preflightRequest = createAccessControlPreflightRequest(request, loader.securityOrigin());
+    ResourceRequest preflightRequest = createAccessControlPreflightRequest(request, loader.securityOrigin(), loader.referrer());
     ResourceError error;
     ResourceResponse response;
     RefPtr<SharedBuffer> data;
-    unsigned identifier = loader.document().frame()->loader().loadResourceSynchronously(preflightRequest, DoNotAllowStoredCredentials, DoNotAskClientForCrossOriginCredentials, error, response, data);
 
-    if (!error.isNull() && response.httpStatusCode() <= 0) {
-        error.setType(ResourceError::Type::AccessControl);
+    unsigned identifier = loader.document().frame()->loader().loadResourceSynchronously(preflightRequest, DoNotAllowStoredCredentials, ClientCredentialPolicy::CannotAskClientForCredentials, error, response, data);
+
+    if (!error.isNull()) {
+        // If the preflight was cancelled by underlying code, it probably means the request was blocked due to some access control policy.
+        // FIXME:: According fetch, we should just pass the error to the layer above. But this may impact some clients like XHR or EventSource.
+        if (error.isCancellation() || error.isGeneral())
+            error.setType(ResourceError::Type::AccessControl);
         loader.preflightFailure(identifier, error);
         return;
     }
+
+    // FIXME: Ideally, we should ask platformLoadResourceSynchronously to set ResourceResponse isRedirected and use it here.
+    bool isRedirect = preflightRequest.url().strippedForUseAsReferrer() != response.url().strippedForUseAsReferrer();
+    if (isRedirect || !response.isSuccessful()) {
+        loader.preflightFailure(identifier, ResourceError(errorDomainWebKitInternal, 0, request.url(), ASCIILiteral("Preflight response is not successful"), ResourceError::Type::AccessControl));
+        return;
+    }
+
     validatePreflightResponse(loader, WTFMove(request), identifier, response);
 }
 

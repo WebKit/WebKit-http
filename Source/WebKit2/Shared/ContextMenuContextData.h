@@ -34,8 +34,8 @@
 #include "WebHitTestResultData.h"
 
 namespace IPC {
-class ArgumentDecoder;
-class ArgumentEncoder;
+class Decoder;
+class Encoder;
 }
 
 namespace WebCore {
@@ -79,8 +79,8 @@ public:
     bool controlledDataIsEditable() const;
 #endif
 
-    void encode(IPC::ArgumentEncoder&) const;
-    static bool decode(IPC::ArgumentDecoder&, ContextMenuContextData&);
+    void encode(IPC::Encoder&) const;
+    static bool decode(IPC::Decoder&, ContextMenuContextData&);
 
 private:
     Type m_type;

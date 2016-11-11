@@ -1,6 +1,6 @@
 /*
- * Copyright (C) 2012 Apple Inc. All rights reserved.
- * Copyright (C) 2015 Yusuke Suzuki <utatane.tea@gmail.com>.
+ * Copyright (C) 2012, 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2016 Yusuke Suzuki <utatane.tea@gmail.com>.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -53,6 +53,14 @@ Symbol::Symbol(VM& vm, SymbolImpl& uid)
 {
 }
 
+void Symbol::finishCreation(VM& vm)
+{
+    Base::finishCreation(vm);
+    ASSERT(inherits(info()));
+
+    vm.symbolImplToSymbolMap.set(&m_privateName.uid(), this);
+}
+
 inline SymbolObject* SymbolObject::create(VM& vm, JSGlobalObject* globalObject, Symbol* symbol)
 {
     SymbolObject* object = new (NotNull, allocateCell<SymbolObject>(vm.heap)) SymbolObject(vm, globalObject->symbolObjectStructure());
@@ -79,7 +87,9 @@ JSObject* Symbol::toObject(ExecState* exec, JSGlobalObject* globalObject) const
 
 double Symbol::toNumber(ExecState* exec) const
 {
-    throwTypeError(exec, "Cannot convert a symbol to a number");
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+    throwTypeError(exec, scope, ASCIILiteral("Cannot convert a symbol to a number"));
     return 0.0;
 }
 
@@ -91,6 +101,32 @@ void Symbol::destroy(JSCell* cell)
 String Symbol::descriptiveString() const
 {
     return makeString("Symbol(", String(privateName().uid()), ')');
+}
+
+Symbol* Symbol::create(VM& vm)
+{
+    Symbol* symbol = new (NotNull, allocateCell<Symbol>(vm.heap)) Symbol(vm);
+    symbol->finishCreation(vm);
+    return symbol;
+}
+
+Symbol* Symbol::create(ExecState* exec, JSString* description)
+{
+    VM& vm = exec->vm();
+    String desc = description->value(exec);
+    Symbol* symbol = new (NotNull, allocateCell<Symbol>(vm.heap)) Symbol(vm, desc);
+    symbol->finishCreation(vm);
+    return symbol;
+}
+
+Symbol* Symbol::create(VM& vm, SymbolImpl& uid)
+{
+    if (Symbol* symbol = vm.symbolImplToSymbolMap.get(&uid))
+        return symbol;
+
+    Symbol* symbol = new (NotNull, allocateCell<Symbol>(vm.heap)) Symbol(vm, uid);
+    symbol->finishCreation(vm);
+    return symbol;
 }
 
 } // namespace JSC

@@ -53,12 +53,12 @@ class PlatformSpeechSynthesisUtterance;
 
 class PlatformSpeechSynthesizerClient {
 public:
-    virtual void didStartSpeaking(PassRefPtr<PlatformSpeechSynthesisUtterance>) = 0;
-    virtual void didFinishSpeaking(PassRefPtr<PlatformSpeechSynthesisUtterance>) = 0;
-    virtual void didPauseSpeaking(PassRefPtr<PlatformSpeechSynthesisUtterance>) = 0;
-    virtual void didResumeSpeaking(PassRefPtr<PlatformSpeechSynthesisUtterance>) = 0;
-    virtual void speakingErrorOccurred(PassRefPtr<PlatformSpeechSynthesisUtterance>) = 0;
-    virtual void boundaryEventOccurred(PassRefPtr<PlatformSpeechSynthesisUtterance>, SpeechBoundary, unsigned charIndex) = 0;
+    virtual void didStartSpeaking(PlatformSpeechSynthesisUtterance&) = 0;
+    virtual void didFinishSpeaking(PlatformSpeechSynthesisUtterance&) = 0;
+    virtual void didPauseSpeaking(PlatformSpeechSynthesisUtterance&) = 0;
+    virtual void didResumeSpeaking(PlatformSpeechSynthesisUtterance&) = 0;
+    virtual void speakingErrorOccurred(PlatformSpeechSynthesisUtterance&) = 0;
+    virtual void boundaryEventOccurred(PlatformSpeechSynthesisUtterance&, SpeechBoundary, unsigned charIndex) = 0;
     virtual void voicesDidChange() = 0;
 protected:
     virtual ~PlatformSpeechSynthesizerClient() { }
@@ -71,13 +71,13 @@ public:
     // FIXME: We have multiple virtual functions just so we can support a mock for testing.
     // Seems wasteful. Would be nice to find a better way.
     WEBCORE_EXPORT virtual ~PlatformSpeechSynthesizer();
-    
+
     const Vector<RefPtr<PlatformSpeechSynthesisVoice>>& voiceList() const;
-    virtual void speak(PassRefPtr<PlatformSpeechSynthesisUtterance>);
+    virtual void speak(RefPtr<PlatformSpeechSynthesisUtterance>&&);
     virtual void pause();
     virtual void resume();
     virtual void cancel();
-    
+
     PlatformSpeechSynthesizerClient* client() const { return m_speechSynthesizerClient; }
 
 protected:
@@ -86,9 +86,9 @@ protected:
 private:
     virtual void initializeVoiceList();
 
-    bool m_voiceListIsInitialized;
+    bool m_voiceListIsInitialized { false };
     PlatformSpeechSynthesizerClient* m_speechSynthesizerClient;
-    
+
 #if PLATFORM(COCOA)
     RetainPtr<WebSpeechSynthesisWrapper> m_platformSpeechWrapper;
 #endif
@@ -96,7 +96,7 @@ private:
     std::unique_ptr<PlatformSpeechSynthesisProviderEfl> m_platformSpeechWrapper;
 #endif
 };
-    
+
 } // namespace WebCore
 
 #endif // ENABLE(SPEECH_SYNTHESIS)

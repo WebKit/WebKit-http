@@ -27,8 +27,10 @@
 #include "LocalStorageDatabaseTracker.h"
 
 #include <WebCore/FileSystem.h>
+#include <WebCore/SQLiteFileSystem.h>
 #include <WebCore/SQLiteStatement.h>
 #include <WebCore/SecurityOrigin.h>
+#include <WebCore/SecurityOriginData.h>
 #include <WebCore/TextEncoding.h>
 #include <wtf/WorkQueue.h>
 #include <wtf/text/CString.h>
@@ -37,13 +39,13 @@ using namespace WebCore;
 
 namespace WebKit {
 
-PassRefPtr<LocalStorageDatabaseTracker> LocalStorageDatabaseTracker::create(PassRefPtr<WorkQueue> queue, const String& localStorageDirectory)
+Ref<LocalStorageDatabaseTracker> LocalStorageDatabaseTracker::create(Ref<WorkQueue>&& queue, const String& localStorageDirectory)
 {
-    return adoptRef(new LocalStorageDatabaseTracker(queue, localStorageDirectory));
+    return adoptRef(*new LocalStorageDatabaseTracker(WTFMove(queue), localStorageDirectory));
 }
 
-LocalStorageDatabaseTracker::LocalStorageDatabaseTracker(PassRefPtr<WorkQueue> queue, const String& localStorageDirectory)
-    : m_queue(queue)
+LocalStorageDatabaseTracker::LocalStorageDatabaseTracker(Ref<WorkQueue>&& queue, const String& localStorageDirectory)
+    : m_queue(WTFMove(queue))
     , m_localStorageDirectory(localStorageDirectory.isolatedCopy())
 {
     ASSERT(!m_localStorageDirectory.isEmpty());
@@ -51,7 +53,7 @@ LocalStorageDatabaseTracker::LocalStorageDatabaseTracker(PassRefPtr<WorkQueue> q
     // Make sure the encoding is initialized before we start dispatching things to the queue.
     UTF8Encoding();
 
-    m_queue->dispatch([protectedThis = Ref<LocalStorageDatabaseTracker>(*this)]() mutable {
+    m_queue->dispatch([protectedThis = makeRef(*this)]() mutable {
         protectedThis->importOriginIdentifiers();
     });
 }
@@ -62,17 +64,17 @@ LocalStorageDatabaseTracker::~LocalStorageDatabaseTracker()
 
 String LocalStorageDatabaseTracker::databasePath(SecurityOrigin* securityOrigin) const
 {
-    return databasePath(securityOrigin->databaseIdentifier() + ".localstorage");
+    return databasePath(SecurityOriginData::fromSecurityOrigin(*securityOrigin).databaseIdentifier() + ".localstorage");
 }
 
 void LocalStorageDatabaseTracker::didOpenDatabaseWithOrigin(SecurityOrigin* securityOrigin)
 {
-    addDatabaseWithOriginIdentifier(securityOrigin->databaseIdentifier(), databasePath(securityOrigin));
+    addDatabaseWithOriginIdentifier(SecurityOriginData::fromSecurityOrigin(*securityOrigin).databaseIdentifier(), databasePath(securityOrigin));
 }
 
 void LocalStorageDatabaseTracker::deleteDatabaseWithOrigin(SecurityOrigin* securityOrigin)
 {
-    removeDatabaseWithOriginIdentifier(securityOrigin->databaseIdentifier());
+    removeDatabaseWithOriginIdentifier(SecurityOriginData::fromSecurityOrigin(*securityOrigin).databaseIdentifier());
 }
 
 void LocalStorageDatabaseTracker::deleteAllDatabases()
@@ -336,13 +338,13 @@ void LocalStorageDatabaseTracker::removeDatabaseWithOriginIdentifier(const Strin
         return;
     }
 
-    deleteFile(path);
+    SQLiteFileSystem::deleteDatabaseFile(path);
 
     m_origins.remove(originIdentifier);
     if (m_origins.isEmpty()) {
         // There are no origins left; delete the tracker database.
         m_database.close();
-        deleteFile(trackerDatabasePath());
+        SQLiteFileSystem::deleteDatabaseFile(trackerDatabasePath());
         deleteEmptyDirectory(m_localStorageDirectory);
     }
 

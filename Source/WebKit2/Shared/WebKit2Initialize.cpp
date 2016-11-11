@@ -26,8 +26,8 @@
 #include "config.h"
 #include "WebKit2Initialize.h"
 
-#include "Logging.h"
-#include <WebCore/Logging.h>
+#include "LogInitialization.h"
+#include <WebCore/LogInitialization.h>
 #include <runtime/InitializeThreading.h>
 #include <wtf/MainThread.h>
 #include <wtf/RunLoop.h>
@@ -41,11 +41,12 @@
 
 namespace WebKit {
 
-void InitializeWebKit2()
+void InitializeWebKit2(ProcessType processType)
 {
 #if PLATFORM(COCOA)
     InitWebCoreSystemInterface();
 #endif
+    platformInitializeWebKit2(processType);
 #if PLATFORM(IOS)
     InitWebCoreThreadSystemInterface();
 #endif
@@ -54,10 +55,10 @@ void InitializeWebKit2()
     WTF::initializeMainThread();
     RunLoop::initializeMainRunLoop();
 
-#if !LOG_DISABLED
-    WebCore::initializeLoggingChannelsIfNecessary();
+#if !LOG_DISABLED || !RELEASE_LOG_DISABLED
+    WebCore::initializeLogChannelsIfNecessary();
     WebKit::initializeLogChannelsIfNecessary();
-#endif // !LOG_DISABLED
+#endif // !LOG_DISABLED || !RELEASE_LOG_DISABLED
 }
 
 } // namespace WebKit

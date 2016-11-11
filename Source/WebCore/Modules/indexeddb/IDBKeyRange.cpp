@@ -62,69 +62,48 @@ IDBKeyRange::~IDBKeyRange()
 {
 }
 
-RefPtr<IDBKeyRange> IDBKeyRange::only(RefPtr<IDBKey>&& key, ExceptionCode& ec)
+ExceptionOr<Ref<IDBKeyRange>> IDBKeyRange::only(RefPtr<IDBKey>&& key)
 {
-    if (!key || !key->isValid()) {
-        ec = IDBDatabaseException::DataError;
-        return nullptr;
-    }
+    if (!key || !key->isValid())
+        return Exception { IDBDatabaseException::DataError };
 
     return create(WTFMove(key));
 }
 
-RefPtr<IDBKeyRange> IDBKeyRange::only(ExecState& state, JSValue keyValue, ExceptionCode& ec)
+ExceptionOr<Ref<IDBKeyRange>> IDBKeyRange::only(ExecState& state, JSValue keyValue)
 {
-    return only(scriptValueToIDBKey(state, keyValue), ec);
+    return only(scriptValueToIDBKey(state, keyValue));
 }
 
-RefPtr<IDBKeyRange> IDBKeyRange::only(ScriptExecutionContext& context, JSValue keyValue, ExceptionCode& ec)
-{
-    auto exec = context.execState();
-    if (!exec)
-        return nullptr;
-
-    return only(scriptValueToIDBKey(*exec, keyValue), ec);
-}
-
-RefPtr<IDBKeyRange> IDBKeyRange::lowerBound(ExecState& state, JSValue boundValue, bool open, ExceptionCode& ec)
+ExceptionOr<Ref<IDBKeyRange>> IDBKeyRange::lowerBound(ExecState& state, JSValue boundValue, bool open)
 {
     auto bound = scriptValueToIDBKey(state, boundValue);
-    if (!bound->isValid()) {
-        ec = IDBDatabaseException::DataError;
-        return nullptr;
-    }
+    if (!bound->isValid())
+        return Exception { IDBDatabaseException::DataError };
 
     return create(WTFMove(bound), nullptr, open, true);
 }
 
-RefPtr<IDBKeyRange> IDBKeyRange::upperBound(ExecState& state, JSValue boundValue, bool open, ExceptionCode& ec)
+ExceptionOr<Ref<IDBKeyRange>> IDBKeyRange::upperBound(ExecState& state, JSValue boundValue, bool open)
 {
     auto bound = scriptValueToIDBKey(state, boundValue);
-    if (!bound->isValid()) {
-        ec = IDBDatabaseException::DataError;
-        return nullptr;
-    }
+    if (!bound->isValid())
+        return Exception { IDBDatabaseException::DataError };
 
     return create(nullptr, WTFMove(bound), true, open);
 }
 
-RefPtr<IDBKeyRange> IDBKeyRange::bound(ExecState& state, JSValue lowerValue, JSValue upperValue, bool lowerOpen, bool upperOpen, ExceptionCode& ec)
+ExceptionOr<Ref<IDBKeyRange>> IDBKeyRange::bound(ExecState& state, JSValue lowerValue, JSValue upperValue, bool lowerOpen, bool upperOpen)
 {
     auto lower = scriptValueToIDBKey(state, lowerValue);
     auto upper = scriptValueToIDBKey(state, upperValue);
 
-    if (!lower->isValid() || !upper->isValid()) {
-        ec = IDBDatabaseException::DataError;
-        return nullptr;
-    }
-    if (upper->isLessThan(lower.get())) {
-        ec = IDBDatabaseException::DataError;
-        return nullptr;
-    }
-    if (upper->isEqual(lower.get()) && (lowerOpen || upperOpen)) {
-        ec = IDBDatabaseException::DataError;
-        return nullptr;
-    }
+    if (!lower->isValid() || !upper->isValid())
+        return Exception { IDBDatabaseException::DataError };
+    if (upper->isLessThan(lower.get()))
+        return Exception { IDBDatabaseException::DataError };
+    if (upper->isEqual(lower.get()) && (lowerOpen || upperOpen))
+        return Exception { IDBDatabaseException::DataError };
 
     return create(WTFMove(lower), WTFMove(upper), lowerOpen, upperOpen);
 }
@@ -132,6 +111,33 @@ RefPtr<IDBKeyRange> IDBKeyRange::bound(ExecState& state, JSValue lowerValue, JSV
 bool IDBKeyRange::isOnlyKey() const
 {
     return m_lower && m_upper && !m_isLowerOpen && !m_isUpperOpen && m_lower->isEqual(*m_upper);
+}
+
+ExceptionOr<bool> IDBKeyRange::includes(JSC::ExecState& state, JSC::JSValue keyValue)
+{
+    auto key = scriptValueToIDBKey(state, keyValue);
+    if (!key->isValid())
+        return Exception { IDBDatabaseException::DataError, "Failed to execute 'includes' on 'IDBKeyRange': The passed-in value is not a valid IndexedDB key." };
+
+    if (m_lower) {
+        int compare = m_lower->compare(key.get());
+
+        if (compare > 0)
+            return false;
+        if (m_isLowerOpen && !compare)
+            return false;
+    }
+
+    if (m_upper) {
+        int compare = m_upper->compare(key.get());
+
+        if (compare < 0)
+            return false;
+        if (m_isUpperOpen && !compare)
+            return false;
+    }
+
+    return true;
 }
 
 } // namespace WebCore

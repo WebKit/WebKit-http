@@ -33,7 +33,6 @@
 #include "Frame.h"
 #include "FrameLoader.h"
 #include "FrameView.h"
-#include "HTMLBodyElement.h"
 #include "HTMLDocument.h"
 #include "Page.h"
 #include "SecurityOrigin.h"
@@ -42,9 +41,7 @@
 #include "TextResourceDecoder.h"
 #include "XMLDocument.h"
 #include "markup.h"
-
 #include <wtf/Assertions.h>
-#include <wtf/Vector.h>
 
 namespace WebCore {
 

@@ -1,6 +1,0 @@
-
-PASS setAttribute and removeAttribute must enqueue and invoke attributeChangedCallback 
-PASS setAttributeNS and removeAttributeNS must enqueue and invoke attributeChangedCallback 
-PASS setAttributeNode and removeAttributeNS must enqueue and invoke attributeChangedCallback 
-PASS setAttributeNode and removeAttributeNS must enqueue and invoke attributeChangedCallback 
-

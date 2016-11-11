@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2014, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -55,7 +55,7 @@ void FullGCActivityCallback::doCollection()
     }
 #endif
 
-    heap.collect(FullCollection);
+    heap.collectAsync(CollectionScope::Full);
 }
 
 double FullGCActivityCallback::lastGCLength()
@@ -110,6 +110,6 @@ double FullGCActivityCallback::gcTimeSlice(size_t)
     return 0;
 }
 
-#endif // USE(CF) || PLATFORM(EFL)
+#endif // USE(CF) || USE(GLIB)
 
 } // namespace JSC

@@ -19,8 +19,7 @@
  *
  */
 
-#ifndef SymbolObject_h
-#define SymbolObject_h
+#pragma once
 
 #include "JSWrapperObject.h"
 #include "Symbol.h"
@@ -48,7 +47,7 @@ public:
 
     DECLARE_EXPORT_INFO;
 
-    Symbol* internalValue() const { return asSymbol(JSWrapperObject::internalValue());}
+    Symbol* internalValue() const { return asSymbol(JSWrapperObject::internalValue()); }
 
     static Structure* createStructure(VM& vm, JSGlobalObject* globalObject, JSValue prototype)
     {
@@ -57,11 +56,11 @@ public:
 
     static JSValue defaultValue(const JSObject*, ExecState*, PreferredPrimitiveType);
 
+    static String toStringName(const JSObject*, ExecState*);
+
 protected:
     JS_EXPORT_PRIVATE void finishCreation(VM&, Symbol*);
     JS_EXPORT_PRIVATE SymbolObject(VM&, Structure*);
 };
 
 } // namespace JSC
-
-#endif // SymbolObject_h

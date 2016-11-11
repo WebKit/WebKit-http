@@ -22,15 +22,11 @@
     DoNotCheckConstants,
     ImplementationLacksVTable,
 ] exception SVGException {
-
     readonly attribute unsigned short   code;
     readonly attribute DOMString        name;
     readonly attribute DOMString        message;
 
-#if defined(LANGUAGE_JAVASCRIPT) && LANGUAGE_JAVASCRIPT
-    // Override in a Mozilla compatible format
     [NotEnumerable] DOMString toString();
-#endif
 
     // SVGExceptionCode
     const unsigned short SVG_WRONG_TYPE_ERR = 0;

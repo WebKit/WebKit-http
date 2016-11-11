@@ -52,7 +52,7 @@ WebInspector.VisualStylePropertyEditor = class VisualStylePropertyEditor extends
             else {
                 this._possibleValues.basic = canonicalizeValues(possibleValues.basic);
                 this._possibleValues.advanced = canonicalizeValues(possibleValues.advanced);
-            } 
+            }
         }
         this._possibleUnits = null;
         if (possibleUnits) {
@@ -105,7 +105,7 @@ WebInspector.VisualStylePropertyEditor = class VisualStylePropertyEditor extends
                 name,
                 textContainsNameRegExp: new RegExp("(?:(?:^|;)\\s*" + name + "\\s*:)"),
                 replacementRegExp: new RegExp("((?:^|;)\\s*)(" + name + ")(.+?(?:;|$))")
-            })
+            });
         }
 
         this._propertyReferenceName = propertyNames[0];
@@ -122,8 +122,7 @@ WebInspector.VisualStylePropertyEditor = class VisualStylePropertyEditor extends
 
         styleText = styleText || "";
 
-        // FIXME: <rdar://problem/10593948> Provide a way to change the tab width in the Web Inspector
-        let linePrefixText = "    ";
+        let linePrefixText = WebInspector.indentString();
         let lineSuffixWhitespace = "\n";
         let trimmedText = styleText.trimRight();
         let textHasNewlines = trimmedText.includes("\n");
@@ -291,7 +290,7 @@ WebInspector.VisualStylePropertyEditor = class VisualStylePropertyEditor extends
                 this._representedProperty = property;
 
             if (!propertyMissing && property && !property.valid) {
-                this._warningElement.classList.add("invalid-value");
+                this._element.classList.add("invalid-value");
                 this._warningElement.title = WebInspector.UIString("The value “%s” is not supported for this property.").format(propertyText);
                 this.specialPropertyPlaceholderElementText = propertyText;
                 return;
@@ -326,7 +325,7 @@ WebInspector.VisualStylePropertyEditor = class VisualStylePropertyEditor extends
         this._lastValue = this.synthesizedValue;
         this.disabled = false;
 
-        this._warningElement.classList.remove("invalid-value");
+        this._element.classList.remove("invalid-value");
         this._checkDependencies();
     }
 
@@ -501,7 +500,7 @@ WebInspector.VisualStylePropertyEditor = class VisualStylePropertyEditor extends
         this._specialPropertyPlaceholderElement.hidden = true;
 
         this._checkDependencies();
-        this._warningElement.classList.remove("invalid-value");
+        this._element.classList.remove("invalid-value");
 
         this.dispatchEventToListeners(WebInspector.VisualStylePropertyEditor.Event.ValueDidChange);
         return true;
@@ -532,7 +531,7 @@ WebInspector.VisualStylePropertyEditor = class VisualStylePropertyEditor extends
     _checkDependencies()
     {
         if (!this._dependencies.size || !this._style || !this.synthesizedValue) {
-            this._warningElement.classList.remove("missing-dependency");
+            this._element.classList.remove("missing-dependency");
             return;
         }
 
@@ -548,8 +547,8 @@ WebInspector.VisualStylePropertyEditor = class VisualStylePropertyEditor extends
                 title += "\n " + property.name + ": " + dependencyValues.join("/");
         }
 
-        this._warningElement.classList.toggle("missing-dependency", !!title.length);
-        this._warningElement.title = !!title.length ? WebInspector.UIString("Missing Dependencies:%s").format(title) : null;
+        this._element.classList.toggle("missing-dependency", !!title.length);
+        this._warningElement.title = title.length ? WebInspector.UIString("Missing Dependencies:%s").format(title) : null;
     }
 
     _titleElementPrepareForClick(event)
@@ -601,6 +600,10 @@ WebInspector.VisualStylePropertyEditor = class VisualStylePropertyEditor extends
         let popover = new WebInspector.Popover(this);
         popover.content = propertyInfoElement;
         popover.present(bounds.pad(2), [WebInspector.RectEdge.MIN_Y]);
+        popover.windowResizeHandler = () => {
+            let bounds = WebInspector.Rect.rectFromClientRect(this._titleElement.getBoundingClientRect());
+            popover.present(bounds.pad(2), [WebInspector.RectEdge.MIN_Y]);
+        };
     }
 
     _toggleTabbingOfSelectableElements(disabled)
@@ -611,4 +614,4 @@ WebInspector.VisualStylePropertyEditor = class VisualStylePropertyEditor extends
 
 WebInspector.VisualStylePropertyEditor.Event = {
     ValueDidChange: "visual-style-property-editor-value-changed"
-}
+};

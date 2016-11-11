@@ -34,12 +34,13 @@
 #if ENABLE(WEB_TIMING)
 
 #include "Document.h"
-#include "DocumentLoadTiming.h"
 #include "DocumentLoader.h"
 #include "DocumentTiming.h"
 #include "Frame.h"
 #include "FrameLoader.h"
-#include "ResourceLoadTiming.h"
+#include "LoadTiming.h"
+#include "NetworkLoadTiming.h"
+#include "Performance.h"
 #include "ResourceResponse.h"
 #include <wtf/CurrentTime.h>
 
@@ -48,7 +49,8 @@ namespace WebCore {
 static unsigned long long toIntegerMilliseconds(double seconds)
 {
     ASSERT(seconds >= 0);
-    return static_cast<unsigned long long>(seconds * 1000.0);
+    double reducedSeconds = Performance::reduceTimeResolution(seconds);
+    return static_cast<unsigned long long>(reducedSeconds * 1000.0);
 }
 
 PerformanceTiming::PerformanceTiming(Frame* frame)
@@ -58,16 +60,16 @@ PerformanceTiming::PerformanceTiming(Frame* frame)
 
 unsigned long long PerformanceTiming::navigationStart() const
 {
-    DocumentLoadTiming* timing = documentLoadTiming();
+    LoadTiming* timing = loadTiming();
     if (!timing)
         return 0;
 
-    return monotonicTimeToIntegerMilliseconds(timing->navigationStart());
+    return monotonicTimeToIntegerMilliseconds(timing->startTime());
 }
 
 unsigned long long PerformanceTiming::unloadEventStart() const
 {
-    DocumentLoadTiming* timing = documentLoadTiming();
+    LoadTiming* timing = loadTiming();
     if (!timing)
         return 0;
 
@@ -79,7 +81,7 @@ unsigned long long PerformanceTiming::unloadEventStart() const
 
 unsigned long long PerformanceTiming::unloadEventEnd() const
 {
-    DocumentLoadTiming* timing = documentLoadTiming();
+    LoadTiming* timing = loadTiming();
     if (!timing)
         return 0;
 
@@ -91,7 +93,7 @@ unsigned long long PerformanceTiming::unloadEventEnd() const
 
 unsigned long long PerformanceTiming::redirectStart() const
 {
-    DocumentLoadTiming* timing = documentLoadTiming();
+    LoadTiming* timing = loadTiming();
     if (!timing)
         return 0;
 
@@ -103,7 +105,7 @@ unsigned long long PerformanceTiming::redirectStart() const
 
 unsigned long long PerformanceTiming::redirectEnd() const
 {
-    DocumentLoadTiming* timing = documentLoadTiming();
+    LoadTiming* timing = loadTiming();
     if (!timing)
         return 0;
 
@@ -115,7 +117,7 @@ unsigned long long PerformanceTiming::redirectEnd() const
 
 unsigned long long PerformanceTiming::fetchStart() const
 {
-    DocumentLoadTiming* timing = documentLoadTiming();
+    LoadTiming* timing = loadTiming();
     if (!timing)
         return 0;
 
@@ -128,7 +130,7 @@ unsigned long long PerformanceTiming::domainLookupStart() const
     if (!loader)
         return fetchStart();
     
-    const ResourceLoadTiming& timing = loader->response().resourceLoadTiming();
+    const NetworkLoadTiming& timing = loader->response().networkLoadTiming();
     
     // This will be -1 when a DNS request is not performed.
     // Rather than exposing a special value that indicates no DNS, we "backfill" with fetchStart.
@@ -144,7 +146,7 @@ unsigned long long PerformanceTiming::domainLookupEnd() const
     if (!loader)
         return domainLookupStart();
     
-    const ResourceLoadTiming& timing = loader->response().resourceLoadTiming();
+    const NetworkLoadTiming& timing = loader->response().networkLoadTiming();
     
     // This will be -1 when a DNS request is not performed.
     // Rather than exposing a special value that indicates no DNS, we "backfill" with domainLookupStart.
@@ -160,15 +162,15 @@ unsigned long long PerformanceTiming::connectStart() const
     if (!loader)
         return domainLookupEnd();
 
-    const ResourceLoadTiming& timing = loader->response().resourceLoadTiming();
+    const NetworkLoadTiming& timing = loader->response().networkLoadTiming();
     
     // connectStart will be -1 when a network request is not made.
     // Rather than exposing a special value that indicates no new connection, we "backfill" with domainLookupEnd.
-    int connectStart = timing.connectStart;
+    double connectStart = timing.connectStart;
     if (connectStart < 0)
         return domainLookupEnd();
 
-    // ResourceLoadTiming's connect phase includes DNS, however Navigation Timing's
+    // NetworkLoadTiming's connect phase includes DNS, however Navigation Timing's
     // connect phase should not. So if there is DNS time, trim it from the start.
     if (timing.domainLookupEnd >= 0 && timing.domainLookupEnd > connectStart)
         connectStart = timing.domainLookupEnd;
@@ -182,7 +184,7 @@ unsigned long long PerformanceTiming::connectEnd() const
     if (!loader)
         return connectStart();
 
-    const ResourceLoadTiming& timing = loader->response().resourceLoadTiming();
+    const NetworkLoadTiming& timing = loader->response().networkLoadTiming();
     
     // connectEnd will be -1 when a network request is not made.
     // Rather than exposing a special value that indicates no new connection, we "backfill" with connectStart.
@@ -198,7 +200,7 @@ unsigned long long PerformanceTiming::secureConnectionStart() const
     if (!loader)
         return 0;
 
-    const ResourceLoadTiming& timing = loader->response().resourceLoadTiming();
+    const NetworkLoadTiming& timing = loader->response().networkLoadTiming();
     
     if (timing.secureConnectionStart < 0)
         return 0;
@@ -212,7 +214,7 @@ unsigned long long PerformanceTiming::requestStart() const
     if (!loader)
         return connectEnd();
     
-    const ResourceLoadTiming& timing = loader->response().resourceLoadTiming();
+    const NetworkLoadTiming& timing = loader->response().networkLoadTiming();
     
     ASSERT(timing.requestStart >= 0);
     return resourceLoadTimeRelativeToFetchStart(timing.requestStart);
@@ -224,7 +226,7 @@ unsigned long long PerformanceTiming::responseStart() const
     if (!loader)
         return requestStart();
 
-    const ResourceLoadTiming& timing = loader->response().resourceLoadTiming();
+    const NetworkLoadTiming& timing = loader->response().networkLoadTiming();
     
     ASSERT(timing.responseStart >= 0);
     return resourceLoadTimeRelativeToFetchStart(timing.responseStart);
@@ -232,7 +234,7 @@ unsigned long long PerformanceTiming::responseStart() const
 
 unsigned long long PerformanceTiming::responseEnd() const
 {
-    DocumentLoadTiming* timing = documentLoadTiming();
+    LoadTiming* timing = loadTiming();
     if (!timing)
         return 0;
 
@@ -286,7 +288,7 @@ unsigned long long PerformanceTiming::domComplete() const
 
 unsigned long long PerformanceTiming::loadEventStart() const
 {
-    DocumentLoadTiming* timing = documentLoadTiming();
+    LoadTiming* timing = loadTiming();
     if (!timing)
         return 0;
 
@@ -295,7 +297,7 @@ unsigned long long PerformanceTiming::loadEventStart() const
 
 unsigned long long PerformanceTiming::loadEventEnd() const
 {
-    DocumentLoadTiming* timing = documentLoadTiming();
+    LoadTiming* timing = loadTiming();
     if (!timing)
         return 0;
 
@@ -322,7 +324,7 @@ const DocumentTiming* PerformanceTiming::documentTiming() const
     return &document->timing();
 }
 
-DocumentLoadTiming* PerformanceTiming::documentLoadTiming() const
+LoadTiming* PerformanceTiming::loadTiming() const
 {
     DocumentLoader* loader = documentLoader();
     if (!loader)
@@ -331,7 +333,7 @@ DocumentLoadTiming* PerformanceTiming::documentLoadTiming() const
     return &loader->timing();
 }
 
-unsigned long long PerformanceTiming::resourceLoadTimeRelativeToFetchStart(int relativeMilliseconds) const
+unsigned long long PerformanceTiming::resourceLoadTimeRelativeToFetchStart(double relativeMilliseconds) const
 {
     ASSERT(relativeMilliseconds >= 0);
     return fetchStart() + relativeMilliseconds;
@@ -340,7 +342,7 @@ unsigned long long PerformanceTiming::resourceLoadTimeRelativeToFetchStart(int r
 unsigned long long PerformanceTiming::monotonicTimeToIntegerMilliseconds(double monotonicSeconds) const
 {
     ASSERT(monotonicSeconds >= 0);
-    if (const DocumentLoadTiming* timing = documentLoadTiming())
+    if (const LoadTiming* timing = loadTiming())
         return toIntegerMilliseconds(timing->monotonicTimeToPseudoWallTime(monotonicSeconds));
     return 0;
 }

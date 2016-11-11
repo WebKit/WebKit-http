@@ -39,12 +39,15 @@
 #include <WebCore/GraphicsContext.h>
 #include <WebCore/HWndDC.h>
 #include <WebCore/Page.h>
-#include <WebCore/PlatformCALayerClient.h>
-#include <WebCore/PlatformCALayerWin.h>
 #include <WebCore/TextRun.h>
 #include <WebKitSystemInterface/WebKitSystemInterface.h>
 #include <windowsx.h>
 #include <wtf/StdLibExtras.h>
+
+#if USE(CA)
+#include <WebCore/PlatformCALayerClient.h>
+#include <WebCore/PlatformCALayerWin.h>
+#endif
 
 using namespace std;
 using namespace WebCore;
@@ -173,6 +176,7 @@ void HUDSlider::drag(const IntPoint& point, bool start)
     m_buttonPosition = max(0, min(m_rect.width() - m_buttonSize, point.x() - m_dragStartOffset));
 }
 
+#if USE(CA)
 class FullscreenVideoController::LayerClient : public WebCore::PlatformCALayerClient {
 public:
     LayerClient(FullscreenVideoController* parent) : m_parent(parent) { }
@@ -228,6 +232,7 @@ void FullscreenVideoController::LayerClient::platformCALayerLayoutSublayersOfLay
     videoLayer->setPosition(videoOrigin);
     videoLayer->setBounds(FloatRect(FloatPoint(), videoSize));
 }
+#endif
 
 FullscreenVideoController::FullscreenVideoController()
     : m_hudWindow(0)
@@ -242,15 +247,19 @@ FullscreenVideoController::FullscreenVideoController()
     , m_hitWidget(0)
     , m_movingWindow(false)
     , m_timer(*this, &FullscreenVideoController::timerFired)
+#if USE(CA)
     , m_layerClient(std::make_unique<LayerClient>(this))
     , m_rootChild(PlatformCALayerWin::create(PlatformCALayer::LayerTypeLayer, m_layerClient.get()))
+#endif
     , m_fullscreenWindow(std::make_unique<MediaPlayerPrivateFullscreenWindow>(static_cast<MediaPlayerPrivateFullscreenClient*>(this)))
 {
 }
 
 FullscreenVideoController::~FullscreenVideoController()
 {
+#if USE(CA)
     m_rootChild->setOwner(0);
+#endif
 }
 
 void FullscreenVideoController::setVideoElement(HTMLVideoElement* videoElement)
@@ -275,6 +284,8 @@ void FullscreenVideoController::enterFullscreen()
 
     m_fullscreenWindow->createWindow(parentHwnd);
     ::ShowWindow(m_fullscreenWindow->hwnd(), SW_SHOW);
+
+#if USE(CA)
     m_fullscreenWindow->setRootChildLayer(m_rootChild);
 
     PlatformCALayer* videoLayer = PlatformCALayer::platformCALayer(m_videoElement->platformLayer());
@@ -282,6 +293,7 @@ void FullscreenVideoController::enterFullscreen()
     m_rootChild->appendSublayer(*videoLayer);
     m_rootChild->setNeedsLayout();
     m_rootChild->setGeometryFlipped(1);
+#endif
 
     RECT windowRect;
     GetClientRect(m_fullscreenWindow->hwnd(), &windowRect);
@@ -336,10 +348,8 @@ float FullscreenVideoController::volume() const
 
 void FullscreenVideoController::setVolume(float volume)
 {
-    if (m_videoElement) {
-        ExceptionCode ec;
-        m_videoElement->setVolume(volume, ec);
-    }
+    if (m_videoElement)
+        m_videoElement->setVolume(volume);
 }
 
 float FullscreenVideoController::currentTime() const

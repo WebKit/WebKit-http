@@ -19,11 +19,12 @@
  *
  */
 
-#ifndef ElementRareData_h
-#define ElementRareData_h
+#pragma once
 
+#include "CustomElementReactionQueue.h"
 #include "DOMTokenList.h"
 #include "DatasetDOMStringMap.h"
+#include "JSCustomElementInterface.h"
 #include "NamedNodeMap.h"
 #include "NodeRareData.h"
 #include "PseudoElement.h"
@@ -93,6 +94,9 @@ public:
     ShadowRoot* shadowRoot() const { return m_shadowRoot.get(); }
     void setShadowRoot(RefPtr<ShadowRoot>&& shadowRoot) { m_shadowRoot = WTFMove(shadowRoot); }
 
+    CustomElementReactionQueue* customElementReactionQueue() { return m_customElementReactionQueue.get(); }
+    void setCustomElementReactionQueue(std::unique_ptr<CustomElementReactionQueue>&& queue) { m_customElementReactionQueue = WTFMove(queue); }
+
     NamedNodeMap* attributeMap() const { return m_attributeMap.get(); }
     void setAttributeMap(std::unique_ptr<NamedNodeMap> attributeMap) { m_attributeMap = WTFMove(attributeMap); }
 
@@ -149,6 +153,7 @@ private:
     std::unique_ptr<DatasetDOMStringMap> m_dataset;
     std::unique_ptr<DOMTokenList> m_classList;
     RefPtr<ShadowRoot> m_shadowRoot;
+    std::unique_ptr<CustomElementReactionQueue> m_customElementReactionQueue;
     std::unique_ptr<NamedNodeMap> m_attributeMap;
 
     RefPtr<PseudoElement> m_beforePseudoElement;
@@ -224,6 +229,4 @@ inline void ElementRareData::resetDynamicRestyleObservations()
     setChildrenAffectedByPropertyBasedBackwardPositionalRules(false);
 }
 
-} // namespace
-
-#endif // ElementRareData_h
+} // namespace WebCore

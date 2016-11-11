@@ -53,10 +53,10 @@
 #include "Text.h"
 #include "Widget.h"
 #include <wtf/Ref.h>
-#include <wtf/spi/darwin/dyldSPI.h>
 
 #if PLATFORM(IOS)
 #include "RuntimeApplicationChecks.h"
+#include <wtf/spi/darwin/dyldSPI.h>
 #endif
 
 namespace WebCore {
@@ -113,7 +113,7 @@ void HTMLObjectElement::parseAttribute(const QualifiedName& name, const AtomicSt
         formAttributeChanged();
     else if (name == typeAttr) {
         m_serviceType = value.string().left(value.find(';')).convertToASCIILowercase();
-        invalidateRenderer = !fastHasAttribute(classidAttr);
+        invalidateRenderer = !hasAttributeWithoutSynchronization(classidAttr);
         setNeedsWidgetUpdate(true);
     } else if (name == dataAttr) {
         m_url = stripLeadingAndTrailingHTMLSpaces(value);
@@ -123,7 +123,7 @@ void HTMLObjectElement::parseAttribute(const QualifiedName& name, const AtomicSt
                 m_imageLoader = std::make_unique<HTMLImageLoader>(*this);
             m_imageLoader->updateFromElementIgnoringPreviousError();
         }
-        invalidateRenderer = !fastHasAttribute(classidAttr);
+        invalidateRenderer = !hasAttributeWithoutSynchronization(classidAttr);
         setNeedsWidgetUpdate(true);
     } else if (name == classidAttr) {
         invalidateRenderer = true;
@@ -135,7 +135,7 @@ void HTMLObjectElement::parseAttribute(const QualifiedName& name, const AtomicSt
         return;
 
     clearUseFallbackContent();
-    setNeedsStyleRecalc(ReconstructRenderTree);
+    invalidateStyleAndRenderersForSubtree();
 }
 
 static void mapDataParamToSrc(Vector<String>& paramNames, Vector<String>& paramValues)
@@ -258,7 +258,7 @@ bool HTMLObjectElement::shouldAllowQuickTimeClassIdQuirk()
     if (!document().page()
         || !document().page()->settings().needsSiteSpecificQuirks()
         || hasFallbackContent()
-        || !equalLettersIgnoringASCIICase(fastGetAttribute(classidAttr), "clsid:02bf25d5-8c17-4b23-bc80-d3488abddc6b"))
+        || !equalLettersIgnoringASCIICase(attributeWithoutSynchronization(classidAttr), "clsid:02bf25d5-8c17-4b23-bc80-d3488abddc6b"))
         return false;
 
     for (auto& metaElement : descendantsOfType<HTMLMetaElement>(document())) {
@@ -271,7 +271,7 @@ bool HTMLObjectElement::shouldAllowQuickTimeClassIdQuirk()
     
 bool HTMLObjectElement::hasValidClassId()
 {
-    if (MIMETypeRegistry::isJavaAppletMIMEType(serviceType()) && fastGetAttribute(classidAttr).startsWith("java:", false))
+    if (MIMETypeRegistry::isJavaAppletMIMEType(serviceType()) && attributeWithoutSynchronization(classidAttr).startsWith("java:", false))
         return true;
     
     if (shouldAllowQuickTimeClassIdQuirk())
@@ -279,12 +279,12 @@ bool HTMLObjectElement::hasValidClassId()
 
     // HTML5 says that fallback content should be rendered if a non-empty
     // classid is specified for which the UA can't find a suitable plug-in.
-    return fastGetAttribute(classidAttr).isEmpty();
+    return attributeWithoutSynchronization(classidAttr).isEmpty();
 }
 
 // FIXME: This should be unified with HTMLEmbedElement::updateWidget and
 // moved down into HTMLPluginImageElement.cpp
-void HTMLObjectElement::updateWidget(PluginCreationOption pluginCreationOption)
+void HTMLObjectElement::updateWidget(CreatePlugins createPlugins)
 {
     ASSERT(!renderEmbeddedObject()->isPluginUnavailable());
     ASSERT(needsWidgetUpdate());
@@ -314,7 +314,7 @@ void HTMLObjectElement::updateWidget(PluginCreationOption pluginCreationOption)
     // FIXME: It's sadness that we have this special case here.
     //        See http://trac.webkit.org/changeset/25128 and
     //        plugins/netscape-plugin-setwindow-size.html
-    if (pluginCreationOption == CreateOnlyNonNetscapePlugins && wouldLoadAsNetscapePlugin(url, serviceType)) {
+    if (createPlugins == CreatePlugins::No && wouldLoadAsPlugIn(url, serviceType)) {
         // Ensure updateWidget() is called again during layout to create the Netscape plug-in.
         setNeedsWidgetUpdate(true);
         return;
@@ -355,19 +355,19 @@ void HTMLObjectElement::childrenChanged(const ChildChange& change)
     updateDocNamedItem();
     if (inDocument() && !useFallbackContent()) {
         setNeedsWidgetUpdate(true);
-        setNeedsStyleRecalc();
+        invalidateStyleForSubtree();
     }
     HTMLPlugInImageElement::childrenChanged(change);
 }
 
 bool HTMLObjectElement::isURLAttribute(const Attribute& attribute) const
 {
-    return attribute.name() == dataAttr || (attribute.name() == usemapAttr && attribute.value().string()[0] != '#') || HTMLPlugInImageElement::isURLAttribute(attribute);
+    return attribute.name() == dataAttr || attribute.name() == codebaseAttr || (attribute.name() == usemapAttr && attribute.value().string()[0] != '#') || HTMLPlugInImageElement::isURLAttribute(attribute);
 }
 
 const AtomicString& HTMLObjectElement::imageSourceURL() const
 {
-    return fastGetAttribute(dataAttr);
+    return attributeWithoutSynchronization(dataAttr);
 }
 
 void HTMLObjectElement::renderFallbackContent()
@@ -378,7 +378,7 @@ void HTMLObjectElement::renderFallbackContent()
     if (!inDocument())
         return;
 
-    setNeedsStyleRecalc(ReconstructRenderTree);
+    invalidateStyleAndRenderersForSubtree();
 
     // Before we give up and use fallback content, check to see if this is a MIME type issue.
     auto* loader = imageLoader();
@@ -470,12 +470,12 @@ void HTMLObjectElement::updateDocNamedItem()
 
 bool HTMLObjectElement::containsJavaApplet() const
 {
-    if (MIMETypeRegistry::isJavaAppletMIMEType(getAttribute(typeAttr)))
+    if (MIMETypeRegistry::isJavaAppletMIMEType(attributeWithoutSynchronization(typeAttr)))
         return true;
 
     for (auto& child : childrenOfType<Element>(*this)) {
         if (child.hasTagName(paramTag) && equalLettersIgnoringASCIICase(child.getNameAttribute(), "type")
-            && MIMETypeRegistry::isJavaAppletMIMEType(child.getAttribute(valueAttr).string()))
+            && MIMETypeRegistry::isJavaAppletMIMEType(child.attributeWithoutSynchronization(valueAttr).string()))
             return true;
         if (child.hasTagName(objectTag) && downcast<HTMLObjectElement>(child).containsJavaApplet())
             return true;
@@ -490,11 +490,11 @@ void HTMLObjectElement::addSubresourceAttributeURLs(ListHashSet<URL>& urls) cons
 {
     HTMLPlugInImageElement::addSubresourceAttributeURLs(urls);
 
-    addSubresourceURL(urls, document().completeURL(fastGetAttribute(dataAttr)));
+    addSubresourceURL(urls, document().completeURL(attributeWithoutSynchronization(dataAttr)));
 
     // FIXME: Passing a string that starts with "#" to the completeURL function does
     // not seem like it would work. The image element has similar but not identical code.
-    const AtomicString& useMap = fastGetAttribute(usemapAttr);
+    const AtomicString& useMap = attributeWithoutSynchronization(usemapAttr);
     if (useMap.startsWith('#'))
         addSubresourceURL(urls, document().completeURL(useMap));
 }

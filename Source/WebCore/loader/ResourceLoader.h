@@ -29,6 +29,7 @@
 #ifndef ResourceLoader_h
 #define ResourceLoader_h
 
+#include "LoadTiming.h"
 #include "ResourceHandleClient.h"
 #include "ResourceLoaderOptions.h"
 #include "ResourceLoaderTypes.h"
@@ -125,11 +126,11 @@ public:
 
     const URL& url() const { return m_request.url(); }
     ResourceHandle* handle() const { return m_handle.get(); }
-    bool shouldSendResourceLoadCallbacks() const { return m_options.sendLoadCallbacks() == SendCallbacks; }
-    void setSendCallbackPolicy(SendCallbackPolicy sendLoadCallbacks) { m_options.setSendLoadCallbacks(sendLoadCallbacks); }
-    bool shouldSniffContent() const { return m_options.sniffContent() == SniffContent; }
+    bool shouldSendResourceLoadCallbacks() const { return m_options.sendLoadCallbacks == SendCallbacks; }
+    void setSendCallbackPolicy(SendCallbackPolicy sendLoadCallbacks) { m_options.sendLoadCallbacks = sendLoadCallbacks; }
+    bool shouldSniffContent() const { return m_options.sniffContent == SniffContent; }
     WEBCORE_EXPORT bool isAllowedToAskUserForCredentials() const;
-    bool shouldIncludeCertificateInfo() const { return m_options.certificateInfoPolicy() == IncludeCertificateInfo; }
+    bool shouldIncludeCertificateInfo() const { return m_options.certificateInfoPolicy == IncludeCertificateInfo; }
 
     bool reachedTerminalState() const { return m_reachedTerminalState; }
 
@@ -140,11 +141,14 @@ public:
 
     void willSwitchToSubstituteResource();
 
-#if PLATFORM(COCOA) && !USE(CFNETWORK)
+    const LoadTiming& loadTiming() { return m_loadTiming; }
+
+#if PLATFORM(COCOA) && !USE(CFURLCONNECTION)
     void schedule(WTF::SchedulePair&);
     void unschedule(WTF::SchedulePair&);
 #endif
 
+    const Frame* frame() const { return m_frame.get(); }
     WEBCORE_EXPORT bool isAlwaysOnLoggingAllowed() const;
 
 protected:
@@ -159,10 +163,10 @@ protected:
 
     const ResourceLoaderOptions& options() { return m_options; }
 
-#if PLATFORM(COCOA) && !USE(CFNETWORK)
+#if PLATFORM(COCOA) && !USE(CFURLCONNECTION)
     NSCachedURLResponse* willCacheResponse(ResourceHandle*, NSCachedURLResponse*) override;
 #endif
-#if PLATFORM(COCOA) && USE(CFNETWORK)
+#if PLATFORM(COCOA) && USE(CFURLCONNECTION)
     CFCachedURLResponseRef willCacheResponse(ResourceHandle*, CFCachedURLResponseRef) override;
 #endif
 
@@ -172,7 +176,8 @@ protected:
     RefPtr<Frame> m_frame;
     RefPtr<DocumentLoader> m_documentLoader;
     ResourceResponse m_response;
-    
+    LoadTiming m_loadTiming;
+
 private:
     virtual void willCancel(const ResourceError&) = 0;
     virtual void didCancel(const ResourceError&) = 0;
@@ -203,7 +208,7 @@ private:
 #if PLATFORM(IOS)
     RetainPtr<CFDictionaryRef> connectionProperties(ResourceHandle*) override;
 #endif
-#if PLATFORM(WIN) && USE(CFNETWORK)
+#if PLATFORM(WIN) && USE(CFURLCONNECTION)
     // FIXME: Windows should use willCacheResponse - <https://bugs.webkit.org/show_bug.cgi?id=57257>.
     bool shouldCacheResponse(ResourceHandle*, CFCachedURLResponseRef) override;
 #endif

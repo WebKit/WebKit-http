@@ -2,6 +2,7 @@
 <head>
 <script>
 if (window.testRunner) {
+    testRunner.setNeedsStorageAccessFromFileURLsQuirk(false);
     testRunner.setAllowUniversalAccessFromFileURLs(false);
     testRunner.dumpAsText();
     testRunner.waitUntilDone();

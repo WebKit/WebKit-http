@@ -25,29 +25,23 @@
 
 #include "config.h"
 #include "WorkQueue.h"
+#include "BlockPtr.h"
+#include "Ref.h"
 
 namespace WTF {
 
 void WorkQueue::dispatch(Function<void ()>&& function)
 {
-    ref();
-    auto* functionPtr = new Function<void ()>(WTFMove(function));
-    dispatch_async(m_dispatchQueue, ^{
-        (*functionPtr)();
-        delete functionPtr;
-        deref();
-    });
+    dispatch_async(m_dispatchQueue, BlockPtr<void ()>::fromCallable([protectedThis = makeRef(*this), function = WTFMove(function)] {
+        function();
+    }).get());
 }
 
 void WorkQueue::dispatchAfter(std::chrono::nanoseconds duration, Function<void ()>&& function)
 {
-    ref();
-    auto* functionPtr = new Function<void ()>(WTFMove(function));
-    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, duration.count()), m_dispatchQueue, ^{
-        (*functionPtr)();
-        delete functionPtr;
-        deref();
-    });
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, duration.count()), m_dispatchQueue, BlockPtr<void ()>::fromCallable([protectedThis = makeRef(*this), function = WTFMove(function)] {
+        function();
+    }).get());
 }
 
 #if HAVE(QOS_CLASSES)

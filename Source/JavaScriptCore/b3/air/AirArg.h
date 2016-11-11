@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef AirArg_h
-#define AirArg_h
+#pragma once
 
 #if ENABLE(B3_JIT)
 
@@ -793,8 +792,66 @@ public:
     {
         return B3::isRepresentableAs<T>(value());
     }
+    
+    static bool isRepresentableAs(Width width, Signedness signedness, int64_t value)
+    {
+        switch (signedness) {
+        case Signed:
+            switch (width) {
+            case Width8:
+                return B3::isRepresentableAs<int8_t>(value);
+            case Width16:
+                return B3::isRepresentableAs<int16_t>(value);
+            case Width32:
+                return B3::isRepresentableAs<int32_t>(value);
+            case Width64:
+                return B3::isRepresentableAs<int64_t>(value);
+            }
+        case Unsigned:
+            switch (width) {
+            case Width8:
+                return B3::isRepresentableAs<uint8_t>(value);
+            case Width16:
+                return B3::isRepresentableAs<uint16_t>(value);
+            case Width32:
+                return B3::isRepresentableAs<uint32_t>(value);
+            case Width64:
+                return B3::isRepresentableAs<uint64_t>(value);
+            }
+        }
+        ASSERT_NOT_REACHED();
+    }
 
     bool isRepresentableAs(Width, Signedness) const;
+    
+    static int64_t castToType(Width width, Signedness signedness, int64_t value)
+    {
+        switch (signedness) {
+        case Signed:
+            switch (width) {
+            case Width8:
+                return static_cast<int8_t>(value);
+            case Width16:
+                return static_cast<int16_t>(value);
+            case Width32:
+                return static_cast<int32_t>(value);
+            case Width64:
+                return static_cast<int64_t>(value);
+            }
+        case Unsigned:
+            switch (width) {
+            case Width8:
+                return static_cast<uint8_t>(value);
+            case Width16:
+                return static_cast<uint16_t>(value);
+            case Width32:
+                return static_cast<uint32_t>(value);
+            case Width64:
+                return static_cast<uint64_t>(value);
+            }
+        }
+        ASSERT_NOT_REACHED();
+    }
 
     template<typename T>
     T asNumber() const
@@ -1300,11 +1357,11 @@ struct ArgHash {
 
 namespace WTF {
 
-void printInternal(PrintStream&, JSC::B3::Air::Arg::Kind);
-void printInternal(PrintStream&, JSC::B3::Air::Arg::Role);
-void printInternal(PrintStream&, JSC::B3::Air::Arg::Type);
-void printInternal(PrintStream&, JSC::B3::Air::Arg::Width);
-void printInternal(PrintStream&, JSC::B3::Air::Arg::Signedness);
+JS_EXPORT_PRIVATE void printInternal(PrintStream&, JSC::B3::Air::Arg::Kind);
+JS_EXPORT_PRIVATE void printInternal(PrintStream&, JSC::B3::Air::Arg::Role);
+JS_EXPORT_PRIVATE void printInternal(PrintStream&, JSC::B3::Air::Arg::Type);
+JS_EXPORT_PRIVATE void printInternal(PrintStream&, JSC::B3::Air::Arg::Width);
+JS_EXPORT_PRIVATE void printInternal(PrintStream&, JSC::B3::Air::Arg::Signedness);
 
 template<typename T> struct DefaultHash;
 template<> struct DefaultHash<JSC::B3::Air::Arg> {
@@ -1324,6 +1381,3 @@ template<> struct HashTraits<JSC::B3::Air::Arg> : SimpleClassHashTraits<JSC::B3:
 #endif // COMPILER(GCC) && ASSERT_DISABLED
 
 #endif // ENABLE(B3_JIT)
-
-#endif // AirArg_h
-

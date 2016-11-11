@@ -58,10 +58,13 @@ WebInspector.ScopeChainDetailsSidebarPanel = class ScopeChainDetailsSidebarPanel
 
         this._updateWatchExpressionsNavigationBar();
 
-        this.needsRefresh();
+        this.needsLayout();
 
         // Update on console prompt eval as objects in the scope chain may have changed.
         WebInspector.runtimeManager.addEventListener(WebInspector.RuntimeManager.Event.DidEvaluate, this._didEvaluateExpression, this);
+
+        // Update watch expressions when console execution context changes.
+        WebInspector.runtimeManager.addEventListener(WebInspector.RuntimeManager.Event.ActiveExecutionContextChanged, this._activeExecutionContextChanged, this)
 
         // Update watch expressions on navigations.
         WebInspector.Frame.addEventListener(WebInspector.Frame.Event.MainResourceDidChange, this._mainResourceDidChange, this);
@@ -102,10 +105,12 @@ WebInspector.ScopeChainDetailsSidebarPanel = class ScopeChainDetailsSidebarPanel
 
         this._callFrame = callFrame;
 
-        this.needsRefresh();
+        this.needsLayout();
     }
 
-    refresh()
+    // Protected
+
+    layout()
     {
         let callFrame = this._callFrame;
 
@@ -166,6 +171,10 @@ WebInspector.ScopeChainDetailsSidebarPanel = class ScopeChainDetailsSidebarPanel
 
         let scopeChain = callFrame.mergedScopeChain();
         for (let scope of scopeChain) {
+            // Don't show sections for empty scopes unless it is the local scope, since it has "this".
+            if (scope.empty && scope.type !== WebInspector.ScopeChainNode.Type.Local)
+                continue;
+
             let title = null;
             let extraPropertyDescriptor = null;
             let collapsedByDefault = false;
@@ -222,6 +231,7 @@ WebInspector.ScopeChainDetailsSidebarPanel = class ScopeChainDetailsSidebarPanel
             }
 
             let detailsSectionIdentifier = scope.type + "-" + sectionCountByType.get(scope.type);
+            let detailsSection = new WebInspector.DetailsSection(detailsSectionIdentifier, title, null, null, collapsedByDefault);
 
             // FIXME: This just puts two ObjectTreeViews next to each other, but that means
             // that properties are not nicely sorted between the two separate lists.
@@ -242,12 +252,9 @@ WebInspector.ScopeChainDetailsSidebarPanel = class ScopeChainDetailsSidebarPanel
                 treeOutline.addEventListener(WebInspector.TreeOutline.Event.ElementAdded, this._treeElementAdded.bind(this, detailsSectionIdentifier), this);
                 treeOutline.addEventListener(WebInspector.TreeOutline.Event.ElementDisclosureDidChanged, this._treeElementDisclosureDidChange.bind(this, detailsSectionIdentifier), this);
 
-                // FIXME: <https://webkit.org/b/140567> Web Inspector: Do not request Scope Chain lists if section is collapsed (mainly Global Variables)
-                // This autoexpands the ObjectTreeView and fetches all properties. Should wait to see if we are collapsed or not.
-                rows.push(new WebInspector.DetailsSectionPropertiesRow(objectTree));
+                rows.push(new WebInspector.ObjectPropertiesDetailSectionRow(objectTree, detailsSection));
             }
 
-            let detailsSection = new WebInspector.DetailsSection(detailsSectionIdentifier, title, null, null, collapsedByDefault);
             detailsSection.groups[0].rows = rows;
             detailsSections.push(detailsSection);
         }
@@ -285,6 +292,8 @@ WebInspector.ScopeChainDetailsSidebarPanel = class ScopeChainDetailsSidebarPanel
             promises.push(new Promise(function(resolve, reject) {
                 let options = {objectGroup: WebInspector.ScopeChainDetailsSidebarPanel.WatchExpressionsObjectGroupName, includeCommandLineAPI: false, doNotPauseOnExceptionsAndMuteConsole: true, returnByValue: false, generatePreview: true, saveResult: false};
                 WebInspector.runtimeManager.evaluateInInspectedWindow(expression, options, function(object, wasThrown) {
+                    if (!object)
+                        return;
                     let propertyDescriptor = new WebInspector.PropertyDescriptor({name: expression, value: object}, undefined, undefined, wasThrown);
                     objectTree.appendExtraPropertyDescriptor(propertyDescriptor);
                     resolve(propertyDescriptor);
@@ -293,7 +302,7 @@ WebInspector.ScopeChainDetailsSidebarPanel = class ScopeChainDetailsSidebarPanel
         }
 
         return Promise.all(promises).then(function() {
-            return Promise.resolve(new WebInspector.DetailsSectionPropertiesRow(objectTree));
+            return Promise.resolve(new WebInspector.ObjectPropertiesDetailSectionRow(objectTree));
         });
     }
 
@@ -303,7 +312,7 @@ WebInspector.ScopeChainDetailsSidebarPanel = class ScopeChainDetailsSidebarPanel
         watchExpressions.push(expression);
         this._watchExpressionsSetting.value = watchExpressions;
 
-        this.needsRefresh();
+        this.needsLayout();
     }
 
     _removeWatchExpression(expression)
@@ -312,14 +321,14 @@ WebInspector.ScopeChainDetailsSidebarPanel = class ScopeChainDetailsSidebarPanel
         watchExpressions.remove(expression, true);
         this._watchExpressionsSetting.value = watchExpressions;
 
-        this.needsRefresh();
+        this.needsLayout();
     }
 
     _clearAllWatchExpressions()
     {
         this._watchExpressionsSetting.value = [];
 
-        this.needsRefresh();
+        this.needsLayout();
     }
 
     _addWatchExpressionButtonClicked(event)
@@ -366,11 +375,9 @@ WebInspector.ScopeChainDetailsSidebarPanel = class ScopeChainDetailsSidebarPanel
             }
         });
 
-        // Reposition the popover when the window resizes.
-        this._windowResizeListener = presentPopoverOverTargetElement;
-        window.addEventListener("resize", this._windowResizeListener);
-
         popover.content = content;
+
+        popover.windowResizeHandler = presentPopoverOverTargetElement;
         presentPopoverOverTargetElement();
 
         // CodeMirror needs a refresh after the popover displays, to layout, otherwise it doesn't appear.
@@ -389,14 +396,12 @@ WebInspector.ScopeChainDetailsSidebarPanel = class ScopeChainDetailsSidebarPanel
                 this._addWatchExpression(expression);
         }
 
-        window.removeEventListener("resize", this._windowResizeListener);
-        this._windowResizeListener = null;
         this._codeMirror = null;
     }
 
     _refreshAllWatchExpressionsButtonClicked(event)
     {
-        this.needsRefresh();
+        this.needsLayout();
     }
 
     _clearAllWatchExpressionsButtonClicked(event)
@@ -409,7 +414,12 @@ WebInspector.ScopeChainDetailsSidebarPanel = class ScopeChainDetailsSidebarPanel
         if (event.data.objectGroup === WebInspector.ScopeChainDetailsSidebarPanel.WatchExpressionsObjectGroupName)
             return;
 
-        this.needsRefresh();
+        this.needsLayout();
+    }
+
+    _activeExecutionContextChanged()
+    {
+        this.needsLayout();
     }
 
     _mainResourceDidChange(event)
@@ -417,7 +427,7 @@ WebInspector.ScopeChainDetailsSidebarPanel = class ScopeChainDetailsSidebarPanel
         if (!event.target.isMainFrame())
             return;
 
-        this.needsRefresh();
+        this.needsLayout();
     }
 
     _objectTreeElementAddContextMenuItems(objectTreeElement, contextMenu)

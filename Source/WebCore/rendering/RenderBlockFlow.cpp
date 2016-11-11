@@ -53,7 +53,6 @@
 #include "SimpleLineLayoutFunctions.h"
 #include "VerticalPositionCache.h"
 #include "VisiblePosition.h"
-#include <wtf/NeverDestroyed.h>
 
 namespace WebCore {
 
@@ -99,7 +98,7 @@ RenderBlockFlow::MarginInfo::MarginInfo(const RenderBlockFlow& block, LayoutUnit
 
 RenderBlockFlow::RenderBlockFlow(Element& element, RenderStyle&& style)
     : RenderBlock(element, WTFMove(style), RenderBlockFlowFlag)
-#if ENABLE(IOS_TEXT_AUTOSIZING)
+#if ENABLE(TEXT_AUTOSIZING)
     , m_widthForTextAutosizing(-1)
     , m_lineCountForTextAutosizing(NOT_SET)
 #endif
@@ -109,7 +108,7 @@ RenderBlockFlow::RenderBlockFlow(Element& element, RenderStyle&& style)
 
 RenderBlockFlow::RenderBlockFlow(Document& document, RenderStyle&& style)
     : RenderBlock(document, WTFMove(style), RenderBlockFlowFlag)
-#if ENABLE(IOS_TEXT_AUTOSIZING)
+#if ENABLE(TEXT_AUTOSIZING)
     , m_widthForTextAutosizing(-1)
     , m_lineCountForTextAutosizing(NOT_SET)
 #endif
@@ -1651,7 +1650,15 @@ static inline bool needsAppleMailPaginationQuirk(RootInlineBox& lineBox)
 
     return false;
 }
-    
+
+static void clearShouldBreakAtLineToAvoidWidowIfNeeded(RenderBlockFlow& blockFlow)
+{
+    if (!blockFlow.shouldBreakAtLineToAvoidWidow())
+        return;
+    blockFlow.clearShouldBreakAtLineToAvoidWidow();
+    blockFlow.setDidBreakAtLineToAvoidWidow();
+}
+
 void RenderBlockFlow::adjustLinePositionForPagination(RootInlineBox* lineBox, LayoutUnit& delta, bool& overflowsRegion, RenderFlowThread* flowThread)
 {
     // FIXME: Ignore anonymous inline blocks. Handle the delta already having been set because of
@@ -1705,8 +1712,11 @@ void RenderBlockFlow::adjustLinePositionForPagination(RootInlineBox* lineBox, La
         logicalBottom = intMinForLayoutUnit;
         lineBox->computeReplacedAndTextLineTopAndBottom(logicalOffset, logicalBottom);
         lineHeight = logicalBottom - logicalOffset;
-        if (logicalOffset == intMaxForLayoutUnit || lineHeight > pageLogicalHeight)
-            return; // Give up. We're genuinely too big even after excluding blank space and overflow.
+        if (logicalOffset == intMaxForLayoutUnit || lineHeight > pageLogicalHeight) {
+            // Give up. We're genuinely too big even after excluding blank space and overflow.
+            clearShouldBreakAtLineToAvoidWidowIfNeeded(*this);
+            return;
+        }
         pageLogicalHeight = pageLogicalHeightForOffset(logicalOffset);
     }
     
@@ -1715,10 +1725,8 @@ void RenderBlockFlow::adjustLinePositionForPagination(RootInlineBox* lineBox, La
 
     int lineIndex = lineCount(lineBox);
     if (remainingLogicalHeight < lineHeight || (shouldBreakAtLineToAvoidWidow() && lineBreakToAvoidWidow() == lineIndex)) {
-        if (shouldBreakAtLineToAvoidWidow() && lineBreakToAvoidWidow() == lineIndex) {
-            clearShouldBreakAtLineToAvoidWidow();
-            setDidBreakAtLineToAvoidWidow();
-        }
+        if (lineBreakToAvoidWidow() == lineIndex)
+            clearShouldBreakAtLineToAvoidWidowIfNeeded(*this);
         // If we have a non-uniform page height, then we have to shift further possibly.
         if (!hasUniformPageLogicalHeight && !pushToNextPageWithMinimumLogicalHeight(remainingLogicalHeight, logicalOffset, lineHeight))
             return;
@@ -2551,10 +2559,8 @@ bool RenderBlockFlow::positionNewFloats()
 
         m_floatingObjects->addPlacedObject(&floatingObject);
 
-#if ENABLE(CSS_SHAPES)
         if (ShapeOutsideInfo* shapeOutside = childBox.shapeOutsideInfo())
             shapeOutside->setReferenceBoxLogicalSize(logicalSizeForChild(childBox));
-#endif
         // If the child moved, we have to repaint it.
         if (childBox.checkForRepaintDuringLayout())
             childBox.repaintDuringLayoutIfMoved(oldRect);
@@ -3598,7 +3604,8 @@ bool RenderBlockFlow::relayoutForPagination(LayoutStateMaintainer& statePusher)
 
 bool RenderBlockFlow::hasLines() const
 {
-    ASSERT(childrenInline());
+    if (!childrenInline())
+        return false;
 
     if (auto simpleLineLayout = this->simpleLineLayout())
         return simpleLineLayout->lineCount();
@@ -3634,8 +3641,9 @@ void RenderBlockFlow::layoutSimpleLines(bool relayoutChildren, LayoutUnit& repai
         deleteLineBoxesBeforeSimpleLineLayout();
         m_simpleLineLayout = SimpleLineLayout::create(*this);
     }
+    for (auto& renderer : childrenOfType<RenderObject>(*this))
+        renderer.clearNeedsLayout();
     ASSERT(!m_lineBoxes.firstLineBox());
-
     LayoutUnit lineLayoutHeight = SimpleLineLayout::computeFlowHeight(*this, *m_simpleLineLayout);
     LayoutUnit lineLayoutTop = borderAndPaddingBefore();
     repaintLogicalTop = lineLayoutTop;
@@ -3706,7 +3714,7 @@ void RenderBlockFlow::materializeRareBlockFlowData()
     m_rareBlockFlowData = std::make_unique<RenderBlockFlow::RenderBlockFlowRareData>(*this);
 }
 
-#if ENABLE(IOS_TEXT_AUTOSIZING)
+#if ENABLE(TEXT_AUTOSIZING)
 static inline bool isVisibleRenderText(const RenderObject& renderer)
 {
     if (!is<RenderText>(renderer))
@@ -3823,7 +3831,7 @@ void RenderBlockFlow::adjustComputedFontSizes(float size, float visibleWidth)
         descendant = RenderObjectTraversal::nextSkippingChildren(text, this);
     }
 }
-#endif // ENABLE(IOS_TEXT_AUTOSIZING)
+#endif // ENABLE(TEXT_AUTOSIZING)
 
 RenderObject* RenderBlockFlow::layoutSpecialExcludedChild(bool relayoutChildren)
 {
@@ -3875,7 +3883,7 @@ void RenderBlockFlow::removeChild(RenderObject& oldChild)
     if (!documentBeingDestroyed()) {
         RenderFlowThread* flowThread = multiColumnFlowThread();
         if (flowThread && flowThread != &oldChild)
-            flowThread->flowThreadRelativeWillBeRemoved(&oldChild);
+            flowThread->flowThreadRelativeWillBeRemoved(oldChild);
     }
     RenderBlock::removeChild(oldChild);
 }

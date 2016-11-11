@@ -41,7 +41,7 @@ bool isValidEnum(WebCore::ShouldOpenExternalURLsPolicy policy)
     return false;
 }
 
-void HTTPBody::Element::encode(IPC::ArgumentEncoder& encoder) const
+void HTTPBody::Element::encode(IPC::Encoder& encoder) const
 {
     encoder.encodeEnum(type);
     encoder << data;
@@ -64,7 +64,7 @@ static bool isValidEnum(HTTPBody::Element::Type type)
     return false;
 }
 
-bool HTTPBody::Element::decode(IPC::ArgumentDecoder& decoder, Element& result)
+bool HTTPBody::Element::decode(IPC::Decoder& decoder, Element& result)
 {
     if (!decoder.decodeEnum(result.type) || !isValidEnum(result.type))
         return false;
@@ -84,13 +84,13 @@ bool HTTPBody::Element::decode(IPC::ArgumentDecoder& decoder, Element& result)
     return true;
 }
 
-void HTTPBody::encode(IPC::ArgumentEncoder& encoder) const
+void HTTPBody::encode(IPC::Encoder& encoder) const
 {
     encoder << contentType;
     encoder << elements;
 }
 
-bool HTTPBody::decode(IPC::ArgumentDecoder& decoder, HTTPBody& result)
+bool HTTPBody::decode(IPC::Decoder& decoder, HTTPBody& result)
 {
     if (!decoder.decode(result.contentType))
         return false;
@@ -100,7 +100,7 @@ bool HTTPBody::decode(IPC::ArgumentDecoder& decoder, HTTPBody& result)
     return true;
 }
 
-void FrameState::encode(IPC::ArgumentEncoder& encoder) const
+void FrameState::encode(IPC::Encoder& encoder) const
 {
     encoder << urlString;
     encoder << originalURLString;
@@ -129,7 +129,7 @@ void FrameState::encode(IPC::ArgumentEncoder& encoder) const
     encoder << children;
 }
 
-bool FrameState::decode(IPC::ArgumentDecoder& decoder, FrameState& result)
+bool FrameState::decode(IPC::Decoder& decoder, FrameState& result)
 {
     if (!decoder.decode(result.urlString))
         return false;
@@ -177,14 +177,14 @@ bool FrameState::decode(IPC::ArgumentDecoder& decoder, FrameState& result)
     return true;
 }
 
-void PageState::encode(IPC::ArgumentEncoder& encoder) const
+void PageState::encode(IPC::Encoder& encoder) const
 {
     encoder << title;
     encoder << mainFrameState;
     encoder.encodeEnum(shouldOpenExternalURLsPolicy);
 }
 
-bool PageState::decode(IPC::ArgumentDecoder& decoder, PageState& result)
+bool PageState::decode(IPC::Decoder& decoder, PageState& result)
 {
     if (!decoder.decode(result.title))
         return false;
@@ -196,13 +196,13 @@ bool PageState::decode(IPC::ArgumentDecoder& decoder, PageState& result)
     return true;
 }
 
-void BackForwardListItemState::encode(IPC::ArgumentEncoder& encoder) const
+void BackForwardListItemState::encode(IPC::Encoder& encoder) const
 {
     encoder << identifier;
     encoder << pageState;
 }
 
-bool BackForwardListItemState::decode(IPC::ArgumentDecoder& decoder, BackForwardListItemState& result)
+bool BackForwardListItemState::decode(IPC::Decoder& decoder, BackForwardListItemState& result)
 {
     if (!decoder.decode(result.identifier))
         return false;
@@ -213,13 +213,13 @@ bool BackForwardListItemState::decode(IPC::ArgumentDecoder& decoder, BackForward
     return true;
 }
 
-void BackForwardListState::encode(IPC::ArgumentEncoder& encoder) const
+void BackForwardListState::encode(IPC::Encoder& encoder) const
 {
     encoder << items;
     encoder << currentIndex;
 }
 
-bool BackForwardListState::decode(IPC::ArgumentDecoder& decoder, BackForwardListState& result)
+bool BackForwardListState::decode(IPC::Decoder& decoder, BackForwardListState& result)
 {
     if (!decoder.decode(result.items))
         return false;

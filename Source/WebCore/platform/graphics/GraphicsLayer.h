@@ -481,7 +481,7 @@ public:
     virtual void setDebugBackgroundColor(const Color&) { }
     virtual void setDebugBorder(const Color&, float /*borderWidth*/) { }
 
-    enum CustomAppearance { NoCustomAppearance, ScrollingShadow, LightBackdropAppearance, DarkBackdropAppearance };
+    enum CustomAppearance { NoCustomAppearance, ScrollingOverhang, ScrollingShadow, LightBackdropAppearance, DarkBackdropAppearance };
     virtual void setCustomAppearance(CustomAppearance customAppearance) { m_customAppearance = customAppearance; }
     CustomAppearance customAppearance() const { return m_customAppearance; }
 
@@ -551,6 +551,7 @@ public:
     virtual bool isGraphicsLayerCA() const { return false; }
     virtual bool isGraphicsLayerCARemote() const { return false; }
     virtual bool isGraphicsLayerTextureMapper() const { return false; }
+    virtual bool isCoordinatedGraphicsLayer() const { return false; }
 
 protected:
     WEBCORE_EXPORT explicit GraphicsLayer(Type, GraphicsLayerClient&);

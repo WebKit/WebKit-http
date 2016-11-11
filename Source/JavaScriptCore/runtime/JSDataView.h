@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef JSDataView_h
-#define JSDataView_h
+#pragma once
 
 #include "DataView.h"
 #include "JSArrayBufferView.h"
@@ -40,7 +39,7 @@ protected:
     JSDataView(VM&, ConstructionContext&, ArrayBuffer*);
     
 public:
-    static JSDataView* create(
+    JS_EXPORT_PRIVATE static JSDataView* create(
         ExecState*, Structure*, PassRefPtr<ArrayBuffer>, unsigned byteOffset,
         unsigned byteLength);
     
@@ -51,9 +50,15 @@ public:
     bool set(ExecState*, unsigned, JSObject*, unsigned, unsigned length);
     bool setIndex(ExecState*, unsigned, JSValue);
     
-    ArrayBuffer* buffer() const { return m_buffer; }
+    ArrayBuffer* possiblySharedBuffer() const { return m_buffer; }
+    ArrayBuffer* unsharedBuffer() const
+    {
+        RELEASE_ASSERT(!m_buffer->isShared());
+        return m_buffer;
+    }
     
-    PassRefPtr<DataView> typedImpl();
+    PassRefPtr<DataView> possiblySharedTypedImpl();
+    PassRefPtr<DataView> unsharedTypedImpl();
     
     static const TypedArrayType TypedArrayStorageType = TypeDataView;
 
@@ -78,6 +83,3 @@ private:
 };
 
 } // namespace JSC
-
-#endif // JSDataView_h
-

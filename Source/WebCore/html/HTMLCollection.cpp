@@ -46,6 +46,7 @@ inline auto HTMLCollection::rootTypeFromCollectionType(CollectionType type) -> R
     case DocumentNamedItems:
     case FormControls:
         return HTMLCollection::IsRootedAtDocument;
+    case AllDescendants:
     case ByClass:
     case ByTag:
     case ByHTMLTag:
@@ -69,6 +70,7 @@ static NodeListInvalidationType invalidationTypeExcludingIdAndNameAttributes(Col
     switch (type) {
     case ByTag:
     case ByHTMLTag:
+    case AllDescendants:
     case DocImages:
     case DocEmbeds:
     case DocForms:
@@ -226,14 +228,6 @@ Vector<Ref<Element>> HTMLCollection::namedItems(const AtomicString& name) const
     }
 
     return elements;
-}
-
-RefPtr<NodeList> HTMLCollection::tags(const String& name)
-{
-    if (name.isNull())
-        return nullptr;
-
-    return ownerNode().getElementsByTagName(name);
 }
 
 } // namespace WebCore

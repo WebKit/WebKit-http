@@ -135,7 +135,7 @@ void HTMLEmbedElement::parametersForPlugin(Vector<String>& paramNames, Vector<St
 
 // FIXME: This should be unified with HTMLObjectElement::updateWidget and
 // moved down into HTMLPluginImageElement.cpp
-void HTMLEmbedElement::updateWidget(PluginCreationOption pluginCreationOption)
+void HTMLEmbedElement::updateWidget(CreatePlugins createPlugins)
 {
     ASSERT(!renderEmbeddedObject()->isPluginUnavailable());
     ASSERT(needsWidgetUpdate());
@@ -152,7 +152,7 @@ void HTMLEmbedElement::updateWidget(PluginCreationOption pluginCreationOption)
     // FIXME: It's sadness that we have this special case here.
     //        See http://trac.webkit.org/changeset/25128 and
     //        plugins/netscape-plugin-setwindow-size.html
-    if (pluginCreationOption == CreateOnlyNonNetscapePlugins && wouldLoadAsNetscapePlugin(m_url, m_serviceType)) {
+    if (createPlugins == CreatePlugins::No && wouldLoadAsPlugIn(m_url, m_serviceType)) {
         // Ensure updateWidget() is called again during layout to create the Netscape plug-in.
         setNeedsWidgetUpdate(true);
         return;
@@ -183,7 +183,7 @@ void HTMLEmbedElement::updateWidget(PluginCreationOption pluginCreationOption)
 
 bool HTMLEmbedElement::rendererIsNeeded(const RenderStyle& style)
 {
-    if (!fastHasAttribute(typeAttr) && !fastHasAttribute(srcAttr))
+    if (!hasAttributeWithoutSynchronization(typeAttr) && !hasAttributeWithoutSynchronization(srcAttr))
         return false;
 
     if (isImageType())
@@ -217,14 +217,14 @@ bool HTMLEmbedElement::isURLAttribute(const Attribute& attribute) const
 
 const AtomicString& HTMLEmbedElement::imageSourceURL() const
 {
-    return fastGetAttribute(srcAttr);
+    return attributeWithoutSynchronization(srcAttr);
 }
 
 void HTMLEmbedElement::addSubresourceAttributeURLs(ListHashSet<URL>& urls) const
 {
     HTMLPlugInImageElement::addSubresourceAttributeURLs(urls);
 
-    addSubresourceURL(urls, document().completeURL(fastGetAttribute(srcAttr)));
+    addSubresourceURL(urls, document().completeURL(attributeWithoutSynchronization(srcAttr)));
 }
 
 }

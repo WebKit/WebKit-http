@@ -490,7 +490,7 @@ writeH("Opcode") {
     
     outp.puts "namespace WTF {"
     outp.puts "class PrintStream;"
-    outp.puts "void printInternal(PrintStream&, JSC::B3::Air::Opcode);"
+    outp.puts "JS_EXPORT_PRIVATE void printInternal(PrintStream&, JSC::B3::Air::Opcode);"
     outp.puts "} // namespace WTF"
 }
 
@@ -545,7 +545,7 @@ def matchForms(outp, speed, forms, columnIndex, columnGetter, filter, callback)
 end
 
 def matchInstOverload(outp, speed, inst)
-    outp.puts "switch (#{inst}->opcode) {"
+    outp.puts "switch (#{inst}->kind.opcode) {"
     $opcodes.values.each {
         | opcode |
         outp.puts "case #{opcode.name}:"
@@ -714,7 +714,7 @@ writeH("OpcodeUtils") {
     outp.puts "return false; "
     outp.puts "}"
 
-    outp.puts "inline bool isTerminal(Opcode opcode)"
+    outp.puts "inline bool isDefinitelyTerminal(Opcode opcode)"
     outp.puts "{"
     outp.puts "switch (opcode) {"
     didFindTerminals = false
@@ -836,7 +836,7 @@ writeH("OpcodeGenerated") {
 
     outp.puts "bool Inst::admitsStack(unsigned argIndex)"
     outp.puts "{"
-    outp.puts "switch (opcode) {"
+    outp.puts "switch (kind.opcode) {"
     $opcodes.values.each {
         | opcode |
         outp.puts "case #{opcode.name}:"
@@ -976,9 +976,37 @@ writeH("OpcodeGenerated") {
     outp.puts "return false;"
     outp.puts "}"
 
+    outp.puts "bool Inst::isTerminal()"
+    outp.puts "{"
+    outp.puts "switch (kind.opcode) {"
+    foundTrue = false
+    $opcodes.values.each {
+        | opcode |
+        if opcode.attributes[:terminal]
+            outp.puts "case #{opcode.name}:"
+            foundTrue = true
+        end
+    }
+    if foundTrue
+        outp.puts "return true;"
+    end
+    $opcodes.values.each {
+        | opcode |
+        if opcode.custom
+            outp.puts "case #{opcode.name}:"
+            outp.puts "return #{opcode.name}Custom::isTerminal(*this);"
+        end
+    }
+    outp.puts "default:"
+    outp.puts "return false;"
+    outp.puts "}"
+    outp.puts "}"
+    
     outp.puts "bool Inst::hasNonArgNonControlEffects()"
     outp.puts "{"
-    outp.puts "switch (opcode) {"
+    outp.puts "if (kind.traps)"
+    outp.puts "return true;"
+    outp.puts "switch (kind.opcode) {"
     foundTrue = false
     $opcodes.values.each {
         | opcode |
@@ -1004,7 +1032,9 @@ writeH("OpcodeGenerated") {
     
     outp.puts "bool Inst::hasNonArgEffects()"
     outp.puts "{"
-    outp.puts "switch (opcode) {"
+    outp.puts "if (kind.traps)"
+    outp.puts "return true;"
+    outp.puts "switch (kind.opcode) {"
     foundTrue = false
     $opcodes.values.each {
         | opcode |
@@ -1020,7 +1050,7 @@ writeH("OpcodeGenerated") {
         | opcode |
         if opcode.custom
             outp.puts "case #{opcode.name}:"
-            outp.puts "return #{opcode.name}Custom::hasNonArgNonControlEffects(*this);"
+            outp.puts "return #{opcode.name}Custom::hasNonArgEffects(*this);"
         end
     }
     outp.puts "default:"

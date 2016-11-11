@@ -53,8 +53,6 @@ namespace WebCore {
 
 using namespace HTMLNames;
 
-#if ENABLE(CUSTOM_ELEMENTS)
-
 CustomElementConstructionData::CustomElementConstructionData(Ref<JSCustomElementInterface>&& customElementInterface, const AtomicString& name, const Vector<Attribute>& attributes)
     : elementInterface(WTFMove(customElementInterface))
     , name(name)
@@ -63,8 +61,6 @@ CustomElementConstructionData::CustomElementConstructionData(Ref<JSCustomElement
 
 CustomElementConstructionData::~CustomElementConstructionData()
 { }
-
-#endif
 
 namespace {
 
@@ -219,7 +215,7 @@ public:
         if (whitespace.isEmpty())
             return String();
 
-        return String::adopt(whitespace);
+        return String::adopt(WTFMove(whitespace));
     }
 
 private:
@@ -448,42 +444,6 @@ void HTMLTreeBuilder::processFakePEndTagIfPInButtonScope()
     processEndTag(endP);
 }
 
-Vector<Attribute> HTMLTreeBuilder::attributesForIsindexInput(AtomicHTMLToken& token)
-{
-    Vector<Attribute> attributes = token.attributes();
-    attributes.removeAllMatching([] (const Attribute& attribute) {
-        const QualifiedName& name = attribute.name();
-        return name.matches(nameAttr) || name.matches(actionAttr) || name.matches(promptAttr);
-    });
-
-    attributes.append(Attribute(nameAttr, isindexTag.localName()));
-    return attributes;
-}
-
-void HTMLTreeBuilder::processIsindexStartTagForInBody(AtomicHTMLToken& token)
-{
-    ASSERT(token.type() == HTMLToken::StartTag);
-    ASSERT(token.name() == isindexTag);
-    parseError(token);
-    if (m_tree.form() && !isParsingTemplateContents())
-        return;
-    notImplemented(); // Acknowledge self-closing flag
-    processFakeStartTag(formTag);
-    if (Attribute* actionAttribute = findAttribute(token.attributes(), actionAttr))
-        m_tree.form()->setAttribute(actionAttr, actionAttribute->value());
-    processFakeStartTag(hrTag);
-    processFakeStartTag(labelTag);
-    if (Attribute* promptAttribute = findAttribute(token.attributes(), promptAttr))
-        processFakeCharacters(promptAttribute->value());
-    else
-        processFakeCharacters(searchableIndexIntroduction());
-    processFakeStartTag(inputTag, attributesForIsindexInput(token));
-    notImplemented(); // This second set of characters may be needed by non-english locales.
-    processFakeEndTag(labelTag);
-    processFakeStartTag(hrTag);
-    processFakeEndTag(formTag);
-}
-
 namespace {
 
 bool isLi(const HTMLStackItem& item)
@@ -575,11 +535,12 @@ static HashMap<AtomicString, QualifiedName> createForeignAttributesMap()
 {
     HashMap<AtomicString, QualifiedName> map;
 
-    addNamesWithPrefix(map, xlinkAtom, XLinkNames::getXLinkAttrs(), XLinkNames::XLinkAttrsCount);
+    AtomicString xlinkName("xlink", AtomicString::ConstructFromLiteral);
+    addNamesWithPrefix(map, xlinkName, XLinkNames::getXLinkAttrs(), XLinkNames::XLinkAttrsCount);
     addNamesWithPrefix(map, xmlAtom, XMLNames::getXMLAttrs(), XMLNames::XMLAttrsCount);
 
     map.add(WTF::xmlnsAtom, XMLNSNames::xmlnsAttr);
-    map.add("xmlns:xlink", QualifiedName(xmlnsAtom, xlinkAtom, XMLNSNames::xmlnsNamespaceURI));
+    map.add("xmlns:xlink", QualifiedName(xmlnsAtom, xlinkName, XMLNSNames::xmlnsNamespaceURI));
 
     return map;
 }
@@ -631,7 +592,7 @@ void HTMLTreeBuilder::processStartTagForInBody(AtomicHTMLToken& token)
         }
         if (!m_framesetOk)
             return;
-        m_tree.openElements().bodyElement().remove(ASSERT_NO_EXCEPTION);
+        m_tree.openElements().bodyElement().remove();
         m_tree.openElements().popUntil(m_tree.openElements().bodyElement());
         m_tree.openElements().popHTMLBodyElement();
         ASSERT(&m_tree.openElements().top() == &m_tree.openElements().htmlElement());
@@ -799,10 +760,6 @@ void HTMLTreeBuilder::processStartTagForInBody(AtomicHTMLToken& token)
         m_framesetOk = false;
         return;
     }
-    if (token.name() == isindexTag) {
-        processIsindexStartTagForInBody(token);
-        return;
-    }
     if (token.name() == textareaTag) {
         m_tree.insertHTMLElement(token);
         m_shouldSkipLeadingNewline = true;
@@ -908,21 +865,15 @@ void HTMLTreeBuilder::processStartTagForInBody(AtomicHTMLToken& token)
 
 inline void HTMLTreeBuilder::insertGenericHTMLElement(AtomicHTMLToken& token)
 {
-#if ENABLE(CUSTOM_ELEMENTS)
     auto* elementInterface = m_tree.insertHTMLElementOrFindCustomElementInterface(token);
     if (UNLIKELY(elementInterface))
         m_customElementToConstruct = std::make_unique<CustomElementConstructionData>(*elementInterface, token.name(), token.attributes());
-#else
-    m_tree.insertHTMLElement(token);
-#endif
 }
 
-#if ENABLE(CUSTOM_ELEMENTS)
 void HTMLTreeBuilder::didCreateCustomOrCallbackElement(Ref<Element>&& element, CustomElementConstructionData& data)
 {
     m_tree.insertCustomElement(WTFMove(element), data.name, data.attributes);
 }
-#endif
 
 void HTMLTreeBuilder::processTemplateStartTag(AtomicHTMLToken& token)
 {

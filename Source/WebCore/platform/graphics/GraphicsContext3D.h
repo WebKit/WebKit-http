@@ -712,39 +712,27 @@ public:
         TEXTURE_IMMUTABLE_FORMAT = 0x912F,
         MAX_ELEMENT_INDEX = 0x8D6B,
         NUM_SAMPLE_COUNTS = 0x9380,
-        TEXTURE_IMMUTABLE_LEVELS = 0x82DF
+        TEXTURE_IMMUTABLE_LEVELS = 0x82DF, 
+
+        // OpenGL ES 3 constants
+        MAP_READ_BIT = 0x0001
     };
 
     // Context creation attributes.
     struct Attributes {
-        Attributes()
-            : alpha(true)
-            , depth(true)
-            , stencil(false)
-            , antialias(true)
-            , premultipliedAlpha(true)
-            , preserveDrawingBuffer(false)
-            , noExtensions(false)
-            , shareResources(true)
-            , preferDiscreteGPU(false)
-            , forceSoftwareRenderer(false)
-            , useGLES3(false)
-            , devicePixelRatio(1)
-        {
-        }
-
-        bool alpha;
-        bool depth;
-        bool stencil;
-        bool antialias;
-        bool premultipliedAlpha;
-        bool preserveDrawingBuffer;
-        bool noExtensions;
-        bool shareResources;
-        bool preferDiscreteGPU;
-        bool forceSoftwareRenderer;
-        bool useGLES3;
-        float devicePixelRatio;
+        bool alpha { true };
+        bool depth { true };
+        bool stencil { false };
+        bool antialias { true };
+        bool premultipliedAlpha { true };
+        bool preserveDrawingBuffer { false };
+        bool noExtensions { false };
+        bool shareResources { true };
+        bool preferLowPowerToHighPerformance { false };
+        bool forceSoftwareRenderer { false };
+        bool failIfMajorPerformanceCaveat { false };
+        bool useGLES3 { false };
+        float devicePixelRatio { 1 };
     };
 
     enum RenderStyle {
@@ -979,6 +967,10 @@ public:
     void bufferData(GC3Denum target, GC3Dsizeiptr size, GC3Denum usage);
     void bufferData(GC3Denum target, GC3Dsizeiptr size, const void* data, GC3Denum usage);
     void bufferSubData(GC3Denum target, GC3Dintptr offset, GC3Dsizeiptr size, const void* data);
+
+    void* mapBufferRange(GC3Denum target, GC3Dintptr offset, GC3Dsizeiptr length, GC3Dbitfield access);
+    GC3Dboolean unmapBuffer(GC3Denum target);
+    void copyBufferSubData(GC3Denum readTarget, GC3Denum writeTarget, GC3Dintptr readOffset, GC3Dintptr writeOffset, GC3Dsizeiptr);
 
     GC3Denum checkFramebufferStatus(GC3Denum target);
     void clear(GC3Dbitfield mask);
@@ -1313,37 +1305,7 @@ private:
     RefPtr<PlatformCALayer> m_webGLLayer;
 #endif
 
-    struct SymbolInfo {
-        SymbolInfo()
-            : type(0)
-            , size(0)
-            , precision(GL_NONE) // Invalid precision.
-            , staticUse(0)
-        {
-        }
-
-        SymbolInfo(GC3Denum type, int size, const String& mappedName, sh::GLenum precision, int staticUse)
-            : type(type)
-            , size(size)
-            , mappedName(mappedName)
-            , precision(precision)
-            , staticUse(staticUse)
-        {
-        }
-
-        bool operator==(SymbolInfo& other) const
-        {
-            return type == other.type && size == other.size && mappedName == other.mappedName;
-        }
-
-        GC3Denum type;
-        int size;
-        String mappedName;
-        sh::GLenum precision;
-        int staticUse;
-    };
-
-    typedef HashMap<String, SymbolInfo> ShaderSymbolMap;
+    typedef HashMap<String, sh::ShaderVariable> ShaderSymbolMap;
 
     struct ShaderSourceEntry {
         GC3Denum type;
@@ -1422,7 +1384,7 @@ private:
     GC3Duint m_compositorTexture;
     GC3Duint m_fbo;
 #if USE(COORDINATED_GRAPHICS_THREADED)
-    GC3Duint m_compositorFBO;
+    GC3Duint m_intermediateTexture;
 #endif
 
     GC3Duint m_depthBuffer;
@@ -1458,6 +1420,8 @@ private:
     std::unique_ptr<GraphicsContext3DPrivate> m_private;
     
     WebGLRenderingContextBase* m_webglContext;
+
+    bool m_isForWebGL2 { false };
 };
 
 } // namespace WebCore

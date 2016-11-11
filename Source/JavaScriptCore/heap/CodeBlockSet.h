@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013, 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2014, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,15 +23,13 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef CodeBlockSet_h
-#define CodeBlockSet_h
+#pragma once
 
+#include "CollectionScope.h"
 #include "GCSegmentedArray.h"
-#include "HeapOperation.h"
 #include <wtf/HashSet.h>
 #include <wtf/Lock.h>
 #include <wtf/Noncopyable.h>
-#include <wtf/PassRefPtr.h>
 #include <wtf/PrintStream.h>
 #include <wtf/RefPtr.h>
 
@@ -40,7 +38,6 @@ namespace JSC {
 class CodeBlock;
 class Heap;
 class JSCell;
-class SlotVisitor;
 
 // CodeBlockSet tracks all CodeBlocks. Every CodeBlock starts out with one
 // reference coming in from GC. The GC is responsible for freeing CodeBlocks
@@ -70,11 +67,13 @@ public:
     
     // Delete all code blocks that are only referenced by this set (i.e. owned
     // by this set), and that have not been marked.
-    void deleteUnmarkedAndUnreferenced(HeapOperation);
+    void deleteUnmarkedAndUnreferenced(CollectionScope);
     
     // Add all currently executing CodeBlocks to the remembered set to be 
     // re-scanned during the next collection.
-    void writeBarrierCurrentlyExecutingCodeBlocks(Heap*);
+    void writeBarrierCurrentlyExecuting(Heap*);
+
+    void clearCurrentlyExecuting();
 
     bool contains(const LockHolder&, void* candidateCodeBlock);
     Lock& getLock() { return m_lock; }
@@ -82,7 +81,7 @@ public:
     // Visits each CodeBlock in the heap until the visitor function returns true
     // to indicate that it is done iterating, or until every CodeBlock has been
     // visited.
-    template<typename Functor> void iterate(Functor& functor)
+    template<typename Functor> void iterate(const Functor& functor)
     {
         LockHolder locker(m_lock);
         for (auto& codeBlock : m_oldCodeBlocks) {
@@ -110,6 +109,3 @@ private:
 };
 
 } // namespace JSC
-
-#endif // CodeBlockSet_h
-

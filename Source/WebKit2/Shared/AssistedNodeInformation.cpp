@@ -26,13 +26,12 @@
 #include "config.h"
 #include "AssistedNodeInformation.h"
 
-#include "Arguments.h"
 #include "WebCoreArgumentCoders.h"
 
 namespace WebKit {
 
 #if PLATFORM(IOS)
-void OptionItem::encode(IPC::ArgumentEncoder& encoder) const
+void OptionItem::encode(IPC::Encoder& encoder) const
 {
     encoder << text;
     encoder << isGroup;
@@ -41,7 +40,7 @@ void OptionItem::encode(IPC::ArgumentEncoder& encoder) const
     encoder << parentGroupID;
 }
 
-bool OptionItem::decode(IPC::ArgumentDecoder& decoder, OptionItem& result)
+bool OptionItem::decode(IPC::Decoder& decoder, OptionItem& result)
 {
     if (!decoder.decode(result.text))
         return false;
@@ -61,12 +60,13 @@ bool OptionItem::decode(IPC::ArgumentDecoder& decoder, OptionItem& result)
     return true;
 }
 
-void AssistedNodeInformation::encode(IPC::ArgumentEncoder& encoder) const
+void AssistedNodeInformation::encode(IPC::Encoder& encoder) const
 {
     encoder << elementRect;
     encoder << selectionRect;
     encoder << minimumScaleFactor;
     encoder << maximumScaleFactor;
+    encoder << maximumScaleFactorIgnoringAlwaysScalable;
     encoder << nodeFontSize;
     encoder << hasNextNode;
     encoder << hasPreviousNode;
@@ -80,7 +80,7 @@ void AssistedNodeInformation::encode(IPC::ArgumentEncoder& encoder) const
     encoder << isMultiSelect;
     encoder << isReadOnly;
     encoder << allowsUserScaling;
-    encoder << allowsUserScalingIgnoringForceAlwaysScaling;
+    encoder << allowsUserScalingIgnoringAlwaysScalable;
     encoder << insideFixedPosition;
     encoder << value;
     encoder << valueAsNumber;
@@ -88,7 +88,7 @@ void AssistedNodeInformation::encode(IPC::ArgumentEncoder& encoder) const
     encoder.encodeEnum(autofillFieldName);
 }
 
-bool AssistedNodeInformation::decode(IPC::ArgumentDecoder& decoder, AssistedNodeInformation& result)
+bool AssistedNodeInformation::decode(IPC::Decoder& decoder, AssistedNodeInformation& result)
 {
     if (!decoder.decode(result.elementRect))
         return false;
@@ -100,6 +100,9 @@ bool AssistedNodeInformation::decode(IPC::ArgumentDecoder& decoder, AssistedNode
         return false;
 
     if (!decoder.decode(result.maximumScaleFactor))
+        return false;
+    
+    if (!decoder.decode(result.maximumScaleFactorIgnoringAlwaysScalable))
         return false;
 
     if (!decoder.decode(result.nodeFontSize))
@@ -141,7 +144,7 @@ bool AssistedNodeInformation::decode(IPC::ArgumentDecoder& decoder, AssistedNode
     if (!decoder.decode(result.allowsUserScaling))
         return false;
     
-    if (!decoder.decode(result.allowsUserScalingIgnoringForceAlwaysScaling))
+    if (!decoder.decode(result.allowsUserScalingIgnoringAlwaysScalable))
         return false;
 
     if (!decoder.decode(result.insideFixedPosition))

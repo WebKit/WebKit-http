@@ -27,10 +27,7 @@
 #import "ThemeCocoa.h"
 
 #import "GraphicsContext.h"
-
-#if USE(APPLE_INTERNAL_SDK)
 #import <dlfcn.h>
-#endif
 
 namespace WebCore {
 
@@ -50,7 +47,7 @@ static void fitContextToBox(GraphicsContext& context, const FloatSize& srcImageS
         translationX = (dstSize.width() - scale * srcImageSize.width()) / 2;
     }
     context.translate(translationX, translationY);
-    context.scale(FloatSize(scale, scale));
+    context.scale(scale);
 }
 
 #if ENABLE(APPLE_PAY)

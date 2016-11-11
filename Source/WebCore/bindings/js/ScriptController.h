@@ -19,8 +19,7 @@
  *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#ifndef ScriptController_h
-#define ScriptController_h
+#pragma once
 
 #include "FrameLoaderTypes.h"
 #include "JSDOMWindowShell.h"
@@ -147,7 +146,7 @@ public:
     void updatePlatformScriptObjects();
 
     RefPtr<JSC::Bindings::Instance>  createScriptInstanceForWidget(Widget*);
-    JSC::Bindings::RootObject* bindingRootObject();
+    WEBCORE_EXPORT JSC::Bindings::RootObject* bindingRootObject();
     JSC::Bindings::RootObject* cacheableBindingRootObject();
 
     WEBCORE_EXPORT RefPtr<JSC::Bindings::RootObject> createRootObject(void* nativeHandle);
@@ -162,7 +161,6 @@ public:
     WEBCORE_EXPORT JSC::JSObject* jsObjectForPluginElement(HTMLPlugInElement*);
     
 #if ENABLE(NETSCAPE_PLUGIN_API)
-    NPObject* createScriptObjectForPluginElement(HTMLPlugInElement*);
     WEBCORE_EXPORT NPObject* windowScriptNPObject();
 #endif
 
@@ -194,5 +192,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // ScriptController_h

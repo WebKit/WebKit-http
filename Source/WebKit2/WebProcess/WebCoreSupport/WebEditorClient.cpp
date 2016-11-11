@@ -201,9 +201,19 @@ void WebEditorClient::didChangeSelectionAndUpdateLayout()
     m_page->sendPostLayoutEditorStateIfNeeded();
 }
 
+void WebEditorClient::updateEditorStateAfterLayoutIfEditabilityChanged()
+{
+    m_page->updateEditorStateAfterLayoutIfEditabilityChanged();
+}
+
 void WebEditorClient::discardedComposition(Frame*)
 {
     m_page->discardedComposition();
+}
+
+void WebEditorClient::canceledComposition()
+{
+    m_page->canceledComposition();
 }
 
 void WebEditorClient::didEndEditing()

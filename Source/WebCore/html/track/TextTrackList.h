@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef TextTrackList_h
-#define TextTrackList_h
+#pragma once
 
 #if ENABLE(VIDEO_TRACK)
 
@@ -41,6 +40,8 @@ public:
         return adoptRef(*new TextTrackList(element, context));
     }
     virtual ~TextTrackList();
+
+    void clearElement() override;
 
     unsigned length() const override;
     int getTrackIndex(TextTrack&);
@@ -68,5 +69,4 @@ private:
 
 } // namespace WebCore
 
-#endif
-#endif
+#endif // ENABLE(VIDEO_TRACK)

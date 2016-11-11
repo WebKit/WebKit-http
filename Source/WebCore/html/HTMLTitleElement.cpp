@@ -74,7 +74,10 @@ void HTMLTitleElement::childrenChanged(const ChildChange& change)
 
 String HTMLTitleElement::text() const
 {
-    return TextNodeTraversal::contentsAsString(*this);
+    StringBuilder result;
+    for (Text* text = TextNodeTraversal::firstChild(*this); text; text = TextNodeTraversal::nextSibling(*text))
+        result.append(text->data());
+    return result.toString();
 }
 
 StringWithDirection HTMLTitleElement::computedTextWithDirection()
@@ -91,23 +94,7 @@ StringWithDirection HTMLTitleElement::computedTextWithDirection()
 
 void HTMLTitleElement::setText(const String& value)
 {
-    Ref<HTMLTitleElement> protectedThis(*this);
-    
-    if (!value.isEmpty() && hasOneChild() && is<Text>(*firstChild())) {
-        downcast<Text>(*firstChild()).setData(value);
-        return;
-    }
-
-    // We make a copy here because entity of "value" argument can be Document::m_title,
-    // which goes empty during removeChildren() invocation below,
-    // which causes HTMLTitleElement::childrenChanged(), which ends up Document::setTitle().
-    String valueCopy(value);
-
-    if (hasChildNodes())
-        removeChildren();
-
-    if (!valueCopy.isEmpty())
-        appendChild(document().createTextNode(valueCopy), IGNORE_EXCEPTION);
+    setTextContent(value, ASSERT_NO_EXCEPTION);
 }
 
 }

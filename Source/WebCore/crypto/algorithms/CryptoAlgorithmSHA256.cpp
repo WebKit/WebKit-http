@@ -42,9 +42,9 @@ CryptoAlgorithmSHA256::~CryptoAlgorithmSHA256()
 {
 }
 
-std::unique_ptr<CryptoAlgorithm> CryptoAlgorithmSHA256::create()
+Ref<CryptoAlgorithm> CryptoAlgorithmSHA256::create()
 {
-    return std::unique_ptr<CryptoAlgorithm>(new CryptoAlgorithmSHA256);
+    return adoptRef(*new CryptoAlgorithmSHA256);
 }
 
 CryptoAlgorithmIdentifier CryptoAlgorithmSHA256::identifier() const
@@ -52,7 +52,7 @@ CryptoAlgorithmIdentifier CryptoAlgorithmSHA256::identifier() const
     return s_identifier;
 }
 
-void CryptoAlgorithmSHA256::digest(const CryptoAlgorithmParameters&, const CryptoOperationData& data, VectorCallback&& callback, VoidCallback&& failureCallback, ExceptionCode&)
+void CryptoAlgorithmSHA256::digest(const CryptoAlgorithmParametersDeprecated&, const CryptoOperationData& data, VectorCallback&& callback, VoidCallback&& failureCallback, ExceptionCode&)
 {
     std::unique_ptr<CryptoDigest> digest = CryptoDigest::create(CryptoDigest::Algorithm::SHA_256);
     if (!digest) {

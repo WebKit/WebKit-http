@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef ScopedArguments_h
-#define ScopedArguments_h
+#pragma once
 
 #include "GenericArguments.h"
 #include "JSLexicalEnvironment.h"
@@ -100,7 +99,7 @@ public:
         ASSERT_WITH_SECURITY_IMPLICATION(canAccessIndexQuickly(i));
         unsigned namedLength = m_table->length();
         if (i < namedLength)
-            m_scope->variableAt(m_table->get(i)).set(vm, this, value);
+            m_scope->variableAt(m_table->get(i)).set(vm, m_scope.get(), value);
         else
             overflowStorage()[i - namedLength].set(vm, this, value);
     }
@@ -152,6 +151,3 @@ private:
 };
 
 } // namespace JSC
-
-#endif // ScopedArguments_h
-

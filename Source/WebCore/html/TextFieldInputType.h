@@ -28,8 +28,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef TextFieldInputType_h
-#define TextFieldInputType_h
+#pragma once
 
 #include "AutoFillButtonElement.h"
 #include "InputType.h"
@@ -46,8 +45,8 @@ class TextFieldInputType : public InputType, protected SpinButtonElement::SpinBu
 protected:
     explicit TextFieldInputType(HTMLInputElement&);
     virtual ~TextFieldInputType();
-    void handleKeydownEvent(KeyboardEvent*) override;
-    void handleKeydownEventForSpinButton(KeyboardEvent*);
+    void handleKeydownEvent(KeyboardEvent&) override;
+    void handleKeydownEventForSpinButton(KeyboardEvent&);
 
     HTMLElement* containerElement() const final;
     HTMLElement* innerBlockElement() const final;
@@ -74,14 +73,14 @@ protected:
     virtual void didSetValueByUserEdit();
 
 private:
-    bool isKeyboardFocusable(KeyboardEvent*) const final;
+    bool isKeyboardFocusable(KeyboardEvent&) const final;
     bool isMouseFocusable() const final;
     bool isTextField() const final;
     bool isEmptyValue() const final;
     bool valueMissing(const String&) const final;
-    void handleBeforeTextInsertedEvent(BeforeTextInsertedEvent*) final;
-    void forwardEvent(Event*) final;
-    bool shouldSubmitImplicitly(Event*) final;
+    void handleBeforeTextInsertedEvent(BeforeTextInsertedEvent&) final;
+    void forwardEvent(Event&) final;
+    bool shouldSubmitImplicitly(Event&) final;
     RenderPtr<RenderElement> createInputRenderer(RenderStyle&&) override;
     bool shouldUseInputMethod() const override;
     bool shouldRespectListAttribute() override;
@@ -120,5 +119,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // TextFieldInputType_h

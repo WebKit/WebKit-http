@@ -36,9 +36,8 @@
 #include <wtf/Noncopyable.h>
 
 namespace WebCore {
-#if !USE(NETWORK_SESSION)
+class BlobDataFileReference;
 class ResourceHandle;
-#endif
 class ResourceRequest;
 class ResourceResponse;
 class SessionID;
@@ -53,6 +52,8 @@ namespace WebKit {
 
 class AuthenticationManager;
 class Download;
+class NetworkConnectionToWebProcess;
+class NetworkLoad;
 class PendingDownload;
 
 class DownloadManager {
@@ -74,16 +75,17 @@ public:
 
     explicit DownloadManager(Client&);
 
-    void startDownload(WebCore::SessionID, DownloadID, const WebCore::ResourceRequest&, const String& suggestedName = { });
+    void startDownload(NetworkConnectionToWebProcess*, WebCore::SessionID, DownloadID, const WebCore::ResourceRequest&, const String& suggestedName = { });
 #if USE(NETWORK_SESSION)
-    std::pair<RefPtr<NetworkDataTask>, std::unique_ptr<PendingDownload>> dataTaskBecameDownloadTask(DownloadID, std::unique_ptr<Download>&&);
+    void dataTaskBecameDownloadTask(DownloadID, std::unique_ptr<Download>&&);
+#if USE(PROTECTION_SPACE_AUTH_CALLBACK)
     void continueCanAuthenticateAgainstProtectionSpace(DownloadID, bool canAuthenticate);
+#endif
     void continueWillSendRequest(DownloadID, WebCore::ResourceRequest&&);
     void willDecidePendingDownloadDestination(NetworkDataTask&, ResponseCompletionHandler&&);
-    void continueDecidePendingDownloadDestination(DownloadID, String destination, const SandboxExtension::Handle&, bool allowOverwrite);
-#else
-    void convertHandleToDownload(DownloadID, WebCore::ResourceHandle*, const WebCore::ResourceRequest&, const WebCore::ResourceResponse&);
 #endif
+    void convertNetworkLoadToDownload(DownloadID, std::unique_ptr<NetworkLoad>&&, Vector<RefPtr<WebCore::BlobDataFileReference>>&&, const WebCore::ResourceRequest&, const WebCore::ResourceResponse&);
+    void continueDecidePendingDownloadDestination(DownloadID, String destination, const SandboxExtension::Handle&, bool allowOverwrite);
 
     void resumeDownload(WebCore::SessionID, DownloadID, const IPC::DataReference& resumeData, const String& path, const SandboxExtension::Handle&);
 

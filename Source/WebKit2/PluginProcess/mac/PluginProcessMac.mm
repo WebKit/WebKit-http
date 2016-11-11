@@ -70,8 +70,7 @@ public:
     template<typename T> void windowHidden(T window);
 
 private:
-    typedef HashSet<void*> WindowSet;
-    WindowSet m_windows;
+    HashSet<CGWindowID> m_windows;
 };
 
 static bool rectCoversAnyScreen(NSRect rect)
@@ -94,18 +93,33 @@ static bool windowCoversAnyScreen(WindowRef window)
 
     return rectCoversAnyScreen(NSRectFromCGRect(bounds));
 }
-#endif
 
-static bool windowCoversAnyScreen(NSWindow* window)
+static CGWindowID cgWindowID(WindowRef window)
 {
-    return rectCoversAnyScreen([window frame]);
+    return reinterpret_cast<CGWindowID>(WKGetNativeWindowFromWindowRef(window));
 }
 
-template<typename T> void FullscreenWindowTracker::windowShown(T window)
+#endif
+
+static bool windowCoversAnyScreen(NSWindow *window)
 {
+    return rectCoversAnyScreen(window.frame);
+}
+
+static CGWindowID cgWindowID(NSWindow *window)
+{
+    return window.windowNumber;
+}
+
+template<typename T>
+void FullscreenWindowTracker::windowShown(T window)
+{
+    CGWindowID windowID = cgWindowID(window);
+    if (!windowID)
+        return;
+
     // If this window is already visible then there is nothing to do.
-    WindowSet::iterator it = m_windows.find(window);
-    if (it != m_windows.end())
+    if (m_windows.contains(windowID))
         return;
     
     // If the window is not full-screen then we're not interested in it.
@@ -114,21 +128,23 @@ template<typename T> void FullscreenWindowTracker::windowShown(T window)
 
     bool windowSetWasEmpty = m_windows.isEmpty();
 
-    m_windows.add(window);
+    m_windows.add(windowID);
     
     // If this is the first full screen window to be shown, notify the UI process.
     if (windowSetWasEmpty)
         PluginProcess::singleton().setFullscreenWindowIsShowing(true);
 }
 
-template<typename T> void FullscreenWindowTracker::windowHidden(T window)
+template<typename T>
+void FullscreenWindowTracker::windowHidden(T window)
 {
-    // If this is not a window that we're tracking then there is nothing to do.
-    WindowSet::iterator it = m_windows.find(window);
-    if (it == m_windows.end())
+    CGWindowID windowID = cgWindowID(window);
+    if (!windowID)
         return;
 
-    m_windows.remove(it);
+    // If this is not a window that we're tracking then there is nothing to do.
+    if (!m_windows.remove(windowID))
+        return;
 
     // If this was the last full screen window that was visible, notify the UI process.
     if (m_windows.isEmpty())
@@ -238,7 +254,7 @@ static void setModal(bool modalWindowIsShowing)
     PluginProcess::singleton().setModalWindowIsShowing(modalWindowIsShowing);
 }
 
-static unsigned modalCount = 0;
+static unsigned modalCount;
 
 static void beginModal()
 {
@@ -271,11 +287,70 @@ static NSInteger replacedRunModalForWindow(id self, SEL _cmd, NSWindow* window)
     return result;
 }
 
-#if defined(__i386__)
+static bool oldPluginProcessNameShouldEqualNewPluginProcessNameForAdobeReader;
+
+static bool isAdobeAcrobatAddress(const void* address)
+{
+    Dl_info imageInfo;
+    if (!dladdr(address, &imageInfo))
+        return false;
+
+    const char* pathSuffix = "/Contents/Frameworks/Acrobat.framework/Acrobat";
+
+    int pathSuffixLength = strlen(pathSuffix);
+    int imageFilePathLength = strlen(imageInfo.dli_fname);
+
+    if (imageFilePathLength < pathSuffixLength)
+        return false;
+
+    if (strcmp(imageInfo.dli_fname + (imageFilePathLength - pathSuffixLength), pathSuffix))
+        return false;
+
+    return true;
+}
+
+static bool stringCompare(CFStringRef a, CFStringRef b, CFStringCompareFlags options, void* returnAddress, CFComparisonResult& result)
+{
+    if (pthread_main_np() != 1)
+        return false;
+
+    if (!oldPluginProcessNameShouldEqualNewPluginProcessNameForAdobeReader)
+        return false;
+
+    if (options != kCFCompareCaseInsensitive)
+        return false;
+
+    const char* aCString = CFStringGetCStringPtr(a, kCFStringEncodingASCII);
+    if (!aCString)
+        return false;
+
+    const char* bCString = CFStringGetCStringPtr(b, kCFStringEncodingASCII);
+    if (!bCString)
+        return false;
+
+    if (strcmp(aCString, "com.apple.WebKit.PluginProcess"))
+        return false;
+
+    if (strcmp(bCString, "com.apple.WebKit.Plugin.64"))
+        return false;
+
+    // Check if the LHS string comes from the Acrobat framework.
+    if (!isAdobeAcrobatAddress(a))
+        return false;
+
+    // Check if the return adress is part of the Acrobat framework as well.
+    if (!isAdobeAcrobatAddress(returnAddress))
+        return false;
+
+    result = kCFCompareEqualTo;
+    return true;
+}
+
 static void initializeShim()
 {
     // Initialize the shim for 32-bit only.
     const PluginProcessShimCallbacks callbacks = {
+#if defined(__i386__)
         shouldCallRealDebugger,
         isWindowActive,
         getCurrentEventButtonState,
@@ -286,12 +361,13 @@ static void initializeShim()
         setModal,
         openCFURLRef,
         shouldMapMemoryExecutable,
+#endif
+        stringCompare,
     };
 
     PluginProcessShimInitializeFunc initFunc = reinterpret_cast<PluginProcessShimInitializeFunc>(dlsym(RTLD_DEFAULT, "WebKitPluginProcessShimInitialize"));
     initFunc(callbacks);
 }
-#endif
 
 static void (*NSConcreteTask_launch)(NSTask *, SEL);
 
@@ -447,9 +523,7 @@ void PluginProcess::platformInitializePluginProcess(PluginProcessCreationParamet
 
 void PluginProcess::platformInitializeProcess(const ChildProcessInitializationParameters& parameters)
 {
-#if defined(__i386__)
     initializeShim();
-#endif
 
     initializeCocoaOverrides();
 
@@ -466,6 +540,9 @@ void PluginProcess::platformInitializeProcess(const ChildProcessInitializationPa
         return;
 
     m_pluginBundleIdentifier = CFBundleGetIdentifier(pluginBundle.get());
+
+    if (m_pluginBundleIdentifier == "com.adobe.acrobat.pdfviewerNPAPI")
+        oldPluginProcessNameShouldEqualNewPluginProcessNameForAdobeReader = true;
 
 #if defined(__i386__)
     if (m_pluginBundleIdentifier == "com.microsoft.SilverlightPlugin") {

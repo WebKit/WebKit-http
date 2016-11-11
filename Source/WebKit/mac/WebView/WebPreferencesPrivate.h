@@ -53,7 +53,8 @@ typedef enum {
 } WebStorageBlockingPolicy;
 
 typedef enum {
-    WebKitJavaScriptRuntimeFlagsAllEnabled = 0
+    WebKitJavaScriptRuntimeFlagsSharedArrayBufferEnabled = 1u << 0,
+    WebKitJavaScriptRuntimeFlagsAllEnabled = WebKitJavaScriptRuntimeFlagsSharedArrayBufferEnabled
 } WebKitJavaScriptRuntimeFlags;
 
 extern NSString *WebPreferencesChangedNotification;
@@ -137,6 +138,9 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification;
 
 - (BOOL)allowFileAccessFromFileURLs;
 - (void)setAllowFileAccessFromFileURLs:(BOOL)flag;
+
+- (BOOL)needsStorageAccessFromFileURLsQuirk;
+- (void)setNeedsStorageAccessFromFileURLsQuirk:(BOOL)flag;
 
 - (BOOL)zoomsTextOnly;
 - (void)setZoomsTextOnly:(BOOL)zoomsTextOnly;
@@ -475,6 +479,9 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification;
 - (void)setMockCaptureDevicesEnabled:(BOOL)flag;
 - (BOOL)mockCaptureDevicesEnabled;
 
+- (void)setMediaCaptureRequiresSecureConnection:(BOOL)flag;
+- (BOOL)mediaCaptureRequiresSecureConnection;
+
 - (void)setShadowDOMEnabled:(BOOL)flag;
 - (BOOL)shadowDOMEnabled;
 
@@ -493,6 +500,14 @@ extern NSString *WebPreferencesCacheModelChangedInternalNotification;
 - (void)setCSSGridLayoutEnabled:(BOOL)flag;
 - (BOOL)isCSSGridLayoutEnabled;
 
+- (void)setWebAnimationsEnabled:(BOOL)flag;
+- (BOOL)webAnimationsEnabled;
+
+- (void)setModernMediaControlsEnabled:(BOOL)flag;
+- (BOOL)modernMediaControlsEnabled;
+
+@property (nonatomic) BOOL visualViewportEnabled;
+@property (nonatomic) BOOL asyncImageDecodingEnabled;
 @property (nonatomic) BOOL javaScriptMarkupEnabled;
 @property (nonatomic) BOOL mediaDataLoadsAutomatically;
 @property (nonatomic) BOOL attachmentElementEnabled;

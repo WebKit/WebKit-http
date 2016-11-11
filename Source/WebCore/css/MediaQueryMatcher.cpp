@@ -30,6 +30,7 @@
 #include "NodeRenderStyle.h"
 #include "RenderElement.h"
 #include "StyleResolver.h"
+#include "StyleScope.h"
 
 namespace WebCore {
 
@@ -65,7 +66,7 @@ std::unique_ptr<RenderStyle> MediaQueryMatcher::documentElementUserAgentStyle() 
     if (!documentElement)
         return nullptr;
 
-    return m_document->ensureStyleResolver().styleForElement(*documentElement, m_document->renderStyle(), MatchOnlyUserAgentRules).renderStyle;
+    return m_document->styleScope().resolver().styleForElement(*documentElement, m_document->renderStyle(), MatchOnlyUserAgentRules).renderStyle;
 }
 
 bool MediaQueryMatcher::evaluate(const MediaQuerySet& media)
@@ -126,7 +127,7 @@ void MediaQueryMatcher::styleResolverChanged()
         bool notify;
         listener.query->evaluate(evaluator, notify);
         if (notify)
-            listener.listener->queryChanged(listener.query.ptr());
+            listener.listener->handleEvent(listener.query.ptr());
     }
 }
 

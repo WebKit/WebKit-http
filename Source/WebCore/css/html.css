@@ -353,11 +353,11 @@ button {
 }
 
 /* Form controls don't go vertical. */
-input, textarea, keygen, select, button, isindex, meter, progress {
+input, textarea, keygen, select, button, meter, progress {
     -webkit-writing-mode: horizontal-tb !important;
 }
 
-input, textarea, keygen, select, button, isindex {
+input, textarea, keygen, select, button {
     margin: 0__qem;
 #if !(defined(WTF_PLATFORM_IOS) && WTF_PLATFORM_IOS)
     font: -webkit-small-control;
@@ -377,13 +377,12 @@ input[type="hidden"] {
     display: none;
 }
 
-input,
-input:matches([type="password"], [type="search"]),
 #if defined(WTF_PLATFORM_IOS) && WTF_PLATFORM_IOS
 textarea,
 input[type="range"],
 #endif
-isindex {
+input,
+input:matches([type="password"], [type="search"]) {
     -webkit-appearance: textfield;
     background-color: white;
 #if defined(WTF_PLATFORM_IOS) && WTF_PLATFORM_IOS
@@ -625,7 +624,7 @@ textarea {
     pointer-events: none !important;
 }
 
-input::placeholder, isindex::placeholder {
+input::placeholder {
     white-space: pre;
     word-wrap: normal;
     overflow: hidden;
@@ -1000,37 +999,6 @@ meter {
     vertical-align: -0.2em;
 }
 
-meter::-webkit-meter-inner-element {
-    -webkit-appearance: inherit;
-    box-sizing: inherit;
-    height: 100%;
-    width: 100%;
-}
-
-meter::-webkit-meter-bar {
-    background: -webkit-gradient(linear, left top, left bottom, from(#ddd), to(#ddd), color-stop(0.20, #eee), color-stop(0.45, #ccc), color-stop(0.55, #ccc));
-    height: 100%;
-    width: 100%;
-    box-sizing: border-box;
-}
-
-meter::-webkit-meter-optimum-value {
-    background: -webkit-gradient(linear, left top, left bottom, from(#ad7), to(#ad7), color-stop(0.20, #cea), color-stop(0.45, #7a3), color-stop(0.55, #7a3));
-    height: 100%;
-    box-sizing: border-box;
-}
-
-meter::-webkit-meter-suboptimum-value {
-    background: -webkit-gradient(linear, left top, left bottom, from(#fe7), to(#fe7), color-stop(0.20, #ffc), color-stop(0.45, #db3), color-stop(0.55, #db3));
-    height: 100%;
-    box-sizing: border-box;
-}
-
-meter::-webkit-meter-even-less-good-value {
-    background: -webkit-gradient(linear, left top, left bottom, from(#f77), to(#f77), color-stop(0.20, #fcc), color-stop(0.45, #d44), color-stop(0.55, #d44));
-    height: 100%;
-    box-sizing: border-box;
-}
 #endif
 
 /* progress */
@@ -1132,7 +1100,7 @@ html:focus, body:focus, input[readonly]:focus, applet:focus, embed:focus, iframe
     outline: none;
 }
 
-input:focus, textarea:focus, isindex:focus, keygen:focus, select:focus {
+input:focus, textarea:focus, keygen:focus, select:focus {
     outline-offset: -2px;
 }
 

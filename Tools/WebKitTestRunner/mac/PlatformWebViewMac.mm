@@ -34,6 +34,7 @@
 #import <WebKit/WKWebViewConfiguration.h>
 #import <WebKit/WKWebViewPrivate.h>
 #import <wtf/RetainPtr.h>
+#import <wtf/mac/AppKitCompatibilityDeclarations.h>
 
 #if WK_API_ENABLED
 @interface WKWebView (Details)
@@ -54,8 +55,35 @@ enum {
 @property (nonatomic, assign) PlatformWebView* platformWebView;
 @end
 
+static Vector<WebKitTestRunnerWindow*> allWindows;
+
 @implementation WebKitTestRunnerWindow
 @synthesize platformWebView = _platformWebView;
+
++ (NSWindow *)_WTR_keyWindow
+{
+    size_t i = allWindows.size();
+    while (i) {
+        if ([allWindows[i] isKeyWindow])
+            return allWindows[i];
+        --i;
+    }
+
+    return nil;
+}
+
+- (instancetype)initWithContentRect:(NSRect)contentRect styleMask:(NSUInteger)windowStyle backing:(NSBackingStoreType)bufferingType defer:(BOOL)deferCreation
+{
+    allWindows.append(self);
+    return [super initWithContentRect:contentRect styleMask:windowStyle backing:bufferingType defer:deferCreation];
+}
+
+- (void)dealloc
+{
+    allWindows.removeFirst(self);
+    ASSERT(!allWindows.contains(self));
+    [super dealloc];
+}
 
 - (BOOL)isKeyWindow
 {
@@ -118,7 +146,7 @@ PlatformWebView::PlatformWebView(WKWebViewConfiguration* configuration, const Te
 
     NSScreen *firstScreen = [[NSScreen screens] objectAtIndex:0];
     NSRect windowRect = m_options.shouldShowWebView ? NSOffsetRect(rect, 100, 100) : NSOffsetRect(rect, -10000, [firstScreen frame].size.height - rect.size.height + 10000);
-    m_window = [[WebKitTestRunnerWindow alloc] initWithContentRect:windowRect styleMask:NSBorderlessWindowMask backing:(NSBackingStoreType)_NSBackingStoreUnbuffered defer:YES];
+    m_window = [[WebKitTestRunnerWindow alloc] initWithContentRect:windowRect styleMask:NSWindowStyleMaskBorderless backing:(NSBackingStoreType)_NSBackingStoreUnbuffered defer:YES];
     m_window.platformWebView = this;
     [m_window setColorSpace:[firstScreen colorSpace]];
     [m_window setCollectionBehavior:NSWindowCollectionBehaviorStationary];
@@ -150,6 +178,18 @@ PlatformWebView::~PlatformWebView()
     [m_window close];
     [m_window release];
     [m_view release];
+}
+
+PlatformWindow PlatformWebView::keyWindow()
+{
+    size_t i = allWindows.size();
+    while (i) {
+        --i;
+        if ([allWindows[i] isKeyWindow])
+            return allWindows[i];
+    }
+
+    return nil;
 }
 
 WKPageRef PlatformWebView::page()

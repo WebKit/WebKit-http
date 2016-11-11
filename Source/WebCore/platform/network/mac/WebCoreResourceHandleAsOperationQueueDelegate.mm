@@ -26,7 +26,7 @@
 #import "config.h"
 #import "WebCoreResourceHandleAsOperationQueueDelegate.h"
 
-#if !USE(CFNETWORK)
+#if !USE(CFURLCONNECTION)
 
 #import "AuthenticationChallenge.h"
 #import "AuthenticationMac.h"
@@ -195,7 +195,7 @@ using namespace WebCore;
         
         ResourceResponse resourceResponse(r);
 #if ENABLE(WEB_TIMING)
-        ResourceHandle::getConnectionTimingData(connection, resourceResponse.resourceLoadTiming());
+        ResourceHandle::getConnectionTimingData(connection, resourceResponse.networkLoadTiming());
 #else
         UNUSED_PARAM(connection);
 #endif
@@ -330,5 +330,5 @@ using namespace WebCore;
 
 @end
 
-#endif // !USE(CFNETWORK)
+#endif // !USE(CFURLCONNECTION)
 

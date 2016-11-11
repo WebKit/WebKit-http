@@ -23,10 +23,11 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef MacroAssembler_h
-#define MacroAssembler_h
+#pragma once
 
 #if ENABLE(ASSEMBLER)
+
+#include "JSCJSValue.h"
 
 #if CPU(ARM_THUMB2)
 #include "MacroAssemblerARMv7.h"
@@ -63,6 +64,8 @@ typedef MacroAssemblerSH4 MacroAssemblerBase;
 #else
 #error "The MacroAssembler is not supported on this platform."
 #endif
+
+#include "MacroAssemblerHelpers.h"
 
 namespace JSC {
 
@@ -119,7 +122,7 @@ public:
     using MacroAssemblerBase::and32;
     using MacroAssemblerBase::branchAdd32;
     using MacroAssemblerBase::branchMul32;
-#if CPU(ARM64) || CPU(ARM_THUMB2) || CPU(X86_64)
+#if CPU(ARM64) || CPU(ARM_THUMB2) || CPU(ARM_TRADITIONAL) || CPU(X86_64)
     using MacroAssemblerBase::branchPtr;
 #endif
     using MacroAssemblerBase::branchSub32;
@@ -139,7 +142,6 @@ public:
     static const double twoToThe32; // This is super useful for some double code.
 
     // Utilities used by the DFG JIT.
-#if ENABLE(DFG_JIT)
     using MacroAssemblerBase::invert;
     
     static DoubleCondition invert(DoubleCondition cond)
@@ -232,44 +234,25 @@ public:
         return Equal;
     }
 
-    // True if this:
-    //     branch8(cond, value, value)
-    // Is the same as this:
-    //     branch32(cond, signExt8(value), signExt8(value))
     static bool isSigned(RelationalCondition cond)
     {
-        switch (cond) {
-        case Equal:
-        case NotEqual:
-        case GreaterThan:
-        case GreaterThanOrEqual:
-        case LessThan:
-        case LessThanOrEqual:
-            return true;
-        default:
-            return false;
-        }
+        return MacroAssemblerHelpers::isSigned<MacroAssembler>(cond);
     }
 
-    // True if this:
-    //     branch8(cond, value, value)
-    // Is the same as this:
-    //     branch32(cond, zeroExt8(value), zeroExt8(value))
     static bool isUnsigned(RelationalCondition cond)
     {
-        switch (cond) {
-        case Equal:
-        case NotEqual:
-        case Above:
-        case AboveOrEqual:
-        case Below:
-        case BelowOrEqual:
-            return true;
-        default:
-            return false;
-        }
+        return MacroAssemblerHelpers::isUnsigned<MacroAssembler>(cond);
     }
-#endif
+
+    static bool isSigned(ResultCondition cond)
+    {
+        return MacroAssemblerHelpers::isSigned<MacroAssembler>(cond);
+    }
+
+    static bool isUnsigned(ResultCondition cond)
+    {
+        return MacroAssemblerHelpers::isUnsigned<MacroAssembler>(cond);
+    }
 
     // Platform agnostic convenience functions,
     // described in terms of other macro assembly methods.
@@ -370,6 +353,11 @@ public:
     void branchPtr(RelationalCondition cond, RegisterID op1, ImmPtr imm, Label target)
     {
         branchPtr(cond, op1, imm).linkTo(target, this);
+    }
+
+    Jump branch32(RelationalCondition cond, RegisterID left, AbsoluteAddress right)
+    {
+        return branch32(flip(cond), right, left);
     }
 
     void branch32(RelationalCondition cond, RegisterID op1, RegisterID op2, Label target)
@@ -492,6 +480,7 @@ public:
 
     // B3 has additional pseudo-opcodes for returning, when it wants to signal that the return
     // consumes some register in some way.
+    void retVoid() { ret(); }
     void ret32(RegisterID) { ret(); }
     void ret64(RegisterID) { ret(); }
     void retFloat(FPRegisterID) { ret(); }
@@ -1350,10 +1339,17 @@ public:
     }
 #endif
 
-    void lea(Address address, RegisterID dest)
+    void lea32(Address address, RegisterID dest)
     {
-        addPtr(TrustedImm32(address.offset), address.base, dest);
+        add32(TrustedImm32(address.offset), address.base, dest);
     }
+
+#if CPU(X86_64) || CPU(ARM64)
+    void lea64(Address address, RegisterID dest)
+    {
+        add64(TrustedImm32(address.offset), address.base, dest);
+    }
+#endif // CPU(X86_64) || CPU(ARM64)
 
     bool shouldBlind(Imm32 imm)
     {
@@ -1815,5 +1811,3 @@ public:
 } // namespace JSC
 
 #endif // ENABLE(ASSEMBLER)
-
-#endif // MacroAssembler_h

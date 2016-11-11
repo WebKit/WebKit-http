@@ -31,6 +31,10 @@
 #include "IDBIndexInfo.h"
 #include "IDBRequest.h"
 
+namespace JSC {
+class ExecState;
+}
+
 namespace WebCore {
 
 class IDBKeyRange;
@@ -44,28 +48,34 @@ public:
     virtual ~IDBIndex();
 
     const String& name() const;
-    RefPtr<IDBObjectStore> objectStore();
+    ExceptionOr<void> setName(const String&);
+    IDBObjectStore& objectStore();
     const IDBKeyPath& keyPath() const;
     bool unique() const;
     bool multiEntry() const;
 
-    RefPtr<IDBRequest> openCursor(ScriptExecutionContext&, IDBKeyRange*, const String& direction, ExceptionCodeWithMessage&);
-    RefPtr<IDBRequest> openCursor(ScriptExecutionContext&, JSC::JSValue key, const String& direction, ExceptionCodeWithMessage&);
+    void rollbackInfoForVersionChangeAbort();
 
-    RefPtr<IDBRequest> count(ScriptExecutionContext&, IDBKeyRange*, ExceptionCodeWithMessage&);
-    RefPtr<IDBRequest> count(ScriptExecutionContext&, JSC::JSValue key, ExceptionCodeWithMessage&);
+    ExceptionOr<Ref<IDBRequest>> openCursor(JSC::ExecState&, IDBKeyRange*, const String& direction);
+    ExceptionOr<Ref<IDBRequest>> openCursor(JSC::ExecState&, JSC::JSValue key, const String& direction);
 
-    RefPtr<IDBRequest> openKeyCursor(ScriptExecutionContext&, IDBKeyRange*, const String& direction, ExceptionCodeWithMessage&);
-    RefPtr<IDBRequest> openKeyCursor(ScriptExecutionContext&, JSC::JSValue key, const String& direction, ExceptionCodeWithMessage&);
+    ExceptionOr<Ref<IDBRequest>> count(JSC::ExecState&, IDBKeyRange*);
+    ExceptionOr<Ref<IDBRequest>> count(JSC::ExecState&, JSC::JSValue key);
 
-    RefPtr<IDBRequest> get(ScriptExecutionContext&, IDBKeyRange*, ExceptionCodeWithMessage&);
-    RefPtr<IDBRequest> get(ScriptExecutionContext&, JSC::JSValue key, ExceptionCodeWithMessage&);
-    RefPtr<IDBRequest> getKey(ScriptExecutionContext&, IDBKeyRange*, ExceptionCodeWithMessage&);
-    RefPtr<IDBRequest> getKey(ScriptExecutionContext&, JSC::JSValue key, ExceptionCodeWithMessage&);
+    ExceptionOr<Ref<IDBRequest>> openKeyCursor(JSC::ExecState&, IDBKeyRange*, const String& direction);
+    ExceptionOr<Ref<IDBRequest>> openKeyCursor(JSC::ExecState&, JSC::JSValue key, const String& direction);
+
+    ExceptionOr<Ref<IDBRequest>> get(JSC::ExecState&, IDBKeyRange*);
+    ExceptionOr<Ref<IDBRequest>> get(JSC::ExecState&, JSC::JSValue key);
+    ExceptionOr<Ref<IDBRequest>> getKey(JSC::ExecState&, IDBKeyRange*);
+    ExceptionOr<Ref<IDBRequest>> getKey(JSC::ExecState&, JSC::JSValue key);
+
+    ExceptionOr<Ref<IDBRequest>> getAll(JSC::ExecState&, RefPtr<IDBKeyRange>, Optional<uint32_t> count);
+    ExceptionOr<Ref<IDBRequest>> getAll(JSC::ExecState&, JSC::JSValue key, Optional<uint32_t> count);
+    ExceptionOr<Ref<IDBRequest>> getAllKeys(JSC::ExecState&, RefPtr<IDBKeyRange>, Optional<uint32_t> count);
+    ExceptionOr<Ref<IDBRequest>> getAllKeys(JSC::ExecState&, JSC::JSValue key, Optional<uint32_t> count);
 
     const IDBIndexInfo& info() const { return m_info; }
-
-    IDBObjectStore& modernObjectStore() { return m_objectStore; }
 
     void markAsDeleted();
     bool isDeleted() const { return m_deleted; }
@@ -73,16 +83,19 @@ public:
     void ref();
     void deref();
 
+    void* objectStoreAsOpaqueRoot() { return &m_objectStore; }
+
 private:
-    RefPtr<IDBRequest> doCount(ScriptExecutionContext&, const IDBKeyRangeData&, ExceptionCodeWithMessage&);
-    RefPtr<IDBRequest> doGet(ScriptExecutionContext&, const IDBKeyRangeData&, ExceptionCodeWithMessage&);
-    RefPtr<IDBRequest> doGetKey(ScriptExecutionContext&, const IDBKeyRangeData&, ExceptionCodeWithMessage&);
+    ExceptionOr<Ref<IDBRequest>> doCount(JSC::ExecState&, const IDBKeyRangeData&);
+    ExceptionOr<Ref<IDBRequest>> doGet(JSC::ExecState&, const IDBKeyRangeData&);
+    ExceptionOr<Ref<IDBRequest>> doGetKey(JSC::ExecState&, const IDBKeyRangeData&);
 
     const char* activeDOMObjectName() const final;
     bool canSuspendForDocumentSuspension() const final;
     bool hasPendingActivity() const final;
 
     IDBIndexInfo m_info;
+    IDBIndexInfo m_originalInfo;
 
     bool m_deleted { false };
 

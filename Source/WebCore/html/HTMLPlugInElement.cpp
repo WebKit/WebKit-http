@@ -67,9 +67,6 @@ HTMLPlugInElement::HTMLPlugInElement(const QualifiedName& tagName, Document& doc
     : HTMLFrameOwnerElement(tagName, document)
     , m_inBeforeLoadEventHandler(false)
     , m_swapRendererTimer(*this, &HTMLPlugInElement::swapRendererTimerFired)
-#if ENABLE(NETSCAPE_PLUGIN_API)
-    , m_NPObject(0)
-#endif
     , m_isCapturingMouseEvents(false)
     , m_displayState(Playing)
 {
@@ -79,13 +76,6 @@ HTMLPlugInElement::HTMLPlugInElement(const QualifiedName& tagName, Document& doc
 HTMLPlugInElement::~HTMLPlugInElement()
 {
     ASSERT(!m_instance); // cleared in detach()
-
-#if ENABLE(NETSCAPE_PLUGIN_API)
-    if (m_NPObject) {
-        _NPN_ReleaseObject(m_NPObject);
-        m_NPObject = 0;
-    }
-#endif
 }
 
 bool HTMLPlugInElement::canProcessDrag() const
@@ -111,13 +101,6 @@ void HTMLPlugInElement::willDetachRenderers()
             frame->eventHandler().setCapturingMouseEventsElement(nullptr);
         m_isCapturingMouseEvents = false;
     }
-
-#if ENABLE(NETSCAPE_PLUGIN_API)
-    if (m_NPObject) {
-        _NPN_ReleaseObject(m_NPObject);
-        m_NPObject = 0;
-    }
-#endif
 }
 
 void HTMLPlugInElement::resetInstance()
@@ -197,7 +180,7 @@ void HTMLPlugInElement::collectStyleForPresentationAttribute(const QualifiedName
         HTMLFrameOwnerElement::collectStyleForPresentationAttribute(name, value, style);
 }
 
-void HTMLPlugInElement::defaultEventHandler(Event* event)
+void HTMLPlugInElement::defaultEventHandler(Event& event)
 {
     // Firefox seems to use a fake event listener to dispatch events to plug-in (tested with mouse events only).
     // This is observable via different order of events - in Firefox, event listeners specified in HTML attributes fires first, then an event
@@ -211,12 +194,12 @@ void HTMLPlugInElement::defaultEventHandler(Event* event)
 
     if (is<RenderEmbeddedObject>(*renderer)) {
         if (downcast<RenderEmbeddedObject>(*renderer).isPluginUnavailable()) {
-            downcast<RenderEmbeddedObject>(*renderer).handleUnavailablePluginIndicatorEvent(event);
+            downcast<RenderEmbeddedObject>(*renderer).handleUnavailablePluginIndicatorEvent(&event);
             return;
         }
 
         if (is<RenderSnapshottedPlugIn>(*renderer) && displayState() < Restarting) {
-            downcast<RenderSnapshottedPlugIn>(*renderer).handleEvent(event);
+            downcast<RenderSnapshottedPlugIn>(*renderer).handleEvent(&event);
             HTMLFrameOwnerElement::defaultEventHandler(event);
             return;
         }
@@ -230,14 +213,14 @@ void HTMLPlugInElement::defaultEventHandler(Event* event)
         RefPtr<Widget> widget = downcast<RenderWidget>(*renderer).widget();
         if (!widget)
             return;
-        widget->handleEvent(event);
-        if (event->defaultHandled())
+        widget->handleEvent(&event);
+        if (event.defaultHandled())
             return;
     }
     HTMLFrameOwnerElement::defaultEventHandler(event);
 }
 
-bool HTMLPlugInElement::isKeyboardFocusable(KeyboardEvent*) const
+bool HTMLPlugInElement::isKeyboardFocusable(KeyboardEvent&) const
 {
     // FIXME: Why is this check needed?
     if (!document().page())
@@ -282,18 +265,6 @@ bool HTMLPlugInElement::supportsFocus() const
     return !downcast<RenderEmbeddedObject>(*renderer()).isPluginUnavailable();
 }
 
-#if ENABLE(NETSCAPE_PLUGIN_API)
-
-NPObject* HTMLPlugInElement::getNPObject()
-{
-    ASSERT(document().frame());
-    if (!m_NPObject)
-        m_NPObject = document().frame()->script().createScriptObjectForPluginElement(this);
-    return m_NPObject;
-}
-
-#endif /* ENABLE(NETSCAPE_PLUGIN_API) */
-
 RenderPtr<RenderElement> HTMLPlugInElement::createElementRenderer(RenderStyle&& style, const RenderTreePosition& insertionPosition)
 {
     if (m_pluginReplacement && m_pluginReplacement->willCreateRenderer())
@@ -329,7 +300,7 @@ void HTMLPlugInElement::didAddUserAgentShadowRoot(ShadowRoot* root)
     root->setResetStyleInheritance(true);
     if (m_pluginReplacement->installReplacement(*root)) {
         setDisplayState(DisplayingPluginReplacement);
-        setNeedsStyleRecalc(ReconstructRenderTree);
+        invalidateStyleAndRenderersForSubtree();
     }
 }
 
@@ -403,9 +374,6 @@ static ReplacementPlugin* pluginReplacementForType(const URL& url, const String&
 
 bool HTMLPlugInElement::requestObject(const String& url, const String& mimeType, const Vector<String>& paramNames, const Vector<String>& paramValues)
 {
-    if (!RuntimeEnabledFeatures::sharedFeatures().pluginReplacementEnabled())
-        return false;
-
     if (m_pluginReplacement)
         return true;
 
@@ -414,7 +382,7 @@ bool HTMLPlugInElement::requestObject(const String& url, const String& mimeType,
         completedURL = document().completeURL(url);
 
     ReplacementPlugin* replacement = pluginReplacementForType(completedURL, mimeType);
-    if (!replacement)
+    if (!replacement || !replacement->isEnabledBySettings(document().settings()))
         return false;
 
     LOG(Plugins, "%p - Found plug-in replacement for %s.", this, completedURL.string().utf8().data());

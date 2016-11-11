@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef TypeSet_h
-#define TypeSet_h
+#pragma once
 
 #include "ConcurrentJITLock.h"
 #include "RuntimeType.h"
@@ -62,7 +61,7 @@ public:
     String stringRepresentation();
     String toJSONString() const;
     Ref<Inspector::Protocol::Runtime::StructureDescription> inspectorRepresentation();
-    void setConstructorName(String name) { m_constructorName = (name.isEmpty() ? "Object" : name); }
+    void setConstructorName(String name) { m_constructorName = (name.isEmpty() ? ASCIILiteral("Object") : name); }
     String constructorName() { return m_constructorName; }
     void setProto(PassRefPtr<StructureShape> shape) { m_proto = shape; }
     void enterDictionaryMode();
@@ -108,6 +107,4 @@ private:
     StructureSet m_structureSet;
 };
 
-} //namespace JSC
-
-#endif //TypeSet_h
+} // namespace JSC

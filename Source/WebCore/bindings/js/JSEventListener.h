@@ -17,8 +17,7 @@
  *  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#ifndef JSEventListener_h
-#define JSEventListener_h
+#pragma once
 
 #include "DOMWrapperWorld.h"
 #include "EventListener.h"
@@ -111,7 +110,7 @@ inline JSC::JSObject* JSEventListener::jsFunction(ScriptExecutionContext* script
 {
     // initializeJSFunction can trigger code that deletes this event listener
     // before we're done. It should always return 0 in this case.
-    Ref<JSEventListener> protect(const_cast<JSEventListener&>(*this));
+    auto protect = makeRef(const_cast<JSEventListener&>(*this));
     JSC::Strong<JSC::JSObject> wrapper(m_isolatedWorld->vm(), m_wrapper.get());
 
     if (!m_jsFunction) {
@@ -139,5 +138,3 @@ inline JSC::JSObject* JSEventListener::jsFunction(ScriptExecutionContext* script
 }
 
 } // namespace WebCore
-
-#endif // JSEventListener_h

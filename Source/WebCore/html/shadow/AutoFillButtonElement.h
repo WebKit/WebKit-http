@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef AutoFillButtonElement_h
-#define AutoFillButtonElement_h
+#pragma once
 
 #include "HTMLDivElement.h"
 
@@ -45,11 +44,9 @@ public:
 private:
     explicit AutoFillButtonElement(Document&, AutoFillButtonOwner&);
 
-    void defaultEventHandler(Event*) override;
+    void defaultEventHandler(Event&) override;
 
     AutoFillButtonOwner& m_owner;
 };
 
 } // namespace WebCore
-
-#endif // AutoFillButtonElement_h

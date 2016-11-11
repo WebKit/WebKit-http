@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2010, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,16 +23,13 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef SpecializedThunkJIT_h
-#define SpecializedThunkJIT_h
+#pragma once
 
 #if ENABLE(JIT)
 
-#include "Executable.h"
 #include "JIT.h"
 #include "JITInlines.h"
 #include "JSInterfaceJIT.h"
-#include "JSStack.h"
 #include "LinkBuffer.h"
 
 namespace JSC {
@@ -46,7 +43,7 @@ namespace JSC {
             emitFunctionPrologue();
             emitSaveThenMaterializeTagRegisters();
             // Check that we have the expected number of arguments
-            m_failures.append(branch32(NotEqual, payloadFor(JSStack::ArgumentCount), TrustedImm32(expectedArgCount + 1)));
+            m_failures.append(branch32(NotEqual, payloadFor(CallFrameSlot::argumentCount), TrustedImm32(expectedArgCount + 1)));
         }
         
         explicit SpecializedThunkJIT(VM* vm)
@@ -216,5 +213,3 @@ namespace JSC {
 }
 
 #endif // ENABLE(JIT)
-
-#endif // SpecializedThunkJIT_h

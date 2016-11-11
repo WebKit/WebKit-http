@@ -24,8 +24,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef DataCue_h
-#define DataCue_h
+#pragma once
 
 #if ENABLE(VIDEO_TRACK)
 
@@ -33,7 +32,6 @@
 #include <runtime/ArrayBuffer.h>
 #include <runtime/JSCInlines.h>
 #include <wtf/MediaTime.h>
-#include <wtf/RefCounted.h>
 
 #if ENABLE(DATACUE_VALUE)
 #include "SerializedPlatformRepresentation.h"
@@ -114,5 +112,4 @@ const DataCue* toDataCue(const TextTrackCue*);
 
 } // namespace WebCore
 
-#endif
 #endif

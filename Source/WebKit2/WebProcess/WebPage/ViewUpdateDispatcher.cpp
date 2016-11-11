@@ -51,7 +51,7 @@ ViewUpdateDispatcher::~ViewUpdateDispatcher()
 
 void ViewUpdateDispatcher::initializeConnection(IPC::Connection* connection)
 {
-    connection->addWorkQueueMessageReceiver(Messages::ViewUpdateDispatcher::messageReceiverName(), &m_queue.get(), this);
+    connection->addWorkQueueMessageReceiver(Messages::ViewUpdateDispatcher::messageReceiverName(), m_queue.get(), this);
 }
 
 void ViewUpdateDispatcher::visibleContentRectUpdate(uint64_t pageID, const VisibleContentRectUpdateInfo& visibleContentRectUpdateInfo)
@@ -67,7 +67,7 @@ void ViewUpdateDispatcher::visibleContentRectUpdate(uint64_t pageID, const Visib
             iterator->value.visibleContentRectUpdateInfo = visibleContentRectUpdateInfo;
     }
     if (updateListWasEmpty) {
-        RunLoop::main().dispatch([protectedThis = Ref<ViewUpdateDispatcher>(*this)]() mutable {
+        RunLoop::main().dispatch([protectedThis = makeRef(*this)]() mutable {
             protectedThis->dispatchVisibleContentRectUpdate();
         });
     }

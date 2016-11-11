@@ -28,7 +28,7 @@ namespace WebCore {
 
 class JSTestCustomNamedGetter : public JSDOMWrapper<TestCustomNamedGetter> {
 public:
-    typedef JSDOMWrapper<TestCustomNamedGetter> Base;
+    using Base = JSDOMWrapper<TestCustomNamedGetter>;
     static JSTestCustomNamedGetter* create(JSC::Structure* structure, JSDOMGlobalObject* globalObject, Ref<TestCustomNamedGetter>&& impl)
     {
         JSTestCustomNamedGetter* ptr = new (NotNull, JSC::allocateCell<JSTestCustomNamedGetter>(globalObject->vm().heap)) JSTestCustomNamedGetter(structure, *globalObject, WTFMove(impl));
@@ -88,5 +88,9 @@ inline JSC::JSValue toJS(JSC::ExecState* state, JSDOMGlobalObject* globalObject,
 JSC::JSValue toJSNewlyCreated(JSC::ExecState*, JSDOMGlobalObject*, Ref<TestCustomNamedGetter>&&);
 inline JSC::JSValue toJSNewlyCreated(JSC::ExecState* state, JSDOMGlobalObject* globalObject, RefPtr<TestCustomNamedGetter>&& impl) { return impl ? toJSNewlyCreated(state, globalObject, impl.releaseNonNull()) : JSC::jsNull(); }
 
+template<> struct JSDOMWrapperConverterTraits<TestCustomNamedGetter> {
+    using WrapperClass = JSTestCustomNamedGetter;
+    using ToWrappedReturnType = TestCustomNamedGetter*;
+};
 
 } // namespace WebCore

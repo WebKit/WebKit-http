@@ -42,12 +42,14 @@ set(TestWTF_SOURCES
     ${TESTWEBKITAPI_DIR}/TestsController.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/AtomicString.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/BloomFilter.cpp
+    ${TESTWEBKITAPI_DIR}/Tests/WTF/Consume.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/CrossThreadTask.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/CString.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/CheckedArithmeticOperations.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/Condition.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/DateMath.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/Deque.cpp
+    ${TESTWEBKITAPI_DIR}/Tests/WTF/EnumTraits.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/HashCountedSet.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/HashMap.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/HashSet.cpp
@@ -68,6 +70,7 @@ set(TestWTF_SOURCES
     ${TESTWEBKITAPI_DIR}/Tests/WTF/RefPtr.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/SHA1.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/SaturatedArithmeticOperations.cpp
+    ${TESTWEBKITAPI_DIR}/Tests/WTF/Scope.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/ScopedLambda.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/StringBuilder.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/StringHasher.cpp
@@ -75,7 +78,9 @@ set(TestWTF_SOURCES
     ${TESTWEBKITAPI_DIR}/Tests/WTF/StringOperators.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/StringView.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/TemporaryChange.cpp
+    ${TESTWEBKITAPI_DIR}/Tests/WTF/Time.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/UniqueRef.cpp
+    ${TESTWEBKITAPI_DIR}/Tests/WTF/Variant.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/Vector.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/WTFString.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WTF/WeakPtr.cpp
@@ -98,6 +103,7 @@ include_directories(
     ${JAVASCRIPTCORE_DIR}/ForwardingHeaders
     ${THIRDPARTY_DIR}/gtest/include
     ${WEBCORE_DIR}/css
+    ${WEBCORE_DIR}/css/parser
     ${WEBCORE_DIR}/dom
     ${WEBCORE_DIR}/editing
     ${WEBCORE_DIR}/loader/cache
@@ -144,6 +150,7 @@ if (ENABLE_WEBKIT2)
         ${TESTWEBKITAPI_DIR}/Tests/WebKit2/NewFirstVisuallyNonEmptyLayoutFrames_Bundle.cpp
         ${TESTWEBKITAPI_DIR}/Tests/WebKit2/NewFirstVisuallyNonEmptyLayout_Bundle.cpp
         ${TESTWEBKITAPI_DIR}/Tests/WebKit2/ParentFrame_Bundle.cpp
+        ${TESTWEBKITAPI_DIR}/Tests/WebKit2/ProvisionalURLAfterWillSendRequestCallback_Bundle.cpp
         ${TESTWEBKITAPI_DIR}/Tests/WebKit2/ResponsivenessTimerDoesntFireEarly_Bundle.cpp
         ${TESTWEBKITAPI_DIR}/Tests/WebKit2/ShouldGoToBackForwardListItem_Bundle.cpp
         ${TESTWEBKITAPI_DIR}/Tests/WebKit2/TextFieldDidBeginAndEndEditing_Bundle.cpp

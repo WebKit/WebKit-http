@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef DFGGraph_h
-#define DFGGraph_h
+#pragma once
 
 #if ENABLE(DFG_JIT)
 
@@ -41,7 +40,6 @@
 #include "DFGPropertyTypeKey.h"
 #include "DFGScannable.h"
 #include "FullBytecodeLiveness.h"
-#include "JSStack.h"
 #include "MethodOfGettingAValueProfile.h"
 #include <unordered_map>
 #include <wtf/BitVector.h>
@@ -61,8 +59,11 @@ class BackwardsDominators;
 class CFG;
 class ControlEquivalenceAnalysis;
 class Dominators;
+class FlowIndexing;
 class NaturalLoops;
 class PrePostNumbering;
+
+template<typename> class FlowMap;
 
 #define DFG_NODE_DO_TO_CHILDREN(graph, node, thingToDo) do {            \
         Node* _node = (node);                                           \
@@ -183,12 +184,25 @@ public:
     }
     
     template<typename... Params>
+    Node* addNode(Params... params)
+    {
+        Node* node = new (m_allocator) Node(params...);
+        addNodeToMapByIndex(node);
+        return node;
+    }
+    template<typename... Params>
     Node* addNode(SpeculatedType type, Params... params)
     {
         Node* node = new (m_allocator) Node(params...);
         node->predict(type);
+        addNodeToMapByIndex(node);
         return node;
     }
+
+    void deleteNode(Node*);
+    unsigned maxNodeCount() const { return m_nodesByIndex.size(); }
+    Node* nodeAt(unsigned index) const { return m_nodesByIndex[index]; }
+    void packNodeIndices();
 
     void dethread();
     
@@ -403,7 +417,7 @@ public:
         return hasExitSite(node->origin.semantic, exitKind);
     }
     
-    MethodOfGettingAValueProfile methodOfGettingAValueProfileFor(Node*);
+    MethodOfGettingAValueProfile methodOfGettingAValueProfileFor(Node* currentNode, Node* operandNode);
     
     BlockIndex numBlocks() const { return m_blocks.size(); }
     BasicBlock* block(BlockIndex blockIndex) const { return m_blocks[blockIndex].get(); }
@@ -534,6 +548,7 @@ public:
     void substituteGetLocal(BasicBlock& block, unsigned startIndexInBlock, VariableAccessData* variableAccessData, Node* newGetLocal);
     
     void invalidateCFG();
+    void invalidateNodeLiveness();
     
     void clearFlagsOnAllNodes(NodeFlags);
     
@@ -644,6 +659,12 @@ public:
         doToChildren(node, [&] (Edge edge) { result |= edge == child; });
         return result;
     }
+
+    bool isWatchingHavingABadTimeWatchpoint(Node* node)
+    {
+        JSGlobalObject* globalObject = globalObjectFor(node->origin.semantic);
+        return watchpoints().isWatched(globalObject->havingABadTimeWatchpoint());
+    }
     
     Profiler::Compilation* compilation() { return m_plan.compilation.get(); }
     
@@ -709,9 +730,9 @@ public:
             
             if (inlineCallFrame) {
                 if (inlineCallFrame->isClosureCall)
-                    functor(stackOffset + JSStack::Callee);
+                    functor(stackOffset + CallFrameSlot::callee);
                 if (inlineCallFrame->isVarargs())
-                    functor(stackOffset + JSStack::ArgumentCount);
+                    functor(stackOffset + CallFrameSlot::argumentCount);
             }
             
             CodeBlock* codeBlock = baselineCodeBlockFor(inlineCallFrame);
@@ -724,7 +745,7 @@ public:
                 if (reg >= exclusionStart && reg < exclusionEnd)
                     continue;
                 
-                if (liveness.get(relativeLocal))
+                if (liveness[relativeLocal])
                     functor(reg);
             }
             
@@ -770,6 +791,8 @@ public:
     BytecodeKills& killsFor(CodeBlock*);
     BytecodeKills& killsFor(InlineCallFrame*);
     
+    static unsigned parameterSlotsForArgCount(unsigned);
+    
     unsigned frameRegisterCount();
     unsigned stackPointerOffset();
     unsigned requiredRegisterCountForExit();
@@ -814,6 +837,9 @@ public:
     // because it queries the m_hasExceptionHandlers boolean whose value
     // is only fully determined after bytcode parsing.
     bool willCatchExceptionInMachineFrame(CodeOrigin, CodeOrigin& opCatchOriginOut, HandlerInfo*& catchHandlerOut);
+    
+    bool needsScopeRegister() const { return m_hasDebuggerEnabled || m_codeBlock->usesEval(); }
+    bool needsFlushedThis() const { return m_codeBlock->usesEval(); }
 
     VM& m_vm;
     Plan& m_plan;
@@ -876,11 +902,13 @@ public:
     Bag<LoadVarargsData> m_loadVarargsData;
     Bag<StackAccessData> m_stackAccessData;
     Bag<LazyJSValue> m_lazyJSValues;
+    Bag<CallDOMGetterData> m_callDOMGetterData;
     Vector<InlineVariableData, 4> m_inlineVariableData;
     HashMap<CodeBlock*, std::unique_ptr<FullBytecodeLiveness>> m_bytecodeLiveness;
     HashMap<CodeBlock*, std::unique_ptr<BytecodeKills>> m_bytecodeKills;
     HashSet<std::pair<JSObject*, PropertyOffset>> m_safeToLoad;
     HashMap<PropertyTypeKey, InferredType::Descriptor> m_inferredTypes;
+    Vector<RefPtr<DOMJIT::Patchpoint>> m_domJITPatchpoints;
     std::unique_ptr<Dominators> m_dominators;
     std::unique_ptr<PrePostNumbering> m_prePostNumbering;
     std::unique_ptr<NaturalLoops> m_naturalLoops;
@@ -908,7 +936,11 @@ public:
     RefCountState m_refCountState;
     bool m_hasDebuggerEnabled;
     bool m_hasExceptionHandlers { false };
+    std::unique_ptr<FlowIndexing> m_indexingCache;
+    std::unique_ptr<FlowMap<AbstractValue>> m_abstractValuesCache;
+
 private:
+    void addNodeToMapByIndex(Node*);
 
     bool isStringPrototypeMethodSane(JSGlobalObject*, UniquedStringImpl*);
 
@@ -941,9 +973,11 @@ private:
         
         return bytecodeCanTruncateInteger(add->arithNodeFlags()) ? SpeculateInt32AndTruncateConstants : DontSpeculateInt32;
     }
+
+    Vector<Node*, 0, UnsafeVectorOverflow> m_nodesByIndex;
+    Vector<unsigned, 0, UnsafeVectorOverflow> m_nodeIndexFreeList;
 };
 
 } } // namespace JSC::DFG
 
-#endif
 #endif

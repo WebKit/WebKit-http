@@ -966,9 +966,8 @@ void MediaPlayerPrivateAVFoundation::trackModeChanged()
 
 void MediaPlayerPrivateAVFoundation::clearTextTracks()
 {
-    for (unsigned i = 0; i < m_textTracks.size(); ++i) {
-        RefPtr<InbandTextTrackPrivateAVF> track = m_textTracks[i];
-        player()->removeTextTrack(track);
+    for (auto& track : m_textTracks) {
+        player()->removeTextTrack(*track);
         track->disconnect();
     }
     m_textTracks.clear();
@@ -977,11 +976,12 @@ void MediaPlayerPrivateAVFoundation::clearTextTracks()
 void MediaPlayerPrivateAVFoundation::processNewAndRemovedTextTracks(const Vector<RefPtr<InbandTextTrackPrivateAVF>>& removedTextTracks)
 {
     if (removedTextTracks.size()) {
-        for (unsigned i = 0; i < m_textTracks.size(); ++i) {
-            if (!removedTextTracks.contains(m_textTracks[i]))
+        for (unsigned i = 0; i < m_textTracks.size(); ) {
+            if (!removedTextTracks.contains(m_textTracks[i])) {
+                ++i;
                 continue;
-            
-            player()->removeTextTrack(removedTextTracks[i].get());
+            }
+            player()->removeTextTrack(*m_textTracks[i]);
             m_textTracks.remove(i);
         }
     }
@@ -1001,20 +1001,23 @@ void MediaPlayerPrivateAVFoundation::processNewAndRemovedTextTracks(const Vector
             continue;
         
         track->setHasBeenReported(true);
-        player()->addTextTrack(track.get());
+        player()->addTextTrack(*track);
     }
     LOG(Media, "MediaPlayerPrivateAVFoundation::processNewAndRemovedTextTracks(%p) - found %lu text tracks", this, m_textTracks.size());
 }
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
+
 void MediaPlayerPrivateAVFoundation::playbackTargetIsWirelessChanged()
 {
     if (m_player)
         m_player->currentPlaybackTargetIsWirelessChanged();
 }
+
 #endif
 
-#if ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2)
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
+
 bool MediaPlayerPrivateAVFoundation::extractKeyURIKeyIDAndCertificateFromInitData(Uint8Array* initData, String& keyURI, String& keyID, RefPtr<Uint8Array>& certificate)
 {
     // initData should have the following layout:
@@ -1022,7 +1025,7 @@ bool MediaPlayerPrivateAVFoundation::extractKeyURIKeyIDAndCertificateFromInitDat
     if (initData->byteLength() < 4)
         return false;
 
-    RefPtr<ArrayBuffer> initDataBuffer = initData->buffer();
+    RefPtr<ArrayBuffer> initDataBuffer = initData->unsharedBuffer();
 
     // Use a DataView to read uint32 values from the buffer, as Uint32Array requires the reads be aligned on 4-byte boundaries. 
     RefPtr<JSC::DataView> initDataView = JSC::DataView::create(initDataBuffer, 0, initDataBuffer->byteLength());
@@ -1064,6 +1067,7 @@ bool MediaPlayerPrivateAVFoundation::extractKeyURIKeyIDAndCertificateFromInitDat
 
     return true;
 }
+
 #endif
 
 URL MediaPlayerPrivateAVFoundation::resolvedURL() const

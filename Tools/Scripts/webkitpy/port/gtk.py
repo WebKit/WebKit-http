@@ -53,6 +53,9 @@ class GtkPort(Port):
         super(GtkPort, self).__init__(*args, **kwargs)
         self._pulseaudio_sanitizer = PulseAudioSanitizer()
         self._wayland = self.get_option("wayland")
+        self._nativexorg = False
+        if os.environ.get("USE_NATIVE_XDISPLAY"):
+            self._nativexorg = True
 
         if self.get_option("leaks"):
             self._leakdetector = LeakDetectorValgrind(self._executive, self._filesystem, self.results_directory())
@@ -79,12 +82,9 @@ class GtkPort(Port):
     def _driver_class(self):
         if self._wayland:
             return WestonDriver
-        if os.environ.get("USE_NATIVE_XDISPLAY"):
+        if self._nativexorg:
             return XorgDriver
         return XvfbDriver
-
-    def supports_per_test_timeout(self):
-        return True
 
     def default_timeout_ms(self):
         # Starting an application under Valgrind takes a lot longer than normal
@@ -100,8 +100,8 @@ class GtkPort(Port):
             return self.default_timeout_ms()
         return super(GtkPort, self).driver_stop_timeout()
 
-    def setup_test_run(self):
-        super(GtkPort, self).setup_test_run()
+    def setup_test_run(self, device_class=None):
+        super(GtkPort, self).setup_test_run(device_class)
         self._pulseaudio_sanitizer.unload_pulseaudio_module()
 
         if self.get_option("leaks"):

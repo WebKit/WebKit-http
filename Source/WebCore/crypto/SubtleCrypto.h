@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,31 +23,26 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef SubtleCrypto_h
-#define SubtleCrypto_h
+#pragma once
 
-#include "ContextDestructionObserver.h" 
+#include "ContextDestructionObserver.h"
+#include <wtf/Ref.h>
 #include <wtf/RefCounted.h>
-#include <wtf/RefPtr.h>
 
 #if ENABLE(SUBTLE_CRYPTO)
 
 namespace WebCore {
 
-class Document;
-
 class SubtleCrypto : public ContextDestructionObserver, public RefCounted<SubtleCrypto> {
 public:
-    static Ref<SubtleCrypto> create(Document& document) { return adoptRef(*new SubtleCrypto(document)); }
+    enum class KeyFormat { Raw, Spki, Pkcs8, Jwk };
 
-    Document* document() const;
+    static Ref<SubtleCrypto> create(ScriptExecutionContext& context) { return adoptRef(*new SubtleCrypto(context)); }
 
 private:
-    SubtleCrypto(Document&);
+    SubtleCrypto(ScriptExecutionContext&);
 };
 
 }
 
 #endif
-
-#endif // SubtleCrypto_h

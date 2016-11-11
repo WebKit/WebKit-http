@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2013 Google Inc. All rights reserved.
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,9 +28,9 @@
 #include "config.h"
 #include "JSCustomElementInterface.h"
 
-#if ENABLE(CUSTOM_ELEMENTS)
-
 #include "DOMWrapperWorld.h"
+#include "HTMLUnknownElement.h"
+#include "JSDOMBinding.h"
 #include "JSDOMGlobalObject.h"
 #include "JSElement.h"
 #include "JSHTMLElement.h"
@@ -56,60 +56,111 @@ JSCustomElementInterface::~JSCustomElementInterface()
 {
 }
 
-RefPtr<Element> JSCustomElementInterface::constructElement(const AtomicString& tagName, ShouldClearException shouldClearException)
+static RefPtr<Element> constructCustomElementSynchronously(Document&, VM&, ExecState&, JSObject* constructor, const AtomicString& localName);
+
+Ref<Element> JSCustomElementInterface::constructElementWithFallback(Document& document, const AtomicString& localName)
+{
+    if (auto element = tryToConstructCustomElement(document, localName))
+        return element.releaseNonNull();
+
+    auto element = HTMLUnknownElement::create(QualifiedName(nullAtom, localName, HTMLNames::xhtmlNamespaceURI), document);
+    element->setIsCustomElementUpgradeCandidate();
+    element->setIsFailedCustomElement(*this);
+
+    return element.get();
+}
+
+RefPtr<Element> JSCustomElementInterface::tryToConstructCustomElement(Document& document, const AtomicString& localName)
 {
     if (!canInvokeCallback())
         return nullptr;
 
     Ref<JSCustomElementInterface> protectedThis(*this);
 
-    JSLockHolder lock(m_isolatedWorld->vm());
+    VM& vm = m_isolatedWorld->vm();
+    JSLockHolder lock(vm);
+    auto scope = DECLARE_CATCH_SCOPE(vm);
 
     if (!m_constructor)
         return nullptr;
 
-    ScriptExecutionContext* context = scriptExecutionContext();
-    if (!context)
+    ASSERT(&document == scriptExecutionContext());
+    auto& state = *document.execState();
+    auto element = constructCustomElementSynchronously(document, vm, state, m_constructor.get(), localName);
+    ASSERT(!!scope.exception() == !element);
+    if (!element) {
+        auto* exception = scope.exception();
+        scope.clearException();
+        reportException(&state, exception);
         return nullptr;
-    ASSERT(context->isDocument());
-    JSDOMGlobalObject* globalObject = toJSDOMGlobalObject(context, *m_isolatedWorld);
-    ExecState* state = globalObject->globalExec();
+    }
 
+    return element;
+}
+
+// https://dom.spec.whatwg.org/#concept-create-element
+// 6. 1. If the synchronous custom elements flag is set
+static RefPtr<Element> constructCustomElementSynchronously(Document& document, VM& vm, ExecState& state, JSObject* constructor, const AtomicString& localName)
+{
+    auto scope = DECLARE_THROW_SCOPE(vm);
     ConstructData constructData;
-    ConstructType constructType = m_constructor->methodTable()->getConstructData(m_constructor.get(), constructData);
+    ConstructType constructType = constructor->methodTable()->getConstructData(constructor, constructData);
     if (constructType == ConstructType::None) {
         ASSERT_NOT_REACHED();
         return nullptr;
     }
 
     MarkedArgumentBuffer args;
-    args.append(jsStringWithCache(state, tagName));
+    args.append(jsStringWithCache(&state, localName));
 
-    InspectorInstrumentationCookie cookie = JSMainThreadExecState::instrumentFunctionConstruct(context, constructType, constructData);
-    JSValue newElement = construct(state, m_constructor.get(), constructType, constructData, args);
-    InspectorInstrumentation::didCallFunction(cookie, context);
+    InspectorInstrumentationCookie cookie = JSMainThreadExecState::instrumentFunctionConstruct(&document, constructType, constructData);
+    JSValue newElement = construct(&state, constructor, constructType, constructData, args);
+    InspectorInstrumentation::didCallFunction(cookie, &document);
+    RETURN_IF_EXCEPTION(scope, nullptr);
 
-    if (shouldClearException == ShouldClearException::Clear && state->hadException())
-        state->clearException();
-
-    if (newElement.isEmpty())
+    ASSERT(!newElement.isEmpty());
+    HTMLElement* wrappedElement = JSHTMLElement::toWrapped(newElement);
+    if (!wrappedElement) {
+        throwTypeError(&state, scope, ASCIILiteral("The result of constructing a custom element must be a HTMLElement"));
         return nullptr;
+    }
 
-    Element* wrappedElement = JSElement::toWrapped(newElement);
-    if (!wrappedElement)
+    if (wrappedElement->hasAttributes()) {
+        throwNotSupportedError(state, scope, ASCIILiteral("A newly constructed custom element must not have attributes"));
         return nullptr;
-    wrappedElement->setCustomElementIsResolved();
+    }
+    if (wrappedElement->hasChildNodes()) {
+        throwNotSupportedError(state, scope, ASCIILiteral("A newly constructed custom element must not have child nodes"));
+        return nullptr;
+    }
+    if (wrappedElement->parentNode()) {
+        throwNotSupportedError(state, scope, ASCIILiteral("A newly constructed custom element must not have a parent node"));
+        return nullptr;
+    }
+    if (&wrappedElement->document() != &document) {
+        throwNotSupportedError(state, scope, ASCIILiteral("A newly constructed custom element belongs to a wrong docuemnt"));
+        return nullptr;
+    }
+    ASSERT(wrappedElement->namespaceURI() == HTMLNames::xhtmlNamespaceURI);
+    if (wrappedElement->localName() != localName) {
+        throwNotSupportedError(state, scope, ASCIILiteral("A newly constructed custom element belongs to a wrong docuemnt"));
+        return nullptr;
+    }
+
     return wrappedElement;
 }
 
 void JSCustomElementInterface::upgradeElement(Element& element)
 {
-    ASSERT(element.isUnresolvedCustomElement());
+    ASSERT(element.tagQName() == name());
+    ASSERT(element.isCustomElementUpgradeCandidate());
     if (!canInvokeCallback())
         return;
 
     Ref<JSCustomElementInterface> protectedThis(*this);
-    JSLockHolder lock(m_isolatedWorld->vm());
+    VM& vm = m_isolatedWorld->vm();
+    JSLockHolder lock(vm);
+    auto scope = DECLARE_THROW_SCOPE(vm);
 
     if (!m_constructor)
         return;
@@ -120,8 +171,7 @@ void JSCustomElementInterface::upgradeElement(Element& element)
     ASSERT(context->isDocument());
     JSDOMGlobalObject* globalObject = toJSDOMGlobalObject(context, *m_isolatedWorld);
     ExecState* state = globalObject->globalExec();
-    if (state->hadException())
-        return;
+    RETURN_IF_EXCEPTION(scope, void());
 
     ConstructData constructData;
     ConstructType constructType = m_constructor->methodTable()->getConstructData(m_constructor.get(), constructData);
@@ -129,6 +179,8 @@ void JSCustomElementInterface::upgradeElement(Element& element)
         ASSERT_NOT_REACHED();
         return;
     }
+
+    CustomElementReactionQueue::enqueuePostUpgradeReactions(element);
 
     m_constructionStack.append(&element);
 
@@ -139,54 +191,50 @@ void JSCustomElementInterface::upgradeElement(Element& element)
 
     m_constructionStack.removeLast();
 
-    if (state->hadException())
+    if (UNLIKELY(scope.exception())) {
+        element.setIsFailedCustomElement(*this);
+        reportException(state, scope.exception());
         return;
+    }
 
     Element* wrappedElement = JSElement::toWrapped(returnedElement);
     if (!wrappedElement || wrappedElement != &element) {
-        throwInvalidStateError(*state, "Custom element constructor failed to upgrade an element");
+        element.setIsFailedCustomElement(*this);
+        reportException(state, createDOMException(state, INVALID_STATE_ERR, "Custom element constructor failed to upgrade an element"));
         return;
     }
-    wrappedElement->setCustomElementIsResolved();
-    ASSERT(wrappedElement->isCustomElement());
+    element.setIsDefinedCustomElement(*this);
 }
 
-void JSCustomElementInterface::attributeChanged(Element& element, const QualifiedName& attributeName, const AtomicString& oldValue, const AtomicString& newValue)
+void JSCustomElementInterface::invokeCallback(Element& element, JSObject* callback, const WTF::Function<void(ExecState*, JSDOMGlobalObject*, MarkedArgumentBuffer&)>& addArguments)
 {
     if (!canInvokeCallback())
         return;
 
-    Ref<JSCustomElementInterface> protectedThis(*this);
-
-    JSLockHolder lock(m_isolatedWorld->vm());
-
-    ScriptExecutionContext* context = scriptExecutionContext();
+    auto* context = scriptExecutionContext();
     if (!context)
         return;
 
+    Ref<JSCustomElementInterface> protectedThis(*this);
+    JSLockHolder lock(m_isolatedWorld->vm());
+
+    ASSERT(context);
     ASSERT(context->isDocument());
     JSDOMGlobalObject* globalObject = toJSDOMGlobalObject(context, *m_isolatedWorld);
     ExecState* state = globalObject->globalExec();
 
     JSObject* jsElement = asObject(toJS(state, globalObject, element));
 
-    PropertyName attributeChanged(Identifier::fromString(state, "attributeChangedCallback"));
-    JSValue callback = jsElement->get(state, attributeChanged);
     CallData callData;
-    CallType callType = getCallData(callback, callData);
-    if (callType == CallType::None)
-        return;
+    CallType callType = callback->methodTable()->getCallData(callback, callData);
+    ASSERT(callType != CallType::None);
 
-    const AtomicString& namespaceURI = attributeName.namespaceURI();
     MarkedArgumentBuffer args;
-    args.append(jsStringWithCache(state, attributeName.localName()));
-    args.append(oldValue == nullAtom ? jsNull() : jsStringWithCache(state, oldValue));
-    args.append(newValue == nullAtom ? jsNull() : jsStringWithCache(state, newValue));
-    args.append(namespaceURI == nullAtom ? jsNull() : jsStringWithCache(state, attributeName.namespaceURI()));
+    addArguments(state, globalObject, args);
 
     InspectorInstrumentationCookie cookie = JSMainThreadExecState::instrumentFunctionCall(context, callType, callData);
 
-    NakedPtr<Exception> exception;
+    NakedPtr<JSC::Exception> exception;
     JSMainThreadExecState::call(state, callback, callType, callData, jsElement, args, exception);
 
     InspectorInstrumentation::didCallFunction(cookie, context);
@@ -194,12 +242,61 @@ void JSCustomElementInterface::attributeChanged(Element& element, const Qualifie
     if (exception)
         reportException(state, exception);
 }
-    
+
+void JSCustomElementInterface::setConnectedCallback(JSC::JSObject* callback)
+{
+    m_connectedCallback = callback;
+}
+
+void JSCustomElementInterface::invokeConnectedCallback(Element& element)
+{
+    invokeCallback(element, m_connectedCallback.get());
+}
+
+void JSCustomElementInterface::setDisconnectedCallback(JSC::JSObject* callback)
+{
+    m_disconnectedCallback = callback;
+}
+
+void JSCustomElementInterface::invokeDisconnectedCallback(Element& element)
+{
+    invokeCallback(element, m_disconnectedCallback.get());
+}
+
+void JSCustomElementInterface::setAdoptedCallback(JSC::JSObject* callback)
+{
+    m_adoptedCallback = callback;
+}
+
+void JSCustomElementInterface::invokeAdoptedCallback(Element& element, Document& oldDocument, Document& newDocument)
+{
+    invokeCallback(element, m_adoptedCallback.get(), [&](ExecState* state, JSDOMGlobalObject* globalObject, MarkedArgumentBuffer& args) {
+        args.append(toJS(state, globalObject, oldDocument));
+        args.append(toJS(state, globalObject, newDocument));
+    });
+}
+
+void JSCustomElementInterface::setAttributeChangedCallback(JSC::JSObject* callback, const Vector<String>& observedAttributes)
+{
+    m_attributeChangedCallback = callback;
+    m_observedAttributes.clear();
+    for (auto& name : observedAttributes)
+        m_observedAttributes.add(name);
+}
+
+void JSCustomElementInterface::invokeAttributeChangedCallback(Element& element, const QualifiedName& attributeName, const AtomicString& oldValue, const AtomicString& newValue)
+{
+    invokeCallback(element, m_attributeChangedCallback.get(), [&](ExecState* state, JSDOMGlobalObject*, MarkedArgumentBuffer& args) {
+        args.append(toJS<IDLDOMString>(*state, attributeName.localName()));
+        args.append(toJS<IDLNullable<IDLDOMString>>(*state, oldValue));
+        args.append(toJS<IDLNullable<IDLDOMString>>(*state, newValue));
+        args.append(toJS<IDLNullable<IDLDOMString>>(*state, attributeName.namespaceURI()));
+    });
+}
+
 void JSCustomElementInterface::didUpgradeLastElementInConstructionStack()
 {
     m_constructionStack.last() = nullptr;
 }
 
 } // namespace WebCore
-
-#endif

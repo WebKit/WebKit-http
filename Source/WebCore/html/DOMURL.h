@@ -24,47 +24,44 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef DOMURL_h
-#define DOMURL_h
+#pragma once
 
-#include "ExceptionCode.h"
+#include "ExceptionOr.h"
 #include "URL.h"
 #include "URLUtils.h"
 #include <wtf/HashSet.h>
-#include <wtf/RefCounted.h>
-#include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
 class Blob;
 class ScriptExecutionContext;
 class URLRegistrable;
+class URLSearchParams;
 
 class DOMURL : public RefCounted<DOMURL>, public URLUtils<DOMURL> {
-
 public:
-    static Ref<DOMURL> create(const String& url, const String& base, ExceptionCode&);
-    static Ref<DOMURL> create(const String& url, const DOMURL& base, ExceptionCode&);
-    static Ref<DOMURL> create(const String& url, ExceptionCode&);
+    static ExceptionOr<Ref<DOMURL>> create(const String& url, const String& base);
+    static ExceptionOr<Ref<DOMURL>> create(const String& url, const DOMURL& base);
+    static ExceptionOr<Ref<DOMURL>> create(const String& url);
+    ~DOMURL();
 
     URL href() const { return m_url; }
-    void setHref(const String& url);
-    void setHref(const String&, ExceptionCode&);
+    ExceptionOr<void> setHref(const String& url);
+    void setQuery(const String&);
 
-    static String createObjectURL(ScriptExecutionContext&, Blob*);
+    URLSearchParams& searchParams();
+
+    static String createObjectURL(ScriptExecutionContext&, Blob&);
     static void revokeObjectURL(ScriptExecutionContext&, const String&);
 
-    static String createPublicURL(ScriptExecutionContext&, URLRegistrable*);
+    static String createPublicURL(ScriptExecutionContext&, URLRegistrable&);
 
 private:
-    DOMURL(const String& url, const String& base, ExceptionCode&);
-    DOMURL(const String& url, const DOMURL& base, ExceptionCode&);
-    DOMURL(const String& url, ExceptionCode&);
+    DOMURL(URL&& completeURL, URL&& baseURL);
 
     URL m_baseURL;
     URL m_url;
+    RefPtr<URLSearchParams> m_searchParams;
 };
 
 } // namespace WebCore
-
-#endif // DOMURL_h

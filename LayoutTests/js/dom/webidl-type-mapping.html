@@ -52,7 +52,7 @@ function testNonNumericToNumericEnforceRange(attribute)
     convert(attribute, "null", "0");
     convertThrows(attribute, "undefined");
 }
-
+// 
 type = "testLong";
 verifyAttribute(type);
 convert(type, "0");
@@ -554,6 +554,88 @@ convertThrows(type, "NaN");
 testNonNumericToNumericEnforceRange(type);
 convertThrows(type, "{valueOf:function(){throw new Error('custom');}}");
 debug("");
+
+evalAndLog("converter.testUSVString = '!@#123ABCabc\\x00\\x80\\xFF\\r\\n\\t'");
+evalAndLog("converter.testString = '!@#123ABCabc\\x00\\x80\\xFF\\r\\n\\t'");
+shouldBeEqualToString("converter.testUSVString", "!@#123ABCabc\x00\x80\xFF\r\n\t");
+shouldBeEqualToString("converter.testString", "!@#123ABCabc\x00\x80\xFF\r\n\t");
+evalAndLog("converter.testUSVString = '\\u0100'");
+evalAndLog("converter.testString = '\\u0100'")
+shouldBeEqualToString("converter.testUSVString", "\u0100");
+shouldBeEqualToString("converter.testString", "\u0100");
+shouldThrow("converter.testUSVString = {toString: function() { throw Error(); }}");
+shouldThrow("converter.testString = {toString: function() { throw Error(); }}");
+shouldBeEqualToString("converter.testUSVString", "\u0100");
+shouldBeEqualToString("converter.testString", "\u0100");
+[{input: "\uD800", expected: "\uFFFD"},
+ {input: "\uDC00", expected: "\uFFFD"},
+ {input: "\uD800\u0000", expected: "\uFFFD\u0000"},
+ {input: "\uDC00\u0000", expected: "\uFFFD\u0000"},
+ {input: "\uDC00\uD800", expected: "\uFFFD\uFFFD"},
+ {input: "\uD834\uDD1E", expected: "\uD834\uDD1E"},
+].forEach(function(test) {
+    evalAndLog("converter.testUSVString = " + JSON.stringify(test.input));
+    evalAndLog("converter.testString = " + JSON.stringify(test.input));
+    shouldBeEqualToString("converter.testUSVString", test.expected);
+    shouldBeEqualToString("converter.testString", test.input);
+});
+["true", "123", "null", "undefined"].forEach(function(value) {
+    evalAndLog("converter.testUSVString = " + value);
+    evalAndLog("converter.testString = " + value);
+    shouldBeEqualToString("converter.testUSVString", value);
+    shouldBeEqualToString("converter.testString", value);
+});
+
+evalAndLog("converter.testUnion = 'hello'");
+shouldBe("converter.testUnion", "'hello'");
+shouldBe("typeof converter.testUnion", "'string'");
+evalAndLog("converter.testUnion = 1");
+shouldBe("converter.testUnion", "1");
+shouldBe("typeof converter.testUnion", "'number'");
+evalAndLog("converter.testUnion = false");
+shouldBe("converter.testUnion", "false");
+shouldBe("typeof converter.testUnion", "'boolean'");
+evalAndLog("converter.testUnion = document");
+shouldBe("converter.testUnion", "document");
+shouldBe("typeof converter.testUnion", "'object'");
+shouldBeType("converter.testUnion", "Document");
+evalAndLog("converter.testUnion = [1, 2]");
+shouldBe("converter.testUnion", "[1, 2]");
+shouldBe("typeof converter.testUnion", "'object'");
+shouldBeType("converter.testUnion", "Array");
+evalAndLog("converter.testUnion = null");
+shouldBe("converter.testUnion", "'null'");
+shouldBe("typeof converter.testUnion", "'string'");
+evalAndLog("converter.testUnion = undefined");
+shouldBe("converter.testUnion", "'undefined'");
+shouldBe("typeof converter.testUnion", "'string'");
+evalAndLog("converter.testUnion = window");
+shouldBe("typeof converter.testUnion", "'string'");
+shouldBe("converter.testUnion", "'[object Window]'");
+evalAndLog("converter.testUnion = { }");
+shouldBe("typeof converter.testUnion", "'string'");
+shouldBe("converter.testUnion", "'[object Object]'");
+shouldThrow("converter.testUnion = { toString: function() { throw Error(); } }");
+
+evalAndLog("converter.setTypeConversionsDictionary({ longValue: 1 })");
+shouldBe("converter.typeConversionsDictionaryLongValue", "1");
+evalAndLog("converter.setTypeConversionsDictionary({ stringValue: 'hello' })");
+shouldBe("converter.typeConversionsDictionaryStringValue", "'hello'");
+evalAndLog("converter.setTypeConversionsDictionary({ sequenceValue: ['hi', 'there'] })");
+shouldBe("converter.typeConversionsDictionarySequenceValue", "['hi', 'there']");
+
+evalAndLog("converter.setTypeConversionsDictionary({ unionValue: document })");
+shouldBe("converter.typeConversionsDictionaryUnionType", "'node'");
+evalAndLog("converter.setTypeConversionsDictionary({ unionValue: ['a', 'sequence'] })");
+shouldBe("converter.typeConversionsDictionaryUnionType", "'sequence'");
+evalAndLog("converter.setTypeConversionsDictionary({ unionValue: { longValue: 1 } })");
+shouldBe("converter.typeConversionsDictionaryUnionType", "'dictionary'");
+evalAndLog("converter.setTypeConversionsDictionary({ unionValue: null })");
+shouldBe("converter.typeConversionsDictionaryUnionType", "'dictionary'");
+evalAndLog("converter.setTypeConversionsDictionary({ unionValue: undefined })");
+shouldBe("converter.typeConversionsDictionaryUnionType", "'dictionary'");
+evalAndLog("converter.setTypeConversionsDictionary({ })");
+shouldBe("converter.typeConversionsDictionaryUnionType", "'dictionary'");
 
 </script>
 <script src="../../resources/js-test-post.js"></script>

@@ -48,9 +48,9 @@ static RetainPtr<NSCursor> createCustomCursor(Image* image, const IntPoint& hotS
 #endif
 {
     // FIXME: The cursor won't animate.  Not sure if that's a big deal.
-    NSImage* nsImage = image->getNSImage();
+    auto nsImage = image->snapshotNSImage();
     if (!nsImage)
-        return 0;
+        return nullptr;
     BEGIN_BLOCK_OBJC_EXCEPTIONS;
 
 #if ENABLE(MOUSE_CURSOR_SCALE)
@@ -64,10 +64,7 @@ static RetainPtr<NSCursor> createCustomCursor(Image* image, const IntPoint& hotS
         NSRect fromRect = NSMakeRect(0, 0, image->width(), image->height());
 
         [expandedImage lockFocus];
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-        [nsImage drawInRect:toRect fromRect:fromRect operation:NSCompositeSourceOver fraction:1];
-#pragma clang diagnostic pop
+        [nsImage drawInRect:toRect fromRect:fromRect operation:NSCompositingOperationSourceOver fraction:1];
         [expandedImage unlockFocus];
 
         return adoptNS([[NSCursor alloc] initWithImage:expandedImage.get() hotSpot:hotSpot]);
@@ -78,7 +75,7 @@ static RetainPtr<NSCursor> createCustomCursor(Image* image, const IntPoint& hotS
     [[[nsImage representations] objectAtIndex:0] setSize:expandedSize];
 #endif
 
-    return adoptNS([[NSCursor alloc] initWithImage:nsImage hotSpot:hotSpot]);
+    return adoptNS([[NSCursor alloc] initWithImage:nsImage.get() hotSpot:hotSpot]);
     END_BLOCK_OBJC_EXCEPTIONS;
     return nullptr;
 }

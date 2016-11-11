@@ -46,50 +46,16 @@ WebInspector.FrameTreeElement = class FrameTreeElement extends WebInspector.Reso
         frame.domTree.addEventListener(WebInspector.DOMTree.Event.ContentFlowWasRemoved, this._childContentFlowWasRemoved, this);
         frame.domTree.addEventListener(WebInspector.DOMTree.Event.RootDOMNodeInvalidated, this._rootDOMNodeInvalidated, this);
 
-        if (this._frame.isMainFrame())
-            this._downloadingPage = false;
-
         this.shouldRefreshChildren = true;
         this.folderSettingsKey = this._frame.url.hash;
 
-        this.registerFolderizeSettings("frames", WebInspector.UIString("Frames"),
-            (representedObject) => representedObject instanceof WebInspector.Frame,
-            () => this.frame.childFrames.length,
-            WebInspector.FrameTreeElement
-        );
+        this.registerFolderizeSettings("frames", WebInspector.UIString("Frames"), this._frame.childFrameCollection, WebInspector.FrameTreeElement);
+        this.registerFolderizeSettings("flows", WebInspector.UIString("Flows"), this._frame.domTree.contentFlowCollection, WebInspector.ContentFlowTreeElement);
+        this.registerFolderizeSettings("extra-scripts", WebInspector.UIString("Extra Scripts"), this._frame.extraScriptCollection, WebInspector.ScriptTreeElement);
 
-        this.registerFolderizeSettings("flows", WebInspector.UIString("Flows"),
-            (representedObject) => representedObject instanceof WebInspector.ContentFlow,
-            () => this.frame.domTree.flowsCount,
-            WebInspector.ContentFlowTreeElement
-        );
-
-        this.registerFolderizeSettings("extra-scripts", WebInspector.UIString("Extra Scripts"),
-            (representedObject) => representedObject instanceof WebInspector.Script && representedObject.dynamicallyAddedScriptElement,
-            () => this.frame.extraScripts.length,
-            WebInspector.ScriptTreeElement
-        );
-
-        function makeValidateCallback(resourceType) {
-            return function(representedObject) {
-                return representedObject instanceof WebInspector.Resource && representedObject.type === resourceType;
-            };
-        }
-
-        function makeChildCountCallback(frame, resourceType) {
-            return function() {
-                return frame.resourcesWithType(resourceType).length;
-            };
-        }
-
-        for (var key in WebInspector.Resource.Type) {
-            var value = WebInspector.Resource.Type[key];
-            var folderName = WebInspector.Resource.displayNameForType(value, true);
-            this.registerFolderizeSettings(key, folderName,
-                makeValidateCallback(value),
-                makeChildCountCallback(this.frame, value),
-                WebInspector.ResourceTreeElement
-            );
+        for (let [key, value] of Object.entries(WebInspector.Resource.Type)) {
+            let folderName = WebInspector.Resource.displayNameForType(value, true);
+            this.registerFolderizeSettings(key, folderName, this._frame.resourceCollectionForType(value), WebInspector.ResourceTreeElement);
         }
 
         this.updateParentStatus();
@@ -142,6 +108,8 @@ WebInspector.FrameTreeElement = class FrameTreeElement extends WebInspector.Reso
     {
         // Immediate superclasses are skipped, since Frames handle their own SourceMapResources.
         WebInspector.GeneralTreeElement.prototype.onattach.call(this);
+
+        this.element.addEventListener("contextmenu", this._handleContextMenuEvent.bind(this));
     }
 
     // Overrides from FolderizedTreeElement (Protected).
@@ -179,11 +147,11 @@ WebInspector.FrameTreeElement = class FrameTreeElement extends WebInspector.Reso
         this.updateParentStatus();
         this.prepareToPopulate();
 
-        for (var i = 0; i < this._frame.childFrames.length; ++i)
-            this.addChildForRepresentedObject(this._frame.childFrames[i]);
+        for (let frame of this._frame.childFrameCollection.items)
+            this.addChildForRepresentedObject(frame);
 
-        for (var i = 0; i < this._frame.resources.length; ++i)
-            this.addChildForRepresentedObject(this._frame.resources[i]);
+        for (let resource of this._frame.resourceCollection.items)
+            this.addChildForRepresentedObject(resource);
 
         var sourceMaps = this.resource && this.resource.sourceMaps;
         for (var i = 0; i < sourceMaps.length; ++i) {
@@ -192,11 +160,10 @@ WebInspector.FrameTreeElement = class FrameTreeElement extends WebInspector.Reso
                 this.addChildForRepresentedObject(sourceMap.resources[j]);
         }
 
-        var flowMap = this._frame.domTree.flowMap;
-        for (var flowKey in flowMap)
-            this.addChildForRepresentedObject(flowMap[flowKey]);
+        for (let contentFlow of this._frame.domTree.contentFlowCollection.items)
+            this.addChildForRepresentedObject(contentFlow);
 
-        for (let extraScript of this._frame.extraScripts) {
+        for (let extraScript of this._frame.extraScriptCollection.items) {
             if (extraScript.sourceURL || extraScript.sourceMappingURL)
                 this.addChildForRepresentedObject(extraScript);
         }

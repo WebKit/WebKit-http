@@ -26,6 +26,7 @@
 #ifndef NetworkResourceLoadParameters_h
 #define NetworkResourceLoadParameters_h
 
+#include "NetworkLoadParameters.h"
 #include "SandboxExtension.h"
 #include <WebCore/ResourceHandle.h>
 #include <WebCore/ResourceLoaderOptions.h>
@@ -33,35 +34,23 @@
 #include <WebCore/SessionID.h>
 
 namespace IPC {
-class ArgumentDecoder;
-class ArgumentEncoder;
+class Decoder;
+class Encoder;
 }
 
 namespace WebKit {
 
 typedef uint64_t ResourceLoadIdentifier;
 
-class NetworkResourceLoadParameters {
+class NetworkResourceLoadParameters : public NetworkLoadParameters {
 public:
-    NetworkResourceLoadParameters();
+    void encode(IPC::Encoder&) const;
+    static bool decode(IPC::Decoder&, NetworkResourceLoadParameters&);
 
-    void encode(IPC::ArgumentEncoder&) const;
-    static bool decode(IPC::ArgumentDecoder&, NetworkResourceLoadParameters&);
-
-    ResourceLoadIdentifier identifier;
-    uint64_t webPageID;
-    uint64_t webFrameID;
-    WebCore::SessionID sessionID;
-    WebCore::ResourceRequest request;
+    ResourceLoadIdentifier identifier { 0 };
     Vector<RefPtr<SandboxExtension>> requestBodySandboxExtensions; // Created automatically for the sender.
     RefPtr<SandboxExtension> resourceSandboxExtension; // Created automatically for the sender.
-    WebCore::ContentSniffingPolicy contentSniffingPolicy;
-    WebCore::StoredCredentials allowStoredCredentials;
-    WebCore::ClientCredentialPolicy clientCredentialPolicy;
-    bool shouldClearReferrerOnHTTPSToHTTPRedirect;
-    bool defersLoading;
-    bool needsCertificateInfo;
-    std::chrono::milliseconds maximumBufferingTime;
+    std::chrono::milliseconds maximumBufferingTime { 0ms };
 };
 
 } // namespace WebKit

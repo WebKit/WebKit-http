@@ -48,6 +48,16 @@ function checkInstaller {
     printNotSupportedMessageAndExit
 }
 
+# If the package $1 is available, prints it. Otherwise prints $2.
+# Useful for handling when a package is renamed on new versions of Debian/Ubuntu.
+function aptIfElse {
+    if apt-cache show $1 &>/dev/null; then
+        echo $1
+    else
+        echo $2
+    fi
+}
+
 function installDependenciesWithApt {
     # These are dependencies necessary for building WebKitEFL.
     apt-get install \
@@ -56,6 +66,7 @@ function installDependenciesWithApt {
         doxygen \
         flex \
         g++ \
+        geoclue-2.0 \
         gperf \
         gtk-doc-tools \
         libatk1.0-dev \
@@ -66,22 +77,27 @@ function installDependenciesWithApt {
         libfaad-dev \
         libffi-dev \
         libfreetype6-dev \
-        libgcrypt11-dev \
-        libgeoclue-dev \
+        $(aptIfElse libgcrypt20-dev libgcrypt11-dev) \
+        $(aptIfElse libgeoclue-2-dev libgeoclue-dev) \
         libgif-dev \
         libgl1-mesa-dev \
-        libgnutls28-dev \
         libgpg-error-dev \
         libhyphen-dev \
         libicu-dev \
         libjpeg-dev \
         libjson-glib-dev \
         liblua5.1-0-dev \
+        libluajit-5.1-dev \
         libmpg123-dev \
         liborc-0.4-dev \
+        libosmesa6-dev \
         libp11-kit-dev \
-        libpng12-dev \
+        $(aptIfElse libpng-dev libpng12-dev) \
+        libpoppler-cpp-dev \
         libpulse-dev \
+        libraw-dev \
+        librsvg2-dev \
+        libspectre-dev \
         libsqlite3-dev \
         libssl-dev \
         libtheora-dev \
@@ -110,21 +126,9 @@ function installDependenciesWithApt {
     # These are dependencies necessary for running tests.
     apt-get install \
         apache2 \
+        $(aptIfElse libapache2-mod-php7.0 libapache2-mod-php5) \
         libruby \
         xvfb
-
-    installPHPWithApt
-}
-
-function installPHPWithApt {
-    if [ -f "/etc/os-release" ]; then
-        ubuntu_version=`grep VERSION_ID /etc/os-release`
-        if [[ $ubuntu_version == *VERSION_ID=\"16.04* ]]; then
-            apt-get install libapache2-mod-php7.0
-        else
-            apt-get install libapache2-mod-php5
-        fi
-    fi
 }
 
 checkInstaller

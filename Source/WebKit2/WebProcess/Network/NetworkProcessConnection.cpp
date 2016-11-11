@@ -42,8 +42,8 @@ using namespace WebCore;
 namespace WebKit {
 
 NetworkProcessConnection::NetworkProcessConnection(IPC::Connection::Identifier connectionIdentifier)
+    : m_connection(IPC::Connection::createClientConnection(connectionIdentifier, *this))
 {
-    m_connection = IPC::Connection::createClientConnection(connectionIdentifier, *this);
     m_connection->open();
 }
 
@@ -51,7 +51,7 @@ NetworkProcessConnection::~NetworkProcessConnection()
 {
 }
 
-void NetworkProcessConnection::didReceiveMessage(IPC::Connection& connection, IPC::MessageDecoder& decoder)
+void NetworkProcessConnection::didReceiveMessage(IPC::Connection& connection, IPC::Decoder& decoder)
 {
     if (decoder.messageReceiverName() == Messages::WebResourceLoader::messageReceiverName()) {
         if (WebResourceLoader* webResourceLoader = WebProcess::singleton().webLoaderStrategy().webResourceLoaderForIdentifier(decoder.destinationID()))
@@ -63,7 +63,7 @@ void NetworkProcessConnection::didReceiveMessage(IPC::Connection& connection, IP
     didReceiveNetworkProcessConnectionMessage(connection, decoder);
 }
 
-void NetworkProcessConnection::didReceiveSyncMessage(IPC::Connection&, IPC::MessageDecoder&, std::unique_ptr<IPC::MessageEncoder>&)
+void NetworkProcessConnection::didReceiveSyncMessage(IPC::Connection&, IPC::Decoder&, std::unique_ptr<IPC::Encoder>&)
 {
     ASSERT_NOT_REACHED();
 }
@@ -92,7 +92,7 @@ void NetworkProcessConnection::writeBlobsToTemporaryFiles(const Vector<String>& 
 
     m_writeBlobToFileCompletionHandlers.set(requestIdentifier, WTFMove(completionHandler));
 
-    WebProcess::singleton().networkConnection()->connection()->send(Messages::NetworkConnectionToWebProcess::WriteBlobsToTemporaryFiles(blobURLs, requestIdentifier), 0);
+    WebProcess::singleton().networkConnection().connection().send(Messages::NetworkConnectionToWebProcess::WriteBlobsToTemporaryFiles(blobURLs, requestIdentifier), 0);
 }
 
 void NetworkProcessConnection::didWriteBlobsToTemporaryFiles(uint64_t requestIdentifier, const Vector<String>& filenames)

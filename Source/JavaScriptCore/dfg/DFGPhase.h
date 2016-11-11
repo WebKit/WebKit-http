@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef DFGPhase_h
-#define DFGPhase_h
+#pragma once
 
 #if ENABLE(DFG_JIT)
 
@@ -77,7 +76,17 @@ private:
 template<typename PhaseType>
 bool runAndLog(PhaseType& phase)
 {
+    double before = 0;
+
+    if (UNLIKELY(Options::reportDFGPhaseTimes()))
+        before = monotonicallyIncreasingTimeMS();
+
     bool result = phase.run();
+
+    if (UNLIKELY(Options::reportDFGPhaseTimes())) {
+        double after = monotonicallyIncreasingTimeMS();
+        dataLogF("Phase %s took %.4f ms\n", phase.name(), after - before);
+    }
     if (result && logCompilationChanges(phase.graph().m_plan.mode))
         dataLogF("Phase %s changed the IR.\n", phase.name());
     return result;
@@ -93,6 +102,3 @@ bool runPhase(Graph& graph)
 } } // namespace JSC::DFG
 
 #endif // ENABLE(DFG_JIT)
-
-#endif // DFGPhase_h
-

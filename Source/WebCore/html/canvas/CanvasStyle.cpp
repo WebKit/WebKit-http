@@ -43,66 +43,58 @@
 
 namespace WebCore {
 
-enum ColorParseResult { ParsedRGBA, ParsedCurrentColor, ParsedSystemColor, ParseFailed };
-
-static ColorParseResult parseColor(RGBA32& parsedColor, const String& colorString, Document* document = nullptr)
+static bool isCurrentColorString(const String& colorString)
 {
-    if (equalLettersIgnoringASCIICase(colorString, "currentcolor"))
-        return ParsedCurrentColor;
-    if (CSSParser::parseColor(parsedColor, colorString))
-        return ParsedRGBA;
-    if (CSSParser::parseSystemColor(parsedColor, colorString, document))
-        return ParsedSystemColor;
-    return ParseFailed;
+    return equalLettersIgnoringASCIICase(colorString, "currentcolor");
 }
 
-RGBA32 currentColor(HTMLCanvasElement* canvas)
+static Color parseColor(const String& colorString, Document* document = nullptr)
+{
+    Color color = CSSParser::parseColor(colorString);
+    if (color.isValid())
+        return color;
+
+    return CSSParser::parseSystemColor(colorString, document);
+}
+
+Color currentColor(HTMLCanvasElement* canvas)
 {
     if (!canvas || !canvas->inDocument() || !canvas->inlineStyle())
         return Color::black;
-    RGBA32 rgba = Color::black;
-    CSSParser::parseColor(rgba, canvas->inlineStyle()->getPropertyValue(CSSPropertyColor));
-    return rgba;
+    Color color = CSSParser::parseColor(canvas->inlineStyle()->getPropertyValue(CSSPropertyColor));
+    if (!color.isValid())
+        return Color::black;
+    return color;
 }
 
-bool parseColorOrCurrentColor(RGBA32& parsedColor, const String& colorString, HTMLCanvasElement* canvas)
+Color parseColorOrCurrentColor(const String& colorString, HTMLCanvasElement* canvas)
 {
-    ColorParseResult parseResult = parseColor(parsedColor, colorString, canvas ? &canvas->document() : 0);
-    switch (parseResult) {
-    case ParsedRGBA:
-    case ParsedSystemColor:
-        return true;
-    case ParsedCurrentColor:
-        parsedColor = currentColor(canvas);
-        return true;
-    case ParseFailed:
-        return false;
-    default:
-        ASSERT_NOT_REACHED();
-        return false;
-    }
+    if (isCurrentColorString(colorString))
+        return currentColor(canvas);
+
+    return parseColor(colorString, canvas ? &canvas->document() : nullptr);
 }
 
-CanvasStyle::CanvasStyle(RGBA32 rgba)
-    : m_rgba(rgba)
+CanvasStyle::CanvasStyle(Color color)
+    : m_color(color)
     , m_type(RGBA)
 {
 }
 
 CanvasStyle::CanvasStyle(float grayLevel, float alpha)
-    : m_rgba(makeRGBA32FromFloats(grayLevel, grayLevel, grayLevel, alpha))
+    : m_color(Color(grayLevel, grayLevel, grayLevel, alpha))
     , m_type(RGBA)
 {
 }
 
 CanvasStyle::CanvasStyle(float r, float g, float b, float a)
-    : m_rgba(makeRGBA32FromFloats(r, g, b, a))
+    : m_color(Color(r, g, b, a))
     , m_type(RGBA)
 {
 }
 
 CanvasStyle::CanvasStyle(float c, float m, float y, float k, float a)
-    : m_cmyka(new CMYKAValues(makeRGBAFromCMYKA(c, m, y, k, a), c, m, y, k, a))
+    : m_cmyka(new CMYKAValues(Color(c, m, y, k, a), c, m, y, k, a))
     , m_type(CMYKA)
 {
 }
@@ -133,39 +125,28 @@ CanvasStyle::~CanvasStyle()
         delete m_cmyka;
 }
 
-CanvasStyle CanvasStyle::createFromString(const String& color, Document* document)
+CanvasStyle CanvasStyle::createFromString(const String& colorString, Document* document)
 {
-    RGBA32 rgba;
-    ColorParseResult parseResult = parseColor(rgba, color, document);
-    switch (parseResult) {
-    case ParsedRGBA:
-    case ParsedSystemColor:
-        return CanvasStyle(rgba);
-    case ParsedCurrentColor:
+    if (isCurrentColorString(colorString))
         return CanvasStyle(ConstructCurrentColor);
-    case ParseFailed:
-        return CanvasStyle();
-    default:
-        ASSERT_NOT_REACHED();
-        return CanvasStyle();
-    }
+
+    Color color = parseColor(colorString, document);
+    if (color.isValid())
+        return CanvasStyle(color);
+
+    return CanvasStyle();
 }
 
-CanvasStyle CanvasStyle::createFromStringWithOverrideAlpha(const String& color, float alpha)
+CanvasStyle CanvasStyle::createFromStringWithOverrideAlpha(const String& colorString, float alpha)
 {
-    RGBA32 rgba;
-    ColorParseResult parseResult = parseColor(rgba, color);
-    switch (parseResult) {
-    case ParsedRGBA:
-        return CanvasStyle(colorWithOverrideAlpha(rgba, alpha));
-    case ParsedCurrentColor:
+    if (isCurrentColorString(colorString))
         return CanvasStyle(CurrentColorWithOverrideAlpha, alpha);
-    case ParseFailed:
-        return CanvasStyle();
-    default:
-        ASSERT_NOT_REACHED();
-        return CanvasStyle();
-    }
+
+    Color color = parseColor(colorString);
+    if (color.isValid())
+        return CanvasStyle(colorWithOverrideAlpha(color.rgb(), alpha));
+
+    return CanvasStyle();
 }
 
 bool CanvasStyle::isEquivalentColor(const CanvasStyle& other) const
@@ -175,7 +156,7 @@ bool CanvasStyle::isEquivalentColor(const CanvasStyle& other) const
 
     switch (m_type) {
     case RGBA:
-        return m_rgba == other.m_rgba;
+        return m_color == other.m_color;
     case CMYKA:
         return m_cmyka->c == other.m_cmyka->c
             && m_cmyka->m == other.m_cmyka->m
@@ -200,7 +181,7 @@ bool CanvasStyle::isEquivalentRGBA(float r, float g, float b, float a) const
     if (m_type != RGBA)
         return false;
 
-    return m_rgba == makeRGBA32FromFloats(r, g, b, a);
+    return m_color == Color(r, g, b, a);
 }
 
 bool CanvasStyle::isEquivalentCMYKA(float c, float m, float y, float k, float a) const
@@ -223,7 +204,7 @@ CanvasStyle::CanvasStyle(const CanvasStyle& other)
     else if (m_type == ImagePattern)
         m_pattern->ref();
     else if (m_type == CMYKA)
-        m_cmyka = new CMYKAValues(other.m_cmyka->rgba, other.m_cmyka->c, other.m_cmyka->m, other.m_cmyka->y, other.m_cmyka->k, other.m_cmyka->a);
+        m_cmyka = new CMYKAValues(other.m_cmyka->color, other.m_cmyka->c, other.m_cmyka->m, other.m_cmyka->y, other.m_cmyka->k, other.m_cmyka->a);
 }
 
 CanvasStyle& CanvasStyle::operator=(const CanvasStyle& other)
@@ -241,7 +222,7 @@ void CanvasStyle::applyStrokeColor(GraphicsContext* context) const
         return;
     switch (m_type) {
     case RGBA:
-        context->setStrokeColor(m_rgba);
+        context->setStrokeColor(m_color);
         break;
     case CMYKA: {
         // FIXME: Do this through platform-independent GraphicsContext API.
@@ -249,7 +230,7 @@ void CanvasStyle::applyStrokeColor(GraphicsContext* context) const
 #if USE(CG)
         CGContextSetCMYKStrokeColor(context->platformContext(), m_cmyka->c, m_cmyka->m, m_cmyka->y, m_cmyka->k, m_cmyka->a);
 #else
-        context->setStrokeColor(m_cmyka->rgba);
+        context->setStrokeColor(m_cmyka->color);
 #endif
         break;
     }
@@ -273,7 +254,7 @@ void CanvasStyle::applyFillColor(GraphicsContext* context) const
         return;
     switch (m_type) {
     case RGBA:
-        context->setFillColor(m_rgba);
+        context->setFillColor(m_color);
         break;
     case CMYKA: {
         // FIXME: Do this through platform-independent GraphicsContext API.
@@ -281,7 +262,7 @@ void CanvasStyle::applyFillColor(GraphicsContext* context) const
 #if USE(CG)
         CGContextSetCMYKFillColor(context->platformContext(), m_cmyka->c, m_cmyka->m, m_cmyka->y, m_cmyka->k, m_cmyka->a);
 #else
-        context->setFillColor(m_cmyka->rgba);
+        context->setFillColor(m_cmyka->color);
 #endif
         break;
     }

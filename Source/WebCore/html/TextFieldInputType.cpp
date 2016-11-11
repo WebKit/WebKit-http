@@ -51,7 +51,7 @@
 #include "RenderTextControlSingleLine.h"
 #include "RenderTheme.h"
 #include "ShadowRoot.h"
-#include "TextBreakIterator.h"
+#include <wtf/text/TextBreakIterator.h>
 #include "TextControlInnerElements.h"
 #include "TextEvent.h"
 #include "TextIterator.h"
@@ -73,7 +73,7 @@ TextFieldInputType::~TextFieldInputType()
         m_innerSpinButton->removeSpinButtonOwner();
 }
 
-bool TextFieldInputType::isKeyboardFocusable(KeyboardEvent*) const
+bool TextFieldInputType::isKeyboardFocusable(KeyboardEvent&) const
 {
 #if PLATFORM(IOS)
     if (element().isReadOnly())
@@ -156,47 +156,47 @@ void TextFieldInputType::setValue(const String& sanitizedValue, bool valueChange
         input->setTextAsOfLastFormControlChangeEvent(sanitizedValue);
 }
 
-void TextFieldInputType::handleKeydownEvent(KeyboardEvent* event)
+void TextFieldInputType::handleKeydownEvent(KeyboardEvent& event)
 {
     if (!element().focused())
         return;
     Frame* frame = element().document().frame();
-    if (!frame || !frame->editor().doTextFieldCommandFromEvent(&element(), event))
+    if (!frame || !frame->editor().doTextFieldCommandFromEvent(&element(), &event))
         return;
-    event->setDefaultHandled();
+    event.setDefaultHandled();
 }
 
-void TextFieldInputType::handleKeydownEventForSpinButton(KeyboardEvent* event)
+void TextFieldInputType::handleKeydownEventForSpinButton(KeyboardEvent& event)
 {
     if (element().isDisabledOrReadOnly())
         return;
-    const String& key = event->keyIdentifier();
+    const String& key = event.keyIdentifier();
     if (key == "Up")
         spinButtonStepUp();
     else if (key == "Down")
         spinButtonStepDown();
     else
         return;
-    event->setDefaultHandled();
+    event.setDefaultHandled();
 }
 
-void TextFieldInputType::forwardEvent(Event* event)
+void TextFieldInputType::forwardEvent(Event& event)
 {
     if (m_innerSpinButton) {
         m_innerSpinButton->forwardEvent(event);
-        if (event->defaultHandled())
+        if (event.defaultHandled())
             return;
     }
 
-    if (event->isMouseEvent()
-        || event->type() == eventNames().blurEvent
-        || event->type() == eventNames().focusEvent)
+    if (event.isMouseEvent()
+        || event.type() == eventNames().blurEvent
+        || event.type() == eventNames().focusEvent)
     {
         element().document().updateStyleIfNeeded();
 
         auto* renderer = element().renderer();
         if (element().renderer()) {
-            if (event->type() == eventNames().blurEvent) {
+            if (event.type() == eventNames().blurEvent) {
                 if (auto* innerTextRenderer = innerTextElement()->renderer()) {
                     if (auto* innerLayer = innerTextRenderer->layer()) {
                         bool isLeftToRightDirection = downcast<RenderTextControlSingleLine>(*renderer).style().isLeftToRightDirection();
@@ -205,7 +205,7 @@ void TextFieldInputType::forwardEvent(Event* event)
                     }
                 }
                 capsLockStateMayHaveChanged();
-            } else if (event->type() == eventNames().focusEvent)
+            } else if (event.type() == eventNames().focusEvent)
                 capsLockStateMayHaveChanged();
 
             element().forwardEvent(event);
@@ -226,9 +226,9 @@ void TextFieldInputType::handleBlurEvent()
     element().endEditing();
 }
 
-bool TextFieldInputType::shouldSubmitImplicitly(Event* event)
+bool TextFieldInputType::shouldSubmitImplicitly(Event& event)
 {
-    return (event->type() == eventNames().textInputEvent && is<TextEvent>(*event) && downcast<TextEvent>(*event).data() == "\n")
+    return (event.type() == eventNames().textInputEvent && is<TextEvent>(event) && downcast<TextEvent>(event).data() == "\n")
         || InputType::shouldSubmitImplicitly(event);
 }
 
@@ -244,16 +244,12 @@ bool TextFieldInputType::needsContainer() const
 
 bool TextFieldInputType::shouldHaveSpinButton() const
 {
-    Document& document = element().document();
-    RefPtr<RenderTheme> theme = document.page() ? &document.page()->theme() : RenderTheme::defaultTheme();
-    return theme->shouldHaveSpinButton(element());
+    return RenderTheme::themeForPage(element().document().page())->shouldHaveSpinButton(element());
 }
 
 bool TextFieldInputType::shouldHaveCapsLockIndicator() const
 {
-    Document& document = element().document();
-    RefPtr<RenderTheme> theme = document.page() ? &document.page()->theme() : RenderTheme::defaultTheme();
-    return theme->shouldHaveCapsLockIndicator(element());
+    return RenderTheme::themeForPage(element().document().page())->shouldHaveCapsLockIndicator(element());
 }
 
 void TextFieldInputType::createShadowSubtree()
@@ -411,7 +407,7 @@ static String autoFillButtonTypeToAccessibilityLabel(AutoFillButtonType autoFill
     default:
     case AutoFillButtonType::None:
         ASSERT_NOT_REACHED();
-        return AtomicString();
+        return String();
     }
 }
     
@@ -449,7 +445,7 @@ String TextFieldInputType::sanitizeValue(const String& proposedValue) const
     return limitLength(proposedValue.removeCharacters(isASCIILineBreak), HTMLInputElement::maxEffectiveLength);
 }
 
-void TextFieldInputType::handleBeforeTextInsertedEvent(BeforeTextInsertedEvent* event)
+void TextFieldInputType::handleBeforeTextInsertedEvent(BeforeTextInsertedEvent& event)
 {
     // Make sure that the text to be inserted will not violate the maxLength.
 
@@ -470,7 +466,7 @@ void TextFieldInputType::handleBeforeTextInsertedEvent(BeforeTextInsertedEvent* 
         int selectionStart = element().selectionStart();
         ASSERT(selectionStart <= element().selectionEnd());
         int selectionCodeUnitCount = element().selectionEnd() - selectionStart;
-        selectionLength = selectionCodeUnitCount ? numGraphemeClusters(innerText.substring(selectionStart, selectionCodeUnitCount)) : 0;
+        selectionLength = selectionCodeUnitCount ? numGraphemeClusters(StringView(innerText).substring(selectionStart, selectionCodeUnitCount)) : 0;
     }
     ASSERT(oldLength >= selectionLength);
 
@@ -480,7 +476,7 @@ void TextFieldInputType::handleBeforeTextInsertedEvent(BeforeTextInsertedEvent* 
     unsigned appendableLength = maxLength > baseLength ? maxLength - baseLength : 0;
 
     // Truncate the inserted text to avoid violating the maxLength and other constraints.
-    String eventText = event->text();
+    String eventText = event.text();
     unsigned textLength = eventText.length();
     while (textLength > 0 && isASCIILineBreak(eventText[textLength - 1]))
         textLength--;
@@ -489,7 +485,7 @@ void TextFieldInputType::handleBeforeTextInsertedEvent(BeforeTextInsertedEvent* 
     eventText.replace('\r', ' ');
     eventText.replace('\n', ' ');
 
-    event->setText(limitLength(eventText, appendableLength));
+    event.setText(limitLength(eventText, appendableLength));
 }
 
 bool TextFieldInputType::shouldRespectListAttribute()
@@ -513,13 +509,13 @@ void TextFieldInputType::updatePlaceholderText()
         m_placeholder = TextControlPlaceholderElement::create(element().document());
         element().userAgentShadowRoot()->insertBefore(*m_placeholder, m_container ? m_container.get() : innerTextElement(), ASSERT_NO_EXCEPTION);        
     }
-    m_placeholder->setInnerText(placeholderText, ASSERT_NO_EXCEPTION);
+    m_placeholder->setInnerText(placeholderText);
 }
 
 bool TextFieldInputType::appendFormData(FormDataList& list, bool multipart) const
 {
     InputType::appendFormData(list, multipart);
-    const AtomicString& dirnameAttrValue = element().fastGetAttribute(dirnameAttr);
+    const AtomicString& dirnameAttrValue = element().attributeWithoutSynchronization(dirnameAttr);
     if (!dirnameAttrValue.isNull())
         list.appendData(dirnameAttrValue, element().directionForFormData());
     return true;
@@ -550,7 +546,7 @@ void TextFieldInputType::subtreeHasChanged()
     element().setValueFromRenderer(innerText);
     element().updatePlaceholderVisibility();
     // Recalc for :invalid change.
-    element().setNeedsStyleRecalc();
+    element().invalidateStyleForSubtree();
 
     didSetValueByUserEdit();
 }
@@ -664,8 +660,8 @@ void TextFieldInputType::createAutoFillButton(AutoFillButtonType autoFillButtonT
 
     m_autoFillButton = AutoFillButtonElement::create(element().document(), *this);
     m_autoFillButton->setPseudo(autoFillButtonTypeToAutoFillButtonPseudoClassName(autoFillButtonType));
-    m_autoFillButton->setAttribute(roleAttr, "button");
-    m_autoFillButton->setAttribute(aria_labelAttr, autoFillButtonTypeToAccessibilityLabel(autoFillButtonType));
+    m_autoFillButton->setAttributeWithoutSynchronization(roleAttr, AtomicString("button", AtomicString::ConstructFromLiteral));
+    m_autoFillButton->setAttributeWithoutSynchronization(aria_labelAttr, autoFillButtonTypeToAccessibilityLabel(autoFillButtonType));
     m_container->appendChild(*m_autoFillButton, IGNORE_EXCEPTION);
 }
 
@@ -678,11 +674,11 @@ void TextFieldInputType::updateAutoFillButton()
         if (!m_autoFillButton)
             createAutoFillButton(element().autoFillButtonType());
 
-        const AtomicString& attribute = m_autoFillButton->fastGetAttribute(pseudoAttr);
+        const AtomicString& attribute = m_autoFillButton->attributeWithoutSynchronization(pseudoAttr);
         bool shouldUpdateAutoFillButtonType = isAutoFillButtonTypeChanged(attribute, element().autoFillButtonType());
         if (shouldUpdateAutoFillButtonType) {
             m_autoFillButton->setPseudo(autoFillButtonTypeToAutoFillButtonPseudoClassName(element().autoFillButtonType()));
-            m_autoFillButton->setAttribute(aria_labelAttr, autoFillButtonTypeToAccessibilityLabel(element().autoFillButtonType()));
+            m_autoFillButton->setAttributeWithoutSynchronization(aria_labelAttr, autoFillButtonTypeToAccessibilityLabel(element().autoFillButtonType()));
         }
         m_autoFillButton->setInlineStyleProperty(CSSPropertyDisplay, CSSValueBlock, true);
         return;

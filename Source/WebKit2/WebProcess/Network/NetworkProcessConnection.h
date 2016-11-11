@@ -54,9 +54,9 @@ public:
     }
     ~NetworkProcessConnection();
     
-    IPC::Connection* connection() const { return m_connection.get(); }
+    IPC::Connection& connection() { return m_connection.get(); }
 
-    void didReceiveNetworkProcessConnectionMessage(IPC::Connection&, IPC::MessageDecoder&);
+    void didReceiveNetworkProcessConnectionMessage(IPC::Connection&, IPC::Decoder&);
 
     void writeBlobsToTemporaryFiles(const Vector<String>& blobURLs, Function<void (const Vector<String>& filePaths)>&& completionHandler);
 
@@ -64,12 +64,10 @@ private:
     NetworkProcessConnection(IPC::Connection::Identifier);
 
     // IPC::Connection::Client
-    void didReceiveMessage(IPC::Connection&, IPC::MessageDecoder&) override;
-    void didReceiveSyncMessage(IPC::Connection&, IPC::MessageDecoder&, std::unique_ptr<IPC::MessageEncoder>&) override;
+    void didReceiveMessage(IPC::Connection&, IPC::Decoder&) override;
+    void didReceiveSyncMessage(IPC::Connection&, IPC::Decoder&, std::unique_ptr<IPC::Encoder>&) override;
     void didClose(IPC::Connection&) override;
     void didReceiveInvalidMessage(IPC::Connection&, IPC::StringReference messageReceiverName, IPC::StringReference messageName) override;
-    IPC::ProcessType localProcessType() override { return IPC::ProcessType::Web; }
-    IPC::ProcessType remoteProcessType() override { return IPC::ProcessType::Network; }
 
     void didWriteBlobsToTemporaryFiles(uint64_t requestIdentifier, const Vector<String>& filenames);
 
@@ -79,7 +77,7 @@ private:
 #endif
 
     // The connection from the web process to the network process.
-    RefPtr<IPC::Connection> m_connection;
+    Ref<IPC::Connection> m_connection;
 
     HashMap<uint64_t, Function<void (const Vector<String>&)>> m_writeBlobToFileCompletionHandlers;
 };

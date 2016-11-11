@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,10 +23,11 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef B3Common_h
-#define B3Common_h
+#pragma once
 
 #if ENABLE(B3_JIT)
+
+#include "JSExportMacros.h"
 
 namespace JSC { namespace B3 {
 
@@ -38,7 +39,7 @@ enum B3ComplitationMode {
     AirMode
 };
 
-bool shouldDumpIR(B3ComplitationMode);
+JS_EXPORT_PRIVATE bool shouldDumpIR(B3ComplitationMode);
 bool shouldDumpIRAtEachPhase(B3ComplitationMode);
 bool shouldValidateIR();
 bool shouldValidateIRAtEachPhase();
@@ -66,6 +67,11 @@ inline bool isIdentical(int64_t left, int64_t right)
 inline bool isIdentical(double left, double right)
 {
     return isIdentical<int64_t>(left, right);
+}
+
+inline bool isIdentical(float left, float right)
+{
+    return isIdentical<int32_t>(left, right);
 }
 
 template<typename ResultType, typename InputType, typename BitsType>
@@ -122,6 +128,3 @@ static IntType chillMod(IntType numerator, IntType denominator)
 } } // namespace JSC::B3
 
 #endif // ENABLE(B3_JIT)
-
-#endif // B3Common_h
-

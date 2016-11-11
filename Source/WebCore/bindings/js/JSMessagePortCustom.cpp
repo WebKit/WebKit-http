@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008, 2009 Apple Inc. All Rights Reserved.
+ * Copyright (C) 2008-2009, 2016 Apple Inc. All Rights Reserved.
  * Copyright (C) 2011 Google Inc. All Rights Reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -54,13 +54,14 @@ void JSMessagePort::visitAdditionalChildren(SlotVisitor& visitor)
 
 JSC::JSValue JSMessagePort::postMessage(JSC::ExecState& state)
 {
-    return handlePostMessage(state, &wrapped());
+    return handlePostMessage(state, wrapped());
 }
 
-void fillMessagePortArray(JSC::ExecState& state, JSC::JSValue value, MessagePortArray& portArray, ArrayBufferArray& arrayBuffers)
+void extractTransferables(JSC::ExecState& state, JSC::JSValue value, Vector<RefPtr<MessagePort>>& portArray, Vector<RefPtr<JSC::ArrayBuffer>>& arrayBuffers)
 {
-    // Convert from the passed-in JS array-like object to a MessagePortArray.
-    // Also validates the elements per sections 4.1.13 and 4.1.15 of the WebIDL spec and section 8.3.3 of the HTML5 spec.
+    VM& vm = state.vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     if (value.isUndefinedOrNull()) {
         portArray.resize(0);
         arrayBuffers.resize(0);
@@ -69,15 +70,13 @@ void fillMessagePortArray(JSC::ExecState& state, JSC::JSValue value, MessagePort
 
     // Validation of sequence types, per WebIDL spec 4.1.13.
     unsigned length = 0;
-    JSObject* object = toJSSequence(&state, value, length);
-    if (state.hadException())
-        return;
+    JSObject* object = toJSSequence(state, value, length);
+    RETURN_IF_EXCEPTION(scope, void());
 
     for (unsigned i = 0 ; i < length; ++i) {
         JSValue value = object->get(&state, i);
-        if (state.hadException())
-            return;
-        // Validation of non-null objects, per HTML5 spec 10.3.3.
+        RETURN_IF_EXCEPTION(scope, void());
+
         if (value.isUndefinedOrNull()) {
             setDOMException(&state, INVALID_STATE_ERR);
             return;
@@ -92,10 +91,10 @@ void fillMessagePortArray(JSC::ExecState& state, JSC::JSValue value, MessagePort
             }
             portArray.append(WTFMove(port));
         } else {
-            if (RefPtr<ArrayBuffer> arrayBuffer = toArrayBuffer(value))
+            if (RefPtr<ArrayBuffer> arrayBuffer = toPossiblySharedArrayBuffer(value))
                 arrayBuffers.append(WTFMove(arrayBuffer));
             else {
-                throwTypeError(&state);
+                throwTypeError(&state, scope);
                 return;
             }
         }

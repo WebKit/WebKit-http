@@ -23,12 +23,9 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef WebGLSampler_h
-#define WebGLSampler_h
+#pragma once
 
 #include "WebGLSharedObject.h"
-
-#include <wtf/RefCounted.h>
 
 namespace WebCore {
 
@@ -48,5 +45,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // WebGLSampler_h

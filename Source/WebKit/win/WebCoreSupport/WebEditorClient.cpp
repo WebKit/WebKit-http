@@ -242,6 +242,11 @@ void WebEditorClient::discardedComposition(Frame*)
     notImplemented();
 }
 
+void WebEditorClient::canceledComposition()
+{
+    notImplemented();
+}
+
 void WebEditorClient::didEndEditing()
 {
     static _bstr_t webViewDidEndEditingNotificationName(WebViewDidEndEditingNotification);
@@ -563,7 +568,9 @@ ULONG WebEditorUndoCommand::Release()
 static String undoNameForEditAction(EditAction editAction)
 {
     switch (editAction) {
-    case EditActionUnspecified: return String();
+    case EditActionUnspecified:
+    case EditActionInsertReplacement:
+        return String();
     case EditActionSetColor: return WEB_UI_STRING_KEY("Set Color", "Set Color (Undo action name)", "Undo action name");
     case EditActionSetBackgroundColor: return WEB_UI_STRING_KEY("Set Background Color", "Set Background Color (Undo action name)", "Undo action name");
     case EditActionTurnOffKerning: return WEB_UI_STRING_KEY("Turn Off Kerning", "Turn Off Kerning (Undo action name)", "Undo action name");
@@ -590,15 +597,27 @@ static String undoNameForEditAction(EditAction editAction)
     case EditActionUnderline: return WEB_UI_STRING_KEY("Underline", "Underline (Undo action name)", "Undo action name");
     case EditActionOutline: return WEB_UI_STRING_KEY("Outline", "Outline (Undo action name)", "Undo action name");
     case EditActionUnscript: return WEB_UI_STRING_KEY("Unscript", "Unscript (Undo action name)", "Undo action name");
-    case EditActionDrag: return WEB_UI_STRING_KEY("Drag", "Drag (Undo action name)", "Undo action name");
+    case EditActionDeleteByDrag: return WEB_UI_STRING_KEY("Drag", "Drag (Undo action name)", "Undo action name");
     case EditActionCut: return WEB_UI_STRING_KEY("Cut", "Cut (Undo action name)", "Undo action name");
     case EditActionPaste: return WEB_UI_STRING_KEY("Paste", "Paste (Undo action name)", "Undo action name");
     case EditActionPasteFont: return WEB_UI_STRING_KEY("Paste Font", "Paste Font (Undo action name)", "Undo action name");
     case EditActionPasteRuler: return WEB_UI_STRING_KEY("Paste Ruler", "Paste Ruler (Undo action name)", "Undo action name");
-    case EditActionTyping: return WEB_UI_STRING_KEY("Typing", "Typing (Undo action name)", "Undo action name");
+    case EditActionTypingDeleteSelection:
+    case EditActionTypingDeleteBackward:
+    case EditActionTypingDeleteForward:
+    case EditActionTypingDeleteWordBackward:
+    case EditActionTypingDeleteWordForward:
+    case EditActionTypingDeleteLineBackward:
+    case EditActionTypingDeleteLineForward:
+    case EditActionTypingInsertText:
+    case EditActionTypingInsertLineBreak:
+    case EditActionTypingInsertParagraph:
+        return WEB_UI_STRING_KEY("Typing", "Typing (Undo action name)", "Undo action name");
     case EditActionCreateLink: return WEB_UI_STRING_KEY("Create Link", "Create Link (Undo action name)", "Undo action name");
     case EditActionUnlink: return WEB_UI_STRING_KEY("Unlink", "Unlink (Undo action name)", "Undo action name");
-    case EditActionInsertList: return WEB_UI_STRING_KEY("Insert List", "Insert List (Undo action name)", "Undo action name");
+    case EditActionInsertUnorderedList:
+    case EditActionInsertOrderedList:
+        return WEB_UI_STRING_KEY("Insert List", "Insert List (Undo action name)", "Undo action name");
     case EditActionFormatBlock: return WEB_UI_STRING_KEY("Formatting", "Format Block (Undo action name)", "Undo action name");
     case EditActionIndent: return WEB_UI_STRING_KEY("Indent", "Indent (Undo action name)", "Undo action name");
     case EditActionOutdent: return WEB_UI_STRING_KEY("Outdent", "Outdent (Undo action name)", "Undo action name");

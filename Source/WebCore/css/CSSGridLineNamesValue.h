@@ -33,11 +33,10 @@
 
 #if ENABLE(CSS_GRID_LAYOUT)
 #include "CSSValueList.h"
-#include <wtf/PassRefPtr.h>
 
 namespace WebCore {
 
-class CSSGridLineNamesValue : public CSSValueList {
+class CSSGridLineNamesValue final : public CSSValueList {
 public:
     static Ref<CSSGridLineNamesValue> create()
     {

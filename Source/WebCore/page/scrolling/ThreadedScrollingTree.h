@@ -23,14 +23,12 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ThreadedScrollingTree_h
-#define ThreadedScrollingTree_h
+#pragma once
 
 #if ENABLE(ASYNC_SCROLLING)
 
 #include "ScrollingStateTree.h"
 #include "ScrollingTree.h"
-#include <wtf/PassRefPtr.h>
 #include <wtf/RefPtr.h>
 
 namespace WebCore {
@@ -45,7 +43,7 @@ class ThreadedScrollingTree : public ScrollingTree {
 public:
     virtual ~ThreadedScrollingTree();
 
-    void commitNewTreeState(std::unique_ptr<ScrollingStateTree>) override;
+    void commitTreeState(std::unique_ptr<ScrollingStateTree>) override;
 
     void handleWheelEvent(const PlatformWheelEvent&) override;
 
@@ -59,7 +57,7 @@ public:
 protected:
     explicit ThreadedScrollingTree(AsyncScrollingCoordinator*);
 
-    void scrollingTreeNodeDidScroll(ScrollingNodeID, const FloatPoint& scrollPosition, SetOrSyncScrollingLayerPosition = SyncScrollingLayerPosition) override;
+    void scrollingTreeNodeDidScroll(ScrollingNodeID, const FloatPoint& scrollPosition, const Optional<FloatPoint>& layoutViewportOrigin, SetOrSyncScrollingLayerPosition = SyncScrollingLayerPosition) override;
     void currentSnapPointIndicesDidChange(ScrollingNodeID, unsigned horizontal, unsigned vertical) override;
 #if PLATFORM(MAC)
     void handleWheelEventPhase(PlatformWheelEventPhase) override;
@@ -79,5 +77,3 @@ private:
 SPECIALIZE_TYPE_TRAITS_SCROLLING_TREE(WebCore::ThreadedScrollingTree, isThreadedScrollingTree())
 
 #endif // ENABLE(ASYNC_SCROLLING)
-
-#endif // ThreadedScrollingTree_h

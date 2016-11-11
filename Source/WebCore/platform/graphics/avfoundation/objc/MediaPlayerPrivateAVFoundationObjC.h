@@ -109,7 +109,7 @@ public:
     void didStopLoadingRequest(AVAssetResourceLoadingRequest *);
 #endif
 
-#if ENABLE(ENCRYPTED_MEDIA_V2)
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
     RetainPtr<AVAssetResourceLoadingRequest> takeRequestForKeyURI(const String&);
     void keyAdded() override;
 #endif
@@ -144,7 +144,7 @@ public:
     void playbackTargetIsWirelessDidChange();
 #endif
 
-#if ENABLE(ENCRYPTED_MEDIA_V2)
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
     void outputObscuredDueToInsufficientExternalProtectionChanged(bool);
 #endif
 
@@ -153,7 +153,7 @@ public:
     void synchronizeTextTrackState() override;
 #endif
 
-#if ENABLE(ENCRYPTED_MEDIA_V2)
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
     void removeSession(CDMSession&);
 #endif
 
@@ -176,7 +176,9 @@ private:
     void platformPause() override;
     MediaTime currentMediaTime() const override;
     void setVolume(float) override;
+#if PLATFORM(IOS)
     bool supportsMuting() const override { return true; }
+#endif
     void setMuted(bool) override;
     void setClosedCaptionsVisible(bool) override;
     void paint(GraphicsContext&, const FloatRect&) override;
@@ -273,13 +275,7 @@ private:
     bool copyVideoTextureToPlatformTexture(GraphicsContext3D*, Platform3DObject, GC3Denum target, GC3Dint level, GC3Denum internalFormat, GC3Denum format, GC3Denum type, bool premultiplyAlpha, bool flipY) override;
 #endif
 
-#if ENABLE(ENCRYPTED_MEDIA)
-    MediaPlayer::MediaKeyException addKey(const String&, const unsigned char*, unsigned, const unsigned char*, unsigned, const String&) override;
-    MediaPlayer::MediaKeyException generateKeyRequest(const String&, const unsigned char*, unsigned) override;
-    MediaPlayer::MediaKeyException cancelKeyRequest(const String&, const String&) override;
-#endif
-
-#if ENABLE(ENCRYPTED_MEDIA_V2)
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
     std::unique_ptr<CDMSession> createSession(const String& keySystem, CDMSessionClient*) override;
 #endif
 
@@ -333,6 +329,8 @@ private:
     URL resolvedURL() const override;
 
     Vector<String> preferredAudioCharacteristics() const;
+
+    void setShouldDisableSleep(bool) override;
 
     WeakPtrFactory<MediaPlayerPrivateAVFoundationObjC> m_weakPtrFactory;
 
@@ -402,7 +400,7 @@ private:
     RefPtr<MediaPlaybackTarget> m_playbackTarget { nullptr };
 #endif
 
-#if ENABLE(ENCRYPTED_MEDIA_V2)
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
     WeakPtr<CDMSessionAVFoundationObjC> m_session;
 #endif
 

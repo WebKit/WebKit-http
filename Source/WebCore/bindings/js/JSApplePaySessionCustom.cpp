@@ -40,90 +40,86 @@ namespace WebCore {
 
 JSValue JSApplePaySession::completeShippingMethodSelection(ExecState& state)
 {
+    VM& vm = state.vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     JSValue thisValue = state.thisValue();
-    JSApplePaySession* castedThis = jsDynamicCast<JSApplePaySession*>(thisValue);
+    JSApplePaySession* castedThis = jsDynamicDowncast<JSApplePaySession*>(thisValue);
     if (UNLIKELY(!castedThis))
-        return JSValue::decode(throwThisTypeError(state, "ApplePaySession", "completeShippingMethodSelection"));
+        return JSValue::decode(throwThisTypeError(state, scope, "ApplePaySession", "completeShippingMethodSelection"));
 
     ASSERT_GC_OBJECT_INHERITS(castedThis, JSApplePaySession::info());
     auto& impl = castedThis->wrapped();
     if (UNLIKELY(state.argumentCount() < 3))
-        return JSValue::decode(throwVMError(&state, createNotEnoughArgumentsError(&state)));
+        return JSValue::decode(throwVMError(&state, scope, createNotEnoughArgumentsError(&state)));
 
-    ExceptionCode ec = 0;
-    uint16_t status = convert<uint16_t>(state, state.argument(0), NormalConversion);
-    if (UNLIKELY(state.hadException()))
-        return jsUndefined();
+    uint16_t status = convert<IDLUnsignedShort>(state, state.argument(0), IntegerConversionConfiguration::Normal);
+    RETURN_IF_EXCEPTION(scope, JSValue());
 
     Dictionary newTotal = { &state, state.argument(1) };
-    if (UNLIKELY(state.hadException()))
-        return jsUndefined();
+    RETURN_IF_EXCEPTION(scope, JSValue());
 
     ArrayValue newLineItems { &state, state.argument(2) };
-    if (UNLIKELY(state.hadException()))
-        return jsUndefined();
-    impl.completeShippingMethodSelection(status, newTotal, newLineItems, ec);
-    setDOMException(&state, ec);
+    RETURN_IF_EXCEPTION(scope, JSValue());
+    propagateException(state, scope, impl.completeShippingMethodSelection(status, newTotal, newLineItems));
 
     return jsUndefined();
 }
 
 JSValue JSApplePaySession::completeShippingContactSelection(ExecState& state)
 {
+    VM& vm = state.vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     JSValue thisValue = state.thisValue();
-    JSApplePaySession* castedThis = jsDynamicCast<JSApplePaySession*>(thisValue);
+    JSApplePaySession* castedThis = jsDynamicDowncast<JSApplePaySession*>(thisValue);
     if (UNLIKELY(!castedThis))
-        return JSValue::decode(throwThisTypeError(state, "ApplePaySession", "completeShippingContactSelection"));
+        return JSValue::decode(throwThisTypeError(state, scope, "ApplePaySession", "completeShippingContactSelection"));
 
     ASSERT_GC_OBJECT_INHERITS(castedThis, JSApplePaySession::info());
     auto& impl = castedThis->wrapped();
     if (UNLIKELY(state.argumentCount() < 4))
-        return JSValue::decode(throwVMError(&state, createNotEnoughArgumentsError(&state)));
+        return JSValue::decode(throwVMError(&state, scope, createNotEnoughArgumentsError(&state)));
 
-    ExceptionCode ec = 0;
-    uint16_t status = convert<uint16_t>(state, state.argument(0), NormalConversion);
-    if (UNLIKELY(state.hadException()))
-        return jsUndefined();
+    uint16_t status = convert<IDLUnsignedShort>(state, state.argument(0), IntegerConversionConfiguration::Normal);
+    RETURN_IF_EXCEPTION(scope, JSValue());
 
     ArrayValue newShippingMethods { &state, state.argument(1) };
-    if (UNLIKELY(state.hadException()))
-        return jsUndefined();
+    RETURN_IF_EXCEPTION(scope, JSValue());
 
     Dictionary newTotal = { &state, state.argument(2) };
-    if (UNLIKELY(state.hadException()))
-        return jsUndefined();
+    RETURN_IF_EXCEPTION(scope, JSValue());
 
     ArrayValue newLineItems { &state, state.argument(3) };
-    if (UNLIKELY(state.hadException()))
-        return jsUndefined();
-    impl.completeShippingContactSelection(status, newShippingMethods, newTotal, newLineItems, ec);
-    setDOMException(&state, ec);
+    RETURN_IF_EXCEPTION(scope, JSValue());
+
+    propagateException(state, scope, impl.completeShippingContactSelection(status, newShippingMethods, newTotal, newLineItems));
 
     return jsUndefined();
 }
 
 JSValue JSApplePaySession::completePaymentMethodSelection(ExecState& state)
 {
+    VM& vm = state.vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     JSValue thisValue = state.thisValue();
-    JSApplePaySession* castedThis = jsDynamicCast<JSApplePaySession*>(thisValue);
+    JSApplePaySession* castedThis = jsDynamicDowncast<JSApplePaySession*>(thisValue);
     if (UNLIKELY(!castedThis))
-        return JSValue::decode(throwThisTypeError(state, "ApplePaySession", "completePaymentMethodSelection"));
+        return JSValue::decode(throwThisTypeError(state, scope, "ApplePaySession", "completePaymentMethodSelection"));
 
     ASSERT_GC_OBJECT_INHERITS(castedThis, JSApplePaySession::info());
     auto& impl = castedThis->wrapped();
     if (UNLIKELY(state.argumentCount() < 2))
-        return JSValue::decode(throwVMError(&state, createNotEnoughArgumentsError(&state)));
+        return JSValue::decode(throwVMError(&state, scope, createNotEnoughArgumentsError(&state)));
 
-    ExceptionCode ec = 0;
     Dictionary newTotal = { &state, state.argument(0) };
-    if (UNLIKELY(state.hadException()))
-        return jsUndefined();
+    RETURN_IF_EXCEPTION(scope, JSValue());
 
     ArrayValue newLineItems { &state, state.argument(1) };
-    if (UNLIKELY(state.hadException()))
-        return jsUndefined();
-    impl.completePaymentMethodSelection(newTotal, newLineItems, ec);
-    setDOMException(&state, ec);
+    RETURN_IF_EXCEPTION(scope, JSValue());
+
+    propagateException(state, scope, impl.completePaymentMethodSelection(newTotal, newLineItems));
 
     return jsUndefined();
 }

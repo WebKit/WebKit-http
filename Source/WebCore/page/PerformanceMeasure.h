@@ -23,13 +23,11 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef PerformanceMeasure_h
-#define PerformanceMeasure_h
+#pragma once
 
 #if ENABLE(USER_TIMING)
 
 #include "PerformanceEntry.h"
-#include <wtf/PassRefPtr.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
@@ -45,12 +43,10 @@ private:
     ~PerformanceMeasure() { }
 };
 
-}
+} // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::PerformanceMeasure)
     static bool isType(const WebCore::PerformanceEntry& entry) { return entry.isMeasure(); }
 SPECIALIZE_TYPE_TRAITS_END()
 
 #endif // ENABLE(USER_TIMING)
-
-#endif // !defined(PerformanceMeasure_h)

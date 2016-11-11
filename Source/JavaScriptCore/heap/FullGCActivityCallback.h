@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef FullGCActivityCallback_h
-#define FullGCActivityCallback_h
+#pragma once
 
 #include "GCActivityCallback.h"
 
@@ -40,13 +39,6 @@ public:
     void setDidSyncGCRecently() { m_didSyncGCRecently = true; }
 
 protected:
-#if USE(CF)
-    FullGCActivityCallback(Heap* heap, CFRunLoopRef runLoop)
-        : GCActivityCallback(heap, runLoop)
-    {
-    }
-#endif
-
     double lastGCLength() override;
     double gcTimeSlice(size_t bytes) override;
     double deathRate() override;
@@ -60,5 +52,3 @@ inline RefPtr<FullGCActivityCallback> GCActivityCallback::createFullTimer(Heap* 
 }
 
 } // namespace JSC
-
-#endif // FullGCActivityCallback_h

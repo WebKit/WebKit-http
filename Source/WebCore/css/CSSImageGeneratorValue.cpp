@@ -167,7 +167,7 @@ FloatSize CSSImageGeneratorValue::fixedSize(const RenderElement* renderer)
     return FloatSize();
 }
 
-bool CSSImageGeneratorValue::isPending()
+bool CSSImageGeneratorValue::isPending() const
 {
     switch (classType()) {
     case CrossfadeClass:
@@ -232,15 +232,15 @@ void CSSImageGeneratorValue::loadSubimages(CachedResourceLoader& cachedResourceL
     }
 }
 
-bool CSSImageGeneratorValue::subimageIsPending(CSSValue& value)
+bool CSSImageGeneratorValue::subimageIsPending(const CSSValue& value)
 {
     if (is<CSSImageValue>(value))
-        return downcast<CSSImageValue>(value).cachedOrPendingImage().isPendingImage();
+        return downcast<CSSImageValue>(value).isPending();
     
     if (is<CSSImageGeneratorValue>(value))
         return downcast<CSSImageGeneratorValue>(value).isPending();
 
-    if (is<CSSPrimitiveValue>(value) && downcast<CSSPrimitiveValue>(value).getValueID() == CSSValueNone)
+    if (is<CSSPrimitiveValue>(value) && downcast<CSSPrimitiveValue>(value).valueID() == CSSValueNone)
         return false;
 
     ASSERT_NOT_REACHED();
@@ -251,11 +251,8 @@ bool CSSImageGeneratorValue::subimageIsPending(CSSValue& value)
 CachedImage* CSSImageGeneratorValue::cachedImageForCSSValue(CSSValue& value, CachedResourceLoader& cachedResourceLoader, const ResourceLoaderOptions& options)
 {
     if (is<CSSImageValue>(value)) {
-        StyleCachedImage* styleCachedImage = downcast<CSSImageValue>(value).cachedImage(cachedResourceLoader, options);
-        if (!styleCachedImage)
-            return nullptr;
-
-        return styleCachedImage->cachedImage();
+        auto& imageValue = downcast<CSSImageValue>(value);
+        return imageValue.loadImage(cachedResourceLoader, options);
     }
     
     if (is<CSSImageGeneratorValue>(value)) {
@@ -264,7 +261,7 @@ CachedImage* CSSImageGeneratorValue::cachedImageForCSSValue(CSSValue& value, Cac
         return nullptr;
     }
 
-    if (is<CSSPrimitiveValue>(value) && downcast<CSSPrimitiveValue>(value).getValueID() == CSSValueNone)
+    if (is<CSSPrimitiveValue>(value) && downcast<CSSPrimitiveValue>(value).valueID() == CSSValueNone)
         return nullptr;
 
     ASSERT_NOT_REACHED();

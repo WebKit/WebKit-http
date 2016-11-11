@@ -29,7 +29,6 @@
 
 #if ENABLE(TOUCH_EVENTS) && !PLATFORM(IOS)
 
-#include "Arguments.h"
 #include "WebCoreArgumentCoders.h"
 
 using namespace WebCore;
@@ -57,7 +56,7 @@ WebPlatformTouchPoint::WebPlatformTouchPoint(unsigned id, TouchPointState state,
 {
 }
 
-void WebPlatformTouchPoint::encode(IPC::ArgumentEncoder& encoder) const
+void WebPlatformTouchPoint::encode(IPC::Encoder& encoder) const
 {
     encoder << m_id;
     encoder << m_state;
@@ -68,7 +67,7 @@ void WebPlatformTouchPoint::encode(IPC::ArgumentEncoder& encoder) const
     encoder << m_force;
 }
 
-bool WebPlatformTouchPoint::decode(IPC::ArgumentDecoder& decoder, WebPlatformTouchPoint& result)
+bool WebPlatformTouchPoint::decode(IPC::Decoder& decoder, WebPlatformTouchPoint& result)
 {
     if (!decoder.decode(result.m_id))
         return false;

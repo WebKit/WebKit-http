@@ -23,15 +23,14 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef B3PhiChildren_h
-#define B3PhiChildren_h
+#pragma once
 
 #if ENABLE(B3_JIT)
 
-#include "B3IndexMap.h"
 #include "B3Procedure.h"
 #include "B3UpsilonValue.h"
 #include <wtf/GraphNodeWorklist.h>
+#include <wtf/IndexMap.h>
 
 namespace JSC { namespace B3 {
 
@@ -176,6 +175,3 @@ private:
 } } // namespace JSC::B3
 
 #endif // ENABLE(B3_JIT)
-
-#endif // B3PhiChildren_h
-

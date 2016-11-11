@@ -35,24 +35,29 @@
 #include "WebProcess.h"
 #include <WebCore/ApplicationCacheHost.h>
 #include <WebCore/CertificateInfo.h>
+#include <WebCore/DiagnosticLoggingClient.h>
+#include <WebCore/DiagnosticLoggingKeys.h>
 #include <WebCore/DocumentLoader.h>
+#include <WebCore/Frame.h>
+#include <WebCore/Page.h>
 #include <WebCore/ResourceError.h>
 #include <WebCore/ResourceLoader.h>
 #include <WebCore/SubresourceLoader.h>
 
 using namespace WebCore;
 
-#define WEBRESOURCELOADER_LOG_ALWAYS(...) LOG_ALWAYS(isAlwaysOnLoggingAllowed(), __VA_ARGS__)
+#define RELEASE_LOG_IF_ALLOWED(fmt, ...) RELEASE_LOG_IF(isAlwaysOnLoggingAllowed(), Network, "%p - WebResourceLoader::" fmt, this, ##__VA_ARGS__)
 
 namespace WebKit {
 
-Ref<WebResourceLoader> WebResourceLoader::create(Ref<ResourceLoader>&& coreLoader)
+Ref<WebResourceLoader> WebResourceLoader::create(Ref<ResourceLoader>&& coreLoader, const TrackingParameters& trackingParameters)
 {
-    return adoptRef(*new WebResourceLoader(WTFMove(coreLoader)));
+    return adoptRef(*new WebResourceLoader(WTFMove(coreLoader), trackingParameters));
 }
 
-WebResourceLoader::WebResourceLoader(Ref<WebCore::ResourceLoader>&& coreLoader)
+WebResourceLoader::WebResourceLoader(Ref<WebCore::ResourceLoader>&& coreLoader, const TrackingParameters& trackingParameters)
     : m_coreLoader(WTFMove(coreLoader))
+    , m_trackingParameters(trackingParameters)
 {
 }
 
@@ -62,7 +67,7 @@ WebResourceLoader::~WebResourceLoader()
 
 IPC::Connection* WebResourceLoader::messageSenderConnection()
 {
-    return WebProcess::singleton().networkConnection()->connection();
+    return &WebProcess::singleton().networkConnection().connection();
 }
 
 uint64_t WebResourceLoader::messageSenderDestinationID()
@@ -78,13 +83,13 @@ void WebResourceLoader::detachFromCoreLoader()
 void WebResourceLoader::willSendRequest(ResourceRequest&& proposedRequest, ResourceResponse&& redirectResponse)
 {
     LOG(Network, "(WebProcess) WebResourceLoader::willSendRequest to '%s'", proposedRequest.url().string().latin1().data());
-    WEBRESOURCELOADER_LOG_ALWAYS("WebResourceLoader::willSendRequest, WebResourceLoader = %p", this);
+    RELEASE_LOG_IF_ALLOWED("willSendRequest: (pageID = %" PRIu64 ", frameID = %" PRIu64 ", resourceID = %" PRIu64 ")", m_trackingParameters.pageID, m_trackingParameters.frameID, m_trackingParameters.resourceID);
 
     RefPtr<WebResourceLoader> protectedThis(this);
 
     if (m_coreLoader->documentLoader()->applicationCacheHost()->maybeLoadFallbackForRedirect(m_coreLoader.get(), proposedRequest, redirectResponse))
         return;
-    // FIXME: Do we need to update NetworkResourceLoader clientCredentialPolicy in case loader policy is DoNotAskClientForCrossOriginCredentials?
+
     m_coreLoader->willSendRequest(WTFMove(proposedRequest), redirectResponse, [protectedThis](ResourceRequest&& request) {
         if (!protectedThis->m_coreLoader)
             return;
@@ -101,7 +106,7 @@ void WebResourceLoader::didSendData(uint64_t bytesSent, uint64_t totalBytesToBeS
 void WebResourceLoader::didReceiveResponse(const ResourceResponse& response, bool needsContinueDidReceiveResponseMessage)
 {
     LOG(Network, "(WebProcess) WebResourceLoader::didReceiveResponse for '%s'. Status %d.", m_coreLoader->url().string().latin1().data(), response.httpStatusCode());
-    WEBRESOURCELOADER_LOG_ALWAYS("WebResourceLoader::didReceiveResponse, WebResourceLoader = %p, status = %d.", this, response.httpStatusCode());
+    RELEASE_LOG_IF_ALLOWED("didReceiveResponse: (pageID = %" PRIu64 ", frameID = %" PRIu64 ", resourceID = %" PRIu64 ", status = %d)", m_trackingParameters.pageID, m_trackingParameters.frameID, m_trackingParameters.resourceID, response.httpStatusCode());
 
     Ref<WebResourceLoader> protect(*this);
 
@@ -133,7 +138,11 @@ void WebResourceLoader::didReceiveResponse(const ResourceResponse& response, boo
 void WebResourceLoader::didReceiveData(const IPC::DataReference& data, int64_t encodedDataLength)
 {
     LOG(Network, "(WebProcess) WebResourceLoader::didReceiveData of size %lu for '%s'", data.size(), m_coreLoader->url().string().latin1().data());
-    WEBRESOURCELOADER_LOG_ALWAYS("WebResourceLoader::didReceiveData, WebResourceLoader = %p, size = %lu", this, data.size());
+
+    if (!m_hasReceivedData) {
+        RELEASE_LOG_IF_ALLOWED("didReceiveData: Started receiving data (pageID = %" PRIu64 ", frameID = %" PRIu64 ", resourceID = %" PRIu64 ")", m_trackingParameters.pageID, m_trackingParameters.frameID, m_trackingParameters.resourceID);
+        m_hasReceivedData = true;
+    }
 
 #if USE(QUICK_LOOK)
     if (QuickLookHandle* quickLookHandle = m_coreLoader->documentLoader()->quickLookHandle()) {
@@ -147,7 +156,7 @@ void WebResourceLoader::didReceiveData(const IPC::DataReference& data, int64_t e
 void WebResourceLoader::didFinishResourceLoad(double finishTime)
 {
     LOG(Network, "(WebProcess) WebResourceLoader::didFinishResourceLoad for '%s'", m_coreLoader->url().string().latin1().data());
-    WEBRESOURCELOADER_LOG_ALWAYS("WebResourceLoader::didFinishResourceLoad, WebResourceLoader = %p", this);
+    RELEASE_LOG_IF_ALLOWED("didFinishResourceLoad: (pageID = %" PRIu64 ", frameID = %" PRIu64 ", resourceID = %" PRIu64 ")", m_trackingParameters.pageID, m_trackingParameters.frameID, m_trackingParameters.resourceID);
 
 #if USE(QUICK_LOOK)
     if (QuickLookHandle* quickLookHandle = m_coreLoader->documentLoader()->quickLookHandle()) {
@@ -161,7 +170,7 @@ void WebResourceLoader::didFinishResourceLoad(double finishTime)
 void WebResourceLoader::didFailResourceLoad(const ResourceError& error)
 {
     LOG(Network, "(WebProcess) WebResourceLoader::didFailResourceLoad for '%s'", m_coreLoader->url().string().latin1().data());
-    WEBRESOURCELOADER_LOG_ALWAYS("WebResourceLoader::didFailResourceLoad, WebResourceLoader = %p", this);
+    RELEASE_LOG_IF_ALLOWED("didFailResourceLoad: (pageID = %" PRIu64 ", frameID = %" PRIu64 ", resourceID = %" PRIu64 ")", m_trackingParameters.pageID, m_trackingParameters.frameID, m_trackingParameters.resourceID);
 
 #if USE(QUICK_LOOK)
     if (QuickLookHandle* quickLookHandle = m_coreLoader->documentLoader()->quickLookHandle())
@@ -176,7 +185,7 @@ void WebResourceLoader::didFailResourceLoad(const ResourceError& error)
 void WebResourceLoader::didReceiveResource(const ShareableResource::Handle& handle, double finishTime)
 {
     LOG(Network, "(WebProcess) WebResourceLoader::didReceiveResource for '%s'", m_coreLoader->url().string().latin1().data());
-    WEBRESOURCELOADER_LOG_ALWAYS("WebResourceLoader::didReceiveResource, WebResourceLoader = %p", this);
+    RELEASE_LOG_IF_ALLOWED("didReceiveResource: (pageID = %" PRIu64 ", frameID = %" PRIu64 ", resourceID = %" PRIu64 ")", m_trackingParameters.pageID, m_trackingParameters.frameID, m_trackingParameters.resourceID);
 
     RefPtr<SharedBuffer> buffer = handle.tryWrapInSharedBuffer();
 
@@ -194,6 +203,11 @@ void WebResourceLoader::didReceiveResource(const ShareableResource::Handle& hand
 
     if (!buffer) {
         LOG_ERROR("Unable to create buffer from ShareableResource sent from the network process.");
+        RELEASE_LOG_IF_ALLOWED("didReceiveResource: Unable to create SharedBuffer (pageID = %" PRIu64 ", frameID = %" PRIu64 ", resourceID = %" PRIu64 ")", m_trackingParameters.pageID, m_trackingParameters.frameID, m_trackingParameters.resourceID);
+        if (auto* frame = m_coreLoader->frame()) {
+            if (auto* page = frame->page())
+                page->diagnosticLoggingClient().logDiagnosticMessage(WebCore::DiagnosticLoggingKeys::internalErrorKey(), WebCore::DiagnosticLoggingKeys::createSharedBufferFailedKey(), WebCore::ShouldSample::No);
+        }
         m_coreLoader->didFail(internalError(m_coreLoader->request().url()));
         return;
     }

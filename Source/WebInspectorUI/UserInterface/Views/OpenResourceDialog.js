@@ -41,20 +41,19 @@ WebInspector.OpenResourceDialog = class OpenResourceDialog extends WebInspector.
 
         this._clearIconElement = fieldElement.appendChild(document.createElement("img"));
 
-        this._inputElement.addEventListener("input", this._handleInputEvent.bind(this));
         this._inputElement.addEventListener("keydown", this._handleKeydownEvent.bind(this));
         this._inputElement.addEventListener("keyup", this._handleKeyupEvent.bind(this));
         this._inputElement.addEventListener("blur", this._handleBlurEvent.bind(this));
         this._clearIconElement.addEventListener("mousedown", this._handleMousedownEvent.bind(this));
         this._clearIconElement.addEventListener("click", this._handleClickEvent.bind(this));
 
-        this._treeOutline = new WebInspector.TreeOutline(document.createElement("ol"));
+        this._treeOutline = new WebInspector.TreeOutline;
         this._treeOutline.allowsRepeatSelection = true;
         this._treeOutline.disclosureButtons = false;
         this._treeOutline.large = true;
 
         this._treeOutline.addEventListener(WebInspector.TreeOutline.Event.SelectionDidChange, this._treeSelectionDidChange, this);
-        this._treeOutline.element.addEventListener("focus", () => {this._inputElement.focus();});
+        this._treeOutline.element.addEventListener("focus", () => { this._inputElement.focus(); });
 
         this.element.appendChild(this._treeOutline.element);
 
@@ -111,6 +110,7 @@ WebInspector.OpenResourceDialog = class OpenResourceDialog extends WebInspector.
                 continue;
 
             treeElement.mainTitle = createHighlightedTitleFragment(resource.displayName, result.matchingTextRanges);
+            treeElement[WebInspector.OpenResourceDialog.ResourceMatchCookieDataSymbol] = result.cookie;
             this._treeOutline.appendChild(treeElement);
         }
 
@@ -122,6 +122,8 @@ WebInspector.OpenResourceDialog = class OpenResourceDialog extends WebInspector.
     {
         WebInspector.Frame.removeEventListener(WebInspector.Frame.Event.MainResourceDidChange, this._mainResourceDidChange, this);
         WebInspector.Frame.removeEventListener(WebInspector.Frame.Event.ResourceWasAdded, this._resourceWasAdded, this);
+        WebInspector.Target.removeEventListener(WebInspector.Target.Event.ResourceAdded, this._resourceWasAdded, this);
+        WebInspector.debuggerManager.removeEventListener(WebInspector.DebuggerManager.Event.ScriptAdded, this._scriptAdded, this);
 
         this._queryController.reset();
     }
@@ -130,21 +132,24 @@ WebInspector.OpenResourceDialog = class OpenResourceDialog extends WebInspector.
     {
         WebInspector.Frame.addEventListener(WebInspector.Frame.Event.MainResourceDidChange, this._mainResourceDidChange, this);
         WebInspector.Frame.addEventListener(WebInspector.Frame.Event.ResourceWasAdded, this._resourceWasAdded, this);
+        WebInspector.Target.addEventListener(WebInspector.Target.Event.ResourceAdded, this._resourceWasAdded, this);
+        WebInspector.debuggerManager.addEventListener(WebInspector.DebuggerManager.Event.ScriptAdded, this._scriptAdded, this);
 
         if (WebInspector.frameResourceManager.mainFrame)
             this._addResourcesForFrame(WebInspector.frameResourceManager.mainFrame);
+
+        for (let target of WebInspector.targets) {
+            if (target !== WebInspector.mainTarget)
+                this._addResourcesForTarget(target);
+        }
+
+        this._updateFilter();
 
         this._inputElement.focus();
         this._clear();
     }
 
     // Private
-
-    _handleInputEvent(event)
-    {
-        let force = this._inputElement.value !== "";
-        this.element.classList.toggle(WebInspector.OpenResourceDialog.NonEmptyClassName, force);
-    }
 
     _handleKeydownEvent(event)
     {
@@ -157,9 +162,23 @@ WebInspector.OpenResourceDialog = class OpenResourceDialog extends WebInspector.
             event.preventDefault();
         } else if (event.keyCode === WebInspector.KeyboardShortcut.Key.Enter.keyCode) {
             if (this._treeOutline.selectedTreeElement) {
-                this.dismiss(this._treeOutline.selectedTreeElement.representedObject);
+                this.dismiss(this._treeOutline.selectedTreeElement.representedObject, this._treeOutline.selectedTreeElement[WebInspector.OpenResourceDialog.ResourceMatchCookieDataSymbol]);
                 event.preventDefault();
                 return;
+            }
+
+            // ":<line>:<column>" jumps to a location for the current ContentView.
+            if (/^:\d/.test(this._inputElement.value)) {
+                let visibleContentView = WebInspector.focusedOrVisibleContentView();
+                let representedObject = visibleContentView ? visibleContentView.representedObject : null;
+                if (representedObject && representedObject instanceof WebInspector.SourceCode) {
+                    let [, lineNumber, columnNumber] = this._inputElement.value.split(":");
+                    lineNumber = lineNumber ? parseInt(lineNumber, 10) - 1 : 0;
+                    columnNumber = columnNumber ? parseInt(columnNumber, 10) - 1 : 0;
+                    this.dismiss(representedObject, {lineNumber, columnNumber});
+                    event.preventDefault();
+                    return;
+                }
             }
 
             this._inputElement.select();
@@ -211,25 +230,22 @@ WebInspector.OpenResourceDialog = class OpenResourceDialog extends WebInspector.
     _clear()
     {
         this._inputElement.value = "";
-        this.element.classList.remove(WebInspector.OpenResourceDialog.NonEmptyClassName);
         this._updateFilter();
     }
 
     _updateFilter()
     {
         this._filteredResults = [];
-        this._treeOutline.hidden = true;
         this._treeOutline.removeChildren();
 
         let filterText = this._inputElement.value.trim();
-        if (!filterText)
-            return;
+        if (filterText) {
+            this._filteredResults = this._queryController.executeQuery(filterText);
+            this._populateResourceTreeOutline();
+        }
 
-        this._filteredResults = this._queryController.executeQuery(filterText);
-
-        this._populateResourceTreeOutline();
-        if (this._treeOutline.children.length)
-            this._treeOutline.hidden = false;
+        this.element.classList.toggle("non-empty", this._inputElement.value !== "");
+        this.element.classList.toggle("has-results", this._treeOutline.children.length);
     }
 
     _treeSelectionDidChange(event)
@@ -241,7 +257,7 @@ WebInspector.OpenResourceDialog = class OpenResourceDialog extends WebInspector.
         if (!event.data.selectedByUser)
             return;
 
-        this.dismiss(treeElement.representedObject);
+        this.dismiss(treeElement.representedObject, treeElement[WebInspector.OpenResourceDialog.ResourceMatchCookieDataSymbol]);
     }
 
     _addResource(resource, suppressFilterUpdate)
@@ -263,14 +279,31 @@ WebInspector.OpenResourceDialog = class OpenResourceDialog extends WebInspector.
         let frames = [frame];
         while (frames.length) {
             let currentFrame = frames.shift();
-            let resources = [currentFrame.mainResource].concat(currentFrame.resources);
+            let resources = [currentFrame.mainResource].concat(Array.from(currentFrame.resourceCollection.items));
             for (let resource of resources)
                 this._addResource(resource, suppressFilterUpdate);
 
-            frames = frames.concat(frame.childFrames);
+            frames = frames.concat(currentFrame.childFrameCollection.toArray());
         }
+    }
 
-        this._updateFilter();
+    _addResourcesForTarget(target)
+    {
+        const suppressFilterUpdate = true;
+
+        this._addResource(target.mainResource);
+
+        for (let resource of target.resourceCollection.items)
+            this._addResource(resource, suppressFilterUpdate);
+
+        let targetData = WebInspector.debuggerManager.dataForTarget(target);
+        for (let script of targetData.scripts) {
+            if (script.resource)
+                continue;
+            if (isWebKitInternalScript(script.sourceURL) || isWebInspectorConsoleEvaluationScript(script.sourceURL))
+                continue;
+            this._addResource(script, suppressFilterUpdate);
+        }
     }
 
     _mainResourceDidChange(event)
@@ -285,6 +318,18 @@ WebInspector.OpenResourceDialog = class OpenResourceDialog extends WebInspector.
     {
         this._addResource(event.data.resource);
     }
+
+    _scriptAdded(event)
+    {
+        let script = event.data.script;
+        if (script.resource)
+            return;
+
+        if (script.target === WebInspector.mainTarget)
+            return;
+
+        this._addResource(script);
+    }
 };
 
-WebInspector.OpenResourceDialog.NonEmptyClassName = "non-empty";
+WebInspector.OpenResourceDialog.ResourceMatchCookieDataSymbol = Symbol("open-resource-dialog-resource-match-cookie-data");

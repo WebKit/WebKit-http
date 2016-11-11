@@ -36,10 +36,10 @@ function generatorResume(generator, sentValue, resumeMode)
     let value = @undefined;
 
     if (typeof state !== 'number')
-        throw new @TypeError("|this| should be a generator");
+        @throwTypeError("|this| should be a generator");
 
     if (state === @GeneratorStateExecuting)
-        throw new @TypeError("Generator is executing");
+        @throwTypeError("Generator is executing");
 
     if (state === @GeneratorStateCompleted) {
         if (resumeMode === @GeneratorResumeModeThrow)
@@ -51,7 +51,7 @@ function generatorResume(generator, sentValue, resumeMode)
     } else {
         try {
             generator.@generatorState = @GeneratorStateExecuting;
-            value = generator.@generatorNext.@call(generator.@generatorThis, generator, state, sentValue, resumeMode);
+            value = generator.@generatorNext.@call(generator.@generatorThis, generator, state, sentValue, resumeMode, generator.@generatorFrame);
             if (generator.@generatorState === @GeneratorStateExecuting) {
                 generator.@generatorState = @GeneratorStateCompleted;
                 done = true;

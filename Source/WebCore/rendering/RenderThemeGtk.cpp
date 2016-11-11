@@ -26,7 +26,6 @@
 #include "RenderThemeGtk.h"
 
 #include "CSSValueKeywords.h"
-#include "ExceptionCodePlaceholder.h"
 #include "FileList.h"
 #include "FileSystem.h"
 #include "FontDescription.h"
@@ -39,7 +38,6 @@
 #include "HTMLMediaElement.h"
 #include "LocalizedStrings.h"
 #include "MediaControlElements.h"
-#include "NamedNodeMap.h"
 #include "Page.h"
 #include "PaintInfo.h"
 #include "PlatformContextCairo.h"
@@ -56,7 +54,6 @@
 #include <gdk/gdk.h>
 #include <glib.h>
 #include <gtk/gtk.h>
-#include <wtf/NeverDestroyed.h>
 #include <wtf/glib/GRefPtr.h>
 #include <wtf/glib/GUniquePtr.h>
 #include <wtf/text/CString.h>
@@ -69,10 +66,10 @@ Ref<RenderTheme> RenderThemeGtk::create()
     return adoptRef(*new RenderThemeGtk());
 }
 
-PassRefPtr<RenderTheme> RenderTheme::themeForPage(Page*)
+Ref<RenderTheme> RenderTheme::themeForPage(Page*)
 {
     static RenderTheme& rt = RenderThemeGtk::create().leakRef();
-    return &rt;
+    return rt;
 }
 
 static double getScreenDPI()
@@ -301,11 +298,9 @@ static GRefPtr<GdkPixbuf> loadThemedIcon(GtkStyleContext* context, const char* i
 }
 #endif // !GTK_CHECK_VERSION(3, 20, 0)
 
-static bool nodeHasPseudo(Node* node, const char* pseudo)
+static bool nodeHasPseudo(Node& node, const char* pseudo)
 {
-    RefPtr<Node> attributeNode = node->attributes()->getNamedItem("pseudo");
-
-    return attributeNode ? attributeNode->nodeValue() == pseudo : false;
+    return is<Element>(node) && downcast<Element>(node).pseudo() == pseudo;
 }
 
 static bool nodeHasClass(Node* node, const char* className)
@@ -1993,7 +1988,7 @@ bool RenderThemeGtk::paintMediaPlayButton(const RenderObject& renderObject, cons
     Node* node = renderObject.node();
     if (!node)
         return true;
-    if (!nodeHasPseudo(node, "-webkit-media-controls-play-button"))
+    if (!nodeHasPseudo(*node, "-webkit-media-controls-play-button"))
         return true;
 
     return paintMediaButton(renderObject, paintInfo.context(), rect, nodeHasClass(node, "paused") ? "media-playback-start-symbolic" : "media-playback-pause-symbolic");
@@ -2040,8 +2035,8 @@ bool RenderThemeGtk::paintMediaSliderTrack(const RenderObject& o, const PaintInf
     auto& style = o.style();
     RefPtr<TimeRanges> timeRanges = mediaElement->buffered();
     for (unsigned index = 0; index < timeRanges->length(); ++index) {
-        float start = timeRanges->start(index, IGNORE_EXCEPTION);
-        float end = timeRanges->end(index, IGNORE_EXCEPTION);
+        float start = timeRanges->start(index).releaseReturnValue();
+        float end = timeRanges->end(index).releaseReturnValue();
         float startRatio = start / mediaDuration;
         float lengthRatio = (end - start) / mediaDuration;
         if (!lengthRatio)

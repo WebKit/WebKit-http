@@ -96,10 +96,15 @@ WK_EXPORT void WKPageSetMayStartMediaWhenInWindow(WKPageRef page, bool mayStartM
 typedef void (*WKPageGetBytecodeProfileFunction)(WKStringRef, WKErrorRef, void*);
 WK_EXPORT void WKPageGetBytecodeProfile(WKPageRef page, void* context, WKPageGetBytecodeProfileFunction function);
 
+typedef void (*WKPageGetSamplingProfilerOutputFunction)(WKStringRef, WKErrorRef, void*);
+WK_EXPORT void WKPageGetSamplingProfilerOutput(WKPageRef page, void* context, WKPageGetSamplingProfilerOutputFunction function);
+
 typedef void (*WKPageIsWebProcessResponsiveFunction)(bool isWebProcessResponsive, void* context);
 WK_EXPORT void WKPageIsWebProcessResponsive(WKPageRef page, void* context, WKPageIsWebProcessResponsiveFunction function);
     
 WK_EXPORT WKArrayRef WKPageCopyRelatedPages(WKPageRef page);
+
+WK_EXPORT WKFrameRef WKPageLookUpFrameFromHandle(WKPageRef page, WKFrameHandleRef handle);
 
 enum {
     kWKScrollPinningBehaviorDoNotPin,
@@ -115,15 +120,24 @@ WK_EXPORT bool WKPageGetAddsVisitedLinks(WKPageRef page);
 WK_EXPORT void WKPageSetAddsVisitedLinks(WKPageRef page, bool visitedLinks);
 
 WK_EXPORT bool WKPageIsPlayingAudio(WKPageRef page);
-WK_EXPORT void WKPageSetMuted(WKPageRef page, bool muted);
+
+enum {
+    kWKMediaNoneMuted = 0,
+    kWKMediaAudioMuted = 1 << 0,
+    kWKMediaCaptureDevicesMuted = 1 << 1,
+};
+typedef uint32_t WKMediaMutedState;
+WK_EXPORT void WKPageSetMuted(WKPageRef page, WKMediaMutedState muted);
 
 enum {
     kWKMediaIsNotPlaying = 0,
     kWKMediaIsPlayingAudio = 1 << 0,
     kWKMediaIsPlayingVideo = 1 << 1,
     kWKMediaHasActiveCaptureDevice = 1 << 2,
+    kWKMediaHasCaptureDevice = 1 << 3,
 };
 typedef uint32_t WKMediaState;
+
 
 WK_EXPORT WKMediaState WKPageGetMediaState(WKPageRef page);
 
@@ -146,6 +160,10 @@ WK_EXPORT bool WKPageGetResourceCachingDisabled(WKPageRef page);
 WK_EXPORT void WKPageSetResourceCachingDisabled(WKPageRef page, bool disabled);
 
 WK_EXPORT void WKPageRestoreFromSessionStateWithoutNavigation(WKPageRef page, WKTypeRef sessionState);
+
+WK_EXPORT void WKPageSetIgnoresViewportScaleLimits(WKPageRef page, bool ignoresViewportScaleLimits);
+
+WK_EXPORT pid_t WKPageGetProcessIdentifier(WKPageRef page);
 
 #ifdef __cplusplus
 }

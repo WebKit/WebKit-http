@@ -64,13 +64,13 @@ int PlatformSpeechSynthesisProviderEfl::convertPitchToEspeakValue(float pitch) c
     return pitch * 50;
 }
 
-String PlatformSpeechSynthesisProviderEfl::voiceName(PassRefPtr<PlatformSpeechSynthesisUtterance> utterance) const
+String PlatformSpeechSynthesisProviderEfl::voiceName(PlatformSpeechSynthesisUtterance& utterance) const
 {
     if (!m_platformSpeechSynthesizer)
         return String();
 
-    if (!utterance->lang().isEmpty()) {
-        const String& language = utterance->lang();
+    if (!utterance.lang().isEmpty()) {
+        const String& language = utterance.lang();
         const Vector<RefPtr<PlatformSpeechSynthesisVoice>>& voiceList = m_platformSpeechSynthesizer->voiceList();
         for (const auto& voice : voiceList) {
             // Espeak adds an empty character at the beginning of the language
@@ -136,15 +136,15 @@ void PlatformSpeechSynthesisProviderEfl::resume()
     notImplemented();
 }
 
-void PlatformSpeechSynthesisProviderEfl::speak(PassRefPtr<PlatformSpeechSynthesisUtterance> utterance)
+void PlatformSpeechSynthesisProviderEfl::speak(RefPtr<PlatformSpeechSynthesisUtterance>&& utterance)
 {
     if (!engineInit() || !utterance) {
         fireSpeechEvent(SpeechError);
         return;
     }
 
-    m_utterance = utterance;
-    String voice = voiceName(m_utterance);
+    m_utterance = WTFMove(utterance);
+    String voice = voiceName(*m_utterance);
     espeak_SetVoiceByName(voice.utf8().data());
     espeak_SetParameter(espeakRATE, convertRateToEspeakValue(m_utterance->rate()), 0);
     espeak_SetParameter(espeakVOLUME, convertVolumeToEspeakValue(m_utterance->volume()), 0);
@@ -177,20 +177,22 @@ void PlatformSpeechSynthesisProviderEfl::cancel()
 
 void PlatformSpeechSynthesisProviderEfl::fireSpeechEvent(SpeechEvent speechEvent)
 {
+    ASSERT(m_utterance);
+
     switch (speechEvent) {
     case SpeechStart:
-        m_platformSpeechSynthesizer->client()->didStartSpeaking(m_utterance);
+        m_platformSpeechSynthesizer->client()->didStartSpeaking(*m_utterance);
         break;
     case SpeechPause:
-        m_platformSpeechSynthesizer->client()->didPauseSpeaking(m_utterance);
+        m_platformSpeechSynthesizer->client()->didPauseSpeaking(*m_utterance);
         break;
     case SpeechResume:
-        m_platformSpeechSynthesizer->client()->didResumeSpeaking(m_utterance);
+        m_platformSpeechSynthesizer->client()->didResumeSpeaking(*m_utterance);
         break;
     case SpeechError:
         m_isEngineStarted = false;
     case SpeechCancel:
-        m_platformSpeechSynthesizer->client()->speakingErrorOccurred(m_utterance);
+        m_platformSpeechSynthesizer->client()->speakingErrorOccurred(*m_utterance);
         break;
     default:
         ASSERT_NOT_REACHED();

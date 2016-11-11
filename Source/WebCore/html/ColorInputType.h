@@ -29,8 +29,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ColorInputType_h
-#define ColorInputType_h
+#pragma once
 
 #if ENABLE(INPUT_TYPE_COLOR)
 
@@ -58,7 +57,7 @@ private:
     String sanitizeValue(const String&) const override;
     void createShadowSubtree() override;
     void setValue(const String&, bool valueChanged, TextFieldEventBehavior) override;
-    void handleDOMActivateEvent(Event*) override;
+    void handleDOMActivateEvent(Event&) override;
     void detach() override;
     bool shouldRespectListAttribute() override;
     bool typeMismatchFor(const String&) const override;
@@ -76,5 +75,3 @@ private:
 } // namespace WebCore
 
 #endif // ENABLE(INPUT_TYPE_COLOR)
-
-#endif // ColorInputType_h

@@ -25,10 +25,11 @@
 
 #include "config.h"
 #include "Logging.h"
+#include "LogInitialization.h"
 
 namespace WebKit {
 
-#if !LOG_DISABLED
+#if !LOG_DISABLED || !RELEASE_LOG_DISABLED
 
 static NSString * const defaultsDomain = @"WebKit2Logging";
 

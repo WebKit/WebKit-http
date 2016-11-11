@@ -23,12 +23,12 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef CallVariant_h
-#define CallVariant_h
+#pragma once
 
-#include "Executable.h"
+#include "FunctionExecutable.h"
 #include "JSCell.h"
 #include "JSFunction.h"
+#include "NativeExecutable.h"
 
 namespace JSC {
 
@@ -121,6 +121,20 @@ public:
             return jsDynamicCast<FunctionExecutable*>(executable);
         return nullptr;
     }
+
+    NativeExecutable* nativeExecutable() const
+    {
+        if (ExecutableBase* executable = this->executable())
+            return jsDynamicCast<NativeExecutable*>(executable);
+        return nullptr;
+    }
+
+    const DOMJIT::Signature* signatureFor(CodeSpecializationKind kind) const
+    {
+        if (NativeExecutable* nativeExecutable = this->nativeExecutable())
+            return nativeExecutable->signatureFor(kind);
+        return nullptr;
+    }
     
     void dump(PrintStream& out) const;
     
@@ -198,6 +212,3 @@ template<typename T> struct HashTraits;
 template<> struct HashTraits<JSC::CallVariant> : SimpleClassHashTraits<JSC::CallVariant> { };
 
 } // namespace WTF
-
-#endif // CallVariant_h
-

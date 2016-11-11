@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2016 Apple Inc. All rights reserved.
  * Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies)
  * Portions Copyright (c) 2010 Motorola Mobility, Inc.  All rights reserved.
  *
@@ -25,20 +25,19 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef Connection_h
-#define Connection_h
+#pragma once
 
-#include "Arguments.h"
-#include "MessageDecoder.h"
-#include "MessageEncoder.h"
+#include "Decoder.h"
+#include "Encoder.h"
+#include "HandleMessage.h"
 #include "MessageReceiver.h"
-#include "ProcessType.h"
 #include <atomic>
 #include <wtf/Condition.h>
 #include <wtf/Deque.h>
 #include <wtf/Forward.h>
 #include <wtf/HashMap.h>
 #include <wtf/Lock.h>
+#include <wtf/OptionSet.h>
 #include <wtf/WorkQueue.h>
 #include <wtf/text/CString.h>
 
@@ -54,21 +53,19 @@
 
 namespace IPC {
 
-struct WaitForMessageState;
-
-enum MessageSendFlags {
+enum class SendOption {
     // Whether this message should be dispatched when waiting for a sync reply.
     // This is the default for synchronous messages.
     DispatchMessageEvenWhenWaitingForSyncReply = 1 << 0,
 };
 
-enum SyncMessageSendFlags {
+enum class SendSyncOption {
     // Use this to inform that this sync call will suspend this process until the user responds with input.
     InformPlatformProcessWillSuspend = 1 << 0,
     UseFullySynchronousModeForTesting = 1 << 1,
 };
 
-enum WaitForMessageFlags {
+enum class WaitForOption {
     // Use this to make waitForMessage be interrupted immediately by any incoming sync messages.
     InterruptWaitingIfSyncMessageArrives = 1 << 0,
 };
@@ -87,8 +84,6 @@ public:
     public:
         virtual void didClose(Connection&) = 0;
         virtual void didReceiveInvalidMessage(Connection&, StringReference messageReceiverName, StringReference messageName) = 0;
-        virtual IPC::ProcessType localProcessType() = 0;
-        virtual IPC::ProcessType remoteProcessType() = 0;
 
     protected:
         virtual ~Client() { }
@@ -143,7 +138,7 @@ public:
     static Ref<Connection> createClientConnection(Identifier, Client&);
     ~Connection();
 
-    Client* client() const { return m_client; }
+    Client& client() const { return m_client; }
 
 #if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED <= 101000
     void setShouldCloseConnectionOnMachExceptions();
@@ -160,7 +155,7 @@ public:
     typedef void (*DidCloseOnConnectionWorkQueueCallback)(Connection*);
     void setDidCloseOnConnectionWorkQueueCallback(DidCloseOnConnectionWorkQueueCallback callback);
 
-    void addWorkQueueMessageReceiver(StringReference messageReceiverName, WorkQueue*, WorkQueueMessageReceiver*);
+    void addWorkQueueMessageReceiver(StringReference messageReceiverName, WorkQueue&, WorkQueueMessageReceiver*);
     void removeWorkQueueMessageReceiver(StringReference messageReceiverName);
 
     bool open();
@@ -169,15 +164,16 @@ public:
 
     void postConnectionDidCloseOnConnectionWorkQueue();
 
-    template<typename T> bool send(T&& message, uint64_t destinationID, unsigned messageSendFlags = 0);
-    template<typename T> bool sendSync(T&& message, typename T::Reply&& reply, uint64_t destinationID, std::chrono::milliseconds timeout = std::chrono::milliseconds::max(), unsigned syncSendFlags = 0);
-    template<typename T> bool waitForAndDispatchImmediately(uint64_t destinationID, std::chrono::milliseconds timeout, unsigned waitForMessageFlags = 0);
+    template<typename T> bool send(T&& message, uint64_t destinationID, OptionSet<SendOption> sendOptions = { });
+    template<typename T> void sendWithReply(T&& message, uint64_t destinationID, FunctionDispatcher& replyDispatcher, Function<void (Optional<typename CodingType<typename T::Reply>::Type>)>&& replyHandler);
+    template<typename T> bool sendSync(T&& message, typename T::Reply&& reply, uint64_t destinationID, Seconds timeout = Seconds::infinity(), OptionSet<SendSyncOption> sendSyncOptions = { });
+    template<typename T> bool waitForAndDispatchImmediately(uint64_t destinationID, Seconds timeout, OptionSet<WaitForOption> waitForOptions = { });
 
-    std::unique_ptr<MessageEncoder> createSyncMessageEncoder(StringReference messageReceiverName, StringReference messageName, uint64_t destinationID, uint64_t& syncRequestID);
-    bool sendMessage(std::unique_ptr<MessageEncoder>, unsigned messageSendFlags = 0, bool alreadyRecordedMessage = false);
-    std::unique_ptr<MessageDecoder> sendSyncMessage(uint64_t syncRequestID, std::unique_ptr<MessageEncoder>, std::chrono::milliseconds timeout, unsigned syncSendFlags = 0);
-    std::unique_ptr<MessageDecoder> sendSyncMessageFromSecondaryThread(uint64_t syncRequestID, std::unique_ptr<MessageEncoder>, std::chrono::milliseconds timeout);
-    bool sendSyncReply(std::unique_ptr<MessageEncoder>);
+    bool sendMessage(std::unique_ptr<Encoder>, OptionSet<SendOption> sendOptions);
+    void sendMessageWithReply(uint64_t requestID, std::unique_ptr<Encoder>, FunctionDispatcher& replyDispatcher, Function<void (std::unique_ptr<Decoder>)>&& replyHandler);
+    std::unique_ptr<Encoder> createSyncMessageEncoder(StringReference messageReceiverName, StringReference messageName, uint64_t destinationID, uint64_t& syncRequestID);
+    std::unique_ptr<Decoder> sendSyncMessage(uint64_t syncRequestID, std::unique_ptr<Encoder>, Seconds timeout, OptionSet<SendSyncOption> sendSyncOptions);
+    bool sendSyncReply(std::unique_ptr<Encoder>);
 
     void wakeUpRunLoop();
 
@@ -193,7 +189,7 @@ public:
     void terminateSoon(double intervalInSeconds);
 #endif
 
-    bool isValid() const { return m_client; }
+    bool isValid() const { return m_isValid; }
 
 #if HAVE(QOS_CLASSES)
     void setShouldBoostMainThreadOnSyncMessage(bool b) { m_shouldBoostMainThreadOnSyncMessage = b; }
@@ -205,43 +201,48 @@ public:
 
     void allowFullySynchronousModeForTesting() { m_fullySynchronousModeIsAllowedForTesting = true; }
 
+    void ignoreTimeoutsForTesting() { m_ignoreTimeoutsForTesting = true; }
+
 private:
     Connection(Identifier, bool isServer, Client&);
     void platformInitialize(Identifier);
     void platformInvalidate();
     
-    std::unique_ptr<MessageDecoder> waitForMessage(StringReference messageReceiverName, StringReference messageName, uint64_t destinationID, std::chrono::milliseconds timeout, unsigned waitForMessageFlags);
+    std::unique_ptr<Decoder> waitForMessage(StringReference messageReceiverName, StringReference messageName, uint64_t destinationID, Seconds timeout, OptionSet<WaitForOption>);
     
-    std::unique_ptr<MessageDecoder> waitForSyncReply(uint64_t syncRequestID, std::chrono::milliseconds timeout, unsigned syncSendFlags);
+    std::unique_ptr<Decoder> waitForSyncReply(uint64_t syncRequestID, Seconds timeout, OptionSet<SendSyncOption>);
 
     // Called on the connection work queue.
-    void processIncomingMessage(std::unique_ptr<MessageDecoder>);
-    void processIncomingSyncReply(std::unique_ptr<MessageDecoder>);
+    void processIncomingMessage(std::unique_ptr<Decoder>);
+    void processIncomingSyncReply(std::unique_ptr<Decoder>);
 
-    void dispatchWorkQueueMessageReceiverMessage(WorkQueueMessageReceiver&, MessageDecoder&);
+    void dispatchWorkQueueMessageReceiverMessage(WorkQueueMessageReceiver&, Decoder&);
 
     bool canSendOutgoingMessages() const;
     bool platformCanSendOutgoingMessages() const;
     void sendOutgoingMessages();
-    bool sendOutgoingMessage(std::unique_ptr<MessageEncoder>);
+    bool sendOutgoingMessage(std::unique_ptr<Encoder>);
     void connectionDidClose();
     
     // Called on the listener thread.
     void dispatchOneMessage();
-    void dispatchMessage(std::unique_ptr<MessageDecoder>);
-    void dispatchMessage(MessageDecoder&);
-    void dispatchSyncMessage(MessageDecoder&);
+    void dispatchMessage(std::unique_ptr<Decoder>);
+    void dispatchMessage(Decoder&);
+    void dispatchSyncMessage(Decoder&);
     void dispatchDidReceiveInvalidMessage(const CString& messageReceiverNameString, const CString& messageNameString);
     void didFailToSendSyncMessage();
 
     // Can be called on any thread.
-    void enqueueIncomingMessage(std::unique_ptr<MessageDecoder>);
+    void enqueueIncomingMessage(std::unique_ptr<Decoder>);
 
-    void willSendSyncMessage(unsigned syncSendFlags);
-    void didReceiveSyncReply(unsigned syncSendFlags);
+    void willSendSyncMessage(OptionSet<SendSyncOption>);
+    void didReceiveSyncReply(OptionSet<SendSyncOption>);
+
+    Seconds timeoutRespectingIgnoreTimeoutsForTesting(Seconds) const;
     
-    Client* m_client;
+    Client& m_client;
     bool m_isServer;
+    std::atomic<bool> m_isValid { true };
     std::atomic<uint64_t> m_syncRequestID;
 
     bool m_onlySendMessagesAsDispatchWhenWaitingForSyncReplyWhenProcessingSuchAMessage;
@@ -258,56 +259,34 @@ private:
     unsigned m_inDispatchMessageMarkedDispatchWhenWaitingForSyncReplyCount;
     unsigned m_inDispatchMessageMarkedToUseFullySynchronousModeForTesting { 0 };
     bool m_fullySynchronousModeIsAllowedForTesting { false };
+    bool m_ignoreTimeoutsForTesting { false };
     bool m_didReceiveInvalidMessage;
 
     // Incoming messages.
     Lock m_incomingMessagesMutex;
-    Deque<std::unique_ptr<MessageDecoder>> m_incomingMessages;
+    Deque<std::unique_ptr<Decoder>> m_incomingMessages;
 
     // Outgoing messages.
     Lock m_outgoingMessagesMutex;
-    Deque<std::unique_ptr<MessageEncoder>> m_outgoingMessages;
+    Deque<std::unique_ptr<Encoder>> m_outgoingMessages;
     
     Condition m_waitForMessageCondition;
     Lock m_waitForMessageMutex;
 
+    struct ReplyHandler;
+
+    Lock m_replyHandlersLock;
+    HashMap<uint64_t, ReplyHandler> m_replyHandlers;
+
+    struct WaitForMessageState;
     WaitForMessageState* m_waitingForMessage;
 
-    // Represents a sync request for which we're waiting on a reply.
-    struct PendingSyncReply {
-        // The request ID.
-        uint64_t syncRequestID;
-
-        // The reply decoder, will be null if there was an error processing the sync
-        // message on the other side.
-        std::unique_ptr<MessageDecoder> replyDecoder;
-
-        // Will be set to true once a reply has been received.
-        bool didReceiveReply;
-    
-        PendingSyncReply()
-            : syncRequestID(0)
-            , didReceiveReply(false)
-        {
-        }
-
-        explicit PendingSyncReply(uint64_t syncRequestID)
-            : syncRequestID(syncRequestID)
-            , didReceiveReply(0)
-        {
-        }
-    };
-
     class SyncMessageState;
-    friend class SyncMessageState;
 
     Lock m_syncReplyStateMutex;
     bool m_shouldWaitForSyncReplies;
+    struct PendingSyncReply;
     Vector<PendingSyncReply> m_pendingSyncReplies;
-
-    class SecondaryThreadPendingSyncReply;
-    typedef HashMap<uint64_t, SecondaryThreadPendingSyncReply*> SecondaryThreadPendingSyncReplyMap;
-    SecondaryThreadPendingSyncReplyMap m_secondaryThreadPendingSyncReplyMap;
 
     Lock m_incomingSyncMessageCallbackMutex;
     HashMap<uint64_t, std::function<void ()>> m_incomingSyncMessageCallbacks;
@@ -354,24 +333,46 @@ private:
 #endif
 };
 
-template<typename T> bool Connection::send(T&& message, uint64_t destinationID, unsigned messageSendFlags)
+template<typename T>
+bool Connection::send(T&& message, uint64_t destinationID, OptionSet<SendOption> sendOptions)
 {
     COMPILE_ASSERT(!T::isSync, AsyncMessageExpected);
 
-    auto encoder = std::make_unique<MessageEncoder>(T::receiverName(), T::name(), destinationID);
+    auto encoder = std::make_unique<Encoder>(T::receiverName(), T::name(), destinationID);
     encoder->encode(message.arguments());
     
-    return sendMessage(WTFMove(encoder), messageSendFlags);
+    return sendMessage(WTFMove(encoder), sendOptions);
 }
 
-template<typename T> bool Connection::sendSync(T&& message, typename T::Reply&& reply, uint64_t destinationID, std::chrono::milliseconds timeout, unsigned syncSendFlags)
+template<typename T>
+void Connection::sendWithReply(T&& message, uint64_t destinationID, FunctionDispatcher& replyDispatcher, Function<void (Optional<typename CodingType<typename T::Reply>::Type>)>&& replyHandler)
+{
+    uint64_t requestID = 0;
+    std::unique_ptr<Encoder> encoder = createSyncMessageEncoder(T::receiverName(), T::name(), destinationID, requestID);
+
+    encoder->encode(message.arguments());
+
+    sendMessageWithReply(requestID, WTFMove(encoder), replyDispatcher, [replyHandler = WTFMove(replyHandler)](std::unique_ptr<Decoder> decoder) {
+        if (decoder) {
+            typename CodingType<typename T::Reply>::Type reply;
+            if (decoder->decode(reply)) {
+                replyHandler(WTFMove(reply));
+                return;
+            }
+        }
+
+        replyHandler(Nullopt);
+    });
+}
+
+template<typename T> bool Connection::sendSync(T&& message, typename T::Reply&& reply, uint64_t destinationID, Seconds timeout, OptionSet<SendSyncOption> sendSyncOptions)
 {
     COMPILE_ASSERT(T::isSync, SyncMessageExpected);
 
     uint64_t syncRequestID = 0;
-    std::unique_ptr<MessageEncoder> encoder = createSyncMessageEncoder(T::receiverName(), T::name(), destinationID, syncRequestID);
+    std::unique_ptr<Encoder> encoder = createSyncMessageEncoder(T::receiverName(), T::name(), destinationID, syncRequestID);
 
-    if (syncSendFlags & SyncMessageSendFlags::UseFullySynchronousModeForTesting) {
+    if (sendSyncOptions.contains(SendSyncOption::UseFullySynchronousModeForTesting)) {
         encoder->setFullySynchronousModeForTesting();
         m_fullySynchronousModeIsAllowedForTesting = true;
     }
@@ -380,7 +381,7 @@ template<typename T> bool Connection::sendSync(T&& message, typename T::Reply&& 
     encoder->encode(message.arguments());
 
     // Now send the message and wait for a reply.
-    std::unique_ptr<MessageDecoder> replyDecoder = sendSyncMessage(syncRequestID, WTFMove(encoder), timeout, syncSendFlags);
+    std::unique_ptr<Decoder> replyDecoder = sendSyncMessage(syncRequestID, WTFMove(encoder), timeout, sendSyncOptions);
     if (!replyDecoder)
         return false;
 
@@ -388,17 +389,15 @@ template<typename T> bool Connection::sendSync(T&& message, typename T::Reply&& 
     return replyDecoder->decode(reply);
 }
 
-template<typename T> bool Connection::waitForAndDispatchImmediately(uint64_t destinationID, std::chrono::milliseconds timeout, unsigned waitForMessageFlags)
+template<typename T> bool Connection::waitForAndDispatchImmediately(uint64_t destinationID, Seconds timeout, OptionSet<WaitForOption> waitForOptions)
 {
-    std::unique_ptr<MessageDecoder> decoder = waitForMessage(T::receiverName(), T::name(), destinationID, timeout, waitForMessageFlags);
+    std::unique_ptr<Decoder> decoder = waitForMessage(T::receiverName(), T::name(), destinationID, timeout, waitForOptions);
     if (!decoder)
         return false;
 
     ASSERT(decoder->destinationID() == destinationID);
-    m_client->didReceiveMessage(*this, *decoder);
+    m_client.didReceiveMessage(*this, *decoder);
     return true;
 }
 
 } // namespace IPC
-
-#endif // Connection_h

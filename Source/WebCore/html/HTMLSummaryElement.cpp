@@ -40,7 +40,7 @@ using namespace HTMLNames;
 Ref<HTMLSummaryElement> HTMLSummaryElement::create(const QualifiedName& tagName, Document& document)
 {
     Ref<HTMLSummaryElement> summary = adoptRef(*new HTMLSummaryElement(tagName, document));
-    summary->addShadowRoot(ShadowRoot::create(document, ShadowRoot::Type::UserAgent));
+    summary->addShadowRoot(ShadowRoot::create(document, ShadowRootMode::UserAgent));
     return summary;
 }
 
@@ -98,18 +98,18 @@ bool HTMLSummaryElement::supportsFocus() const
     return isActiveSummary();
 }
 
-void HTMLSummaryElement::defaultEventHandler(Event* event)
+void HTMLSummaryElement::defaultEventHandler(Event& event)
 {
     if (isActiveSummary() && renderer()) {
-        if (event->type() == eventNames().DOMActivateEvent && !isClickableControl(event->target()->toNode())) {
+        if (event.type() == eventNames().DOMActivateEvent && !isClickableControl(event.target()->toNode())) {
             if (HTMLDetailsElement* details = detailsElement())
                 details->toggleOpen();
-            event->setDefaultHandled();
+            event.setDefaultHandled();
             return;
         }
 
-        if (is<KeyboardEvent>(*event)) {
-            KeyboardEvent& keyboardEvent = downcast<KeyboardEvent>(*event);
+        if (is<KeyboardEvent>(event)) {
+            KeyboardEvent& keyboardEvent = downcast<KeyboardEvent>(event);
             if (keyboardEvent.type() == eventNames().keydownEvent && keyboardEvent.keyIdentifier() == "U+0020") {
                 setActive(true, true);
                 // No setDefaultHandled() - IE dispatches a keypress in this case.
@@ -118,7 +118,7 @@ void HTMLSummaryElement::defaultEventHandler(Event* event)
             if (keyboardEvent.type() == eventNames().keypressEvent) {
                 switch (keyboardEvent.charCode()) {
                 case '\r':
-                    dispatchSimulatedClick(event);
+                    dispatchSimulatedClick(&event);
                     keyboardEvent.setDefaultHandled();
                     return;
                 case ' ':
@@ -129,7 +129,7 @@ void HTMLSummaryElement::defaultEventHandler(Event* event)
             }
             if (keyboardEvent.type() == eventNames().keyupEvent && keyboardEvent.keyIdentifier() == "U+0020") {
                 if (active())
-                    dispatchSimulatedClick(event);
+                    dispatchSimulatedClick(&event);
                 keyboardEvent.setDefaultHandled();
                 return;
             }

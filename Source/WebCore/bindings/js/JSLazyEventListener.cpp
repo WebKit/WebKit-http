@@ -24,7 +24,6 @@
 #include "Frame.h"
 #include "JSNode.h"
 #include "ScriptController.h"
-#include <runtime/Executable.h>
 #include <runtime/FunctionConstructor.h>
 #include <runtime/IdentifierInlines.h>
 #include <wtf/NeverDestroyed.h>
@@ -98,6 +97,9 @@ JSObject* JSLazyEventListener::initializeJSFunction(ScriptExecutionContext* exec
     if (!globalObject)
         return nullptr;
 
+    VM& vm = globalObject->vm();
+    JSLockHolder lock(vm);
+    auto scope = DECLARE_CATCH_SCOPE(vm);
     ExecState* exec = globalObject->globalExec();
 
     MarkedArgumentBuffer args;
@@ -112,9 +114,9 @@ JSObject* JSLazyEventListener::initializeJSFunction(ScriptExecutionContext* exec
         exec, exec->lexicalGlobalObject(), args, Identifier::fromString(exec, m_functionName),
         m_sourceURL, m_sourcePosition, overrideLineNumber);
 
-    if (exec->hadException()) {
+    if (UNLIKELY(scope.exception())) {
         reportCurrentException(exec);
-        exec->clearException();
+        scope.clearException();
         return nullptr;
     }
 
@@ -123,14 +125,13 @@ JSObject* JSLazyEventListener::initializeJSFunction(ScriptExecutionContext* exec
     if (m_originalNode) {
         if (!wrapper()) {
             // Ensure that 'node' has a JavaScript wrapper to mark the event listener we're creating.
-            JSLockHolder lock(exec);
             // FIXME: Should pass the global object associated with the node
-            setWrapper(exec->vm(), asObject(toJS(exec, globalObject, *m_originalNode)));
+            setWrapper(vm, asObject(toJS(exec, globalObject, *m_originalNode)));
         }
 
         // Add the event's home element to the scope
         // (and the document, and the form - see JSHTMLElement::eventHandlerScope)
-        listenerAsFunction->setScope(exec->vm(), jsCast<JSNode*>(wrapper())->pushEventHandlerScope(exec, listenerAsFunction->scope()));
+        listenerAsFunction->setScope(vm, jsCast<JSNode*>(wrapper())->pushEventHandlerScope(exec, listenerAsFunction->scope()));
     }
     return jsFunction;
 }

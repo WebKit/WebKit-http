@@ -31,8 +31,8 @@
 #include <WebCore/FloatRect.h>
 
 namespace IPC {
-class ArgumentDecoder;
-class ArgumentEncoder;
+class Decoder;
+class Encoder;
 }
 
 namespace API {
@@ -46,8 +46,8 @@ public:
 
     const WKSize& size() const { return m_size; }
 
-    void encode(IPC::ArgumentEncoder&) const;
-    static bool decode(IPC::ArgumentDecoder&, RefPtr<API::Object>&);
+    void encode(IPC::Encoder&) const;
+    static bool decode(IPC::Decoder&, RefPtr<API::Object>&);
 
 private:
     explicit Size(const WKSize& size)
@@ -67,8 +67,8 @@ public:
 
     const WKPoint& point() const { return m_point; }
 
-    void encode(IPC::ArgumentEncoder&) const;
-    static bool decode(IPC::ArgumentDecoder&, RefPtr<API::Object>&);
+    void encode(IPC::Encoder&) const;
+    static bool decode(IPC::Decoder&, RefPtr<API::Object>&);
 
 private:
     explicit Point(const WKPoint& point)
@@ -87,8 +87,8 @@ public:
 
     const WKRect& rect() const { return m_rect; }
 
-    void encode(IPC::ArgumentEncoder&) const;
-    static bool decode(IPC::ArgumentDecoder&, RefPtr<API::Object>&);
+    void encode(IPC::Encoder&) const;
+    static bool decode(IPC::Decoder&, RefPtr<API::Object>&);
 
 private:
     explicit Rect(const WKRect& rect)

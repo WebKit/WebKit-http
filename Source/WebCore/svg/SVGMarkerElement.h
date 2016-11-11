@@ -81,24 +81,21 @@ struct SVGPropertyTraits<SVGMarkerUnitsType> {
 template<>
 inline unsigned SVGIDLEnumLimits<SVGMarkerOrientType>::highestExposedEnumValue() { return SVGMarkerOrientAngle; }
 
-template<>
-struct SVGPropertyTraits<SVGMarkerOrientType> {
+template<> struct SVGPropertyTraits<SVGMarkerOrientType> {
     static unsigned highestEnumValue() { return SVGMarkerOrientAutoStartReverse; }
 
     // toString is not needed, synchronizeOrientType() handles this on its own.
 
-    static SVGMarkerOrientType fromString(const String& value, SVGAngle& angle)
+    static SVGMarkerOrientType fromString(const String& value, SVGAngleValue& angle)
     {
         if (value == "auto")
             return SVGMarkerOrientAuto;
         if (value == "auto-start-reverse")
             return SVGMarkerOrientAutoStartReverse;
-
-        ExceptionCode ec = 0;
-        angle.setValueAsString(value, ec);
-        if (!ec)
-            return SVGMarkerOrientAngle;
-        return SVGMarkerOrientUnknown;
+        auto setValueResult = angle.setValueAsString(value);
+        if (setValueResult.hasException())
+            return SVGMarkerOrientUnknown;
+        return SVGMarkerOrientAngle;
     }
 };
 
@@ -125,7 +122,7 @@ public:
     AffineTransform viewBoxToViewTransform(float viewWidth, float viewHeight) const;
 
     void setOrientToAuto();
-    void setOrientToAngle(const SVGAngle&);
+    void setOrientToAngle(SVGAngle&);
 
     static const SVGPropertyInfo* orientTypePropertyInfo();
 
@@ -144,7 +141,7 @@ private:
 
     bool selfHasRelativeLengths() const override;
 
-    void setOrient(SVGMarkerOrientType, const SVGAngle&);
+    void setOrient(SVGMarkerOrientType, const SVGAngleValue&);
 
     void synchronizeOrientType();
 

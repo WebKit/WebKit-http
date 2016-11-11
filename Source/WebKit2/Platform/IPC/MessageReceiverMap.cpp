@@ -26,7 +26,7 @@
 #include "config.h"
 #include "MessageReceiverMap.h"
 
-#include "MessageDecoder.h"
+#include "Decoder.h"
 #include "MessageReceiver.h"
 
 namespace IPC {
@@ -77,6 +77,27 @@ void MessageReceiverMap::removeMessageReceiver(StringReference messageReceiverNa
     m_messageReceivers.remove(it);
 }
 
+void MessageReceiverMap::removeMessageReceiver(MessageReceiver& messageReceiver)
+{
+    Vector<StringReference> globalReceiversToRemove;
+    for (auto& nameAndReceiver : m_globalMessageReceivers) {
+        if (nameAndReceiver.value == &messageReceiver)
+            globalReceiversToRemove.append(nameAndReceiver.key);
+    }
+
+    for (auto& globalReceiverToRemove : globalReceiversToRemove)
+        removeMessageReceiver(globalReceiverToRemove);
+
+    Vector<std::pair<StringReference, uint64_t>> receiversToRemove;
+    for (auto& nameAndIdAndReceiver : m_messageReceivers) {
+        if (nameAndIdAndReceiver.value == &messageReceiver)
+            receiversToRemove.append(std::make_pair(nameAndIdAndReceiver.key.first, nameAndIdAndReceiver.key.second));
+    }
+
+    for (auto& receiverToRemove : receiversToRemove)
+        removeMessageReceiver(receiverToRemove.first, receiverToRemove.second);
+}
+
 void MessageReceiverMap::invalidate()
 {
     for (auto& messageReceiver : m_globalMessageReceivers.values())
@@ -89,7 +110,7 @@ void MessageReceiverMap::invalidate()
     m_messageReceivers.clear();
 }
 
-bool MessageReceiverMap::dispatchMessage(Connection& connection, MessageDecoder& decoder)
+bool MessageReceiverMap::dispatchMessage(Connection& connection, Decoder& decoder)
 {
     if (MessageReceiver* messageReceiver = m_globalMessageReceivers.get(decoder.messageReceiverName())) {
         ASSERT(!decoder.destinationID());
@@ -106,7 +127,7 @@ bool MessageReceiverMap::dispatchMessage(Connection& connection, MessageDecoder&
     return false;
 }
 
-bool MessageReceiverMap::dispatchSyncMessage(Connection& connection, MessageDecoder& decoder, std::unique_ptr<MessageEncoder>& replyEncoder)
+bool MessageReceiverMap::dispatchSyncMessage(Connection& connection, Decoder& decoder, std::unique_ptr<Encoder>& replyEncoder)
 {
     if (MessageReceiver* messageReceiver = m_globalMessageReceivers.get(decoder.messageReceiverName())) {
         ASSERT(!decoder.destinationID());

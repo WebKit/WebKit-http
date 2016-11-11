@@ -26,8 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef AccessibilityRenderObject_h
-#define AccessibilityRenderObject_h
+#pragma once
 
 #include "AccessibilityNodeObject.h"
 #include "LayoutRect.h"
@@ -38,19 +37,14 @@ namespace WebCore {
 class AccessibilitySVGRoot;
 class AXObjectCache;
 class Element;
-class Frame;
 class FrameView;
-class HitTestResult;
-class HTMLAnchorElement;
 class HTMLAreaElement;
 class HTMLElement;
 class HTMLLabelElement;
 class HTMLMapElement;
-class HTMLSelectElement;
 class IntPoint;
 class IntSize;
 class Node;
-class RenderListBox;
 class RenderTextControl;
 class RenderView;
 class VisibleSelection;
@@ -173,6 +167,7 @@ public:
     IntRect boundsForRange(const RefPtr<Range>) const override;
     IntRect boundsForRects(LayoutRect&, LayoutRect&, RefPtr<Range>) const;
     void setSelectedVisiblePositionRange(const VisiblePositionRange&) const override;
+    bool isVisiblePositionRangeInDifferentDocument(const VisiblePositionRange&) const;
     bool ariaHasPopup() const override;
 
     bool supportsARIADropping() const override;
@@ -214,6 +209,10 @@ protected:
 
     AccessibilityRole determineAccessibilityRole() override;
     bool computeAccessibilityIsIgnored() const override;
+
+#if ENABLE(MATHML)
+    virtual bool isIgnoredElementWithinMathTree() const;
+#endif
 
     RenderObject* m_renderer;
 
@@ -279,66 +278,8 @@ private:
     bool inheritsPresentationalRole() const override;
 
     bool shouldGetTextFromNode(AccessibilityTextUnderElementMode) const;
-
-#if ENABLE(MATHML)
-    // All math elements return true for isMathElement().
-    bool isMathElement() const override;
-    bool isMathFraction() const override;
-    bool isMathFenced() const override;
-    bool isMathSubscriptSuperscript() const override;
-    bool isMathRow() const override;
-    bool isMathUnderOver() const override;
-    bool isMathRoot() const override;
-    bool isMathSquareRoot() const override;
-    bool isMathText() const override;
-    bool isMathNumber() const override;
-    bool isMathOperator() const override;
-    bool isMathFenceOperator() const override;
-    bool isMathSeparatorOperator() const override;
-    bool isMathIdentifier() const override;
-    bool isMathTable() const override;
-    bool isMathTableRow() const override;
-    bool isMathTableCell() const override;
-    bool isMathMultiscript() const override;
-    bool isMathToken() const override;
-    bool isMathScriptObject(AccessibilityMathScriptObjectType) const override;
-    bool isMathMultiscriptObject(AccessibilityMathMultiscriptObjectType) const override;
-    
-    // Generic components.
-    AccessibilityObject* mathBaseObject() override;
-    
-    // Root components.
-    AccessibilityObject* mathRadicandObject() override;
-    AccessibilityObject* mathRootIndexObject() override;
-    
-    // Fraction components.
-    AccessibilityObject* mathNumeratorObject() override;
-    AccessibilityObject* mathDenominatorObject() override;
-
-    // Under over components.
-    AccessibilityObject* mathUnderObject() override;
-    AccessibilityObject* mathOverObject() override;
-    
-    // Subscript/superscript components.
-    AccessibilityObject* mathSubscriptObject() override;
-    AccessibilityObject* mathSuperscriptObject() override;
-    
-    // Fenced components.
-    String mathFencedOpenString() const override;
-    String mathFencedCloseString() const override;
-    int mathLineThickness() const override;
-    bool isAnonymousMathOperator() const override;
-
-    // Multiscripts components.
-    void mathPrescripts(AccessibilityMathMultiscriptPairs&) override;
-    void mathPostscripts(AccessibilityMathMultiscriptPairs&) override;
-    
-    bool isIgnoredElementWithinMathTree() const;
-#endif
 };
 
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_ACCESSIBILITY(AccessibilityRenderObject, isAccessibilityRenderObject())
-
-#endif // AccessibilityRenderObject_h

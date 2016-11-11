@@ -32,7 +32,8 @@ import "ocidl.idl";
 #endif
 
 typedef enum WebKitJavaScriptRuntimeFlags {
-    WebKitJavaScriptRuntimeFlagsAllEnabled = 0
+    WebKitJavaScriptRuntimeFlagsSharedArrayBufferEnabled = 1,
+    WebKitJavaScriptRuntimeFlagsAllEnabled = 1
 } WebKitJavaScriptRuntimeFlags;
 
 [
@@ -183,5 +184,12 @@ interface IWebPreferencesPrivate3 : IWebPreferencesPrivate2
     HRESULT setShadowDOMEnabled([in] BOOL enabled);
     HRESULT customElementsEnabled([out, retval] BOOL* enabled);
     HRESULT setCustomElementsEnabled([in] BOOL enabled);
+    HRESULT modernMediaControlsEnabled([out, retval] BOOL* enabled);
+    HRESULT setModernMediaControlsEnabled([in] BOOL enabled);
 }
 
+[uuid(F9582D72-6348-45B1-AB09-39E33459B5B9)]
+interface IWebPreferencesPrivate4 : IWebPreferencesPrivate3
+{
+    HRESULT setApplicationId([in] BSTR applicationId);
+}

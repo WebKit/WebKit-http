@@ -51,6 +51,7 @@ WebInspector.TabContentView = class TabContentView extends WebInspector.ContentV
 
         this._detailsSidebarCollapsedSetting = new WebInspector.Setting(identifier + "-details-sidebar-collapsed", true);
         this._detailsSidebarSelectedPanelSetting = new WebInspector.Setting(identifier + "-details-sidebar-selected-panel", null);
+        this._detailsSidebarWidthSetting = new WebInspector.Setting(identifier + "-details-sidebar-width", 0);
 
         this._cookieSetting = new WebInspector.Setting(identifier + "-tab-cookie", {});
     }
@@ -125,6 +126,8 @@ WebInspector.TabContentView = class TabContentView extends WebInspector.ContentV
 
     shown()
     {
+        super.shown();
+
         if (this._shouldRestoreStateWhenShown)
             this.restoreStateFromCookie(WebInspector.StateRestorationType.Delayed);
     }
@@ -175,6 +178,11 @@ WebInspector.TabContentView = class TabContentView extends WebInspector.ContentV
     get navigationSidebarCollapsedSetting()
     {
         return this._navigationSidebarCollapsedSetting;
+    }
+
+    get detailsSidebarWidthSetting()
+    {
+        return this._detailsSidebarWidthSetting;
     }
 
     get detailsSidebarPanels()

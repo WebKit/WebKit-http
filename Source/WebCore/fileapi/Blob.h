@@ -48,12 +48,12 @@ public:
         return adoptRef(*new Blob);
     }
 
-    static Ref<Blob> create(Vector<uint8_t> data, const String& contentType)
+    static Ref<Blob> create(Vector<uint8_t>&& data, const String& contentType)
     {
         return adoptRef(*new Blob(WTFMove(data), contentType));
     }
 
-    static Ref<Blob> create(Vector<BlobPart> blobParts, const String& contentType)
+    static Ref<Blob> create(Vector<BlobPart>&& blobParts, const String& contentType)
     {
         return adoptRef(*new Blob(WTFMove(blobParts), contentType));
     }
@@ -69,7 +69,7 @@ public:
     const URL& url() const { return m_internalURL; }
     const String& type() const { return m_type; }
 
-    unsigned long long size() const;
+    WEBCORE_EXPORT unsigned long long size() const;
     virtual bool isFile() const { return false; }
 
     // The checks described in the File API spec.
@@ -91,8 +91,8 @@ public:
 
 protected:
     Blob();
-    Blob(Vector<uint8_t>, const String& contentType);
-    Blob(Vector<BlobPart>, const String& contentType);
+    Blob(Vector<uint8_t>&&, const String& contentType);
+    Blob(Vector<BlobPart>&&, const String& contentType);
 
     enum UninitializedContructor { uninitializedContructor };
     Blob(UninitializedContructor);

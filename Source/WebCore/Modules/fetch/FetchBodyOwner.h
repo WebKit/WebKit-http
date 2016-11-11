@@ -33,6 +33,7 @@
 
 #include "ActiveDOMObject.h"
 #include "FetchBody.h"
+#include "FetchHeaders.h"
 #include "FetchLoader.h"
 #include "FetchLoaderClient.h"
 #include "FetchResponseSource.h"
@@ -41,24 +42,32 @@ namespace WebCore {
 
 class FetchBodyOwner : public RefCounted<FetchBodyOwner>, public ActiveDOMObject {
 public:
-    FetchBodyOwner(ScriptExecutionContext&, FetchBody&&);
+    FetchBodyOwner(ScriptExecutionContext&, Optional<FetchBody>&&, Ref<FetchHeaders>&&);
 
     // Exposed Body API
-    bool isDisturbed() const;
+    bool isDisturbed() const { return m_isDisturbed; };
 
-    void arrayBuffer(DeferredWrapper&&);
-    void blob(DeferredWrapper&&);
-    void formData(DeferredWrapper&&);
-    void json(DeferredWrapper&&);
-    void text(DeferredWrapper&&);
+    void arrayBuffer(Ref<DeferredPromise>&&);
+    void blob(Ref<DeferredPromise>&&);
+    void formData(Ref<DeferredPromise>&&);
+    void json(Ref<DeferredPromise>&&);
+    void text(Ref<DeferredPromise>&&);
 
-    void loadBlob(Blob&, FetchLoader::Type);
+    bool isDisturbedOrLocked() const;
+
+    void loadBlob(const Blob&, FetchBodyConsumer*);
 
     bool isActive() const { return !!m_blobLoader; }
 
 protected:
-    const FetchBody& body() const { return m_body; }
-    FetchBody& body() { return m_body; }
+    const FetchBody& body() const { return *m_body; }
+    FetchBody& body() { return *m_body; }
+    bool isBodyNull() const { return !m_body; }
+    void cloneBody(const FetchBodyOwner&);
+
+    void extractBody(ScriptExecutionContext&, JSC::ExecState&, JSC::JSValue);
+    void updateContentType();
+    void consumeOnceLoadingFinished(FetchBodyConsumer::Type, Ref<DeferredPromise>&&);
 
     // ActiveDOMObject API
     void stop() override;
@@ -67,8 +76,6 @@ protected:
 
 private:
     // Blob loading routines
-    void loadedBlobAsText(String&&);
-    void loadedBlobAsArrayBuffer(RefPtr<ArrayBuffer>&& buffer) { m_body.loadedAsArrayBuffer(WTFMove(buffer)); }
     void blobChunk(const char*, size_t);
     void blobLoadingSucceeded();
     void blobLoadingFailed();
@@ -78,8 +85,6 @@ private:
         BlobLoader(FetchBodyOwner&);
 
         // FetchLoaderClient API
-        void didFinishLoadingAsText(String&& text) final { owner.loadedBlobAsText(WTFMove(text)); }
-        void didFinishLoadingAsArrayBuffer(RefPtr<ArrayBuffer>&& buffer) final { owner.loadedBlobAsArrayBuffer(WTFMove(buffer)); }
         void didReceiveResponse(const ResourceResponse&) final;
         void didReceiveData(const char* data, size_t size) final { owner.blobChunk(data, size); }
         void didFail() final;
@@ -90,11 +95,13 @@ private:
     };
 
 protected:
-    FetchBody m_body;
+    Optional<FetchBody> m_body;
+    String m_contentType;
     bool m_isDisturbed { false };
-#if ENABLE(STREAMS_API)
+#if ENABLE(READABLE_STREAM_API)
     RefPtr<FetchResponseSource> m_readableStreamSource;
 #endif
+    Ref<FetchHeaders> m_headers;
 
 private:
     Optional<BlobLoader> m_blobLoader;

@@ -34,35 +34,61 @@
 #if ENABLE(WEB_RTC)
 
 #include "MediaEndpoint.h"
+#include "Timer.h"
 
 namespace WebCore {
 
-class MockMediaEndpoint : public MediaEndpoint {
+class MockMediaEndpoint final : public MediaEndpoint {
 public:
     WEBCORE_EXPORT static std::unique_ptr<MediaEndpoint> create(MediaEndpointClient&);
 
     MockMediaEndpoint(MediaEndpointClient&);
     ~MockMediaEndpoint();
 
-    void setConfiguration(RefPtr<MediaEndpointConfiguration>&&) override;
+    void setConfiguration(MediaEndpointConfiguration&&) final { };
 
-    void generateDtlsInfo() override;
-    Vector<RefPtr<MediaPayload>> getDefaultAudioPayloads() override;
-    Vector<RefPtr<MediaPayload>> getDefaultVideoPayloads() override;
-    MediaPayloadVector filterPayloads(const MediaPayloadVector& remotePayloads, const MediaPayloadVector& defaultPayloads) override;
+    void generateDtlsInfo() final;
+    MediaPayloadVector getDefaultAudioPayloads() final;
+    MediaPayloadVector getDefaultVideoPayloads() final;
+    MediaPayloadVector filterPayloads(const MediaPayloadVector& remotePayloads, const MediaPayloadVector& defaultPayloads) final;
 
-    UpdateResult updateReceiveConfiguration(MediaEndpointSessionConfiguration*, bool isInitiator) override;
-    UpdateResult updateSendConfiguration(MediaEndpointSessionConfiguration*, const RealtimeMediaSourceMap&, bool isInitiator) override;
+    UpdateResult updateReceiveConfiguration(MediaEndpointSessionConfiguration*, bool isInitiator) final;
+    UpdateResult updateSendConfiguration(MediaEndpointSessionConfiguration*, const RealtimeMediaSourceMap&, bool isInitiator) final;
 
-    void addRemoteCandidate(IceCandidate&, const String& mid, const String& ufrag, const String& password) override;
+    void addRemoteCandidate(const IceCandidate&, const String& mid, const String& ufrag, const String& password) final;
 
-    Ref<RealtimeMediaSource> createMutedRemoteSource(const String& mid, RealtimeMediaSource::Type) override;
-    void replaceSendSource(RealtimeMediaSource&, const String& mid) override;
+    Ref<RealtimeMediaSource> createMutedRemoteSource(const String& mid, RealtimeMediaSource::Type) final;
+    void replaceSendSource(RealtimeMediaSource&, const String& mid) final;
+    void replaceMutedRemoteSourceMid(const String& oldMid, const String& newMid) final;
 
-    void stop() override;
+    void stop() final;
+
+    void emulatePlatformEvent(const String& action) final;
 
 private:
+    void updateConfigurationMids(const MediaEndpointSessionConfiguration&);
+
+    void dispatchFakeIceCandidates();
+    void iceCandidateTimerFired();
+
+    void stepIceTransportStates();
+    void iceTransportTimerFired();
+
+    void unmuteRemoteSourcesByMid();
+    void unmuteTimerFired();
+
     MediaEndpointClient& m_client;
+    Vector<String> m_mids;
+    HashMap<String, RefPtr<RealtimeMediaSource>> m_mutedRemoteSources;
+
+    Vector<IceCandidate> m_fakeIceCandidates;
+    Timer m_iceCandidateTimer;
+
+    Vector<std::pair<String, MediaEndpoint::IceTransportState>> m_iceTransportStateChanges;
+    Timer m_iceTransportTimer;
+
+    Vector<String> m_midsOfSourcesToUnmute;
+    Timer m_unmuteTimer;
 };
 
 } // namespace WebCore

@@ -38,6 +38,18 @@ using namespace JSC;
 
 namespace WebCore {
 
+bool JSCanvasRenderingContext2DOwner::isReachableFromOpaqueRoots(JSC::Handle<JSC::Unknown> handle, void*, SlotVisitor& visitor)
+{
+    JSCanvasRenderingContext2D* jsCanvasRenderingContext = jsCast<JSCanvasRenderingContext2D*>(handle.slot()->asCell());
+    void* root = WebCore::root(jsCanvasRenderingContext->wrapped().canvas());
+    return visitor.containsOpaqueRoot(root);
+}
+
+void JSCanvasRenderingContext2D::visitAdditionalChildren(SlotVisitor& visitor)
+{
+    visitor.addOpaqueRoot(root(wrapped().canvas()));
+}
+
 static JSValue toJS(ExecState* exec, JSDOMGlobalObject* globalObject, const CanvasStyle& style)
 {
     if (style.canvasGradient())
@@ -57,12 +69,6 @@ static CanvasStyle toHTMLCanvasStyle(ExecState*, JSValue value)
     if (object->inherits(JSCanvasPattern::info()))
         return CanvasStyle(&jsCast<JSCanvasPattern*>(object)->wrapped());
     return CanvasStyle();
-}
-
-JSValue JSCanvasRenderingContext2D::commit(ExecState&)
-{
-    // This is a no-op in a direct-2d canvas.
-    return jsUndefined();
 }
 
 JSValue JSCanvasRenderingContext2D::strokeStyle(ExecState& state) const
@@ -93,35 +99,6 @@ void JSCanvasRenderingContext2D::setFillStyle(ExecState& state, JSValue value)
         return;
     }
     context.setFillStyle(toHTMLCanvasStyle(&state, value));
-}
-
-JSValue JSCanvasRenderingContext2D::webkitLineDash(ExecState& state) const
-{
-    const Vector<float>& dash = wrapped().getLineDash();
-
-    MarkedArgumentBuffer list;
-    Vector<float>::const_iterator end = dash.end();
-    for (Vector<float>::const_iterator it = dash.begin(); it != end; ++it)
-        list.append(JSValue(*it));
-    return constructArray(&state, 0, globalObject(), list);
-}
-
-void JSCanvasRenderingContext2D::setWebkitLineDash(ExecState& state, JSValue value)
-{
-    if (!isJSArray(value))
-        return;
-
-    Vector<float> dash;
-    JSArray* valueArray = asArray(value);
-    for (unsigned i = 0; i < valueArray->length(); ++i) {
-        float elem = valueArray->getIndex(&state, i).toFloat(&state);
-        if (elem <= 0 || !std::isfinite(elem))
-            return;
-
-        dash.append(elem);
-    }
-
-    wrapped().setWebkitLineDash(dash);
 }
 
 } // namespace WebCore

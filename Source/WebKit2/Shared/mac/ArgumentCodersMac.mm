@@ -32,8 +32,8 @@
 #endif
 
 #import "ArgumentCodersCF.h"
-#import "ArgumentDecoder.h"
-#import "ArgumentEncoder.h"
+#import "Decoder.h"
+#import "Encoder.h"
 #import "WebCoreArgumentCoders.h"
 #import <WebCore/ColorMac.h>
 
@@ -41,106 +41,115 @@ using namespace WebCore;
 
 namespace IPC {
 
-enum NSType {
-    NSAttributedStringType,
+enum class NSType {
+    AttributedString,
 #if USE(APPKIT)
-    NSColorType,
+    Color,
 #endif
-    NSDictionaryType,
-    NSArrayType,
+    Dictionary,
+    Array,
 #if USE(APPKIT)
-    NSFontType,
+    Font,
 #endif
-    NSNumberType,
-    NSStringType,
-    NSDateType,
-    NSDataType,
+    Number,
+    String,
+    Date,
+    Data,
+    URL,
     Unknown,
 };
 
+}
+
+namespace IPC {
 static NSType typeFromObject(id object)
 {
     ASSERT(object);
 
     if ([object isKindOfClass:[NSAttributedString class]])
-        return NSAttributedStringType;
+        return NSType::AttributedString;
 #if USE(APPKIT)
     if ([object isKindOfClass:[NSColor class]])
-        return NSColorType;
+        return NSType::Color;
 #endif
     if ([object isKindOfClass:[NSDictionary class]])
-        return NSDictionaryType;
+        return NSType::Dictionary;
 #if USE(APPKIT)
     if ([object isKindOfClass:[NSFont class]])
-        return NSFontType;
+        return NSType::Font;
 #endif
     if ([object isKindOfClass:[NSNumber class]])
-        return NSNumberType;
+        return NSType::Number;
     if ([object isKindOfClass:[NSString class]])
-        return NSStringType;
+        return NSType::String;
     if ([object isKindOfClass:[NSArray class]])
-        return NSArrayType;
+        return NSType::Array;
     if ([object isKindOfClass:[NSDate class]])
-        return NSDateType;
+        return NSType::Date;
     if ([object isKindOfClass:[NSData class]])
-        return NSDataType;
+        return NSType::Data;
+    if ([object isKindOfClass:[NSURL class]])
+        return NSType::URL;
 
     ASSERT_NOT_REACHED();
-    return Unknown;
+    return NSType::Unknown;
 }
 
-void encode(ArgumentEncoder& encoder, id object)
+void encode(Encoder& encoder, id object)
 {
     NSType type = typeFromObject(object);
-    encoder.encodeEnum(type);
+    encoder << type;
 
     switch (type) {
-    case NSAttributedStringType:
+    case NSType::AttributedString:
         encode(encoder, static_cast<NSAttributedString *>(object));
         return;
 #if USE(APPKIT)
-    case NSColorType:
+    case NSType::Color:
         encode(encoder, static_cast<NSColor *>(object));
         return;
 #endif
-    case NSDictionaryType:
+    case NSType::Dictionary:
         encode(encoder, static_cast<NSDictionary *>(object));
         return;
 #if USE(APPKIT)
-    case NSFontType:
+    case NSType::Font:
         encode(encoder, static_cast<NSFont *>(object));
         return;
 #endif
-    case NSNumberType:
+    case NSType::Number:
         encode(encoder, static_cast<NSNumber *>(object));
         return;
-    case NSStringType:
+    case NSType::String:
         encode(encoder, static_cast<NSString *>(object));
         return;
-    case NSArrayType:
+    case NSType::Array:
         encode(encoder, static_cast<NSArray *>(object));
         return;
-    case NSDateType:
+    case NSType::Date:
         encode(encoder, static_cast<NSDate *>(object));
         return;
-    case NSDataType:
+    case NSType::Data:
         encode(encoder, static_cast<NSData *>(object));
         return;
-    case Unknown:
+    case NSType::URL:
+        encode(encoder, static_cast<NSURL *>(object));
+        return;
+    case NSType::Unknown:
         break;
     }
 
     ASSERT_NOT_REACHED();
 }
 
-bool decode(ArgumentDecoder& decoder, RetainPtr<id>& result)
+bool decode(Decoder& decoder, RetainPtr<id>& result)
 {
     NSType type;
     if (!decoder.decodeEnum(type))
         return false;
 
     switch (type) {
-    case NSAttributedStringType: {
+    case NSType::AttributedString: {
         RetainPtr<NSAttributedString> string;
         if (!decode(decoder, string))
             return false;
@@ -148,7 +157,7 @@ bool decode(ArgumentDecoder& decoder, RetainPtr<id>& result)
         return true;
     }
 #if USE(APPKIT)
-    case NSColorType: {
+    case NSType::Color: {
         RetainPtr<NSColor> color;
         if (!decode(decoder, color))
             return false;
@@ -156,7 +165,7 @@ bool decode(ArgumentDecoder& decoder, RetainPtr<id>& result)
         return true;
     }
 #endif
-    case NSDictionaryType: {
+    case NSType::Dictionary: {
         RetainPtr<NSDictionary> dictionary;
         if (!decode(decoder, dictionary))
             return false;
@@ -164,7 +173,7 @@ bool decode(ArgumentDecoder& decoder, RetainPtr<id>& result)
         return true;
     }
 #if USE(APPKIT)
-    case NSFontType: {
+    case NSType::Font: {
         RetainPtr<NSFont> font;
         if (!decode(decoder, font))
             return false;
@@ -172,42 +181,49 @@ bool decode(ArgumentDecoder& decoder, RetainPtr<id>& result)
         return true;
     }
 #endif
-    case NSNumberType: {
+    case NSType::Number: {
         RetainPtr<NSNumber> number;
         if (!decode(decoder, number))
             return false;
         result = number;
         return true;
     }
-    case NSStringType: {
+    case NSType::String: {
         RetainPtr<NSString> string;
         if (!decode(decoder, string))
             return false;
         result = string;
         return true;
     }
-    case NSArrayType: {
+    case NSType::Array: {
         RetainPtr<NSArray> array;
         if (!decode(decoder, array))
             return false;
         result = array;
         return true;
     }
-    case NSDateType: {
+    case NSType::Date: {
         RetainPtr<NSDate> date;
         if (!decode(decoder, date))
             return false;
         result = date;
         return true;
     }
-    case NSDataType: {
+    case NSType::Data: {
         RetainPtr<NSData> data;
         if (!decode(decoder, data))
             return false;
         result = data;
         return true;
     }
-    case Unknown:
+    case NSType::URL: {
+        RetainPtr<NSURL> URL;
+        if (!decode(decoder, URL))
+            return false;
+        result = URL;
+        return true;
+    }
+    case NSType::Unknown:
         ASSERT_NOT_REACHED();
         return false;
     }
@@ -250,7 +266,7 @@ static inline RetainPtr<NSDictionary> filterUnserializableValues(NSDictionary *d
     return result;
 }
 
-void encode(ArgumentEncoder& encoder, NSAttributedString *string)
+void encode(Encoder& encoder, NSAttributedString *string)
 {
     // Even though NSAttributedString is toll free bridged with CFAttributedStringRef, attributes' values may be not, so we should stay within this file's code.
 
@@ -283,7 +299,7 @@ void encode(ArgumentEncoder& encoder, NSAttributedString *string)
     }
 }
 
-bool decode(ArgumentDecoder& decoder, RetainPtr<NSAttributedString>& result)
+bool decode(Decoder& decoder, RetainPtr<NSAttributedString>& result)
 {
     RetainPtr<NSString> plainString;
     if (!IPC::decode(decoder, plainString))
@@ -321,12 +337,12 @@ bool decode(ArgumentDecoder& decoder, RetainPtr<NSAttributedString>& result)
 }
 
 #if USE(APPKIT)
-void encode(ArgumentEncoder& encoder, NSColor *color)
+void encode(Encoder& encoder, NSColor *color)
 {
     encoder << colorFromNSColor(color);
 }
 
-bool decode(ArgumentDecoder& decoder, RetainPtr<NSColor>& result)
+bool decode(Decoder& decoder, RetainPtr<NSColor>& result)
 {
     Color color;
     if (!decoder.decode(color))
@@ -337,7 +353,7 @@ bool decode(ArgumentDecoder& decoder, RetainPtr<NSColor>& result)
 }
 #endif
 
-void encode(ArgumentEncoder& encoder, NSDictionary *dictionary)
+void encode(Encoder& encoder, NSDictionary *dictionary)
 {
     // Even though NSDictionary is toll free bridged with CFDictionaryRef, values may be not, so we should stay within this file's code.
 
@@ -356,7 +372,7 @@ void encode(ArgumentEncoder& encoder, NSDictionary *dictionary)
         ASSERT(isSerializableValue(value));
 
         // Ignore values we don't recognize.
-        if (typeFromObject(value) == Unknown)
+        if (typeFromObject(value) == NSType::Unknown)
             continue;
 
         encode(encoder, (NSString *)key);
@@ -364,7 +380,7 @@ void encode(ArgumentEncoder& encoder, NSDictionary *dictionary)
     }
 }
 
-bool decode(ArgumentDecoder& decoder, RetainPtr<NSDictionary>& result)
+bool decode(Decoder& decoder, RetainPtr<NSDictionary>& result)
 {
     uint64_t size;
     if (!decoder.decode(size))
@@ -389,13 +405,13 @@ bool decode(ArgumentDecoder& decoder, RetainPtr<NSDictionary>& result)
 }
 
 #if USE(APPKIT)
-void encode(ArgumentEncoder& encoder, NSFont *font)
+void encode(Encoder& encoder, NSFont *font)
 {
     // NSFont could use CTFontRef code if we had it in ArgumentCodersCF.
     encode(encoder, [[font fontDescriptor] fontAttributes]);
 }
 
-bool decode(ArgumentDecoder& decoder, RetainPtr<NSFont>& result)
+bool decode(Decoder& decoder, RetainPtr<NSFont>& result)
 {
     RetainPtr<NSDictionary> fontAttributes;
     if (!decode(decoder, fontAttributes))
@@ -408,12 +424,12 @@ bool decode(ArgumentDecoder& decoder, RetainPtr<NSFont>& result)
 }
 #endif
 
-void encode(ArgumentEncoder& encoder, NSNumber *number)
+void encode(Encoder& encoder, NSNumber *number)
 {
     encode(encoder, (CFNumberRef)number);
 }
 
-bool decode(ArgumentDecoder& decoder, RetainPtr<NSNumber>& result)
+bool decode(Decoder& decoder, RetainPtr<NSNumber>& result)
 {
     RetainPtr<CFNumberRef> number;
     if (!decode(decoder, number))
@@ -423,12 +439,12 @@ bool decode(ArgumentDecoder& decoder, RetainPtr<NSNumber>& result)
     return true;
 }
 
-void encode(ArgumentEncoder& encoder, NSString *string)
+void encode(Encoder& encoder, NSString *string)
 {
     encode(encoder, (CFStringRef)string);
 }
 
-bool decode(ArgumentDecoder& decoder, RetainPtr<NSString>& result)
+bool decode(Decoder& decoder, RetainPtr<NSString>& result)
 {
     RetainPtr<CFStringRef> string;
     if (!decode(decoder, string))
@@ -438,7 +454,7 @@ bool decode(ArgumentDecoder& decoder, RetainPtr<NSString>& result)
     return true;
 }
 
-void encode(ArgumentEncoder& encoder, NSArray *array)
+void encode(Encoder& encoder, NSArray *array)
 {
     NSUInteger size = [array count];
     encoder << static_cast<uint64_t>(size);
@@ -447,7 +463,7 @@ void encode(ArgumentEncoder& encoder, NSArray *array)
         id value = [array objectAtIndex:i];
 
         // Ignore values we don't recognize.
-        if (typeFromObject(value) == Unknown)
+        if (typeFromObject(value) == NSType::Unknown)
             continue;
 
         ASSERT(isSerializableValue(value));
@@ -456,7 +472,7 @@ void encode(ArgumentEncoder& encoder, NSArray *array)
     }
 }
 
-bool decode(ArgumentDecoder& decoder, RetainPtr<NSArray>& result)
+bool decode(Decoder& decoder, RetainPtr<NSArray>& result)
 {
     uint64_t size;
     if (!decoder.decode(size))
@@ -475,12 +491,12 @@ bool decode(ArgumentDecoder& decoder, RetainPtr<NSArray>& result)
     return true;
 }
 
-void encode(ArgumentEncoder& encoder, NSDate *date)
+void encode(Encoder& encoder, NSDate *date)
 {
     encode(encoder, (CFDateRef)date);
 }
 
-bool decode(ArgumentDecoder& decoder, RetainPtr<NSDate>& result)
+bool decode(Decoder& decoder, RetainPtr<NSDate>& result)
 {
     RetainPtr<CFDateRef> date;
     if (!decode(decoder, date))
@@ -490,12 +506,12 @@ bool decode(ArgumentDecoder& decoder, RetainPtr<NSDate>& result)
     return true;
 }
 
-void encode(ArgumentEncoder& encoder, NSData *data)
+void encode(Encoder& encoder, NSData *data)
 {
     encode(encoder, (CFDataRef)data);
 }
 
-bool decode(ArgumentDecoder& decoder, RetainPtr<NSData>& result)
+bool decode(Decoder& decoder, RetainPtr<NSData>& result)
 {
     RetainPtr<CFDataRef> data;
     if (!decode(decoder, data))
@@ -505,4 +521,42 @@ bool decode(ArgumentDecoder& decoder, RetainPtr<NSData>& result)
     return true;
 }
 
+void encode(Encoder& encoder, NSURL *URL)
+{
+    encode(encoder, (CFURLRef)URL);
+}
+
+bool decode(Decoder& decoder, RetainPtr<NSURL>& result)
+{
+    RetainPtr<CFURLRef> URL;
+    if (!decode(decoder, URL))
+        return false;
+
+    result = adoptNS((NSURL *)URL.leakRef());
+    return true;
+}
+
 } // namespace IPC
+
+namespace WTF {
+template<> struct EnumTraits<IPC::NSType> {
+    using values = EnumValues<
+        IPC::NSType,
+        IPC::NSType::AttributedString,
+    #if USE(APPKIT)
+        IPC::NSType::Color,
+    #endif
+        IPC::NSType::Dictionary,
+        IPC::NSType::Array,
+    #if USE(APPKIT)
+        IPC::NSType::Font,
+    #endif
+        IPC::NSType::Number,
+        IPC::NSType::String,
+        IPC::NSType::Date,
+        IPC::NSType::Data,
+        IPC::NSType::URL,
+        IPC::NSType::Unknown
+    >;
+};
+}

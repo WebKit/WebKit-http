@@ -23,13 +23,11 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef AirTmpWidth_h
-#define AirTmpWidth_h
+#pragma once
 
 #if ENABLE(B3_JIT)
 
 #include "AirArg.h"
-#include <wtf/HashSet.h>
 
 namespace JSC { namespace B3 { namespace Air {
 
@@ -114,6 +112,3 @@ private:
 } } } // namespace JSC::B3::Air
 
 #endif // ENABLE(B3_JIT)
-
-#endif // AirTmpWidth_h
-

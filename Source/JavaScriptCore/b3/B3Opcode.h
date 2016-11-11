@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef B3Opcode_h
-#define B3Opcode_h
+#pragma once
 
 #if ENABLE(B3_JIT)
 
@@ -33,6 +32,9 @@
 #include <wtf/StdLibExtras.h>
 
 namespace JSC { namespace B3 {
+
+// Warning: In B3, an Opcode is just one part of a Kind. Kind is used the way that an opcode
+// would be used in simple IRs. See B3Kind.h.
 
 enum Opcode : int16_t {
     // A no-op that returns Void, useful for when you want to remove a value.
@@ -84,8 +86,6 @@ enum Opcode : int16_t {
     Neg,
 
     // Integer math.
-    ChillDiv, // doesn't trap ever, behaves like JS (x/y)|0.
-    ChillMod, // doesn't trap ever, behaves like JS (x%y)|0.
     BitAnd,
     BitOr,
     BitXor,
@@ -109,7 +109,7 @@ enum Opcode : int16_t {
     // Takes Int32 and returns Int64:
     SExt32,
     ZExt32,
-    // Takes Int64 and returns Int32:
+    // Does a bitwise truncation of Int64->Int32 and Double->Float:
     Trunc,
     // Takes ints and returns floating point value. Note that we don't currently provide the opposite operation,
     // because double-to-int conversions have weirdly different semantics on different platforms. Use
@@ -158,6 +158,18 @@ enum Opcode : int16_t {
     // This is a polymorphic store for Int32, Int64, Float, and Double.
     Store,
 
+    // This is used to compute the actual address of a Wasm memory operation. It takes an IntPtr
+    // and a pinned register then computes the appropriate IntPtr address. For the use-case of
+    // Wasm it is important that the first child initially be a ZExt32 so the top bits are cleared.
+    // We do WasmAddress(ZExt32(ptr), ...) so that we can avoid generating extraneous moves in Air.
+    WasmAddress,
+    
+    // This is used to represent standalone fences - i.e. fences that are not part of other
+    // instructions. It's expressive enough to expose mfence on x86 and dmb ish/ishst on ARM. On
+    // x86, it also acts as a compiler store-store fence in those cases where it would have been a
+    // dmb ishst on ARM.
+    Fence,
+
     // This is a regular ordinary C function call, using the system C calling convention. Make sure
     // that the arguments are passed using the right types. The first argument is the callee.
     CCall,
@@ -203,25 +215,36 @@ enum Opcode : int16_t {
     // WarmAny. It will not have an output constraint.
     Check,
 
+    // Special Wasm opcode that takes a Int32, a special pinned gpr and an offset. This node exists
+    // to allow us to CSE WasmBoundsChecks if both use the same pointer and one dominates the other.
+    // Without some such node B3 would not have enough information about the inner workings of wasm
+    // to be able to perform such optimizations.
+    WasmBoundsCheck,
+
     // SSA support, in the style of DFG SSA.
     Upsilon, // This uses the UpsilonValue class.
     Phi,
 
-    // Jump. Uses the ControlValue class.
+    // Jump.
     Jump,
     
-    // Polymorphic branch, usable with any integer type. Branches if not equal to zero. Uses the
-    // ControlValue class, with the 0-index successor being the true successor.
+    // Polymorphic branch, usable with any integer type. Branches if not equal to zero. The 0-index
+    // successor is the true successor.
     Branch,
 
     // Switch. Switches over either Int32 or Int64. Uses the SwitchValue class.
     Switch,
+    
+    // Multiple entrypoints are supported via the EntrySwitch operation. Place this in the root
+    // block and list the entrypoints as the successors. All blocks backwards-reachable from
+    // EntrySwitch are duplicated for each entrypoint.
+    EntrySwitch,
 
     // Return. Note that B3 procedures don't know their return type, so this can just return any
-    // type. Uses the ControlValue class.
+    // type.
     Return,
 
-    // This is a terminal that indicates that we will never get here. Uses the ControlValue class.
+    // This is a terminal that indicates that we will never get here.
     Oops
 };
 
@@ -259,6 +282,20 @@ inline bool isConstant(Opcode opcode)
     }
 }
 
+inline bool isDefinitelyTerminal(Opcode opcode)
+{
+    switch (opcode) {
+    case Jump:
+    case Branch:
+    case Switch:
+    case Oops:
+    case Return:
+        return true;
+    default:
+        return false;
+    }
+}
+
 } } // namespace JSC::B3
 
 namespace WTF {
@@ -270,6 +307,3 @@ JS_EXPORT_PRIVATE void printInternal(PrintStream&, JSC::B3::Opcode);
 } // namespace WTF
 
 #endif // ENABLE(B3_JIT)
-
-#endif // B3Opcode_h
-

@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef MediaElementSession_h
-#define MediaElementSession_h
+#pragma once
 
 #if ENABLE(VIDEO)
 
@@ -34,6 +33,11 @@
 #include <wtf/TypeCasts.h>
 
 namespace WebCore {
+
+enum class MediaSessionMainContentPurpose {
+    MediaControls,
+    Autoplay
+};
 
 class Document;
 class HTMLMediaElement;
@@ -49,12 +53,11 @@ public:
     void unregisterWithDocument(Document&);
 
     bool playbackPermitted(const HTMLMediaElement&) const;
+    bool autoplayPermitted() const;
     bool dataLoadingPermitted(const HTMLMediaElement&) const;
     bool fullscreenPermitted(const HTMLMediaElement&) const;
     bool pageAllowsDataLoading(const HTMLMediaElement&) const;
     bool pageAllowsPlaybackAfterResuming(const HTMLMediaElement&) const;
-
-    bool canControlControlsManager() const override;
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
     void showPlaybackTargetPicker(const HTMLMediaElement&);
@@ -78,8 +81,10 @@ public:
 
     void mediaEngineUpdated(const HTMLMediaElement&);
 
+    void resetPlaybackSessionState() override;
+
     // Restrictions to modify default behaviors.
-    enum BehaviorRestrictionFlags {
+    enum BehaviorRestrictionFlags : unsigned {
         NoRestrictions = 0,
         RequireUserGestureForLoad = 1 << 0,
         RequireUserGestureForVideoRateChange = 1 << 1,
@@ -95,6 +100,7 @@ public:
         InvisibleAutoplayNotPermitted = 1 << 11,
         OverrideUserGestureRequirementForMainContent = 1 << 12,
         RequireUserGestureToControlControlsManager = 1 << 13,
+        RequirePlaybackToControlControlsManager = 1 << 14,
         AllRestrictions = ~NoRestrictions,
     };
     typedef unsigned BehaviorRestrictions;
@@ -109,6 +115,24 @@ public:
 #endif
 
     HTMLMediaElement& element() const { return m_element; }
+
+    bool wantsToObserveViewportVisibilityForMediaControls() const;
+    bool wantsToObserveViewportVisibilityForAutoplay() const;
+
+    enum class PlaybackControlsPurpose { ControlsManager, NowPlaying };
+    bool canShowControlsManager(PlaybackControlsPurpose) const;
+    bool isLargeEnoughForMainContent(MediaSessionMainContentPurpose) const;
+    double mostRecentUserInteractionTime() const;
+
+    bool allowsPlaybackControlsForAutoplayingAudio() const;
+    bool allowsNowPlayingControlsVisibility() const override;
+
+    static bool isMediaElementSessionMediaType(MediaType type)
+    {
+        return type == Video
+            || type == Audio
+            || type == VideoAudio;
+    }
 
 private:
 
@@ -139,16 +163,16 @@ private:
     bool m_hasPlaybackTargetAvailabilityListeners { false };
 #endif
 
+    double m_mostRecentUserInteractionTime { 0 };
+
     mutable bool m_isMainContent { false };
     Timer m_mainContentCheckTimer;
 };
 
-}
+} // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::MediaElementSession)
-static bool isType(const WebCore::PlatformMediaSession& session) { return session.mediaType() == WebCore::PlatformMediaSession::Video || session.mediaType() == WebCore::PlatformMediaSession::Audio; }
+static bool isType(const WebCore::PlatformMediaSession& session) { return WebCore::MediaElementSession::isMediaElementSessionMediaType(session.mediaType()); }
 SPECIALIZE_TYPE_TRAITS_END()
 
 #endif // ENABLE(VIDEO)
-
-#endif // MediaElementSession_h

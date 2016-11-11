@@ -29,6 +29,7 @@
 
 #include "ActiveDOMObject.h"
 #include "DOMWrapperWorld.h"
+#include "ExceptionOr.h"
 #include "IDBCursorInfo.h"
 #include <heap/Strong.h>
 
@@ -39,10 +40,9 @@ class IDBIndex;
 class IDBObjectStore;
 class IDBTransaction;
 
-struct ExceptionCodeWithMessage;
-
 class IDBCursor : public ScriptWrappable, public RefCounted<IDBCursor>, public ActiveDOMObject {
 public:
+    static Ref<IDBCursor> create(IDBTransaction&, IDBObjectStore&, const IDBCursorInfo&);
     static Ref<IDBCursor> create(IDBTransaction&, IDBIndex&, const IDBCursorInfo&);
 
     static const AtomicString& directionNext();
@@ -50,7 +50,7 @@ public:
     static const AtomicString& directionPrev();
     static const AtomicString& directionPrevUnique();
 
-    static IndexedDB::CursorDirection stringToDirection(const String& modeString, ExceptionCode&);
+    static Optional<IndexedDB::CursorDirection> stringToDirection(const String& modeString);
     static const AtomicString& directionToString(IndexedDB::CursorDirection mode);
     
     virtual ~IDBCursor();
@@ -62,12 +62,13 @@ public:
     IDBObjectStore* objectStore() const { return m_objectStore.get(); }
     IDBIndex* index() const { return m_index.get(); }
 
-    RefPtr<IDBRequest> update(JSC::ExecState&, JSC::JSValue, ExceptionCodeWithMessage&);
-    void advance(unsigned, ExceptionCodeWithMessage&);
-    void continueFunction(ScriptExecutionContext&, JSC::JSValue key, ExceptionCodeWithMessage&);
-    RefPtr<IDBRequest> deleteFunction(ScriptExecutionContext&, ExceptionCodeWithMessage&);
+    ExceptionOr<Ref<IDBRequest>> update(JSC::ExecState&, JSC::JSValue);
+    ExceptionOr<void> advance(unsigned);
+    ExceptionOr<void> continueFunction(JSC::ExecState&, JSC::JSValue key);
+    ExceptionOr<void> continuePrimaryKey(JSC::ExecState&, JSC::JSValue key, JSC::JSValue primaryKey);
+    ExceptionOr<Ref<IDBRequest>> deleteFunction(JSC::ExecState&);
 
-    void continueFunction(const IDBKeyData&, ExceptionCodeWithMessage&);
+    ExceptionOr<void> continueFunction(const IDBKeyData&);
 
     const IDBCursorInfo& info() const { return m_info; }
 
@@ -96,6 +97,7 @@ private:
     IDBTransaction& transaction() const;
 
     void uncheckedIterateCursor(const IDBKeyData&, unsigned count);
+    void uncheckedIterateCursor(const IDBKeyData&, const IDBKeyData&);
 
     // Cursors are created with an outstanding iteration request.
     unsigned m_outstandingRequestCount { 1 };

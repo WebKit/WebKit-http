@@ -35,26 +35,27 @@
 
 namespace WebCore {
 
-class IDBKeyPath;
-
 class IDBObjectStoreInfo {
 public:
     WEBCORE_EXPORT IDBObjectStoreInfo();
-    IDBObjectStoreInfo(uint64_t identifier, const String& name, const IDBKeyPath&, bool autoIncrement);
+    IDBObjectStoreInfo(uint64_t identifier, const String& name, Optional<IDBKeyPath>&&, bool autoIncrement);
 
     uint64_t identifier() const { return m_identifier; }
     const String& name() const { return m_name; }
-    const IDBKeyPath& keyPath() const { return m_keyPath; }
+    const Optional<IDBKeyPath>& keyPath() const { return m_keyPath; }
     bool autoIncrement() const { return m_autoIncrement; }
     uint64_t maxIndexID() const { return m_maxIndexID; }
 
+    void rename(const String& newName) { m_name = newName; }
+
     IDBObjectStoreInfo isolatedCopy() const;
 
-    IDBIndexInfo createNewIndex(const String& name, const IDBKeyPath&, bool unique, bool multiEntry);
+    IDBIndexInfo createNewIndex(const String& name, IDBKeyPath&&, bool unique, bool multiEntry);
     void addExistingIndex(const IDBIndexInfo&);
     bool hasIndex(const String& name) const;
     bool hasIndex(uint64_t indexIdentifier) const;
     IDBIndexInfo* infoForExistingIndex(const String& name);
+    IDBIndexInfo* infoForExistingIndex(uint64_t identifier);
 
     Vector<String> indexNames() const;
     const HashMap<uint64_t, IDBIndexInfo>& indexMap() const { return m_indexMap; }
@@ -65,19 +66,18 @@ public:
     template<class Encoder> void encode(Encoder&) const;
     template<class Decoder> static bool decode(Decoder&, IDBObjectStoreInfo&);
 
-#ifndef NDEBUG
+#if !LOG_DISABLED
     String loggingString(int indent = 0) const;
 #endif
 
 private:
     uint64_t m_identifier { 0 };
     String m_name;
-    IDBKeyPath m_keyPath;
+    Optional<IDBKeyPath> m_keyPath;
     bool m_autoIncrement { false };
     uint64_t m_maxIndexID { 0 };
 
     HashMap<uint64_t, IDBIndexInfo> m_indexMap;
-
 };
 
 template<class Encoder>

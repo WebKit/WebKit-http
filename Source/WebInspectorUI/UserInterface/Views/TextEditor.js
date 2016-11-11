@@ -31,15 +31,37 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.View
 
         this.element.classList.add("text-editor", WebInspector.SyntaxHighlightedStyleClassName);
 
-        // FIXME: <https://webkit.org/b/149120> Web Inspector: Preferences for Text Editor behavior
         this._codeMirror = WebInspector.CodeMirrorEditor.create(this.element, {
             readOnly: true,
-            indentWithTabs: true,
-            indentUnit: 4,
+            indentWithTabs: WebInspector.settings.indentWithTabs.value,
+            indentUnit: WebInspector.settings.indentUnit.value,
+            tabSize: WebInspector.settings.tabSize.value,
             lineNumbers: true,
-            lineWrapping: false,
+            lineWrapping: WebInspector.settings.enableLineWrapping.value,
             matchBrackets: true,
-            autoCloseBrackets: true
+            autoCloseBrackets: true,
+            showWhitespaceCharacters: WebInspector.settings.showWhitespaceCharacters.value,
+            styleSelectedText: true,
+        });
+
+        WebInspector.settings.indentWithTabs.addEventListener(WebInspector.Setting.Event.Changed, (event) => {
+            this._codeMirror.setOption("indentWithTabs", WebInspector.settings.indentWithTabs.value);
+        });
+
+        WebInspector.settings.indentUnit.addEventListener(WebInspector.Setting.Event.Changed, (event) => {
+            this._codeMirror.setOption("indentUnit", WebInspector.settings.indentUnit.value);
+        });
+
+        WebInspector.settings.tabSize.addEventListener(WebInspector.Setting.Event.Changed, (event) => {
+            this._codeMirror.setOption("tabSize", WebInspector.settings.tabSize.value);
+        });
+
+        WebInspector.settings.enableLineWrapping.addEventListener(WebInspector.Setting.Event.Changed, (event) => {
+            this._codeMirror.setOption("lineWrapping", WebInspector.settings.enableLineWrapping.value);
+        });
+
+        WebInspector.settings.showWhitespaceCharacters.addEventListener(WebInspector.Setting.Event.Changed, (event) => {
+            this._codeMirror.setOption("showWhitespaceCharacters", WebInspector.settings.showWhitespaceCharacters.value);
         });
 
         this._codeMirror.on("change", this._contentChanged.bind(this));
@@ -57,6 +79,10 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.View
         this._breakpoints = {};
         this._executionLineNumber = NaN;
         this._executionColumnNumber = NaN;
+
+        this._executionLineHandle = null;
+        this._executionMultilineHandles = [];
+        this._executionRangeHighlightMarker = null;
 
         this._searchQuery = null;
         this._searchResults = [];
@@ -107,6 +133,7 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.View
 
             // Update the execution line now that we might have content for that line.
             this._updateExecutionLine();
+            this._updateExecutionRangeHighlight();
 
             // Set the breakpoint styles now that we might have content for those lines.
             for (var lineNumber in this._breakpoints)
@@ -137,6 +164,17 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.View
         return this._formatted;
     }
 
+    get hasModified()
+    {
+        let historySize = this._codeMirror.historySize().undo;
+
+        // Formatting code creates a history item.
+        if (this._formatted)
+            historySize--;
+
+        return historySize > 0;
+    }
+
     updateFormattedState(formatted)
     {
         return this._format(formatted).catch(handlePromiseException);
@@ -155,6 +193,11 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.View
     }
 
     canShowTypeAnnotations()
+    {
+        return false;
+    }
+
+    canShowCoverageHints()
     {
         return false;
     }
@@ -182,7 +225,7 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.View
         newMIMEType = parseMIMEType(newMIMEType).type;
 
         this._mimeType = newMIMEType;
-        this._codeMirror.setOption("mode", newMIMEType);
+        this._codeMirror.setOption("mode", {name: newMIMEType, globalVars: true});
     }
 
     get executionLineNumber()
@@ -190,28 +233,9 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.View
         return this._executionLineNumber;
     }
 
-    set executionLineNumber(lineNumber)
-    {
-        // Only return early if there isn't a line handle and that isn't changing.
-        if (!this._executionLineHandle && isNaN(lineNumber))
-            return;
-
-        this._executionLineNumber = lineNumber;
-        this._updateExecutionLine();
-
-        // Still dispatch the event even if the number didn't change. The execution state still
-        // could have changed (e.g. continuing in a loop with a breakpoint inside).
-        this.dispatchEventToListeners(WebInspector.TextEditor.Event.ExecutionLineNumberDidChange);
-    }
-
     get executionColumnNumber()
     {
         return this._executionColumnNumber;
-    }
-
-    set executionColumnNumber(columnNumber)
-    {
-        this._executionColumnNumber = columnNumber;
     }
 
     get formatterSourceMap()
@@ -324,6 +348,25 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.View
         boundBatchSearch();
     }
 
+    setExecutionLineAndColumn(lineNumber, columnNumber)
+    {
+        // Only return early if there isn't a line handle and that isn't changing.
+        if (!this._executionLineHandle && isNaN(lineNumber))
+            return;
+
+        this._executionLineNumber = lineNumber;
+        this._executionColumnNumber = columnNumber;
+
+        if (!this._initialStringNotSet) {
+            this._updateExecutionLine();
+            this._updateExecutionRangeHighlight();
+        }
+
+        // Still dispatch the event even if the number didn't change. The execution state still
+        // could have changed (e.g. continuing in a loop with a breakpoint inside).
+        this.dispatchEventToListeners(WebInspector.TextEditor.Event.ExecutionLineNumberDidChange);
+    }
+
     addSearchResults(textRanges)
     {
         console.assert(textRanges);
@@ -428,8 +471,7 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.View
         if (!(position instanceof WebInspector.SourceCodePosition))
             return;
 
-        var lineHandle = this._codeMirror.getLineHandle(position.lineNumber);
-        if (!lineHandle || !this._visible || this._initialStringNotSet || this._deferReveal) {
+        if (!this._visible || this._initialStringNotSet || this._deferReveal) {
             // If we can't get a line handle or are not visible then we wait to do the reveal.
             this._positionToReveal = position;
             this._textRangeToSelect = textRangeToSelect;
@@ -451,8 +493,13 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.View
             return;
         }
 
-        if (!textRangeToSelect)
-            textRangeToSelect = new WebInspector.TextRange(position.lineNumber, position.columnNumber, position.lineNumber, position.columnNumber);
+        let line = Number.constrain(position.lineNumber, 0, this._codeMirror.lineCount() - 1);
+        let lineHandle = this._codeMirror.getLineHandle(line);
+
+        if (!textRangeToSelect) {
+            let column = Number.constrain(position.columnNumber, 0, this._codeMirror.getLine(line).length - 1);
+            textRangeToSelect = new WebInspector.TextRange(line, column, line, column);
+        }
 
         function removeStyleClass()
         {
@@ -469,6 +516,10 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.View
             this.selectedTextRange = textRangeToSelect;
 
             if (noHighlight)
+                return;
+
+            // Avoid highlighting the execution line while debugging.
+            if (WebInspector.debuggerManager.paused && (!this._executionLineNumber || line === this._executionLineNumber))
                 return;
 
             this._codeMirror.addLineClass(lineHandle, "wrap", WebInspector.TextEditor.HighlightedStyleClassName);
@@ -498,6 +549,15 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.View
     hidden()
     {
         this._visible = false;
+    }
+
+    close()
+    {
+        WebInspector.settings.indentWithTabs.removeEventListener(null, null, this);
+        WebInspector.settings.indentUnit.removeEventListener(null, null, this);
+        WebInspector.settings.tabSize.removeEventListener(null, null, this);
+        WebInspector.settings.enableLineWrapping.removeEventListener(null, null, this);
+        WebInspector.settings.showWhitespaceCharacters.removeEventListener(null, null, this);
     }
 
     setBreakpointInfoForLineAndColumn(lineNumber, columnNumber, breakpointInfo)
@@ -611,6 +671,11 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.View
         return createCodeMirrorCubicBezierTextMarkers(this._codeMirror, range);
     }
 
+    createSpringMarkers(range)
+    {
+        return createCodeMirrorSpringTextMarkers(this._codeMirror, range);
+    }
+
     editingControllerForMarker(editableMarker)
     {
         switch (editableMarker.type) {
@@ -620,6 +685,8 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.View
             return new WebInspector.CodeMirrorGradientEditingController(this._codeMirror, editableMarker);
         case WebInspector.TextMarker.Type.CubicBezier:
             return new WebInspector.CodeMirrorBezierEditingController(this._codeMirror, editableMarker);
+        case WebInspector.TextMarker.Type.Spring:
+            return new WebInspector.CodeMirrorSpringEditingController(this._codeMirror, editableMarker);
         default:
             return new WebInspector.CodeMirrorEditingController(this._codeMirror, editableMarker);
         }
@@ -661,13 +728,23 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.View
 
     currentPositionToOriginalOffset(position)
     {
-        var offset = null;
+        let offset = null;
+
         if (this._formatterSourceMap)
             offset = this._formatterSourceMap.formattedToOriginalOffset(position.line, position.ch);
         else
-            offset = this.tokenTrackingController._codeMirror.getDoc().indexFromPos(position);
+            offset = this._codeMirror.getDoc().indexFromPos(position);
 
         return offset;
+    }
+
+    currentPositionToOriginalPosition(position)
+    {
+        if (!this._formatterSourceMap)
+            return position;
+
+        let location = this._formatterSourceMap.formattedToOriginal(position.line, position.ch);
+        return {line: location.lineNumber, ch: location.columnNumber};
     }
 
     currentPositionToCurrentOffset(position)
@@ -758,13 +835,15 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.View
 
     _startWorkerPrettyPrint(beforePrettyPrintState, callback)
     {
-        // <rdar://problem/10593948> Provide a way to change the tab width in the Web Inspector
-        let indentString = "    ";
         let sourceText = this._codeMirror.getValue();
-        let includeSourceMapData = true;
+        let indentString = WebInspector.indentString();
+        const includeSourceMapData = true;
+
+        // FIXME: Properly pass if this is a module or script.
+        const isModule = false;
 
         let workerProxy = WebInspector.FormatterWorkerProxy.singleton();
-        workerProxy.formatJavaScript(sourceText, indentString, includeSourceMapData, ({formattedText, sourceMapData}) => {
+        workerProxy.formatJavaScript(sourceText, isModule, indentString, includeSourceMapData, ({formattedText, sourceMapData}) => {
             // Handle if formatting failed, which is possible for invalid programs.
             if (formattedText === null) {
                 callback();
@@ -776,8 +855,7 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.View
 
     _startCodeMirrorPrettyPrint(beforePrettyPrintState, callback)
     {
-        // <rdar://problem/10593948> Provide a way to change the tab width in the Web Inspector
-        let indentString = "    ";
+        let indentString = WebInspector.indentString();
         let start = {line: 0, ch: 0};
         let end = {line: this._codeMirror.lineCount() - 1};
         let builder = new FormatterContentBuilder(indentString);
@@ -813,7 +891,7 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.View
     _updateAfterFormatting(pretty, beforePrettyPrintState)
     {
         let oldSelectionAnchor = beforePrettyPrintState.selectionAnchor;
-        let oldSelectionHead = beforePrettyPrintState.selectionHead;        
+        let oldSelectionHead = beforePrettyPrintState.selectionHead;
         let newSelectionAnchor, newSelectionHead;
         let newExecutionLocation = null;
 
@@ -868,8 +946,8 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.View
 
         if (newExecutionLocation) {
             this._executionLineHandle = null;
-            this.executionColumnNumber = newExecutionLocation.columnNumber;
-            this.executionLineNumber = newExecutionLocation.lineNumber;
+            this._executionMultilineHandles = [];
+            this.setExecutionLineAndColumn(newExecutionLocation.lineNumber, newExecutionLocation.columnNumber);
         }
 
         // FIXME: <rdar://problem/13129955> FindBanner: New searches should not lose search position (start from current selection/caret)
@@ -878,7 +956,7 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.View
             this.searchCleared();
             // Set timeout so that this happens after the current CodeMirror operation.
             // The editor has to update for the value and selection changes.
-            setTimeout(() => { this.performSearch(searchQuery) }, 0);
+            setTimeout(() => { this.performSearch(searchQuery); }, 0);
         }
 
         if (this._delegate && typeof this._delegate.textEditorUpdatedFormatting === "function")
@@ -1146,20 +1224,87 @@ WebInspector.TextEditor = class TextEditor extends WebInspector.View
         }
     }
 
+    _clearMultilineExecutionLineHighlights()
+    {
+        if (this._executionMultilineHandles.length) {
+            for (let lineHandle of this._executionMultilineHandles)
+                this._codeMirror.removeLineClass(lineHandle, "wrap", WebInspector.TextEditor.ExecutionLineStyleClassName);
+            this._executionMultilineHandles = [];
+        }
+    }
+
     _updateExecutionLine()
     {
-        function update()
-        {
-            if (this._executionLineHandle)
+        this._codeMirror.operation(() => {
+            if (this._executionLineHandle) {
                 this._codeMirror.removeLineClass(this._executionLineHandle, "wrap", WebInspector.TextEditor.ExecutionLineStyleClassName);
+                this._codeMirror.removeLineClass(this._executionLineHandle, "wrap", "primary");
+            }
+
+            this._clearMultilineExecutionLineHighlights();
 
             this._executionLineHandle = !isNaN(this._executionLineNumber) ? this._codeMirror.getLineHandle(this._executionLineNumber) : null;
 
-            if (this._executionLineHandle)
+            if (this._executionLineHandle) {
                 this._codeMirror.addLineClass(this._executionLineHandle, "wrap", WebInspector.TextEditor.ExecutionLineStyleClassName);
+                this._codeMirror.addLineClass(this._executionLineHandle, "wrap", "primary");
+                this._codeMirror.removeLineClass(this._executionLineHandle, "wrap", WebInspector.TextEditor.HighlightedStyleClassName);
+            }
+        });
+    }
+
+    _updateExecutionRangeHighlight()
+    {
+        if (this._executionRangeHighlightMarker) {
+            this._executionRangeHighlightMarker.clear();
+            this._executionRangeHighlightMarker = null;
         }
 
-        this._codeMirror.operation(update.bind(this));
+        if (isNaN(this._executionLineNumber))
+            return;
+
+        let currentPosition = {line: this._executionLineNumber, ch: this._executionColumnNumber};
+        let originalOffset = this.currentPositionToOriginalOffset(currentPosition);
+        let originalCodeMirrorPosition = this.currentPositionToOriginalPosition(currentPosition);
+        let originalPosition = new WebInspector.SourceCodePosition(originalCodeMirrorPosition.line, originalCodeMirrorPosition.ch);
+        let characterAtOffset = this._codeMirror.getRange(currentPosition, {line: this._executionLineNumber, ch: this._executionColumnNumber + 1});
+
+        this._delegate.textEditorExecutionHighlightRange(originalOffset, originalPosition, characterAtOffset, (range) => {
+            let start, end;
+            if (!range) {
+                // Highlight the rest of the line.
+                start = {line: this._executionLineNumber, ch: this._executionColumnNumber};
+                end = {line: this._executionLineNumber};
+            } else {
+                // Highlight the range.
+                start = this.originalOffsetToCurrentPosition(range[0]);
+                end = this.originalOffsetToCurrentPosition(range[1]);
+            }
+
+            // Ensure the marker is cleared in case there were multiple updates very quickly.
+            if (this._executionRangeHighlightMarker) {
+                this._executionRangeHighlightMarker.clear();
+                this._executionRangeHighlightMarker = null;
+            }
+
+            // Avoid highlighting trailing whitespace.
+            let text = this._codeMirror.getRange(start, end);
+            let trailingWhitespace = text.match(/\s+$/);
+            if (trailingWhitespace)
+                end.ch = Math.max(0, end.ch - trailingWhitespace[0].length);
+
+            // Give each line containing part of the range the full line style.
+            this._clearMultilineExecutionLineHighlights();
+            if (start.line !== end.line) {
+                for (let line = start.line; line < end.line; ++line) {
+                    let lineHandle = this._codeMirror.getLineHandle(line);
+                    this._codeMirror.addLineClass(lineHandle, "wrap", WebInspector.TextEditor.ExecutionLineStyleClassName);
+                    this._executionMultilineHandles.push(lineHandle);
+                }
+            }
+
+            this._executionRangeHighlightMarker = this._codeMirror.markText(start, end, {className: "execution-range-highlight"});
+        });
     }
 
     _setBreakpointStylesOnLine(lineNumber)

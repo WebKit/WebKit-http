@@ -1,7 +1,5 @@
 Implementers looking to fix bugs might want to use the original version of this suite's test framework, which conveniently aggregates similar errors and only reports failures. This file is (part of) the authoritative conformance test suite, and is suitable for incorporation into automated test suites.
 
-(Note: missing tests for types tokenlist, settable tokenlist, limited double.)
-
 
 PASS form.title: typeof IDL attribute 
 PASS form.title: IDL get with DOM attribute unset 
@@ -4724,7 +4722,7 @@ PASS input.formEnctype: IDL set to "\0" should not throw
 PASS input.formEnctype: IDL set to "\0" followed by getAttribute() 
 PASS input.formEnctype: IDL set to "\0" followed by IDL get 
 PASS input.formEnctype: IDL set to null should not throw 
-FAIL input.formEnctype: IDL set to null followed by IDL get assert_equals: expected "application/x-www-form-urlencoded" but got ""
+PASS input.formEnctype: IDL set to null followed by IDL get 
 PASS input.formEnctype: IDL set to object "test-toString" should not throw 
 PASS input.formEnctype: IDL set to object "test-toString" followed by getAttribute() 
 PASS input.formEnctype: IDL set to object "test-toString" followed by IDL get 
@@ -4865,7 +4863,7 @@ PASS input.formMethod: IDL set to "\0" should not throw
 PASS input.formMethod: IDL set to "\0" followed by getAttribute() 
 PASS input.formMethod: IDL set to "\0" followed by IDL get 
 PASS input.formMethod: IDL set to null should not throw 
-FAIL input.formMethod: IDL set to null followed by IDL get assert_equals: expected "get" but got ""
+PASS input.formMethod: IDL set to null followed by IDL get 
 PASS input.formMethod: IDL set to object "test-toString" should not throw 
 PASS input.formMethod: IDL set to object "test-toString" followed by getAttribute() 
 PASS input.formMethod: IDL set to object "test-toString" followed by IDL get 
@@ -6651,16 +6649,16 @@ PASS input.type: setAttribute() to "adio" followed by getAttribute()
 PASS input.type: setAttribute() to "adio" followed by IDL get 
 PASS input.type: setAttribute() to "RADIO" followed by getAttribute() 
 PASS input.type: setAttribute() to "RADIO" followed by IDL get 
-FAIL input.type: setAttribute() to "file" followed by getAttribute() assert_equals: expected "file" but got "radio"
-FAIL input.type: setAttribute() to "file" followed by IDL get assert_equals: expected "file" but got "radio"
+PASS input.type: setAttribute() to "file" followed by getAttribute() 
+PASS input.type: setAttribute() to "file" followed by IDL get 
 PASS input.type: setAttribute() to "xfile" followed by getAttribute() 
 PASS input.type: setAttribute() to "xfile" followed by IDL get 
 PASS input.type: setAttribute() to "file\0" followed by getAttribute() 
 PASS input.type: setAttribute() to "file\0" followed by IDL get 
 PASS input.type: setAttribute() to "ile" followed by getAttribute() 
 PASS input.type: setAttribute() to "ile" followed by IDL get 
-FAIL input.type: setAttribute() to "FILE" followed by getAttribute() assert_equals: expected "FILE" but got "text"
-FAIL input.type: setAttribute() to "FILE" followed by IDL get assert_equals: expected "file" but got "text"
+PASS input.type: setAttribute() to "FILE" followed by getAttribute() 
+PASS input.type: setAttribute() to "FILE" followed by IDL get 
 PASS input.type: setAttribute() to "submit" followed by getAttribute() 
 PASS input.type: setAttribute() to "submit" followed by IDL get 
 PASS input.type: setAttribute() to "xsubmit" followed by getAttribute() 
@@ -7016,8 +7014,8 @@ PASS input.type: IDL set to "RADIO" should not throw
 PASS input.type: IDL set to "RADIO" followed by getAttribute() 
 PASS input.type: IDL set to "RADIO" followed by IDL get 
 PASS input.type: IDL set to "file" should not throw 
-FAIL input.type: IDL set to "file" followed by getAttribute() assert_equals: expected "file" but got "radio"
-FAIL input.type: IDL set to "file" followed by IDL get assert_equals: expected "file" but got "radio"
+PASS input.type: IDL set to "file" followed by getAttribute() 
+PASS input.type: IDL set to "file" followed by IDL get 
 PASS input.type: IDL set to "xfile" should not throw 
 PASS input.type: IDL set to "xfile" followed by getAttribute() 
 PASS input.type: IDL set to "xfile" followed by IDL get 
@@ -7028,8 +7026,8 @@ PASS input.type: IDL set to "ile" should not throw
 PASS input.type: IDL set to "ile" followed by getAttribute() 
 PASS input.type: IDL set to "ile" followed by IDL get 
 PASS input.type: IDL set to "FILE" should not throw 
-FAIL input.type: IDL set to "FILE" followed by getAttribute() assert_equals: expected "FILE" but got "text"
-FAIL input.type: IDL set to "FILE" followed by IDL get assert_equals: expected "file" but got "text"
+PASS input.type: IDL set to "FILE" followed by getAttribute() 
+PASS input.type: IDL set to "FILE" followed by IDL get 
 PASS input.type: IDL set to "submit" should not throw 
 PASS input.type: IDL set to "submit" followed by getAttribute() 
 PASS input.type: IDL set to "submit" followed by IDL get 
@@ -8169,7 +8167,7 @@ PASS button.formEnctype: IDL set to "\0" should not throw
 PASS button.formEnctype: IDL set to "\0" followed by getAttribute() 
 PASS button.formEnctype: IDL set to "\0" followed by IDL get 
 PASS button.formEnctype: IDL set to null should not throw 
-FAIL button.formEnctype: IDL set to null followed by IDL get assert_equals: expected "application/x-www-form-urlencoded" but got ""
+PASS button.formEnctype: IDL set to null followed by IDL get 
 PASS button.formEnctype: IDL set to object "test-toString" should not throw 
 PASS button.formEnctype: IDL set to object "test-toString" followed by getAttribute() 
 PASS button.formEnctype: IDL set to object "test-toString" followed by IDL get 
@@ -8320,7 +8318,7 @@ PASS button.formMethod: IDL set to "\0" should not throw
 PASS button.formMethod: IDL set to "\0" followed by getAttribute() 
 PASS button.formMethod: IDL set to "\0" followed by IDL get 
 PASS button.formMethod: IDL set to null should not throw 
-FAIL button.formMethod: IDL set to null followed by IDL get assert_equals: expected "get" but got ""
+PASS button.formMethod: IDL set to null followed by IDL get 
 PASS button.formMethod: IDL set to object "test-toString" should not throw 
 PASS button.formMethod: IDL set to object "test-toString" followed by getAttribute() 
 PASS button.formMethod: IDL set to object "test-toString" followed by IDL get 
@@ -12903,8 +12901,9 @@ PASS textarea.cols: setAttribute() to object "2" followed by getAttribute()
 PASS textarea.cols: setAttribute() to object "2" followed by IDL get 
 PASS textarea.cols: setAttribute() to object "3" followed by getAttribute() 
 PASS textarea.cols: setAttribute() to object "3" followed by IDL get 
-FAIL textarea.cols: IDL set to 0 must throw INDEX_SIZE_ERR assert_throws: function "function () {
-                idlObj[idlName] = idlTests[..." did not throw
+PASS textarea.cols: IDL set to 0 should not throw 
+PASS textarea.cols: IDL set to 0 followed by getAttribute() 
+PASS textarea.cols: IDL set to 0 followed by IDL get 
 PASS textarea.cols: IDL set to 1 should not throw 
 PASS textarea.cols: IDL set to 1 followed by getAttribute() 
 PASS textarea.cols: IDL set to 1 followed by IDL get 
@@ -13962,8 +13961,9 @@ PASS textarea.rows: setAttribute() to object "2" followed by getAttribute()
 PASS textarea.rows: setAttribute() to object "2" followed by IDL get 
 PASS textarea.rows: setAttribute() to object "3" followed by getAttribute() 
 PASS textarea.rows: setAttribute() to object "3" followed by IDL get 
-FAIL textarea.rows: IDL set to 0 must throw INDEX_SIZE_ERR assert_throws: function "function () {
-                idlObj[idlName] = idlTests[..." did not throw
+PASS textarea.rows: IDL set to 0 should not throw 
+PASS textarea.rows: IDL set to 0 followed by getAttribute() 
+PASS textarea.rows: IDL set to 0 followed by IDL get 
 PASS textarea.rows: IDL set to 1 should not throw 
 PASS textarea.rows: IDL set to 1 followed by getAttribute() 
 PASS textarea.rows: IDL set to 1 followed by IDL get 
@@ -16852,4 +16852,4 @@ PASS meter.tabIndex: IDL set to 2147483647 followed by IDL get
 PASS meter.tabIndex: IDL set to -2147483648 should not throw 
 PASS meter.tabIndex: IDL set to -2147483648 followed by getAttribute() 
 PASS meter.tabIndex: IDL set to -2147483648 followed by IDL get 
-
+(Note: missing tests for types tokenlist, settable tokenlist, limited double.)

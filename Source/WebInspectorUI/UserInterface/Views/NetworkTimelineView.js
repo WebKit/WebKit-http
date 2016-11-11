@@ -31,7 +31,7 @@ WebInspector.NetworkTimelineView = class NetworkTimelineView extends WebInspecto
 
         console.assert(timeline.type === WebInspector.TimelineRecord.Type.Network);
 
-        let columns = {name: {}, domain: {}, type: {}, method: {}, scheme: {}, statusCode: {}, cached: {}, size: {}, transferSize: {}, requestSent: {}, latency: {}, duration: {}};
+        let columns = {name: {}, domain: {}, type: {}, method: {}, scheme: {}, statusCode: {}, cached: {}, size: {}, transferSize: {}, requestSent: {}, latency: {}, duration: {}, graph: {}};
 
         columns.name.title = WebInspector.UIString("Name");
         columns.name.icon = true;
@@ -39,10 +39,10 @@ WebInspector.NetworkTimelineView = class NetworkTimelineView extends WebInspecto
         columns.name.locked = true;
 
         columns.domain.title = WebInspector.UIString("Domain");
-        columns.domain.width = "10%";
+        columns.domain.width = "8%";
 
         columns.type.title = WebInspector.UIString("Type");
-        columns.type.width = "8%";
+        columns.type.width = "7%";
 
         var typeToLabelMap = new Map;
         for (var key in WebInspector.Resource.Type) {
@@ -54,16 +54,16 @@ WebInspector.NetworkTimelineView = class NetworkTimelineView extends WebInspecto
         this._scopeBar = columns.type.scopeBar;
 
         columns.method.title = WebInspector.UIString("Method");
-        columns.method.width = "6%";
+        columns.method.width = "4%";
 
         columns.scheme.title = WebInspector.UIString("Scheme");
-        columns.scheme.width = "6%";
+        columns.scheme.width = "4%";
 
         columns.statusCode.title = WebInspector.UIString("Status");
-        columns.statusCode.width = "6%";
+        columns.statusCode.width = "4%";
 
         columns.cached.title = WebInspector.UIString("Cached");
-        columns.cached.width = "6%";
+        columns.cached.width = "4%";
 
         columns.size.title = WebInspector.UIString("Size");
         columns.size.width = "8%";
@@ -88,6 +88,14 @@ WebInspector.NetworkTimelineView = class NetworkTimelineView extends WebInspecto
         for (var column in columns)
             columns[column].sortable = true;
 
+        this._timelineRuler = new WebInspector.TimelineRuler;
+        this._timelineRuler.allowsClippedLabels = true;
+
+        columns.graph.title = WebInspector.UIString("Timeline");
+        columns.graph.width = "15%";
+        columns.graph.headerView = this._timelineRuler;
+        columns.graph.sortable = false;
+
         this._dataGrid = new WebInspector.TimelineDataGrid(columns);
         this._dataGrid.sortDelegate = this;
         this._dataGrid.sortColumnIdentifier = "requestSent";
@@ -106,6 +114,8 @@ WebInspector.NetworkTimelineView = class NetworkTimelineView extends WebInspecto
     }
 
     // Public
+
+    get secondsPerPixel() { return this._timelineRuler.secondsPerPixel; }
 
     get selectionPathComponents()
     {
@@ -148,6 +158,7 @@ WebInspector.NetworkTimelineView = class NetworkTimelineView extends WebInspecto
         this._dataGrid.reset();
 
         this._pendingRecords = [];
+        this._resourceDataGridNodeMap.clear();
     }
 
     // TimelineDataGrid sort delegate
@@ -197,6 +208,22 @@ WebInspector.NetworkTimelineView = class NetworkTimelineView extends WebInspecto
 
     layout()
     {
+        this.endTime = Math.min(this.endTime, this.currentTime);
+
+        let oldZeroTime = this._timelineRuler.zeroTime;
+        let oldStartTime = this._timelineRuler.startTime;
+        let oldEndTime = this._timelineRuler.endTime;
+
+        this._timelineRuler.zeroTime = this.zeroTime;
+        this._timelineRuler.startTime = this.startTime;
+        this._timelineRuler.endTime = this.endTime;
+
+        // We only need to refresh the graphs when the any of the times change.
+        if (this.zeroTime !== oldZeroTime || this.startTime !== oldStartTime || this.endTime !== oldEndTime) {
+            for (let dataGridNode of this._resourceDataGridNodeMap.values())
+                dataGridNode.refreshGraph();
+        }
+
         this._processPendingRecords();
     }
 
@@ -214,7 +241,9 @@ WebInspector.NetworkTimelineView = class NetworkTimelineView extends WebInspecto
             if (dataGridNode)
                 continue;
 
-            dataGridNode = new WebInspector.ResourceTimelineDataGridNode(resourceTimelineRecord, false, this);
+            const includesGraph = false;
+            const shouldShowPopover = true;
+            dataGridNode = new WebInspector.ResourceTimelineDataGridNode(resourceTimelineRecord, includesGraph, this, shouldShowPopover);
             this._resourceDataGridNodeMap.set(resourceTimelineRecord.resource, dataGridNode);
 
             this._dataGrid.addRowInSortOrder(null, dataGridNode);

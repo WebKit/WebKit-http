@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef CryptoAlgorithmAesKeyGenParams_h
-#define CryptoAlgorithmAesKeyGenParams_h
+#pragma once
 
 #include "CryptoAlgorithmParameters.h"
 
@@ -34,10 +33,9 @@ namespace WebCore {
 
 class CryptoAlgorithmAesKeyGenParams final : public CryptoAlgorithmParameters {
 public:
-    // The length, in bits, of the key.
-    unsigned length;
+    unsigned short length;
 
-    Class parametersClass() const override { return Class::AesKeyGenParams; }
+    Class parametersClass() const final { return Class::AesKeyGenParams; }
 };
 
 } // namespace WebCore
@@ -45,4 +43,3 @@ public:
 SPECIALIZE_TYPE_TRAITS_CRYPTO_ALGORITHM_PARAMETERS(AesKeyGenParams)
 
 #endif // ENABLE(SUBTLE_CRYPTO)
-#endif // CryptoAlgorithmAesKeyGenParams_h

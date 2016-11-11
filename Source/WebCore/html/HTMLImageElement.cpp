@@ -28,7 +28,6 @@
 #include "CachedImage.h"
 #include "EventNames.h"
 #include "FrameView.h"
-#include "HTMLAnchorElement.h"
 #include "HTMLDocument.h"
 #include "HTMLFormElement.h"
 #include "HTMLParserIdioms.h"
@@ -38,11 +37,13 @@
 #include "MIMETypeRegistry.h"
 #include "MediaList.h"
 #include "MediaQueryEvaluator.h"
+#include "NodeTraversal.h"
 #include "Page.h"
 #include "RenderImage.h"
+#include "RenderView.h"
 #include "Settings.h"
 #include "ShadowRoot.h"
-#include "SourceSizeList.h"
+#include "SizesAttributeParser.h"
 #include <wtf/text/StringBuilder.h>
 
 #if ENABLE(SERVICE_CONTROLS)
@@ -88,13 +89,13 @@ HTMLImageElement::~HTMLImageElement()
     setPictureElement(nullptr);
 }
 
-Ref<HTMLImageElement> HTMLImageElement::createForJSConstructor(Document& document, const int* optionalWidth, const int* optionalHeight)
+Ref<HTMLImageElement> HTMLImageElement::createForJSConstructor(Document& document, Optional<unsigned> width, Optional<unsigned> height)
 {
-    Ref<HTMLImageElement> image = adoptRef(*new HTMLImageElement(imgTag, document));
-    if (optionalWidth)
-        image->setWidth(*optionalWidth);
-    if (optionalHeight)
-        image->setHeight(*optionalHeight);
+    auto image = adoptRef(*new HTMLImageElement(imgTag, document));
+    if (width)
+        image->setWidth(width.value());
+    if (height)
+        image->setHeight(height.value());
     return image;
 }
 
@@ -129,7 +130,7 @@ void HTMLImageElement::collectStyleForPresentationAttribute(const QualifiedName&
 
 const AtomicString& HTMLImageElement::imageSourceURL() const
 {
-    return m_bestFitImageURL.isEmpty() ? fastGetAttribute(srcAttr) : m_bestFitImageURL;
+    return m_bestFitImageURL.isEmpty() ? attributeWithoutSynchronization(srcAttr) : m_bestFitImageURL;
 }
 
 void HTMLImageElement::setBestFitURLAndDPRFromImageCandidate(const ImageCandidate& candidate)
@@ -154,11 +155,11 @@ ImageCandidate HTMLImageElement::bestFitSourceFromPictureElement()
             continue;
         auto& source = downcast<HTMLSourceElement>(*child);
 
-        auto& srcset = source.fastGetAttribute(srcsetAttr);
+        auto& srcset = source.attributeWithoutSynchronization(srcsetAttr);
         if (srcset.isEmpty())
             continue;
 
-        auto& typeAttribute = source.fastGetAttribute(typeAttr);
+        auto& typeAttribute = source.attributeWithoutSynchronization(typeAttr);
         if (!typeAttribute.isNull()) {
             String type = typeAttribute.string();
             type.truncate(type.find(';'));
@@ -176,7 +177,7 @@ ImageCandidate HTMLImageElement::bestFitSourceFromPictureElement()
         if (!evaluation)
             continue;
 
-        auto sourceSize = parseSizesAttribute(document(), source.fastGetAttribute(sizesAttr).string());
+        auto sourceSize = SizesAttributeParser(source.attributeWithoutSynchronization(sizesAttr).string(), document()).length();
         auto candidate = bestFitSourceForImageAttributes(document().deviceScaleFactor(), nullAtom, srcset, sourceSize);
         if (!candidate.isEmpty())
             return candidate;
@@ -190,8 +191,8 @@ void HTMLImageElement::selectImageSource()
     ImageCandidate candidate = bestFitSourceFromPictureElement();
     if (candidate.isEmpty()) {
         // If we don't have a <picture> or didn't find a source, then we use our own attributes.
-        float sourceSize = parseSizesAttribute(document(), fastGetAttribute(sizesAttr).string());
-        candidate = bestFitSourceForImageAttributes(document().deviceScaleFactor(), fastGetAttribute(srcAttr), fastGetAttribute(srcsetAttr), sourceSize);
+        auto sourceSize = SizesAttributeParser(attributeWithoutSynchronization(sizesAttr).string(), document()).length();
+        candidate = bestFitSourceForImageAttributes(document().deviceScaleFactor(), attributeWithoutSynchronization(srcAttr), attributeWithoutSynchronization(srcsetAttr), sourceSize);
     }
     setBestFitURLAndDPRFromImageCandidate(candidate);
     m_imageLoader.updateFromElementIgnoringPreviousError();
@@ -253,11 +254,11 @@ const AtomicString& HTMLImageElement::altText() const
     // lets figure out the alt text.. magic stuff
     // http://www.w3.org/TR/1998/REC-html40-19980424/appendix/notes.html#altgen
     // also heavily discussed by Hixie on bugzilla
-    const AtomicString& alt = fastGetAttribute(altAttr);
+    const AtomicString& alt = attributeWithoutSynchronization(altAttr);
     if (!alt.isNull())
         return alt;
     // fall back to title attribute
-    return fastGetAttribute(titleAttr);
+    return attributeWithoutSynchronization(titleAttr);
 }
 
 RenderPtr<RenderElement> HTMLImageElement::createElementRenderer(RenderStyle&& style, const RenderTreePosition&)
@@ -305,6 +306,11 @@ Node::InsertionNotificationRequest HTMLImageElement::insertedInto(ContainerNode&
         m_form = m_formSetByParser;
         m_formSetByParser = nullptr;
         m_form->registerImgElement(this);
+    }
+
+    if (m_form && rootElement() != m_form->rootElement()) {
+        m_form->removeImgElement(this);
+        m_form = nullptr;
     }
 
     if (!m_form) {
@@ -370,18 +376,17 @@ void HTMLImageElement::setPictureElement(HTMLPictureElement* pictureElement)
     gPictureOwnerMap->add(this, pictureElement->createWeakPtr());
 }
     
-int HTMLImageElement::width(bool ignorePendingStylesheets)
+unsigned HTMLImageElement::width(bool ignorePendingStylesheets)
 {
     if (!renderer()) {
         // check the attribute first for an explicit pixel value
-        bool ok;
-        int width = getAttribute(widthAttr).toInt(&ok);
-        if (ok)
-            return width;
+        Optional<unsigned> width = parseHTMLNonNegativeInteger(attributeWithoutSynchronization(widthAttr));
+        if (width)
+            return width.value();
 
         // if the image is available, use its width
         if (m_imageLoader.image())
-            return m_imageLoader.image()->imageSizeForRenderer(renderer(), 1.0f).width();
+            return m_imageLoader.image()->imageSizeForRenderer(renderer(), 1.0f).width().toUnsigned();
     }
 
     if (ignorePendingStylesheets)
@@ -396,18 +401,17 @@ int HTMLImageElement::width(bool ignorePendingStylesheets)
     return adjustForAbsoluteZoom(snappedIntRect(contentRect).width(), *box);
 }
 
-int HTMLImageElement::height(bool ignorePendingStylesheets)
+unsigned HTMLImageElement::height(bool ignorePendingStylesheets)
 {
     if (!renderer()) {
         // check the attribute first for an explicit pixel value
-        bool ok;
-        int height = getAttribute(heightAttr).toInt(&ok);
-        if (ok)
-            return height;
+        Optional<unsigned> height = parseHTMLNonNegativeInteger(attributeWithoutSynchronization(heightAttr));
+        if (height)
+            return height.value();
 
         // if the image is available, use its height
         if (m_imageLoader.image())
-            return m_imageLoader.image()->imageSizeForRenderer(renderer(), 1.0f).height();
+            return m_imageLoader.image()->imageSizeForRenderer(renderer(), 1.0f).height().toUnsigned();
     }
 
     if (ignorePendingStylesheets)
@@ -470,7 +474,7 @@ String HTMLImageElement::completeURLsInAttributeValue(const URL& base, const Att
             if (candidate.resourceWidth != UninitializedDescriptor) {
                 result.append(' ');
                 result.appendNumber(candidate.resourceWidth);
-                result.append('x');
+                result.append('w');
             }
         }
         return result.toString();
@@ -486,33 +490,33 @@ bool HTMLImageElement::matchesCaseFoldedUsemap(const AtomicStringImpl& name) con
 
 const AtomicString& HTMLImageElement::alt() const
 {
-    return fastGetAttribute(altAttr);
+    return attributeWithoutSynchronization(altAttr);
 }
 
 bool HTMLImageElement::draggable() const
 {
     // Image elements are draggable by default.
-    return !equalLettersIgnoringASCIICase(fastGetAttribute(draggableAttr), "false");
+    return !equalLettersIgnoringASCIICase(attributeWithoutSynchronization(draggableAttr), "false");
 }
 
-void HTMLImageElement::setHeight(int value)
+void HTMLImageElement::setHeight(unsigned value)
 {
-    setIntegralAttribute(heightAttr, value);
+    setUnsignedIntegralAttribute(heightAttr, value);
 }
 
 URL HTMLImageElement::src() const
 {
-    return document().completeURL(fastGetAttribute(srcAttr));
+    return document().completeURL(attributeWithoutSynchronization(srcAttr));
 }
 
 void HTMLImageElement::setSrc(const String& value)
 {
-    setAttribute(srcAttr, value);
+    setAttributeWithoutSynchronization(srcAttr, value);
 }
 
-void HTMLImageElement::setWidth(int value)
+void HTMLImageElement::setWidth(unsigned value)
 {
-    setIntegralAttribute(widthAttr, value);
+    setUnsignedIntegralAttribute(widthAttr, value);
 }
 
 int HTMLImageElement::x() const
@@ -548,7 +552,7 @@ void HTMLImageElement::addSubresourceAttributeURLs(ListHashSet<URL>& urls) const
 
     addSubresourceURL(urls, document().completeURL(imageSourceURL()));
     // FIXME: What about when the usemap attribute begins with "#"?
-    addSubresourceURL(urls, document().completeURL(fastGetAttribute(usemapAttr)));
+    addSubresourceURL(urls, document().completeURL(attributeWithoutSynchronization(usemapAttr)));
 }
 
 void HTMLImageElement::didMoveToNewDocument(Document* oldDocument)
@@ -559,10 +563,10 @@ void HTMLImageElement::didMoveToNewDocument(Document* oldDocument)
 
 bool HTMLImageElement::isServerMap() const
 {
-    if (!fastHasAttribute(ismapAttr))
+    if (!hasAttributeWithoutSynchronization(ismapAttr))
         return false;
 
-    const AtomicString& usemap = fastGetAttribute(usemapAttr);
+    const AtomicString& usemap = attributeWithoutSynchronization(usemapAttr);
 
     // If the usemap attribute starts with '#', it refers to a map element in the document.
     if (usemap.string()[0] == '#')
@@ -578,7 +582,7 @@ void HTMLImageElement::setCrossOrigin(const AtomicString& value)
 
 String HTMLImageElement::crossOrigin() const
 {
-    return parseCORSSettingsAttribute(fastGetAttribute(crossoriginAttr));
+    return parseCORSSettingsAttribute(attributeWithoutSynchronization(crossoriginAttr));
 }
 
 #if ENABLE(SERVICE_CONTROLS)

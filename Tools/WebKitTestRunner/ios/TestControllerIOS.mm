@@ -65,7 +65,7 @@ void TestController::platformDestroy()
 
 void TestController::initializeInjectedBundlePath()
 {
-    NSString *nsBundlePath = [[[NSBundle mainBundle] bundlePath] stringByAppendingPathComponent:@"WebKitTestRunnerInjectedBundle.bundle"];
+    NSString *nsBundlePath = [[NSBundle mainBundle].builtInPlugInsPath stringByAppendingPathComponent:@"WebKitTestRunnerInjectedBundle.bundle"];
     m_injectedBundlePath.adopt(WKStringCreateWithCFString((CFStringRef)nsBundlePath));
 }
 
@@ -83,16 +83,13 @@ void TestController::platformResetPreferencesToConsistentValues()
 void TestController::platformResetStateToConsistentValues()
 {
     cocoaResetStateToConsistentValues();
-    [mainWebView()->platformView() setForceIPadStyleZoomOnInputFocus:NO];
 }
 
 void TestController::platformConfigureViewForTest(const TestInvocation& test)
 {
     if (test.options().useFlexibleViewport) {
-        const unsigned phoneViewHeight = 480;
-        const unsigned phoneViewWidth = 320;
-
-        mainWebView()->resizeTo(phoneViewWidth, phoneViewHeight);
+        CGRect screenBounds = [UIScreen mainScreen].bounds;
+        mainWebView()->resizeTo(screenBounds.size.width, screenBounds.size.height);
         // We also pass data to InjectedBundle::beginTesting() to have it call
         // WKBundlePageSetUseTestingViewportConfiguration(false).
     }

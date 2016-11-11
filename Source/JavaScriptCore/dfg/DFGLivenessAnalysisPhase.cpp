@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013, 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2013, 2015-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,10 +29,14 @@
 #if ENABLE(DFG_JIT)
 
 #include "DFGBasicBlockInlines.h"
+#include "DFGBlockMapInlines.h"
+#include "DFGFlowIndexing.h"
 #include "DFGGraph.h"
 #include "DFGInsertionSet.h"
 #include "DFGPhase.h"
 #include "JSCInlines.h"
+#include <wtf/BitVector.h>
+#include <wtf/IndexSparseSet.h>
 
 namespace JSC { namespace DFG {
 
@@ -40,127 +44,148 @@ class LivenessAnalysisPhase : public Phase {
 public:
     LivenessAnalysisPhase(Graph& graph)
         : Phase(graph, "liveness analysis")
+        , m_dirtyBlocks(m_graph.numBlocks())
+        , m_indexing(*m_graph.m_indexingCache)
+        , m_liveAtHead(m_graph)
+        , m_liveAtTail(m_graph)
     {
+        m_graph.m_indexingCache->recompute();
+        m_workset = std::make_unique<IndexSparseSet<UnsafeVectorOverflow>>(m_graph.m_indexingCache->numIndices());
     }
-    
+
     bool run()
     {
-        ASSERT(m_graph.m_form == SSA);
-        
-        // Liveness is a backwards analysis; the roots are the blocks that
-        // end in a terminal (Return/Throw/ThrowReferenceError). For now, we
-        // use a fixpoint formulation since liveness is a rapid analysis with
-        // convergence guaranteed after O(connectivity).
-        
-        // Start by assuming that everything is dead.
-        for (BlockIndex blockIndex = m_graph.numBlocks(); blockIndex--;) {
+        // Start with all valid block dirty.
+        BlockIndex numBlock = m_graph.numBlocks();
+        m_dirtyBlocks.ensureSize(numBlock);
+        for (BlockIndex blockIndex = 0; blockIndex < numBlock; ++blockIndex) {
+            if (m_graph.block(blockIndex))
+                m_dirtyBlocks.quickSet(blockIndex);
+        }
+
+        // Fixpoint until we do not add any new live values at tail.
+        bool changed;
+        do {
+            changed = false;
+
+            for (BlockIndex blockIndex = numBlock; blockIndex--;) {
+                if (!m_dirtyBlocks.quickClear(blockIndex))
+                    continue;
+
+                changed |= processBlock(blockIndex);
+            }
+        } while (changed);
+
+        // Update the per-block node list for live and tail.
+        for (BlockIndex blockIndex = numBlock; blockIndex--;) {
             BasicBlock* block = m_graph.block(blockIndex);
             if (!block)
                 continue;
-            block->ssa->liveAtTailIsDirty = true;
-            block->ssa->liveAtHead.clear();
-            block->ssa->liveAtTail.clear();
+
+            {
+                const Vector<unsigned, 0, UnsafeVectorOverflow, 1>& liveAtHeadIndices = m_liveAtHead[blockIndex];
+                Vector<NodeFlowProjection>& liveAtHead = block->ssa->liveAtHead;
+                liveAtHead.resize(0);
+                liveAtHead.reserveCapacity(liveAtHeadIndices.size());
+                for (unsigned index : liveAtHeadIndices)
+                    liveAtHead.uncheckedAppend(m_indexing.nodeProjection(index));
+            }
+            {
+                const HashSet<unsigned, DefaultHash<unsigned>::Hash, WTF::UnsignedWithZeroKeyHashTraits<unsigned>>& liveAtTailIndices = m_liveAtTail[blockIndex];
+                Vector<NodeFlowProjection>& liveAtTail = block->ssa->liveAtTail;
+                liveAtTail.resize(0);
+                liveAtTail.reserveCapacity(liveAtTailIndices.size());
+                for (unsigned index : m_liveAtTail[blockIndex])
+                    liveAtTail.uncheckedAppend(m_indexing.nodeProjection(index));
+            }
         }
-        
-        do {
-            m_changed = false;
-            for (BlockIndex blockIndex = m_graph.numBlocks(); blockIndex--;)
-                process(blockIndex);
-        } while (m_changed);
-        
-        if (!m_graph.block(0)->ssa->liveAtHead.isEmpty()) {
-            DFG_CRASH(
-                m_graph, nullptr,
-                toCString(
-                    "Bad liveness analysis result: live at root is not empty: ",
-                    nodeListDump(m_graph.block(0)->ssa->liveAtHead)).data());
-        }
-        
+
         return true;
     }
 
 private:
-    void process(BlockIndex blockIndex)
+    bool processBlock(BlockIndex blockIndex)
     {
         BasicBlock* block = m_graph.block(blockIndex);
-        if (!block)
-            return;
+        ASSERT_WITH_MESSAGE(block, "Only dirty blocks needs updates. A null block should never be dirty.");
 
-        if (!block->ssa->liveAtTailIsDirty)
-            return;
-        block->ssa->liveAtTailIsDirty = false;
+        m_workset->clear();
+        for (unsigned index : m_liveAtTail[blockIndex])
+            m_workset->add(index);
 
-        m_live = block->ssa->liveAtTail;
         for (unsigned nodeIndex = block->size(); nodeIndex--;) {
             Node* node = block->at(nodeIndex);
-            
-            // Given an Upsilon:
-            //
-            //    n: Upsilon(@x, ^p)
-            //
-            // We say that it def's @p and @n and uses @x.
-            //
-            // Given a Phi:
-            //
-            //    p: Phi()
-            //
-            // We say nothing. It's neither a use nor a def.
-            //
-            // Given a node:
-            //
-            //    n: Thingy(@a, @b, @c)
-            //
-            // We say that it def's @n and uses @a, @b, @c.
+
+            auto handleEdge = [&] (Edge& edge) {
+                bool newEntry = m_workset->add(m_indexing.index(edge.node()));
+                edge.setKillStatus(newEntry ? DoesKill : DoesNotKill);
+            };
             
             switch (node->op()) {
             case Upsilon: {
+                ASSERT_WITH_MESSAGE(!m_workset->contains(node->index()), "Upsilon should not be used as defs by other nodes.");
+
                 Node* phi = node->phi();
-                m_live.remove(phi);
-                m_live.remove(node);
-                m_live.add(node->child1().node());
+                m_workset->remove(m_indexing.shadowIndex(phi));
+                handleEdge(node->child1());
                 break;
             }
-                
             case Phi: {
+                m_workset->remove(m_indexing.index(node));
+                m_workset->add(m_indexing.shadowIndex(node));
                 break;
             }
-                
             default:
-                m_live.remove(node);
-                DFG_NODE_DO_TO_CHILDREN(m_graph, node, addChildUse);
+                m_workset->remove(m_indexing.index(node));
+                m_graph.doToChildren(node, handleEdge);
                 break;
             }
         }
-        
-        for (Node* node : m_live) {
-            if (!block->ssa->liveAtHead.contains(node)) {
-                m_changed = true;
-                for (unsigned i = block->predecessors.size(); i--;) {
-                    BasicBlock* predecessor = block->predecessors[i];
-                    if (predecessor->ssa->liveAtTail.add(node).isNewEntry)
-                        predecessor->ssa->liveAtTailIsDirty = true;
+
+        // Update live at head.
+        Vector<unsigned, 0, UnsafeVectorOverflow, 1>& liveAtHead = m_liveAtHead[blockIndex];
+        if (m_workset->size() == liveAtHead.size())
+            return false;
+
+        for (unsigned liveIndexAtHead : liveAtHead)
+            m_workset->remove(liveIndexAtHead);
+        ASSERT(!m_workset->isEmpty());
+
+        liveAtHead.reserveCapacity(liveAtHead.size() + m_workset->size());
+        for (unsigned newValue : *m_workset)
+            liveAtHead.uncheckedAppend(newValue);
+
+        bool changedPredecessor = false;
+        for (BasicBlock* predecessor : block->predecessors) {
+            HashSet<unsigned, DefaultHash<unsigned>::Hash, WTF::UnsignedWithZeroKeyHashTraits<unsigned>>&
+                liveAtTail = m_liveAtTail[predecessor];
+            for (unsigned newValue : *m_workset) {
+                if (liveAtTail.add(newValue)) {
+                    if (!m_dirtyBlocks.quickSet(predecessor->index))
+                        changedPredecessor = true;
                 }
             }
         }
-        block->ssa->liveAtHead = WTFMove(m_live);
+        return changedPredecessor;
     }
+
+    // Blocks with new live values at tail.
+    BitVector m_dirtyBlocks;
     
-    void addChildUse(Node*, Edge& edge)
-    {
-        addChildUse(edge);
-    }
-    
-    void addChildUse(Edge& edge)
-    {
-        edge.setKillStatus(m_live.add(edge.node()).isNewEntry ? DoesKill : DoesNotKill);
-    }
-    
-    bool m_changed;
-    HashSet<Node*> m_live;
+    FlowIndexing& m_indexing;
+
+    // Live values per block edge.
+    BlockMap<Vector<unsigned, 0, UnsafeVectorOverflow, 1>> m_liveAtHead;
+    BlockMap<HashSet<unsigned, DefaultHash<unsigned>::Hash, WTF::UnsignedWithZeroKeyHashTraits<unsigned>>> m_liveAtTail;
+
+    // Single sparse set allocated once and used by every basic block.
+    std::unique_ptr<IndexSparseSet<UnsafeVectorOverflow>> m_workset;
 };
 
 bool performLivenessAnalysis(Graph& graph)
 {
+    graph.packNodeIndices();
+
     return runPhase<LivenessAnalysisPhase>(graph);
 }
 

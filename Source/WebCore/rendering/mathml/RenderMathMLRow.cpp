@@ -25,12 +25,12 @@
  */
 
 #include "config.h"
+#include "RenderMathMLRow.h"
 
 #if ENABLE(MATHML)
 
-#include "RenderMathMLRow.h"
-
 #include "MathMLNames.h"
+#include "MathMLRowElement.h"
 #include "RenderIterator.h"
 #include "RenderMathMLOperator.h"
 #include "RenderMathMLRoot.h"
@@ -39,27 +39,15 @@ namespace WebCore {
 
 using namespace MathMLNames;
 
-RenderMathMLRow::RenderMathMLRow(Element& element, RenderStyle&& style)
+RenderMathMLRow::RenderMathMLRow(MathMLRowElement& element, RenderStyle&& style)
     : RenderMathMLBlock(element, WTFMove(style))
 {
 }
 
-RenderMathMLRow::RenderMathMLRow(Document& document, RenderStyle&& style)
-    : RenderMathMLBlock(document, WTFMove(style))
+MathMLRowElement& RenderMathMLRow::element() const
 {
+    return static_cast<MathMLRowElement&>(nodeForNonAnonymous());
 }
-
-void RenderMathMLRow::updateOperatorProperties()
-{
-    for (auto* child = firstChildBox(); child; child = child->nextSiblingBox()) {
-        if (is<RenderMathMLBlock>(*child)) {
-            if (auto* renderOperator = downcast<RenderMathMLBlock>(*child).unembellishedOperator())
-                renderOperator->updateOperatorProperties();
-        }
-    }
-    setNeedsLayoutAndPrefWidthsRecalc();
-}
-
 
 Optional<int> RenderMathMLRow::firstLineBaseline() const
 {
@@ -75,7 +63,7 @@ void RenderMathMLRow::computeLineVerticalStretch(LayoutUnit& ascent, LayoutUnit&
     for (auto* child = firstChildBox(); child; child = child->nextSiblingBox()) {
         if (is<RenderMathMLBlock>(child)) {
             auto* renderOperator = downcast<RenderMathMLBlock>(child)->unembellishedOperator();
-            if (renderOperator && renderOperator->hasOperatorFlag(MathMLOperatorDictionary::Stretchy))
+            if (renderOperator && renderOperator->isStretchy())
                 continue;
         }
 
@@ -121,7 +109,7 @@ void RenderMathMLRow::layoutRowItems(LayoutUnit& ascent, LayoutUnit& descent)
 
         if (is<RenderMathMLBlock>(child)) {
             auto renderOperator = downcast<RenderMathMLBlock>(child)->unembellishedOperator();
-            if (renderOperator && renderOperator->hasOperatorFlag(MathMLOperatorDictionary::Stretchy) && renderOperator->isVertical())
+            if (renderOperator && renderOperator->isStretchy() && renderOperator->isVertical())
                 renderOperator->stretchTo(ascent, descent);
         }
 
@@ -161,8 +149,7 @@ void RenderMathMLRow::layoutRowItems(LayoutUnit& ascent, LayoutUnit& descent)
     }
 
     LayoutUnit centerBlockOffset = 0;
-    // FIXME: Remove the FLEX when it is not required by the css.
-    if (style().display() == BLOCK || style().display() == FLEX)
+    if (style().display() == BLOCK)
         centerBlockOffset = std::max<LayoutUnit>(0, (logicalWidth() - (horizontalOffset + borderEnd() + paddingEnd())) / 2);
 
     if (shouldFlipHorizontal && centerBlockOffset > 0)
@@ -198,14 +185,6 @@ void RenderMathMLRow::layoutBlock(bool relayoutChildren, LayoutUnit)
     updateLogicalHeight();
 
     clearNeedsLayout();
-}
-
-void RenderMathMLRow::paintChildren(PaintInfo& paintInfo, const LayoutPoint& paintOffset, PaintInfo& paintInfoForChild, bool usePrintRect)
-{
-    for (RenderBox* child = firstChildBox(); child; child = child->nextSiblingBox()) {
-        if (!paintChild(*child, paintInfo, paintOffset, paintInfoForChild, usePrintRect, PaintAsInlineBlock))
-            return;
-    }
 }
 
 }

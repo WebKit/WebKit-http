@@ -180,7 +180,7 @@ WebInspector.RulesStyleDetailsPanel = class RulesStyleDetailsPanel extends WebIn
                 var inheritedLabel = document.createElement("div");
                 inheritedLabel.className = "label";
                 inheritedLabel.appendChild(prefixElement);
-                inheritedLabel.appendChild(WebInspector.linkifyNodeReference(style.node));
+                inheritedLabel.appendChild(WebInspector.linkifyNodeReference(style.node, 100));
                 newDOMFragment.appendChild(inheritedLabel);
 
                 hasMediaOrInherited.push(inheritedLabel);
@@ -316,10 +316,6 @@ WebInspector.RulesStyleDetailsPanel = class RulesStyleDetailsPanel extends WebIn
         }
     }
 
-    cssStyleDeclarationSectionBlurActiveEditor()
-    {
-    }
-
     cssStyleDeclarationSectionEditorNextRule(currentSection)
     {
         currentSection.clearSelection();
@@ -331,7 +327,7 @@ WebInspector.RulesStyleDetailsPanel = class RulesStyleDetailsPanel extends WebIn
     cssStyleDeclarationSectionEditorPreviousRule(currentSection, selectLastProperty) {
         currentSection.clearSelection();
 
-        if (selectLastProperty || currentSection.selectorLocked) {
+        if (selectLastProperty || !currentSection.selectorEditable) {
             var index = this._sections.indexOf(currentSection);
             index = index > 0 ? index - 1 : this._sections.length - 1;
 
@@ -370,7 +366,7 @@ WebInspector.RulesStyleDetailsPanel = class RulesStyleDetailsPanel extends WebIn
                         label.classList.remove(WebInspector.CSSStyleDetailsSidebarPanel.NoFilterMatchInSectionClassName);
                 } else
                     section.element.classList.add(WebInspector.CSSStyleDetailsSidebarPanel.FilterMatchingSectionHasLabelClassName);
-                
+
                 matchFound = true;
             }
         }
@@ -380,7 +376,7 @@ WebInspector.RulesStyleDetailsPanel = class RulesStyleDetailsPanel extends WebIn
 
     newRuleButtonClicked()
     {
-        if (this.nodeStyles.node.isInShadowTree())
+        if (this.nodeStyles.node.isInUserAgentShadowTree())
             return;
 
         for (let existingRule of this.nodeStyles.rulesForSelector()) {

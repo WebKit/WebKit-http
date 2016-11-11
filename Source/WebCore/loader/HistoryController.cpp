@@ -48,6 +48,7 @@
 #include "PageCache.h"
 #include "PageGroup.h"
 #include "ScrollingCoordinator.h"
+#include "SerializedScriptValue.h"
 #include "VisitedLinkStore.h"
 #include <wtf/text/CString.h>
 
@@ -75,7 +76,7 @@ void HistoryController::saveScrollPositionAndViewStateToItem(HistoryItem* item)
     if (!item || !frameView)
         return;
 
-    if (m_frame.document()->inPageCache())
+    if (m_frame.document()->pageCacheState() != Document::NotInPageCache)
         item->setScrollPosition(frameView->cachedScrollPosition());
     else
         item->setScrollPosition(frameView->scrollPosition());
@@ -270,7 +271,7 @@ void HistoryController::invalidateCurrentItemCachedPage()
     
     ASSERT(cachedPage->document() == m_frame.document());
     if (cachedPage->document() == m_frame.document()) {
-        cachedPage->document()->setInPageCache(false);
+        cachedPage->document()->setPageCacheState(Document::NotInPageCache);
         cachedPage->clear();
     }
 }
@@ -786,7 +787,7 @@ bool HistoryController::currentFramesMatchItem(HistoryItem* item) const
     if ((!m_frame.tree().uniqueName().isEmpty() || !item->target().isEmpty()) && m_frame.tree().uniqueName() != item->target())
         return false;
         
-    const HistoryItemVector& childItems = item->children();
+    const auto& childItems = item->children();
     if (childItems.size() != m_frame.tree().childCount())
         return false;
     

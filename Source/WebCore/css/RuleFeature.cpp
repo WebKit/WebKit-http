@@ -77,7 +77,7 @@ void RuleFeatureSet::recursivelyCollectFeaturesFromSelector(SelectorFeatures& se
                 recursivelyCollectFeaturesFromSelector(selectorFeatures, *subSelector, matchesAncestor);
             }
         }
-        if (selector->relation() == CSSSelector::Child || selector->relation() == CSSSelector::Descendant)
+        if (selector->hasDescendantOrChildRelation())
             matchesAncestor = true;
 
         selector = selector->tagHistory();
@@ -87,7 +87,7 @@ void RuleFeatureSet::recursivelyCollectFeaturesFromSelector(SelectorFeatures& se
 static RuleFeatureSet::AttributeRules::SelectorKey makeAttributeSelectorKey(const CSSSelector& selector)
 {
     bool caseInsensitive = selector.attributeValueMatchingIsCaseInsensitive();
-    unsigned matchAndCase = static_cast<unsigned>(selector.match()) << 1 | caseInsensitive;
+    unsigned matchAndCase = static_cast<unsigned>(selector.match()) << 1 | (caseInsensitive ? 1 : 0);
     return std::make_pair(selector.attributeCanonicalLocalName().impl(), std::make_pair(selector.value().impl(), matchAndCase));
 }
 

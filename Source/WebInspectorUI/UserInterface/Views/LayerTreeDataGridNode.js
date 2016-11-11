@@ -44,7 +44,7 @@ WebInspector.LayerTreeDataGridNode = class LayerTreeDataGridNode extends WebInsp
 
     createCellContent(columnIdentifier, cell)
     {
-        var cell = columnIdentifier === "name" ? this._makeNameCell() : this._makeOutlet(columnIdentifier, document.createTextNode());
+        cell = columnIdentifier === "name" ? this._makeNameCell() : this._makeOutlet(columnIdentifier, document.createTextNode("–"));
         this._updateCell(columnIdentifier);
         return cell;
     }
@@ -63,7 +63,7 @@ WebInspector.LayerTreeDataGridNode = class LayerTreeDataGridNode extends WebInsp
         var domNode = WebInspector.domTreeManager.nodeForId(layer.nodeId);
 
         this.data = {
-            name: domNode ? WebInspector.displayNameForNode(domNode) : WebInspector.UIString("Unknown node"),
+            name: domNode ? domNode.displayName : WebInspector.UIString("Unknown node"),
             paintCount: layer.paintCount || emDash,
             memory: Number.bytesToString(layer.memory || 0)
         };

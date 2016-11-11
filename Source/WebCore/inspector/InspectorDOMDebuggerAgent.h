@@ -29,8 +29,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef InspectorDOMDebuggerAgent_h
-#define InspectorDOMDebuggerAgent_h
+#pragma once
 
 #include "InspectorWebAgentBase.h"
 #include <inspector/InspectorBackendDispatchers.h>
@@ -85,7 +84,6 @@ private:
     // Inspector::InspectorDebuggerAgent::Listener implementation.
     void debuggerWasEnabled() override;
     void debuggerWasDisabled() override;
-    void stepInto() override;
     void didPause() override;
     void disable();
 
@@ -110,5 +108,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // !defined(InspectorDOMDebuggerAgent_h)

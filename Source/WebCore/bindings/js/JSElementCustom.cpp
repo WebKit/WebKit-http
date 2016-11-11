@@ -38,7 +38,6 @@
 #include "JSDOMBinding.h"
 #include "JSHTMLElementWrapperFactory.h"
 #include "JSNodeList.h"
-#include "JSNodeOrString.h"
 #include "JSSVGElementWrapperFactory.h"
 #include "NodeList.h"
 #include "SVGElement.h"
@@ -55,7 +54,7 @@ static JSValue createNewElementWrapper(JSDOMGlobalObject* globalObject, Ref<Elem
         return createJSHTMLWrapper(globalObject, static_reference_cast<HTMLElement>(WTFMove(element)));
     if (is<SVGElement>(element.get()))
         return createJSSVGWrapper(globalObject, static_reference_cast<SVGElement>(WTFMove(element)));
-    return CREATE_DOM_WRAPPER(globalObject, Element, WTFMove(element));
+    return createWrapper<Element>(globalObject, WTFMove(element));
 }
 
 JSValue toJS(ExecState*, JSDOMGlobalObject* globalObject, Element& element)
@@ -67,57 +66,10 @@ JSValue toJS(ExecState*, JSDOMGlobalObject* globalObject, Element& element)
 
 JSValue toJSNewlyCreated(ExecState*, JSDOMGlobalObject* globalObject, Ref<Element>&& element)
 {
-#if ENABLE(CUSTOM_ELEMENTS)
-    if (element->isCustomElement())
+    if (element->isDefinedCustomElement())
         return getCachedWrapper(globalObject->world(), element);
-#endif
     ASSERT(!getCachedWrapper(globalObject->world(), element));
     return createNewElementWrapper(globalObject, WTFMove(element));
-}
-
-JSValue JSElement::before(ExecState& state)
-{
-    ExceptionCode ec = 0;
-    wrapped().before(toNodeOrStringVector(state), ec);
-    setDOMException(&state, ec);
-
-    return jsUndefined();
-}
-
-JSValue JSElement::after(ExecState& state)
-{
-    ExceptionCode ec = 0;
-    wrapped().after(toNodeOrStringVector(state), ec);
-    setDOMException(&state, ec);
-
-    return jsUndefined();
-}
-
-JSValue JSElement::replaceWith(ExecState& state)
-{
-    ExceptionCode ec = 0;
-    wrapped().replaceWith(toNodeOrStringVector(state), ec);
-    setDOMException(&state, ec);
-
-    return jsUndefined();
-}
-
-JSValue JSElement::prepend(ExecState& state)
-{
-    ExceptionCode ec = 0;
-    wrapped().prepend(toNodeOrStringVector(state), ec);
-    setDOMException(&state, ec);
-
-    return jsUndefined();
-}
-
-JSValue JSElement::append(ExecState& state)
-{
-    ExceptionCode ec = 0;
-    wrapped().append(toNodeOrStringVector(state), ec);
-    setDOMException(&state, ec);
-
-    return jsUndefined();
 }
 
 } // namespace WebCore

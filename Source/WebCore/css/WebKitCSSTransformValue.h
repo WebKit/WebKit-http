@@ -26,11 +26,10 @@
 #pragma once
 
 #include "CSSValueList.h"
-#include <wtf/RefPtr.h>
 
 namespace WebCore {
 
-class WebKitCSSTransformValue : public CSSValueList {
+class WebKitCSSTransformValue final : public CSSValueList {
 public:
     // NOTE: these have to match the values in the IDL
     enum TransformOperationType {

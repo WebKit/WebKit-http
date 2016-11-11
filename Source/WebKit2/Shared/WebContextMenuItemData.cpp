@@ -31,7 +31,6 @@
 
 #include "APIObject.h"
 #include "ArgumentCoders.h"
-#include "Arguments.h"
 #include <wtf/text/CString.h>
 #include <WebCore/ContextMenu.h>
 
@@ -100,7 +99,7 @@ void WebContextMenuItemData::setUserData(API::Object* userData)
     m_userData = userData;
 }
     
-void WebContextMenuItemData::encode(IPC::ArgumentEncoder& encoder) const
+void WebContextMenuItemData::encode(IPC::Encoder& encoder) const
 {
     encoder.encodeEnum(m_type);
     encoder.encodeEnum(m_action);
@@ -110,7 +109,7 @@ void WebContextMenuItemData::encode(IPC::ArgumentEncoder& encoder) const
     encoder << m_submenu;
 }
 
-bool WebContextMenuItemData::decode(IPC::ArgumentDecoder& decoder, WebContextMenuItemData& item)
+bool WebContextMenuItemData::decode(IPC::Decoder& decoder, WebContextMenuItemData& item)
 {
     WebCore::ContextMenuItemType type;
     if (!decoder.decodeEnum(type))

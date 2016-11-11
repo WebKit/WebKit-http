@@ -40,6 +40,7 @@
 #include "HTMLNames.h"
 #include "HTMLParagraphElement.h"
 #include "HTMLProgressElement.h"
+#include "HTMLTextAreaElement.h"
 #include "HTMLTextFormControlElement.h"
 #include "InlineTextBox.h"
 #include "NodeTraversal.h"
@@ -53,7 +54,7 @@
 #include "SimpleLineLayout.h"
 #include "SimpleLineLayoutResolver.h"
 #include "TextBoundaries.h"
-#include "TextBreakIterator.h"
+#include <wtf/text/TextBreakIterator.h>
 #include "TextControlInnerElements.h"
 #include "VisiblePosition.h"
 #include "VisibleUnits.h"
@@ -63,8 +64,8 @@
 #include <wtf/unicode/CharacterNames.h>
 
 #if !UCONFIG_NO_COLLATION
-#include "TextBreakIteratorInternalICU.h"
 #include <unicode/usearch.h>
+#include <wtf/text/TextBreakIteratorInternalICU.h>
 #endif
 
 using namespace WTF::Unicode;
@@ -213,6 +214,11 @@ static inline bool fullyClipsContents(Node& node)
     auto& box = downcast<RenderBox>(*renderer);
     if (!box.hasOverflowClip())
         return false;
+
+    // Quirk to keep copy/paste in the CodeMirror editor version used in Jenkins working.
+    if (is<HTMLTextAreaElement>(node))
+        return box.size().isEmpty();
+
     return box.contentSize().isEmpty();
 }
 
@@ -278,7 +284,7 @@ bool isRendererReplacedElement(RenderObject* renderer)
         Element& element = downcast<Element>(*renderer->node());
         if (is<HTMLFormControlElement>(element) || is<HTMLLegendElement>(element) || is<HTMLProgressElement>(element) || element.hasTagName(meterTag))
             return true;
-        if (equalLettersIgnoringASCIICase(element.fastGetAttribute(roleAttr), "img"))
+        if (equalLettersIgnoringASCIICase(element.attributeWithoutSynchronization(roleAttr), "img"))
             return true;
     }
 
@@ -2004,7 +2010,7 @@ inline SearchBuffer::SearchBuffer(const String& target, FindOptions options)
 
     if ((m_options & AtWordStarts) && targetLength) {
         UChar32 targetFirstCharacter;
-        U16_GET(m_target, 0, 0, targetLength, targetFirstCharacter);
+        U16_GET(m_target, 0, 0u, targetLength, targetFirstCharacter);
         // Characters in the separator category never really occur at the beginning of a word,
         // so if the target begins with such a character, we just ignore the AtWordStart option.
         if (isSeparator(targetFirstCharacter)) {
@@ -2555,7 +2561,7 @@ bool TextIterator::getLocationAndLengthFromRange(Node* scope, const Range* range
     ASSERT(&testRange->startContainer() == scope);
     location = TextIterator::rangeLength(testRange.ptr());
 
-    testRange->setEnd(range->endContainer(), range->endOffset(), IGNORE_EXCEPTION);
+    testRange->setEnd(range->endContainer(), range->endOffset());
     ASSERT(&testRange->startContainer() == scope);
     length = TextIterator::rangeLength(testRange.ptr()) - location;
     return true;

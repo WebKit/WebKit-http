@@ -64,15 +64,14 @@ interface SVGSVGElement : SVGGraphicsElement {
 
     SVGNumber createSVGNumber();
     SVGLength createSVGLength();
-    SVGAngle createSVGAngle();
+    [NewObject] SVGAngle createSVGAngle();
     SVGPoint createSVGPoint();
     SVGMatrix createSVGMatrix();
     SVGRect createSVGRect();
     SVGTransform createSVGTransform();
     SVGTransform createSVGTransformFromMatrix(SVGMatrix matrix);
 
-    // FIXME: Using "undefined" as default parameter value is wrong.
-    Element getElementById([RequiresExistingAtomicString] optional DOMString elementId = "undefined");
+    Element getElementById([RequiresExistingAtomicString] DOMString elementId);
 };
 
 SVGSVGElement implements SVGExternalResourcesRequired;

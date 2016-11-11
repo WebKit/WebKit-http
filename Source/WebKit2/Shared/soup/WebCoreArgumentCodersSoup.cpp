@@ -39,102 +39,17 @@ using namespace WebCore;
 
 namespace IPC {
 
-void ArgumentCoder<ResourceRequest>::encodePlatformData(ArgumentEncoder& encoder, const ResourceRequest& resourceRequest)
+void ArgumentCoder<ResourceRequest>::encodePlatformData(Encoder& encoder, const ResourceRequest& resourceRequest)
 {
-    encoder << resourceRequest.url().string();
-    encoder << resourceRequest.httpMethod();
-    encoder << resourceRequest.httpHeaderFields();
-    encoder << resourceRequest.timeoutInterval();
-
-    // FIXME: Do not encode HTTP message body.
-    // 1. It can be large and thus costly to send across.
-    // 2. It is misleading to provide a body with some requests, while others use body streams, which cannot be serialized at all.
-    FormData* httpBody = resourceRequest.httpBody();
-    encoder << static_cast<bool>(httpBody);
-    if (httpBody)
-        encoder << httpBody->flattenToString();
-
-    encoder << resourceRequest.firstPartyForCookies().string();
-    encoder << resourceRequest.allowCookies();
-    encoder.encodeEnum(resourceRequest.priority());
-    encoder.encodeEnum(resourceRequest.cachePolicy());
-    encoder.encodeEnum(resourceRequest.requester());
-
-    encoder << static_cast<uint32_t>(resourceRequest.soupMessageFlags());
-    encoder << resourceRequest.initiatingPageID();
+    resourceRequest.encodeWithPlatformData(encoder);
 }
 
-bool ArgumentCoder<ResourceRequest>::decodePlatformData(ArgumentDecoder& decoder, ResourceRequest& resourceRequest)
+bool ArgumentCoder<ResourceRequest>::decodePlatformData(Decoder& decoder, ResourceRequest& resourceRequest)
 {
-    String url;
-    if (!decoder.decode(url))
-        return false;
-    resourceRequest.setURL(URL(URL(), url));
-
-    String httpMethod;
-    if (!decoder.decode(httpMethod))
-        return false;
-    resourceRequest.setHTTPMethod(httpMethod);
-
-    HTTPHeaderMap headers;
-    if (!decoder.decode(headers))
-        return false;
-    resourceRequest.setHTTPHeaderFields(WTFMove(headers));
-
-    double timeoutInterval;
-    if (!decoder.decode(timeoutInterval))
-        return false;
-    resourceRequest.setTimeoutInterval(timeoutInterval);
-
-    bool hasHTTPBody;
-    if (!decoder.decode(hasHTTPBody))
-        return false;
-    if (hasHTTPBody) {
-        String httpBody;
-        if (!decoder.decode(httpBody))
-            return false;
-        resourceRequest.setHTTPBody(FormData::create(httpBody.utf8()));
-    }
-
-    String firstPartyForCookies;
-    if (!decoder.decode(firstPartyForCookies))
-        return false;
-    resourceRequest.setFirstPartyForCookies(URL(URL(), firstPartyForCookies));
-
-    bool allowCookies;
-    if (!decoder.decode(allowCookies))
-        return false;
-    resourceRequest.setAllowCookies(allowCookies);
-
-    ResourceLoadPriority priority;
-    if (!decoder.decodeEnum(priority))
-        return false;
-    resourceRequest.setPriority(priority);
-
-    ResourceRequestCachePolicy cachePolicy;
-    if (!decoder.decodeEnum(cachePolicy))
-        return false;
-    resourceRequest.setCachePolicy(cachePolicy);
-
-    ResourceRequest::Requester requester;
-    if (!decoder.decodeEnum(requester))
-        return false;
-    resourceRequest.setRequester(requester);
-
-    uint32_t soupMessageFlags;
-    if (!decoder.decode(soupMessageFlags))
-        return false;
-    resourceRequest.setSoupMessageFlags(static_cast<SoupMessageFlags>(soupMessageFlags));
-
-    uint64_t initiatingPageID;
-    if (!decoder.decode(initiatingPageID))
-        return false;
-    resourceRequest.setInitiatingPageID(initiatingPageID);
-
-    return true;
+    return resourceRequest.decodeWithPlatformData(decoder);
 }
 
-void ArgumentCoder<CertificateInfo>::encode(ArgumentEncoder& encoder, const CertificateInfo& certificateInfo)
+void ArgumentCoder<CertificateInfo>::encode(Encoder& encoder, const CertificateInfo& certificateInfo)
 {
     if (!certificateInfo.certificate()) {
         encoder << false;
@@ -154,7 +69,7 @@ void ArgumentCoder<CertificateInfo>::encode(ArgumentEncoder& encoder, const Cert
     encoder << static_cast<uint32_t>(certificateInfo.tlsErrors());
 }
 
-bool ArgumentCoder<CertificateInfo>::decode(ArgumentDecoder& decoder, CertificateInfo& certificateInfo)
+bool ArgumentCoder<CertificateInfo>::decode(Decoder& decoder, CertificateInfo& certificateInfo)
 {
     bool hasCertificate;
     if (!decoder.decode(hasCertificate))
@@ -184,7 +99,7 @@ bool ArgumentCoder<CertificateInfo>::decode(ArgumentDecoder& decoder, Certificat
     return true;
 }
 
-void ArgumentCoder<ResourceError>::encodePlatformData(ArgumentEncoder& encoder, const ResourceError& resourceError)
+void ArgumentCoder<ResourceError>::encodePlatformData(Encoder& encoder, const ResourceError& resourceError)
 {
     encoder.encodeEnum(resourceError.type());
     if (resourceError.isNull())
@@ -198,7 +113,7 @@ void ArgumentCoder<ResourceError>::encodePlatformData(ArgumentEncoder& encoder, 
     encoder << CertificateInfo(resourceError);
 }
 
-bool ArgumentCoder<ResourceError>::decodePlatformData(ArgumentDecoder& decoder, ResourceError& resourceError)
+bool ArgumentCoder<ResourceError>::decodePlatformData(Decoder& decoder, ResourceError& resourceError)
 {
     ResourceErrorBase::Type errorType;
     if (!decoder.decodeEnum(errorType))
@@ -236,23 +151,23 @@ bool ArgumentCoder<ResourceError>::decodePlatformData(ArgumentDecoder& decoder, 
     return true;
 }
 
-void ArgumentCoder<ProtectionSpace>::encodePlatformData(ArgumentEncoder&, const ProtectionSpace&)
+void ArgumentCoder<ProtectionSpace>::encodePlatformData(Encoder&, const ProtectionSpace&)
 {
     ASSERT_NOT_REACHED();
 }
 
-bool ArgumentCoder<ProtectionSpace>::decodePlatformData(ArgumentDecoder&, ProtectionSpace&)
+bool ArgumentCoder<ProtectionSpace>::decodePlatformData(Decoder&, ProtectionSpace&)
 {
     ASSERT_NOT_REACHED();
     return false;
 }
 
-void ArgumentCoder<Credential>::encodePlatformData(ArgumentEncoder&, const Credential&)
+void ArgumentCoder<Credential>::encodePlatformData(Encoder&, const Credential&)
 {
     ASSERT_NOT_REACHED();
 }
 
-bool ArgumentCoder<Credential>::decodePlatformData(ArgumentDecoder&, Credential&)
+bool ArgumentCoder<Credential>::decodePlatformData(Decoder&, Credential&)
 {
     ASSERT_NOT_REACHED();
     return false;

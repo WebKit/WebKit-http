@@ -42,17 +42,12 @@ public:
     WEBCORE_EXPORT unsigned videoWidth() const;
     WEBCORE_EXPORT unsigned videoHeight() const;
 
-    void webkitEnterFullscreen(ExceptionCode&);
-    void webkitExitFullscreen();
-    bool webkitSupportsFullscreen();
-    bool webkitDisplayingFullscreen();
+    WEBCORE_EXPORT ExceptionOr<void> webkitEnterFullscreen();
+    WEBCORE_EXPORT void webkitExitFullscreen();
+    WEBCORE_EXPORT bool webkitSupportsFullscreen();
+    WEBCORE_EXPORT bool webkitDisplayingFullscreen();
 
-    void ancestorWillEnterFullscreen() override;
-    
-    // FIXME: Maintain "FullScreen" capitalization scheme for backwards compatibility.
-    // https://bugs.webkit.org/show_bug.cgi?id=36081
-    void webkitEnterFullScreen(ExceptionCode& ec) { webkitEnterFullscreen(ec); }
-    void webkitExitFullScreen() { webkitExitFullscreen(); }
+    void ancestorWillEnterFullscreen() final;
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
     bool webkitWirelessVideoPlaybackDisabled() const;
@@ -76,7 +71,7 @@ public:
     bool shouldDisplayPosterImage() const { return displayMode() == Poster || displayMode() == PosterWaitingForVideo; }
 
     URL posterImageURL() const;
-    RenderPtr<RenderElement> createElementRenderer(RenderStyle&&, const RenderTreePosition&) override;
+    RenderPtr<RenderElement> createElementRenderer(RenderStyle&&, const RenderTreePosition&) final;
 
 #if ENABLE(VIDEO_PRESENTATION_MODE)
     enum class VideoPresentationMode { Fullscreen, PictureInPicture, Inline };
@@ -84,7 +79,7 @@ public:
     void webkitSetPresentationMode(VideoPresentationMode);
     VideoPresentationMode webkitPresentationMode() const;
     void setFullscreenMode(VideoFullscreenMode);
-    void fullscreenModeChanged(VideoFullscreenMode) override;
+    void fullscreenModeChanged(VideoFullscreenMode) final;
 #endif
 
 #if PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE)
@@ -96,25 +91,25 @@ public:
 private:
     HTMLVideoElement(const QualifiedName&, Document&, bool createdByParser);
 
-    void scheduleResizeEvent() override;
-    void scheduleResizeEventIfSizeChanged() override;
-    bool rendererIsNeeded(const RenderStyle&) override;
-    void didAttachRenderers() override;
-    void parseAttribute(const QualifiedName&, const AtomicString&) override;
-    bool isPresentationAttribute(const QualifiedName&) const override;
-    void collectStyleForPresentationAttribute(const QualifiedName&, const AtomicString&, MutableStyleProperties&) override;
-    bool isVideo() const override { return true; }
-    bool hasVideo() const override { return player() && player()->hasVideo(); }
-    bool supportsFullscreen(HTMLMediaElementEnums::VideoFullscreenMode) const override;
-    bool isURLAttribute(const Attribute&) const override;
-    const AtomicString& imageSourceURL() const override;
+    void scheduleResizeEvent() final;
+    void scheduleResizeEventIfSizeChanged() final;
+    bool rendererIsNeeded(const RenderStyle&) final;
+    void didAttachRenderers() final;
+    void parseAttribute(const QualifiedName&, const AtomicString&) final;
+    bool isPresentationAttribute(const QualifiedName&) const final;
+    void collectStyleForPresentationAttribute(const QualifiedName&, const AtomicString&, MutableStyleProperties&) final;
+    bool isVideo() const final { return true; }
+    bool hasVideo() const final { return player() && player()->hasVideo(); }
+    bool supportsFullscreen(HTMLMediaElementEnums::VideoFullscreenMode) const final;
+    bool isURLAttribute(const Attribute&) const final;
+    const AtomicString& imageSourceURL() const final;
 
     bool hasAvailableVideoFrame() const;
-    void updateDisplayState() override;
-    void didMoveToNewDocument(Document* oldDocument) override;
-    void setDisplayMode(DisplayMode) override;
+    void updateDisplayState() final;
+    void didMoveToNewDocument(Document* oldDocument) final;
+    void setDisplayMode(DisplayMode) final;
 
-    PlatformMediaSession::MediaType presentationType() const override { return PlatformMediaSession::Video; }
+    PlatformMediaSession::MediaType presentationType() const final { return PlatformMediaSession::Video; }
 
     std::unique_ptr<HTMLImageLoader> m_imageLoader;
 

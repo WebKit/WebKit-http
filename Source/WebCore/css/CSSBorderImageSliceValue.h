@@ -32,7 +32,7 @@ namespace WebCore {
 
 class Rect;
 
-class CSSBorderImageSliceValue : public CSSValue {
+class CSSBorderImageSliceValue final : public CSSValue {
 public:
     static Ref<CSSBorderImageSliceValue> create(RefPtr<CSSPrimitiveValue>&& slices, bool fill)
     {
@@ -41,7 +41,7 @@ public:
 
     String customCSSText() const;
 
-    Quad* slices() const { return m_slices ? m_slices->getQuadValue() : nullptr; }
+    Quad* slices() const { return m_slices ? m_slices->quadValue() : nullptr; }
 
     bool equals(const CSSBorderImageSliceValue&) const;
 

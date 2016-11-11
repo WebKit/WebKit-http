@@ -46,7 +46,6 @@ PluginProcessConnection::PluginProcessConnection(PluginProcessConnectionManager*
     : m_pluginProcessConnectionManager(pluginProcessConnectionManager)
     , m_pluginProcessToken(pluginProcessToken)
     , m_supportsAsynchronousPluginInitialization(supportsAsynchronousPluginInitialization)
-    , m_audioHardwareActivity(WebCore::AudioHardwareActivityType::Unknown)
 {
     m_connection = IPC::Connection::createClientConnection(connectionIdentifier, *this);
 
@@ -89,13 +88,8 @@ void PluginProcessConnection::removePluginProxy(PluginProxy* plugin)
     m_pluginProcessConnectionManager->removePluginProcessConnection(this);
 }
 
-void PluginProcessConnection::didReceiveMessage(IPC::Connection& connection, IPC::MessageDecoder& decoder)
+void PluginProcessConnection::didReceiveMessage(IPC::Connection& connection, IPC::Decoder& decoder)
 {
-    if (!decoder.destinationID()) {
-        didReceivePluginProcessConnectionMessage(connection, decoder);
-        return;
-    }
-    
     ASSERT(decoder.destinationID());
 
     PluginProxy* pluginProxy = m_plugins.get(decoder.destinationID());
@@ -105,7 +99,7 @@ void PluginProcessConnection::didReceiveMessage(IPC::Connection& connection, IPC
     pluginProxy->didReceivePluginProxyMessage(connection, decoder);
 }
 
-void PluginProcessConnection::didReceiveSyncMessage(IPC::Connection& connection, IPC::MessageDecoder& decoder, std::unique_ptr<IPC::MessageEncoder>& replyEncoder)
+void PluginProcessConnection::didReceiveSyncMessage(IPC::Connection& connection, IPC::Decoder& decoder, std::unique_ptr<IPC::Encoder>& replyEncoder)
 {
     if (decoder.messageReceiverName() == Messages::NPObjectMessageReceiver::messageReceiverName()) {
         m_npRemoteObjectMap->didReceiveSyncMessage(connection, decoder, replyEncoder);
@@ -145,16 +139,6 @@ void PluginProcessConnection::setException(const String& exceptionString)
     NPRuntimeObjectMap::setGlobalException(exceptionString);
 }
     
-void PluginProcessConnection::audioHardwareDidBecomeActive()
-{
-    m_audioHardwareActivity = WebCore::AudioHardwareActivityType::IsActive;
-}
-
-void PluginProcessConnection::audioHardwareDidBecomeInactive()
-{
-    m_audioHardwareActivity = WebCore::AudioHardwareActivityType::IsInactive;
-}
-
 } // namespace WebKit
 
 #endif // ENABLE(NETSCAPE_PLUGIN_API)

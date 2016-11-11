@@ -32,24 +32,24 @@
 #if ENABLE(INDIE_UI)
 
 namespace WebCore {
-    
-struct UIRequestEventInit : public UIEventInit {
-    RefPtr<EventTarget> receiver;
-};
 
 class UIRequestEvent : public UIEvent {
 public:
-    static Ref<UIRequestEvent> create(const AtomicString& type, bool bubbles, bool cancelable, AbstractView*, int detail, PassRefPtr<EventTarget> receiver);
-    static Ref<UIRequestEvent> createForBindings(const AtomicString& eventType, const UIRequestEventInit&);
+    static Ref<UIRequestEvent> create(const AtomicString& type, bool bubbles, bool cancelable, DOMWindow*, int detail, RefPtr<EventTarget>&& receiver);
+
+    struct Init : UIEventInit {
+        RefPtr<EventTarget> receiver;
+    };
+    static Ref<UIRequestEvent> create(const AtomicString& eventType, const Init&, IsTrusted = IsTrusted::No);
     
     virtual ~UIRequestEvent();
     
     EventTarget* receiver() const { return m_receiver.get(); }
 
 protected:
-    UIRequestEvent(const AtomicString& type, bool bubbles, bool cancelable, AbstractView*, int detail, PassRefPtr<EventTarget> receiver);
+    UIRequestEvent(const AtomicString& type, bool bubbles, bool cancelable, DOMWindow*, int detail, RefPtr<EventTarget>&& receiver);
     
-    UIRequestEvent(const AtomicString& type, const UIRequestEventInit&);
+    UIRequestEvent(const AtomicString& type, const Init&, IsTrusted);
     
     EventInterface eventInterface() const override;
     

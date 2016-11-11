@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -52,7 +52,7 @@ public:
     uint64_t nextLayerTreeTransactionID() const { return m_pendingLayerTreeTransactionID + 1; }
     uint64_t lastCommittedLayerTreeTransactionID() const { return m_transactionIDForPendingCACommit; }
 
-    void didRefreshDisplay(double timestamp);
+    void didRefreshDisplay();
 
 private:
     void sizeDidChange() override;
@@ -73,7 +73,7 @@ private:
     void updateDebugIndicatorPosition();
     void initializeDebugIndicator();
 
-    void waitForDidUpdateViewState() override;
+    void waitForDidUpdateActivityState() override;
     void hideContentUntilPendingUpdate() override;
     void hideContentUntilAnyUpdate() override;
     bool hasVisibleContent() const override;
@@ -81,7 +81,7 @@ private:
     WebCore::FloatPoint indicatorLocation() const;
 
     // IPC::MessageReceiver
-    void didReceiveMessage(IPC::Connection&, IPC::MessageDecoder&) override;
+    void didReceiveMessage(IPC::Connection&, IPC::Decoder&) override;
 
     // Message handlers
     void willCommitLayerTree(uint64_t transactionID);
@@ -91,8 +91,8 @@ private:
 
     RemoteLayerTreeHost m_remoteLayerTreeHost;
     bool m_isWaitingForDidUpdateGeometry { false };
-    enum DidUpdateMessageState { NotSent, Sent, MissedCommit };
-    DidUpdateMessageState m_didUpdateMessageState { NotSent };
+    enum DidUpdateMessageState { DoesNotNeedDidUpdate, NeedsDidUpdate, MissedCommit };
+    DidUpdateMessageState m_didUpdateMessageState { DoesNotNeedDidUpdate };
 
     WebCore::IntSize m_lastSentSize;
 

@@ -28,12 +28,12 @@
 #include "config.h"
 #include "TextChecker.h"
 
-#include "TextBreakIterator.h"
 #include "TextCheckerState.h"
 #include "WebProcessPool.h"
 #include <WebCore/NotImplemented.h>
 #include <WebCore/TextCheckerEnchant.h>
 #include <wtf/NeverDestroyed.h>
+#include <wtf/text/TextBreakIterator.h>
 
 using namespace WebCore;
 
@@ -62,6 +62,18 @@ TextCheckerState& checkerState()
 const TextCheckerState& TextChecker::state()
 {
     return checkerState();
+}
+    
+static bool testingModeEnabled = false;
+    
+void TextChecker::setTestingMode(bool enabled)
+{
+    testingModeEnabled = enabled;
+}
+
+bool TextChecker::isTestingMode()
+{
+    return testingModeEnabled;
 }
 
 #if ENABLE(SPELLCHECK)

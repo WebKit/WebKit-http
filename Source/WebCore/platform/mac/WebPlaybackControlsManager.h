@@ -53,7 +53,7 @@ WEBCORE_EXPORT
     BOOL _canTogglePlayback;
 
 @private
-    WebCore::WebPlaybackSessionInterfaceMac* _webPlaybackSessionInterfaceMac;
+    RefPtr<WebCore::WebPlaybackSessionInterfaceMac> _webPlaybackSessionInterfaceMac;
 }
 
 @property (assign) WebCore::WebPlaybackSessionInterfaceMac* webPlaybackSessionInterfaceMac;

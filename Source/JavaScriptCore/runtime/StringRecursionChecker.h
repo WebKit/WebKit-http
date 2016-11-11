@@ -1,5 +1,5 @@
 /*
- *  Copyright (C) 2011 Apple Inc. All rights reserved.
+ *  Copyright (C) 2011, 2016 Apple Inc. All rights reserved.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
@@ -17,12 +17,11 @@
  *
  */
 
-#ifndef StringRecursionChecker_h
-#define StringRecursionChecker_h
+#pragma once
 
 #include "Interpreter.h"
+#include "VMInlines.h"
 #include <wtf/StackStats.h>
-#include <wtf/WTFThreadData.h>
 
 namespace JSC {
 
@@ -50,7 +49,7 @@ private:
 inline JSValue StringRecursionChecker::performCheck()
 {
     VM& vm = m_exec->vm();
-    if (!vm.isSafeToRecurse())
+    if (UNLIKELY(!vm.isSafeToRecurseSoft()))
         return throwStackOverflowError();
 
     bool alreadyVisited = false;
@@ -92,6 +91,4 @@ inline StringRecursionChecker::~StringRecursionChecker()
     }
 }
 
-}
-
-#endif
+} // namespace JSC

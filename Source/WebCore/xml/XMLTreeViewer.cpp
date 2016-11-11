@@ -40,10 +40,10 @@
 #include "ScriptSourceCode.h"
 #include "SecurityOrigin.h"
 #include "SecurityOriginPolicy.h"
+#include "StyleScope.h"
 #include "Text.h"
 #include "XMLViewerCSS.h"
 #include "XMLViewerJS.h"
-#include <bindings/ScriptValue.h>
 
 namespace WebCore {
 
@@ -63,7 +63,7 @@ void XMLTreeViewer::transformDocumentToTreeView()
     String cssString = StringImpl::createWithoutCopying(XMLViewer_css, sizeof(XMLViewer_css));
     auto text = m_document.createTextNode(cssString);
     m_document.getElementById(String(ASCIILiteral("xml-viewer-style")))->appendChild(text, IGNORE_EXCEPTION);
-    m_document.styleResolverChanged(RecalcStyleImmediately);
+    m_document.styleScope().didChangeActiveStyleSheetCandidates();
 }
 
 } // namespace WebCore

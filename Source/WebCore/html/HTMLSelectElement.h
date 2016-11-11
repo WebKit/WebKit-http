@@ -23,8 +23,7 @@
  *
  */
 
-#ifndef HTMLSelectElement_h
-#define HTMLSelectElement_h
+#pragma once
 
 #include "HTMLFormControlElementWithState.h"
 #include "TypeAhead.h"
@@ -38,31 +37,32 @@ public:
     static Ref<HTMLSelectElement> create(const QualifiedName&, Document&, HTMLFormElement*);
 
     WEBCORE_EXPORT int selectedIndex() const;
-    void setSelectedIndex(int);
+    WEBCORE_EXPORT void setSelectedIndex(int);
 
     WEBCORE_EXPORT void optionSelectedByUser(int index, bool dispatchChangeEvent, bool allowMultipleSelection = false);
 
     String validationMessage() const final;
     bool valueMissing() const final;
 
-    unsigned length() const;
+    WEBCORE_EXPORT unsigned length() const;
 
     unsigned size() const { return m_size; }
     bool multiple() const { return m_multiple; }
 
     bool usesMenuList() const;
 
-    void add(HTMLElement&, HTMLElement* beforeElement, ExceptionCode&);
-    void add(HTMLElement&, int beforeIndex, ExceptionCode&);
+    using OptionOrOptGroupElement = Variant<RefPtr<HTMLOptionElement>, RefPtr<HTMLOptGroupElement>>;
+    using HTMLElementOrInt = Variant<RefPtr<HTMLElement>, int>;
+    WEBCORE_EXPORT ExceptionOr<void> add(const OptionOrOptGroupElement&, Optional<HTMLElementOrInt> before);
 
     using Node::remove;
-    void remove(HTMLOptionElement&);
-    void removeByIndex(int); // Should be remove(int) but that conflicts with Node::remove(ExceptionCode&).
+    ExceptionOr<void> remove(HTMLOptionElement&);
+    WEBCORE_EXPORT void removeByIndex(int); // Should be remove(int) but that conflicts with Node::remove(ExceptionCode&).
 
     WEBCORE_EXPORT String value() const;
-    void setValue(const String&);
+    WEBCORE_EXPORT void setValue(const String&);
 
-    Ref<HTMLOptionsCollection> options();
+    WEBCORE_EXPORT Ref<HTMLOptionsCollection> options();
     Ref<HTMLCollection> selectedOptions();
 
     void optionElementChildrenChanged();
@@ -76,15 +76,15 @@ public:
     void accessKeyAction(bool sendMouseEvents) final;
     void accessKeySetSelectedIndex(int);
 
-    void setMultiple(bool);
+    WEBCORE_EXPORT void setMultiple(bool);
 
-    void setSize(unsigned);
+    WEBCORE_EXPORT void setSize(unsigned);
 
-    void setOption(unsigned index, HTMLOptionElement&, ExceptionCode&);
-    void setLength(unsigned, ExceptionCode&);
+    ExceptionOr<void> setOption(unsigned index, HTMLOptionElement&);
+    ExceptionOr<void> setLength(unsigned);
 
-    HTMLOptionElement* namedItem(const AtomicString& name);
-    HTMLOptionElement* item(unsigned index);
+    WEBCORE_EXPORT HTMLOptionElement* namedItem(const AtomicString& name);
+    WEBCORE_EXPORT HTMLOptionElement* item(unsigned index);
 
     void scrollToSelection();
 
@@ -111,7 +111,7 @@ protected:
 private:
     const AtomicString& formControlType() const final;
     
-    bool isKeyboardFocusable(KeyboardEvent*) const final;
+    bool isKeyboardFocusable(KeyboardEvent&) const final;
     bool isMouseFocusable() const final;
 
     void dispatchFocusEvent(RefPtr<Element>&& oldFocusedElement, FocusDirection) final;
@@ -134,7 +134,7 @@ private:
 
     void reset() final;
 
-    void defaultEventHandler(Event*) final;
+    void defaultEventHandler(Event&) final;
     bool willRespondToMouseClickEvents() final;
 
     void dispatchChangeEventForMenuList();
@@ -165,9 +165,9 @@ private:
     void parseMultipleAttribute(const AtomicString&);
     int lastSelectedListIndex() const;
     void updateSelectedState(int listIndex, bool multi, bool shift);
-    void menuListDefaultEventHandler(Event*);
+    void menuListDefaultEventHandler(Event&);
     bool platformHandleKeydownEvent(KeyboardEvent*);
-    void listBoxDefaultEventHandler(Event*);
+    void listBoxDefaultEventHandler(Event&);
     void setOptionsChangedOnRenderer();
     size_t searchOptionsForValue(const String&, size_t listIndexStart, size_t listIndexEnd) const;
 
@@ -204,5 +204,3 @@ private:
 };
 
 } // namespace
-
-#endif

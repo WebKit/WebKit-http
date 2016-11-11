@@ -1,0 +1,45 @@
+<script src="../../../resources/js-test-pre.js"></script>
+<script src="../resources/media-controls-utils.js" type="text/javascript"></script>
+<script src="../resources/media-controls-loader.js" type="text/javascript"></script>
+<body>
+<script type="text/javascript">
+
+description("Testing the <code>MacOSFullscreenMediaControls</code> computed styles.");
+
+window.jsTestIsAsync = true;
+
+const mediaControls = new MacOSFullscreenMediaControls;
+
+const buttonPositions = [
+    [mediaControls.rewindButton, 27, 16],
+    [mediaControls.playPauseButton, 78, 12],
+    [mediaControls.forwardButton, 127, 16],
+    [mediaControls.airplayButton, 12, 13],
+    [mediaControls.aspectRatioButton, 40, 13],
+    [mediaControls.pipButton, 72, 13],
+    [mediaControls.tracksButton, 111, 15],
+    [mediaControls.fullscreenButton, 139, 13]
+];
+
+let style;
+scheduler.frameDidFire = function()
+{
+    document.body.appendChild(mediaControls.element);
+
+    for (let [button, x, y, width] of buttonPositions) {
+        style = window.getComputedStyle(button.element);
+        debug(button.constructor.name);
+        shouldBeEqualToString("style.left", `${x}px`);
+        shouldBeEqualToString("style.webkitMaskPositionY", `${y}px`);
+        shouldBeEqualToString("style.height", "44px");
+        debug("");
+    }
+
+    mediaControls.element.remove();
+
+    finishJSTest();
+};
+
+</script>
+<script src="../../../resources/js-test-post.js"></script>
+</body>

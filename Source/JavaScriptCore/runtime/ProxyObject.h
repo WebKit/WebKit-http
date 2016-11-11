@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ProxyObject_h
-#define ProxyObject_h
+#pragma once
 
 #include "JSGlobalObject.h"
 #include "JSObject.h"
@@ -75,6 +74,7 @@ private:
     void finishCreation(VM&, ExecState*, JSValue target, JSValue handler);
     static Structure* structureForTarget(JSGlobalObject*, JSValue target);
 
+    static String toStringName(const JSObject*, ExecState*);
     static bool getOwnPropertySlot(JSObject*, ExecState*, PropertyName, PropertySlot&);
     static bool getOwnPropertySlotByIndex(JSObject*, ExecState*, unsigned propertyName, PropertySlot&);
     static CallType getCallData(JSCell*, CallData&);
@@ -114,5 +114,3 @@ private:
 };
 
 } // namespace JSC
-
-#endif // JSPromise_h

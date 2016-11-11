@@ -49,6 +49,7 @@ namespace WebCore {
 class Blob;
 class Document;
 class FileReaderLoader;
+class SocketProvider;
 class SocketStreamHandle;
 class SocketStreamError;
 class WebSocketChannelClient;
@@ -58,7 +59,7 @@ class WebSocketChannel : public RefCounted<WebSocketChannel>, public SocketStrea
 {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    static Ref<WebSocketChannel> create(Document& document, WebSocketChannelClient& client) { return adoptRef(*new WebSocketChannel(document, client)); }
+    static Ref<WebSocketChannel> create(Document& document, WebSocketChannelClient& client, SocketProvider& provider) { return adoptRef(*new WebSocketChannel(document, client, provider)); }
     virtual ~WebSocketChannel();
 
     bool send(const char* data, int length);
@@ -79,12 +80,11 @@ public:
     void resume() override;
 
     // SocketStreamHandleClient functions.
-    void willOpenSocketStream(SocketStreamHandle&) override;
-    void didOpenSocketStream(SocketStreamHandle&) override;
-    void didCloseSocketStream(SocketStreamHandle&) override;
-    void didReceiveSocketStreamData(SocketStreamHandle&, const char*, int) override;
-    void didUpdateBufferedAmount(SocketStreamHandle&, size_t bufferedAmount) override;
-    void didFailSocketStream(SocketStreamHandle&, const SocketStreamError&) override;
+    void didOpenSocketStream(SocketStreamHandle&) final;
+    void didCloseSocketStream(SocketStreamHandle&) final;
+    void didReceiveSocketStreamData(SocketStreamHandle&, const char*, Optional<size_t>) final;
+    void didUpdateBufferedAmount(SocketStreamHandle&, size_t bufferedAmount) final;
+    void didFailSocketStream(SocketStreamHandle&, const SocketStreamError&) final;
 
     enum CloseEventCode {
         CloseEventCodeNotSpecified = -1,
@@ -119,7 +119,7 @@ protected:
     void derefThreadableWebSocketChannel() override { deref(); }
 
 private:
-    WebSocketChannel(Document&, WebSocketChannelClient&);
+    WEBCORE_EXPORT WebSocketChannel(Document&, WebSocketChannelClient&, SocketProvider&);
 
     bool appendToBuffer(const char* data, size_t len);
     void skipBuffer(size_t len);
@@ -213,6 +213,7 @@ private:
     BlobLoaderStatus m_blobLoaderStatus { BlobLoaderNotStarted };
 
     WebSocketDeflateFramer m_deflateFramer;
+    Ref<SocketProvider> m_socketProvider;
 };
 
 } // namespace WebCore

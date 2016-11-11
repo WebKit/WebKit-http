@@ -33,6 +33,7 @@
 #include "APIDictionary.h"
 #include "APIFindClient.h"
 #include "APIFindMatchesClient.h"
+#include "APIFrameHandle.h"
 #include "APIFrameInfo.h"
 #include "APIGeometry.h"
 #include "APIHitTestResult.h"
@@ -71,6 +72,7 @@
 #include "WebProtectionSpace.h"
 #include <WebCore/Page.h>
 #include <WebCore/SecurityOriginData.h>
+#include <WebCore/SerializedCryptoKeyWrap.h>
 #include <WebCore/WindowFeatures.h>
 
 #ifdef __BLOCKS__
@@ -112,7 +114,7 @@ template<> struct ClientTraits<WKPageUIClientBase> {
 
 #if ENABLE(CONTEXT_MENUS)
 template<> struct ClientTraits<WKPageContextMenuClientBase> {
-    typedef std::tuple<WKPageContextMenuClientV0, WKPageContextMenuClientV1, WKPageContextMenuClientV2, WKPageContextMenuClientV3> Versions;
+    typedef std::tuple<WKPageContextMenuClientV0, WKPageContextMenuClientV1, WKPageContextMenuClientV2, WKPageContextMenuClientV3, WKPageContextMenuClientV4> Versions;
 };
 #endif
 
@@ -850,6 +852,23 @@ void WKPageSetPageContextMenuClient(WKPageRef pageRef, const WKPageContextMenuCl
             return true;
         }
 
+        bool getContextMenuFromProposedMenuAsync(WebPageProxy& page, const Vector<RefPtr<WebKit::WebContextMenuItem>>& proposedMenuVector, WebKit::WebContextMenuListenerProxy* contextMenuListener, const WebHitTestResultData& hitTestResultData, API::Object* userData) override
+        {
+            if (m_client.base.version < 4 || !m_client.getContextMenuFromProposedMenuAsync)
+                return false;
+
+            Vector<RefPtr<API::Object>> proposedMenuItems;
+            proposedMenuItems.reserveInitialCapacity(proposedMenuVector.size());
+
+            for (const auto& menuItem : proposedMenuVector)
+                proposedMenuItems.uncheckedAppend(menuItem);
+
+            RefPtr<API::HitTestResult> webHitTestResult = API::HitTestResult::create(hitTestResultData);
+            m_client.getContextMenuFromProposedMenuAsync(toAPI(&page), toAPI(API::Array::create(WTFMove(proposedMenuItems)).ptr()), toAPI(contextMenuListener), toAPI(webHitTestResult.get()), toAPI(userData), m_client.base.clientInfo);
+
+            return true;
+        }
+
         void customContextMenuItemSelected(WebPageProxy& page, const WebContextMenuItemData& itemData) override
         {
             if (!m_client.customContextMenuItemSelected)
@@ -1086,7 +1105,7 @@ void WKPageSetPageLoaderClient(WKPageRef pageRef, const WKPageLoaderClientBase* 
             m_client.didFirstVisuallyNonEmptyLayoutForFrame(toAPI(&page), toAPI(&frame), toAPI(userData), m_client.base.clientInfo);
         }
 
-        void didLayout(WebPageProxy& page, LayoutMilestones milestones) override
+        void didReachLayoutMilestone(WebPageProxy& page, LayoutMilestones milestones) override
         {
             if (!m_client.didLayout)
                 return;
@@ -1212,11 +1231,6 @@ void WKPageSetPageLoaderClient(WKPageRef pageRef, const WKPageLoaderClientBase* 
         {
             if (m_client.willGoToBackForwardListItem)
                 m_client.willGoToBackForwardListItem(toAPI(&page), toAPI(item), toAPI(userData), m_client.base.clientInfo);
-        }
-
-        RefPtr<API::Data> webCryptoMasterKey(WebPageProxy& page) override
-        {
-            return page.process().processPool().client().copyWebCryptoMasterKey(&page.process().processPool());
         }
 
         void navigationGestureDidBegin(WebPageProxy& page) override
@@ -1527,7 +1541,7 @@ namespace WebKit {
 
 class RunBeforeUnloadConfirmPanelResultListener : public API::ObjectImpl<API::Object::Type::RunBeforeUnloadConfirmPanelResultListener> {
 public:
-    static PassRefPtr<RunBeforeUnloadConfirmPanelResultListener> create(std::function<void (bool)>&& completionHandler)
+    static PassRefPtr<RunBeforeUnloadConfirmPanelResultListener> create(Function<void (bool)>&& completionHandler)
     {
         return adoptRef(new RunBeforeUnloadConfirmPanelResultListener(WTFMove(completionHandler)));
     }
@@ -1542,17 +1556,17 @@ public:
     }
 
 private:
-    explicit RunBeforeUnloadConfirmPanelResultListener(std::function<void (bool)>&& completionHandler)
+    explicit RunBeforeUnloadConfirmPanelResultListener(Function<void (bool)>&& completionHandler)
         : m_completionHandler(WTFMove(completionHandler))
     {
     }
 
-    std::function<void (bool)> m_completionHandler;
+    Function<void (bool)> m_completionHandler;
 };
 
 class RunJavaScriptAlertResultListener : public API::ObjectImpl<API::Object::Type::RunJavaScriptAlertResultListener> {
 public:
-    static PassRefPtr<RunJavaScriptAlertResultListener> create(std::function<void ()>&& completionHandler)
+    static PassRefPtr<RunJavaScriptAlertResultListener> create(Function<void ()>&& completionHandler)
     {
         return adoptRef(new RunJavaScriptAlertResultListener(WTFMove(completionHandler)));
     }
@@ -1567,17 +1581,17 @@ public:
     }
 
 private:
-    explicit RunJavaScriptAlertResultListener(std::function<void ()>&& completionHandler)
+    explicit RunJavaScriptAlertResultListener(Function<void ()>&& completionHandler)
         : m_completionHandler(WTFMove(completionHandler))
     {
     }
     
-    std::function<void ()> m_completionHandler;
+    Function<void ()> m_completionHandler;
 };
 
 class RunJavaScriptConfirmResultListener : public API::ObjectImpl<API::Object::Type::RunJavaScriptConfirmResultListener> {
 public:
-    static PassRefPtr<RunJavaScriptConfirmResultListener> create(std::function<void (bool)>&& completionHandler)
+    static PassRefPtr<RunJavaScriptConfirmResultListener> create(Function<void (bool)>&& completionHandler)
     {
         return adoptRef(new RunJavaScriptConfirmResultListener(WTFMove(completionHandler)));
     }
@@ -1592,17 +1606,17 @@ public:
     }
 
 private:
-    explicit RunJavaScriptConfirmResultListener(std::function<void (bool)>&& completionHandler)
+    explicit RunJavaScriptConfirmResultListener(Function<void (bool)>&& completionHandler)
         : m_completionHandler(WTFMove(completionHandler))
     {
     }
 
-    std::function<void (bool)> m_completionHandler;
+    Function<void (bool)> m_completionHandler;
 };
 
 class RunJavaScriptPromptResultListener : public API::ObjectImpl<API::Object::Type::RunJavaScriptPromptResultListener> {
 public:
-    static PassRefPtr<RunJavaScriptPromptResultListener> create(std::function<void (const String&)>&& completionHandler)
+    static PassRefPtr<RunJavaScriptPromptResultListener> create(Function<void (const String&)>&& completionHandler)
     {
         return adoptRef(new RunJavaScriptPromptResultListener(WTFMove(completionHandler)));
     }
@@ -1617,12 +1631,12 @@ public:
     }
 
 private:
-    explicit RunJavaScriptPromptResultListener(std::function<void (const String&)>&& completionHandler)
+    explicit RunJavaScriptPromptResultListener(Function<void (const String&)>&& completionHandler)
         : m_completionHandler(WTFMove(completionHandler))
     {
     }
 
-    std::function<void (const String&)> m_completionHandler;
+    Function<void (const String&)> m_completionHandler;
 };
 
 WK_ADD_API_MAPPING(WKPageRunBeforeUnloadConfirmPanelResultListenerRef, RunBeforeUnloadConfirmPanelResultListener)
@@ -1697,8 +1711,9 @@ void WKPageSetPageUIClient(WKPageRef pageRef, const WKPageUIClientBase* wkClient
 
                 auto sourceFrameInfo = API::FrameInfo::create(*initiatingFrame, securityOriginData.securityOrigin());
 
+                auto userInitiatedActivity = page->process().userInitiatedActivity(navigationActionData.userGestureTokenIdentifier);
                 bool shouldOpenAppLinks = !hostsAreEqual(WebCore::URL(WebCore::ParsedURLString, initiatingFrame->url()), resourceRequest.url());
-                auto apiNavigationAction = API::NavigationAction::create(navigationActionData, sourceFrameInfo.ptr(), nullptr, resourceRequest, WebCore::URL(), shouldOpenAppLinks);
+                auto apiNavigationAction = API::NavigationAction::create(navigationActionData, sourceFrameInfo.ptr(), nullptr, resourceRequest, WebCore::URL(), shouldOpenAppLinks, userInitiatedActivity);
 
                 auto apiWindowFeatures = API::WindowFeatures::create(windowFeatures);
 
@@ -1785,7 +1800,7 @@ void WKPageSetPageUIClient(WKPageRef pageRef, const WKPageUIClientBase* wkClient
             m_client.unfocus(toAPI(page), m_client.base.clientInfo);
         }
 
-        void runJavaScriptAlert(WebPageProxy* page, const String& message, WebFrameProxy* frame, const SecurityOriginData& securityOriginData, std::function<void ()> completionHandler) override
+        void runJavaScriptAlert(WebPageProxy* page, const String& message, WebFrameProxy* frame, const SecurityOriginData& securityOriginData, Function<void ()>&& completionHandler) override
         {
             if (m_client.runJavaScriptAlert) {
                 RefPtr<RunJavaScriptAlertResultListener> listener = RunJavaScriptAlertResultListener::create(WTFMove(completionHandler));
@@ -1811,7 +1826,7 @@ void WKPageSetPageUIClient(WKPageRef pageRef, const WKPageUIClientBase* wkClient
             completionHandler();
         }
 
-        void runJavaScriptConfirm(WebPageProxy* page, const String& message, WebFrameProxy* frame, const SecurityOriginData& securityOriginData, std::function<void (bool)> completionHandler) override
+        void runJavaScriptConfirm(WebPageProxy* page, const String& message, WebFrameProxy* frame, const SecurityOriginData& securityOriginData, Function<void (bool)>&& completionHandler) override
         {
             if (m_client.runJavaScriptConfirm) {
                 RefPtr<RunJavaScriptConfirmResultListener> listener = RunJavaScriptConfirmResultListener::create(WTFMove(completionHandler));
@@ -1838,7 +1853,7 @@ void WKPageSetPageUIClient(WKPageRef pageRef, const WKPageUIClientBase* wkClient
             completionHandler(false);
         }
 
-        void runJavaScriptPrompt(WebPageProxy* page, const String& message, const String& defaultValue, WebFrameProxy* frame, const SecurityOriginData& securityOriginData, std::function<void (const String&)> completionHandler) override
+        void runJavaScriptPrompt(WebPageProxy* page, const String& message, const String& defaultValue, WebFrameProxy* frame, const SecurityOriginData& securityOriginData, Function<void (const String&)>&& completionHandler) override
         {
             if (m_client.runJavaScriptPrompt) {
                 RefPtr<RunJavaScriptPromptResultListener> listener = RunJavaScriptPromptResultListener::create(WTFMove(completionHandler));
@@ -2028,7 +2043,7 @@ void WKPageSetPageUIClient(WKPageRef pageRef, const WKPageUIClientBase* wkClient
             return m_client.runBeforeUnloadConfirmPanel_deprecatedForUseWithV6 || m_client.runBeforeUnloadConfirmPanel;
         }
 
-        void runBeforeUnloadConfirmPanel(WebKit::WebPageProxy* page, const WTF::String& message, WebKit::WebFrameProxy* frame, std::function<void (bool)> completionHandler) override
+        void runBeforeUnloadConfirmPanel(WebKit::WebPageProxy* page, const WTF::String& message, WebKit::WebFrameProxy* frame, Function<void (bool)>&& completionHandler) override
         {
             if (m_client.runBeforeUnloadConfirmPanel) {
                 RefPtr<RunBeforeUnloadConfirmPanelResultListener> listener = RunBeforeUnloadConfirmPanelResultListener::create(WTFMove(completionHandler));
@@ -2053,7 +2068,7 @@ void WKPageSetPageUIClient(WKPageRef pageRef, const WKPageUIClientBase* wkClient
             m_client.pageDidScroll(toAPI(page), m_client.base.clientInfo);
         }
 
-        void exceededDatabaseQuota(WebPageProxy* page, WebFrameProxy* frame, API::SecurityOrigin* origin, const String& databaseName, const String& databaseDisplayName, unsigned long long currentQuota, unsigned long long currentOriginUsage, unsigned long long currentDatabaseUsage, unsigned long long expectedUsage, std::function<void (unsigned long long)> completionHandler) override
+        void exceededDatabaseQuota(WebPageProxy* page, WebFrameProxy* frame, API::SecurityOrigin* origin, const String& databaseName, const String& databaseDisplayName, unsigned long long currentQuota, unsigned long long currentOriginUsage, unsigned long long currentDatabaseUsage, unsigned long long expectedUsage, Function<void (unsigned long long)>&& completionHandler) override
         {
             if (!m_client.exceededDatabaseQuota) {
                 completionHandler(currentQuota);
@@ -2325,9 +2340,16 @@ void WKPageSetPageNavigationClient(WKPageRef pageRef, const WKPageNavigationClie
 
         RefPtr<API::Data> webCryptoMasterKey(WebPageProxy& page) override
         {
-            if (!m_client.copyWebCryptoMasterKey)
+            if (m_client.copyWebCryptoMasterKey)
+                return adoptRef(toImpl(m_client.copyWebCryptoMasterKey(toAPI(&page), m_client.base.clientInfo)));
+
+            Vector<uint8_t> masterKey;
+#if ENABLE(SUBTLE_CRYPTO)
+            if (!getDefaultWebCryptoMasterKey(masterKey))
                 return nullptr;
-            return adoptRef(toImpl(m_client.copyWebCryptoMasterKey(toAPI(&page), m_client.base.clientInfo)));
+#endif
+
+            return API::Data::create(masterKey.data(), masterKey.size());
         }
 
         void didBeginNavigationGesture(WebPageProxy& page) override
@@ -2383,11 +2405,6 @@ void WKPageSetPageNavigationClient(WKPageRef pageRef, const WKPageNavigationClie
     webPageProxy->setNavigationClient(WTFMove(navigationClient));
 }
 
-void WKPageSetSession(WKPageRef pageRef, WKSessionRef session)
-{
-    toImpl(pageRef)->setSessionID(toImpl(session)->getID());
-}
-
 void WKPageRunJavaScriptInMainFrame(WKPageRef pageRef, WKStringRef scriptRef, void* context, WKPageRunJavaScriptFunction callback)
 {
     toImpl(pageRef)->runJavaScriptInMainFrame(toImpl(scriptRef)->string(), [context, callback](API::SerializedScriptValue* returnValue, bool, const WebCore::ExceptionDetails&, CallbackBase::Error error) {
@@ -2434,6 +2451,11 @@ void WKPageGetContentsAsString(WKPageRef pageRef, void* context, WKPageGetConten
 void WKPageGetBytecodeProfile(WKPageRef pageRef, void* context, WKPageGetBytecodeProfileFunction callback)
 {
     toImpl(pageRef)->getBytecodeProfile(toGenericCallbackFunction(context, callback));
+}
+
+void WKPageGetSamplingProfilerOutput(WKPageRef pageRef, void* context, WKPageGetSamplingProfilerOutputFunction callback)
+{
+    toImpl(pageRef)->getSamplingProfilerOutput(toGenericCallbackFunction(context, callback));
 }
 
 void WKPageIsWebProcessResponsive(WKPageRef pageRef, void* context, WKPageIsWebProcessResponsiveFunction callback)
@@ -2579,7 +2601,7 @@ void WKPageSetMediaVolume(WKPageRef page, float volume)
     toImpl(page)->setMediaVolume(volume);    
 }
 
-void WKPageSetMuted(WKPageRef page, bool muted)
+void WKPageSetMuted(WKPageRef page, WKMediaMutedState muted)
 {
     toImpl(page)->setMuted(muted);
 }
@@ -2636,6 +2658,16 @@ WKArrayRef WKPageCopyRelatedPages(WKPageRef pageRef)
     }
 
     return toAPI(&API::Array::create(WTFMove(relatedPages)).leakRef());
+}
+
+WKFrameRef WKPageLookUpFrameFromHandle(WKPageRef pageRef, WKFrameHandleRef handleRef)
+{
+    auto page = toImpl(pageRef);
+    auto frame = page->process().webFrame(toImpl(handleRef)->frameID());
+    if (!frame || frame->page() != page)
+        return nullptr;
+
+    return toAPI(frame);
 }
 
 void WKPageSetMayStartMediaWhenInWindow(WKPageRef pageRef, bool mayStartMedia)
@@ -2716,6 +2748,8 @@ WKMediaState WKPageGetMediaState(WKPageRef page)
         state |= kWKMediaIsPlayingAudio;
     if (coreState & WebCore::MediaProducer::IsPlayingVideo)
         state |= kWKMediaIsPlayingVideo;
+    if (coreState & WebCore::MediaProducer::HasMediaCaptureDevice)
+        state |= kWKMediaHasCaptureDevice;
     if (coreState & WebCore::MediaProducer::HasActiveMediaCaptureDevice)
         state |= kWKMediaHasActiveCaptureDevice;
 
@@ -2742,6 +2776,18 @@ bool WKPageGetResourceCachingDisabled(WKPageRef page)
 void WKPageSetResourceCachingDisabled(WKPageRef page, bool disabled)
 {
     toImpl(page)->setResourceCachingDisabled(disabled);
+}
+
+void WKPageSetIgnoresViewportScaleLimits(WKPageRef page, bool ignoresViewportScaleLimits)
+{
+#if PLATFORM(IOS)
+    toImpl(page)->setForceAlwaysUserScalable(ignoresViewportScaleLimits);
+#endif
+}
+
+pid_t WKPageGetProcessIdentifier(WKPageRef page)
+{
+    return toImpl(page)->processIdentifier();
 }
 
 #if ENABLE(NETSCAPE_PLUGIN_API)

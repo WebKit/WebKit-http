@@ -30,26 +30,29 @@
 
 #include "CallFrame.h"
 #include "CodeBlock.h"
-#include "Debugger.h"
-#include "Executable.h"
+#include "CodeBlockSet.h"
 #include "HeapInlines.h"
 #include "HeapIterationScope.h"
+#include "HeapUtil.h"
 #include "InlineCallFrame.h"
 #include "Interpreter.h"
 #include "JSCJSValueInlines.h"
 #include "JSFunction.h"
+#include "JSObjectInlines.h"
 #include "LLIntPCRanges.h"
 #include "MarkedBlock.h"
 #include "MarkedBlockSet.h"
+#include "MarkedSpaceInlines.h"
+#include "NativeExecutable.h"
 #include "PCToCodeOriginMap.h"
 #include "SlotVisitor.h"
 #include "SlotVisitorInlines.h"
 #include "StructureInlines.h"
 #include "VM.h"
-#include "VMEntryScope.h"
 #include <wtf/HashSet.h>
 #include <wtf/RandomNumber.h>
 #include <wtf/RefPtr.h>
+#include <wtf/text/StringBuilder.h>
 
 namespace JSC {
 
@@ -358,7 +361,6 @@ void SamplingProfiler::processUnverifiedStackTraces()
     RELEASE_ASSERT(m_lock.isLocked());
 
     TinyBloomFilter filter = m_vm.heap.objectSpace().blocks().filter();
-    MarkedBlockSet& markedBlockSet = m_vm.heap.objectSpace().blocks();
 
     for (UnprocessedStackTrace& unprocessedStackTrace : m_unprocessedStackTraces) {
         m_stackTraces.append(StackTrace());
@@ -392,7 +394,7 @@ void SamplingProfiler::processUnverifiedStackTraces()
             JSValue callee = JSValue::decode(encodedCallee);
             StackFrame& stackFrame = stackTrace.frames.last();
             bool alreadyHasExecutable = !!stackFrame.executable;
-            if (!Heap::isValueGCObject(filter, markedBlockSet, callee)) {
+            if (!HeapUtil::isValueGCObject(m_vm.heap, filter, callee)) {
                 if (!alreadyHasExecutable)
                     stackFrame.frameType = FrameType::Unknown;
                 return;
@@ -437,7 +439,7 @@ void SamplingProfiler::processUnverifiedStackTraces()
                 return;
             }
 
-            RELEASE_ASSERT(Heap::isPointerGCObject(filter, markedBlockSet, executable));
+            RELEASE_ASSERT(HeapUtil::isPointerGCObjectJSCell(m_vm.heap, filter, executable));
             stackFrame.frameType = FrameType::Executable;
             stackFrame.executable = executable;
             m_liveCellPointers.add(executable);
@@ -590,11 +592,14 @@ String SamplingProfiler::StackFrame::nameFromCallee(VM& vm)
     if (!callee)
         return String();
 
+    auto scope = DECLARE_CATCH_SCOPE(vm);
     ExecState* exec = callee->globalObject()->globalExec();
     auto getPropertyIfPureOperation = [&] (const Identifier& ident) -> String {
         PropertySlot slot(callee, PropertySlot::InternalMethodType::VMInquiry);
         PropertyName propertyName(ident);
-        if (callee->getPropertySlot(exec, propertyName, slot)) {
+        bool hasProperty = callee->getPropertySlot(exec, propertyName, slot);
+        ASSERT_UNUSED(scope, !scope.exception());
+        if (hasProperty) {
             if (slot.isValue()) {
                 JSValue nameValue = slot.getValue(exec, propertyName);
                 if (isJSString(nameValue))

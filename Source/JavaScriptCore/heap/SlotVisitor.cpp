@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012, 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2012, 2015-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -25,20 +25,21 @@
 
 #include "config.h"
 #include "SlotVisitor.h"
-#include "SlotVisitorInlines.h"
 
+#include "CPU.h"
 #include "ConservativeRoots.h"
-#include "CopiedBlockInlines.h"
-#include "CopiedSpace.h"
-#include "CopiedSpaceInlines.h"
+#include "GCSegmentedArrayInlines.h"
+#include "HeapCellInlines.h"
 #include "HeapProfiler.h"
 #include "HeapSnapshotBuilder.h"
 #include "JSArray.h"
 #include "JSDestructibleObject.h"
-#include "VM.h"
 #include "JSObject.h"
 #include "JSString.h"
 #include "JSCInlines.h"
+#include "SlotVisitorInlines.h"
+#include "SuperSampler.h"
+#include "VM.h"
 #include <wtf/Lock.h>
 
 namespace JSC {
@@ -79,6 +80,7 @@ SlotVisitor::SlotVisitor(Heap& heap)
     , m_bytesCopied(0)
     , m_visitCount(0)
     , m_isInParallelMode(false)
+    , m_markingVersion(MarkedSpace::initialVersion)
     , m_heap(heap)
 #if !ASSERT_DISABLED
     , m_isCheckingForDefaultMarkViolation(false)
@@ -94,11 +96,15 @@ SlotVisitor::~SlotVisitor()
 
 void SlotVisitor::didStartMarking()
 {
-    if (heap()->operationInProgress() == FullCollection)
+    if (heap()->collectionScope() == CollectionScope::Full)
         ASSERT(m_opaqueRoots.isEmpty()); // Should have merged by now.
+    else
+        reset();
 
     if (HeapProfiler* heapProfiler = vm().heapProfiler())
         m_heapSnapshotBuilder = heapProfiler->activeSnapshotBuilder();
+    
+    m_markingVersion = heap()->objectSpace().markingVersion();
 }
 
 void SlotVisitor::reset()
@@ -108,7 +114,6 @@ void SlotVisitor::reset()
     m_visitCount = 0;
     m_heapSnapshotBuilder = nullptr;
     ASSERT(!m_currentCell);
-    ASSERT(m_stack.isEmpty());
 }
 
 void SlotVisitor::clearMarkStack()
@@ -118,10 +123,41 @@ void SlotVisitor::clearMarkStack()
 
 void SlotVisitor::append(ConservativeRoots& conservativeRoots)
 {
-    JSCell** roots = conservativeRoots.roots();
+    HeapCell** roots = conservativeRoots.roots();
     size_t size = conservativeRoots.size();
     for (size_t i = 0; i < size; ++i)
-        append(roots[i]);
+        appendJSCellOrAuxiliary(roots[i]);
+}
+
+void SlotVisitor::appendJSCellOrAuxiliary(HeapCell* heapCell)
+{
+    if (!heapCell)
+        return;
+    
+    ASSERT(!m_isCheckingForDefaultMarkViolation);
+    
+    if (Heap::testAndSetMarked(m_markingVersion, heapCell))
+        return;
+    
+    switch (heapCell->cellKind()) {
+    case HeapCell::JSCell: {
+        JSCell* jsCell = static_cast<JSCell*>(heapCell);
+        
+        if (!jsCell->structure()) {
+            ASSERT_NOT_REACHED();
+            return;
+        }
+        
+        jsCell->setCellState(CellState::NewGrey);
+
+        appendToMarkStack(jsCell);
+        return;
+    }
+        
+    case HeapCell::Auxiliary: {
+        noteLiveAuxiliaryCell(heapCell);
+        return;
+    } }
 }
 
 void SlotVisitor::append(JSValue value)
@@ -145,6 +181,8 @@ void SlotVisitor::appendHidden(JSValue value)
 
 void SlotVisitor::setMarkedAndAppendToMarkStack(JSCell* cell)
 {
+    SuperSamplerScope superSamplerScope(false);
+    
     ASSERT(!m_isCheckingForDefaultMarkViolation);
     if (!cell)
         return;
@@ -152,31 +190,82 @@ void SlotVisitor::setMarkedAndAppendToMarkStack(JSCell* cell)
 #if ENABLE(GC_VALIDATION)
     validate(cell);
 #endif
+    
+    if (cell->isLargeAllocation())
+        setMarkedAndAppendToMarkStack(cell->largeAllocation(), cell);
+    else
+        setMarkedAndAppendToMarkStack(cell->markedBlock(), cell);
+}
 
-    if (Heap::testAndSetMarked(cell) || !cell->structure()) {
-        ASSERT(cell->structure());
+template<typename ContainerType>
+ALWAYS_INLINE void SlotVisitor::setMarkedAndAppendToMarkStack(ContainerType& container, JSCell* cell)
+{
+    container.aboutToMark(m_markingVersion);
+    
+    if (container.testAndSetMarked(cell))
         return;
-    }
-
+    
+    ASSERT(cell->structure());
+    
     // Indicate that the object is grey and that:
     // In case of concurrent GC: it's the first time it is grey in this GC cycle.
     // In case of eden collection: it's a new object that became grey rather than an old remembered object.
     cell->setCellState(CellState::NewGrey);
-
-    appendToMarkStack(cell);
+    
+    appendToMarkStack(container, cell);
 }
 
 void SlotVisitor::appendToMarkStack(JSCell* cell)
 {
-    ASSERT(Heap::isMarked(cell));
+    if (cell->isLargeAllocation())
+        appendToMarkStack(cell->largeAllocation(), cell);
+    else
+        appendToMarkStack(cell->markedBlock(), cell);
+}
+
+template<typename ContainerType>
+ALWAYS_INLINE void SlotVisitor::appendToMarkStack(ContainerType& container, JSCell* cell)
+{
+    ASSERT(Heap::isMarkedConcurrently(cell));
     ASSERT(!cell->isZapped());
-
+    ASSERT(cell->cellState() == CellState::NewGrey || cell->cellState() == CellState::OldGrey);
+    
+    container.noteMarked();
+    
+    // FIXME: These "just work" because the GC resets these fields before doing anything else. But
+    // that won't be the case when we do concurrent GC.
     m_visitCount++;
-    m_bytesVisited += MarkedBlock::blockFor(cell)->cellSize();
+    m_bytesVisited += container.cellSize();
+    
     m_stack.append(cell);
+}
 
-    if (UNLIKELY(m_heapSnapshotBuilder))
-        m_heapSnapshotBuilder->appendNode(cell);
+void SlotVisitor::markAuxiliary(const void* base)
+{
+    HeapCell* cell = bitwise_cast<HeapCell*>(base);
+    
+    ASSERT(cell->heap() == heap());
+    
+    if (Heap::testAndSetMarked(m_markingVersion, cell))
+        return;
+    
+    noteLiveAuxiliaryCell(cell);
+}
+
+void SlotVisitor::noteLiveAuxiliaryCell(HeapCell* cell)
+{
+    // We get here once per GC under these circumstances:
+    //
+    // Eden collection: if the cell was allocated since the last collection and is live somehow.
+    //
+    // Full collection: if the cell is live somehow.
+    
+    CellContainer container = cell->cellContainer();
+    
+    container.noteMarked();
+    
+    m_visitCount++;
+    m_bytesVisited += container.cellSize();
 }
 
 class SetCurrentCellScope {
@@ -201,29 +290,45 @@ private:
 
 ALWAYS_INLINE void SlotVisitor::visitChildren(const JSCell* cell)
 {
-    ASSERT(Heap::isMarked(cell));
-
-    SetCurrentCellScope currentCellScope(*this, cell);
-
-    m_currentObjectCellStateBeforeVisiting = cell->cellState();
-    cell->setCellState(CellState::OldBlack);
+    ASSERT(Heap::isMarkedConcurrently(cell));
     
-    if (isJSString(cell)) {
+    SetCurrentCellScope currentCellScope(*this, cell);
+    
+    m_oldCellState = cell->cellState();
+    
+    // There is no race here - the cell state cannot change right now. Grey objects can only be
+    // visited by one marking thread. Neither the barrier nor marking will change the state of an
+    // object that is already grey.
+    ASSERT(m_oldCellState == CellState::OldGrey || m_oldCellState == CellState::NewGrey);
+    
+    cell->setCellState(CellState::AnthraciteOrBlack);
+    
+    WTF::storeLoadFence();
+    
+    switch (cell->type()) {
+    case StringType:
         JSString::visitChildren(const_cast<JSCell*>(cell), *this);
-        return;
-    }
-
-    if (isJSFinalObject(cell)) {
+        break;
+        
+    case FinalObjectType:
         JSFinalObject::visitChildren(const_cast<JSCell*>(cell), *this);
-        return;
-    }
+        break;
 
-    if (isJSArray(cell)) {
+    case ArrayType:
         JSArray::visitChildren(const_cast<JSCell*>(cell), *this);
-        return;
+        break;
+        
+    default:
+        // FIXME: This could be so much better.
+        // https://bugs.webkit.org/show_bug.cgi?id=162462
+        cell->methodTable()->visitChildren(const_cast<JSCell*>(cell), *this);
+        break;
     }
-
-    cell->methodTable()->visitChildren(const_cast<JSCell*>(cell), *this);
+    
+    if (UNLIKELY(m_heapSnapshotBuilder)) {
+        if (m_oldCellState == CellState::NewGrey)
+            m_heapSnapshotBuilder->appendNode(const_cast<JSCell*>(cell));
+    }
 }
 
 void SlotVisitor::donateKnownParallel()
@@ -398,36 +503,6 @@ void SlotVisitor::donateAndDrain()
     drain();
 }
 
-void SlotVisitor::copyLater(JSCell* owner, CopyToken token, void* ptr, size_t bytes)
-{
-    ASSERT(bytes);
-    CopiedBlock* block = CopiedSpace::blockFor(ptr);
-    if (block->isOversize()) {
-        ASSERT(bytes <= block->size());
-        // FIXME: We should be able to shrink the allocation if bytes went below the block size.
-        // For now, we just make sure that our accounting of how much memory we are actually using
-        // is correct.
-        // https://bugs.webkit.org/show_bug.cgi?id=144749
-        bytes = block->size();
-        m_heap.m_storageSpace.pin(block);
-    }
-
-    ASSERT(heap()->m_storageSpace.contains(block));
-
-    LockHolder locker(&block->workListLock());
-    // We always report live bytes, except if during an eden collection we see an old object pointing to an
-    // old backing store and the old object is being marked because of the remembered set. Note that if we
-    // ask the object itself, it will always tell us that it's an old black object - because even during an
-    // eden collection we have already indicated that the object is old. That's why we use the
-    // SlotVisitor's cache of the object's old state.
-    if (heap()->operationInProgress() == FullCollection
-        || !block->isOld()
-        || m_currentObjectCellStateBeforeVisiting != CellState::OldGrey) {
-        m_bytesCopied += bytes;
-        block->reportLiveBytes(locker, owner, token, bytes);
-    }
-}
-    
 void SlotVisitor::mergeOpaqueRoots()
 {
     ASSERT(!m_opaqueRoots.isEmpty()); // Should only be called when opaque roots are non-empty.

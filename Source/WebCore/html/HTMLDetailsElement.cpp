@@ -22,8 +22,11 @@
 #include "HTMLDetailsElement.h"
 
 #if ENABLE(DETAILS_ELEMENT)
+
 #include "AXObjectCache.h"
 #include "ElementIterator.h"
+#include "EventNames.h"
+#include "EventSender.h"
 #include "HTMLSlotElement.h"
 #include "HTMLSummaryElement.h"
 #include "LocalizedStrings.h"
@@ -37,6 +40,12 @@
 namespace WebCore {
 
 using namespace HTMLNames;
+
+static DetailEventSender& detailToggleEventSender()
+{
+    static NeverDestroyed<DetailEventSender> sharedToggleEventSender(eventNames().toggleEvent);
+    return sharedToggleEventSender;
+}
 
 static const AtomicString& summarySlotName()
 {
@@ -87,6 +96,11 @@ HTMLDetailsElement::HTMLDetailsElement(const QualifiedName& tagName, Document& d
     ASSERT(hasTagName(detailsTag));
 }
 
+HTMLDetailsElement::~HTMLDetailsElement()
+{
+    detailToggleEventSender().cancelEvent(*this);
+}
+
 RenderPtr<RenderElement> HTMLDetailsElement::createElementRenderer(RenderStyle&& style, const RenderTreePosition&)
 {
     return createRenderer<RenderBlockFlow>(*this, WTFMove(style));
@@ -95,7 +109,7 @@ RenderPtr<RenderElement> HTMLDetailsElement::createElementRenderer(RenderStyle&&
 void HTMLDetailsElement::didAddUserAgentShadowRoot(ShadowRoot* root)
 {
     auto summarySlot = HTMLSlotElement::create(slotTag, document());
-    summarySlot->setAttribute(nameAttr, summarySlotName());
+    summarySlot->setAttributeWithoutSynchronization(nameAttr, summarySlotName());
     m_summarySlot = summarySlot.ptr();
 
     auto defaultSummary = HTMLSummaryElement::create(summaryTag, document());
@@ -123,6 +137,12 @@ bool HTMLDetailsElement::isActiveSummary(const HTMLSummaryElement& summary) cons
     return slot == m_summarySlot;
 }
 
+void HTMLDetailsElement::dispatchPendingEvent(DetailEventSender* eventSender)
+{
+    ASSERT_UNUSED(eventSender, eventSender == &detailToggleEventSender());
+    dispatchEvent(Event::create(eventNames().toggleEvent, false, false));
+}
+
 void HTMLDetailsElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
 {
     if (name == openAttr) {
@@ -135,6 +155,10 @@ void HTMLDetailsElement::parseAttribute(const QualifiedName& name, const AtomicS
                 root->appendChild(*m_defaultSlot);
             else
                 root->removeChild(*m_defaultSlot);
+
+            // https://html.spec.whatwg.org/#details-notification-task-steps.
+            detailToggleEventSender().cancelEvent(*this);
+            detailToggleEventSender().dispatchEventSoon(*this);
         }
     } else
         HTMLElement::parseAttribute(name, value);
@@ -143,7 +167,7 @@ void HTMLDetailsElement::parseAttribute(const QualifiedName& name, const AtomicS
 
 void HTMLDetailsElement::toggleOpen()
 {
-    setAttribute(openAttr, m_isOpen ? nullAtom : emptyAtom);
+    setAttributeWithoutSynchronization(openAttr, m_isOpen ? nullAtom : emptyAtom);
 
     // We need to post to the document because toggling this element will delete it.
     if (AXObjectCache* cache = document().existingAXObjectCache())

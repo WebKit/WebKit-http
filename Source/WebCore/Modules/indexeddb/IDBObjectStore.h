@@ -28,6 +28,8 @@
 #if ENABLE(INDEXED_DATABASE)
 
 #include "ActiveDOMObject.h"
+#include "ExceptionOr.h"
+#include "IDBKeyPath.h"
 #include "IDBObjectStoreInfo.h"
 #include <wtf/HashSet.h>
 
@@ -46,23 +48,22 @@ class IDBKeyRange;
 class IDBRequest;
 class IDBTransaction;
 
-struct ExceptionCodeWithMessage;
 struct IDBKeyRangeData;
 
 namespace IndexedDB {
 enum class ObjectStoreOverwriteMode;
 }
 
-class IDBObjectStore final : public RefCounted<IDBObjectStore>, public ActiveDOMObject {
+class IDBObjectStore final : public ActiveDOMObject {
 public:
-    static Ref<IDBObjectStore> create(ScriptExecutionContext&, const IDBObjectStoreInfo&, IDBTransaction&);
-
+    IDBObjectStore(ScriptExecutionContext&, const IDBObjectStoreInfo&, IDBTransaction&);
     ~IDBObjectStore();
 
     const String& name() const;
-    const IDBKeyPath& keyPath() const;
+    ExceptionOr<void> setName(const String&);
+    const Optional<IDBKeyPath>& keyPath() const;
     RefPtr<DOMStringList> indexNames() const;
-    RefPtr<IDBTransaction> transaction();
+    IDBTransaction& transaction();
     bool autoIncrement() const;
 
     struct IndexParameters {
@@ -70,43 +71,47 @@ public:
         bool multiEntry;
     };
 
-    RefPtr<IDBRequest> openCursor(ScriptExecutionContext&, IDBKeyRange*, const String& direction, ExceptionCodeWithMessage&);
-    RefPtr<IDBRequest> openCursor(ScriptExecutionContext&, JSC::JSValue key, const String& direction, ExceptionCodeWithMessage&);
-    RefPtr<IDBRequest> get(ScriptExecutionContext&, JSC::JSValue key, ExceptionCodeWithMessage&);
-    RefPtr<IDBRequest> get(ScriptExecutionContext&, IDBKeyRange*, ExceptionCodeWithMessage&);
-    RefPtr<IDBRequest> add(JSC::ExecState&, JSC::JSValue, JSC::JSValue key, ExceptionCodeWithMessage&);
-    RefPtr<IDBRequest> put(JSC::ExecState&, JSC::JSValue, JSC::JSValue key, ExceptionCodeWithMessage&);
-    RefPtr<IDBRequest> deleteFunction(ScriptExecutionContext&, IDBKeyRange*, ExceptionCodeWithMessage&);
-    RefPtr<IDBRequest> deleteFunction(ScriptExecutionContext&, JSC::JSValue key, ExceptionCodeWithMessage&);
-    RefPtr<IDBRequest> clear(ScriptExecutionContext&, ExceptionCodeWithMessage&);
-    RefPtr<IDBIndex> createIndex(ScriptExecutionContext&, const String& name, const IDBKeyPath&, const IndexParameters&, ExceptionCodeWithMessage&);
-    RefPtr<IDBIndex> index(const String& name, ExceptionCodeWithMessage&);
-    void deleteIndex(const String& name, ExceptionCodeWithMessage&);
-    RefPtr<IDBRequest> count(ScriptExecutionContext&, IDBKeyRange*, ExceptionCodeWithMessage&);
-    RefPtr<IDBRequest> count(ScriptExecutionContext&, JSC::JSValue key, ExceptionCodeWithMessage&);
+    ExceptionOr<Ref<IDBRequest>> openCursor(JSC::ExecState&, RefPtr<IDBKeyRange>, const String& direction);
+    ExceptionOr<Ref<IDBRequest>> openCursor(JSC::ExecState&, JSC::JSValue key, const String& direction);
+    ExceptionOr<Ref<IDBRequest>> openKeyCursor(JSC::ExecState&, RefPtr<IDBKeyRange>, const String& direction);
+    ExceptionOr<Ref<IDBRequest>> openKeyCursor(JSC::ExecState&, JSC::JSValue key, const String& direction);
+    ExceptionOr<Ref<IDBRequest>> get(JSC::ExecState&, JSC::JSValue key);
+    ExceptionOr<Ref<IDBRequest>> get(JSC::ExecState&, IDBKeyRange*);
+    ExceptionOr<Ref<IDBRequest>> add(JSC::ExecState&, JSC::JSValue, JSC::JSValue key);
+    ExceptionOr<Ref<IDBRequest>> put(JSC::ExecState&, JSC::JSValue, JSC::JSValue key);
+    ExceptionOr<Ref<IDBRequest>> deleteFunction(JSC::ExecState&, IDBKeyRange*);
+    ExceptionOr<Ref<IDBRequest>> deleteFunction(JSC::ExecState&, JSC::JSValue key);
+    ExceptionOr<Ref<IDBRequest>> clear(JSC::ExecState&);
+    ExceptionOr<Ref<IDBIndex>> createIndex(JSC::ExecState&, const String& name, IDBKeyPath&&, const IndexParameters&);
+    ExceptionOr<Ref<IDBIndex>> index(const String& name);
+    ExceptionOr<void> deleteIndex(const String& name);
+    ExceptionOr<Ref<IDBRequest>> count(JSC::ExecState&, IDBKeyRange*);
+    ExceptionOr<Ref<IDBRequest>> count(JSC::ExecState&, JSC::JSValue key);
+    ExceptionOr<Ref<IDBRequest>> getAll(JSC::ExecState&, RefPtr<IDBKeyRange>, Optional<uint32_t> count);
+    ExceptionOr<Ref<IDBRequest>> getAll(JSC::ExecState&, JSC::JSValue key, Optional<uint32_t> count);
+    ExceptionOr<Ref<IDBRequest>> getAllKeys(JSC::ExecState&, RefPtr<IDBKeyRange>, Optional<uint32_t> count);
+    ExceptionOr<Ref<IDBRequest>> getAllKeys(JSC::ExecState&, JSC::JSValue key, Optional<uint32_t> count);
 
-    RefPtr<IDBRequest> putForCursorUpdate(JSC::ExecState&, JSC::JSValue, JSC::JSValue key, ExceptionCodeWithMessage&);
-    RefPtr<IDBRequest> modernDelete(ScriptExecutionContext&, JSC::JSValue key, ExceptionCodeWithMessage&);
+    ExceptionOr<Ref<IDBRequest>> putForCursorUpdate(JSC::ExecState&, JSC::JSValue, JSC::JSValue key);
 
     void markAsDeleted();
     bool isDeleted() const { return m_deleted; }
 
     const IDBObjectStoreInfo& info() const { return m_info; }
 
-    // FIXME: After removing LegacyIDB and folding abstract/implementation classes together, this will no longer be necessary.
-    IDBTransaction& modernTransaction() { return m_transaction.get(); }
+    void rollbackForVersionChangeAbort();
 
-    void rollbackInfoForVersionChangeAbort();
+    void ref();
+    void deref();
 
     void visitReferencedIndexes(JSC::SlotVisitor&) const;
+    void renameReferencedIndex(IDBIndex&, const String& newName);
 
 private:
-    IDBObjectStore(ScriptExecutionContext&, const IDBObjectStoreInfo&, IDBTransaction&);
-
     enum class InlineKeyCheck { Perform, DoNotPerform };
-    RefPtr<IDBRequest> putOrAdd(JSC::ExecState&, JSC::JSValue, RefPtr<IDBKey>, IndexedDB::ObjectStoreOverwriteMode, InlineKeyCheck, ExceptionCodeWithMessage&);
-    RefPtr<IDBRequest> doCount(ScriptExecutionContext&, const IDBKeyRangeData&, ExceptionCodeWithMessage&);
-    RefPtr<IDBRequest> doDelete(ScriptExecutionContext&, IDBKeyRange*, ExceptionCodeWithMessage&);
+    ExceptionOr<Ref<IDBRequest>> putOrAdd(JSC::ExecState&, JSC::JSValue, RefPtr<IDBKey>, IndexedDB::ObjectStoreOverwriteMode, InlineKeyCheck);
+    ExceptionOr<Ref<IDBRequest>> doCount(JSC::ExecState&, const IDBKeyRangeData&);
+    ExceptionOr<Ref<IDBRequest>> doDelete(JSC::ExecState&, IDBKeyRange*);
 
     const char* activeDOMObjectName() const final;
     bool canSuspendForDocumentSuspension() const final;
@@ -114,13 +119,16 @@ private:
 
     IDBObjectStoreInfo m_info;
     IDBObjectStoreInfo m_originalInfo;
-    Ref<IDBTransaction> m_transaction;
+
+    // IDBObjectStore objects are always owned by their referencing IDBTransaction.
+    // ObjectStores will never outlive transactions so its okay to keep a raw C++ reference here.
+    IDBTransaction& m_transaction;
 
     bool m_deleted { false };
 
     mutable Lock m_referencedIndexLock;
     HashMap<String, std::unique_ptr<IDBIndex>> m_referencedIndexes;
-    HashSet<std::unique_ptr<IDBIndex>> m_deletedIndexes;
+    HashMap<uint64_t, std::unique_ptr<IDBIndex>> m_deletedIndexes;
 };
 
 } // namespace WebCore

@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef PropertyName_h
-#define PropertyName_h
+#pragma once
 
 #include "Identifier.h"
 #include "PrivateName.h"
@@ -45,7 +44,7 @@ public:
     }
 
     PropertyName(const PrivateName& propertyName)
-        : m_impl(propertyName.uid())
+        : m_impl(&propertyName.uid())
     {
         ASSERT(m_impl);
         ASSERT(m_impl->isSymbol());
@@ -125,6 +124,4 @@ ALWAYS_INLINE Optional<uint32_t> parseIndex(PropertyName propertyName)
     return parseIndex(*uid);
 }
 
-}
-
-#endif
+} // namespace JSC

@@ -23,13 +23,13 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef DFGInPlaceAbstractState_h
-#define DFGInPlaceAbstractState_h
+#pragma once
 
 #if ENABLE(DFG_JIT)
 
 #include "DFGAbstractValue.h"
 #include "DFGBranchDirection.h"
+#include "DFGFlowMap.h"
 #include "DFGGraph.h"
 #include "DFGNode.h"
 
@@ -44,11 +44,11 @@ public:
     
     explicit operator bool() const { return true; }
     
-    void createValueForNode(Node*) { }
+    void createValueForNode(NodeFlowProjection) { }
     
-    AbstractValue& forNode(Node* node)
+    AbstractValue& forNode(NodeFlowProjection node)
     {
-        return node->value;
+        return m_abstractValues.at(node);
     }
     
     AbstractValue& forNode(Edge edge)
@@ -127,12 +127,13 @@ public:
     void setFoundConstants(bool foundConstants) { m_foundConstants = foundConstants; }
 
 private:
-    bool mergeStateAtTail(AbstractValue& destination, AbstractValue& inVariable, Node*);
+    void mergeStateAtTail(AbstractValue& destination, AbstractValue& inVariable, Node*);
 
     static bool mergeVariableBetweenBlocks(AbstractValue& destination, AbstractValue& source, Node* destinationNode, Node* sourceNode);
     
     Graph& m_graph;
-    
+
+    FlowMap<AbstractValue>& m_abstractValues;
     Operands<AbstractValue> m_variables;
     BasicBlock* m_block;
     
@@ -148,6 +149,3 @@ private:
 } } // namespace JSC::DFG
 
 #endif // ENABLE(DFG_JIT)
-
-#endif // DFGInPlaceAbstractState_h
-

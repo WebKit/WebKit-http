@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2011 Google Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -25,7 +26,7 @@
 
 WebInspector.Resource = class Resource extends WebInspector.SourceCode
 {
-    constructor(url, mimeType, type, loaderIdentifier, requestIdentifier, requestMethod, requestHeaders, requestData, requestSentTimestamp, initiatorSourceCodeLocation, originalRequestWillBeSentTimestamp)
+    constructor(url, mimeType, type, loaderIdentifier, targetId, requestIdentifier, requestMethod, requestHeaders, requestData, requestSentTimestamp, initiatorSourceCodeLocation, originalRequestWillBeSentTimestamp)
     {
         super();
 
@@ -58,6 +59,8 @@ WebInspector.Resource = class Resource extends WebInspector.SourceCode
         this._size = NaN;
         this._transferSize = NaN;
         this._cached = false;
+        this._timingData = new WebInspector.ResourceTimingData(this);
+        this._target = targetId ? WebInspector.targetManager.targetForIdentifier(targetId) : WebInspector.mainTarget;
 
         if (this._initiatorSourceCodeLocation && this._initiatorSourceCodeLocation.sourceCode instanceof WebInspector.Resource)
             this._initiatorSourceCodeLocation.sourceCode.addInitiatedResource(this);
@@ -86,7 +89,7 @@ WebInspector.Resource = class Resource extends WebInspector.SourceCode
 
     static displayNameForType(type, plural)
     {
-        switch(type) {
+        switch (type) {
         case WebInspector.Resource.Type.Document:
             if (plural)
                 return WebInspector.UIString("Documents");
@@ -125,6 +128,10 @@ WebInspector.Resource = class Resource extends WebInspector.SourceCode
 
     // Public
 
+    get target() { return this._target; }
+    get type() { return this._type; }
+    get timingData() { return this._timingData; }
+
     get url()
     {
         return this._url;
@@ -162,11 +169,6 @@ WebInspector.Resource = class Resource extends WebInspector.SourceCode
     get originalRequestWillBeSentTimestamp()
     {
         return this._originalRequestWillBeSentTimestamp;
-    }
-
-    get type()
-    {
-        return this._type;
     }
 
     get mimeType()
@@ -316,27 +318,27 @@ WebInspector.Resource = class Resource extends WebInspector.SourceCode
 
     get firstTimestamp()
     {
-        return this.requestSentTimestamp || this.lastRedirectReceivedTimestamp || this.responseReceivedTimestamp || this.lastDataReceivedTimestamp || this.finishedOrFailedTimestamp;
+        return this.timingData.startTime || this.lastRedirectReceivedTimestamp || this.responseReceivedTimestamp || this.lastDataReceivedTimestamp || this.finishedOrFailedTimestamp;
     }
 
     get lastTimestamp()
     {
-        return this.finishedOrFailedTimestamp || this.lastDataReceivedTimestamp || this.responseReceivedTimestamp || this.lastRedirectReceivedTimestamp || this.requestSentTimestamp;
+        return this.timingData.responseEnd || this.lastDataReceivedTimestamp || this.responseReceivedTimestamp || this.lastRedirectReceivedTimestamp || this.requestSentTimestamp;
     }
 
     get duration()
     {
-        return this._finishedOrFailedTimestamp - this._requestSentTimestamp;
+        return this.timingData.responseEnd - this.timingData.requestStart;
     }
 
     get latency()
     {
-        return this._responseReceivedTimestamp - this._requestSentTimestamp;
+        return this.timingData.responseStart - this.timingData.requestStart;
     }
 
     get receiveDuration()
     {
-        return this._finishedOrFailedTimestamp - this._responseReceivedTimestamp;
+        return this.timingData.responseEnd - this.timingData.responseStart;
     }
 
     get cached()
@@ -446,7 +448,7 @@ WebInspector.Resource = class Resource extends WebInspector.SourceCode
         this.dispatchEventToListeners(WebInspector.Resource.Event.TimestampsDidChange);
     }
 
-    updateForResponse(url, mimeType, type, responseHeaders, statusCode, statusText, elapsedTime)
+    updateForResponse(url, mimeType, type, responseHeaders, statusCode, statusText, elapsedTime, timingData)
     {
         console.assert(!this._finished);
         console.assert(!this._failed);
@@ -466,6 +468,7 @@ WebInspector.Resource = class Resource extends WebInspector.SourceCode
         this._statusText = statusText;
         this._responseHeaders = responseHeaders || {};
         this._responseReceivedTimestamp = elapsedTime || NaN;
+        this._timingData = WebInspector.ResourceTimingData.fromPayload(timingData, this);
 
         this._responseHeadersSize = String(this._statusCode).length + this._statusText.length + 12; // Extra length is for "HTTP/1.1 ", " ", and "\r\n".
         for (var name in this._responseHeaders)
@@ -571,6 +574,7 @@ WebInspector.Resource = class Resource extends WebInspector.SourceCode
 
         this._finished = true;
         this._finishedOrFailedTimestamp = elapsedTime || NaN;
+        this._timingData.markResponseEndTime(elapsedTime || NaN);
 
         if (this._finishThenRequestContentPromise)
             this._finishThenRequestContentPromise = null;
@@ -666,8 +670,8 @@ WebInspector.Resource = class Resource extends WebInspector.SourceCode
 
         this._scripts.push(script);
 
-        if (this._type === WebInspector.Resource.Type.Other) {
-            var oldType = this._type;
+        if (this._type === WebInspector.Resource.Type.Other || this._type === WebInspector.Resource.Type.XHR) {
+            let oldType = this._type;
             this._type = WebInspector.Resource.Type.Script;
             this.dispatchEventToListeners(WebInspector.Resource.Event.TypeDidChange, {oldType});
         }
@@ -677,6 +681,48 @@ WebInspector.Resource = class Resource extends WebInspector.SourceCode
     {
         cookie[WebInspector.Resource.URLCookieKey] = this.url.hash;
         cookie[WebInspector.Resource.MainResourceCookieKey] = this.isMainResource();
+    }
+
+    generateCURLCommand()
+    {
+        function escapeStringPosix(str) {
+            function escapeCharacter(x) {
+                let code = x.charCodeAt(0);
+                let hex = code.toString(16);
+                if (code < 256)
+                    return "\\x" + hex.padStart(2, "0");
+                return "\\u" + hex.padStart(4, "0");
+            }
+
+            if (/[^\x20-\x7E]|'/.test(str)) {
+                // Use ANSI-C quoting syntax.
+                return "$'" + str.replace(/\\/g, "\\\\")
+                                 .replace(/'/g, "\\'")
+                                 .replace(/\n/g, "\\n")
+                                 .replace(/\r/g, "\\r")
+                                 .replace(/[^\x20-\x7E]/g, escapeCharacter) + "'";
+            } else {
+                // Use single quote syntax.
+                return `'${str}'`;
+            }
+        }
+
+        let command = ["curl " + escapeStringPosix(this.url).replace(/[[{}\]]/g, "\\$&")];
+        command.push(`-X${this.requestMethod}`);
+
+        for (let key in this.requestHeaders)
+            command.push("-H " + escapeStringPosix(`${key}: ${this.requestHeaders[key]}`));
+
+        if (this.requestDataContentType && this.requestMethod !== "GET" && this.requestData) {
+            if (this.requestDataContentType.match(/^application\/x-www-form-urlencoded\s*(;.*)?$/i))
+                command.push("--data " + escapeStringPosix(this.requestData));
+            else
+                command.push("--data-binary " + escapeStringPosix(this.requestData));
+        }
+
+        let curlCommand = command.join(" \\\n");
+        InspectorFrontendHost.copyText(curlCommand);
+        return curlCommand;
     }
 };
 

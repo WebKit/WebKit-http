@@ -27,11 +27,33 @@
 #define CryptoKeyHMAC_h
 
 #include "CryptoKey.h"
+#include <wtf/Function.h>
 #include <wtf/Vector.h>
 
 #if ENABLE(SUBTLE_CRYPTO)
 
 namespace WebCore {
+
+struct JsonWebKey;
+
+class HmacKeyAlgorithm final : public KeyAlgorithm {
+public:
+    HmacKeyAlgorithm(const String& name, const String& hash, size_t length)
+        : KeyAlgorithm(name)
+        , m_hash(hash)
+        , m_length(length)
+    {
+    }
+
+    KeyAlgorithmClass keyAlgorithmClass() const final { return KeyAlgorithmClass::HMAC; }
+
+    const String& hash() const { return m_hash; }
+    size_t length() const { return m_length; }
+
+private:
+    String m_hash;
+    size_t m_length;
+};
 
 class CryptoKeyHMAC final : public CryptoKey {
 public:
@@ -41,10 +63,12 @@ public:
     }
     virtual ~CryptoKeyHMAC();
 
-    // If lengthBytes is 0, a recommended length is used, which is the size of the associated hash function's block size.
-    static RefPtr<CryptoKeyHMAC> generate(size_t lengthBytes, CryptoAlgorithmIdentifier hash, bool extractable, CryptoKeyUsage);
+    static RefPtr<CryptoKeyHMAC> generate(size_t lengthBits, CryptoAlgorithmIdentifier hash, bool extractable, CryptoKeyUsage);
+    static RefPtr<CryptoKeyHMAC> importRaw(size_t lengthBits, CryptoAlgorithmIdentifier hash, Vector<uint8_t>&& keyData, bool extractable, CryptoKeyUsage);
+    using CheckAlgCallback = WTF::Function<bool(CryptoAlgorithmIdentifier, const Optional<String>&)>;
+    static RefPtr<CryptoKeyHMAC> importJwk(size_t lengthBits, CryptoAlgorithmIdentifier hash, JsonWebKey&&, bool extractable, CryptoKeyUsage, CheckAlgCallback&&);
 
-    CryptoKeyClass keyClass() const override { return CryptoKeyClass::HMAC; }
+    CryptoKeyClass keyClass() const final { return CryptoKeyClass::HMAC; }
 
     const Vector<uint8_t>& key() const { return m_key; }
 
@@ -52,9 +76,10 @@ public:
 
 private:
     CryptoKeyHMAC(const Vector<uint8_t>& key, CryptoAlgorithmIdentifier hash, bool extractable, CryptoKeyUsage);
+    CryptoKeyHMAC(Vector<uint8_t>&& key, CryptoAlgorithmIdentifier hash, bool extractable, CryptoKeyUsage);
 
-    void buildAlgorithmDescription(CryptoAlgorithmDescriptionBuilder&) const override;
-    std::unique_ptr<CryptoKeyData> exportData() const override;
+    std::unique_ptr<KeyAlgorithm> buildAlgorithm() const final;
+    std::unique_ptr<CryptoKeyData> exportData() const final;
 
     CryptoAlgorithmIdentifier m_hash;
     Vector<uint8_t> m_key;
@@ -63,6 +88,8 @@ private:
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_CRYPTO_KEY(CryptoKeyHMAC, CryptoKeyClass::HMAC)
+
+SPECIALIZE_TYPE_TRAITS_KEY_ALGORITHM(HmacKeyAlgorithm, KeyAlgorithmClass::HMAC)
 
 #endif // ENABLE(SUBTLE_CRYPTO)
 #endif // CryptoKeyHMAC_h

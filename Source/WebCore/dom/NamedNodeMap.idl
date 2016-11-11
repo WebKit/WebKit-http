@@ -19,21 +19,16 @@
  */
 
 [
+    ExportToWrappedFunction,
     GenerateIsReachable=ImplElementRoot,
     ImplementationLacksVTable,
 ] interface NamedNodeMap {
-
-    // FIXME: Using "undefined" as default parameter value is wrong.
-    getter Node getNamedItem(optional DOMString name = "undefined");
-    [RaisesException] Node setNamedItem(Node node);
-    [RaisesException] Node removeNamedItem(optional DOMString name = "undefined");
-    getter Node item(optional unsigned long index = 0);
     readonly attribute unsigned long length;
-
-    // Introduced in DOM Level 2:
-
-    // FIXME: Using "undefined" as default parameter value is wrong.
-    [ObjCLegacyUnnamedParameters] Node getNamedItemNS(optional DOMString? namespaceURI = null, optional DOMString localName = "undefined");
-    [RaisesException] Node setNamedItemNS(Node node);
-    [ObjCLegacyUnnamedParameters, RaisesException] Node removeNamedItemNS(optional DOMString? namespaceURI = null, optional DOMString localName = "undefined");
+    getter Attr? item(unsigned long index);
+    getter Attr? getNamedItem(DOMString name);
+    Attr? getNamedItemNS(DOMString? namespaceURI, DOMString localName);
+    [CEReactions, MayThrowException] Attr? setNamedItem(Attr attr);
+    [CEReactions, MayThrowException, ImplementedAs=setNamedItem] Attr? setNamedItemNS(Attr attr);
+    [CEReactions, MayThrowException] Attr removeNamedItem(DOMString name);
+    [CEReactions, MayThrowException] Attr removeNamedItemNS(DOMString? namespaceURI, DOMString localName);
 };

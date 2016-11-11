@@ -30,8 +30,8 @@
 
 #include "MediaPlayerPrivate.h"
 #include "SourceBufferPrivateClient.h"
+#include <wtf/HashMap.h>
 #include <wtf/MediaTime.h>
-#include <wtf/Vector.h>
 #include <wtf/WeakPtr.h>
 
 OBJC_CLASS AVAsset;
@@ -79,11 +79,16 @@ public:
     void waitForSeekCompleted();
     void seekCompleted();
     void setLoadingProgresssed(bool flag) { m_loadingProgressed = flag; }
-    void setHasAvailableVideoFrame(bool flag) { m_hasAvailableVideoFrame = flag; }
+    void setHasAvailableVideoFrame(bool);
+    void setHasAvailableAudioSample(AVSampleBufferAudioRenderer*, bool);
+    bool allRenderersHaveAvailableSamples() const { return m_allRenderersHaveAvailableSamples; }
+    void updateAllRenderersHaveAvailableSamples();
     void durationChanged();
 
     void effectiveRateChanged();
-    void sizeChanged();
+    void sizeWillChangeAtTime(const MediaTime&, const FloatSize&);
+    void setNaturalSize(const FloatSize&);
+    void flushPendingSizeChanges();
     void characteristicsChanged();
 
 #if PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE)
@@ -91,7 +96,7 @@ public:
     void setVideoFullscreenFrame(FloatRect) override;
 #endif
 
-#if ENABLE(ENCRYPTED_MEDIA_V2)
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
     bool hasStreamSession() { return m_streamSession; }
     AVStreamSession *streamSession();
     void setCDMSession(CDMSession*) override;
@@ -165,6 +170,7 @@ private:
     bool supportsAcceleratedRendering() const override;
     // called when the rendering system flips the into or out of accelerated rendering mode.
     void acceleratedRenderingStateChanged() override;
+    void notifyActiveSourceBuffersChanged() override;
 
     MediaPlayer::MovieLoadType movieLoadType() const override;
 
@@ -209,25 +215,33 @@ private:
 
     MediaPlayer* m_player;
     WeakPtrFactory<MediaPlayerPrivateMediaSourceAVFObjC> m_weakPtrFactory;
+    WeakPtrFactory<MediaPlayerPrivateMediaSourceAVFObjC> m_sizeChangeObserverWeakPtrFactory;
     RefPtr<MediaSourcePrivateAVFObjC> m_mediaSourcePrivate;
     RetainPtr<AVAsset> m_asset;
     RetainPtr<AVSampleBufferDisplayLayer> m_sampleBufferDisplayLayer;
-    Vector<RetainPtr<AVSampleBufferAudioRenderer>> m_sampleBufferAudioRenderers;
+
+    struct AudioRendererProperties {
+        bool hasAudibleSample { false };
+    };
+    HashMap<RetainPtr<AVSampleBufferAudioRenderer>, AudioRendererProperties> m_sampleBufferAudioRendererMap;
     RetainPtr<AVSampleBufferRenderSynchronizer> m_synchronizer;
     RetainPtr<id> m_timeJumpedObserver;
     RetainPtr<id> m_durationObserver;
     RetainPtr<AVStreamSession> m_streamSession;
+    Deque<RetainPtr<id>> m_sizeChangeObservers;
     Timer m_seekTimer;
     CDMSessionMediaSourceAVFObjC* m_session;
     MediaPlayer::NetworkState m_networkState;
     MediaPlayer::ReadyState m_readyState;
     MediaTime m_lastSeekTime;
+    FloatSize m_naturalSize;
     double m_rate;
     bool m_playing;
     bool m_seeking;
     bool m_seekCompleted;
     mutable bool m_loadingProgressed;
     bool m_hasAvailableVideoFrame;
+    bool m_allRenderersHaveAvailableSamples { false };
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
     RefPtr<MediaPlaybackTarget> m_playbackTarget;
     bool m_shouldPlayToTarget { false };

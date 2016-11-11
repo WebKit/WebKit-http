@@ -28,14 +28,37 @@
 
 #include "CryptoAlgorithmIdentifier.h"
 #include "CryptoKey.h"
+#include <wtf/Function.h>
 #include <wtf/Vector.h>
 
 #if ENABLE(SUBTLE_CRYPTO)
 
 namespace WebCore {
 
+struct JsonWebKey;
+
+class AesKeyAlgorithm final : public KeyAlgorithm {
+public:
+    AesKeyAlgorithm(const String& name, size_t length)
+        : KeyAlgorithm(name)
+        , m_length(length)
+    {
+    }
+
+    KeyAlgorithmClass keyAlgorithmClass() const final { return KeyAlgorithmClass::AES; }
+
+    size_t length() const { return m_length; }
+
+private:
+    size_t m_length;
+};
+
 class CryptoKeyAES final : public CryptoKey {
 public:
+    static const int s_length128 = 128;
+    static const int s_length192 = 192;
+    static const int s_length256 = 256;
+
     static Ref<CryptoKeyAES> create(CryptoAlgorithmIdentifier algorithm, const Vector<uint8_t>& key, bool extractable, CryptoKeyUsage usage)
     {
         return adoptRef(*new CryptoKeyAES(algorithm, key, extractable, usage));
@@ -45,16 +68,20 @@ public:
     static bool isValidAESAlgorithm(CryptoAlgorithmIdentifier);
 
     static RefPtr<CryptoKeyAES> generate(CryptoAlgorithmIdentifier, size_t lengthBits, bool extractable, CryptoKeyUsage);
+    static RefPtr<CryptoKeyAES> importRaw(CryptoAlgorithmIdentifier, Vector<uint8_t>&& keyData, bool extractable, CryptoKeyUsage);
+    using CheckAlgCallback = WTF::Function<bool(size_t, const Optional<String>&)>;
+    static RefPtr<CryptoKeyAES> importJwk(CryptoAlgorithmIdentifier, JsonWebKey&&, bool extractable, CryptoKeyUsage, CheckAlgCallback&&);
 
-    CryptoKeyClass keyClass() const override { return CryptoKeyClass::AES; }
+    CryptoKeyClass keyClass() const final { return CryptoKeyClass::AES; }
 
     const Vector<uint8_t>& key() const { return m_key; }
 
 private:
     CryptoKeyAES(CryptoAlgorithmIdentifier, const Vector<uint8_t>& key, bool extractable, CryptoKeyUsage);
+    CryptoKeyAES(CryptoAlgorithmIdentifier, Vector<uint8_t>&& key, bool extractable, CryptoKeyUsage);
 
-    void buildAlgorithmDescription(CryptoAlgorithmDescriptionBuilder&) const override;
-    std::unique_ptr<CryptoKeyData> exportData() const override;
+    std::unique_ptr<KeyAlgorithm> buildAlgorithm() const final;
+    std::unique_ptr<CryptoKeyData> exportData() const final;
 
     Vector<uint8_t> m_key;
 };
@@ -62,6 +89,8 @@ private:
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_CRYPTO_KEY(CryptoKeyAES, CryptoKeyClass::AES)
+
+SPECIALIZE_TYPE_TRAITS_KEY_ALGORITHM(AesKeyAlgorithm, KeyAlgorithmClass::AES)
 
 #endif // ENABLE(SUBTLE_CRYPTO)
 

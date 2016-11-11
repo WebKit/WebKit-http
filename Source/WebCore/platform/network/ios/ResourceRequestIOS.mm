@@ -35,7 +35,7 @@
 
 namespace WebCore {
 
-#if USE(CFNETWORK)
+#if USE(CFURLCONNECTION)
 
 ResourceRequest::ResourceRequest(NSURLRequest *nsRequest)
     : ResourceRequestBase()
@@ -70,7 +70,7 @@ void ResourceRequest::clearOrUpdateNSURLRequest()
         m_nsRequest = nullptr;
 }
 
-#endif // USE(CFNETWORK)
+#endif // USE(CFURLCONNECTION)
 
 } // namespace WebCore
 

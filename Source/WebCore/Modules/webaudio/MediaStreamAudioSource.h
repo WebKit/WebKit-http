@@ -41,22 +41,22 @@ namespace WebCore {
 class AudioBus;
 class RealtimeMediaSourceCapabilities;
 
-class MediaStreamAudioSource : public RealtimeMediaSource {
+class MediaStreamAudioSource final : public RealtimeMediaSource {
 public:
     static Ref<MediaStreamAudioSource> create();
 
     ~MediaStreamAudioSource() { }
 
-    RefPtr<RealtimeMediaSourceCapabilities> capabilities() override;
-    const RealtimeMediaSourceSettings& settings() override;
-    
+    RefPtr<RealtimeMediaSourceCapabilities> capabilities() const final;
+    const RealtimeMediaSourceSettings& settings() const final;
+
     const String& deviceId() const { return m_deviceId; }
     void setDeviceId(const String& deviceId) { m_deviceId = deviceId; }
 
     void setAudioFormat(size_t numberOfChannels, float sampleRate);
     void consumeAudio(AudioBus*, size_t numberOfFrames);
 
-    void addAudioConsumer(PassRefPtr<AudioDestinationConsumer>);
+    void addAudioConsumer(AudioDestinationConsumer*);
     bool removeAudioConsumer(AudioDestinationConsumer*);
     const Vector<RefPtr<AudioDestinationConsumer>>& audioConsumers() const { return m_audioConsumers; }
 

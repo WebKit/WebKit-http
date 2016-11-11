@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef HTMLScriptRunner_h
-#define HTMLScriptRunner_h
+#pragma once
 
 #include "PendingScript.h"
 #include <wtf/Deque.h>
@@ -32,8 +31,6 @@
 
 namespace WebCore {
 
-class CachedResource;
-class CachedScript;
 class Document;
 class Element;
 class Frame;
@@ -51,7 +48,7 @@ public:
     // Processes the passed in script and any pending scripts if possible.
     void execute(PassRefPtr<Element> scriptToProcess, const TextPosition& scriptStartPosition);
 
-    void executeScriptsWaitingForLoad(CachedResource*);
+    void executeScriptsWaitingForLoad(PendingScript&);
     bool hasScriptsWaitingForStylesheets() const { return m_hasScriptsWaitingForStylesheets; }
     void executeScriptsWaitingForStylesheets();
     bool executeScriptsWaitingForParsing();
@@ -63,12 +60,11 @@ private:
     Frame* frame() const;
 
     void executeParsingBlockingScript();
-    void executePendingScriptAndDispatchEvent(PendingScript&);
+    void executePendingScriptAndDispatchEvent(RefPtr<PendingScript>);
     void executeParsingBlockingScripts();
 
     void requestParsingBlockingScript(Element*);
     void requestDeferredScript(Element*);
-    bool requestPendingScript(PendingScript&, Element*) const;
 
     void runScript(Element*, const TextPosition& scriptStartPosition);
 
@@ -80,8 +76,8 @@ private:
 
     Document* m_document;
     HTMLScriptRunnerHost& m_host;
-    PendingScript m_parserBlockingScript;
-    Deque<PendingScript> m_scriptsToExecuteAfterParsing; // http://www.whatwg.org/specs/web-apps/current-work/#list-of-scripts-that-will-execute-when-the-document-has-finished-parsing
+    RefPtr<PendingScript> m_parserBlockingScript;
+    Deque<Ref<PendingScript>> m_scriptsToExecuteAfterParsing; // http://www.whatwg.org/specs/web-apps/current-work/#list-of-scripts-that-will-execute-when-the-document-has-finished-parsing
     unsigned m_scriptNestingLevel;
 
     // We only want stylesheet loads to trigger script execution if script
@@ -91,6 +87,4 @@ private:
     bool m_hasScriptsWaitingForStylesheets;
 };
 
-}
-
-#endif
+} // namespace WebCore

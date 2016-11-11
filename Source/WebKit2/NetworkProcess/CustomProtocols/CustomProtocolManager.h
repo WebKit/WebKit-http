@@ -88,7 +88,7 @@ private:
     void initialize(const NetworkProcessCreationParameters&) override;
 
     // IPC::MessageReceiver
-    void didReceiveMessage(IPC::Connection&, IPC::MessageDecoder&) override;
+    void didReceiveMessage(IPC::Connection&, IPC::Decoder&) override;
 
     void didFailWithError(uint64_t customProtocolID, const WebCore::ResourceError&);
     void didLoadData(uint64_t customProtocolID, const IPC::DataReference&);
@@ -97,7 +97,7 @@ private:
     void wasRedirectedToRequest(uint64_t customProtocolID, const WebCore::ResourceRequest&, const WebCore::ResourceResponse& redirectResponse);
 
     ChildProcess* m_childProcess;
-    RefPtr<WorkQueue> m_messageQueue;
+    Ref<WorkQueue> m_messageQueue;
 
 #if PLATFORM(COCOA)
     HashSet<String, ASCIICaseInsensitiveHash> m_registeredSchemes;

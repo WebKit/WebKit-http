@@ -31,14 +31,15 @@
 #include "ShadowRoot.h"
 #include "StyleInvalidationAnalysis.h"
 #include "StyleResolver.h"
+#include "StyleScope.h"
 
 namespace WebCore {
 namespace Style {
 
 static bool mayBeAffectedByHostStyle(ShadowRoot& shadowRoot, bool isHTML, const QualifiedName& attributeName)
 {
-    auto& shadowRuleSets = shadowRoot.styleResolver().ruleSets();
-    if (shadowRuleSets.authorStyle()->hostPseudoClassRules().isEmpty())
+    auto& shadowRuleSets = shadowRoot.styleScope().resolver().ruleSets();
+    if (shadowRuleSets.authorStyle().hostPseudoClassRules().isEmpty())
         return false;
 
     auto& nameSet = isHTML ? shadowRuleSets.features().attributeCanonicalLocalNamesInRules : shadowRuleSets.features().attributeLocalNamesInRules;
@@ -64,16 +65,16 @@ void AttributeChangeInvalidation::invalidateStyle(const QualifiedName& attribute
         return;
 
     if (!isHTML) {
-        m_element.setNeedsStyleRecalc(FullStyleChange);
+        m_element.invalidateStyleForSubtree();
         return;
     }
 
-    if (m_element.shadowRoot() && ruleSets.authorStyle()->hasShadowPseudoElementRules()) {
-        m_element.setNeedsStyleRecalc(FullStyleChange);
+    if (m_element.shadowRoot() && ruleSets.authorStyle().hasShadowPseudoElementRules()) {
+        m_element.invalidateStyleForSubtree();
         return;
     }
 
-    m_element.setNeedsStyleRecalc(InlineStyleChange);
+    m_element.invalidateStyle();
 
     if (!childrenOfType<Element>(m_element).first())
         return;

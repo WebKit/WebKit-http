@@ -29,11 +29,8 @@
 #if ENABLE(SHAREABLE_RESOURCE)
 
 #include "SharedMemory.h"
-
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
-#include <wtf/RetainPtr.h>
-
 
 namespace WebCore {
 class SharedBuffer;
@@ -52,8 +49,8 @@ public:
         bool isNull() const { return m_handle.isNull(); }
         unsigned size() const { return m_size; }
 
-        void encode(IPC::ArgumentEncoder&) const;
-        static bool decode(IPC::ArgumentDecoder&, Handle&);
+        void encode(IPC::Encoder&) const;
+        static bool decode(IPC::Decoder&, Handle&);
 
         RefPtr<WebCore::SharedBuffer> tryWrapInSharedBuffer() const;
 

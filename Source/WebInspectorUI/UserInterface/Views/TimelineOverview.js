@@ -31,7 +31,7 @@ WebInspector.TimelineOverview = class TimelineOverview extends WebInspector.View
 
         console.assert(timelineRecording instanceof WebInspector.TimelineRecording);
 
-        this._timelinesViewModeSettings = this._createViewModeSettings(WebInspector.TimelineOverview.ViewMode.Timelines, 0.0001, 60, 0.01, 0, 15);
+        this._timelinesViewModeSettings = this._createViewModeSettings(WebInspector.TimelineOverview.ViewMode.Timelines, WebInspector.TimelineOverview.MinimumDurationPerPixel, WebInspector.TimelineOverview.MaximumDurationPerPixel, 0.01, 0, 15);
         this._instrumentTypes = WebInspector.TimelineManager.availableTimelineTypes();
 
         if (WebInspector.FPSInstrument.supported()) {
@@ -106,7 +106,7 @@ WebInspector.TimelineOverview = class TimelineOverview extends WebInspector.View
         this._cachedScrollContainerWidth = NaN;
         this._timelineRulerSelectionChanged = false;
         this._viewMode = WebInspector.TimelineOverview.ViewMode.Timelines;
-        this._selectedTimeline = null;;
+        this._selectedTimeline = null;
 
         for (let instrument of this._recording.instruments)
             this._instrumentAdded(instrument);
@@ -590,7 +590,7 @@ WebInspector.TimelineOverview = class TimelineOverview extends WebInspector.View
     _handleGestureChange(event)
     {
         // Cap zooming out at 5x.
-        let scale = Math.max(1/5, event.scale);
+        let scale = Math.max(1 / 5, event.scale);
 
         let mouseOffset = event.pageX - this.element.totalOffsetLeft;
         let newSecondsPerPixel = this._gestureStartDurationPerPixel / scale;
@@ -897,6 +897,11 @@ WebInspector.TimelineOverview = class TimelineOverview extends WebInspector.View
 
                 let insertionIndex = insertionIndexForObjectInListSortedByFunction(treeElement, this._timelinesTreeOutline.children, this._compareTimelineTreeElements.bind(this));
                 this._timelinesTreeOutline.insertChild(treeElement, insertionIndex);
+
+                let placeholderGraph = new WebInspector.View;
+                placeholderGraph.element.classList.add("timeline-overview-graph");
+                treeElement[WebInspector.TimelineOverview.PlaceholderOverviewGraph] = placeholderGraph;
+                this._graphsContainerView.insertSubviewBefore(placeholderGraph, this._graphsContainerView.subviews[insertionIndex]);
             }
 
             treeElement.editing = true;
@@ -928,6 +933,10 @@ WebInspector.TimelineOverview = class TimelineOverview extends WebInspector.View
         let placeholderTreeElements = this._timelinesTreeOutline.children.filter((treeElement) => treeElement.placeholder);
         for (let treeElement of placeholderTreeElements) {
             this._timelinesTreeOutline.removeChild(treeElement);
+
+            let placeholderGraph = treeElement[WebInspector.TimelineOverview.PlaceholderOverviewGraph];
+            console.assert(placeholderGraph);
+            this._graphsContainerView.removeSubview(placeholderGraph);
 
             if (treeElement.status.checked) {
                 let instrument = WebInspector.Instrument.createForTimelineType(treeElement.representedObject.type);
@@ -982,8 +991,12 @@ WebInspector.TimelineOverview = class TimelineOverview extends WebInspector.View
     }
 };
 
+WebInspector.TimelineOverview.PlaceholderOverviewGraph = Symbol("placeholder-overview-graph");
+
 WebInspector.TimelineOverview.ScrollDeltaDenominator = 500;
 WebInspector.TimelineOverview.EditInstrumentsStyleClassName = "edit-instruments";
+WebInspector.TimelineOverview.MinimumDurationPerPixel = 0.0001;
+WebInspector.TimelineOverview.MaximumDurationPerPixel = 60;
 
 WebInspector.TimelineOverview.ViewMode = {
     Timelines: "timeline-overview-view-mode-timelines",

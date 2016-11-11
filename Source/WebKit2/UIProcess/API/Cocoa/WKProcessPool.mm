@@ -32,6 +32,7 @@
 #import "CacheModel.h"
 #import "DownloadClient.h"
 #import "SandboxUtilities.h"
+#import "UIGamepadProvider.h"
 #import "WKObject.h"
 #import "WeakObjCPtr.h"
 #import "WebCertificateInfo.h"
@@ -288,6 +289,23 @@ static WebKit::HTTPCookieAcceptPolicy toHTTPCookieAcceptPolicy(NSHTTPCookieAccep
 - (void)_terminateDatabaseProcess
 {
     _processPool->terminateDatabaseProcess();
+}
+
++ (void)_forceGameControllerFramework
+{
+#if ENABLE(GAMEPAD)
+    WebKit::UIGamepadProvider::setUsesGameControllerFramework();
+#endif
+}
+
+- (BOOL)_isCookieStoragePartitioningEnabled
+{
+    return _processPool->cookieStoragePartitioningEnabled();
+}
+
+- (void)_setCookieStoragePartitioningEnabled:(BOOL)enabled
+{
+    _processPool->setCookieStoragePartitioningEnabled(enabled);
 }
 
 @end

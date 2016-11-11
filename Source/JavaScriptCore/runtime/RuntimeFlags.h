@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2015 Yusuke Suzuki <utatane.tea@gmail.com>.
+ * Copyright (C) 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,15 +24,15 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef RuntimeFlags_h
-#define RuntimeFlags_h
+#pragma once
 
 #include <initializer_list>
 
 namespace JSC {
 
 // macro(name, isEnabledFlag)
-#define JSC_RUNTIME_FLAG(macro)
+#define JSC_RUNTIME_FLAG(macro) \
+    macro(SharedArrayBufferEnabled, true)
 
 class RuntimeFlags {
 private:
@@ -95,5 +96,3 @@ private:
 };
 
 } // namespace JSC
-
-#endif // RuntimeFlags_h

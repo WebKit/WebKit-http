@@ -302,7 +302,7 @@ void NetscapePlugin::popPopupsEnabledState()
 
 void NetscapePlugin::pluginThreadAsyncCall(void (*function)(void*), void* userData)
 {
-    RunLoop::main().dispatch([protectedThis = Ref<NetscapePlugin>(*this), function, userData] {
+    RunLoop::main().dispatch([protectedThis = makeRef(*this), function, userData] {
         if (!protectedThis->m_isStarted)
             return;
 
@@ -759,7 +759,7 @@ RefPtr<ShareableBitmap> NetscapePlugin::snapshot()
 
     // FIXME: We should really call applyDeviceScaleFactor instead of scale, but that ends up calling into WKSI
     // which we currently don't have initiated in the plug-in process.
-    context->scale(FloatSize(contentsScaleFactor(), contentsScaleFactor()));
+    context->scale(contentsScaleFactor());
 
     platformPaint(*context, IntRect(IntPoint(), m_pluginSize), true);
 

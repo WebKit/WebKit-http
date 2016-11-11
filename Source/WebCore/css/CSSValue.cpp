@@ -36,11 +36,13 @@
 #include "CSSContentDistributionValue.h"
 #include "CSSCrossfadeValue.h"
 #include "CSSCursorImageValue.h"
+#include "CSSCustomIdentValue.h"
 #include "CSSCustomPropertyValue.h"
 #include "CSSFilterImageValue.h"
 #include "CSSFontFaceSrcValue.h"
 #include "CSSFontFeatureValue.h"
 #include "CSSFontValue.h"
+#include "CSSFontVariationValue.h"
 #include "CSSFunctionValue.h"
 #include "CSSGradientValue.h"
 #include "CSSImageSetValue.h"
@@ -49,6 +51,7 @@
 #include "CSSInitialValue.h"
 #include "CSSLineBoxContainValue.h"
 #include "CSSNamedImageValue.h"
+#include "CSSPendingSubstitutionValue.h"
 #include "CSSPrimitiveValue.h"
 #include "CSSProperty.h"
 #include "CSSReflectValue.h"
@@ -58,10 +61,10 @@
 #include "CSSUnsetValue.h"
 #include "CSSValueList.h"
 #include "CSSVariableDependentValue.h"
+#include "CSSVariableReferenceValue.h"
 #include "CSSVariableValue.h"
 #include "SVGColor.h"
 #include "SVGPaint.h"
-#include "WebKitCSSFilterValue.h"
 #include "WebKitCSSTransformValue.h"
 
 #if ENABLE(CSS_GRID_LAYOUT)
@@ -78,7 +81,7 @@ struct SameSizeAsCSSValue : public RefCounted<SameSizeAsCSSValue> {
 
 COMPILE_ASSERT(sizeof(CSSValue) == sizeof(SameSizeAsCSSValue), CSS_value_should_stay_small);
 
-class TextCloneCSSValue : public CSSValue {
+class TextCloneCSSValue final : public CSSValue {
 public:
     static Ref<TextCloneCSSValue> create(ClassType classType, const String& text)
     {
@@ -120,21 +123,6 @@ CSSValue::Type CSSValue::cssValueType() const
     return CSS_CUSTOM;
 }
 
-void CSSValue::addSubresourceStyleURLs(ListHashSet<URL>& urls, const StyleSheetContents* styleSheet) const
-{
-    // This should get called for internal instances only.
-    ASSERT(!isCSSOMSafe());
-
-    if (is<CSSPrimitiveValue>(*this))
-        downcast<CSSPrimitiveValue>(*this).addSubresourceStyleURLs(urls, styleSheet);
-    else if (is<CSSValueList>(*this))
-        downcast<CSSValueList>(*this).addSubresourceStyleURLs(urls, styleSheet);
-    else if (is<CSSFontFaceSrcValue>(*this))
-        downcast<CSSFontFaceSrcValue>(*this).addSubresourceStyleURLs(urls, styleSheet);
-    else if (is<CSSReflectValue>(*this))
-        downcast<CSSReflectValue>(*this).addSubresourceStyleURLs(urls, styleSheet);
-}
-
 bool CSSValue::traverseSubresources(const std::function<bool (const CachedResource&)>& handler) const
 {
     // This should get called for internal instances only.
@@ -150,10 +138,8 @@ bool CSSValue::traverseSubresources(const std::function<bool (const CachedResour
         return downcast<CSSCrossfadeValue>(*this).traverseSubresources(handler);
     if (is<CSSFilterImageValue>(*this))
         return downcast<CSSFilterImageValue>(*this).traverseSubresources(handler);
-#if ENABLE(CSS_IMAGE_SET)
     if (is<CSSImageSetValue>(*this))
         return downcast<CSSImageSetValue>(*this).traverseSubresources(handler);
-#endif
     return false;
 }
 
@@ -190,6 +176,10 @@ bool CSSValue::equals(const CSSValue& other) const
             return compareCSSValues<CSSFontFaceSrcValue>(*this, other);
         case FontFeatureClass:
             return compareCSSValues<CSSFontFeatureValue>(*this, other);
+#if ENABLE(VARIATION_FONTS)
+        case FontVariationClass:
+            return compareCSSValues<CSSFontVariationValue>(*this, other);
+#endif
         case FunctionClass:
             return compareCSSValues<CSSFunctionValue>(*this, other);
         case LinearGradientClass:
@@ -238,12 +228,8 @@ bool CSSValue::equals(const CSSValue& other) const
             return compareCSSValues<CSSLineBoxContainValue>(*this, other);
         case CalculationClass:
             return compareCSSValues<CSSCalcValue>(*this, other);
-#if ENABLE(CSS_IMAGE_SET)
         case ImageSetClass:
             return compareCSSValues<CSSImageSetValue>(*this, other);
-#endif
-        case WebKitCSSFilterClass:
-            return compareCSSValues<WebKitCSSFilterValue>(*this, other);
         case SVGColorClass:
             return compareCSSValues<SVGColor>(*this, other);
         case SVGPaintClass:
@@ -256,6 +242,10 @@ bool CSSValue::equals(const CSSValue& other) const
             return compareCSSValues<CSSContentDistributionValue>(*this, other);
         case CustomPropertyClass:
             return compareCSSValues<CSSCustomPropertyValue>(*this, other);
+        case VariableReferenceClass:
+            return compareCSSValues<CSSVariableReferenceValue>(*this, other);
+        case PendingSubstitutionValueClass:
+            return compareCSSValues<CSSPendingSubstitutionValue>(*this, other);
         case VariableDependentClass:
             return compareCSSValues<CSSVariableDependentValue>(*this, other);
         case VariableClass:
@@ -298,6 +288,10 @@ String CSSValue::cssText() const
         return downcast<CSSFontFaceSrcValue>(*this).customCSSText();
     case FontFeatureClass:
         return downcast<CSSFontFeatureValue>(*this).customCSSText();
+#if ENABLE(VARIATION_FONTS)
+    case FontVariationClass:
+        return downcast<CSSFontVariationValue>(*this).customCSSText();
+#endif
     case FunctionClass:
         return downcast<CSSFunctionValue>(*this).customCSSText();
     case LinearGradientClass:
@@ -346,12 +340,8 @@ String CSSValue::cssText() const
         return downcast<CSSLineBoxContainValue>(*this).customCSSText();
     case CalculationClass:
         return downcast<CSSCalcValue>(*this).customCSSText();
-#if ENABLE(CSS_IMAGE_SET)
     case ImageSetClass:
         return downcast<CSSImageSetValue>(*this).customCSSText();
-#endif
-    case WebKitCSSFilterClass:
-        return downcast<WebKitCSSFilterValue>(*this).customCSSText();
     case SVGColorClass:
         return downcast<SVGColor>(*this).customCSSText();
     case SVGPaintClass:
@@ -368,6 +358,12 @@ String CSSValue::cssText() const
         return downcast<CSSVariableDependentValue>(*this).customCSSText();
     case VariableClass:
         return downcast<CSSVariableValue>(*this).customCSSText();
+    case CustomIdentClass:
+        return downcast<CSSCustomIdentValue>(*this).customCSSText();
+    case VariableReferenceClass:
+        return downcast<CSSVariableReferenceValue>(*this).customCSSText();
+    case PendingSubstitutionValueClass:
+        return downcast<CSSPendingSubstitutionValue>(*this).customCSSText();
     }
 
     ASSERT_NOT_REACHED();
@@ -408,6 +404,11 @@ void CSSValue::destroy()
     case FontFeatureClass:
         delete downcast<CSSFontFeatureValue>(this);
         return;
+#if ENABLE(VARIATION_FONTS)
+    case FontVariationClass:
+        delete downcast<CSSFontVariationValue>(this);
+        return;
+#endif
     case FunctionClass:
         delete downcast<CSSFunctionValue>(this);
         return;
@@ -479,16 +480,11 @@ void CSSValue::destroy()
     case CalculationClass:
         delete downcast<CSSCalcValue>(this);
         return;
-#if ENABLE(CSS_IMAGE_SET)
     case ImageSetClass:
         delete downcast<CSSImageSetValue>(this);
         return;
-#endif
     case FilterImageClass:
         delete downcast<CSSFilterImageValue>(this);
-        return;
-    case WebKitCSSFilterClass:
-        delete downcast<WebKitCSSFilterValue>(this);
         return;
     case SVGColorClass:
         delete downcast<SVGColor>(this);
@@ -513,6 +509,15 @@ void CSSValue::destroy()
     case VariableClass:
         delete downcast<CSSVariableValue>(this);
         return;
+    case CustomIdentClass:
+        delete downcast<CSSCustomIdentValue>(this);
+        return;
+    case VariableReferenceClass:
+        delete downcast<CSSVariableReferenceValue>(this);
+        return;
+    case PendingSubstitutionValueClass:
+        delete downcast<CSSPendingSubstitutionValue>(this);
+        return;
     }
     ASSERT_NOT_REACHED();
 }
@@ -527,14 +532,10 @@ RefPtr<CSSValue> CSSValue::cloneForCSSOM() const
     case ImageClass:
     case CursorImageClass:
         return downcast<CSSImageValue>(*this).cloneForCSSOM();
-    case WebKitCSSFilterClass:
-        return downcast<WebKitCSSFilterValue>(*this).cloneForCSSOM();
     case WebKitCSSTransformClass:
         return downcast<WebKitCSSTransformValue>(*this).cloneForCSSOM();
-#if ENABLE(CSS_IMAGE_SET)
     case ImageSetClass:
         return downcast<CSSImageSetValue>(*this).cloneForCSSOM();
-#endif
     case SVGColorClass:
         return downcast<SVGColor>(*this).cloneForCSSOM();
     case SVGPaintClass:
@@ -543,11 +544,6 @@ RefPtr<CSSValue> CSSValue::cloneForCSSOM() const
         ASSERT(!isSubtypeExposedToCSSOM());
         return TextCloneCSSValue::create(classType(), cssText());
     }
-}
-
-bool CSSValue::isInvalidCustomPropertyValue() const
-{
-    return isCustomPropertyValue() && downcast<CSSCustomPropertyValue>(*this).isInvalid();
 }
 
 bool CSSValue::treatAsInheritedValue(CSSPropertyID propertyID) const

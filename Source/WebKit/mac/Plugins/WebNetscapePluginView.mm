@@ -61,7 +61,8 @@
 #import <WebCore/FrameTree.h>
 #import <WebCore/FrameView.h>
 #import <WebCore/HTMLPlugInElement.h>
-#import <WebCore/Page.h> 
+#import <WebCore/NP_jsobject.h>
+#import <WebCore/Page.h>
 #import <WebCore/ProxyServer.h>
 #import <WebCore/ScriptController.h>
 #import <WebCore/SecurityOrigin.h>
@@ -70,6 +71,7 @@
 #import <WebCore/WebCoreObjCExtras.h>
 #import <WebCore/WebCoreURLResponse.h>
 #import <WebCore/npruntime_impl.h>
+#import <WebCore/runtime_root.h>
 #import <WebKitLegacy/DOMPrivate.h>
 #import <WebKitLegacy/WebUIDelegate.h>
 #import <objc/runtime.h>
@@ -664,7 +666,7 @@ static inline void getNPRect(const NSRect& nr, NPRect& npr)
     ASSERT(_eventHandler);
     {
         JSC::JSLock::DropAllLocks dropAllLocks(JSDOMWindowBase::commonVM());
-        UserGestureIndicator gestureIndicator(_eventHandler->currentEventIsUserGesture() ? DefinitelyProcessingUserGesture : PossiblyProcessingUserGesture);
+        UserGestureIndicator gestureIndicator(_eventHandler->currentEventIsUserGesture() ? Optional<ProcessingUserGestureState>(ProcessingUserGesture) : Nullopt);
         acceptedEvent = [_pluginPackage.get() pluginFuncs]->event(plugin, event);
     }
     [self didCallPlugInFunction];
@@ -1097,10 +1099,10 @@ static inline void getNPRect(const NSRect& nr, NPRect& npr)
                 realPluginLayer.get().autoresizingMask = kCALayerWidthSizable | kCALayerHeightSizable;
                 [_pluginLayer.get() addSublayer:realPluginLayer.get()];
 
-                // Eagerly enter compositing mode, since we know we'll need it. This avoids firing setNeedsStyleRecalc()
+                // Eagerly enter compositing mode, since we know we'll need it. This avoids firing invalidateStyle()
                 // for iframes that contain composited plugins at bad times. https://bugs.webkit.org/show_bug.cgi?id=39033
                 core([self webFrame])->view()->enterCompositingMode();
-                [self element]->setNeedsStyleRecalc(SyntheticStyleChange);
+                [self element]->invalidateStyleAndLayerComposition();
             } else
                 [self setWantsLayer:YES];
 
@@ -1922,17 +1924,26 @@ static inline void getNPRect(const NSRect& nr, NPRect& npr)
 
         case NPNVPluginElementNPObject:
         {
-            if (!_element)
-                return NPERR_GENERIC_ERROR;
-            
-            NPObject *plugInScriptObject = _element->getNPObject();
+            if (!_elementNPObject) {
+                if (!_element)
+                    return NPERR_GENERIC_ERROR;
+
+                Frame* frame = core(self.webFrame);
+                if (!frame)
+                    return NPERR_GENERIC_ERROR;
+
+                JSC::JSObject* object = frame->script().jsObjectForPluginElement(_element.get());
+                if (!object)
+                    _elementNPObject = _NPN_CreateNoScriptObject();
+                else
+                    _elementNPObject = _NPN_CreateScriptObject(0, object, frame->script().bindingRootObject());
+            }
 
             // Return value is expected to be retained, as described here: <http://www.mozilla.org/projects/plugins/npruntime.html#browseraccess>
-            if (plugInScriptObject)
-                _NPN_RetainObject(plugInScriptObject);
+            if (_elementNPObject)
+                _NPN_RetainObject(_elementNPObject);
 
-            void **v = (void **)value;
-            *v = plugInScriptObject;
+            *(void **)value = _elementNPObject;
 
             return NPERR_NO_ERROR;
         }
@@ -2116,7 +2127,11 @@ static inline void getNPRect(const NSRect& nr, NPRect& npr)
                 break;
             
             if (Frame* frame = core([self webFrame])) {
-                String cookieString = cookies(frame->document(), URL); 
+                auto* document = frame->document();
+                if (!document)
+                    break;
+
+                String cookieString = cookies(*document, URL);
                 CString cookieStringUTF8 = cookieString.utf8();
                 if (cookieStringUTF8.isNull())
                     return NPERR_GENERIC_ERROR;
@@ -2166,7 +2181,8 @@ static inline void getNPRect(const NSRect& nr, NPRect& npr)
                 break;
             
             if (Frame* frame = core([self webFrame])) {
-                setCookies(frame->document(), URL, cookieString);
+                if (auto* document = frame->document())
+                    setCookies(*document, URL, cookieString);
                 return NPERR_NO_ERROR;
             }
             
@@ -2280,7 +2296,10 @@ static inline void getNPRect(const NSRect& nr, NPRect& npr)
     NPError npErr;
     npErr = ![_pluginPackage.get() pluginFuncs]->destroy(plugin, NULL);
     LOG(Plugins, "NPP_Destroy: %d", npErr);
-    
+
+    if (_elementNPObject)
+        _NPN_ReleaseObject(_elementNPObject);
+
     if (Frame* frame = core([self webFrame]))
         frame->script().cleanupScriptObjectsForPlugin(self);
         

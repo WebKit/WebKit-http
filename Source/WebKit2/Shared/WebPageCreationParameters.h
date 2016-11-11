@@ -32,14 +32,16 @@
 #include "WebCoreArgumentCoders.h"
 #include "WebPageGroupData.h"
 #include "WebPreferencesStore.h"
+#include <WebCore/ActivityState.h>
 #include <WebCore/Color.h>
 #include <WebCore/FloatSize.h>
 #include <WebCore/IntSize.h>
+#include <WebCore/LayoutMilestones.h>
+#include <WebCore/MediaProducer.h>
 #include <WebCore/Pagination.h>
 #include <WebCore/ScrollTypes.h>
 #include <WebCore/SessionID.h>
 #include <WebCore/UserInterfaceLayoutDirection.h>
-#include <WebCore/ViewState.h>
 #include <wtf/text/WTFString.h>
 
 #if PLATFORM(MAC)
@@ -47,19 +49,19 @@
 #endif
 
 namespace IPC {
-    class ArgumentDecoder;
-    class ArgumentEncoder;
+class Decoder;
+class Encoder;
 }
 
 namespace WebKit {
 
 struct WebPageCreationParameters {
-    void encode(IPC::ArgumentEncoder&) const;
-    static bool decode(IPC::ArgumentDecoder&, WebPageCreationParameters&);
+    void encode(IPC::Encoder&) const;
+    static bool decode(IPC::Decoder&, WebPageCreationParameters&);
 
     WebCore::IntSize viewSize;
 
-    WebCore::ViewState::Flags viewState;
+    WebCore::ActivityState::Flags activityState;
     
     WebPreferencesStore store;
     DrawingAreaType drawingAreaType;
@@ -99,7 +101,7 @@ struct WebPageCreationParameters {
     float topContentInset;
     
     float mediaVolume;
-    bool muted;
+    WebCore::MediaProducer::MutedStateFlags muted;
     bool mayStartMediaWhenInWindow;
 
     WebCore::IntSize minimumLayoutSize;
@@ -131,11 +133,13 @@ struct WebPageCreationParameters {
     WebCore::FloatSize screenSize;
     WebCore::FloatSize availableScreenSize;
     float textAutosizingWidth;
+    bool ignoresViewportScaleLimits;
 #endif
     bool appleMailPaginationQuirkEnabled;
     bool shouldScaleViewToFitDocument;
 
     WebCore::UserInterfaceLayoutDirection userInterfaceLayoutDirection;
+    WebCore::LayoutMilestones observedLayoutMilestones;
 };
 
 } // namespace WebKit

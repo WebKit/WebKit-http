@@ -28,8 +28,9 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import atexit
-import os
+import glob
 import logging
+import os
 import re
 import sys
 import time
@@ -121,9 +122,6 @@ class WinPort(ApplePort):
 
     def operating_system(self):
         return 'win'
-
-    def default_child_processes(self):
-        return 1
 
     def _port_flag_for_scripts(self):
         if self.get_option('architecture') == 'x86_64':
@@ -299,6 +297,10 @@ class WinPort(ApplePort):
         if '_NT_SYMBOL_PATH' not in os.environ:
             _log.warning("The _NT_SYMBOL_PATH environment variable is not set. Using Microsoft Symbol Server.")
             os.environ['_NT_SYMBOL_PATH'] = 'SRV*http://msdl.microsoft.com/download/symbols'
+
+        # Add build path to symbol path
+        os.environ['_NT_SYMBOL_PATH'] += ";" + self._build_path()
+
         ntsd_path = self._ntsd_location()
         if not ntsd_path:
             _log.warning("Can't find ntsd.exe. Crash logs will not be saved.")
@@ -345,12 +347,22 @@ class WinPort(ApplePort):
     def delete_sem_locks(self):
         os.system("rm -rf /dev/shm/sem.*")
 
-    def setup_test_run(self):
+    def delete_preference_files(self):
+        try:
+            preferences_files = self._filesystem.join(os.environ['APPDATA'], "Apple Computer/Preferences", "com.apple.DumpRenderTree*")
+            filelist = glob.glob(preferences_files)
+            for file in filelist:
+                self._filesystem.remove(file)
+        except:
+            _log.warn("Failed to delete preference files.")
+
+    def setup_test_run(self, device_class=None):
         atexit.register(self.restore_crash_log_saving)
         self.setup_crash_log_saving()
         self.prevent_error_dialogs()
         self.delete_sem_locks()
-        super(WinPort, self).setup_test_run()
+        self.delete_preference_files()
+        super(WinPort, self).setup_test_run(device_class)
 
     def clean_up_test_run(self):
         self.allow_error_dialogs()

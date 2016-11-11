@@ -1,0 +1,23 @@
+<script src="../../../resources/js-test-pre.js"></script>
+<script src="../../../../Source/WebCore/Modules/modern-media-controls/controls/layout-node.js" type="text/javascript"></script>
+<script src="../../../../Source/WebCore/Modules/modern-media-controls/controls/layout-item.js" type="text/javascript"></script>
+<script src="../../../../Source/WebCore/Modules/modern-media-controls/controls/icon-service.js" type="text/javascript"></script>
+<body>
+<script type="text/javascript">
+
+description("Testing the <code>iconService</code> singleton.");
+
+iconService.directoryPath = "../../../../Source/WebCore/Modules/modern-media-controls/images";
+
+debug("Checking path to images is computed according to traits");
+shouldBeTrue('iconService.imageForIconNameAndLayoutTraits(Icons.Pause, LayoutTraits.macOS).src.includes("macOS/pause@")');
+shouldBeTrue('iconService.imageForIconNameAndLayoutTraits(Icons.Pause, LayoutTraits.iOS).src.includes("iOS/pause@")');
+shouldBeTrue('iconService.imageForIconNameAndLayoutTraits(Icons.Pause, LayoutTraits.macOS | LayoutTraits.Fullscreen).src.includes("macOS/pause-fullscreen@")');
+
+debug("");
+debug("Checking requested images are cached");
+shouldBeTrue('iconService.imageForIconNameAndLayoutTraits(Icons.Pause, LayoutTraits.macOS) === iconService.imageForIconNameAndLayoutTraits(Icons.Pause, LayoutTraits.macOS)');
+
+</script>
+<script src="../../../resources/js-test-post.js"></script>
+</body>

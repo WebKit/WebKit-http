@@ -57,7 +57,7 @@
 #else
 - (CALayer *)makeBackingLayer
 {
-    return [[CALayerHost alloc] init];
+    return [[[CALayerHost alloc] init] autorelease];
 }
 #endif
 
@@ -122,6 +122,18 @@ WebVideoFullscreenModelContext::WebVideoFullscreenModelContext(WebVideoFullscree
 
 WebVideoFullscreenModelContext::~WebVideoFullscreenModelContext()
 {
+}
+
+void WebVideoFullscreenModelContext::addClient(WebVideoFullscreenModelClient& client)
+{
+    ASSERT(!m_clients.contains(&client));
+    m_clients.add(&client);
+}
+
+void WebVideoFullscreenModelContext::removeClient(WebVideoFullscreenModelClient& client)
+{
+    ASSERT(m_clients.contains(&client));
+    m_clients.remove(&client);
 }
 
 void WebVideoFullscreenModelContext::requestFullscreenMode(HTMLMediaElementEnums::VideoFullscreenMode mode)
@@ -358,9 +370,14 @@ void WebVideoFullscreenManagerProxy::setupFullscreenWithID(uint64_t contextId, u
 #endif
 }
 
-void WebVideoFullscreenManagerProxy::setVideoDimensions(uint64_t contextId, bool hasVideo, unsigned width, unsigned height)
+void WebVideoFullscreenManagerProxy::setHasVideo(uint64_t contextId, bool hasVideo)
 {
-    ensureInterface(contextId).setVideoDimensions(hasVideo, width, height);
+    ensureInterface(contextId).hasVideoChanged(hasVideo);
+}
+
+void WebVideoFullscreenManagerProxy::setVideoDimensions(uint64_t contextId, const FloatSize& videoDimensions)
+{
+    ensureInterface(contextId).videoDimensionsChanged(videoDimensions);
 }
 
 void WebVideoFullscreenManagerProxy::enterFullscreen(uint64_t contextId)

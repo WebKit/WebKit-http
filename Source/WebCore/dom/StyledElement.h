@@ -22,8 +22,7 @@
  *
  */
 
-#ifndef StyledElement_h
-#define StyledElement_h
+#pragma once
 
 #include "CSSPrimitiveValue.h"
 #include "CSSPropertyNames.h"
@@ -93,13 +92,6 @@ private:
     void rebuildPresentationAttributeStyle();
 };
 
-inline void StyledElement::invalidateStyleAttribute()
-{
-    ASSERT(elementData());
-    elementData()->setStyleAttributeIsDirty(true);
-    setNeedsStyleRecalc(InlineStyleChange);
-}
-
 inline const StyleProperties* StyledElement::presentationAttributeStyle() const
 {
     if (!elementData())
@@ -114,5 +106,3 @@ inline const StyleProperties* StyledElement::presentationAttributeStyle() const
 SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::StyledElement)
     static bool isType(const WebCore::Node& node) { return node.isStyledElement(); }
 SPECIALIZE_TYPE_TRAITS_END()
-
-#endif

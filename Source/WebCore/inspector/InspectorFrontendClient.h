@@ -28,15 +28,12 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef InspectorFrontendClient_h
-#define InspectorFrontendClient_h
+#pragma once
 
 #include <wtf/Forward.h>
+#include <wtf/text/WTFString.h>
 
 namespace WebCore {
-
-class ContextMenuItem;
-class Event;
 
 class InspectorFrontendClient {
 public:
@@ -56,6 +53,8 @@ public:
 
     virtual String localizedStringsURL() = 0;
     virtual unsigned inspectionLevel() const = 0;
+    virtual String backendCommandsURL() { return String(); };
+    virtual String debuggableType() { return ASCIILiteral("web"); }
 
     virtual void bringToFront() = 0;
     virtual void closeWindow() = 0;
@@ -81,5 +80,3 @@ public:
 };
 
 } // namespace WebCore
-
-#endif

@@ -36,14 +36,9 @@ Ref<HTMLOptionsCollection> HTMLOptionsCollection::create(HTMLSelectElement& sele
     return adoptRef(*new HTMLOptionsCollection(select));
 }
 
-void HTMLOptionsCollection::add(HTMLElement& element, HTMLElement* beforeElement, ExceptionCode& ec)
+ExceptionOr<void> HTMLOptionsCollection::add(const OptionOrOptGroupElement& element, Optional<HTMLElementOrInt> before)
 {
-    selectElement().add(element, beforeElement, ec);
-}
-
-void HTMLOptionsCollection::add(HTMLElement& element, int beforeIndex, ExceptionCode& ec)
-{
-    add(element, item(beforeIndex), ec);
+    return selectElement().add(element, before);
 }
 
 void HTMLOptionsCollection::remove(int index)
@@ -66,9 +61,9 @@ void HTMLOptionsCollection::setSelectedIndex(int index)
     selectElement().setSelectedIndex(index);
 }
 
-void HTMLOptionsCollection::setLength(unsigned length, ExceptionCode& ec)
+ExceptionOr<void> HTMLOptionsCollection::setLength(unsigned length)
 {
-    selectElement().setLength(length, ec);
+    return selectElement().setLength(length);
 }
 
 } //namespace

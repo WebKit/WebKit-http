@@ -44,7 +44,7 @@ MediaStreamAudioSource::MediaStreamAudioSource()
 {
 }
 
-RefPtr<RealtimeMediaSourceCapabilities> MediaStreamAudioSource::capabilities()
+RefPtr<RealtimeMediaSourceCapabilities> MediaStreamAudioSource::capabilities() const
 {
     // FIXME: implement this.
     // https://bugs.webkit.org/show_bug.cgi?id=122430
@@ -52,7 +52,7 @@ RefPtr<RealtimeMediaSourceCapabilities> MediaStreamAudioSource::capabilities()
     return nullptr;
 }
 
-const RealtimeMediaSourceSettings& MediaStreamAudioSource::settings()
+const RealtimeMediaSourceSettings& MediaStreamAudioSource::settings() const
 {
     // FIXME: implement this.
     // https://bugs.webkit.org/show_bug.cgi?id=122430
@@ -67,7 +67,7 @@ AudioSourceProvider* MediaStreamAudioSource::audioSourceProvider()
     return nullptr;
 }
 
-void MediaStreamAudioSource::addAudioConsumer(PassRefPtr<AudioDestinationConsumer> consumer)
+void MediaStreamAudioSource::addAudioConsumer(AudioDestinationConsumer* consumer)
 {
     LockHolder locker(m_audioConsumersLock);
     m_audioConsumers.append(consumer);

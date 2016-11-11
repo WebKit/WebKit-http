@@ -33,13 +33,11 @@
     readonly attribute Element lastElementChild;
     readonly attribute unsigned long childElementCount;
 
-#if !defined(LANGUAGE_OBJECTIVE_C) || !LANGUAGE_OBJECTIVE_C
-    [Unscopeable, RaisesException, Custom] void prepend((Node or DOMString)... nodes);
-    [Unscopeable, RaisesException, Custom] void append((Node or DOMString)... nodes);
-#endif
+    [CEReactions, Unscopable, MayThrowException] void prepend((Node or DOMString)... nodes);
+    [CEReactions, Unscopable, MayThrowException] void append((Node or DOMString)... nodes);
 
-    // [Unscopeable] Element? query(DOMString relativeSelectors);
-    // [NewObject, Unscopeable] Elements queryAll(DOMString relativeSelectors);
-    [RaisesException] Element querySelector(DOMString selectors);
-    [RaisesException, NewObject] NodeList querySelectorAll(DOMString selectors);
+    // [Unscopable] Element? query(DOMString relativeSelectors);
+    // [NewObject, Unscopable] Elements queryAll(DOMString relativeSelectors);
+    [MayThrowException] Element querySelector(DOMString selectors);
+    [MayThrowException, NewObject] NodeList querySelectorAll(DOMString selectors);
 };

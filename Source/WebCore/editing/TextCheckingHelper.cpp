@@ -29,10 +29,11 @@
 
 #include "Document.h"
 #include "DocumentMarkerController.h"
+#include "ExceptionCode.h"
 #include "Frame.h"
 #include "FrameSelection.h"
 #include "Settings.h"
-#include "TextBreakIterator.h"
+#include <wtf/text/TextBreakIterator.h>
 #include "TextCheckerClient.h"
 #include "TextIterator.h"
 #include "VisiblePosition.h"
@@ -161,7 +162,7 @@ PassRefPtr<Range> TextCheckingParagraph::paragraphRange() const
 {
     ASSERT(m_checkingRange);
     if (!m_paragraphRange)
-        m_paragraphRange = expandToParagraphBoundary(checkingRange());
+        m_paragraphRange = expandToParagraphBoundary(m_checkingRange);
     return m_paragraphRange;
 }
 
@@ -171,18 +172,16 @@ PassRefPtr<Range> TextCheckingParagraph::subrange(int characterOffset, int chara
     return TextIterator::subrange(paragraphRange().get(), characterOffset, characterCount);
 }
 
-int TextCheckingParagraph::offsetTo(const Position& position, ExceptionCode& ec) const
+ExceptionOr<int> TextCheckingParagraph::offsetTo(const Position& position) const
 {
     ASSERT(m_checkingRange);
-    if (!position.containerNode()) {
-        ec = TypeError;
-        return 0;
-    }
+    if (!position.containerNode())
+        return Exception { TypeError };
 
-    Ref<Range> range = offsetAsRange()->cloneRange();
-    range->setEnd(*position.containerNode(), position.computeOffsetInContainerNode(), ec);
-    if (ec)
-        return 0;
+    auto range = offsetAsRange()->cloneRange();
+    auto result = range->setEnd(*position.containerNode(), position.computeOffsetInContainerNode());
+    if (result.hasException())
+        return result.releaseException();
     return TextIterator::rangeLength(range.ptr());
 }
 
@@ -197,7 +196,7 @@ PassRefPtr<Range> TextCheckingParagraph::offsetAsRange() const
 {
     ASSERT(m_checkingRange);
     if (!m_offsetAsRange)
-        m_offsetAsRange = Range::create(paragraphRange()->startContainer().document(), paragraphRange()->startPosition(), checkingRange()->startPosition());
+        m_offsetAsRange = Range::create(paragraphRange()->startContainer().document(), paragraphRange()->startPosition(), m_checkingRange->startPosition());
 
     return m_offsetAsRange;
 }
@@ -222,7 +221,7 @@ int TextCheckingParagraph::checkingEnd() const
 {
     ASSERT(m_checkingRange);
     if (m_checkingEnd == -1)
-        m_checkingEnd = checkingStart() + TextIterator::rangeLength(checkingRange().get());
+        m_checkingEnd = checkingStart() + TextIterator::rangeLength(m_checkingRange.get());
     return m_checkingEnd;
 }
 
@@ -230,7 +229,7 @@ int TextCheckingParagraph::checkingLength() const
 {
     ASSERT(m_checkingRange);
     if (-1 == m_checkingLength)
-        m_checkingLength = TextIterator::rangeLength(checkingRange().get());
+        m_checkingLength = TextIterator::rangeLength(m_checkingRange.get());
     return m_checkingLength;
 }
 
@@ -301,7 +300,7 @@ String TextCheckingHelper::findFirstMisspelling(int& firstMisspellingOffset, boo
 String TextCheckingHelper::findFirstMisspellingOrBadGrammar(bool checkGrammar, bool& outIsSpelling, int& outFirstFoundOffset, GrammarDetail& outGrammarDetail)
 {
     if (!unifiedTextCheckerEnabled())
-        return "";
+        return emptyString();
 
     String firstFoundItem;
     String misspelledWord;
@@ -313,7 +312,7 @@ String TextCheckingHelper::findFirstMisspellingOrBadGrammar(bool checkGrammar, b
     outGrammarDetail.location = -1;
     outGrammarDetail.length = 0;
     outGrammarDetail.guesses.clear();
-    outGrammarDetail.userDescription = "";
+    outGrammarDetail.userDescription = emptyString();
     
     // Expand the search range to encompass entire paragraphs, since text checking needs that much context.
     // Determine the character offset from the start of the paragraph to the start of the original search range,
@@ -471,7 +470,7 @@ String TextCheckingHelper::findFirstBadGrammar(GrammarDetail& outGrammarDetail, 
     outGrammarDetail.location = -1;
     outGrammarDetail.length = 0;
     outGrammarDetail.guesses.clear();
-    outGrammarDetail.userDescription = "";
+    outGrammarDetail.userDescription = emptyString();
     outGrammarPhraseOffset = 0;
     
     String firstBadGrammarPhrase;

@@ -28,12 +28,12 @@ function forEach(callback /*, thisArg */)
     "use strict";
 
     if (!@isMap(this))
-        throw new @TypeError("Map operation called on non-Map object");
+        @throwTypeError("Map operation called on non-Map object");
 
     if (typeof callback !== 'function')
-        throw new @TypeError("Map.prototype.forEach callback must be a function");
+        @throwTypeError("Map.prototype.forEach callback must be a function");
 
-    var thisArg = arguments.length > 1 ? arguments[1] : @undefined;
+    var thisArg = @argument(1);
     var iterator = @MapIterator(this);
 
     // To avoid object allocations for iterator result objects, we pass the placeholder to the special "next" function in order to fill the results.

@@ -36,15 +36,14 @@
 #include "FontCascade.h"
 #include "ImageBuffer.h"
 #include "MockRealtimeMediaSource.h"
-#include <wtf/RunLoop.h>
 
 namespace WebCore {
 
 class MockRealtimeAudioSource : public MockRealtimeMediaSource {
 public:
 
-    static Ref<MockRealtimeAudioSource> create();
-    static Ref<MockRealtimeAudioSource> createMuted(const String& name);
+    static RefPtr<MockRealtimeAudioSource> create(const String&, const MediaConstraints*);
+    static RefPtr<MockRealtimeAudioSource> createMuted(const String& name);
 
     virtual ~MockRealtimeAudioSource() { }
 
@@ -52,6 +51,12 @@ protected:
     MockRealtimeAudioSource(const String& name = ASCIILiteral("Mock audio device"));
 
 private:
+
+    bool applyVolume(double) override { return true; }
+    bool applySampleRate(int) override { return true; }
+    bool applySampleSize(int) override { return true; }
+    bool applyEchoCancellation(bool) override { return true; }
+
     void updateSettings(RealtimeMediaSourceSettings&) override;
     void initializeCapabilities(RealtimeMediaSourceCapabilities&) override;
     void initializeSupportedConstraints(RealtimeMediaSourceSupportedConstraints&) override;

@@ -42,7 +42,7 @@
 #include "APIURLResponse.h"
 #include "APIUserContentURLPattern.h"
 #include "ArgumentCoders.h"
-#include "ArgumentEncoder.h"
+#include "Encoder.h"
 #include "ShareableBitmap.h"
 #include "WebCertificateInfo.h"
 #include "WebImage.h"
@@ -141,17 +141,17 @@ RefPtr<API::Object> UserData::transform(API::Object* object, const Transformer& 
     return transformGraph(*object, transformer);
 }
 
-void UserData::encode(IPC::ArgumentEncoder& encoder) const
+void UserData::encode(IPC::Encoder& encoder) const
 {
     encode(encoder, m_object.get());
 }
 
-bool UserData::decode(IPC::ArgumentDecoder& decoder, UserData& userData)
+bool UserData::decode(IPC::Decoder& decoder, UserData& userData)
 {
     return decode(decoder, userData.m_object);
 }
 
-void UserData::encode(IPC::ArgumentEncoder& encoder, const API::Object* object)
+void UserData::encode(IPC::Encoder& encoder, const API::Object* object)
 {
     if (!object) {
         encoder.encodeEnum(API::Object::Type::Null);
@@ -161,7 +161,7 @@ void UserData::encode(IPC::ArgumentEncoder& encoder, const API::Object* object)
     encode(encoder, *object);
 }
 
-void UserData::encode(IPC::ArgumentEncoder& encoder, const API::Object& object)
+void UserData::encode(IPC::Encoder& encoder, const API::Object& object)
 {
     API::Object::Type type = object.type();
     encoder.encodeEnum(type);
@@ -327,7 +327,7 @@ void UserData::encode(IPC::ArgumentEncoder& encoder, const API::Object& object)
     }
 }
 
-bool UserData::decode(IPC::ArgumentDecoder& decoder, RefPtr<API::Object>& result)
+bool UserData::decode(IPC::Decoder& decoder, RefPtr<API::Object>& result)
 {
     API::Object::Type type;
     if (!decoder.decodeEnum(type))

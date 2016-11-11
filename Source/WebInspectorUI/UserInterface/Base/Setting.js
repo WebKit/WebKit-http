@@ -61,7 +61,7 @@ WebInspector.Setting = class Setting extends WebInspector.Object
         if (!window.InspectorTest && window.localStorage && this._localStorageKey in window.localStorage) {
             try {
                 this._value = JSON.parse(window.localStorage[this._localStorageKey]);
-            } catch(e) {
+            } catch (e) {
                 delete window.localStorage[this._localStorageKey];
             }
         }
@@ -83,7 +83,7 @@ WebInspector.Setting = class Setting extends WebInspector.Object
                     delete window.localStorage[this._localStorageKey];
                 else
                     window.localStorage[this._localStorageKey] = JSON.stringify(this._value);
-            } catch(e) {
+            } catch (e) {
                 console.error("Error saving setting with name: " + this._name);
             }
         }
@@ -100,4 +100,13 @@ WebInspector.Setting = class Setting extends WebInspector.Object
 
 WebInspector.Setting.Event = {
     Changed: "setting-changed"
+};
+
+WebInspector.settings = {
+    enableLineWrapping: new WebInspector.Setting("enable-line-wrapping", false),
+    indentUnit: new WebInspector.Setting("indent-unit", 4),
+    tabSize: new WebInspector.Setting("tab-size", 4),
+    indentWithTabs: new WebInspector.Setting("indent-with-tabs", false),
+    showWhitespaceCharacters: new WebInspector.Setting("show-whitespace-characters", false),
+    showInvalidCharacters: new WebInspector.Setting("show-invalid-characters", false),
 };

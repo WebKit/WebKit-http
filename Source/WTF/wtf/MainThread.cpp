@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2007, 2008, 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2007, 2008, 2015-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -190,14 +190,19 @@ bool canAccessThreadLocalDataForThread(ThreadIdentifier threadId)
 }
 #endif
 
-static ThreadSpecific<bool>* isGCThread;
+static ThreadSpecific<Optional<GCThreadType>, CanBeGCThread::True>* isGCThread;
 
 void initializeGCThreads()
 {
-    isGCThread = new ThreadSpecific<bool>();
+    static std::once_flag flag;
+    std::call_once(
+        flag,
+        [] {
+            isGCThread = new ThreadSpecific<Optional<GCThreadType>, CanBeGCThread::True>();
+        });
 }
 
-void registerGCThread()
+void registerGCThread(GCThreadType type)
 {
     if (!isGCThread) {
         // This happens if we're running in a process that doesn't care about
@@ -205,15 +210,24 @@ void registerGCThread()
         return;
     }
 
-    **isGCThread = true;
+    **isGCThread = type;
 }
 
 bool isMainThreadOrGCThread()
 {
-    if (isGCThread->isSet() && **isGCThread)
+    if (mayBeGCThread())
         return true;
 
     return isMainThread();
+}
+
+Optional<GCThreadType> mayBeGCThread()
+{
+    if (!isGCThread)
+        return Nullopt;
+    if (!isGCThread->isSet())
+        return Nullopt;
+    return **isGCThread;
 }
 
 } // namespace WTF

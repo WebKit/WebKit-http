@@ -36,28 +36,16 @@
 #include <WebCore/InspectorController.h>
 #include <WebCore/MainFrame.h>
 #include <WebCore/Page.h>
-#include <WebCore/Settings.h>
-#include <wtf/CurrentTime.h>
 #include <wtf/TemporaryChange.h>
 
 using namespace WebCore;
 
 namespace WebKit {
 
-CompositingCoordinator::CompositingCoordinator(Page* page, CompositingCoordinator::Client* client)
+CompositingCoordinator::CompositingCoordinator(Page* page, CompositingCoordinator::Client& client)
     : m_page(page)
     , m_client(client)
-    , m_rootCompositingLayer(nullptr)
-    , m_overlayCompositingLayer(nullptr)
-    , m_isDestructing(false)
-    , m_isPurging(false)
-    , m_isFlushingLayerChanges(false)
-    , m_shouldSyncFrame(false)
-    , m_didInitializeRootCompositingLayer(false)
     , m_releaseInactiveAtlasesTimer(*this, &CompositingCoordinator::releaseInactiveAtlasesTimerFired)
-#if ENABLE(REQUEST_ANIMATION_FRAME)
-    , m_lastAnimationServiceTime(0)
-#endif
 {
 }
 
@@ -69,6 +57,12 @@ CompositingCoordinator::~CompositingCoordinator()
 
     for (auto& registeredLayer : m_registeredLayers.values())
         registeredLayer->setCoordinator(nullptr);
+}
+
+void CompositingCoordinator::invalidate()
+{
+    m_rootLayer = nullptr;
+    purgeBackingStores();
 }
 
 void CompositingCoordinator::setRootCompositingLayer(GraphicsLayer* graphicsLayer)
@@ -111,15 +105,16 @@ bool CompositingCoordinator::flushPendingLayerChanges()
 
     bool viewportIsStable = m_page->mainFrame().view()->viewportIsStable();
     m_rootLayer->flushCompositingStateForThisLayerOnly(viewportIsStable);
-    m_client->didFlushRootLayer(m_visibleContentsRect);
+    m_client.didFlushRootLayer(m_visibleContentsRect);
 
     if (m_overlayCompositingLayer)
         m_overlayCompositingLayer->flushCompositingState(FloatRect(FloatPoint(), m_rootLayer->size()), viewportIsStable);
 
     bool didSync = m_page->mainFrame().view()->flushCompositingStateIncludingSubframes();
 
-    toCoordinatedGraphicsLayer(m_rootLayer.get())->updateContentBuffersIncludingSubLayers();
-    toCoordinatedGraphicsLayer(m_rootLayer.get())->syncPendingStateChangesIncludingSubLayers();
+    auto& coordinatedLayer = downcast<CoordinatedGraphicsLayer>(*m_rootLayer);
+    coordinatedLayer.updateContentBuffersIncludingSubLayers();
+    coordinatedLayer.syncPendingStateChangesIncludingSubLayers();
 
     flushPendingImageBackingChanges();
 
@@ -133,7 +128,7 @@ bool CompositingCoordinator::flushPendingLayerChanges()
         }
         m_state.scrollPosition = m_visibleContentsRect.location();
 
-        m_client->commitSceneState(m_state);
+        m_client.commitSceneState(m_state);
 
         clearPendingStateChanges();
         m_shouldSyncFrame = false;
@@ -189,7 +184,7 @@ void CompositingCoordinator::initializeRootCompositingLayerIfNeeded()
     if (m_didInitializeRootCompositingLayer)
         return;
 
-    m_state.rootCompositingLayer = toCoordinatedGraphicsLayer(m_rootLayer.get())->id();
+    m_state.rootCompositingLayer = downcast<CoordinatedGraphicsLayer>(*m_rootLayer).id();
     m_didInitializeRootCompositingLayer = true;
     m_shouldSyncFrame = true;
 }
@@ -212,18 +207,13 @@ void CompositingCoordinator::syncLayerState(CoordinatedLayerID id, CoordinatedGr
     m_state.layersToUpdate.append(std::make_pair(id, state));
 }
 
-PassRefPtr<CoordinatedImageBacking> CompositingCoordinator::createImageBackingIfNeeded(Image* image)
+Ref<CoordinatedImageBacking> CompositingCoordinator::createImageBackingIfNeeded(Image* image)
 {
     CoordinatedImageBackingID imageID = CoordinatedImageBacking::getCoordinatedImageBackingID(image);
-    ImageBackingMap::iterator it = m_imageBackings.find(imageID);
-    RefPtr<CoordinatedImageBacking> imageBacking;
-    if (it == m_imageBackings.end()) {
-        imageBacking = CoordinatedImageBacking::create(this, image);
-        m_imageBackings.add(imageID, imageBacking);
-    } else
-        imageBacking = it->value;
-
-    return imageBacking;
+    auto addResult = m_imageBackings.ensure(imageID, [this, image] {
+        return CoordinatedImageBacking::create(this, image);
+    });
+    return *addResult.iterator->value;
 }
 
 void CompositingCoordinator::createImageBacking(CoordinatedImageBackingID imageID)
@@ -231,10 +221,10 @@ void CompositingCoordinator::createImageBacking(CoordinatedImageBackingID imageI
     m_state.imagesToCreate.append(imageID);
 }
 
-void CompositingCoordinator::updateImageBacking(CoordinatedImageBackingID imageID, PassRefPtr<CoordinatedSurface> coordinatedSurface)
+void CompositingCoordinator::updateImageBacking(CoordinatedImageBackingID imageID, RefPtr<CoordinatedSurface>&& coordinatedSurface)
 {
     m_shouldSyncFrame = true;
-    m_state.imagesToUpdate.append(std::make_pair(imageID, coordinatedSurface));
+    m_state.imagesToUpdate.append(std::make_pair(imageID, WTFMove(coordinatedSurface)));
 }
 
 void CompositingCoordinator::clearImageBackingContents(CoordinatedImageBackingID imageID)
@@ -271,12 +261,12 @@ void CompositingCoordinator::notifyAnimationStarted(const GraphicsLayer*, const 
 void CompositingCoordinator::notifyFlushRequired(const GraphicsLayer*)
 {
     if (!m_isDestructing && !isFlushingLayerChanges())
-        m_client->notifyFlushRequired();
+        m_client.notifyFlushRequired();
 }
 
 void CompositingCoordinator::paintContents(const GraphicsLayer* graphicsLayer, GraphicsContext& graphicsContext, GraphicsLayerPaintingPhase, const FloatRect& clipRect)
 {
-    m_client->paintLayerContents(graphicsLayer, graphicsContext, enclosingIntRect(clipRect));
+    m_client.paintLayerContents(graphicsLayer, graphicsContext, enclosingIntRect(clipRect));
 }
 
 std::unique_ptr<GraphicsLayer> CompositingCoordinator::createGraphicsLayer(GraphicsLayer::Type layerType, GraphicsLayerClient& client)
@@ -300,9 +290,9 @@ float CompositingCoordinator::pageScaleFactor() const
     return m_page->pageScaleFactor();
 }
 
-void CompositingCoordinator::createUpdateAtlas(uint32_t atlasID, PassRefPtr<CoordinatedSurface> coordinatedSurface)
+void CompositingCoordinator::createUpdateAtlas(uint32_t atlasID, RefPtr<CoordinatedSurface>&& coordinatedSurface)
 {
-    m_state.updateAtlasesToCreate.append(std::make_pair(atlasID, coordinatedSurface));
+    m_state.updateAtlasesToCreate.append(std::make_pair(atlasID, WTFMove(coordinatedSurface)));
 }
 
 void CompositingCoordinator::removeUpdateAtlas(uint32_t atlasID)
@@ -319,10 +309,10 @@ FloatRect CompositingCoordinator::visibleContentsRect() const
 
 CoordinatedGraphicsLayer* CompositingCoordinator::mainContentsLayer()
 {
-    if (!m_rootCompositingLayer)
-        return 0;
+    if (!is<CoordinatedGraphicsLayer>(m_rootCompositingLayer))
+        return nullptr;
 
-    return toCoordinatedGraphicsLayer(m_rootCompositingLayer)->findFirstDescendantWithContentsRecursively();
+    return downcast<CoordinatedGraphicsLayer>(*m_rootCompositingLayer).findFirstDescendantWithContentsRecursively();
 }
 
 void CompositingCoordinator::setVisibleContentsRect(const FloatRect& rect, const FloatPoint& trajectoryVector)
@@ -371,11 +361,8 @@ void CompositingCoordinator::detachLayer(CoordinatedGraphicsLayer* layer)
 
 void CompositingCoordinator::commitScrollOffset(uint32_t layerID, const WebCore::IntSize& offset)
 {
-    LayerMap::iterator i = m_registeredLayers.find(layerID);
-    if (i == m_registeredLayers.end())
-        return;
-
-    i->value->commitScrollOffset(offset);
+    if (auto* layer = m_registeredLayers.get(layerID))
+        layer->commitScrollOffset(offset);
 }
 
 void CompositingCoordinator::renderNextFrame()
@@ -395,7 +382,7 @@ void CompositingCoordinator::purgeBackingStores()
     m_updateAtlases.clear();
 }
 
-bool CompositingCoordinator::paintToSurface(const IntSize& size, CoordinatedSurface::Flags flags, uint32_t& atlasID, IntPoint& offset, CoordinatedSurface::Client* client)
+bool CompositingCoordinator::paintToSurface(const IntSize& size, CoordinatedSurface::Flags flags, uint32_t& atlasID, IntPoint& offset, CoordinatedSurface::Client& client)
 {
     for (auto& updateAtlas : m_updateAtlases) {
         UpdateAtlas* atlas = updateAtlas.get();
@@ -407,7 +394,7 @@ bool CompositingCoordinator::paintToSurface(const IntSize& size, CoordinatedSurf
     }
 
     static const int ScratchBufferDimension = 1024; // Should be a power of two.
-    m_updateAtlases.append(std::make_unique<UpdateAtlas>(this, ScratchBufferDimension, flags));
+    m_updateAtlases.append(std::make_unique<UpdateAtlas>(*this, ScratchBufferDimension, flags));
     scheduleReleaseInactiveAtlases();
     return m_updateAtlases.last()->paintOnAvailableBuffer(size, atlasID, offset, client);
 }

@@ -23,12 +23,12 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef JSCryptoAlgorithmDictionary_h
-#define JSCryptoAlgorithmDictionary_h
-
-#include "CryptoAlgorithmIdentifier.h"
+#pragma once
 
 #if ENABLE(SUBTLE_CRYPTO)
+
+#include "CryptoAlgorithmIdentifier.h"
+#include <wtf/RefPtr.h>
 
 namespace JSC {
 class ExecState;
@@ -37,25 +37,24 @@ class JSValue;
 
 namespace WebCore {
 
-class CryptoAlgorithmParameters;
+class CryptoAlgorithmParametersDeprecated;
 
 class JSCryptoAlgorithmDictionary {
 public:
     static bool getAlgorithmIdentifier(JSC::ExecState*, JSC::JSValue, CryptoAlgorithmIdentifier&);
 
-    static std::unique_ptr<CryptoAlgorithmParameters> createParametersForEncrypt(JSC::ExecState*, CryptoAlgorithmIdentifier, JSC::JSValue);
-    static std::unique_ptr<CryptoAlgorithmParameters> createParametersForDecrypt(JSC::ExecState*, CryptoAlgorithmIdentifier, JSC::JSValue);
-    static std::unique_ptr<CryptoAlgorithmParameters> createParametersForSign(JSC::ExecState*, CryptoAlgorithmIdentifier, JSC::JSValue);
-    static std::unique_ptr<CryptoAlgorithmParameters> createParametersForVerify(JSC::ExecState*, CryptoAlgorithmIdentifier, JSC::JSValue);
-    static std::unique_ptr<CryptoAlgorithmParameters> createParametersForDigest(JSC::ExecState*, CryptoAlgorithmIdentifier, JSC::JSValue);
-    static std::unique_ptr<CryptoAlgorithmParameters> createParametersForGenerateKey(JSC::ExecState*, CryptoAlgorithmIdentifier, JSC::JSValue);
-    static std::unique_ptr<CryptoAlgorithmParameters> createParametersForDeriveKey(JSC::ExecState*, CryptoAlgorithmIdentifier, JSC::JSValue);
-    static std::unique_ptr<CryptoAlgorithmParameters> createParametersForDeriveBits(JSC::ExecState*, CryptoAlgorithmIdentifier, JSC::JSValue);
-    static std::unique_ptr<CryptoAlgorithmParameters> createParametersForImportKey(JSC::ExecState*, CryptoAlgorithmIdentifier, JSC::JSValue);
-    static std::unique_ptr<CryptoAlgorithmParameters> createParametersForExportKey(JSC::ExecState*, CryptoAlgorithmIdentifier, JSC::JSValue);
+    static RefPtr<CryptoAlgorithmParametersDeprecated> createParametersForEncrypt(JSC::ExecState*, CryptoAlgorithmIdentifier, JSC::JSValue);
+    static RefPtr<CryptoAlgorithmParametersDeprecated> createParametersForDecrypt(JSC::ExecState*, CryptoAlgorithmIdentifier, JSC::JSValue);
+    static RefPtr<CryptoAlgorithmParametersDeprecated> createParametersForSign(JSC::ExecState*, CryptoAlgorithmIdentifier, JSC::JSValue);
+    static RefPtr<CryptoAlgorithmParametersDeprecated> createParametersForVerify(JSC::ExecState*, CryptoAlgorithmIdentifier, JSC::JSValue);
+    static RefPtr<CryptoAlgorithmParametersDeprecated> createParametersForDigest(JSC::ExecState*, CryptoAlgorithmIdentifier, JSC::JSValue);
+    static RefPtr<CryptoAlgorithmParametersDeprecated> createParametersForGenerateKey(JSC::ExecState*, CryptoAlgorithmIdentifier, JSC::JSValue);
+    static RefPtr<CryptoAlgorithmParametersDeprecated> createParametersForDeriveKey(JSC::ExecState*, CryptoAlgorithmIdentifier, JSC::JSValue);
+    static RefPtr<CryptoAlgorithmParametersDeprecated> createParametersForDeriveBits(JSC::ExecState*, CryptoAlgorithmIdentifier, JSC::JSValue);
+    static RefPtr<CryptoAlgorithmParametersDeprecated> createParametersForImportKey(JSC::ExecState*, CryptoAlgorithmIdentifier, JSC::JSValue);
+    static RefPtr<CryptoAlgorithmParametersDeprecated> createParametersForExportKey(JSC::ExecState*, CryptoAlgorithmIdentifier, JSC::JSValue);
 };
 
-}
+} // namespace WebCore
 
 #endif // ENABLE(SUBTLE_CRYPTO)
-#endif // JSCryptoAlgorithmDictionary_h

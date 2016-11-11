@@ -65,7 +65,7 @@ public:
     IDBValue* currentValue() const { return m_currentValue.get(); }
 
     bool advance(uint64_t count);
-    bool iterate(const IDBKeyData& targetKey);
+    bool iterate(const IDBKeyData& targetKey, const IDBKeyData& targetPrimaryKey);
 
     bool didComplete() const { return m_completed; }
     bool didError() const { return m_errored; }
@@ -96,6 +96,7 @@ private:
     int64_t m_objectStoreID;
     int64_t m_indexID { IDBIndexInfo::InvalidId };
     IndexedDB::CursorDirection m_cursorDirection { IndexedDB::CursorDirection::Next };
+    IndexedDB::CursorType m_cursorType;
     IDBKeyRangeData m_keyRange;
 
     IDBKeyData m_currentLowerKey;

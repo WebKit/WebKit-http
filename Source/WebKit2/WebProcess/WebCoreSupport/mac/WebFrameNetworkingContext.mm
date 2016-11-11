@@ -49,7 +49,7 @@ void WebFrameNetworkingContext::ensurePrivateBrowsingSession(SessionID sessionID
 {
     ASSERT(sessionID.isEphemeral());
 
-    if (SessionTracker::storageSession(sessionID))
+    if (WebCore::NetworkStorageSession::storageSession(sessionID))
         return;
 
     String base;
@@ -58,12 +58,10 @@ void WebFrameNetworkingContext::ensurePrivateBrowsingSession(SessionID sessionID
     else
         base = SessionTracker::getIdentifierBase();
 
-    auto networkStorageSession = NetworkStorageSession::createPrivateBrowsingSession(sessionID, base + '.' + String::number(sessionID.sessionID()));
+    NetworkStorageSession::ensurePrivateBrowsingSession(sessionID, base + '.' + String::number(sessionID.sessionID()));
 #if USE(NETWORK_SESSION)
-    auto networkSession = NetworkSession::create(NetworkSession::Type::Ephemeral, sessionID, nullptr, WTFMove(networkStorageSession));
+    auto networkSession = NetworkSession::create(sessionID);
     SessionTracker::setSession(sessionID, WTFMove(networkSession));
-#else
-    SessionTracker::setSession(sessionID, WTFMove(networkStorageSession));
 #endif
 }
 
@@ -71,11 +69,9 @@ void WebFrameNetworkingContext::setCookieAcceptPolicyForAllContexts(HTTPCookieAc
 {
     [[NSHTTPCookieStorage sharedHTTPCookieStorage] setCookieAcceptPolicy:static_cast<NSHTTPCookieAcceptPolicy>(policy)];
 
-    if (RetainPtr<CFHTTPCookieStorageRef> cookieStorage = NetworkStorageSession::defaultStorageSession().cookieStorage())
-        CFHTTPCookieStorageSetCookieAcceptPolicy(cookieStorage.get(), policy);
-
-    SessionTracker::forEachNetworkStorageSession([&] (const NetworkStorageSession& networkStorageSession) {
-        CFHTTPCookieStorageSetCookieAcceptPolicy(networkStorageSession.cookieStorage().get(), policy);
+    NetworkStorageSession::forEach([&] (const NetworkStorageSession& networkStorageSession) {
+        if (auto cookieStorage = networkStorageSession.cookieStorage())
+            CFHTTPCookieStorageSetCookieAcceptPolicy(cookieStorage.get(), policy);
     });
 }
     
@@ -110,7 +106,7 @@ NetworkStorageSession& WebFrameNetworkingContext::storageSession() const
 {
     ASSERT(RunLoop::isMain());
     if (frame()) {
-        if (auto* storageSession = SessionTracker::storageSession(frame()->page()->sessionID()))
+        if (auto* storageSession = WebCore::NetworkStorageSession::storageSession(frame()->page()->sessionID()))
             return *storageSession;
         // Some requests may still be coming shortly after WebProcess was told to destroy its session.
         LOG_ERROR("Invalid session ID. Please file a bug unless you just disabled private browsing, in which case it's an expected race.");

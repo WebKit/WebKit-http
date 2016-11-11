@@ -23,12 +23,14 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef JSCryptoAlgorithmBuilder_h
-#define JSCryptoAlgorithmBuilder_h
-
-#include "CryptoAlgorithmDescriptionBuilder.h"
+#pragma once
 
 #if ENABLE(SUBTLE_CRYPTO)
+
+#include <wtf/Forward.h>
+#include <wtf/Noncopyable.h>
+#include <wtf/Vector.h>
+#include <wtf/text/WTFString.h>
 
 namespace JSC {
 class ExecState;
@@ -37,19 +39,18 @@ class JSObject;
 
 namespace WebCore {
 
-class JSCryptoAlgorithmBuilder final : public CryptoAlgorithmDescriptionBuilder {
+class JSCryptoAlgorithmBuilder {
+    WTF_MAKE_NONCOPYABLE(JSCryptoAlgorithmBuilder);
 public:
     JSCryptoAlgorithmBuilder(JSC::ExecState*);
     virtual ~JSCryptoAlgorithmBuilder();
 
     JSC::JSObject* result() const { return m_dictionary; }
 
-    std::unique_ptr<CryptoAlgorithmDescriptionBuilder> createEmptyClone() const override;
-
-    void add(const char*, unsigned) override;
-    void add(const char*, const String&) override;
-    void add(const char*, const Vector<uint8_t>&) override;
-    void add(const char*, const CryptoAlgorithmDescriptionBuilder&) override;
+    void add(const char*, unsigned);
+    void add(const char*, const String&);
+    void add(const char*, const Vector<uint8_t>&);
+    void add(const char*, const JSCryptoAlgorithmBuilder&);
 
 private:
     JSC::ExecState* m_exec;
@@ -59,4 +60,3 @@ private:
 } // namespace WebCore
 
 #endif // ENABLE(SUBTLE_CRYPTO)
-#endif // JSCryptoAlgorithmBuilder_h

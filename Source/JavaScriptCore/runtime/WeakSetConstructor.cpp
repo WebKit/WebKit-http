@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple, Inc. All rights reserved.
+ * Copyright (C) 2015-2016 Apple, Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,11 +28,10 @@
 
 #include "Error.h"
 #include "IteratorOperations.h"
-#include "JSCJSValueInlines.h"
-#include "JSCellInlines.h"
+#include "JSCInlines.h"
 #include "JSGlobalObject.h"
+#include "JSObjectInlines.h"
 #include "JSWeakSet.h"
-#include "StructureInlines.h"
 #include "WeakSetPrototype.h"
 
 namespace JSC {
@@ -43,72 +42,43 @@ void WeakSetConstructor::finishCreation(VM& vm, WeakSetPrototype* prototype)
 {
     Base::finishCreation(vm, prototype->classInfo()->className);
     putDirectWithoutTransition(vm, vm.propertyNames->prototype, prototype, DontEnum | DontDelete | ReadOnly);
-    putDirectWithoutTransition(vm, vm.propertyNames->length, jsNumber(0), ReadOnly | DontEnum | DontDelete);
+    putDirectWithoutTransition(vm, vm.propertyNames->length, jsNumber(0), DontEnum | ReadOnly);
 }
 
 static EncodedJSValue JSC_HOST_CALL callWeakSet(ExecState* exec)
 {
-    return JSValue::encode(throwConstructorCannotBeCalledAsFunctionTypeError(exec, "WeakSet"));
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+    return JSValue::encode(throwConstructorCannotBeCalledAsFunctionTypeError(exec, scope, "WeakSet"));
 }
 
 static EncodedJSValue JSC_HOST_CALL constructWeakSet(ExecState* exec)
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     JSGlobalObject* globalObject = asInternalFunction(exec->callee())->globalObject();
     Structure* weakSetStructure = InternalFunction::createSubclassStructure(exec, exec->newTarget(), globalObject->weakSetStructure());
-    if (exec->hadException())
-        return JSValue::encode(JSValue());
+    RETURN_IF_EXCEPTION(scope, encodedJSValue());
     JSWeakSet* weakSet = JSWeakSet::create(exec, weakSetStructure);
     JSValue iterable = exec->argument(0);
     if (iterable.isUndefinedOrNull())
         return JSValue::encode(weakSet);
 
     JSValue adderFunction = weakSet->JSObject::get(exec, exec->propertyNames().add);
-    if (exec->hadException())
-        return JSValue::encode(jsUndefined());
+    RETURN_IF_EXCEPTION(scope, encodedJSValue());
 
     CallData adderFunctionCallData;
     CallType adderFunctionCallType = getCallData(adderFunction, adderFunctionCallData);
     if (adderFunctionCallType == CallType::None)
-        return JSValue::encode(throwTypeError(exec));
+        return JSValue::encode(throwTypeError(exec, scope));
 
-    JSValue iteratorFunction = iterable.get(exec, exec->propertyNames().iteratorSymbol);
-    if (exec->hadException())
-        return JSValue::encode(jsUndefined());
-
-    CallData iteratorFunctionCallData;
-    CallType iteratorFunctionCallType = getCallData(iteratorFunction, iteratorFunctionCallData);
-    if (iteratorFunctionCallType == CallType::None)
-        return JSValue::encode(throwTypeError(exec));
-
-    ArgList iteratorFunctionArguments;
-    JSValue iterator = call(exec, iteratorFunction, iteratorFunctionCallType, iteratorFunctionCallData, iterable, iteratorFunctionArguments);
-    if (exec->hadException())
-        return JSValue::encode(jsUndefined());
-
-    if (!iterator.isObject())
-        return JSValue::encode(throwTypeError(exec));
-
-    while (true) {
-        JSValue next = iteratorStep(exec, iterator);
-        if (exec->hadException())
-            return JSValue::encode(jsUndefined());
-
-        if (next.isFalse())
-            return JSValue::encode(weakSet);
-
-        JSValue nextValue = iteratorValue(exec, next);
-        if (exec->hadException())
-            return JSValue::encode(jsUndefined());
-
+    forEachInIterable(exec, iterable, [&](VM&, ExecState* exec, JSValue nextValue) {
         MarkedArgumentBuffer arguments;
         arguments.append(nextValue);
         call(exec, adderFunction, adderFunctionCallType, adderFunctionCallData, weakSet, arguments);
-        if (exec->hadException()) {
-            iteratorClose(exec, iterator);
-            return JSValue::encode(jsUndefined());
-        }
-    }
-    RELEASE_ASSERT_NOT_REACHED();
+    });
+
     return JSValue::encode(weakSet);
 }
 

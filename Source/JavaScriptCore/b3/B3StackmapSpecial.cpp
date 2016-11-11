@@ -55,7 +55,7 @@ void StackmapSpecial::reportUsedRegisters(Inst& inst, const RegisterSet& usedReg
     value->m_usedRegisters.merge(usedRegisters);
 }
 
-const RegisterSet& StackmapSpecial::extraClobberedRegs(Inst& inst)
+RegisterSet StackmapSpecial::extraClobberedRegs(Inst& inst)
 {
     StackmapValue* value = inst.origin->as<StackmapValue>();
     ASSERT(value);
@@ -63,7 +63,7 @@ const RegisterSet& StackmapSpecial::extraClobberedRegs(Inst& inst)
     return value->lateClobbered();
 }
 
-const RegisterSet& StackmapSpecial::extraEarlyClobberedRegs(Inst& inst)
+RegisterSet StackmapSpecial::extraEarlyClobberedRegs(Inst& inst)
 {
     StackmapValue* value = inst.origin->as<StackmapValue>();
     ASSERT(value);
@@ -115,6 +115,9 @@ void StackmapSpecial::forEachArgImpl(
                 break;
             case ValueRep::LateColdAny:
                 role = Arg::LateColdUse;
+                break;
+            default:
+                RELEASE_ASSERT_NOT_REACHED();
                 break;
             }
             break;
@@ -230,6 +233,7 @@ bool StackmapSpecial::isArgValidForRep(Air::Code& code, const Air::Arg& arg, con
         // We already verified by isArgValidForValue().
         return true;
     case ValueRep::SomeRegister:
+    case ValueRep::SomeEarlyRegister:
         return arg.isTmp();
     case ValueRep::LateRegister:
     case ValueRep::Register:

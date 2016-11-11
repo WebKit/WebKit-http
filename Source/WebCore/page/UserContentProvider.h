@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef UserContentProvider_h
-#define UserContentProvider_h
+#pragma once
 
 #include "UserScriptTypes.h"
 #include "UserStyleSheetTypes.h"
@@ -92,7 +91,7 @@ public:
 #if ENABLE(CONTENT_EXTENSIONS)
     // FIXME: These don't really belong here. They should probably bundled up in the ContentExtensionsBackend
     // which should always exist.
-    ContentExtensions::BlockedStatus processContentExtensionRulesForLoad(ResourceRequest&, ResourceType, DocumentLoader& initiatingDocumentLoader);
+    ContentExtensions::BlockedStatus processContentExtensionRulesForLoad(const URL&, ResourceType, DocumentLoader& initiatingDocumentLoader);
     Vector<ContentExtensions::Action> actionsForResourceLoad(const ResourceLoadInfo&, DocumentLoader& initiatingDocumentLoader);
 #endif
 
@@ -106,5 +105,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // UserContentProvider_h

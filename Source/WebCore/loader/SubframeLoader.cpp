@@ -42,7 +42,6 @@
 #include "FrameLoader.h"
 #include "FrameLoaderClient.h"
 #include "HTMLAppletElement.h"
-#include "HTMLAudioElement.h"
 #include "HTMLFrameElement.h"
 #include "HTMLIFrameElement.h"
 #include "HTMLNames.h"
@@ -108,21 +107,7 @@ bool SubframeLoader::resourceWillUsePlugin(const String& url, const String& mime
     return shouldUsePlugin(completedURL, mimeType, false, useFallback);
 }
 
-bool SubframeLoader::isPluginContentAllowedByContentSecurityPolicy(HTMLPlugInImageElement& pluginElement, const URL& url, const String& mimeType) const
-{
-    if (!document())
-        return true;
-
-    ASSERT(document()->contentSecurityPolicy());
-    const ContentSecurityPolicy& contentSecurityPolicy = *document()->contentSecurityPolicy();
-
-    String declaredMimeType = document()->isPluginDocument() && document()->ownerElement() ?
-        document()->ownerElement()->fastGetAttribute(HTMLNames::typeAttr) : pluginElement.fastGetAttribute(HTMLNames::typeAttr);
-    bool isInUserAgentShadowTree = pluginElement.isInUserAgentShadowTree();
-    return contentSecurityPolicy.allowObjectFromSource(url, isInUserAgentShadowTree) && contentSecurityPolicy.allowPluginType(mimeType, declaredMimeType, url, isInUserAgentShadowTree);
-}
-
-bool SubframeLoader::pluginIsLoadable(HTMLPlugInImageElement& pluginElement, const URL& url, const String& mimeType)
+bool SubframeLoader::pluginIsLoadable(const URL& url, const String& mimeType)
 {
     if (MIMETypeRegistry::isJavaAppletMIMEType(mimeType)) {
         if (!m_frame.settings().isJavaEnabled())
@@ -137,12 +122,6 @@ bool SubframeLoader::pluginIsLoadable(HTMLPlugInImageElement& pluginElement, con
 
         if (!document()->securityOrigin()->canDisplay(url)) {
             FrameLoader::reportLocalLoadFailed(&m_frame, url.string());
-            return false;
-        }
-
-        if (!isPluginContentAllowedByContentSecurityPolicy(pluginElement, url, mimeType)) {
-            RenderEmbeddedObject* renderer = pluginElement.renderEmbeddedObject();
-            renderer->setPluginUnavailabilityReason(RenderEmbeddedObject::PluginBlockedByContentSecurityPolicy);
             return false;
         }
 
@@ -161,7 +140,7 @@ bool SubframeLoader::requestPlugin(HTMLPlugInImageElement& ownerElement, const U
     if ((!allowPlugins() && !MIMETypeRegistry::isApplicationPluginMIMEType(mimeType)))
         return false;
 
-    if (!pluginIsLoadable(ownerElement, url, mimeType))
+    if (!pluginIsLoadable(url, mimeType))
         return false;
 
     ASSERT(ownerElement.hasTagName(objectTag) || ownerElement.hasTagName(embedTag));
@@ -242,12 +221,6 @@ bool SubframeLoader::requestObject(HTMLPlugInImageElement& ownerElement, const S
         return success;
     }
 
-    if (!isPluginContentAllowedByContentSecurityPolicy(ownerElement, completedURL, mimeType)) {
-        RenderEmbeddedObject* renderer = ownerElement.renderEmbeddedObject();
-        renderer->setPluginUnavailabilityReason(RenderEmbeddedObject::PluginBlockedByContentSecurityPolicy);
-        return false;
-    }
-
     // If the plug-in element already contains a subframe, loadOrRedirectSubframe will re-use it. Otherwise,
     // it will create a new frame and set it as the RenderWidget's Widget, causing what was previously 
     // in the widget to be torn down.
@@ -274,9 +247,11 @@ PassRefPtr<Widget> SubframeLoader::createJavaAppletWidget(const IntSize& size, H
         }
 
         const char javaAppletMimeType[] = "application/x-java-applet";
-        bool isInUserAgentShadowTree = element.isInUserAgentShadowTree();
-        if (!element.document().contentSecurityPolicy()->allowObjectFromSource(codeBaseURL, isInUserAgentShadowTree)
-            || !element.document().contentSecurityPolicy()->allowPluginType(javaAppletMimeType, javaAppletMimeType, codeBaseURL, isInUserAgentShadowTree))
+        ASSERT(element.document().contentSecurityPolicy());
+        auto& contentSecurityPolicy = *element.document().contentSecurityPolicy();
+        // Elements in user agent show tree should load whatever the embedding document policy is.
+        if (!element.isInUserAgentShadowTree()
+            && (!contentSecurityPolicy.allowObjectFromSource(codeBaseURL) || !contentSecurityPolicy.allowPluginType(javaAppletMimeType, javaAppletMimeType, codeBaseURL)))
             return nullptr;
     }
 
@@ -401,9 +376,9 @@ bool SubframeLoader::shouldUsePlugin(const URL& url, const String& mimeType, boo
     ObjectContentType objectType = m_frame.loader().client().objectContentType(url, mimeType);
     // If an object's content can't be handled and it has no fallback, let
     // it be handled as a plugin to show the broken plugin icon.
-    useFallback = objectType == ObjectContentNone && hasFallback;
+    useFallback = objectType == ObjectContentType::None && hasFallback;
 
-    return objectType == ObjectContentNone || objectType == ObjectContentNetscapePlugin || objectType == ObjectContentOtherPlugin;
+    return objectType == ObjectContentType::None || objectType == ObjectContentType::PlugIn;
 }
 
 Document* SubframeLoader::document() const
@@ -445,7 +420,7 @@ bool SubframeLoader::loadPlugin(HTMLPlugInImageElement& pluginElement, const URL
     }
 
     pluginElement.subframeLoaderDidCreatePlugIn(*widget);
-    renderer->setWidget(widget);
+    renderer->setWidget(WTFMove(widget));
     m_containsPlugins = true;
     return true;
 }

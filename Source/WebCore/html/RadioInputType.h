@@ -29,8 +29,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef RadioInputType_h
-#define RadioInputType_h
+#pragma once
 
 #include "BaseCheckableInputType.h"
 
@@ -44,10 +43,10 @@ private:
     const AtomicString& formControlType() const override;
     bool valueMissing(const String&) const override;
     String valueMissingText() const override;
-    void handleClickEvent(MouseEvent*) override;
-    void handleKeydownEvent(KeyboardEvent*) override;
-    void handleKeyupEvent(KeyboardEvent*) override;
-    bool isKeyboardFocusable(KeyboardEvent*) const override;
+    void handleClickEvent(MouseEvent&) override;
+    void handleKeydownEvent(KeyboardEvent&) override;
+    void handleKeyupEvent(KeyboardEvent&) override;
+    bool isKeyboardFocusable(KeyboardEvent&) const override;
     bool shouldSendChangeEventAfterCheckedChanged() override;
     void willDispatchClick(InputElementClickState&) override;
     void didDispatchClick(Event*, const InputElementClickState&) override;
@@ -56,5 +55,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // RadioInputType_h

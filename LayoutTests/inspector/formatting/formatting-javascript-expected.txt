@@ -1,4 +1,4 @@
-Test JavaScript formatting tests.
+Test JavaScript formatting.
 
 
 == Running test suite: EsprimaFormatter.JavaScript
@@ -78,5 +78,8 @@ PASS
 PASS
 
 -- Running test case: EsprimaFormatter.JavaScript.with-statement.js
+PASS
+
+-- Running test case: EsprimaFormatter.JavaScript.modules.js
 PASS
 

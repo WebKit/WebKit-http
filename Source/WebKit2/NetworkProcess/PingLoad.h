@@ -26,18 +26,20 @@
 #ifndef PingLoad_h
 #define PingLoad_h
 
+#include "AuthenticationManager.h"
 #include "NetworkDataTask.h"
 #include "SessionTracker.h"
 
 namespace WebKit {
 
-class PingLoad : public NetworkDataTaskClient {
+class PingLoad final : private NetworkDataTaskClient {
 public:
     PingLoad(const NetworkResourceLoadParameters& parameters)
         : m_timeoutTimer(*this, &PingLoad::timeoutTimerFired)
+        , m_shouldFollowRedirects(parameters.shouldFollowRedirects)
     {
         if (auto* networkSession = SessionTracker::networkSession(parameters.sessionID)) {
-            m_task = NetworkDataTask::create(*networkSession, *this, parameters.request, parameters.allowStoredCredentials, parameters.contentSniffingPolicy, parameters.shouldClearReferrerOnHTTPSToHTTPRedirect);
+            m_task = NetworkDataTask::create(*networkSession, *this, parameters);
             m_task->resume();
         } else
             ASSERT_NOT_REACHED();
@@ -48,27 +50,25 @@ public:
     }
     
 private:
-    void willPerformHTTPRedirection(WebCore::ResourceResponse&&, WebCore::ResourceRequest&&, RedirectCompletionHandler&& completionHandler) override
+    void willPerformHTTPRedirection(WebCore::ResourceResponse&&, WebCore::ResourceRequest&& request, RedirectCompletionHandler&& completionHandler) final
     {
-        completionHandler({ });
-        delete this;
+        completionHandler(m_shouldFollowRedirects ? request : WebCore::ResourceRequest());
     }
-    void didReceiveChallenge(const WebCore::AuthenticationChallenge&, ChallengeCompletionHandler&& completionHandler) override
+    void didReceiveChallenge(const WebCore::AuthenticationChallenge&, ChallengeCompletionHandler&& completionHandler) final
     {
         completionHandler(AuthenticationChallengeDisposition::Cancel, { });
         delete this;
     }
-    void didReceiveResponseNetworkSession(WebCore::ResourceResponse&&, ResponseCompletionHandler&& completionHandler) override
+    void didReceiveResponseNetworkSession(WebCore::ResourceResponse&&, ResponseCompletionHandler&& completionHandler) final
     {
         completionHandler(WebCore::PolicyAction::PolicyIgnore);
         delete this;
     }
-    void didReceiveData(Ref<WebCore::SharedBuffer>&&)  override { ASSERT_NOT_REACHED(); }
-    void didCompleteWithError(const WebCore::ResourceError&) override { delete this; }
-    void didBecomeDownload() override { ASSERT_NOT_REACHED(); }
-    void didSendData(uint64_t totalBytesSent, uint64_t totalBytesExpectedToSend) override { }
-    void wasBlocked() override { delete this; }
-    void cannotShowURL() override { delete this; }
+    void didReceiveData(Ref<WebCore::SharedBuffer>&&) final { ASSERT_NOT_REACHED(); }
+    void didCompleteWithError(const WebCore::ResourceError&) final { delete this; }
+    void didSendData(uint64_t totalBytesSent, uint64_t totalBytesExpectedToSend) final { }
+    void wasBlocked() final { delete this; }
+    void cannotShowURL() final { delete this; }
 
     void timeoutTimerFired() { delete this; }
     
@@ -83,6 +83,7 @@ private:
     
     RefPtr<NetworkDataTask> m_task;
     WebCore::Timer m_timeoutTimer;
+    bool m_shouldFollowRedirects;
 };
 
 }

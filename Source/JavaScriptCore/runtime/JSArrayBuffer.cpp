@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,7 +27,8 @@
 #include "JSArrayBuffer.h"
 
 #include "JSCInlines.h"
-#include "Reject.h"
+#include "TypeError.h"
+#include "TypedArrayController.h"
 
 namespace JSC {
 
@@ -43,6 +44,7 @@ JSArrayBuffer::JSArrayBuffer(VM& vm, Structure* structure, PassRefPtr<ArrayBuffe
 void JSArrayBuffer::finishCreation(VM& vm, JSGlobalObject* globalObject)
 {
     Base::finishCreation(vm);
+    // This probably causes GCs in the various VMs to overcount the impact of the array buffer.
     vm.heap.addReference(this, m_impl);
     vm.m_typedArrayController->registerWrapper(globalObject, m_impl, this);
 }
@@ -64,6 +66,16 @@ Structure* JSArrayBuffer::createStructure(
     return Structure::create(
         vm, globalObject, prototype, TypeInfo(ObjectType, StructureFlags), info(),
         NonArray);
+}
+
+bool JSArrayBuffer::isShared() const
+{
+    return m_impl->isShared();
+}
+
+ArrayBufferSharingMode JSArrayBuffer::sharingMode() const
+{
+    return m_impl->sharingMode();
 }
 
 size_t JSArrayBuffer::estimatedSize(JSCell* cell)
@@ -90,13 +102,15 @@ bool JSArrayBuffer::put(
     JSCell* cell, ExecState* exec, PropertyName propertyName, JSValue value,
     PutPropertySlot& slot)
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     JSArrayBuffer* thisObject = jsCast<JSArrayBuffer*>(cell);
 
     if (UNLIKELY(isThisValueAltered(slot, thisObject)))
         return ordinarySetSlow(exec, thisObject, propertyName, value, slot.thisValue(), slot.isStrictMode());
     
-    if (propertyName == exec->propertyNames().byteLength)
-        return reject(exec, slot.isStrictMode(), "Attempting to write to a read-only array buffer property.");
+    if (propertyName == vm.propertyNames->byteLength)
+        return typeError(exec, scope, slot.isStrictMode(), ASCIILiteral("Attempting to write to a read-only array buffer property."));
     
     return Base::put(thisObject, exec, propertyName, value, slot);
 }
@@ -105,10 +119,12 @@ bool JSArrayBuffer::defineOwnProperty(
     JSObject* object, ExecState* exec, PropertyName propertyName,
     const PropertyDescriptor& descriptor, bool shouldThrow)
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     JSArrayBuffer* thisObject = jsCast<JSArrayBuffer*>(object);
     
-    if (propertyName == exec->propertyNames().byteLength)
-        return reject(exec, shouldThrow, "Attempting to define read-only array buffer property.");
+    if (propertyName == vm.propertyNames->byteLength)
+        return typeError(exec, scope, shouldThrow, ASCIILiteral("Attempting to define read-only array buffer property."));
     
     return Base::defineOwnProperty(thisObject, exec, propertyName, descriptor, shouldThrow);
 }

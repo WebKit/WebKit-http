@@ -20,8 +20,7 @@
  *
  */
 
-#ifndef HTMLBaseElement_h
-#define HTMLBaseElement_h
+#pragma once
 
 #include "HTMLElement.h"
 
@@ -31,19 +30,17 @@ class HTMLBaseElement final : public HTMLElement {
 public:
     static Ref<HTMLBaseElement> create(const QualifiedName&, Document&);
 
-    URL href() const;
-    void setHref(const AtomicString&);
+    WEBCORE_EXPORT URL href() const;
+    WEBCORE_EXPORT void setHref(const AtomicString&);
 
 private:
     HTMLBaseElement(const QualifiedName&, Document&);
 
-    String target() const override;
-    bool isURLAttribute(const Attribute&) const override;
-    void parseAttribute(const QualifiedName&, const AtomicString&) override;
-    InsertionNotificationRequest insertedInto(ContainerNode&) override;
-    void removedFrom(ContainerNode&) override;
+    String target() const final;
+    bool isURLAttribute(const Attribute&) const final;
+    void parseAttribute(const QualifiedName&, const AtomicString&) final;
+    InsertionNotificationRequest insertedInto(ContainerNode&) final;
+    void removedFrom(ContainerNode&) final;
 };
 
 } // namespace
-
-#endif

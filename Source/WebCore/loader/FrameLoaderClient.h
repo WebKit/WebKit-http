@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011, 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2006-2016 Apple Inc. All rights reserved.
  * Copyright (C) 2012 Google Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -27,8 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef FrameLoaderClient_h
-#define FrameLoaderClient_h
+#pragma once
 
 #include "FrameLoaderTypes.h"
 #include "LayoutMilestones.h"
@@ -54,6 +53,7 @@ typedef void* RemoteAXObjectRef;
 #if PLATFORM(COCOA)
 OBJC_CLASS NSArray;
 OBJC_CLASS NSCachedURLResponse;
+OBJC_CLASS NSDictionary;
 OBJC_CLASS NSView;
 #endif
 
@@ -164,7 +164,7 @@ namespace WebCore {
         virtual void dispatchDidReceiveIcon() = 0;
         virtual void dispatchDidStartProvisionalLoad() = 0;
         virtual void dispatchDidReceiveTitle(const StringWithDirection&) = 0;
-        virtual void dispatchDidCommitLoad() = 0;
+        virtual void dispatchDidCommitLoad(Optional<HasInsecureContent>) = 0;
         virtual void dispatchDidFailProvisionalLoad(const ResourceError&) = 0;
         virtual void dispatchDidFailLoad(const ResourceError&) = 0;
         virtual void dispatchDidFinishDocumentLoad() = 0;
@@ -174,7 +174,7 @@ namespace WebCore {
 #endif
 
         virtual void dispatchDidLayout() { }
-        virtual void dispatchDidLayout(LayoutMilestones) { }
+        virtual void dispatchDidReachLayoutMilestone(LayoutMilestones) { }
 
         virtual Frame* dispatchCreatePage(const NavigationAction&) = 0;
         virtual void dispatchShow() = 0;
@@ -231,6 +231,9 @@ namespace WebCore {
         virtual ResourceError blockedByContentBlockerError(const ResourceRequest&) = 0;
         virtual ResourceError cannotShowURLError(const ResourceRequest&) = 0;
         virtual ResourceError interruptedForPolicyChangeError(const ResourceRequest&) = 0;
+#if ENABLE(CONTENT_FILTERING)
+        virtual ResourceError blockedByContentFilterError(const ResourceRequest&) = 0;
+#endif
 
         virtual ResourceError cannotShowMIMETypeError(const ResourceResponse&) = 0;
         virtual ResourceError fileDoesNotExistError(const ResourceResponse&) = 0;
@@ -292,8 +295,9 @@ namespace WebCore {
         // Allow an accessibility object to retrieve a Frame parent if there's no PlatformWidget.
         virtual RemoteAXObjectRef accessibilityRemoteObject() = 0;
         virtual NSCachedURLResponse* willCacheResponse(DocumentLoader*, unsigned long identifier, NSCachedURLResponse*) const = 0;
+        virtual NSDictionary *dataDetectionContext() { return nullptr; }
 #endif
-#if PLATFORM(WIN) && USE(CFNETWORK)
+#if PLATFORM(WIN) && USE(CFURLCONNECTION)
         // FIXME: Windows should use willCacheResponse - <https://bugs.webkit.org/show_bug.cgi?id=57257>.
         virtual bool shouldCacheResponse(DocumentLoader*, unsigned long identifier, const ResourceResponse&, const unsigned char* data, unsigned long long length) = 0;
 #endif
@@ -353,5 +357,3 @@ namespace WebCore {
     };
 
 } // namespace WebCore
-
-#endif // FrameLoaderClient_h

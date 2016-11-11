@@ -26,8 +26,9 @@
 #include "NamedNodeMap.h"
 
 #include "Attr.h"
-#include "Element.h"
 #include "ExceptionCode.h"
+#include "HTMLDocument.h"
+#include "HTMLElement.h"
 
 namespace WebCore {
 
@@ -43,62 +44,60 @@ void NamedNodeMap::deref()
     m_element.deref();
 }
 
-RefPtr<Node> NamedNodeMap::getNamedItem(const AtomicString& name) const
+RefPtr<Attr> NamedNodeMap::getNamedItem(const AtomicString& name) const
 {
     return m_element.getAttributeNode(name);
 }
 
-RefPtr<Node> NamedNodeMap::getNamedItemNS(const AtomicString& namespaceURI, const AtomicString& localName) const
+RefPtr<Attr> NamedNodeMap::getNamedItemNS(const AtomicString& namespaceURI, const AtomicString& localName) const
 {
     return m_element.getAttributeNodeNS(namespaceURI, localName);
 }
 
-RefPtr<Node> NamedNodeMap::removeNamedItem(const AtomicString& name, ExceptionCode& ec)
+ExceptionOr<Ref<Attr>> NamedNodeMap::removeNamedItem(const AtomicString& name)
 {
-    unsigned index = m_element.hasAttributes() ? m_element.findAttributeIndexByName(name, shouldIgnoreAttributeCase(m_element)) : ElementData::attributeNotFound;
-    if (index == ElementData::attributeNotFound) {
-        ec = NOT_FOUND_ERR;
-        return nullptr;
-    }
+    if (!m_element.hasAttributes())
+        return Exception { NOT_FOUND_ERR };
+    auto index = m_element.findAttributeIndexByName(name, shouldIgnoreAttributeCase(m_element));
+    if (index == ElementData::attributeNotFound)
+        return Exception { NOT_FOUND_ERR };
     return m_element.detachAttribute(index);
 }
 
-Vector<AtomicString> NamedNodeMap::supportedPropertyNames()
+Vector<String> NamedNodeMap::supportedPropertyNames() const
 {
-    // FIXME: Should be implemented.
-    return Vector<AtomicString>();
+    Vector<String> names = m_element.getAttributeNames();
+    if (is<HTMLElement>(m_element) && is<HTMLDocument>(m_element.document())) {
+        names.removeAllMatching([](String& name) {
+            for (auto character : StringView { name }.codeUnits()) {
+                if (isASCIIUpper(character))
+                    return true;
+            }
+            return false;
+        });
+    }
+    return names;
 }
 
-RefPtr<Node> NamedNodeMap::removeNamedItemNS(const AtomicString& namespaceURI, const AtomicString& localName, ExceptionCode& ec)
+ExceptionOr<Ref<Attr>> NamedNodeMap::removeNamedItemNS(const AtomicString& namespaceURI, const AtomicString& localName)
 {
-    unsigned index = m_element.hasAttributes() ? m_element.findAttributeIndexByName(QualifiedName(nullAtom, localName, namespaceURI)) : ElementData::attributeNotFound;
-    if (index == ElementData::attributeNotFound) {
-        ec = NOT_FOUND_ERR;
-        return nullptr;
-    }
+    if (!m_element.hasAttributes())
+        return Exception { NOT_FOUND_ERR };
+    auto index = m_element.findAttributeIndexByName(QualifiedName { nullAtom, localName, namespaceURI });
+    if (index == ElementData::attributeNotFound)
+        return Exception { NOT_FOUND_ERR };
     return m_element.detachAttribute(index);
 }
 
-RefPtr<Node> NamedNodeMap::setNamedItem(Node& node, ExceptionCode& ec)
+ExceptionOr<RefPtr<Attr>> NamedNodeMap::setNamedItem(Attr& attr)
 {
-    // Not mentioned in spec: throw a HIERARCHY_REQUEST_ERROR if the user passes in a non-attribute node
-    if (!is<Attr>(node)) {
-        ec = HIERARCHY_REQUEST_ERR;
-        return nullptr;
-    }
-
-    return m_element.setAttributeNode(downcast<Attr>(node), ec);
+    return m_element.setAttributeNode(attr);
 }
 
-RefPtr<Node> NamedNodeMap::setNamedItemNS(Node& node, ExceptionCode& ec)
-{
-    return setNamedItem(node, ec);
-}
-
-RefPtr<Node> NamedNodeMap::item(unsigned index) const
+RefPtr<Attr> NamedNodeMap::item(unsigned index) const
 {
     if (index >= length())
-        return 0;
+        return nullptr;
     return m_element.ensureAttr(m_element.attributeAt(index).name());
 }
 

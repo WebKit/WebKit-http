@@ -21,22 +21,9 @@
     JSGenerateToNativeObject,
     JSGenerateToJSObject
 ] interface DocumentType : Node {
-
-    // DOM Level 1
-
     readonly attribute DOMString name;
-
-#if !defined(LANGUAGE_JAVASCRIPT) || !LANGUAGE_JAVASCRIPT
-    [ImplementedAs=entitiesForBindings] readonly attribute NamedNodeMap entities;
-    [ImplementedAs=notationsForBindings] readonly attribute NamedNodeMap notations;
-#endif
-
-    // DOM Level 2
-
     readonly attribute DOMString publicId;
     readonly attribute DOMString systemId;
-    readonly attribute DOMString? internalSubset;
 };
 
 DocumentType implements ChildNode;
-

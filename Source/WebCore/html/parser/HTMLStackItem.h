@@ -24,8 +24,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef HTMLStackItem_h
-#define HTMLStackItem_h
+#pragma once
 
 #include "AtomicHTMLToken.h"
 #include "DocumentFragment.h"
@@ -250,7 +249,6 @@ inline bool isSpecialNode(const HTMLStackItem& item)
             || tagName == HTMLNames::iframeTag
             || tagName == HTMLNames::imgTag
             || tagName == HTMLNames::inputTag
-            || tagName == HTMLNames::isindexTag
             || tagName == HTMLNames::liTag
             || tagName == HTMLNames::linkTag
             || tagName == HTMLNames::listingTag
@@ -304,5 +302,3 @@ inline bool isSpecialNode(const HTMLStackItem& item)
 }
 
 } // namespace WebCore
-
-#endif // HTMLStackItem_h

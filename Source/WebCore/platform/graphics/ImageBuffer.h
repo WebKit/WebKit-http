@@ -35,6 +35,7 @@
 #include "IntSize.h"
 #include "ImageBufferData.h"
 #include "PlatformLayer.h"
+#include <memory>
 #include <runtime/Uint8ClampedArray.h>
 #include <wtf/Forward.h>
 #include <wtf/RefPtr.h>
@@ -70,18 +71,15 @@ class ImageBuffer {
     friend class IOSurface;
 public:
     // Will return a null pointer on allocation failure.
-    static std::unique_ptr<ImageBuffer> create(const FloatSize& size, RenderingMode renderingMode, float resolutionScale = 1, ColorSpace colorSpace = ColorSpaceSRGB)
-    {
-        bool success = false;
-        std::unique_ptr<ImageBuffer> buffer(new ImageBuffer(size, resolutionScale, colorSpace, renderingMode, success));
-        if (!success)
-            return nullptr;
-        return buffer;
-    }
+    WEBCORE_EXPORT static std::unique_ptr<ImageBuffer> create(const FloatSize&, RenderingMode, float resolutionScale = 1, ColorSpace = ColorSpaceSRGB);
+#if USE(DIRECT2D)
+    WEBCORE_EXPORT static std::unique_ptr<ImageBuffer> create(const FloatSize&, RenderingMode, const GraphicsContext*, float resolutionScale = 1, ColorSpace = ColorSpaceSRGB);
+#endif
 
     // Create an image buffer compatible with the context, with suitable resolution for drawing into the buffer and then into this context.
-    static std::unique_ptr<ImageBuffer> createCompatibleBuffer(const FloatSize&, const GraphicsContext&, bool hasAlpha = true);
-    static std::unique_ptr<ImageBuffer> createCompatibleBuffer(const FloatSize&, float resolutionScale, ColorSpace, const GraphicsContext&, bool hasAlpha);
+    static std::unique_ptr<ImageBuffer> createCompatibleBuffer(const FloatSize&, const GraphicsContext&);
+    static std::unique_ptr<ImageBuffer> createCompatibleBuffer(const FloatSize&, ColorSpace, const GraphicsContext&);
+    static std::unique_ptr<ImageBuffer> createCompatibleBuffer(const FloatSize&, float resolutionScale, ColorSpace, const GraphicsContext&);
 
     static IntSize compatibleBufferSize(const FloatSize&, const GraphicsContext&);
     bool isCompatibleWithContext(const GraphicsContext&) const;
@@ -113,7 +111,7 @@ public:
     
     void convertToLuminanceMask();
     
-    String toDataURL(const String& mimeType, const double* quality = 0, CoordinateSystem = LogicalCoordinateSystem) const;
+    String toDataURL(const String& mimeType, Optional<double> quality = Nullopt, CoordinateSystem = LogicalCoordinateSystem) const;
 #if !USE(CG)
     AffineTransform baseTransform() const { return AffineTransform(); }
     void transformColorSpace(ColorSpace srcColorSpace, ColorSpace dstColorSpace);
@@ -148,10 +146,12 @@ private:
     RetainPtr<CGImageRef> copyNativeImage(BackingStoreCopy = CopyBackingStore) const;
     static RetainPtr<CGImageRef> sinkIntoNativeImage(std::unique_ptr<ImageBuffer>);
     void flushContext() const;
+#elif USE(DIRECT2D)
+    void flushContext() const;
 #endif
     
     void draw(GraphicsContext&, const FloatRect& destRect, const FloatRect& srcRect = FloatRect(0, 0, -1, -1), CompositeOperator = CompositeSourceOver, BlendMode = BlendModeNormal);
-    void drawPattern(GraphicsContext&, const FloatRect& srcRect, const AffineTransform& patternTransform, const FloatPoint& phase, const FloatSize& spacing, CompositeOperator, const FloatRect& destRect, BlendMode = BlendModeNormal);
+    void drawPattern(GraphicsContext&, const FloatRect& destRect, const FloatRect& srcRect, const AffineTransform& patternTransform, const FloatPoint& phase, const FloatSize& spacing, CompositeOperator, BlendMode = BlendModeNormal);
 
     static void drawConsuming(std::unique_ptr<ImageBuffer>, GraphicsContext&, const FloatRect& destRect, const FloatRect& srcRect = FloatRect(0, 0, -1, -1), CompositeOperator = CompositeSourceOver, BlendMode = BlendModeNormal);
 
@@ -172,10 +172,15 @@ private:
     // This constructor will place its success into the given out-variable
     // so that create() knows when it should return failure.
     WEBCORE_EXPORT ImageBuffer(const FloatSize&, float resolutionScale, ColorSpace, RenderingMode, bool& success);
+#if USE(CG)
+    ImageBuffer(const FloatSize&, float resolutionScale, CGColorSpaceRef, RenderingMode, bool& success);
+#elif USE(DIRECT2D)
+    ImageBuffer(const FloatSize&, float resolutionScale, ColorSpace, RenderingMode, const GraphicsContext*, bool& success);
+#endif
 };
 
 #if USE(CG)
-String ImageDataToDataURL(const ImageData&, const String& mimeType, const double* quality);
+String dataURL(const ImageData&, const String& mimeType, Optional<double> quality);
 #endif
 
 } // namespace WebCore

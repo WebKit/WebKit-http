@@ -13,6 +13,8 @@ set(MiniBrowser_SOURCES
     ${MINIBROWSER_DIR}/BrowserSearchBar.h
     ${MINIBROWSER_DIR}/BrowserSettingsDialog.c
     ${MINIBROWSER_DIR}/BrowserSettingsDialog.h
+    ${MINIBROWSER_DIR}/BrowserTab.c
+    ${MINIBROWSER_DIR}/BrowserTab.h
     ${MINIBROWSER_DIR}/BrowserWindow.c
     ${MINIBROWSER_DIR}/BrowserWindow.h
     ${MINIBROWSER_DIR}/main.c
@@ -60,4 +62,4 @@ include_directories(SYSTEM ${MiniBrowser_SYSTEM_INCLUDE_DIRECTORIES})
 add_executable(MiniBrowser ${MiniBrowser_SOURCES})
 target_link_libraries(MiniBrowser ${MiniBrowser_LIBRARIES})
 
-install(TARGETS MiniBrowser DESTINATION "${EXEC_INSTALL_DIR}")
+install(TARGETS MiniBrowser DESTINATION "${LIBEXEC_INSTALL_DIR}")

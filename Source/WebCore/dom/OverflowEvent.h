@@ -23,18 +23,11 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef OverflowEvent_h
-#define OverflowEvent_h
+#pragma once
 
 #include "Event.h"
 
 namespace WebCore {
-
-struct OverflowEventInit : public EventInit {
-    unsigned short orient { 0 };
-    bool horizontalOverflow { false };
-    bool verticalOverflow { false };
-};
 
 class OverflowEvent final : public Event {
 public:
@@ -48,16 +41,24 @@ public:
     {
         return adoptRef(*new OverflowEvent(horizontalOverflowChanged, horizontalOverflow, verticalOverflowChanged, verticalOverflow));
     }
+
     static Ref<OverflowEvent> createForBindings()
     {
         return adoptRef(*new OverflowEvent);
     }
-    static Ref<OverflowEvent> createForBindings(const AtomicString& type, const OverflowEventInit& initializer)
+
+    struct Init : EventInit {
+        unsigned short orient { 0 };
+        bool horizontalOverflow { false };
+        bool verticalOverflow { false };
+    };
+
+    static Ref<OverflowEvent> create(const AtomicString& type, const Init& initializer, IsTrusted isTrusted = IsTrusted::No)
     {
-        return adoptRef(*new OverflowEvent(type, initializer));
+        return adoptRef(*new OverflowEvent(type, initializer, isTrusted));
     }
 
-    void initOverflowEvent(unsigned short orient, bool horizontalOverflow, bool verticalOverflow);
+    WEBCORE_EXPORT void initOverflowEvent(unsigned short orient, bool horizontalOverflow, bool verticalOverflow);
 
     unsigned short orient() const { return m_orient; }
     bool horizontalOverflow() const { return m_horizontalOverflow; }
@@ -68,13 +69,11 @@ public:
 private:
     OverflowEvent();
     OverflowEvent(bool horizontalOverflowChanged, bool horizontalOverflow, bool verticalOverflowChanged, bool verticalOverflow);
-    OverflowEvent(const AtomicString&, const OverflowEventInit&);
+    OverflowEvent(const AtomicString&, const Init&, IsTrusted);
 
     unsigned short m_orient;
     bool m_horizontalOverflow;
     bool m_verticalOverflow;
 };
 
-}
-
-#endif // OverflowEvent_h
+} // namespace WebCore

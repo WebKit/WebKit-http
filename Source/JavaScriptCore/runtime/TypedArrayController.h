@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef TypedArrayController_h
-#define TypedArrayController_h
+#pragma once
 
 #include <wtf/RefCounted.h>
 
@@ -42,9 +41,7 @@ public:
     
     virtual JSArrayBuffer* toJS(ExecState*, JSGlobalObject*, ArrayBuffer*) = 0;
     virtual void registerWrapper(JSGlobalObject*, ArrayBuffer*, JSArrayBuffer*) = 0;
+    virtual bool isAtomicsWaitAllowedOnCurrentThread() = 0;
 };
 
 } // namespace JSC
-
-#endif // TypedArrayController_h
-

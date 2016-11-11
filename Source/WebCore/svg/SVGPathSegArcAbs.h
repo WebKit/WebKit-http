@@ -26,7 +26,7 @@
 
 namespace WebCore {
 
-class SVGPathSegArcAbs : public SVGPathSegArc {
+class SVGPathSegArcAbs final : public SVGPathSegArc {
 public:
     static Ref<SVGPathSegArcAbs> create(const SVGPathElement& element, SVGPathSegRole role, float x, float y, float r1, float r2, float angle, bool largeArcFlag, bool sweepFlag)
     {
@@ -39,8 +39,8 @@ private:
     {
     }
 
-    unsigned short pathSegType() const override { return PATHSEG_ARC_ABS; }
-    String pathSegTypeAsLetter() const override { return "A"; }
+    unsigned short pathSegType() const final { return PATHSEG_ARC_ABS; }
+    String pathSegTypeAsLetter() const final { return "A"; }
 };
 
 } // namespace WebCore

@@ -1,7 +1,7 @@
 /*
  *  Copyright (C) 1999-2001 Harri Porten (porten@kde.org)
  *  Copyright (C) 2001 Peter Kelly (pmk@post.com)
- *  Copyright (C) 2003, 2007, 2008, 2012 Apple Inc. All rights reserved.
+ *  Copyright (C) 2003, 2007-2008, 2012, 2016 Apple Inc. All rights reserved.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Library General Public
@@ -29,11 +29,10 @@
 #include "Error.h"
 #include "ExceptionHelpers.h"
 #include "GetterSetter.h"
-#include "JSCJSValueInlines.h"
+#include "JSCInlines.h"
 #include "JSFunction.h"
 #include "JSGlobalObject.h"
 #include "NumberObject.h"
-#include "StructureInlines.h"
 #include <wtf/MathExtras.h>
 #include <wtf/StringExtras.h>
 
@@ -77,8 +76,25 @@ double JSValue::toNumberSlowCase(ExecState* exec) const
     return isUndefined() ? PNaN : 0; // null and false both convert to 0.
 }
 
+Optional<double> JSValue::toNumberFromPrimitive() const
+{
+    if (isEmpty())
+        return Nullopt;
+    if (isNumber())
+        return asNumber();
+    if (isBoolean())
+        return asBoolean();
+    if (isUndefined())
+        return PNaN;
+    if (isNull())
+        return 0;
+    return Nullopt;
+}
+
 JSObject* JSValue::toObjectSlowCase(ExecState* exec, JSGlobalObject* globalObject) const
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     ASSERT(!isCell());
 
     if (isInt32() || isDouble())
@@ -87,8 +103,7 @@ JSObject* JSValue::toObjectSlowCase(ExecState* exec, JSGlobalObject* globalObjec
         return constructBooleanFromImmediateBoolean(exec, globalObject, asValue());
 
     ASSERT(isUndefinedOrNull());
-    VM& vm = exec->vm();
-    vm.throwException(exec, createNotAnObjectError(exec, *this));
+    throwException(exec, scope, createNotAnObjectError(exec, *this));
     return nullptr;
 }
 
@@ -109,6 +124,9 @@ JSValue JSValue::toThisSlowCase(ExecState* exec, ECMAMode ecmaMode) const
 
 JSObject* JSValue::synthesizePrototype(ExecState* exec) const
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     if (isCell()) {
         if (isString())
             return exec->lexicalGlobalObject()->stringPrototype();
@@ -122,8 +140,7 @@ JSObject* JSValue::synthesizePrototype(ExecState* exec) const
         return exec->lexicalGlobalObject()->booleanPrototype();
 
     ASSERT(isUndefinedOrNull());
-    VM& vm = exec->vm();
-    vm.throwException(exec, createNotAnObjectError(exec, *this));
+    throwException(exec, scope, createNotAnObjectError(exec, *this));
     return nullptr;
 }
 
@@ -131,6 +148,7 @@ JSObject* JSValue::synthesizePrototype(ExecState* exec) const
 bool JSValue::putToPrimitive(ExecState* exec, PropertyName propertyName, JSValue value, PutPropertySlot& slot)
 {
     VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
 
     if (Optional<uint32_t> index = parseIndex(propertyName))
         return putToPrimitiveByIndex(exec, index.value(), value, slot.isStrictMode());
@@ -140,14 +158,11 @@ bool JSValue::putToPrimitive(ExecState* exec, PropertyName propertyName, JSValue
     if (UNLIKELY(!obj))
         return false;
     JSValue prototype;
-    if (propertyName != exec->propertyNames().underscoreProto) {
+    if (propertyName != vm.propertyNames->underscoreProto) {
         for (; !obj->structure()->hasReadOnlyOrGetterSetterPropertiesExcludingProto(); obj = asObject(prototype)) {
             prototype = obj->getPrototypeDirect();
-            if (prototype.isNull()) {
-                if (slot.isStrictMode())
-                    throwTypeError(exec, StrictModeReadonlyPropertyWriteError);
-                return false;
-            }
+            if (prototype.isNull())
+                return typeError(exec, scope, slot.isStrictMode(), ASCIILiteral(ReadonlyPropertyWriteError));
         }
     }
 
@@ -155,11 +170,8 @@ bool JSValue::putToPrimitive(ExecState* exec, PropertyName propertyName, JSValue
         unsigned attributes;
         PropertyOffset offset = obj->structure()->get(vm, propertyName, attributes);
         if (offset != invalidOffset) {
-            if (attributes & ReadOnly) {
-                if (slot.isStrictMode())
-                    exec->vm().throwException(exec, createTypeError(exec, StrictModeReadonlyPropertyWriteError));
-                return false;
-            }
+            if (attributes & ReadOnly)
+                return typeError(exec, scope, slot.isStrictMode(), ASCIILiteral(ReadonlyPropertyWriteError));
 
             JSValue gs = obj->getDirect(offset);
             if (gs.isGetterSetter())
@@ -174,19 +186,19 @@ bool JSValue::putToPrimitive(ExecState* exec, PropertyName propertyName, JSValue
         }
 
         prototype = obj->getPrototype(vm, exec);
-        if (vm.exception())
-            return false;
+        RETURN_IF_EXCEPTION(scope, false);
         if (prototype.isNull())
             break;
     }
     
-    if (slot.isStrictMode())
-        throwTypeError(exec, StrictModeReadonlyPropertyWriteError);
-    return false;
+    return typeError(exec, scope, slot.isStrictMode(), ASCIILiteral(ReadonlyPropertyWriteError));
 }
 
 bool JSValue::putToPrimitiveByIndex(ExecState* exec, unsigned propertyName, JSValue value, bool shouldThrow)
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     if (propertyName > MAX_ARRAY_INDEX) {
         PutPropertySlot slot(*this, shouldThrow);
         return putToPrimitive(exec, Identifier::from(exec, propertyName), value, slot);
@@ -194,16 +206,14 @@ bool JSValue::putToPrimitiveByIndex(ExecState* exec, unsigned propertyName, JSVa
     
     JSObject* prototype = synthesizePrototype(exec);
     if (UNLIKELY(!prototype)) {
-        ASSERT(exec->hadException());
+        ASSERT(scope.exception());
         return false;
     }
     bool putResult = false;
     if (prototype->attemptToInterceptPutByIndexOnHoleForPrototype(exec, *this, propertyName, value, shouldThrow, putResult))
         return putResult;
     
-    if (shouldThrow)
-        throwTypeError(exec, StrictModeReadonlyPropertyWriteError);
-    return false;
+    return typeError(exec, scope, shouldThrow, ASCIILiteral(ReadonlyPropertyWriteError));
 }
 
 void JSValue::dump(PrintStream& out) const
@@ -252,9 +262,15 @@ void JSValue::dumpInContextAssumingStructure(
             } else
                 out.print(" (unresolved)");
             out.print(": ", impl);
-        } else if (structure->classInfo()->isSubClassOf(Structure::info()))
+        } else if (structure->classInfo()->isSubClassOf(Symbol::info()))
+            out.print("Symbol: ", RawPointer(asCell()));
+        else if (structure->classInfo()->isSubClassOf(Structure::info()))
             out.print("Structure: ", inContext(*jsCast<Structure*>(asCell()), context));
-        else {
+        else if (structure->classInfo()->isSubClassOf(JSObject::info())) {
+            out.print("Object: ", RawPointer(asCell()));
+            out.print(" with butterfly ", RawPointer(asObject(asCell())->butterfly()));
+            out.print(" (", inContext(*structure, context), ")");
+        } else {
             out.print("Cell: ", RawPointer(asCell()));
             out.print(" (", inContext(*structure, context), ")");
         }
@@ -321,13 +337,15 @@ bool JSValue::isValidCallee()
 
 JSString* JSValue::toStringSlowCase(ExecState* exec, bool returnEmptyStringOnError) const
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     auto errorValue = [&] () -> JSString* {
         if (returnEmptyStringOnError)
             return jsEmptyString(exec);
         return nullptr;
     };
     
-    VM& vm = exec->vm();
     ASSERT(!isString());
     if (isInt32()) {
         auto integer = asInt32();
@@ -346,18 +364,16 @@ JSString* JSValue::toStringSlowCase(ExecState* exec, bool returnEmptyStringOnErr
     if (isUndefined())
         return vm.smallStrings.undefinedString();
     if (isSymbol()) {
-        throwTypeError(exec, "Cannot convert a symbol to a string");
+        throwTypeError(exec, scope, ASCIILiteral("Cannot convert a symbol to a string"));
         return errorValue();
     }
 
     ASSERT(isCell());
     JSValue value = asCell()->toPrimitive(exec, PreferString);
-    if (vm.exception())
-        return errorValue();
+    RETURN_IF_EXCEPTION(scope, errorValue());
     ASSERT(!value.isObject());
     JSString* result = value.toString(exec);
-    if (vm.exception())
-        return errorValue();
+    RETURN_IF_EXCEPTION(scope, errorValue());
     return result;
 }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012, 2014, 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2012, 2014-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,12 +26,12 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef JSSymbolTableObject_h
-#define JSSymbolTableObject_h
+#pragma once
 
 #include "JSScope.h"
 #include "PropertyDescriptor.h"
 #include "SymbolTable.h"
+#include "ThrowScope.h"
 #include "VariableWriteFireDetail.h"
 
 namespace JSC {
@@ -39,7 +39,7 @@ namespace JSC {
 class JSSymbolTableObject : public JSScope {
 public:
     typedef JSScope Base;
-    static const unsigned StructureFlags = Base::StructureFlags | IsEnvironmentRecord | OverridesGetPropertyNames;
+    static const unsigned StructureFlags = Base::StructureFlags | OverridesGetPropertyNames;
     
     SymbolTable* symbolTable() const { return m_symbolTable.get(); }
     
@@ -166,6 +166,7 @@ template<SymbolTablePutMode symbolTablePutMode, typename SymbolTableObjectType>
 inline bool symbolTablePut(SymbolTableObjectType* object, ExecState* exec, PropertyName propertyName, JSValue value, bool shouldThrowReadOnlyError, bool ignoreReadOnlyErrors, bool& putResult)
 {
     VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
 
     WatchpointSet* set = nullptr;
     WriteBarrierBase<Unknown>* reg;
@@ -182,7 +183,7 @@ inline bool symbolTablePut(SymbolTableObjectType* object, ExecState* exec, Prope
         ASSERT(!fastEntry.isNull());
         if (fastEntry.isReadOnly() && !ignoreReadOnlyErrors) {
             if (shouldThrowReadOnlyError)
-                throwTypeError(exec, StrictModeReadonlyPropertyWriteError);
+                throwTypeError(exec, scope, ASCIILiteral(ReadonlyPropertyWriteError));
             putResult = false;
             return true;
         }
@@ -200,9 +201,9 @@ inline bool symbolTablePut(SymbolTableObjectType* object, ExecState* exec, Prope
     // the right for barriers to be able to trigger GC. And I don't want to hold VM
     // locks while GC'ing.
     if (symbolTablePutMode == SymbolTablePutMode::Invalidate)
-        symbolTablePutInvalidateWatchpointSet(exec->vm(), object, propertyName, value, reg, set);
+        symbolTablePutInvalidateWatchpointSet(vm, object, propertyName, value, reg, set);
     else
-        symbolTablePutTouchWatchpointSet(exec->vm(), object, propertyName, value, reg, set);
+        symbolTablePutTouchWatchpointSet(vm, object, propertyName, value, reg, set);
     putResult = true;
     return true;
 }
@@ -226,6 +227,3 @@ inline bool symbolTablePutInvalidateWatchpointSet(
 }
 
 } // namespace JSC
-
-#endif // JSSymbolTableObject_h
-

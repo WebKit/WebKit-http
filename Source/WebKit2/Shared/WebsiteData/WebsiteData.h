@@ -32,8 +32,8 @@
 #include <wtf/Vector.h>
 
 namespace IPC {
-class ArgumentDecoder;
-class ArgumentEncoder;
+class Decoder;
+class Encoder;
 }
 
 namespace WebKit {
@@ -46,8 +46,8 @@ struct WebsiteData {
         WebsiteDataType type;
         uint64_t size;
 
-        void encode(IPC::ArgumentEncoder&) const;
-        static bool decode(IPC::ArgumentDecoder&, WebsiteData::Entry&);
+        void encode(IPC::Encoder&) const;
+        static bool decode(IPC::Decoder&, WebsiteData::Entry&);
     };
 
     Vector<Entry> entries;
@@ -57,8 +57,8 @@ struct WebsiteData {
     HashSet<String> hostNamesWithPluginData;
 #endif
 
-    void encode(IPC::ArgumentEncoder&) const;
-    static bool decode(IPC::ArgumentDecoder&, WebsiteData&);
+    void encode(IPC::Encoder&) const;
+    static bool decode(IPC::Decoder&, WebsiteData&);
 };
 
 }

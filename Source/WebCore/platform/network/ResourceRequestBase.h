@@ -22,7 +22,7 @@
  * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
  * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
 #ifndef ResourceRequestBase_h
@@ -36,10 +36,12 @@
 namespace WebCore {
 
 enum ResourceRequestCachePolicy {
-    UseProtocolCachePolicy, // normal load
-    ReloadIgnoringCacheData, // reload
-    ReturnCacheDataElseLoad, // back/forward or encoding change - allow stale data
-    ReturnCacheDataDontLoad  // results of a post - allow stale data and only use cache
+    UseProtocolCachePolicy, // normal load, equivalent to fetch "default" cache mode.
+    ReloadIgnoringCacheData, // reload, equivalent to fetch "reload"cache mode.
+    ReturnCacheDataElseLoad, // back/forward or encoding change - allow stale data, equivalent to fetch "force-cache" cache mode.
+    ReturnCacheDataDontLoad, // results of a post - allow stale data and only use cache, equivalent to fetch "only-if-cached" cache mode.
+    DoNotUseAnyCache, // Bypass the cache entirely, equivalent to fetch "no-store" cache mode.
+    RefreshAnyCacheData, // Serve cache data only if revalidated, equivalent to fetch "no-cache" mode.
 };
 
 enum HTTPBodyUpdatePolicy {
@@ -85,6 +87,9 @@ public:
     WEBCORE_EXPORT void setHTTPHeaderField(HTTPHeaderName, const String& value);
     void addHTTPHeaderField(HTTPHeaderName, const String& value);
     void addHTTPHeaderField(const String& name, const String& value);
+    void addHTTPHeaderFieldIfNotPresent(HTTPHeaderName, const String&);
+
+    bool hasHTTPHeaderField(HTTPHeaderName) const;
 
     // Instead of passing a string literal to any of these functions, just use a HTTPHeaderName instead.
     template<size_t length> String httpHeaderField(const char (&)[length]) const = delete;
@@ -97,11 +102,15 @@ public:
     WEBCORE_EXPORT void setHTTPContentType(const String&);
     void clearHTTPContentType();
 
+    bool hasHTTPHeader(HTTPHeaderName) const;
+
     WEBCORE_EXPORT String httpReferrer() const;
+    bool hasHTTPReferrer() const;
     WEBCORE_EXPORT void setHTTPReferrer(const String&);
     WEBCORE_EXPORT void clearHTTPReferrer();
-    
+
     String httpOrigin() const;
+    bool hasHTTPOrigin() const;
     void setHTTPOrigin(const String&);
     WEBCORE_EXPORT void clearHTTPOrigin();
 
@@ -147,9 +156,17 @@ public:
     bool hiddenFromInspector() const { return m_hiddenFromInspector; }
     void setHiddenFromInspector(bool hiddenFromInspector) { m_hiddenFromInspector = hiddenFromInspector; }
 
+    // Whether this request should impact request counting and delay window.onload.
+    bool ignoreForRequestCount() const { return m_ignoreForRequestCount; }
+    void setIgnoreForRequestCount(bool ignoreForRequestCount) { m_ignoreForRequestCount = ignoreForRequestCount; }
+
     enum class Requester { Unspecified, Main, XHR, Media };
     Requester requester() const { return m_requester; }
     void setRequester(Requester requester) { m_requester = requester; }
+
+    // Who initiated the request so the Inspector can associate it with a context. E.g. a Web Worker.
+    String initiatorIdentifier() const { return m_initiatorIdentifier; }
+    void setInitiatorIdentifier(const String& identifier) { m_initiatorIdentifier = identifier; }
 
 #if !PLATFORM(COCOA)
     bool encodingRequiresPlatformData() const { return true; }
@@ -193,6 +210,9 @@ protected:
     void updatePlatformRequest(HTTPBodyUpdatePolicy = DoNotUpdateHTTPBody) const;
     void updateResourceRequest(HTTPBodyUpdatePolicy = DoNotUpdateHTTPBody) const;
 
+    template<class Encoder> void encodeBase(Encoder&) const;
+    template<class Decoder> bool decodeBase(Decoder&);
+
     // The ResourceRequest subclass may "shadow" this method to compare platform specific fields
     static bool platformCompare(const ResourceRequest&, const ResourceRequest&) { return true; }
 
@@ -213,8 +233,10 @@ protected:
     bool m_reportLoadTiming { false };
     bool m_reportRawHeaders { false };
     bool m_hiddenFromInspector { false };
+    bool m_ignoreForRequestCount { false };
     ResourceLoadPriority m_priority { ResourceLoadPriority::Low };
     Requester m_requester { Requester::Unspecified };
+    String m_initiatorIdentifier;
 
 private:
     const ResourceRequest& asResourceRequest() const;
@@ -236,10 +258,8 @@ WEBCORE_EXPORT void initializeHTTPConnectionSettingsOnStartup();
 #endif
 
 template<class Encoder>
-void ResourceRequestBase::encodeWithoutPlatformData(Encoder& encoder) const
+ALWAYS_INLINE void ResourceRequestBase::encodeBase(Encoder& encoder) const
 {
-    ASSERT(!m_httpBody);
-    ASSERT(!m_platformRequestUpdated);
     encoder << m_url;
     encoder << m_timeoutInterval;
     encoder << m_firstPartyForCookies.string();
@@ -253,7 +273,7 @@ void ResourceRequestBase::encodeWithoutPlatformData(Encoder& encoder) const
 }
 
 template<class Decoder>
-bool ResourceRequestBase::decodeWithoutPlatformData(Decoder& decoder)
+ALWAYS_INLINE bool ResourceRequestBase::decodeBase(Decoder& decoder)
 {
     if (!decoder.decode(m_url))
         return false;
@@ -294,6 +314,20 @@ bool ResourceRequestBase::decodeWithoutPlatformData(Decoder& decoder)
         return false;
 
     return true;
+}
+
+template<class Encoder>
+void ResourceRequestBase::encodeWithoutPlatformData(Encoder& encoder) const
+{
+    ASSERT(!m_httpBody);
+    ASSERT(!m_platformRequestUpdated);
+    encodeBase(encoder);
+}
+
+template<class Decoder>
+bool ResourceRequestBase::decodeWithoutPlatformData(Decoder& decoder)
+{
+    return decodeBase(decoder);
 }
 
 } // namespace WebCore

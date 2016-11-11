@@ -28,15 +28,12 @@ function next()
 {
     "use strict";
 
-    if (this == null) {
-        if (this === null)
-            throw new @TypeError("%ArrayIteratorPrototype%.next requires that |this| not be null");
-        throw new @TypeError("%ArrayIteratorPrototype%.next requires that |this| not be undefined");
-    }
+    if (this == null)
+        @throwTypeError("%ArrayIteratorPrototype%.next requires that |this| not be null or undefined");
 
     let next = this.@arrayIteratorNext;
     if (next === @undefined)
-        throw new @TypeError("%ArrayIteratorPrototype%.next requires that |this| be an Array Iterator instance");
+        @throwTypeError("%ArrayIteratorPrototype%.next requires that |this| be an Array Iterator instance");
 
     return next.@call(this);
 }

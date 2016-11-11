@@ -96,7 +96,7 @@ public:
     void setAlwaysCreateLineBoxes() { setRenderInlineAlwaysCreatesLineBoxes(true); }
     void updateAlwaysCreateLineBoxes(bool fullLayout);
 
-    LayoutRect localCaretRect(InlineBox*, int, LayoutUnit* extraWidthToEndOfLine) final;
+    LayoutRect localCaretRect(InlineBox*, unsigned, LayoutUnit* extraWidthToEndOfLine) final;
 
     bool hitTestCulledInline(const HitTestRequest&, HitTestResult&, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset);
 
@@ -173,8 +173,7 @@ private:
     
     RenderPtr<RenderInline> clone() const;
 
-    void paintOutlineForLine(GraphicsContext&, const LayoutPoint&, const LayoutRect& prevLine, const LayoutRect& thisLine,
-                             const LayoutRect& nextLine, const Color);
+    void paintOutlineForLine(GraphicsContext&, const LayoutPoint&, const LayoutRect& prevLine, const LayoutRect& thisLine, const LayoutRect& nextLine, const Color&);
     RenderBoxModelObject* continuationBefore(RenderObject* beforeChild);
 
     bool willChangeCreatesStackingContext() const

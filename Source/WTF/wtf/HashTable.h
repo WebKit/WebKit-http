@@ -19,8 +19,7 @@
  *
  */
 
-#ifndef WTF_HashTable_h
-#define WTF_HashTable_h
+#pragma once
 
 #include <atomic>
 #include <iterator>
@@ -848,7 +847,7 @@ namespace WTF {
             // This initializes the bucket without copying the empty value.
             // That makes it possible to use this with types that don't support copying.
             // The memset to 0 looks like a slow operation but is optimized by the compilers.
-            memset(&bucket, 0, sizeof(bucket));
+            memset(std::addressof(bucket), 0, sizeof(bucket));
         }
     };
     
@@ -1198,13 +1197,20 @@ namespace WTF {
 
         Value* newEntry = nullptr;
         for (unsigned i = 0; i != oldTableSize; ++i) {
-            if (isEmptyOrDeletedBucket(oldTable[i])) {
-                ASSERT(&oldTable[i] != entry);
+            if (isDeletedBucket(oldTable[i])) {
+                ASSERT(std::addressof(oldTable[i]) != entry);
+                continue;
+            }
+
+            if (isEmptyBucket(oldTable[i])) {
+                ASSERT(std::addressof(oldTable[i]) != entry);
+                oldTable[i].~ValueType();
                 continue;
             }
 
             Value* reinsertedEntry = reinsert(WTFMove(oldTable[i]));
-            if (&oldTable[i] == entry) {
+            oldTable[i].~ValueType();
+            if (std::addressof(oldTable[i]) == entry) {
                 ASSERT(!newEntry);
                 newEntry = reinsertedEntry;
             }
@@ -1212,7 +1218,7 @@ namespace WTF {
 
         m_deletedCount = 0;
 
-        deallocateTable(oldTable, oldTableSize);
+        fastFree(oldTable);
 
         internalCheckTableConsistency();
         return newEntry;
@@ -1530,5 +1536,3 @@ namespace WTF {
 } // namespace WTF
 
 #include <wtf/HashIterators.h>
-
-#endif // WTF_HashTable_h

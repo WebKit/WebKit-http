@@ -20,15 +20,10 @@
  *
  */
 
-#ifndef HTMLPlugInElement_h
-#define HTMLPlugInElement_h
+#pragma once
 
 #include "HTMLFrameOwnerElement.h"
 #include "Image.h"
-
-#if ENABLE(NETSCAPE_PLUGIN_API)
-struct NPObject;
-#endif
 
 namespace JSC {
 namespace Bindings {
@@ -71,10 +66,6 @@ public:
 
     JSC::JSObject* scriptObjectForPluginReplacement();
 
-#if ENABLE(NETSCAPE_PLUGIN_API)
-    WEBCORE_EXPORT NPObject* getNPObject();
-#endif
-
     bool isCapturingMouseEvents() const { return m_isCapturingMouseEvents; }
     void setIsCapturingMouseEvents(bool capturing) { m_isCapturingMouseEvents = capturing; }
 
@@ -100,7 +91,7 @@ protected:
 
     virtual bool useFallbackContent() const { return false; }
 
-    void defaultEventHandler(Event*) override;
+    void defaultEventHandler(Event&) override;
 
     virtual bool requestObject(const String& url, const String& mimeType, const Vector<String>& paramNames, const Vector<String>& paramValues);
     RenderPtr<RenderElement> createElementRenderer(RenderStyle&&, const RenderTreePosition&) override;
@@ -122,15 +113,12 @@ private:
 
     bool supportsFocus() const override;
 
-    bool isKeyboardFocusable(KeyboardEvent*) const override;
+    bool isKeyboardFocusable(KeyboardEvent&) const override;
     bool isPluginElement() const final;
 
     RefPtr<JSC::Bindings::Instance> m_instance;
     Timer m_swapRendererTimer;
     RefPtr<PluginReplacement> m_pluginReplacement;
-#if ENABLE(NETSCAPE_PLUGIN_API)
-    NPObject* m_NPObject;
-#endif
     bool m_isCapturingMouseEvents;
 
     DisplayState m_displayState;
@@ -141,5 +129,3 @@ private:
 SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::HTMLPlugInElement)
     static bool isType(const WebCore::Node& node) { return node.isPluginElement(); }
 SPECIALIZE_TYPE_TRAITS_END()
-
-#endif // HTMLPlugInElement_h

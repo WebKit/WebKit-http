@@ -68,8 +68,6 @@ public:
     RenderObject* firstChild() const { return m_firstChild; }
     RenderObject* lastChild() const { return m_lastChild; }
 
-    bool isEmpty() const override { return !firstChild(); }
-
     bool canContainFixedPositionObjects() const;
     bool canContainAbsolutelyPositionedObjects() const;
 
@@ -163,6 +161,11 @@ public:
     bool hasClipOrOverflowClip() const { return hasClip() || hasOverflowClip(); }
     bool hasClipPath() const { return style().clipPath(); }
     bool hasHiddenBackface() const { return style().backfaceVisibility() == BackfaceVisibilityHidden; }
+    bool hasOutlineAnnotation() const;
+    bool hasOutline() const { return style().hasOutline() || hasOutlineAnnotation(); }
+    bool hasSelfPaintingLayer() const;
+
+    bool checkForRepaintDuringLayout() const;
 
     // anchorRect() is conceptually similar to absoluteBoundingBoxRect(), but is intended for scrolling to an anchor.
     // For inline renderers, this gets the logical top left of the first leaf child and the logical bottom right of the
@@ -179,17 +182,14 @@ public:
 #endif
     }
 
+
 #if ENABLE(CSS_COMPOSITING)
     bool hasBlendMode() const { return style().hasBlendMode(); }
 #else
     bool hasBlendMode() const { return false; }
 #endif
 
-#if ENABLE(CSS_SHAPES)
     bool hasShapeOutside() const { return style().shapeOutside(); }
-#else
-    bool hasShapeOutside() const { return false; }
-#endif
 
     void registerForVisibleInViewportCallback();
     void unregisterForVisibleInViewportCallback();
@@ -198,8 +198,6 @@ public:
     bool repaintForPausedImageAnimationsIfNeeded(const IntRect& visibleRect);
     bool hasPausedImageAnimations() const { return m_hasPausedImageAnimations; }
     void setHasPausedImageAnimations(bool b) { m_hasPausedImageAnimations = b; }
-
-    RenderNamedFlowThread* renderNamedFlowThreadWrapper();
 
     void setRenderBoxNeedsLazyRepaint(bool b) { m_renderBoxNeedsLazyRepaint = b; }
     bool renderBoxNeedsLazyRepaint() const { return m_renderBoxNeedsLazyRepaint; }
@@ -216,10 +214,16 @@ public:
     bool childRequiresTable(const RenderObject& child) const;
     bool hasContinuation() const { return m_hasContinuation; }
 
-#if ENABLE(IOS_TEXT_AUTOSIZING)
+#if ENABLE(TEXT_AUTOSIZING)
     void adjustComputedFontSizesOnBlocks(float size, float visibleWidth);
     WEBCORE_EXPORT void resetTextAutosizing();
 #endif
+    RenderBlock* containingBlockForFixedPosition() const;
+    RenderBlock* containingBlockForAbsolutePosition() const;
+
+    RespectImageOrientationEnum shouldRespectImageOrientation() const;
+
+    void removeFromRenderFlowThread();
 
 protected:
     enum BaseTypeFlag {
@@ -260,11 +264,6 @@ protected:
 
     void setHasContinuation(bool b) { m_hasContinuation = b; }
 
-    static bool hasControlStatesForRenderer(const RenderObject*);
-    static ControlStates* controlStatesForRenderer(const RenderObject*);
-    static void removeControlStatesForRenderer(const RenderObject*);
-    static void addControlStatesForRenderer(const RenderObject*, ControlStates*);
-
     void setRenderBlockHasMarginBeforeQuirk(bool b) { m_renderBlockHasMarginBeforeQuirk = b; }
     void setRenderBlockHasMarginAfterQuirk(bool b) { m_renderBlockHasMarginAfterQuirk = b; }
     void setRenderBlockShouldForceRelayoutChildren(bool b) { m_renderBlockShouldForceRelayoutChildren = b; }
@@ -280,6 +279,8 @@ protected:
     void paintFocusRing(PaintInfo&, const RenderStyle&, const Vector<LayoutRect>& focusRingRects);
     void paintOutline(PaintInfo&, const LayoutRect&);
     void updateOutlineAutoAncestor(bool hasOutlineAuto);
+
+    void removeFromRenderFlowThreadIncludingDescendants(bool shouldUpdateState);
 
 private:
     RenderElement(ContainerNode&, RenderStyle&&, BaseTypeFlags);
@@ -303,9 +304,7 @@ private:
 
     void updateFillImages(const FillLayer*, const FillLayer*);
     void updateImage(StyleImage*, StyleImage*);
-#if ENABLE(CSS_SHAPES)
     void updateShapeImage(const ShapeValue*, const ShapeValue*);
-#endif
 
     StyleDifference adjustStyleDifference(StyleDifference, unsigned contextSensitiveProperties) const;
     const RenderStyle* cachedFirstLineStyle() const;
@@ -336,8 +335,6 @@ private:
     unsigned m_renderBlockShouldForceRelayoutChildren : 1;
     unsigned m_renderBlockFlowHasMarkupTruncation : 1;
     unsigned m_renderBlockFlowLineLayoutPath : 2;
-
-    VisibleInViewportState m_visibleInViewportState { VisibilityUnknown };
 
     RenderObject* m_firstChild;
     RenderObject* m_lastChild;

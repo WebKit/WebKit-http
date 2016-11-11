@@ -33,8 +33,8 @@
 
 namespace IPC {
 
-class ArgumentDecoder;
-class ArgumentEncoder;
+class Decoder;
+class Encoder;
 
 class Attachment {
 public:
@@ -75,8 +75,8 @@ public:
     mach_msg_type_name_t disposition() const { return m_disposition; }
 #endif
 
-    void encode(ArgumentEncoder&) const;
-    static bool decode(ArgumentDecoder&, Attachment&);
+    void encode(Encoder&) const;
+    static bool decode(Decoder&, Attachment&);
     
 private:
     Type m_type;

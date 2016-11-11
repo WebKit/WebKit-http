@@ -23,11 +23,10 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#pragma once
+
 #include "ElementAndTextDescendantIterator.h"
 #include "ShadowRoot.h"
-
-#ifndef ComposedTreeIterator_h
-#define ComposedTreeIterator_h
 
 namespace WebCore {
 
@@ -80,6 +79,7 @@ private:
     const Context& context() const { return m_contextStack.last(); }
     Node& current() { return *context().iterator; }
 
+    bool m_rootIsInShadowTree { false };
     bool m_didDropAssertions { false };
     Vector<Context, 8> m_contextStack;
 };
@@ -96,7 +96,7 @@ inline ComposedTreeIterator& ComposedTreeIterator::traverseNext()
         return *this;
     }
 
-    if (m_contextStack.size() > 1) {
+    if (m_contextStack.size() > 1 || m_rootIsInShadowTree) {
         traverseNextInShadowTree();
         return *this;
     }
@@ -109,7 +109,7 @@ inline ComposedTreeIterator& ComposedTreeIterator::traverseNextSkippingChildren(
 {
     context().iterator.traverseNextSkippingChildren();
 
-    if (context().iterator == context().end && m_contextStack.size() > 1)
+    if (context().iterator == context().end)
         traverseNextLeavingContext();
     
     return *this;
@@ -199,6 +199,4 @@ inline ComposedTreeChildAdapter composedTreeChildren(ContainerNode& parent)
 enum class ComposedTreeAsTextMode { Normal, WithPointers };
 WEBCORE_EXPORT String composedTreeAsText(ContainerNode& root, ComposedTreeAsTextMode = ComposedTreeAsTextMode::Normal);
 
-}
-
-#endif
+} // namespace WebCore

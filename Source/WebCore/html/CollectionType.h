@@ -20,8 +20,7 @@
  *
  */
 
-#ifndef CollectionType_h
-#define CollectionType_h
+#pragma once
 
 namespace WebCore {
 
@@ -54,6 +53,7 @@ enum CollectionType {
     ByClass,
     ByTag,
     ByHTMLTag,
+    AllDescendants
 };
 
 enum class CollectionTraversalType { Descendants, ChildrenOnly, CustomForwardOnly };
@@ -93,5 +93,3 @@ struct CollectionTypeTraits<FormControls> {
 };
 
 } // namespace WebCore
-
-#endif

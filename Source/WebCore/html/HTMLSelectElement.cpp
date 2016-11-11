@@ -196,9 +196,7 @@ void HTMLSelectElement::listBoxSelectItem(int listIndex, bool allowMultiplySelec
 bool HTMLSelectElement::usesMenuList() const
 {
 #if !PLATFORM(IOS)
-    const Page* page = document().page();
-    RefPtr<RenderTheme> renderTheme = page ? &page->theme() : RenderTheme::defaultTheme();
-    if (renderTheme->delegatesMenuListRendering())
+    if (RenderTheme::themeForPage(document().page())->delegatesMenuListRendering())
         return true;
 
     return !m_multiple && m_size <= 1;
@@ -221,16 +219,25 @@ int HTMLSelectElement::activeSelectionEndListIndex() const
     return lastSelectedListIndex();
 }
 
-void HTMLSelectElement::add(HTMLElement& element, HTMLElement* beforeElement, ExceptionCode& ec)
+ExceptionOr<void> HTMLSelectElement::add(const OptionOrOptGroupElement& element, Optional<HTMLElementOrInt> before)
 {
-    if (!(is<HTMLOptionElement>(element) || is<HTMLHRElement>(element) || is<HTMLOptGroupElement>(element)))
-        return;
-    insertBefore(element, beforeElement, ec);
-}
+    HTMLElement* beforeElement = nullptr;
+    if (before) {
+        beforeElement = WTF::switchOn(before.value(),
+            [](const RefPtr<HTMLElement>& element) -> HTMLElement* { return element.get(); },
+            [this](int index) -> HTMLElement* { return item(index); }
+        );
+    }
+    HTMLElement& toInsert = WTF::switchOn(element,
+        [](const auto& htmlElement) -> HTMLElement& { return *htmlElement; }
+    );
 
-void HTMLSelectElement::add(HTMLElement& element, int beforeIndex, ExceptionCode& ec)
-{
-    add(element, item(beforeIndex), ec);
+
+    ExceptionCode ec = 0;
+    insertBefore(toInsert, beforeElement, ec);
+    if (ec)
+        return Exception { ec };
+    return { };
 }
 
 void HTMLSelectElement::removeByIndex(int optionIndex)
@@ -239,15 +246,15 @@ void HTMLSelectElement::removeByIndex(int optionIndex)
     if (listIndex < 0)
         return;
 
-    listItems()[listIndex]->remove(IGNORE_EXCEPTION);
+    listItems()[listIndex]->remove();
 }
 
-void HTMLSelectElement::remove(HTMLOptionElement& option)
+ExceptionOr<void> HTMLSelectElement::remove(HTMLOptionElement& option)
 {
     if (option.ownerSelectElement() != this)
-        return;
+        return { };
 
-    option.remove(IGNORE_EXCEPTION);
+    return option.remove();
 }
 
 String HTMLSelectElement::value() const
@@ -262,14 +269,8 @@ String HTMLSelectElement::value() const
     return emptyString();
 }
 
-void HTMLSelectElement::setValue(const String &value)
+void HTMLSelectElement::setValue(const String& value)
 {
-    // We clear the previously selected option(s) when needed, to guarantee calling setSelectedIndex() only once.
-    if (value.isNull()) {
-        setSelectedIndex(-1);
-        return;
-    }
-
     // Find the option with value() matching the given parameter and make it the current selection.
     unsigned optionIndex = 0;
     for (auto* item : listItems()) {
@@ -309,8 +310,9 @@ void HTMLSelectElement::parseAttribute(const QualifiedName& name, const AtomicSt
         m_size = size;
         updateValidity();
         if (m_size != oldSize) {
-            setNeedsStyleRecalc(ReconstructRenderTree);
+            invalidateStyleAndRenderersForSubtree();
             setRecalcListItems();
+            updateValidity();
         }
     } else if (name == multipleAttr)
         parseMultipleAttribute(value);
@@ -321,7 +323,7 @@ void HTMLSelectElement::parseAttribute(const QualifiedName& name, const AtomicSt
         HTMLFormControlElementWithState::parseAttribute(name, value);
 }
 
-bool HTMLSelectElement::isKeyboardFocusable(KeyboardEvent* event) const
+bool HTMLSelectElement::isKeyboardFocusable(KeyboardEvent& event) const
 {
     if (renderer())
         return isFocusable();
@@ -405,7 +407,7 @@ void HTMLSelectElement::setMultiple(bool multiple)
 {
     bool oldMultiple = this->multiple();
     int oldSelectedIndex = selectedIndex();
-    setAttribute(multipleAttr, multiple ? "" : 0);
+    setAttributeWithoutSynchronization(multipleAttr, multiple ? emptyAtom : nullAtom);
 
     // Restore selectedIndex after changing the multiple flag to preserve
     // selection as single-line and multi-line has different defaults.
@@ -428,32 +430,33 @@ HTMLOptionElement* HTMLSelectElement::item(unsigned index)
     return options()->item(index);
 }
 
-void HTMLSelectElement::setOption(unsigned index, HTMLOptionElement& option, ExceptionCode& ec)
+ExceptionOr<void> HTMLSelectElement::setOption(unsigned index, HTMLOptionElement& option)
 {
-    ec = 0;
     if (index > maxSelectItems - 1)
         index = maxSelectItems - 1;
     int diff = index - length();
     RefPtr<HTMLOptionElement> before;
     // Out of array bounds? First insert empty dummies.
     if (diff > 0) {
-        setLength(index, ec);
+        auto result = setLength(index);
+        if (result.hasException())
+            return result;
         // Replace an existing entry?
     } else if (diff < 0) {
         before = item(index + 1);
         removeByIndex(index);
     }
     // Finally add the new element.
-    if (!ec) {
-        add(option, before.get(), ec);
-        if (diff >= 0 && option.selected())
-            optionSelectionStateChanged(option, true);
-    }
+    auto result = add(&option, HTMLElementOrInt { before.get() });
+    if (result.hasException())
+        return result;
+    if (diff >= 0 && option.selected())
+        optionSelectionStateChanged(option, true);
+    return { };
 }
 
-void HTMLSelectElement::setLength(unsigned newLength, ExceptionCode& ec)
+ExceptionOr<void> HTMLSelectElement::setLength(unsigned newLength)
 {
-    ec = 0;
     if (newLength > maxSelectItems)
         newLength = maxSelectItems;
     int diff = length() - newLength;
@@ -461,30 +464,31 @@ void HTMLSelectElement::setLength(unsigned newLength, ExceptionCode& ec)
     if (diff < 0) { // Add dummy elements.
         do {
             auto option = document().createElement(optionTag, false);
-            add(downcast<HTMLElement>(option.get()), nullptr, ec);
-            if (ec)
-                break;
+            auto result = add(downcast<HTMLOptionElement>(option.ptr()), Nullopt);
+            if (result.hasException())
+                return result;
         } while (++diff);
     } else {
         auto& items = listItems();
 
         // Removing children fires mutation events, which might mutate the DOM further, so we first copy out a list
         // of elements that we intend to remove then attempt to remove them one at a time.
-        Vector<Ref<Element>> itemsToRemove;
+        Vector<Ref<HTMLOptionElement>> itemsToRemove;
         size_t optionIndex = 0;
         for (auto& item : items) {
             if (is<HTMLOptionElement>(*item) && optionIndex++ >= newLength) {
                 ASSERT(item->parentNode());
-                itemsToRemove.append(*item);
+                itemsToRemove.append(downcast<HTMLOptionElement>(*item));
             }
         }
 
-        for (auto& item : itemsToRemove) {
-            if (item->parentNode())
-                item->parentNode()->removeChild(item.get(), ec);
-        }
+        // FIXME: Clients can detect what order we remove the options in; is it good to remove them in ascending order?
+        // FIXME: This ignores exceptions. A previous version passed through the exception only for the last item removed.
+        // What exception behavior do we want?
+        for (auto& item : itemsToRemove)
+            item->remove();
     }
-    updateValidity();
+    return { };
 }
 
 bool HTMLSelectElement::isRequiredFormControl() const
@@ -749,7 +753,7 @@ void HTMLSelectElement::setRecalcListItems()
     // Manual selection anchor is reset when manipulating the select programmatically.
     m_activeSelectionAnchorIndex = -1;
     setOptionsChangedOnRenderer();
-    setNeedsStyleRecalc();
+    invalidateStyleForSubtree();
     if (!inDocument()) {
         if (HTMLCollection* collection = cachedHTMLCollection(SelectOptions))
             collection->invalidateCache(document());
@@ -775,10 +779,8 @@ void HTMLSelectElement::recalcListItems(bool updateSelectedStates) const
         }
         HTMLElement& current = downcast<HTMLElement>(*currentElement);
 
-        // optgroup tags may not nest. However, both FireFox and IE will
-        // flatten the tree automatically, so we follow suit.
-        // (http://www.w3.org/TR/html401/interact/forms.html#h-17.6)
-        if (is<HTMLOptGroupElement>(current)) {
+        // Only consider optgroup elements that are direct children of the select element.
+        if (is<HTMLOptGroupElement>(current) && current.parentNode() == this) {
             m_listItems.append(&current);
             if (Element* nextElement = ElementTraversal::firstWithin(current)) {
                 currentElement = nextElement;
@@ -1029,7 +1031,7 @@ void HTMLSelectElement::parseMultipleAttribute(const AtomicString& value)
     m_multiple = !value.isNull();
     updateValidity();
     if (oldUsesMenuList != usesMenuList())
-        setNeedsStyleRecalc(ReconstructRenderTree);
+        invalidateStyleAndRenderersForSubtree();
 }
 
 bool HTMLSelectElement::appendFormData(FormDataList& list, bool)
@@ -1062,7 +1064,7 @@ void HTMLSelectElement::reset()
             continue;
 
         HTMLOptionElement& option = downcast<HTMLOptionElement>(*element);
-        if (option.fastHasAttribute(selectedAttr)) {
+        if (option.hasAttributeWithoutSynchronization(selectedAttr)) {
             if (selectedOption && !m_multiple)
                 selectedOption->setSelectedState(false);
             option.setSelectedState(true);
@@ -1078,7 +1080,7 @@ void HTMLSelectElement::reset()
         firstOption->setSelectedState(true);
 
     setOptionsChangedOnRenderer();
-    setNeedsStyleRecalc();
+    invalidateStyleForSubtree();
     updateValidity();
 }
 
@@ -1086,10 +1088,7 @@ void HTMLSelectElement::reset()
 
 bool HTMLSelectElement::platformHandleKeydownEvent(KeyboardEvent* event)
 {
-    const Page* page = document().page();
-    RefPtr<RenderTheme> renderTheme = page ? &page->theme() : RenderTheme::defaultTheme();
-
-    if (!renderTheme->popsMenuByArrowKeys())
+    if (!RenderTheme::themeForPage(document().page())->popsMenuByArrowKeys())
         return false;
 
     if (!isSpatialNavigationEnabled(document().frame())) {
@@ -1118,19 +1117,18 @@ bool HTMLSelectElement::platformHandleKeydownEvent(KeyboardEvent* event)
 
 #endif
 
-void HTMLSelectElement::menuListDefaultEventHandler(Event* event)
+void HTMLSelectElement::menuListDefaultEventHandler(Event& event)
 {
     ASSERT(renderer());
     ASSERT(renderer()->isMenuList());
 
-    const Page* page = document().page();
-    RefPtr<RenderTheme> renderTheme = page ? &page->theme() : RenderTheme::defaultTheme();
+    RefPtr<RenderTheme> renderTheme = RenderTheme::themeForPage(document().page());
 
-    if (event->type() == eventNames().keydownEvent) {
-        if (!is<KeyboardEvent>(*event))
+    if (event.type() == eventNames().keydownEvent) {
+        if (!is<KeyboardEvent>(event))
             return;
 
-        KeyboardEvent& keyboardEvent = downcast<KeyboardEvent>(*event);
+        KeyboardEvent& keyboardEvent = downcast<KeyboardEvent>(event);
         if (platformHandleKeydownEvent(&keyboardEvent))
             return;
 
@@ -1179,11 +1177,11 @@ void HTMLSelectElement::menuListDefaultEventHandler(Event* event)
 
     // Use key press event here since sending simulated mouse events
     // on key down blocks the proper sending of the key press event.
-    if (event->type() == eventNames().keypressEvent) {
-        if (!is<KeyboardEvent>(*event))
+    if (event.type() == eventNames().keypressEvent) {
+        if (!is<KeyboardEvent>(event))
             return;
 
-        KeyboardEvent& keyboardEvent = downcast<KeyboardEvent>(*event);
+        KeyboardEvent& keyboardEvent = downcast<KeyboardEvent>(event);
         int keyCode = keyboardEvent.keyCode();
         bool handled = false;
 
@@ -1229,7 +1227,7 @@ void HTMLSelectElement::menuListDefaultEventHandler(Event* event)
                 handled = true;
             } else if (keyCode == '\r') {
                 if (form())
-                    form()->submitImplicitly(&keyboardEvent, false);
+                    form()->submitImplicitly(keyboardEvent, false);
                 dispatchChangeEventForMenuList();
                 handled = true;
             }
@@ -1239,7 +1237,7 @@ void HTMLSelectElement::menuListDefaultEventHandler(Event* event)
             keyboardEvent.setDefaultHandled();
     }
 
-    if (event->type() == eventNames().mousedownEvent && is<MouseEvent>(*event) && downcast<MouseEvent>(*event).button() == LeftButton) {
+    if (event.type() == eventNames().mousedownEvent && is<MouseEvent>(event) && downcast<MouseEvent>(event).button() == LeftButton) {
         focus();
 #if !PLATFORM(IOS)
         auto* renderer = this->renderer();
@@ -1255,11 +1253,11 @@ void HTMLSelectElement::menuListDefaultEventHandler(Event* event)
             menuList.showPopup();
         }
 #endif
-        event->setDefaultHandled();
+        event.setDefaultHandled();
     }
 
 #if !PLATFORM(IOS)
-    if (event->type() == eventNames().blurEvent && !focused()) {
+    if (event.type() == eventNames().blurEvent && !focused()) {
         auto& menuList = downcast<RenderMenuList>(*renderer());
         if (menuList.popupIsVisible())
             menuList.hidePopup();
@@ -1319,11 +1317,11 @@ void HTMLSelectElement::updateSelectedState(int listIndex, bool multi, bool shif
     updateListBoxSelection(!multiSelect);
 }
 
-void HTMLSelectElement::listBoxDefaultEventHandler(Event* event)
+void HTMLSelectElement::listBoxDefaultEventHandler(Event& event)
 {
     auto& listItems = this->listItems();
 
-    if (event->type() == eventNames().mousedownEvent && is<MouseEvent>(*event) && downcast<MouseEvent>(*event).button() == LeftButton) {
+    if (event.type() == eventNames().mousedownEvent && is<MouseEvent>(event) && downcast<MouseEvent>(event).button() == LeftButton) {
         focus();
 
         // Calling focus() may remove or change our renderer, in which case we don't want to handle the event further.
@@ -1333,7 +1331,7 @@ void HTMLSelectElement::listBoxDefaultEventHandler(Event* event)
         auto& renderListBox = downcast<RenderListBox>(*renderer);
 
         // Convert to coords relative to the list box if needed.
-        MouseEvent& mouseEvent = downcast<MouseEvent>(*event);
+        MouseEvent& mouseEvent = downcast<MouseEvent>(event);
         IntPoint localOffset = roundedIntPoint(renderListBox.absoluteToLocal(mouseEvent.absoluteLocation(), UseTransforms));
         int listIndex = renderListBox.listIndexAtOffset(toIntSize(localOffset));
         if (listIndex >= 0) {
@@ -1349,8 +1347,8 @@ void HTMLSelectElement::listBoxDefaultEventHandler(Event* event)
 
             mouseEvent.setDefaultHandled();
         }
-    } else if (event->type() == eventNames().mousemoveEvent && is<MouseEvent>(*event) && !downcast<RenderListBox>(*renderer()).canBeScrolledAndHasScrollableArea()) {
-        MouseEvent& mouseEvent = downcast<MouseEvent>(*event);
+    } else if (event.type() == eventNames().mousemoveEvent && is<MouseEvent>(event) && !downcast<RenderListBox>(*renderer()).canBeScrolledAndHasScrollableArea()) {
+        MouseEvent& mouseEvent = downcast<MouseEvent>(event);
         if (mouseEvent.button() != LeftButton || !mouseEvent.buttonDown())
             return;
 
@@ -1374,7 +1372,7 @@ void HTMLSelectElement::listBoxDefaultEventHandler(Event* event)
             }
             mouseEvent.setDefaultHandled();
         }
-    } else if (event->type() == eventNames().mouseupEvent && is<MouseEvent>(*event) && downcast<MouseEvent>(*event).button() == LeftButton && document().frame()->eventHandler().autoscrollRenderer() != renderer()) {
+    } else if (event.type() == eventNames().mouseupEvent && is<MouseEvent>(event) && downcast<MouseEvent>(event).button() == LeftButton && document().frame()->eventHandler().autoscrollRenderer() != renderer()) {
         // This click or drag event was not over any of the options.
         if (m_lastOnChangeSelection.isEmpty())
             return;
@@ -1382,11 +1380,11 @@ void HTMLSelectElement::listBoxDefaultEventHandler(Event* event)
         // click. For drag selection, onChange will fire when the autoscroll
         // timer stops.
         listBoxOnChange();
-    } else if (event->type() == eventNames().keydownEvent) {
-        if (!is<KeyboardEvent>(*event))
+    } else if (event.type() == eventNames().keydownEvent) {
+        if (!is<KeyboardEvent>(event))
             return;
 
-        KeyboardEvent& keyboardEvent = downcast<KeyboardEvent>(*event);
+        KeyboardEvent& keyboardEvent = downcast<KeyboardEvent>(event);
         const String& keyIdentifier = keyboardEvent.keyIdentifier();
 
         bool handled = false;
@@ -1473,15 +1471,15 @@ void HTMLSelectElement::listBoxDefaultEventHandler(Event* event)
 
             keyboardEvent.setDefaultHandled();
         }
-    } else if (event->type() == eventNames().keypressEvent) {
-        if (!is<KeyboardEvent>(*event))
+    } else if (event.type() == eventNames().keypressEvent) {
+        if (!is<KeyboardEvent>(event))
             return;
-        KeyboardEvent& keyboardEvent = downcast<KeyboardEvent>(*event);
+        KeyboardEvent& keyboardEvent = downcast<KeyboardEvent>(event);
         int keyCode = keyboardEvent.keyCode();
 
         if (keyCode == '\r') {
             if (form())
-                form()->submitImplicitly(&keyboardEvent, false);
+                form()->submitImplicitly(keyboardEvent, false);
             keyboardEvent.setDefaultHandled();
         } else if (m_multiple && keyCode == ' ' && m_allowsNonContiguousSelection) {
             // Use space to toggle selection change.
@@ -1496,7 +1494,7 @@ void HTMLSelectElement::listBoxDefaultEventHandler(Event* event)
     }
 }
 
-void HTMLSelectElement::defaultEventHandler(Event* event)
+void HTMLSelectElement::defaultEventHandler(Event& event)
 {
     auto* renderer = this->renderer();
     if (!renderer)
@@ -1515,14 +1513,14 @@ void HTMLSelectElement::defaultEventHandler(Event* event)
 #else
     menuListDefaultEventHandler(event);
 #endif
-    if (event->defaultHandled())
+    if (event.defaultHandled())
         return;
 
-    if (event->type() == eventNames().keypressEvent && is<KeyboardEvent>(*event)) {
-        KeyboardEvent& keyboardEvent = downcast<KeyboardEvent>(*event);
+    if (event.type() == eventNames().keypressEvent && is<KeyboardEvent>(event)) {
+        KeyboardEvent& keyboardEvent = downcast<KeyboardEvent>(event);
         if (!keyboardEvent.ctrlKey() && !keyboardEvent.altKey() && !keyboardEvent.metaKey() && u_isprint(keyboardEvent.charCode())) {
             typeAheadFind(keyboardEvent);
-            event->setDefaultHandled();
+            event.setDefaultHandled();
             return;
         }
     }

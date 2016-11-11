@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -30,6 +30,7 @@
 
 #include "AirCode.h"
 #include "AirInstInlines.h"
+#include "B3Procedure.h"
 
 namespace JSC { namespace B3 { namespace Air {
 
@@ -54,7 +55,7 @@ public:
         HashSet<StackSlot*> validSlots;
         HashSet<BasicBlock*> validBlocks;
         HashSet<Special*> validSpecials;
-
+        
         for (BasicBlock* block : m_code)
             validBlocks.add(block);
         for (StackSlot* slot : m_code.stackSlots())
@@ -63,6 +64,10 @@ public:
             validSpecials.add(special);
 
         for (BasicBlock* block : m_code) {
+            // Blocks that are entrypoints must not have predecessors.
+            if (m_code.isEntrypoint(block))
+                VALIDATE(!block->numPredecessors(), ("At entrypoint ", *block));
+            
             for (unsigned instIndex = 0; instIndex < block->size(); ++instIndex) {
                 Inst& inst = block->at(instIndex);
                 for (Arg& arg : inst.args) {
@@ -79,9 +84,9 @@ public:
                 }
                 VALIDATE(inst.isValidForm(), ("At ", inst, " in ", *block));
                 if (instIndex == block->size() - 1)
-                    VALIDATE(isTerminal(inst.opcode), ("At ", inst, " in ", *block));
+                    VALIDATE(inst.isTerminal(), ("At ", inst, " in ", *block));
                 else
-                    VALIDATE(!isTerminal(inst.opcode), ("At ", inst, " in ", *block));
+                    VALIDATE(!inst.isTerminal(), ("At ", inst, " in ", *block));
 
                 // forEachArg must return Arg&'s that point into the args array.
                 inst.forEachArg(
@@ -89,6 +94,19 @@ public:
                         VALIDATE(&arg >= &inst.args[0], ("At ", arg, " in ", inst, " in ", *block));
                         VALIDATE(&arg <= &inst.args.last(), ("At ", arg, " in ", inst, " in ", *block));
                     });
+                
+                switch (inst.kind.opcode) {
+                case EntrySwitch:
+                    VALIDATE(block->numSuccessors() == m_code.proc().numEntrypoints(), ("At ", inst, " in ", *block));
+                    break;
+                case Shuffle:
+                    // We can't handle trapping shuffles because of how we lower them. That could
+                    // be fixed though.
+                    VALIDATE(!inst.kind.traps, ("At ", inst, " in ", *block));
+                    break;
+                default:
+                    break;
+                }
             }
             for (BasicBlock* successor : block->successorBlocks())
                 VALIDATE(validBlocks.contains(successor), ("In ", *block));

@@ -23,12 +23,11 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef JITWorklist_h
-#define JITWorklist_h
+#pragma once
 
 #if ENABLE(JIT)
 
-#include <wtf/Condition.h>
+#include <wtf/AutomaticThread.h>
 #include <wtf/FastMalloc.h>
 #include <wtf/HashSet.h>
 #include <wtf/Lock.h>
@@ -51,7 +50,7 @@ class JITWorklist {
 public:
     ~JITWorklist();
     
-    void completeAllForVM(VM&);
+    bool completeAllForVM(VM&); // Return true if any JIT work happened.
     void poll(VM&);
     
     void compileLater(CodeBlock*);
@@ -63,7 +62,8 @@ public:
 private:
     JITWorklist();
     
-    NO_RETURN void runThread();
+    class Thread;
+    friend class Thread;
     
     void finalizePlans(Plans&);
     
@@ -71,8 +71,9 @@ private:
     Plans m_plans;
     HashSet<CodeBlock*> m_planned;
     
-    Lock m_lock;
-    Condition m_condition; // We use One True Condition for everything because that's easier.
+    Box<Lock> m_lock;
+    RefPtr<AutomaticThreadCondition> m_condition; // We use One True Condition for everything because that's easier.
+    RefPtr<AutomaticThread> m_thread;
     
     unsigned m_numAvailableThreads { 0 };
 };
@@ -80,6 +81,3 @@ private:
 } // namespace JSC
 
 #endif // ENABLE(JIT)
-
-#endif // JITWorklist_h
-

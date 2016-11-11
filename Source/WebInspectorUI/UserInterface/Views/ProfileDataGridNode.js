@@ -25,11 +25,11 @@
 
 WebInspector.ProfileDataGridNode = class ProfileDataGridNode extends WebInspector.DataGridNode
 {
-    constructor(cctNode, tree)
+    constructor(callingContextTreeNode, tree)
     {
-        super(cctNode, false);
+        super(callingContextTreeNode, false);
 
-        this._node = cctNode;
+        this._node = callingContextTreeNode;
         this._tree = tree;
 
         this._childrenToChargeToSelf = new Set;
@@ -60,7 +60,7 @@ WebInspector.ProfileDataGridNode = class ProfileDataGridNode extends WebInspecto
 
     iconClassName()
     {
-        let script = WebInspector.debuggerManager.scriptForIdentifier(this._node.sourceID);
+        let script = WebInspector.debuggerManager.scriptForIdentifier(this._node.sourceID, WebInspector.assumingMainTarget());
         if (!script || !script.url)
             return "native-icon";
         if (this._node.name === "(program)")
@@ -130,7 +130,7 @@ WebInspector.ProfileDataGridNode = class ProfileDataGridNode extends WebInspecto
     {
         if (columnIdentifier === "function") {
             let filterableData = [this.displayName()];
-            let script = WebInspector.debuggerManager.scriptForIdentifier(this._node.sourceID);
+            let script = WebInspector.debuggerManager.scriptForIdentifier(this._node.sourceID, WebInspector.assumingMainTarget());
             if (script && script.url && this._node.line >= 0 && this._node.column >= 0)
                 filterableData.push(script.url);
             return filterableData;
@@ -174,8 +174,8 @@ WebInspector.ProfileDataGridNode = class ProfileDataGridNode extends WebInspecto
                 for (let {type, source} of this._tree.modifiers) {
                     if (type === WebInspector.ProfileDataGridTree.ModifierType.ChargeToCaller) {
                         if (child.equals(source)) {
-                            this._childrenToChargeToSelf.add(child);                            
-                            this._extraSelfTimeFromChargedChildren += child.filteredTimestampsAndDuration(this._tree.startTime, this._tree.endTime).duration;                            
+                            this._childrenToChargeToSelf.add(child);
+                            this._extraSelfTimeFromChargedChildren += child.filteredTimestampsAndDuration(this._tree.startTime, this._tree.endTime).duration;
                             continue;
                         }
                     }
@@ -232,7 +232,7 @@ WebInspector.ProfileDataGridNode = class ProfileDataGridNode extends WebInspecto
         let titleElement = fragment.appendChild(document.createElement("span"));
         titleElement.textContent = title;
 
-        let script = WebInspector.debuggerManager.scriptForIdentifier(this._node.sourceID);
+        let script = WebInspector.debuggerManager.scriptForIdentifier(this._node.sourceID, WebInspector.assumingMainTarget());
         if (script && script.url && this._node.line >= 0 && this._node.column >= 0) {
             // Convert from 1-based line and column to 0-based.
             let sourceCodeLocation = script.createSourceCodeLocation(this._node.line - 1, this._node.column - 1);
@@ -255,6 +255,8 @@ WebInspector.ProfileDataGridNode = class ProfileDataGridNode extends WebInspecto
         if (!this.shouldRefreshChildren)
             return;
 
+        this.removeEventListener("populate", this._populate, this);
+
         this._node.forEachChild((child) => {
             if (!this._childrenToChargeToSelf.has(child)) {
                 if (child.hasStackTraceInTimeRange(this._tree.startTime, this._tree.endTime))
@@ -263,7 +265,5 @@ WebInspector.ProfileDataGridNode = class ProfileDataGridNode extends WebInspecto
         });
 
         this.sort();
-
-        this.removeEventListener("populate", this._populate, this);
     }
-}
+};

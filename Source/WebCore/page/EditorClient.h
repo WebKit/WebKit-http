@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006, 2007 Apple Inc. All rights reserved.
+ * Copyright (C) 2006-2016 Apple Inc. All rights reserved.
  * Copyright (C) 2008 Nokia Corporation and/or its subsidiary(-ies)
  *
  * Redistribution and use in source and binary forms, with or without
@@ -24,11 +24,9 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef EditorClient_h
-#define EditorClient_h
+#pragma once
 
 #include "EditorInsertAction.h"
-#include "FloatRect.h"
 #include "TextAffinity.h"
 #include "TextChecking.h"
 #include "UndoStep.h"
@@ -36,7 +34,6 @@
 #include <wtf/Vector.h>
 
 #if PLATFORM(COCOA)
-OBJC_CLASS NSAttributedString;
 OBJC_CLASS NSString;
 OBJC_CLASS NSURL;
 #endif
@@ -94,6 +91,7 @@ public:
     virtual void respondToChangedContents() = 0;
     virtual void respondToChangedSelection(Frame*) = 0;
     virtual void didChangeSelectionAndUpdateLayout() = 0;
+    virtual void updateEditorStateAfterLayoutIfEditabilityChanged() = 0;
     virtual void didEndEditing() = 0;
     virtual void willWriteSelectionToPasteboard(Range*) = 0;
     virtual void didWriteSelectionToPasteboard() = 0;
@@ -104,6 +102,7 @@ public:
     // Notify an input method that a composition was voluntarily discarded by WebCore, so that it could clean up too.
     // This function is not called when a composition is closed per a request from an input method.
     virtual void discardedComposition(Frame*) = 0;
+    virtual void canceledComposition() = 0;
 
     virtual void registerUndoStep(PassRefPtr<UndoStep>) = 0;
     virtual void registerRedoStep(PassRefPtr<UndoStep>) = 0;
@@ -136,17 +135,16 @@ public:
     virtual NSArray* readDataFromPasteboard(NSString* type, int index) = 0;
     virtual bool hasRichlyEditableSelection() = 0;
     virtual int getPasteboardItemsCount() = 0;
-    virtual DocumentFragment* documentFragmentFromDelegate(int index) = 0;
+    virtual RefPtr<DocumentFragment> documentFragmentFromDelegate(int index) = 0;
     virtual bool performsTwoStepPaste(DocumentFragment*) = 0;
     virtual int pasteboardChangeCount() = 0;
 #endif
 
 #if PLATFORM(COCOA)
-    virtual NSString* userVisibleString(NSURL*) = 0;
-    virtual DocumentFragment* documentFragmentFromAttributedString(NSAttributedString*, Vector< RefPtr<ArchiveResource>>&) = 0;
+    virtual NSString *userVisibleString(NSURL *) = 0;
     virtual void setInsertionPasteboard(const String& pasteboardName) = 0;
-    virtual NSURL* canonicalizeURL(NSURL*) = 0;
-    virtual NSURL* canonicalizeURLString(NSString*) = 0;
+    virtual NSURL *canonicalizeURL(NSURL *) = 0;
+    virtual NSURL *canonicalizeURLString(NSString *) = 0;
 #endif
 
 #if USE(APPKIT)
@@ -190,5 +188,3 @@ public:
 };
 
 }
-
-#endif // EditorClient_h

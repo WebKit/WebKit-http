@@ -69,6 +69,7 @@ public:
     ~ContentSecurityPolicy();
 
     void copyStateFrom(const ContentSecurityPolicy*);
+    void copyUpgradeInsecureRequestStateFrom(const ContentSecurityPolicy&);
 
     void didCreateWindowShell(JSDOMWindowShell&) const;
 
@@ -80,7 +81,7 @@ public:
     ContentSecurityPolicyResponseHeaders responseHeaders() const;
     enum ReportParsingErrors { No, Yes };
     void didReceiveHeaders(const ContentSecurityPolicyResponseHeaders&, ReportParsingErrors = ReportParsingErrors::Yes);
-    void processHTTPEquiv(const String& content, ContentSecurityPolicyHeaderType type) { didReceiveHeader(content, type, ContentSecurityPolicy::PolicyFrom::HTTPEquivMeta); }
+    void didReceiveHeader(const String&, ContentSecurityPolicyHeaderType, ContentSecurityPolicy::PolicyFrom);
 
     bool allowScriptWithNonce(const String& nonce, bool overrideContentSecurityPolicy = false) const;
     bool allowStyleWithNonce(const String& nonce, bool overrideContentSecurityPolicy = false) const;
@@ -97,17 +98,18 @@ public:
     bool allowFrameAncestors(const Frame&, const URL&, bool overrideContentSecurityPolicy = false) const;
 
     enum class RedirectResponseReceived { No, Yes };
-    bool allowScriptFromSource(const URL&, bool overrideContentSecurityPolicy = false, RedirectResponseReceived = RedirectResponseReceived::No) const;
-    bool allowChildFrameFromSource(const URL&, bool overrideContentSecurityPolicy = false, RedirectResponseReceived = RedirectResponseReceived::No) const;
-    bool allowChildContextFromSource(const URL&, bool overrideContentSecurityPolicy = false, RedirectResponseReceived = RedirectResponseReceived::No) const;
-    bool allowImageFromSource(const URL&, bool overrideContentSecurityPolicy = false, RedirectResponseReceived = RedirectResponseReceived::No) const;
-    bool allowStyleFromSource(const URL&, bool overrideContentSecurityPolicy = false, RedirectResponseReceived = RedirectResponseReceived::No) const;
-    bool allowFontFromSource(const URL&, bool overrideContentSecurityPolicy = false, RedirectResponseReceived = RedirectResponseReceived::No) const;
-    bool allowMediaFromSource(const URL&, bool overrideContentSecurityPolicy = false, RedirectResponseReceived = RedirectResponseReceived::No) const;
-    bool allowConnectToSource(const URL&, bool overrideContentSecurityPolicy = false, RedirectResponseReceived = RedirectResponseReceived::No) const;
-    bool allowFormAction(const URL&, bool overrideContentSecurityPolicy = false, RedirectResponseReceived = RedirectResponseReceived::No) const;
+    bool allowScriptFromSource(const URL&, RedirectResponseReceived = RedirectResponseReceived::No) const;
+    bool allowImageFromSource(const URL&, RedirectResponseReceived = RedirectResponseReceived::No) const;
+    bool allowStyleFromSource(const URL&, RedirectResponseReceived = RedirectResponseReceived::No) const;
+    bool allowFontFromSource(const URL&, RedirectResponseReceived = RedirectResponseReceived::No) const;
+    bool allowMediaFromSource(const URL&, RedirectResponseReceived = RedirectResponseReceived::No) const;
 
-    bool allowObjectFromSource(const URL&, bool overrideContentSecurityPolicy = false, RedirectResponseReceived = RedirectResponseReceived::No) const;
+    bool allowChildFrameFromSource(const URL&, RedirectResponseReceived = RedirectResponseReceived::No) const;
+    bool allowChildContextFromSource(const URL&, RedirectResponseReceived = RedirectResponseReceived::No) const;
+    bool allowConnectToSource(const URL&, RedirectResponseReceived = RedirectResponseReceived::No) const;
+    bool allowFormAction(const URL&, RedirectResponseReceived = RedirectResponseReceived::No) const;
+
+    bool allowObjectFromSource(const URL&, RedirectResponseReceived = RedirectResponseReceived::No) const;
     bool allowBaseURI(const URL&, bool overrideContentSecurityPolicy = false) const;
 
     void setOverrideAllowInlineStyle(bool);
@@ -155,8 +157,8 @@ public:
     void setUpgradeInsecureRequests(bool);
     bool upgradeInsecureRequests() const { return m_upgradeInsecureRequests; }
     enum class InsecureRequestType { Load, FormSubmission, Navigation };
-    void upgradeInsecureRequestIfNeeded(ResourceRequest&, InsecureRequestType);
-    void upgradeInsecureRequestIfNeeded(URL&, InsecureRequestType);
+    void upgradeInsecureRequestIfNeeded(ResourceRequest&, InsecureRequestType) const;
+    void upgradeInsecureRequestIfNeeded(URL&, InsecureRequestType) const;
 
     HashSet<RefPtr<SecurityOrigin>>&& takeNavigationRequestsToUpgrade();
     void inheritInsecureNavigationRequestsToUpgradeFromOpener(const ContentSecurityPolicy&);
@@ -167,12 +169,29 @@ private:
     void updateSourceSelf(const SecurityOrigin&);
     void applyPolicyToScriptExecutionContext();
 
-    void didReceiveHeader(const String&, ContentSecurityPolicyHeaderType, ContentSecurityPolicy::PolicyFrom);
-
     const TextEncoding& documentEncoding() const;
 
-    template<typename Predicate, typename... Args> const ContentSecurityPolicyDirective* violatedDirectiveInAnyPolicy(Predicate&&, Args&&...) const WARN_UNUSED_RETURN;
-    template<typename Predicate> bool foundHashOfContentInAllPolicies(Predicate&&, const String& content, OptionSet<ContentSecurityPolicyHashAlgorithm>) const WARN_UNUSED_RETURN;
+    enum class Disposition {
+        Enforce,
+        ReportOnly,
+    };
+
+    using ViolatedDirectiveCallback = std::function<void (const ContentSecurityPolicyDirective&)>;
+
+    template<typename Predicate, typename... Args>
+    typename std::enable_if<!std::is_convertible<Predicate, ViolatedDirectiveCallback>::value, bool>::type allPoliciesWithDispositionAllow(Disposition, Predicate&&, Args&&...) const;
+
+    template<typename Predicate, typename... Args>
+    bool allPoliciesWithDispositionAllow(Disposition, ViolatedDirectiveCallback&&, Predicate&&, Args&&...) const;
+
+    template<typename Predicate, typename... Args>
+    bool allPoliciesAllow(ViolatedDirectiveCallback&&, Predicate&&, Args&&...) const WARN_UNUSED_RETURN;
+
+    using ResourcePredicate = const ContentSecurityPolicyDirective *(ContentSecurityPolicyDirectiveList::*)(const URL &, bool) const;
+    bool allowResourceFromSource(const URL&, RedirectResponseReceived, const char*, ResourcePredicate) const;
+
+    using HashInEnforcedAndReportOnlyPoliciesPair = std::pair<bool, bool>;
+    template<typename Predicate> HashInEnforcedAndReportOnlyPoliciesPair findHashOfContentInPolicies(Predicate&&, const String& content, OptionSet<ContentSecurityPolicyHashAlgorithm>) const WARN_UNUSED_RETURN;
 
     void reportViolation(const String& violatedDirective, const ContentSecurityPolicyDirective& effectiveViolatedDirective, const URL& blockedURL, const String& consoleMessage, JSC::ExecState*) const;
     void reportViolation(const String& violatedDirective, const ContentSecurityPolicyDirective& effectiveViolatedDirective, const URL& blockedURL, const String& consoleMessage, const String& sourceURL, const TextPosition& sourcePosition, JSC::ExecState* = nullptr) const;
@@ -193,15 +212,5 @@ private:
     OptionSet<ContentSecurityPolicyHashAlgorithm> m_hashAlgorithmsForInlineStylesheets;
     HashSet<RefPtr<SecurityOrigin>> m_insecureNavigationRequestsToUpgrade;
 };
-
-template<typename Predicate, typename... Args>
-inline const ContentSecurityPolicyDirective* ContentSecurityPolicy::violatedDirectiveInAnyPolicy(Predicate&& predicate, Args&&... args) const
-{
-    for (auto& policy : m_policies) {
-        if (const ContentSecurityPolicyDirective* violatedDirective = (policy.get()->*predicate)(std::forward<Args>(args)...))
-            return violatedDirective;
-    }
-    return nullptr;
-}
 
 }

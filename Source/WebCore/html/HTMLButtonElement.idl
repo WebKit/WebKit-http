@@ -22,12 +22,11 @@ interface HTMLButtonElement : HTMLElement {
     [Reflect] attribute boolean autofocus;
     [Reflect] attribute boolean disabled;
     readonly attribute HTMLFormElement form;
-    attribute DOMString formAction;
+    attribute USVString formAction;
 
-    // FIXME: These should not have [TreatNullAs=LegacyNullString].
-    [TreatNullAs=LegacyNullString] attribute DOMString formEnctype;
-    [TreatNullAs=LegacyNullString] attribute DOMString formMethod;
-    [TreatNullAs=LegacyNullString] attribute DOMString type;
+    attribute DOMString formEnctype;
+    attribute DOMString formMethod;
+    attribute DOMString type;
 
     [Reflect] attribute boolean formNoValidate;
     [Reflect] attribute DOMString formTarget;
@@ -38,15 +37,8 @@ interface HTMLButtonElement : HTMLElement {
     readonly attribute ValidityState validity;
     readonly attribute DOMString validationMessage;
     boolean checkValidity();
+    [EnabledAtRuntime=InteractiveFormValidation] boolean reportValidity();
     void setCustomValidity(DOMString? error);
 
     readonly attribute NodeList labels;
-
-#if defined(LANGUAGE_OBJECTIVE_C) && LANGUAGE_OBJECTIVE_C
-    [Reflect] attribute DOMString accessKey;
-#endif
-
-#if defined(LANGUAGE_OBJECTIVE_C) && LANGUAGE_OBJECTIVE_C
-    void click();
-#endif
 };

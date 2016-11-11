@@ -46,6 +46,7 @@
 #include "Page.h"
 #include "RenderTheme.h"
 #include "RuleSet.h"
+#include "RuntimeEnabledFeatures.h"
 #include "SVGElement.h"
 #include "StyleSheetContents.h"
 #include "UserAgentStyleSheets.h"
@@ -95,7 +96,7 @@ static const MediaQueryEvaluator& printEval()
 
 static StyleSheetContents* parseUASheet(const String& str)
 {
-    StyleSheetContents& sheet = StyleSheetContents::create().leakRef(); // leak the sheet on purpose
+    StyleSheetContents& sheet = StyleSheetContents::create(CSSParserContext(UASheetMode)).leakRef(); // leak the sheet on purpose
     sheet.parseString(str);
     return &sheet;
 }
@@ -181,9 +182,14 @@ void CSSDefaultStyleSheets::ensureDefaultStyleSheetsForElement(const Element& el
 #if ENABLE(VIDEO)
         else if (is<HTMLMediaElement>(element)) {
             if (!mediaControlsStyleSheet) {
-                String mediaRules = RenderTheme::themeForPage(element.document().page())->mediaControlsStyleSheet();
-                if (mediaRules.isEmpty())
-                    mediaRules = String(mediaControlsUserAgentStyleSheet, sizeof(mediaControlsUserAgentStyleSheet)) + RenderTheme::themeForPage(element.document().page())->extraMediaControlsStyleSheet();
+                String mediaRules;
+                if (RuntimeEnabledFeatures::sharedFeatures().modernMediaControlsEnabled())
+                    mediaRules = emptyString();
+                else {
+                    mediaRules = RenderTheme::themeForPage(element.document().page())->mediaControlsStyleSheet();
+                    if (mediaRules.isEmpty())
+                        mediaRules = String(mediaControlsUserAgentStyleSheet, sizeof(mediaControlsUserAgentStyleSheet)) + RenderTheme::themeForPage(element.document().page())->extraMediaControlsStyleSheet();
+                }
                 mediaControlsStyleSheet = parseUASheet(mediaRules);
                 defaultStyle->addRulesFromSheet(*mediaControlsStyleSheet, screenEval());
                 defaultPrintStyle->addRulesFromSheet(*mediaControlsStyleSheet, printEval());

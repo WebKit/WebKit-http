@@ -24,8 +24,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef ARMAssembler_h
-#define ARMAssembler_h
+#pragma once
 
 #if ENABLE(ASSEMBLER) && CPU(ARM_THUMB2)
 
@@ -2257,6 +2256,11 @@ public:
 
         cacheFlush(reinterpret_cast<uint16_t*>(from) - 5, 5 * sizeof(uint16_t));
     }
+
+    static void relinkJumpToNop(void* from)
+    {
+        relinkJump(from, from);
+    }
     
     static void relinkCall(void* from, void* to)
     {
@@ -2339,6 +2343,11 @@ public:
 #else
         return 4;
 #endif
+    }
+
+    static constexpr ptrdiff_t patchableJumpSize()
+    {
+        return 10;
     }
     
     static void replaceWithLoad(void* instructionStart)
@@ -2945,5 +2954,3 @@ private:
 } // namespace JSC
 
 #endif // ENABLE(ASSEMBLER) && CPU(ARM_THUMB2)
-
-#endif // ARMAssembler_h

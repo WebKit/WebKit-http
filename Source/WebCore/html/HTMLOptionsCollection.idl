@@ -19,32 +19,21 @@
  */
 
 [
-    JSGenerateToNativeObject,
     CustomIndexedSetter,
+    ExportToWrappedFunction,
     GenerateIsReachable=ImplOwnerNodeRoot,
+    JSGenerateToNativeObject,
 ] interface HTMLOptionsCollection : HTMLCollection {
     attribute long selectedIndex;
-    [CustomSetter, SetterRaisesException] attribute unsigned long length;
+    [CEReactions, CustomSetter, SetterMayThrowException] attribute unsigned long length;
 
-#if defined(LANGUAGE_OBJECTIVE_C) && LANGUAGE_OBJECTIVE_C || defined(LANGUAGE_GOBJECT) && LANGUAGE_GOBJECT
-    getter Node namedItem(optional DOMString name);
-#else
     getter HTMLOptionElement? item(unsigned long index);
+    getter HTMLOptionElement? namedItem(DOMString name);
 
-    // FIXME: Using "undefined" as default parameter value is wrong.
-    getter HTMLOptionElement namedItem(optional DOMString name = "undefined");
-#endif
+    [CEReactions, MayThrowException] void add((HTMLOptionElement or HTMLOptGroupElement) element, optional (HTMLElement or long)? before = null);
 
-#if (!defined(LANGUAGE_OBJECTIVE_C) || !LANGUAGE_OBJECTIVE_C) && (!defined(LANGUAGE_GOBJECT) || !LANGUAGE_GOBJECT)
-    [RaisesException] void add(HTMLElement element, optional HTMLElement? before = null);
-    [RaisesException] void add(HTMLElement element, optional long index = 0);
-#else
-    [RaisesException] void add(HTMLOptionElement option, unsigned long index);
-#endif
-    [Custom] void remove(optional unsigned long index);
+    [CEReactions] void remove(long index);
 
-#if defined(LANGUAGE_OBJECTIVE_C) && LANGUAGE_OBJECTIVE_C
-    Node item(unsigned long index);
-#endif
+    // FIXME: This overload is not in the specification and has been dropped from Blink.
+    [CEReactions] void remove(HTMLOptionElement option);
 };
-

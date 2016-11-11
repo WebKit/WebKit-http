@@ -71,11 +71,6 @@ bool RenderRubyRun::hasRubyBase() const
     return lastChild() && lastChild()->isRubyBase();
 }
 
-bool RenderRubyRun::isEmpty() const
-{
-    return !hasRubyText() && !hasRubyBase();
-}
-
 RenderRubyText* RenderRubyRun::rubyText() const
 {
     RenderObject* child = firstChild();
@@ -106,7 +101,7 @@ RenderBlock* RenderRubyRun::firstLineBlock() const
     return 0;
 }
 
-void RenderRubyRun::updateFirstLetter()
+void RenderRubyRun::updateFirstLetter(RenderTreeMutationIsAllowed)
 {
 }
 
@@ -193,7 +188,7 @@ void RenderRubyRun::removeChild(RenderObject& child)
         }
 
         // If any of the above leaves the run empty, destroy it as well.
-        if (isEmpty()) {
+        if (!hasRubyText() && !hasRubyBase()) {
             parent()->removeChild(*this);
             deleteLines();
             destroy();
@@ -235,15 +230,26 @@ void RenderRubyRun::layout()
 {
     if (RenderRubyBase* base = rubyBase())
         base->reset();
-
     RenderBlockFlow::layout();
-    
+}
+
+void RenderRubyRun::layoutBlock(bool relayoutChildren, LayoutUnit pageHeight)
+{
+    if (!relayoutChildren) {
+        // Since the extra relayout in RenderBlockFlow::updateRubyForJustifiedText() causes the size of the RenderRubyText/RenderRubyBase
+        // dependent on the line's current expansion, whenever we relayout the RenderRubyRun, we need to relayout the RenderRubyBase/RenderRubyText as well.
+        // FIXME: We should take the expansion opportunities into account if possible.
+        relayoutChildren = style().textAlign() == JUSTIFY;
+    }
+
+    RenderBlockFlow::layoutBlock(relayoutChildren, pageHeight);
+
     RenderRubyText* rt = rubyText();
     if (!rt)
         return;
 
     rt->setLogicalLeft(0);
-    
+
     // Place the RenderRubyText such that its bottom is flush with the lineTop of the first line of the RenderRubyBase.
     LayoutUnit lastLineRubyTextBottom = rt->logicalHeight();
     LayoutUnit firstLineRubyTextTop = 0;

@@ -131,13 +131,16 @@ void Heap::scavengeSmallPages(std::unique_lock<StaticMutex>& lock, std::chrono::
 
 void Heap::scavengeLargeObjects(std::unique_lock<StaticMutex>& lock, std::chrono::milliseconds sleepDuration)
 {
-    while (XLargeRange range = m_largeFree.removePhysical()) {
+    auto& ranges = m_largeFree.ranges();
+    for (size_t i = ranges.size(); i-- > 0; i = std::min(i, ranges.size())) {
+        auto range = ranges.pop(i);
+
         lock.unlock();
         vmDeallocatePhysicalPagesSloppy(range.begin(), range.size());
         lock.lock();
-        
+
         range.setPhysicalSize(0);
-        m_largeFree.add(range);
+        ranges.push(range);
 
         waitUntilFalse(lock, sleepDuration, m_isAllocatingPages);
     }
@@ -302,21 +305,21 @@ void Heap::allocateSmallBumpRangesByObject(
     }
 }
 
-XLargeRange Heap::splitAndAllocate(XLargeRange& range, size_t alignment, size_t size)
+LargeRange Heap::splitAndAllocate(LargeRange& range, size_t alignment, size_t size)
 {
-    XLargeRange prev;
-    XLargeRange next;
+    LargeRange prev;
+    LargeRange next;
 
     size_t alignmentMask = alignment - 1;
     if (test(range.begin(), alignmentMask)) {
         size_t prefixSize = roundUpToMultipleOf(alignment, range.begin()) - range.begin();
-        std::pair<XLargeRange, XLargeRange> pair = range.split(prefixSize);
+        std::pair<LargeRange, LargeRange> pair = range.split(prefixSize);
         prev = pair.first;
         range = pair.second;
     }
 
     if (range.size() - size > size / pageSizeWasteFactor) {
-        std::pair<XLargeRange, XLargeRange> pair = range.split(size);
+        std::pair<LargeRange, LargeRange> pair = range.split(size);
         range = pair.first;
         next = pair.second;
     }
@@ -354,7 +357,7 @@ void* Heap::tryAllocateLarge(std::lock_guard<StaticMutex>& lock, size_t alignmen
         return nullptr;
     alignment = roundedAlignment;
 
-    XLargeRange range = m_largeFree.remove(alignment, size);
+    LargeRange range = m_largeFree.remove(alignment, size);
     if (!range) {
         range = m_vmHeap.tryAllocateLargeChunk(lock, alignment, size);
         if (!range)
@@ -389,7 +392,7 @@ void Heap::shrinkLarge(std::lock_guard<StaticMutex>&, const Range& object, size_
     BASSERT(object.size() > newSize);
 
     size_t size = m_largeAllocated.remove(object.begin());
-    XLargeRange range = XLargeRange(object, size);
+    LargeRange range = LargeRange(object, size);
     splitAndAllocate(range, alignment, newSize);
 
     m_scavenger.run();
@@ -398,7 +401,7 @@ void Heap::shrinkLarge(std::lock_guard<StaticMutex>&, const Range& object, size_
 void Heap::deallocateLarge(std::lock_guard<StaticMutex>&, void* object)
 {
     size_t size = m_largeAllocated.remove(object);
-    m_largeFree.add(XLargeRange(object, size, size));
+    m_largeFree.add(LargeRange(object, size, size));
     
     m_scavenger.run();
 }

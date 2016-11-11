@@ -29,6 +29,7 @@
 
 #include "CSSStyleSheet.h"
 #include "CachedResourceClientWalker.h"
+#include "CachedResourceRequest.h"
 #include "CachedStyleSheetClient.h"
 #include "HTTPHeaderNames.h"
 #include "HTTPParsers.h"
@@ -37,17 +38,13 @@
 #include "StyleSheetContents.h"
 #include "TextResourceDecoder.h"
 #include <wtf/CurrentTime.h>
-#include <wtf/Vector.h>
 
 namespace WebCore {
 
-CachedCSSStyleSheet::CachedCSSStyleSheet(const ResourceRequest& resourceRequest, const String& charset, SessionID sessionID)
-    : CachedResource(resourceRequest, CSSStyleSheet, sessionID)
-    , m_decoder(TextResourceDecoder::create("text/css", charset))
+CachedCSSStyleSheet::CachedCSSStyleSheet(CachedResourceRequest&& request, SessionID sessionID)
+    : CachedResource(WTFMove(request), CSSStyleSheet, sessionID)
+    , m_decoder(TextResourceDecoder::create("text/css", request.charset()))
 {
-    // Prefer text/css but accept any type (dell.com serves a stylesheet
-    // as text/html; see <http://bugs.webkit.org/show_bug.cgi?id=11451>).
-    setAccept("text/css,*/*;q=0.1");
 }
 
 CachedCSSStyleSheet::~CachedCSSStyleSheet()
@@ -56,16 +53,16 @@ CachedCSSStyleSheet::~CachedCSSStyleSheet()
         m_parsedStyleSheetCache->removedFromMemoryCache();
 }
 
-void CachedCSSStyleSheet::didAddClient(CachedResourceClient* c)
+void CachedCSSStyleSheet::didAddClient(CachedResourceClient& client)
 {
-    ASSERT(c->resourceClientType() == CachedStyleSheetClient::expectedType());
+    ASSERT(client.resourceClientType() == CachedStyleSheetClient::expectedType());
     // CachedResource::didAddClient() must be before setCSSStyleSheet(),
     // because setCSSStyleSheet() may cause scripts to be executed, which could destroy 'c' if it is an instance of HTMLLinkElement.
     // see the comment of HTMLLinkElement::setCSSStyleSheet.
-    CachedResource::didAddClient(c);
+    CachedResource::didAddClient(client);
 
     if (!isLoading())
-        static_cast<CachedStyleSheetClient*>(c)->setCSSStyleSheet(m_resourceRequest.url(), m_response.url(), m_decoder->encoding().name(), this);
+        static_cast<CachedStyleSheetClient&>(client).setCSSStyleSheet(m_resourceRequest.url(), m_response.url(), m_decoder->encoding().name(), this);
 }
 
 void CachedCSSStyleSheet::setEncoding(const String& chs)
@@ -77,17 +74,30 @@ String CachedCSSStyleSheet::encoding() const
 {
     return m_decoder->encoding().name();
 }
-    
+
 const String CachedCSSStyleSheet::sheetText(MIMETypeCheck mimeTypeCheck, bool* hasValidMIMEType) const
-{ 
+{
     if (!m_data || m_data->isEmpty() || !canUseSheet(mimeTypeCheck, hasValidMIMEType))
         return String();
-    
+
     if (!m_decodedSheetText.isNull())
         return m_decodedSheetText;
-    
+
     // Don't cache the decoded text, regenerating is cheap and it can use quite a bit of memory
     return m_decoder->decodeAndFlush(m_data->data(), m_data->size());
+}
+
+void CachedCSSStyleSheet::setBodyDataFrom(const CachedResource& resource)
+{
+    ASSERT(resource.type() == type());
+    const CachedCSSStyleSheet& sheet = static_cast<const CachedCSSStyleSheet&>(resource);
+
+    CachedResource::setBodyDataFrom(resource);
+
+    m_decoder = sheet.m_decoder;
+    m_decodedSheetText = sheet.m_decodedSheetText;
+    if (sheet.m_parsedStyleSheetCache)
+        saveParsedStyleSheet(*sheet.m_parsedStyleSheetCache);
 }
 
 void CachedCSSStyleSheet::finishLoading(SharedBuffer* data)

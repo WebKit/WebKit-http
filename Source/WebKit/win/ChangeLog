@@ -1,3 +1,921 @@
+2016-10-14  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        MemoryPressureHandler shouldn't know how to release WebCore memory
+        https://bugs.webkit.org/show_bug.cgi?id=160497
+
+        Reviewed by Michael Catanzaro.
+
+        Set the low memory handler before installing the memory pressure handler.
+
+        * WebView.cpp:
+        (WebView::initWithFrame):
+
+2016-11-09  Alex Christensen  <achristensen@webkit.org>
+
+        Fix Windows build after r208499
+        https://bugs.webkit.org/show_bug.cgi?id=164562
+
+        * WebKitDLL.cpp:
+        (shutDownWebKit):
+
+2016-11-09  Darin Adler  <darin@apple.com>
+
+        Move Range from ExceptionCode to ExceptionOr
+        https://bugs.webkit.org/show_bug.cgi?id=164457
+
+        Reviewed by Alex Christensen.
+
+        * WebView.cpp:
+        (WebView::onIMERequestCharPosition): Updated for new exception handling.
+
+2016-11-09  Darin Adler  <darin@apple.com>
+
+        Move EventTarget from ExceptionCode to ExceptionOr
+        https://bugs.webkit.org/show_bug.cgi?id=164465
+
+        Reviewed by Youenn Fablet.
+
+        * DOMCoreClasses.cpp:
+        (DOMNode::dispatchEvent): Updated exception handling.
+        (DOMWindow::dispatchEvent): Ditto.
+
+2016-11-04  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Safari does not emit composition end if blurred for dead key / Japanese IME
+        https://bugs.webkit.org/show_bug.cgi?id=164369
+        <rdar://problem/29050439>
+
+        Reviewed by Ryosuke Niwa.
+
+        Add a stub implementation of canceledComposition.
+
+        * WebCoreSupport/WebEditorClient.cpp:
+        (WebEditorClient::canceledComposition):
+        * WebCoreSupport/WebEditorClient.h:
+
+2016-11-04  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Page visibility tests are timing out.
+        https://bugs.webkit.org/show_bug.cgi?id=164363
+
+        Reviewed by Brent Fulgham.
+
+        Add method to set page visibility.
+
+        * Interfaces/IWebViewPrivate.idl:
+        * WebView.cpp:
+        (WebView::QueryInterface):
+        (WebView::findString):
+        (WebView::setVisibilityState):
+        * WebView.h:
+
+2016-11-01  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Remove CUSTOM_ELEMENTS build flag
+        https://bugs.webkit.org/show_bug.cgi?id=164267
+
+        Reviewed by Antti Koivisto.
+
+        Removed the build flag.
+
+        * WebView.cpp:
+        (WebView::notifyPreferencesChanged):
+
+2016-10-29  Filip Pizlo  <fpizlo@apple.com>
+
+        JSC should support SharedArrayBuffer
+        https://bugs.webkit.org/show_bug.cgi?id=163986
+
+        Reviewed by Keith Miller.
+
+        Support the RuntimeFlag.
+
+        * Interfaces/IWebPreferencesPrivate.idl:
+
+2016-10-31  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Use #pragma once in WebCore
+        https://bugs.webkit.org/show_bug.cgi?id=164194
+
+        Rubber-stamped by Sam Weinig.
+
+        * WebCoreSupport/WebContextMenuClient.cpp:
+        (WebContextMenuClient::isSpeaking):
+        (WebContextMenuClient::shareMenuItem): Deleted.
+        * WebCoreSupport/WebContextMenuClient.h:
+        Remove this dead code since r192333.
+
+2016-10-31  Darin Adler  <darin@apple.com>
+
+        Convert Document from ExceptionCode to Exception
+        https://bugs.webkit.org/show_bug.cgi?id=164212
+
+        Reviewed by Alex Christensen.
+
+        * DOMCoreClasses.cpp:
+        (DOMDocument::createElement): Updated exception handling.
+        (DOMDocument::createEvent): Ditto.
+
+2016-10-30  Darin Adler  <darin@apple.com>
+
+        Move Element, NamedNodeMap, and DOMStringMap from ExceptionCode to Exception
+        https://bugs.webkit.org/show_bug.cgi?id=164206
+
+        Reviewed by Chris Dumez.
+
+        * DOMCoreClasses.cpp:
+        (DOMElement::setAttribute): Updated exception handling.
+        * DOMHTMLClasses.cpp:
+        (DOMHTMLElement::setInnerHTML): Ditto.
+
+2016-10-30  Brent Fulgham  <bfulgham@apple.com>
+
+        Unreviewed build fix (Direct2D)
+
+        * WebView.cpp:
+        (WebView::paintWithDirect2D): Update for revised GraphicsContext
+        begin/end draw behavior.
+
+2016-10-28  Darin Adler  <darin@apple.com>
+
+        Move all classes in the HTML directory from ExceptionCode to Exception
+        https://bugs.webkit.org/show_bug.cgi?id=163876
+
+        Reviewed by Sam Weinig.
+
+        * DOMHTMLClasses.cpp:
+        (DOMHTMLElement::setInnerText): Update exception handling.
+        * FullscreenVideoController.cpp:
+        (FullscreenVideoController::setVolume): Ditto.
+
+2016-10-27  Brent Fulgham  <bfulgham@apple.com>
+
+        Unreviewed build fix.
+
+        * WebView.cpp:
+        (WebView::paintWithDirect2D): Correct merge error.
+
+2016-10-25  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win][Direct2D] Create a RAII Helper Class for the Render Target
+        https://bugs.webkit.org/show_bug.cgi?id=164005
+
+        Reviewed by Alex Christensen.
+
+        * WebView.cpp:
+        (WebView::sizeChanged): Construct RenderTarget with higher-resolution display timer.
+        (WebView::paintWithDirect2D): Revise to use new RenderTargetHelper class.
+
+2016-10-27  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Support "insertFromDrop" and "deleteByDrag" for the InputEvent spec
+        https://bugs.webkit.org/show_bug.cgi?id=163948
+        <rdar://problem/28921433>
+
+        Reviewed by Darin Adler.
+
+        Add support for new drag and drop-related EditAction enum values.
+
+        * WebCoreSupport/WebEditorClient.cpp:
+        (undoNameForEditAction):
+
+2016-10-26  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: remove unused bool return value from FrontendChannel::sendMessageToFrontend
+        https://bugs.webkit.org/show_bug.cgi?id=164046
+
+        Reviewed by Joseph Pecoraro.
+
+        * WebCoreSupport/WebInspectorClient.h:
+
+2016-10-19  Alex Christensen  <achristensen@webkit.org>
+
+        Revert r207151
+        https://bugs.webkit.org/show_bug.cgi?id=163675
+
+        Reviewed by Brent Fulgham.
+
+        * DefaultDownloadDelegate.h:
+        * WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebFrameLoaderClient::savePlatformDataToCachedFrame):
+        * WebCoreSupport/WebFrameNetworkingContext.cpp:
+        (WebFrameNetworkingContext::ensurePrivateBrowsingSession):
+        * WebCoreSupport/WebFrameNetworkingContext.h:
+        * WebCoreSupport/WebPlatformStrategies.cpp:
+        * WebDownload.h:
+        * WebError.cpp:
+        (WebError::localizedDescription):
+        (WebError::sslPeerCertificate):
+        * WebError.h:
+        * WebMutableURLRequest.cpp:
+        (WebMutableURLRequest::mutableCopy):
+        * WebURLAuthenticationChallenge.cpp:
+        (WebURLAuthenticationChallenge::initWithProtectionSpace):
+        (WebURLAuthenticationChallenge::initWithAuthenticationChallenge):
+        * WebURLResponse.cpp:
+        (WebURLResponse::sslPeerCertificate):
+        * WebURLResponse.h:
+        * WebView.cpp:
+        (WebView::setCacheModel):
+        (WebView::canHandleRequest):
+        (WebView::notifyPreferencesChanged):
+        (updateSharedSettingsFromPreferencesIfNeeded):
+
+2016-10-18  Darin Adler  <darin@apple.com>
+
+        Move many miscellaneous classes from ExceptionCode to Exception
+        https://bugs.webkit.org/show_bug.cgi?id=163645
+
+        Reviewed by Ryosuke Niwa.
+
+        * DOMCoreClasses.cpp:
+        (DOMDocument::getComputedStyle): Use ptr instead of get since the return
+        value is now Ref instead of RefPtr.
+
+2016-10-18  Anders Carlsson  <andersca@apple.com>
+
+        Try to fix the Windows build.
+
+        * WebHistoryItem.cpp:
+        (WebHistoryItem::redirectURLs):
+
+2016-10-18  Anders Carlsson  <andersca@apple.com>
+
+        Move some history specific HistoryItem code to WebHistoryItem
+        https://bugs.webkit.org/show_bug.cgi?id=163567
+
+        Reviewed by Tim Horton.
+
+        Remove these, they aren't used.
+
+        * WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebFrameLoaderClient::updateGlobalHistoryRedirectLinks):
+        * WebHistory.cpp:
+        (WebHistory::visitedURL):
+        * WebHistoryItem.cpp:
+        (WebHistoryItem::initFromDictionaryRepresentation):
+        (WebHistoryItem::dictionaryRepresentation):
+
+2016-10-16  Darin Adler  <darin@apple.com>
+
+        Move CSS classes from ExceptionCode to Exception
+        https://bugs.webkit.org/show_bug.cgi?id=163494
+
+        Reviewed by Sam Weinig.
+
+        * DOMCSSClasses.cpp:
+        (DOMCSSStyleDeclaration::setCssText): Remove ExceptionCode handling.
+        (DOMCSSStyleDeclaration::setProperty): Ditto.
+
+2016-10-12  Anders Carlsson  <andersca@apple.com>
+
+        Copy BackForwardList from WebCore to WebKit/win
+        https://bugs.webkit.org/show_bug.cgi?id=163360
+
+        Reviewed by Alex Christensen.
+
+        Use our local BackForwardList class instead of WebCore::BackForwardList.
+
+        * BackForwardList.cpp: Added.
+        * BackForwardList.h: Added.
+        * WebBackForwardList.h:
+        * WebView.cpp:
+        (WebView::initWithFrame):
+        (WebView::backForwardList):
+
+2016-10-13  Anders Carlsson  <andersca@apple.com>
+
+        Get rid of the HistoryItemVector typedef
+        https://bugs.webkit.org/show_bug.cgi?id=163398
+
+        Reviewed by Beth Dakin.
+
+        Expand the HistoryitemVector typedef instead to make it more clear what types we are dealing with.
+
+        * WebBackForwardList.cpp:
+        (WebBackForwardList::backListWithLimit):
+        (WebBackForwardList::forwardListWithLimit):
+        * WebHistoryItem.cpp:
+        (WebHistoryItem::children):
+
+2016-10-12  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Unreviewed build fix after r207218.
+
+        The CQ-landed patch used the old USE(CFNETWORK) compiler guard.
+        It should be using USE(CFURLCONNECTION).
+
+        * WebCache.cpp: Missed one!
+
+2016-10-12  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win] Unreviewed build fix after r207218.
+
+        The CQ-landed patch used the old USE(CFNETWORK) compiler guard.
+        It should be using USE(CFURLCONNECTION).
+
+        * WebCache.cpp:
+        (WebCache::cacheFolder):
+        (WebCache::setCacheFolder):
+
+2016-10-12  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Parallel DRTs are sharing preferences and cache.
+        https://bugs.webkit.org/show_bug.cgi?id=163013
+
+        Reviewed by Brent Fulgham.
+
+        Make it possible for a WebKit client to use separate preferences and cache.
+
+        * Interfaces/IWebPreferencesPrivate.idl:
+        * WebApplicationCache.cpp:
+        (applicationCachePath):
+        * WebCache.cpp:
+        (WebCache::cacheFolder):
+        (WebCache::setCacheFolder):
+        * WebDatabaseManager.cpp:
+        (databasesDirectory):
+        * WebPreferences.cpp:
+        (WebPreferences::applicationId):
+        (WebPreferences::valueForKey):
+        (WebPreferences::setValueForKey):
+        (WebPreferences::save):
+        (WebPreferences::QueryInterface):
+        (WebPreferences::modernMediaControlsEnabled):
+        (WebPreferences::setApplicationId):
+        * WebPreferences.h:
+        * WebView.cpp:
+        (WebView::setCacheModel):
+
+2016-10-11  Alex Christensen  <achristensen@webkit.org>
+
+        Remove dead networking code
+        https://bugs.webkit.org/show_bug.cgi?id=163263
+
+        Reviewed by Daniel Bates.
+
+        * DefaultDownloadDelegate.h:
+        * WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebFrameLoaderClient::savePlatformDataToCachedFrame):
+        * WebCoreSupport/WebFrameNetworkingContext.cpp:
+        (WebFrameNetworkingContext::ensurePrivateBrowsingSession):
+        * WebCoreSupport/WebFrameNetworkingContext.h:
+        * WebCoreSupport/WebPlatformStrategies.cpp:
+        * WebDownload.h:
+        * WebError.cpp:
+        (WebError::localizedDescription):
+        (WebError::sslPeerCertificate):
+        * WebError.h:
+        * WebMutableURLRequest.cpp:
+        (WebMutableURLRequest::mutableCopy):
+        * WebURLAuthenticationChallenge.cpp:
+        (WebURLAuthenticationChallenge::initWithProtectionSpace):
+        (WebURLAuthenticationChallenge::initWithAuthenticationChallenge):
+        * WebURLResponse.cpp:
+        (WebURLResponse::sslPeerCertificate):
+        * WebURLResponse.h:
+        * WebView.cpp:
+        (WebView::setCacheModel):
+        (WebView::canHandleRequest):
+        (WebView::notifyPreferencesChanged):
+        (updateSharedSettingsFromPreferencesIfNeeded):
+
+2016-10-11  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r207067.
+
+        This change caused webkitpy test failures.
+
+        Reverted changeset:
+
+        "[Win] Parallel DRTs are sharing preferences and cache."
+        https://bugs.webkit.org/show_bug.cgi?id=163013
+        http://trac.webkit.org/changeset/207067
+
+2016-10-11  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Parallel DRTs are sharing preferences and cache.
+        https://bugs.webkit.org/show_bug.cgi?id=163013
+
+        Reviewed by Brent Fulgham.
+
+        Make it possible for a WebKit client to use separate preferences and cache.
+
+        * Interfaces/IWebPreferencesPrivate.idl:
+        * WebApplicationCache.cpp:
+        (applicationCachePath):
+        * WebCache.cpp:
+        (WebCache::cacheFolder):
+        (WebCache::setCacheFolder):
+        * WebDatabaseManager.cpp:
+        (databasesDirectory):
+        * WebPreferences.cpp:
+        (WebPreferences::applicationId):
+        (WebPreferences::valueForKey):
+        (WebPreferences::setValueForKey):
+        (WebPreferences::save):
+        (WebPreferences::QueryInterface):
+        (WebPreferences::modernMediaControlsEnabled):
+        (WebPreferences::setApplicationId):
+        * WebPreferences.h:
+        * WebView.cpp:
+        (WebView::setCacheModel):
+
+2016-10-09  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Support InputEvent.inputType for the new InputEvent spec
+        https://bugs.webkit.org/show_bug.cgi?id=163025
+        <rdar://problem/28658092>
+
+        Reviewed by Darin Adler.
+
+        * WebCoreSupport/WebEditorClient.cpp:
+        (undoNameForEditAction):
+
+2016-10-04  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win][Direct2D] Connect WebCore/WebKit Drawing
+        https://bugs.webkit.org/show_bug.cgi?id=162924
+
+        Reviewed by Alex Christensen.
+
+        Update the Windows WebKit layer to optionally use the Direct2D
+        backend.
+
+        * FullscreenVideoController.cpp: Disable some CoreAnimation-based
+        accelerated compositing logic.
+        * FullscreenVideoController.h:
+        * WebFrame.cpp:
+        (WebFrame::spoolPages): Disable in Direct2D.
+        * WebView.cpp:
+        (WebView::ensureBackingStore): Add Direct2D logic.
+        (WebView::scrollBackingStore): Ditto.
+        (WebView::sizeChanged): Ditto.
+        (WebView::paintWithDirect2D): Added.
+        (WebView::WebViewWndProc): Call Direct2D paint routine.
+        * WebView.h:
+
+2016-10-02  Darin Adler  <darin@apple.com>
+
+        Rename ExceptionCode-based exception handling to "legacy"
+        https://bugs.webkit.org/show_bug.cgi?id=162859
+
+        Reviewed by Chris Dumez.
+
+        * Interfaces/DOMEvents.idl: Let the script rename here (in a comment).
+
+2016-09-29  Konstantin Tokarev  <annulen@yandex.ru>
+
+        Fixed compilation of PluginView when NETSCAPE_PLUGIN_API is disabled
+        https://bugs.webkit.org/show_bug.cgi?id=162725
+
+        Reviewed by Alex Christensen.
+
+        Fix for r206460, streamDidFinishLoading() does not override anything
+        when NETSCAPE_PLUGIN_API is disabled because PlugivView does not
+        inherit PluginStreamClient in this case.
+
+        * Plugins/PluginView.h:
+
+2016-09-27  Konstantin Tokarev  <annulen@yandex.ru>
+
+        Use override specifiers in PluginView
+        https://bugs.webkit.org/show_bug.cgi?id=162628
+
+        Reviewed by Alex Christensen.
+
+        * Plugins/PluginView.h:
+
+2016-09-23  Antoine Quint  <graouts@apple.com>
+
+        Add a new runtime flag for work on modern media controls (off by default)
+        https://bugs.webkit.org/show_bug.cgi?id=162420
+        <rdar://problem/27989489>
+
+        Reviewed by Eric Carlson.
+
+        * Interfaces/IWebPreferencesPrivate.idl:
+        * WebPreferenceKeysPrivate.h:
+        * WebPreferences.cpp:
+        (WebPreferences::setModernMediaControlsEnabled):
+        (WebPreferences::modernMediaControlsEnabled):
+        (WebPreferences::setCustomElementsEnabled): Deleted.
+        * WebPreferences.h:
+        * WebView.cpp:
+        (WebView::notifyPreferencesChanged):
+
+2016-09-15  Brady Eidson  <beidson@apple.com>
+
+        WKWebView.hasOnlySecureContent always returns "YES" after going back to a CachedPage (even if it has http resources).
+        <rdar://problem/27681261> and https://bugs.webkit.org/show_bug.cgi?id=162043
+
+        Reviewed by Brent Fulgham. 
+
+        * WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebFrameLoaderClient::dispatchDidCommitLoad):
+        * WebCoreSupport/WebFrameLoaderClient.h:
+
+2016-09-07  Mark Lam  <mark.lam@apple.com>
+
+        Add CatchScope and force all exception checks to be via ThrowScope or CatchScope.
+        https://bugs.webkit.org/show_bug.cgi?id=161498
+
+        Reviewed by Geoffrey Garen.
+
+        * Plugins/PluginPackage.cpp:
+        (WebCore::NPN_Evaluate):
+        (WebCore::NPN_Invoke):
+
+2016-09-06  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Null pointer crash under WebView::scrollOffset.
+        https://bugs.webkit.org/show_bug.cgi?id=161620
+
+        Reviewed by Darin Adler.
+
+        Added null pointer checks.
+
+        * WebView.cpp:
+        (WebView::scrollOffset):
+        (WebView::scrollBy):
+        (WebView::visibleContentRect):
+
+2016-09-03  Darin Adler  <darin@apple.com>
+
+        Streamline DOMImplementation, and move it to our new DOM exception system
+        https://bugs.webkit.org/show_bug.cgi?id=161295
+
+        Reviewed by Ryosuke Niwa.
+
+        * WebFrame.cpp:
+        (WebFrame::canProvideDocumentSource): Updated to use isXMLMIMEType in its new
+        location in MIMETypeRegistry instead of in DOMImplementation.
+
+2016-09-02  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Build fix attempt after r205381.
+
+        * WebCoreSupport/WebEditorClient.h:
+
+2016-08-31  Keith Rollin  <krollin@apple.com>
+
+        WebKit should set a subsystem for os_log so it's easier to filter for WebKit log messages
+        https://bugs.webkit.org/show_bug.cgi?id=160969
+        <rdar://problem/26068734>
+
+        Reviewed by Simon Fraser.
+
+        Enable subsystem- and channel-related data and functions when using
+        RELEASE_LOG macros. Use the DECLARE_LOG_CHANNEL, DEFINE_LOG_CHANNEL,
+        and LOG_CHANNEL_ADDRESS macros that are now defined in WTF.
+
+        * WebKitLogging.cpp:
+        * WebKitLogging.h:
+        * WebView.cpp:
+        (WebView::initWithFrame):
+
+2016-08-16  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Accelerated compositing does not work in Wayland
+        https://bugs.webkit.org/show_bug.cgi?id=115803
+
+        Reviewed by Michael Catanzaro.
+
+        Update to the new GLContext API.
+
+        * WebCoreSupport/AcceleratedCompositingContext.cpp:
+        (AcceleratedCompositingContext::initialize):
+        (AcceleratedCompositingContext::acceleratedCompositingAvailable):
+
+2016-08-21  Alex Christensen  <achristensen@webkit.org>
+
+        Use Document& instead of Document* when getting cookies
+        https://bugs.webkit.org/show_bug.cgi?id=161011
+
+        Reviewed by Darin Adler.
+
+        * Plugins/PluginView.cpp:
+        (WebCore::PluginView::getValueForURL):
+
+2016-08-16  Simon Fraser  <simon.fraser@apple.com>
+
+        Rename didLayout(LayoutMilestones) to didReachLayoutMilestone(), and related WK2 functions
+        https://bugs.webkit.org/show_bug.cgi?id=160923
+
+        Reviewed by Tim Horton.
+
+        didLayout(LayoutMilestones) -> didReachLayoutMilestone(LayoutMilestones)
+        dispatchDidLayout(LayoutMilestones) -> dispatchDidReachLayoutMilestone(LayoutMilestones)
+
+        * WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebFrameLoaderClient::dispatchDidReachLayoutMilestone):
+        (WebFrameLoaderClient::dispatchDidLayout): Deleted.
+        * WebCoreSupport/WebFrameLoaderClient.h:
+
+2016-08-18  Anders Carlsson  <andersca@apple.com>
+
+        Move an NPAPI-only function from WebCore to WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=160967
+
+        Reviewed by Sam Weinig.
+
+        * Plugins/PluginView.cpp:
+        (WebCore::PluginView::~PluginView):
+        (WebCore::PluginView::PluginView):
+        (WebCore::PluginView::getValue):
+        * Plugins/PluginView.h:
+
+2016-08-15  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Remove unused includes of wtf headers
+        https://bugs.webkit.org/show_bug.cgi?id=160839
+
+        Reviewed by Alex Christensen.
+
+        * WebFrame.h:
+
+2016-08-09  Alex Christensen  <achristensen@webkit.org>
+
+        Move NetworkStorageSession management to WebCore
+        https://bugs.webkit.org/show_bug.cgi?id=160173
+
+        Reviewed by Brady Eidson.
+
+        * WebCoreSupport/WebFrameNetworkingContext.cpp:
+        (identifierBase):
+        (WebFrameNetworkingContext::setCookieAcceptPolicyForAllContexts):
+        (WebFrameNetworkingContext::ensurePrivateBrowsingSession):
+        (WebFrameNetworkingContext::destroyPrivateBrowsingSession):
+        (WebFrameNetworkingContext::blockedError):
+        (WebFrameNetworkingContext::storageSession):
+        (privateSession): Deleted.
+        * WebCoreSupport/WebPlatformStrategies.cpp:
+        (WebPlatformStrategies::createPasteboardStrategy):
+        (WebPlatformStrategies::createBlobRegistry):
+
+2016-08-09  Anders Carlsson  <andersca@apple.com>
+
+        Instantiate WebKit plug-ins at layout time, instead of at style resolution time
+        https://bugs.webkit.org/show_bug.cgi?id=160715
+
+        Reviewed by Tim Horton.
+
+        * WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebFrameLoaderClient::objectContentType):
+
+2016-08-09  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Crash in MiniBrowser.
+        https://bugs.webkit.org/show_bug.cgi?id=160686
+
+        Reviewed by Sam Weinig.
+
+        We need to specify a plugin info provider object in the page configuration.
+
+        * WebView.cpp:
+        (WebView::initWithFrame):
+
+2016-08-09  Anders Carlsson  <andersca@apple.com>
+
+        Fix build.
+
+        * WebCoreSupport/WebPlatformStrategies.h:
+
+2016-08-09  Anders Carlsson  <andersca@apple.com>
+
+        Get rid of PluginStrategy
+        https://bugs.webkit.org/show_bug.cgi?id=160696
+
+        Reviewed by Dan Bernstein.
+
+        * WebCoreSupport/WebPlatformStrategies.cpp:
+        (WebPlatformStrategies::createPluginStrategy): Deleted.
+
+2016-08-09  Anders Carlsson  <andersca@apple.com>
+
+        Move plug-in enumeration from WebPlatformStrategies to WebPluginInfoProvider
+        https://bugs.webkit.org/show_bug.cgi?id=160694
+
+        Reviewed by Dan Bernstein.
+
+        * WebCoreSupport/WebPlatformStrategies.cpp:
+        (WebPlatformStrategies::createPluginStrategy):
+        (WebPlatformStrategies::refreshPlugins): Deleted.
+        (WebPlatformStrategies::getPluginInfo): Deleted.
+        (WebPlatformStrategies::getWebVisiblePluginInfo): Deleted.
+        * WebCoreSupport/WebPlatformStrategies.h:
+        * WebCoreSupport/WebPluginInfoProvider.cpp:
+        (WebPluginInfoProvider::refreshPlugins):
+        (WebPluginInfoProvider::getPluginInfo):
+        (WebPluginInfoProvider::getWebVisiblePluginInfo):
+
+2016-08-08  Anders Carlsson  <andersca@apple.com>
+
+        Add a new PluginInfoProvider class, to replace PluginStrategy
+        https://bugs.webkit.org/show_bug.cgi?id=160670
+
+        Reviewed by Sam Weinig.
+
+        Add a new WebPluginInfoProvider - it just calls through to the plug-in strategy for now.
+
+        * WebCoreSupport/WebPluginInfoProvider.cpp: Added.
+        (WebPluginInfoProvider::singleton):
+        (WebPluginInfoProvider::WebPluginInfoProvider):
+        (WebPluginInfoProvider::~WebPluginInfoProvider):
+        (WebPluginInfoProvider::refreshPlugins):
+        (WebPluginInfoProvider::getPluginInfo):
+        (WebPluginInfoProvider::getWebVisiblePluginInfo):
+        * WebCoreSupport/WebPluginInfoProvider.h: Added.
+
+2016-07-29  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Remove PassRef.h after r177259
+        https://bugs.webkit.org/show_bug.cgi?id=160348
+
+        Reviewed by Andreas Kling.
+
+        * WebCoreSupport/WebVisitedLinkStore.h:
+
+2016-07-27  Alex Christensen  <achristensen@webkit.org>
+
+        Fix Win debug build after r203749.
+
+        * WebView.cpp:
+
+2016-07-26  Simon Fraser  <simon.fraser@apple.com>
+
+        Allow LOG macros to be used outside the namespace, and other logging cleanup
+        https://bugs.webkit.org/show_bug.cgi?id=160216
+
+        Reviewed by Anders Carlsson.
+
+        Fix some issues with the LOG macros.
+        
+        First, they were not usable outside the WebKit namespace in WebKit2 code. Fix by moving
+        its log channels outside of the namespace (they are protected by a unique prefix anyway).
+        
+        Second, allow LOG_WITH_STREAM to be used in WebKit2 by moving that and a helper macro
+        into LogMacros.h, which is exported from WebCore as a private header.
+        
+        Third, split the Logging.h header into two. Logging.h remains for framework-internal
+        log channels and log macros. Add LogInitialization.h which is external, and used to
+        initialize the channels.
+        
+        Finally unify "initializeLogChannels" and "initializeLoggingChannels" terminology everywhere.
+
+        * WebKitLogging.cpp:
+        * WebKitLogging.h:
+        * WebView.cpp:
+        (WebView::initWithFrame):
+
+2016-07-23  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, fix Windows build after r203623.
+
+        * DOMCoreClasses.cpp:
+        (DOMDocument::getComputedStyle):
+
+2016-07-22  Per Arne Vollan  <pvollan@apple.com>
+
+        IWebView::mainFrame crashes if called after IWebView::close
+        https://bugs.webkit.org/show_bug.cgi?id=32868
+
+        Reviewed by Brent Fulgham.
+
+        After deleting the page in WebView::close the mainframe object may be deleted. 
+         
+        Test: Tools/TestWebKitAPI/Tests/WebKit/win/WebViewDestruction.cpp (CloseThenGetMainFrame).
+
+        * WebView.cpp:
+        (WebView::close): set mainframe pointer member to null. 
+
+2016-07-19  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] The test fast/scrolling/overflow-scroll-past-max.html is timing out.
+        https://bugs.webkit.org/show_bug.cgi?id=159342
+
+        Reviewed by Darin Adler.
+
+        * WebFrame.h: Link fix. 
+
+2016-07-17  Sam Weinig  <sam@webkit.org>
+
+        [WebKit API] Add SPI to track multiple navigations caused by a single user gesture
+        <rdar://problem/26554137>
+        https://bugs.webkit.org/show_bug.cgi?id=159856
+
+        Reviewed by Dan Bernstein.
+
+        * Plugins/PluginView.cpp:
+        (WebCore::PluginView::performRequest):
+        * WebCoreSupport/WebContextMenuClient.cpp:
+        (WebContextMenuClient::searchWithGoogle):
+        Update for new UserGestureIndicator interface.
+
+2016-07-16  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Rename fastGetAttribute to attributeWithoutSynchronization
+        https://bugs.webkit.org/show_bug.cgi?id=159852
+
+        Reviewed by Darin Adler.
+
+        * DOMHTMLClasses.cpp:
+        (DOMHTMLElement::idName):
+
+2016-07-15  Chris Dumez  <cdumez@apple.com>
+
+        Use fastGetAttribute() / setAttributeWithoutSynchronization() when possible
+        https://bugs.webkit.org/show_bug.cgi?id=159793
+
+        Reviewed by Ryosuke Niwa.
+
+        Use fastGetAttribute() / setAttributeWithoutSynchronization() when possible, for performance.
+
+        * DOMHTMLClasses.cpp:
+        (DOMHTMLElement::idName):
+
+2016-07-14  Chris Dumez  <cdumez@apple.com>
+
+        Use emptyString() instead of "" when possible
+        https://bugs.webkit.org/show_bug.cgi?id=159789
+
+        Reviewed by Alex Christensen.
+
+        Use emptyString() instead of "" when possible to reduce String allocations.
+
+        * Plugins/PluginView.cpp:
+        (WebCore::parseRFC822HeaderFields):
+
+2016-07-14  Alex Christensen  <achristensen@webkit.org>
+
+        Use SocketProvider to create SocketStreamHandles
+        https://bugs.webkit.org/show_bug.cgi?id=159774
+
+        Reviewed by Brady Eidson.
+
+        * WebSocketProvider.cpp: Removed.
+        * WebSocketProvider.h: Removed.
+        * WebView.cpp: Replaced WebSocketProvider with SocketProvider as we did in WebCore.
+
+2016-07-14  Csaba Osztrogonác  <ossy@webkit.org>
+
+        Fix the !ENABLE(WEB_SOCKETS) build after r202930
+        https://bugs.webkit.org/show_bug.cgi?id=159768
+
+        Reviewed by Alex Christensen.
+
+        * WebSocketProvider.h:
+
+2016-07-11  Enrica Casucci  <enrica@apple.com>
+
+        Build fix.
+
+        Unreviewed.
+
+        * WebDropSource.cpp:
+        (generateMouseEvent):
+
+2016-07-11  Enrica Casucci  <enrica@apple.com>
+
+        Add synthetic click origin to WKNavigationAction.
+        https://bugs.webkit.org/show_bug.cgi?id=159584
+        rdar://problem/25610422
+
+        Reviewed by Tim Horton.
+
+        * WebDropSource.cpp:
+        (generateMouseEvent):
+
+2016-07-07  Alex Christensen  <achristensen@webkit.org>
+
+        Fix Windows build after r202930.
+        https://bugs.webkit.org/show_bug.cgi?id=158776
+
+        * WebView.cpp:
+        (WebView::initWithFrame):
+
+2016-07-07  Alex Christensen  <achristensen@webkit.org>
+
+        Use SocketProvider to create WebSocketChannels
+        https://bugs.webkit.org/show_bug.cgi?id=158776
+
+        Reviewed by Brent Fulgham.
+
+        * WebSocketProvider.cpp: Copied from Source/WebCore/Modules/websockets/ThreadableWebSocketChannel.cpp.
+        (WebSocketProvider::createWebSocketChannel):
+        (WebCore::ThreadableWebSocketChannel::create): Deleted.
+        * WebSocketProvider.h:
+
+2016-07-06  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Add null pointer check in gesture handling.
+        https://bugs.webkit.org/show_bug.cgi?id=159454
+
+        Reviewed by Brent Fulgham.
+
+        * WebView.cpp:
+        (WebView::gesture):
+
 2016-07-01  Per Arne Vollan  <pvollan@apple.com>
 
         ASSERTION FAILED: info.bmBitsPixel == 32

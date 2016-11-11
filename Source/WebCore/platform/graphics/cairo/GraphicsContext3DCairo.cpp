@@ -85,7 +85,7 @@ GraphicsContext3D::GraphicsContext3D(GraphicsContext3D::Attributes attributes, H
     , m_compositorTexture(0)
     , m_fbo(0)
 #if USE(COORDINATED_GRAPHICS_THREADED)
-    , m_compositorFBO(0)
+    , m_intermediateTexture(0)
 #endif
     , m_depthStencilBuffer(0)
     , m_layerComposited(false)
@@ -113,13 +113,20 @@ GraphicsContext3D::GraphicsContext3D(GraphicsContext3D::Attributes attributes, H
         ::glBindFramebuffer(GL_FRAMEBUFFER, m_fbo);
 
 #if USE(COORDINATED_GRAPHICS_THREADED)
-        ::glGenFramebuffers(1, &m_compositorFBO);
         ::glGenTextures(1, &m_compositorTexture);
         ::glBindTexture(GL_TEXTURE_2D, m_compositorTexture);
         ::glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         ::glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
         ::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
         ::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+        ::glGenTextures(1, &m_intermediateTexture);
+        ::glBindTexture(GL_TEXTURE_2D, m_intermediateTexture);
+        ::glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        ::glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        ::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        ::glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
         ::glBindTexture(GL_TEXTURE_2D, 0);
 #endif
 
@@ -189,7 +196,7 @@ GraphicsContext3D::~GraphicsContext3D()
     }
     ::glDeleteFramebuffers(1, &m_fbo);
 #if USE(COORDINATED_GRAPHICS_THREADED)
-    ::glDeleteFramebuffers(1, &m_compositorFBO);
+    ::glDeleteTextures(1, &m_intermediateTexture);
 #endif
 }
 
@@ -204,15 +211,19 @@ bool GraphicsContext3D::ImageExtractor::extractImage(bool premultiplyAlpha, bool
     if (!m_image)
         return false;
     // We need this to stay in scope because the native image is just a shallow copy of the data.
-    m_decoder = new ImageSource(premultiplyAlpha ? ImageSource::AlphaPremultiplied : ImageSource::AlphaNotPremultiplied, ignoreGammaAndColorProfile ? ImageSource::GammaAndColorProfileIgnored : ImageSource::GammaAndColorProfileApplied);
+    AlphaOption alphaOption = premultiplyAlpha ? AlphaOption::Premultiplied : AlphaOption::NotPremultiplied;
+    GammaAndColorProfileOption gammaAndColorProfileOption = ignoreGammaAndColorProfile ? GammaAndColorProfileOption::Ignored : GammaAndColorProfileOption::Applied;
+    m_decoder = new ImageSource(nullptr, alphaOption, gammaAndColorProfileOption);
+    
     if (!m_decoder)
         return false;
-    ImageSource& decoder = *m_decoder;
 
+    ImageSource& decoder = *m_decoder;
     m_alphaOp = AlphaDoNothing;
+
     if (m_image->data()) {
         decoder.setData(m_image->data(), true);
-        if (!decoder.frameCount() || !decoder.frameIsCompleteAtIndex(0))
+        if (!decoder.frameCount())
             return false;
         m_imageSurface = decoder.createFrameImageAtIndex(0);
     } else {

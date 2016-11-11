@@ -66,6 +66,8 @@ public:
     Scrollbar* scrollbar() const { return m_scrollbar.get(); }
     bool isOverWidget() const { return m_isOverWidget; }
 
+    WEBCORE_EXPORT const AtomicString& URLElementDownloadAttribute() const;
+
     // Forwarded from HitTestLocation
     bool isRectBasedTest() const { return m_hitTestLocation.isRectBasedTest(); }
 
@@ -170,7 +172,7 @@ private:
     mutable std::unique_ptr<NodeSet> m_rectBasedTestResult;
 };
 
-String displayString(const String&, const Node*);
+WEBCORE_EXPORT String displayString(const String&, const Node*);
 
 } // namespace WebCore
 

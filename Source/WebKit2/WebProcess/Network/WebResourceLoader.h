@@ -29,7 +29,6 @@
 #include "Connection.h"
 #include "MessageSender.h"
 #include "ShareableResource.h"
-#include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
 
@@ -42,8 +41,6 @@ class DataReference;
 }
 
 namespace WebCore {
-class CertificateInfo;
-class ProtectionSpace;
 class ResourceError;
 class ResourceLoader;
 class ResourceRequest;
@@ -56,11 +53,17 @@ typedef uint64_t ResourceLoadIdentifier;
 
 class WebResourceLoader : public RefCounted<WebResourceLoader>, public IPC::MessageSender {
 public:
-    static Ref<WebResourceLoader> create(Ref<WebCore::ResourceLoader>&&);
+    struct TrackingParameters {
+        uint64_t pageID { 0 };
+        uint64_t frameID { 0 };
+        ResourceLoadIdentifier resourceID { 0 };
+    };
+
+    static Ref<WebResourceLoader> create(Ref<WebCore::ResourceLoader>&&, const TrackingParameters&);
 
     ~WebResourceLoader();
 
-    void didReceiveWebResourceLoaderMessage(IPC::Connection&, IPC::MessageDecoder&);
+    void didReceiveWebResourceLoaderMessage(IPC::Connection&, IPC::Decoder&);
 
     WebCore::ResourceLoader* resourceLoader() const { return m_coreLoader.get(); }
 
@@ -69,7 +72,7 @@ public:
     bool isAlwaysOnLoggingAllowed() const;
 
 private:
-    WebResourceLoader(Ref<WebCore::ResourceLoader>&&);
+    WebResourceLoader(Ref<WebCore::ResourceLoader>&&, const TrackingParameters&);
 
     // IPC::MessageSender
     IPC::Connection* messageSenderConnection() override;
@@ -86,6 +89,8 @@ private:
 #endif
 
     RefPtr<WebCore::ResourceLoader> m_coreLoader;
+    TrackingParameters m_trackingParameters;
+    bool m_hasReceivedData { false };
 };
 
 } // namespace WebKit

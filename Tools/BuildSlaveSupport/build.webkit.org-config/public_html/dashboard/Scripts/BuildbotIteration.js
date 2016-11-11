@@ -76,6 +76,7 @@ BuildbotIteration.ProductiveSteps = {
 BuildbotIteration.TestSteps = {
     "API tests": "platform api test",
     "bindings-generation-tests": "bindings tests",
+    "builtins-generator-tests": "builtins generator tests",
     "jscore-test": "javascript test",
     "layout-test": "layout test",
     "perf-test": "performance test",
@@ -302,7 +303,7 @@ BuildbotIteration.prototype = {
         this._parseData(data);
 
         // Update the sorting since it is based on the revision numbers that just became known.
-        this.queue.sortIterations();
+        this.queue.updateIterationPosition(this);
 
         this.dispatchEventToListeners(BuildbotIteration.Event.Updated);
     },

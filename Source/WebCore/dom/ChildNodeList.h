@@ -21,13 +21,11 @@
  *
  */
 
-#ifndef ChildNodeList_h
-#define ChildNodeList_h
+#pragma once
 
 #include "CollectionIndexCache.h"
 #include "NodeList.h"
 #include <wtf/Ref.h>
-#include <wtf/RefPtr.h>
 
 namespace WebCore {
 
@@ -91,5 +89,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // ChildNodeList_h

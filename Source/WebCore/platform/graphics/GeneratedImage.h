@@ -29,8 +29,6 @@
 #include "FloatSize.h"
 #include "Image.h"
 
-#include <wtf/RefPtr.h>
-
 namespace WebCore {
 
 class GeneratedImage : public Image {
@@ -50,11 +48,11 @@ public:
 
 protected:
     void draw(GraphicsContext&, const FloatRect& dstRect, const FloatRect& srcRect, CompositeOperator, BlendMode, ImageOrientationDescription) override = 0;
-    void drawPattern(GraphicsContext&, const FloatRect& srcRect, const AffineTransform& patternTransform,
-        const FloatPoint& phase, const FloatSize& spacing, CompositeOperator, const FloatRect& destRect, BlendMode) override = 0;
+    void drawPattern(GraphicsContext&, const FloatRect& destRect, const FloatRect& srcRect, const AffineTransform& patternTransform,
+        const FloatPoint& phase, const FloatSize& spacing, CompositeOperator, BlendMode) override = 0;
 
     // FIXME: Implement this to be less conservative.
-    bool currentFrameKnownToBeOpaque() override { return false; }
+    bool currentFrameKnownToBeOpaque() const override { return false; }
 
     GeneratedImage() { }
 

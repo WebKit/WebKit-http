@@ -23,13 +23,10 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef WebGLFramebuffer_h
-#define WebGLFramebuffer_h
+#pragma once
 
 #include "WebGLContextObject.h"
 #include "WebGLSharedObject.h"
-
-#include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
 
 namespace WebCore {
@@ -131,5 +128,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // WebGLFramebuffer_h

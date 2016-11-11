@@ -29,7 +29,9 @@
 #import "NetworkCache.h"
 #import "NetworkProcessCreationParameters.h"
 #import "NetworkResourceLoader.h"
+#import "NetworkSessionCocoa.h"
 #import "SandboxExtension.h"
+#import "SessionTracker.h"
 #import <WebCore/CFNetworkSPI.h>
 #import <WebCore/NetworkStorageSession.h>
 #import <WebCore/PublicSuffix.h>
@@ -38,7 +40,6 @@
 #import <WebCore/SecurityOrigin.h>
 #import <WebCore/SecurityOriginData.h>
 #import <WebKitSystemInterface.h>
-#import <wtf/RAMSize.h>
 
 namespace WebKit {
 
@@ -59,10 +60,11 @@ static void initializeNetworkSettings()
         WebCore::ResourceRequest::setHTTPPipeliningEnabled(prefValue);
 
     if (WebCore::ResourceRequest::resourcePrioritiesEnabled()) {
+        const unsigned fastLaneConnectionCount = 1;
+
         _CFNetworkHTTPConnectionCacheSetLimit(kHTTPPriorityNumLevels, toPlatformRequestPriority(WebCore::ResourceLoadPriority::Highest));
-#if PLATFORM(IOS)
         _CFNetworkHTTPConnectionCacheSetLimit(kHTTPMinimumFastLanePriority, toPlatformRequestPriority(WebCore::ResourceLoadPriority::Medium));
-#endif
+        _CFNetworkHTTPConnectionCacheSetLimit(kHTTPNumFastLanes, fastLaneConnectionCount);
     }
 }
 
@@ -81,11 +83,24 @@ void NetworkProcess::platformInitializeNetworkProcessCocoa(const NetworkProcessC
     _CFNetworkSetATSContext(parameters.networkATSContext.get());
 #endif
 
+    SessionTracker::setIdentifierBase(parameters.uiProcessBundleIdentifier);
+
+#if USE(NETWORK_SESSION)
+    NetworkSessionCocoa::setSourceApplicationAuditTokenData(sourceApplicationAuditData());
+    NetworkSessionCocoa::setSourceApplicationBundleIdentifier(parameters.sourceApplicationBundleIdentifier);
+    NetworkSessionCocoa::setSourceApplicationSecondaryIdentifier(parameters.sourceApplicationSecondaryIdentifier);
+#if PLATFORM(IOS)
+    NetworkSessionCocoa::setCTDataConnectionServiceType(parameters.ctDataConnectionServiceType);
+#endif
+#endif
+
     initializeNetworkSettings();
 
 #if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100
     setSharedHTTPCookieStorage(parameters.uiProcessCookieStorageIdentifier);
 #endif
+
+    WebCore::NetworkStorageSession::setCookieStoragePartitioningEnabled(parameters.cookieStoragePartitioningEnabled);
 
     // FIXME: Most of what this function does for cache size gets immediately overridden by setCacheModel().
     // - memory cache size passed from UI process is always ignored;
@@ -124,59 +139,12 @@ void NetworkProcess::platformInitializeNetworkProcessCocoa(const NetworkProcessC
     }
 }
 
-static uint64_t volumeFreeSize(const String& path)
+void NetworkProcess::platformSetURLCacheSize(unsigned urlCacheMemoryCapacity, uint64_t urlCacheDiskCapacity)
 {
-    NSDictionary *fileSystemAttributesDictionary = [[NSFileManager defaultManager] attributesOfFileSystemForPath:(NSString *)path error:NULL];
-    return [[fileSystemAttributesDictionary objectForKey:NSFileSystemFreeSize] unsignedLongLongValue];
-}
-
-void NetworkProcess::platformSetCacheModel(CacheModel cacheModel)
-{
-    uint64_t memSize = ramSize() / 1024 / 1024;
-
-    // As a fudge factor, use 1000 instead of 1024, in case the reported byte
-    // count doesn't align exactly to a megabyte boundary.
-    uint64_t diskFreeSize = volumeFreeSize(m_diskCacheDirectory) / 1024 / 1000;
-
-    unsigned cacheTotalCapacity = 0;
-    unsigned cacheMinDeadCapacity = 0;
-    unsigned cacheMaxDeadCapacity = 0;
-    auto deadDecodedDataDeletionInterval = std::chrono::seconds { 0 };
-    unsigned pageCacheCapacity = 0;
-    unsigned long urlCacheMemoryCapacity = 0;
-    unsigned long urlCacheDiskCapacity = 0;
-
-    calculateCacheSizes(cacheModel, memSize, diskFreeSize,
-        cacheTotalCapacity, cacheMinDeadCapacity, cacheMaxDeadCapacity, deadDecodedDataDeletionInterval,
-        pageCacheCapacity, urlCacheMemoryCapacity, urlCacheDiskCapacity);
-
-    if (m_diskCacheSizeOverride >= 0)
-        urlCacheDiskCapacity = m_diskCacheSizeOverride;
-
-#if ENABLE(NETWORK_CACHE)
-    auto& networkCache = NetworkCache::singleton();
-    if (networkCache.isEnabled()) {
-        networkCache.setCapacity(urlCacheDiskCapacity);
-        return;
-    }
-#endif
     NSURLCache *nsurlCache = [NSURLCache sharedURLCache];
     [nsurlCache setMemoryCapacity:urlCacheMemoryCapacity];
     if (!m_diskCacheIsDisabledForTesting)
-        [nsurlCache setDiskCapacity:std::max<unsigned long>(urlCacheDiskCapacity, [nsurlCache diskCapacity])]; // Don't shrink a big disk cache, since that would cause churn.
-}
-
-static RetainPtr<CFStringRef> partitionName(CFStringRef domain)
-{
-#if ENABLE(PUBLIC_SUFFIX_LIST)
-    String highLevel = WebCore::topPrivatelyControlledDomain(domain);
-    if (highLevel.isNull())
-        return 0;
-    CString utf8String = highLevel.utf8();
-    return adoptCF(CFStringCreateWithBytes(0, reinterpret_cast<const UInt8*>(utf8String.data()), utf8String.length(), kCFStringEncodingUTF8, false));
-#else
-    return domain;
-#endif
+        [nsurlCache setDiskCapacity:std::max<uint64_t>(urlCacheDiskCapacity, [nsurlCache diskCapacity])]; // Don't shrink a big disk cache, since that would cause churn.
 }
 
 RetainPtr<CFDataRef> NetworkProcess::sourceApplicationAuditData() const
@@ -190,43 +158,6 @@ RetainPtr<CFDataRef> NetworkProcess::sourceApplicationAuditData() const
 #else
     return nullptr;
 #endif
-}
-
-Vector<Ref<WebCore::SecurityOrigin>> NetworkProcess::cfURLCacheOrigins()
-{
-    Vector<Ref<WebCore::SecurityOrigin>> result;
-
-    WKCFURLCacheCopyAllPartitionNames([&result](CFArrayRef partitionNames) {
-        RetainPtr<CFArrayRef> hostNamesInPersistentStore = adoptCF(WKCFURLCacheCopyAllHostNamesInPersistentStoreForPartition(CFSTR("")));
-        RetainPtr<CFMutableArrayRef> hostNames = adoptCF(CFArrayCreateMutableCopy(0, 0, hostNamesInPersistentStore.get()));
-        if (partitionNames) {
-            CFArrayAppendArray(hostNames.get(), partitionNames, CFRangeMake(0, CFArrayGetCount(partitionNames)));
-            CFRelease(partitionNames);
-        }
-
-        for (CFIndex i = 0, size = CFArrayGetCount(hostNames.get()); i < size; ++i) {
-            CFStringRef host = static_cast<CFStringRef>(CFArrayGetValueAtIndex(hostNames.get(), i));
-
-            result.append(WebCore::SecurityOrigin::create("http", host, 0));
-        }
-    });
-
-    return result;
-}
-
-void NetworkProcess::clearCFURLCacheForOrigins(const Vector<WebCore::SecurityOriginData>& origins)
-{
-    auto hostNames = adoptCF(CFArrayCreateMutable(kCFAllocatorDefault, 0, &kCFTypeArrayCallBacks));
-    for (auto& origin : origins)
-        CFArrayAppendValue(hostNames.get(), origin.host.createCFString().get());
-
-    WKCFURLCacheDeleteHostNamesInPersistentStore(hostNames.get());
-
-    for (CFIndex i = 0, size = CFArrayGetCount(hostNames.get()); i < size; ++i) {
-        RetainPtr<CFStringRef> partition = partitionName(static_cast<CFStringRef>(CFArrayGetValueAtIndex(hostNames.get(), i)));
-        RetainPtr<CFArrayRef> partitionHostNames = adoptCF(WKCFURLCacheCopyAllHostNamesInPersistentStoreForPartition(partition.get()));
-        WKCFURLCacheDeleteHostNamesInPersistentStoreForPartition(partitionHostNames.get(), partition.get());
-    }
 }
 
 void NetworkProcess::clearHSTSCache(WebCore::NetworkStorageSession& session, std::chrono::system_clock::time_point modifiedSince)
@@ -268,6 +199,11 @@ void NetworkProcess::clearDiskCache(std::chrono::system_clock::time_point modifi
 #else
     clearNSURLCache(m_clearCacheDispatchGroup, modifiedSince, completionHandler);
 #endif
+}
+
+void NetworkProcess::setCookieStoragePartitioningEnabled(bool enabled)
+{
+    WebCore::NetworkStorageSession::setCookieStoragePartitioningEnabled(enabled);
 }
 
 }

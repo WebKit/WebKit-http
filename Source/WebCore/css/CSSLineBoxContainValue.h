@@ -27,7 +27,6 @@
 #define CSSLineBoxContainValue_h
 
 #include "CSSValue.h"
-#include <wtf/PassRefPtr.h>
 #include <wtf/RefPtr.h>
 
 namespace WebCore {
@@ -39,7 +38,7 @@ enum LineBoxContainFlags { LineBoxContainNone = 0x0, LineBoxContainBlock = 0x1, 
 typedef unsigned LineBoxContain;
 
 // Used for text-CSSLineBoxContain and box-CSSLineBoxContain
-class CSSLineBoxContainValue : public CSSValue {
+class CSSLineBoxContainValue final : public CSSValue {
 public:
     static Ref<CSSLineBoxContainValue> create(LineBoxContain value)
     {

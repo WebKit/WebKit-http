@@ -36,7 +36,6 @@
 #include <wtf/CryptographicallyRandomNumber.h>
 #include <wtf/HashMap.h>
 #include <wtf/text/CString.h>
-#include <wtf/text/StringBuilder.h>
 
 #include <windows.h>
 #include <shlobj.h>
@@ -191,7 +190,7 @@ String pathByAppendingComponent(const String& path, const String& component)
 
     buffer.shrink(wcslen(buffer.data()));
 
-    return String::adopt(buffer);
+    return String::adopt(WTFMove(buffer));
 }
 
 #if !USE(CF)
@@ -273,7 +272,7 @@ static String storageDirectory(DWORD pathIdentifier)
     if (FAILED(SHGetFolderPathW(0, pathIdentifier | CSIDL_FLAG_CREATE, 0, 0, buffer.data())))
         return String();
     buffer.resize(wcslen(buffer.data()));
-    String directory = String::adopt(buffer);
+    String directory = String::adopt(WTFMove(buffer));
 
     DEPRECATED_DEFINE_STATIC_LOCAL(String, companyNameDirectory, (ASCIILiteral("Apple Computer\\")));
     directory = pathByAppendingComponent(directory, companyNameDirectory + bundleName());
@@ -445,6 +444,12 @@ Vector<String> listDirectory(const String& directory, const String& filter)
     } while (walker.step());
 
     return entries;
+}
+
+bool getVolumeFreeSpace(const String&, uint64_t&)
+{
+    notImplemented();
+    return false;
 }
 
 } // namespace WebCore

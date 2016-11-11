@@ -27,7 +27,10 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import logging
+import os
 
+from webkitpy.common.system.crashlogs import CrashLogs
+from webkitpy.common.system.executive import ScriptError
 from webkitpy.port.base import Port
 from webkitpy.layout_tests.models.test_configuration import TestConfiguration
 
@@ -57,12 +60,16 @@ class ApplePort(Port):
     def determine_full_port_name(cls, host, options, port_name):
         options = options or {}
         if port_name in (cls.port_name, cls.port_name + '-wk2'):
+
+            # Since IOS simulator run on mac, they need a special check
+            if host.platform.os_name == 'mac' and 'ios-simulator' in port_name:
+                return port_name
+
             # If the port_name matches the (badly named) cls.port_name, that
             # means that they passed 'mac' or 'win' and didn't specify a version.
             # That convention means that we're supposed to use the version currently
             # being run, so this won't work if you're not on mac or win (respectively).
             # If you're not on the o/s in question, you must specify a full version or -future (cf. above).
-            assert host.platform.os_name in port_name, "%s is not in %s!" % (host.platform.os_name, port_name)
             if port_name == cls.port_name and not getattr(options, 'webkit_test_runner', False):
                 port_name = cls.port_name + '-' + host.platform.os_version
             else:
@@ -85,7 +92,14 @@ class ApplePort(Port):
         allowed_port_names = self.VERSION_FALLBACK_ORDER + [self.operating_system() + "-future"]
         port_name = port_name.replace('-wk2', '')
         self._version = self._strip_port_name_prefix(port_name)
-        assert port_name in allowed_port_names, "%s is not in %s" % (port_name, allowed_port_names)
+
+    def default_timeout_ms(self):
+        if self.get_option('guard_malloc'):
+            return 350 * 1000
+        return super(ApplePort, self).default_timeout_ms()
+
+    def should_retry_crashes(self):
+        return True
 
     def _skipped_file_search_paths(self):
         # We don't have a dedicated Skipped file for the most recent version of the port;
@@ -106,3 +120,7 @@ class ApplePort(Port):
                 for architecture in self.ARCHITECTURES:
                     configurations.append(TestConfiguration(version=self._strip_port_name_prefix(port_name), architecture=architecture, build_type=build_type))
         return configurations
+
+    def _path_to_helper(self):
+        binary_name = 'LayoutTestHelper'
+        return self._build_path(binary_name)

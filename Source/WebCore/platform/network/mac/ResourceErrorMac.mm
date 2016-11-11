@@ -31,7 +31,7 @@
 #import <Foundation/Foundation.h>
 #import <wtf/BlockObjCExceptions.h>
 
-#if PLATFORM(IOS) && USE(CFNETWORK)
+#if PLATFORM(IOS) && USE(CFURLCONNECTION)
 #import <CFNetwork/CFSocketStreamPriv.h>
 #endif
 
@@ -92,7 +92,7 @@ static NSDictionary* dictionaryThatCanCode(NSDictionary* src)
 @end
 
 
-#if USE(CFNETWORK)
+#if USE(CFURLCONNECTION)
 static NSError *NSErrorFromCFError(CFErrorRef cfError, NSURL *url)
 {
     CFIndex errCode = CFErrorGetCode(cfError);
@@ -106,29 +106,29 @@ static NSError *NSErrorFromCFError(CFErrorRef cfError, NSURL *url)
         if (url) {
             keys[count] = NSURLErrorFailingURLErrorKey;
             values[count] = url;
-            count ++;
+            count++;
 
             keys[count] = NSURLErrorFailingURLStringErrorKey;
             values[count] = [url absoluteString];
-            count ++;
+            count++;
         }
 
         values[count] = (id)CFDictionaryGetValue(userInfo, kCFErrorLocalizedDescriptionKey);
         if (values[count]) {
             keys[count] = NSLocalizedDescriptionKey;
-            count ++;
+            count++;
         }
 
         values[count] = (id)CFDictionaryGetValue(userInfo, kCFErrorLocalizedFailureReasonKey);
         if (values[count]) {
             keys[count] = NSLocalizedFailureReasonErrorKey;
-            count ++;
+            count++;
         }
 
         values[count] = (id)CFDictionaryGetValue(userInfo, kCFErrorLocalizedRecoverySuggestionKey);
         if (values[count]) {
             keys[count] = NSLocalizedRecoverySuggestionErrorKey;
-            count ++;
+            count++;
         }
 
 #pragma clang diagnostic push
@@ -136,18 +136,18 @@ static NSError *NSErrorFromCFError(CFErrorRef cfError, NSURL *url)
         if (userInfo && (values[count] = (id)CFDictionaryGetValue(userInfo, kCFStreamPropertySSLPeerCertificates)) != nil) {
             // Need to translate the cert
             keys[count] = @"NSErrorPeerCertificateChainKey";
-            count ++;
+            count++;
 
             values[count] = (id)CFDictionaryGetValue(userInfo, _kCFStreamPropertySSLClientCertificates);
             if (values[count]) {
                 keys[count] = @"NSErrorClientCertificateChainKey";
-                count ++;
+                count++;
             }
 
             values[count] = (id)CFDictionaryGetValue(userInfo, _kCFStreamPropertySSLClientCertificateState);
             if (values[count]) {
                 keys[count] = @"NSErrorClientCertificateStateKey";
-                count ++;
+                count++;
             }
         }
 #pragma clang diagnostic pop
@@ -159,7 +159,7 @@ static NSError *NSErrorFromCFError(CFErrorRef cfError, NSURL *url)
 
         keys[count] = NSUnderlyingErrorKey;
         values[count] = (id)cfError;
-        count ++;
+        count++;
 
         result = [WebCustomNSURLError errorWithDomain:NSURLErrorDomain code:(errCode == kCFURLErrorUnknown ? (CFIndex)NSURLErrorUnknown : errCode) userInfo:[NSDictionary dictionaryWithObjects:values forKeys:keys count:count]];
         if (userInfo)
@@ -168,7 +168,7 @@ static NSError *NSErrorFromCFError(CFErrorRef cfError, NSURL *url)
     }
     return (NSError *)cfError;
 }
-#endif // USE(CFNETWORK)
+#endif // USE(CFURLCONNECTION)
 
 #endif // PLATFORM(IOS)
 
@@ -190,7 +190,7 @@ static RetainPtr<NSError> createNSErrorFromResourceErrorBase(const ResourceError
     return adoptNS([[NSError alloc] initWithDomain:resourceError.domain() code:resourceError.errorCode() userInfo:userInfo.get()]);
 }
 
-#if USE(CFNETWORK)
+#if USE(CFURLCONNECTION)
 
 ResourceError::ResourceError(NSError *error)
     : ResourceErrorBase(Type::Null)
@@ -309,6 +309,6 @@ ResourceError::operator CFErrorRef() const
     return cfError();
 }
 
-#endif // USE(CFNETWORK)
+#endif // USE(CFURLCONNECTION)
 
 } // namespace WebCore

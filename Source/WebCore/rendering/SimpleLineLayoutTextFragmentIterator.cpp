@@ -114,8 +114,9 @@ template <typename CharacterType>
 unsigned TextFragmentIterator::nextBreakablePosition(const FlowContents::Segment& segment, unsigned startPosition)
 {
     ASSERT(startPosition < segment.end);
-    if (segment.text.impl() != m_lineBreakIterator.string().impl()) {
-        const String& currentText = m_lineBreakIterator.string();
+    StringView currentText = m_lineBreakIterator.stringView();
+    StringView segmentText = StringView(segment.text);
+    if (segmentText != currentText) {
         unsigned textLength = currentText.length();
         UChar lastCharacter = textLength > 0 ? currentText[textLength - 1] : 0;
         UChar secondToLastCharacter = textLength > 1 ? currentText[textLength - 2] : 0;
@@ -125,7 +126,7 @@ unsigned TextFragmentIterator::nextBreakablePosition(const FlowContents::Segment
     const auto* characters = segment.text.characters<CharacterType>();
     unsigned segmentLength = segment.end - segment.start;
     unsigned segmentPosition = startPosition - segment.start;
-    return segment.start + nextBreakablePositionNonLoosely<CharacterType, NBSPBehavior::IgnoreNBSP>(m_lineBreakIterator, characters, segmentLength, segmentPosition);
+    return segment.start + nextBreakablePositionNonLoosely<CharacterType, NonBreakingSpaceBehavior::IgnoreNonBreakingSpace>(m_lineBreakIterator, characters, segmentLength, segmentPosition);
 }
 
 template <typename CharacterType>
@@ -148,6 +149,8 @@ float TextFragmentIterator::textWidth(unsigned from, unsigned to, float xPositio
     auto& segment = *m_currentSegment;
     ASSERT(segment.start <= from && from <= segment.end && segment.start <= to && to <= segment.end);
     ASSERT(is<RenderText>(segment.renderer));
+    if (!m_style.font.size())
+        return 0;
     if (m_style.font.isFixedPitch() || (from == segment.start && to == segment.end))
         return downcast<RenderText>(segment.renderer).width(from - segment.start, to - from, m_style.font, xPosition, nullptr, nullptr);
     return segment.text.is8Bit() ? runWidth<LChar>(segment, from, to, xPosition) : runWidth<UChar>(segment, from, to, xPosition);
@@ -195,6 +198,7 @@ unsigned TextFragmentIterator::skipToNextPosition(PositionType positionType, uns
 template <typename CharacterType>
 float TextFragmentIterator::runWidth(const FlowContents::Segment& segment, unsigned startPosition, unsigned endPosition, float xPosition) const
 {
+    ASSERT(m_style.font.size());
     ASSERT(startPosition <= endPosition);
     if (startPosition == endPosition)
         return 0;

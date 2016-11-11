@@ -29,7 +29,6 @@
 #if ENABLE(VIDEO) && ENABLE(DATACUE_VALUE)
 
 #include <runtime/JSCInlines.h>
-#include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
 
 namespace WebCore {
@@ -39,7 +38,7 @@ public:
     virtual ~SerializedPlatformRepresentation() { }
 
     virtual JSC::JSValue deserialize(JSC::ExecState*) const = 0;
-    virtual PassRefPtr<ArrayBuffer> data() const = 0;
+    virtual RefPtr<ArrayBuffer> data() const = 0;
     virtual bool isEqual(const SerializedPlatformRepresentation&) const = 0;
 
     enum PlatformType {

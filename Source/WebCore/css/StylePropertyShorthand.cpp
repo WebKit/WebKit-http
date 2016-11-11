@@ -32,7 +32,7 @@ StylePropertyShorthand borderAbridgedShorthand()
     return StylePropertyShorthand(CSSPropertyBorder, borderAbridgedProperties, propertiesForInitialization);
 }
 
-StylePropertyShorthand animationShorthandForParsing(CSSPropertyID propId)
+StylePropertyShorthand animationShorthandForParsing()
 {
     // Animation-name must come last, so that keywords for other properties in the shorthand
     // preferentially match those properties.
@@ -47,20 +47,17 @@ StylePropertyShorthand animationShorthandForParsing(CSSPropertyID propId)
         CSSPropertyAnimationName
     };
 
-    static const CSSPropertyID prefixedAnimationPropertiesForParsing[] = {
-        CSSPropertyWebkitAnimationDuration,
-        CSSPropertyWebkitAnimationTimingFunction,
-        CSSPropertyWebkitAnimationDelay,
-        CSSPropertyWebkitAnimationIterationCount,
-        CSSPropertyWebkitAnimationDirection,
-        CSSPropertyWebkitAnimationFillMode,
-        CSSPropertyWebkitAnimationPlayState,
-        CSSPropertyWebkitAnimationName
-    };
+    return StylePropertyShorthand(CSSPropertyAnimation, animationPropertiesForParsing);
+}
 
-    if (propId == CSSPropertyAnimation)
-        return StylePropertyShorthand(CSSPropertyAnimation, animationPropertiesForParsing);
-    return StylePropertyShorthand(CSSPropertyWebkitAnimation, prefixedAnimationPropertiesForParsing);
+StylePropertyShorthand transitionShorthandForParsing()
+{
+    // Similar to animations, we have property after timing-function and delay after
+    // duration.
+    static const CSSPropertyID transitionProperties[] = {
+        CSSPropertyTransitionDuration, CSSPropertyTransitionTimingFunction,
+        CSSPropertyTransitionDelay, CSSPropertyTransitionProperty};
+    return StylePropertyShorthand(CSSPropertyTransition, transitionProperties);
 }
 
 bool isShorthandCSSProperty(CSSPropertyID id)

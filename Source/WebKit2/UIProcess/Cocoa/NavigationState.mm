@@ -35,6 +35,7 @@
 #import "APIURL.h"
 #import "AuthenticationDecisionListener.h"
 #import "CompletionHandlerCallChecker.h"
+#import "Logging.h"
 #import "NavigationActionData.h"
 #import "PageLoadState.h"
 #import "WKBackForwardListInternal.h"
@@ -63,6 +64,7 @@
 #import "_WKSameDocumentNavigationTypeInternal.h"
 #import <WebCore/Credential.h>
 #import <WebCore/SecurityOriginData.h>
+#import <WebCore/SerializedCryptoKeyWrap.h>
 #import <WebCore/URL.h>
 #import <wtf/NeverDestroyed.h>
 
@@ -89,6 +91,9 @@ NavigationState::NavigationState(WKWebView *webView)
     : m_webView(webView)
     , m_navigationDelegateMethods()
     , m_historyDelegateMethods()
+#if PLATFORM(IOS)
+    , m_releaseActivityTimer(*this, &NavigationState::releaseNetworkActivityToken)
+#endif
 {
     ASSERT(m_webView->_page);
     ASSERT(!navigationStates().contains(m_webView->_page.get()));
@@ -685,7 +690,8 @@ void NavigationState::NavigationClient::processDidCrash(WebKit::WebPageProxy& pa
         return;
     }
 
-    [static_cast<id <WKNavigationDelegatePrivate>>(navigationDelegate.get()) _webViewWebProcessDidCrash:m_navigationState.m_webView];
+    if (m_navigationState.m_navigationDelegateMethods.webViewWebProcessDidCrash)
+        [static_cast<id <WKNavigationDelegatePrivate>>(navigationDelegate.get()) _webViewWebProcessDidCrash:m_navigationState.m_webView];
 }
 
 void NavigationState::NavigationClient::processDidBecomeResponsive(WebKit::WebPageProxy& page)
@@ -714,8 +720,13 @@ void NavigationState::NavigationClient::processDidBecomeUnresponsive(WebKit::Web
 
 RefPtr<API::Data> NavigationState::NavigationClient::webCryptoMasterKey(WebKit::WebPageProxy&)
 {
-    if (!m_navigationState.m_navigationDelegateMethods.webCryptoMasterKeyForWebView)
-        return nullptr;
+    if (!m_navigationState.m_navigationDelegateMethods.webCryptoMasterKeyForWebView) {
+        Vector<uint8_t> masterKey;
+        if (!getDefaultWebCryptoMasterKey(masterKey))
+            return nullptr;
+
+        return API::Data::create(masterKey.data(), masterKey.size());
+    }
 
     auto navigationDelegate = m_navigationState.m_navigationDelegate.get();
     if (!navigationDelegate)
@@ -818,15 +829,30 @@ void NavigationState::willChangeIsLoading()
     [m_webView willChangeValueForKey:@"loading"];
 }
 
+#if PLATFORM(IOS)
+void NavigationState::releaseNetworkActivityToken()
+{
+    RELEASE_LOG_IF(m_webView->_page->isAlwaysOnLoggingAllowed(), ProcessSuspension, "%p UIProcess is releasing a background assertion because a page load completed", this);
+    ASSERT(m_activityToken);
+    m_activityToken = nullptr;
+}
+#endif
+
 void NavigationState::didChangeIsLoading()
 {
 #if PLATFORM(IOS)
     if (m_webView->_page->pageLoadState().isLoading()) {
-        LOG_ALWAYS(m_webView->_page->isAlwaysOnLoggingAllowed(), "UIProcess is taking a background assertion because a page load started");
-        m_activityToken = m_webView->_page->process().throttler().backgroundActivityToken();
+        if (m_releaseActivityTimer.isActive())
+            m_releaseActivityTimer.stop();
+        else {
+            RELEASE_LOG_IF(m_webView->_page->isAlwaysOnLoggingAllowed(), ProcessSuspension, "%p - UIProcess is taking a background assertion because a page load started", this);
+            ASSERT(!m_activityToken);
+            m_activityToken = m_webView->_page->process().throttler().backgroundActivityToken();
+        }
     } else {
-        LOG_ALWAYS(m_webView->_page->isAlwaysOnLoggingAllowed(), "UIProcess is releasing a background assertion because a page load completed");
-        m_activityToken = nullptr;
+        // Delay releasing the background activity for 3 seconds to give the application a chance to start another navigation
+        // before suspending the WebContent process <rdar://problem/27910964>.
+        m_releaseActivityTimer.startOneShot(3s);
     }
 #endif
 

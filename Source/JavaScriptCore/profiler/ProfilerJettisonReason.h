@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef ProfilerJettisonReason_h
-#define ProfilerJettisonReason_h
+#pragma once
 
 namespace JSC { namespace Profiler {
 
@@ -36,6 +35,7 @@ enum JettisonReason {
     JettisonDueToBaselineLoopReoptimizationTrigger,
     JettisonDueToBaselineLoopReoptimizationTriggerOnOSREntryFail,
     JettisonDueToOSRExit,
+    JettisonDueToPureGetByIdEffects,
     JettisonDueToProfiledWatchpoint,
     JettisonDueToUnprofiledWatchpoint,
     JettisonDueToOldAge
@@ -49,6 +49,3 @@ class PrintStream;
 void printInternal(PrintStream&, JSC::Profiler::JettisonReason);
 
 } // namespace WTF
-
-#endif // ProfilerJettisonReason_h
-

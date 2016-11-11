@@ -19,12 +19,12 @@
  *
  */
 
-#ifndef Debugger_h
-#define Debugger_h
+#pragma once
 
 #include "Breakpoint.h"
 #include "CallData.h"
 #include "DebuggerCallFrame.h"
+#include "DebuggerParseData.h"
 #include "DebuggerPrimitives.h"
 #include "JSCJSValue.h"
 #include <wtf/HashMap.h>
@@ -73,9 +73,11 @@ public:
     void detach(JSGlobalObject*, ReasonForDetach);
     bool isAttached(JSGlobalObject*);
 
-    BreakpointID setBreakpoint(Breakpoint, unsigned& actualLine, unsigned& actualColumn);
+    void resolveBreakpoint(Breakpoint&, SourceProvider*);
+    BreakpointID setBreakpoint(Breakpoint&, bool& existing);
     void removeBreakpoint(BreakpointID);
     void clearBreakpoints();
+
     void activateBreakpoints() { setBreakpointsActivated(true); }
     void deactivateBreakpoints() { setBreakpointsActivated(false); }
     bool breakpointsActive() const { return m_breakpointsActivated; }
@@ -92,9 +94,8 @@ public:
         NotPaused,
         PausedForException,
         PausedAtStatement,
-        PausedAfterCall,
+        PausedAtExpression,
         PausedBeforeReturn,
-        PausedAtStartOfProgram,
         PausedAtEndOfProgram,
         PausedForBreakpoint,
         PausedForDebuggerStatement,
@@ -109,6 +110,10 @@ public:
     void stepOverStatement();
     void stepOutOfFunction();
 
+    bool isBlacklisted(SourceID) const;
+    void addToBlacklist(SourceID);
+    void clearBlacklist();
+
     bool isPaused() const { return m_isPaused; }
     bool isStepping() const { return m_steppingMode == SteppingModeEnabled; }
 
@@ -119,8 +124,10 @@ public:
 
     void exception(CallFrame*, JSValue exceptionValue, bool hasCatchHandler);
     void atStatement(CallFrame*);
+    void atExpression(CallFrame*);
     void callEvent(CallFrame*);
     void returnEvent(CallFrame*);
+    void unwindEvent(CallFrame*);
     void willExecuteProgram(CallFrame*);
     void didExecuteProgram(CallFrame*);
     void didReachBreakpoint(CallFrame*);
@@ -144,7 +151,6 @@ public:
     void didEvaluateScript(double startTime, ProfilingReason);
 
 protected:
-    virtual bool needPauseHandling(JSGlobalObject*) { return false; }
     virtual void handleBreakpointHit(JSGlobalObject*, const Breakpoint&) { }
     virtual void handleExceptionInBreakpointCondition(ExecState*, Exception*) const { }
     virtual void handlePause(JSGlobalObject*, ReasonForPause) { }
@@ -179,6 +185,8 @@ private:
 
     bool hasBreakpoint(SourceID, const TextPosition&, Breakpoint* hitBreakpoint);
 
+    DebuggerParseData& debuggerParseData(SourceID, SourceProvider*);
+
     void updateNeedForOpDebugCallbacks();
 
     // These update functions are only needed because our current breakpoints are
@@ -186,9 +194,11 @@ private:
     // that we don't break on the same line more than once. Once we switch to a
     // bytecode PC key'ed breakpoint, we will not need these anymore and should
     // be able to remove them.
-    void updateCallFrame(JSC::CallFrame*);
-    void updateCallFrameAndPauseIfNeeded(JSC::CallFrame*);
+    enum CallFrameUpdateAction { AttemptPause, NoPause };
+    void updateCallFrame(JSC::CallFrame*, CallFrameUpdateAction);
+    void updateCallFrameInternal(JSC::CallFrame*);
     void pauseIfNeeded(JSC::CallFrame*);
+    void clearNextPauseState();
 
     enum SteppingMode {
         SteppingModeDisabled,
@@ -206,12 +216,17 @@ private:
     void toggleBreakpoint(Breakpoint&, BreakpointState);
 
     void clearDebuggerRequests(JSGlobalObject*);
+    void clearParsedData();
 
     VM& m_vm;
     HashSet<JSGlobalObject*> m_globalObjects;
+    HashMap<SourceID, DebuggerParseData, WTF::IntHash<SourceID>, WTF::UnsignedWithZeroKeyHashTraits<SourceID>> m_parseDataMap;
+    HashSet<SourceID, WTF::IntHash<SourceID>, WTF::UnsignedWithZeroKeyHashTraits<SourceID>> m_blacklistedScripts;
 
     PauseOnExceptionsState m_pauseOnExceptionsState;
-    bool m_pauseOnNextStatement : 1;
+    bool m_pauseAtNextOpportunity : 1;
+    bool m_pauseOnStepOut : 1;
+    bool m_pastFirstExpressionInStatement : 1;
     bool m_isPaused : 1;
     bool m_breakpointsActivated : 1;
     bool m_hasHandlerForExceptionCallback : 1;
@@ -220,8 +235,8 @@ private:
 
     ReasonForPause m_reasonForPause;
     JSValue m_currentException;
-    CallFrame* m_pauseOnCallFrame;
-    CallFrame* m_currentCallFrame;
+    CallFrame* m_pauseOnCallFrame { nullptr };
+    CallFrame* m_currentCallFrame { nullptr };
     unsigned m_lastExecutedLine;
     SourceID m_lastExecutedSourceID;
 
@@ -240,5 +255,3 @@ private:
 };
 
 } // namespace JSC
-
-#endif // Debugger_h

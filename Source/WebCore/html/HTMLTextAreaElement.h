@@ -40,28 +40,29 @@ public:
 
     bool shouldWrapText() const { return m_wrap != NoWrap; }
 
-    WEBCORE_EXPORT String value() const override;
+    WEBCORE_EXPORT String value() const final;
     WEBCORE_EXPORT void setValue(const String&);
-    String defaultValue() const;
-    void setDefaultValue(const String&);
+    WEBCORE_EXPORT String defaultValue() const;
+    WEBCORE_EXPORT void setDefaultValue(const String&);
     int textLength() const { return value().length(); }
-    int maxLengthForBindings() const { return m_maxLength; }
-    int effectiveMaxLength() const { return m_maxLength; }
+    int effectiveMaxLength() const { return maxLength(); }
     // For ValidityState
-    String validationMessage() const override;
-    bool valueMissing() const override;
-    bool tooLong() const override;
+    String validationMessage() const final;
+    bool valueMissing() const final;
+    bool tooShort() const final;
+    bool tooLong() const final;
     bool isValidValue(const String&) const;
     
-    TextControlInnerTextElement* innerTextElement() const override;
-    RenderStyle createInnerTextStyle(const RenderStyle&) const override;
+    TextControlInnerTextElement* innerTextElement() const final;
+    RenderStyle createInnerTextStyle(const RenderStyle&) const final;
+    void copyNonAttributePropertiesFromElement(const Element&) final;
 
     void rendererWillBeDestroyed();
 
-    void setCols(unsigned);
-    void setRows(unsigned);
+    WEBCORE_EXPORT void setCols(unsigned);
+    WEBCORE_EXPORT void setRows(unsigned);
 
-    bool willRespondToMouseClickEvents() override;
+    bool willRespondToMouseClickEvents() final;
 
     RenderTextControlMultiLine* renderer() const;
 
@@ -70,61 +71,62 @@ private:
 
     enum WrapMethod { NoWrap, SoftWrap, HardWrap };
 
-    void didAddUserAgentShadowRoot(ShadowRoot*) override;
+    void didAddUserAgentShadowRoot(ShadowRoot*) final;
 
     void maxLengthAttributeChanged(const AtomicString& newValue);
+    void minLengthAttributeChanged(const AtomicString& newValue);
 
-    void handleBeforeTextInsertedEvent(BeforeTextInsertedEvent*) const;
+    void handleBeforeTextInsertedEvent(BeforeTextInsertedEvent&) const;
     static String sanitizeUserInputValue(const String&, unsigned maxLength);
     void updateValue() const;
     void setNonDirtyValue(const String&);
     void setValueCommon(const String&);
 
-    bool supportsPlaceholder() const override { return true; }
-    HTMLElement* placeholderElement() const override;
-    void updatePlaceholderText() override;
-    bool isEmptyValue() const override { return value().isEmpty(); }
+    bool supportsPlaceholder() const final { return true; }
+    HTMLElement* placeholderElement() const final;
+    void updatePlaceholderText() final;
+    bool isEmptyValue() const final { return value().isEmpty(); }
 
-    bool isOptionalFormControl() const override { return !isRequiredFormControl(); }
-    bool isRequiredFormControl() const override { return isRequired(); }
+    bool isOptionalFormControl() const final { return !isRequiredFormControl(); }
+    bool isRequiredFormControl() const final { return isRequired(); }
 
-    void defaultEventHandler(Event*) override;
+    void defaultEventHandler(Event&) final;
     
-    void subtreeHasChanged() override;
+    void subtreeHasChanged() final;
 
-    bool isEnumeratable() const override { return true; }
-    bool supportLabels() const override { return true; }
+    bool isEnumeratable() const final { return true; }
+    bool supportLabels() const final { return true; }
 
-    const AtomicString& formControlType() const override;
+    const AtomicString& formControlType() const final;
 
-    FormControlState saveFormControlState() const override;
-    void restoreFormControlState(const FormControlState&) override;
+    FormControlState saveFormControlState() const final;
+    void restoreFormControlState(const FormControlState&) final;
 
-    bool isTextFormControl() const override { return true; }
+    bool isTextFormControl() const final { return true; }
 
-    void childrenChanged(const ChildChange&) override;
-    void parseAttribute(const QualifiedName&, const AtomicString&) override;
-    bool isPresentationAttribute(const QualifiedName&) const override;
-    void collectStyleForPresentationAttribute(const QualifiedName&, const AtomicString&, MutableStyleProperties&) override;
-    RenderPtr<RenderElement> createElementRenderer(RenderStyle&&, const RenderTreePosition&) override;
-    bool appendFormData(FormDataList&, bool) override;
-    void reset() override;
-    bool hasCustomFocusLogic() const override;
-    bool isMouseFocusable() const override;
-    bool isKeyboardFocusable(KeyboardEvent*) const override;
-    void updateFocusAppearance(SelectionRestorationMode, SelectionRevealMode) override;
+    void childrenChanged(const ChildChange&) final;
+    void parseAttribute(const QualifiedName&, const AtomicString&) final;
+    bool isPresentationAttribute(const QualifiedName&) const final;
+    void collectStyleForPresentationAttribute(const QualifiedName&, const AtomicString&, MutableStyleProperties&) final;
+    RenderPtr<RenderElement> createElementRenderer(RenderStyle&&, const RenderTreePosition&) final;
+    bool appendFormData(FormDataList&, bool) final;
+    void reset() final;
+    bool hasCustomFocusLogic() const final;
+    bool isMouseFocusable() const final;
+    bool isKeyboardFocusable(KeyboardEvent&) const final;
+    void updateFocusAppearance(SelectionRestorationMode, SelectionRevealMode) final;
 
-    void accessKeyAction(bool sendMouseEvents) override;
+    void accessKeyAction(bool sendMouseEvents) final;
 
-    bool shouldUseInputMethod() override;
-    bool matchesReadWritePseudoClass() const override;
+    bool shouldUseInputMethod() final;
+    bool matchesReadWritePseudoClass() const final;
 
     bool valueMissing(const String& value) const { return isRequiredFormControl() && !isDisabledOrReadOnly() && value.isEmpty(); }
-    bool tooLong(const String&, NeedsToCheckDirtyFlag) const;
+    bool tooShort(StringView, NeedsToCheckDirtyFlag) const;
+    bool tooLong(StringView, NeedsToCheckDirtyFlag) const;
 
     unsigned m_rows;
     unsigned m_cols;
-    int m_maxLength { -1 };
     WrapMethod m_wrap { SoftWrap };
     RefPtr<HTMLElement> m_placeholder;
     mutable String m_value;

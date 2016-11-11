@@ -32,8 +32,6 @@
 #include "Animation.h"
 #include "CSSPropertyNames.h"
 #include "RenderStyleConstants.h"
-#include <wtf/HashMap.h>
-#include <wtf/HashSet.h>
 #include <wtf/RefCounted.h>
 #include <wtf/text/AtomicString.h>
 
@@ -138,7 +136,7 @@ public:
     double progress(double scale = 1, double offset = 0, const TimingFunction* = nullptr) const;
 
     // Returns true if the animation state changed.
-    virtual bool animate(CompositeAnimation*, RenderElement*, const RenderStyle* /*currentStyle*/, const RenderStyle* /*targetStyle*/, std::unique_ptr<RenderStyle>& /*animatedStyle*/) = 0;
+    virtual bool animate(CompositeAnimation*, RenderElement*, const RenderStyle* /*currentStyle*/, const RenderStyle* /*targetStyle*/, std::unique_ptr<RenderStyle>& /*animatedStyle*/, bool& didBlendStyle) = 0;
     virtual void getAnimatedStyle(std::unique_ptr<RenderStyle>& /*animatedStyle*/) = 0;
 
     virtual bool computeExtentOfTransformAnimation(LayoutRect&) const = 0;

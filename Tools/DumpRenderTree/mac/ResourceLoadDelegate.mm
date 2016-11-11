@@ -150,10 +150,6 @@ BOOL isAllowedHost(NSString *host)
         printf("%s\n", [string UTF8String]);
     }
 
-    if (!done && !gTestRunner->deferMainResourceDataLoad()) {
-        [dataSource _setDeferMainResourceDataLoad:false];
-    }
-
     if (!done && gTestRunner->willSendRequestReturnsNull())
         return nil;
 
@@ -195,6 +191,13 @@ BOOL isAllowedHost(NSString *host)
 
 - (void)webView:(WebView *)wv resource:(id)identifier didReceiveAuthenticationChallenge:(NSURLAuthenticationChallenge *)challenge fromDataSource:(WebDataSource *)dataSource
 {
+    if (gTestRunner->rejectsProtectionSpaceAndContinueForAuthenticationChallenges()) {
+        printf("Simulating reject protection space and continue for authentication challenge\n");
+
+        [[challenge sender] rejectProtectionSpaceAndContinueWithChallenge:challenge];
+        return;
+    }
+
     if (!gTestRunner->handlesAuthenticationChallenges()) {
         NSString *string = [NSString stringWithFormat:@"%@ - didReceiveAuthenticationChallenge - Simulating cancelled authentication sheet", identifier];
         printf("%s\n", [string UTF8String]);

@@ -26,13 +26,12 @@
 #pragma once
 
 #include "CSSFontFaceRule.h"
-#include "FontFeatureSettings.h"
+#include "FontTaggedSettings.h"
 #include "TextFlags.h"
 #include "Timer.h"
 #include <memory>
 #include <wtf/Forward.h>
 #include <wtf/HashSet.h>
-#include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
 #include <wtf/Vector.h>
 #include <wtf/WeakPtr.h>
@@ -132,6 +131,8 @@ public:
         UChar32 from;
         UChar32 to;
     };
+
+    bool rangesMatchCodePoint(UChar32) const;
 
     // We don't guarantee that the FontFace wrapper will be the same every time you ask for it.
     Ref<FontFace> wrapper();

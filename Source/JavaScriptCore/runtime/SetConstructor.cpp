@@ -29,13 +29,11 @@
 #include "Error.h"
 #include "GetterSetter.h"
 #include "IteratorOperations.h"
-#include "JSCJSValueInlines.h"
-#include "JSCellInlines.h"
+#include "JSCInlines.h"
 #include "JSGlobalObject.h"
+#include "JSObjectInlines.h"
 #include "JSSet.h"
-#include "MapData.h"
 #include "SetPrototype.h"
-#include "StructureInlines.h"
 
 namespace JSC {
 
@@ -45,73 +43,45 @@ void SetConstructor::finishCreation(VM& vm, SetPrototype* setPrototype, GetterSe
 {
     Base::finishCreation(vm, setPrototype->classInfo()->className);
     putDirectWithoutTransition(vm, vm.propertyNames->prototype, setPrototype, DontEnum | DontDelete | ReadOnly);
-    putDirectWithoutTransition(vm, vm.propertyNames->length, jsNumber(0), ReadOnly | DontEnum | DontDelete);
+    putDirectWithoutTransition(vm, vm.propertyNames->length, jsNumber(0), DontEnum | ReadOnly);
     putDirectNonIndexAccessor(vm, vm.propertyNames->speciesSymbol, speciesSymbol, Accessor | ReadOnly | DontEnum);
 }
 
 static EncodedJSValue JSC_HOST_CALL callSet(ExecState* exec)
 {
-    return JSValue::encode(throwConstructorCannotBeCalledAsFunctionTypeError(exec, "Set"));
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+    return JSValue::encode(throwConstructorCannotBeCalledAsFunctionTypeError(exec, scope, "Set"));
 }
 
 static EncodedJSValue JSC_HOST_CALL constructSet(ExecState* exec)
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     JSGlobalObject* globalObject = asInternalFunction(exec->callee())->globalObject();
     Structure* setStructure = InternalFunction::createSubclassStructure(exec, exec->newTarget(), globalObject->setStructure());
-    if (exec->hadException())
-        return JSValue::encode(JSValue());
-    JSSet* set = JSSet::create(exec, setStructure);
+    RETURN_IF_EXCEPTION(scope, encodedJSValue());
+    JSSet* set = JSSet::create(exec, vm, setStructure);
+    RETURN_IF_EXCEPTION(scope, encodedJSValue());
     JSValue iterable = exec->argument(0);
     if (iterable.isUndefinedOrNull())
         return JSValue::encode(set);
 
     JSValue adderFunction = set->get(exec, exec->propertyNames().add);
-    if (exec->hadException())
-        return JSValue::encode(jsUndefined());
+    RETURN_IF_EXCEPTION(scope, encodedJSValue());
 
     CallData adderFunctionCallData;
     CallType adderFunctionCallType = getCallData(adderFunction, adderFunctionCallData);
     if (adderFunctionCallType == CallType::None)
-        return JSValue::encode(throwTypeError(exec));
+        return JSValue::encode(throwTypeError(exec, scope));
 
-    JSValue iteratorFunction = iterable.get(exec, exec->propertyNames().iteratorSymbol);
-    if (exec->hadException())
-        return JSValue::encode(jsUndefined());
-
-    CallData iteratorFunctionCallData;
-    CallType iteratorFunctionCallType = getCallData(iteratorFunction, iteratorFunctionCallData);
-    if (iteratorFunctionCallType == CallType::None)
-        return JSValue::encode(throwTypeError(exec));
-
-    ArgList iteratorFunctionArguments;
-    JSValue iterator = call(exec, iteratorFunction, iteratorFunctionCallType, iteratorFunctionCallData, iterable, iteratorFunctionArguments);
-    if (exec->hadException())
-        return JSValue::encode(jsUndefined());
-
-    if (!iterator.isObject())
-        return JSValue::encode(throwTypeError(exec));
-
-    while (true) {
-        JSValue next = iteratorStep(exec, iterator);
-        if (exec->hadException())
-            return JSValue::encode(jsUndefined());
-
-        if (next.isFalse())
-            return JSValue::encode(set);
-
-        JSValue nextValue = iteratorValue(exec, next);
-        if (exec->hadException())
-            return JSValue::encode(jsUndefined());
-
+    forEachInIterable(exec, iterable, [&](VM&, ExecState* exec, JSValue nextValue) {
         MarkedArgumentBuffer arguments;
         arguments.append(nextValue);
         call(exec, adderFunction, adderFunctionCallType, adderFunctionCallData, set, arguments);
-        if (exec->hadException()) {
-            iteratorClose(exec, iterator);
-            return JSValue::encode(jsUndefined());
-        }
-    }
-    RELEASE_ASSERT_NOT_REACHED();
+    });
+
     return JSValue::encode(set);
 }
 

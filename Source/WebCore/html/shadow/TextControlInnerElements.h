@@ -24,8 +24,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
  
-#ifndef TextControlInnerElements_h
-#define TextControlInnerElements_h
+#pragma once
 
 #include "HTMLDivElement.h"
 #include <wtf/Forward.h>
@@ -58,7 +57,7 @@ class TextControlInnerTextElement final : public HTMLDivElement {
 public:
     static Ref<TextControlInnerTextElement> create(Document&);
 
-    void defaultEventHandler(Event*) override;
+    void defaultEventHandler(Event&) override;
 
     RenderTextControlInnerBlock* renderer() const;
 
@@ -84,7 +83,7 @@ class SearchFieldResultsButtonElement final : public HTMLDivElement {
 public:
     static Ref<SearchFieldResultsButtonElement> create(Document&);
 
-    void defaultEventHandler(Event*) override;
+    void defaultEventHandler(Event&) override;
 #if !PLATFORM(IOS)
     bool willRespondToMouseClickEvents() override;
 #endif
@@ -98,7 +97,7 @@ class SearchFieldCancelButtonElement final : public HTMLDivElement {
 public:
     static Ref<SearchFieldCancelButtonElement> create(Document&);
 
-    void defaultEventHandler(Event*) override;
+    void defaultEventHandler(Event&) override;
 #if !PLATFORM(IOS)
     bool willRespondToMouseClickEvents() override;
 #endif
@@ -114,5 +113,3 @@ SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::TextControlInnerTextElement)
     static bool isType(const WebCore::HTMLElement& element) { return element.isTextControlInnerTextElement(); }
     static bool isType(const WebCore::Node& node) { return is<WebCore::HTMLElement>(node) && isType(downcast<WebCore::HTMLElement>(node)); }
 SPECIALIZE_TYPE_TRAITS_END()
-
-#endif

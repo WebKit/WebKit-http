@@ -22,8 +22,7 @@
  *
  */
 
-#ifndef HTMLOptionElement_h
-#define HTMLOptionElement_h
+#pragma once
 
 #include "HTMLElement.h"
 
@@ -36,31 +35,30 @@ class HTMLOptionElement final : public HTMLElement {
 public:
     static Ref<HTMLOptionElement> create(Document&);
     static Ref<HTMLOptionElement> create(const QualifiedName&, Document&);
-    static RefPtr<HTMLOptionElement> createForJSConstructor(Document&, const String& data, const String& value,
-       bool defaultSelected, bool selected, ExceptionCode&);
+    static ExceptionOr<Ref<HTMLOptionElement>> createForJSConstructor(Document&, const String& data, const String& value, bool defaultSelected, bool selected);
 
     WEBCORE_EXPORT String text() const;
-    void setText(const String&, ExceptionCode&);
+    void setText(const String&);
 
-    int index() const;
+    WEBCORE_EXPORT int index() const;
 
-    String value() const;
-    void setValue(const String&);
+    WEBCORE_EXPORT String value() const;
+    WEBCORE_EXPORT void setValue(const String&);
 
     WEBCORE_EXPORT bool selected();
-    void setSelected(bool);
+    WEBCORE_EXPORT void setSelected(bool);
 
 #if ENABLE(DATALIST_ELEMENT)
     HTMLDataListElement* ownerDataListElement() const;
 #endif
     HTMLSelectElement* ownerSelectElement() const;
 
-    String label() const;
-    void setLabel(const String&);
+    WEBCORE_EXPORT String label() const;
+    WEBCORE_EXPORT void setLabel(const String&);
 
     bool ownElementDisabled() const { return m_disabled; }
 
-    bool isDisabledFormControl() const override;
+    bool isDisabledFormControl() const final;
 
     String textIndentedToRespectGroupLabel() const;
 
@@ -69,18 +67,18 @@ public:
 private:
     HTMLOptionElement(const QualifiedName&, Document&);
 
-    bool isFocusable() const override;
-    bool rendererIsNeeded(const RenderStyle&) override { return false; }
-    bool matchesDefaultPseudoClass() const override;
+    bool isFocusable() const final;
+    bool rendererIsNeeded(const RenderStyle&) final { return false; }
+    bool matchesDefaultPseudoClass() const final;
 
-    void parseAttribute(const QualifiedName&, const AtomicString&) override;
+    void parseAttribute(const QualifiedName&, const AtomicString&) final;
 
-    InsertionNotificationRequest insertedInto(ContainerNode&) override;
-    void accessKeyAction(bool) override;
+    InsertionNotificationRequest insertedInto(ContainerNode&) final;
+    void accessKeyAction(bool) final;
 
-    void childrenChanged(const ChildChange&) override;
+    void childrenChanged(const ChildChange&) final;
 
-    void willResetComputedStyle() override;
+    void willResetComputedStyle() final;
 
     String collectOptionInnerText() const;
 
@@ -89,5 +87,3 @@ private:
 };
 
 } // namespace
-
-#endif

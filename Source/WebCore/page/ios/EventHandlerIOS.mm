@@ -108,8 +108,7 @@ bool EventHandler::wheelEvent(WebEvent *event)
 bool EventHandler::dispatchSimulatedTouchEvent(IntPoint location)
 {
     bool handled = handleTouchEvent(PlatformEventFactory::createPlatformSimulatedTouchEvent(PlatformEvent::TouchStart, location));
-    if (handled)
-        handleTouchEvent(PlatformEventFactory::createPlatformSimulatedTouchEvent(PlatformEvent::TouchEnd, location));
+    handled |= handleTouchEvent(PlatformEventFactory::createPlatformSimulatedTouchEvent(PlatformEvent::TouchEnd, location));
     return handled;
 }
     
@@ -166,6 +165,8 @@ void EventHandler::focusDocumentView()
     Page* page = m_frame.page();
     if (!page)
         return;
+
+    Ref<Frame> protectedFrame(m_frame);
 
     if (FrameView* frameView = m_frame.view()) {
         if (NSView *documentView = frameView->documentView())
@@ -538,15 +539,15 @@ bool EventHandler::passMouseReleaseEventToSubframe(MouseEventWithHitTestResults&
     return true;
 }
 
-unsigned EventHandler::accessKeyModifiers()
+OptionSet<PlatformEvent::Modifier> EventHandler::accessKeyModifiers()
 {
     // Control+Option key combinations are usually unused on Mac OS X, but not when VoiceOver is enabled.
     // So, we use Control in this case, even though it conflicts with Emacs-style key bindings.
     // See <https://bugs.webkit.org/show_bug.cgi?id=21107> for more detail.
     if (AXObjectCache::accessibilityEnhancedUserInterfaceEnabled())
-        return PlatformKeyboardEvent::CtrlKey;
+        return PlatformEvent::Modifier::CtrlKey;
 
-    return PlatformKeyboardEvent::CtrlKey | PlatformKeyboardEvent::AltKey;
+    return { PlatformEvent::Modifier::CtrlKey, PlatformEvent::Modifier::AltKey };
 }
 
 PlatformMouseEvent EventHandler::currentPlatformMouseEvent() const

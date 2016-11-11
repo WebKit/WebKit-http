@@ -24,15 +24,12 @@ interface HTMLFieldSetElement : HTMLElement {
 
     readonly attribute DOMString type;
 
-#if defined(LANGUAGE_OBJECTIVE_C) && LANGUAGE_OBJECTIVE_C || defined(LANGUAGE_GOBJECT) && LANGUAGE_GOBJECT
-    [ImplementedAs=elementsForNativeBindings] readonly attribute HTMLCollection elements;
-#else
     readonly attribute HTMLFormControlsCollection elements;
-#endif
 
     readonly attribute boolean         willValidate;
     readonly attribute ValidityState   validity;
     readonly attribute DOMString       validationMessage;
     boolean  checkValidity();
+    [EnabledAtRuntime=InteractiveFormValidation] boolean reportValidity();
     void     setCustomValidity(DOMString? error);
 };

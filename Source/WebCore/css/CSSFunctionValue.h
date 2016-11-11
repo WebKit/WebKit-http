@@ -26,6 +26,7 @@
 #pragma once
 
 #include "CSSValue.h"
+#include "CSSValueKeywords.h"
 
 namespace WebCore {
 
@@ -33,7 +34,8 @@ class CSSValueList;
 struct CSSParserFunction;
 struct CSSParserValue;
 
-class CSSFunctionValue : public CSSValue {
+// FIXME-NEWPARSER: This can just *be* a CSSValueList subclass.
+class CSSFunctionValue final : public CSSValue {
 public:
     static Ref<CSSFunctionValue> create(CSSParserFunction* function)
     {
@@ -45,19 +47,32 @@ public:
         return adoptRef(*new CSSFunctionValue(name, WTFMove(args)));
     }
 
+    static Ref<CSSFunctionValue> create(CSSValueID keyword)
+    {
+        return adoptRef(*new CSSFunctionValue(keyword));
+    }
+    
     String customCSSText() const;
 
     bool equals(const CSSFunctionValue&) const;
+    
+    CSSValueID name() const { return m_name; }
 
     CSSValueList* arguments() const { return m_args.get(); }
 
     bool buildParserValueSubstitutingVariables(CSSParserValue*, const CustomPropertyValueMap& customProperties) const;
-    
+
+    void append(Ref<CSSValue>&&);
+
 private:
     explicit CSSFunctionValue(CSSParserFunction*);
     CSSFunctionValue(const String&, Ref<CSSValueList>&&);
+    CSSFunctionValue(CSSValueID);
 
-    String m_name;
+    CSSValueID m_name { CSSValueInvalid };
+
+    // FIXME-NEWPARSER: Remove these.
+    String m_nameDeprecated;
     RefPtr<CSSValueList> m_args;
 };
 

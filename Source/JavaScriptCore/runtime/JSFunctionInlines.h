@@ -23,11 +23,12 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef JSFunctionInlines_h
-#define JSFunctionInlines_h
+#pragma once
 
-#include "Executable.h"
+#include "FunctionExecutable.h"
 #include "JSFunction.h"
+#include "NativeExecutable.h"
+#include "WebAssemblyExecutable.h"
 
 namespace JSC {
 
@@ -35,7 +36,7 @@ inline JSFunction* JSFunction::createWithInvalidatedReallocationWatchpoint(
     VM& vm, FunctionExecutable* executable, JSScope* scope)
 {
     ASSERT(executable->singletonFunction()->hasBeenInvalidated());
-    return createImpl(vm, executable, scope, scope->globalObject()->functionStructure());
+    return createImpl(vm, executable, scope, scope->globalObject(vm)->functionStructure());
 }
 
 inline JSFunction::JSFunction(VM& vm, FunctionExecutable* executable, JSScope* scope, Structure* structure)
@@ -47,7 +48,7 @@ inline JSFunction::JSFunction(VM& vm, FunctionExecutable* executable, JSScope* s
 
 #if ENABLE(WEBASSEMBLY)
 inline JSFunction::JSFunction(VM& vm, WebAssemblyExecutable* executable, JSScope* scope)
-    : Base(vm, scope, scope->globalObject()->functionStructure())
+    : Base(vm, scope, scope->globalObject(vm)->functionStructure())
     , m_executable(vm, this, executable)
     , m_rareData()
 {
@@ -121,6 +122,3 @@ inline bool JSFunction::hasReifiedName() const
 }
 
 } // namespace JSC
-
-#endif // JSFunctionInlines_h
-

@@ -24,8 +24,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef HTMLTreeBuilder_h
-#define HTMLTreeBuilder_h
+#pragma once
 
 #include "HTMLConstructionSite.h"
 #include "HTMLParserOptions.h"
@@ -37,7 +36,6 @@ namespace WebCore {
 class JSCustomElementInterface;
 class HTMLDocumentParser;
 
-#if ENABLE(CUSTOM_ELEMENTS)
 struct CustomElementConstructionData {
     CustomElementConstructionData(Ref<JSCustomElementInterface>&&, const AtomicString& name, const Vector<Attribute>&);
     ~CustomElementConstructionData();
@@ -46,7 +44,6 @@ struct CustomElementConstructionData {
     AtomicString name;
     Vector<Attribute> attributes;
 };
-#endif
 
 class HTMLTreeBuilder {
     WTF_MAKE_FAST_ALLOCATED;
@@ -67,10 +64,8 @@ public:
     // Must be called to take the parser-blocking script before calling the parser again.
     RefPtr<Element> takeScriptToProcess(TextPosition& scriptStartPosition);
 
-#if ENABLE(CUSTOM_ELEMENTS)
     std::unique_ptr<CustomElementConstructionData> takeCustomElementConstructionData() { return WTFMove(m_customElementToConstruct); }
     void didCreateCustomOrCallbackElement(Ref<Element>&&, CustomElementConstructionData&);
-#endif
 
     // Done, close any open tags, etc.
     void finished();
@@ -131,7 +126,6 @@ private:
     void processEndTagForInRow(AtomicHTMLToken&);
     void processEndTagForInCell(AtomicHTMLToken&);
 
-    void processIsindexStartTagForInBody(AtomicHTMLToken&);
     void processHtmlStartTagForInBody(AtomicHTMLToken&);
     bool processBodyEndTagForInBody(AtomicHTMLToken&);
     bool processTableEndTagForInTable();
@@ -167,8 +161,6 @@ private:
     void processTokenInForeignContent(AtomicHTMLToken&);
     
     HTMLStackItem& adjustedCurrentStackItem() const;
-
-    Vector<Attribute> attributesForIsindexInput(AtomicHTMLToken&);
 
     void callTheAdoptionAgency(AtomicHTMLToken&);
 
@@ -217,9 +209,7 @@ private:
     RefPtr<Element> m_scriptToProcess; // <script> tag which needs processing before resuming the parser.
     TextPosition m_scriptToProcessStartPosition; // Starting line number of the script tag needing processing.
 
-#if ENABLE(CUSTOM_ELEMENTS)
     std::unique_ptr<CustomElementConstructionData> m_customElementToConstruct;
-#endif
 
     bool m_shouldSkipLeadingNewline { false };
 
@@ -255,12 +245,8 @@ inline bool HTMLTreeBuilder::isParsingFragment() const
 inline bool HTMLTreeBuilder::hasParserBlockingScriptWork() const
 {
     ASSERT(!m_destroyed);
-#if ENABLE(CUSTOM_ELEMENTS)
     ASSERT(!(m_scriptToProcess && m_customElementToConstruct));
     return m_scriptToProcess || m_customElementToConstruct;
-#else
-    return m_scriptToProcess;
-#endif
 }
 
 inline DocumentFragment* HTMLTreeBuilder::FragmentParsingContext::fragment() const
@@ -268,6 +254,4 @@ inline DocumentFragment* HTMLTreeBuilder::FragmentParsingContext::fragment() con
     return m_fragment;
 }
 
-}
-
-#endif
+} // namespace WebCore

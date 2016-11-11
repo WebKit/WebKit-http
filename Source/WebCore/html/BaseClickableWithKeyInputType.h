@@ -28,8 +28,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef BaseClickableWithKeyInputType_h
-#define BaseClickableWithKeyInputType_h
+#pragma once
 
 #include "InputType.h"
 
@@ -38,21 +37,19 @@ namespace WebCore {
 // Base of input types that dispatches a simulated click on space/return key.
 class BaseClickableWithKeyInputType : public InputType {
 public:
-    static void handleKeydownEvent(HTMLInputElement&, KeyboardEvent*);
-    static void handleKeypressEvent(HTMLInputElement&, KeyboardEvent*);
-    static void handleKeyupEvent(InputType&, KeyboardEvent*);
+    static void handleKeydownEvent(HTMLInputElement&, KeyboardEvent&);
+    static void handleKeypressEvent(HTMLInputElement&, KeyboardEvent&);
+    static void handleKeyupEvent(InputType&, KeyboardEvent&);
     static void accessKeyAction(HTMLInputElement&, bool sendMouseEvents);
     
 protected:
     explicit BaseClickableWithKeyInputType(HTMLInputElement& element) : InputType(element) { }
 
 private:
-    void handleKeydownEvent(KeyboardEvent*) override;
-    void handleKeypressEvent(KeyboardEvent*) override;
-    void handleKeyupEvent(KeyboardEvent*) override;
+    void handleKeydownEvent(KeyboardEvent&) override;
+    void handleKeypressEvent(KeyboardEvent&) override;
+    void handleKeyupEvent(KeyboardEvent&) override;
     void accessKeyAction(bool sendMouseEvents) override;
 };
 
 } // namespace WebCore
-
-#endif // BaseClickableWithKeyInputType_h

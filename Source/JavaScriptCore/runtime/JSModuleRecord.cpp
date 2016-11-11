@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,15 +27,12 @@
 #include "JSModuleRecord.h"
 
 #include "Error.h"
-#include "Executable.h"
-#include "IdentifierInlines.h"
-#include "JSCJSValueInlines.h"
-#include "JSCellInlines.h"
+#include "Interpreter.h"
+#include "JSCInlines.h"
 #include "JSMap.h"
 #include "JSModuleEnvironment.h"
 #include "JSModuleNamespaceObject.h"
-#include "SlotVisitorInlines.h"
-#include "StructureInlines.h"
+#include "UnlinkedModuleProgramCodeBlock.h"
 
 namespace JSC {
 
@@ -47,14 +44,17 @@ void JSModuleRecord::destroy(JSCell* cell)
     thisObject->JSModuleRecord::~JSModuleRecord();
 }
 
-void JSModuleRecord::finishCreation(VM& vm)
+void JSModuleRecord::finishCreation(ExecState* exec, VM& vm)
 {
     Base::finishCreation(vm);
     ASSERT(inherits(info()));
     putDirect(vm, Identifier::fromString(&vm, ASCIILiteral("registryEntry")), jsUndefined());
     putDirect(vm, Identifier::fromString(&vm, ASCIILiteral("evaluated")), jsBoolean(false));
 
-    m_dependenciesMap.set(vm, this, JSMap::create(vm, globalObject()->mapStructure()));
+    auto scope = DECLARE_THROW_SCOPE(vm);
+    JSMap* map = JSMap::create(exec, vm, globalObject()->mapStructure());
+    RELEASE_ASSERT(!scope.exception());
+    m_dependenciesMap.set(vm, this, map);
     putDirect(vm, Identifier::fromString(&vm, ASCIILiteral("dependenciesMap")), m_dependenciesMap.get());
 }
 
@@ -681,6 +681,9 @@ static void getExportedNames(ExecState* exec, JSModuleRecord* root, IdentifierSe
 
 JSModuleNamespaceObject* JSModuleRecord::getModuleNamespace(ExecState* exec)
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     // http://www.ecma-international.org/ecma-262/6.0/#sec-getmodulenamespace
     if (m_moduleNamespaceObject)
         return m_moduleNamespaceObject.get();
@@ -694,11 +697,11 @@ JSModuleNamespaceObject* JSModuleRecord::getModuleNamespace(ExecState* exec)
         const JSModuleRecord::Resolution resolution = resolveExport(exec, Identifier::fromUid(exec, name.get()));
         switch (resolution.type) {
         case Resolution::Type::NotFound:
-            throwSyntaxError(exec, makeString("Exported binding name '", String(name.get()), "' is not found."));
+            throwSyntaxError(exec, scope, makeString("Exported binding name '", String(name.get()), "' is not found."));
             return nullptr;
 
         case Resolution::Type::Error:
-            throwSyntaxError(exec, makeString("Exported binding name 'default' cannot be resolved by star export entries."));
+            throwSyntaxError(exec, scope, makeString("Exported binding name 'default' cannot be resolved by star export entries."));
             return nullptr;
 
         case Resolution::Type::Ambiguous:
@@ -710,29 +713,33 @@ JSModuleNamespaceObject* JSModuleRecord::getModuleNamespace(ExecState* exec)
         }
     }
 
-    m_moduleNamespaceObject.set(exec->vm(), this, JSModuleNamespaceObject::create(exec, globalObject, globalObject->moduleNamespaceObjectStructure(), this, unambiguousNames));
+    m_moduleNamespaceObject.set(vm, this, JSModuleNamespaceObject::create(exec, globalObject, globalObject->moduleNamespaceObjectStructure(), this, unambiguousNames));
     return m_moduleNamespaceObject.get();
 }
 
 void JSModuleRecord::link(ExecState* exec)
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     ModuleProgramExecutable* executable = ModuleProgramExecutable::create(exec, sourceCode());
     if (!executable) {
-        throwSyntaxError(exec);
+        throwSyntaxError(exec, scope);
         return;
     }
-    m_moduleProgramExecutable.set(exec->vm(), this, executable);
+    m_moduleProgramExecutable.set(vm, this, executable);
     instantiateDeclarations(exec, executable);
 }
 
 void JSModuleRecord::instantiateDeclarations(ExecState* exec, ModuleProgramExecutable* moduleProgramExecutable)
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     // http://www.ecma-international.org/ecma-262/6.0/#sec-moduledeclarationinstantiation
 
     SymbolTable* symbolTable = moduleProgramExecutable->moduleEnvironmentSymbolTable();
-    JSModuleEnvironment* moduleEnvironment = JSModuleEnvironment::create(exec->vm(), exec->lexicalGlobalObject(), exec->lexicalGlobalObject(), symbolTable, jsTDZValue(), this);
-
-    VM& vm = exec->vm();
+    JSModuleEnvironment* moduleEnvironment = JSModuleEnvironment::create(vm, exec->lexicalGlobalObject(), exec->lexicalGlobalObject(), symbolTable, jsTDZValue(), this);
 
     // http://www.ecma-international.org/ecma-262/6.0/#sec-moduledeclarationinstantiation
     // section 15.2.1.16.4 step 9.
@@ -745,15 +752,15 @@ void JSModuleRecord::instantiateDeclarations(ExecState* exec, ModuleProgramExecu
             Resolution resolution = resolveExport(exec, exportEntry.exportName);
             switch (resolution.type) {
             case Resolution::Type::NotFound:
-                throwSyntaxError(exec, makeString("Indirectly exported binding name '", String(exportEntry.exportName.impl()), "' is not found."));
+                throwSyntaxError(exec, scope, makeString("Indirectly exported binding name '", String(exportEntry.exportName.impl()), "' is not found."));
                 return;
 
             case Resolution::Type::Ambiguous:
-                throwSyntaxError(exec, makeString("Indirectly exported binding name '", String(exportEntry.exportName.impl()), "' cannot be resolved due to ambiguous multiple bindings."));
+                throwSyntaxError(exec, scope, makeString("Indirectly exported binding name '", String(exportEntry.exportName.impl()), "' cannot be resolved due to ambiguous multiple bindings."));
                 return;
 
             case Resolution::Type::Error:
-                throwSyntaxError(exec, makeString("Indirectly exported binding name 'default' cannot be resolved by star export entries."));
+                throwSyntaxError(exec, scope, makeString("Indirectly exported binding name 'default' cannot be resolved by star export entries."));
                 return;
 
             case Resolution::Type::Resolved:
@@ -771,23 +778,22 @@ void JSModuleRecord::instantiateDeclarations(ExecState* exec, ModuleProgramExecu
         JSModuleRecord* importedModule = hostResolveImportedModule(exec, importEntry.moduleRequest);
         if (importEntry.isNamespace(vm)) {
             JSModuleNamespaceObject* namespaceObject = importedModule->getModuleNamespace(exec);
-            if (exec->hadException())
-                return;
+            RETURN_IF_EXCEPTION(scope, void());
             bool putResult = false;
             symbolTablePutTouchWatchpointSet(moduleEnvironment, exec, importEntry.localName, namespaceObject, /* shouldThrowReadOnlyError */ false, /* ignoreReadOnlyErrors */ true, putResult);
         } else {
             Resolution resolution = importedModule->resolveExport(exec, importEntry.importName);
             switch (resolution.type) {
             case Resolution::Type::NotFound:
-                throwSyntaxError(exec, makeString("Importing binding name '", String(importEntry.importName.impl()), "' is not found."));
+                throwSyntaxError(exec, scope, makeString("Importing binding name '", String(importEntry.importName.impl()), "' is not found."));
                 return;
 
             case Resolution::Type::Ambiguous:
-                throwSyntaxError(exec, makeString("Importing binding name '", String(importEntry.importName.impl()), "' cannot be resolved due to ambiguous multiple bindings."));
+                throwSyntaxError(exec, scope, makeString("Importing binding name '", String(importEntry.importName.impl()), "' cannot be resolved due to ambiguous multiple bindings."));
                 return;
 
             case Resolution::Type::Error:
-                throwSyntaxError(exec, makeString("Importing binding name 'default' cannot be resolved by star export entries."));
+                throwSyntaxError(exec, scope, makeString("Importing binding name 'default' cannot be resolved by star export entries."));
                 return;
 
             case Resolution::Type::Resolved:

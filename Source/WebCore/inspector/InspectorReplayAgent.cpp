@@ -198,10 +198,10 @@ void InspectorReplayAgent::willDestroyFrontendAndBackend(Inspector::DisconnectRe
     m_segmentsMap.clear();
 }
 
-void InspectorReplayAgent::frameNavigated(DocumentLoader* loader)
+void InspectorReplayAgent::frameNavigated(Frame& frame)
 {
     if (sessionState() != WebCore::SessionState::Inactive)
-        m_page.replayController().frameNavigated(loader);
+        m_page.replayController().frameNavigated(frame);
 }
 
 void InspectorReplayAgent::frameDetached(Frame& frame)
@@ -510,5 +510,4 @@ void InspectorReplayAgent::getSegmentData(ErrorString& errorString, Inspector::P
 }
 
 } // namespace WebCore
-
 #endif // ENABLE(WEB_REPLAY)

@@ -44,7 +44,7 @@ struct SameSizeAsElementRareData : NodeRareData {
     RegionOversetState regionOversetState;
     LayoutSize sizeForResizing;
     IntPoint savedLayerScrollPosition;
-    void* pointers[7];
+    void* pointers[8];
 };
 
 static_assert(sizeof(ElementRareData) == sizeof(SameSizeAsElementRareData), "ElementRareData should stay small");

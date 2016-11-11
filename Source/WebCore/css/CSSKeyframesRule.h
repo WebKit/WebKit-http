@@ -38,7 +38,7 @@ class CSSRuleList;
 class StyleKeyframe;
 class CSSKeyframeRule;
 
-class StyleRuleKeyframes : public StyleRuleBase {
+class StyleRuleKeyframes final : public StyleRuleBase {
 public:
     static Ref<StyleRuleKeyframes> create() { return adoptRef(*new StyleRuleKeyframes()); }
     
@@ -50,8 +50,8 @@ public:
     void wrapperAppendKeyframe(Ref<StyleKeyframe>&&);
     void wrapperRemoveKeyframe(unsigned);
 
-    String name() const { return m_name; }    
-    void setName(const String& name) { m_name = AtomicString(name); }
+    const AtomicString& name() const { return m_name; }
+    void setName(const AtomicString& name) { m_name = name; }
     
     size_t findKeyframeIndex(const String& key) const;
 
@@ -71,9 +71,9 @@ public:
 
     virtual ~CSSKeyframesRule();
 
-    CSSRule::Type type() const override { return KEYFRAMES_RULE; }
-    String cssText() const override;
-    void reattach(StyleRuleBase&) override;
+    CSSRule::Type type() const final { return KEYFRAMES_RULE; }
+    String cssText() const final;
+    void reattach(StyleRuleBase&) final;
 
     String name() const { return m_keyframesRule->name(); }
     void setName(const String&);

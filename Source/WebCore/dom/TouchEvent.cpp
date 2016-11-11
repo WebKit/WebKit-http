@@ -41,7 +41,7 @@ TouchEvent::TouchEvent()
 
 TouchEvent::TouchEvent(TouchList* touches, TouchList* targetTouches,
         TouchList* changedTouches, const AtomicString& type, 
-        AbstractView* view, int screenX, int screenY, int pageX, int pageY,
+        DOMWindow* view, int screenX, int screenY, int pageX, int pageY,
         bool ctrlKey, bool altKey, bool shiftKey, bool metaKey)
     : MouseRelatedEvent(type, true, true, currentTime(), view, 0, IntPoint(screenX, screenY),
                         IntPoint(pageX, pageY),
@@ -55,8 +55,8 @@ TouchEvent::TouchEvent(TouchList* touches, TouchList* targetTouches,
 {
 }
 
-TouchEvent::TouchEvent(const AtomicString& type, const TouchEventInit& initializer)
-    : MouseRelatedEvent(type, initializer)
+TouchEvent::TouchEvent(const AtomicString& type, const Init& initializer, IsTrusted isTrusted)
+    : MouseRelatedEvent(type, initializer, isTrusted)
     , m_touches(initializer.touches ? initializer.touches : TouchList::create())
     , m_targetTouches(initializer.targetTouches ? initializer.targetTouches : TouchList::create())
     , m_changedTouches(initializer.changedTouches ? initializer.changedTouches : TouchList::create())
@@ -69,7 +69,7 @@ TouchEvent::~TouchEvent()
 
 void TouchEvent::initTouchEvent(TouchList* touches, TouchList* targetTouches,
         TouchList* changedTouches, const AtomicString& type, 
-        AbstractView* view, int screenX, int screenY, int clientX, int clientY,
+        DOMWindow* view, int screenX, int screenY, int clientX, int clientY,
         bool ctrlKey, bool altKey, bool shiftKey, bool metaKey)
 {
     if (dispatched())

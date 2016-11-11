@@ -233,13 +233,13 @@ void PageSerializer::serializeFrame(Frame* frame)
 
         if (is<HTMLImageElement>(element)) {
             HTMLImageElement& imageElement = downcast<HTMLImageElement>(element);
-            URL url = document->completeURL(imageElement.fastGetAttribute(HTMLNames::srcAttr));
+            URL url = document->completeURL(imageElement.attributeWithoutSynchronization(HTMLNames::srcAttr));
             CachedImage* cachedImage = imageElement.cachedImage();
             addImageToResources(cachedImage, imageElement.renderer(), url);
         } else if (is<HTMLLinkElement>(element)) {
             HTMLLinkElement& linkElement = downcast<HTMLLinkElement>(element);
             if (CSSStyleSheet* sheet = linkElement.sheet()) {
-                URL url = document->completeURL(linkElement.getAttribute(HTMLNames::hrefAttr));
+                URL url = document->completeURL(linkElement.attributeWithoutSynchronization(HTMLNames::hrefAttr));
                 serializeCSSStyleSheet(sheet, url);
                 ASSERT(m_resourceURLs.contains(url));
             }
@@ -331,12 +331,9 @@ void PageSerializer::retrieveResourcesForProperties(const StyleProperties* style
         if (!is<CSSImageValue>(*cssValue))
             continue;
 
-        auto& styleImage = downcast<CSSImageValue>(*cssValue).cachedOrPendingImage();
-        // Non cached-images are just place-holders and do not contain data.
-        if (!is<StyleCachedImage>(styleImage))
+        auto* image = downcast<CSSImageValue>(*cssValue).cachedImage();
+        if (!image)
             continue;
-
-        CachedImage* image = downcast<StyleCachedImage>(styleImage).cachedImage();
 
         URL url = document->completeURL(image->url());
         addImageToResources(image, nullptr, url);

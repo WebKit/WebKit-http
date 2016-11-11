@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,7 +28,6 @@
 
 #include "CodeBlock.h"
 #include "JSCInlines.h"
-#include "SlotVisitor.h"
 #include <wtf/CommaPrinter.h>
 
 namespace JSC {
@@ -78,10 +77,10 @@ void CodeBlockSet::lastChanceToFinalize()
         codeBlock->classInfo()->methodTable.destroy(codeBlock);
 }
 
-void CodeBlockSet::deleteUnmarkedAndUnreferenced(HeapOperation collectionType)
+void CodeBlockSet::deleteUnmarkedAndUnreferenced(CollectionScope scope)
 {
     LockHolder locker(&m_lock);
-    HashSet<CodeBlock*>& set = collectionType == EdenCollection ? m_newCodeBlocks : m_oldCodeBlocks;
+    HashSet<CodeBlock*>& set = scope == CollectionScope::Eden ? m_newCodeBlocks : m_oldCodeBlocks;
     Vector<CodeBlock*> unmarked;
     for (CodeBlock* codeBlock : set) {
         if (Heap::isMarked(codeBlock))
@@ -95,7 +94,7 @@ void CodeBlockSet::deleteUnmarkedAndUnreferenced(HeapOperation collectionType)
     }
 
     // Any remaining young CodeBlocks are live and need to be promoted to the set of old CodeBlocks.
-    if (collectionType == EdenCollection)
+    if (scope == CollectionScope::Eden)
         promoteYoungCodeBlocks(locker);
 }
 
@@ -108,16 +107,17 @@ bool CodeBlockSet::contains(const LockHolder&, void* candidateCodeBlock)
     return m_oldCodeBlocks.contains(codeBlock) || m_newCodeBlocks.contains(codeBlock) || m_currentlyExecuting.contains(codeBlock);
 }
 
-void CodeBlockSet::writeBarrierCurrentlyExecutingCodeBlocks(Heap* heap)
+void CodeBlockSet::writeBarrierCurrentlyExecuting(Heap* heap)
 {
     LockHolder locker(&m_lock);
     if (verbose)
         dataLog("Remembering ", m_currentlyExecuting.size(), " code blocks.\n");
     for (CodeBlock* codeBlock : m_currentlyExecuting)
         heap->writeBarrier(codeBlock);
+}
 
-    // It's safe to clear this set because we won't delete the CodeBlocks
-    // in it until the next GC, and we'll recompute it at that time.
+void CodeBlockSet::clearCurrentlyExecuting()
+{
     m_currentlyExecuting.clear();
 }
 

@@ -45,6 +45,7 @@
 <div class="ex" role="button" tabindex="0" aria-pressed="false">Not Pressed.</div>
 <button class="ex"></button>
 <input class="ex" type="button">
+<div role="button" class="ex" tabindex="0" aria-haspopup="true">Popup Button.</div>
 
 <!-- FIXME: Inputs missing parentNodeId http://webkit.org/b/130181 -->
 <input class="ex">
@@ -90,6 +91,10 @@
     <option class="ex">not selected</option>
 </select>
 
+<select class="ex">
+    <option>FOO</option>
+</select>
+
 <input class="ex" role="combobox" aria-owns="ownedlistbox invalidIdRef" aria-controls="ownedlistbox invalidIdRef">
 <div role="listbox" class="ex" id="ownedlistbox">
     <div class="ex" role="option" aria-selected="true">selected</div>
@@ -117,6 +122,37 @@
     <li class="ex" role="treeitem" aria-expanded="false" id="activedescendant" aria-selected="true">collapsed</li>
     <li class="ex" role="treeitem" aria-expanded="undefined">expanded</li>
 </ul>
+
+<div>
+<h1 class="ex">H1</h1>
+<h2 class="ex">H2</h2>
+<h3 class="ex">H3</h3>
+<h4 class="ex">H4</h4>
+<h5 class="ex">H5</h5>
+<h6 class="ex">H6</h6>
+
+<h1  class="ex" style="color: red;" aria-level="8">H1</h1>
+
+<ul class="ex">
+    <li class="ex" aria-level="1">
+        <span>List Item Level 1</span>
+        <ol class="ex">
+            <li class="ex" aria-level="2">List Item Level 2</li>
+        </ol>
+    </li>
+    <li class="ex" aria-level="1">List Item Level 1</li>
+</ul>
+
+<ul class="ex" role="tree">
+    <li class="ex" role="treeitem">
+        <span>Tree Item Level 1</span>
+        <ul class="ex">
+            <li class="ex" role="treeitem">Tree Item Level 2</li>
+        </ul>
+    </li>
+</ul>
+
+</div>
 
 <!-- Full test of mouseEventNodeId in getAccessibilityPropertiesForNode_mouseEventNodeId.html. -->
 <div class="ex" onclick="void(0);">click</div>

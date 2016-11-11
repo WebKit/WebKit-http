@@ -212,22 +212,6 @@ rect: style.getPropertyValue(z-index) : auto
 rect: style.getPropertyCSSValue(z-index) : [object CSSPrimitiveValue]
 rect: style.getPropertyValue(zoom) : 1
 rect: style.getPropertyCSSValue(zoom) : [object CSSPrimitiveValue]
-rect: style.getPropertyValue(-webkit-animation-delay) : 0s
-rect: style.getPropertyCSSValue(-webkit-animation-delay) : [object CSSValueList]
-rect: style.getPropertyValue(-webkit-animation-direction) : normal
-rect: style.getPropertyCSSValue(-webkit-animation-direction) : [object CSSValueList]
-rect: style.getPropertyValue(-webkit-animation-duration) : 0s
-rect: style.getPropertyCSSValue(-webkit-animation-duration) : [object CSSValueList]
-rect: style.getPropertyValue(-webkit-animation-fill-mode) : none
-rect: style.getPropertyCSSValue(-webkit-animation-fill-mode) : [object CSSValueList]
-rect: style.getPropertyValue(-webkit-animation-iteration-count) : 1
-rect: style.getPropertyCSSValue(-webkit-animation-iteration-count) : [object CSSValueList]
-rect: style.getPropertyValue(-webkit-animation-name) : none
-rect: style.getPropertyCSSValue(-webkit-animation-name) : [object CSSValueList]
-rect: style.getPropertyValue(-webkit-animation-play-state) : running
-rect: style.getPropertyCSSValue(-webkit-animation-play-state) : [object CSSValueList]
-rect: style.getPropertyValue(-webkit-animation-timing-function) : ease
-rect: style.getPropertyCSSValue(-webkit-animation-timing-function) : [object CSSValueList]
 rect: style.getPropertyValue(-webkit-appearance) : none
 rect: style.getPropertyCSSValue(-webkit-appearance) : [object CSSPrimitiveValue]
 rect: style.getPropertyValue(-webkit-backface-visibility) : visible
@@ -329,11 +313,11 @@ rect: style.getPropertyCSSValue(font-variant-alternates) : [object CSSPrimitiveV
 rect: style.getPropertyValue(font-variant-east-asian) : normal
 rect: style.getPropertyCSSValue(font-variant-east-asian) : [object CSSPrimitiveValue]
 rect: style.getPropertyValue(grid-auto-columns) : auto
-rect: style.getPropertyCSSValue(grid-auto-columns) : [object CSSPrimitiveValue]
+rect: style.getPropertyCSSValue(grid-auto-columns) : [object CSSValueList]
 rect: style.getPropertyValue(grid-auto-flow) : row
 rect: style.getPropertyCSSValue(grid-auto-flow) : [object CSSValueList]
 rect: style.getPropertyValue(grid-auto-rows) : auto
-rect: style.getPropertyCSSValue(grid-auto-rows) : [object CSSPrimitiveValue]
+rect: style.getPropertyCSSValue(grid-auto-rows) : [object CSSValueList]
 rect: style.getPropertyValue(grid-column-end) : auto
 rect: style.getPropertyCSSValue(grid-column-end) : [object CSSPrimitiveValue]
 rect: style.getPropertyValue(grid-column-start) : auto
@@ -442,22 +426,12 @@ rect: style.getPropertyValue(-webkit-text-stroke-width) : 0px
 rect: style.getPropertyCSSValue(-webkit-text-stroke-width) : [object CSSPrimitiveValue]
 rect: style.getPropertyValue(-webkit-transform-style) : flat
 rect: style.getPropertyCSSValue(-webkit-transform-style) : [object CSSPrimitiveValue]
-rect: style.getPropertyValue(-webkit-transition-delay) : 0s
-rect: style.getPropertyCSSValue(-webkit-transition-delay) : [object CSSValueList]
-rect: style.getPropertyValue(-webkit-transition-duration) : 0s
-rect: style.getPropertyCSSValue(-webkit-transition-duration) : [object CSSValueList]
-rect: style.getPropertyValue(-webkit-transition-property) : all
-rect: style.getPropertyCSSValue(-webkit-transition-property) : [object CSSValueList]
-rect: style.getPropertyValue(-webkit-transition-timing-function) : ease
-rect: style.getPropertyCSSValue(-webkit-transition-timing-function) : [object CSSValueList]
 rect: style.getPropertyValue(-webkit-user-drag) : auto
 rect: style.getPropertyCSSValue(-webkit-user-drag) : [object CSSPrimitiveValue]
 rect: style.getPropertyValue(-webkit-user-modify) : read-only
 rect: style.getPropertyCSSValue(-webkit-user-modify) : [object CSSPrimitiveValue]
 rect: style.getPropertyValue(-webkit-user-select) : text
 rect: style.getPropertyCSSValue(-webkit-user-select) : [object CSSPrimitiveValue]
-rect: style.getPropertyValue(-webkit-writing-mode) : horizontal-tb
-rect: style.getPropertyCSSValue(-webkit-writing-mode) : [object CSSPrimitiveValue]
 rect: style.getPropertyValue(clip-path) : none
 rect: style.getPropertyCSSValue(clip-path) : [object CSSPrimitiveValue]
 rect: style.getPropertyValue(clip-rule) : nonzero
@@ -522,7 +496,7 @@ rect: style.getPropertyValue(kerning) : 0
 rect: style.getPropertyCSSValue(kerning) : [object CSSPrimitiveValue]
 rect: style.getPropertyValue(text-anchor) : start
 rect: style.getPropertyCSSValue(text-anchor) : [object CSSPrimitiveValue]
-rect: style.getPropertyValue(writing-mode) : lr-tb
+rect: style.getPropertyValue(writing-mode) : horizontal-tb
 rect: style.getPropertyCSSValue(writing-mode) : [object CSSPrimitiveValue]
 rect: style.getPropertyValue(glyph-orientation-horizontal) : 0deg
 rect: style.getPropertyCSSValue(glyph-orientation-horizontal) : [object CSSPrimitiveValue]
@@ -746,22 +720,6 @@ g: style.getPropertyValue(z-index) : auto
 g: style.getPropertyCSSValue(z-index) : [object CSSPrimitiveValue]
 g: style.getPropertyValue(zoom) : 1
 g: style.getPropertyCSSValue(zoom) : [object CSSPrimitiveValue]
-g: style.getPropertyValue(-webkit-animation-delay) : 0s
-g: style.getPropertyCSSValue(-webkit-animation-delay) : [object CSSValueList]
-g: style.getPropertyValue(-webkit-animation-direction) : normal
-g: style.getPropertyCSSValue(-webkit-animation-direction) : [object CSSValueList]
-g: style.getPropertyValue(-webkit-animation-duration) : 0s
-g: style.getPropertyCSSValue(-webkit-animation-duration) : [object CSSValueList]
-g: style.getPropertyValue(-webkit-animation-fill-mode) : none
-g: style.getPropertyCSSValue(-webkit-animation-fill-mode) : [object CSSValueList]
-g: style.getPropertyValue(-webkit-animation-iteration-count) : 1
-g: style.getPropertyCSSValue(-webkit-animation-iteration-count) : [object CSSValueList]
-g: style.getPropertyValue(-webkit-animation-name) : none
-g: style.getPropertyCSSValue(-webkit-animation-name) : [object CSSValueList]
-g: style.getPropertyValue(-webkit-animation-play-state) : running
-g: style.getPropertyCSSValue(-webkit-animation-play-state) : [object CSSValueList]
-g: style.getPropertyValue(-webkit-animation-timing-function) : ease
-g: style.getPropertyCSSValue(-webkit-animation-timing-function) : [object CSSValueList]
 g: style.getPropertyValue(-webkit-appearance) : none
 g: style.getPropertyCSSValue(-webkit-appearance) : [object CSSPrimitiveValue]
 g: style.getPropertyValue(-webkit-backface-visibility) : visible
@@ -863,11 +821,11 @@ g: style.getPropertyCSSValue(font-variant-alternates) : [object CSSPrimitiveValu
 g: style.getPropertyValue(font-variant-east-asian) : normal
 g: style.getPropertyCSSValue(font-variant-east-asian) : [object CSSPrimitiveValue]
 g: style.getPropertyValue(grid-auto-columns) : auto
-g: style.getPropertyCSSValue(grid-auto-columns) : [object CSSPrimitiveValue]
+g: style.getPropertyCSSValue(grid-auto-columns) : [object CSSValueList]
 g: style.getPropertyValue(grid-auto-flow) : row
 g: style.getPropertyCSSValue(grid-auto-flow) : [object CSSValueList]
 g: style.getPropertyValue(grid-auto-rows) : auto
-g: style.getPropertyCSSValue(grid-auto-rows) : [object CSSPrimitiveValue]
+g: style.getPropertyCSSValue(grid-auto-rows) : [object CSSValueList]
 g: style.getPropertyValue(grid-column-end) : auto
 g: style.getPropertyCSSValue(grid-column-end) : [object CSSPrimitiveValue]
 g: style.getPropertyValue(grid-column-start) : auto
@@ -976,22 +934,12 @@ g: style.getPropertyValue(-webkit-text-stroke-width) : 0px
 g: style.getPropertyCSSValue(-webkit-text-stroke-width) : [object CSSPrimitiveValue]
 g: style.getPropertyValue(-webkit-transform-style) : flat
 g: style.getPropertyCSSValue(-webkit-transform-style) : [object CSSPrimitiveValue]
-g: style.getPropertyValue(-webkit-transition-delay) : 0s
-g: style.getPropertyCSSValue(-webkit-transition-delay) : [object CSSValueList]
-g: style.getPropertyValue(-webkit-transition-duration) : 0s
-g: style.getPropertyCSSValue(-webkit-transition-duration) : [object CSSValueList]
-g: style.getPropertyValue(-webkit-transition-property) : all
-g: style.getPropertyCSSValue(-webkit-transition-property) : [object CSSValueList]
-g: style.getPropertyValue(-webkit-transition-timing-function) : ease
-g: style.getPropertyCSSValue(-webkit-transition-timing-function) : [object CSSValueList]
 g: style.getPropertyValue(-webkit-user-drag) : auto
 g: style.getPropertyCSSValue(-webkit-user-drag) : [object CSSPrimitiveValue]
 g: style.getPropertyValue(-webkit-user-modify) : read-only
 g: style.getPropertyCSSValue(-webkit-user-modify) : [object CSSPrimitiveValue]
 g: style.getPropertyValue(-webkit-user-select) : text
 g: style.getPropertyCSSValue(-webkit-user-select) : [object CSSPrimitiveValue]
-g: style.getPropertyValue(-webkit-writing-mode) : horizontal-tb
-g: style.getPropertyCSSValue(-webkit-writing-mode) : [object CSSPrimitiveValue]
 g: style.getPropertyValue(clip-path) : none
 g: style.getPropertyCSSValue(clip-path) : [object CSSPrimitiveValue]
 g: style.getPropertyValue(clip-rule) : nonzero
@@ -1056,7 +1004,7 @@ g: style.getPropertyValue(kerning) : 0
 g: style.getPropertyCSSValue(kerning) : [object CSSPrimitiveValue]
 g: style.getPropertyValue(text-anchor) : start
 g: style.getPropertyCSSValue(text-anchor) : [object CSSPrimitiveValue]
-g: style.getPropertyValue(writing-mode) : lr-tb
+g: style.getPropertyValue(writing-mode) : horizontal-tb
 g: style.getPropertyCSSValue(writing-mode) : [object CSSPrimitiveValue]
 g: style.getPropertyValue(glyph-orientation-horizontal) : 0deg
 g: style.getPropertyCSSValue(glyph-orientation-horizontal) : [object CSSPrimitiveValue]

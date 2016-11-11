@@ -27,17 +27,14 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef CodeBlock_h
-#define CodeBlock_h
+#pragma once
 
 #include "ArrayProfile.h"
 #include "ByValInfo.h"
 #include "BytecodeConventions.h"
-#include "BytecodeLivenessAnalysis.h"
 #include "CallLinkInfo.h"
 #include "CallReturnOffsetToBytecodeOffset.h"
 #include "CodeBlockHash.h"
-#include "CodeBlockSet.h"
 #include "CodeOrigin.h"
 #include "CodeType.h"
 #include "CompactJITCodeMap.h"
@@ -48,21 +45,23 @@
 #include "EvalCodeCache.h"
 #include "ExecutionCounter.h"
 #include "ExpressionRangeInfo.h"
+#include "FunctionExecutable.h"
 #include "HandlerInfo.h"
 #include "Instruction.h"
 #include "JITCode.h"
-#include "JITWriteBarrier.h"
+#include "JITMathICForwards.h"
 #include "JSCell.h"
 #include "JSGlobalObject.h"
 #include "JumpTable.h"
 #include "LLIntCallLinkInfo.h"
 #include "LLIntPrototypeLoadAdaptiveStructureWatchpoint.h"
 #include "LazyOperandValueProfile.h"
+#include "ModuleProgramExecutable.h"
 #include "ObjectAllocationProfile.h"
 #include "Options.h"
 #include "ProfilerJettisonReason.h"
+#include "ProgramExecutable.h"
 #include "PutPropertySlot.h"
-#include "RegExpObject.h"
 #include "UnconditionalFinalizer.h"
 #include "ValueProfile.h"
 #include "VirtualRegister.h"
@@ -78,15 +77,18 @@
 
 namespace JSC {
 
+class BytecodeLivenessAnalysis;
+class CodeBlockSet;
 class ExecState;
 class JSModuleEnvironment;
 class LLIntOffsetsExtractor;
 class PCToCodeOriginMap;
 class RegisterAtOffsetList;
 class StructureStubInfo;
-class TypeLocation;
 
 enum class AccessType : int8_t;
+
+struct ArithProfile;
 
 typedef HashMap<CodeOrigin, StructureStubInfo*, CodeOriginApproximateHash> StubInfoMap;
 
@@ -201,6 +203,8 @@ public:
     void printStructures(PrintStream&, const Instruction*);
     void printStructure(PrintStream&, const char* name, const Instruction*, int operand);
 
+    void dumpMathICStats();
+
     bool isStrictMode() const { return m_isStrictMode; }
     ECMAMode ecmaMode() const { return isStrictMode() ? StrictMode : NotStrictMode; }
 
@@ -220,10 +224,6 @@ public:
         return index >= m_numVars;
     }
 
-    enum class RequiredHandler {
-        CatchHandler,
-        AnyHandler
-    };
     HandlerInfo* handlerForBytecodeOffset(unsigned bytecodeOffset, RequiredHandler = RequiredHandler::AnyHandler);
     HandlerInfo* handlerForIndex(unsigned, RequiredHandler = RequiredHandler::AnyHandler);
     void removeExceptionHandlerForCallSite(CallSiteIndex);
@@ -245,6 +245,10 @@ public:
     
 #if ENABLE(JIT)
     StructureStubInfo* addStubInfo(AccessType);
+    JITAddIC* addJITAddIC(ArithProfile*);
+    JITMulIC* addJITMulIC(ArithProfile*);
+    JITNegIC* addJITNegIC(ArithProfile*);
+    JITSubIC* addJITSubIC(ArithProfile*);
     Bag<StructureStubInfo>::iterator stubInfoBegin() { return m_stubInfos.begin(); }
     Bag<StructureStubInfo>::iterator stubInfoEnd() { return m_stubInfos.end(); }
     
@@ -288,12 +292,17 @@ public:
     {
         return m_jitCodeMap.get();
     }
+    
+    static void clearLLIntGetByIdCache(Instruction*);
 
     unsigned bytecodeOffset(Instruction* returnAddress)
     {
         RELEASE_ASSERT(returnAddress >= instructions().begin() && returnAddress < instructions().end());
         return static_cast<Instruction*>(returnAddress) - instructions().begin();
     }
+
+    typedef JSC::Instruction Instruction;
+    typedef RefCountedArray<Instruction>& UnpackedInstructions;
 
     unsigned numberOfInstructions() const { return m_instructions.size(); }
     RefCountedArray<Instruction>& instructions() { return m_instructions; }
@@ -405,7 +414,9 @@ public:
     ValueProfile* valueProfileForBytecodeOffset(int bytecodeOffset);
     SpeculatedType valueProfilePredictionForBytecodeOffset(const ConcurrentJITLocker& locker, int bytecodeOffset)
     {
-        return valueProfileForBytecodeOffset(bytecodeOffset)->computeUpdatedPrediction(locker);
+        if (ValueProfile* valueProfile = valueProfileForBytecodeOffset(bytecodeOffset))
+            return valueProfile->computeUpdatedPrediction(locker);
+        return SpecNone;
     }
 
     unsigned totalNumberOfValueProfiles()
@@ -440,13 +451,8 @@ public:
         return value >= Options::couldTakeSlowCaseMinimumCount();
     }
 
-    ResultProfile* ensureResultProfile(int bytecodeOffset);
-    ResultProfile* ensureResultProfile(const ConcurrentJITLocker&, int bytecodeOffset);
-    unsigned numberOfResultProfiles() { return m_resultProfiles.size(); }
-    ResultProfile* resultProfileForBytecodeOffset(const ConcurrentJITLocker&, int bytecodeOffset);
-
-    unsigned specialFastCaseProfileCountForBytecodeOffset(const ConcurrentJITLocker&, int bytecodeOffset);
-    unsigned specialFastCaseProfileCountForBytecodeOffset(int bytecodeOffset);
+    ArithProfile* arithProfileForBytecodeOffset(int bytecodeOffset);
+    ArithProfile* arithProfileForPC(Instruction*);
 
     bool couldTakeSpecialFastCase(int bytecodeOffset);
 
@@ -542,7 +548,7 @@ public:
     }
 
     WriteBarrier<Unknown>& constantRegister(int index) { return m_constantRegisters[index - FirstConstantRegisterIndex]; }
-    ALWAYS_INLINE bool isConstantRegisterIndex(int index) const { return index >= FirstConstantRegisterIndex; }
+    static ALWAYS_INLINE bool isConstantRegisterIndex(int index) { return index >= FirstConstantRegisterIndex; }
     ALWAYS_INLINE JSValue getConstant(int index) const { return m_constantRegisters[index - FirstConstantRegisterIndex].get(); }
     ALWAYS_INLINE SourceCodeRepresentation constantSourceCodeRepresentation(int index) const { return m_constantsSourceCodeRepresentation[index - FirstConstantRegisterIndex]; }
 
@@ -588,14 +594,7 @@ public:
             if (!!m_livenessAnalysis)
                 return *m_livenessAnalysis;
         }
-        std::unique_ptr<BytecodeLivenessAnalysis> analysis =
-            std::make_unique<BytecodeLivenessAnalysis>(this);
-        {
-            ConcurrentJITLocker locker(m_lock);
-            if (!m_livenessAnalysis)
-                m_livenessAnalysis = WTFMove(analysis);
-            return *m_livenessAnalysis;
-        }
+        return livenessAnalysisSlow();
     }
     
     void validate();
@@ -615,18 +614,6 @@ public:
     size_t numberOfStringSwitchJumpTables() const { return m_rareData ? m_rareData->m_stringSwitchJumpTables.size() : 0; }
     StringJumpTable& addStringSwitchJumpTable() { createRareDataIfNecessary(); m_rareData->m_stringSwitchJumpTables.append(StringJumpTable()); return m_rareData->m_stringSwitchJumpTables.last(); }
     StringJumpTable& stringSwitchJumpTable(int tableIndex) { RELEASE_ASSERT(m_rareData); return m_rareData->m_stringSwitchJumpTables[tableIndex]; }
-
-    // Live callee registers at yield points.
-    const FastBitVector& liveCalleeLocalsAtYield(unsigned index) const
-    {
-        RELEASE_ASSERT(m_rareData);
-        return m_rareData->m_liveCalleeLocalsAtYield[index];
-    }
-    FastBitVector& liveCalleeLocalsAtYield(unsigned index)
-    {
-        RELEASE_ASSERT(m_rareData);
-        return m_rareData->m_liveCalleeLocalsAtYield[index];
-    }
 
     EvalCodeCache& evalCodeCache() { createRareDataIfNecessary(); return m_rareData->m_evalCodeCache; }
 
@@ -882,8 +869,6 @@ public:
         Vector<SimpleJumpTable> m_switchJumpTables;
         Vector<StringJumpTable> m_stringSwitchJumpTables;
 
-        Vector<FastBitVector> m_liveCalleeLocalsAtYield;
-
         EvalCodeCache m_evalCodeCache;
     };
 
@@ -918,6 +903,8 @@ protected:
 
 private:
     friend class CodeBlockSet;
+
+    BytecodeLivenessAnalysis& livenessAnalysisSlow();
     
     CodeBlock* specialOSREntryBlockOrNull();
     
@@ -957,7 +944,7 @@ private:
     void dumpValueProfiling(PrintStream&, const Instruction*&, bool& hasPrintedProfiling);
     void dumpArrayProfiling(PrintStream&, const Instruction*&, bool& hasPrintedProfiling);
     void dumpRareCaseProfile(PrintStream&, const char* name, RareCaseProfile*, bool& hasPrintedProfiling);
-    void dumpResultProfile(PrintStream&, ResultProfile*, bool& hasPrintedProfiling);
+    void dumpArithProfile(PrintStream&, ArithProfile*, bool& hasPrintedProfiling);
 
     bool shouldVisitStrongly();
     bool shouldJettisonDueToWeakReference();
@@ -1013,6 +1000,10 @@ private:
 #if ENABLE(JIT)
     std::unique_ptr<RegisterAtOffsetList> m_calleeSaveRegisters;
     Bag<StructureStubInfo> m_stubInfos;
+    Bag<JITAddIC> m_addICs;
+    Bag<JITMulIC> m_mulICs;
+    Bag<JITNegIC> m_negICs;
+    Bag<JITSubIC> m_subICs;
     Bag<ByValInfo> m_byValInfos;
     Bag<CallLinkInfo> m_callLinkInfos;
     SentinelLinkedList<CallLinkInfo, BasicRawSentinelNode<CallLinkInfo>> m_incomingCalls;
@@ -1029,9 +1020,6 @@ private:
     RefCountedArray<ValueProfile> m_argumentValueProfiles;
     RefCountedArray<ValueProfile> m_valueProfiles;
     SegmentedVector<RareCaseProfile, 8> m_rareCaseProfiles;
-    SegmentedVector<ResultProfile, 8> m_resultProfiles;
-    typedef HashMap<unsigned, unsigned, IntHash<unsigned>, WTF::UnsignedWithZeroKeyHashTraits<unsigned>> BytecodeOffsetToResultProfileIndexMap;
-    std::unique_ptr<BytecodeOffsetToResultProfileIndexMap> m_bytecodeOffsetToResultProfileIndexMap;
     RefCountedArray<ArrayAllocationProfile> m_arrayAllocationProfiles;
     ArrayProfileVector m_arrayProfiles;
     RefCountedArray<ObjectAllocationProfile> m_objectAllocationProfiles;
@@ -1064,249 +1052,6 @@ private:
     WeakReferenceHarvester m_weakReferenceHarvester;
 };
 
-// Program code is not marked by any function, so we make the global object
-// responsible for marking it.
-
-class GlobalCodeBlock : public CodeBlock {
-    typedef CodeBlock Base;
-    DECLARE_INFO;
-
-protected:
-    GlobalCodeBlock(VM* vm, Structure* structure, CopyParsedBlockTag, GlobalCodeBlock& other)
-        : CodeBlock(vm, structure, CopyParsedBlock, other)
-    {
-    }
-
-    GlobalCodeBlock(VM* vm, Structure* structure, ScriptExecutable* ownerExecutable, UnlinkedCodeBlock* unlinkedCodeBlock, JSScope* scope, PassRefPtr<SourceProvider> sourceProvider, unsigned sourceOffset, unsigned firstLineColumnOffset)
-        : CodeBlock(vm, structure, ownerExecutable, unlinkedCodeBlock, scope, sourceProvider, sourceOffset, firstLineColumnOffset)
-    {
-    }
-};
-
-class ProgramCodeBlock : public GlobalCodeBlock {
-public:
-    typedef GlobalCodeBlock Base;
-    DECLARE_INFO;
-
-    static ProgramCodeBlock* create(VM* vm, CopyParsedBlockTag, ProgramCodeBlock& other)
-    {
-        ProgramCodeBlock* instance = new (NotNull, allocateCell<ProgramCodeBlock>(vm->heap))
-            ProgramCodeBlock(vm, vm->programCodeBlockStructure.get(), CopyParsedBlock, other);
-        instance->finishCreation(*vm, CopyParsedBlock, other);
-        return instance;
-    }
-
-    static ProgramCodeBlock* create(VM* vm, ProgramExecutable* ownerExecutable, UnlinkedProgramCodeBlock* unlinkedCodeBlock,
-        JSScope* scope, PassRefPtr<SourceProvider> sourceProvider, unsigned firstLineColumnOffset)
-    {
-        ProgramCodeBlock* instance = new (NotNull, allocateCell<ProgramCodeBlock>(vm->heap))
-            ProgramCodeBlock(vm, vm->programCodeBlockStructure.get(), ownerExecutable, unlinkedCodeBlock, scope, sourceProvider, firstLineColumnOffset);
-        instance->finishCreation(*vm, ownerExecutable, unlinkedCodeBlock, scope);
-        return instance;
-    }
-
-    static Structure* createStructure(VM& vm, JSGlobalObject* globalObject, JSValue prototype)
-    {
-        return Structure::create(vm, globalObject, prototype, TypeInfo(CellType, StructureFlags), info());
-    }
-
-private:
-    ProgramCodeBlock(VM* vm, Structure* structure, CopyParsedBlockTag, ProgramCodeBlock& other)
-        : GlobalCodeBlock(vm, structure, CopyParsedBlock, other)
-    {
-    }
-
-    ProgramCodeBlock(VM* vm, Structure* structure, ProgramExecutable* ownerExecutable, UnlinkedProgramCodeBlock* unlinkedCodeBlock,
-        JSScope* scope, PassRefPtr<SourceProvider> sourceProvider, unsigned firstLineColumnOffset)
-        : GlobalCodeBlock(vm, structure, ownerExecutable, unlinkedCodeBlock, scope, sourceProvider, 0, firstLineColumnOffset)
-    {
-    }
-
-    static void destroy(JSCell*);
-};
-
-class ModuleProgramCodeBlock : public GlobalCodeBlock {
-public:
-    typedef GlobalCodeBlock Base;
-    DECLARE_INFO;
-
-    static ModuleProgramCodeBlock* create(VM* vm, CopyParsedBlockTag, ModuleProgramCodeBlock& other)
-    {
-        ModuleProgramCodeBlock* instance = new (NotNull, allocateCell<ModuleProgramCodeBlock>(vm->heap))
-            ModuleProgramCodeBlock(vm, vm->moduleProgramCodeBlockStructure.get(), CopyParsedBlock, other);
-        instance->finishCreation(*vm, CopyParsedBlock, other);
-        return instance;
-    }
-
-    static ModuleProgramCodeBlock* create(VM* vm, ModuleProgramExecutable* ownerExecutable, UnlinkedModuleProgramCodeBlock* unlinkedCodeBlock,
-        JSScope* scope, PassRefPtr<SourceProvider> sourceProvider, unsigned firstLineColumnOffset)
-    {
-        ModuleProgramCodeBlock* instance = new (NotNull, allocateCell<ModuleProgramCodeBlock>(vm->heap))
-            ModuleProgramCodeBlock(vm, vm->moduleProgramCodeBlockStructure.get(), ownerExecutable, unlinkedCodeBlock, scope, sourceProvider, firstLineColumnOffset);
-        instance->finishCreation(*vm, ownerExecutable, unlinkedCodeBlock, scope);
-        return instance;
-    }
-
-    static Structure* createStructure(VM& vm, JSGlobalObject* globalObject, JSValue prototype)
-    {
-        return Structure::create(vm, globalObject, prototype, TypeInfo(CellType, StructureFlags), info());
-    }
-
-private:
-    ModuleProgramCodeBlock(VM* vm, Structure* structure, CopyParsedBlockTag, ModuleProgramCodeBlock& other)
-        : GlobalCodeBlock(vm, structure, CopyParsedBlock, other)
-    {
-    }
-
-    ModuleProgramCodeBlock(VM* vm, Structure* structure, ModuleProgramExecutable* ownerExecutable, UnlinkedModuleProgramCodeBlock* unlinkedCodeBlock,
-        JSScope* scope, PassRefPtr<SourceProvider> sourceProvider, unsigned firstLineColumnOffset)
-        : GlobalCodeBlock(vm, structure, ownerExecutable, unlinkedCodeBlock, scope, sourceProvider, 0, firstLineColumnOffset)
-    {
-    }
-
-    static void destroy(JSCell*);
-};
-
-class EvalCodeBlock : public GlobalCodeBlock {
-public:
-    typedef GlobalCodeBlock Base;
-    DECLARE_INFO;
-
-    static EvalCodeBlock* create(VM* vm, CopyParsedBlockTag, EvalCodeBlock& other)
-    {
-        EvalCodeBlock* instance = new (NotNull, allocateCell<EvalCodeBlock>(vm->heap))
-            EvalCodeBlock(vm, vm->evalCodeBlockStructure.get(), CopyParsedBlock, other);
-        instance->finishCreation(*vm, CopyParsedBlock, other);
-        return instance;
-    }
-
-    static EvalCodeBlock* create(VM* vm, EvalExecutable* ownerExecutable, UnlinkedEvalCodeBlock* unlinkedCodeBlock,
-        JSScope* scope, PassRefPtr<SourceProvider> sourceProvider)
-    {
-        EvalCodeBlock* instance = new (NotNull, allocateCell<EvalCodeBlock>(vm->heap))
-            EvalCodeBlock(vm, vm->evalCodeBlockStructure.get(), ownerExecutable, unlinkedCodeBlock, scope, sourceProvider);
-        instance->finishCreation(*vm, ownerExecutable, unlinkedCodeBlock, scope);
-        return instance;
-    }
-
-    static Structure* createStructure(VM& vm, JSGlobalObject* globalObject, JSValue prototype)
-    {
-        return Structure::create(vm, globalObject, prototype, TypeInfo(CellType, StructureFlags), info());
-    }
-
-    const Identifier& variable(unsigned index) { return unlinkedEvalCodeBlock()->variable(index); }
-    unsigned numVariables() { return unlinkedEvalCodeBlock()->numVariables(); }
-    
-private:
-    EvalCodeBlock(VM* vm, Structure* structure, CopyParsedBlockTag, EvalCodeBlock& other)
-        : GlobalCodeBlock(vm, structure, CopyParsedBlock, other)
-    {
-    }
-        
-    EvalCodeBlock(VM* vm, Structure* structure, EvalExecutable* ownerExecutable, UnlinkedEvalCodeBlock* unlinkedCodeBlock,
-        JSScope* scope, PassRefPtr<SourceProvider> sourceProvider)
-        : GlobalCodeBlock(vm, structure, ownerExecutable, unlinkedCodeBlock, scope, sourceProvider, 0, 1)
-    {
-    }
-    
-    static void destroy(JSCell*);
-
-private:
-    UnlinkedEvalCodeBlock* unlinkedEvalCodeBlock() const { return jsCast<UnlinkedEvalCodeBlock*>(unlinkedCodeBlock()); }
-};
-
-class FunctionCodeBlock : public CodeBlock {
-public:
-    typedef CodeBlock Base;
-    DECLARE_INFO;
-
-    static FunctionCodeBlock* create(VM* vm, CopyParsedBlockTag, FunctionCodeBlock& other)
-    {
-        FunctionCodeBlock* instance = new (NotNull, allocateCell<FunctionCodeBlock>(vm->heap))
-            FunctionCodeBlock(vm, vm->functionCodeBlockStructure.get(), CopyParsedBlock, other);
-        instance->finishCreation(*vm, CopyParsedBlock, other);
-        return instance;
-    }
-
-    static FunctionCodeBlock* create(VM* vm, FunctionExecutable* ownerExecutable, UnlinkedFunctionCodeBlock* unlinkedCodeBlock, JSScope* scope,
-        PassRefPtr<SourceProvider> sourceProvider, unsigned sourceOffset, unsigned firstLineColumnOffset)
-    {
-        FunctionCodeBlock* instance = new (NotNull, allocateCell<FunctionCodeBlock>(vm->heap))
-            FunctionCodeBlock(vm, vm->functionCodeBlockStructure.get(), ownerExecutable, unlinkedCodeBlock, scope, sourceProvider, sourceOffset, firstLineColumnOffset);
-        instance->finishCreation(*vm, ownerExecutable, unlinkedCodeBlock, scope);
-        return instance;
-    }
-
-    static Structure* createStructure(VM& vm, JSGlobalObject* globalObject, JSValue prototype)
-    {
-        return Structure::create(vm, globalObject, prototype, TypeInfo(CellType, StructureFlags), info());
-    }
-
-private:
-    FunctionCodeBlock(VM* vm, Structure* structure, CopyParsedBlockTag, FunctionCodeBlock& other)
-        : CodeBlock(vm, structure, CopyParsedBlock, other)
-    {
-    }
-
-    FunctionCodeBlock(VM* vm, Structure* structure, FunctionExecutable* ownerExecutable, UnlinkedFunctionCodeBlock* unlinkedCodeBlock, JSScope* scope,
-        PassRefPtr<SourceProvider> sourceProvider, unsigned sourceOffset, unsigned firstLineColumnOffset)
-        : CodeBlock(vm, structure, ownerExecutable, unlinkedCodeBlock, scope, sourceProvider, sourceOffset, firstLineColumnOffset)
-    {
-    }
-    
-    static void destroy(JSCell*);
-};
-
-#if ENABLE(WEBASSEMBLY)
-class WebAssemblyCodeBlock : public CodeBlock {
-public:
-    typedef CodeBlock Base;
-    DECLARE_INFO;
-
-    static WebAssemblyCodeBlock* create(VM* vm, CopyParsedBlockTag, WebAssemblyCodeBlock& other)
-    {
-        WebAssemblyCodeBlock* instance = new (NotNull, allocateCell<WebAssemblyCodeBlock>(vm->heap))
-            WebAssemblyCodeBlock(vm, vm->webAssemblyCodeBlockStructure.get(), CopyParsedBlock, other);
-        instance->finishCreation(*vm, CopyParsedBlock, other);
-        return instance;
-    }
-
-    static WebAssemblyCodeBlock* create(VM* vm, WebAssemblyExecutable* ownerExecutable, JSGlobalObject* globalObject)
-    {
-        WebAssemblyCodeBlock* instance = new (NotNull, allocateCell<WebAssemblyCodeBlock>(vm->heap))
-            WebAssemblyCodeBlock(vm, vm->webAssemblyCodeBlockStructure.get(), ownerExecutable, globalObject);
-        instance->finishCreation(*vm, ownerExecutable, globalObject);
-        return instance;
-    }
-
-    static Structure* createStructure(VM& vm, JSGlobalObject* globalObject, JSValue prototype)
-    {
-        return Structure::create(vm, globalObject, prototype, TypeInfo(CellType, StructureFlags), info());
-    }
-
-private:
-    WebAssemblyCodeBlock(VM* vm, Structure* structure, CopyParsedBlockTag, WebAssemblyCodeBlock& other)
-        : CodeBlock(vm, structure, CopyParsedBlock, other)
-    {
-    }
-
-    WebAssemblyCodeBlock(VM* vm, Structure* structure, WebAssemblyExecutable* ownerExecutable, JSGlobalObject* globalObject)
-        : CodeBlock(vm, structure, ownerExecutable, globalObject)
-    {
-    }
-
-    static void destroy(JSCell*);
-};
-#endif
-
-inline void clearLLIntGetByIdCache(Instruction* instruction)
-{
-    instruction[0].u.opcode = LLInt::getOpcode(op_get_by_id);
-    instruction[4].u.pointer = nullptr;
-    instruction[5].u.pointer = nullptr;
-    instruction[6].u.pointer = nullptr;
-}
-
 inline Register& ExecState::r(int index)
 {
     CodeBlock* codeBlock = this->codeBlock();
@@ -1336,77 +1081,26 @@ inline void CodeBlock::clearVisitWeaklyHasBeenCalled()
     m_visitWeaklyHasBeenCalled.store(false, std::memory_order_relaxed);
 }
 
-inline void CodeBlockSet::mark(const LockHolder& locker, void* candidateCodeBlock)
+template <typename ExecutableType>
+JSObject* ScriptExecutable::prepareForExecution(VM& vm, JSFunction* function, JSScope* scope, CodeSpecializationKind kind, CodeBlock*& resultCodeBlock)
 {
-    ASSERT(m_lock.isLocked());
-    // We have to check for 0 and -1 because those are used by the HashMap as markers.
-    uintptr_t value = reinterpret_cast<uintptr_t>(candidateCodeBlock);
-    
-    // This checks for both of those nasty cases in one go.
-    // 0 + 1 = 1
-    // -1 + 1 = 0
-    if (value + 1 <= 1)
-        return;
-
-    CodeBlock* codeBlock = static_cast<CodeBlock*>(candidateCodeBlock); 
-    if (!m_oldCodeBlocks.contains(codeBlock) && !m_newCodeBlocks.contains(codeBlock))
-        return;
-
-    mark(locker, codeBlock);
-}
-
-inline void CodeBlockSet::mark(const LockHolder&, CodeBlock* codeBlock)
-{
-    if (!codeBlock)
-        return;
-
-    // Try to recover gracefully if we forget to execute a barrier for a
-    // CodeBlock that does value profiling. This is probably overkill, but we
-    // have always done it.
-    Heap::heap(codeBlock)->writeBarrier(codeBlock);
-
-    m_currentlyExecuting.add(codeBlock);
-}
-
-template <typename Functor> inline void ScriptExecutable::forEachCodeBlock(Functor&& functor)
-{
-    switch (type()) {
-    case ProgramExecutableType: {
-        if (CodeBlock* codeBlock = static_cast<CodeBlock*>(jsCast<ProgramExecutable*>(this)->m_programCodeBlock.get()))
-            codeBlock->forEachRelatedCodeBlock(std::forward<Functor>(functor));
-        break;
+    if (hasJITCodeFor(kind)) {
+        if (std::is_same<ExecutableType, EvalExecutable>::value)
+            resultCodeBlock = jsCast<CodeBlock*>(jsCast<EvalExecutable*>(this)->codeBlock());
+        else if (std::is_same<ExecutableType, ProgramExecutable>::value)
+            resultCodeBlock = jsCast<CodeBlock*>(jsCast<ProgramExecutable*>(this)->codeBlock());
+        else if (std::is_same<ExecutableType, ModuleProgramExecutable>::value)
+            resultCodeBlock = jsCast<CodeBlock*>(jsCast<ModuleProgramExecutable*>(this)->codeBlock());
+        else if (std::is_same<ExecutableType, FunctionExecutable>::value)
+            resultCodeBlock = jsCast<CodeBlock*>(jsCast<FunctionExecutable*>(this)->codeBlockFor(kind));
+        else
+            RELEASE_ASSERT_NOT_REACHED();
+        return nullptr;
     }
-
-    case EvalExecutableType: {
-        if (CodeBlock* codeBlock = static_cast<CodeBlock*>(jsCast<EvalExecutable*>(this)->m_evalCodeBlock.get()))
-            codeBlock->forEachRelatedCodeBlock(std::forward<Functor>(functor));
-        break;
-    }
-
-    case FunctionExecutableType: {
-        Functor f(std::forward<Functor>(functor));
-        FunctionExecutable* executable = jsCast<FunctionExecutable*>(this);
-        if (CodeBlock* codeBlock = static_cast<CodeBlock*>(executable->m_codeBlockForCall.get()))
-            codeBlock->forEachRelatedCodeBlock(f);
-        if (CodeBlock* codeBlock = static_cast<CodeBlock*>(executable->m_codeBlockForConstruct.get()))
-            codeBlock->forEachRelatedCodeBlock(f);
-        break;
-    }
-
-    case ModuleProgramExecutableType: {
-        if (CodeBlock* codeBlock = static_cast<CodeBlock*>(jsCast<ModuleProgramExecutable*>(this)->m_moduleProgramCodeBlock.get()))
-            codeBlock->forEachRelatedCodeBlock(std::forward<Functor>(functor));
-        break;
-    }
-
-    default:
-        RELEASE_ASSERT_NOT_REACHED();
-    }
+    return prepareForExecutionImpl(vm, function, scope, kind, resultCodeBlock);
 }
 
 #define CODEBLOCK_LOG_EVENT(codeBlock, summary, details) \
     (codeBlock->vm()->logEvent(codeBlock, summary, [&] () { return toCString details; }))
 
 } // namespace JSC
-
-#endif // CodeBlock_h

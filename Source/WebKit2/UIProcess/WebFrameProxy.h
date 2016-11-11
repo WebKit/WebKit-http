@@ -43,10 +43,9 @@ namespace API {
 class Navigation;
 }
 
-
 namespace IPC {
-    class ArgumentDecoder;
-    class Connection;
+class Connection;
+class Decoder;
 }
 
 namespace WebKit {
@@ -123,6 +122,10 @@ public:
 #if ENABLE(CONTENT_FILTERING)
     void contentFilterDidBlockLoad(WebCore::ContentFilterUnblockHandler contentFilterUnblockHandler) { m_contentFilterUnblockHandler = WTFMove(contentFilterUnblockHandler); }
     bool didHandleContentFilterUnblockNavigation(const WebCore::ResourceRequest&);
+#endif
+
+#if PLATFORM(GTK)
+    void collapseSelection();
 #endif
 
 private:

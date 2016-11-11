@@ -28,13 +28,11 @@
 #if PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
 #import "WebVideoFullscreenModelVideoElement.h"
 
-#import "DOMEventInternal.h"
 #import "Logging.h"
 #import "MediaControlsHost.h"
 #import "WebPlaybackSessionModelMediaElement.h"
 #import "WebVideoFullscreenInterface.h"
 #import <QuartzCore/CoreAnimation.h>
-#import <WebCore/DOMEventListener.h>
 #import <WebCore/Event.h>
 #import <WebCore/EventListener.h>
 #import <WebCore/EventNames.h>
@@ -46,31 +44,17 @@
 #import <WebCore/TextTrackList.h>
 #import <WebCore/TimeRanges.h>
 #import <wtf/NeverDestroyed.h>
-#import <wtf/RetainPtr.h>
 
 
 using namespace WebCore;
 
-WebVideoFullscreenModelVideoElement::WebVideoFullscreenModelVideoElement(WebPlaybackSessionModelMediaElement& playbackSessionModel)
+WebVideoFullscreenModelVideoElement::WebVideoFullscreenModelVideoElement()
     : EventListener(EventListener::CPPEventListenerType)
-    , m_playbackSessionModel(playbackSessionModel)
 {
 }
 
 WebVideoFullscreenModelVideoElement::~WebVideoFullscreenModelVideoElement()
 {
-}
-
-void WebVideoFullscreenModelVideoElement::setWebVideoFullscreenInterface(WebVideoFullscreenInterface* interface)
-{
-    if (interface == m_videoFullscreenInterface)
-        return;
-
-    m_videoFullscreenInterface = interface;
-    m_playbackSessionModel->setWebPlaybackSessionInterface(interface);
-
-    if (m_videoFullscreenInterface && m_videoElement)
-        m_videoFullscreenInterface->setVideoDimensions(true, m_videoElement->videoWidth(), m_videoElement->videoHeight());
 }
 
 void WebVideoFullscreenModelVideoElement::setVideoElement(HTMLVideoElement* videoElement)
@@ -89,17 +73,13 @@ void WebVideoFullscreenModelVideoElement::setVideoElement(HTMLVideoElement* vide
 
     m_videoElement = videoElement;
 
-    if (!m_videoElement)
-        return;
-
-    for (auto& eventName : observedEventNames())
-        m_videoElement->addEventListener(eventName, *this, false);
-    m_isListening = true;
+    if (m_videoElement) {
+        for (auto& eventName : observedEventNames())
+            m_videoElement->addEventListener(eventName, *this, false);
+        m_isListening = true;
+    }
 
     updateForEventName(eventNameAll());
-
-    if (m_videoFullscreenInterface)
-        m_videoFullscreenInterface->setVideoDimensions(true, videoElement->videoWidth(), videoElement->videoHeight());
 }
 
 void WebVideoFullscreenModelVideoElement::handleEvent(WebCore::ScriptExecutionContext*, WebCore::Event* event)
@@ -109,14 +89,16 @@ void WebVideoFullscreenModelVideoElement::handleEvent(WebCore::ScriptExecutionCo
 
 void WebVideoFullscreenModelVideoElement::updateForEventName(const WTF::AtomicString& eventName)
 {
-    if (!m_videoElement || !m_videoFullscreenInterface)
+    if (m_clients.isEmpty())
         return;
     
     bool all = eventName == eventNameAll();
 
     if (all
-        || eventName == eventNames().resizeEvent)
-        m_videoFullscreenInterface->setVideoDimensions(true, m_videoElement->videoWidth(), m_videoElement->videoHeight());
+        || eventName == eventNames().resizeEvent) {
+        setHasVideo(m_videoElement);
+        setVideoDimensions(m_videoElement ? FloatSize(m_videoElement->videoWidth(), m_videoElement->videoHeight()) : FloatSize());
+    }
 }
 
 void WebVideoFullscreenModelVideoElement::setVideoFullscreenLayer(PlatformLayer* videoLayer, std::function<void()> completionHandler)
@@ -202,6 +184,18 @@ void WebVideoFullscreenModelVideoElement::fullscreenModeChanged(HTMLMediaElement
         m_videoElement->fullscreenModeChanged(videoFullscreenMode);
 }
 
+void WebVideoFullscreenModelVideoElement::addClient(WebVideoFullscreenModelClient& client)
+{
+    ASSERT(!m_clients.contains(&client));
+    m_clients.add(&client);
+}
+
+void WebVideoFullscreenModelVideoElement::removeClient(WebVideoFullscreenModelClient& client)
+{
+    ASSERT(m_clients.contains(&client));
+    m_clients.remove(&client);
+}
+
 bool WebVideoFullscreenModelVideoElement::isVisible() const
 {
     if (!m_videoElement)
@@ -211,6 +205,28 @@ bool WebVideoFullscreenModelVideoElement::isVisible() const
         return page->isVisible();
 
     return false;
+}
+
+void WebVideoFullscreenModelVideoElement::setHasVideo(bool hasVideo)
+{
+    if (hasVideo == m_hasVideo)
+        return;
+
+    m_hasVideo = hasVideo;
+
+    for (auto& client : m_clients)
+        client->hasVideoChanged(m_hasVideo);
+}
+
+void WebVideoFullscreenModelVideoElement::setVideoDimensions(const FloatSize& videoDimensions)
+{
+    if (m_videoDimensions == videoDimensions)
+        return;
+
+    m_videoDimensions = videoDimensions;
+
+    for (auto& client : m_clients)
+        client->videoDimensionsChanged(m_videoDimensions);
 }
 
 #endif

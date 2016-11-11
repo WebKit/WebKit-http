@@ -21,19 +21,16 @@
  * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
- *
  */
 
 [
-    Exposed=Worker,
     CustomProxyToJSObject,
+    Exposed=Worker,
     JSCustomMarkFunction,
     JSLegacyParent=JSWorkerGlobalScopeBase,
 ] interface WorkerGlobalScope : EventTarget {
 
-#if defined(LANGUAGE_JAVASCRIPT) && LANGUAGE_JAVASCRIPT
-    readonly attribute  WorkerGlobalScope self;
-#endif
+    readonly attribute WorkerGlobalScope self;
     readonly attribute WorkerLocation location;
     void close();
 
@@ -43,7 +40,7 @@
 
     // WorkerUtils
 
-    [Custom] void importScripts(/*[Variadic] DOMString urls */);
+    [Custom] void importScripts(/*[Variadic] USVString urls */);
     readonly attribute WorkerNavigator navigator;
 
     // Additional constructors
@@ -64,4 +61,5 @@
     [Conditional=INDEXED_DATABASE_IN_WORKERS, EnabledAtRuntime=IndexedDBWorkers] attribute IDBVersionChangeEventConstructor IDBVersionChangeEvent;
 };
 
+WorkerGlobalScope implements GlobalCrypto;
 WorkerGlobalScope implements WindowOrWorkerGlobalScope;

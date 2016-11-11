@@ -42,9 +42,9 @@ CryptoAlgorithmSHA512::~CryptoAlgorithmSHA512()
 {
 }
 
-std::unique_ptr<CryptoAlgorithm> CryptoAlgorithmSHA512::create()
+Ref<CryptoAlgorithm> CryptoAlgorithmSHA512::create()
 {
-    return std::unique_ptr<CryptoAlgorithm>(new CryptoAlgorithmSHA512);
+    return adoptRef(*new CryptoAlgorithmSHA512);
 }
 
 CryptoAlgorithmIdentifier CryptoAlgorithmSHA512::identifier() const
@@ -52,7 +52,7 @@ CryptoAlgorithmIdentifier CryptoAlgorithmSHA512::identifier() const
     return s_identifier;
 }
 
-void CryptoAlgorithmSHA512::digest(const CryptoAlgorithmParameters&, const CryptoOperationData& data, VectorCallback&& callback, VoidCallback&& failureCallback, ExceptionCode&)
+void CryptoAlgorithmSHA512::digest(const CryptoAlgorithmParametersDeprecated&, const CryptoOperationData& data, VectorCallback&& callback, VoidCallback&& failureCallback, ExceptionCode&)
 {
     std::unique_ptr<CryptoDigest> digest = CryptoDigest::create(CryptoDigest::Algorithm::SHA_512);
     if (!digest) {

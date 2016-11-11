@@ -31,21 +31,27 @@
 
 #if USE(CG)
 #include "ImageDecoderCG.h"
+#elif USE(DIRECT2D)
+#include "GraphicsContext.h"
+#include "ImageDecoderDirect2D.h"
+#include <WinCodec.h>
 #else
 #include "ImageDecoder.h"
 #endif
 
 #include "ImageOrientation.h"
 
+#include <wtf/CurrentTime.h>
+
 namespace WebCore {
 
-ImageSource::ImageSource(const NativeImagePtr&)
+ImageSource::ImageSource(NativeImagePtr&& nativeImage)
+    : m_frameCache(ImageFrameCache::create(WTFMove(nativeImage)))
 {
 }
     
-ImageSource::ImageSource(ImageSource::AlphaOption alphaOption, ImageSource::GammaAndColorProfileOption gammaAndColorProfileOption)
-    : m_needsUpdateMetadata(true)
-    , m_maximumSubsamplingLevel(Nullopt)
+ImageSource::ImageSource(Image* image, AlphaOption alphaOption, GammaAndColorProfileOption gammaAndColorProfileOption)
+    : m_frameCache(ImageFrameCache::create(image))
     , m_alphaOption(alphaOption)
     , m_gammaAndColorProfileOption(gammaAndColorProfileOption)
 {
@@ -57,179 +63,176 @@ ImageSource::~ImageSource()
 
 void ImageSource::clearFrameBufferCache(size_t clearBeforeFrame)
 {
-    if (!initialized())
+    if (!isDecoderAvailable())
         return;
     m_decoder->clearFrameBufferCache(clearBeforeFrame);
 }
 
-void ImageSource::clear(bool destroyAllFrames, size_t clearBeforeFrame, SharedBuffer* data, bool allDataReceived)
+void ImageSource::clear(bool destroyAll, size_t count, SharedBuffer* data)
 {
     // There's no need to throw away the decoder unless we're explicitly asked
     // to destroy all of the frames.
-    if (!destroyAllFrames) {
-        clearFrameBufferCache(clearBeforeFrame);
+    if (!destroyAll || m_frameCache->hasDecodingQueue()) {
+        clearFrameBufferCache(count);
         return;
     }
 
     m_decoder = nullptr;
+    m_frameCache->setDecoder(nullptr);
+    setData(data, isAllDataReceived());
+}
 
-    if (data)
-        setData(data, allDataReceived);
+void ImageSource::destroyDecodedData(SharedBuffer* data, bool destroyAll, size_t count)
+{
+    m_frameCache->destroyDecodedData(destroyAll, count);
+    clear(destroyAll, count, data);
+}
+
+bool ImageSource::destroyDecodedDataIfNecessary(SharedBuffer* data, bool destroyAll, size_t count)
+{
+    // If we have decoded frames but there is no encoded data, we shouldn't destroy
+    // the decoded image since we won't be able to reconstruct it later.
+    if (!data && m_frameCache->frameCount())
+        return false;
+
+    if (!m_frameCache->destroyDecodedDataIfNecessary(destroyAll, count))
+        return false;
+
+    clear(destroyAll, count, data);
+    return true;
+}
+
+bool ImageSource::ensureDecoderAvailable(SharedBuffer* data)
+{
+    if (!data || isDecoderAvailable())
+        return true;
+
+    m_decoder = ImageDecoder::create(*data, m_alphaOption, m_gammaAndColorProfileOption);
+    if (!isDecoderAvailable())
+        return false;
+
+    m_frameCache->setDecoder(m_decoder.get());
+    return true;
+}
+
+void ImageSource::setDecoderTargetContext(const GraphicsContext* targetContext)
+{
+#if USE(DIRECT2D)
+    if (!isDecoderAvailable())
+        return;
+
+    if (targetContext)
+        m_decoder->setTargetContext(targetContext->platformContext());
+#else
+    UNUSED_PARAM(targetContext);
+#endif
 }
 
 void ImageSource::setData(SharedBuffer* data, bool allDataReceived)
 {
-    if (!data)
+    if (!data || !ensureDecoderAvailable(data))
         return;
-
-    if (!initialized()) {
-        m_decoder = ImageDecoder::create(*data, m_alphaOption, m_gammaAndColorProfileOption);
-        if (!m_decoder)
-            return;
-    }
 
     m_decoder->setData(*data, allDataReceived);
 }
 
-SubsamplingLevel ImageSource::calculateMaximumSubsamplingLevel() const
+bool ImageSource::dataChanged(SharedBuffer* data, bool allDataReceived)
 {
-    if (!m_allowSubsampling || !allowSubsamplingOfFrameAtIndex(0))
-        return 0;
-    
+    m_frameCache->destroyIncompleteDecodedData();
+
+#if PLATFORM(IOS)
+    // FIXME: We should expose a setting to enable/disable progressive loading and make this
+    // code conditional on it. Then we can remove the PLATFORM(IOS)-guard.
+    static const double chunkLoadIntervals[] = {0, 1, 3, 6, 15};
+    double interval = chunkLoadIntervals[std::min(m_progressiveLoadChunkCount, static_cast<uint16_t>(4))];
+
+    bool needsUpdate = false;
+
+    // The first time through, the chunk time will be 0 and the image will get an update.
+    if (currentTime() - m_progressiveLoadChunkTime > interval) {
+        needsUpdate = true;
+        m_progressiveLoadChunkTime = currentTime();
+        ASSERT(m_progressiveLoadChunkCount <= std::numeric_limits<uint16_t>::max());
+        ++m_progressiveLoadChunkCount;
+    }
+
+    if (needsUpdate || allDataReceived)
+        setData(data, allDataReceived);
+#else
+    setData(data, allDataReceived);
+#endif
+
+    m_frameCache->clearMetadata();
+    if (!isSizeAvailable())
+        return false;
+
+    m_frameCache->growFrames();
+    return true;
+}
+
+bool ImageSource::isAllDataReceived()
+{
+    return isDecoderAvailable() ? m_decoder->isAllDataReceived() : m_frameCache->frameCount();
+}
+
+bool ImageSource::isAsyncDecodingRequired()
+{
+    // FIXME: figure out the best heuristic for enabling async image decoding.
+    return size().area() * sizeof(RGBA32) >= 100 * KB;
+}
+
+SubsamplingLevel ImageSource::maximumSubsamplingLevel()
+{
+    if (m_maximumSubsamplingLevel)
+        return m_maximumSubsamplingLevel.value();
+
+    if (!isDecoderAvailable() || !m_decoder->frameAllowSubsamplingAtIndex(0))
+        return SubsamplingLevel::Default;
+
     // FIXME: this value was chosen to be appropriate for iOS since the image
     // subsampling is only enabled by default on iOS. Choose a different value
     // if image subsampling is enabled on other platform.
     const int maximumImageAreaBeforeSubsampling = 5 * 1024 * 1024;
-    const SubsamplingLevel maxSubsamplingLevel = 3;
-    
-    for (SubsamplingLevel level = 0; level < maxSubsamplingLevel; ++level) {
-        if (frameSizeAtIndex(0, level).area() < maximumImageAreaBeforeSubsampling)
-            return level;
+    SubsamplingLevel level = SubsamplingLevel::First;
+
+    for (; level < SubsamplingLevel::Last; ++level) {
+        if (frameSizeAtIndex(0, level).area().unsafeGet() < maximumImageAreaBeforeSubsampling)
+            break;
     }
-    
-    return maxSubsamplingLevel;
+
+    m_maximumSubsamplingLevel = level;
+    return m_maximumSubsamplingLevel.value();
 }
 
-void ImageSource::updateMetadata()
-{
-    if (!(m_needsUpdateMetadata && isSizeAvailable()))
-        return;
-
-    m_frameCount = m_decoder->frameCount();
-    if (!m_maximumSubsamplingLevel)
-        m_maximumSubsamplingLevel = calculateMaximumSubsamplingLevel();
-
-    m_needsUpdateMetadata = false;
-}
-    
 SubsamplingLevel ImageSource::subsamplingLevelForScale(float scale)
 {
     if (!(scale > 0 && scale <= 1))
-        return 0;
+        return SubsamplingLevel::Default;
 
-    updateMetadata();
-    if (!m_maximumSubsamplingLevel)
-        return 0;
-
-    // There are four subsampling levels: 0 = 1x, 1 = 0.5x, 2 = 0.25x, 3 = 0.125x.
-    SubsamplingLevel result = std::ceil(std::log2(1 / scale));
-    return std::min(result, m_maximumSubsamplingLevel.value());
+    int result = std::ceil(std::log2(1 / scale));
+    return static_cast<SubsamplingLevel>(std::min(result, static_cast<int>(maximumSubsamplingLevel())));
 }
 
-size_t ImageSource::bytesDecodedToDetermineProperties()
-{
-    return ImageDecoder::bytesDecodedToDetermineProperties();
-}
-
-bool ImageSource::isSizeAvailable() const
-{
-    return initialized() && m_decoder->isSizeAvailable();
-}
-
-IntSize ImageSource::size() const
-{
-    return frameSizeAtIndex(0, 0);
-}
-
-IntSize ImageSource::sizeRespectingOrientation() const
-{
-    return frameSizeAtIndex(0, 0, RespectImageOrientation);
-}
-
-size_t ImageSource::frameCount()
-{
-    updateMetadata();
-    return m_frameCount;
-}
-
-int ImageSource::repetitionCount()
-{
-    return initialized() ? m_decoder->repetitionCount() : cAnimationNone;
-}
-
-String ImageSource::filenameExtension() const
-{
-    return initialized() ? m_decoder->filenameExtension() : String();
-}
-
-Optional<IntPoint> ImageSource::hotSpot() const
-{
-    return initialized() ? m_decoder->hotSpot() : Nullopt;
-}
-
-bool ImageSource::frameIsCompleteAtIndex(size_t index)
-{
-    return initialized() && m_decoder->frameIsCompleteAtIndex(index);
-}
-
-bool ImageSource::frameHasAlphaAtIndex(size_t index)
-{
-    return !initialized() || m_decoder->frameHasAlphaAtIndex(index);
-}
-
-bool ImageSource::allowSubsamplingOfFrameAtIndex(size_t index) const
-{
-    return initialized() && m_decoder->allowSubsamplingOfFrameAtIndex(index);
-}
-
-IntSize ImageSource::frameSizeAtIndex(size_t index, SubsamplingLevel subsamplingLevel, RespectImageOrientationEnum shouldRespectImageOrientation) const
-{
-    if (!initialized())
-        return { };
-
-    IntSize size = m_decoder->frameSizeAtIndex(index, subsamplingLevel);
-    if (shouldRespectImageOrientation != RespectImageOrientation)
-        return size;
-
-    return orientationAtIndex(index).usesWidthAsHeight() ? size.transposedSize() : size;
-}
-
-unsigned ImageSource::frameBytesAtIndex(size_t index, SubsamplingLevel subsamplingLevel) const
-{
-    return frameSizeAtIndex(index, subsamplingLevel).area() * 4;
-}
-
-float ImageSource::frameDurationAtIndex(size_t index)
-{
-    return initialized() ? m_decoder->frameDurationAtIndex(index) : 0;
-}
-
-ImageOrientation ImageSource::orientationAtIndex(size_t index) const
-{
-    return initialized() ? m_decoder->orientationAtIndex(index) : ImageOrientation();
-}
-    
 NativeImagePtr ImageSource::createFrameImageAtIndex(size_t index, SubsamplingLevel subsamplingLevel)
 {
-    return initialized() ? m_decoder->createFrameImageAtIndex(index, subsamplingLevel) : nullptr;
+    return isDecoderAvailable() ? m_decoder->createFrameImageAtIndex(index, subsamplingLevel) : nullptr;
 }
 
-void ImageSource::dump(TextStream& ts) const
+NativeImagePtr ImageSource::frameImageAtIndex(size_t index, SubsamplingLevel subsamplingLevel, const GraphicsContext* targetContext)
 {
-    if (m_allowSubsampling)
-        ts.dumpProperty("allow-subsampling", m_allowSubsampling);
-    
-    ImageOrientation orientation = orientationAtIndex(0);
+    setDecoderTargetContext(targetContext);
+
+    return m_frameCache->frameImageAtIndex(index, subsamplingLevel);
+}
+
+void ImageSource::dump(TextStream& ts)
+{
+    ts.dumpProperty("type", filenameExtension());
+    ts.dumpProperty("frame-count", frameCount());
+    ts.dumpProperty("repetitions", repetitionCount());
+    ts.dumpProperty("solid-color", singlePixelSolidColor());
+
+    ImageOrientation orientation = frameOrientationAtIndex(0);
     if (orientation != OriginTopLeft)
         ts.dumpProperty("orientation", orientation);
 }

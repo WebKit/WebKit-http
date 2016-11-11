@@ -22,10 +22,8 @@
  *
  */
 
-#ifndef Range_h
-#define Range_h
+#pragma once
 
-#include "ExceptionCodePlaceholder.h"
 #include "FloatRect.h"
 #include "FragmentScriptingPermission.h"
 #include "IntRect.h"
@@ -59,53 +57,53 @@ public:
     Document& ownerDocument() const { return const_cast<Document&>(m_ownerDocument.get()); }
 
     Node& startContainer() const { ASSERT(m_start.container()); return *m_start.container(); }
-    int startOffset() const { return m_start.offset(); }
+    unsigned startOffset() const { return m_start.offset(); }
     Node& endContainer() const { ASSERT(m_end.container()); return *m_end.container(); }
-    int endOffset() const { return m_end.offset(); }
+    unsigned endOffset() const { return m_end.offset(); }
     bool collapsed() const { return m_start == m_end; }
 
     Node* commonAncestorContainer() const { return commonAncestorContainer(&startContainer(), &endContainer()); }
     WEBCORE_EXPORT static Node* commonAncestorContainer(Node* containerA, Node* containerB);
-    WEBCORE_EXPORT void setStart(Ref<Node>&& container, int offset, ExceptionCode& = ASSERT_NO_EXCEPTION);
-    WEBCORE_EXPORT void setEnd(Ref<Node>&& container, int offset, ExceptionCode& = ASSERT_NO_EXCEPTION);
+    WEBCORE_EXPORT ExceptionOr<void> setStart(Ref<Node>&& container, unsigned offset);
+    WEBCORE_EXPORT ExceptionOr<void> setEnd(Ref<Node>&& container, unsigned offset);
     WEBCORE_EXPORT void collapse(bool toStart);
-    WEBCORE_EXPORT bool isPointInRange(Node& refNode, int offset, ExceptionCode&);
-    short comparePoint(Node& refNode, int offset, ExceptionCode&) const;
+    WEBCORE_EXPORT ExceptionOr<bool> isPointInRange(Node& refNode, unsigned offset);
+    WEBCORE_EXPORT ExceptionOr<short> comparePoint(Node& refNode, unsigned offset) const;
     enum CompareResults { NODE_BEFORE, NODE_AFTER, NODE_BEFORE_AND_AFTER, NODE_INSIDE };
-    CompareResults compareNode(Node& refNode, ExceptionCode&) const;
+    WEBCORE_EXPORT ExceptionOr<CompareResults> compareNode(Node& refNode) const;
     enum CompareHow { START_TO_START, START_TO_END, END_TO_END, END_TO_START };
-    WEBCORE_EXPORT short compareBoundaryPoints(CompareHow, const Range& sourceRange, ExceptionCode&) const;
-    short compareBoundaryPointsForBindings(unsigned short compareHow, const Range& sourceRange, ExceptionCode&) const;
-    static short compareBoundaryPoints(Node* containerA, int offsetA, Node* containerB, int offsetB, ExceptionCode&);
-    static short compareBoundaryPoints(const RangeBoundaryPoint& boundaryA, const RangeBoundaryPoint& boundaryB, ExceptionCode&);
+    WEBCORE_EXPORT ExceptionOr<short> compareBoundaryPoints(CompareHow, const Range& sourceRange) const;
+    WEBCORE_EXPORT ExceptionOr<short> compareBoundaryPointsForBindings(unsigned short compareHow, const Range& sourceRange) const;
+    static ExceptionOr<short> compareBoundaryPoints(Node* containerA, unsigned offsetA, Node* containerB, unsigned offsetB);
+    static ExceptionOr<short> compareBoundaryPoints(const RangeBoundaryPoint& boundaryA, const RangeBoundaryPoint& boundaryB);
     WEBCORE_EXPORT bool boundaryPointsValid() const;
-    bool intersectsNode(Node& refNode, ExceptionCode&) const;
-    void deleteContents(ExceptionCode&);
-    RefPtr<DocumentFragment> extractContents(ExceptionCode&);
-    RefPtr<DocumentFragment> cloneContents(ExceptionCode&);
-    void insertNode(Ref<Node>&&, ExceptionCode&);
-    String toString() const;
+    WEBCORE_EXPORT ExceptionOr<bool> intersectsNode(Node& refNode) const;
+    WEBCORE_EXPORT ExceptionOr<void> deleteContents();
+    WEBCORE_EXPORT ExceptionOr<Ref<DocumentFragment>> extractContents();
+    WEBCORE_EXPORT ExceptionOr<Ref<DocumentFragment>> cloneContents();
+    WEBCORE_EXPORT ExceptionOr<void> insertNode(Ref<Node>&&);
+    WEBCORE_EXPORT String toString() const;
 
     String toHTML() const;
     WEBCORE_EXPORT String text() const;
 
-    RefPtr<DocumentFragment> createContextualFragment(const String& html, ExceptionCode&);
+    WEBCORE_EXPORT ExceptionOr<Ref<DocumentFragment>> createContextualFragment(const String& html);
 
-    void detach();
+    WEBCORE_EXPORT void detach();
     WEBCORE_EXPORT Ref<Range> cloneRange() const;
 
-    WEBCORE_EXPORT void setStartAfter(Node&, ExceptionCode& = ASSERT_NO_EXCEPTION);
-    WEBCORE_EXPORT void setEndBefore(Node&, ExceptionCode& = ASSERT_NO_EXCEPTION);
-    WEBCORE_EXPORT void setEndAfter(Node&, ExceptionCode& = ASSERT_NO_EXCEPTION);
-    WEBCORE_EXPORT void selectNode(Node&, ExceptionCode& = ASSERT_NO_EXCEPTION);
-    WEBCORE_EXPORT void selectNodeContents(Node&, ExceptionCode&);
-    void surroundContents(Node&, ExceptionCode&);
-    WEBCORE_EXPORT void setStartBefore(Node&, ExceptionCode&);
+    WEBCORE_EXPORT ExceptionOr<void> setStartAfter(Node&);
+    WEBCORE_EXPORT ExceptionOr<void> setEndBefore(Node&);
+    WEBCORE_EXPORT ExceptionOr<void> setEndAfter(Node&);
+    WEBCORE_EXPORT ExceptionOr<void> selectNode(Node&);
+    WEBCORE_EXPORT ExceptionOr<void> selectNodeContents(Node&);
+    WEBCORE_EXPORT ExceptionOr<void> surroundContents(Node&);
+    WEBCORE_EXPORT ExceptionOr<void> setStartBefore(Node&);
 
     const Position startPosition() const { return m_start.toPosition(); }
     const Position endPosition() const { return m_end.toPosition(); }
-    WEBCORE_EXPORT void setStart(const Position&, ExceptionCode& = ASSERT_NO_EXCEPTION);
-    WEBCORE_EXPORT void setEnd(const Position&, ExceptionCode& = ASSERT_NO_EXCEPTION);
+    WEBCORE_EXPORT ExceptionOr<void> setStart(const Position&);
+    WEBCORE_EXPORT ExceptionOr<void> setEnd(const Position&);
 
     WEBCORE_EXPORT Node* firstNode() const;
     WEBCORE_EXPORT Node* pastLastNode() const;
@@ -141,7 +139,7 @@ public:
     // Expand range to a unit (word or sentence or block or document) boundary.
     // Please refer to https://bugs.webkit.org/show_bug.cgi?id=27632 comment #5 
     // for details.
-    void expand(const String&, ExceptionCode&);
+    WEBCORE_EXPORT ExceptionOr<void> expand(const String&);
 
     Ref<ClientRectList> getClientRects() const;
     Ref<ClientRect> getBoundingClientRect() const;
@@ -153,24 +151,19 @@ public:
     WEBCORE_EXPORT bool contains(const Range&) const;
     bool contains(const VisiblePosition&) const;
 
+    enum ActionType { Delete, Extract, Clone };
+
 private:
     explicit Range(Document&);
     Range(Document&, PassRefPtr<Node> startContainer, int startOffset, PassRefPtr<Node> endContainer, int endOffset);
 
     void setDocument(Document&);
-
-    Node* checkNodeWOffset(Node&, int offset, ExceptionCode&) const;
-
-    enum ActionType { Delete, Extract, Clone };
-    RefPtr<DocumentFragment> processContents(ActionType, ExceptionCode&);
-    static RefPtr<Node> processContentsBetweenOffsets(ActionType, PassRefPtr<DocumentFragment>, Node*, unsigned startOffset, unsigned endOffset, ExceptionCode&);
-    static void processNodes(ActionType, Vector<Ref<Node>>&, Node* oldContainer, Node* newContainer, ExceptionCode&);
-    enum ContentsProcessDirection { ProcessContentsForward, ProcessContentsBackward };
-    static RefPtr<Node> processAncestorsAndTheirSiblings(ActionType, Node* container, ContentsProcessDirection, RefPtr<Node>&& clonedContainer, Node* commonRoot, ExceptionCode&);
+    ExceptionOr<Node*> checkNodeWOffset(Node&, unsigned offset) const;
+    ExceptionOr<RefPtr<DocumentFragment>> processContents(ActionType);
 
     enum class CoordinateSpace { Absolute, Client };
-    void getBorderAndTextQuads(Vector<FloatQuad>&, CoordinateSpace) const;
-    FloatRect boundingRectInternal(CoordinateSpace) const;
+    Vector<FloatQuad> borderAndTextQuads(CoordinateSpace) const;
+    FloatRect boundingRect(CoordinateSpace) const;
 
     Ref<Document> m_ownerDocument;
     RangeBoundaryPoint m_start;
@@ -184,7 +177,7 @@ bool rangesOverlap(const Range*, const Range*);
 
 inline bool documentOrderComparator(const Node* a, const Node* b)
 {
-    return Range::compareBoundaryPoints(const_cast<Node*>(a), 0, const_cast<Node*>(b), 0, ASSERT_NO_EXCEPTION) < 0;
+    return Range::compareBoundaryPoints(const_cast<Node*>(a), 0, const_cast<Node*>(b), 0).releaseReturnValue() < 0;
 }
 
 } // namespace
@@ -192,6 +185,4 @@ inline bool documentOrderComparator(const Node* a, const Node* b)
 #if ENABLE(TREE_DEBUGGING)
 // Outside the WebCore namespace for ease of invocation from gdb.
 void showTree(const WebCore::Range*);
-#endif
-
 #endif

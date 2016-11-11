@@ -30,16 +30,15 @@
 
 #include "B3BasicBlockInlines.h"
 #include "B3BreakCriticalEdges.h"
-#include "B3ControlValue.h"
 #include "B3Dominators.h"
 #include "B3FixSSA.h"
-#include "B3IndexSet.h"
 #include "B3InsertionSetInlines.h"
 #include "B3PhaseScope.h"
 #include "B3ProcedureInlines.h"
 #include "B3SwitchValue.h"
 #include "B3UpsilonValue.h"
 #include "B3ValueInlines.h"
+#include <wtf/IndexSet.h>
 
 namespace JSC { namespace B3 {
 
@@ -72,7 +71,11 @@ public:
         IndexSet<BasicBlock> candidates;
 
         for (BasicBlock* block : m_proc) {
-            if (block->size() > m_maxSize || block->numSuccessors() > m_maxSuccessors)
+            if (block->size() > m_maxSize)
+                continue;
+            if (block->numSuccessors() > m_maxSuccessors)
+                continue;
+            if (block->last()->type() != Void) // Demoting doesn't handle terminals with values.
                 continue;
 
             candidates.add(block);
@@ -97,11 +100,10 @@ public:
         }
 
         for (BasicBlock* block : m_proc) {
-            ControlValue* jump = block->last()->as<ControlValue>();
-            if (jump->opcode() != Jump)
+            if (block->last()->opcode() != Jump)
                 continue;
 
-            BasicBlock* tail = jump->successorBlock(0);
+            BasicBlock* tail = block->successorBlock(0);
             if (!candidates.contains(tail))
                 continue;
 
@@ -130,6 +132,7 @@ public:
                     map.add(value, clone);
                 block->append(clone);
             }
+            block->successors() = tail->successors();
         }
 
         m_proc.resetReachability();

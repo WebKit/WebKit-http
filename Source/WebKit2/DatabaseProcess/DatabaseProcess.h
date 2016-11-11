@@ -76,7 +76,9 @@ public:
     void accessToTemporaryFileComplete(const String& path) final;
 #endif
 
+#if ENABLE(SANDBOX_EXTENSIONS)
     void getSandboxExtensionsForBlobFiles(const Vector<String>& filenames, std::function<void (SandboxExtension::HandleArray&&)> completionHandler);
+#endif
 
 private:
     DatabaseProcess();
@@ -89,12 +91,10 @@ private:
     bool shouldTerminate() override;
 
     // IPC::Connection::Client
-    void didReceiveMessage(IPC::Connection&, IPC::MessageDecoder&) override;
+    void didReceiveMessage(IPC::Connection&, IPC::Decoder&) override;
     void didClose(IPC::Connection&) override;
     void didReceiveInvalidMessage(IPC::Connection&, IPC::StringReference messageReceiverName, IPC::StringReference messageName) override;
-    IPC::ProcessType localProcessType() override { return IPC::ProcessType::Database; }
-    IPC::ProcessType remoteProcessType() override { return IPC::ProcessType::UI; }
-    void didReceiveDatabaseProcessMessage(IPC::Connection&, IPC::MessageDecoder&);
+    void didReceiveDatabaseProcessMessage(IPC::Connection&, IPC::Decoder&);
 
     // Message Handlers
     void initializeDatabaseProcess(const DatabaseProcessCreationParameters&);
@@ -103,9 +103,10 @@ private:
     void fetchWebsiteData(WebCore::SessionID, OptionSet<WebsiteDataType> websiteDataTypes, uint64_t callbackID);
     void deleteWebsiteData(WebCore::SessionID, OptionSet<WebsiteDataType> websiteDataTypes, std::chrono::system_clock::time_point modifiedSince, uint64_t callbackID);
     void deleteWebsiteDataForOrigins(WebCore::SessionID, OptionSet<WebsiteDataType> websiteDataTypes, const Vector<WebCore::SecurityOriginData>& origins, uint64_t callbackID);
+#if ENABLE(SANDBOX_EXTENSIONS)
     void grantSandboxExtensionsForBlobs(const Vector<String>& paths, const SandboxExtension::HandleArray&);
-
     void didGetSandboxExtensionsForBlobFiles(uint64_t requestID, SandboxExtension::HandleArray&&);
+#endif
 
 #if ENABLE(INDEXED_DATABASE)
     Vector<RefPtr<WebCore::SecurityOrigin>> indexedDatabaseOrigins();

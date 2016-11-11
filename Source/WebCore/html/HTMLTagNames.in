@@ -16,7 +16,7 @@ attachment conditional=ATTACHMENT_ELEMENT, settingsConditional=attachmentElement
 audio wrapperOnlyIfMediaIsAvailable, conditional=VIDEO, constructorNeedsCreatedByParser, customTypeHelper
 b interfaceName=HTMLElement
 base
-basefont interfaceName=HTMLUnknownElement
+basefont interfaceName=HTMLElement
 bdi interfaceName=HTMLBDIElement, JSInterfaceName=HTMLElement
 bdo interfaceName=HTMLElement
 bgsound interfaceName=HTMLUnknownElement
@@ -32,7 +32,7 @@ cite interfaceName=HTMLElement
 code interfaceName=HTMLElement
 col interfaceName=HTMLTableColElement
 colgroup interfaceName=HTMLTableColElement
-command interfaceName=HTMLElement
+command interfaceName=HTMLUnknownElement
 data
 datalist interfaceName=HTMLDataListElement, conditional=DATALIST_ELEMENT
 dd interfaceName=HTMLElement
@@ -70,7 +70,6 @@ image interfaceName=HTMLUnknownElement
 img interfaceName=HTMLImageElement, constructorNeedsFormElement
 input constructorNeedsFormElement, constructorNeedsCreatedByParser
 ins interfaceName=HTMLModElement
-isindex interfaceName=HTMLUnknownElement
 kbd interfaceName=HTMLElement
 keygen constructorNeedsFormElement
 label
@@ -125,11 +124,11 @@ summary interfaceName=HTMLSummaryElement, JSInterfaceName=HTMLElement, condition
 sup interfaceName=HTMLElement
 table
 tbody interfaceName=HTMLTableSectionElement
-td interfaceName=HTMLTableDataCellElement
+td interfaceName=HTMLTableCellElement
 template
 textarea interfaceName=HTMLTextAreaElement, constructorNeedsFormElement
 tfoot interfaceName=HTMLTableSectionElement
-th interfaceName=HTMLTableHeaderCellElement
+th interfaceName=HTMLTableCellElement
 thead interfaceName=HTMLTableSectionElement
 time
 title

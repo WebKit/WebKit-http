@@ -58,13 +58,13 @@
 namespace WebCore {
 
 #if ENABLE(CONTENT_EXTENSIONS)
-static ContentExtensions::BlockedStatus processContentExtensionRulesForLoad(const Frame& frame, ResourceRequest& request, ResourceType resourceType)
+static ContentExtensions::BlockedStatus processContentExtensionRulesForLoad(const Frame& frame, const URL& url, ResourceType resourceType)
 {
     if (DocumentLoader* documentLoader = frame.loader().documentLoader()) {
         if (Page* page = frame.page())
-            return page->userContentProvider().processContentExtensionRulesForLoad(request, resourceType, *documentLoader);
+            return page->userContentProvider().processContentExtensionRulesForLoad(url, resourceType, *documentLoader);
     }
-    return ContentExtensions::BlockedStatus::NotBlocked;
+    return { };
 }
 #endif
 
@@ -78,7 +78,9 @@ void PingLoader::loadImage(Frame& frame, const URL& url)
     ResourceRequest request(url);
 
 #if ENABLE(CONTENT_EXTENSIONS)
-    if (processContentExtensionRulesForLoad(frame, request, ResourceType::Image) == ContentExtensions::BlockedStatus::Blocked)
+    auto blockedStatus = processContentExtensionRulesForLoad(frame, url, ResourceType::Image);
+    applyBlockedStatusToRequest(blockedStatus, request);
+    if (blockedStatus.blockedLoad)
         return;
 #endif
 
@@ -91,7 +93,7 @@ void PingLoader::loadImage(Frame& frame, const URL& url)
         request.setHTTPReferrer(referrer);
     frame.loader().addExtraFieldsToSubresourceRequest(request);
 
-    startPingLoad(frame, request);
+    startPingLoad(frame, request, ShouldFollowRedirects::Yes);
 }
 
 // http://www.whatwg.org/specs/web-apps/current-work/multipage/links.html#hyperlink-auditing
@@ -103,7 +105,9 @@ void PingLoader::sendPing(Frame& frame, const URL& pingURL, const URL& destinati
     ResourceRequest request(pingURL);
     
 #if ENABLE(CONTENT_EXTENSIONS)
-    if (processContentExtensionRulesForLoad(frame, request, ResourceType::Raw) == ContentExtensions::BlockedStatus::Blocked)
+    auto blockedStatus = processContentExtensionRulesForLoad(frame, pingURL, ResourceType::Raw);
+    applyBlockedStatusToRequest(blockedStatus, request);
+    if (blockedStatus.blockedLoad)
         return;
 #endif
 
@@ -128,7 +132,7 @@ void PingLoader::sendPing(Frame& frame, const URL& pingURL, const URL& destinati
         }
     }
 
-    startPingLoad(frame, request);
+    startPingLoad(frame, request, ShouldFollowRedirects::Yes);
 }
 
 void PingLoader::sendViolationReport(Frame& frame, const URL& reportURL, RefPtr<FormData>&& report, ViolationReportType reportType)
@@ -136,7 +140,9 @@ void PingLoader::sendViolationReport(Frame& frame, const URL& reportURL, RefPtr<
     ResourceRequest request(reportURL);
 
 #if ENABLE(CONTENT_EXTENSIONS)
-    if (processContentExtensionRulesForLoad(frame, request, ResourceType::Raw) == ContentExtensions::BlockedStatus::Blocked)
+    auto blockedStatus = processContentExtensionRulesForLoad(frame, reportURL, ResourceType::Raw);
+    applyBlockedStatusToRequest(blockedStatus, request);
+    if (blockedStatus.blockedLoad)
         return;
 #endif
 
@@ -170,10 +176,10 @@ void PingLoader::sendViolationReport(Frame& frame, const URL& reportURL, RefPtr<
     if (!referrer.isEmpty())
         request.setHTTPReferrer(referrer);
 
-    startPingLoad(frame, request);
+    startPingLoad(frame, request, ShouldFollowRedirects::No);
 }
 
-void PingLoader::startPingLoad(Frame& frame, ResourceRequest& request)
+void PingLoader::startPingLoad(Frame& frame, ResourceRequest& request, ShouldFollowRedirects shouldFollowRedirects)
 {
     unsigned long identifier = frame.page()->progress().createUniqueIdentifier();
     // FIXME: Why activeDocumentLoader? I would have expected documentLoader().
@@ -185,7 +191,7 @@ void PingLoader::startPingLoad(Frame& frame, ResourceRequest& request)
 
     InspectorInstrumentation::continueAfterPingLoader(frame, identifier, frame.loader().activeDocumentLoader(), request, ResourceResponse());
 
-    platformStrategies()->loaderStrategy()->createPingHandle(frame.loader().networkingContext(), request, shouldUseCredentialStorage);
+    platformStrategies()->loaderStrategy()->createPingHandle(frame.loader().networkingContext(), request, shouldUseCredentialStorage, shouldFollowRedirects == ShouldFollowRedirects::Yes);
 }
 
 }

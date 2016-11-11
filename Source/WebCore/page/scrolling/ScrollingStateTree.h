@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ScrollingStateTree_h
-#define ScrollingStateTree_h
+#pragma once
 
 #if ENABLE(ASYNC_SCROLLING) || USE(COORDINATED_GRAPHICS)
 
@@ -48,7 +47,7 @@ public:
     WEBCORE_EXPORT ~ScrollingStateTree();
 
     ScrollingStateFrameScrollingNode* rootStateNode() const { return m_rootStateNode.get(); }
-    WEBCORE_EXPORT ScrollingStateNode* stateNodeForID(ScrollingNodeID);
+    WEBCORE_EXPORT ScrollingStateNode* stateNodeForID(ScrollingNodeID) const;
 
     WEBCORE_EXPORT ScrollingNodeID attachNode(ScrollingNodeType, ScrollingNodeID, ScrollingNodeID parentID);
     void detachNode(ScrollingNodeID);
@@ -79,7 +78,9 @@ private:
     void addNode(ScrollingStateNode*);
 
     PassRefPtr<ScrollingStateNode> createNode(ScrollingNodeType, ScrollingNodeID);
-    
+
+    bool nodeTypeAndParentMatch(ScrollingStateNode&, ScrollingNodeType, ScrollingNodeID parentID) const;
+
     enum class SubframeNodeRemoval {
         Delete,
         Orphan
@@ -107,5 +108,3 @@ void showScrollingStateTree(const WebCore::ScrollingStateNode*);
 #endif
 
 #endif // ENABLE(ASYNC_SCROLLING) || USE(COORDINATED_GRAPHICS)
-
-#endif // ScrollingStateTree_h

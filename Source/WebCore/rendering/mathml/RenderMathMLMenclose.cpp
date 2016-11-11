@@ -25,9 +25,9 @@
  */
 
 #include "config.h"
+#include "RenderMathMLMenclose.h"
 
 #if ENABLE(MATHML)
-#include "RenderMathMLMenclose.h"
 
 #include "GraphicsContext.h"
 #include "MathMLNames.h"
@@ -42,9 +42,8 @@ using namespace MathMLNames;
 // For now, we use a Bezier curve and this somewhat arbitrary value.
 const unsigned short longDivLeftSpace = 10;
 
-RenderMathMLMenclose::RenderMathMLMenclose(Element& element, RenderStyle&& style)
+RenderMathMLMenclose::RenderMathMLMenclose(MathMLMencloseElement& element, RenderStyle&& style)
     : RenderMathMLRow(element, WTFMove(style))
-    , m_ascent(0)
 {
 }
 
@@ -60,25 +59,28 @@ LayoutUnit RenderMathMLMenclose::ruleThickness() const
     return 0.05f * style().fontCascade().size();
 }
 
-void RenderMathMLMenclose::getSpaceAroundContent(LayoutUnit contentWidth, LayoutUnit contentHeight, LayoutUnit& leftSpace, LayoutUnit& rightSpace, LayoutUnit& topSpace, LayoutUnit& bottomSpace) const
+RenderMathMLMenclose::SpaceAroundContent RenderMathMLMenclose::spaceAroundContent(LayoutUnit contentWidth, LayoutUnit contentHeight) const
 {
-    leftSpace = rightSpace = topSpace = bottomSpace = 0;
+    SpaceAroundContent space;
+    space.right = 0;
+    space.top = 0;
+    space.bottom = 0;
+    space.left = 0;
 
     LayoutUnit thickness = ruleThickness();
-
     // In the MathML in HTML5 implementation note, the "left" notation is described as follows:
     // - left side is 3\xi_8 padding + \xi_8 border + \xi_8 margin = 5\xi_8
     // - top space is Overbar Vertical Gap + Overbar Rule Thickness = 3\xi_8 + \xi_8 = 4\xi_8
     // - bottom space is Underbar Vertical Gap + Underbar Rule Thickness = 3\xi_8 + \xi_8 = 4\xi_8
     // The "right" notation is symmetric.
     if (hasNotation(MathMLMencloseElement::Left))
-        leftSpace = std::max(leftSpace, 5 * thickness);
+        space.left = std::max(space.left, 5 * thickness);
     if (hasNotation(MathMLMencloseElement::Right))
-        rightSpace = std::max(rightSpace, 5 * thickness);
+        space.right = std::max(space.right, 5 * thickness);
     if (hasNotation(MathMLMencloseElement::Left) || hasNotation(MathMLMencloseElement::Right)) {
         LayoutUnit extraSpace = 4 * thickness;
-        topSpace = std::max(topSpace, extraSpace);
-        bottomSpace = std::max(bottomSpace, extraSpace);
+        space.top = std::max(space.top, extraSpace);
+        space.bottom = std::max(space.bottom, extraSpace);
     }
 
     // In the MathML in HTML5 implementation note, the "top" notation is described as follows:
@@ -86,13 +88,13 @@ void RenderMathMLMenclose::getSpaceAroundContent(LayoutUnit contentWidth, Layout
     // - top side is Vertical Gap + Rule Thickness + Extra Ascender = 3\xi_8 + \xi_8 + \xi_8 = 5\xi_8
     // The "bottom" notation is symmetric.
     if (hasNotation(MathMLMencloseElement::Top))
-        topSpace = std::max(topSpace, 5 * thickness);
+        space.top = std::max(space.top, 5 * thickness);
     if (hasNotation(MathMLMencloseElement::Bottom))
-        bottomSpace = std::max(bottomSpace, 5 * thickness);
+        space.bottom = std::max(space.bottom, 5 * thickness);
     if (hasNotation(MathMLMencloseElement::Top) || hasNotation(MathMLMencloseElement::Bottom)) {
         LayoutUnit extraSpace = 4 * thickness;
-        leftSpace = std::max(leftSpace, extraSpace);
-        rightSpace = std::max(rightSpace, extraSpace);
+        space.left = std::max(space.left, extraSpace);
+        space.right = std::max(space.right, extraSpace);
     }
 
     // For longdiv, we use our own rules for now:
@@ -101,30 +103,30 @@ void RenderMathMLMenclose::getSpaceAroundContent(LayoutUnit contentWidth, Layout
     // - right space is like "right" notation
     // - left space is longDivLeftSpace * \xi_8
     if (hasNotation(MathMLMencloseElement::LongDiv)) {
-        topSpace = std::max(topSpace, 5 * thickness);
-        bottomSpace = std::max(bottomSpace, 5 * thickness);
-        leftSpace = std::max(leftSpace, longDivLeftSpace * thickness);
-        rightSpace = std::max(rightSpace, 4 * thickness);
+        space.top = std::max(space.top, 5 * thickness);
+        space.bottom = std::max(space.bottom, 5 * thickness);
+        space.left = std::max(space.left, longDivLeftSpace * thickness);
+        space.right = std::max(space.right, 4 * thickness);
     }
 
     // In the MathML in HTML5 implementation note, the "rounded" notation is described as follows:
     // - top/bottom/left/right side have 3\xi_8 padding + \xi_8 border + \xi_8 margin = 5\xi_8
     if (hasNotation(MathMLMencloseElement::RoundedBox)) {
         LayoutUnit extraSpace = 5 * thickness;
-        leftSpace = std::max(leftSpace, extraSpace);
-        rightSpace = std::max(rightSpace, extraSpace);
-        topSpace = std::max(topSpace, extraSpace);
-        bottomSpace = std::max(bottomSpace, extraSpace);
+        space.left = std::max(space.left, extraSpace);
+        space.right = std::max(space.right, extraSpace);
+        space.top = std::max(space.top, extraSpace);
+        space.bottom = std::max(space.bottom, extraSpace);
     }
 
     // In the MathML in HTML5 implementation note, the "rounded" notation is described as follows:
     // - top/bottom/left/right spaces are \xi_8/2
     if (hasNotation(MathMLMencloseElement::UpDiagonalStrike) || hasNotation(MathMLMencloseElement::DownDiagonalStrike)) {
         LayoutUnit extraSpace = thickness / 2;
-        leftSpace = std::max(leftSpace, extraSpace);
-        rightSpace = std::max(rightSpace, extraSpace);
-        topSpace = std::max(topSpace, extraSpace);
-        bottomSpace = std::max(bottomSpace, extraSpace);
+        space.left = std::max(space.left, extraSpace);
+        space.right = std::max(space.right, extraSpace);
+        space.top = std::max(space.top, extraSpace);
+        space.bottom = std::max(space.bottom, extraSpace);
     }
 
     // In the MathML in HTML5 implementation note, the "circle" notation is described as follows:
@@ -135,14 +137,16 @@ void RenderMathMLMenclose::getSpaceAroundContent(LayoutUnit contentWidth, Layout
     // Then for example the top space is \sqrt{2}contentHeight/2 - contentHeight/2 + \xi_8/2 + \xi_8.
     if (hasNotation(MathMLMencloseElement::Circle)) {
         LayoutUnit extraSpace = (contentWidth * (sqrtOfTwoFloat - 1) + 3 * thickness) / 2;
-        leftSpace = std::max(leftSpace, extraSpace);
-        rightSpace = std::max(rightSpace, extraSpace);
+        space.left = std::max(space.left, extraSpace);
+        space.right = std::max(space.right, extraSpace);
         extraSpace = (contentHeight * (sqrtOfTwoFloat - 1) + 3 * thickness) / 2;
-        topSpace = std::max(topSpace, extraSpace);
-        bottomSpace = std::max(bottomSpace, extraSpace);
+        space.top = std::max(space.top, extraSpace);
+        space.bottom = std::max(space.bottom, extraSpace);
     }
 
     // In the MathML in HTML5 implementation note, the "vertical" and "horizontal" notations do not add space around the content.
+
+    return space;
 }
 
 void RenderMathMLMenclose::computePreferredLogicalWidths()
@@ -152,9 +156,9 @@ void RenderMathMLMenclose::computePreferredLogicalWidths()
     RenderMathMLRow::computePreferredLogicalWidths();
 
     LayoutUnit preferredWidth = m_maxPreferredLogicalWidth;
-    LayoutUnit leftSpace, rightSpace, dummy;
-    getSpaceAroundContent(preferredWidth, 0, leftSpace, rightSpace, dummy, dummy);
-    m_minPreferredLogicalWidth = m_maxPreferredLogicalWidth = leftSpace + preferredWidth + rightSpace;
+    SpaceAroundContent space = spaceAroundContent(preferredWidth, 0);
+    m_maxPreferredLogicalWidth = space.left + preferredWidth + space.right;
+    m_maxPreferredLogicalWidth = m_minPreferredLogicalWidth;
 
     setPreferredLogicalWidthsDirty(false);
 }
@@ -172,25 +176,17 @@ void RenderMathMLMenclose::layoutBlock(bool relayoutChildren, LayoutUnit)
     RenderMathMLRow::layoutRowItems(contentAscent, contentDescent);
     LayoutUnit contentWidth = logicalWidth();
 
-    LayoutUnit leftSpace, rightSpace, topSpace, bottomSpace;
-    getSpaceAroundContent(contentWidth, contentAscent + contentDescent, leftSpace, rightSpace, topSpace, bottomSpace);
-    setLogicalWidth(leftSpace + contentWidth + rightSpace);
-    m_ascent = topSpace + contentAscent;
-    LayoutUnit descent = contentDescent + bottomSpace;
-    LayoutPoint contentLocation(leftSpace, m_ascent - contentAscent);
+    SpaceAroundContent space = spaceAroundContent(contentWidth, contentAscent + contentDescent);
+    setLogicalWidth(space.left + contentWidth + space.right);
+    setLogicalHeight(space.top + contentAscent + contentDescent + space.bottom);
+
+    LayoutPoint contentLocation(space.left, space.top);
     for (auto* child = firstChildBox(); child; child = child->nextSiblingBox())
         child->setLocation(child->location() + contentLocation);
 
-    setLogicalHeight(m_ascent + descent);
-
-    m_contentRect = LayoutRect(leftSpace, topSpace, contentWidth, contentAscent + contentDescent);
+    m_contentRect = LayoutRect(space.left, space.top, contentWidth, contentAscent + contentDescent);
 
     clearNeedsLayout();
-}
-
-Optional<int> RenderMathMLMenclose::firstLineBaseline() const
-{
-    return Optional<int>(static_cast<int>(lroundf(m_ascent)));
 }
 
 // GraphicsContext::drawLine does not seem appropriate to draw menclose lines.
@@ -211,13 +207,16 @@ void RenderMathMLMenclose::paint(PaintInfo& info, const LayoutPoint& paintOffset
         return;
 
     LayoutUnit thickness = ruleThickness();
-    GraphicsContextStateSaver stateSaver(info.context());
 
-    info.context().setStrokeThickness(thickness);
-    info.context().setStrokeStyle(SolidStroke);
-    info.context().setStrokeColor(style().visitedDependentColor(CSSPropertyColor));
-    info.context().setFillColor(Color::transparent);
-    info.applyTransform(AffineTransform().translate(paintOffset + location()));
+    // Make a copy of the PaintInfo because applyTransform will modify its rect.
+    PaintInfo paintInfo(info);
+    GraphicsContextStateSaver stateSaver(paintInfo.context());
+
+    paintInfo.context().setStrokeThickness(thickness);
+    paintInfo.context().setStrokeStyle(SolidStroke);
+    paintInfo.context().setStrokeColor(style().visitedDependentColor(CSSPropertyColor));
+    paintInfo.context().setFillColor(Color::transparent);
+    paintInfo.applyTransform(AffineTransform().translate(paintOffset + location()));
 
     // In the MathML in HTML5 implementation note, the "left" notation is described as follows:
     // - center of the left vertical bar is at 3\xi_8 padding + \xi_8 border/2 = 7\xi_8/2
@@ -296,7 +295,7 @@ void RenderMathMLMenclose::paint(PaintInfo& info, const LayoutPoint& paintOffset
         roundedRect.inflate(7 * thickness / 2);
         Path path;
         path.addRoundedRect(roundedRect);
-        info.context().strokePath(path);
+        paintInfo.context().strokePath(path);
     }
 
     // For longdiv, we use our own rules for now:
@@ -322,7 +321,7 @@ void RenderMathMLMenclose::paint(PaintInfo& info, const LayoutPoint& paintOffset
         path.moveTo(LayoutPoint(right, top));
         path.addLineTo(LayoutPoint(left, top));
         path.addQuadCurveTo(LayoutPoint(midX, midY), FloatPoint(left, bottom));
-        info.context().strokePath(path);
+        paintInfo.context().strokePath(path);
     }
 
     // In the MathML in HTML5 implementation note, the "circle" notation is described as follows:
@@ -337,7 +336,7 @@ void RenderMathMLMenclose::paint(PaintInfo& info, const LayoutPoint& paintOffset
         ellipseRect.setY(m_contentRect.y() - (ellipseRect.height() - m_contentRect.height()) / 2);
         Path path;
         path.addEllipse(ellipseRect);
-        info.context().strokePath(path);
+        paintInfo.context().strokePath(path);
     }
 }
 

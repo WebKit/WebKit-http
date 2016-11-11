@@ -26,18 +26,18 @@
 #include "config.h"
 #include "APIGeometry.h"
 
-#include "ArgumentDecoder.h"
-#include "ArgumentEncoder.h"
+#include "Decoder.h"
+#include "Encoder.h"
 
 namespace API {
 
-void Point::encode(IPC::ArgumentEncoder& encoder) const
+void Point::encode(IPC::Encoder& encoder) const
 {
     encoder << m_point.x;
     encoder << m_point.y;
 }
 
-bool Point::decode(IPC::ArgumentDecoder& decoder, RefPtr<API::Object>& result)
+bool Point::decode(IPC::Decoder& decoder, RefPtr<API::Object>& result)
 {
     WKPoint point;
     if (!decoder.decode(point.x))
@@ -50,13 +50,13 @@ bool Point::decode(IPC::ArgumentDecoder& decoder, RefPtr<API::Object>& result)
 }
 
 
-void Size::encode(IPC::ArgumentEncoder& encoder) const
+void Size::encode(IPC::Encoder& encoder) const
 {
     encoder << m_size.width;
     encoder << m_size.height;
 }
 
-bool Size::decode(IPC::ArgumentDecoder& decoder, RefPtr<API::Object>& result)
+bool Size::decode(IPC::Decoder& decoder, RefPtr<API::Object>& result)
 {
     WKSize size;
     if (!decoder.decode(size.width))
@@ -69,7 +69,7 @@ bool Size::decode(IPC::ArgumentDecoder& decoder, RefPtr<API::Object>& result)
 }
 
 
-void Rect::encode(IPC::ArgumentEncoder& encoder) const
+void Rect::encode(IPC::Encoder& encoder) const
 {
     encoder << m_rect.origin.x;
     encoder << m_rect.origin.y;
@@ -77,7 +77,7 @@ void Rect::encode(IPC::ArgumentEncoder& encoder) const
     encoder << m_rect.size.height;
 }
 
-bool Rect::decode(IPC::ArgumentDecoder& decoder, RefPtr<API::Object>& result)
+bool Rect::decode(IPC::Decoder& decoder, RefPtr<API::Object>& result)
 {
     WKRect rect;
     if (!decoder.decode(rect.origin.x))

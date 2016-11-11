@@ -30,6 +30,7 @@
 #include "CSSImageValue.h"
 #include "CachedImage.h"
 #include "CachedResourceLoader.h"
+#include "CachedSVGDocumentReference.h"
 #include "CrossfadeGeneratedImage.h"
 #include "FilterEffectRenderer.h"
 #include "ImageBuffer.h"
@@ -44,7 +45,7 @@ namespace WebCore {
 CSSFilterImageValue::~CSSFilterImageValue()
 {
     if (m_cachedImage)
-        m_cachedImage->removeClient(&m_filterSubimageObserver);
+        m_cachedImage->removeClient(m_filterSubimageObserver);
 }
 
 String CSSFilterImageValue::customCSSText() const
@@ -73,7 +74,7 @@ FloatSize CSSFilterImageValue::fixedSize(const RenderElement* renderer)
     return cachedImage->imageForRenderer(renderer)->size();
 }
 
-bool CSSFilterImageValue::isPending()
+bool CSSFilterImageValue::isPending() const
 {
     return CSSImageGeneratorValue::subimageIsPending(m_imageValue);
 }
@@ -91,9 +92,16 @@ void CSSFilterImageValue::loadSubimages(CachedResourceLoader& cachedResourceLoad
 
     if (m_cachedImage != oldCachedImage) {
         if (oldCachedImage)
-            oldCachedImage->removeClient(&m_filterSubimageObserver);
+            oldCachedImage->removeClient(m_filterSubimageObserver);
         if (m_cachedImage)
-            m_cachedImage->addClient(&m_filterSubimageObserver);
+            m_cachedImage->addClient(m_filterSubimageObserver);
+    }
+
+    for (auto& filterOperation : m_filterOperations.operations()) {
+        if (!is<ReferenceFilterOperation>(filterOperation.get()))
+            continue;
+        auto& referenceFilterOperation = downcast<ReferenceFilterOperation>(*filterOperation);
+        referenceFilterOperation.loadExternalDocumentIfNeeded(cachedResourceLoader, options);
     }
 
     m_filterSubimageObserver.setReady(true);

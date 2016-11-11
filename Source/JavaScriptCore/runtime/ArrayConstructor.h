@@ -1,6 +1,6 @@
 /*
  *  Copyright (C) 1999-2000 Harri Porten (porten@kde.org)
- *  Copyright (C) 2007, 2008, 2011 Apple Inc. All rights reserved.
+ *  Copyright (C) 2007-2008, 2011, 2016 Apple Inc. All rights reserved.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
@@ -18,11 +18,11 @@
  *
  */
 
-#ifndef ArrayConstructor_h
-#define ArrayConstructor_h
+#pragma once
 
 #include "InternalFunction.h"
 #include "ProxyObject.h"
+#include "ThrowScope.h"
 
 namespace JSC {
 
@@ -60,9 +60,11 @@ private:
     static CallType getCallData(JSCell*, CallData&);
 };
 
-JSObject* constructArrayWithSizeQuirk(ExecState*, ArrayAllocationProfile*, JSGlobalObject*, JSValue length, JSValue prototype = JSValue());
+JSValue constructArrayWithSizeQuirk(ExecState*, ArrayAllocationProfile*, JSGlobalObject*, JSValue length, JSValue prototype = JSValue());
 
 EncodedJSValue JSC_HOST_CALL arrayConstructorPrivateFuncIsArrayConstructor(ExecState*);
+EncodedJSValue JSC_HOST_CALL arrayConstructorPrivateFuncIsArraySlow(ExecState*);
+bool isArraySlow(ExecState*, ProxyObject* argument);
 
 // ES6 7.2.2
 // https://tc39.github.io/ecma262/#sec-isarray
@@ -72,22 +74,12 @@ inline bool isArray(ExecState* exec, JSValue argumentValue)
         return false;
 
     JSObject* argument = jsCast<JSObject*>(argumentValue);
-    while (true) {
-        if (argument->inherits(JSArray::info()))
-            return true;
+    if (argument->type() == ArrayType || argument->type() == DerivedArrayType)
+        return true;
 
-        if (argument->type() != ProxyObjectType)
-            return false;
-
-        ProxyObject* proxy = jsCast<ProxyObject*>(argument);
-        if (proxy->isRevoked()) {
-            throwTypeError(exec, ASCIILiteral("Array.isArray cannot be called on a Proxy that has been revoked"));
-            return false;
-        }
-        argument = proxy->target();
-    }
-
-    ASSERT_NOT_REACHED();
+    if (argument->type() != ProxyObjectType)
+        return false;
+    return isArraySlow(exec, jsCast<ProxyObject*>(argument));
 }
 
 inline bool isArrayConstructor(JSValue argumentValue)
@@ -99,5 +91,3 @@ inline bool isArrayConstructor(JSValue argumentValue)
 }
 
 } // namespace JSC
-
-#endif // ArrayConstructor_h

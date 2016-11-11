@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,10 +28,14 @@
 
 #if ENABLE(MEDIA_STREAM)
 
+#include "Dictionary.h"
 #include "ExceptionCode.h"
 #include "JSDOMBinding.h"
+#include "JSMediaDevicesCustom.h"
+#include "MediaConstraintsImpl.h"
 #include "MediaSourceSettings.h"
 #include "MediaStreamTrack.h"
+#include "WebCoreJSClientData.h"
 #include <runtime/JSObject.h>
 #include <runtime/ObjectConstructor.h>
 
@@ -41,10 +45,13 @@ namespace WebCore {
 
 JSC::JSValue JSMediaStreamTrack::getSettings(ExecState& state)
 {
+    VM& vm = state.vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     JSValue thisValue = state.thisValue();
-    JSMediaStreamTrack* castedThis = jsDynamicCast<JSMediaStreamTrack*>(thisValue);
+    JSMediaStreamTrack* castedThis = jsDynamicDowncast<JSMediaStreamTrack*>(thisValue);
     if (UNLIKELY(!castedThis))
-        return JSValue::decode(throwThisTypeError(state, "MediaStreamTrack", "getSettings"));
+        return JSValue::decode(throwThisTypeError(state, scope, "MediaStreamTrack", "getSettings"));
 
     JSObject* object = constructEmptyObject(&state);
     auto& impl = castedThis->wrapped();
@@ -54,7 +61,7 @@ JSC::JSValue JSMediaStreamTrack::getSettings(ExecState& state)
         object->putDirect(state.vm(), Identifier::fromString(&state, "width"), jsNumber(settings->width()), DontDelete | ReadOnly);
     if (settings->supportsHeight())
         object->putDirect(state.vm(), Identifier::fromString(&state, "height"), jsNumber(settings->height()), DontDelete | ReadOnly);
-    if (settings->supportsAspectRatio())
+    if (settings->supportsAspectRatio() && settings->aspectRatio())
         object->putDirect(state.vm(), Identifier::fromString(&state, "aspectRatio"), jsDoubleNumber(settings->aspectRatio()), DontDelete | ReadOnly);
     if (settings->supportsFrameRate())
         object->putDirect(state.vm(), Identifier::fromString(&state, "frameRate"), jsDoubleNumber(settings->frameRate()), DontDelete | ReadOnly);
@@ -87,8 +94,8 @@ static JSValue capabilityValue(const CapabilityValueOrRange& value, ExecState& s
             object->putDirect(state.vm(), Identifier::fromString(&state, "min"), jsNumber(min.asDouble));
             object->putDirect(state.vm(), Identifier::fromString(&state, "max"), jsNumber(max.asDouble));
         } else {
-            object->putDirect(state.vm(), Identifier::fromString(&state, "min"), jsNumber(min.asULong));
-            object->putDirect(state.vm(), Identifier::fromString(&state, "max"), jsNumber(max.asULong));
+            object->putDirect(state.vm(), Identifier::fromString(&state, "min"), jsNumber(min.asInt));
+            object->putDirect(state.vm(), Identifier::fromString(&state, "max"), jsNumber(max.asInt));
         }
 
         return object;
@@ -97,15 +104,18 @@ static JSValue capabilityValue(const CapabilityValueOrRange& value, ExecState& s
     if (value.type() == CapabilityValueOrRange::Double)
         return jsNumber(value.value().asDouble);
 
-    return jsNumber(value.value().asULong);
+    return jsNumber(value.value().asInt);
 }
 
 JSC::JSValue JSMediaStreamTrack::getCapabilities(ExecState& state)
 {
+    VM& vm = state.vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     JSValue thisValue = state.thisValue();
-    JSMediaStreamTrack* castedThis = jsDynamicCast<JSMediaStreamTrack*>(thisValue);
+    JSMediaStreamTrack* castedThis = jsDynamicDowncast<JSMediaStreamTrack*>(thisValue);
     if (UNLIKELY(!castedThis))
-        return JSValue::decode(throwThisTypeError(state, "MediaStreamTrack", "getSettings"));
+        return JSValue::decode(throwThisTypeError(state, scope, "MediaStreamTrack", "getSettings"));
 
     JSObject* object = constructEmptyObject(&state);
     auto& impl = castedThis->wrapped();
@@ -130,7 +140,7 @@ JSC::JSValue JSMediaStreamTrack::getCapabilities(ExecState& state)
                 facingModes.append(RealtimeMediaSourceSettings::facingMode(mode));
         }
 
-        object->putDirect(state.vm(), Identifier::fromString(&state, "facingMode"), jsArray(&state, castedThis->globalObject(), facingModes), DontDelete | ReadOnly);
+        object->putDirect(state.vm(), Identifier::fromString(&state, "facingMode"), toJS<IDLSequence<IDLDOMString>>(state, *castedThis->globalObject(), facingModes), DontDelete | ReadOnly);
     }
     if (capabilities->supportsVolume())
         object->putDirect(state.vm(), Identifier::fromString(&state, "volume"), capabilityValue(capabilities->volume(), state), DontDelete | ReadOnly);
@@ -140,12 +150,12 @@ JSC::JSValue JSMediaStreamTrack::getCapabilities(ExecState& state)
         object->putDirect(state.vm(), Identifier::fromString(&state, "sampleSize"), capabilityValue(capabilities->sampleSize(), state), DontDelete | ReadOnly);
     if (capabilities->supportsEchoCancellation()) {
         Vector<String> cancellation;
-        cancellation.reserveCapacity(2);
+        cancellation.reserveInitialCapacity(2);
 
-        cancellation.append("true");
-        cancellation.append(capabilities->echoCancellation() == RealtimeMediaSourceCapabilities::EchoCancellation::ReadWrite ? "true" : "false");
+        cancellation.uncheckedAppend("true");
+        cancellation.uncheckedAppend(capabilities->echoCancellation() == RealtimeMediaSourceCapabilities::EchoCancellation::ReadWrite ? "true" : "false");
 
-        object->putDirect(state.vm(), Identifier::fromString(&state, "echoCancellation"), jsArray(&state, castedThis->globalObject(), cancellation), DontDelete | ReadOnly);
+        object->putDirect(state.vm(), Identifier::fromString(&state, "echoCancellation"), toJS<IDLSequence<IDLDOMString>>(state, *castedThis->globalObject(), cancellation), DontDelete | ReadOnly);
     }
     if (capabilities->supportsDeviceId())
         object->putDirect(state.vm(), Identifier::fromString(&state, "deviceId"), jsStringWithCache(&state, capabilities->deviceId()), DontDelete | ReadOnly);
@@ -154,6 +164,40 @@ JSC::JSValue JSMediaStreamTrack::getCapabilities(ExecState& state)
     
 
     return object;
+}
+
+JSValue JSMediaStreamTrack::applyConstraints(ExecState& state)
+{
+    MediaTrackConstraintSetMap mandatoryConstraints;
+    Vector<MediaTrackConstraintSetMap> advancedConstraints;
+    bool valid = false;
+
+    if (state.argumentCount() >= 1) {
+        JSValue argument = state.uncheckedArgument(0);
+
+        JSVMClientData& clientData = *static_cast<JSVMClientData*>(state.vm().clientData);
+        putDirect(state.vm(), clientData.builtinNames().mediaStreamTrackConstraintsPrivateName(), argument, DontEnum);
+
+        auto constraintsDictionary = Dictionary(&state, argument);
+        if (!constraintsDictionary.isUndefinedOrNull())
+            parseMediaConstraintsDictionary(constraintsDictionary, mandatoryConstraints, advancedConstraints);
+        valid = !advancedConstraints.isEmpty() || !mandatoryConstraints.isEmpty();
+    }
+
+    auto deferredPromise = createDeferredPromise(state, domWindow());
+    auto promise = deferredPromise->promise();
+
+    auto constraints = MediaConstraintsImpl::create(WTFMove(mandatoryConstraints), WTFMove(advancedConstraints), valid);
+    wrapped().applyConstraints(WTFMove(constraints), WTFMove(deferredPromise));
+
+    return promise;
+}
+
+JSValue JSMediaStreamTrack::getConstraints(ExecState& state)
+{
+    JSVMClientData& clientData = *static_cast<JSVMClientData*>(state.vm().clientData);
+    JSValue result = getDirect(state.vm(), clientData.builtinNames().mediaStreamTrackConstraintsPrivateName());
+    return !result.isEmpty() ? result : jsUndefined();
 }
 
 } // namespace WebCore

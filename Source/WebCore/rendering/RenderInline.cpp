@@ -40,6 +40,7 @@
 #include "RenderLineBreak.h"
 #include "RenderListMarker.h"
 #include "RenderNamedFlowThread.h"
+#include "RenderTable.h"
 #include "RenderTheme.h"
 #include "RenderView.h"
 #include "Settings.h"
@@ -168,10 +169,9 @@ static void updateStyleOfAnonymousBlockContinuations(const RenderBlock& block, c
 void RenderInline::styleWillChange(StyleDifference diff, const RenderStyle& newStyle)
 {
     RenderBoxModelObject::styleWillChange(diff, newStyle);
-
-    // Check if this inline can hold absolute positioned elmements even after the style change.
+    // RenderInlines forward their absolute positioned descendants to their (non-anonymous) containing block.
+    // Check if this non-anonymous containing block can hold the absolute positioned elements when the inline is no longer positioned.
     if (canContainAbsolutelyPositionedObjects() && newStyle.position() == StaticPosition) {
-        // RenderInlines forward their absolute positioned descendants to their (non-anonymous) containing block.
         auto* container = containingBlockForAbsolutePosition();
         if (container && !container->canContainAbsolutelyPositionedObjects())
             container->removePositionedObjects(nullptr, NewContainingBlock);
@@ -249,7 +249,7 @@ void RenderInline::updateAlwaysCreateLineBoxes(bool fullLayout)
     }
 }
 
-LayoutRect RenderInline::localCaretRect(InlineBox* inlineBox, int, LayoutUnit* extraWidthToEndOfLine)
+LayoutRect RenderInline::localCaretRect(InlineBox* inlineBox, unsigned, LayoutUnit* extraWidthToEndOfLine)
 {
     if (firstChild()) {
         // This condition is possible if the RenderInline is at an editing boundary,
@@ -522,7 +522,8 @@ void RenderInline::splitInlines(RenderBlock* fromBlock, RenderBlock* toBlock,
     }
 
     // Clear the flow thread containing blocks cached during the detached state insertions.
-    cloneInline->invalidateFlowThreadContainingBlockIncludingDescendants();
+    for (auto& cloneBlockChild : childrenOfType<RenderBlock>(*cloneInline))
+        cloneBlockChild.invalidateFlowThreadContainingBlockIncludingDescendants();
 
     // Now we are at the block level. We need to put the clone into the toBlock.
     toBlock->insertChildInternal(cloneInline.leakPtr(), nullptr, NotifyChildren);
@@ -563,7 +564,7 @@ void RenderInline::splitFlow(RenderObject* beforeChild, RenderBlock* newBlockBox
         madeNewBeforeBlock = true;
     }
 
-    RenderBlock& post = downcast<RenderBlock>(*pre->createAnonymousBoxWithSameTypeAs(block));
+    auto& post = downcast<RenderBlock>(*pre->createAnonymousBoxWithSameTypeAs(*block).release());
 
     RenderObject* boxFirst = madeNewBeforeBlock ? block->firstChild() : pre->nextSibling();
     if (madeNewBeforeBlock)
@@ -602,30 +603,36 @@ void RenderInline::splitFlow(RenderObject* beforeChild, RenderBlock* newBlockBox
     post.setNeedsLayoutAndPrefWidthsRecalc();
 }
 
+static bool canUseAsParentForContinuation(const RenderObject* renderer)
+{
+    if (!renderer)
+        return false;
+    if (!is<RenderBlock>(renderer) && renderer->isAnonymous())
+        return false;
+    if (is<RenderTable>(renderer))
+        return false;
+    return true;
+}
+
 void RenderInline::addChildToContinuation(RenderObject* newChild, RenderObject* beforeChild)
 {
-    RenderBoxModelObject* flow = continuationBefore(beforeChild);
+    auto* flow = continuationBefore(beforeChild);
     // It may or may not be the direct parent of the beforeChild.
     RenderBoxModelObject* beforeChildAncestor = nullptr;
-    // In case of anonymous wrappers, the parent of the beforeChild is mostly irrelevant. What we need is
-    // the topmost wrapper.
-    if (beforeChild && !is<RenderBlock>(beforeChild->parent()) && beforeChild->parent()->isAnonymous()) {
-        RenderElement* anonymousParent = beforeChild->parent();
-        while (anonymousParent && anonymousParent->parent() && anonymousParent->parent()->isAnonymous())
-            anonymousParent = anonymousParent->parent();
-        ASSERT(anonymousParent && anonymousParent->parent());
-        beforeChildAncestor = downcast<RenderBoxModelObject>(anonymousParent->parent());
-    } else {
-        ASSERT(!beforeChild || is<RenderBlock>(*beforeChild->parent()) || is<RenderInline>(*beforeChild->parent()));
-        if (beforeChild)
-            beforeChildAncestor = downcast<RenderBoxModelObject>(beforeChild->parent());
-        else {
-            if (RenderBoxModelObject* continuation = nextContinuation(flow))
-                beforeChildAncestor = continuation;
-            else
-                beforeChildAncestor = flow;
-        }
-    }
+    // In case of anonymous wrappers, the parent of the beforeChild is mostly irrelevant. What we need is the topmost wrapper.
+    if (!beforeChild) {
+        auto* continuation = nextContinuation(flow);
+        beforeChildAncestor = continuation ? continuation : flow;
+    } else if (canUseAsParentForContinuation(beforeChild->parent()))
+        beforeChildAncestor = downcast<RenderBoxModelObject>(beforeChild->parent());
+    else if (beforeChild->parent()) {
+        auto* parent = beforeChild->parent();
+        while (parent && parent->parent() && parent->parent()->isAnonymous())
+            parent = parent->parent();
+        ASSERT(parent && parent->parent());
+        beforeChildAncestor = downcast<RenderBoxModelObject>(parent->parent());
+    } else
+        ASSERT_NOT_REACHED();
 
     if (newChild->isFloatingOrOutOfFlowPositioned())
         return beforeChildAncestor->addChildIgnoringContinuation(newChild, beforeChild);
@@ -1207,7 +1214,7 @@ LayoutRect RenderInline::linesVisualOverflowBoundingBoxInRegion(const RenderRegi
 LayoutRect RenderInline::clippedOverflowRectForRepaint(const RenderLayerModelObject* repaintContainer) const
 {
     // Only first-letter renderers are allowed in here during layout. They mutate the tree triggering repaints.
-    ASSERT(!view().layoutStateEnabled() || style().styleType() == FIRST_LETTER);
+    ASSERT(!view().layoutStateEnabled() || style().styleType() == FIRST_LETTER || hasSelfPaintingLayer());
 
     if (!firstLineBoxIncludingCulling() && !continuation())
         return LayoutRect();
@@ -1631,10 +1638,10 @@ void RenderInline::paintOutline(PaintInfo& paintInfo, const LayoutPoint& paintOf
     rects.append(LayoutRect());
 
     Color outlineColor = styleToUse.visitedDependentColor(CSSPropertyOutlineColor);
-    bool useTransparencyLayer = outlineColor.hasAlpha();
+    bool useTransparencyLayer = !outlineColor.isOpaque();
     if (useTransparencyLayer) {
-        graphicsContext.beginTransparencyLayer(static_cast<float>(outlineColor.alpha()) / 255);
-        outlineColor = Color(outlineColor.red(), outlineColor.green(), outlineColor.blue());
+        graphicsContext.beginTransparencyLayer(outlineColor.alphaAsFloat());
+        outlineColor = outlineColor.opaqueColor();
     }
 
     for (unsigned i = 1; i < rects.size() - 1; i++)
@@ -1645,7 +1652,7 @@ void RenderInline::paintOutline(PaintInfo& paintInfo, const LayoutPoint& paintOf
 }
 
 void RenderInline::paintOutlineForLine(GraphicsContext& graphicsContext, const LayoutPoint& paintOffset,
-    const LayoutRect& previousLine, const LayoutRect& thisLine, const LayoutRect& nextLine, const Color outlineColor)
+    const LayoutRect& previousLine, const LayoutRect& thisLine, const LayoutRect& nextLine, const Color& outlineColor)
 {
     const auto& styleToUse = style();
     float outlineOffset = styleToUse.outlineOffset();
@@ -1811,8 +1818,7 @@ void RenderInline::addAnnotatedRegions(Vector<AnnotatedRegionValue>& regions)
         if (!container)
             container = this;
 
-        region.clip = region.bounds;
-        container->computeAbsoluteRepaintRect(region.clip);
+        region.clip = container->computeAbsoluteRepaintRect(region.bounds);
         if (region.clip.height() < 0) {
             region.clip.setHeight(0);
             region.clip.setWidth(0);

@@ -28,11 +28,10 @@
 
 #include "ClonedArguments.h"
 #include "DebuggerPrimitives.h"
-#include "Executable.h"
 #include "InlineCallFrame.h"
 #include "Interpreter.h"
 #include "JSCInlines.h"
-#include <wtf/DataLog.h>
+#include <wtf/text/StringBuilder.h>
 
 namespace JSC {
 
@@ -43,6 +42,11 @@ StackVisitor::StackVisitor(CallFrame* startFrame)
     if (startFrame) {
         m_frame.m_VMEntryFrame = startFrame->vm().topVMEntryFrame;
         topFrame = startFrame->vm().topCallFrame;
+        
+        if (topFrame && static_cast<void*>(m_frame.m_VMEntryFrame) == static_cast<void*>(topFrame)) {
+            topFrame = vmEntryRecord(m_frame.m_VMEntryFrame)->m_prevTopCallFrame;
+            m_frame.m_VMEntryFrame = vmEntryRecord(m_frame.m_VMEntryFrame)->m_prevTopVMEntryFrame;
+        }
     } else {
         m_frame.m_VMEntryFrame = 0;
         topFrame = 0;
@@ -81,8 +85,12 @@ void StackVisitor::gotoNextFrame()
 void StackVisitor::unwindToMachineCodeBlockFrame()
 {
 #if ENABLE(DFG_JIT)
-    while (m_frame.isInlinedFrame())
-        gotoNextFrame();
+    if (m_frame.isInlinedFrame()) {
+        CodeOrigin codeOrigin = m_frame.inlineCallFrame()->directCaller;
+        while (codeOrigin.inlineCallFrame)
+            codeOrigin = codeOrigin.inlineCallFrame->directCaller;
+        readNonInlinedFrame(m_frame.callFrame(), &codeOrigin);
+    }
 #endif
 }
 
@@ -387,7 +395,7 @@ void StackVisitor::Frame::dump(PrintStream& out, Indenter indent, std::function<
             " ", RawPointer(reinterpret_cast<void*>(locationRawBits)), "\n");
         out.print(indent, "codeBlock: ", RawPointer(codeBlock));
         if (codeBlock)
-            out.print(*codeBlock);
+            out.print(" ", *codeBlock);
         out.print("\n");
         if (codeBlock && !isInlined) {
             indent++;
@@ -420,6 +428,7 @@ void StackVisitor::Frame::dump(PrintStream& out, Indenter indent, std::function<
 
             indent--;
         }
+        out.print(indent, "vmEntryFrame: ", RawPointer(vmEntryFrame()), "\n");
         indent--;
     }
     out.print(indent, "}\n");

@@ -53,7 +53,7 @@ Ref<HTMLButtonElement> HTMLButtonElement::create(const QualifiedName& tagName, D
 
 void HTMLButtonElement::setType(const AtomicString& type)
 {
-    setAttribute(typeAttr, type);
+    setAttributeWithoutSynchronization(typeAttr, type);
 }
 
 RenderPtr<RenderElement> HTMLButtonElement::createElementRenderer(RenderStyle&& style, const RenderTreePosition&)
@@ -112,23 +112,23 @@ void HTMLButtonElement::parseAttribute(const QualifiedName& name, const AtomicSt
         HTMLFormControlElement::parseAttribute(name, value);
 }
 
-void HTMLButtonElement::defaultEventHandler(Event* event)
+void HTMLButtonElement::defaultEventHandler(Event& event)
 {
-    if (event->type() == eventNames().DOMActivateEvent && !isDisabledFormControl()) {
+    if (event.type() == eventNames().DOMActivateEvent && !isDisabledFormControl()) {
         if (form() && m_type == SUBMIT) {
             m_isActivatedSubmit = true;
             form()->prepareForSubmission(event);
-            event->setDefaultHandled();
+            event.setDefaultHandled();
             m_isActivatedSubmit = false; // Do this in case submission was canceled.
         }
         if (form() && m_type == RESET) {
             form()->reset();
-            event->setDefaultHandled();
+            event.setDefaultHandled();
         }
     }
 
-    if (is<KeyboardEvent>(*event)) {
-        KeyboardEvent& keyboardEvent = downcast<KeyboardEvent>(*event);
+    if (is<KeyboardEvent>(event)) {
+        KeyboardEvent& keyboardEvent = downcast<KeyboardEvent>(event);
         if (keyboardEvent.type() == eventNames().keydownEvent && keyboardEvent.keyIdentifier() == "U+0020") {
             setActive(true, true);
             // No setDefaultHandled() - IE dispatches a keypress in this case.
@@ -206,7 +206,7 @@ bool HTMLButtonElement::isURLAttribute(const Attribute& attribute) const
 
 const AtomicString& HTMLButtonElement::value() const
 {
-    return fastGetAttribute(valueAttr);
+    return attributeWithoutSynchronization(valueAttr);
 }
 
 bool HTMLButtonElement::computeWillValidate() const

@@ -107,30 +107,29 @@ void HTMLFrameOwnerElement::setSandboxFlags(SandboxFlags flags)
     m_sandboxFlags = flags;
 }
 
-bool HTMLFrameOwnerElement::isKeyboardFocusable(KeyboardEvent* event) const
+bool HTMLFrameOwnerElement::isKeyboardFocusable(KeyboardEvent& event) const
 {
     return m_contentFrame && HTMLElement::isKeyboardFocusable(event);
 }
 
-SVGDocument* HTMLFrameOwnerElement::getSVGDocument(ExceptionCode& ec) const
+ExceptionOr<Document&> HTMLFrameOwnerElement::getSVGDocument() const
 {
-    Document* document = contentDocument();
+    auto* document = contentDocument();
     if (is<SVGDocument>(document))
-        return downcast<SVGDocument>(document);
+        return *document;
     // Spec: http://www.w3.org/TR/SVG/struct.html#InterfaceGetSVGDocument
-    ec = NOT_SUPPORTED_ERR;
-    return nullptr;
+    return Exception { NOT_SUPPORTED_ERR };
 }
 
-void HTMLFrameOwnerElement::scheduleSetNeedsStyleRecalc(StyleChangeType changeType)
+void HTMLFrameOwnerElement::scheduleinvalidateStyleAndLayerComposition()
 {
     if (Style::postResolutionCallbacksAreSuspended()) {
         RefPtr<HTMLFrameOwnerElement> element = this;
-        Style::queuePostResolutionCallback([element, changeType]{
-            element->setNeedsStyleRecalc(changeType);
+        Style::queuePostResolutionCallback([element] {
+            element->invalidateStyleAndLayerComposition();
         });
     } else
-        setNeedsStyleRecalc(changeType);
+        invalidateStyleAndLayerComposition();
 }
 
 bool SubframeLoadingDisabler::canLoadFrame(HTMLFrameOwnerElement& owner)

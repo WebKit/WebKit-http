@@ -12,10 +12,10 @@ Test uncommon arguments for initialize()
 PASS text1.rotate.baseVal.initialize(30) threw exception TypeError: Argument 1 ('item') to SVGNumberList.initialize must be an instance of SVGNumber.
 PASS text1.rotate.baseVal.initialize('aString') threw exception TypeError: Argument 1 ('item') to SVGNumberList.initialize must be an instance of SVGNumber.
 PASS text1.rotate.baseVal.initialize(text1) threw exception TypeError: Argument 1 ('item') to SVGNumberList.initialize must be an instance of SVGNumber.
-PASS text1.rotate.baseVal.initialize(null) threw exception Error: SVG_WRONG_TYPE_ERR: DOM SVG Exception 0.
+PASS text1.rotate.baseVal.initialize(null) threw exception TypeError: Argument 1 ('item') to SVGNumberList.initialize must be an instance of SVGNumber.
 
 Test uncommon arguments for getItem()
-PASS text1.rotate.baseVal.getItem(30) threw exception Error: IndexSizeError: DOM Exception 1.
+PASS text1.rotate.baseVal.getItem(30) threw exception IndexSizeError (DOM Exception 1): The index is not in the allowed range..
 PASS text1.rotate.baseVal.getItem('aString') is text1.rotate.baseVal.getItem(0)
 PASS text1.rotate.baseVal.getItem(text1) is text1.rotate.baseVal.getItem(0)
 PASS text1.rotate.baseVal.getItem(null) is text1.rotate.baseVal.getItem(0)
@@ -52,7 +52,7 @@ PASS text1.getAttribute('rotate') is "90 180 270"
 PASS text1.rotate.baseVal.insertItemBefore(30, 0) threw exception TypeError: Argument 1 ('item') to SVGNumberList.insertItemBefore must be an instance of SVGNumber.
 PASS text1.rotate.baseVal.insertItemBefore('aString', 0) threw exception TypeError: Argument 1 ('item') to SVGNumberList.insertItemBefore must be an instance of SVGNumber.
 PASS text1.rotate.baseVal.insertItemBefore(text1, 0) threw exception TypeError: Argument 1 ('item') to SVGNumberList.insertItemBefore must be an instance of SVGNumber.
-PASS text1.rotate.baseVal.insertItemBefore(null, 0) threw exception Error: SVG_WRONG_TYPE_ERR: DOM SVG Exception 0.
+PASS text1.rotate.baseVal.insertItemBefore(null, 0) threw exception TypeError: Argument 1 ('item') to SVGNumberList.insertItemBefore must be an instance of SVGNumber.
 
 Set rotate='1 2 3 4' for text1
 PASS text1.setAttribute('rotate', '1 2 3 4') is undefined.
@@ -71,7 +71,7 @@ PASS text1.rotate.baseVal.replaceItem(null) threw exception TypeError: Not enoug
 PASS text1.rotate.baseVal.replaceItem(30, 0) threw exception TypeError: Argument 1 ('item') to SVGNumberList.replaceItem must be an instance of SVGNumber.
 PASS text1.rotate.baseVal.replaceItem('aString', 0) threw exception TypeError: Argument 1 ('item') to SVGNumberList.replaceItem must be an instance of SVGNumber.
 PASS text1.rotate.baseVal.replaceItem(text1, 0) threw exception TypeError: Argument 1 ('item') to SVGNumberList.replaceItem must be an instance of SVGNumber.
-PASS text1.rotate.baseVal.replaceItem(null, 0) threw exception Error: SVG_WRONG_TYPE_ERR: DOM SVG Exception 0.
+PASS text1.rotate.baseVal.replaceItem(null, 0) threw exception TypeError: Argument 1 ('item') to SVGNumberList.replaceItem must be an instance of SVGNumber.
 PASS text1.rotate.baseVal.replaceItem(text1.rotate.baseVal.getItem(0), 0) is text1.rotate.baseVal.getItem(0)
 PASS text1.rotate.baseVal.numberOfItems is 4
 PASS text1.rotate.baseVal.getItem(0).value is 1
@@ -97,7 +97,7 @@ Set rotate='1 2 3 4' for text1
 PASS text1.setAttribute('rotate', '1 2 3 4') is undefined.
 
 Test uncommon arguents for removeItem()
-PASS text1.rotate.baseVal.removeItem(30) threw exception Error: IndexSizeError: DOM Exception 1.
+PASS text1.rotate.baseVal.removeItem(30) threw exception IndexSizeError (DOM Exception 1): The index is not in the allowed range..
 PASS text1.rotate.baseVal.removeItem('aString').value is 1
 PASS text1.rotate.baseVal.numberOfItems is 3
 PASS text1.rotate.baseVal.getItem(0).value is 2
@@ -118,10 +118,10 @@ Test uncommon arguments for appendItem()
 PASS text1.rotate.baseVal.appendItem(30) threw exception TypeError: Argument 1 ('item') to SVGNumberList.appendItem must be an instance of SVGNumber.
 PASS text1.rotate.baseVal.appendItem('aString') threw exception TypeError: Argument 1 ('item') to SVGNumberList.appendItem must be an instance of SVGNumber.
 PASS text1.rotate.baseVal.appendItem(text1) threw exception TypeError: Argument 1 ('item') to SVGNumberList.appendItem must be an instance of SVGNumber.
-PASS text1.rotate.baseVal.appendItem(null) threw exception Error: SVG_WRONG_TYPE_ERR: DOM SVG Exception 0.
+PASS text1.rotate.baseVal.appendItem(null) threw exception TypeError: Argument 1 ('item') to SVGNumberList.appendItem must be an instance of SVGNumber.
 
 Testing animVal clear throws
-PASS text1.rotate.animVal.clear() threw exception Error: NoModificationAllowedError: DOM Exception 7.
+PASS text1.rotate.animVal.clear() threw exception NoModificationAllowedError (DOM Exception 7): The object can not be modified..
 PASS text1.rotate.baseVal.clear() is undefined.
 PASS successfullyParsed is true
 

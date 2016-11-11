@@ -28,7 +28,6 @@
 #include "BuiltinExecutables.h"
 
 #include "BuiltinNames.h"
-#include "Executable.h"
 #include "JSCInlines.h"
 #include "Parser.h"
 #include <wtf/NeverDestroyed.h>
@@ -53,7 +52,7 @@ UnlinkedFunctionExecutable* BuiltinExecutables::createDefaultConstructor(Constru
         break;
     case ConstructorKind::Base:
         return createExecutable(m_vm, makeSource(baseConstructorCode), name, constructorKind, ConstructAbility::CanConstruct);
-    case ConstructorKind::Derived:
+    case ConstructorKind::Extends:
         return createExecutable(m_vm, makeSource(derivedConstructorCode), name, constructorKind, ConstructAbility::CanConstruct);
     }
     ASSERT_NOT_REACHED();
@@ -80,7 +79,7 @@ UnlinkedFunctionExecutable* BuiltinExecutables::createExecutable(VM& vm, const S
     RefPtr<SourceProvider> sourceOverride = isParsingDefaultConstructor ? source.provider() : nullptr;
     std::unique_ptr<ProgramNode> program = parse<ProgramNode>(
         &vm, source, Identifier(), builtinMode,
-        JSParserStrictMode::NotStrict, SourceParseMode::ProgramMode, SuperBinding::NotNeeded, error,
+        JSParserStrictMode::NotStrict, JSParserScriptMode::Classic, SourceParseMode::ProgramMode, SuperBinding::NotNeeded, error,
         &positionBeforeLastNewline, constructorKind);
 
     if (!program) {
@@ -106,7 +105,7 @@ UnlinkedFunctionExecutable* BuiltinExecutables::createExecutable(VM& vm, const S
     RELEASE_ASSERT(metadata);
     metadata->overrideName(name);
     VariableEnvironment dummyTDZVariables;
-    UnlinkedFunctionExecutable* functionExecutable = UnlinkedFunctionExecutable::create(&vm, source, metadata, kind, constructAbility, dummyTDZVariables, DerivedContextType::None, WTFMove(sourceOverride));
+    UnlinkedFunctionExecutable* functionExecutable = UnlinkedFunctionExecutable::create(&vm, source, metadata, kind, constructAbility, JSParserScriptMode::Classic, dummyTDZVariables, DerivedContextType::None, WTFMove(sourceOverride));
     return functionExecutable;
 }
 

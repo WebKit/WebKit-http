@@ -63,41 +63,6 @@ void JSXMLHttpRequest::visitAdditionalChildren(SlotVisitor& visitor)
 
     if (Document* responseDocument = wrapped().optionalResponseXML())
         visitor.addOpaqueRoot(responseDocument);
-
-    if (ArrayBuffer* responseArrayBuffer = wrapped().optionalResponseArrayBuffer())
-        visitor.addOpaqueRoot(responseArrayBuffer);
-
-    if (Blob* responseBlob = wrapped().optionalResponseBlob())
-        visitor.addOpaqueRoot(responseBlob);
-}
-
-// Custom functions
-JSValue JSXMLHttpRequest::open(ExecState& state)
-{
-    if (state.argumentCount() < 2)
-        return state.vm().throwException(&state, createNotEnoughArgumentsError(&state));
-
-    const URL& url = wrapped().scriptExecutionContext()->completeURL(state.uncheckedArgument(1).toString(&state)->value(&state));
-    String method = state.uncheckedArgument(0).toString(&state)->value(&state);
-
-    ExceptionCode ec = 0;
-    if (state.argumentCount() >= 3) {
-        bool async = state.uncheckedArgument(2).toBoolean(&state);
-        if (!state.argument(3).isUndefined()) {
-            String user = valueToStringWithNullCheck(&state, state.uncheckedArgument(3));
-
-            if (!state.argument(4).isUndefined()) {
-                String password = valueToStringWithNullCheck(&state, state.uncheckedArgument(4));
-                wrapped().open(method, url, async, user, password, ec);
-            } else
-                wrapped().open(method, url, async, user, ec);
-        } else
-            wrapped().open(method, url, async, ec);
-    } else
-        wrapped().open(method, url, ec);
-
-    setDOMException(&state, ec);
-    return jsUndefined();
 }
 
 class SendFunctor {
@@ -140,52 +105,56 @@ JSValue JSXMLHttpRequest::send(ExecState& state)
 {
     InspectorInstrumentation::willSendXMLHttpRequest(wrapped().scriptExecutionContext(), wrapped().url());
 
-    ExceptionCode ec = 0;
-    JSValue val = state.argument(0);
-    if (val.isUndefinedOrNull())
-        wrapped().send(ec);
-    else if (val.inherits(JSDocument::info()))
-        wrapped().send(JSDocument::toWrapped(val), ec);
-    else if (val.inherits(JSBlob::info()))
-        wrapped().send(JSBlob::toWrapped(val), ec);
-    else if (val.inherits(JSDOMFormData::info()))
-        wrapped().send(JSDOMFormData::toWrapped(val), ec);
-    else if (val.inherits(JSArrayBuffer::info()))
-        wrapped().send(toArrayBuffer(val), ec);
-    else if (val.inherits(JSArrayBufferView::info())) {
-        RefPtr<ArrayBufferView> view = toArrayBufferView(val);
-        wrapped().send(view.get(), ec);
-    } else
-        wrapped().send(val.toString(&state)->value(&state), ec);
+    JSValue value = state.argument(0);
+    ExceptionOr<void> result;
+    if (value.isUndefinedOrNull())
+        result = wrapped().send();
+    else if (value.inherits(JSDocument::info()))
+        result = wrapped().send(*JSDocument::toWrapped(value));
+    else if (value.inherits(JSBlob::info()))
+        result = wrapped().send(*JSBlob::toWrapped(value));
+    else if (value.inherits(JSDOMFormData::info()))
+        result = wrapped().send(*JSDOMFormData::toWrapped(value));
+    else if (RefPtr<ArrayBuffer> arrayBuffer = toUnsharedArrayBuffer(value))
+        result = wrapped().send(*arrayBuffer);
+    else if (RefPtr<ArrayBufferView> arrayBufferView = toUnsharedArrayBufferView(value))
+        result = wrapped().send(*arrayBufferView);
+    else {
+        // FIXME: If toString raises an exception, should we exit before calling willSendXMLHttpRequest?
+        // FIXME: If toString raises an exception, should we exit before calling send?
+        result = wrapped().send(value.toString(&state)->value(&state));
+    }
 
-    // FIXME: This should probably use ShadowChicken so that we get the right frame even when it did
-    // a tail call.
+    // FIXME: This should probably use ShadowChicken so that we get the right frame even when it did a tail call.
     // https://bugs.webkit.org/show_bug.cgi?id=155688
     SendFunctor functor;
     state.iterate(functor);
     wrapped().setLastSendLineAndColumnNumber(functor.line(), functor.column());
     wrapped().setLastSendURL(functor.url());
-    setDOMException(&state, ec);
+
+    // FIXME: Is it correct to do this only after the paragraph code of code just above, or should we exit earlier?
+    if (UNLIKELY(result.hasException())) {
+        propagateException(state, result.releaseException());
+        return { };
+    }
+
     return jsUndefined();
 }
 
 JSValue JSXMLHttpRequest::responseText(ExecState& state) const
 {
-    ExceptionCode ec = 0;
-    String text = wrapped().responseText(ec);
-    if (ec) {
-        setDOMException(&state, ec);
-        return jsUndefined();
+    auto result = wrapped().responseText();
+
+    if (UNLIKELY(result.hasException())) {
+        propagateException(state, result.releaseException());
+        return { };
     }
-    return jsOwnedStringOrNull(&state, text);
+
+    return jsOwnedStringOrNull(&state, result.releaseReturnValue());
 }
 
-JSValue JSXMLHttpRequest::response(ExecState& state) const
+JSValue JSXMLHttpRequest::retrieveResponse(ExecState& state)
 {
-    // FIXME: Use CachedAttribute for other types than JSON as well.
-    if (m_response && wrapped().responseCacheIsValid())
-        return m_response.get();
-
     auto type = wrapped().responseType();
 
     switch (type) {
@@ -199,42 +168,37 @@ JSValue JSXMLHttpRequest::response(ExecState& state) const
     if (!wrapped().doneWithoutErrors())
         return jsNull();
 
+    JSValue value;
     switch (type) {
     case XMLHttpRequest::ResponseType::EmptyString:
     case XMLHttpRequest::ResponseType::Text:
         ASSERT_NOT_REACHED();
-        break;
+        return jsUndefined();
 
     case XMLHttpRequest::ResponseType::Json:
-        {
-            JSValue value = JSONParse(&state, wrapped().responseTextIgnoringResponseType());
-            if (!value)
-                value = jsNull();
-            m_response.set(state.vm(), this, value);
-            wrapped().didCacheResponseJSON();
-            return value;
-        }
+        value = JSONParse(&state, wrapped().responseTextIgnoringResponseType());
+        if (!value)
+            value = jsNull();
+        break;
 
-    case XMLHttpRequest::ResponseType::Document:
-        {
-            ExceptionCode ec = 0;
-            Document* document = wrapped().responseXML(ec);
-            if (ec) {
-                setDOMException(&state, ec);
-                return jsUndefined();
-            }
-            return toJS(&state, globalObject(), document);
-        }
-
-    case XMLHttpRequest::ResponseType::Blob:
-        return toJS(&state, globalObject(), wrapped().responseBlob());
-
-    case XMLHttpRequest::ResponseType::Arraybuffer:
-        return toJS(&state, globalObject(), wrapped().responseArrayBuffer());
+    case XMLHttpRequest::ResponseType::Document: {
+        auto document = wrapped().responseXML();
+        ASSERT(!document.hasException());
+        value = toJS(&state, globalObject(), document.releaseReturnValue());
+        break;
     }
 
-    ASSERT_NOT_REACHED();
-    return jsUndefined();
+    case XMLHttpRequest::ResponseType::Blob:
+        value = toJSNewlyCreated(&state, globalObject(), wrapped().createResponseBlob());
+        break;
+
+    case XMLHttpRequest::ResponseType::Arraybuffer:
+        value = toJS(&state, globalObject(), wrapped().createResponseArrayBuffer());
+        break;
+    }
+
+    wrapped().didCacheResponse();
+    return value;
 }
 
 } // namespace WebCore

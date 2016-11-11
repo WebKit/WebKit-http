@@ -34,7 +34,6 @@
 #include "HRTFDatabaseLoader.h"
 #include <algorithm>
 #include <wtf/MathExtras.h>
-#include <wtf/RefPtr.h>
 
 namespace WebCore {
 
@@ -46,7 +45,7 @@ const int UninitializedAzimuth = -1;
 const unsigned RenderingQuantum = 128;
 
 HRTFPanner::HRTFPanner(float sampleRate, HRTFDatabaseLoader* databaseLoader)
-    : Panner(PanningModelHRTF)
+    : Panner(PanningModelType::HRTF)
     , m_databaseLoader(databaseLoader)
     , m_sampleRate(sampleRate)
     , m_crossfadeSelection(CrossfadeSelection1)

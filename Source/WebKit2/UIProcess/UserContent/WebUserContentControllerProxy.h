@@ -32,10 +32,8 @@
 #include <wtf/HashCountedSet.h>
 #include <wtf/HashMap.h>
 #include <wtf/HashSet.h>
-#include <wtf/PassRefPtr.h>
 #include <wtf/Ref.h>
 #include <wtf/RefCounted.h>
-#include <wtf/Vector.h>
 #include <wtf/text/StringHash.h>
 
 namespace API {
@@ -58,6 +56,7 @@ namespace WebKit {
 
 class WebProcessProxy;
 class WebScriptMessageHandler;
+struct FrameInfoData;
 
 class WebUserContentControllerProxy : public API::ObjectImpl<API::Object::Type::UserContentController>, private IPC::MessageReceiver {
 public:
@@ -100,9 +99,9 @@ public:
 
 private:
     // IPC::MessageReceiver.
-    void didReceiveMessage(IPC::Connection&, IPC::MessageDecoder&) override;
+    void didReceiveMessage(IPC::Connection&, IPC::Decoder&) override;
 
-    void didPostMessage(IPC::Connection&, uint64_t pageID, uint64_t frameID, const WebCore::SecurityOriginData&, uint64_t messageHandlerID, const IPC::DataReference&);
+    void didPostMessage(IPC::Connection&, uint64_t pageID, const FrameInfoData&, uint64_t messageHandlerID, const IPC::DataReference&);
 
     void addUserContentWorldUse(API::UserContentWorld&);
     void removeUserContentWorldUses(API::UserContentWorld&, unsigned numberOfUsesToRemove);

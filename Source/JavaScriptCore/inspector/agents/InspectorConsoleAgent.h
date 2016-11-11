@@ -23,8 +23,7 @@
 * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef InspectorConsoleAgent_h
-#define InspectorConsoleAgent_h
+#pragma once
 
 #include "InspectorBackendDispatchers.h"
 #include "InspectorFrontendDispatchers.h"
@@ -58,6 +57,7 @@ public:
 
     void didCreateFrontendAndBackend(FrontendRouter*, BackendDispatcher*) override;
     void willDestroyFrontendAndBackend(DisconnectReason) override;
+    void discardValues() override;
 
     void enable(ErrorString&) override;
     void disable(ErrorString&) override;
@@ -92,5 +92,3 @@ protected:
 };
 
 } // namespace Inspector
-
-#endif // !defined(InspectorConsoleAgent_h)

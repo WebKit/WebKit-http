@@ -23,21 +23,17 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-// Introduced in DOM Level 2:
 [
-    JSCustomHeader,
+    ExportToWrappedFunction,
     GenerateIsReachable,
     ImplementationLacksVTable,
+    JSCustomHeader,
 ] interface MediaList {
-
-    [SetterRaisesException] attribute DOMString? mediaText;
+    [SetterMayThrowException, TreatNullAs=EmptyString] attribute DOMString mediaText;
     readonly attribute unsigned long length;
 
-    getter DOMString? item(optional unsigned long index = 0);
+    getter DOMString? item(unsigned long index);
 
-    // FIXME: Using "undefined" as default parameter value is wrong.
-    [RaisesException] void deleteMedium(optional DOMString oldMedium = "undefined");
-    [RaisesException] void appendMedium(optional DOMString newMedium = "undefined");
-
+    [MayThrowException] void deleteMedium(DOMString oldMedium);
+    [MayThrowException] void appendMedium(DOMString newMedium);
 };
-

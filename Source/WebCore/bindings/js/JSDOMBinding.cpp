@@ -24,7 +24,6 @@
 
 #include "CachedScript.h"
 #include "DOMConstructorWithDocument.h"
-#include "DOMStringList.h"
 #include "ExceptionCode.h"
 #include "ExceptionCodeDescription.h"
 #include "ExceptionHeaders.h"
@@ -33,13 +32,13 @@
 #include "HTMLParserIdioms.h"
 #include "IDBDatabaseException.h"
 #include "JSDOMConvert.h"
+#include "JSDOMPromise.h"
 #include "JSDOMWindowCustom.h"
 #include "JSExceptionBase.h"
 #include "SecurityOrigin.h"
 #include <bytecode/CodeBlock.h>
 #include <inspector/ScriptCallStack.h>
 #include <inspector/ScriptCallStackFactory.h>
-#include <interpreter/Interpreter.h>
 #include <runtime/DateInstance.h>
 #include <runtime/Error.h>
 #include <runtime/ErrorHandlingScope.h>
@@ -49,6 +48,8 @@
 #include <runtime/JSFunction.h>
 #include <stdarg.h>
 #include <wtf/MathExtras.h>
+#include <wtf/unicode/CharacterNames.h>
+#include <wtf/text/StringBuilder.h>
 
 using namespace JSC;
 using namespace Inspector;
@@ -61,13 +62,6 @@ STATIC_ASSERT_IS_TRIVIALLY_DESTRUCTIBLE(DOMConstructorWithDocument);
 void addImpureProperty(const AtomicString& propertyName)
 {
     JSDOMWindow::commonVM().addImpureProperty(propertyName);
-}
-
-JSValue jsStringOrNull(ExecState* exec, const String& s)
-{
-    if (s.isNull())
-        return jsNull();
-    return jsStringWithCache(exec, s);
 }
 
 JSValue jsOwnedStringOrNull(ExecState* exec, const String& s)
@@ -89,13 +83,6 @@ JSValue jsString(ExecState* exec, const URL& url)
     return jsStringWithCache(exec, url.string());
 }
 
-JSValue jsStringOrNull(ExecState* exec, const URL& url)
-{
-    if (url.isNull())
-        return jsNull();
-    return jsStringWithCache(exec, url.string());
-}
-
 JSValue jsStringOrUndefined(ExecState* exec, const URL& url)
 {
     if (url.isNull())
@@ -103,38 +90,46 @@ JSValue jsStringOrUndefined(ExecState* exec, const URL& url)
     return jsStringWithCache(exec, url.string());
 }
 
-String valueToStringWithNullCheck(ExecState* exec, JSValue value)
+static inline bool hasUnpairedSurrogate(StringView string)
 {
-    if (value.isNull())
-        return String();
-    return value.toString(exec)->value(exec);
+    // Fast path for 8-bit strings; they can't have any surrogates.
+    if (string.is8Bit())
+        return false;
+    for (auto codePoint : string.codePoints()) {
+        if (U_IS_SURROGATE(codePoint))
+            return true;
+    }
+    return false;
 }
 
-String valueToStringTreatingNullAsEmptyString(ExecState* exec, JSValue value)
+String valueToUSVString(ExecState* exec, JSValue value)
 {
-    if (value.isNull())
-        return emptyString();
-    return value.toString(exec)->value(exec);
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
+    String string = value.toWTFString(exec);
+    RETURN_IF_EXCEPTION(scope, { });
+
+    // Fast path for the case where there are no unpaired surrogates.
+    if (!hasUnpairedSurrogate(string))
+        return string;
+
+    // Slow path: http://heycam.github.io/webidl/#dfn-obtain-unicode
+    // Replaces unpaired surrogates with the replacement character.
+    StringBuilder result;
+    result.reserveCapacity(string.length());
+    StringView view { string };
+    for (auto codePoint : view.codePoints()) {
+        if (U_IS_SURROGATE(codePoint))
+            result.append(replacementCharacter);
+        else
+            result.append(codePoint);
+    }
+    return result.toString();
 }
 
-String valueToStringWithUndefinedOrNullCheck(ExecState* exec, JSValue value)
+JSValue jsDate(ExecState* exec, double value)
 {
-    if (value.isUndefinedOrNull())
-        return String();
-    return value.toString(exec)->value(exec);
-}
-
-JSValue jsDateOrNaN(ExecState* exec, double value)
-{
-    if (std::isnan(value))
-        return jsDoubleNumber(value);
-    return jsDateOrNull(exec, value);
-}
-
-JSValue jsDateOrNull(ExecState* exec, double value)
-{
-    if (!std::isfinite(value))
-        return jsNull();
     return DateInstance::create(exec->vm(), exec->lexicalGlobalObject()->dateStructure(), value);
 }
 
@@ -147,43 +142,37 @@ double valueToDate(ExecState* exec, JSValue value)
     return static_cast<DateInstance*>(value.toObject(exec))->internalNumber();
 }
 
-JSC::JSValue jsArray(JSC::ExecState* exec, JSDOMGlobalObject* globalObject, DOMStringList* stringList)
-{
-    JSC::MarkedArgumentBuffer list;
-    if (stringList) {
-        for (unsigned i = 0; i < stringList->length(); ++i)
-            list.append(jsStringWithCache(exec, stringList->item(i)));
-    }
-    return JSC::constructArray(exec, 0, globalObject, list);
-}
-
 void reportException(ExecState* exec, JSValue exceptionValue, CachedScript* cachedScript)
 {
-    RELEASE_ASSERT(exec->vm().currentThreadIsHoldingAPILock());
-    Exception* exception = jsDynamicCast<Exception*>(exceptionValue);
+    VM& vm = exec->vm();
+    RELEASE_ASSERT(vm.currentThreadIsHoldingAPILock());
+    auto* exception = jsDynamicDowncast<JSC::Exception*>(exceptionValue);
     if (!exception) {
-        exception = exec->lastException();
+        exception = vm.lastException();
         if (!exception)
-            exception = Exception::create(exec->vm(), exceptionValue, Exception::DoNotCaptureStack);
+            exception = JSC::Exception::create(exec->vm(), exceptionValue, JSC::Exception::DoNotCaptureStack);
     }
 
     reportException(exec, exception, cachedScript);
 }
 
-void reportException(ExecState* exec, Exception* exception, CachedScript* cachedScript, ExceptionDetails* exceptionDetails)
+void reportException(ExecState* exec, JSC::Exception* exception, CachedScript* cachedScript, ExceptionDetails* exceptionDetails)
 {
-    RELEASE_ASSERT(exec->vm().currentThreadIsHoldingAPILock());
+    VM& vm = exec->vm();
+    auto scope = DECLARE_CATCH_SCOPE(vm);
+
+    RELEASE_ASSERT(vm.currentThreadIsHoldingAPILock());
     if (isTerminatedExecutionException(exception))
         return;
 
     ErrorHandlingScope errorScope(exec->vm());
 
     RefPtr<ScriptCallStack> callStack(createScriptCallStackFromException(exec, exception, ScriptCallStack::maxCallStackSizeToCapture));
-    exec->clearException();
-    exec->clearLastException();
+    scope.clearException();
+    vm.clearLastException();
 
     JSDOMGlobalObject* globalObject = jsCast<JSDOMGlobalObject*>(exec->lexicalGlobalObject());
-    if (JSDOMWindow* window = jsDynamicCast<JSDOMWindow*>(globalObject)) {
+    if (JSDOMWindow* window = jsDynamicDowncast<JSDOMWindow*>(globalObject)) {
         if (!window->wrapped().isCurrentlyDisplayedInFrame())
             return;
     }
@@ -200,19 +189,19 @@ void reportException(ExecState* exec, Exception* exception, CachedScript* cached
     String errorMessage;
     JSValue exceptionValue = exception->value();
     if (ExceptionBase* exceptionBase = toExceptionBase(exceptionValue))
-        errorMessage = exceptionBase->message() + ": "  + exceptionBase->description();
+        errorMessage = exceptionBase->toString();
     else {
         // FIXME: <http://webkit.org/b/115087> Web Inspector: WebCore::reportException should not evaluate JavaScript handling exceptions
         // If this is a custom exception object, call toString on it to try and get a nice string representation for the exception.
-        if (ErrorInstance* error = jsDynamicCast<ErrorInstance*>(exceptionValue))
+        if (ErrorInstance* error = jsDynamicDowncast<ErrorInstance*>(exceptionValue))
             errorMessage = error->sanitizedToString(exec);
         else
             errorMessage = exceptionValue.toString(exec)->value(exec);
 
         // We need to clear any new exception that may be thrown in the toString() call above.
         // reportException() is not supposed to be making new exceptions.
-        exec->clearException();
-        exec->clearLastException();
+        scope.clearException();
+        vm.clearLastException();
     }
 
     ScriptExecutionContext* scriptExecutionContext = globalObject->scriptExecutionContext();
@@ -228,17 +217,14 @@ void reportException(ExecState* exec, Exception* exception, CachedScript* cached
 
 void reportCurrentException(ExecState* exec)
 {
-    Exception* exception = exec->exception();
-    exec->clearException();
+    VM& vm = exec->vm();
+    auto scope = DECLARE_CATCH_SCOPE(vm);
+    auto* exception = scope.exception();
+    scope.clearException();
     reportException(exec, exception);
 }
 
-#define TRY_TO_CREATE_EXCEPTION(interfaceName) \
-    case interfaceName##Type: \
-        errorObject = toJS(exec, globalObject, interfaceName::create(description)); \
-        break;
-
-static JSValue createDOMException(ExecState* exec, ExceptionCode ec, const String* message)
+static JSValue createDOMException(ExecState* exec, ExceptionCode ec, const String* message = nullptr)
 {
     if (!ec)
         return jsUndefined();
@@ -273,11 +259,24 @@ static JSValue createDOMException(ExecState* exec, ExceptionCode ec, const Strin
 
     JSValue errorObject;
     switch (description.type) {
-        DOM_EXCEPTION_INTERFACES_FOR_EACH(TRY_TO_CREATE_EXCEPTION)
+    case DOMCoreExceptionType:
 #if ENABLE(INDEXED_DATABASE)
     case IDBDatabaseExceptionType:
-        errorObject = toJS(exec, globalObject, DOMCoreException::createWithDescriptionAsMessage(description));
 #endif
+        errorObject = toJS(exec, globalObject, DOMCoreException::create(description));
+        break;
+    case FileExceptionType:
+        errorObject = toJS(exec, globalObject, FileException::create(description));
+        break;
+    case SQLExceptionType:
+        errorObject = toJS(exec, globalObject, SQLException::create(description));
+        break;
+    case SVGExceptionType:
+        errorObject = toJS(exec, globalObject, SVGException::create(description));
+        break;
+    case XPathExceptionType:
+        errorObject = toJS(exec, globalObject, XPathException::create(description));
+        break;
     }
     
     ASSERT(errorObject);
@@ -290,54 +289,76 @@ JSValue createDOMException(ExecState* exec, ExceptionCode ec, const String& mess
     return createDOMException(exec, ec, &message);
 }
 
-JSValue createDOMException(ExecState* exec, ExceptionCode ec)
+JSValue createDOMException(ExecState& state, Exception&& exception)
 {
-    return createDOMException(exec, ec, nullptr);
+    return createDOMException(&state, exception.code(), exception.releaseMessage());
+}
+
+ALWAYS_INLINE static void throwDOMException(ExecState* exec, ThrowScope& throwScope, ExceptionCode ec)
+{
+    ASSERT(ec && !throwScope.exception());
+    throwException(exec, throwScope, createDOMException(exec, ec));
+}
+
+void propagateExceptionSlowPath(JSC::ExecState& state, JSC::ThrowScope& throwScope, Exception&& exception)
+{
+    ASSERT(!throwScope.exception());
+    throwException(&state, throwScope, createDOMException(state, WTFMove(exception)));
+}
+
+void propagateException(JSC::ExecState& state, Exception&& exception)
+{
+    auto throwScope = DECLARE_THROW_SCOPE(state.vm());
+    if (!throwScope.exception())
+        propagateExceptionSlowPath(state, throwScope, WTFMove(exception));
+}
+
+void setDOMExceptionSlow(ExecState* exec, ThrowScope& throwScope, ExceptionCode ec)
+{
+    throwDOMException(exec, throwScope, ec);
 }
 
 void setDOMException(ExecState* exec, ExceptionCode ec)
 {
-    if (!ec || exec->hadException())
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
+    if (!ec || scope.exception())
         return;
 
-    exec->vm().throwException(exec, createDOMException(exec, ec));
+    throwDOMException(exec, scope, ec);
 }
 
-void setDOMException(JSC::ExecState* exec, const ExceptionCodeWithMessage& ec)
+bool hasIteratorMethod(JSC::ExecState& state, JSC::JSValue value)
 {
-    if (!ec.code || exec->hadException())
-        return;
+    auto& vm = state.vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
 
-    exec->vm().throwException(exec, createDOMException(exec, ec.code, ec.message));
-}
-
-#undef TRY_TO_CREATE_EXCEPTION
-
-bool shouldAllowAccessToNode(ExecState* exec, Node* node)
-{
-    return BindingSecurity::shouldAllowAccessToNode(exec, node);
-}
-
-bool shouldAllowAccessToFrame(ExecState* exec, Frame* target)
-{
-    return BindingSecurity::shouldAllowAccessToFrame(exec, target);
-}
-
-bool shouldAllowAccessToFrame(ExecState* exec, Frame* frame, String& message)
-{
-    if (!frame)
+    if (!value.isObject())
         return false;
-    if (BindingSecurity::shouldAllowAccessToFrame(exec, frame, DoNotReportSecurityError))
+
+    JSObject* object = JSC::asObject(value);
+    CallData callData;
+    CallType callType;
+    JSValue applyMethod = object->getMethod(&state, callData, callType, vm.propertyNames->iteratorSymbol, ASCIILiteral("Symbol.iterator property should be callable"));
+    RETURN_IF_EXCEPTION(scope, false);
+
+    return !applyMethod.isUndefined();
+}
+
+bool BindingSecurity::shouldAllowAccessToFrame(ExecState& state, Frame& frame, String& message)
+{
+    if (BindingSecurity::shouldAllowAccessToFrame(&state, &frame, DoNotReportSecurityError))
         return true;
-    message = frame->document()->domWindow()->crossDomainAccessErrorMessage(activeDOMWindow(exec));
+    message = frame.document()->domWindow()->crossDomainAccessErrorMessage(activeDOMWindow(&state));
     return false;
 }
 
-bool shouldAllowAccessToDOMWindow(ExecState* exec, DOMWindow& target, String& message)
+bool BindingSecurity::shouldAllowAccessToDOMWindow(ExecState& state, DOMWindow& globalObject, String& message)
 {
-    if (BindingSecurity::shouldAllowAccessToDOMWindow(exec, target, DoNotReportSecurityError))
+    if (BindingSecurity::shouldAllowAccessToDOMWindow(&state, globalObject, DoNotReportSecurityError))
         return true;
-    message = target.crossDomainAccessErrorMessage(activeDOMWindow(exec));
+    message = globalObject.crossDomainAccessErrorMessage(activeDOMWindow(&state));
     return false;
 }
 
@@ -373,13 +394,16 @@ static String rangeErrorString(double value, double min, double max)
 
 static double enforceRange(ExecState& state, double x, double minimum, double maximum)
 {
+    VM& vm = state.vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     if (std::isnan(x) || std::isinf(x)) {
-        state.vm().throwException(&state, createTypeError(&state, rangeErrorString(x, minimum, maximum)));
+        throwTypeError(&state, scope, rangeErrorString(x, minimum, maximum));
         return 0;
     }
     x = trunc(x);
     if (x < minimum || x > maximum) {
-        state.vm().throwException(&state, createTypeError(&state, rangeErrorString(x, minimum, maximum)));
+        throwTypeError(&state, scope, rangeErrorString(x, minimum, maximum));
         return 0;
     }
     return x;
@@ -418,6 +442,9 @@ struct IntTypeLimits<uint16_t> {
 template <typename T>
 static inline T toSmallerInt(ExecState& state, JSValue value, IntegerConversionConfiguration configuration)
 {
+    VM& vm = state.vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     static_assert(std::is_signed<T>::value && std::is_integral<T>::value, "Should only be used for signed integral types");
 
     typedef IntTypeLimits<T> LimitsTrait;
@@ -427,12 +454,12 @@ static inline T toSmallerInt(ExecState& state, JSValue value, IntegerConversionC
         if (d >= LimitsTrait::minValue && d <= LimitsTrait::maxValue)
             return static_cast<T>(d);
         switch (configuration) {
-        case NormalConversion:
+        case IntegerConversionConfiguration::Normal:
             break;
-        case EnforceRange:
-            throwTypeError(&state);
+        case IntegerConversionConfiguration::EnforceRange:
+            throwTypeError(&state, scope);
             return 0;
-        case Clamp:
+        case IntegerConversionConfiguration::Clamp:
             return d < LimitsTrait::minValue ? LimitsTrait::minValue : LimitsTrait::maxValue;
         }
         d %= LimitsTrait::numberOfValues;
@@ -440,15 +467,14 @@ static inline T toSmallerInt(ExecState& state, JSValue value, IntegerConversionC
     }
 
     double x = value.toNumber(&state);
-    if (UNLIKELY(state.hadException()))
-        return 0;
+    RETURN_IF_EXCEPTION(scope, 0);
 
     switch (configuration) {
-    case NormalConversion:
+    case IntegerConversionConfiguration::Normal:
         break;
-    case EnforceRange:
+    case IntegerConversionConfiguration::EnforceRange:
         return enforceRange(state, x, LimitsTrait::minValue, LimitsTrait::maxValue);
-    case Clamp:
+    case IntegerConversionConfiguration::Clamp:
         return std::isnan(x) ? 0 : clampTo<T>(x);
     }
 
@@ -464,6 +490,9 @@ static inline T toSmallerInt(ExecState& state, JSValue value, IntegerConversionC
 template <typename T>
 static inline T toSmallerUInt(ExecState& state, JSValue value, IntegerConversionConfiguration configuration)
 {
+    VM& vm = state.vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     static_assert(std::is_unsigned<T>::value && std::is_integral<T>::value, "Should only be used for unsigned integral types");
 
     typedef IntTypeLimits<T> LimitsTrait;
@@ -473,26 +502,25 @@ static inline T toSmallerUInt(ExecState& state, JSValue value, IntegerConversion
         if (d <= LimitsTrait::maxValue)
             return static_cast<T>(d);
         switch (configuration) {
-        case NormalConversion:
+        case IntegerConversionConfiguration::Normal:
             return static_cast<T>(d);
-        case EnforceRange:
-            throwTypeError(&state);
+        case IntegerConversionConfiguration::EnforceRange:
+            throwTypeError(&state, scope);
             return 0;
-        case Clamp:
+        case IntegerConversionConfiguration::Clamp:
             return LimitsTrait::maxValue;
         }
     }
 
     double x = value.toNumber(&state);
-    if (UNLIKELY(state.hadException()))
-        return 0;
+    RETURN_IF_EXCEPTION(scope, 0);
 
     switch (configuration) {
-    case NormalConversion:
+    case IntegerConversionConfiguration::Normal:
         break;
-    case EnforceRange:
+    case IntegerConversionConfiguration::EnforceRange:
         return enforceRange(state, x, 0, LimitsTrait::maxValue);
-    case Clamp:
+    case IntegerConversionConfiguration::Clamp:
         return std::isnan(x) ? 0 : clampTo<T>(x);
     }
 
@@ -505,77 +533,79 @@ static inline T toSmallerUInt(ExecState& state, JSValue value, IntegerConversion
 
 int8_t toInt8EnforceRange(JSC::ExecState& state, JSValue value)
 {
-    return toSmallerInt<int8_t>(state, value, EnforceRange);
+    return toSmallerInt<int8_t>(state, value, IntegerConversionConfiguration::EnforceRange);
 }
 
 uint8_t toUInt8EnforceRange(JSC::ExecState& state, JSValue value)
 {
-    return toSmallerUInt<uint8_t>(state, value, EnforceRange);
+    return toSmallerUInt<uint8_t>(state, value, IntegerConversionConfiguration::EnforceRange);
 }
 
 int8_t toInt8Clamp(JSC::ExecState& state, JSValue value)
 {
-    return toSmallerInt<int8_t>(state, value, Clamp);
+    return toSmallerInt<int8_t>(state, value, IntegerConversionConfiguration::Clamp);
 }
 
 uint8_t toUInt8Clamp(JSC::ExecState& state, JSValue value)
 {
-    return toSmallerUInt<uint8_t>(state, value, Clamp);
+    return toSmallerUInt<uint8_t>(state, value, IntegerConversionConfiguration::Clamp);
 }
 
 // http://www.w3.org/TR/WebIDL/#es-byte
 int8_t toInt8(ExecState& state, JSValue value)
 {
-    return toSmallerInt<int8_t>(state, value, NormalConversion);
+    return toSmallerInt<int8_t>(state, value, IntegerConversionConfiguration::Normal);
 }
 
 // http://www.w3.org/TR/WebIDL/#es-octet
 uint8_t toUInt8(ExecState& state, JSValue value)
 {
-    return toSmallerUInt<uint8_t>(state, value, NormalConversion);
+    return toSmallerUInt<uint8_t>(state, value, IntegerConversionConfiguration::Normal);
 }
 
 int16_t toInt16EnforceRange(ExecState& state, JSValue value)
 {
-    return toSmallerInt<int16_t>(state, value, EnforceRange);
+    return toSmallerInt<int16_t>(state, value, IntegerConversionConfiguration::EnforceRange);
 }
 
 uint16_t toUInt16EnforceRange(ExecState& state, JSValue value)
 {
-    return toSmallerUInt<uint16_t>(state, value, EnforceRange);
+    return toSmallerUInt<uint16_t>(state, value, IntegerConversionConfiguration::EnforceRange);
 }
 
 int16_t toInt16Clamp(ExecState& state, JSValue value)
 {
-    return toSmallerInt<int16_t>(state, value, Clamp);
+    return toSmallerInt<int16_t>(state, value, IntegerConversionConfiguration::Clamp);
 }
 
 uint16_t toUInt16Clamp(ExecState& state, JSValue value)
 {
-    return toSmallerUInt<uint16_t>(state, value, Clamp);
+    return toSmallerUInt<uint16_t>(state, value, IntegerConversionConfiguration::Clamp);
 }
 
 // http://www.w3.org/TR/WebIDL/#es-short
 int16_t toInt16(ExecState& state, JSValue value)
 {
-    return toSmallerInt<int16_t>(state, value, NormalConversion);
+    return toSmallerInt<int16_t>(state, value, IntegerConversionConfiguration::Normal);
 }
 
 // http://www.w3.org/TR/WebIDL/#es-unsigned-short
 uint16_t toUInt16(ExecState& state, JSValue value)
 {
-    return toSmallerUInt<uint16_t>(state, value, NormalConversion);
+    return toSmallerUInt<uint16_t>(state, value, IntegerConversionConfiguration::Normal);
 }
 
 // http://www.w3.org/TR/WebIDL/#es-long
 int32_t toInt32EnforceRange(ExecState& state, JSValue value)
 {
+    VM& vm = state.vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     if (value.isInt32())
         return value.asInt32();
 
     double x = value.toNumber(&state);
-    if (UNLIKELY(state.hadException()))
-        return 0;
+    RETURN_IF_EXCEPTION(scope, 0);
     return enforceRange(state, x, kMinInt32, kMaxInt32);
 }
 
@@ -600,28 +630,34 @@ uint32_t toUInt32Clamp(ExecState& state, JSValue value)
 // http://www.w3.org/TR/WebIDL/#es-unsigned-long
 uint32_t toUInt32EnforceRange(ExecState& state, JSValue value)
 {
+    VM& vm = state.vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     if (value.isUInt32())
         return value.asUInt32();
 
     double x = value.toNumber(&state);
-    if (UNLIKELY(state.hadException()))
-        return 0;
+    RETURN_IF_EXCEPTION(scope, 0);
     return enforceRange(state, x, 0, kMaxUInt32);
 }
 
 int64_t toInt64EnforceRange(ExecState& state, JSC::JSValue value)
 {
+    VM& vm = state.vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     double x = value.toNumber(&state);
-    if (UNLIKELY(state.hadException()))
-        return 0;
+    RETURN_IF_EXCEPTION(scope, 0);
     return enforceRange(state, x, -kJSMaxInteger, kJSMaxInteger);
 }
 
 uint64_t toUInt64EnforceRange(ExecState& state, JSC::JSValue value)
 {
+    VM& vm = state.vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     double x = value.toNumber(&state);
-    if (UNLIKELY(state.hadException()))
-        return 0;
+    RETURN_IF_EXCEPTION(scope, 0);
     return enforceRange(state, x, 0, kJSMaxInteger);
 }
 
@@ -703,8 +739,11 @@ DOMWindow& firstDOMWindow(ExecState* exec)
     return asJSDOMWindow(exec->vmEntryGlobalObject())->wrapped();
 }
 
-static inline bool canAccessDocument(JSC::ExecState* state, Document* targetDocument, SecurityReportingOption reportingOption = ReportSecurityError)
+static inline bool canAccessDocument(JSC::ExecState* state, Document* targetDocument, SecurityReportingOption reportingOption)
 {
+    VM& vm = state->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     if (!targetDocument)
         return false;
 
@@ -713,8 +752,16 @@ static inline bool canAccessDocument(JSC::ExecState* state, Document* targetDocu
     if (active.document()->securityOrigin()->canAccess(targetDocument->securityOrigin()))
         return true;
 
-    if (reportingOption == ReportSecurityError)
+    switch (reportingOption) {
+    case ThrowSecurityError:
+        throwSecurityError(*state, scope, targetDocument->domWindow()->crossDomainAccessErrorMessage(active));
+        break;
+    case LogSecurityError:
         printErrorMessageForFrame(targetDocument->frame(), targetDocument->domWindow()->crossDomainAccessErrorMessage(active));
+        break;
+    case DoNotReportSecurityError:
+        break;
+    }
 
     return false;
 }
@@ -729,14 +776,14 @@ bool BindingSecurity::shouldAllowAccessToFrame(JSC::ExecState* state, Frame* tar
     return target && canAccessDocument(state, target->document(), reportingOption);
 }
 
-bool BindingSecurity::shouldAllowAccessToNode(JSC::ExecState* state, Node* target)
+bool BindingSecurity::shouldAllowAccessToNode(JSC::ExecState& state, Node* target)
 {
-    return target && canAccessDocument(state, &target->document());
+    return !target || canAccessDocument(&state, &target->document(), LogSecurityError);
 }
     
-static EncodedJSValue throwTypeError(JSC::ExecState& state, const String& errorMessage)
+static EncodedJSValue throwTypeError(JSC::ExecState& state, JSC::ThrowScope& scope, const String& errorMessage)
 {
-    return throwVMError(&state, createTypeError(&state, errorMessage));
+    return throwVMTypeError(&state, scope, errorMessage);
 }
 
 static void appendArgumentMustBe(StringBuilder& builder, unsigned argumentIndex, const char* argumentName, const char* interfaceName, const char* functionName)
@@ -771,86 +818,129 @@ void reportDeprecatedSetterError(JSC::ExecState& state, const char* interfaceNam
     context.addConsoleMessage(MessageSource::JS, MessageLevel::Error, makeString("Deprecated attempt to set property '", attributeName, "' on a non-", interfaceName, " object."));
 }
 
-void throwNotSupportedError(JSC::ExecState& state, const char* message)
+void throwNotSupportedError(JSC::ExecState& state, JSC::ThrowScope& scope, const char* message)
 {
-    ASSERT(!state.hadException());
+    ASSERT(!scope.exception());
     String messageString(message);
-    state.vm().throwException(&state, createDOMException(&state, NOT_SUPPORTED_ERR, &messageString));
+    throwException(&state, scope, createDOMException(&state, NOT_SUPPORTED_ERR, &messageString));
 }
 
-void throwInvalidStateError(JSC::ExecState& state, const char* message)
+void throwInvalidStateError(JSC::ExecState& state, JSC::ThrowScope& scope, const char* message)
 {
-    ASSERT(!state.hadException());
+    ASSERT(!scope.exception());
     String messageString(message);
-    state.vm().throwException(&state, createDOMException(&state, INVALID_STATE_ERR, &messageString));
+    throwException(&state, scope, createDOMException(&state, INVALID_STATE_ERR, &messageString));
 }
 
-JSC::EncodedJSValue throwArgumentMustBeEnumError(JSC::ExecState& state, unsigned argumentIndex, const char* argumentName, const char* functionInterfaceName, const char* functionName, const char* expectedValues)
+void throwSecurityError(JSC::ExecState& state, JSC::ThrowScope& scope, const String& message)
+{
+    ASSERT(!scope.exception());
+    throwException(&state, scope, createDOMException(&state, SECURITY_ERR, message));
+}
+
+JSC::EncodedJSValue throwArgumentMustBeEnumError(JSC::ExecState& state, JSC::ThrowScope& scope, unsigned argumentIndex, const char* argumentName, const char* functionInterfaceName, const char* functionName, const char* expectedValues)
 {
     StringBuilder builder;
     appendArgumentMustBe(builder, argumentIndex, argumentName, functionInterfaceName, functionName);
     builder.appendLiteral("one of: ");
     builder.append(expectedValues);
-    return throwTypeError(state, builder.toString());
+    return throwVMTypeError(&state, scope, builder.toString());
 }
 
-JSC::EncodedJSValue throwArgumentMustBeFunctionError(JSC::ExecState& state, unsigned argumentIndex, const char* argumentName, const char* interfaceName, const char* functionName)
+JSC::EncodedJSValue throwArgumentMustBeFunctionError(JSC::ExecState& state, JSC::ThrowScope& scope, unsigned argumentIndex, const char* argumentName, const char* interfaceName, const char* functionName)
 {
     StringBuilder builder;
     appendArgumentMustBe(builder, argumentIndex, argumentName, interfaceName, functionName);
     builder.appendLiteral("a function");
-    return throwTypeError(state, builder.toString());
+    return throwVMTypeError(&state, scope, builder.toString());
 }
 
-JSC::EncodedJSValue throwArgumentTypeError(JSC::ExecState& state, unsigned argumentIndex, const char* argumentName, const char* functionInterfaceName, const char* functionName, const char* expectedType)
+JSC::EncodedJSValue throwArgumentTypeError(JSC::ExecState& state, JSC::ThrowScope& scope, unsigned argumentIndex, const char* argumentName, const char* functionInterfaceName, const char* functionName, const char* expectedType)
 {
     StringBuilder builder;
     appendArgumentMustBe(builder, argumentIndex, argumentName, functionInterfaceName, functionName);
     builder.appendLiteral("an instance of ");
     builder.append(expectedType);
-    return throwTypeError(state, builder.toString());
+    return throwVMTypeError(&state, scope, builder.toString());
 }
 
-void throwArrayElementTypeError(JSC::ExecState& state)
+void throwArrayElementTypeError(JSC::ExecState& state, JSC::ThrowScope& scope)
 {
-    throwTypeError(state, "Invalid Array element type");
+    throwTypeError(state, scope, ASCIILiteral("Invalid Array element type"));
 }
 
-void throwAttributeTypeError(JSC::ExecState& state, const char* interfaceName, const char* attributeName, const char* expectedType)
+void throwAttributeTypeError(JSC::ExecState& state, JSC::ThrowScope& scope, const char* interfaceName, const char* attributeName, const char* expectedType)
 {
-    throwTypeError(state, makeString("The ", interfaceName, '.', attributeName, " attribute must be an instance of ", expectedType));
+    throwTypeError(state, scope, makeString("The ", interfaceName, '.', attributeName, " attribute must be an instance of ", expectedType));
 }
 
-JSC::EncodedJSValue throwConstructorDocumentUnavailableError(JSC::ExecState& state, const char* interfaceName)
+JSC::EncodedJSValue throwRequiredMemberTypeError(JSC::ExecState& state, JSC::ThrowScope& scope, const char* memberName, const char* dictionaryName, const char* expectedType)
 {
-    // FIXME: This is confusing exception wording. Can we reword to be clearer and more specific?
-    return throwVMError(&state, createReferenceError(&state, makeString(interfaceName, " constructor associated document is unavailable")));
+    StringBuilder builder;
+    builder.appendLiteral("Member ");
+    builder.append(dictionaryName);
+    builder.append('.');
+    builder.append(memberName);
+    builder.appendLiteral(" is required and must be an instance of ");
+    builder.append(expectedType);
+    return throwVMTypeError(&state, scope, builder.toString());
 }
 
-JSC::EncodedJSValue throwGetterTypeError(JSC::ExecState& state, const char* interfaceName, const char* attributeName)
+JSC::EncodedJSValue throwConstructorScriptExecutionContextUnavailableError(JSC::ExecState& state, JSC::ThrowScope& scope, const char* interfaceName)
 {
-    return throwTypeError(state, makeString("The ", interfaceName, '.', attributeName, " getter can only be used on instances of ", interfaceName));
+    return throwVMError(&state, scope, createReferenceError(&state, makeString(interfaceName, " constructor associated execution context is unavailable")));
 }
 
-void throwSequenceTypeError(JSC::ExecState& state)
+void throwSequenceTypeError(JSC::ExecState& state, JSC::ThrowScope& scope)
 {
-    throwTypeError(state, ASCIILiteral("Value is not a sequence"));
+    throwTypeError(state, scope, ASCIILiteral("Value is not a sequence"));
 }
 
-void throwNonFiniteTypeError(ExecState& state)
+void throwNonFiniteTypeError(ExecState& state, JSC::ThrowScope& scope)
 {
-    throwTypeError(&state, ASCIILiteral("The provided value is non-finite"));
+    throwTypeError(&state, scope, ASCIILiteral("The provided value is non-finite"));
 }
 
-bool throwSetterTypeError(JSC::ExecState& state, const char* interfaceName, const char* attributeName)
+String makeGetterTypeErrorMessage(const char* interfaceName, const char* attributeName)
 {
-    throwTypeError(state, makeString("The ", interfaceName, '.', attributeName, " setter can only be used on instances of ", interfaceName));
+    return makeString("The ", interfaceName, '.', attributeName, " getter can only be used on instances of ", interfaceName);
+}
+
+JSC::EncodedJSValue throwGetterTypeError(JSC::ExecState& state, JSC::ThrowScope& scope, const char* interfaceName, const char* attributeName)
+{
+    return throwVMTypeError(&state, scope, makeGetterTypeErrorMessage(interfaceName, attributeName));
+}
+
+JSC::EncodedJSValue rejectPromiseWithGetterTypeError(JSC::ExecState& state, const char* interfaceName, const char* attributeName)
+{
+    return createRejectedPromiseWithTypeError(state, makeGetterTypeErrorMessage(interfaceName, attributeName));
+}
+
+bool throwSetterTypeError(JSC::ExecState& state, JSC::ThrowScope& scope, const char* interfaceName, const char* attributeName)
+{
+    throwTypeError(state, scope, makeString("The ", interfaceName, '.', attributeName, " setter can only be used on instances of ", interfaceName));
     return false;
 }
 
-EncodedJSValue throwThisTypeError(JSC::ExecState& state, const char* interfaceName, const char* functionName)
+String makeThisTypeErrorMessage(const char* interfaceName, const char* functionName)
 {
-    return throwTypeError(state, makeString("Can only call ", interfaceName, '.', functionName, " on instances of ", interfaceName));
+    return makeString("Can only call ", interfaceName, '.', functionName, " on instances of ", interfaceName);
+}
+
+EncodedJSValue throwThisTypeError(JSC::ExecState& state, JSC::ThrowScope& scope, const char* interfaceName, const char* functionName)
+{
+    return throwTypeError(state, scope, makeThisTypeErrorMessage(interfaceName, functionName));
+}
+
+JSC::EncodedJSValue rejectPromiseWithThisTypeError(DeferredPromise& promise, const char* interfaceName, const char* methodName)
+{
+    promise.reject(TypeError, makeThisTypeErrorMessage(interfaceName, methodName));
+    return JSValue::encode(jsUndefined());
+}
+
+JSC::EncodedJSValue rejectPromiseWithThisTypeError(JSC::ExecState& state, const char* interfaceName, const char* methodName)
+{
+    return createRejectedPromiseWithTypeError(state, makeThisTypeErrorMessage(interfaceName, methodName));
 }
 
 void callFunctionWithCurrentArguments(JSC::ExecState& state, JSC::JSObject& thisObject, JSC::JSFunction& function)
@@ -875,7 +965,9 @@ void DOMConstructorJSBuiltinObject::visitChildren(JSC::JSCell* cell, JSC::SlotVi
 
 static EncodedJSValue JSC_HOST_CALL callThrowTypeError(ExecState* exec)
 {
-    throwTypeError(exec, ASCIILiteral("Constructor requires 'new' operator"));
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+    throwTypeError(exec, scope, ASCIILiteral("Constructor requires 'new' operator"));
     return JSValue::encode(jsNull());
 }
 

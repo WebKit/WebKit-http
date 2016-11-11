@@ -1,3 +1,43 @@
+2016-10-26  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: remove unused bool return value from FrontendChannel::sendMessageToFrontend
+        https://bugs.webkit.org/show_bug.cgi?id=164046
+
+        Reviewed by Joseph Pecoraro.
+
+        * WebCoreSupport/WebInspectorClientCF.cpp:
+        (WebInspectorClient::sendMessageToFrontend):
+
+2016-10-11  Alex Christensen  <achristensen@webkit.org>
+
+        Remove dead networking code
+        https://bugs.webkit.org/show_bug.cgi?id=163263
+
+        Reviewed by Daniel Bates.
+
+        * WebCoreSupport/WebInspectorClientCF.cpp:
+
+2016-08-15  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Remove unused includes of wtf headers
+        https://bugs.webkit.org/show_bug.cgi?id=160839
+
+        Reviewed by Alex Christensen.
+
+        * WebCoreSupport/WebInspectorClientCF.cpp:
+
+2016-07-14  Chris Dumez  <cdumez@apple.com>
+
+        Use emptyString() instead of "" when possible
+        https://bugs.webkit.org/show_bug.cgi?id=159789
+
+        Reviewed by Alex Christensen.
+
+        Use emptyString() instead of "" when possible to reduce String allocations.
+
+        * WebCoreSupport/WebInspectorClientCF.cpp:
+        (populateSetting):
+
 2015-05-01  Martin Robinson  <mrobinson@igalia.com>
 
         USE(...) macro should expect unprefixed variables

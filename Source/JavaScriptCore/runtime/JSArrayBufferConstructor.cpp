@@ -26,6 +26,7 @@
 #include "config.h"
 #include "JSArrayBufferConstructor.h"
 
+#include "BuiltinNames.h"
 #include "Error.h"
 #include "ExceptionHelpers.h"
 #include "GetterSetter.h"
@@ -43,27 +44,31 @@ const ClassInfo JSArrayBufferConstructor::s_info = {
     CREATE_METHOD_TABLE(JSArrayBufferConstructor)
 };
 
-JSArrayBufferConstructor::JSArrayBufferConstructor(VM& vm, Structure* structure)
+JSArrayBufferConstructor::JSArrayBufferConstructor(VM& vm, Structure* structure, ArrayBufferSharingMode sharingMode)
     : Base(vm, structure)
+    , m_sharingMode(sharingMode)
 {
 }
 
 void JSArrayBufferConstructor::finishCreation(VM& vm, JSArrayBufferPrototype* prototype, GetterSetter* speciesSymbol)
 {
-    Base::finishCreation(vm, ASCIILiteral("ArrayBuffer"));
+    Base::finishCreation(vm, ASCIILiteral(arrayBufferSharingModeName(m_sharingMode)));
     putDirectWithoutTransition(vm, vm.propertyNames->prototype, prototype, DontEnum | DontDelete | ReadOnly);
     putDirectWithoutTransition(vm, vm.propertyNames->length, jsNumber(1), DontEnum | DontDelete | ReadOnly);
     putDirectNonIndexAccessor(vm, vm.propertyNames->speciesSymbol, speciesSymbol, Accessor | ReadOnly | DontEnum);
 
-    JSGlobalObject* globalObject = this->globalObject();
-    JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION(vm.propertyNames->isView, arrayBufferFuncIsView, DontEnum, 1);
+    if (m_sharingMode == ArrayBufferSharingMode::Default) {
+        JSGlobalObject* globalObject = this->globalObject();
+        JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION(vm.propertyNames->isView, arrayBufferFuncIsView, DontEnum, 1);
+        JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION(vm.propertyNames->builtinNames().isViewPrivateName(), arrayBufferFuncIsView, DontEnum, 1);
+    }
 }
 
-JSArrayBufferConstructor* JSArrayBufferConstructor::create(VM& vm, Structure* structure, JSArrayBufferPrototype* prototype, GetterSetter* speciesSymbol)
+JSArrayBufferConstructor* JSArrayBufferConstructor::create(VM& vm, Structure* structure, JSArrayBufferPrototype* prototype, GetterSetter* speciesSymbol, ArrayBufferSharingMode sharingMode)
 {
     JSArrayBufferConstructor* result =
         new (NotNull, allocateCell<JSArrayBufferConstructor>(vm.heap))
-        JSArrayBufferConstructor(vm, structure);
+        JSArrayBufferConstructor(vm, structure, sharingMode);
     result->finishCreation(vm, prototype, speciesSymbol);
     return result;
 }
@@ -77,14 +82,16 @@ Structure* JSArrayBufferConstructor::createStructure(
 
 static EncodedJSValue JSC_HOST_CALL constructArrayBuffer(ExecState* exec)
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     JSArrayBufferConstructor* constructor =
         jsCast<JSArrayBufferConstructor*>(exec->callee());
     
     unsigned length;
     if (exec->argumentCount()) {
-        length = exec->uncheckedArgument(0).toUInt32(exec);
-        if (exec->hadException())
-            return JSValue::encode(jsUndefined());
+        length = exec->uncheckedArgument(0).toIndex(exec, "length");
+        RETURN_IF_EXCEPTION(scope, encodedJSValue());
     } else {
         // Although the documentation doesn't say so, it is in fact correct to say
         // "new ArrayBuffer()". The result is the same as allocating an array buffer
@@ -94,19 +101,25 @@ static EncodedJSValue JSC_HOST_CALL constructArrayBuffer(ExecState* exec)
     
     auto buffer = ArrayBuffer::tryCreate(length, 1);
     if (!buffer)
-        return throwVMError(exec, createOutOfMemoryError(exec));
-
-    Structure* arrayBufferStructure = InternalFunction::createSubclassStructure(exec, exec->newTarget(), constructor->globalObject()->arrayBufferStructure());
-    if (exec->hadException())
-        return JSValue::encode(JSValue());
-    JSArrayBuffer* result = JSArrayBuffer::create(exec->vm(), arrayBufferStructure, WTFMove(buffer));
+        return JSValue::encode(throwOutOfMemoryError(exec, scope));
+    
+    if (constructor->sharingMode() == ArrayBufferSharingMode::Shared)
+        buffer->makeShared();
+    
+    ASSERT(constructor->sharingMode() == buffer->sharingMode());
+    
+    Structure* arrayBufferStructure = InternalFunction::createSubclassStructure(exec, exec->newTarget(), constructor->globalObject()->arrayBufferStructure(constructor->sharingMode()));
+    RETURN_IF_EXCEPTION(scope, encodedJSValue());
+    JSArrayBuffer* result = JSArrayBuffer::create(vm, arrayBufferStructure, WTFMove(buffer));
     
     return JSValue::encode(result);
 }
 
 static EncodedJSValue JSC_HOST_CALL callArrayBuffer(ExecState* exec)
 {
-    return JSValue::encode(throwConstructorCannotBeCalledAsFunctionTypeError(exec, "ArrayBuffer"));
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+    return JSValue::encode(throwConstructorCannotBeCalledAsFunctionTypeError(exec, scope, "ArrayBuffer"));
 }
 
 ConstructType JSArrayBufferConstructor::getConstructData(

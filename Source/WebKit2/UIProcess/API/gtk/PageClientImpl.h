@@ -86,13 +86,12 @@ private:
 #endif
     void selectionDidChange() override;
 #if ENABLE(DRAG_SUPPORT)
-    void startDrag(const WebCore::DragData&, PassRefPtr<ShareableBitmap> dragImage) override;
+    void startDrag(Ref<WebCore::SelectionData>&&, WebCore::DragOperation, RefPtr<ShareableBitmap>&& dragImage) override;
 #endif
 
     void enterAcceleratedCompositingMode(const LayerTreeContext&) override;
     void exitAcceleratedCompositingMode() override;
     void updateAcceleratedCompositingMode(const LayerTreeContext&) override;
-    void willEnterAcceleratedCompositingMode() override;
 
     void handleDownloadRequest(DownloadProxy*) override;
     void didChangeContentSize(const WebCore::IntSize&) override;

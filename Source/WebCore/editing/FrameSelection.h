@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef FrameSelection_h
-#define FrameSelection_h
+#pragma once
 
 #include "AXTextStateChangeIntent.h"
 #include "EditingStyle.h"
@@ -32,7 +31,7 @@
 #include "IntRect.h"
 #include "LayoutRect.h"
 #include "Range.h"
-#include "ScrollBehavior.h"
+#include "ScrollAlignment.h"
 #include "Timer.h"
 #include "VisibleSelection.h"
 #include <wtf/Noncopyable.h>
@@ -51,7 +50,6 @@ class MutableStyleProperties;
 class RenderBlock;
 class RenderObject;
 class RenderView;
-class Settings;
 class VisiblePosition;
 
 enum EUserTriggered { NotUserTriggered = 0, UserTriggered = 1 };
@@ -138,7 +136,7 @@ public:
 
     WEBCORE_EXPORT Element* rootEditableElementOrDocumentElement() const;
      
-    void moveTo(const Range*);
+    WEBCORE_EXPORT void moveTo(const Range*);
     WEBCORE_EXPORT void moveTo(const VisiblePosition&, EUserTriggered = NotUserTriggered, CursorAlignOnScroll = AlignCursorOnScrollIfNeeded);
     WEBCORE_EXPORT void moveTo(const VisiblePosition&, const VisiblePosition&, EUserTriggered = NotUserTriggered);
     void moveTo(const Position&, EAffinity, EUserTriggered = NotUserTriggered);
@@ -385,5 +383,3 @@ inline void FrameSelection::notifyAccessibilityForSelectionChange(const AXTextSt
 void showTree(const WebCore::FrameSelection&);
 void showTree(const WebCore::FrameSelection*);
 #endif
-
-#endif // FrameSelection_h

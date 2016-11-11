@@ -30,25 +30,25 @@
 
 namespace WebCore {
 
-Ref<UIRequestEvent> UIRequestEvent::createForBindings(const AtomicString& type, const UIRequestEventInit& initializer)
+Ref<UIRequestEvent> UIRequestEvent::create(const AtomicString& type, const Init& initializer, IsTrusted isTrusted)
 {
-    return adoptRef(*new UIRequestEvent(type, initializer));
+    return adoptRef(*new UIRequestEvent(type, initializer, isTrusted));
 }
 
-Ref<UIRequestEvent> UIRequestEvent::create(const AtomicString& type, bool bubbles, bool cancelable, AbstractView* view, int detail, PassRefPtr<EventTarget> receiver)
+Ref<UIRequestEvent> UIRequestEvent::create(const AtomicString& type, bool bubbles, bool cancelable, DOMWindow* view, int detail, RefPtr<EventTarget>&& receiver)
 {
-    return adoptRef(*new UIRequestEvent(type, bubbles, cancelable, view, detail, receiver));
+    return adoptRef(*new UIRequestEvent(type, bubbles, cancelable, view, detail, WTFMove(receiver)));
 }
 
-UIRequestEvent::UIRequestEvent(const AtomicString& type, const UIRequestEventInit& initializer)
-    : UIEvent(type, initializer)
+UIRequestEvent::UIRequestEvent(const AtomicString& type, const Init& initializer, IsTrusted isTrusted)
+    : UIEvent(type, initializer, isTrusted)
     , m_receiver(initializer.receiver)
 {
 }
     
-UIRequestEvent::UIRequestEvent(const AtomicString& type, bool bubbles, bool cancelable, AbstractView* view, int detail, PassRefPtr<EventTarget> receiver)
+UIRequestEvent::UIRequestEvent(const AtomicString& type, bool bubbles, bool cancelable, DOMWindow* view, int detail, RefPtr<EventTarget>&& receiver)
     : UIEvent(type, bubbles, cancelable, view, detail)
-    , m_receiver(receiver)
+    , m_receiver(WTFMove(receiver))
 {
 }
 

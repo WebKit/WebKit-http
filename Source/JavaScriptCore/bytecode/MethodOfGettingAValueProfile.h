@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef MethodOfGettingAValueProfile_h
-#define MethodOfGettingAValueProfile_h
+#pragma once
 
 // This is guarded by ENABLE_DFG_JIT only because it uses some value profiles
 // that are currently only used if the DFG is enabled (i.e. they are not
@@ -40,7 +39,7 @@ namespace JSC {
 class CCallHelpers;
 class CodeBlock;
 class LazyOperandValueProfileKey;
-struct ResultProfile;
+struct ArithProfile;
 struct ValueProfile;
 
 class MethodOfGettingAValueProfile {
@@ -59,11 +58,11 @@ public:
             m_kind = None;
     }
     
-    MethodOfGettingAValueProfile(ResultProfile* profile)
+    MethodOfGettingAValueProfile(ArithProfile* profile)
     {
         if (profile) {
-            m_kind = ResultProfileReady;
-            u.resultProfile = profile;
+            m_kind = ArithProfileReady;
+            u.arithProfile = profile;
         } else
             m_kind = None;
     }
@@ -79,14 +78,14 @@ private:
     enum Kind {
         None,
         Ready,
-        ResultProfileReady,
+        ArithProfileReady,
         LazyOperand
     };
     
     Kind m_kind;
     union {
         ValueProfile* profile;
-        ResultProfile* resultProfile;
+        ArithProfile* arithProfile;
         struct {
             CodeBlock* codeBlock;
             unsigned bytecodeOffset;
@@ -98,6 +97,3 @@ private:
 } // namespace JSC
 
 #endif // ENABLE(DFG_JIT)
-
-#endif // MethodOfGettingAValueProfile_h
-

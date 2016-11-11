@@ -30,8 +30,12 @@
 #include "EventTarget.h"
 #include "IDBActiveDOMObject.h"
 #include "IDBError.h"
+#include "IDBGetAllRecordsData.h"
+#include "IDBGetRecordData.h"
+#include "IDBKeyRangeData.h"
 #include "IDBOpenDBRequest.h"
 #include "IDBTransactionInfo.h"
+#include "IDBTransactionMode.h"
 #include "IndexedDB.h"
 #include "Timer.h"
 #include <wtf/Deque.h>
@@ -40,6 +44,7 @@
 namespace WebCore {
 
 class DOMError;
+class DOMStringList;
 class IDBCursor;
 class IDBCursorInfo;
 class IDBDatabase;
@@ -52,6 +57,7 @@ class IDBObjectStoreInfo;
 class IDBResultData;
 class SerializedScriptValue;
 
+struct IDBIterateCursorData;
 struct IDBKeyRangeData;
 
 namespace IDBClient {
@@ -61,26 +67,18 @@ class TransactionOperation;
 
 class IDBTransaction : public ThreadSafeRefCounted<IDBTransaction>, public EventTargetWithInlineData, public IDBActiveDOMObject {
 public:
-    static const AtomicString& modeReadOnly();
-    static const AtomicString& modeReadWrite();
-    static const AtomicString& modeVersionChange();
-    static const AtomicString& modeReadOnlyLegacy();
-    static const AtomicString& modeReadWriteLegacy();
-
-    static IndexedDB::TransactionMode stringToMode(const String&, ExceptionCode&);
-    static const AtomicString& modeToString(IndexedDB::TransactionMode);
-
     static Ref<IDBTransaction> create(IDBDatabase&, const IDBTransactionInfo&);
     static Ref<IDBTransaction> create(IDBDatabase&, const IDBTransactionInfo&, IDBOpenDBRequest&);
 
     ~IDBTransaction() final;
 
     // IDBTransaction IDL
-    const String& mode() const;
+    Ref<DOMStringList> objectStoreNames() const;
+    IDBTransactionMode mode() const { return m_info.mode(); }
     IDBDatabase* db();
-    RefPtr<DOMError> error() const;
-    RefPtr<IDBObjectStore> objectStore(const String& name, ExceptionCodeWithMessage&);
-    void abort(ExceptionCodeWithMessage&);
+    DOMError* error() const;
+    ExceptionOr<Ref<IDBObjectStore>> objectStore(const String& name);
+    ExceptionOr<void> abort();
 
     EventTargetInterface eventTargetInterface() const final { return IDBTransactionEventTargetInterfaceType; }
     ScriptExecutionContext* scriptExecutionContext() const final { return ActiveDOMObject::scriptExecutionContext(); }
@@ -106,24 +104,28 @@ public:
     void didAbort(const IDBError&);
     void didCommit(const IDBError&);
 
-    bool isVersionChange() const { return m_info.mode() == IndexedDB::TransactionMode::VersionChange; }
-    bool isReadOnly() const { return m_info.mode() == IndexedDB::TransactionMode::ReadOnly; }
+    bool isVersionChange() const { return mode() == IDBTransactionMode::Versionchange; }
+    bool isReadOnly() const { return mode() == IDBTransactionMode::Readonly; }
     bool isActive() const;
 
     Ref<IDBObjectStore> createObjectStore(const IDBObjectStoreInfo&);
+    void renameObjectStore(IDBObjectStore&, const String& newName);
     std::unique_ptr<IDBIndex> createIndex(IDBObjectStore&, const IDBIndexInfo&);
+    void renameIndex(IDBIndex&, const String& newName);
 
-    Ref<IDBRequest> requestPutOrAdd(ScriptExecutionContext&, IDBObjectStore&, IDBKey*, SerializedScriptValue&, IndexedDB::ObjectStoreOverwriteMode);
-    Ref<IDBRequest> requestGetRecord(ScriptExecutionContext&, IDBObjectStore&, const IDBKeyRangeData&);
-    Ref<IDBRequest> requestDeleteRecord(ScriptExecutionContext&, IDBObjectStore&, const IDBKeyRangeData&);
-    Ref<IDBRequest> requestClearObjectStore(ScriptExecutionContext&, IDBObjectStore&);
-    Ref<IDBRequest> requestCount(ScriptExecutionContext&, IDBObjectStore&, const IDBKeyRangeData&);
-    Ref<IDBRequest> requestCount(ScriptExecutionContext&, IDBIndex&, const IDBKeyRangeData&);
-    Ref<IDBRequest> requestGetValue(ScriptExecutionContext&, IDBIndex&, const IDBKeyRangeData&);
-    Ref<IDBRequest> requestGetKey(ScriptExecutionContext&, IDBIndex&, const IDBKeyRangeData&);
-    Ref<IDBRequest> requestOpenCursor(ScriptExecutionContext&, IDBObjectStore&, const IDBCursorInfo&);
-    Ref<IDBRequest> requestOpenCursor(ScriptExecutionContext&, IDBIndex&, const IDBCursorInfo&);
-    void iterateCursor(IDBCursor&, const IDBKeyData&, unsigned long count);
+    Ref<IDBRequest> requestPutOrAdd(JSC::ExecState&, IDBObjectStore&, IDBKey*, SerializedScriptValue&, IndexedDB::ObjectStoreOverwriteMode);
+    Ref<IDBRequest> requestGetRecord(JSC::ExecState&, IDBObjectStore&, const IDBGetRecordData&);
+    Ref<IDBRequest> requestGetAllObjectStoreRecords(JSC::ExecState&, IDBObjectStore&, const IDBKeyRangeData&, IndexedDB::GetAllType, Optional<uint32_t> count);
+    Ref<IDBRequest> requestGetAllIndexRecords(JSC::ExecState&, IDBIndex&, const IDBKeyRangeData&, IndexedDB::GetAllType, Optional<uint32_t> count);
+    Ref<IDBRequest> requestDeleteRecord(JSC::ExecState&, IDBObjectStore&, const IDBKeyRangeData&);
+    Ref<IDBRequest> requestClearObjectStore(JSC::ExecState&, IDBObjectStore&);
+    Ref<IDBRequest> requestCount(JSC::ExecState&, IDBObjectStore&, const IDBKeyRangeData&);
+    Ref<IDBRequest> requestCount(JSC::ExecState&, IDBIndex&, const IDBKeyRangeData&);
+    Ref<IDBRequest> requestGetValue(JSC::ExecState&, IDBIndex&, const IDBKeyRangeData&);
+    Ref<IDBRequest> requestGetKey(JSC::ExecState&, IDBIndex&, const IDBKeyRangeData&);
+    Ref<IDBRequest> requestOpenCursor(JSC::ExecState&, IDBObjectStore&, const IDBCursorInfo&);
+    Ref<IDBRequest> requestOpenCursor(JSC::ExecState&, IDBIndex&, const IDBCursorInfo&);
+    void iterateCursor(IDBCursor&, const IDBIterateCursorData&);
 
     void deleteObjectStore(const String& objectStoreName);
     void deleteIndex(uint64_t objectStoreIdentifier, const String& indexName);
@@ -145,11 +147,14 @@ public:
 
     void connectionClosedFromServer(const IDBError&);
 
+    void visitReferencedObjectStores(JSC::SlotVisitor&) const;
+
 private:
     IDBTransaction(IDBDatabase&, const IDBTransactionInfo&, IDBOpenDBRequest*);
 
     void commit();
 
+    void internalAbort();
     void notifyDidAbort(const IDBError&);
     void finishAbortOrCommit();
 
@@ -160,7 +165,7 @@ private:
     void fireOnAbort();
     void enqueueEvent(Ref<Event>&&);
 
-    Ref<IDBRequest> requestIndexRecord(ScriptExecutionContext&, IDBIndex&, IndexedDB::IndexRecordType, const IDBKeyRangeData&);
+    Ref<IDBRequest> requestIndexRecord(JSC::ExecState&, IDBIndex&, IndexedDB::IndexRecordType, const IDBKeyRangeData&);
 
     void commitOnServer(IDBClient::TransactionOperation&);
     void abortOnServerAndCancelRequests(IDBClient::TransactionOperation&);
@@ -168,8 +173,14 @@ private:
     void createObjectStoreOnServer(IDBClient::TransactionOperation&, const IDBObjectStoreInfo&);
     void didCreateObjectStoreOnServer(const IDBResultData&);
 
+    void renameObjectStoreOnServer(IDBClient::TransactionOperation&, const uint64_t& objectStoreIdentifier, const String& newName);
+    void didRenameObjectStoreOnServer(const IDBResultData&);
+
     void createIndexOnServer(IDBClient::TransactionOperation&, const IDBIndexInfo&);
     void didCreateIndexOnServer(const IDBResultData&);
+
+    void renameIndexOnServer(IDBClient::TransactionOperation&, const uint64_t& objectStoreIdentifier, const uint64_t& indexIdentifier, const String& newName);
+    void didRenameIndexOnServer(const IDBResultData&);
 
     void clearObjectStoreOnServer(IDBClient::TransactionOperation&, const uint64_t& objectStoreIdentifier);
     void didClearObjectStoreOnServer(IDBRequest&, const IDBResultData&);
@@ -177,8 +188,11 @@ private:
     void putOrAddOnServer(IDBClient::TransactionOperation&, RefPtr<IDBKey>, RefPtr<SerializedScriptValue>, const IndexedDB::ObjectStoreOverwriteMode&);
     void didPutOrAddOnServer(IDBRequest&, const IDBResultData&);
 
-    void getRecordOnServer(IDBClient::TransactionOperation&, const IDBKeyRangeData&);
+    void getRecordOnServer(IDBClient::TransactionOperation&, const IDBGetRecordData&);
     void didGetRecordOnServer(IDBRequest&, const IDBResultData&);
+
+    void getAllRecordsOnServer(IDBClient::TransactionOperation&, const IDBGetAllRecordsData&);
+    void didGetAllRecordsOnServer(IDBRequest&, const IDBResultData&);
 
     void getCountOnServer(IDBClient::TransactionOperation&, const IDBKeyRangeData&);
     void didGetCountOnServer(IDBRequest&, const IDBResultData&);
@@ -192,11 +206,11 @@ private:
     void deleteIndexOnServer(IDBClient::TransactionOperation&, const uint64_t& objectStoreIdentifier, const String& indexName);
     void didDeleteIndexOnServer(const IDBResultData&);
 
-    Ref<IDBRequest> doRequestOpenCursor(ScriptExecutionContext&, Ref<IDBCursor>&&);
+    Ref<IDBRequest> doRequestOpenCursor(JSC::ExecState&, Ref<IDBCursor>&&);
     void openCursorOnServer(IDBClient::TransactionOperation&, const IDBCursorInfo&);
     void didOpenCursorOnServer(IDBRequest&, const IDBResultData&);
 
-    void iterateCursorOnServer(IDBClient::TransactionOperation&, const IDBKeyData&, const unsigned long& count);
+    void iterateCursorOnServer(IDBClient::TransactionOperation&, const IDBIterateCursorData&);
     void didIterateCursorOnServer(IDBRequest&, const IDBResultData&);
 
     void transitionedToFinishing(IndexedDB::TransactionState);
@@ -223,7 +237,9 @@ private:
     Deque<RefPtr<IDBClient::TransactionOperation>> m_abortQueue;
     HashMap<IDBResourceIdentifier, RefPtr<IDBClient::TransactionOperation>> m_transactionOperationMap;
 
-    HashMap<String, RefPtr<IDBObjectStore>> m_referencedObjectStores;
+    mutable Lock m_referencedObjectStoreLock;
+    HashMap<String, std::unique_ptr<IDBObjectStore>> m_referencedObjectStores;
+    HashMap<uint64_t, std::unique_ptr<IDBObjectStore>> m_deletedObjectStores;
 
     HashSet<RefPtr<IDBRequest>> m_openRequests;
 

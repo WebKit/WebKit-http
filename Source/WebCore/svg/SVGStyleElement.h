@@ -19,8 +19,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef SVGStyleElement_h
-#define SVGStyleElement_h
+#pragma once
 
 #include "InlineStyleSheetOwner.h"
 #include "SVGElement.h"
@@ -38,35 +37,32 @@ public:
     void setDisabled(bool);
                           
     const AtomicString& type() const;
-    void setType(const AtomicString&, ExceptionCode&);
+    void setType(const AtomicString&);
 
     const AtomicString& media() const;
-    void setMedia(const AtomicString&, ExceptionCode&);
-
-    String title() const override;
-    void setTitle(const AtomicString&, ExceptionCode&);
+    void setMedia(const AtomicString&);
 
 private:
     SVGStyleElement(const QualifiedName&, Document&, bool createdByParser);
 
-    void parseAttribute(const QualifiedName&, const AtomicString&) override;
-    InsertionNotificationRequest insertedInto(ContainerNode&) override;
-    void removedFrom(ContainerNode&) override;
-    void childrenChanged(const ChildChange&) override;
+    void parseAttribute(const QualifiedName&, const AtomicString&) final;
+    InsertionNotificationRequest insertedInto(ContainerNode&) final;
+    void removedFrom(ContainerNode&) final;
+    void childrenChanged(const ChildChange&) final;
 
-    bool rendererIsNeeded(const RenderStyle&) override { return false; }
+    bool rendererIsNeeded(const RenderStyle&) final { return false; }
 
-    void finishParsingChildren() override;
+    void finishParsingChildren() final;
 
     virtual bool isLoading() const { return m_styleSheetOwner.isLoading(); }
-    bool sheetLoaded() override { return m_styleSheetOwner.sheetLoaded(*this); }
-    void startLoadingDynamicSheet() override { m_styleSheetOwner.startLoadingDynamicSheet(*this); }
-    Timer* svgLoadEventTimer() override { return &m_svgLoadEventTimer; }
+    bool sheetLoaded() final { return m_styleSheetOwner.sheetLoaded(*this); }
+    void startLoadingDynamicSheet() final { m_styleSheetOwner.startLoadingDynamicSheet(*this); }
+    Timer* svgLoadEventTimer() final { return &m_svgLoadEventTimer; }
+
+    String title() const final;
 
     InlineStyleSheetOwner m_styleSheetOwner;
     Timer m_svgLoadEventTimer;
 };
 
 } // namespace WebCore
-
-#endif // SVGStyleElement_h

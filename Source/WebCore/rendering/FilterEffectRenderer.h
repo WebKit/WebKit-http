@@ -36,9 +36,9 @@
 #include "LayoutRect.h"
 #include "SVGFilterBuilder.h"
 #include "SourceGraphic.h"
-#include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
 #include <wtf/RefPtr.h>
+
 
 namespace WebCore {
 
@@ -57,8 +57,9 @@ enum FilterConsumer {
 class FilterEffectRendererHelper {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    FilterEffectRendererHelper(bool haveFilterEffect)
-        : m_haveFilterEffect(haveFilterEffect)
+    FilterEffectRendererHelper(bool haveFilterEffect, GraphicsContext& targetContext)
+        : m_targetContext(targetContext)
+        , m_haveFilterEffect(haveFilterEffect)
     {
     }
     
@@ -77,6 +78,7 @@ private:
     RenderLayer* m_renderLayer { nullptr }; // FIXME: this is mainly used to get the FilterEffectRenderer. FilterEffectRendererHelper should be weaned off it.
     LayoutPoint m_paintOffset;
     LayoutRect m_repaintRect;
+    const GraphicsContext& m_targetContext;
     bool m_haveFilterEffect { false };
     bool m_startedFilterEffect { false };
 };
@@ -105,9 +107,9 @@ public:
     ImageBuffer* output() const { return lastEffect()->asImageBuffer(); }
 
     bool build(RenderElement*, const FilterOperations&, FilterConsumer);
-    PassRefPtr<FilterEffect> buildReferenceFilter(RenderElement*, PassRefPtr<FilterEffect> previousEffect, ReferenceFilterOperation*);
+    RefPtr<FilterEffect> buildReferenceFilter(RenderElement*, PassRefPtr<FilterEffect> previousEffect, ReferenceFilterOperation*);
     bool updateBackingStoreRect(const FloatRect& filterRect);
-    void allocateBackingStoreIfNeeded();
+    void allocateBackingStoreIfNeeded(const GraphicsContext&);
     void clearIntermediateResults();
     void apply();
     

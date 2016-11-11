@@ -43,6 +43,7 @@ class FrameLoaderClient;
 class InspectorClient;
 class PaymentCoordinatorClient;
 class PlugInClient;
+class PluginInfoProvider;
 class ProgressTrackerClient;
 class SocketProvider;
 class StorageNamespaceProvider;
@@ -57,7 +58,7 @@ class ContextMenuClient;
 class PageConfiguration {
     WTF_MAKE_NONCOPYABLE(PageConfiguration); WTF_MAKE_FAST_ALLOCATED;
 public:
-    WEBCORE_EXPORT PageConfiguration(UniqueRef<EditorClient>&&, UniqueRef<SocketProvider>&&);
+    WEBCORE_EXPORT PageConfiguration(UniqueRef<EditorClient>&&, Ref<SocketProvider>&&);
     WEBCORE_EXPORT ~PageConfiguration();
 
     AlternativeTextClient* alternativeTextClient { nullptr };
@@ -66,7 +67,7 @@ public:
     ContextMenuClient* contextMenuClient { nullptr };
 #endif
     UniqueRef<EditorClient> editorClient;
-    UniqueRef<SocketProvider> socketProvider;
+    Ref<SocketProvider> socketProvider;
     DragClient* dragClient { nullptr };
     InspectorClient* inspectorClient { nullptr };
 #if ENABLE(APPLE_PAY)
@@ -76,12 +77,13 @@ public:
     PlugInClient* plugInClient { nullptr };
     ProgressTrackerClient* progressTrackerClient { nullptr };
     RefPtr<BackForwardClient> backForwardClient;
-    ValidationMessageClient* validationMessageClient { nullptr };
+    std::unique_ptr<ValidationMessageClient> validationMessageClient;
     FrameLoaderClient* loaderClientForMainFrame { nullptr };
-    std::unique_ptr<DiagnosticLoggingClient> diagnosticLoggingClient { nullptr };
+    std::unique_ptr<DiagnosticLoggingClient> diagnosticLoggingClient;
 
     RefPtr<ApplicationCacheStorage> applicationCacheStorage;
     RefPtr<DatabaseProvider> databaseProvider;
+    RefPtr<PluginInfoProvider> pluginInfoProvider;
     RefPtr<StorageNamespaceProvider> storageNamespaceProvider;
     RefPtr<UserContentProvider> userContentProvider;
     RefPtr<VisitedLinkStore> visitedLinkStore;

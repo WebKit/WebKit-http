@@ -193,6 +193,11 @@ void InsertListCommand::doApply()
     doApplyForSingleParagraph(false, listTag, endingSelection().firstRange().get());
 }
 
+EditAction InsertListCommand::editingAction() const
+{
+    return m_type == OrderedList ? EditActionInsertOrderedList : EditActionInsertUnorderedList;
+}
+
 void InsertListCommand::doApplyForSingleParagraph(bool forceCreateList, const HTMLQualifiedName& listTag, Range* currentSelection)
 {
     // FIXME: This will produce unexpected results for a selection that starts just before a
@@ -241,9 +246,9 @@ void InsertListCommand::doApplyForSingleParagraph(bool forceCreateList, const HT
             // Restore the start and the end of current selection if they started inside listNode
             // because moveParagraphWithClones could have removed them.
             if (rangeStartIsInList && newList)
-                currentSelection->setStart(*newList, 0, IGNORE_EXCEPTION);
+                currentSelection->setStart(*newList, 0);
             if (rangeEndIsInList && newList)
-                currentSelection->setEnd(*newList, lastOffsetInNode(newList.get()), IGNORE_EXCEPTION);
+                currentSelection->setEnd(*newList, lastOffsetInNode(newList.get()));
 
             setEndingSelection(VisiblePosition(firstPositionInNode(newList.get())));
 

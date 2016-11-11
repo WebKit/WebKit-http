@@ -46,8 +46,11 @@ WebInspector.loaded = function()
     InspectorBackend.registerTimelineDispatcher(new WebInspector.TimelineObserver);
     InspectorBackend.registerCSSDispatcher(new WebInspector.CSSObserver);
     InspectorBackend.registerRuntimeDispatcher(new WebInspector.RuntimeObserver);
+    InspectorBackend.registerWorkerDispatcher(new WebInspector.WorkerObserver);
     if (InspectorBackend.registerReplayDispatcher)
         InspectorBackend.registerReplayDispatcher(new WebInspector.ReplayObserver);
+
+    WebInspector.mainTarget = new WebInspector.MainTarget;
 
     // Instantiate controllers used by tests.
     this.frameResourceManager = new WebInspector.FrameResourceManager;
@@ -62,6 +65,8 @@ WebInspector.loaded = function()
     this.timelineManager = new WebInspector.TimelineManager;
     this.debuggerManager = new WebInspector.DebuggerManager;
     this.probeManager = new WebInspector.ProbeManager;
+    this.targetManager = new WebInspector.TargetManager;
+    this.workerManager = new WebInspector.WorkerManager;
     this.replayManager = new WebInspector.ReplayManager;
 
     document.addEventListener("DOMContentLoaded", this.contentLoaded);
@@ -75,7 +80,7 @@ WebInspector.loaded = function()
 
     // Global settings.
     this.showShadowDOMSetting = new WebInspector.Setting("show-shadow-dom", true);
-}
+};
 
 WebInspector.contentLoaded = function()
 {
@@ -85,11 +90,20 @@ WebInspector.contentLoaded = function()
     // Tell the InspectorFrontendHost we loaded, which causes the window to display
     // and pending InspectorFrontendAPI commands to be sent.
     InspectorFrontendHost.loaded();
-}
+};
+
+Object.defineProperty(WebInspector, "targets",
+{
+    get() { return this.targetManager.targets; }
+});
+
+WebInspector.assumingMainTarget = () => WebInspector.mainTarget;
 
 WebInspector.isDebugUIEnabled = () => false;
 
 WebInspector.UIString = (string) => string;
+
+WebInspector.indentString = () => "    ";
 
 // Add stubs that are called by the frontend API.
 WebInspector.updateDockedState = () => {};
@@ -99,3 +113,5 @@ WebInspector.updateVisibilityState = () => {};
 window.InspectorTest = new FrontendTestHarness();
 
 InspectorTest.redirectConsoleToTestOutput();
+
+WebInspector.reportInternalError = (e) => { console.error(e); }

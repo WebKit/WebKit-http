@@ -25,28 +25,25 @@
  * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef DOMWindowFetch_h
-#define DOMWindowFetch_h
+
+#pragma once
 
 #if ENABLE(FETCH_API)
 
+#include "JSDOMPromise.h"
 #include <wtf/Forward.h>
 
 namespace WebCore {
 
 class DOMWindow;
-class DeferredWrapper;
 class Dictionary;
 class FetchRequest;
 
 class DOMWindowFetch {
 public:
-    static void fetch(DOMWindow&, FetchRequest&, const Dictionary&, DeferredWrapper&&);
-    static void fetch(DOMWindow&, const String&, const Dictionary&, DeferredWrapper&&);
+    static void fetch(DOMWindow&, FetchRequest&, Ref<DeferredPromise>&&);
 };
 
 } // namespace WebCore
 
 #endif // ENABLE(FETCH_API)
-
-#endif // DOMWindowFetch_h

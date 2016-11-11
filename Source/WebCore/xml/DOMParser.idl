@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006 Apple Inc.
+ * Copyright (C) 2006 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -19,8 +19,8 @@
 
 [
     Constructor,
+    ConstructorCallWith=Document,
     ImplementationLacksVTable,
 ] interface DOMParser {
-    // FIXME: Using "undefined" as default parameter value is wrong.
-    [RaisesException] Document parseFromString(optional DOMString str = "undefined", optional DOMString contentType = "undefined");
+    [MayThrowException, NewObject] Document parseFromString(DOMString string, DOMString contentType);
 };

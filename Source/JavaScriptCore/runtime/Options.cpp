@@ -308,6 +308,7 @@ static void recomputeDependentOptions()
     Options::useJIT() = false;
     Options::useDFGJIT() = false;
     Options::useFTLJIT() = false;
+    Options::useDOMJIT() = false;
 #endif
 #if !ENABLE(YARR_JIT)
     Options::useRegExpJIT() = false;
@@ -348,6 +349,7 @@ static void recomputeDependentOptions()
         || Options::reportBaselineCompileTimes()
         || Options::reportDFGCompileTimes()
         || Options::reportFTLCompileTimes()
+        || Options::reportDFGPhaseTimes()
         || Options::verboseCFA()
         || Options::verboseFTLFailure())
         Options::alwaysComputeHash() = true;
@@ -370,7 +372,7 @@ static void recomputeDependentOptions()
         Options::useOSREntryToDFG() = false;
         Options::useOSREntryToFTL() = false;
     }
-
+    
 #if PLATFORM(IOS) && !PLATFORM(IOS_SIMULATOR) && __IPHONE_OS_VERSION_MIN_REQUIRED >= 100000
     // Override globally for now. Longer term we'll just make the default
     // be to have this option enabled, and have platforms that don't support
@@ -730,13 +732,13 @@ void Options::dumpOption(StringBuilder& builder, DumpLevel level, Options::ID id
     option.dump(builder);
 
     if (wasOverridden && (dumpDefaultsOption == DumpDefaults)) {
-        builder.append(" (default: ");
+        builder.appendLiteral(" (default: ");
         option.defaultOption().dump(builder);
-        builder.append(")");
+        builder.appendLiteral(")");
     }
 
     if (needsDescription) {
-        builder.append("   ... ");
+        builder.appendLiteral("   ... ");
         builder.append(option.description());
     }
 

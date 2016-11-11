@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef JSDictionary_h
-#define JSDictionary_h
+#pragma once
 
 #include "MessagePort.h"
 #include <heap/Strong.h>
@@ -49,9 +48,9 @@ class DOMWindow;
 class EventTarget;
 class Gamepad;
 class FetchHeaders;
-class MediaKeyError;
 class MediaStream;
 class MediaStreamTrack;
+class OverconstrainedError;
 class RTCRtpReceiver;
 class RTCRtpTransceiver;
 class Node;
@@ -60,6 +59,7 @@ class Storage;
 class TouchList;
 class TrackBase;
 class VoidCallback;
+class WebKitMediaKeyError;
 
 class JSDictionary {
 public:
@@ -135,15 +135,15 @@ private:
     static void convertValue(JSC::ExecState*, JSC::JSValue, RefPtr<EventTarget>& result);
     static void convertValue(JSC::ExecState*, JSC::JSValue, RefPtr<Node>& result);
     static void convertValue(JSC::ExecState*, JSC::JSValue, RefPtr<Storage>& result);
-    static void convertValue(JSC::ExecState*, JSC::JSValue, MessagePortArray& result);
+    static void convertValue(JSC::ExecState*, JSC::JSValue, Vector<RefPtr<MessagePort>>& result);
 #if ENABLE(VIDEO_TRACK)
     static void convertValue(JSC::ExecState*, JSC::JSValue, RefPtr<TrackBase>& result);
 #endif
     static void convertValue(JSC::ExecState*, JSC::JSValue, HashSet<AtomicString>& result);
     static void convertValue(JSC::ExecState*, JSC::JSValue, ArrayValue& result);
     static void convertValue(JSC::ExecState*, JSC::JSValue, RefPtr<JSC::Uint8Array>& result);
-#if ENABLE(ENCRYPTED_MEDIA)
-    static void convertValue(JSC::ExecState*, JSC::JSValue, RefPtr<MediaKeyError>& result);
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
+    static void convertValue(JSC::ExecState*, JSC::JSValue, RefPtr<WebKitMediaKeyError>& result);
 #endif
 #if ENABLE(FETCH_API)
     static void convertValue(JSC::ExecState*, JSC::JSValue, RefPtr<FetchHeaders>& result);
@@ -151,6 +151,7 @@ private:
 #if ENABLE(MEDIA_STREAM)
     static void convertValue(JSC::ExecState*, JSC::JSValue, RefPtr<MediaStream>& result);
     static void convertValue(JSC::ExecState*, JSC::JSValue, RefPtr<MediaStreamTrack>& result);
+    static void convertValue(JSC::ExecState*, JSC::JSValue, RefPtr<OverconstrainedError>& result);
 #endif
 #if ENABLE(WEB_RTC)
     static void convertValue(JSC::ExecState*, JSC::JSValue, RefPtr<RTCRtpReceiver>& result);
@@ -201,6 +202,9 @@ inline bool JSDictionary::get(const char* propertyName, JSC::JSValue& finalResul
 template <typename T, typename Result>
 JSDictionary::GetPropertyResult JSDictionary::tryGetPropertyAndResult(const char* propertyName, T* context, void (*setter)(T* context, const Result&)) const
 {
+    JSC::VM& vm = m_exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     JSC::JSValue value;
     GetPropertyResult getPropertyResult = tryGetProperty(propertyName, value);
     switch (getPropertyResult) {
@@ -210,8 +214,7 @@ JSDictionary::GetPropertyResult JSDictionary::tryGetPropertyAndResult(const char
         Result result;
         convertValue(m_exec, value, result);
 
-        if (m_exec->hadException())
-            return ExceptionThrown;
+        RETURN_IF_EXCEPTION(scope, ExceptionThrown);
 
         setter(context, result);
         break;
@@ -224,5 +227,3 @@ JSDictionary::GetPropertyResult JSDictionary::tryGetPropertyAndResult(const char
 }
 
 } // namespace WebCore
-
-#endif // JSDictionary_h

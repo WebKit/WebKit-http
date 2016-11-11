@@ -28,8 +28,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef HTMLOutputElement_h
-#define HTMLOutputElement_h
+#pragma once
 
 #include "DOMTokenList.h"
 #include "HTMLFormControlElement.h"
@@ -46,19 +45,19 @@ public:
     void setDefaultValue(const String&);
     DOMTokenList& htmlFor();
     
-    bool canContainRangeEndPoint() const override { return false; }
+    bool canContainRangeEndPoint() const final { return false; }
 
 private:
     HTMLOutputElement(const QualifiedName&, Document&, HTMLFormElement*);
 
-    bool computeWillValidate() const override { return false; }
-    void parseAttribute(const QualifiedName&, const AtomicString&) override;
-    const AtomicString& formControlType() const override;
-    bool isEnumeratable() const override { return true; }
-    bool supportLabels() const override { return true; }
-    bool supportsFocus() const override;
-    void childrenChanged(const ChildChange&) override;
-    void reset() override;
+    bool computeWillValidate() const final { return false; }
+    void parseAttribute(const QualifiedName&, const AtomicString&) final;
+    const AtomicString& formControlType() const final;
+    bool isEnumeratable() const final { return true; }
+    bool supportLabels() const final { return true; }
+    bool supportsFocus() const final;
+    void childrenChanged(const ChildChange&) final;
+    void reset() final;
 
     void setTextContentInternal(const String&);
 
@@ -68,6 +67,4 @@ private:
     std::unique_ptr<DOMTokenList> m_tokens;
 };
 
-} // namespace
-
-#endif
+} // namespace WebCore

@@ -77,14 +77,12 @@ static Vector<String>& preferredLanguages()
 
 namespace WTF {
 
-static String httpStyleLanguageCode(NSString *language, NSString *country)
+static String httpStyleLanguageCode(NSString *language)
 {
     SInt32 languageCode;
-    SInt32 regionCode; 
-    SInt32 scriptCode; 
+    SInt32 regionCode;
+    SInt32 scriptCode;
     CFStringEncoding stringEncoding;
-    
-    bool languageDidSpecifyExplicitVariant = [language rangeOfCharacterFromSet:[NSCharacterSet characterSetWithCharactersInString:@"-_"]].location != NSNotFound;
 
     // FIXME: This transformation is very wrong:
     // 1. There is no reason why CFBundle localization names would be at all related to language names as used on the Web.
@@ -95,41 +93,14 @@ static String httpStyleLanguageCode(NSString *language, NSString *country)
     if (preferredLanguageCode)
         language = (NSString *)preferredLanguageCode.get();
 
-    // Make the string lowercase.
-    NSString *lowercaseLanguageCode = [language lowercaseString];
-    NSString *lowercaseCountryCode = [country lowercaseString];
-    
-    // If we see a "_" after a 2-letter language code:
-    // If the country is valid and the language did not specify a variant, replace the "_" and
-    // whatever comes after it with "-" followed by the country code.
-    // Otherwise, replace the "_" with a "-" and use whatever country
-    // CFBundleCopyLocalizationForLocalizationInfo() returned.
-    if ([lowercaseLanguageCode length] >= 3 && [lowercaseLanguageCode characterAtIndex:2] == '_') {
-        if (country && !languageDidSpecifyExplicitVariant)
-            return [NSString stringWithFormat:@"%@-%@", [lowercaseLanguageCode substringWithRange:NSMakeRange(0, 2)], lowercaseCountryCode];
-        
-        // Fall back to older behavior, which used the original language-based code but just changed
-        // the "_" to a "-".
-        RetainPtr<NSMutableString> mutableLanguageCode = adoptNS([lowercaseLanguageCode mutableCopy]);
+    // Turn a '_' into a '-' if it appears after a 2-letter language code
+    if ([language length] >= 3 && [language characterAtIndex:2] == '_') {
+        RetainPtr<NSMutableString> mutableLanguageCode = adoptNS([language mutableCopy]);
         [mutableLanguageCode.get() replaceCharactersInRange:NSMakeRange(2, 1) withString:@"-"];
         return mutableLanguageCode.get();
     }
 
-    return lowercaseLanguageCode;
-}
-
-static bool isValidICUCountryCode(NSString* countryCode)
-{
-    if (!countryCode)
-        return false;
-    const char* const* countries = uloc_getISOCountries();
-    const char* countryUTF8 = [countryCode UTF8String];
-    for (unsigned i = 0; countries[i]; ++i) {
-        const char* possibleCountry = countries[i];
-        if (!strcmp(countryUTF8, possibleCountry))
-            return true;
-    }
-    return false;
+    return language;
 }
 
 Vector<String> platformUserPreferredLanguages()
@@ -147,19 +118,13 @@ Vector<String> platformUserPreferredLanguages()
     Vector<String>& userPreferredLanguages = preferredLanguages();
 
     if (userPreferredLanguages.isEmpty()) {
-        RetainPtr<CFLocaleRef> locale = adoptCF(CFLocaleCopyCurrent());
-        NSString *countryCode = (NSString *)CFLocaleGetValue(locale.get(), kCFLocaleCountryCode);
-        
-        if (!isValidICUCountryCode(countryCode))
-            countryCode = nil;
-        
         RetainPtr<CFArrayRef> languages = adoptCF(CFLocaleCopyPreferredLanguages());
         CFIndex languageCount = CFArrayGetCount(languages.get());
         if (!languageCount)
             userPreferredLanguages.append("en");
         else {
             for (CFIndex i = 0; i < languageCount; i++)
-                userPreferredLanguages.append(httpStyleLanguageCode((NSString *)CFArrayGetValueAtIndex(languages.get(), i), countryCode));
+                userPreferredLanguages.append(httpStyleLanguageCode((NSString *)CFArrayGetValueAtIndex(languages.get(), i)));
         }
     }
 

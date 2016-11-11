@@ -23,13 +23,11 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef DFGScoreBoard_h
-#define DFGScoreBoard_h
+#pragma once
 
 #if ENABLE(DFG_JIT)
 
 #include "DFGGraph.h"
-#include <wtf/BitVector.h>
 #include <wtf/Vector.h>
 
 namespace JSC { namespace DFG {
@@ -180,5 +178,4 @@ private:
 
 } } // namespace JSC::DFG
 
-#endif
 #endif

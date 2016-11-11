@@ -28,12 +28,10 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef DOMFormData_h
-#define DOMFormData_h
+#pragma once
 
 #include "FormDataList.h"
 #include <wtf/Forward.h>
-#include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
 
 namespace WebCore {
@@ -48,7 +46,7 @@ public:
     static Ref<DOMFormData> create(const TextEncoding& encoding) { return adoptRef(*new DOMFormData(encoding)); }
 
     void append(const String& name, const String& value);
-    void append(const String& name, Blob*, const String& filename = String());
+    void append(const String& name, Blob&, const String& filename = String());
 
 private:
     explicit DOMFormData(const TextEncoding&);
@@ -56,5 +54,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // DOMFormData_h

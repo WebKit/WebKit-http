@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef B3Procedure_h
-#define B3Procedure_h
+#pragma once
 
 #if ENABLE(B3_JIT)
 
@@ -34,11 +33,13 @@
 #include "B3SparseCollection.h"
 #include "B3Type.h"
 #include "B3ValueKey.h"
+#include "CCallHelpers.h"
 #include "PureNaN.h"
 #include "RegisterAtOffsetList.h"
 #include <wtf/Bag.h>
 #include <wtf/FastMalloc.h>
 #include <wtf/HashSet.h>
+#include <wtf/IndexedContainerIterator.h>
 #include <wtf/Noncopyable.h>
 #include <wtf/PrintStream.h>
 #include <wtf/SharedTask.h>
@@ -56,6 +57,16 @@ class Value;
 class Variable;
 
 namespace Air { class Code; }
+
+typedef void WasmBoundsCheckGeneratorFunction(CCallHelpers&, GPRReg, unsigned);
+typedef SharedTask<WasmBoundsCheckGeneratorFunction> WasmBoundsCheckGenerator;
+
+// This represents B3's view of a piece of code. Note that this object must exist in a 1:1
+// relationship with Air::Code. B3::Procedure and Air::Code are just different facades of the B3
+// compiler's knowledge about a piece of code. Some kinds of state aren't perfect fits for either
+// Procedure or Code, and are placed in one or the other based on convenience. Procedure always
+// allocates a Code, and a Code cannot be allocated without an owning Procedure and they always
+// have references to each other.
 
 class Procedure {
     WTF_MAKE_NONCOPYABLE(Procedure);
@@ -125,53 +136,7 @@ public:
     BasicBlock* at(unsigned index) const { return m_blocks[index].get(); }
     BasicBlock* operator[](unsigned index) const { return at(index); }
 
-    class iterator {
-    public:
-        iterator()
-            : m_procedure(nullptr)
-            , m_index(0)
-        {
-        }
-
-        iterator(const Procedure& procedure, unsigned index)
-            : m_procedure(&procedure)
-            , m_index(findNext(index))
-        {
-        }
-
-        BasicBlock* operator*()
-        {
-            return m_procedure->at(m_index);
-        }
-
-        iterator& operator++()
-        {
-            m_index = findNext(m_index + 1);
-            return *this;
-        }
-
-        bool operator==(const iterator& other) const
-        {
-            ASSERT(m_procedure == other.m_procedure);
-            return m_index == other.m_index;
-        }
-        
-        bool operator!=(const iterator& other) const
-        {
-            return !(*this == other);
-        }
-
-    private:
-        unsigned findNext(unsigned index)
-        {
-            while (index < m_procedure->size() && !m_procedure->at(index))
-                index++;
-            return index;
-        }
-
-        const Procedure* m_procedure;
-        unsigned m_index;
-    };
+    typedef WTF::IndexedContainerIterator<Procedure> iterator;
 
     iterator begin() const { return iterator(*this, 0); }
     iterator end() const { return iterator(*this, size()); }
@@ -209,6 +174,14 @@ public:
 
     void addFastConstant(const ValueKey&);
     bool isFastConstant(const ValueKey&);
+    
+    unsigned numEntrypoints() const { return m_numEntrypoints; }
+    void setNumEntrypoints(unsigned numEntrypoints) { m_numEntrypoints = numEntrypoints; }
+    
+    // Only call this after code generation is complete. Note that the label for the 0th entrypoint
+    // should point to exactly where the code generation cursor was before you started generating
+    // code.
+    JS_EXPORT_PRIVATE CCallHelpers::Label entrypointLabel(unsigned entrypointIndex) const;
 
     // The name has to be a string literal, since we don't do any memory management for the string.
     void setLastPhaseName(const char* name)
@@ -218,7 +191,10 @@ public:
 
     const char* lastPhaseName() const { return m_lastPhaseName; }
 
-    void* addDataSection(size_t size);
+    // Allocates a slab of memory that will be kept alive by anyone who keeps the resulting code
+    // alive. Great for compiler-generated data sections, like switch jump tables and constant pools.
+    // This returns memory that has been zero-initialized.
+    JS_EXPORT_PRIVATE void* addDataSection(size_t);
 
     OpaqueByproducts& byproducts() { return *m_byproducts; }
 
@@ -236,14 +212,25 @@ public:
     const Air::Code& code() const { return *m_code; }
     Air::Code& code() { return *m_code; }
 
-    unsigned callArgAreaSize() const;
-    void requestCallArgAreaSize(unsigned size);
+    unsigned callArgAreaSizeInBytes() const;
+    void requestCallArgAreaSizeInBytes(unsigned size);
+
+    // This tells the register allocators to stay away from this register.
+    JS_EXPORT_PRIVATE void pinRegister(Reg);
 
     JS_EXPORT_PRIVATE unsigned frameSize() const;
-    const RegisterAtOffsetList& calleeSaveRegisters() const;
+    JS_EXPORT_PRIVATE const RegisterAtOffsetList& calleeSaveRegisters() const;
 
     PCToOriginMap& pcToOriginMap() { return m_pcToOriginMap; }
     PCToOriginMap releasePCToOriginMap() { return WTFMove(m_pcToOriginMap); }
+
+    JS_EXPORT_PRIVATE void setWasmBoundsCheckGenerator(RefPtr<WasmBoundsCheckGenerator>);
+
+    template<typename Functor>
+    void setWasmBoundsCheckGenerator(const Functor& functor)
+    {
+        setWasmBoundsCheckGenerator(RefPtr<WasmBoundsCheckGenerator>(createSharedTask<WasmBoundsCheckGeneratorFunction>(functor)));
+    }
 
 private:
     friend class BlockInsertionSet;
@@ -258,6 +245,7 @@ private:
     std::unique_ptr<CFG> m_cfg;
     std::unique_ptr<Dominators> m_dominators;
     HashSet<ValueKey> m_fastConstants;
+    unsigned m_numEntrypoints { 1 };
     const char* m_lastPhaseName;
     std::unique_ptr<OpaqueByproducts> m_byproducts;
     std::unique_ptr<Air::Code> m_code;
@@ -269,6 +257,3 @@ private:
 } } // namespace JSC::B3
 
 #endif // ENABLE(B3_JIT)
-
-#endif // B3Procedure_h
-

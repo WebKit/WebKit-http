@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008, 2009 Apple Inc. All rights reserved.
+ * Copyright (C) 2008-2009, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -86,6 +86,8 @@ JSString* errorDescriptionForValue(ExecState* exec, JSValue v)
 {
     if (v.isString())
         return jsNontrivialString(exec, makeString('"',  asString(v)->value(exec), '"'));
+    if (v.isSymbol())
+        return jsNontrivialString(exec, asSymbol(v)->descriptiveString());
     if (v.isObject()) {
         CallData callData;
         JSObject* object = asObject(v);
@@ -101,7 +103,7 @@ static String defaultApproximateSourceError(const String& originalMessage, const
     return makeString(originalMessage, " (near '...", sourceText, "...')");
 }
 
-static String defaultSourceAppender(const String& originalMessage, const String& sourceText, RuntimeType, ErrorInstance::SourceTextWhereErrorOccurred occurrence)
+String defaultSourceAppender(const String& originalMessage, const String& sourceText, RuntimeType, ErrorInstance::SourceTextWhereErrorOccurred occurrence)
 {
     if (occurrence == ErrorInstance::FoundApproximateSource)
         return defaultApproximateSourceError(originalMessage, sourceText);
@@ -182,9 +184,13 @@ static String notAFunctionSourceAppender(const String& originalMessage, const St
     builder.appendLiteral("', '");
     builder.append(base);
     builder.appendLiteral("' is ");
-    if (type == TypeObject)
-        builder.appendLiteral("an instance of ");
-    builder.append(displayValue);
+    if (type == TypeSymbol)
+        builder.appendLiteral("a Symbol");
+    else {
+        if (type == TypeObject)
+            builder.appendLiteral("an instance of ");
+        builder.append(displayValue);
+    }
     builder.append(')');
 
     return builder.toString();
@@ -236,7 +242,11 @@ static String invalidParameterInstanceofhasInstanceValueNotFunctionSourceAppende
 
 JSObject* createError(ExecState* exec, JSValue value, const String& message, ErrorInstance::SourceAppender appender)
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_CATCH_SCOPE(vm);
+
     String errorMessage = makeString(errorDescriptionForValue(exec, value)->value(exec), ' ', message);
+    ASSERT_UNUSED(scope, !scope.exception());
     JSObject* exception = createTypeError(exec, errorMessage, appender, runtimeTypeForValue(value));
     ASSERT(exception->isErrorInstance());
     return exception;
@@ -289,23 +299,23 @@ JSObject* createTDZError(ExecState* exec)
     return createReferenceError(exec, "Cannot access uninitialized variable.");
 }
 
-JSObject* throwOutOfMemoryError(ExecState* exec)
+JSObject* throwOutOfMemoryError(ExecState* exec, ThrowScope& scope)
 {
-    return exec->vm().throwException(exec, createOutOfMemoryError(exec));
+    return throwException(exec, scope, createOutOfMemoryError(exec));
 }
 
-JSObject* throwStackOverflowError(ExecState* exec)
+JSObject* throwStackOverflowError(ExecState* exec, ThrowScope& scope)
 {
     VM& vm = exec->vm();
     ErrorHandlingScope errorScope(vm);
-    return vm.throwException(exec, createStackOverflowError(exec));
+    return throwException(exec, scope, createStackOverflowError(exec));
 }
 
-JSObject* throwTerminatedExecutionException(ExecState* exec)
+JSObject* throwTerminatedExecutionException(ExecState* exec, ThrowScope& scope)
 {
     VM& vm = exec->vm();
     ErrorHandlingScope errorScope(vm);
-    return vm.throwException(exec, createTerminatedExecutionException(&vm));
+    return throwException(exec, scope, createTerminatedExecutionException(&vm));
 }
 
 } // namespace JSC

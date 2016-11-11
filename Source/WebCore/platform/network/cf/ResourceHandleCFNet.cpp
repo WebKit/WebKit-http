@@ -37,6 +37,7 @@
 #include "FrameLoader.h"
 #include "HTTPHeaderNames.h"
 #include "Logging.h"
+#include "NetworkStorageSession.h"
 #include "NetworkingContext.h"
 #include "ResourceError.h"
 #include "ResourceHandleClient.h"
@@ -57,7 +58,7 @@
 #if PLATFORM(COCOA)
 #include "ResourceHandleCFURLConnectionDelegateWithOperationQueue.h"
 #include "WebCoreSystemInterface.h"
-#if USE(CFNETWORK)
+#if USE(CFURLCONNECTION)
 #include "WebCoreURLResponse.h"
 #include <CFNetwork/CFURLConnectionPriv.h>
 #include <CFNetwork/CFURLRequestPriv.h>
@@ -80,7 +81,7 @@ __declspec(dllimport) CFURLConnectionRef CFURLConnectionCreateWithProperties(
 
 namespace WebCore {
 
-#if USE(CFNETWORK)
+#if USE(CFURLCONNECTION)
 
 static HashSet<String, ASCIICaseInsensitiveHash>& allowsAnyHTTPSCertificateHosts()
 {
@@ -675,6 +676,6 @@ void ResourceHandle::continueWillCacheResponse(CFCachedURLResponseRef response)
 {
     d->m_connectionDelegate->continueWillCacheResponse(response);
 }
-#endif // USE(CFNETWORK)
+#endif // USE(CFURLCONNECTION)
 
 } // namespace WebCore

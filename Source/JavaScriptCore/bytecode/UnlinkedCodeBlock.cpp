@@ -28,28 +28,28 @@
 #include "UnlinkedCodeBlock.h"
 
 #include "BytecodeGenerator.h"
+#include "BytecodeRewriter.h"
 #include "ClassInfo.h"
 #include "CodeCache.h"
-#include "Executable.h"
 #include "ExecutableInfo.h"
 #include "FunctionOverrides.h"
-#include "JSString.h"
 #include "JSCInlines.h"
+#include "JSString.h"
 #include "Parser.h"
+#include "PreciseJumpTargetsInlines.h"
 #include "SourceProvider.h"
 #include "Structure.h"
 #include "SymbolTable.h"
+#include "UnlinkedEvalCodeBlock.h"
+#include "UnlinkedFunctionCodeBlock.h"
 #include "UnlinkedInstructionStream.h"
+#include "UnlinkedModuleProgramCodeBlock.h"
+#include "UnlinkedProgramCodeBlock.h"
 #include <wtf/DataLog.h>
 
 namespace JSC {
 
 const ClassInfo UnlinkedCodeBlock::s_info = { "UnlinkedCodeBlock", 0, 0, CREATE_METHOD_TABLE(UnlinkedCodeBlock) };
-const ClassInfo UnlinkedGlobalCodeBlock::s_info = { "UnlinkedGlobalCodeBlock", &Base::s_info, 0, CREATE_METHOD_TABLE(UnlinkedGlobalCodeBlock) };
-const ClassInfo UnlinkedProgramCodeBlock::s_info = { "UnlinkedProgramCodeBlock", &Base::s_info, 0, CREATE_METHOD_TABLE(UnlinkedProgramCodeBlock) };
-const ClassInfo UnlinkedModuleProgramCodeBlock::s_info = { "UnlinkedModuleProgramCodeBlock", &Base::s_info, nullptr, CREATE_METHOD_TABLE(UnlinkedModuleProgramCodeBlock) };
-const ClassInfo UnlinkedEvalCodeBlock::s_info = { "UnlinkedEvalCodeBlock", &Base::s_info, 0, CREATE_METHOD_TABLE(UnlinkedEvalCodeBlock) };
-const ClassInfo UnlinkedFunctionCodeBlock::s_info = { "UnlinkedFunctionCodeBlock", &Base::s_info, 0, CREATE_METHOD_TABLE(UnlinkedFunctionCodeBlock) };
 
 UnlinkedCodeBlock::UnlinkedCodeBlock(VM* vm, Structure* structure, CodeType codeType, const ExecutableInfo& info, DebuggerMode debuggerMode)
     : Base(*vm, structure)
@@ -62,13 +62,14 @@ UnlinkedCodeBlock::UnlinkedCodeBlock(VM* vm, Structure* structure, CodeType code
     , m_isConstructor(info.isConstructor())
     , m_hasCapturedVariables(false)
     , m_isBuiltinFunction(info.isBuiltinFunction())
-    , m_constructorKind(static_cast<unsigned>(info.constructorKind()))
     , m_superBinding(static_cast<unsigned>(info.superBinding()))
-    , m_derivedContextType(static_cast<unsigned>(info.derivedContextType()))
-    , m_evalContextType(static_cast<unsigned>(info.evalContextType()))
+    , m_scriptMode(static_cast<unsigned>(info.scriptMode()))
     , m_isArrowFunctionContext(info.isArrowFunctionContext())
     , m_isClassContext(info.isClassContext())
     , m_wasCompiledWithDebuggingOpcodes(debuggerMode == DebuggerMode::DebuggerOn || Options::forceDebuggerBytecodeGeneration())
+    , m_constructorKind(static_cast<unsigned>(info.constructorKind()))
+    , m_derivedContextType(static_cast<unsigned>(info.derivedContextType()))
+    , m_evalContextType(static_cast<unsigned>(info.evalContextType()))
     , m_firstLine(0)
     , m_lineCount(0)
     , m_endColumn(UINT_MAX)
@@ -85,11 +86,6 @@ UnlinkedCodeBlock::UnlinkedCodeBlock(VM* vm, Structure* structure, CodeType code
     for (auto& constantRegisterIndex : m_linkTimeConstants)
         constantRegisterIndex = 0;
     ASSERT(m_constructorKind == static_cast<unsigned>(info.constructorKind()));
-}
-
-VM* UnlinkedCodeBlock::vm() const
-{
-    return MarkedBlock::blockFor(this)->vm();
 }
 
 void UnlinkedCodeBlock::visitChildren(JSCell* cell, SlotVisitor& visitor)
@@ -163,6 +159,7 @@ static void dumpLineColumnEntry(size_t index, const UnlinkedInstructionStream& i
         case DidReachBreakpoint: event = " DidReachBreakpoint"; break;
         case WillLeaveCallFrame: event = " WillLeaveCallFrame"; break;
         case WillExecuteStatement: event = " WillExecuteStatement"; break;
+        case WillExecuteExpression: event = " WillExecuteExpression"; break;
         }
     }
     dataLogF("  [%zu] pc %u @ line %u col %u : %s%s\n", index, instructionOffset, line, column, opcodeNames[opcode], event);
@@ -310,47 +307,8 @@ void UnlinkedCodeBlock::addTypeProfilerExpressionInfo(unsigned instructionOffset
     m_rareData->m_typeProfilerInfoMap.set(instructionOffset, range);
 }
 
-void UnlinkedProgramCodeBlock::visitChildren(JSCell* cell, SlotVisitor& visitor)
-{
-    UnlinkedProgramCodeBlock* thisObject = jsCast<UnlinkedProgramCodeBlock*>(cell);
-    ASSERT_GC_OBJECT_INHERITS(thisObject, info());
-    Base::visitChildren(thisObject, visitor);
-}
-
-void UnlinkedModuleProgramCodeBlock::visitChildren(JSCell* cell, SlotVisitor& visitor)
-{
-    UnlinkedModuleProgramCodeBlock* thisObject = jsCast<UnlinkedModuleProgramCodeBlock*>(cell);
-    ASSERT_GC_OBJECT_INHERITS(thisObject, info());
-    Base::visitChildren(thisObject, visitor);
-}
-
 UnlinkedCodeBlock::~UnlinkedCodeBlock()
 {
-}
-
-void UnlinkedProgramCodeBlock::destroy(JSCell* cell)
-{
-    jsCast<UnlinkedProgramCodeBlock*>(cell)->~UnlinkedProgramCodeBlock();
-}
-
-void UnlinkedModuleProgramCodeBlock::destroy(JSCell* cell)
-{
-    jsCast<UnlinkedModuleProgramCodeBlock*>(cell)->~UnlinkedModuleProgramCodeBlock();
-}
-
-void UnlinkedEvalCodeBlock::destroy(JSCell* cell)
-{
-    jsCast<UnlinkedEvalCodeBlock*>(cell)->~UnlinkedEvalCodeBlock();
-}
-
-void UnlinkedFunctionCodeBlock::destroy(JSCell* cell)
-{
-    jsCast<UnlinkedFunctionCodeBlock*>(cell)->~UnlinkedFunctionCodeBlock();
-}
-
-void UnlinkedFunctionExecutable::destroy(JSCell* cell)
-{
-    jsCast<UnlinkedFunctionExecutable*>(cell)->~UnlinkedFunctionExecutable();
 }
 
 void UnlinkedCodeBlock::setInstructions(std::unique_ptr<UnlinkedInstructionStream> instructions)
@@ -366,5 +324,66 @@ const UnlinkedInstructionStream& UnlinkedCodeBlock::instructions() const
     return *m_unlinkedInstructions;
 }
 
+UnlinkedHandlerInfo* UnlinkedCodeBlock::handlerForBytecodeOffset(unsigned bytecodeOffset, RequiredHandler requiredHandler)
+{
+    return handlerForIndex(bytecodeOffset, requiredHandler);
 }
 
+UnlinkedHandlerInfo* UnlinkedCodeBlock::handlerForIndex(unsigned index, RequiredHandler requiredHandler)
+{
+    if (!m_rareData)
+        return nullptr;
+    return UnlinkedHandlerInfo::handlerForIndex(m_rareData->m_exceptionHandlers, index, requiredHandler);
+}
+
+void UnlinkedCodeBlock::applyModification(BytecodeRewriter& rewriter)
+{
+    // Before applying the changes, we adjust the jumps based on the original bytecode offset, the offset to the jump target, and
+    // the insertion information.
+
+    BytecodeGraph<UnlinkedCodeBlock>& graph = rewriter.graph();
+    UnlinkedInstruction* instructionsBegin = graph.instructions().begin();
+
+    for (int bytecodeOffset = 0, instructionCount = graph.instructions().size(); bytecodeOffset < instructionCount;) {
+        UnlinkedInstruction* current = instructionsBegin + bytecodeOffset;
+        OpcodeID opcodeID = current[0].u.opcode;
+        extractStoredJumpTargetsForBytecodeOffset(this, vm()->interpreter, instructionsBegin, bytecodeOffset, [&](int32_t& relativeOffset) {
+            relativeOffset = rewriter.adjustJumpTarget(bytecodeOffset, bytecodeOffset + relativeOffset);
+        });
+        bytecodeOffset += opcodeLength(opcodeID);
+    }
+
+    // Then, exception handlers should be adjusted.
+    if (m_rareData) {
+        for (UnlinkedHandlerInfo& handler : m_rareData->m_exceptionHandlers) {
+            handler.target = rewriter.adjustAbsoluteOffset(handler.target);
+            handler.start = rewriter.adjustAbsoluteOffset(handler.start);
+            handler.end = rewriter.adjustAbsoluteOffset(handler.end);
+        }
+
+        for (size_t i = 0; i < m_rareData->m_opProfileControlFlowBytecodeOffsets.size(); ++i)
+            m_rareData->m_opProfileControlFlowBytecodeOffsets[i] = rewriter.adjustAbsoluteOffset(m_rareData->m_opProfileControlFlowBytecodeOffsets[i]);
+
+        if (!m_rareData->m_typeProfilerInfoMap.isEmpty()) {
+            HashMap<unsigned, RareData::TypeProfilerExpressionRange> adjustedTypeProfilerInfoMap;
+            for (auto& entry : m_rareData->m_typeProfilerInfoMap)
+                adjustedTypeProfilerInfoMap.set(rewriter.adjustAbsoluteOffset(entry.key), entry.value);
+            m_rareData->m_typeProfilerInfoMap.swap(adjustedTypeProfilerInfoMap);
+        }
+    }
+
+    for (size_t i = 0; i < m_propertyAccessInstructions.size(); ++i)
+        m_propertyAccessInstructions[i] = rewriter.adjustAbsoluteOffset(m_propertyAccessInstructions[i]);
+
+    for (size_t i = 0; i < m_expressionInfo.size(); ++i)
+        m_expressionInfo[i].instructionOffset = rewriter.adjustAbsoluteOffset(m_expressionInfo[i].instructionOffset);
+
+    // Then, modify the unlinked instructions.
+    rewriter.applyModification();
+
+    // And recompute the jump target based on the modified unlinked instructions.
+    m_jumpTargets.clear();
+    recomputePreciseJumpTargets(this, graph.instructions().begin(), graph.instructions().size(), m_jumpTargets);
+}
+
+}

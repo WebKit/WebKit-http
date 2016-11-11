@@ -28,11 +28,9 @@
  *
  */
 
-#ifndef FileIconLoader_h
-#define FileIconLoader_h
+#pragma once
 
 #include <wtf/Forward.h>
-#include <wtf/RefCounted.h>
 
 namespace WebCore {
 
@@ -57,5 +55,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif

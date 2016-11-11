@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2007 Apple Inc. All rights reserved.
+ * Copyright (C) 2007-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -42,8 +42,7 @@
 
 namespace WebCore {
 
-const int InvalidPort = 0;
-const int MaxAllowedPort = 65535;
+const int MaxAllowedPort = std::numeric_limits<uint16_t>::max();
 
 static bool schemeRequiresHost(const URL& url)
 {
@@ -67,8 +66,6 @@ bool SecurityOrigin::shouldUseInnerURL(const URL& url)
 // security origin can be parsed using this algorithm.
 URL SecurityOrigin::extractInnerURL(const URL& url)
 {
-    if (url.innerURL())
-        return *url.innerURL();
     // FIXME: Update this callsite to use the innerURL member function when
     // we finish implementing it.
     return URL(ParsedURLString, decodeURLEscapeSequences(url.path()));
@@ -97,7 +94,7 @@ static bool shouldTreatAsUniqueOrigin(const URL& url)
     if (schemeRequiresHost(innerURL) && innerURL.host().isEmpty())
         return true;
 
-    if (SchemeRegistry::shouldTreatURLSchemeAsNoAccess(innerURL.protocol()))
+    if (SchemeRegistry::shouldTreatURLSchemeAsNoAccess(innerURL.protocol().toStringWithoutCopying()))
         return true;
 
     // This is the common case.
@@ -105,21 +102,15 @@ static bool shouldTreatAsUniqueOrigin(const URL& url)
 }
 
 SecurityOrigin::SecurityOrigin(const URL& url)
-    : m_protocol(url.protocol().isNull() ? emptyString() : url.protocol().convertToASCIILowercase())
+    : m_protocol(url.protocol().isNull() ? emptyString() : url.protocol().toString().convertToASCIILowercase())
     , m_host(url.host().isNull() ? emptyString() : url.host().convertToASCIILowercase())
     , m_port(url.port())
-    , m_isUnique(false)
-    , m_universalAccess(false)
-    , m_domainWasSetInDOM(false)
-    , m_storageBlockingPolicy(AllowAllStorage)
-    , m_enforceFilePathSeparation(false)
-    , m_needsDatabaseIdentifierQuirkForFiles(false)
 {
     // document.domain starts as m_host, but can be set by the DOM.
     m_domain = m_host;
 
-    if (isDefaultPortForProtocol(m_port, m_protocol))
-        m_port = InvalidPort;
+    if (m_port && isDefaultPortForProtocol(m_port.value(), m_protocol))
+        m_port = Nullopt;
 
     // By default, only local SecurityOrigins can load local resources.
     m_canLoadLocalResources = isLocal();
@@ -132,14 +123,7 @@ SecurityOrigin::SecurityOrigin()
     : m_protocol(emptyString())
     , m_host(emptyString())
     , m_domain(emptyString())
-    , m_port(InvalidPort)
     , m_isUnique(true)
-    , m_universalAccess(false)
-    , m_domainWasSetInDOM(false)
-    , m_canLoadLocalResources(false)
-    , m_storageBlockingPolicy(AllowAllStorage)
-    , m_enforceFilePathSeparation(false)
-    , m_needsDatabaseIdentifierQuirkForFiles(false)
 {
 }
 
@@ -155,7 +139,7 @@ SecurityOrigin::SecurityOrigin(const SecurityOrigin* other)
     , m_canLoadLocalResources(other->m_canLoadLocalResources)
     , m_storageBlockingPolicy(other->m_storageBlockingPolicy)
     , m_enforceFilePathSeparation(other->m_enforceFilePathSeparation)
-    , m_needsDatabaseIdentifierQuirkForFiles(other->m_needsDatabaseIdentifierQuirkForFiles)
+    , m_needsStorageAccessFromFileURLsQuirk(other->m_needsStorageAccessFromFileURLsQuirk)
 {
 }
 
@@ -164,19 +148,8 @@ Ref<SecurityOrigin> SecurityOrigin::create(const URL& url)
     if (RefPtr<SecurityOrigin> cachedOrigin = getCachedOrigin(url))
         return cachedOrigin.releaseNonNull();
 
-    if (shouldTreatAsUniqueOrigin(url)) {
-        Ref<SecurityOrigin> origin(adoptRef(*new SecurityOrigin));
-
-        if (url.protocolIs("file")) {
-            // Unfortunately, we can't represent all unique origins exactly
-            // the same way because we need to produce a quirky database
-            // identifier for file URLs due to persistent storage in some
-            // embedders of WebKit.
-            origin->m_needsDatabaseIdentifierQuirkForFiles = true;
-        }
-
-        return origin;
-    }
+    if (shouldTreatAsUniqueOrigin(url))
+        return adoptRef(*new SecurityOrigin);
 
     if (shouldUseInnerURL(url))
         return adoptRef(*new SecurityOrigin(extractInnerURL(url)));
@@ -205,11 +178,11 @@ void SecurityOrigin::setDomainFromDOM(const String& newDomain)
 bool SecurityOrigin::isSecure(const URL& url)
 {
     // Invalid URLs are secure, as are URLs which have a secure protocol.
-    if (!url.isValid() || SchemeRegistry::shouldTreatURLSchemeAsSecure(url.protocol()))
+    if (!url.isValid() || SchemeRegistry::shouldTreatURLSchemeAsSecure(url.protocol().toStringWithoutCopying()))
         return true;
 
     // URLs that wrap inner URLs are secure if those inner URLs are secure.
-    if (shouldUseInnerURL(url) && SchemeRegistry::shouldTreatURLSchemeAsSecure(extractInnerURL(url).protocol()))
+    if (shouldUseInnerURL(url) && SchemeRegistry::shouldTreatURLSchemeAsSecure(extractInnerURL(url).protocol().toStringWithoutCopying()))
         return true;
 
     return false;
@@ -300,29 +273,12 @@ bool SecurityOrigin::canRequest(const URL& url) const
     return false;
 }
 
-bool SecurityOrigin::taintsCanvas(const URL& url) const
-{
-    if (canRequest(url))
-        return false;
-
-    // This function exists because we treat data URLs as having a unique origin,
-    // contrary to the current (9/19/2009) draft of the HTML5 specification.
-    // We still want to let folks paint data URLs onto untainted canvases, so
-    // we special case data URLs below. If we change to match HTML5 w.r.t.
-    // data URL security, then we can remove this function in favor of
-    // !canRequest.
-    if (url.protocolIsData())
-        return false;
-
-    return true;
-}
-
 bool SecurityOrigin::canReceiveDragData(const SecurityOrigin* dragInitiator) const
 {
     if (this == dragInitiator)
         return true;
 
-    return canAccess(dragInitiator);  
+    return canAccess(dragInitiator);
 }
 
 // This is a hack to allow keep navigation to http/https feeds working. To remove this
@@ -353,7 +309,7 @@ bool SecurityOrigin::canDisplay(const URL& url) const
     if (isFeedWithNestedProtocolInHTTPFamily(url))
         return true;
 
-    String protocol = url.protocol();
+    String protocol = url.protocol().toString();
 
     if (SchemeRegistry::canDisplayOnlyIfCanRequest(protocol))
         return canRequest(url);
@@ -372,10 +328,10 @@ bool SecurityOrigin::canAccessStorage(const SecurityOrigin* topOrigin, ShouldAll
     if (isUnique())
         return false;
 
-    if (m_storageBlockingPolicy == BlockAllStorage)
+    if (isLocal() && !needsStorageAccessFromFileURLsQuirk() && !m_universalAccess && shouldAllowFromThirdParty != AlwaysAllowFromThirdParty)
         return false;
-
-    if (isLocal() && !m_universalAccess && shouldAllowFromThirdParty != AlwaysAllowFromThirdParty)
+    
+    if (m_storageBlockingPolicy == BlockAllStorage)
         return false;
 
     // FIXME: This check should be replaced with an ASSERT once we can guarantee that topOrigin is not null.
@@ -431,6 +387,11 @@ void SecurityOrigin::grantUniversalAccess()
     m_universalAccess = true;
 }
 
+void SecurityOrigin::grantStorageAccessFromFileURLsQuirk()
+{
+    m_needsStorageAccessFromFileURLsQuirk = true;
+}
+
 #if ENABLE(CACHE_PARTITIONING)
 String SecurityOrigin::domainForCachePartition() const
 {
@@ -470,7 +431,7 @@ String SecurityOrigin::toString() const
 String SecurityOrigin::toRawString() const
 {
     if (m_protocol == "file")
-        return "file://";
+        return ASCIILiteral("file://");
 
     StringBuilder result;
     result.reserveCapacity(m_protocol.length() + m_host.length() + 10);
@@ -480,10 +441,46 @@ String SecurityOrigin::toRawString() const
 
     if (m_port) {
         result.append(':');
-        result.appendNumber(m_port);
+        result.appendNumber(m_port.value());
     }
 
     return result.toString();
+}
+
+static inline bool areOriginsMatching(const SecurityOrigin& origin1, const SecurityOrigin& origin2)
+{
+    if (origin1.isUnique() || origin2.isUnique())
+        return origin1.isUnique() == origin2.isUnique();
+
+    if (origin1.protocol() != origin2.protocol())
+        return false;
+
+    if (origin1.protocol() == "file")
+        return true;
+
+    if (origin1.host() != origin2.host())
+        return false;
+
+    return origin1.port() == origin2.port();
+}
+
+// This function mimics the result of string comparison of serialized origins
+bool originsMatch(const SecurityOrigin& origin1, const SecurityOrigin& origin2)
+{
+    if (&origin1 == &origin2)
+        return true;
+
+    bool result = areOriginsMatching(origin1, origin2);
+    ASSERT(result == (origin1.toString() == origin2.toString()));
+    return result;
+}
+
+bool originsMatch(const SecurityOrigin* origin1, const SecurityOrigin* origin2)
+{
+    if (!origin1 || !origin2)
+        return origin1 == origin2;
+
+    return originsMatch(*origin1, *origin2);
 }
 
 Ref<SecurityOrigin> SecurityOrigin::createFromString(const String& originString)
@@ -494,12 +491,12 @@ Ref<SecurityOrigin> SecurityOrigin::createFromString(const String& originString)
 static const char separatorCharacter = '_';
 
 RefPtr<SecurityOrigin> SecurityOrigin::maybeCreateFromDatabaseIdentifier(const String& databaseIdentifier)
-{ 
+{
     // Make sure there's a first separator
     size_t separator1 = databaseIdentifier.find(separatorCharacter);
     if (separator1 == notFound)
         return nullptr;
-        
+
     // Make sure there's a second separator
     size_t separator2 = databaseIdentifier.reverseFind(separatorCharacter);
     if (separator2 == notFound)
@@ -525,7 +522,9 @@ RefPtr<SecurityOrigin> SecurityOrigin::maybeCreateFromDatabaseIdentifier(const S
     String host = databaseIdentifier.substring(separator1 + 1, separator2 - separator1 - 1);
     
     host = decodeURLEscapeSequences(host);
-    return create(URL(URL(), protocol + "://" + host + ":" + String::number(port) + "/"));
+    auto origin = create(URL(URL(), protocol + "://" + host + "/"));
+    origin->m_port = port;
+    return WTFMove(origin);
 }
 
 Ref<SecurityOrigin> SecurityOrigin::createFromDatabaseIdentifier(const String& databaseIdentifier)
@@ -535,32 +534,12 @@ Ref<SecurityOrigin> SecurityOrigin::createFromDatabaseIdentifier(const String& d
     return create(URL());
 }
 
-Ref<SecurityOrigin> SecurityOrigin::create(const String& protocol, const String& host, int port)
+Ref<SecurityOrigin> SecurityOrigin::create(const String& protocol, const String& host, Optional<uint16_t> port)
 {
-    if (port < 0 || port > MaxAllowedPort)
-        return createUnique();
     String decodedHost = decodeURLEscapeSequences(host);
-    return create(URL(URL(), protocol + "://" + host + ":" + String::number(port) + "/"));
-}
-
-String SecurityOrigin::databaseIdentifier() const 
-{
-    // Historically, we've used the following (somewhat non-sensical) string
-    // for the databaseIdentifier of local files. We used to compute this
-    // string because of a bug in how we handled the scheme for file URLs.
-    // Now that we've fixed that bug, we still need to produce this string
-    // to avoid breaking existing persistent state.
-    if (m_needsDatabaseIdentifierQuirkForFiles)
-        return ASCIILiteral("file__0");
-
-    StringBuilder stringBuilder;
-    stringBuilder.append(m_protocol);
-    stringBuilder.append(separatorCharacter);
-    stringBuilder.append(encodeForFileName(m_host));
-    stringBuilder.append(separatorCharacter);
-    stringBuilder.appendNumber(m_port);
-
-    return stringBuilder.toString();
+    auto origin = create(URL(URL(), protocol + "://" + host + "/"));
+    origin->m_port = port;
+    return origin;
 }
 
 bool SecurityOrigin::equal(const SecurityOrigin* other) const 

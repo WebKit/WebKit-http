@@ -23,17 +23,15 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#if ENABLE(REMOTE_INSPECTOR)
+#pragma once
 
-#ifndef RemoteInspector_h
-#define RemoteInspector_h
+#if ENABLE(REMOTE_INSPECTOR)
 
 #import "RemoteInspectorXPCConnection.h"
 #import <wtf/Forward.h>
 #import <wtf/HashMap.h>
 #import <wtf/Lock.h>
 #import <wtf/RetainPtr.h>
-#import <wtf/Vector.h>
 
 OBJC_CLASS NSDictionary;
 OBJC_CLASS NSString;
@@ -50,6 +48,10 @@ class JS_EXPORT_PRIVATE RemoteInspector final : public RemoteInspectorXPCConnect
 public:
     class Client {
     public:
+        struct Capabilities {
+            bool remoteAutomationAllowed : 1;
+        };
+
         virtual ~Client() { }
         virtual bool remoteAutomationAllowed() const = 0;
         virtual void requestAutomationSession(const String& sessionIdentifier) = 0;
@@ -64,13 +66,13 @@ public:
     void updateTarget(RemoteControllableTarget*);
     void sendMessageToRemote(unsigned targetIdentifier, const String& message);
 
-    void updateAutomaticInspectionCandidate(RemoteInspectionTarget*);
     void setRemoteInspectorClient(RemoteInspector::Client*);
+    void clientCapabilitiesDidChange();
 
     void setupFailed(unsigned targetIdentifier);
     void setupCompleted(unsigned targetIdentifier);
     bool waitingForAutomaticInspection(unsigned targetIdentifier);
-    void clientCapabilitiesDidChange() { pushListingsSoon(); }
+    void updateAutomaticInspectionCandidate(RemoteInspectionTarget*);
 
     bool enabled() const { return m_enabled; }
     bool hasActiveDebugSession() const { return m_hasActiveDebugSession; }
@@ -101,6 +103,7 @@ private:
     void pushListingsSoon();
 
     void updateHasActiveDebugSession();
+    void updateClientCapabilities();
 
     void sendAutomaticInspectionCandidateMessage();
 
@@ -134,6 +137,7 @@ private:
     RefPtr<RemoteInspectorXPCConnection> m_relayConnection;
 
     RemoteInspector::Client* m_client { nullptr };
+    Optional<RemoteInspector::Client::Capabilities> m_clientCapabilities;
 
     dispatch_queue_t m_xpcQueue;
     unsigned m_nextAvailableTargetIdentifier { 1 };
@@ -151,7 +155,5 @@ private:
 };
 
 } // namespace Inspector
-
-#endif // RemoteInspector_h
 
 #endif // ENABLE(REMOTE_INSPECTOR)

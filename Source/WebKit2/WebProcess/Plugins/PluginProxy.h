@@ -63,8 +63,8 @@ public:
     uint64_t pluginInstanceID() const { return m_pluginInstanceID; }
     void pluginProcessCrashed();
 
-    void didReceivePluginProxyMessage(IPC::Connection&, IPC::MessageDecoder&);
-    void didReceiveSyncPluginProxyMessage(IPC::Connection&, IPC::MessageDecoder&, std::unique_ptr<IPC::MessageEncoder>&);
+    void didReceivePluginProxyMessage(IPC::Connection&, IPC::Decoder&);
+    void didReceiveSyncPluginProxyMessage(IPC::Connection&, IPC::Decoder&, std::unique_ptr<IPC::Encoder>&);
 
     bool isBeingAsynchronouslyInitialized() const override { return m_waitingOnAsynchronousInitialization; }
 
@@ -146,10 +146,6 @@ private:
     String getSelectionString() const override { return String(); }
     String getSelectionForWordAtPoint(const WebCore::FloatPoint&) const override { return String(); }
     bool existingSelectionContainsPoint(const WebCore::FloatPoint&) const override { return false; }
-
-#if PLATFORM(COCOA)
-    WebCore::AudioHardwareActivityType audioHardwareActivity() const override;
-#endif
 
     float contentsScaleFactor();
     bool needsBackingStore() const;

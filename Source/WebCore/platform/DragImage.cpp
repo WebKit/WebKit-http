@@ -31,6 +31,7 @@
 #include "FrameView.h"
 #include "ImageBuffer.h"
 #include "Range.h"
+#include "RenderElement.h"
 #include "RenderObject.h"
 #include "RenderView.h"
 
@@ -97,11 +98,12 @@ static DragImageRef createDragImageFromSnapshot(std::unique_ptr<ImageBuffer> sna
 #if ENABLE(CSS_IMAGE_ORIENTATION)
     if (node) {
         RenderObject* renderer = node->renderer();
-        if (!renderer)
+        if (!renderer || !is<RenderElement>(renderer))
             return nullptr;
 
-        orientation.setRespectImageOrientation(renderer->shouldRespectImageOrientation());
-        orientation.setImageOrientationEnum(renderer->style().imageOrientation());
+        auto& renderElement = downcast<RenderElement>(*renderer);
+        orientation.setRespectImageOrientation(renderElement.shouldRespectImageOrientation());
+        orientation.setImageOrientationEnum(renderElement.style().imageOrientation());
     }
 #else
     UNUSED_PARAM(node);
@@ -141,8 +143,8 @@ struct ScopedFrameSelectionState {
     const Frame& frame;
     RenderObject* startRenderer;
     RenderObject* endRenderer;
-    int startOffset;
-    int endOffset;
+    Optional<unsigned> startOffset;
+    Optional<unsigned> endOffset;
 };
 
 DragImageRef createDragImageForRange(Frame& frame, Range& range, bool forceBlackText)
@@ -174,7 +176,10 @@ DragImageRef createDragImageForRange(Frame& frame, Range& range, bool forceBlack
         return nullptr;
 
     SnapshotOptions options = SnapshotOptionsPaintSelectionOnly | (forceBlackText ? SnapshotOptionsForceBlackText : SnapshotOptionsNone);
-    view->setSelection(startRenderer, start.deprecatedEditingOffset(), endRenderer, end.deprecatedEditingOffset(), RenderView::RepaintNothing);
+    int startOffset = start.deprecatedEditingOffset();
+    int endOffset = end.deprecatedEditingOffset();
+    ASSERT(startOffset >= 0 && endOffset >= 0);
+    view->setSelection(startRenderer, startOffset, endRenderer, endOffset, RenderView::RepaintNothing);
     // We capture using snapshotFrameRect() because we fake up the selection using
     // FrameView but snapshotSelection() uses the selection from the Frame itself.
     return createDragImageFromSnapshot(snapshotFrameRect(frame, view->selectionBounds(), options), nullptr);

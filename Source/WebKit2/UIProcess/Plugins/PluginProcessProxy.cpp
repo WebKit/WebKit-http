@@ -38,6 +38,10 @@
 #include <WebCore/NotImplemented.h>
 #include <wtf/RunLoop.h>
 
+#if OS(LINUX)
+#include "MemoryPressureMonitor.h"
+#endif
+
 using namespace WebCore;
 
 namespace WebKit {
@@ -106,7 +110,7 @@ void PluginProcessProxy::getPluginProcessConnection(PassRefPtr<Messages::WebProc
     
     // Ask the plug-in process to create a connection. Since the plug-in can be waiting for a synchronous reply
     // we need to make sure that this message is always processed, even when the plug-in is waiting for a synchronus reply.
-    m_connection->send(Messages::PluginProcess::CreateWebProcessConnection(), 0, IPC::DispatchMessageEvenWhenWaitingForSyncReply);
+    m_connection->send(Messages::PluginProcess::CreateWebProcessConnection(), 0, IPC::SendOption::DispatchMessageEvenWhenWaitingForSyncReply);
 }
 
 void PluginProcessProxy::fetchWebsiteData(std::function<void (Vector<String>)> completionHandler)
@@ -229,6 +233,12 @@ void PluginProcessProxy::didFinishLaunching(ProcessLauncher*, IPC::Connection::I
         parameters.minimumLifetime = minimumLifetime;
         parameters.terminationTimeout = shutdownTimeout;
     }
+
+#if OS(LINUX)
+    if (MemoryPressureMonitor::isEnabled())
+        parameters.memoryPressureMonitorHandle = MemoryPressureMonitor::singleton().createHandle();
+#endif
+
     platformInitializePluginProcess(parameters);
 
     // Initialize the plug-in host process.

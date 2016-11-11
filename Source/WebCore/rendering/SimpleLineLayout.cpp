@@ -298,7 +298,7 @@ static AvoidanceReasonFlags canUseForWithReason(const RenderBlockFlow& flow, Inc
     if (is<RenderTextControl>(*flow.parent()) && downcast<RenderTextControl>(*flow.parent()).textFormControlElement().placeholderElement())
         SET_REASON_AND_RETURN_IF_NEEDED(FlowParentIsPlaceholderElement, reasons, includeReasons);
     // FIXME: Implementation of wrap=hard looks into lineboxes.
-    if (flow.parent()->isTextArea() && flow.parent()->element()->fastHasAttribute(HTMLNames::wrapAttr))
+    if (flow.parent()->isTextArea() && flow.parent()->element()->hasAttributeWithoutSynchronization(HTMLNames::wrapAttr))
         SET_REASON_AND_RETURN_IF_NEEDED(FlowParentIsTextAreaWithWrapping, reasons, includeReasons);
     // This currently covers <blockflow>#text</blockflow>, <blockflow>#text<br></blockflow> and mutiple (sibling) RenderText cases.
     // The <blockflow><inline>#text</inline></blockflow> case is also popular and should be relatively easy to cover.
@@ -327,12 +327,10 @@ static AvoidanceReasonFlags canUseForWithReason(const RenderBlockFlow& flow, Inc
 
             for (auto& floatingObject : *flow.floatingObjectSet()) {
                 ASSERT(floatingObject);
-#if ENABLE(CSS_SHAPES)
                 // if a float has a shape, we cannot tell if content will need to be shifted until after we lay it out,
                 // since the amount of space is not uniform for the height of the float.
                 if (floatingObject->renderer().shapeOutsideInfo())
                     SET_REASON_AND_RETURN_IF_NEEDED(FlowHasUnsupportedFloat, reasons, includeReasons);
-#endif
                 float availableWidth = flow.availableLogicalWidthForLine(floatingObject->y(), DoNotIndentText);
                 if (availableWidth < minimumWidthNeeded)
                     SET_REASON_AND_RETURN_IF_NEEDED(FlowHasUnsupportedFloat, reasons, includeReasons);
@@ -567,6 +565,7 @@ public:
     }
 
     bool operator!=(const FragmentForwardIterator& other) const { return m_fragmentIndex != other.m_fragmentIndex; }
+    bool operator==(const FragmentForwardIterator& other) const { return m_fragmentIndex == other.m_fragmentIndex; }
     unsigned operator*() const { return m_fragmentIndex; }
 
 private:
@@ -859,10 +858,6 @@ std::unique_ptr<Layout> create(RenderBlockFlow& flow)
     Layout::RunVector runs;
 
     createTextRuns(runs, flow, lineCount);
-    for (auto& renderer : childrenOfType<RenderObject>(flow)) {
-        ASSERT(is<RenderText>(renderer) || is<RenderLineBreak>(renderer));
-        renderer.clearNeedsLayout();
-    }
     return Layout::create(runs, lineCount);
 }
 
@@ -1095,7 +1090,7 @@ static void collectNonEmptyLeafRenderBlockFlows(const RenderObject& renderer, Ha
 static void collectNonEmptyLeafRenderBlockFlowsForCurrentPage(HashSet<const RenderBlockFlow*>& leafRenderers)
 {
     for (const auto* document : Document::allDocuments()) {
-        if (!document->renderView() || document->inPageCache())
+        if (!document->renderView() || document->pageCacheState() != Document::NotInPageCache)
             continue;
         if (!document->isHTMLDocument() && !document->isXHTMLDocument())
             continue;

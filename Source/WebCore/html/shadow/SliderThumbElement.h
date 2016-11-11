@@ -29,8 +29,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef SliderThumbElement_h
-#define SliderThumbElement_h
+#pragma once
 
 #include "HTMLDivElement.h"
 #include "HTMLNames.h"
@@ -53,7 +52,7 @@ public:
     void setPositionFromPoint(const LayoutPoint&);
 
 #if ENABLE(IOS_TOUCH_EVENTS)
-    void handleTouchEvent(TouchEvent*);
+    void handleTouchEvent(TouchEvent&);
 
     void disabledAttributeChanged();
 #endif
@@ -68,7 +67,7 @@ private:
     bool matchesReadWritePseudoClass() const override;
     Element* focusDelegate() override;
 #if !PLATFORM(IOS)
-    void defaultEventHandler(Event*) override;
+    void defaultEventHandler(Event&) override;
     bool willRespondToMouseMoveEvents() override;
     bool willRespondToMouseClickEvents() override;
 #endif
@@ -89,9 +88,9 @@ private:
     void setExclusiveTouchIdentifier(unsigned);
     void clearExclusiveTouchIdentifier();
 
-    void handleTouchStart(TouchEvent*);
-    void handleTouchMove(TouchEvent*);
-    void handleTouchEndAndCancel(TouchEvent*);
+    void handleTouchStart(TouchEvent&);
+    void handleTouchMove(TouchEvent&);
+    void handleTouchEndAndCancel(TouchEvent&);
 
     bool shouldAcceptTouchEvents();
     void registerForTouchEvents();
@@ -141,6 +140,4 @@ private:
     AtomicString m_shadowPseudoId;
 };
 
-}
-
-#endif
+} // namespace WebCore

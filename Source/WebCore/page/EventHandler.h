@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef EventHandler_h
-#define EventHandler_h
+#pragma once
 
 #include "Cursor.h"
 #include "DragActions.h"
@@ -201,7 +200,7 @@ public:
     WEBCORE_EXPORT bool handleMouseReleaseEvent(const PlatformMouseEvent&);
     bool handleMouseForceEvent(const PlatformMouseEvent&);
     WEBCORE_EXPORT bool handleWheelEvent(const PlatformWheelEvent&);
-    void defaultWheelEventHandler(Node*, WheelEvent*);
+    void defaultWheelEventHandler(Node*, WheelEvent&);
     bool handlePasteGlobalSelection(const PlatformMouseEvent&);
 
     void platformPrepareForWheelEvents(const PlatformWheelEvent&, const HitTestResult&, RefPtr<Element>& eventTarget, RefPtr<ContainerNode>& scrollableContainer, WeakPtr<ScrollableArea>&, bool& isOverWidget);
@@ -244,16 +243,16 @@ public:
 
     bool needsKeyboardEventDisambiguationQuirks() const;
 
-    static unsigned accessKeyModifiers();
+    static OptionSet<PlatformEvent::Modifier> accessKeyModifiers();
     WEBCORE_EXPORT bool handleAccessKey(const PlatformKeyboardEvent&);
     WEBCORE_EXPORT bool keyEvent(const PlatformKeyboardEvent&);
-    void defaultKeyboardEventHandler(KeyboardEvent*);
+    void defaultKeyboardEventHandler(KeyboardEvent&);
 
     bool accessibilityPreventsEventPropogation(KeyboardEvent&);
-    WEBCORE_EXPORT void handleKeyboardSelectionMovementForAccessibility(KeyboardEvent*);
+    WEBCORE_EXPORT void handleKeyboardSelectionMovementForAccessibility(KeyboardEvent&);
 
     bool handleTextInputEvent(const String& text, Event* underlyingEvent = nullptr, TextEventInputType = TextEventInputKeyboard);
-    void defaultTextInputEventHandler(TextEvent*);
+    void defaultTextInputEventHandler(TextEvent&);
 
 #if ENABLE(DRAG_SUPPORT)
     WEBCORE_EXPORT bool eventMayStartDrag(const PlatformMouseEvent&) const;
@@ -420,10 +419,10 @@ private:
     bool widgetDidHandleWheelEvent(const PlatformWheelEvent&, Widget&);
     bool completeWidgetWheelEvent(const PlatformWheelEvent&, const WeakPtr<Widget>&, const WeakPtr<ScrollableArea>&, ContainerNode*);
 
-    void defaultSpaceEventHandler(KeyboardEvent*);
-    void defaultBackspaceEventHandler(KeyboardEvent*);
-    void defaultTabEventHandler(KeyboardEvent*);
-    void defaultArrowEventHandler(FocusDirection, KeyboardEvent*);
+    void defaultSpaceEventHandler(KeyboardEvent&);
+    void defaultBackspaceEventHandler(KeyboardEvent&);
+    void defaultTabEventHandler(KeyboardEvent&);
+    void defaultArrowEventHandler(FocusDirection, KeyboardEvent&);
 
 #if ENABLE(DRAG_SUPPORT)
     DragSourceAction updateDragSourceActionsAllowed() const;
@@ -584,5 +583,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // EventHandler_h

@@ -47,10 +47,6 @@ public:
     IDBResourceIdentifier(const IDBClient::IDBConnectionProxy&, const IDBRequest&);
     explicit IDBResourceIdentifier(const IDBServer::IDBConnectionToClient&);
 
-    // FIXME: This constructor will be needed during the development of IDB-in-Workers.
-    // It should be removed when no longer necessary.
-    explicit IDBResourceIdentifier(uint64_t connectionIdentifier);
-
     static IDBResourceIdentifier deletedValue();
     WEBCORE_EXPORT bool isHashTableDeletedValue() const;
 
@@ -76,7 +72,7 @@ public:
 
     IDBResourceIdentifier isolatedCopy() const;
 
-#ifndef NDEBUG
+#if !LOG_DISABLED
     String loggingString() const;
 #endif
 

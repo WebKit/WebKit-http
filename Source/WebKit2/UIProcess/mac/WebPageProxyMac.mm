@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010, 2011, 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -54,8 +54,8 @@
 #import <WebCore/SharedBuffer.h>
 #import <WebCore/TextAlternativeWithRange.h>
 #import <WebCore/UserAgent.h>
+#import <WebCore/ValidationBubble.h>
 #import <mach-o/dyld.h>
-#import <wtf/NeverDestroyed.h>
 #import <wtf/text/StringConcatenate.h>
 
 #define MESSAGE_CHECK(assertion) MESSAGE_CHECK_BASE(assertion, process().connection())
@@ -230,7 +230,7 @@ String WebPageProxy::stringSelectionForPasteboard()
     if (!isValid())
         return value;
     
-    const auto messageTimeout = std::chrono::seconds(20);
+    const Seconds messageTimeout(20);
     process().sendSync(Messages::WebPage::GetStringSelectionForPasteboard(), Messages::WebPage::GetStringSelectionForPasteboard::Reply(value), m_pageID, messageTimeout);
     return value;
 }
@@ -241,7 +241,7 @@ RefPtr<WebCore::SharedBuffer> WebPageProxy::dataSelectionForPasteboard(const Str
         return nullptr;
     SharedMemory::Handle handle;
     uint64_t size = 0;
-    const auto messageTimeout = std::chrono::seconds(20);
+    const Seconds messageTimeout(20);
     process().sendSync(Messages::WebPage::GetDataSelectionForPasteboard(pasteboardType),
                                                 Messages::WebPage::GetDataSelectionForPasteboard::Reply(handle, size), m_pageID, messageTimeout);
     if (handle.isNull())
@@ -256,7 +256,7 @@ bool WebPageProxy::readSelectionFromPasteboard(const String& pasteboardName)
         return false;
 
     bool result = false;
-    const auto messageTimeout = std::chrono::seconds(20);
+    const Seconds messageTimeout(20);
     process().sendSync(Messages::WebPage::ReadSelectionFromPasteboard(pasteboardName), Messages::WebPage::ReadSelectionFromPasteboard::Reply(result), m_pageID, messageTimeout);
     return result;
 }
@@ -409,7 +409,7 @@ bool WebPageProxy::shouldDelayWindowOrderingForEvent(const WebKit::WebMouseEvent
         return false;
 
     bool result = false;
-    const auto messageTimeout = std::chrono::seconds(3);
+    const Seconds messageTimeout(3);
     process().sendSync(Messages::WebPage::ShouldDelayWindowOrderingEvent(event), Messages::WebPage::ShouldDelayWindowOrderingEvent::Reply(result), m_pageID, messageTimeout);
     return result;
 }
@@ -420,7 +420,7 @@ bool WebPageProxy::acceptsFirstMouse(int eventNumber, const WebKit::WebMouseEven
         return false;
 
     bool result = false;
-    const auto messageTimeout = std::chrono::seconds(3);
+    const Seconds messageTimeout(3);
     process().sendSync(Messages::WebPage::AcceptsFirstMouse(eventNumber, event), Messages::WebPage::AcceptsFirstMouse::Reply(result), m_pageID, messageTimeout);
     return result;
 }
@@ -593,6 +593,12 @@ NSWindow *WebPageProxy::platformWindow()
 void WebPageProxy::rootViewToWindow(const WebCore::IntRect& viewRect, WebCore::IntRect& windowRect)
 {
     windowRect = m_pageClient.rootViewToWindow(viewRect);
+}
+
+void WebPageProxy::showValidationMessage(const IntRect& anchorClientRect, const String& message)
+{
+    m_validationBubble = m_pageClient.createValidationBubble(message);
+    m_validationBubble->showRelativeTo(anchorClientRect);
 }
 
 #if WK_API_ENABLED

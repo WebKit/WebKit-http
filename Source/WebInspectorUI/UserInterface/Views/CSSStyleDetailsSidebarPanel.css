@@ -69,6 +69,7 @@
     display: flex;
     align-items: center;
     position: absolute;
+    z-index: 1;
     width: 100%;
     background-color: white;
     border-top: 1px solid var(--border-color);
@@ -125,7 +126,7 @@
 .sidebar > .panel.details.css-style > .content ~ .class-list-container {
     flex-wrap: wrap;
     bottom: var(--console-prompt-min-height);
-    max-height: 65px;
+    max-height: 75px;
     padding: 3px 2px;
     overflow-y: scroll;
 }

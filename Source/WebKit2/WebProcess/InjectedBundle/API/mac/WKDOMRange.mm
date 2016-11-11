@@ -68,18 +68,14 @@
 {
     if (!node)
         return;
-    // FIXME: Do something about the exception.
-    WebCore::ExceptionCode ec = 0;
-    _impl->setStart(*WebKit::toWebCoreNode(node), offset, ec);
+    _impl->setStart(*WebKit::toWebCoreNode(node), offset);
 }
 
 - (void)setEnd:(WKDOMNode *)node offset:(int)offset
 {
     if (!node)
         return;
-    // FIXME: Do something about the exception.
-    WebCore::ExceptionCode ec = 0;
-    _impl->setEnd(*WebKit::toWebCoreNode(node), offset, ec);
+    _impl->setEnd(*WebKit::toWebCoreNode(node), offset);
 }
 
 - (void)collapse:(BOOL)toStart
@@ -91,18 +87,14 @@
 {
     if (!node)
         return;
-    // FIXME: Do something about the exception.
-    WebCore::ExceptionCode ec = 0;
-    _impl->selectNode(*WebKit::toWebCoreNode(node), ec);
+    _impl->selectNode(*WebKit::toWebCoreNode(node));
 }
 
 - (void)selectNodeContents:(WKDOMNode *)node
 {
     if (!node)
         return;
-    // FIXME: Do something about the exception.
-    WebCore::ExceptionCode ec = 0;
-    _impl->selectNodeContents(*WebKit::toWebCoreNode(node), ec);
+    _impl->selectNodeContents(*WebKit::toWebCoreNode(node));
 }
 
 - (WKDOMNode *)startContainer
@@ -147,7 +139,7 @@
 {
     RefPtr<WebCore::Range> newRange = rangeExpandedByCharactersInDirectionAtWordBoundary(direction == WKDOMRangeDirectionForward ?  _impl->endPosition() : _impl->startPosition(), characters, direction == WKDOMRangeDirectionForward ? WebCore::DirectionForward : WebCore::DirectionBackward);
 
-    return [[WKDOMRange alloc] _initWithImpl:newRange.get()];
+    return [[[WKDOMRange alloc] _initWithImpl:newRange.get()] autorelease];
 }
 
 @end

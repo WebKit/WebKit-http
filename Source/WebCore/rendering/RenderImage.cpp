@@ -28,6 +28,7 @@
 #include "config.h"
 #include "RenderImage.h"
 
+#include "AXObjectCache.h"
 #include "BitmapImage.h"
 #include "CachedImage.h"
 #include "FocusController.h"
@@ -55,6 +56,11 @@
 #if PLATFORM(IOS)
 #include "LogicalSelectionOffsetCaches.h"
 #include "SelectionRect.h"
+#endif
+
+#if USE(CG)
+#include "PDFDocumentImage.h"
+#include "Settings.h"
 #endif
 
 namespace WebCore {
@@ -125,7 +131,6 @@ RenderImage::RenderImage(Element& element, RenderStyle&& style, StyleImage* styl
     , m_imageDevicePixelRatio(imageDevicePixelRatio)
 {
     updateAltText();
-    imageResource().initialize(this);
     if (is<HTMLImageElement>(element))
         m_hasShadowControls = downcast<HTMLImageElement>(element).hasShadowControls();
 }
@@ -134,7 +139,6 @@ RenderImage::RenderImage(Document& document, RenderStyle&& style, StyleImage* st
     : RenderReplaced(document, WTFMove(style), IntSize())
     , m_imageResource(styleImage ? std::make_unique<RenderImageResourceStyleImage>(*styleImage) : std::make_unique<RenderImageResource>())
 {
-    imageResource().initialize(this);
 }
 
 RenderImage::~RenderImage()
@@ -195,6 +199,13 @@ ImageSizeChangeType RenderImage::setImageSizeForAltText(CachedImage* newImage /*
     return ImageSizeChangeForAltText;
 }
 
+void RenderImage::styleWillChange(StyleDifference diff, const RenderStyle& newStyle)
+{
+    if (!hasInitializedStyle())
+        imageResource().initialize(this);
+    RenderReplaced::styleWillChange(diff, newStyle);
+}
+
 void RenderImage::styleDidChange(StyleDifference diff, const RenderStyle* oldStyle)
 {
     RenderReplaced::styleDidChange(diff, oldStyle);
@@ -222,7 +233,7 @@ void RenderImage::imageChanged(WrappedImagePtr newImage, const IntRect* rect)
     // FIXME (86669): Instead of the RenderImage determining whether its document is in the page
     // cache, the RenderImage should remove itself as a client when its document is put into the
     // page cache.
-    if (documentBeingDestroyed() || document().inPageCache())
+    if (documentBeingDestroyed() || document().pageCacheState() != Document::NotInPageCache)
         return;
 
     if (hasVisibleBoxDecorations() || hasMask() || hasShapeOutside())
@@ -245,11 +256,16 @@ void RenderImage::imageChanged(WrappedImagePtr newImage, const IntRect* rect)
             ASSERT(element());
             if (element()) {
                 m_needsToSetSizeForAltText = true;
-                element()->setNeedsStyleRecalc(SyntheticStyleChange);
+                element()->invalidateStyleAndLayerComposition();
             }
             return;
         }
         imageSizeChange = setImageSizeForAltText(imageResource().cachedImage());
+    }
+
+    if (UNLIKELY(AXObjectCache::accessibilityEnabled())) {
+        if (AXObjectCache* cache = document().existingAXObjectCache())
+            cache->recomputeIsIgnored(this);
     }
 
     repaintOrMarkForLayout(imageSizeChange, rect);
@@ -322,14 +338,14 @@ void RenderImage::repaintOrMarkForLayout(ImageSizeChangeType imageSizeChange, co
     contentChanged(ImageChanged);
 }
 
-void RenderImage::notifyFinished(CachedResource* newImage)
+void RenderImage::notifyFinished(CachedResource& newImage)
 {
     if (documentBeingDestroyed())
         return;
 
     invalidateBackgroundObscurationStatus();
 
-    if (newImage == imageResource().cachedImage()) {
+    if (&newImage == imageResource().cachedImage()) {
         // tell any potential compositing layers
         // that the image is done and they can reference it directly.
         contentChanged(ImageChanged);
@@ -539,6 +555,11 @@ void RenderImage::paintIntoRect(GraphicsContext& context, const FloatRect& rect)
     Image* image = imageResource().image().get();
     InterpolationQuality interpolation = image ? chooseInterpolationQuality(context, *image, image, LayoutSize(rect.size())) : InterpolationDefault;
 
+#if USE(CG)
+    if (is<PDFDocumentImage>(image))
+        downcast<PDFDocumentImage>(*image).setPdfImageCachingPolicy(frame().settings().pdfImageCachingPolicy());
+#endif
+
     ImageOrientationDescription orientationDescription(shouldRespectImageOrientation(), style().imageOrientation());
     context.drawImage(*img, rect, ImagePaintingOptions(compositeOperator, BlendModeNormal, orientationDescription, interpolation));
 }
@@ -599,7 +620,7 @@ LayoutUnit RenderImage::minimumReplacedHeight() const
 HTMLMapElement* RenderImage::imageMap() const
 {
     HTMLImageElement* image = is<HTMLImageElement>(element()) ? downcast<HTMLImageElement>(element()) : nullptr;
-    return image ? image->treeScope().getImageMap(image->fastGetAttribute(usemapAttr)) : nullptr;
+    return image ? image->treeScope().getImageMap(image->attributeWithoutSynchronization(usemapAttr)) : nullptr;
 }
 
 bool RenderImage::nodeAtPoint(const HitTestRequest& request, HitTestResult& result, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, HitTestAction hitTestAction)
@@ -612,7 +633,7 @@ bool RenderImage::nodeAtPoint(const HitTestRequest& request, HitTestResult& resu
             LayoutRect contentBox = contentBoxRect();
             float scaleFactor = 1 / style().effectiveZoom();
             LayoutPoint mapLocation = locationInContainer.point() - toLayoutSize(accumulatedOffset) - locationOffset() - toLayoutSize(contentBox.location());
-            mapLocation.scale(scaleFactor, scaleFactor);
+            mapLocation.scale(scaleFactor);
 
             if (map->mapMouseEvent(mapLocation, contentBox.size(), tempResult))
                 tempResult.setInnerNonSharedNode(element());

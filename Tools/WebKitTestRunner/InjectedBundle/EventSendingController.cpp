@@ -116,6 +116,8 @@ static WKEventModifiers parseModifier(JSStringRef modifier)
         return kWKEventModifiersAltKey;
     if (JSStringIsEqualToUTF8CString(modifier, "metaKey"))
         return kWKEventModifiersMetaKey;
+    if (JSStringIsEqualToUTF8CString(modifier, "capsLockKey"))
+        return kWKEventModifiersCapsLockKey;
     if (JSStringIsEqualToUTF8CString(modifier, "addSelectionKey")) {
 #if OS(MAC_OS_X)
         return kWKEventModifiersMetaKey;
@@ -164,9 +166,9 @@ static WKEventModifiers parseModifierArray(JSContextRef context, JSValueRef arra
     return modifiers;
 }
 
-PassRefPtr<EventSendingController> EventSendingController::create()
+Ref<EventSendingController> EventSendingController::create()
 {
-    return adoptRef(new EventSendingController);
+    return adoptRef(*new EventSendingController);
 }
 
 EventSendingController::EventSendingController()

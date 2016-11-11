@@ -74,6 +74,11 @@ TestRunner::~TestRunner()
         editingDelegate->setAcceptsEditing(TRUE);
 }
 
+JSContextRef TestRunner::mainFrameJSContext()
+{
+    return frame->globalContext();
+}
+
 void TestRunner::addDisallowedURL(JSStringRef url)
 {
     // FIXME: Implement!
@@ -563,6 +568,23 @@ void TestRunner::setAllowFileAccessFromFileURLs(bool enabled)
         return;
 
     prefsPrivate->setAllowFileAccessFromFileURLs(enabled);
+}
+
+void TestRunner::setNeedsStorageAccessFromFileURLsQuirk(bool needsQuirk)
+{
+    COMPtr<IWebView> webView;
+    if (FAILED(frame->webView(&webView)))
+        return;
+
+    COMPtr<IWebPreferences> preferences;
+    if (FAILED(webView->preferences(&preferences)))
+        return;
+
+    COMPtr<IWebPreferencesPrivate> prefsPrivate(Query, preferences);
+    if (!prefsPrivate)
+        return;
+
+    // FIXME: <https://webkit.org/b/164575> Call IWebPreferencesPrivate method when available.
 }
 
 void TestRunner::setPopupBlockingEnabled(bool enabled)
@@ -1307,12 +1329,36 @@ void TestRunner::setBackingScaleFactor(double)
 
 void TestRunner::resetPageVisibility()
 {
-    // FIXME: Implement this.
+    COMPtr<IWebView> webView;
+    if (FAILED(frame->webView(&webView)))
+        return;
+
+    COMPtr<IWebViewPrivate4> viewPrivate;
+    if (FAILED(webView->QueryInterface(&viewPrivate)))
+        return;
+
+    viewPrivate->setVisibilityState(WebPageVisibilityStateVisible);
 }
 
-void TestRunner::setPageVisibility(const char*)
+void TestRunner::setPageVisibility(const char* newVisibility)
 {
-    // FIXME: Implement this.
+    if (!newVisibility)
+        return;
+
+    COMPtr<IWebView> webView;
+    if (FAILED(frame->webView(&webView)))
+        return;
+
+    COMPtr<IWebViewPrivate4> viewPrivate;
+    if (FAILED(webView->QueryInterface(&viewPrivate)))
+        return;
+
+    if (!strcmp(newVisibility, "visible"))
+        viewPrivate->setVisibilityState(WebPageVisibilityStateVisible);
+    else if (!strcmp(newVisibility, "hidden"))
+        viewPrivate->setVisibilityState(WebPageVisibilityStateHidden);
+    else if (!strcmp(newVisibility, "prerender"))
+        viewPrivate->setVisibilityState(WebPageVisibilityStatePrerender);
 }
 
 void TestRunner::grantWebNotificationPermission(JSStringRef origin)

@@ -28,7 +28,7 @@ namespace WebCore {
 
 class JSTestActiveDOMObject : public JSDOMWrapper<TestActiveDOMObject> {
 public:
-    typedef JSDOMWrapper<TestActiveDOMObject> Base;
+    using Base = JSDOMWrapper<TestActiveDOMObject>;
     static JSTestActiveDOMObject* create(JSC::Structure* structure, JSDOMGlobalObject* globalObject, Ref<TestActiveDOMObject>&& impl)
     {
         JSTestActiveDOMObject* ptr = new (NotNull, JSC::allocateCell<JSTestActiveDOMObject>(globalObject->vm().heap)) JSTestActiveDOMObject(structure, *globalObject, WTFMove(impl));
@@ -84,5 +84,9 @@ inline JSC::JSValue toJS(JSC::ExecState* state, JSDOMGlobalObject* globalObject,
 JSC::JSValue toJSNewlyCreated(JSC::ExecState*, JSDOMGlobalObject*, Ref<TestActiveDOMObject>&&);
 inline JSC::JSValue toJSNewlyCreated(JSC::ExecState* state, JSDOMGlobalObject* globalObject, RefPtr<TestActiveDOMObject>&& impl) { return impl ? toJSNewlyCreated(state, globalObject, impl.releaseNonNull()) : JSC::jsNull(); }
 
+template<> struct JSDOMWrapperConverterTraits<TestActiveDOMObject> {
+    using WrapperClass = JSTestActiveDOMObject;
+    using ToWrappedReturnType = TestActiveDOMObject*;
+};
 
 } // namespace WebCore

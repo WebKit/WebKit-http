@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef GenericTypedArrayViewInlines_h
-#define GenericTypedArrayViewInlines_h
+#pragma once
 
 #include "GenericTypedArrayView.h"
 #include "JSGlobalObject.h"
@@ -94,8 +93,9 @@ GenericTypedArrayView<Adaptor>::subarray(int start, int end) const
 {
     unsigned offset, length;
     calculateOffsetAndLength(start, end, this->length(), &offset, &length);
-    clampOffsetAndNumElements<Adaptor::Type>(buffer(), byteOffset(), &offset, &length);
-    return create(buffer(), offset, length);
+    ArrayBuffer* buffer = possiblySharedBuffer();
+    clampOffsetAndNumElements<Adaptor::Type>(buffer, byteOffset(), &offset, &length);
+    return create(buffer, offset, length);
 }
 
 template<typename Adaptor>
@@ -107,6 +107,3 @@ JSArrayBufferView* GenericTypedArrayView<Adaptor>::wrap(
 }
 
 } // namespace JSC
-
-#endif // GenericTypedArrayViewInlines_h
-

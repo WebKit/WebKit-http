@@ -29,10 +29,8 @@
 #if ENABLE(MEDIA_SOURCE)
 
 #include "SourceBufferPrivate.h"
-#include <wtf/HashMap.h>
 #include <wtf/MediaTime.h>
 #include <wtf/RefPtr.h>
-#include <wtf/RetainPtr.h>
 #include <wtf/Vector.h>
 
 namespace WebCore {
@@ -65,20 +63,24 @@ private:
     void setClient(SourceBufferPrivateClient*) override;
     void append(const unsigned char* data, unsigned length) override;
     void abort() override;
+    void resetParserState() override;
     void removedFromMediaSource() override;
     MediaPlayer::ReadyState readyState() const override;
     void setReadyState(MediaPlayer::ReadyState) override;
 
-    void flushAndEnqueueNonDisplayingSamples(Vector<RefPtr<MediaSample>>, AtomicString) override { }
+    void flush(AtomicString) override { m_enqueuedSamples.clear(); }
     void enqueueSample(PassRefPtr<MediaSample>, AtomicString) override;
     bool isReadyForMoreSamples(AtomicString) override { return true; }
     void setActive(bool) override;
+
+    Vector<String> enqueuedSamplesForTrackID(AtomicString) override;
 
     void didReceiveInitializationSegment(const MockInitializationBox&);
     void didReceiveSample(const MockSampleBox&);
 
     MockMediaSourcePrivate* m_mediaSource;
     SourceBufferPrivateClient* m_client;
+    Vector<String> m_enqueuedSamples;
 
     Vector<char> m_inputBuffer;
 };

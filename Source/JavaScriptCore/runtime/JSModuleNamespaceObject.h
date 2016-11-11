@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef JSModuleNamespaceObject_h
-#define JSModuleNamespaceObject_h
+#pragma once
 
 #include "JSDestructibleObject.h"
 #include <wtf/ListHashSet.h>
@@ -36,7 +35,7 @@ class JSModuleRecord;
 class JSModuleNamespaceObject : public JSDestructibleObject {
 public:
     typedef JSDestructibleObject Base;
-    static const unsigned StructureFlags = Base::StructureFlags | OverridesGetOwnPropertySlot | OverridesGetPropertyNames;
+    static const unsigned StructureFlags = Base::StructureFlags | OverridesGetOwnPropertySlot | InterceptsGetOwnPropertySlotByIndexEvenWhenLengthIsNotZero | OverridesGetPropertyNames | GetOwnPropertySlotIsImpureForPropertyAbsence;
 
     static JSModuleNamespaceObject* create(ExecState* exec, JSGlobalObject* globalObject, Structure* structure, JSModuleRecord* moduleRecord, const IdentifierSet& exports)
     {
@@ -76,5 +75,3 @@ private:
 };
 
 } // namespace JSC
-
-#endif // JSModuleNamespaceObject_h

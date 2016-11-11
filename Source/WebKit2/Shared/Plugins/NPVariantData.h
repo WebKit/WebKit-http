@@ -31,8 +31,8 @@
 #include <wtf/text/CString.h>
 
 namespace IPC {
-    class ArgumentDecoder;
-    class ArgumentEncoder;
+class Decoder;
+class Encoder;
 }
 
 namespace WebKit {
@@ -98,8 +98,8 @@ public:
         return m_remoteNPObjectIDValue;
     }
 
-    void encode(IPC::ArgumentEncoder&) const;
-    static bool decode(IPC::ArgumentDecoder&, NPVariantData&);
+    void encode(IPC::Encoder&) const;
+    static bool decode(IPC::Decoder&, NPVariantData&);
 
 private:
     uint32_t m_type;

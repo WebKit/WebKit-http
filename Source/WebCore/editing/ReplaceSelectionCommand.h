@@ -58,6 +58,9 @@ public:
 private:
     ReplaceSelectionCommand(Document&, RefPtr<DocumentFragment>&&, CommandOptions, EditAction);
 
+    String inputEventData() const final;
+    RefPtr<DataTransfer> inputEventDataTransfer() const final;
+    bool willApplyCommand() final;
     virtual void doApply();
 
     class InsertedNodes {
@@ -110,6 +113,7 @@ private:
     void completeHTMLReplacement(const Position& lastPositionToSelect);
     void mergeTextNodesAroundPosition(Position&, Position& positionOnlyToBeUpdated);
 
+    ReplacementFragment* ensureReplacementFragment();
     bool performTrivialReplace(const ReplacementFragment&);
 
     VisibleSelection m_visibleSelectionForInsertedText;
@@ -120,6 +124,9 @@ private:
     bool m_smartReplace;
     bool m_matchStyle;
     RefPtr<DocumentFragment> m_documentFragment;
+    std::unique_ptr<ReplacementFragment> m_replacementFragment;
+    String m_documentFragmentHTMLMarkup;
+    String m_documentFragmentPlainText;
     bool m_preventNesting;
     bool m_movingParagraph;
     bool m_sanitizeFragment;

@@ -29,23 +29,46 @@
 #include "config.h"
 #include "JSReadableStreamSource.h"
 
-#if ENABLE(STREAMS_API)
+#if ENABLE(READABLE_STREAM_API)
 
 using namespace JSC;
 
 namespace WebCore {
 
-JSValue JSReadableStreamSource::start(ExecState& state)
+static void startReadableStream(JSC::ExecState& state, Ref<DeferredPromise>&& promise)
 {
-    JSReadableStreamController* controller = jsDynamicCast<JSReadableStreamController*>(state.argument(0));
+    JSReadableStreamSource* source = jsDynamicDowncast<JSReadableStreamSource*>(state.thisValue());
+    ASSERT(source);
+
+    ASSERT(state.argumentCount());
+    JSReadableStreamDefaultController* controller = jsDynamicDowncast<JSReadableStreamDefaultController*>(state.uncheckedArgument(0));
     ASSERT(controller);
 
-    JSReadableStreamSource* jsSource = const_cast<JSReadableStreamSource*>(this);
-    m_controller.set(state.vm(), jsSource, state.argument(0));
+    source->wrapped().start(ReadableStreamDefaultController(controller), WTFMove(promise));
+}
 
-    JSC::JSPromiseDeferred* promiseDeferred = JSC::JSPromiseDeferred::create(&state, globalObject());
-    wrapped().start(ReadableStreamController(controller), DeferredWrapper(&state, globalObject(), promiseDeferred));
-    return promiseDeferred->promise();
+JSValue JSReadableStreamSource::start(ExecState& state)
+{
+    ASSERT(state.argumentCount());
+    JSReadableStreamDefaultController* controller = jsDynamicDowncast<JSReadableStreamDefaultController*>(state.uncheckedArgument(0));
+    ASSERT(controller);
+
+    m_controller.set(state.vm(), this, controller);
+
+    return callPromiseFunction<startReadableStream, PromiseExecutionScope::WindowOrWorker>(state);
+}
+
+static void pullReadableStream(JSC::ExecState& state, Ref<DeferredPromise>&& promise)
+{
+    JSReadableStreamSource* source = jsDynamicDowncast<JSReadableStreamSource*>(state.thisValue());
+    ASSERT(source);
+
+    source->wrapped().pull(WTFMove(promise));
+}
+
+JSValue JSReadableStreamSource::pull(ExecState& state)
+{
+    return callPromiseFunction<pullReadableStream, PromiseExecutionScope::WindowOrWorker>(state);
 }
 
 JSValue JSReadableStreamSource::controller(ExecState&) const
@@ -56,4 +79,4 @@ JSValue JSReadableStreamSource::controller(ExecState&) const
 
 }
 
-#endif // ENABLE(STREAMS_API)
+#endif // ENABLE(READABLE_STREAM_API)

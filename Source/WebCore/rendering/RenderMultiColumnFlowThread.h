@@ -53,9 +53,6 @@ public:
 
     void layout() override;
 
-    // Find the set inside which the specified renderer would be rendered.
-    RenderMultiColumnSet* findSetRendering(RenderObject*) const;
-
     // Populate the flow thread with what's currently its siblings. Called when a regular block
     // becomes a multicol container.
     void populate();
@@ -116,8 +113,8 @@ private:
     void addRegionToThread(RenderRegion*) override;
     void willBeRemovedFromTree() override;
     RenderObject* resolveMovedChild(RenderObject* child) const override;
-    void flowThreadDescendantInserted(RenderObject*) override;
-    void flowThreadRelativeWillBeRemoved(RenderObject*) override;
+    void flowThreadDescendantInserted(RenderObject&) override;
+    void flowThreadRelativeWillBeRemoved(RenderObject&) override;
     void flowThreadDescendantBoxLaidOut(RenderBox*) override;
     void computeLogicalHeight(LayoutUnit logicalHeight, LayoutUnit logicalTop, LogicalExtentComputedValues&) const override;
     LayoutUnit initialLogicalWidth() const override;
@@ -128,8 +125,8 @@ private:
     bool addForcedRegionBreak(const RenderBlock*, LayoutUnit, RenderBox* breakChild, bool isBefore, LayoutUnit* offsetBreakAdjustment = 0) override;
     bool isPageLogicalHeightKnown() const override;
 
-    void handleSpannerRemoval(RenderObject* spanner);
-    RenderObject* processPossibleSpannerDescendant(RenderObject*& subtreeRoot, RenderObject* descendant);
+    void handleSpannerRemoval(RenderObject& spanner);
+    RenderObject* processPossibleSpannerDescendant(RenderObject*& subtreeRoot, RenderObject& descendant);
     
 private:
     typedef HashMap<RenderBox*, RenderMultiColumnSpannerPlaceholder*> SpannerMap;

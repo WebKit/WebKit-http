@@ -39,7 +39,6 @@
 #include "ScriptSourceCode.h"
 #include "WorkerGlobalScope.h"
 #include "WorkerThread.h"
-#include <bindings/ScriptValue.h>
 #include <runtime/JSLock.h>
 
 using namespace JSC;
@@ -48,14 +47,16 @@ namespace WebCore {
 
 std::unique_ptr<ScheduledAction> ScheduledAction::create(ExecState* exec, DOMWrapperWorld& isolatedWorld, ContentSecurityPolicy* policy)
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     JSValue v = exec->argument(0);
     CallData callData;
     if (getCallData(v, callData) == CallType::None) {
         if (policy && !policy->allowEval(exec))
             return nullptr;
         String string = v.toString(exec)->value(exec);
-        if (exec->hadException())
-            return nullptr;
+        RETURN_IF_EXCEPTION(scope, nullptr);
         return std::unique_ptr<ScheduledAction>(new ScheduledAction(string, isolatedWorld));
     }
 
@@ -99,7 +100,7 @@ void ScheduledAction::executeFunctionInContext(JSGlobalObject* globalObject, JSV
 
     InspectorInstrumentationCookie cookie = JSMainThreadExecState::instrumentFunctionCall(&context, callType, callData);
 
-    NakedPtr<Exception> exception;
+    NakedPtr<JSC::Exception> exception;
     if (is<Document>(context))
         JSMainThreadExecState::profiledCall(exec, JSC::ProfilingReason::Other, m_function.get(), callType, callData, thisValue, args, exception);
     else

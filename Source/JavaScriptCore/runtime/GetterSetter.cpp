@@ -1,7 +1,7 @@
 /*
  *  Copyright (C) 1999-2002 Harri Porten (porten@kde.org)
  *  Copyright (C) 2001 Peter Kelly (pmk@post.com)
- *  Copyright (C) 2004, 2007, 2008, 2009, 2014 Apple Inc. All rights reserved.
+ *  Copyright (C) 2004, 2007-2009, 2014, 2016 Apple Inc. All rights reserved.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Library General Public
@@ -73,27 +73,28 @@ GetterSetter* GetterSetter::withSetter(VM& vm, JSGlobalObject* globalObject, JSO
 
 JSValue callGetter(ExecState* exec, JSValue base, JSValue getterSetter)
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     // FIXME: Some callers may invoke get() without checking for an exception first.
     // We work around that by checking here.
-    if (exec->hadException())
-        return exec->exception()->value();
+    RETURN_IF_EXCEPTION(scope, scope.exception()->value());
 
     JSObject* getter = jsCast<GetterSetter*>(getterSetter)->getter();
 
     CallData callData;
-    CallType callType = getter->methodTable(exec->vm())->getCallData(getter, callData);
+    CallType callType = getter->methodTable(vm)->getCallData(getter, callData);
     return call(exec, getter, callType, callData, base, ArgList());
 }
 
 bool callSetter(ExecState* exec, JSValue base, JSValue getterSetter, JSValue value, ECMAMode ecmaMode)
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     GetterSetter* getterSetterObj = jsCast<GetterSetter*>(getterSetter);
 
-    if (getterSetterObj->isSetterNull()) {
-        if (ecmaMode == StrictMode)
-            throwTypeError(exec, StrictModeReadonlyPropertyWriteError);
-        return false;
-    }
+    if (getterSetterObj->isSetterNull())
+        return typeError(exec, scope, ecmaMode == StrictMode, ASCIILiteral(ReadonlyPropertyWriteError));
 
     JSObject* setter = getterSetterObj->setter();
 
@@ -101,7 +102,7 @@ bool callSetter(ExecState* exec, JSValue base, JSValue getterSetter, JSValue val
     args.append(value);
 
     CallData callData;
-    CallType callType = setter->methodTable(exec->vm())->getCallData(setter, callData);
+    CallType callType = setter->methodTable(vm)->getCallData(setter, callData);
     call(exec, setter, callType, callData, base, args);
     return true;
 }

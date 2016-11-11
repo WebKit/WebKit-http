@@ -22,8 +22,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef InspectorStyleSheet_h
-#define InspectorStyleSheet_h
+#pragma once
 
 #include "CSSPropertySourceData.h"
 #include "CSSStyleDeclaration.h"
@@ -31,7 +30,6 @@
 #include <inspector/InspectorProtocolObjects.h>
 #include <inspector/InspectorValues.h>
 #include <wtf/HashMap.h>
-#include <wtf/HashSet.h>
 #include <wtf/RefPtr.h>
 #include <wtf/Vector.h>
 #include <wtf/text/WTFString.h>
@@ -269,5 +267,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // !defined(InspectorStyleSheet_h)

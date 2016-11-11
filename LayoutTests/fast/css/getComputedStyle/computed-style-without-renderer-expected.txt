@@ -106,14 +106,6 @@ word-spacing: 0px
 word-wrap: normal
 z-index: auto
 zoom: 1
--webkit-animation-delay: 0s
--webkit-animation-direction: normal
--webkit-animation-duration: 0s
--webkit-animation-fill-mode: none
--webkit-animation-iteration-count: 1
--webkit-animation-name: none
--webkit-animation-play-state: running
--webkit-animation-timing-function: ease
 -webkit-appearance: none
 -webkit-backface-visibility: visible
 -webkit-background-clip: border-box
@@ -221,14 +213,9 @@ perspective-origin: 50% 50%
 -webkit-text-stroke-color: rgb(0, 0, 0)
 -webkit-text-stroke-width: 0px
 -webkit-transform-style: flat
--webkit-transition-delay: 0s
--webkit-transition-duration: 0s
--webkit-transition-property: all
--webkit-transition-timing-function: ease
 -webkit-user-drag: auto
 -webkit-user-modify: read-only
 -webkit-user-select: text
--webkit-writing-mode: horizontal-tb
 clip-path: none
 clip-rule: nonzero
 mask: none
@@ -261,7 +248,7 @@ baseline-shift: baseline
 dominant-baseline: auto
 kerning: 0
 text-anchor: start
-writing-mode: lr-tb
+writing-mode: horizontal-tb
 glyph-orientation-horizontal: 0deg
 glyph-orientation-vertical: auto
 -webkit-svg-shadow: none

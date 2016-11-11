@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef B3ValueInlines_h
-#define B3ValueInlines_h
+#pragma once
 
 #if ENABLE(B3_JIT)
 
@@ -56,15 +55,15 @@ void Value::replaceWithBottom(const BottomProvider& bottomProvider)
 }
 
 template<typename T>
-T* Value::as()
+inline T* Value::as()
 {
-    if (T::accepts(opcode()))
+    if (T::accepts(kind()))
         return static_cast<T*>(this);
     return nullptr;
 }
 
 template<typename T>
-const T* Value::as() const
+inline const T* Value::as() const
 {
     return const_cast<Value*>(this)->as<T>();
 }
@@ -187,17 +186,17 @@ inline bool Value::isNegativeZero() const
 }
 
 template<typename T>
-inline bool Value::representableAs() const
+inline bool Value::isRepresentableAs() const
 {
     switch (opcode()) {
     case Const32:
-        return isRepresentableAs<T>(asInt32());
+        return B3::isRepresentableAs<T>(asInt32());
     case Const64:
-        return isRepresentableAs<T>(asInt64());
+        return B3::isRepresentableAs<T>(asInt64());
     case ConstDouble:
-        return isRepresentableAs<T>(asDouble());
+        return B3::isRepresentableAs<T>(asDouble());
     case ConstFloat:
-        return isRepresentableAs<T>(asFloat());
+        return B3::isRepresentableAs<T>(asFloat());
     default:
         return false;
     }
@@ -246,6 +245,3 @@ void Value::walk(const Functor& functor, PhiChildren* phiChildren)
 } } // namespace JSC::B3
 
 #endif // ENABLE(B3_JIT)
-
-#endif // B3ValueInlines_h
-

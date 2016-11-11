@@ -26,10 +26,9 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef FormDataStreamMac_h
-#define FormDataStreamMac_h
+#pragma once
 
-#if !USE(CFNETWORK)
+#if !USE(CFURLCONNECTION)
 
 #include <wtf/Forward.h>
 
@@ -40,15 +39,13 @@ typedef const struct _CFURLRequest* CFURLRequestRef;
 
 namespace WebCore {
 
-    class FormData;
+class FormData;
 
-    void setHTTPBody(NSMutableURLRequest *, FormData*);
-    FormData* httpBodyFromStream(NSInputStream *);
+void setHTTPBody(NSMutableURLRequest *, FormData*);
+FormData* httpBodyFromStream(NSInputStream *);
 
-    CFStringRef formDataStreamLengthPropertyName();
+CFStringRef formDataStreamLengthPropertyName();
 
 } // namespace WebCore
 
-#endif // !USE(CFNETWORK)
-
-#endif // FormDataStreamMac_h
+#endif // !USE(CFURLCONNECTION)

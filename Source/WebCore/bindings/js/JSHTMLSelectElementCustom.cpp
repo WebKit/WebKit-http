@@ -21,55 +21,42 @@
 #include "config.h"
 #include "JSHTMLSelectElementCustom.h"
 
+#include "CustomElementReactionQueue.h"
 #include "ExceptionCode.h"
 #include "HTMLNames.h"
 #include "HTMLOptionElement.h"
 #include "HTMLSelectElement.h"
 #include "JSHTMLOptionElement.h"
+#include "JSHTMLSelectElement.h"
 
 namespace WebCore {
 
 using namespace JSC;
 using namespace HTMLNames;
 
-JSValue JSHTMLSelectElement::remove(ExecState& state)
+void selectElementIndexSetter(JSC::ExecState& state, HTMLSelectElement& element, unsigned index, JSC::JSValue value)
 {
-    HTMLSelectElement& select = wrapped();
+    VM& vm = state.vm();
+    auto throwScope = DECLARE_THROW_SCOPE(vm);
 
-    if (!state.argumentCount()) {
-        // When called with no argument, we should call Element::remove() to detach.
-        ExceptionCode ec = 0;
-        select.remove(ec);
-        setDOMException(&state, ec);
-    } else {
-        // The HTMLSelectElement::remove() function can take either an option object or the index of an option.
-        if (HTMLOptionElement* option = JSHTMLOptionElement::toWrapped(state.argument(0)))
-            select.remove(*option);
-        else
-            select.removeByIndex(state.argument(0).toInt32(&state));
+    if (value.isUndefinedOrNull()) {
+        element.removeByIndex(index);
+        return;
     }
 
-    return jsUndefined();
-}
-
-void selectIndexSetter(HTMLSelectElement* select, JSC::ExecState* exec, unsigned index, JSC::JSValue value)
-{
-    if (value.isUndefinedOrNull())
-        select->removeByIndex(index);
-    else {
-        ExceptionCode ec = 0;
-        HTMLOptionElement* option = JSHTMLOptionElement::toWrapped(value);
-        if (!option)
-            ec = TYPE_MISMATCH_ERR;
-        else
-            select->setOption(index, *option, ec);
-        setDOMException(exec, ec);
+    auto* option = JSHTMLOptionElement::toWrapped(value);
+    if (!option) {
+        setDOMException(&state, throwScope, TYPE_MISMATCH_ERR);
+        return;
     }
+
+    propagateException(state, throwScope, element.setOption(index, *option));
 }
 
-void JSHTMLSelectElement::indexSetter(JSC::ExecState* exec, unsigned index, JSC::JSValue value)
+void JSHTMLSelectElement::indexSetter(JSC::ExecState* state, unsigned index, JSC::JSValue value)
 {
-    selectIndexSetter(&wrapped(), exec, index, value);
+    CustomElementReactionStack customElementReactionStack;
+    selectElementIndexSetter(*state, wrapped(), index, value);
 }
 
 }

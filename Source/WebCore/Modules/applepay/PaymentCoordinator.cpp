@@ -29,6 +29,7 @@
 #if ENABLE(APPLE_PAY)
 
 #include "ApplePaySession.h"
+#include "PaymentAuthorizationStatus.h"
 #include "PaymentCoordinatorClient.h"
 #include "URL.h"
 
@@ -59,18 +60,20 @@ void PaymentCoordinator::canMakePaymentsWithActiveCard(const String& merchantIde
     m_client.canMakePaymentsWithActiveCard(merchantIdentifier, domainName, WTFMove(completionHandler));
 }
 
-void PaymentCoordinator::beginPaymentSession(ApplePaySession& paymentSession)
+void PaymentCoordinator::openPaymentSetup(const String& merchantIdentifier, const String& domainName, std::function<void (bool)> completionHandler)
+{
+    m_client.openPaymentSetup(merchantIdentifier, domainName, WTFMove(completionHandler));
+}
+
+bool PaymentCoordinator::beginPaymentSession(ApplePaySession& paymentSession, const URL& originatingURL, const Vector<URL>& linkIconURLs, const PaymentRequest& paymentRequest)
 {
     ASSERT(!m_activeSession);
 
+    if (!m_client.showPaymentUI(originatingURL, linkIconURLs, paymentRequest))
+        return false;
+
     m_activeSession = &paymentSession;
-}
-
-void PaymentCoordinator::showPaymentUI(const URL& originatingURL, const Vector<URL>& linkIconURLs, const PaymentRequest& paymentRequest)
-{
-    ASSERT(m_activeSession);
-
-    m_client.showPaymentUI(originatingURL, linkIconURLs, paymentRequest);
+    return true;
 }
 
 void PaymentCoordinator::completeMerchantValidation(const PaymentMerchantSession& paymentMerchantSession)
@@ -106,6 +109,10 @@ void PaymentCoordinator::completePaymentSession(PaymentAuthorizationStatus statu
     ASSERT(m_activeSession);
 
     m_client.completePaymentSession(status);
+
+    if (!isFinalStateStatus(status))
+        return;
+
     m_activeSession = nullptr;
 }
 

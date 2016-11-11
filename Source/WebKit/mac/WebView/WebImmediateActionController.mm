@@ -39,6 +39,7 @@
 #import <WebCore/DataDetection.h>
 #import <WebCore/DataDetectorsSPI.h>
 #import <WebCore/DictionaryLookup.h>
+#import <WebCore/Editor.h>
 #import <WebCore/EventHandler.h>
 #import <WebCore/FocusController.h>
 #import <WebCore/Frame.h>
@@ -63,8 +64,7 @@ SOFT_LINK_CLASS(QuickLookUI, QLPreviewMenuItem)
 @interface WebImmediateActionController () <QLPreviewMenuItemDelegate>
 @end
 
-@interface WebAnimationController : NSObject <NSImmediateActionAnimationController> {
-}
+@interface WebAnimationController : NSObject <NSImmediateActionAnimationController>
 @end
 
 @implementation WebAnimationController
@@ -256,10 +256,8 @@ using namespace WebCore;
 
 - (id <NSImmediateActionAnimationController>)_defaultAnimationController
 {
-    if (_contentPreventsDefault) {
-        RetainPtr<WebAnimationController> dummyController = [[WebAnimationController alloc] init];
-        return dummyController.get();
-    }
+    if (_contentPreventsDefault)
+        return [[[WebAnimationController alloc] init] autorelease];
 
     NSURL *url = _hitTestResult.absoluteLinkURL();
     NSString *absoluteURLString = [url absoluteString];
@@ -504,19 +502,26 @@ static IntRect elementBoundingBoxInWindowCoordinatesFromNode(Node* node)
 
 + (DictionaryPopupInfo)_dictionaryPopupInfoForRange:(Range&)range inFrame:(Frame*)frame withLookupOptions:(NSDictionary *)lookupOptions indicatorOptions:(TextIndicatorOptions)indicatorOptions transition:(TextIndicatorPresentationTransition)presentationTransition
 {
+    Editor& editor = frame->editor();
+    editor.setIsGettingDictionaryPopupInfo(true);
+
     // Dictionary API will accept a whitespace-only string and display UI as if it were real text,
     // so bail out early to avoid that.
     DictionaryPopupInfo popupInfo;
-    if (range.text().stripWhiteSpace().isEmpty())
+    if (range.text().stripWhiteSpace().isEmpty()) {
+        editor.setIsGettingDictionaryPopupInfo(false);
         return popupInfo;
+    }
 
     RenderObject* renderer = range.startContainer().renderer();
     const RenderStyle& style = renderer->style();
 
     Vector<FloatQuad> quads;
     range.absoluteTextQuads(quads);
-    if (quads.isEmpty())
+    if (quads.isEmpty()) {
+        editor.setIsGettingDictionaryPopupInfo(false);
         return popupInfo;
+    }
 
     IntRect rangeRect = frame->view()->contentsToWindow(quads[0].enclosingBoundingBox());
 
@@ -543,6 +548,8 @@ static IntRect elementBoundingBoxInWindowCoordinatesFromNode(Node* node)
 
     if (auto textIndicator = TextIndicator::createWithRange(range, indicatorOptions, presentationTransition))
         popupInfo.textIndicator = textIndicator->data();
+
+    editor.setIsGettingDictionaryPopupInfo(false);
     return popupInfo;
 }
 

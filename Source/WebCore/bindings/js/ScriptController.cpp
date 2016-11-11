@@ -48,7 +48,6 @@
 #include "WebCoreJSClientData.h"
 #include "npruntime_impl.h"
 #include "runtime_root.h"
-#include <bindings/ScriptValue.h>
 #include <debugger/Debugger.h>
 #include <heap/StrongInlines.h>
 #include <inspector/ScriptCallStack.h>
@@ -159,7 +158,7 @@ JSValue ScriptController::evaluateInWorld(const ScriptSourceCode& sourceCode, DO
 
     InspectorInstrumentationCookie cookie = InspectorInstrumentation::willEvaluateScript(m_frame, sourceURL, sourceCode.startLine());
 
-    NakedPtr<Exception> evaluationException;
+    NakedPtr<JSC::Exception> evaluationException;
     JSValue returnValue = JSMainThreadExecState::profiledEvaluate(exec, JSC::ProfilingReason::Other, jsSourceCode, shell, evaluationException);
 
     InspectorInstrumentation::didEvaluateScript(cookie, m_frame);
@@ -298,14 +297,15 @@ bool ScriptController::processingUserGestureForMedia()
     return UserGestureIndicator::processingUserGestureForMedia();
 }
 
-bool ScriptController::canAccessFromCurrentOrigin(Frame *frame)
+bool ScriptController::canAccessFromCurrentOrigin(Frame* frame)
 {
-    ExecState* exec = JSMainThreadExecState::currentState();
-    if (exec)
-        return shouldAllowAccessToFrame(exec, frame);
-    // If the current state is 0 we're in a call path where the DOM security 
-    // check doesn't apply (eg. parser).
-    return true;
+    ExecState* state = JSMainThreadExecState::currentState();
+
+    // If the current state is null we're in a call path where the DOM security check doesn't apply (eg. parser).
+    if (!state)
+        return true;
+
+    return BindingSecurity::shouldAllowAccessToFrame(state, frame);
 }
 
 void ScriptController::attachDebugger(JSC::Debugger* debugger)
@@ -384,7 +384,6 @@ void ScriptController::collectIsolatedContexts(Vector<std::pair<JSC::ExecState*,
 }
 
 #if ENABLE(NETSCAPE_PLUGIN_API)
-
 NPObject* ScriptController::windowScriptNPObject()
 {
     if (!m_windowScriptNPObject) {
@@ -405,17 +404,6 @@ NPObject* ScriptController::windowScriptNPObject()
 
     return m_windowScriptNPObject;
 }
-
-NPObject* ScriptController::createScriptObjectForPluginElement(HTMLPlugInElement* plugin)
-{
-    JSObject* object = jsObjectForPluginElement(plugin);
-    if (!object)
-        return _NPN_CreateNoScriptObject();
-
-    // Wrap the JSObject in an NPObject
-    return _NPN_CreateScriptObject(0, object, bindingRootObject());
-}
-
 #endif
 
 #if !PLATFORM(COCOA)
@@ -497,7 +485,7 @@ void ScriptController::clearScriptObjects()
 
 JSValue ScriptController::executeScriptInWorld(DOMWrapperWorld& world, const String& script, bool forceUserGesture)
 {
-    UserGestureIndicator gestureIndicator(forceUserGesture ? DefinitelyProcessingUserGesture : PossiblyProcessingUserGesture);
+    UserGestureIndicator gestureIndicator(forceUserGesture ? Optional<ProcessingUserGestureState>(ProcessingUserGesture) : Nullopt);
     ScriptSourceCode sourceCode(script, m_frame.document()->url());
 
     if (!canExecuteScripts(AboutToExecuteScript) || isPaused())
@@ -523,7 +511,7 @@ bool ScriptController::canExecuteScripts(ReasonForCallingCanExecuteScripts reaso
 
 JSValue ScriptController::executeScript(const String& script, bool forceUserGesture, ExceptionDetails* exceptionDetails)
 {
-    UserGestureIndicator gestureIndicator(forceUserGesture ? DefinitelyProcessingUserGesture : PossiblyProcessingUserGesture);
+    UserGestureIndicator gestureIndicator(forceUserGesture ? Optional<ProcessingUserGestureState>(ProcessingUserGesture) : Nullopt);
     return executeScript(ScriptSourceCode(script, m_frame.document()->url()), exceptionDetails);
 }
 

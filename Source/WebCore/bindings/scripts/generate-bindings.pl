@@ -29,6 +29,8 @@
 # <rdar://problems/4251781&4251785>
 
 use strict;
+use FindBin;
+use lib '.', $FindBin::Bin;
 
 use File::Path;
 use File::Basename;
@@ -139,11 +141,15 @@ foreach my $idlFile (@supplementedIdlFiles) {
     my $document = $parser->Parse($idlFile, $defines, $preprocessor);
 
     foreach my $interface (@{$document->interfaces}) {
-        if (!$interface->isPartial || $interface->name eq $targetInterfaceName) {
+        if (!$interface->isPartial || $interface->type->name eq $targetInterfaceName) {
             my $targetDataNode;
+            my @targetGlobalContexts;
             foreach my $interface (@{$targetDocument->interfaces}) {
-                if ($interface->name eq $targetInterfaceName) {
+                if ($interface->type->name eq $targetInterfaceName) {
                     $targetDataNode = $interface;
+                    my $exposedAttribute = $targetDataNode->extendedAttributes->{"Exposed"} || "Window";
+                    $exposedAttribute = substr($exposedAttribute, 1, -1) if substr($exposedAttribute, 0, 1) eq "(";
+                    @targetGlobalContexts = split(",", $exposedAttribute);
                     last;
                 }
             }
@@ -151,30 +157,36 @@ foreach my $idlFile (@supplementedIdlFiles) {
 
             # Support for attributes of partial interfaces.
             foreach my $attribute (@{$interface->attributes}) {
+                next unless shouldPropertyBeExposed($attribute, \@targetGlobalContexts);
+
                 # Record that this attribute is implemented by $interfaceName.
-                $attribute->signature->extendedAttributes->{"ImplementedBy"} = $interfaceName if $interface->isPartial;
+                $attribute->extendedAttributes->{"ImplementedBy"} = $interfaceName if $interface->isPartial;
 
                 # Add interface-wide extended attributes to each attribute.
                 foreach my $extendedAttributeName (keys %{$interface->extendedAttributes}) {
-                    $attribute->signature->extendedAttributes->{$extendedAttributeName} = $interface->extendedAttributes->{$extendedAttributeName};
+                    $attribute->extendedAttributes->{$extendedAttributeName} = $interface->extendedAttributes->{$extendedAttributeName};
                 }
                 push(@{$targetDataNode->attributes}, $attribute);
             }
 
             # Support for methods of partial interfaces.
             foreach my $function (@{$interface->functions}) {
+                next unless shouldPropertyBeExposed($function, \@targetGlobalContexts);
+
                 # Record that this method is implemented by $interfaceName.
-                $function->signature->extendedAttributes->{"ImplementedBy"} = $interfaceName if $interface->isPartial;
+                $function->extendedAttributes->{"ImplementedBy"} = $interfaceName if $interface->isPartial;
 
                 # Add interface-wide extended attributes to each method.
                 foreach my $extendedAttributeName (keys %{$interface->extendedAttributes}) {
-                    $function->signature->extendedAttributes->{$extendedAttributeName} = $interface->extendedAttributes->{$extendedAttributeName};
+                    $function->extendedAttributes->{$extendedAttributeName} = $interface->extendedAttributes->{$extendedAttributeName};
                 }
                 push(@{$targetDataNode->functions}, $function);
             }
 
             # Support for constants of partial interfaces.
             foreach my $constant (@{$interface->constants}) {
+                next unless shouldPropertyBeExposed($constant, \@targetGlobalContexts);
+
                 # Record that this constant is implemented by $interfaceName.
                 $constant->extendedAttributes->{"ImplementedBy"} = $interfaceName if $interface->isPartial;
 
@@ -193,6 +205,25 @@ foreach my $idlFile (@supplementedIdlFiles) {
 # Generate desired output for the target IDL file.
 my $codeGen = CodeGenerator->new(\@idlDirectories, $generator, $outputDirectory, $outputHeadersDirectory, $preprocessor, $writeDependencies, $verbose, $targetIdlFile);
 $codeGen->ProcessDocument($targetDocument, $defines);
+
+# Attributes / Operations / Constants of supplemental interfaces can have an [Exposed=XX] attribute which restricts
+# on which global contexts they should be exposed.
+sub shouldPropertyBeExposed
+{
+    my ($context, $targetGlobalContexts) = @_;
+
+    my $exposed = $context->extendedAttributes->{Exposed};
+
+    return 1 unless $exposed;
+
+    $exposed = substr($exposed, 1, -1) if substr($exposed, 0, 1) eq "(";
+    my @sourceGlobalContexts = split(",", $exposed);
+
+    for my $targetGlobalContext (@$targetGlobalContexts) {
+        return 1 if grep(/^$targetGlobalContext$/, @sourceGlobalContexts);
+    }
+    return 0;
+}
 
 sub generateEmptyHeaderAndCpp
 {
@@ -258,13 +289,13 @@ sub checkIDLAttributes
         checkIfIDLAttributesExists($idlAttributes, $interface->extendedAttributes, $idlFile);
 
         foreach my $attribute (@{$interface->attributes}) {
-            checkIfIDLAttributesExists($idlAttributes, $attribute->signature->extendedAttributes, $idlFile);
+            checkIfIDLAttributesExists($idlAttributes, $attribute->extendedAttributes, $idlFile);
         }
 
         foreach my $function (@{$interface->functions}) {
-            checkIfIDLAttributesExists($idlAttributes, $function->signature->extendedAttributes, $idlFile);
-            foreach my $parameter (@{$function->parameters}) {
-                checkIfIDLAttributesExists($idlAttributes, $parameter->extendedAttributes, $idlFile);
+            checkIfIDLAttributesExists($idlAttributes, $function->extendedAttributes, $idlFile);
+            foreach my $argument (@{$function->arguments}) {
+                checkIfIDLAttributesExists($idlAttributes, $argument->extendedAttributes, $idlFile);
             }
         }
     }

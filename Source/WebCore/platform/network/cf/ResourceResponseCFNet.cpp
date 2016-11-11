@@ -26,7 +26,7 @@
 #include "config.h"
 #include "ResourceResponse.h"
 
-#if USE(CFNETWORK)
+#if USE(CFURLCONNECTION)
 
 #include "CFNetworkSPI.h"
 
@@ -142,4 +142,4 @@ bool ResourceResponse::platformCompare(const ResourceResponse& a, const Resource
 
 } // namespace WebCore
 
-#endif // USE(CFNETWORK)
+#endif // USE(CFURLCONNECTION)

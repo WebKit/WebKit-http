@@ -32,7 +32,7 @@
 
 namespace WebKit {
 
-void WebCompiledContentExtensionData::encode(IPC::ArgumentEncoder& encoder) const
+void WebCompiledContentExtensionData::encode(IPC::Encoder& encoder) const
 {
     SharedMemory::Handle handle;
     data->createHandle(handle, SharedMemory::Protection::ReadOnly);
@@ -48,7 +48,7 @@ void WebCompiledContentExtensionData::encode(IPC::ArgumentEncoder& encoder) cons
     encoder << domainFiltersBytecodeSize;
 }
 
-bool WebCompiledContentExtensionData::decode(IPC::ArgumentDecoder& decoder, WebCompiledContentExtensionData& compiledContentExtensionData)
+bool WebCompiledContentExtensionData::decode(IPC::Decoder& decoder, WebCompiledContentExtensionData& compiledContentExtensionData)
 {
     SharedMemory::Handle handle;
     if (!decoder.decode(handle))

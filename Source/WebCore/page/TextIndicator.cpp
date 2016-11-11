@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010, 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2010, 2015-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -69,6 +69,8 @@ RefPtr<TextIndicator> TextIndicator::createWithRange(const Range& range, TextInd
     if (!frame)
         return nullptr;
 
+    Ref<Frame> protector(*frame);
+
 #if PLATFORM(IOS)
     frame->editor().setIgnoreCompositionSelectionChange(true);
     frame->selection().setUpdateAppearanceEnabled(true);
@@ -125,7 +127,7 @@ static bool hasNonInlineOrReplacedElements(const Range& range)
         RenderObject* renderer = node->renderer();
         if (!renderer)
             continue;
-        if ((!renderer->isInline() || renderer->isReplaced()) && range.intersectsNode(*node, ASSERT_NO_EXCEPTION))
+        if ((!renderer->isInline() || renderer->isReplaced()) && range.intersectsNode(*node).releaseReturnValue())
             return true;
     }
 

@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef JSProxy_h
-#define JSProxy_h
+#pragma once
 
 #include "JSDestructibleObject.h"
 
@@ -94,11 +93,12 @@ protected:
     JS_EXPORT_PRIVATE static void getStructurePropertyNames(JSObject*, ExecState*, PropertyNameArray&, EnumerationMode);
     JS_EXPORT_PRIVATE static void getGenericPropertyNames(JSObject*, ExecState*, PropertyNameArray&, EnumerationMode);
     JS_EXPORT_PRIVATE static bool defineOwnProperty(JSObject*, ExecState*, PropertyName, const PropertyDescriptor&, bool shouldThrow);
+    JS_EXPORT_PRIVATE static bool setPrototype(JSObject*, ExecState*, JSValue, bool shouldThrowIfCantSet);
+    JS_EXPORT_PRIVATE static JSValue getPrototype(JSObject*, ExecState*);
+    JS_EXPORT_PRIVATE static bool preventExtensions(JSObject*, ExecState*);
 
 private:
     WriteBarrier<JSObject> m_target;
 };
 
 } // namespace JSC
-
-#endif // JSProxy_h

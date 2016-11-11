@@ -2,29 +2,9 @@
 
 var assert = require('assert');
 var Statistics = require('../public/shared/statistics.js');
+if (!assert.almostEqual)
+    assert.almostEqual = require('./resources/almost-equal.js');
 
-if (!assert.almostEqual) {
-    assert.almostEqual = function (actual, expected, precision, message) {
-        var suffiedMessage = (message ? message + ' ' : '');
-        if (isNaN(expected)) {
-            assert(isNaN(actual), `${suffiedMessage}expected NaN but got ${actual}`);
-            return;
-        }
-
-        if (expected == 0) {
-            assert.equal(actual, expected, message);
-            return;
-        }
-
-        if (!precision)
-            precision = 6;
-        var tolerance = 1 / Math.pow(10, precision);
-        var relativeDifference = Math.abs((actual - expected) / expected);
-        var percentDifference = (relativeDifference * 100).toFixed(2);
-        assert(relativeDifference < tolerance,
-            `${suffiedMessage}expected ${expected} but got ${actual} (${percentDifference}% difference)`);
-    }
-}
 
 describe('assert.almostEqual', function () {
     it('should not throw when values are identical', function () {
@@ -355,6 +335,11 @@ describe('Statistics', function () {
     });
 
     describe('segmentTimeSeriesByMaximizingSchwarzCriterion', function () {
+        it('should segment time series of length 0 into a single segment', function () {
+            var values = [];
+            assert.deepEqual(Statistics.segmentTimeSeriesByMaximizingSchwarzCriterion(values), [0, 0]);
+        });
+
         it('should not segment time series of length two into two pieces', function () {
             var values = [1, 2];
             assert.deepEqual(Statistics.segmentTimeSeriesByMaximizingSchwarzCriterion(values), [0, 2]);

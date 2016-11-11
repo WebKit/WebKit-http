@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2011 Google Inc. All rights reserved.
+ * Copyright (C) 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -42,21 +43,24 @@ using namespace JSC;
 
 namespace WebCore {
 
-EncodedJSValue JSC_HOST_CALL constructJSMutationObserver(ExecState* exec)
+EncodedJSValue JSC_HOST_CALL constructJSMutationObserver(ExecState& exec)
 {
-    if (exec->argumentCount() < 1)
-        return throwVMError(exec, createNotEnoughArgumentsError(exec));
+    VM& vm = exec.vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
 
-    JSObject* object = exec->argument(0).getObject();
+    if (exec.argumentCount() < 1)
+        return throwVMError(&exec, scope, createNotEnoughArgumentsError(&exec));
+
+    JSObject* object = exec.uncheckedArgument(0).getObject();
     CallData callData;
     if (!object || object->methodTable()->getCallData(object, callData) == CallType::None)
-        return throwVMError(exec, createTypeError(exec, "Callback argument must be a function"));
+        return throwArgumentTypeError(exec, scope, 0, "callback", "MutationObserver", nullptr, "MutationCallback");
 
-    DOMConstructorObject* jsConstructor = jsCast<DOMConstructorObject*>(exec->callee());
+    DOMConstructorObject* jsConstructor = jsCast<DOMConstructorObject*>(exec.callee());
     auto callback = JSMutationCallback::create(object, jsConstructor->globalObject());
-    JSObject* jsObserver = asObject(toJS(exec, jsConstructor->globalObject(), MutationObserver::create(WTFMove(callback))));
+    JSObject* jsObserver = asObject(toJSNewlyCreated(&exec, jsConstructor->globalObject(), MutationObserver::create(WTFMove(callback))));
     PrivateName propertyName;
-    jsObserver->putDirect(jsConstructor->globalObject()->vm(), propertyName, object);
+    jsObserver->putDirect(vm, propertyName, object);
     return JSValue::encode(jsObserver);
 }
 

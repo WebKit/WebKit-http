@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ViewportConfiguration_h
-#define ViewportConfiguration_h
+#pragma once
 
 #include "FloatSize.h"
 #include "IntSize.h"
@@ -92,8 +91,9 @@ public:
     WEBCORE_EXPORT double initialScaleIgnoringContentSize() const;
     WEBCORE_EXPORT double minimumScale() const;
     double maximumScale() const { return m_forceAlwaysUserScalable ? forceAlwaysUserScalableMaximumScale : m_configuration.maximumScale; }
+    double maximumScaleIgnoringAlwaysScalable() const { return m_configuration.maximumScale; }
     WEBCORE_EXPORT bool allowsUserScaling() const;
-    WEBCORE_EXPORT bool allowsUserScalingIgnoringForceAlwaysScaling() const;
+    WEBCORE_EXPORT bool allowsUserScalingIgnoringAlwaysScalable() const;
     bool allowsShrinkToFit() const;
 
     WEBCORE_EXPORT static Parameters webpageParameters();
@@ -131,5 +131,3 @@ private:
 TextStream& operator<<(TextStream&, const ViewportConfiguration::Parameters&);
 
 } // namespace WebCore
-
-#endif // ViewportConfiguration_h

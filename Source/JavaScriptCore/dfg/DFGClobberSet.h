@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef DFGClobberSet_h
-#define DFGClobberSet_h
+#pragma once
 
 #if ENABLE(DFG_JIT)
 
@@ -53,11 +52,11 @@ public:
     
     void add(AbstractHeap);
     void addAll(const ClobberSet&);
-    bool contains(AbstractHeap) const;
     bool overlaps(AbstractHeap) const;
     void clear();
     
     // Calls useful for debugging the ClobberSet.
+    // Do not call for non debugging purpose. Otherwise, you must handle DOMState hierarchy carefully.
     
     HashSet<AbstractHeap> direct() const;
     HashSet<AbstractHeap> super() const;
@@ -65,6 +64,8 @@ public:
     void dump(PrintStream&) const;
     
 private:
+    bool contains(AbstractHeap) const;
+
     HashSet<AbstractHeap> setOf(bool direct) const;
     
     // Maps heap to:
@@ -118,6 +119,3 @@ bool writesOverlap(Graph&, Node*, ClobberSet&);
 } } // namespace JSC::DFG
 
 #endif // ENABLE(DFG_JIT)
-
-#endif // DFGClobberSet_h
-

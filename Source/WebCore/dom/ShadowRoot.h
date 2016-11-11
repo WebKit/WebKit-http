@@ -24,31 +24,21 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ShadowRoot_h
-#define ShadowRoot_h
+#pragma once
 
-#include "ContainerNode.h"
 #include "Document.h"
 #include "DocumentFragment.h"
 #include "Element.h"
-#include "ExceptionCode.h"
-#include "TreeScope.h"
+#include "ShadowRootMode.h"
 
 namespace WebCore {
 
-class AuthorStyleSheets;
 class HTMLSlotElement;
 class SlotAssignment;
 
 class ShadowRoot final : public DocumentFragment, public TreeScope {
 public:
-    enum class Type : uint8_t {
-        UserAgent = 0,
-        Closed,
-        Open,
-    };
-
-    static Ref<ShadowRoot> create(Document& document, Type type)
+    static Ref<ShadowRoot> create(Document& document, ShadowRootMode type)
     {
         return adoptRef(*new ShadowRoot(document, type));
     }
@@ -62,11 +52,7 @@ public:
 
     using TreeScope::rootNode;
 
-    StyleResolver& styleResolver();
-    AuthorStyleSheets& authorStyleSheets();
-    
-    void updateStyle();
-    void resetStyleResolver();
+    Style::Scope& styleScope();
 
     bool resetStyleInheritance() const { return m_resetStyleInheritance; }
     void setResetStyleInheritance(bool);
@@ -75,11 +61,11 @@ public:
     void setHost(Element* host) { m_host = host; }
 
     String innerHTML() const;
-    void setInnerHTML(const String&, ExceptionCode&);
+    ExceptionOr<void> setInnerHTML(const String&);
 
     Element* activeElement() const;
 
-    Type type() const { return m_type; }
+    ShadowRootMode mode() const { return m_type; }
 
     void removeAllEventListeners() override;
 
@@ -97,7 +83,7 @@ public:
     const Vector<Node*>* assignedNodesForSlot(const HTMLSlotElement&);
 
 protected:
-    ShadowRoot(Document&, Type);
+    ShadowRoot(Document&, ShadowRootMode);
 
     ShadowRoot(Document&, std::unique_ptr<SlotAssignment>&&);
 
@@ -109,13 +95,15 @@ private:
 
     Ref<Node> cloneNodeInternal(Document&, CloningOperation) override;
 
+    Node::InsertionNotificationRequest insertedInto(ContainerNode& insertionPoint) override;
+    void removedFrom(ContainerNode& insertionPoint) override;
+
     bool m_resetStyleInheritance { false };
-    Type m_type { Type::UserAgent };
+    ShadowRootMode m_type { ShadowRootMode::UserAgent };
 
     Element* m_host { nullptr };
 
-    std::unique_ptr<StyleResolver> m_styleResolver;
-    std::unique_ptr<AuthorStyleSheets> m_authorStyleSheets;
+    std::unique_ptr<Style::Scope> m_styleScope;
 
     std::unique_ptr<SlotAssignment> m_slotAssignment;
 };
@@ -150,5 +138,3 @@ inline bool hasShadowRootParent(const Node& node)
 SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::ShadowRoot)
     static bool isType(const WebCore::Node& node) { return node.isShadowRoot(); }
 SPECIALIZE_TYPE_TRAITS_END()
-
-#endif

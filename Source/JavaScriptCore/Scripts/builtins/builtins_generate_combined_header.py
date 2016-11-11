@@ -46,14 +46,13 @@ class BuiltinsCombinedHeaderGenerator(BuiltinsGenerator):
     def generate_output(self):
         args = {
             'namespace': self.model().framework.setting('namespace'),
-            'headerGuard': self.output_filename().replace('.', '_'),
             'macroPrefix': self.model().framework.setting('macro_prefix'),
         }
 
         sections = []
         sections.append(self.generate_license())
         sections.append(Template(Templates.DoNotEditWarning).substitute(args))
-        sections.append(Template(Templates.HeaderIncludeGuardTop).substitute(args))
+        sections.append(Template(Templates.HeaderIncludeGuard).substitute(args))
         sections.append(self.generate_forward_declarations())
         sections.append(Template(Templates.NamespaceTop).substitute(args))
         for object in self.model().objects:
@@ -63,7 +62,6 @@ class BuiltinsCombinedHeaderGenerator(BuiltinsGenerator):
         sections.append(self.generate_section_for_global_private_code_name_macro())
         sections.append(Template(Templates.CombinedHeaderStaticMacros).substitute(args))
         sections.append(Template(Templates.NamespaceBottom).substitute(args))
-        sections.append(Template(Templates.HeaderIncludeGuardBottom).substitute(args))
 
         return "\n\n".join(sections)
 

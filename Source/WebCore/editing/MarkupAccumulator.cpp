@@ -156,11 +156,12 @@ void MarkupAccumulator::serializeNodesWithNamespaces(Node& targetNode, EChildren
     if (!childrenOnly)
         appendStartTag(targetNode, &namespaceHash);
 
-    if (!(targetNode.document().isHTMLDocument() && elementCannotHaveEndTag(targetNode))) {
-        Node* current = targetNode.hasTagName(templateTag) ? downcast<HTMLTemplateElement>(targetNode).content().firstChild() : targetNode.firstChild();
-        for ( ; current; current = current->nextSibling())
-            serializeNodesWithNamespaces(*current, IncludeNode, &namespaceHash, tagNamesToSkip);
-    }
+    if (targetNode.document().isHTMLDocument() && elementCannotHaveEndTag(targetNode))
+        return;
+
+    Node* current = targetNode.hasTagName(templateTag) ? downcast<HTMLTemplateElement>(targetNode).content().firstChild() : targetNode.firstChild();
+    for ( ; current; current = current->nextSibling())
+        serializeNodesWithNamespaces(*current, IncludeNode, &namespaceHash, tagNamesToSkip);
 
     if (!childrenOnly)
         appendEndTag(targetNode);
@@ -389,26 +390,20 @@ void MarkupAccumulator::appendDocumentType(StringBuilder& result, const Document
 
     result.appendLiteral("<!DOCTYPE ");
     result.append(documentType.name());
-    if (!documentType.publicId().isNull()) {
+    if (!documentType.publicId().isEmpty()) {
         result.appendLiteral(" PUBLIC \"");
         result.append(documentType.publicId());
         result.append('"');
-        if (!documentType.systemId().isNull()) {
+        if (!documentType.systemId().isEmpty()) {
             result.append(' ');
             result.append('"');
             result.append(documentType.systemId());
             result.append('"');
         }
-    } else if (!documentType.systemId().isNull()) {
+    } else if (!documentType.systemId().isEmpty()) {
         result.appendLiteral(" SYSTEM \"");
         result.append(documentType.systemId());
         result.append('"');
-    }
-    if (!documentType.internalSubset().isNull()) {
-        result.append(' ');
-        result.append('[');
-        result.append(documentType.internalSubset());
-        result.append(']');
     }
     result.append('>');
 }
@@ -503,15 +498,20 @@ void MarkupAccumulator::appendAttribute(StringBuilder& result, const Element& el
         result.append(attribute.name().localName());
     else {
         if (!attribute.namespaceURI().isEmpty()) {
-            AtomicStringImpl* foundNS = namespaces && attribute.prefix().impl() ? namespaces->get(attribute.prefix().impl()) : 0;
-            bool prefixIsAlreadyMappedToOtherNS = foundNS && foundNS != attribute.namespaceURI().impl();
-            if (attribute.prefix().isEmpty() || !foundNS || prefixIsAlreadyMappedToOtherNS) {
-                if (AtomicStringImpl* prefix = namespaces ? namespaces->get(attribute.namespaceURI().impl()) : 0)
-                    prefixedName.setPrefix(AtomicString(prefix));
-                else {
-                    bool shouldBeDeclaredUsingAppendNamespace = !attribute.prefix().isEmpty() && !foundNS;
-                    if (!shouldBeDeclaredUsingAppendNamespace && attribute.localName() != xmlnsAtom && namespaces)
-                        generateUniquePrefix(prefixedName, *namespaces);
+            if (attribute.namespaceURI() == XMLNames::xmlNamespaceURI) {
+                // Always use xml as prefix if the namespace is the XML namespace.
+                prefixedName.setPrefix(xmlAtom);
+            } else {
+                AtomicStringImpl* foundNS = namespaces && attribute.prefix().impl() ? namespaces->get(attribute.prefix().impl()) : 0;
+                bool prefixIsAlreadyMappedToOtherNS = foundNS && foundNS != attribute.namespaceURI().impl();
+                if (attribute.prefix().isEmpty() || !foundNS || prefixIsAlreadyMappedToOtherNS) {
+                    if (AtomicStringImpl* prefix = namespaces ? namespaces->get(attribute.namespaceURI().impl()) : 0)
+                        prefixedName.setPrefix(AtomicString(prefix));
+                    else {
+                        bool shouldBeDeclaredUsingAppendNamespace = !attribute.prefix().isEmpty() && !foundNS;
+                        if (!shouldBeDeclaredUsingAppendNamespace && attribute.localName() != xmlnsAtom && namespaces)
+                            generateUniquePrefix(prefixedName, *namespaces);
+                    }
                 }
             }
         }
@@ -596,11 +596,18 @@ bool MarkupAccumulator::elementCannotHaveEndTag(const Node& node)
     if (!is<HTMLElement>(node))
         return false;
 
-    // FIXME: ieForbidsInsertHTML may not be the right function to call here
-    // ieForbidsInsertHTML is used to disallow setting innerHTML/outerHTML
-    // or createContextualFragment.  It does not necessarily align with
-    // which elements should be serialized w/o end tags.
-    return downcast<HTMLElement>(node).ieForbidsInsertHTML();
+    // From https://html.spec.whatwg.org/#serialising-html-fragments:
+    // If current node is an area, base, basefont, bgsound, br, col, embed, frame, hr, img,
+    // input, keygen, link, meta, param, source, track or wbr element, then continue on to
+    // the next child node at this point.
+    static const HTMLQualifiedName* tags[] = { &areaTag, &baseTag, &basefontTag, &bgsoundTag, &brTag, &colTag, &embedTag,
+        &frameTag, &hrTag, &imgTag, &inputTag, &keygenTag, &linkTag, &metaTag, &paramTag, &sourceTag, &trackTag, &wbrTag };
+    auto& element = downcast<HTMLElement>(node);
+    for (auto* tag : tags) {
+        if (element.hasTagName(*tag))
+            return true;
+    }
+    return false;
 }
 
 void MarkupAccumulator::appendEndMarkup(StringBuilder& result, const Element& element)

@@ -49,6 +49,7 @@
 #include <fstream>
 #include <io.h>
 #include <math.h>
+#include <shlobj.h>
 #include <shlwapi.h>
 #include <tchar.h>
 #include <wtf/NeverDestroyed.h>
@@ -61,7 +62,7 @@
 #include <WebKit/WebKit.h>
 #include <WebKit/WebKitCOMAPI.h>
 
-#if USE(CFNETWORK)
+#if USE(CFURLCONNECTION)
 #include <CFNetwork/CFHTTPCookiesPriv.h>
 #include <CFNetwork/CFURLCachePriv.h>
 #endif
@@ -854,20 +855,57 @@ static void resetWebPreferencesToConsistentValues(IWebPreferences* preferences)
     prefsPrivate3->setCustomElementsEnabled(TRUE);
 
     prefsPrivate3->setDOMIteratorEnabled(TRUE);
+    prefsPrivate3->setModernMediaControlsEnabled(FALSE);
 
     setAlwaysAcceptCookies(false);
+}
+
+static String applicationId()
+{
+    DWORD processId = ::GetCurrentProcessId();
+    return String::format("com.apple.DumpRenderTree.%d", processId);
+}
+
+static void setApplicationId()
+{
+    COMPtr<IWebPreferences> preferences;
+    if (SUCCEEDED(WebKitCreateInstance(CLSID_WebPreferences, 0, IID_IWebPreferences, (void**)&preferences))) {
+        COMPtr<IWebPreferencesPrivate4> prefsPrivate4(Query, preferences);
+        ASSERT(prefsPrivate4);
+        _bstr_t fileName = applicationId().charactersWithNullTermination().data();
+        prefsPrivate4->setApplicationId(fileName);
+    }
+}
+
+static void setCacheFolder()
+{
+    String libraryPath = libraryPathForDumpRenderTree();
+
+    COMPtr<IWebCache> webCache;
+    if (SUCCEEDED(WebKitCreateInstance(CLSID_WebCache, 0, IID_IWebCache, (void**)&webCache))) {
+        _bstr_t cacheFolder = WebCore::pathByAppendingComponent(libraryPath, "LocalCache").utf8().data();
+        webCache->setCacheFolder(cacheFolder);
+    }
 }
 
 // Called once on DumpRenderTree startup.
 static void setDefaultsToConsistentValuesForTesting()
 {
 #if USE(CF)
+    // Create separate preferences for each DRT instance
+    setApplicationId();
+
+    RetainPtr<CFStringRef> appId = applicationId().createCFString();
+
     String libraryPath = libraryPathForDumpRenderTree();
 
     // Set up these values before creating the WebView so that the various initializations will see these preferred values.
-    CFPreferencesSetAppValue(WebDatabaseDirectoryDefaultsKey, WebCore::pathByAppendingComponent(libraryPath, "Databases").createCFString().get(), kCFPreferencesCurrentApplication);
-    CFPreferencesSetAppValue(WebStorageDirectoryDefaultsKey, WebCore::pathByAppendingComponent(libraryPath, "LocalStorage").createCFString().get(), kCFPreferencesCurrentApplication);
-    CFPreferencesSetAppValue(WebKitLocalCacheDefaultsKey, WebCore::pathByAppendingComponent(libraryPath, "LocalCache").createCFString().get(), kCFPreferencesCurrentApplication);
+    CFPreferencesSetAppValue(WebDatabaseDirectoryDefaultsKey, WebCore::pathByAppendingComponent(libraryPath, "Databases").createCFString().get(), appId.get());
+    CFPreferencesSetAppValue(WebStorageDirectoryDefaultsKey, WebCore::pathByAppendingComponent(libraryPath, "LocalStorage").createCFString().get(), appId.get());
+    CFPreferencesSetAppValue(WebKitLocalCacheDefaultsKey, WebCore::pathByAppendingComponent(libraryPath, "LocalCache").createCFString().get(), appId.get());
+
+    // Create separate cache for each DRT instance
+    setCacheFolder();
 #endif
 }
 
@@ -1197,6 +1235,7 @@ static void runTest(const string& inputLine)
 
 exit:
     removeFontFallbackIfPresent(fallbackPath);
+    ::gTestRunner->cleanup();
     ::gTestRunner = nullptr;
 
     fputs("#EOF\n", stderr);
@@ -1285,7 +1324,7 @@ IWebView* createWebViewAndOffscreenWindow(HWND* webViewWindow)
     return webView;
 }
 
-#if USE(CFNETWORK)
+#if USE(CFURLCONNECTION)
 RetainPtr<CFURLCacheRef> sharedCFURLCache()
 {
 #ifndef DEBUG_ALL
@@ -1463,7 +1502,7 @@ int main(int argc, const char* argv[])
     if (FAILED(webView->mainFrame(&frame)))
         return -7;
 
-#if USE(CFNETWORK)
+#if USE(CFURLCONNECTION)
     RetainPtr<CFURLCacheRef> urlCache = sharedCFURLCache();
     CFURLCacheRemoveAllCachedResponses(urlCache.get());
 #endif

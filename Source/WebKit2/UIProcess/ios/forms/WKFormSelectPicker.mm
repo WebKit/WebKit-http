@@ -24,7 +24,7 @@
  */
 
 #import "config.h"
-#import "WKFormSelectControl.h"
+#import "WKFormSelectPicker.h"
 
 #if PLATFORM(IOS)
 
@@ -32,8 +32,8 @@
 #import "WKContentView.h"
 #import "WKContentViewInteraction.h"
 #import "WKFormPopover.h"
+#import "WKFormSelectControl.h"
 #import "WebPageProxy.h"
-#import <wtf/RetainPtr.h>
 
 using namespace WebKit;
 
@@ -304,6 +304,15 @@ static const float GroupOptionTextColorAlpha = 0.5;
     }
 }
 
+// WKSelectTesting
+- (void)selectRow:(NSInteger)rowIndex inComponent:(NSInteger)componentIndex extendingSelection:(BOOL)extendingSelection
+{
+    // FIXME: handle extendingSelection.
+    [self selectRow:rowIndex inComponent:0 animated:NO];
+    // Progammatic selection changes don't call the delegate, so do that manually.
+    [self.delegate pickerView:self didSelectRow:rowIndex inComponent:0];
+}
+
 @end
 
 @implementation WKSelectSinglePicker {
@@ -429,6 +438,15 @@ static const float GroupOptionTextColorAlpha = 0.5;
     }
 
     _selectedIndex = row;
+}
+
+// WKSelectTesting
+- (void)selectRow:(NSInteger)rowIndex inComponent:(NSInteger)componentIndex extendingSelection:(BOOL)extendingSelection
+{
+    // FIXME: handle extendingSelection.
+    [self selectRow:rowIndex inComponent:0 animated:NO];
+    // Progammatic selection changes don't call the delegate, so do that manually.
+    [self.delegate pickerView:self didSelectRow:rowIndex inComponent:0];
 }
 
 @end

@@ -45,7 +45,7 @@ class ImageBuffer;
 class ImageData;
 
 namespace DisplayList {
-typedef unsigned AsTextFlags;
+using AsTextFlags = unsigned;
 }
 
 class CanvasObserver {
@@ -71,8 +71,8 @@ public:
 
     const IntSize& size() const { return m_size; }
 
-    void setWidth(unsigned);
-    void setHeight(unsigned);
+    WEBCORE_EXPORT void setWidth(unsigned);
+    WEBCORE_EXPORT void setHeight(unsigned);
 
     void setSize(const IntSize& newSize)
     { 
@@ -86,15 +86,14 @@ public:
     }
 
     CanvasRenderingContext* getContext(const String&, CanvasContextAttributes* = nullptr);
-    bool probablySupportsContext(const String&, CanvasContextAttributes* = nullptr);
     static bool is2dType(const String&);
 #if ENABLE(WEBGL)
     static bool is3dType(const String&);
 #endif
 
     static String toEncodingMimeType(const String& mimeType);
-    String toDataURL(const String& mimeType, const double* quality, ExceptionCode&);
-    String toDataURL(const String& mimeType, ExceptionCode& ec) { return toDataURL(mimeType, nullptr, ec); }
+    WEBCORE_EXPORT ExceptionOr<String> toDataURL(const String& mimeType, Optional<double> quality);
+    ExceptionOr<String> toDataURL(const String& mimeType) { return toDataURL(mimeType, Nullopt); }
 
     // Used for rendering
     void didDraw(const FloatRect&);
@@ -141,11 +140,11 @@ public:
 private:
     HTMLCanvasElement(const QualifiedName&, Document&);
 
-    void parseAttribute(const QualifiedName&, const AtomicString&) override;
-    RenderPtr<RenderElement> createElementRenderer(RenderStyle&&, const RenderTreePosition&) override;
+    void parseAttribute(const QualifiedName&, const AtomicString&) final;
+    RenderPtr<RenderElement> createElementRenderer(RenderStyle&&, const RenderTreePosition&) final;
 
-    bool canContainRangeEndPoint() const override;
-    bool canStartSelection() const override;
+    bool canContainRangeEndPoint() const final;
+    bool canStartSelection() const final;
 
     void reset();
 

@@ -50,11 +50,15 @@ RefPtr<MediaStreamPrivate> MediaStreamPrivate::create(const Vector<RefPtr<Realti
     MediaStreamTrackPrivateVector tracks;
     tracks.reserveCapacity(audioSources.size() + videoSources.size());
 
-    for (auto source : audioSources)
-        tracks.append(MediaStreamTrackPrivate::create(WTFMove(source)));
+    for (auto source : audioSources) {
+        ASSERT(source);
+        tracks.append(MediaStreamTrackPrivate::create(source.releaseNonNull()));
+    }
 
-    for (auto source : videoSources)
-        tracks.append(MediaStreamTrackPrivate::create(WTFMove(source)));
+    for (auto source : videoSources) {
+        ASSERT(source);
+        tracks.append(MediaStreamTrackPrivate::create(source.releaseNonNull()));
+    }
 
     return MediaStreamPrivate::create(tracks);
 }
@@ -257,7 +261,7 @@ void MediaStreamPrivate::updateActiveVideoTrack()
 {
     m_activeVideoTrack = nullptr;
     for (auto& track : m_trackSet.values()) {
-        if (!track->ended() && track->type() == RealtimeMediaSource::Type::Video && !track->ended()) {
+        if (!track->ended() && track->type() == RealtimeMediaSource::Type::Video) {
             m_activeVideoTrack = track.get();
             break;
         }

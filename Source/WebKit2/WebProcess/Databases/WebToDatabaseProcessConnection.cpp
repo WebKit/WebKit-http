@@ -30,7 +30,6 @@
 #include "DatabaseToWebProcessConnectionMessages.h"
 #include "WebIDBConnectionToServerMessages.h"
 #include "WebProcess.h"
-#include <wtf/RunLoop.h>
 
 #if ENABLE(DATABASE_PROCESS)
 
@@ -39,8 +38,8 @@ using namespace WebCore;
 namespace WebKit {
 
 WebToDatabaseProcessConnection::WebToDatabaseProcessConnection(IPC::Connection::Identifier connectionIdentifier)
+    : m_connection(IPC::Connection::createClientConnection(connectionIdentifier, *this))
 {
-    m_connection = IPC::Connection::createClientConnection(connectionIdentifier, *this);
     m_connection->open();
 }
 
@@ -48,13 +47,13 @@ WebToDatabaseProcessConnection::~WebToDatabaseProcessConnection()
 {
 }
 
-void WebToDatabaseProcessConnection::didReceiveMessage(IPC::Connection& connection, IPC::MessageDecoder& decoder)
+void WebToDatabaseProcessConnection::didReceiveMessage(IPC::Connection& connection, IPC::Decoder& decoder)
 {
 #if ENABLE(INDEXED_DATABASE)
     if (decoder.messageReceiverName() == Messages::WebIDBConnectionToServer::messageReceiverName()) {
-        auto iterator = m_webIDBConnectionsByIdentifier.find(decoder.destinationID());
-        if (iterator != m_webIDBConnectionsByIdentifier.end())
-            iterator->value->didReceiveMessage(connection, decoder);
+        auto idbConnection = m_webIDBConnectionsByIdentifier.get(decoder.destinationID());
+        if (idbConnection)
+            idbConnection->didReceiveMessage(connection, decoder);
         return;
     }
 #endif
@@ -64,6 +63,14 @@ void WebToDatabaseProcessConnection::didReceiveMessage(IPC::Connection& connecti
 
 void WebToDatabaseProcessConnection::didClose(IPC::Connection& connection)
 {
+#if ENABLE(INDEXED_DATABASE)
+    for (auto& connection : m_webIDBConnectionsByIdentifier.values())
+        connection->connectionToServerLost();
+
+    m_webIDBConnectionsByIdentifier.clear();
+    m_webIDBConnectionsBySession.clear();
+#endif
+
     WebProcess::singleton().webToDatabaseProcessConnectionClosed(this);
 }
 

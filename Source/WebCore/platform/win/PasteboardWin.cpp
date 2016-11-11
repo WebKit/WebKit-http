@@ -1012,7 +1012,7 @@ void Pasteboard::writeImageToDataObject(Element& element, const URL& url)
     if (!imageBuffer || !imageBuffer->size())
         return;
 
-    HGLOBAL imageFileDescriptor = createGlobalImageFileDescriptor(url.string(), element.fastGetAttribute(HTMLNames::altAttr), cachedImage);
+    HGLOBAL imageFileDescriptor = createGlobalImageFileDescriptor(url.string(), element.attributeWithoutSynchronization(HTMLNames::altAttr), cachedImage);
     if (!imageFileDescriptor)
         return;
 
@@ -1049,6 +1049,18 @@ void Pasteboard::writeMarkup(const String& markup)
     medium.hGlobal = createGlobalData(data);
     if (medium.hGlobal && FAILED(m_writableDataObject->SetData(htmlFormat(), &medium, TRUE)))
         GlobalFree(medium.hGlobal);
+}
+
+void Pasteboard::write(const PasteboardWebContent&)
+{
+}
+
+void Pasteboard::read(PasteboardWebContentReader&)
+{
+}
+
+void Pasteboard::write(const PasteboardImage&)
+{
 }
 
 } // namespace WebCore

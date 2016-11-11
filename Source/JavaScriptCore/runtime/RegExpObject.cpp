@@ -1,6 +1,6 @@
 /*
  *  Copyright (C) 1999-2000 Harri Porten (porten@kde.org)
- *  Copyright (C) 2003, 2007, 2008, 2012, 2016 Apple Inc. All Rights Reserved.
+ *  Copyright (C) 2003, 2007-2008, 2012, 2016 Apple Inc. All Rights Reserved.
  *
  *  This library is free software; you can redistribute it and/or
  *  modify it under the terms of the GNU Lesser General Public
@@ -21,8 +21,6 @@
 #include "config.h"
 #include "RegExpObject.h"
 
-#include "ButterflyInlines.h"
-#include "CopiedSpaceInlines.h"
 #include "Error.h"
 #include "ExceptionHelpers.h"
 #include "JSArray.h"
@@ -31,10 +29,7 @@
 #include "Lookup.h"
 #include "JSCInlines.h"
 #include "RegExpConstructor.h"
-#include "RegExpMatchesArray.h"
 #include "RegExpObjectInlines.h"
-#include "RegExpPrototype.h"
-#include <wtf/text/StringBuilder.h>
 
 namespace JSC {
 
@@ -106,19 +101,22 @@ void RegExpObject::getGenericPropertyNames(JSObject* object, ExecState* exec, Pr
 
 bool RegExpObject::defineOwnProperty(JSObject* object, ExecState* exec, PropertyName propertyName, const PropertyDescriptor& descriptor, bool shouldThrow)
 {
-    if (propertyName == exec->propertyNames().lastIndex) {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
+    if (propertyName == vm.propertyNames->lastIndex) {
         RegExpObject* regExp = asRegExpObject(object);
         if (descriptor.configurablePresent() && descriptor.configurable())
-            return reject(exec, shouldThrow, "Attempting to change configurable attribute of unconfigurable property.");
+            return typeError(exec, scope, shouldThrow, ASCIILiteral(UnconfigurablePropertyChangeConfigurabilityError));
         if (descriptor.enumerablePresent() && descriptor.enumerable())
-            return reject(exec, shouldThrow, "Attempting to change enumerable attribute of unconfigurable property.");
+            return typeError(exec, scope, shouldThrow, ASCIILiteral(UnconfigurablePropertyChangeEnumerabilityError));
         if (descriptor.isAccessorDescriptor())
-            return reject(exec, shouldThrow, UnconfigurablePropertyChangeAccessMechanismError);
+            return typeError(exec, scope, shouldThrow, ASCIILiteral(UnconfigurablePropertyChangeAccessMechanismError));
         if (!regExp->m_lastIndexIsWritable) {
             if (descriptor.writablePresent() && descriptor.writable())
-                return reject(exec, shouldThrow, "Attempting to change writable attribute of unconfigurable property.");
+                return typeError(exec, scope, shouldThrow, ASCIILiteral(UnconfigurablePropertyChangeWritabilityError));
             if (!sameValue(exec, regExp->getLastIndex(), descriptor.value()))
-                return reject(exec, shouldThrow, "Attempting to change value of a readonly property.");
+                return typeError(exec, scope, shouldThrow, ASCIILiteral(ReadonlyPropertyChangeError));
             return true;
         }
         if (descriptor.value())
@@ -172,6 +170,8 @@ MatchResult RegExpObject::match(ExecState* exec, JSGlobalObject* globalObject, J
 template<typename FixEndFunc>
 JSValue collectMatches(VM& vm, ExecState* exec, JSString* string, const String& s, RegExpConstructor* constructor, RegExp* regExp, const FixEndFunc& fixEnd)
 {
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     MatchResult result = constructor->performMatch(vm, regExp, string, s, 0);
     if (!result)
         return jsNull();
@@ -179,8 +179,7 @@ JSValue collectMatches(VM& vm, ExecState* exec, JSString* string, const String& 
     static unsigned maxSizeForDirectPath = 100000;
     
     JSArray* array = constructEmptyArray(exec, nullptr);
-    if (UNLIKELY(vm.exception()))
-        return jsUndefined();
+    RETURN_IF_EXCEPTION(scope, JSValue());
 
     auto iterate = [&] () {
         size_t end = result.end;
@@ -198,7 +197,7 @@ JSValue collectMatches(VM& vm, ExecState* exec, JSString* string, const String& 
             MatchResult savedResult = result;
             do {
                 if (array->length() + matchCount >= MAX_STORAGE_VECTOR_LENGTH) {
-                    throwOutOfMemoryError(exec);
+                    throwOutOfMemoryError(exec, scope);
                     return jsUndefined();
                 }
                 
@@ -232,15 +231,14 @@ JSValue collectMatches(VM& vm, ExecState* exec, JSString* string, const String& 
 
 JSValue RegExpObject::matchGlobal(ExecState* exec, JSGlobalObject* globalObject, JSString* string)
 {
+    VM& vm = globalObject->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
     RegExp* regExp = this->regExp();
 
     ASSERT(regExp->global());
 
-    VM* vm = &globalObject->vm();
-
     setLastIndex(exec, 0);
-    if (exec->hadException())
-        return jsUndefined();
+    RETURN_IF_EXCEPTION(scope, JSValue());
 
     String s = string->value(exec);
     RegExpConstructor* regExpConstructor = globalObject->regExpConstructor();
@@ -248,14 +246,14 @@ JSValue RegExpObject::matchGlobal(ExecState* exec, JSGlobalObject* globalObject,
     if (regExp->unicode()) {
         unsigned stringLength = s.length();
         return collectMatches(
-            *vm, exec, string, s, regExpConstructor, regExp,
+            vm, exec, string, s, regExpConstructor, regExp,
             [&] (size_t end) -> size_t {
                 return advanceStringUnicode(s, stringLength, end);
             });
     }
     
     return collectMatches(
-        *vm, exec, string, s, regExpConstructor, regExp,
+        vm, exec, string, s, regExpConstructor, regExp,
         [&] (size_t end) -> size_t {
             return end + 1;
         });

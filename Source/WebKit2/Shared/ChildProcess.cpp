@@ -26,10 +26,9 @@
 #include "config.h"
 #include "ChildProcess.h"
 
+#include "Logging.h"
 #include "SandboxInitializationParameters.h"
 #include <unistd.h>
-
-#define CHILDPROCESS_LOG_ALWAYS_ERROR(...) LOG_ALWAYS_ERROR(true, __VA_ARGS__)
 
 namespace WebKit {
 
@@ -55,7 +54,7 @@ static void didCloseOnConnectionWorkQueue(IPC::Connection*)
         // We use _exit here since the watchdog callback is called from another thread and we don't want
         // global destructors or atexit handlers to be called from this thread while the main thread is busy
         // doing its thing.
-        CHILDPROCESS_LOG_ALWAYS_ERROR("Exiting process early due to unacknowledged closed-connection");
+        RELEASE_LOG_ERROR(IPC, "Exiting process early due to unacknowledged closed-connection");
         _exit(EXIT_FAILURE);
     });
 }
@@ -118,6 +117,11 @@ void ChildProcess::removeMessageReceiver(IPC::StringReference messageReceiverNam
 void ChildProcess::removeMessageReceiver(IPC::StringReference messageReceiverName)
 {
     m_messageReceiverMap.removeMessageReceiver(messageReceiverName);
+}
+
+void ChildProcess::removeMessageReceiver(IPC::MessageReceiver& messageReceiver)
+{
+    m_messageReceiverMap.removeMessageReceiver(messageReceiver);
 }
 
 void ChildProcess::disableTermination()

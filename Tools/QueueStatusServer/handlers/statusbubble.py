@@ -40,6 +40,7 @@ from model.workitems import WorkItems
 from sets import Set
 
 progress_statuses = Set([
+    "Started processing patch",
     "Cleaned working directory",
     "Updated working directory",
     "Applied patch",
@@ -131,7 +132,7 @@ class StatusBubble(webapp.RequestHandler):
                 statuses))
             if not latest_resultative_status:
                 bubble["state"] = "started"
-                bubble["details_message"] = ("Started processing.\n\nRecent messages:\n\n"
+                bubble["details_message"] = ("Recent messages:\n\n"
                     + "\n".join([status.message for status in statuses]) + "\n\n" + self._iso_time(statuses[0].date))
             elif statuses[0].message == "Pass":
                 bubble["state"] = "pass"
@@ -140,14 +141,24 @@ class StatusBubble(webapp.RequestHandler):
                 bubble["state"] = "fail"
                 message_to_display = statuses[1].message if len(statuses) > 1 else statuses[0].message
                 bubble["details_message"] = message_to_display + "\n\n" + self._iso_time(statuses[0].date)
-            elif statuses[0].message == "Error: " + queue.name() + " did not process patch.":
+            elif "did not process patch" in statuses[0].message:
                 bubble["state"] = "none"
                 bubble["details_message"] = "The patch is no longer eligible for processing."
+
+                if "Bug is already closed" in statuses[0].message:
+                    bubble["details_message"] += " Bug was already closed when EWS attempted to process it."
+                elif "Patch is marked r-" in statuses[0].message:
+                    bubble["details_message"] += " Patch was already marked r- when EWS attempted to process it."
+                elif "Patch is obsolete" in statuses[0].message:
+                    bubble["details_message"] += " Patch was obsolete when EWS attempted to process it."
+                elif "No patch committer found" in statuses[0].message:
+                    bubble["details_message"] += " Patch was not authorized by a commmitter."
+
                 if len(statuses) > 1:
                     if len(statuses) == 2:
-                        bubble["details_message"] += " One message was logged while the patch was still eligible:\n\n"
+                        bubble["details_message"] += "\nOne message was logged while the patch was still eligible:\n\n"
                     else:
-                        bubble["details_message"] += " Some messages were logged while the patch was still eligible:\n\n"
+                        bubble["details_message"] += "\nSome messages were logged while the patch was still eligible:\n\n"
                     bubble["details_message"] += "\n".join([status.message for status in statuses[1:]]) + "\n\n" + self._iso_time(statuses[0].date)
             elif statuses[0].message == "Error: " + queue.name() + " unable to apply patch.":
                 bubble["state"] = "fail"

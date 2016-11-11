@@ -21,16 +21,12 @@
  * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
- *
  */
 
-#ifndef WorkerLocation_h
-#define WorkerLocation_h
+#pragma once
 
 #include "URL.h"
-#include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
-#include <wtf/RefPtr.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
@@ -56,8 +52,6 @@ namespace WebCore {
         String hash() const;
         String origin() const;
 
-        String toString() const { return href(); }
-
     private:
         explicit WorkerLocation(const URL& url) : m_url(url) { }
 
@@ -65,5 +59,3 @@ namespace WebCore {
     };
 
 } // namespace WebCore
-
-#endif // WorkerLocation_h

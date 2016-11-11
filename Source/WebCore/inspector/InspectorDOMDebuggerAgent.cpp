@@ -85,11 +85,6 @@ void InspectorDOMDebuggerAgent::debuggerWasDisabled()
     disable();
 }
 
-void InspectorDOMDebuggerAgent::stepInto()
-{
-    m_pauseInNextEventListener = true;
-}
-
 void InspectorDOMDebuggerAgent::didPause()
 {
     m_pauseInNextEventListener = false;
@@ -213,12 +208,12 @@ static int domTypeForName(ErrorString& errorString, const String& typeString)
 static String domTypeName(int type)
 {
     switch (type) {
-    case SubtreeModified: return "subtree-modified";
-    case AttributeModified: return "attribute-modified";
-    case NodeRemoved: return "node-removed";
+    case SubtreeModified: return ASCIILiteral("subtree-modified");
+    case AttributeModified: return ASCIILiteral("attribute-modified");
+    case NodeRemoved: return ASCIILiteral("node-removed");
     default: break;
     }
-    return "";
+    return emptyString();
 }
 
 void InspectorDOMDebuggerAgent::setDOMBreakpoint(ErrorString& errorString, int nodeId, const String& typeString)

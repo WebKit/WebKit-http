@@ -25,36 +25,61 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef RenderMathMLScripts_h
-#define RenderMathMLScripts_h
+#pragma once
 
 #if ENABLE(MATHML)
 
 #include "RenderMathMLBlock.h"
 
 namespace WebCore {
+
+class MathMLScriptsElement;
+
 // Render a base with scripts.
-class RenderMathMLScripts final : public RenderMathMLBlock {
+class RenderMathMLScripts : public RenderMathMLBlock {
 public:
-    RenderMathMLScripts(Element&, RenderStyle&&);
+    RenderMathMLScripts(MathMLScriptsElement&, RenderStyle&&);
     RenderMathMLOperator* unembellishedOperator() final;
-    Optional<int> firstLineBaseline() const final;
-    void layoutBlock(bool relayoutChildren, LayoutUnit pageLogicalHeight = 0) final;
-    void paintChildren(PaintInfo& forSelf, const LayoutPoint&, PaintInfo& forChild, bool usePrintRect) final;
+
+protected:
+    bool isRenderMathMLScripts() const override { return true; }
+    const char* renderName() const override { return "RenderMathMLScripts"; }
+    void computePreferredLogicalWidths() override;
+    void layoutBlock(bool relayoutChildren, LayoutUnit pageLogicalHeight = 0) override;
+
+    enum ScriptsType { Sub, Super, SubSup, Multiscripts, Under, Over, UnderOver };
+    ScriptsType m_scriptType;
 
 private:
-    bool isRenderMathMLScripts() const final { return true; }
-    const char* renderName() const final { return "RenderMathMLScripts"; }
-
-    bool getBaseAndScripts(RenderBox*& base, RenderBox*& firstPostScript, RenderBox*& firstPreScript);
+    MathMLScriptsElement& element() const;
+    Optional<int> firstLineBaseline() const final;
+    struct ReferenceChildren {
+        RenderBox* base;
+        RenderBox* prescriptDelimiter;
+        RenderBox* firstPostScript;
+        RenderBox* firstPreScript;
+    };
+    Optional<ReferenceChildren> validateAndGetReferenceChildren();
     LayoutUnit spaceAfterScript();
-    LayoutUnit italicCorrection(RenderBox* base);
-    void computePreferredLogicalWidths() override;
-    void getScriptMetricsAndLayoutIfNeeded(RenderBox* base, RenderBox* script, LayoutUnit& minSubScriptShift, LayoutUnit& minSupScriptShift, LayoutUnit& maxScriptDescent, LayoutUnit& maxScriptAscent);
-
-    enum ScriptsType { Sub, Super, SubSup, Multiscripts };
-
-    ScriptsType m_scriptType;
+    LayoutUnit italicCorrection(const ReferenceChildren&);
+    struct VerticalParameters {
+        LayoutUnit subscriptShiftDown;
+        LayoutUnit superscriptShiftUp;
+        LayoutUnit subscriptBaselineDropMin;
+        LayoutUnit superScriptBaselineDropMax;
+        LayoutUnit subSuperscriptGapMin;
+        LayoutUnit superscriptBottomMin;
+        LayoutUnit subscriptTopMax;
+        LayoutUnit superscriptBottomMaxWithSubscript;
+    };
+    VerticalParameters verticalParameters() const;
+    struct VerticalMetrics {
+        LayoutUnit subShift;
+        LayoutUnit supShift;
+        LayoutUnit ascent;
+        LayoutUnit descent;
+    };
+    VerticalMetrics verticalMetrics(const ReferenceChildren&);
 };
 
 } // namespace WebCore
@@ -62,5 +87,3 @@ private:
 SPECIALIZE_TYPE_TRAITS_RENDER_OBJECT(RenderMathMLScripts, isRenderMathMLScripts())
 
 #endif // ENABLE(MATHML)
-
-#endif // RenderMathMLScripts_h

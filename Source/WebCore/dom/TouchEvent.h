@@ -24,8 +24,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef TouchEvent_h
-#define TouchEvent_h
+#pragma once
 
 #if ENABLE(IOS_TOUCH_EVENTS)
 #include <WebKitAdditions/TouchEventIOS.h>
@@ -36,19 +35,13 @@
 
 namespace WebCore {
 
-struct TouchEventInit : public MouseRelatedEventInit {
-    RefPtr<TouchList> touches;
-    RefPtr<TouchList> targetTouches;
-    RefPtr<TouchList> changedTouches;
-};
-
 class TouchEvent final : public MouseRelatedEvent {
 public:
     virtual ~TouchEvent();
 
     static Ref<TouchEvent> create(TouchList* touches, 
             TouchList* targetTouches, TouchList* changedTouches, 
-            const AtomicString& type, AbstractView* view,
+            const AtomicString& type, DOMWindow* view,
             int screenX, int screenY, int pageX, int pageY,
             bool ctrlKey, bool altKey, bool shiftKey, bool metaKey)
     {
@@ -60,14 +53,21 @@ public:
     {
         return adoptRef(*new TouchEvent);
     }
-    static Ref<TouchEvent> createForBindings(const AtomicString& type, const TouchEventInit& initializer)
+
+    struct Init : MouseRelatedEventInit {
+        RefPtr<TouchList> touches;
+        RefPtr<TouchList> targetTouches;
+        RefPtr<TouchList> changedTouches;
+    };
+
+    static Ref<TouchEvent> create(const AtomicString& type, const Init& initializer, IsTrusted isTrusted = IsTrusted::No)
     {
-        return adoptRef(*new TouchEvent(type, initializer));
+        return adoptRef(*new TouchEvent(type, initializer, isTrusted));
     }
 
     void initTouchEvent(TouchList* touches, TouchList* targetTouches,
             TouchList* changedTouches, const AtomicString& type, 
-            AbstractView*, int screenX, int screenY,
+            DOMWindow*, int screenX, int screenY,
             int clientX, int clientY,
             bool ctrlKey, bool altKey, bool shiftKey, bool metaKey);
 
@@ -87,10 +87,10 @@ private:
     TouchEvent();
     TouchEvent(TouchList* touches, TouchList* targetTouches,
             TouchList* changedTouches, const AtomicString& type,
-            AbstractView*, int screenX, int screenY, int pageX,
+            DOMWindow*, int screenX, int screenY, int pageX,
             int pageY,
             bool ctrlKey, bool altKey, bool shiftKey, bool metaKey);
-    TouchEvent(const AtomicString&, const TouchEventInit&);
+    TouchEvent(const AtomicString&, const Init&, IsTrusted);
 
     RefPtr<TouchList> m_touches;
     RefPtr<TouchList> m_targetTouches;
@@ -102,5 +102,3 @@ private:
 SPECIALIZE_TYPE_TRAITS_EVENT(TouchEvent)
 
 #endif // ENABLE(TOUCH_EVENTS)
-
-#endif // TouchEvent_h

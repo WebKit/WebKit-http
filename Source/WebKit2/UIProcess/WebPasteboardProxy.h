@@ -40,7 +40,9 @@ struct PasteboardWebContent;
 
 namespace WebKit {
 
+class WebFrameProxy;
 class WebProcessProxy;
+struct WebSelectionData;
 
 class WebPasteboardProxy : public IPC::MessageReceiver {
     WTF_MAKE_NONCOPYABLE(WebPasteboardProxy);
@@ -50,11 +52,16 @@ public:
 
     void addWebProcessProxy(WebProcessProxy&);
 
+#if PLATFORM(GTK)
+    void setPrimarySelectionOwner(WebFrameProxy*);
+    void didDestroyFrame(WebFrameProxy*);
+#endif
+
 private:
     WebPasteboardProxy();
 
-    void didReceiveMessage(IPC::Connection&, IPC::MessageDecoder&) override;
-    void didReceiveSyncMessage(IPC::Connection&, IPC::MessageDecoder&, std::unique_ptr<IPC::MessageEncoder>&) override;
+    void didReceiveMessage(IPC::Connection&, IPC::Decoder&) override;
+    void didReceiveSyncMessage(IPC::Connection&, IPC::Decoder&, std::unique_ptr<IPC::Encoder>&) override;
 
 #if PLATFORM(IOS)
     void writeWebContentToPasteboard(const WebCore::PasteboardWebContent&);
@@ -81,6 +88,13 @@ private:
     void setPasteboardStringForType(const String& pasteboardName, const String& pasteboardType, const String&, uint64_t& newChangeCount);
     void setPasteboardBufferForType(const String& pasteboardName, const String& pasteboardType, const SharedMemory::Handle&, uint64_t size, uint64_t& newChangeCount);
 #endif
+#if PLATFORM(GTK)
+    void writeToClipboard(const String& pasteboardName, const WebSelectionData&);
+    void readFromClipboard(const String& pasteboardName, WebSelectionData&);
+
+    WebFrameProxy* m_primarySelectionOwner { nullptr };
+    WebFrameProxy* m_frameWritingToClipboard { nullptr };
+#endif // PLATFORM(GTK)
 };
 
 } // namespace WebKit

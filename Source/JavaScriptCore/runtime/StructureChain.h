@@ -23,16 +23,11 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef StructureChain_h
-#define StructureChain_h
+#pragma once
 
 #include "JSCell.h"
 #include "JSObject.h"
 #include "Structure.h"
-
-#include <wtf/PassRefPtr.h>
-#include <wtf/RefCounted.h>
-#include <wtf/RefPtr.h>
 #include <wtf/StdLibExtras.h>
 
 namespace JSC {
@@ -89,5 +84,3 @@ private:
 };
 
 } // namespace JSC
-
-#endif // StructureChain_h

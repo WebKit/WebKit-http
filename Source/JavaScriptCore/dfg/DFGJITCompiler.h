@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef DFGJITCompiler_h
-#define DFGJITCompiler_h
+#pragma once
 
 #if ENABLE(DFG_JIT)
 
@@ -156,7 +155,7 @@ public:
 
     void emitStoreCallSiteIndex(CallSiteIndex callSite)
     {
-        store32(TrustedImm32(callSite.bits()), tagFor(static_cast<VirtualRegister>(JSStack::ArgumentCount)));
+        store32(TrustedImm32(callSite.bits()), tagFor(static_cast<VirtualRegister>(CallFrameSlot::argumentCount)));
     }
 
     // Add a call out from JIT code, without an exception check.
@@ -208,14 +207,19 @@ public:
         m_ins.append(record);
     }
     
-    unsigned currentJSCallIndex() const
-    {
-        return m_jsCalls.size();
-    }
-
     void addJSCall(Call fastCall, Call slowCall, DataLabelPtr targetToCheck, CallLinkInfo* info)
     {
         m_jsCalls.append(JSCallRecord(fastCall, slowCall, targetToCheck, info));
+    }
+    
+    void addJSDirectCall(Call call, Label slowPath, CallLinkInfo* info)
+    {
+        m_jsDirectCalls.append(JSDirectCallRecord(call, slowPath, info));
+    }
+    
+    void addJSDirectTailCall(PatchableJump patchableJump, Call call, Label slowPath, CallLinkInfo* info)
+    {
+        m_jsDirectTailCalls.append(JSDirectTailCallRecord(patchableJump, call, slowPath, info));
     }
     
     void addWeakReference(JSCell* target)
@@ -293,23 +297,53 @@ private:
 
     struct JSCallRecord {
         JSCallRecord(Call fastCall, Call slowCall, DataLabelPtr targetToCheck, CallLinkInfo* info)
-            : m_fastCall(fastCall)
-            , m_slowCall(slowCall)
-            , m_targetToCheck(targetToCheck)
-            , m_info(info)
+            : fastCall(fastCall)
+            , slowCall(slowCall)
+            , targetToCheck(targetToCheck)
+            , info(info)
         {
         }
         
-        Call m_fastCall;
-        Call m_slowCall;
-        DataLabelPtr m_targetToCheck;
-        CallLinkInfo* m_info;
+        Call fastCall;
+        Call slowCall;
+        DataLabelPtr targetToCheck;
+        CallLinkInfo* info;
+    };
+    
+    struct JSDirectCallRecord {
+        JSDirectCallRecord(Call call, Label slowPath, CallLinkInfo* info)
+            : call(call)
+            , slowPath(slowPath)
+            , info(info)
+        {
+        }
+        
+        Call call;
+        Label slowPath;
+        CallLinkInfo* info;
+    };
+    
+    struct JSDirectTailCallRecord {
+        JSDirectTailCallRecord(PatchableJump patchableJump, Call call, Label slowPath, CallLinkInfo* info)
+            : patchableJump(patchableJump)
+            , call(call)
+            , slowPath(slowPath)
+            , info(info)
+        {
+        }
+        
+        PatchableJump patchableJump;
+        Call call;
+        Label slowPath;
+        CallLinkInfo* info;
     };
     
     Vector<InlineCacheWrapper<JITGetByIdGenerator>, 4> m_getByIds;
     Vector<InlineCacheWrapper<JITPutByIdGenerator>, 4> m_putByIds;
     Vector<InRecord, 4> m_ins;
     Vector<JSCallRecord, 4> m_jsCalls;
+    Vector<JSDirectCallRecord, 4> m_jsDirectCalls;
+    Vector<JSDirectTailCallRecord, 4> m_jsDirectTailCalls;
     SegmentedVector<OSRExitCompilationInfo, 4> m_exitCompilationInfo;
     Vector<Vector<Label>> m_exitSiteLabels;
     
@@ -329,5 +363,3 @@ private:
 } } // namespace JSC::DFG
 
 #endif
-#endif
-

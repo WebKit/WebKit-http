@@ -26,6 +26,8 @@
 #include "config.h"
 #include "TileController.h"
 
+#if USE(CG)
+
 #include "IntRect.h"
 #include "Logging.h"
 #include "PlatformCALayer.h"
@@ -185,6 +187,15 @@ void TileController::setVisibleRect(const FloatRect& rect)
         return;
 
     m_visibleRect = rect;
+    updateTileCoverageMap();
+}
+
+void TileController::setLayoutViewportRect(Optional<FloatRect> rect)
+{
+    if (rect == m_layoutViewportRect)
+        return;
+
+    m_layoutViewportRect = rect;
     updateTileCoverageMap();
 }
 
@@ -735,3 +746,5 @@ void TileController::removeUnparentedTilesNow()
 #endif
 
 } // namespace WebCore
+
+#endif

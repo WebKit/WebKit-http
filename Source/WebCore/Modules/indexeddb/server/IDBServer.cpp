@@ -213,6 +213,18 @@ void IDBServer::deleteObjectStore(const IDBRequestData& requestData, const Strin
     transaction->deleteObjectStore(requestData, objectStoreName);
 }
 
+void IDBServer::renameObjectStore(const IDBRequestData& requestData, uint64_t objectStoreIdentifier, const String& newName)
+{
+    LOG(IndexedDB, "IDBServer::renameObjectStore");
+
+    auto transaction = m_transactions.get(requestData.transactionIdentifier());
+    if (!transaction)
+        return;
+
+    ASSERT(transaction->isVersionChange());
+    transaction->renameObjectStore(requestData, objectStoreIdentifier, newName);
+}
+
 void IDBServer::clearObjectStore(const IDBRequestData& requestData, uint64_t objectStoreIdentifier)
 {
     LOG(IndexedDB, "IDBServer::clearObjectStore");
@@ -248,6 +260,18 @@ void IDBServer::deleteIndex(const IDBRequestData& requestData, uint64_t objectSt
     transaction->deleteIndex(requestData, objectStoreIdentifier, indexName);
 }
 
+void IDBServer::renameIndex(const IDBRequestData& requestData, uint64_t objectStoreIdentifier, uint64_t indexIdentifier, const String& newName)
+{
+    LOG(IndexedDB, "IDBServer::renameIndex");
+
+    auto transaction = m_transactions.get(requestData.transactionIdentifier());
+    if (!transaction)
+        return;
+
+    ASSERT(transaction->isVersionChange());
+    transaction->renameIndex(requestData, objectStoreIdentifier, indexIdentifier, newName);
+}
+
 void IDBServer::putOrAdd(const IDBRequestData& requestData, const IDBKeyData& keyData, const IDBValue& value, IndexedDB::ObjectStoreOverwriteMode overwriteMode)
 {
     LOG(IndexedDB, "IDBServer::putOrAdd");
@@ -259,7 +283,7 @@ void IDBServer::putOrAdd(const IDBRequestData& requestData, const IDBKeyData& ke
     transaction->putOrAdd(requestData, keyData, value, overwriteMode);
 }
 
-void IDBServer::getRecord(const IDBRequestData& requestData, const IDBKeyRangeData& keyRangeData)
+void IDBServer::getRecord(const IDBRequestData& requestData, const IDBGetRecordData& getRecordData)
 {
     LOG(IndexedDB, "IDBServer::getRecord");
 
@@ -267,7 +291,18 @@ void IDBServer::getRecord(const IDBRequestData& requestData, const IDBKeyRangeDa
     if (!transaction)
         return;
 
-    transaction->getRecord(requestData, keyRangeData);
+    transaction->getRecord(requestData, getRecordData);
+}
+
+void IDBServer::getAllRecords(const IDBRequestData& requestData, const IDBGetAllRecordsData& getAllRecordsData)
+{
+    LOG(IndexedDB, "IDBServer::getAllRecords");
+
+    auto transaction = m_transactions.get(requestData.transactionIdentifier());
+    if (!transaction)
+        return;
+
+    transaction->getAllRecords(requestData, getAllRecordsData);
 }
 
 void IDBServer::getCount(const IDBRequestData& requestData, const IDBKeyRangeData& keyRangeData)
@@ -303,7 +338,7 @@ void IDBServer::openCursor(const IDBRequestData& requestData, const IDBCursorInf
     transaction->openCursor(requestData, info);
 }
 
-void IDBServer::iterateCursor(const IDBRequestData& requestData, const IDBKeyData& key, unsigned long count)
+void IDBServer::iterateCursor(const IDBRequestData& requestData, const IDBIterateCursorData& data)
 {
     LOG(IndexedDB, "IDBServer::iterateCursor");
 
@@ -311,7 +346,7 @@ void IDBServer::iterateCursor(const IDBRequestData& requestData, const IDBKeyDat
     if (!transaction)
         return;
 
-    transaction->iterateCursor(requestData, key, count);
+    transaction->iterateCursor(requestData, data);
 }
 
 void IDBServer::establishTransaction(uint64_t databaseConnectionIdentifier, const IDBTransactionInfo& info)
@@ -503,11 +538,11 @@ void IDBServer::closeAndDeleteDatabasesModifiedSince(std::chrono::system_clock::
         return;
     }
 
-    HashSet<UniqueIDBDatabase*> openDatabases;
+    HashSet<RefPtr<UniqueIDBDatabase>> openDatabases;
     for (auto* connection : m_databaseConnections.values())
         openDatabases.add(&connection->database());
 
-    for (auto* database : openDatabases)
+    for (auto& database : openDatabases)
         database->immediateCloseForUserDelete();
 
     postDatabaseTask(createCrossThreadTask(*this, &IDBServer::performCloseAndDeleteDatabasesModifiedSince, modificationTime, callbackID));
@@ -519,7 +554,7 @@ void IDBServer::closeAndDeleteDatabasesForOrigins(const Vector<SecurityOriginDat
     auto addResult = m_deleteDatabaseCompletionHandlers.add(callbackID, WTFMove(completionHandler));
     ASSERT_UNUSED(addResult, addResult.isNewEntry);
 
-    HashSet<UniqueIDBDatabase*> openDatabases;
+    HashSet<RefPtr<UniqueIDBDatabase>> openDatabases;
     for (auto* connection : m_databaseConnections.values()) {
         const auto& identifier = connection->database().identifier();
         for (auto& origin : origins) {
@@ -530,7 +565,7 @@ void IDBServer::closeAndDeleteDatabasesForOrigins(const Vector<SecurityOriginDat
         }
     }
 
-    for (auto* database : openDatabases)
+    for (auto& database : openDatabases)
         database->immediateCloseForUserDelete();
 
     postDatabaseTask(createCrossThreadTask(*this, &IDBServer::performCloseAndDeleteDatabasesForOrigins, origins, callbackID));
@@ -543,10 +578,7 @@ static void removeAllDatabasesForOriginPath(const String& originPath, std::chron
     for (auto& databasePath : databasePaths) {
         String databaseFile = pathByAppendingComponent(databasePath, "IndexedDB.sqlite3");
 
-        if (!fileExists(databaseFile))
-            continue;
-
-        if (modifiedSince > std::chrono::system_clock::time_point::min()) {
+        if (modifiedSince > std::chrono::system_clock::time_point::min() && fileExists(databaseFile)) {
             time_t modificationTime;
             if (!getFileModificationTime(databaseFile, modificationTime))
                 continue;
@@ -555,10 +587,52 @@ static void removeAllDatabasesForOriginPath(const String& originPath, std::chron
                 continue;
         }
 
+        // Deleting this database means we need to delete all files that represent it.
+        // This includes:
+        //     - The directory itself, which is named after the database.
+        //     - IndexedDB.sqlite3 and related SQLite files.
+        //     - Blob files that we stored in the directory.
+        //
+        // To be conservative, we should *not* try to delete files that are unexpected;
+        // We should only delete files we think we put there.
+        //
+        // IndexedDB blob files are named "N.blob" where N is a decimal integer,
+        // so those are the only blob files we should be trying to delete.
+        for (auto& blobPath : listDirectory(databasePath, "[0-9]*.blob")) {
+            // Globbing can't give us only filenames starting with 1-or-more digits.
+            // The above globbing gives us files that start with a digit and ends with ".blob", but there might be non-digits in between.
+            // We need to validate that each filename contains only digits before deleting it, as any other files are not ones we put there.
+            String filename = pathGetFileName(blobPath);
+            auto filenameLength = filename.length();
+
+            ASSERT(filenameLength >= 6);
+            ASSERT(filename.endsWith(".blob"));
+
+            if (filename.length() < 6)
+                continue;
+            if (!filename.endsWith(".blob"))
+                continue;
+
+            bool validFilename = true;
+            for (unsigned i = 0; i < filenameLength - 5; ++i) {
+                if (!isASCIIDigit(filename[i])) {
+                    validFilename = false;
+                    break;
+                }
+            }
+
+            if (validFilename)
+                deleteFile(blobPath);
+        }
+
+        // Now delete IndexedDB.sqlite3 and related SQLite files.
         SQLiteFileSystem::deleteDatabaseFile(databaseFile);
+
+        // And finally, if we can, delete the empty directory.
         deleteEmptyDirectory(databasePath);
     }
 
+    // If no databases remain for this origin, we can delete the origin directory as well.
     deleteEmptyDirectory(originPath);
 }
 
@@ -577,7 +651,7 @@ void IDBServer::performCloseAndDeleteDatabasesForOrigins(const Vector<SecurityOr
 {
     if (!m_databaseDirectoryPath.isEmpty()) {
         for (const auto& origin : origins) {
-            String originPath = pathByAppendingComponent(m_databaseDirectoryPath, origin.securityOrigin()->databaseIdentifier());
+            String originPath = pathByAppendingComponent(m_databaseDirectoryPath, origin.databaseIdentifier());
             removeAllDatabasesForOriginPath(originPath, std::chrono::system_clock::time_point::min());
         }
     }

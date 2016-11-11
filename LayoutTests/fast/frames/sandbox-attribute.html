@@ -3,10 +3,10 @@
 <body>
 <script src="../../resources/js-test-pre.js"></script>
 <script>
-description("Checks that HTMLIframeElement.sandbox is a DOMSettableTokenList.");
+description("Checks that HTMLIframeElement.sandbox is a DOMTokenList.");
 
 var iframe = document.createElement("iframe");
-shouldBe("iframe.sandbox.__proto__", "DOMSettableTokenList.prototype");
+shouldBe("iframe.sandbox.__proto__", "DOMTokenList.prototype");
 
 debug("");
 evalAndLog("iframe.sandbox = 'allow-popups   allow-scripts  allow-scripts  allow-same-origin'");
@@ -14,8 +14,8 @@ shouldBe("iframe.sandbox.length", "3");
 shouldBeEqualToString("iframe.sandbox[0]", "allow-popups");
 shouldBeEqualToString("iframe.sandbox[1]", "allow-scripts");
 shouldBeEqualToString("iframe.sandbox[2]", "allow-same-origin");
-shouldBeEqualToString("String(iframe.sandbox)", "allow-popups allow-scripts allow-same-origin");
-shouldBeEqualToString("iframe.getAttribute('sandbox')", "allow-popups allow-scripts allow-same-origin");
+shouldBeEqualToString("String(iframe.sandbox)", "allow-popups   allow-scripts  allow-scripts  allow-same-origin");
+shouldBeEqualToString("iframe.getAttribute('sandbox')", 'allow-popups   allow-scripts  allow-scripts  allow-same-origin');
 
 debug("");
 evalAndLog("iframe.setAttribute('sandbox', 'allow-popups allow-scripts')");

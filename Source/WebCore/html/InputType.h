@@ -30,8 +30,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef InputType_h
-#define InputType_h
+#pragma once
 
 #include "HTMLTextFormControlElement.h"
 #include "RenderPtr.h"
@@ -82,7 +81,6 @@ public:
     static bool themeSupportsDataListUI(InputType*);
 
     virtual const AtomicString& formControlType() const = 0;
-    virtual bool canChangeFromAnotherType() const;
 
     // Type query functions.
 
@@ -132,10 +130,10 @@ public:
     virtual String fallbackValue() const; // Checked last, if both internal storage and value attribute are missing.
     virtual String defaultValue() const; // Checked after even fallbackValue, only when the valueWithDefault function is called.
     virtual double valueAsDate() const;
-    virtual void setValueAsDate(double, ExceptionCode&) const;
+    virtual ExceptionOr<void> setValueAsDate(double) const;
     virtual double valueAsDouble() const;
-    virtual void setValueAsDouble(double, TextFieldEventBehavior, ExceptionCode&) const;
-    virtual void setValueAsDecimal(const Decimal&, TextFieldEventBehavior, ExceptionCode&) const;
+    virtual ExceptionOr<void> setValueAsDouble(double, TextFieldEventBehavior) const;
+    virtual ExceptionOr<void> setValueAsDecimal(const Decimal&, TextFieldEventBehavior) const;
 
     // Validation functions.
 
@@ -158,7 +156,7 @@ public:
     bool stepMismatch(const String&) const;
     virtual bool getAllowedValueStep(Decimal*) const;
     virtual StepRange createStepRange(AnyStepHandling) const;
-    virtual void stepUp(int, ExceptionCode&);
+    virtual ExceptionOr<void> stepUp(int);
     virtual void stepUpFromRenderer(int);
     virtual String badInputText() const;
     virtual String typeMismatchText() const;
@@ -178,27 +176,27 @@ public:
 
     // Event handlers.
 
-    virtual void handleClickEvent(MouseEvent*);
-    virtual void handleMouseDownEvent(MouseEvent*);
+    virtual void handleClickEvent(MouseEvent&);
+    virtual void handleMouseDownEvent(MouseEvent&);
     virtual void willDispatchClick(InputElementClickState&);
     virtual void didDispatchClick(Event*, const InputElementClickState&);
-    virtual void handleDOMActivateEvent(Event*);
-    virtual void handleKeydownEvent(KeyboardEvent*);
-    virtual void handleKeypressEvent(KeyboardEvent*);
-    virtual void handleKeyupEvent(KeyboardEvent*);
-    virtual void handleBeforeTextInsertedEvent(BeforeTextInsertedEvent*);
-    virtual void forwardEvent(Event*);
+    virtual void handleDOMActivateEvent(Event&);
+    virtual void handleKeydownEvent(KeyboardEvent&);
+    virtual void handleKeypressEvent(KeyboardEvent&);
+    virtual void handleKeyupEvent(KeyboardEvent&);
+    virtual void handleBeforeTextInsertedEvent(BeforeTextInsertedEvent&);
+    virtual void forwardEvent(Event&);
 
 #if ENABLE(TOUCH_EVENTS)
-    virtual void handleTouchEvent(TouchEvent*);
+    virtual void handleTouchEvent(TouchEvent&);
 #endif
 
     // Helpers for event handlers.
 
-    virtual bool shouldSubmitImplicitly(Event*);
+    virtual bool shouldSubmitImplicitly(Event&);
     virtual PassRefPtr<HTMLFormElement> formForSubmission() const;
     virtual bool hasCustomFocusLogic() const;
-    virtual bool isKeyboardFocusable(KeyboardEvent*) const;
+    virtual bool isKeyboardFocusable(KeyboardEvent&) const;
     virtual bool isMouseFocusable() const;
     virtual bool shouldUseInputMethod() const;
     virtual void handleFocusEvent(Node* oldFocusedNode, FocusDirection);
@@ -295,7 +293,7 @@ public:
     virtual unsigned height() const;
     virtual unsigned width() const;
 
-    void dispatchSimulatedClickIfActive(KeyboardEvent*) const;
+    void dispatchSimulatedClickIfActive(KeyboardEvent&) const;
 
 #if ENABLE(DATALIST_ELEMENT)
     virtual void listAttributeTargetChanged();
@@ -319,12 +317,10 @@ protected:
 
 private:
     // Helper for stepUp()/stepDown(). Adds step value * count to the current value.
-    void applyStep(int count, AnyStepHandling, TextFieldEventBehavior, ExceptionCode&);
+    ExceptionOr<void> applyStep(int count, AnyStepHandling, TextFieldEventBehavior);
 
     // Raw pointer because the HTMLInputElement object owns this InputType object.
     HTMLInputElement& m_element;
 };
 
 } // namespace WebCore
-
-#endif

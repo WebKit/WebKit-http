@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebCoreResourceHandleAsDelegate_h
-#define WebCoreResourceHandleAsDelegate_h
+#pragma once
 
 namespace WebCore {
 class ResourceHandle;
@@ -34,7 +33,7 @@ class ResourceHandle;
 - (void)detachHandle;
 @end
 
-#if !USE(CFNETWORK)
+#if !USE(CFURLCONNECTION)
 
 @interface WebCoreResourceHandleAsDelegate : NSObject <NSURLConnectionDelegate, WebCoreResourceLoaderDelegate> {
     WebCore::ResourceHandle* m_handle;
@@ -42,5 +41,4 @@ class ResourceHandle;
 - (id)initWithHandle:(WebCore::ResourceHandle*)handle;
 @end
 
-#endif // !USE(CFNETWORK)
-#endif // WebCoreResourceHandleAsDelegate_h
+#endif // !USE(CFURLCONNECTION)

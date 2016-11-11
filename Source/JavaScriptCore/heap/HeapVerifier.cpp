@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2014, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,10 +27,10 @@
 #include "HeapVerifier.h"
 
 #include "ButterflyInlines.h"
-#include "CopiedSpaceInlines.h"
 #include "HeapIterationScope.h"
 #include "JSCInlines.h"
 #include "JSObject.h"
+#include "MarkedSpaceInlines.h"
 
 namespace JSC {
 
@@ -41,24 +41,6 @@ HeapVerifier::HeapVerifier(Heap* heap, unsigned numberOfGCCyclesToRecord)
 {
     RELEASE_ASSERT(m_numberOfCycles > 0);
     m_cycles = std::make_unique<GCCycle[]>(m_numberOfCycles);
-}
-
-const char* HeapVerifier::collectionTypeName(HeapOperation type)
-{
-    switch (type) {
-    case NoOperation:
-        return "NoOperation";
-    case AnyCollection:
-        return "AnyCollection";
-    case Allocation:
-        return "Allocation";
-    case EdenCollection:
-        return "EdenCollection";
-    case FullCollection:
-        return "FullCollection";
-    }
-    RELEASE_ASSERT_NOT_REACHED();
-    return nullptr; // Silencing a compiler warning.
 }
 
 const char* HeapVerifier::phaseName(HeapVerifier::Phase phase)
@@ -77,32 +59,11 @@ const char* HeapVerifier::phaseName(HeapVerifier::Phase phase)
     return nullptr; // Silencing a compiler warning.
 }
 
-static void getButterflyDetails(JSObject* obj, void*& butterflyBase, size_t& butterflyCapacityInBytes, CopiedBlock*& butterflyBlock)
-{
-    Structure* structure = obj->structure();
-    Butterfly* butterfly = obj->butterfly();
-    butterflyBase = butterfly->base(structure);
-    butterflyBlock = CopiedSpace::blockFor(butterflyBase);
-
-    size_t propertyCapacity = structure->outOfLineCapacity();
-    size_t preCapacity;
-    size_t indexingPayloadSizeInBytes;
-    bool hasIndexingHeader = obj->hasIndexingHeader();
-    if (UNLIKELY(hasIndexingHeader)) {
-        preCapacity = butterfly->indexingHeader()->preCapacity(structure);
-        indexingPayloadSizeInBytes = butterfly->indexingHeader()->indexingPayloadSizeInBytes(structure);
-    } else {
-        preCapacity = 0;
-        indexingPayloadSizeInBytes = 0;
-    }
-    butterflyCapacityInBytes = Butterfly::totalSize(preCapacity, propertyCapacity, hasIndexingHeader, indexingPayloadSizeInBytes);
-}
-
 void HeapVerifier::initializeGCCycle()
 {
     Heap* heap = m_heap;
     incrementCycle();
-    currentCycle().collectionType = heap->operationInProgress();
+    currentCycle().scope = *heap->collectionScope();
 }
 
 struct GatherLiveObjFunctor : MarkedBlock::CountFunctor {
@@ -120,9 +81,13 @@ struct GatherLiveObjFunctor : MarkedBlock::CountFunctor {
         m_list.liveObjects.append(data);
     }
 
-    IterationStatus operator()(JSCell* cell)
+    IterationStatus operator()(HeapCell* cell, HeapCell::Kind kind) const
     {
-        visit(cell);
+        if (kind == HeapCell::JSCell) {
+            // FIXME: This const_cast exists because this isn't a C++ lambda.
+            // https://bugs.webkit.org/show_bug.cgi?id=159644
+            const_cast<GatherLiveObjFunctor*>(this)->visit(static_cast<JSCell*>(cell));
+        }
         return IterationStatus::Continue;
     }
 
@@ -193,42 +158,10 @@ void HeapVerifier::trimDeadObjects()
     }
 }
 
-bool HeapVerifier::verifyButterflyIsInStorageSpace(Phase phase, LiveObjectList& list)
+bool HeapVerifier::verifyButterflyIsInStorageSpace(Phase, LiveObjectList&)
 {
-    auto& liveObjects = list.liveObjects;
-
-    CopiedSpace& storageSpace = m_heap->m_storageSpace;
-    bool listNamePrinted = false;
-    bool success = true;
-    for (size_t i = 0; i < liveObjects.size(); i++) {
-        LiveObjectData& objectData = liveObjects[i];
-        if (objectData.isConfirmedDead)
-            continue;
-
-        JSObject* obj = objectData.obj;
-        Butterfly* butterfly = obj->butterfly();
-        if (butterfly) {
-            void* butterflyBase;
-            size_t butterflyCapacityInBytes;
-            CopiedBlock* butterflyBlock;
-            getButterflyDetails(obj, butterflyBase, butterflyCapacityInBytes, butterflyBlock);
-
-            if (!storageSpace.contains(butterflyBlock)) {
-                if (!listNamePrinted) {
-                    dataLogF("Verification @ phase %s FAILED in object list '%s' (size %zu)\n",
-                        phaseName(phase), list.name, liveObjects.size());
-                    listNamePrinted = true;
-                }
-
-                Structure* structure = obj->structure();
-                const char* structureClassName = structure->classInfo()->className;
-                dataLogF("    butterfly %p (base %p size %zu block %p) NOT in StorageSpace | obj %p type '%s'\n",
-                    butterfly, butterflyBase, butterflyCapacityInBytes, butterflyBlock, obj, structureClassName);
-                success = false;
-            }
-        }
-    }
-    return success;
+    // FIXME: Make this work again. https://bugs.webkit.org/show_bug.cgi?id=161752
+    return true;
 }
 
 void HeapVerifier::verify(HeapVerifier::Phase phase)
@@ -244,21 +177,18 @@ void HeapVerifier::reportObject(LiveObjectData& objData, int cycleIndex, HeapVer
 
     if (objData.isConfirmedDead) {
         dataLogF("FOUND dead obj %p in GC[%d] %s list '%s'\n",
-            obj, cycleIndex, cycle.collectionTypeName(), list.name);
+            obj, cycleIndex, collectionScopeName(cycle.scope), list.name);
         return;
     }
 
     Structure* structure = obj->structure();
     Butterfly* butterfly = obj->butterfly();
-    void* butterflyBase;
-    size_t butterflyCapacityInBytes;
-    CopiedBlock* butterflyBlock;
-    getButterflyDetails(obj, butterflyBase, butterflyCapacityInBytes, butterflyBlock);
+    void* butterflyBase = butterfly->base(structure);
 
-    dataLogF("FOUND obj %p type '%s' butterfly %p (base %p size %zu block %p) in GC[%d] %s list '%s'\n",
+    dataLogF("FOUND obj %p type '%s' butterfly %p (base %p) in GC[%d] %s list '%s'\n",
         obj, structure->classInfo()->className,
-        butterfly, butterflyBase, butterflyCapacityInBytes, butterflyBlock,
-        cycleIndex, cycle.collectionTypeName(), list.name);
+        butterfly, butterflyBase,
+        cycleIndex, collectionScopeName(cycle.scope), list.name);
 }
 
 void HeapVerifier::checkIfRecorded(JSObject* obj)

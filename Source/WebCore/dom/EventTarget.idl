@@ -18,33 +18,22 @@
  * Boston, MA 02110-1301, USA.
  */
 
-// Introduced in DOM Level 2:
 [
     CustomToJSObject,
     Exposed=(Window,Worker),
     JSCustomHeader,
     JSCustomToNativeObject,
-    ObjCProtocol,
 ] interface EventTarget {
-#if defined(LANGUAGE_JAVASCRIPT) && LANGUAGE_JAVASCRIPT
-    [ImplementedAs=addEventListenerForBindings] void addEventListener([AtomicString] DOMString type, EventListener? listener, optional AddEventListenerOptions options);
-    [ImplementedAs=removeEventListenerForBindings] void removeEventListener([AtomicString] DOMString type, EventListener? listener, optional EventListenerOptions options);
-#endif
-
-    // FIXME: The 'type' and 'listener' parameters should not be optional.
-    [ObjCLegacyUnnamedParameters, ImplementedAs=addEventListenerForBindings] void addEventListener([AtomicString] optional DOMString type = "undefined", optional EventListener? listener, optional boolean useCapture = false);
-    [ObjCLegacyUnnamedParameters, ImplementedAs=removeEventListenerForBindings] void removeEventListener([AtomicString] optional DOMString type = "undefined", optional EventListener? listener, optional boolean useCapture = false);
-
-    // FIXME: event should not be nullable.
-    [ImplementedAs=dispatchEventForBindings, RaisesException] boolean dispatchEvent(Event? event);
+    [ImplementedAs=addEventListenerForBindings] void addEventListener([AtomicString] DOMString type, EventListener? callback, optional (AddEventListenerOptions or boolean) options = false);
+    [ImplementedAs=removeEventListenerForBindings] void removeEventListener([AtomicString] DOMString type, EventListener? callback, optional (EventListenerOptions or boolean) options = false);
+    [ImplementedAs=dispatchEventForBindings, MayThrowException] boolean dispatchEvent(Event event);
 };
 
 dictionary EventListenerOptions {
     boolean capture = false;
 };
 
-dictionary AddEventListenerOptions {
-    boolean capture = false;
+dictionary AddEventListenerOptions : EventListenerOptions {
     boolean passive = false;
     boolean once = false;
 };

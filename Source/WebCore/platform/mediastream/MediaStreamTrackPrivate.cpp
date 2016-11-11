@@ -34,23 +34,21 @@
 #include "IntRect.h"
 #include "MediaSourceSettings.h"
 #include "UUID.h"
-#include <wtf/NeverDestroyed.h>
 
 namespace WebCore {
 
-RefPtr<MediaStreamTrackPrivate> MediaStreamTrackPrivate::create(RefPtr<RealtimeMediaSource>&& source)
+Ref<MediaStreamTrackPrivate> MediaStreamTrackPrivate::create(Ref<RealtimeMediaSource>&& source)
 {
-    return adoptRef(new MediaStreamTrackPrivate(WTFMove(source), createCanonicalUUIDString()));
+    return adoptRef(*new MediaStreamTrackPrivate(WTFMove(source), createCanonicalUUIDString()));
 }
 
-RefPtr<MediaStreamTrackPrivate> MediaStreamTrackPrivate::create(RefPtr<RealtimeMediaSource>&& source, const String& id)
+Ref<MediaStreamTrackPrivate> MediaStreamTrackPrivate::create(Ref<RealtimeMediaSource>&& source, String&& id)
 {
-    return adoptRef(new MediaStreamTrackPrivate(WTFMove(source), id));
+    return adoptRef(*new MediaStreamTrackPrivate(WTFMove(source), WTFMove(id)));
 }
 
 MediaStreamTrackPrivate::MediaStreamTrackPrivate(const MediaStreamTrackPrivate& other)
-    : RefCounted()
-    , m_source(&other.source())
+    : m_source(other.m_source.copyRef())
     , m_id(createCanonicalUUIDString())
     , m_isEnabled(other.enabled())
     , m_isEnded(other.ended())
@@ -58,10 +56,9 @@ MediaStreamTrackPrivate::MediaStreamTrackPrivate(const MediaStreamTrackPrivate& 
     m_source->addObserver(this);
 }
 
-MediaStreamTrackPrivate::MediaStreamTrackPrivate(RefPtr<RealtimeMediaSource>&& source, const String& id)
-    : RefCounted()
-    , m_source(source)
-    , m_id(id)
+MediaStreamTrackPrivate::MediaStreamTrackPrivate(Ref<RealtimeMediaSource>&& source, String&& id)
+    : m_source(WTFMove(source))
+    , m_id(WTFMove(id))
     , m_isEnabled(true)
     , m_isEnded(false)
 {
@@ -133,9 +130,9 @@ void MediaStreamTrackPrivate::endTrack()
         observer->trackEnded(*this);
 }
 
-RefPtr<MediaStreamTrackPrivate> MediaStreamTrackPrivate::clone()
+Ref<MediaStreamTrackPrivate> MediaStreamTrackPrivate::clone()
 {
-    return adoptRef(new MediaStreamTrackPrivate(*this));
+    return adoptRef(*new MediaStreamTrackPrivate(*this));
 }
 
 RealtimeMediaSource::Type MediaStreamTrackPrivate::type() const
@@ -173,10 +170,9 @@ void MediaStreamTrackPrivate::paintCurrentFrameInContext(GraphicsContext& contex
     }
 }
 
-void MediaStreamTrackPrivate::applyConstraints(const MediaConstraints&)
+void MediaStreamTrackPrivate::applyConstraints(const MediaConstraints& constraints, RealtimeMediaSource::SuccessHandler successHandler, RealtimeMediaSource::FailureHandler failureHandler)
 {
-    // FIXME: apply the new constraints to the track
-    // https://bugs.webkit.org/show_bug.cgi?id=122428
+    m_source->applyConstraints(constraints, successHandler, failureHandler);
 }
 
 AudioSourceProvider* MediaStreamTrackPrivate::audioSourceProvider()
@@ -211,6 +207,13 @@ bool MediaStreamTrackPrivate::preventSourceFromStopping()
 {
     // Do not allow the source to stop if we are still using it.
     return !m_isEnded;
+}
+
+void MediaStreamTrackPrivate::sourceHasMoreMediaData(MediaSample& mediaSample)
+{
+    mediaSample.setTrackID(id());
+    for (auto& observer : m_observers)
+        observer->sampleBufferUpdated(*this, mediaSample);
 }
 
 } // namespace WebCore

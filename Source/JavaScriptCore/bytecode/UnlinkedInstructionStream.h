@@ -24,9 +24,9 @@
  */
 
 
-#ifndef UnlinkedInstructionStream_h
-#define UnlinkedInstructionStream_h
+#pragma once
 
+#include "Opcode.h"
 #include "UnlinkedCodeBlock.h"
 #include <wtf/RefCountedArray.h>
 
@@ -147,5 +147,3 @@ ALWAYS_INLINE const UnlinkedInstruction* UnlinkedInstructionStream::Reader::next
 }
 
 } // namespace JSC
-
-#endif // UnlinkedInstructionStream_h

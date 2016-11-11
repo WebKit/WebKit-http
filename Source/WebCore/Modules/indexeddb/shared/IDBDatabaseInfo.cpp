@@ -26,6 +26,8 @@
 #include "config.h"
 #include "IDBDatabaseInfo.h"
 
+#include <wtf/text/StringBuilder.h>
+
 #if ENABLE(INDEXED_DATABASE)
 
 namespace WebCore {
@@ -64,9 +66,9 @@ bool IDBDatabaseInfo::hasObjectStore(const String& name) const
     return false;
 }
 
-IDBObjectStoreInfo IDBDatabaseInfo::createNewObjectStore(const String& name, const IDBKeyPath& keyPath, bool autoIncrement)
+IDBObjectStoreInfo IDBDatabaseInfo::createNewObjectStore(const String& name, Optional<IDBKeyPath>&& keyPath, bool autoIncrement)
 {
-    IDBObjectStoreInfo info(++m_maxObjectStoreID, name, keyPath, autoIncrement);
+    IDBObjectStoreInfo info(++m_maxObjectStoreID, name, WTFMove(keyPath), autoIncrement);
     m_objectStoreMap.set(info.identifier(), info);
     return info;
 }
@@ -120,6 +122,15 @@ IDBObjectStoreInfo* IDBDatabaseInfo::infoForExistingObjectStore(const String& na
     return getInfoForExistingObjectStore(name);
 }
 
+void IDBDatabaseInfo::renameObjectStore(uint64_t objectStoreIdentifier, const String& newName)
+{
+    auto* info = infoForExistingObjectStore(objectStoreIdentifier);
+    if (!info)
+        return;
+
+    info->rename(newName);
+}
+
 Vector<String> IDBDatabaseInfo::objectStoreNames() const
 {
     Vector<String> names;
@@ -144,14 +155,21 @@ void IDBDatabaseInfo::deleteObjectStore(uint64_t objectStoreIdentifier)
     m_objectStoreMap.remove(objectStoreIdentifier);
 }
 
-#ifndef NDEBUG
+#if !LOG_DISABLED
 String IDBDatabaseInfo::loggingString() const
 {
-    String top = makeString("Database: ", m_name, " version ", String::number(m_version), "\n");
-    for (auto objectStore : m_objectStoreMap.values())
-        top.append(makeString(objectStore.loggingString(1), "\n"));
+    StringBuilder builder;
+    builder.appendLiteral("Database:");
+    builder.append(m_name);
+    builder.appendLiteral(" version ");
+    builder.appendNumber(m_version);
+    builder.append('\n');
+    for (auto objectStore : m_objectStoreMap.values()) {
+        builder.append(objectStore.loggingString(1));
+        builder.append('\n');
+    }
 
-    return top; 
+    return builder.toString();
 }
 #endif
 

@@ -113,16 +113,6 @@ platform/mac/fast/text/attributed-substring-from-range-in-textfield.html
 platform/mac/fast/text/attributed-substring-from-range.html
 platform/mac/fast/text/justified-text-rect.html
 
-# WebKitTestRunner needs testRunner.setDashboardCompatibilityMode
-# <https://bugs.webkit.org/show_bug.cgi?id=42547>
-fast/canvas/canvas-gradient-addStop-error.html
-http/tests/xmlhttprequest/default-content-type-dashboard.html
-http/tests/xmlhttprequest/svg-created-by-xhr-allowed-in-dashboard.html
-svg/custom/embedded-svg-allowed-in-dashboard.xml
-svg/custom/manually-parsed-embedded-svg-allowed-in-dashboard.html
-svg/custom/manually-parsed-svg-allowed-in-dashboard.html
-svg/custom/svg-allowed-in-dashboard-object.html
-
 # WebKitTestRunner needs testRunner.setMainFrameIsFirstResponder
 # <https://bugs.webkit.org/show_bug.cgi?id=42685>
 editing/selection/caret-and-focus-ring.html
@@ -149,10 +139,6 @@ http/tests/security/no-referrer.html
 # WebKitTestRunner needs testRunner.setDomainRelaxationForbiddenForURLScheme
 # <https://bugs.webkit.org/show_bug.cgi?id=42700>
 http/tests/security/setDomainRelaxationForbiddenForURLScheme.html
-
-# WebKit2 needs testRunner.setDeferMainResourceDataLoad
-# <https://bugs.webkit.org/show_bug.cgi?id=42777>
-fast/loader/non-deferred-substitute-load.html
 
 # WebKitTestRunner needs testRunner.removeAllVisitedLinks
 http/tests/globalhistory/history-delegate-basic-visited-links.html
@@ -193,10 +179,6 @@ fast/selectors/querySelector-window-inactive.html
 fast/selectors/selection-window-inactive.html
 fast/dom/Window/window-focus-self.html
 scrollbars/corner-resizer-window-inactive.html
-
-# Text Autosizing is not yet enabled.
-# https://bugs.webkit.org/show_bug.cgi?id=84186
-fast/text-autosizing
 
 # WebKitTestRunner needs to implement testRunner.closeIdleLocalStorageDatabases().
 # https://bugs.webkit.org/show_bug.cgi?id=103861
@@ -242,6 +224,7 @@ fast/harness/use-page-cache.html
 fast/events/controlclick-no-onclick.html
 fast/events/moving-text-should-fire-drop-and-dragend-events.html
 fast/events/moving-text-should-fire-drop-and-dragend-events-2.html
+fast/events/ondrop-text-html.html
 editing/pasteboard/drag-drop-url-with-style.html
 
 # WTR needs an implementation for eventSender.continuousMouseScrollBy
@@ -254,12 +237,6 @@ fast/box-shadow/shadow-buffer-partial.html
 fast/block/lineboxcontain/block-font.html
 fast/block/lineboxcontain/block-glyphs.html
 fast/block/lineboxcontain/font.html
-
-# WTR needs an implementation of setAutomaticLinkDetectionEnabled.
-# https://bugs.webkit.org/show_bug.cgi?id=87162
-editing/inserting/smart-link-when-caret-is-moved-before-URL.html
-editing/inserting/smart-quote-with-all-configurations.html
-editing/inserting/typing-space-to-trigger-smart-link.html
 
 # https://bugs.webkit.org/show_bug.cgi?id=115203
 # Downloaded file name tests fail because of incorrect custom policy delegate implementation
@@ -309,10 +286,6 @@ printing/page-rule-selection.html
 fast/frames/location-redirect-user-gesture.html
 fast/frames/meta-refresh-user-gesture.html
 
-# WebKitTestRunner needs testRunner.setUseDashboardCompatibilityMode
-platform/mac/fast/dom/HTMLImageElement/dashboard-src-quirk.html [ Skip ]
-mathml/mathml-in-dashboard.html [ Skip ]
-
 # WebKitTestRunner needs testRunner.addURLToRedirect
 http/tests/loading/cross-origin-XHR-willLoadRequest.html
 
@@ -353,7 +326,6 @@ dom/html/level2/html/HTMLAppletElement01.html
 dom/html/level2/html/HTMLAppletElement02.html
 dom/html/level2/html/HTMLAppletElement03.html
 dom/html/level2/html/HTMLAppletElement04.html
-dom/html/level2/html/HTMLAppletElement05.html
 dom/html/level2/html/HTMLAppletElement06.html
 dom/html/level2/html/HTMLAppletElement07.html
 dom/html/level2/html/HTMLAppletElement08.html
@@ -363,7 +335,6 @@ dom/xhtml/level2/html/HTMLAppletElement01.xhtml
 dom/xhtml/level2/html/HTMLAppletElement02.xhtml
 dom/xhtml/level2/html/HTMLAppletElement03.xhtml
 dom/xhtml/level2/html/HTMLAppletElement04.xhtml
-dom/xhtml/level2/html/HTMLAppletElement05.xhtml
 dom/xhtml/level2/html/HTMLAppletElement06.xhtml
 dom/xhtml/level2/html/HTMLAppletElement07.xhtml
 dom/xhtml/level2/html/HTMLAppletElement08.xhtml
@@ -541,9 +512,6 @@ transitions/text-indent-transition.html
 # These storage tests fail in WebKit2 on the bot, but not running locally
 storage/websql/multiple-databases-garbage-collection.html
 
-# Crashes the WebProcess
-editing/pasteboard/copy-standalone-image.html
-
 # Mysterious failure after enabling paste tests
 editing/mac/pasteboard/text-precomposed.html
 
@@ -716,6 +684,9 @@ fast/images/gif-loop-count.html [ Pass ]
 
 # DumpRenderTree does not implement setWillSendRequestHTTPBody
 http/tests/misc/will-send-request-with-client-provided-http-body.html [ Pass ]
+
+# bug 162281
+imported/w3c/web-platform-tests/fetch/api/request/request-cache-only-if-cached.html [ Failure ]
 
 ### END OF (5) Progressions, expected successes that are expected failures in WebKit1.
 ########################################

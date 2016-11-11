@@ -25,44 +25,22 @@
     NewImpurePropertyFiresWatchpoints,
     OverrideBuiltins,
 ] interface HTMLDocument : Document {
-    [Custom, ForwardDeclareInHeader] void open();
+    [CEReactions, Custom, ForwardDeclareInHeader] void open();
     void close();
-    [Custom] void write(optional DOMString text);
-    [Custom] void writeln(optional DOMString text);
+    [CEReactions, Custom] void write(optional DOMString text);
+    [CEReactions, Custom] void writeln(optional DOMString text);
 
-    readonly attribute HTMLCollection embeds;
-    readonly attribute HTMLCollection plugins;
-    readonly attribute HTMLCollection scripts;
-
-    // Extensions
-
-#if defined(LANGUAGE_JAVASCRIPT) && LANGUAGE_JAVASCRIPT
-    // FIXME: This should eventually be available (if they are wanted) for all languages.
-    [Custom, Replaceable, Deletable] readonly attribute HTMLAllCollection all;
-#endif
+    [Custom, Replaceable] readonly attribute HTMLAllCollection all;
 
     void clear();
 
     void captureEvents();
     void releaseEvents();
 
-#if !defined(LANGUAGE_JAVASCRIPT) || !LANGUAGE_JAVASCRIPT
-    readonly attribute long width;
-    readonly attribute long height;
-#endif
-
-    // FIXME: This should not have [TreatNullAs=LegacyNullString].
-    [TreatNullAs=LegacyNullString] attribute DOMString dir;
-
-    attribute DOMString designMode;
-    readonly attribute DOMString compatMode;
-
     // Deprecated attributes.
-    // FIXME: These should not have [TreatNullAs=LegacyNullString].
-    [TreatNullAs=LegacyNullString] attribute DOMString bgColor;
-    [TreatNullAs=LegacyNullString] attribute DOMString fgColor;
-    [TreatNullAs=LegacyNullString] attribute DOMString alinkColor;
-    [TreatNullAs=LegacyNullString] attribute DOMString linkColor;
-    [TreatNullAs=LegacyNullString] attribute DOMString vlinkColor;
+    [TreatNullAs=EmptyString] attribute DOMString bgColor;
+    [TreatNullAs=EmptyString] attribute DOMString fgColor;
+    [TreatNullAs=EmptyString] attribute DOMString alinkColor;
+    [TreatNullAs=EmptyString] attribute DOMString linkColor;
+    [TreatNullAs=EmptyString] attribute DOMString vlinkColor;
 };
-

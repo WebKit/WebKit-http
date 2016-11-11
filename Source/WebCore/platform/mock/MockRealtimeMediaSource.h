@@ -34,15 +34,22 @@
 #if ENABLE(MEDIA_STREAM)
 
 #include "RealtimeMediaSource.h"
-#include <wtf/RunLoop.h>
+
+#if USE(OPENWEBRTC)
+#include "RealtimeMediaSourceOwr.h"
+#endif
 
 namespace WebCore {
 
-class FloatRect;
-class GraphicsContext;
-class TrackSourceInfo;
+class CaptureDevice;
 
-class MockRealtimeMediaSource : public RealtimeMediaSource {
+#if USE(OPENWEBRTC)
+using BaseRealtimeMediaSourceClass = RealtimeMediaSourceOwr;
+#else
+using BaseRealtimeMediaSourceClass = RealtimeMediaSource;
+#endif
+
+class MockRealtimeMediaSource : public BaseRealtimeMediaSourceClass {
 public:
     virtual ~MockRealtimeMediaSource() { }
 
@@ -52,7 +59,8 @@ public:
     static const AtomicString& mockVideoSourcePersistentID();
     static const AtomicString& mockVideoSourceName();
 
-    static RefPtr<TrackSourceInfo> trackSourceWithUID(const String&, MediaConstraints*);
+    static CaptureDevice audioDeviceInfo();
+    static CaptureDevice videoDeviceInfo();
 
 protected:
     MockRealtimeMediaSource(const String& id, Type, const String& name);
@@ -61,17 +69,18 @@ protected:
     virtual void initializeCapabilities(RealtimeMediaSourceCapabilities&) = 0;
     virtual void initializeSupportedConstraints(RealtimeMediaSourceSupportedConstraints&) = 0;
 
-    void startProducingData() override { m_isProducingData = true; }
-    void stopProducingData() override { m_isProducingData = false; }
+    void startProducingData() override;
+    void stopProducingData() override;
 
-    RefPtr<RealtimeMediaSourceCapabilities> capabilities() override;
-    const RealtimeMediaSourceSettings& settings() override;
+    RefPtr<RealtimeMediaSourceCapabilities> capabilities() const override;
+    const RealtimeMediaSourceSettings& settings() const override;
 
     MediaConstraints& constraints() { return *m_constraints.get(); }
     RealtimeMediaSourceSupportedConstraints& supportedConstraints();
 
 private:
-
+    void initializeCapabilities();
+    void initializeSettings();
     bool isProducingData() const override { return m_isProducingData; }
 
     RealtimeMediaSourceSettings m_currentSettings;

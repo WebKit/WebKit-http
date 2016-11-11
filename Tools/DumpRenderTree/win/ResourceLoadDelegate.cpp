@@ -199,14 +199,12 @@ ULONG ResourceLoadDelegate::Release()
 HRESULT ResourceLoadDelegate::identifierForInitialRequest(_In_opt_ IWebView* webView, _In_opt_ IWebURLRequest* request,
     _In_opt_ IWebDataSource* dataSource, unsigned long identifier)
 { 
-    if (!done && gTestRunner->dumpResourceLoadCallbacks()) {
-        _bstr_t urlStr;
-        if (FAILED(request->URL(&urlStr.GetBSTR())))
-            return E_FAIL;
+    _bstr_t urlStr;
+    if (FAILED(request->URL(&urlStr.GetBSTR())))
+        return E_FAIL;
 
-        ASSERT(!urlMap().contains(identifier));
-        urlMap().set(identifier, wstringFromBSTR(urlStr));
-    }
+    ASSERT(!urlMap().contains(identifier));
+    urlMap().set(identifier, wstringFromBSTR(urlStr));
 
     return S_OK;
 }
@@ -242,14 +240,6 @@ HRESULT ResourceLoadDelegate::willSendRequest(_In_opt_ IWebView* webView, unsign
             descriptionSuitableForTestResult(identifier).c_str(),
             descriptionSuitableForTestResult(request).c_str(),
             descriptionSuitableForTestResult(redirectResponse).c_str());
-    }
-
-    if (!done && !gTestRunner->deferMainResourceDataLoad()) {
-        COMPtr<IWebDataSourcePrivate> dataSourcePrivate(Query, dataSource);
-        if (!dataSourcePrivate)
-            return E_FAIL;
-
-        dataSourcePrivate->setDeferMainResourceDataLoad(FALSE);
     }
 
     if (!done && gTestRunner->willSendRequestReturnsNull())

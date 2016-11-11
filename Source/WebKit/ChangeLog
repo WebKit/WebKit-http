@@ -1,3 +1,524 @@
+2016-11-10  Alex Christensen  <achristensen@webkit.org>
+
+        Move SecurityOrigin::databaseIdentifier() to SecurityOriginData
+        https://bugs.webkit.org/show_bug.cgi?id=164573
+
+        Reviewed by Brady Eidson.
+
+        * Storage/StorageAreaImpl.cpp:
+        (WebKit::StorageAreaImpl::create):
+        * Storage/StorageTracker.cpp:
+        (WebKit::StorageTracker::deleteOrigin):
+        (WebKit::StorageTracker::diskUsageForOrigin):
+
+2016-11-09  Alex Christensen  <achristensen@webkit.org>
+
+        Clean up Storage code
+        https://bugs.webkit.org/show_bug.cgi?id=164562
+
+        Reviewed by Brady Eidson.
+
+        Some classes were in WebCore namespace instead of WebKit.
+
+        * Storage/StorageAreaImpl.cpp:
+        (WebKit::StorageAreaImpl::StorageAreaImpl):
+        (WebKit::StorageAreaImpl::create):
+        (WebKit::StorageAreaImpl::copy):
+        (WebCore::StorageAreaImpl::~StorageAreaImpl): Deleted.
+        (WebCore::StorageAreaImpl::StorageAreaImpl): Deleted.
+        (WebCore::StorageAreaImpl::create): Deleted.
+        (WebCore::StorageAreaImpl::copy): Deleted.
+        (WebCore::StorageAreaImpl::canAccessStorage): Deleted.
+        (WebCore::StorageAreaImpl::storageType): Deleted.
+        (WebCore::StorageAreaImpl::length): Deleted.
+        (WebCore::StorageAreaImpl::key): Deleted.
+        (WebCore::StorageAreaImpl::item): Deleted.
+        (WebCore::StorageAreaImpl::setItem): Deleted.
+        (WebCore::StorageAreaImpl::removeItem): Deleted.
+        (WebCore::StorageAreaImpl::clear): Deleted.
+        (WebCore::StorageAreaImpl::contains): Deleted.
+        (WebCore::StorageAreaImpl::importItems): Deleted.
+        (WebCore::StorageAreaImpl::close): Deleted.
+        (WebCore::StorageAreaImpl::clearForOriginDeletion): Deleted.
+        (WebCore::StorageAreaImpl::sync): Deleted.
+        (WebCore::StorageAreaImpl::blockUntilImportComplete): Deleted.
+        (WebCore::StorageAreaImpl::memoryBytesUsedByCache): Deleted.
+        (WebCore::StorageAreaImpl::incrementAccessCount): Deleted.
+        (WebCore::StorageAreaImpl::decrementAccessCount): Deleted.
+        (WebCore::StorageAreaImpl::closeDatabaseTimerFired): Deleted.
+        (WebCore::StorageAreaImpl::closeDatabaseIfIdle): Deleted.
+        (WebCore::StorageAreaImpl::dispatchStorageEvent): Deleted.
+        * Storage/StorageAreaImpl.h:
+        * Storage/StorageAreaSync.cpp:
+        (WebKit::StorageAreaSync::StorageAreaSync):
+        (WebKit::StorageAreaSync::create):
+        (WebCore::StorageAreaSync::StorageAreaSync): Deleted.
+        (WebCore::StorageAreaSync::create): Deleted.
+        (WebCore::StorageAreaSync::~StorageAreaSync): Deleted.
+        (WebCore::StorageAreaSync::scheduleFinalSync): Deleted.
+        (WebCore::StorageAreaSync::scheduleItemForSync): Deleted.
+        (WebCore::StorageAreaSync::scheduleClear): Deleted.
+        (WebCore::StorageAreaSync::scheduleCloseDatabase): Deleted.
+        (WebCore::StorageAreaSync::syncTimerFired): Deleted.
+        (WebCore::StorageAreaSync::openDatabase): Deleted.
+        (WebCore::StorageAreaSync::migrateItemTableIfNeeded): Deleted.
+        (WebCore::StorageAreaSync::performImport): Deleted.
+        (WebCore::StorageAreaSync::markImported): Deleted.
+        (WebCore::StorageAreaSync::blockUntilImportComplete): Deleted.
+        (WebCore::StorageAreaSync::sync): Deleted.
+        (WebCore::StorageAreaSync::performSync): Deleted.
+        (WebCore::StorageAreaSync::deleteEmptyDatabase): Deleted.
+        (WebCore::StorageAreaSync::scheduleSync): Deleted.
+        * Storage/StorageAreaSync.h:
+        * Storage/StorageNamespaceImpl.cpp:
+        (WebKit::StorageNamespaceImpl::createSessionStorageNamespace):
+        (WebKit::StorageNamespaceImpl::getOrCreateLocalStorageNamespace):
+        (WebKit::StorageNamespaceImpl::storageArea):
+        (WebCore::localStorageNamespaceMap): Deleted.
+        (WebCore::StorageNamespaceImpl::createSessionStorageNamespace): Deleted.
+        (WebCore::StorageNamespaceImpl::getOrCreateLocalStorageNamespace): Deleted.
+        (WebCore::StorageNamespaceImpl::StorageNamespaceImpl): Deleted.
+        (WebCore::StorageNamespaceImpl::~StorageNamespaceImpl): Deleted.
+        (WebCore::StorageNamespaceImpl::copy): Deleted.
+        (WebCore::StorageNamespaceImpl::storageArea): Deleted.
+        (WebCore::StorageNamespaceImpl::close): Deleted.
+        (WebCore::StorageNamespaceImpl::clearOriginForDeletion): Deleted.
+        (WebCore::StorageNamespaceImpl::clearAllOriginsForDeletion): Deleted.
+        (WebCore::StorageNamespaceImpl::sync): Deleted.
+        (WebCore::StorageNamespaceImpl::closeIdleLocalStorageDatabases): Deleted.
+        * Storage/StorageNamespaceImpl.h:
+        * Storage/StorageTracker.cpp:
+        (WebCore::StorageTracker::initializeTracker): Deleted.
+        (WebCore::StorageTracker::internalInitialize): Deleted.
+        (WebCore::StorageTracker::tracker): Deleted.
+        (WebCore::StorageTracker::StorageTracker): Deleted.
+        (WebCore::StorageTracker::setDatabaseDirectoryPath): Deleted.
+        (WebCore::StorageTracker::databaseDirectoryPath): Deleted.
+        (WebCore::StorageTracker::trackerDatabasePath): Deleted.
+        (WebCore::ensureDatabaseFileExists): Deleted.
+        (WebCore::StorageTracker::openTrackerDatabase): Deleted.
+        (WebCore::StorageTracker::importOriginIdentifiers): Deleted.
+        (WebCore::StorageTracker::finishedImportingOriginIdentifiers): Deleted.
+        (WebCore::StorageTracker::syncImportOriginIdentifiers): Deleted.
+        (WebCore::StorageTracker::syncFileSystemAndTrackerDatabase): Deleted.
+        (WebCore::StorageTracker::setOriginDetails): Deleted.
+        (WebCore::StorageTracker::syncSetOriginDetails): Deleted.
+        (WebCore::StorageTracker::origins): Deleted.
+        (WebCore::StorageTracker::deleteAllOrigins): Deleted.
+        (WebCore::truncateDatabaseFile): Deleted.
+        (WebCore::StorageTracker::syncDeleteAllOrigins): Deleted.
+        (WebCore::StorageTracker::deleteOriginWithIdentifier): Deleted.
+        (WebCore::StorageTracker::deleteOrigin): Deleted.
+        (WebCore::StorageTracker::syncDeleteOrigin): Deleted.
+        (WebCore::StorageTracker::willDeleteAllOrigins): Deleted.
+        (WebCore::StorageTracker::willDeleteOrigin): Deleted.
+        (WebCore::StorageTracker::canDeleteOrigin): Deleted.
+        (WebCore::StorageTracker::cancelDeletingOrigin): Deleted.
+        (WebCore::StorageTracker::isActive): Deleted.
+        (WebCore::StorageTracker::setIsActive): Deleted.
+        (WebCore::StorageTracker::databasePathForOrigin): Deleted.
+        (WebCore::StorageTracker::diskUsageForOrigin): Deleted.
+        * Storage/StorageTracker.h:
+        (WebCore::StorageTracker::storageDatabaseIdleInterval): Deleted.
+        (WebCore::StorageTracker::setStorageDatabaseIdleInterval): Deleted.
+        * Storage/WebStorageNamespaceProvider.cpp:
+        (storageNamespaceProviders): Deleted.
+        (WebStorageNamespaceProvider::create): Deleted.
+        (WebStorageNamespaceProvider::WebStorageNamespaceProvider): Deleted.
+        (WebStorageNamespaceProvider::~WebStorageNamespaceProvider): Deleted.
+        (WebStorageNamespaceProvider::closeLocalStorage): Deleted.
+        (WebStorageNamespaceProvider::clearLocalStorageForAllOrigins): Deleted.
+        (WebStorageNamespaceProvider::clearLocalStorageForOrigin): Deleted.
+        (WebStorageNamespaceProvider::closeIdleLocalStorageDatabases): Deleted.
+        (WebStorageNamespaceProvider::syncLocalStorage): Deleted.
+        (WebStorageNamespaceProvider::createSessionStorageNamespace): Deleted.
+        (WebStorageNamespaceProvider::createLocalStorageNamespace): Deleted.
+        (WebStorageNamespaceProvider::createTransientLocalStorageNamespace): Deleted.
+        * Storage/WebStorageNamespaceProvider.h:
+        * WebCoreSupport/WebResourceLoadScheduler.h:
+        * WebCoreSupport/WebViewGroup.cpp:
+        (WebViewGroup::storageNamespaceProvider):
+
+2016-11-02  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Copy build results to AAS 'Program Files' folder.
+        https://bugs.webkit.org/show_bug.cgi?id=164273
+
+        Reviewed by Brent Fulgham.
+
+        The preferred location for the binaries is the AAS 'Program Files' folder.
+
+        * WebKit.vcxproj/WebKit.proj:
+
+2016-10-25  Konstantin Tokarev  <annulen@yandex.ru>
+
+        [cmake] Check if jscLib and WebKitGUID targets exist before using them
+        https://bugs.webkit.org/show_bug.cgi?id=163945
+
+        Reviewed by Alex Christensen.
+
+        Currently these targets are used under WIN32 condition, however they
+        are defined in PlatformWin.cmake, causing CMake warnings if port
+        supports WIN32 but does not use PlatformWin.cmake
+
+        * CMakeLists.txt:
+
+2016-10-24  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] CMake build type is not set.
+        https://bugs.webkit.org/show_bug.cgi?id=163917
+
+        Reviewed by Alex Christensen.
+
+        The CMAKE_BUILD_TYPE variable should be set to Debug or Release.
+
+        * WebKit.vcxproj/WebKit.proj:
+
+2016-10-19  Alex Christensen  <achristensen@webkit.org>
+
+        Revert r207151
+        https://bugs.webkit.org/show_bug.cgi?id=163675
+
+        Reviewed by Brent Fulgham.
+
+        * WebCoreSupport/WebResourceLoadScheduler.cpp:
+        (WebResourceLoadScheduler::scheduleLoad):
+
+2016-10-14  Alex Christensen  <achristensen@webkit.org>
+
+        Fix CMake build.
+
+        * PlatformMac.cmake:
+
+2016-10-13  Anders Carlsson  <andersca@apple.com>
+
+        Move BackForwardList from WebCore to WebKitLegacy
+        https://bugs.webkit.org/show_bug.cgi?id=163418
+
+        Reviewed by Tim Horton.
+
+        * WebKit.xcodeproj/project.pbxproj:
+
+2016-10-12  Anders Carlsson  <andersca@apple.com>
+
+        Copy BackForwardList from WebCore to WebKit/win
+        https://bugs.webkit.org/show_bug.cgi?id=163360
+
+        Reviewed by Alex Christensen.
+
+        This is the first step towards getting rid of BackForwardList in WebCore.
+
+        * PlatformWin.cmake:
+        Add new files.
+
+2016-10-11  Alex Christensen  <achristensen@webkit.org>
+
+        Remove dead networking code
+        https://bugs.webkit.org/show_bug.cgi?id=163263
+
+        Reviewed by Daniel Bates.
+
+        * WebCoreSupport/WebResourceLoadScheduler.cpp:
+        (WebResourceLoadScheduler::scheduleLoad):
+
+2016-10-06  Brent Fulgham  <bfulgham@apple.com>
+
+        Unreviewed build fix when building with Direct2D.
+
+        * PlatformWin.cmake: Add missing library references.
+
+2016-10-05  Daniel Bates  <dabates@apple.com>
+
+        Do not follow redirects when sending violation report
+        https://bugs.webkit.org/show_bug.cgi?id=162520
+        <rdar://problem/27957639>
+
+        Reviewed by Alex Christensen.
+
+        Update implementation of legacy WebKit loader strategy to pass through a boolean,
+        shouldFollowRedirects, to PingHandle as to whether to follow redirect responses
+        for a ping request.
+
+        * WebCoreSupport/WebResourceLoadScheduler.cpp:
+        (WebResourceLoadScheduler::createPingHandle):
+        * WebCoreSupport/WebResourceLoadScheduler.h:
+
+2016-09-20  Don Olmstead  <don.olmstead@am.sony.com>
+
+        [WinCairo] Use find_package cairo in build
+        https://bugs.webkit.org/show_bug.cgi?id=162239
+
+        Reviewed by Alex Christensen.
+
+        * PlatformWin.cmake:
+
+2016-09-12  Brent Fulgham  <bfulgham@apple.com>
+
+        [Win][Direct2D] Provide Direct2D-based geometry and transform cast operations
+        https://bugs.webkit.org/show_bug.cgi?id=161818
+
+        Reviewed by Dean Jackson.
+
+        * PlatformWin.cmake: Link to Direct2D on Windows.
+
+2016-09-06  Dan Bernstein  <mitz@apple.com>
+
+        [Xcode] WebKitLegacy.framework is re-signed on incremental build even if nothing’s changed
+        https://bugs.webkit.org/show_bug.cgi?id=161642
+
+        Reviewed by Tim Horton.
+
+        * WebKit.xcodeproj/project.pbxproj:  Removed the output file listed under the
+        Symlink WebKitPluginHost script build phase, because it doesn’t produce that file on iOS.
+        With no outputs listed, the script will still run every time, but the fact that it has run
+        won’t trigger re-signing the framework.
+
+2016-08-25  Alex Christensen  <achristensen@webkit.org>
+
+        CMake build fix.
+
+        * PlatformMac.cmake:
+        Availability was spelled wrong, resulting in a missing header.
+
+2016-08-22  Alex Christensen  <achristensen@webkit.org>
+
+        Fix Mac CMake build after r204717.
+
+        * PlatformMac.cmake:
+
+2016-08-22  Alex Christensen  <achristensen@webkit.org>
+
+        Mostly fix Mac CMake build after r204717.
+
+        * PlatformMac.cmake:
+
+2016-08-22  Darin Adler  <darin@apple.com>
+
+        Move Objective-C DOM bindings from WebCore to legacy WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=160654
+
+        Reviewed by Alex Christensen.
+
+        * WebKit.xcodeproj/project.pbxproj: Added the new source files to the project.
+        For now they all have project visibility, since MigrateHeaders.make takes care
+        of exporting them as public and private. Later, we can likely use the built-in
+        Xcode feature instead of that script. Also pass DOM as an acceptable prefix
+        when calling check-for-inappropriate-objc-class-names. Also sorted this file
+        with the sort-Xcode-project-file script.
+
+2016-08-17  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Cocoa] Migrate off of deprecated CoreGraphics API CGContextSelectFont() and CGContextShowTextAtPoint()
+        https://bugs.webkit.org/show_bug.cgi?id=160895
+
+        Reviewed by Dean Jackson.
+
+        Link to the existing CoreText framework.
+
+        * PlatformWin.cmake:
+
+2016-08-16  Hunseop Jeong  <hs85.jeong@samsung.com>
+
+        Unreviewed, CMake build fix
+
+        * PlatformMac.cmake:
+
+2016-08-15  Anders Carlsson  <andersca@apple.com>
+
+        Remove OldWebAssertions.c
+        https://bugs.webkit.org/show_bug.cgi?id=160862
+
+        Reviewed by Dan Bernstein.
+
+        * WebKit.xcodeproj/project.pbxproj:
+
+2016-08-15  Anders Carlsson  <andersca@apple.com>
+
+        Remove WebKeyGenerator
+        https://bugs.webkit.org/show_bug.cgi?id=160854
+
+        Reviewed by Dan Bernstein.
+
+        * WebKit.xcodeproj/project.pbxproj:
+
+2016-08-15  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Remove unused includes of wtf headers
+        https://bugs.webkit.org/show_bug.cgi?id=160839
+
+        Reviewed by Alex Christensen.
+
+        * Storage/StorageSyncManager.h:
+        * Storage/StorageThread.cpp:
+        * Storage/StorageThread.h:
+        * Storage/WebDatabaseProvider.cpp:
+
+2016-08-08  Anders Carlsson  <andersca@apple.com>
+
+        Add a new PluginInfoProvider class, to replace PluginStrategy
+        https://bugs.webkit.org/show_bug.cgi?id=160670
+
+        Reviewed by Sam Weinig.
+
+        Add new files.
+
+        * PlatformWin.cmake:
+        * WebKit.xcodeproj/project.pbxproj:
+
+2016-08-04  Alex Christensen  <achristensen@webkit.org>
+
+        [Mac][cmake] Fix the build after Objective-C bindings generator removal
+        https://bugs.webkit.org/show_bug.cgi?id=160545
+
+        Reviewed by Alex Christensen.
+
+        * PlatformMac.cmake:
+
+2016-07-26  Simon Fraser  <simon.fraser@apple.com>
+
+        Fix the Windows debug build.
+        
+        WebResourceLoadScheduler's logging was a holdover from it being in WebCore,
+        and prior to r203749 WebKit was actually using a WebCore log channel.
+        
+        For some reason this doesn't build on Windows debug, so just remove
+        this logging for now.
+
+        * WebCoreSupport/WebResourceLoadScheduler.cpp:
+        (WebResourceLoadScheduler::scheduleLoad): Deleted.
+        (WebResourceLoadScheduler::servePendingRequests): Deleted.
+        (WebResourceLoadScheduler::scheduleServePendingRequests): Deleted.
+        (WebResourceLoadScheduler::requestTimerFired): Deleted.
+        (WebResourceLoadScheduler::HostInformation::addLoadInProgress): Deleted.
+
+2016-07-26  Simon Fraser  <simon.fraser@apple.com>
+
+        Sort the project files.
+
+        * WebKit.xcodeproj/project.pbxproj:
+
+2016-07-26  Simon Fraser  <simon.fraser@apple.com>
+
+        Allow LOG macros to be used outside the namespace, and other logging cleanup
+        https://bugs.webkit.org/show_bug.cgi?id=160216
+
+        Reviewed by Anders Carlsson.
+
+        Fix some issues with the LOG macros.
+        
+        First, they were not usable outside the WebKit namespace in WebKit2 code. Fix by moving
+        its log channels outside of the namespace (they are protected by a unique prefix anyway).
+        
+        Second, allow LOG_WITH_STREAM to be used in WebKit2 by moving that and a helper macro
+        into LogMacros.h, which is exported from WebCore as a private header.
+        
+        Third, split the Logging.h header into two. Logging.h remains for framework-internal
+        log channels and log macros. Add LogInitialization.h which is external, and used to
+        initialize the channels.
+        
+        Finally unify "initializeLogChannels" and "initializeLoggingChannels" terminology everywhere.
+
+        * WebCoreSupport/WebResourceLoadScheduler.cpp:
+
+2016-07-14  Alex Christensen  <achristensen@webkit.org>
+
+        Use SocketProvider to create SocketStreamHandles
+        https://bugs.webkit.org/show_bug.cgi?id=159774
+
+        Reviewed by Alex Christensen.
+
+        * PlatformMac.cmake:
+        * PlatformWin.cmake:
+        * WebKit.xcodeproj/project.pbxproj:
+
+2016-07-12  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Fix for build error when trying to version stamp dll.
+        https://bugs.webkit.org/show_bug.cgi?id=159692
+
+        Reviewed by Brent Fulgham.
+
+        Use correct path to version stamp script.
+
+        * CMakeLists.txt:
+
+2016-07-12  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] DLLs are missing version information.
+        https://bugs.webkit.org/show_bug.cgi?id=159349
+
+        Reviewed by Brent Fulgham.
+
+        Run perl version stamp utility.
+
+        * CMakeLists.txt:
+
+2016-07-11  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r203064.
+        https://bugs.webkit.org/show_bug.cgi?id=159642
+
+        This change causes LayoutTest crashes on WK1 ASan (Requested
+        by ryanhaddad on #webkit).
+
+        Reverted changeset:
+
+        "Use refs for ResourceLoaders"
+        https://bugs.webkit.org/show_bug.cgi?id=159592
+        http://trac.webkit.org/changeset/203064
+
+2016-07-08  Alex Christensen  <achristensen@webkit.org>
+
+        Use refs for ResourceLoaders
+        https://bugs.webkit.org/show_bug.cgi?id=159592
+
+        Reviewed by Chris Dumez.
+
+        * WebCoreSupport/WebResourceLoadScheduler.cpp:
+        (webResourceLoadScheduler):
+        (WebResourceLoadScheduler::hostForURL):
+        (WebResourceLoadScheduler::WebResourceLoadScheduler):
+        (WebResourceLoadScheduler::loadResource):
+        (WebResourceLoadScheduler::schedulePluginStreamLoad):
+        (WebResourceLoadScheduler::scheduleLoad):
+        (WebResourceLoadScheduler::remove):
+        (WebResourceLoadScheduler::setDefersLoading):
+        (WebResourceLoadScheduler::crossOriginRedirectReceived):
+        (WebResourceLoadScheduler::servePendingRequests):
+        (WebResourceLoadScheduler::resumePendingRequests):
+        (WebResourceLoadScheduler::HostInformation::priorityToIndex):
+        (WebResourceLoadScheduler::HostInformation::schedule):
+        (WebResourceLoadScheduler::HostInformation::addLoadInProgress):
+        (WebResourceLoadScheduler::HostInformation::remove):
+        * WebCoreSupport/WebResourceLoadScheduler.h:
+        (WebResourceLoadScheduler::HostInformation::name):
+        (WebResourceLoadScheduler::HostInformation::requestsPending):
+        m_nonHTTPProtocolHost used to be a leaked pointer, and now it's a member variable.
+
+2016-07-08  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r202799.
+        https://bugs.webkit.org/show_bug.cgi?id=159568
+
+        Caused build failure (Requested by perarne on #webkit).
+
+        Reverted changeset:
+
+        "[Win] DLLs are missing version information."
+        https://bugs.webkit.org/show_bug.cgi?id=159349
+        http://trac.webkit.org/changeset/202799
+
+2016-07-07  Alex Christensen  <achristensen@webkit.org>
+
+        Use SocketProvider to create WebSocketChannels
+        https://bugs.webkit.org/show_bug.cgi?id=158776
+
+        Reviewed by Brent Fulgham.
+
+        * PlatformMac.cmake:
+        * PlatformWin.cmake:
+        * WebKit.xcodeproj/project.pbxproj:
+
 2016-07-03  Per Arne Vollan  <pvollan@apple.com>
 
         [Win] DLLs are missing version information.

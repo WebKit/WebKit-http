@@ -23,12 +23,10 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef TextIndicator_h
-#define TextIndicator_h
+#pragma once
 
 #include "FloatRect.h"
 #include "Image.h"
-#include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
 #include <wtf/Vector.h>
 
@@ -129,5 +127,3 @@ private:
 };
 
 } // namespace WebKit
-
-#endif // TextIndicator_h

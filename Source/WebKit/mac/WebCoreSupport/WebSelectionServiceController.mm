@@ -32,7 +32,6 @@
 #import <WebCore/HTMLConverter.h>
 #import <WebCore/NSSharingServiceSPI.h>
 #import <WebCore/Range.h>
-#import <wtf/NeverDestroyed.h>
 
 using namespace WebCore;
 
@@ -81,15 +80,14 @@ bool WebSelectionServiceController::hasRelevantSelectionServices(bool isTextOnly
     if (isTextOnly && hasSelectionServices)
         return true;
 
-    NSTextAttachment *attachment = [[NSTextAttachment alloc] init];
-    RetainPtr<NSImage> image = adoptNS([[NSImage alloc] init]);
-    NSTextAttachmentCell *cell = [[NSTextAttachmentCell alloc] initImageCell:image.get()];
-    [attachment setAttachmentCell:cell];
-    RetainPtr<NSMutableAttributedString> attributedStringWithRichContent = (NSMutableAttributedString *)[NSMutableAttributedString attributedStringWithAttachment:attachment];
+    auto attachment = adoptNS([[NSTextAttachment alloc] init]);
+    auto image = adoptNS([[NSImage alloc] init]);
+    auto cell = adoptNS([[NSTextAttachmentCell alloc] initImageCell:image.get()]);
+    [attachment setAttachmentCell:cell.get()];
+    NSMutableAttributedString *attributedStringWithRichContent = (NSMutableAttributedString *)[NSMutableAttributedString attributedStringWithAttachment:attachment.get()];
     [attributedStringWithRichContent appendAttributedString:attributedString.get()];
 
-    bool hasRichContentServices = hasCompatibleServicesForItems(@[ attributedStringWithRichContent.get() ]);
-    return hasRichContentServices;
+    return hasCompatibleServicesForItems(@[ attributedStringWithRichContent ]);
 }
 
 void WebSelectionServiceController::sharingServicePickerWillBeDestroyed(WebSharingServicePickerController &)

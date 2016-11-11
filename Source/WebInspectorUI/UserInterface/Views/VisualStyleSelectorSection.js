@@ -191,7 +191,7 @@ WebInspector.VisualStyleSelectorSection = class VisualStyleSelectorSection exten
                     continue;
 
                 if (!divider) {
-                    let dividerText = WebInspector.UIString("Inherited from %s").format(WebInspector.displayNameForNode(inherited.node));
+                    let dividerText = WebInspector.UIString("Inherited from %s").format(inherited.node.displayName);
                     divider = new WebInspector.GeneralTreeElement("section-divider", dividerText);
                     divider.selectable = false;
                     this._selectors.appendChild(divider);
@@ -207,7 +207,7 @@ WebInspector.VisualStyleSelectorSection = class VisualStyleSelectorSection exten
     currentStyle()
     {
         if (!this._nodeStyles || !this._selectors.selectedTreeElement)
-            return;
+            return null;
 
         return this._selectors.selectedTreeElement.representedObject;
     }
@@ -259,7 +259,7 @@ WebInspector.VisualStyleSelectorSection = class VisualStyleSelectorSection exten
 
     _addNewRule(event)
     {
-        if (!this._nodeStyles || this._nodeStyles.node.isInShadowTree())
+        if (!this._nodeStyles || this._nodeStyles.node.isInUserAgentShadowTree())
             return;
 
         let selector = this.currentStyle().selectorText;
@@ -327,4 +327,4 @@ WebInspector.VisualStyleSelectorSection.LastSelectedRuleSymbol = Symbol("visual-
 
 WebInspector.VisualStyleSelectorSection.Event = {
     SelectorChanged: "visual-style-selector-section-selector-changed"
-}
+};

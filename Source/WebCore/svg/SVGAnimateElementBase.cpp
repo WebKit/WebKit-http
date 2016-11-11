@@ -109,7 +109,7 @@ void SVGAnimateElementBase::calculateAnimatedValue(float percentage, unsigned re
     if (hasTagName(SVGNames::setTag))
         percentage = 1;
 
-    if (calcMode() == CalcModeDiscrete)
+    if (calcMode() == CalcMode::Discrete)
         percentage = percentage < 0.5 ? 0 : 1;
 
     // Target element might have changed.
@@ -236,17 +236,17 @@ static inline void applyCSSPropertyToTarget(SVGElement& targetElement, CSSProper
 {
     ASSERT(!targetElement.m_deletionHasBegun);
 
-    if (!targetElement.ensureAnimatedSMILStyleProperties().setProperty(id, value, false, 0))
+    if (!targetElement.ensureAnimatedSMILStyleProperties().setProperty(id, value, false))
         return;
 
-    targetElement.setNeedsStyleRecalc(SyntheticStyleChange);
+    targetElement.invalidateStyleAndLayerComposition();
 }
 
 static inline void removeCSSPropertyFromTarget(SVGElement& targetElement, CSSPropertyID id)
 {
     ASSERT(!targetElement.m_deletionHasBegun);
     targetElement.ensureAnimatedSMILStyleProperties().removeProperty(id);
-    targetElement.setNeedsStyleRecalc(SyntheticStyleChange);
+    targetElement.invalidateStyleAndLayerComposition();
 }
 
 static inline void applyCSSPropertyToTargetAndInstances(SVGElement& targetElement, const QualifiedName& attributeName, const String& valueAsString)

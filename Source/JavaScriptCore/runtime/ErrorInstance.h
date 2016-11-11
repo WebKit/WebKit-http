@@ -18,13 +18,11 @@
  *
  */
 
-#ifndef ErrorInstance_h
-#define ErrorInstance_h
+#pragma once
 
-#include "Interpreter.h"
+#include "JSObject.h"
 #include "RuntimeType.h"
 #include "SourceProvider.h"
-#include <wtf/Vector.h>
 
 namespace JSC {
 
@@ -78,5 +76,3 @@ protected:
 };
 
 } // namespace JSC
-
-#endif // ErrorInstance_h

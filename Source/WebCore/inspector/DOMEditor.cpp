@@ -138,7 +138,9 @@ public:
 
     bool undo(ExceptionCode& ec) override
     {
-        m_element->setAttribute(m_name, m_value, ec);
+        auto result = m_element->setAttribute(m_name, m_value);
+        if (result.hasException())
+            ec = result.releaseException().code();
         return true;
     }
 
@@ -176,16 +178,20 @@ public:
 
     bool undo(ExceptionCode& ec) override
     {
-        if (m_hadAttribute)
-            m_element->setAttribute(m_name, m_oldValue, ec);
-        else
+        if (m_hadAttribute) {
+            auto result = m_element->setAttribute(m_name, m_oldValue);
+            if (result.hasException())
+                ec = result.releaseException().code();
+        } else
             m_element->removeAttribute(m_name);
         return true;
     }
 
     bool redo(ExceptionCode& ec) override
     {
-        m_element->setAttribute(m_name, m_value, ec);
+        auto result = m_element->setAttribute(m_name, m_value);
+        if (result.hasException())
+            ec = result.releaseException().code();
         return true;
     }
 
@@ -260,15 +266,15 @@ public:
         return redo(ec);
     }
 
-    bool undo(ExceptionCode& ec) override
+    bool undo(ExceptionCode&) override
     {
-        m_textNode->replaceWholeText(m_oldText, ec);
+        m_textNode->replaceWholeText(m_oldText);
         return true;
     }
 
-    bool redo(ExceptionCode& ec) override
+    bool redo(ExceptionCode&) override
     {
-        m_textNode->replaceWholeText(m_text, ec);
+        m_textNode->replaceWholeText(m_text);
         return true;
     }
 

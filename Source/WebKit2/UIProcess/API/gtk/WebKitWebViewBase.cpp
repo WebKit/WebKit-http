@@ -30,6 +30,8 @@
 #include "WebKitWebViewBase.h"
 
 #include "APIPageConfiguration.h"
+#include "AcceleratedBackingStore.h"
+#include "ActivityState.h"
 #include "DrawingAreaProxyImpl.h"
 #include "InputMethodFilter.h"
 #include "KeyBindingTranslator.h"
@@ -37,8 +39,6 @@
 #include "NativeWebMouseEvent.h"
 #include "NativeWebWheelEvent.h"
 #include "PageClientImpl.h"
-#include "RedirectedXCompositeWindow.h"
-#include "ViewState.h"
 #include "WebEventFactory.h"
 #include "WebFullScreenClientGtk.h"
 #include "WebInspectorProxy.h"
@@ -75,10 +75,6 @@
 
 #if PLATFORM(X11)
 #include <gdk/gdkx.h>
-#endif
-
-#if PLATFORM(WAYLAND)
-#include <gdk/gdkwayland.h>
 #endif
 
 // gtk_widget_get_scale_factor() appeared in GTK 3.10, but we also need
@@ -150,28 +146,17 @@ typedef HashMap<uint32_t, GUniquePtr<GdkEvent>> TouchEventsMap;
 
 struct _WebKitWebViewBasePrivate {
     _WebKitWebViewBasePrivate()
-        : updateViewStateTimer(RunLoop::main(), this, &_WebKitWebViewBasePrivate::updateViewStateTimerFired)
-#if USE(REDIRECTED_XCOMPOSITE_WINDOW)
-        , clearRedirectedWindowSoonTimer(RunLoop::main(), this, &_WebKitWebViewBasePrivate::clearRedirectedWindowSoonTimerFired)
-#endif
+        : updateActivityStateTimer(RunLoop::main(), this, &_WebKitWebViewBasePrivate::updateActivityStateTimerFired)
     {
     }
 
-    void updateViewStateTimerFired()
+    void updateActivityStateTimerFired()
     {
         if (!pageProxy)
             return;
-        pageProxy->viewStateDidChange(viewStateFlagsToUpdate);
-        viewStateFlagsToUpdate = ViewState::NoFlags;
+        pageProxy->activityStateDidChange(activityStateFlagsToUpdate);
+        activityStateFlagsToUpdate = ActivityState::NoFlags;
     }
-
-#if USE(REDIRECTED_XCOMPOSITE_WINDOW)
-    void clearRedirectedWindowSoonTimerFired()
-    {
-        if (redirectedWindow)
-            redirectedWindow->resize(IntSize());
-    }
-#endif
 
     WebKitWebViewChildrenMap children;
     std::unique_ptr<PageClientImpl> pageClient;
@@ -200,9 +185,9 @@ struct _WebKitWebViewBasePrivate {
     unsigned long toplevelWindowRealizedID;
 
     // View State.
-    ViewState::Flags viewState;
-    ViewState::Flags viewStateFlagsToUpdate;
-    RunLoop::Timer<WebKitWebViewBasePrivate> updateViewStateTimer;
+    ActivityState::Flags activityState;
+    ActivityState::Flags activityStateFlagsToUpdate;
+    RunLoop::Timer<WebKitWebViewBasePrivate> updateActivityStateTimer;
 
     WebKitWebViewBaseDownloadRequestHandler downloadHandler;
 
@@ -214,10 +199,7 @@ struct _WebKitWebViewBasePrivate {
     unsigned screenSaverCookie;
 #endif
 
-#if USE(REDIRECTED_XCOMPOSITE_WINDOW)
-    std::unique_ptr<RedirectedXCompositeWindow> redirectedWindow;
-    RunLoop::Timer<WebKitWebViewBasePrivate> clearRedirectedWindowSoonTimer;
-#endif
+    std::unique_ptr<AcceleratedBackingStore> acceleratedBackingStore;
 
 #if ENABLE(DRAG_SUPPORT)
     std::unique_ptr<DragAndDropHandler> dragAndDropHandler;
@@ -230,14 +212,14 @@ struct _WebKitWebViewBasePrivate {
 
 WEBKIT_DEFINE_TYPE(WebKitWebViewBase, webkit_web_view_base, GTK_TYPE_CONTAINER)
 
-static void webkitWebViewBaseScheduleUpdateViewState(WebKitWebViewBase* webViewBase, ViewState::Flags flagsToUpdate)
+static void webkitWebViewBaseScheduleUpdateActivityState(WebKitWebViewBase* webViewBase, ActivityState::Flags flagsToUpdate)
 {
     WebKitWebViewBasePrivate* priv = webViewBase->priv;
-    priv->viewStateFlagsToUpdate |= flagsToUpdate;
-    if (priv->updateViewStateTimer.isActive())
+    priv->activityStateFlagsToUpdate |= flagsToUpdate;
+    if (priv->updateActivityStateTimer.isActive())
         return;
 
-    priv->updateViewStateTimer.startOneShot(0);
+    priv->updateActivityStateTimer.startOneShot(0);
 }
 
 static gboolean toplevelWindowFocusInEvent(GtkWidget* widget, GdkEventFocus*, WebKitWebViewBase* webViewBase)
@@ -247,11 +229,11 @@ static gboolean toplevelWindowFocusInEvent(GtkWidget* widget, GdkEventFocus*, We
         return FALSE;
 
     WebKitWebViewBasePrivate* priv = webViewBase->priv;
-    if (priv->viewState & ViewState::WindowIsActive)
+    if (priv->activityState & ActivityState::WindowIsActive)
         return FALSE;
 
-    priv->viewState |= ViewState::WindowIsActive;
-    webkitWebViewBaseScheduleUpdateViewState(webViewBase, ViewState::WindowIsActive);
+    priv->activityState |= ActivityState::WindowIsActive;
+    webkitWebViewBaseScheduleUpdateActivityState(webViewBase, ActivityState::WindowIsActive);
 
     return FALSE;
 }
@@ -259,11 +241,11 @@ static gboolean toplevelWindowFocusInEvent(GtkWidget* widget, GdkEventFocus*, We
 static gboolean toplevelWindowFocusOutEvent(GtkWidget*, GdkEventFocus*, WebKitWebViewBase* webViewBase)
 {
     WebKitWebViewBasePrivate* priv = webViewBase->priv;
-    if (!(priv->viewState & ViewState::WindowIsActive))
+    if (!(priv->activityState & ActivityState::WindowIsActive))
         return FALSE;
 
-    priv->viewState &= ~ViewState::WindowIsActive;
-    webkitWebViewBaseScheduleUpdateViewState(webViewBase, ViewState::WindowIsActive);
+    priv->activityState &= ~ActivityState::WindowIsActive;
+    webkitWebViewBaseScheduleUpdateActivityState(webViewBase, ActivityState::WindowIsActive);
 
     return FALSE;
 }
@@ -275,14 +257,14 @@ static gboolean toplevelWindowStateEvent(GtkWidget*, GdkEventWindowState* event,
         return FALSE;
 
     bool visible = !(event->new_window_state & GDK_WINDOW_STATE_ICONIFIED);
-    if ((visible && priv->viewState & ViewState::IsVisible) || (!visible && !(priv->viewState & ViewState::IsVisible)))
+    if ((visible && priv->activityState & ActivityState::IsVisible) || (!visible && !(priv->activityState & ActivityState::IsVisible)))
         return FALSE;
 
     if (visible)
-        priv->viewState |= ViewState::IsVisible;
+        priv->activityState |= ActivityState::IsVisible;
     else
-        priv->viewState &= ~ViewState::IsVisible;
-    webkitWebViewBaseScheduleUpdateViewState(webViewBase, ViewState::IsVisible);
+        priv->activityState &= ~ActivityState::IsVisible;
+    webkitWebViewBaseScheduleUpdateActivityState(webViewBase, ActivityState::IsVisible);
 
     return FALSE;
 }
@@ -324,17 +306,17 @@ static void webkitWebViewBaseSetToplevelOnScreenWindow(WebKitWebViewBase* webVie
     priv->toplevelOnScreenWindow = window;
 
     if (!priv->toplevelOnScreenWindow) {
-        ViewState::Flags flagsToUpdate = 0;
-        if (priv->viewState & ViewState::IsInWindow) {
-            priv->viewState &= ~ViewState::IsInWindow;
-            flagsToUpdate |= ViewState::IsInWindow;
+        ActivityState::Flags flagsToUpdate = 0;
+        if (priv->activityState & ActivityState::IsInWindow) {
+            priv->activityState &= ~ActivityState::IsInWindow;
+            flagsToUpdate |= ActivityState::IsInWindow;
         }
-        if (priv->viewState & ViewState::WindowIsActive) {
-            priv->viewState &= ~ViewState::WindowIsActive;
-            flagsToUpdate |= ViewState::IsInWindow;
+        if (priv->activityState & ActivityState::WindowIsActive) {
+            priv->activityState &= ~ActivityState::WindowIsActive;
+            flagsToUpdate |= ActivityState::IsInWindow;
         }
         if (flagsToUpdate)
-            webkitWebViewBaseScheduleUpdateViewState(webViewBase, flagsToUpdate);
+            webkitWebViewBaseScheduleUpdateActivityState(webViewBase, flagsToUpdate);
 
         return;
     }
@@ -354,41 +336,10 @@ static void webkitWebViewBaseSetToplevelOnScreenWindow(WebKitWebViewBase* webVie
         priv->toplevelWindowRealizedID = g_signal_connect_swapped(window, "realize", G_CALLBACK(toplevelWindowRealized), webViewBase);
 }
 
-#if USE(REDIRECTED_XCOMPOSITE_WINDOW)
-static void webkitWebViewBaseResizeRedirectedWindow(WebKitWebViewBase* webView)
-{
-    WebKitWebViewBasePrivate* priv = webView->priv;
-    DrawingAreaProxyImpl* drawingArea = static_cast<DrawingAreaProxyImpl*>(priv->pageProxy->drawingArea());
-    ASSERT(drawingArea);
-    priv->redirectedWindow->setDeviceScaleFactor(priv->pageProxy->deviceScaleFactor());
-    priv->redirectedWindow->resize(drawingArea->size());
-}
-#endif
-
 static void webkitWebViewBaseRealize(GtkWidget* widget)
 {
     WebKitWebViewBase* webView = WEBKIT_WEB_VIEW_BASE(widget);
     WebKitWebViewBasePrivate* priv = webView->priv;
-
-#if USE(REDIRECTED_XCOMPOSITE_WINDOW)
-    if (PlatformDisplay::sharedDisplay().type() == PlatformDisplay::Type::X11) {
-        ASSERT(!priv->redirectedWindow);
-        priv->redirectedWindow = RedirectedXCompositeWindow::create(
-            gtk_widget_get_parent_window(widget),
-            [webView] {
-                DrawingAreaProxyImpl* drawingArea = static_cast<DrawingAreaProxyImpl*>(webView->priv->pageProxy->drawingArea());
-                if (drawingArea && drawingArea->isInAcceleratedCompositingMode())
-                    gtk_widget_queue_draw(GTK_WIDGET(webView));
-            });
-        if (priv->redirectedWindow) {
-            if (DrawingAreaProxyImpl* drawingArea = static_cast<DrawingAreaProxyImpl*>(priv->pageProxy->drawingArea())) {
-                drawingArea->setNativeSurfaceHandleForCompositing(priv->redirectedWindow->windowID());
-                if (drawingArea->isInAcceleratedCompositingMode())
-                    webkitWebViewBaseResizeRedirectedWindow(webView);
-            }
-        }
-    }
-#endif
 
     gtk_widget_set_realized(widget, TRUE);
 
@@ -426,9 +377,11 @@ static void webkitWebViewBaseRealize(GtkWidget* widget)
     gtk_widget_set_window(widget, window);
     gdk_window_set_user_data(window, widget);
 
-#if USE(TEXTURE_MAPPER) && PLATFORM(X11) && !USE(REDIRECTED_XCOMPOSITE_WINDOW)
-    if (DrawingAreaProxyImpl* drawingArea = static_cast<DrawingAreaProxyImpl*>(priv->pageProxy->drawingArea()))
-        drawingArea->setNativeSurfaceHandleForCompositing(GDK_WINDOW_XID(window));
+#if USE(TEXTURE_MAPPER_GL) && PLATFORM(X11) && !USE(REDIRECTED_XCOMPOSITE_WINDOW)
+    if (PlatformDisplay::sharedDisplay().type() == PlatformDisplay::Type::X11) {
+        if (DrawingAreaProxyImpl* drawingArea = static_cast<DrawingAreaProxyImpl*>(priv->pageProxy->drawingArea()))
+            drawingArea->setNativeSurfaceHandleForCompositing(GDK_WINDOW_XID(window));
+    }
 #endif
 
     gtk_style_context_set_background(gtk_widget_get_style_context(widget), window);
@@ -439,12 +392,11 @@ static void webkitWebViewBaseRealize(GtkWidget* widget)
 static void webkitWebViewBaseUnrealize(GtkWidget* widget)
 {
     WebKitWebViewBase* webView = WEBKIT_WEB_VIEW_BASE(widget);
-#if USE(TEXTURE_MAPPER) && PLATFORM(X11)
-    if (DrawingAreaProxyImpl* drawingArea = static_cast<DrawingAreaProxyImpl*>(webView->priv->pageProxy->drawingArea()))
-        drawingArea->destroyNativeSurfaceHandleForCompositing();
-#endif
-#if USE(REDIRECTED_XCOMPOSITE_WINDOW)
-    webView->priv->redirectedWindow = nullptr;
+#if USE(TEXTURE_MAPPER_GL) && PLATFORM(X11) && !USE(REDIRECTED_XCOMPOSITE_WINDOW)
+    if (PlatformDisplay::sharedDisplay().type() == PlatformDisplay::Type::X11) {
+        if (DrawingAreaProxyImpl* drawingArea = static_cast<DrawingAreaProxyImpl*>(webView->priv->pageProxy->drawingArea()))
+            drawingArea->destroyNativeSurfaceHandleForCompositing();
+    }
 #endif
     gtk_im_context_set_client_window(webView->priv->inputMethodFilter.context(), nullptr);
 
@@ -557,6 +509,7 @@ static void webkitWebViewBaseDispose(GObject* gobject)
     g_cancellable_cancel(webView->priv->screenSaverInhibitCancellable.get());
     webkitWebViewBaseSetToplevelOnScreenWindow(webView, nullptr);
     webView->priv->pageProxy->close();
+    webView->priv->acceleratedBackingStore = nullptr;
     G_OBJECT_CLASS(webkit_web_view_base_parent_class)->dispose(gobject);
 }
 
@@ -575,39 +528,6 @@ static void webkitWebViewBaseConstructed(GObject* object)
     priv->authenticationDialog = 0;
 }
 
-static bool webkitWebViewRenderAcceleratedCompositingResults(WebKitWebViewBase* webViewBase, DrawingAreaProxyImpl* drawingArea, cairo_t* cr, GdkRectangle* clipRect)
-{
-#if USE(TEXTURE_MAPPER) && USE(REDIRECTED_XCOMPOSITE_WINDOW)
-    ASSERT(drawingArea);
-
-    if (!drawingArea->isInAcceleratedCompositingMode())
-        return false;
-
-    // To avoid flashes when initializing accelerated compositing for the first
-    // time, we wait until we know there's a frame ready before rendering.
-    WebKitWebViewBasePrivate* priv = webViewBase->priv;
-    if (!priv->redirectedWindow)
-        return false;
-
-    webkitWebViewBaseResizeRedirectedWindow(webViewBase);
-    if (cairo_surface_t* surface = priv->redirectedWindow->surface()) {
-        cairo_save(cr);
-        cairo_rectangle(cr, clipRect->x, clipRect->y, clipRect->width, clipRect->height);
-        cairo_set_source_surface(cr, surface, 0, 0);
-        cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
-        cairo_fill(cr);
-        cairo_restore(cr);
-    }
-
-    return true;
-#else
-    UNUSED_PARAM(webViewBase);
-    UNUSED_PARAM(cr);
-    UNUSED_PARAM(clipRect);
-    return false;
-#endif
-}
-
 static gboolean webkitWebViewBaseDraw(GtkWidget* widget, cairo_t* cr)
 {
     WebKitWebViewBase* webViewBase = WEBKIT_WEB_VIEW_BASE(widget);
@@ -619,15 +539,11 @@ static gboolean webkitWebViewBaseDraw(GtkWidget* widget, cairo_t* cr)
     if (!gdk_cairo_get_clip_rectangle(cr, &clipRect))
         return FALSE;
 
-    if (!webkitWebViewRenderAcceleratedCompositingResults(webViewBase, drawingArea, cr, &clipRect)) {
+    if (webViewBase->priv->acceleratedBackingStore && drawingArea->isInAcceleratedCompositingMode())
+        webViewBase->priv->acceleratedBackingStore->paint(cr, clipRect);
+    else {
         WebCore::Region unpaintedRegion; // This is simply unused.
         drawingArea->paint(cr, clipRect, unpaintedRegion);
-    }
-
-    if (webViewBase->priv->authenticationDialog) {
-        cairo_set_operator(cr, CAIRO_OPERATOR_OVER);
-        cairo_set_source_rgba(cr, 0, 0, 0, 0.5);
-        cairo_paint(cr);
     }
 
     GTK_WIDGET_CLASS(webkit_web_view_base_parent_class)->draw(widget, cr);
@@ -684,29 +600,15 @@ static void webkitWebViewBaseSizeAllocate(GtkWidget* widget, GtkAllocation* allo
     // never overlaps the web inspector. Thus, we need to calculate the allocation here
     // after calculating the inspector allocation.
     if (priv->authenticationDialog) {
-        GtkRequisition naturalSize;
-        gtk_widget_get_preferred_size(priv->authenticationDialog, 0, &naturalSize);
+        GtkRequisition minimumSize;
+        gtk_widget_get_preferred_size(priv->authenticationDialog, &minimumSize, nullptr);
 
-        GtkAllocation childAllocation = {
-            (viewRect.width() - naturalSize.width) / 2,
-            (viewRect.height() - naturalSize.height) / 2,
-            naturalSize.width,
-            naturalSize.height
-        };
+        GtkAllocation childAllocation = { 0, 0, std::max(minimumSize.width, viewRect.width()), std::max(minimumSize.height, viewRect.height()) };
         gtk_widget_size_allocate(priv->authenticationDialog, &childAllocation);
     }
 
-    DrawingAreaProxyImpl* drawingArea = static_cast<DrawingAreaProxyImpl*>(priv->pageProxy->drawingArea());
-    if (!drawingArea)
-        return;
-
-
-#if USE(REDIRECTED_XCOMPOSITE_WINDOW)
-    if (priv->redirectedWindow && drawingArea->isInAcceleratedCompositingMode())
-        webkitWebViewBaseResizeRedirectedWindow(webViewBase);
-#endif
-
-    drawingArea->setSize(viewRect.size(), IntSize(), IntSize());
+    if (DrawingAreaProxyImpl* drawingArea = static_cast<DrawingAreaProxyImpl*>(priv->pageProxy->drawingArea()))
+        drawingArea->setSize(viewRect.size(), IntSize(), IntSize());
 }
 
 static void webkitWebViewBaseGetPreferredWidth(GtkWidget* widget, gint* minimumSize, gint* naturalSize)
@@ -729,20 +631,20 @@ static void webkitWebViewBaseMap(GtkWidget* widget)
 
     WebKitWebViewBase* webViewBase = WEBKIT_WEB_VIEW_BASE(widget);
     WebKitWebViewBasePrivate* priv = webViewBase->priv;
-    ViewState::Flags flagsToUpdate = 0;
-    if (!(priv->viewState & ViewState::IsVisible))
-        flagsToUpdate |= ViewState::IsVisible;
+    ActivityState::Flags flagsToUpdate = 0;
+    if (!(priv->activityState & ActivityState::IsVisible))
+        flagsToUpdate |= ActivityState::IsVisible;
     if (priv->toplevelOnScreenWindow) {
-        if (!(priv->viewState & ViewState::IsInWindow))
-            flagsToUpdate |= ViewState::IsInWindow;
-        if (gtk_window_is_active(GTK_WINDOW(priv->toplevelOnScreenWindow)) && !(priv->viewState & ViewState::WindowIsActive))
-            flagsToUpdate |= ViewState::WindowIsActive;
+        if (!(priv->activityState & ActivityState::IsInWindow))
+            flagsToUpdate |= ActivityState::IsInWindow;
+        if (gtk_window_is_active(GTK_WINDOW(priv->toplevelOnScreenWindow)) && !(priv->activityState & ActivityState::WindowIsActive))
+            flagsToUpdate |= ActivityState::WindowIsActive;
     }
     if (!flagsToUpdate)
         return;
 
-    priv->viewState |= flagsToUpdate;
-    webkitWebViewBaseScheduleUpdateViewState(webViewBase, flagsToUpdate);
+    priv->activityState |= flagsToUpdate;
+    webkitWebViewBaseScheduleUpdateActivityState(webViewBase, flagsToUpdate);
 }
 
 static void webkitWebViewBaseUnmap(GtkWidget* widget)
@@ -751,11 +653,11 @@ static void webkitWebViewBaseUnmap(GtkWidget* widget)
 
     WebKitWebViewBase* webViewBase = WEBKIT_WEB_VIEW_BASE(widget);
     WebKitWebViewBasePrivate* priv = webViewBase->priv;
-    if (!(priv->viewState & ViewState::IsVisible))
+    if (!(priv->activityState & ActivityState::IsVisible))
         return;
 
-    priv->viewState &= ~ViewState::IsVisible;
-    webkitWebViewBaseScheduleUpdateViewState(webViewBase, ViewState::IsVisible);
+    priv->activityState &= ~ActivityState::IsVisible;
+    webkitWebViewBaseScheduleUpdateActivityState(webViewBase, ActivityState::IsVisible);
 }
 
 static gboolean webkitWebViewBaseFocusInEvent(GtkWidget* widget, GdkEventFocus* event)
@@ -776,17 +678,17 @@ static gboolean webkitWebViewBaseFocusOutEvent(GtkWidget* widget, GdkEventFocus*
     return GTK_WIDGET_CLASS(webkit_web_view_base_parent_class)->focus_out_event(widget, event);
 }
 
-static gboolean webkitWebViewBaseKeyPressEvent(GtkWidget* widget, GdkEventKey* event)
+static gboolean webkitWebViewBaseKeyPressEvent(GtkWidget* widget, GdkEventKey* keyEvent)
 {
     WebKitWebViewBase* webViewBase = WEBKIT_WEB_VIEW_BASE(widget);
     WebKitWebViewBasePrivate* priv = webViewBase->priv;
 
     if (priv->authenticationDialog)
-        return GTK_WIDGET_CLASS(webkit_web_view_base_parent_class)->key_press_event(widget, event);
+        return GTK_WIDGET_CLASS(webkit_web_view_base_parent_class)->key_press_event(widget, keyEvent);
 
 #if ENABLE(FULLSCREEN_API)
     if (priv->fullScreenModeActive) {
-        switch (event->keyval) {
+        switch (keyEvent->keyval) {
         case GDK_KEY_Escape:
         case GDK_KEY_f:
         case GDK_KEY_F:
@@ -804,29 +706,33 @@ static gboolean webkitWebViewBaseKeyPressEvent(GtkWidget* widget, GdkEventKey* e
     // using gtk_main_do_event().
     if (priv->shouldForwardNextKeyEvent) {
         priv->shouldForwardNextKeyEvent = FALSE;
-        return GTK_WIDGET_CLASS(webkit_web_view_base_parent_class)->key_press_event(widget, event);
+        return GTK_WIDGET_CLASS(webkit_web_view_base_parent_class)->key_press_event(widget, keyEvent);
     }
 
-    priv->inputMethodFilter.filterKeyEvent(event, [priv, event](const WebCore::CompositionResults& compositionResults, InputMethodFilter::EventFakedForComposition faked) {
-        priv->pageProxy->handleKeyboardEvent(NativeWebKeyboardEvent(reinterpret_cast<GdkEvent*>(event), compositionResults, faked,
-            !compositionResults.compositionUpdated() ? priv->keyBindingTranslator.commandsForKeyEvent(event) : Vector<String>()));
+    // We need to copy the event as otherwise it could be destroyed before we reach the lambda body.
+    GUniquePtr<GdkEvent> event(gdk_event_copy(reinterpret_cast<GdkEvent*>(keyEvent)));
+    priv->inputMethodFilter.filterKeyEvent(keyEvent, [priv, event = WTFMove(event)](const WebCore::CompositionResults& compositionResults, InputMethodFilter::EventFakedForComposition faked) {
+        priv->pageProxy->handleKeyboardEvent(NativeWebKeyboardEvent(event.get(), compositionResults, faked,
+            !compositionResults.compositionUpdated() ? priv->keyBindingTranslator.commandsForKeyEvent(&event->key) : Vector<String>()));
     });
 
     return TRUE;
 }
 
-static gboolean webkitWebViewBaseKeyReleaseEvent(GtkWidget* widget, GdkEventKey* event)
+static gboolean webkitWebViewBaseKeyReleaseEvent(GtkWidget* widget, GdkEventKey* keyEvent)
 {
     WebKitWebViewBase* webViewBase = WEBKIT_WEB_VIEW_BASE(widget);
     WebKitWebViewBasePrivate* priv = webViewBase->priv;
 
     if (priv->shouldForwardNextKeyEvent) {
         priv->shouldForwardNextKeyEvent = FALSE;
-        return GTK_WIDGET_CLASS(webkit_web_view_base_parent_class)->key_release_event(widget, event);
+        return GTK_WIDGET_CLASS(webkit_web_view_base_parent_class)->key_release_event(widget, keyEvent);
     }
 
-    priv->inputMethodFilter.filterKeyEvent(event, [priv, event](const WebCore::CompositionResults& compositionResults, InputMethodFilter::EventFakedForComposition faked) {
-        priv->pageProxy->handleKeyboardEvent(NativeWebKeyboardEvent(reinterpret_cast<GdkEvent*>(event), compositionResults, faked, { }));
+    // We need to copy the event as otherwise it could be destroyed before we reach the lambda body.
+    GUniquePtr<GdkEvent> event(gdk_event_copy(reinterpret_cast<GdkEvent*>(keyEvent)));
+    priv->inputMethodFilter.filterKeyEvent(keyEvent, [priv, event = WTFMove(event)](const WebCore::CompositionResults& compositionResults, InputMethodFilter::EventFakedForComposition faked) {
+        priv->pageProxy->handleKeyboardEvent(NativeWebKeyboardEvent(event.get(), compositionResults, faked, { }));
     });
 
     return TRUE;
@@ -897,8 +803,10 @@ static gboolean webkitWebViewBaseMotionNotifyEvent(GtkWidget* widget, GdkEventMo
     WebKitWebViewBase* webViewBase = WEBKIT_WEB_VIEW_BASE(widget);
     WebKitWebViewBasePrivate* priv = webViewBase->priv;
 
-    if (priv->authenticationDialog)
-        return GTK_WIDGET_CLASS(webkit_web_view_base_parent_class)->motion_notify_event(widget, event);
+    if (priv->authenticationDialog) {
+        auto* widgetClass = GTK_WIDGET_CLASS(webkit_web_view_base_parent_class);
+        return widgetClass->motion_notify_event ? widgetClass->motion_notify_event(widget, event) : FALSE;
+    }
 
     priv->pageProxy->handleMouseEvent(NativeWebMouseEvent(reinterpret_cast<GdkEvent*>(event), 0 /* currentClickCount */));
 
@@ -1258,10 +1166,6 @@ WebPageProxy* webkitWebViewBaseGetPage(WebKitWebViewBase* webkitWebViewBase)
 #if HAVE(GTK_SCALE_FACTOR)
 static void deviceScaleFactorChanged(WebKitWebViewBase* webkitWebViewBase)
 {
-#if USE(REDIRECTED_XCOMPOSITE_WINDOW)
-    if (webkitWebViewBase->priv->redirectedWindow)
-        webkitWebViewBase->priv->redirectedWindow->setDeviceScaleFactor(webkitWebViewBase->priv->pageProxy->deviceScaleFactor());
-#endif
     webkitWebViewBase->priv->pageProxy->setIntrinsicDeviceScaleFactor(gtk_widget_get_scale_factor(GTK_WIDGET(webkitWebViewBase)));
 }
 #endif // HAVE(GTK_SCALE_FACTOR)
@@ -1269,9 +1173,11 @@ static void deviceScaleFactorChanged(WebKitWebViewBase* webkitWebViewBase)
 void webkitWebViewBaseCreateWebPage(WebKitWebViewBase* webkitWebViewBase, Ref<API::PageConfiguration>&& configuration)
 {
     WebKitWebViewBasePrivate* priv = webkitWebViewBase->priv;
-    WebProcessPool* context = configuration->processPool();
-    priv->pageProxy = context->createWebPage(*priv->pageClient, WTFMove(configuration));
+    WebProcessPool* processPool = configuration->processPool();
+    priv->pageProxy = processPool->createWebPage(*priv->pageClient, WTFMove(configuration));
     priv->pageProxy->initializeWebPage();
+
+    priv->acceleratedBackingStore = AcceleratedBackingStore::create(*priv->pageProxy);
 
     priv->inputMethodFilter.setPage(priv->pageProxy.get());
 
@@ -1473,46 +1379,46 @@ GdkEvent* webkitWebViewBaseTakeContextMenuEvent(WebKitWebViewBase* webkitWebView
 void webkitWebViewBaseSetFocus(WebKitWebViewBase* webViewBase, bool focused)
 {
     WebKitWebViewBasePrivate* priv = webViewBase->priv;
-    if ((focused && priv->viewState & ViewState::IsFocused) || (!focused && !(priv->viewState & ViewState::IsFocused)))
+    if ((focused && priv->activityState & ActivityState::IsFocused) || (!focused && !(priv->activityState & ActivityState::IsFocused)))
         return;
 
-    ViewState::Flags flagsToUpdate = ViewState::IsFocused;
+    ActivityState::Flags flagsToUpdate = ActivityState::IsFocused;
     if (focused) {
-        priv->viewState |= ViewState::IsFocused;
+        priv->activityState |= ActivityState::IsFocused;
 
         // If the view has received the focus and the window is not active
         // mark the current window as active now. This can happen if the
         // toplevel window is a GTK_WINDOW_POPUP and the focus has been
         // set programatically like WebKitTestRunner does, because POPUP
         // can't be focused.
-        if (!(priv->viewState & ViewState::WindowIsActive)) {
-            priv->viewState |= ViewState::WindowIsActive;
-            flagsToUpdate |= ViewState::WindowIsActive;
+        if (!(priv->activityState & ActivityState::WindowIsActive)) {
+            priv->activityState |= ActivityState::WindowIsActive;
+            flagsToUpdate |= ActivityState::WindowIsActive;
         }
     } else
-        priv->viewState &= ~ViewState::IsFocused;
+        priv->activityState &= ~ActivityState::IsFocused;
 
-    webkitWebViewBaseScheduleUpdateViewState(webViewBase, flagsToUpdate);
+    webkitWebViewBaseScheduleUpdateActivityState(webViewBase, flagsToUpdate);
 }
 
 bool webkitWebViewBaseIsInWindowActive(WebKitWebViewBase* webViewBase)
 {
-    return webViewBase->priv->viewState & ViewState::WindowIsActive;
+    return webViewBase->priv->activityState & ActivityState::WindowIsActive;
 }
 
 bool webkitWebViewBaseIsFocused(WebKitWebViewBase* webViewBase)
 {
-    return webViewBase->priv->viewState & ViewState::IsFocused;
+    return webViewBase->priv->activityState & ActivityState::IsFocused;
 }
 
 bool webkitWebViewBaseIsVisible(WebKitWebViewBase* webViewBase)
 {
-    return webViewBase->priv->viewState & ViewState::IsVisible;
+    return webViewBase->priv->activityState & ActivityState::IsVisible;
 }
 
 bool webkitWebViewBaseIsInWindow(WebKitWebViewBase* webViewBase)
 {
-    return webViewBase->priv->viewState & ViewState::IsInWindow;
+    return webViewBase->priv->activityState & ActivityState::IsInWindow;
 }
 
 void webkitWebViewBaseSetDownloadRequestHandler(WebKitWebViewBase* webViewBase, WebKitWebViewBaseDownloadRequestHandler downloadHandler)
@@ -1551,52 +1457,22 @@ void webkitWebViewBaseResetClickCounter(WebKitWebViewBase* webkitWebViewBase)
     webkitWebViewBase->priv->clickCounter.reset();
 }
 
-#if USE(REDIRECTED_XCOMPOSITE_WINDOW)
-static void webkitWebViewBaseClearRedirectedWindowSoon(WebKitWebViewBase* webkitWebViewBase)
+void webkitWebViewBaseEnterAcceleratedCompositingMode(WebKitWebViewBase* webkitWebViewBase, const LayerTreeContext& layerTreeContext)
 {
-    static const double clearRedirectedWindowSoonDelay = 2;
-    webkitWebViewBase->priv->clearRedirectedWindowSoonTimer.startOneShot(clearRedirectedWindowSoonDelay);
-}
-#endif
-
-void webkitWebViewBaseWillEnterAcceleratedCompositingMode(WebKitWebViewBase* webkitWebViewBase)
-{
-#if USE(REDIRECTED_XCOMPOSITE_WINDOW)
-    WebKitWebViewBasePrivate* priv = webkitWebViewBase->priv;
-    if (!priv->redirectedWindow)
-        return;
-    DrawingAreaProxyImpl* drawingArea = static_cast<DrawingAreaProxyImpl*>(priv->pageProxy->drawingArea());
-    if (!drawingArea)
-        return;
-
-    webkitWebViewBaseResizeRedirectedWindow(webkitWebViewBase);
-
-    // Clear the redirected window if we don't enter AC mode in the end.
-    webkitWebViewBaseClearRedirectedWindowSoon(webkitWebViewBase);
-#else
-    UNUSED_PARAM(webkitWebViewBase);
-#endif
+    if (webkitWebViewBase->priv->acceleratedBackingStore)
+        webkitWebViewBase->priv->acceleratedBackingStore->update(layerTreeContext);
 }
 
-void webkitWebViewBaseEnterAcceleratedCompositingMode(WebKitWebViewBase* webkitWebViewBase)
+void webkitWebViewBaseUpdateAcceleratedCompositingMode(WebKitWebViewBase* webkitWebViewBase, const LayerTreeContext& layerTreeContext)
 {
-#if USE(REDIRECTED_XCOMPOSITE_WINDOW)
-    webkitWebViewBase->priv->clearRedirectedWindowSoonTimer.stop();
-#else
-    UNUSED_PARAM(webkitWebViewBase);
-#endif
+    if (webkitWebViewBase->priv->acceleratedBackingStore)
+        webkitWebViewBase->priv->acceleratedBackingStore->update(layerTreeContext);
 }
 
 void webkitWebViewBaseExitAcceleratedCompositingMode(WebKitWebViewBase* webkitWebViewBase)
 {
-#if USE(REDIRECTED_XCOMPOSITE_WINDOW)
-    // Resize the window later to ensure we have already rendered the
-    // non composited contents and avoid flickering. We can also avoid the
-    // window resize entirely if we switch back to AC mode quickly.
-    webkitWebViewBaseClearRedirectedWindowSoon(webkitWebViewBase);
-#else
-    UNUSED_PARAM(webkitWebViewBase);
-#endif
+    if (webkitWebViewBase->priv->acceleratedBackingStore)
+        webkitWebViewBase->priv->acceleratedBackingStore->update(LayerTreeContext());
 }
 
 void webkitWebViewBaseDidRelaunchWebProcess(WebKitWebViewBase* webkitWebViewBase)
@@ -1604,24 +1480,38 @@ void webkitWebViewBaseDidRelaunchWebProcess(WebKitWebViewBase* webkitWebViewBase
     // Queue a resize to ensure the new DrawingAreaProxy is resized.
     gtk_widget_queue_resize_no_redraw(GTK_WIDGET(webkitWebViewBase));
 
-#if PLATFORM(X11) && USE(TEXTURE_MAPPER)
+#if PLATFORM(X11) && USE(TEXTURE_MAPPER_GL) && !USE(REDIRECTED_XCOMPOSITE_WINDOW)
     if (PlatformDisplay::sharedDisplay().type() != PlatformDisplay::Type::X11)
         return;
 
     WebKitWebViewBasePrivate* priv = webkitWebViewBase->priv;
     DrawingAreaProxyImpl* drawingArea = static_cast<DrawingAreaProxyImpl*>(priv->pageProxy->drawingArea());
     ASSERT(drawingArea);
-#if USE(REDIRECTED_XCOMPOSITE_WINDOW)
-    if (!priv->redirectedWindow)
-        return;
-    uint64_t windowID = priv->redirectedWindow->windowID();
-#else
+
     if (!gtk_widget_get_realized(GTK_WIDGET(webkitWebViewBase)))
         return;
+
     uint64_t windowID = GDK_WINDOW_XID(gtk_widget_get_window(GTK_WIDGET(webkitWebViewBase)));
-#endif
     drawingArea->setNativeSurfaceHandleForCompositing(windowID);
 #else
     UNUSED_PARAM(webkitWebViewBase);
+#endif
+}
+
+void webkitWebViewBasePageClosed(WebKitWebViewBase* webkitWebViewBase)
+{
+    if (webkitWebViewBase->priv->acceleratedBackingStore)
+        webkitWebViewBase->priv->acceleratedBackingStore->update(LayerTreeContext());
+#if PLATFORM(X11) && USE(TEXTURE_MAPPER_GL) && !USE(REDIRECTED_XCOMPOSITE_WINDOW)
+    if (PlatformDisplay::sharedDisplay().type() != PlatformDisplay::Type::X11)
+        return;
+
+    if (!gtk_widget_get_realized(GTK_WIDGET(webkitWebViewBase)))
+        return;
+
+    WebKitWebViewBasePrivate* priv = webkitWebViewBase->priv;
+    DrawingAreaProxyImpl* drawingArea = static_cast<DrawingAreaProxyImpl*>(priv->pageProxy->drawingArea());
+    ASSERT(drawingArea);
+    drawingArea->destroyNativeSurfaceHandleForCompositing();
 #endif
 }

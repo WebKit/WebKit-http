@@ -27,9 +27,8 @@
 #define CDMPrivateMediaPlayer_h
 
 #include "CDMPrivate.h"
-#include <wtf/RetainPtr.h>
 
-#if ENABLE(ENCRYPTED_MEDIA_V2)
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
 
 namespace WebCore {
 

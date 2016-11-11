@@ -38,11 +38,11 @@ WebInspector.Object = class WebInspectorObject
 
         console.assert(eventType, "Object.addEventListener: invalid event type ", eventType, "(listener: ", listener, "thisObject: ", thisObject, ")");
         if (!eventType)
-            return;
+            return null;
 
         console.assert(listener, "Object.addEventListener: invalid listener ", listener, "(event type: ", eventType, "thisObject: ", thisObject, ")");
         if (!listener)
-            return;
+            return null;
 
         if (!this._listeners)
             this._listeners = new Map();
@@ -98,6 +98,13 @@ WebInspector.Object = class WebInspectorObject
         console.assert(didDelete, "removeEventListener cannot remove " + eventType.toString() + " because it doesn't exist.");
     }
 
+    static awaitEvent(eventType)
+    {
+        let wrapper = new WebInspector.WrappedPromise;
+        this.singleFireEventListener(eventType, (event) => wrapper.resolve(event));
+        return wrapper.promise;
+    }
+
     // Only used by tests.
     static hasEventListeners(eventType)
     {
@@ -131,6 +138,7 @@ WebInspector.Object = class WebInspectorObject
     addEventListener() { return WebInspector.Object.addEventListener.apply(this, arguments); }
     singleFireEventListener() { return WebInspector.Object.singleFireEventListener.apply(this, arguments); }
     removeEventListener() { return WebInspector.Object.removeEventListener.apply(this, arguments); }
+    awaitEvent() { return WebInspector.Object.awaitEvent.apply(this, arguments); }
     hasEventListeners() { return WebInspector.Object.hasEventListeners.apply(this, arguments); }
     retainedObjectsWithPrototype() { return WebInspector.Object.retainedObjectsWithPrototype.apply(this, arguments); }
 

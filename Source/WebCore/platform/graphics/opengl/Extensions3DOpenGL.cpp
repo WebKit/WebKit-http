@@ -30,7 +30,6 @@
 #include "Extensions3DOpenGL.h"
 
 #include "GraphicsContext3D.h"
-#include <wtf/Vector.h>
 
 #if PLATFORM(IOS)
 #include <OpenGLES/ES2/glext.h>
@@ -46,8 +45,8 @@
 
 namespace WebCore {
 
-Extensions3DOpenGL::Extensions3DOpenGL(GraphicsContext3D* context)
-    : Extensions3DOpenGLCommon(context)
+Extensions3DOpenGL::Extensions3DOpenGL(GraphicsContext3D* context, bool useIndexedGetString)
+    : Extensions3DOpenGLCommon(context, useIndexedGetString)
 {
 }
 
@@ -297,6 +296,7 @@ void Extensions3DOpenGL::vertexAttribDivisor(GC3Duint index, GC3Duint divisor)
 
 String Extensions3DOpenGL::getExtensions()
 {
+    ASSERT(!m_useIndexedGetString);
     return String(reinterpret_cast<const char*>(::glGetString(GL_EXTENSIONS)));
 }
 

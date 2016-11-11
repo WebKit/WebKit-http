@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef X86Assembler_h
-#define X86Assembler_h
+#pragma once
 
 #if ENABLE(ASSEMBLER) && (CPU(X86) || CPU(X86_64))
 
@@ -249,6 +248,7 @@ private:
         OP_ESCAPE_DD                    = 0xDD,
         OP_CALL_rel32                   = 0xE8,
         OP_JMP_rel32                    = 0xE9,
+        PRE_LOCK                        = 0xF0,
         PRE_SSE_F2                      = 0xF2,
         PRE_SSE_F3                      = 0xF3,
         OP_HLT                          = 0xF4,
@@ -1983,6 +1983,11 @@ public:
         m_formatter.oneByteOp(OP_GROUP5_Ev, GROUP5_OP_JMPN, base, offset);
     }
     
+    void jmp_m(int offset, RegisterID base, RegisterID index, int scale)
+    {
+        m_formatter.oneByteOp(OP_GROUP5_Ev, GROUP5_OP_JMPN, base, index, scale, offset);
+    }
+    
 #if !CPU(X86_64)
     void jmp_m(const void* address)
     {
@@ -2679,6 +2684,11 @@ public:
         m_formatter.prefix(PRE_PREDICT_BRANCH_NOT_TAKEN);
     }
     
+    void lock()
+    {
+        m_formatter.prefix(PRE_LOCK);
+    }
+    
     void mfence()
     {
         m_formatter.threeByteOp(OP2_3BYTE_ESCAPE_AE, OP3_MFENCE);
@@ -2768,6 +2778,11 @@ public:
         setRel32(from, to);
     }
     
+    static void relinkJumpToNop(void* from)
+    {
+        setInt32(from, 0);
+    }
+    
     static void relinkCall(void* from, void* to)
     {
         setRel32(from, to);
@@ -2805,6 +2820,11 @@ public:
     }
     
     static ptrdiff_t maxJumpReplacementSize()
+    {
+        return 5;
+    }
+
+    static constexpr ptrdiff_t patchableJumpSize()
     {
         return 5;
     }
@@ -3695,5 +3715,3 @@ private:
 } // namespace JSC
 
 #endif // ENABLE(ASSEMBLER) && CPU(X86)
-
-#endif // X86Assembler_h

@@ -26,7 +26,7 @@
 #include "config.h"
 #include "PlatformCookieJar.h"
 
-#if USE(CFNETWORK)
+#if USE(CFURLCONNECTION)
 
 #include "CFNetworkSPI.h"
 #include "Cookie.h"
@@ -142,8 +142,9 @@ void setCookiesFromDOM(const NetworkStorageSession& session, const URL& firstPar
     String cookieString = value.contains('=') ? value : value + "=";
 
     RetainPtr<CFStringRef> cookieStringCF = cookieString.createCFString();
+    auto cookieStringCFPtr = cookieStringCF.get();
     RetainPtr<CFDictionaryRef> headerFieldsCF = adoptCF(CFDictionaryCreate(kCFAllocatorDefault,
-        (const void**)&s_setCookieKeyCF, (const void**)&cookieStringCF, 1,
+        (const void**)&s_setCookieKeyCF, (const void**)&cookieStringCFPtr, 1,
         &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks));
 
     RetainPtr<CFArrayRef> unfilteredCookies = adoptCF(createCookies(headerFieldsCF.get(), urlCF.get()));
@@ -254,4 +255,4 @@ void deleteAllCookiesModifiedSince(const NetworkStorageSession&, std::chrono::sy
 
 } // namespace WebCore
 
-#endif // USE(CFNETWORK)
+#endif // USE(CFURLCONNECTION)

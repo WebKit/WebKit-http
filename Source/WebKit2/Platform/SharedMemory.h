@@ -36,8 +36,8 @@
 #endif
 
 namespace IPC {
-class ArgumentDecoder;
-class ArgumentEncoder;
+class Decoder;
+class Encoder;
 }
 
 #if OS(DARWIN)
@@ -65,8 +65,8 @@ public:
 
         void clear();
 
-        void encode(IPC::ArgumentEncoder&) const;
-        static bool decode(IPC::ArgumentDecoder&, Handle&);
+        void encode(IPC::Encoder&) const;
+        static bool decode(IPC::Decoder&, Handle&);
 
 #if USE(UNIX_DOMAIN_SOCKETS)
         IPC::Attachment releaseAttachment() const;
@@ -113,7 +113,7 @@ private:
     Protection m_protection;
 
 #if USE(UNIX_DOMAIN_SOCKETS)
-    int m_fileDescriptor;
+    Optional<int> m_fileDescriptor;
     bool m_isWrappingMap { false };
 #elif OS(DARWIN)
     mach_port_t m_port;

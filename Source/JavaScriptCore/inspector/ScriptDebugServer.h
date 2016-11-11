@@ -27,8 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ScriptDebugServer_h
-#define ScriptDebugServer_h
+#pragma once
 
 #include "ScriptBreakpoint.h"
 #include "ScriptDebugListener.h"
@@ -50,9 +49,11 @@ class JS_EXPORT_PRIVATE ScriptDebugServer : public JSC::Debugger {
     WTF_MAKE_NONCOPYABLE(ScriptDebugServer);
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    JSC::BreakpointID setBreakpoint(JSC::SourceID, const ScriptBreakpoint&, unsigned* actualLineNumber, unsigned* actualColumnNumber);
-    void removeBreakpoint(JSC::BreakpointID);
-    void clearBreakpoints();
+
+    // FIXME: Move BreakpointAction handling into JSC::Debugger or InspectorDebuggerAgent.
+    void setBreakpointActions(JSC::BreakpointID, const ScriptBreakpoint&);
+    void removeBreakpointActions(JSC::BreakpointID);
+    void clearBreakpointActions();
 
     const BreakpointActions& getActionsForBreakpoint(JSC::BreakpointID);
 
@@ -87,13 +88,12 @@ protected:
     void dispatchBreakpointActionSound(JSC::ExecState*, int breakpointActionIdentifier);
     void dispatchBreakpointActionProbe(JSC::ExecState*, const ScriptBreakpointAction&, JSC::JSValue sample);
 
-    bool m_doneProcessingDebuggerEvents {true};
+    bool m_doneProcessingDebuggerEvents { true };
 
 private:
     typedef HashMap<JSC::BreakpointID, BreakpointActions> BreakpointIDToActionsMap;
 
     void sourceParsed(JSC::ExecState*, JSC::SourceProvider*, int errorLine, const String& errorMsg) final;
-    bool needPauseHandling(JSC::JSGlobalObject*) final { return true; }
     void handleBreakpointHit(JSC::JSGlobalObject*, const JSC::Breakpoint&) final;
     void handleExceptionInBreakpointCondition(JSC::ExecState*, JSC::Exception*) const final;
     void handlePause(JSC::JSGlobalObject*, JSC::Debugger::ReasonForPause) final;
@@ -102,14 +102,10 @@ private:
     JSC::JSValue exceptionOrCaughtValue(JSC::ExecState*);
 
     BreakpointIDToActionsMap m_breakpointIDToActions;
-
     ListenerSet m_listeners;
-    bool m_callingListeners {false};
-
-    unsigned m_nextProbeSampleId {1};
-    unsigned m_currentProbeBatchId {0};
+    bool m_callingListeners { false };
+    unsigned m_nextProbeSampleId { 1 };
+    unsigned m_currentProbeBatchId { 0 };
 };
 
 } // namespace Inspector
-
-#endif // ScriptDebugServer_h

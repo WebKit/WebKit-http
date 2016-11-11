@@ -37,7 +37,7 @@ bool setJSTestCustomConstructorWithNoInterfaceObjectConstructor(JSC::ExecState*,
 
 class JSTestCustomConstructorWithNoInterfaceObjectPrototype : public JSC::JSNonFinalObject {
 public:
-    typedef JSC::JSNonFinalObject Base;
+    using Base = JSC::JSNonFinalObject;
     static JSTestCustomConstructorWithNoInterfaceObjectPrototype* create(JSC::VM& vm, JSC::JSGlobalObject* globalObject, JSC::Structure* structure)
     {
         JSTestCustomConstructorWithNoInterfaceObjectPrototype* ptr = new (NotNull, JSC::allocateCell<JSTestCustomConstructorWithNoInterfaceObjectPrototype>(vm.heap)) JSTestCustomConstructorWithNoInterfaceObjectPrototype(vm, globalObject, structure);
@@ -60,11 +60,12 @@ private:
     void finishCreation(JSC::VM&);
 };
 
-typedef JSDOMConstructor<JSTestCustomConstructorWithNoInterfaceObject> JSTestCustomConstructorWithNoInterfaceObjectConstructor;
+using JSTestCustomConstructorWithNoInterfaceObjectConstructor = JSDOMConstructor<JSTestCustomConstructorWithNoInterfaceObject>;
 
-template<> JSC::EncodedJSValue JSC_HOST_CALL JSTestCustomConstructorWithNoInterfaceObjectConstructor::construct(JSC::ExecState* state)
+template<> JSC::EncodedJSValue JSC_HOST_CALL JSTestCustomConstructorWithNoInterfaceObjectConstructor::construct(JSC::ExecState* exec)
 {
-    return constructJSTestCustomConstructorWithNoInterfaceObject(state);
+    ASSERT(exec);
+    return constructJSTestCustomConstructorWithNoInterfaceObject(*exec);
 }
 
 template<> JSValue JSTestCustomConstructorWithNoInterfaceObjectConstructor::prototypeForStructure(JSC::VM& vm, const JSDOMGlobalObject& globalObject)
@@ -122,9 +123,11 @@ void JSTestCustomConstructorWithNoInterfaceObject::destroy(JSC::JSCell* cell)
 
 EncodedJSValue jsTestCustomConstructorWithNoInterfaceObjectConstructor(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
-    JSTestCustomConstructorWithNoInterfaceObjectPrototype* domObject = jsDynamicCast<JSTestCustomConstructorWithNoInterfaceObjectPrototype*>(JSValue::decode(thisValue));
+    VM& vm = state->vm();
+    auto throwScope = DECLARE_THROW_SCOPE(vm);
+    JSTestCustomConstructorWithNoInterfaceObjectPrototype* domObject = jsDynamicDowncast<JSTestCustomConstructorWithNoInterfaceObjectPrototype*>(JSValue::decode(thisValue));
     if (UNLIKELY(!domObject))
-        return throwVMTypeError(state);
+        return throwVMTypeError(state, throwScope);
     JSValue constructor = JSTestCustomConstructorWithNoInterfaceObjectConstructor::create(state->vm(), JSTestCustomConstructorWithNoInterfaceObjectConstructor::createStructure(state->vm(), *domObject->globalObject(), domObject->globalObject()->objectPrototype()), *jsCast<JSDOMGlobalObject*>(domObject->globalObject()));
     // Shadowing constructor property to ensure reusing the same constructor object
     domObject->putDirect(state->vm(), state->propertyNames().constructor, constructor, DontEnum | ReadOnly);
@@ -133,10 +136,12 @@ EncodedJSValue jsTestCustomConstructorWithNoInterfaceObjectConstructor(ExecState
 
 bool setJSTestCustomConstructorWithNoInterfaceObjectConstructor(ExecState* state, EncodedJSValue thisValue, EncodedJSValue encodedValue)
 {
+    VM& vm = state->vm();
+    auto throwScope = DECLARE_THROW_SCOPE(vm);
     JSValue value = JSValue::decode(encodedValue);
-    JSTestCustomConstructorWithNoInterfaceObjectPrototype* domObject = jsDynamicCast<JSTestCustomConstructorWithNoInterfaceObjectPrototype*>(JSValue::decode(thisValue));
+    JSTestCustomConstructorWithNoInterfaceObjectPrototype* domObject = jsDynamicDowncast<JSTestCustomConstructorWithNoInterfaceObjectPrototype*>(JSValue::decode(thisValue));
     if (UNLIKELY(!domObject)) {
-        throwVMTypeError(state);
+        throwVMTypeError(state, throwScope);
         return false;
     }
     // Shadowing a built-in constructor
@@ -187,7 +192,7 @@ JSC::JSValue toJSNewlyCreated(JSC::ExecState*, JSDOMGlobalObject* globalObject, 
     // by adding the SkipVTableValidation attribute to the interface IDL definition
     RELEASE_ASSERT(actualVTablePointer == expectedVTablePointer);
 #endif
-    return createWrapper<JSTestCustomConstructorWithNoInterfaceObject, TestCustomConstructorWithNoInterfaceObject>(globalObject, WTFMove(impl));
+    return createWrapper<TestCustomConstructorWithNoInterfaceObject>(globalObject, WTFMove(impl));
 }
 
 JSC::JSValue toJS(JSC::ExecState* state, JSDOMGlobalObject* globalObject, TestCustomConstructorWithNoInterfaceObject& impl)
@@ -197,7 +202,7 @@ JSC::JSValue toJS(JSC::ExecState* state, JSDOMGlobalObject* globalObject, TestCu
 
 TestCustomConstructorWithNoInterfaceObject* JSTestCustomConstructorWithNoInterfaceObject::toWrapped(JSC::JSValue value)
 {
-    if (auto* wrapper = jsDynamicCast<JSTestCustomConstructorWithNoInterfaceObject*>(value))
+    if (auto* wrapper = jsDynamicDowncast<JSTestCustomConstructorWithNoInterfaceObject*>(value))
         return &wrapper->wrapped();
     return nullptr;
 }

@@ -27,8 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ClassCollection_h
-#define ClassCollection_h
+#pragma once
 
 #include "CachedHTMLCollection.h"
 #include "Element.h"
@@ -62,11 +61,7 @@ inline bool ClassCollection::elementMatches(Element& element) const
 {
     if (!element.hasClass())
         return false;
-    if (!m_classNames.size())
-        return false;
-    // FIXME: DOM4 allows getElementsByClassName to return non StyledElement.
-    // https://bugs.webkit.org/show_bug.cgi?id=94718
-    if (!element.isStyledElement())
+    if (m_classNames.isEmpty())
         return false;
     return element.classNames().containsAll(m_classNames);
 }
@@ -74,5 +69,3 @@ inline bool ClassCollection::elementMatches(Element& element) const
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_HTMLCOLLECTION(ClassCollection, ByClass)
-
-#endif // ClassCollection_h

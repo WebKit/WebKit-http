@@ -27,8 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef InspectorDOMAgent_h
-#define InspectorDOMAgent_h
+#pragma once
 
 #include "EventTarget.h"
 #include "InspectorWebAgentBase.h"
@@ -61,6 +60,7 @@ class DOMEditor;
 class Document;
 class Element;
 class Event;
+class Exception;
 class FloatQuad;
 class Frame;
 class InspectorHistory;
@@ -80,10 +80,10 @@ typedef String ErrorString;
 typedef int BackendNodeId;
 
 struct EventListenerInfo {
-    EventListenerInfo(Node* node, const AtomicString& eventType, const EventListenerVector& eventListenerVector)
+    EventListenerInfo(Node* node, const AtomicString& eventType, EventListenerVector&& eventListenerVector)
         : node(node)
         , eventType(eventType)
-        , eventListenerVector(eventListenerVector)
+        , eventListenerVector(WTFMove(eventListenerVector))
     {
     }
 
@@ -108,7 +108,8 @@ public:
     InspectorDOMAgent(WebAgentContext&, InspectorPageAgent*, InspectorOverlay*);
     virtual ~InspectorDOMAgent();
 
-    static String toErrorString(const ExceptionCode&);
+    static String toErrorString(ExceptionCode);
+    static String toErrorString(Exception&&);
 
     void didCreateFrontendAndBackend(Inspector::FrontendRouter*, Inspector::BackendDispatcher*) override;
     void willDestroyFrontendAndBackend(Inspector::DisconnectReason) override;
@@ -167,9 +168,10 @@ public:
     void didInvalidateStyleAttr(Node&);
     void didPushShadowRoot(Element& host, ShadowRoot&);
     void willPopShadowRoot(Element& host, ShadowRoot&);
+    void didChangeCustomElementState(Element&);
     bool handleTouchEvent(Node&);
     void didCommitLoad(Document*);
-    void frameDocumentUpdated(Frame*);
+    void frameDocumentUpdated(Frame&);
     void pseudoElementCreated(PseudoElement&);
     void pseudoElementDestroyed(PseudoElement&);
 
@@ -216,6 +218,7 @@ public:
     InspectorPageAgent* pageAgent() { return m_pageAgent; }
 
 private:
+    void highlightMousedOverNode();
     void setSearchingForNode(ErrorString&, bool enabled, const Inspector::InspectorObject* highlightConfig);
     std::unique_ptr<HighlightConfig> highlightConfigFromInspectorObject(ErrorString&, const Inspector::InspectorObject* highlightInspectorObject);
 
@@ -271,6 +274,7 @@ private:
     SearchResults m_searchResults;
     std::unique_ptr<RevalidateStyleAttributeTask> m_revalidateStyleAttrTask;
     RefPtr<Node> m_nodeToFocus;
+    RefPtr<Node> m_mousedOverNode;
     bool m_searchingForNode { false };
     std::unique_ptr<HighlightConfig> m_inspectModeHighlightConfig;
     std::unique_ptr<InspectorHistory> m_history;
@@ -280,5 +284,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // !defined(InspectorDOMAgent_h)

@@ -24,10 +24,10 @@
  *
  */
 
-#ifndef JSWorkerGlobalScopeBase_h
-#define JSWorkerGlobalScopeBase_h
+#pragma once
 
 #include "JSDOMGlobalObject.h"
+#include "JSDOMWrapper.h"
 
 namespace WebCore {
 
@@ -53,7 +53,6 @@ namespace WebCore {
 
         static const JSC::GlobalObjectMethodTable s_globalObjectMethodTable;
 
-        static bool allowsAccessFrom(const JSC::JSGlobalObject*, JSC::ExecState*);
         static bool supportsRichSourceInfo(const JSC::JSGlobalObject*);
         static bool shouldInterruptScript(const JSC::JSGlobalObject*);
         static bool shouldInterruptScriptBeforeTimeout(const JSC::JSGlobalObject*);
@@ -82,5 +81,3 @@ namespace WebCore {
     JSWorkerGlobalScope* toJSWorkerGlobalScope(JSC::JSValue);
 
 } // namespace WebCore
-
-#endif // JSWorkerGlobalScopeBase_h

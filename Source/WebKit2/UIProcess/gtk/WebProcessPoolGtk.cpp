@@ -30,7 +30,6 @@
 
 #include "APIProcessPoolConfiguration.h"
 #include "Logging.h"
-#include "NetworkProcessMessages.h"
 #include "WebCookieManagerProxy.h"
 #include "WebInspectorServer.h"
 #include "WebProcessCreationParameters.h"
@@ -114,7 +113,7 @@ String WebProcessPool::legacyPlatformDefaultIndexedDBDatabaseDirectory()
 String WebProcessPool::platformDefaultIconDatabasePath() const
 {
     GUniquePtr<gchar> databaseDirectory(g_build_filename(g_get_user_cache_dir(), "webkitgtk", "icondatabase", nullptr));
-    return WebCore::filenameToString(databaseDirectory.get());
+    return WebCore::stringFromFileSystemRepresentation(databaseDirectory.get());
 }
 
 String WebProcessPool::legacyPlatformDefaultLocalStorageDirectory()
@@ -130,13 +129,6 @@ String WebProcessPool::legacyPlatformDefaultMediaKeysStorageDirectory()
 String WebProcessPool::legacyPlatformDefaultNetworkCacheDirectory()
 {
     return API::WebsiteDataStore::defaultNetworkCacheDirectory();
-}
-
-void WebProcessPool::setIgnoreTLSErrors(bool ignoreTLSErrors)
-{
-    m_ignoreTLSErrors = ignoreTLSErrors;
-    if (networkProcess())
-        networkProcess()->send(Messages::NetworkProcess::SetIgnoreTLSErrors(m_ignoreTLSErrors), 0);
 }
 
 } // namespace WebKit

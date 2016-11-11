@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Apple Inc. All rights reserved.
+ * Copyright (C) 2011, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,11 +23,11 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef HandleSet_h
-#define HandleSet_h
+#pragma once
 
 #include "Handle.h"
 #include "HandleBlock.h"
+#include "HeapCell.h"
 #include <wtf/DoublyLinkedList.h>
 #include <wtf/HashCountedSet.h>
 #include <wtf/SentinelLinkedList.h>
@@ -79,7 +79,7 @@ public:
 
     unsigned protectedGlobalObjectCount();
 
-    template<typename Functor> void forEachStrongHandle(Functor&, const HashCountedSet<JSCell*>& skipSet);
+    template<typename Functor> void forEachStrongHandle(const Functor&, const HashCountedSet<JSCell*>& skipSet);
 
 private:
     typedef HandleNode Node;
@@ -180,7 +180,7 @@ inline HandleNode* HandleNode::next()
     return m_next;
 }
 
-template<typename Functor> void HandleSet::forEachStrongHandle(Functor& functor, const HashCountedSet<JSCell*>& skipSet)
+template<typename Functor> void HandleSet::forEachStrongHandle(const Functor& functor, const HashCountedSet<JSCell*>& skipSet)
 {
     HandleSet::Node* end = m_strongList.end();
     for (HandleSet::Node* node = m_strongList.begin(); node != end; node = node->next()) {
@@ -193,6 +193,4 @@ template<typename Functor> void HandleSet::forEachStrongHandle(Functor& functor,
     }
 }
 
-}
-
-#endif
+} // namespace JSC

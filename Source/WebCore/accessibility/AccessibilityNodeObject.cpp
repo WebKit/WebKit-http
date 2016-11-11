@@ -42,28 +42,19 @@
 #include "FrameLoader.h"
 #include "FrameSelection.h"
 #include "FrameView.h"
-#include "HTMLAreaElement.h"
 #include "HTMLCanvasElement.h"
 #include "HTMLDetailsElement.h"
 #include "HTMLFieldSetElement.h"
 #include "HTMLFormElement.h"
-#include "HTMLFrameElementBase.h"
 #include "HTMLImageElement.h"
 #include "HTMLInputElement.h"
 #include "HTMLLabelElement.h"
 #include "HTMLLegendElement.h"
-#include "HTMLMapElement.h"
 #include "HTMLNames.h"
-#include "HTMLOptGroupElement.h"
-#include "HTMLOptionElement.h"
-#include "HTMLOptionsCollection.h"
 #include "HTMLParserIdioms.h"
-#include "HTMLPlugInImageElement.h"
 #include "HTMLSelectElement.h"
 #include "HTMLTextAreaElement.h"
 #include "HTMLTextFormControlElement.h"
-#include "HitTestRequest.h"
-#include "HitTestResult.h"
 #include "LabelableElement.h"
 #include "LocalizedStrings.h"
 #include "MathMLElement.h"
@@ -677,13 +668,9 @@ bool AccessibilityNodeObject::isPressed() const
     if (!node)
         return false;
 
-    // If this is an ARIA button, check the aria-pressed attribute rather than node()->active()
-    AccessibilityRole ariaRole = ariaRoleAttribute();
-    if (ariaRole == ButtonRole || ariaRole == ToggleButtonRole) {
-        if (equalLettersIgnoringASCIICase(getAttribute(aria_pressedAttr), "true"))
-            return true;
-        return false;
-    }
+    // If this is an toggle button, check the aria-pressed attribute rather than node()->active()
+    if (isToggleButton())
+        return equalLettersIgnoringASCIICase(getAttribute(aria_pressedAttr), "true");
 
     if (!is<Element>(*node))
         return false;
@@ -1070,13 +1057,13 @@ void AccessibilityNodeObject::alterSliderValue(bool increase)
     
 void AccessibilityNodeObject::increment()
 {
-    UserGestureIndicator gestureIndicator(DefinitelyProcessingUserGesture, document());
+    UserGestureIndicator gestureIndicator(ProcessingUserGesture, document());
     alterSliderValue(true);
 }
 
 void AccessibilityNodeObject::decrement()
 {
-    UserGestureIndicator gestureIndicator(DefinitelyProcessingUserGesture, document());
+    UserGestureIndicator gestureIndicator(ProcessingUserGesture, document());
     alterSliderValue(false);
 }
 
@@ -1183,7 +1170,7 @@ static Element* siblingWithAriaRole(Node* node, const char* role)
 
     for (auto& sibling : childrenOfType<Element>(*parent)) {
         // FIXME: Should skip sibling that is the same as the node.
-        if (equalIgnoringASCIICase(sibling.fastGetAttribute(roleAttr), role))
+        if (equalIgnoringASCIICase(sibling.attributeWithoutSynchronization(roleAttr), role))
             return &sibling;
     }
 
@@ -1230,9 +1217,53 @@ AccessibilityObject* AccessibilityNodeObject::menuButtonForMenu() const
     return nullptr;
 }
 
+AccessibilityObject* AccessibilityNodeObject::captionForFigure() const
+{
+    if (!isFigure())
+        return nullptr;
+    
+    AXObjectCache* cache = axObjectCache();
+    if (!cache)
+        return nullptr;
+    
+    Node* node = this->node();
+    for (Node* child = node->firstChild(); child; child = child->nextSibling()) {
+        if (child->hasTagName(figcaptionTag))
+            return cache->getOrCreate(child);
+    }
+    return nullptr;
+}
+
 bool AccessibilityNodeObject::usesAltTagForTextComputation() const
 {
     return isImage() || isInputImage() || isNativeImage() || isCanvas() || (node() && node()->hasTagName(imgTag));
+}
+
+bool AccessibilityNodeObject::isLabelable() const
+{
+    Node* node = this->node();
+    if (!node)
+        return false;
+    
+    return is<HTMLInputElement>(*node) || AccessibilityObject::isARIAInput(ariaRoleAttribute()) || isControl() || isProgressIndicator() || isMeter();
+}
+
+String AccessibilityNodeObject::textForLabelElement(Element* element) const
+{
+    String result = String();
+    if (!is<HTMLLabelElement>(*element))
+        return result;
+    
+    HTMLLabelElement* label = downcast<HTMLLabelElement>(element);
+    // Check to see if there's aria-labelledby attribute on the label element.
+    if (AccessibilityObject* labelObject = axObjectCache()->getOrCreate(label))
+        result = labelObject->ariaLabeledByAttribute();
+    
+    // Then check for aria-label attribute.
+    if (result.isEmpty())
+        result = label->attributeWithoutSynchronization(aria_labelAttr);
+    
+    return !result.isEmpty() ? result : label->innerText();
 }
     
 void AccessibilityNodeObject::titleElementText(Vector<AccessibilityText>& textOrder) const
@@ -1241,19 +1272,14 @@ void AccessibilityNodeObject::titleElementText(Vector<AccessibilityText>& textOr
     if (!node)
         return;
     
-    bool isInputTag = is<HTMLInputElement>(*node);
-    if (isInputTag || AccessibilityObject::isARIAInput(ariaRoleAttribute()) || isControl()) {
+    if (isLabelable()) {
         if (HTMLLabelElement* label = labelForElement(downcast<Element>(node))) {
             AccessibilityObject* labelObject = axObjectCache()->getOrCreate(label);
-            String innerText = label->innerText();
-            
-            const AtomicString& ariaLabel = label->fastGetAttribute(aria_labelAttr);
-            if (!ariaLabel.isEmpty())
-                innerText = ariaLabel;
+            String innerText = textForLabelElement(label);
             
             // Only use the <label> text if there's no ARIA override.
             if (!innerText.isEmpty() && !ariaAccessibilityDescription())
-                textOrder.append(AccessibilityText(innerText, LabelByElementText, labelObject));
+                textOrder.append(AccessibilityText(innerText, isMeter() ? AlternativeText : LabelByElementText, labelObject));
             return;
         }
     }
@@ -1304,6 +1330,13 @@ void AccessibilityNodeObject::alternativeText(Vector<AccessibilityText>& textOrd
         AccessibilityObject* object = axObjectCache()->getOrCreate(downcast<HTMLFieldSetElement>(*node).legend());
         if (object && !object->isHidden())
             textOrder.append(AccessibilityText(accessibleNameForNode(object->node()), AlternativeText));
+    }
+    
+    // The figure element derives its alternative text from the first associated figcaption element if one is available.
+    if (isFigure()) {
+        AccessibilityObject* captionForFigure = this->captionForFigure();
+        if (captionForFigure && !captionForFigure->isHidden())
+            textOrder.append(AccessibilityText(accessibleNameForNode(captionForFigure->node()), AlternativeText));
     }
     
 #if ENABLE(MATHML)
@@ -1363,6 +1396,9 @@ void AccessibilityNodeObject::visibleText(Vector<AccessibilityText>& textOrder) 
     // If it's focusable but it's not content editable or a known control type, then it will appear to
     // the user as a single atomic object, so we should use its text as the default title.
     if (isHeading() || isLink())
+        useTextUnderElement = true;
+    
+    if (isOutput())
         useTextUnderElement = true;
     
     if (useTextUnderElement) {
@@ -1454,14 +1490,14 @@ String AccessibilityNodeObject::alternativeTextForWebArea() const
     
     // Check if the HTML element has an aria-label for the webpage.
     if (Element* documentElement = document->documentElement()) {
-        const AtomicString& ariaLabel = documentElement->fastGetAttribute(aria_labelAttr);
+        const AtomicString& ariaLabel = documentElement->attributeWithoutSynchronization(aria_labelAttr);
         if (!ariaLabel.isEmpty())
             return ariaLabel;
     }
     
     if (auto* owner = document->ownerElement()) {
         if (owner->hasTagName(frameTag) || owner->hasTagName(iframeTag)) {
-            const AtomicString& title = owner->fastGetAttribute(titleAttr);
+            const AtomicString& title = owner->attributeWithoutSynchronization(titleAttr);
             if (!title.isEmpty())
                 return title;
         }
@@ -1558,7 +1594,7 @@ unsigned AccessibilityNodeObject::hierarchicalLevel() const
     if (!is<Element>(node))
         return 0;
     Element& element = downcast<Element>(*node);
-    const AtomicString& ariaLevel = element.fastGetAttribute(aria_levelAttr);
+    const AtomicString& ariaLevel = element.attributeWithoutSynchronization(aria_levelAttr);
     if (!ariaLevel.isEmpty())
         return ariaLevel.toInt();
     
@@ -1570,7 +1606,7 @@ unsigned AccessibilityNodeObject::hierarchicalLevel() const
     // We measure tree hierarchy by the number of groups that the item is within.
     unsigned level = 1;
     for (AccessibilityObject* parent = parentObject(); parent; parent = parent->parentObject()) {
-        AccessibilityRole parentRole = parent->roleValue();
+        AccessibilityRole parentRole = parent->ariaRoleAttribute();
         if (parentRole == GroupRole)
             level++;
         else if (parentRole == TreeRole)
@@ -1714,11 +1750,11 @@ String AccessibilityNodeObject::title() const
             return input.valueWithDefault();
     }
 
-    if (isInputTag || AccessibilityObject::isARIAInput(ariaRoleAttribute()) || isControl()) {
+    if (isLabelable()) {
         HTMLLabelElement* label = labelForElement(downcast<Element>(node));
         // Use the label text as the title if 1) the title element is NOT an exposed element and 2) there's no ARIA override.
         if (label && !exposesTitleUIElement() && !ariaAccessibilityDescription().length())
-            return label->innerText();
+            return textForLabelElement(label);
     }
 
     // If this node isn't rendered, there's no inner text we can extract from a select element.
@@ -1806,7 +1842,7 @@ String AccessibilityNodeObject::stringValue() const
         int selectedIndex = selectElement.selectedIndex();
         const Vector<HTMLElement*>& listItems = selectElement.listItems();
         if (selectedIndex >= 0 && static_cast<size_t>(selectedIndex) < listItems.size()) {
-            const AtomicString& overriddenDescription = listItems[selectedIndex]->fastGetAttribute(aria_labelAttr);
+            const AtomicString& overriddenDescription = listItems[selectedIndex]->attributeWithoutSynchronization(aria_labelAttr);
             if (!overriddenDescription.isNull())
                 return overriddenDescription;
         }
@@ -1859,11 +1895,11 @@ static String accessibleNameForNode(Node* node, Node* labelledbyNode)
         return String();
     
     Element& element = downcast<Element>(*node);
-    const AtomicString& ariaLabel = element.fastGetAttribute(aria_labelAttr);
+    const AtomicString& ariaLabel = element.attributeWithoutSynchronization(aria_labelAttr);
     if (!ariaLabel.isEmpty())
         return ariaLabel;
     
-    const AtomicString& alt = element.fastGetAttribute(altAttr);
+    const AtomicString& alt = element.attributeWithoutSynchronization(altAttr);
     if (!alt.isEmpty())
         return alt;
 
@@ -1889,7 +1925,7 @@ static String accessibleNameForNode(Node* node, Node* labelledbyNode)
     if (!text.isEmpty())
         return text;
     
-    const AtomicString& title = element.fastGetAttribute(titleAttr);
+    const AtomicString& title = element.attributeWithoutSynchronization(titleAttr);
     if (!title.isEmpty())
         return title;
     

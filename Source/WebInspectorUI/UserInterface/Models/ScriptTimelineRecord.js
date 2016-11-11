@@ -113,7 +113,7 @@ WebInspector.ScriptTimelineRecord = class ScriptTimelineRecord extends WebInspec
             if (nodePayload.url) {
                 var sourceCode = WebInspector.frameResourceManager.resourceForURL(nodePayload.url);
                 if (!sourceCode)
-                    sourceCode = WebInspector.debuggerManager.scriptsForURL(nodePayload.url)[0];
+                    sourceCode = WebInspector.debuggerManager.scriptsForURL(nodePayload.url, WebInspector.assumingMainTarget())[0];
 
                 // The lineNumber is 1-based, but we expect 0-based.
                 var lineNumber = nodePayload.lineNumber - 1;
@@ -357,7 +357,7 @@ WebInspector.ScriptTimelineRecord.EventType.displayName = function(eventType, de
         WebInspector.ScriptTimelineRecord._eventDisplayNames = nameMap;
     }
 
-    switch(eventType) {
+    switch (eventType) {
     case WebInspector.ScriptTimelineRecord.EventType.ScriptEvaluated:
     case WebInspector.ScriptTimelineRecord.EventType.APIScriptEvaluated:
         return WebInspector.UIString("Script Evaluated");

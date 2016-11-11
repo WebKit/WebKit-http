@@ -87,6 +87,7 @@ ExitMode mayExitImpl(Graph& graph, Node* node, StateType& state)
     case NotifyWrite:
     case PutStructure:
     case StoreBarrier:
+    case FencedStoreBarrier:
     case PutByOffset:
     case PutClosureVar:
     case RecordRegExpCachedResult:
@@ -96,15 +97,17 @@ ExitMode mayExitImpl(Graph& graph, Node* node, StateType& state)
     case Call:
     case Construct:
     case CallVarargs:
+    case CallEval:
     case ConstructVarargs:
     case CallForwardVarargs:
     case ConstructForwardVarargs:
+    case CreateActivation:
     case MaterializeCreateActivation:
     case MaterializeNewObject:
     case NewFunction:
     case NewGeneratorFunction:
     case NewStringObject:
-    case CreateActivation:
+    case ToNumber:
         result = ExitsForExceptions;
         break;
 

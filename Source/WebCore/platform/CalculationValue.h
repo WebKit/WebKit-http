@@ -35,7 +35,7 @@
 #include "LengthFunctions.h"
 #include <memory>
 #include <wtf/RefCounted.h>
-#include <wtf/Vector.h>
+#include <wtf/RefPtr.h>
 
 namespace WebCore {
 
@@ -44,11 +44,6 @@ enum CalcOperator {
     CalcSubtract = '-',
     CalcMultiply = '*',
     CalcDivide = '/'
-};
-
-enum CalculationPermittedValueRange {
-    CalculationRangeAll,
-    CalculationRangeNonNegative
 };
 
 enum CalcExpressionNodeType {
@@ -136,14 +131,14 @@ private:
 
 class CalculationValue : public RefCounted<CalculationValue> {
 public:
-    WEBCORE_EXPORT static Ref<CalculationValue> create(std::unique_ptr<CalcExpressionNode>, CalculationPermittedValueRange);
+    WEBCORE_EXPORT static Ref<CalculationValue> create(std::unique_ptr<CalcExpressionNode>, ValueRange);
     float evaluate(float maxValue) const;
 
     bool shouldClampToNonNegative() const { return m_shouldClampToNonNegative; }
     const CalcExpressionNode& expression() const { return *m_expression; }
 
 private:
-    CalculationValue(std::unique_ptr<CalcExpressionNode>, CalculationPermittedValueRange);
+    CalculationValue(std::unique_ptr<CalcExpressionNode>, ValueRange);
 
     std::unique_ptr<CalcExpressionNode> m_expression;
     bool m_shouldClampToNonNegative;
@@ -154,9 +149,9 @@ inline CalcExpressionNode::CalcExpressionNode(CalcExpressionNodeType type)
 {
 }
 
-inline CalculationValue::CalculationValue(std::unique_ptr<CalcExpressionNode> expression, CalculationPermittedValueRange range)
+inline CalculationValue::CalculationValue(std::unique_ptr<CalcExpressionNode> expression, ValueRange range)
     : m_expression(WTFMove(expression))
-    , m_shouldClampToNonNegative(range == CalculationRangeNonNegative)
+    , m_shouldClampToNonNegative(range == ValueRangeNonNegative)
 {
 }
 

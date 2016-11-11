@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef JSModuleRecord_h
-#define JSModuleRecord_h
+#pragma once
 
 #include "Identifier.h"
 #include "JSDestructibleObject.h"
@@ -87,10 +86,10 @@ public:
         return Structure::create(vm, globalObject, prototype, TypeInfo(ObjectType, StructureFlags), info());
     }
 
-    static JSModuleRecord* create(VM& vm, Structure* structure, const Identifier& moduleKey, const SourceCode& sourceCode, const VariableEnvironment& declaredVariables, const VariableEnvironment& lexicalVariables)
+    static JSModuleRecord* create(ExecState* exec, VM& vm, Structure* structure, const Identifier& moduleKey, const SourceCode& sourceCode, const VariableEnvironment& declaredVariables, const VariableEnvironment& lexicalVariables)
     {
         JSModuleRecord* instance = new (NotNull, allocateCell<JSModuleRecord>(vm.heap)) JSModuleRecord(vm, structure, moduleKey, sourceCode, declaredVariables, lexicalVariables);
-        instance->finishCreation(vm);
+        instance->finishCreation(exec, vm);
         return instance;
     }
 
@@ -152,7 +151,7 @@ private:
     {
     }
 
-    void finishCreation(VM&);
+    void finishCreation(ExecState*, VM&);
 
     JSModuleNamespaceObject* getModuleNamespace(ExecState*);
 
@@ -206,7 +205,7 @@ private:
     WriteBarrier<JSModuleEnvironment> m_moduleEnvironment;
     WriteBarrier<JSModuleNamespaceObject> m_moduleNamespaceObject;
 
-    // We assume that all the JSModuleRecord are retained by ModuleLoaderObject's registry.
+    // We assume that all the JSModuleRecord are retained by JSModuleLoader's registry.
     // So here, we don't visit each object for GC. The resolution cache map caches the once
     // looked up correctly resolved resolution, since (1) we rarely looked up the non-resolved one,
     // and (2) if we cache all the attempts the size of the map becomes infinitely large.
@@ -215,5 +214,3 @@ private:
 };
 
 } // namespace JSC
-
-#endif // JSModuleRecord_h

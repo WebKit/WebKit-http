@@ -30,7 +30,6 @@
 import subprocess
 import os
 
-
 class GDBCrashLogGenerator(object):
     def __init__(self, name, pid, newer_than, filesystem, path_to_driver):
         self.name = name
@@ -40,11 +39,13 @@ class GDBCrashLogGenerator(object):
         self._path_to_driver = path_to_driver
 
     def _get_gdb_output(self, coredump_path):
-        process_name = os.path.join(os.path.dirname(str(self._path_to_driver())), self.name)
+        process_name = self._filesystem.join(os.path.dirname(str(self._path_to_driver())), self.name)
         cmd = ['gdb', '-ex', 'thread apply all bt 1024', '--batch', process_name, coredump_path]
         proc = subprocess.Popen(cmd, stdin=None, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         stdout, stderr = proc.communicate()
         errors = [stderr_line.strip().decode('utf8', 'ignore') for stderr_line in stderr.splitlines()]
+        if proc.returncode != 0:
+            stdout = ('ERROR: The gdb process exited with non-zero return code %s\n\n' % proc.returncode) + stdout
         return (stdout.decode('utf8', 'ignore'), errors)
 
     def generate_crash_log(self, stdout, stderr):
@@ -52,7 +53,7 @@ class GDBCrashLogGenerator(object):
         log_directory = os.environ.get("WEBKIT_CORE_DUMPS_DIRECTORY")
         errors = []
         crash_log = ''
-        expected_crash_dump_filename = "core-pid_%s-_-process_%s" % (pid_representation, self.name)
+        expected_crash_dump_filename = "core-pid_%s.dump" % pid_representation
         proc_name = "%s" % (self.name)
 
         def match_filename(filesystem, directory, filename):
@@ -76,7 +77,7 @@ class GDBCrashLogGenerator(object):
         if not crash_log:
             if not log_directory:
                 log_directory = "/path/to/coredumps"
-            core_pattern = os.path.join(log_directory, "core-pid_%p-_-process_%E")
+            core_pattern = self._filesystem.join(log_directory, "core-pid_%p.dump")
             crash_log = """\
 Coredump %(expected_crash_dump_filename)s not found. To enable crash logs:
 

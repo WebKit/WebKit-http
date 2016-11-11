@@ -19,8 +19,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef ChromeClient_h
-#define ChromeClient_h
+#pragma once
 
 #include "AXObjectCache.h"
 #include "Cursor.h"
@@ -33,7 +32,6 @@
 #include "HostWindow.h"
 #include "LayerFlushThrottleState.h"
 #include "MediaProducer.h"
-#include "PageThrottler.h"
 #include "PopupMenu.h"
 #include "PopupMenuClient.h"
 #include "RenderEmbeddedObject.h"
@@ -44,12 +42,6 @@
 #include <runtime/ConsoleTypes.h>
 #include <wtf/Forward.h>
 #include <wtf/Vector.h>
-
-#if ENABLE(MEDIA_SESSION)
-namespace WebCore {
-class MediaSessionMetadata;
-}
-#endif
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
 #include "MediaPlaybackTargetContext.h"
@@ -88,6 +80,7 @@ class HTMLMediaElement;
 class HTMLVideoElement;
 class HitTestResult;
 class IntRect;
+class MediaSessionMetadata;
 class NavigationAction;
 class Node;
 class Page;
@@ -405,7 +398,6 @@ public:
 #if ENABLE(POINTER_LOCK)
     virtual bool requestPointerLock() { return false; }
     virtual void requestPointerUnlock() { }
-    virtual bool isPointerLocked() { return false; }
 #endif
 
     virtual FloatSize minimumWindowSize() const { return FloatSize(100, 100); };
@@ -432,8 +424,6 @@ public:
     virtual void mediaSessionMetadataDidChange(const WebCore::MediaSessionMetadata&) { }
     virtual void focusedContentMediaElementDidChange(uint64_t) { }
 #endif
-
-    virtual void setPageActivityState(PageActivityState::Flags) { }
 
 #if ENABLE(SUBTLE_CRYPTO)
     virtual bool wrapCryptoKey(const Vector<uint8_t>&, Vector<uint8_t>&) const { return false; }
@@ -473,5 +463,4 @@ protected:
     virtual ~ChromeClient() { }
 };
 
-}
-#endif // ChromeClient_h
+} // namespace WebCore

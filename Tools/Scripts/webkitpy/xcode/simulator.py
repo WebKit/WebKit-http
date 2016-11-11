@@ -213,8 +213,24 @@ class Device(object):
         :rtype: Device
         """
         device_udid = subprocess.check_output(['xcrun', 'simctl', 'create', name, device_type.identifier, runtime.identifier]).rstrip()
+        _log.debug('"xcrun simctl create %s %s %s" returned %s', name, device_type.identifier, runtime.identifier, device_udid)
         Simulator.wait_until_device_is_in_state(device_udid, Simulator.DeviceState.SHUTDOWN)
         return Simulator().find_device_by_udid(device_udid)
+
+    @classmethod
+    def shutdown(cls, udid):
+        """
+        Shut down the given CoreSimulator device.
+        :param udid: The udid of the device.
+        :type udid: str
+        """
+        device_state = Simulator.device_state(udid)
+        if device_state == Simulator.DeviceState.BOOTING or device_state == Simulator.DeviceState.BOOTED:
+            _log.debug('xcrun simctl shutdown %s', udid)
+            # Don't throw on error. Device shutdown seems to be racy with Simulator app killing.
+            subprocess.call(['xcrun', 'simctl', 'shutdown', udid])
+
+        Simulator.wait_until_device_is_in_state(udid, Simulator.DeviceState.SHUTDOWN)
 
     @classmethod
     def delete(cls, udid):
@@ -223,7 +239,26 @@ class Device(object):
         :param udid: The udid of the device.
         :type udid: str
         """
-        subprocess.call(['xcrun', 'simctl', 'delete', udid])
+        Device.shutdown(udid)
+        try:
+            _log.debug('xcrun simctl delete %s', udid)
+            subprocess.check_call(['xcrun', 'simctl', 'delete', udid])
+        except subprocess.CalledProcessError:
+            raise RuntimeError('"xcrun simctl delete" failed: device state is {}'.format(Simulator.device_state(udid)))
+
+    @classmethod
+    def reset(cls, udid):
+        """
+        Reset the given CoreSimulator device.
+        :param udid: The udid of the device.
+        :type udid: str
+        """
+        Device.shutdown(udid)
+        try:
+            _log.debug('xcrun simctl erase %s', udid)
+            subprocess.check_call(['xcrun', 'simctl', 'erase', udid])
+        except subprocess.CalledProcessError:
+            raise RuntimeError('"xcrun simctl erase" failed: device state is {}'.format(Simulator.device_state(udid)))
 
     def __eq__(self, other):
         return self.udid == other.udid
@@ -259,6 +294,8 @@ class Simulator(object):
     devices_re = re.compile(
         '\s*(?P<name>[^(]+ )\((?P<udid>[^)]+)\) \((?P<state>[^)]+)\)( \((?P<availability>[^)]+)\))?')
 
+    _managed_devices = {}
+
     def __init__(self, host=None):
         self._host = host or Host()
         self.runtimes = []
@@ -274,6 +311,40 @@ class Simulator(object):
         BOOTED = 3
         SHUTTING_DOWN = 4
 
+    NAME_FOR_STATE = [
+        'CREATING',
+        'SHUTDOWN',
+        'BOOTING',
+        'BOOTED',
+        'SHUTTING_DOWN'
+    ]
+
+    @staticmethod
+    def create_device(number, device_type, runtime):
+        device = Simulator().lookup_or_create_device(device_type.name + ' WebKit Tester' + str(number), device_type, runtime)
+        _log.debug('created device {} {}'.format(number, device))
+        assert(len(Simulator._managed_devices) == number)
+        Simulator._managed_devices[number] = device
+
+    @staticmethod
+    def remove_device(number):
+        if not Simulator._managed_devices[number]:
+            return
+        device_udid = Simulator._managed_devices[number].udid
+        _log.debug('removing device {} {}'.format(number, device_udid))
+        del Simulator._managed_devices[number]
+        Simulator.delete_device(device_udid)
+
+    @staticmethod
+    def device_number(number):
+        return Simulator._managed_devices[number]
+
+    @staticmethod
+    def device_state_description(state):
+        if (state == Simulator.DeviceState.DOES_NOT_EXIST):
+            return 'DOES_NOT_EXIST'
+        return Simulator.NAME_FOR_STATE[state]
+
     @staticmethod
     def wait_until_device_is_booted(udid, timeout_seconds=60 * 5):
         Simulator.wait_until_device_is_in_state(udid, Simulator.DeviceState.BOOTED, timeout_seconds)
@@ -281,6 +352,8 @@ class Simulator(object):
             while True:
                 try:
                     state = subprocess.check_output(['xcrun', 'simctl', 'spawn', udid, 'launchctl', 'print', 'system']).strip()
+                    _log.debug('xcrun simctl spawn %s', udid)
+
                     if re.search("A[\s]+com.apple.springboard.services", state):
                         return
                 except subprocess.CalledProcessError:
@@ -291,9 +364,17 @@ class Simulator(object):
 
     @staticmethod
     def wait_until_device_is_in_state(udid, wait_until_state, timeout_seconds=60 * 5):
+        _log.debug('waiting for device %s to enter state %s with timeout %s', udid, Simulator.device_state_description(wait_until_state), timeout_seconds)
         with timeout(seconds=timeout_seconds):
-            while (Simulator.device_state(udid) != wait_until_state):
+            device_state = Simulator.device_state(udid)
+            while (device_state != wait_until_state):
+                device_state = Simulator.device_state(udid)
+                _log.debug(' device state %s', Simulator.device_state_description(device_state))
                 time.sleep(0.5)
+
+        end_state = Simulator.device_state(udid)
+        if (end_state != wait_until_state):
+            raise RuntimeError('Timed out waiting for simulator device to enter state {0}; current state is {1}'.format(Simulator.device_state_description(wait_until_state), Simulator.device_state_description(end_state)))
 
     @staticmethod
     def device_state(udid):
@@ -306,9 +387,13 @@ class Simulator(object):
     def device_directory(udid):
         return os.path.realpath(os.path.expanduser(os.path.join('~/Library/Developer/CoreSimulator/Devices', udid)))
 
-    def delete_device(self, udid):
-        Simulator.wait_until_device_is_in_state(udid, Simulator.DeviceState.SHUTDOWN)
+    @staticmethod
+    def delete_device(udid):
         Device.delete(udid)
+
+    @staticmethod
+    def reset_device(udid):
+        Device.reset(udid)
 
     def refresh(self):
         """
@@ -512,8 +597,10 @@ class Simulator(object):
         assert(runtime.available)
         testing_device = self.device(name=name, runtime=runtime, should_ignore_unavailable_devices=True)
         if testing_device:
+            _log.debug('lookup_or_create_device %s %s %s found %s', name, device_type, runtime, testing_device.name)
             return testing_device
         testing_device = Device.create(name, device_type, runtime)
+        _log.debug('lookup_or_create_device %s %s %s created %s', name, device_type, runtime, testing_device.name)
         assert(testing_device.available)
         return testing_device
 

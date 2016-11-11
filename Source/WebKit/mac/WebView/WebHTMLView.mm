@@ -90,7 +90,6 @@
 #import <WebCore/EditorDeleteAction.h>
 #import <WebCore/Element.h>
 #import <WebCore/EventHandler.h>
-#import <WebCore/ExceptionHandlers.h>
 #import <WebCore/FloatRect.h>
 #import <WebCore/FocusController.h>
 #import <WebCore/Font.h>
@@ -119,6 +118,7 @@
 #import <WebCore/RuntimeApplicationChecks.h>
 #import <WebCore/SharedBuffer.h>
 #import <WebCore/StyleProperties.h>
+#import <WebCore/StyleScope.h>
 #import <WebCore/Text.h>
 #import <WebCore/TextAlternativeWithRange.h>
 #import <WebCore/TextIndicator.h>
@@ -140,12 +140,12 @@
 #import <wtf/RunLoop.h>
 
 #if !PLATFORM(IOS)
+#import "WebNSEventExtras.h"
+#import "WebNSPasteboardExtras.h"
 #import <AppKit/NSAccessibility.h>
 #import <ApplicationServices/ApplicationServices.h>
 #import <WebCore/NSMenuSPI.h>
 #import <WebCore/PlatformEventFactoryMac.h>
-#import "WebNSEventExtras.h"
-#import "WebNSPasteboardExtras.h"
 #endif
 
 #import <QuartzCore/QuartzCore.h>
@@ -752,7 +752,6 @@ extern NSString *NSTextInputReplacementRangeAttributeName;
 @end
 
 @interface NSAttributedString (WebNSAttributedStringDetails)
-- (id)_initWithDOMRange:(DOMRange *)range;
 - (DOMDocumentFragment *)_documentFromRange:(NSRange)range document:(DOMDocument *)document documentAttributes:(NSDictionary *)dict subresources:(NSArray **)subresources;
 @end
 
@@ -789,10 +788,10 @@ const float _WebHTMLViewPrintingMaximumShrinkFactor = PrintContext::maximumShrin
 
 #if !PLATFORM(IOS)
 // We need this to be able to safely reference the CachedImage for the promised drag data
-static CachedImageClient* promisedDataClient()
+static CachedImageClient& promisedDataClient()
 {
     static CachedImageClient* staticCachedResourceClient = new CachedImageClient;
-    return staticCachedResourceClient;
+    return *staticCachedResourceClient;
 }
 #endif
 
@@ -1183,7 +1182,7 @@ static NSCellStateValue kit(TriState state)
             // Omit tags that will get stripped when converted to a fragment anyway.
             @"doctype", @"html", @"head", @"body",
             // Omit deprecated tags.
-            @"applet", @"basefont", @"center", @"dir", @"font", @"isindex", @"menu", @"s", @"strike", @"u",
+            @"applet", @"basefont", @"center", @"dir", @"font", @"menu", @"s", @"strike", @"u",
             // Omit object so no file attachments are part of the fragment.
             @"object", nil];
         CFRetain(elements);
@@ -1351,12 +1350,9 @@ static NSURL* uniqueURLWithRelativePart(NSString *relativePart)
 
 - (void)_postFakeMouseMovedEventForFlagsChangedEvent:(NSEvent *)flagsChangedEvent
 {
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-    NSEvent *fakeEvent = [NSEvent mouseEventWithType:NSMouseMoved location:flagsChangedEvent.window.mouseLocationOutsideOfEventStream
+    NSEvent *fakeEvent = [NSEvent mouseEventWithType:NSEventTypeMouseMoved location:flagsChangedEvent.window.mouseLocationOutsideOfEventStream
         modifierFlags:flagsChangedEvent.modifierFlags timestamp:flagsChangedEvent.timestamp windowNumber:flagsChangedEvent.windowNumber
         context:nullptr eventNumber:0 clickCount:0 pressure:0];
-#pragma clang diagnostic pop
     [self mouseMoved:fakeEvent];
 }
 
@@ -1506,10 +1502,7 @@ static NSURL* uniqueURLWithRelativePart(NSString *relativePart)
 #endif
 {
 #if !PLATFORM(IOS)
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-    ASSERT(!event || [event type] == NSLeftMouseDown || [event type] == NSRightMouseDown || [event type] == NSOtherMouseDown);
-#pragma clang diagnostic pop
+    ASSERT(!event || [event type] == NSEventTypeLeftMouseDown || [event type] == NSEventTypeRightMouseDown || [event type] == NSEventTypeOtherMouseDown);
 #else
     ASSERT(!event || event.type == WebEventMouseDown);
 #endif
@@ -1661,16 +1654,17 @@ static NSURL* uniqueURLWithRelativePart(NSString *relativePart)
 
 - (void)_updateMouseoverWithFakeEvent
 {
+    NSEvent *fakeEvent = [NSEvent mouseEventWithType:NSEventTypeMouseMoved
+        location:[[self window]
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
-    NSEvent *fakeEvent = [NSEvent mouseEventWithType:NSMouseMoved
-        location:[[self window] convertScreenToBase:[NSEvent mouseLocation]]
+        convertScreenToBase:[NSEvent mouseLocation]]
+#pragma clang diagnostic pop
         modifierFlags:[[NSApp currentEvent] modifierFlags]
         timestamp:[NSDate timeIntervalSinceReferenceDate]
         windowNumber:[[self window] windowNumber]
         context:nullptr
         eventNumber:0 clickCount:0 pressure:0];
-#pragma clang diagnostic pop
 
     [self _updateMouseoverWithEvent:fakeEvent];
 }
@@ -1868,11 +1862,8 @@ static NSURL* uniqueURLWithRelativePart(NSString *relativePart)
 #if !PLATFORM(IOS)
 static BOOL isQuickLookEvent(NSEvent *event)
 {
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
     const int kCGSEventSystemSubtypeHotKeyCombinationReleased = 9;
-    return [event type] == NSSystemDefined && [event subtype] == kCGSEventSystemSubtypeHotKeyCombinationReleased && [event data1] == 'lkup';
-#pragma clang diagnostic pop
+    return [event type] == NSEventTypeSystemDefined && [event subtype] == kCGSEventSystemSubtypeHotKeyCombinationReleased && [event data1] == 'lkup';
 }
 #endif
 
@@ -1928,14 +1919,11 @@ static BOOL isQuickLookEvent(NSEvent *event)
     else {
         // FIXME: Why doesn't this include mouse entered/exited events, or other mouse button events?
         NSEvent *event = [[self window] currentEvent];
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-        captureHitsOnSubviews = !([event type] == NSMouseMoved
-            || [event type] == NSRightMouseDown
-            || ([event type] == NSLeftMouseDown && ([event modifierFlags] & NSControlKeyMask) != 0)
-            || [event type] == NSFlagsChanged
+        captureHitsOnSubviews = !([event type] == NSEventTypeMouseMoved
+            || [event type] == NSEventTypeRightMouseDown
+            || ([event type] == NSEventTypeLeftMouseDown && [event modifierFlags] & NSEventModifierFlagControl)
+            || [event type] == NSEventTypeFlagsChanged
             || isQuickLookEvent(event));
-#pragma clang diagnostic pop
     }
 
     if (!captureHitsOnSubviews) {
@@ -2023,9 +2011,7 @@ static BOOL isQuickLookEvent(NSEvent *event)
 - (void)_sendToolTipMouseExited
 {
     // Nothing matters except window, trackingNumber, and userData.
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-    NSEvent *fakeEvent = [NSEvent enterExitEventWithType:NSMouseExited
+    NSEvent *fakeEvent = [NSEvent enterExitEventWithType:NSEventTypeMouseExited
         location:NSMakePoint(0, 0)
         modifierFlags:0
         timestamp:0
@@ -2034,16 +2020,13 @@ static BOOL isQuickLookEvent(NSEvent *event)
         eventNumber:0
         trackingNumber:TRACKING_RECT_TAG
         userData:_private->trackingRectUserData];
-#pragma clang diagnostic pop
     [_private->trackingRectOwner mouseExited:fakeEvent];
 }
 
 - (void)_sendToolTipMouseEntered
 {
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
     // Nothing matters except window, trackingNumber, and userData.
-    NSEvent *fakeEvent = [NSEvent enterExitEventWithType:NSMouseEntered
+    NSEvent *fakeEvent = [NSEvent enterExitEventWithType:NSEventTypeMouseEntered
         location:NSMakePoint(0, 0)
         modifierFlags:0
         timestamp:0
@@ -2053,7 +2036,6 @@ static BOOL isQuickLookEvent(NSEvent *event)
         trackingNumber:TRACKING_RECT_TAG
         userData:_private->trackingRectUserData];
     [_private->trackingRectOwner mouseEntered:fakeEvent];
-#pragma clang diagnostic pop
 }
 #endif // !PLATFORM(IOS)
 
@@ -2089,21 +2071,18 @@ static BOOL isQuickLookEvent(NSEvent *event)
 static bool mouseEventIsPartOfClickOrDrag(NSEvent *event)
 {
     switch ([event type]) {
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-        case NSLeftMouseDown:
-        case NSLeftMouseUp:
-        case NSLeftMouseDragged:
-        case NSRightMouseDown:
-        case NSRightMouseUp:
-        case NSRightMouseDragged:
-        case NSOtherMouseDown:
-        case NSOtherMouseUp:
-        case NSOtherMouseDragged:
-#pragma clang diagnostic pop
-            return true;
-        default:
-            return false;
+    case NSEventTypeLeftMouseDown:
+    case NSEventTypeLeftMouseUp:
+    case NSEventTypeLeftMouseDragged:
+    case NSEventTypeRightMouseDown:
+    case NSEventTypeRightMouseUp:
+    case NSEventTypeRightMouseDragged:
+    case NSEventTypeOtherMouseDown:
+    case NSEventTypeOtherMouseUp:
+    case NSEventTypeOtherMouseDragged:
+        return true;
+    default:
+        return false;
     }
 }
 
@@ -2134,16 +2113,14 @@ static bool mouseEventIsPartOfClickOrDrag(NSEvent *event)
         float yScroll = visibleRect.origin.y;
         float xScroll = visibleRect.origin.x;
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-        NSEvent *event = [NSEvent mouseEventWithType:NSMouseMoved
+        NSEvent *event = [NSEvent mouseEventWithType:NSEventTypeMouseMoved
             location:NSMakePoint(-1 - xScroll, -1 - yScroll)
             modifierFlags:[[NSApp currentEvent] modifierFlags]
             timestamp:[NSDate timeIntervalSinceReferenceDate]
             windowNumber:[[view window] windowNumber]
             context:nullptr
             eventNumber:0 clickCount:0 pressure:0];
-#pragma clang diagnostic pop
+
         if (Frame* lastHitCoreFrame = core([lastHitView _frame]))
             lastHitCoreFrame->eventHandler().mouseMoved(event, [[self _webView] _pressureEvent]);
     }
@@ -2210,7 +2187,7 @@ static bool mouseEventIsPartOfClickOrDrag(NSEvent *event)
         [archive release];
     } else if ([type isEqual:NSTIFFPboardType] && [self promisedDragTIFFDataSource]) {
         if (Image* image = [self promisedDragTIFFDataSource]->image())
-            [pasteboard setData:(NSData *)image->getTIFFRepresentation() forType:NSTIFFPboardType];
+            [pasteboard setData:(NSData *)image->tiffRepresentation() forType:NSTIFFPboardType];
         [self setPromisedDragTIFFDataSource:0];
     }
 }
@@ -2330,16 +2307,18 @@ static bool mouseEventIsPartOfClickOrDrag(NSEvent *event)
     }
 
 #if !PLATFORM(IOS)
+    NSEvent *fakeEvent = [NSEvent mouseEventWithType:NSEventTypeLeftMouseDragged
+        location:[[self window]
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
-    NSEvent *fakeEvent = [NSEvent mouseEventWithType:NSLeftMouseDragged
-        location:[[self window] convertScreenToBase:[NSEvent mouseLocation]]
+        convertScreenToBase:[NSEvent mouseLocation]]
+#pragma clang diagnostic pop
         modifierFlags:[[NSApp currentEvent] modifierFlags]
         timestamp:[NSDate timeIntervalSinceReferenceDate]
         windowNumber:[[self window] windowNumber]
         context:nullptr
         eventNumber:0 clickCount:0 pressure:0];
-#pragma clang diagnostic pop
+
     [self mouseDragged:fakeEvent];
 #endif
 }
@@ -2557,10 +2536,7 @@ static bool mouseEventIsPartOfClickOrDrag(NSEvent *event)
         return [[self _frame] _documentFragmentWithMarkupString:HTMLString baseURLString:nil];
     }
 
-    // The _hasHTMLDocument clause here is a workaround for a bug in NSAttributedString: Radar 5052369.
-    // If we call _documentFromRange on an XML document we'll get "setInnerHTML: method not found".
-    // FIXME: Remove this once bug 5052369 is fixed.
-    if ([self _hasHTMLDocument] && (pboardType == NSRTFPboardType || pboardType == NSRTFDPboardType)) {
+    if (pboardType == NSRTFPboardType || pboardType == NSRTFDPboardType) {
         NSAttributedString *string = nil;
         if (pboardType == NSRTFDPboardType)
             string = [[NSAttributedString alloc] initWithRTFD:[pasteboard dataForType:NSRTFDPboardType] documentAttributes:NULL];
@@ -3357,12 +3333,9 @@ WEBCORE_COMMAND(toggleUnderline)
     // or from calls back from WebCore once we begin mouse-down event handling.
 #if !PLATFORM(IOS)            
     NSEvent *event = [NSApp currentEvent];
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-    if ([event type] == NSLeftMouseDown
+    if ([event type] == NSEventTypeLeftMouseDown
             && !_private->handlingMouseDownEvent
             && NSPointInRect([event locationInWindow], [self convertRect:[self visibleRect] toView:nil])) {
-#pragma clang diagnostic pop
         return NO;
     }
 #else
@@ -3531,13 +3504,10 @@ WEBCORE_COMMAND(toggleUnderline)
 
 #if !PLATFORM(IOS)
         if (!_private->flagsChangedEventMonitor) {
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-            _private->flagsChangedEventMonitor = [NSEvent addLocalMonitorForEventsMatchingMask:NSFlagsChangedMask handler:^(NSEvent *flagsChangedEvent) {
+            _private->flagsChangedEventMonitor = [NSEvent addLocalMonitorForEventsMatchingMask:NSEventMaskFlagsChanged handler:^(NSEvent *flagsChangedEvent) {
                 [self _postFakeMouseMovedEventForFlagsChangedEvent:flagsChangedEvent];
                 return flagsChangedEvent;
             }];
-#pragma clang diagnostic pop
         }
     } else {
         [NSEvent removeMonitor:_private->flagsChangedEventMonitor];
@@ -3614,10 +3584,12 @@ WEBCORE_COMMAND(toggleUnderline)
     double start = CFAbsoluteTimeGetCurrent();
 #endif
 
-    if (Frame* coreFrame = core([self _frame]))
-        coreFrame->document()->styleResolverChanged(RecalcStyleImmediately);
-    
-#ifdef LOG_TIMES        
+    if (Frame* coreFrame = core([self _frame])) {
+        coreFrame->document()->styleScope().didChangeStyleSheetEnvironment();
+        coreFrame->document()->updateStyleIfNeeded();
+    }
+
+#ifdef LOG_TIMES
     double thisTime = CFAbsoluteTimeGetCurrent() - start;
     LOG(Timing, "%s apply style seconds = %f", [self URL], thisTime);
 #endif
@@ -3631,7 +3603,7 @@ WEBCORE_COMMAND(toggleUnderline)
     if (!coreFrame)
         return;
     if (coreFrame->document()) {
-        if (coreFrame->document()->inPageCache())
+        if (coreFrame->document()->pageCacheState() != Document::NotInPageCache)
             return;
         coreFrame->document()->updateStyleIfNeeded();
     }
@@ -3957,6 +3929,9 @@ static RetainPtr<NSMenuItem> createMenuItem(const HitTestResult& hitTestResult, 
             [menu addItem:menuItem];
 
         auto menuItem = adoptNS([[NSMenuItem alloc] initWithTitle:item.title() action:nullptr keyEquivalent:@""]);
+
+        if (auto tag = toTag(item.action()))
+            [menuItem setTag:*tag];
         [menuItem setEnabled:item.enabled()];
         [menuItem setSubmenu:menu.get()];
 
@@ -4111,9 +4086,19 @@ static RetainPtr<NSArray> customMenuFromDefaultItems(WebView *webView, const Con
 }
 #endif
 
+static BOOL currentScrollIsBlit(NSView *clipView)
+{
+#if PLATFORM(MAC)
+    return [clipView isKindOfClass:[WebClipView class]] && [(WebClipView *)clipView currentScrollIsBlit];
+#else
+    return NO;
+#endif
+}
+
+// FIXME: this entire function could be #ifdeffed out on iOS. The below workaround is AppKit-specific.
 - (void)setNeedsDisplayInRect:(NSRect)invalidRect
 {
-    if (_private->inScrollPositionChanged) {
+    if (_private->inScrollPositionChanged && currentScrollIsBlit([self superview])) {
         // When scrolling, the dirty regions are adjusted for the scroll only
         // after NSViewBoundsDidChangeNotification is sent. Translate the invalid
         // rect to pre-scrolled coordinates in order to get the right dirty region
@@ -4131,7 +4116,7 @@ static RetainPtr<NSArray> customMenuFromDefaultItems(WebView *webView, const Con
     if (!flag)
         return; // There's no way to say you don't need a layout.
     if (Frame* frame = core([self _frame])) {
-        if (frame->document() && frame->document()->inPageCache())
+        if (frame->document() && frame->document()->pageCacheState() != Document::NotInPageCache)
             return;
         if (FrameView* view = frame->view())
             view->setNeedsLayout();
@@ -4144,7 +4129,7 @@ static RetainPtr<NSArray> customMenuFromDefaultItems(WebView *webView, const Con
     if (!flag)
         return; // There's no way to say you don't need a style recalc.
     if (Frame* frame = core([self _frame])) {
-        if (frame->document() && frame->document()->inPageCache())
+        if (frame->document() && frame->document()->pageCacheState() != Document::NotInPageCache)
             return;
         frame->document()->scheduleForcedStyleRecalc();
     }
@@ -4228,7 +4213,7 @@ static RetainPtr<NSArray> customMenuFromDefaultItems(WebView *webView, const Con
     const int cRectThreshold = 10; 
     const float cWastedSpaceThreshold = 0.75f; 
     BOOL useUnionedRect = (count <= 1) || (count > cRectThreshold); 
-    if (!useUnionedRect) { 
+    if (!useUnionedRect) {
         // Attempt to guess whether or not we should use the unioned rect or the individual rects. 
         // We do this by computing the percentage of "wasted space" in the union.  If that wasted space 
         // is too large, then we will do individual rect painting instead. 
@@ -4490,6 +4475,8 @@ static RetainPtr<NSArray> customMenuFromDefaultItems(WebView *webView, const Con
 - (void)mouseDown:(WebEvent *)event
 #endif
 {
+    [[self _webView] prepareForMouseDown];
+
 #if !PLATFORM(IOS)
     // There's a chance that responding to this event will run a nested event loop, and
     // fetching a new event might release the old one. Retaining and then autoreleasing
@@ -4526,11 +4513,12 @@ static RetainPtr<NSArray> customMenuFromDefaultItems(WebView *webView, const Con
     NSInputManager *currentInputManager = [NSInputManager currentInputManager];
 
     if (![currentInputManager wantsToHandleMouseEvents] || ![currentInputManager handleMouseEvent:event]) {
+#pragma clang diagnostic pop
         [_private->completionController endRevertingChange:NO moveLeft:NO];
 
         // If the web page handles the context menu event and menuForEvent: returns nil, we'll get control click events here.
         // We don't want to pass them along to KHTML a second time.
-        if (!([event modifierFlags] & NSControlKeyMask)) {
+        if (!([event modifierFlags] & NSEventModifierFlagControl)) {
             _private->ignoringMouseDraggedEvents = NO;
 
             // Let WebCore get a chance to deal with the event. This will call back to us
@@ -4539,7 +4527,6 @@ static RetainPtr<NSArray> customMenuFromDefaultItems(WebView *webView, const Con
                 coreframe->eventHandler().mouseDown(event, [[self _webView] _pressureEvent]);
         }
     }
-#pragma clang diagnostic pop
 #endif
 
     _private->handlingMouseDownEvent = NO;
@@ -4628,7 +4615,7 @@ static RetainPtr<NSArray> customMenuFromDefaultItems(WebView *webView, const Con
     
     // Once the dragging machinery kicks in, we no longer get mouse drags or the up event.
     // WebCore expects to get balanced down/up's, so we must fake up a mouseup.
-    NSEvent *fakeEvent = [NSEvent mouseEventWithType:NSLeftMouseUp
+    NSEvent *fakeEvent = [NSEvent mouseEventWithType:NSEventTypeLeftMouseUp
                                             location:windowMouseLoc
                                        modifierFlags:[[NSApp currentEvent] modifierFlags]
                                            timestamp:[NSDate timeIntervalSinceReferenceDate]
@@ -4709,6 +4696,8 @@ static bool matchesExtensionOrEquivalent(NSString *filename, NSString *extension
 - (void)mouseUp:(WebEvent *)event
 #endif
 {
+    [[self _webView] prepareForMouseUp];
+
 #if !PLATFORM(IOS)
     // There's a chance that responding to this event will run a nested event loop, and
     // fetching a new event might release the old one. Retaining and then autoreleasing
@@ -4802,19 +4791,12 @@ static PassRefPtr<KeyboardEvent> currentKeyboardEvent(Frame* coreFrame)
         return 0;
 
     switch ([event type]) {
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-    case NSKeyDown: {
-#pragma clang diagnostic pop
-
+    case NSEventTypeKeyDown: {
         PlatformKeyboardEvent platformEvent = PlatformEventFactory::createPlatformKeyboardEvent(event);
         platformEvent.disambiguateKeyDownEvent(PlatformEvent::RawKeyDown);
         return KeyboardEvent::create(platformEvent, coreFrame->document()->defaultView());
     }
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-    case NSKeyUp:
-#pragma clang diagnostic pop
+    case NSEventTypeKeyUp:
         return KeyboardEvent::create(PlatformEventFactory::createPlatformKeyboardEvent(event), coreFrame->document()->defaultView());
     default:
         return 0;
@@ -5008,7 +4990,7 @@ static PassRefPtr<KeyboardEvent> currentKeyboardEvent(Frame* coreFrame)
 
             document->setPaginatedForScreen(_private->paginateScreenContent);
             document->setPrinting(_private->printing);
-            document->styleResolverChanged(RecalcStyleImmediately);
+            document->styleScope().didChangeStyleSheetEnvironment();
         }
     }
 
@@ -5508,11 +5490,8 @@ static PassRefPtr<KeyboardEvent> currentKeyboardEvent(Frame* coreFrame)
     if (![self _canEdit])
         return NO;
     
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-    if (([event modifierFlags] & NSDeviceIndependentModifierFlagsMask) != NSCommandKeyMask)
+    if (([event modifierFlags] & NSEventModifierFlagDeviceIndependentFlagsMask) != NSEventModifierFlagCommand)
         return NO;
-#pragma clang diagnostic pop
 
     NSString *string = [event characters];
     if ([string caseInsensitiveCompare:@"b"] == NSOrderedSame) {
@@ -6432,14 +6411,11 @@ static BOOL writingDirectionKeyBindingsEnabled()
         return NO;
 
     NSEvent *macEvent = platformEvent->macEvent();
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-    if ([macEvent type] == NSKeyDown && [_private->completionController filterKeyDown:macEvent])
+    if ([macEvent type] == NSEventTypeKeyDown && [_private->completionController filterKeyDown:macEvent])
         return YES;
     
-    if ([macEvent type] == NSFlagsChanged)
+    if ([macEvent type] == NSEventTypeFlagsChanged)
         return NO;
-#pragma clang diagnostic pop
     
     parameters.event = event;
     _private->interpretKeyEventsParameters = &parameters;
@@ -7214,8 +7190,11 @@ static void extractUnderlines(NSAttributedString *string, Vector<CompositionUnde
 #endif // PLATFORM(IOS)
 }
 
-#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200 && USE(APPLE_INTERNAL_SDK)
-#import <WebKitAdditions/WebHTMLViewWebNSTextInputSupportAdditions.mm>
+#if HAVE(TOUCH_BAR)
+- (NSCandidateListTouchBarItem *)candidateListTouchBarItem
+{
+    return [[self _webView] candidateList];
+}
 #endif
 
 @end
@@ -7398,13 +7377,15 @@ static CGImageRef selectionImage(Frame* frame, bool forceBlackText)
 }
 
 #if !PLATFORM(IOS)
-- (NSAttributedString *)_attributeStringFromDOMRange:(DOMRange *)range
+- (NSAttributedString *)_attributedStringFromDOMRange:(DOMRange *)range
 {
     NSAttributedString *attributedString;
 #if !LOG_DISABLED
     double start = CFAbsoluteTimeGetCurrent();
-#endif    
-    attributedString = [[[NSAttributedString alloc] _initWithDOMRange:range] autorelease];
+#endif
+    if (!range)
+        return nullptr;
+    attributedString = attributedStringFromRange(*core(range));
 #if !LOG_DISABLED
     double duration = CFAbsoluteTimeGetCurrent() - start;
     LOG(Timing, "creating attributed string from selection took %f seconds.", duration);
@@ -7415,24 +7396,17 @@ static CGImageRef selectionImage(Frame* frame, bool forceBlackText)
 - (NSAttributedString *)attributedString
 {
     DOMDocument *document = [[self _frame] DOMDocument];
-    NSAttributedString *attributedString = [self _attributeStringFromDOMRange:[document _documentRange]];
+    NSAttributedString *attributedString = [self _attributedStringFromDOMRange:[document _documentRange]];
     if (!attributedString) {
         Document* coreDocument = core(document);
         attributedString = editingAttributedStringFromRange(Range::create(*coreDocument, coreDocument, 0, coreDocument, coreDocument->countChildNodes()));
     }
     return attributedString;
 }
-#endif
 
-- (NSString *)selectedString
-{
-    return [[self _frame] _selectedString];
-}
-
-#if !PLATFORM(IOS)
 - (NSAttributedString *)selectedAttributedString
 {
-    NSAttributedString *attributedString = [self _attributeStringFromDOMRange:[self _selectedRange]];
+    NSAttributedString *attributedString = [self _attributedStringFromDOMRange:[self _selectedRange]];
     if (!attributedString) {
         Frame* coreFrame = core([self _frame]);
         if (coreFrame) {
@@ -7446,6 +7420,11 @@ static CGImageRef selectionImage(Frame* frame, bool forceBlackText)
     return attributedString;
 }
 #endif
+
+- (NSString *)selectedString
+{
+    return [[self _frame] _selectedString];
+}
 
 - (BOOL)supportsTextEncoding
 {

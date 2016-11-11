@@ -30,6 +30,7 @@
 
 #include "IDBConnectionProxy.h"
 #include "IDBDatabase.h"
+#include "IDBGetRecordData.h"
 #include "IDBKeyRangeData.h"
 #include "IDBOpenDBRequest.h"
 #include "IDBRequestData.h"
@@ -77,7 +78,7 @@ void IDBConnectionToServer::didDeleteDatabase(const IDBResultData& resultData)
 
 void IDBConnectionToServer::openDatabase(const IDBRequestData& request)
 {
-    LOG(IndexedDB, "IDBConnectionToServer::openDatabase - %s (%" PRIu64 ")", request.databaseIdentifier().debugString().utf8().data(), request.requestedVersion());
+    LOG(IndexedDB, "IDBConnectionToServer::openDatabase - %s (%s) (%" PRIu64 ")", request.databaseIdentifier().debugString().utf8().data(), request.requestIdentifier().loggingString().utf8().data(), request.requestedVersion());
     m_delegate->openDatabase(request);
 }
 
@@ -112,6 +113,20 @@ void IDBConnectionToServer::deleteObjectStore(const IDBRequestData& requestData,
 void IDBConnectionToServer::didDeleteObjectStore(const IDBResultData& resultData)
 {
     LOG(IndexedDB, "IDBConnectionToServer::didDeleteObjectStore");
+    m_proxy->completeOperation(resultData);
+}
+
+void IDBConnectionToServer::renameObjectStore(const IDBRequestData& requestData, uint64_t objectStoreIdentifier, const String& newName)
+{
+    LOG(IndexedDB, "IDBConnectionToServer::renameObjectStore");
+    ASSERT(isMainThread());
+
+    m_delegate->renameObjectStore(requestData, objectStoreIdentifier, newName);
+}
+
+void IDBConnectionToServer::didRenameObjectStore(const IDBResultData& resultData)
+{
+    LOG(IndexedDB, "IDBConnectionToServer::didRenameObjectStore");
     m_proxy->completeOperation(resultData);
 }
 
@@ -157,6 +172,20 @@ void IDBConnectionToServer::didDeleteIndex(const IDBResultData& resultData)
     m_proxy->completeOperation(resultData);
 }
 
+void IDBConnectionToServer::renameIndex(const IDBRequestData& requestData, uint64_t objectStoreIdentifier, uint64_t indexIdentifier, const String& newName)
+{
+    LOG(IndexedDB, "IDBConnectionToServer::renameIndex");
+    ASSERT(isMainThread());
+
+    m_delegate->renameIndex(requestData, objectStoreIdentifier, indexIdentifier, newName);
+}
+
+void IDBConnectionToServer::didRenameIndex(const IDBResultData& resultData)
+{
+    LOG(IndexedDB, "IDBConnectionToServer::didRenameIndex");
+    m_proxy->completeOperation(resultData);
+}
+
 void IDBConnectionToServer::putOrAdd(const IDBRequestData& requestData, const IDBKeyData& key, const IDBValue& value, const IndexedDB::ObjectStoreOverwriteMode overwriteMode)
 {
     LOG(IndexedDB, "IDBConnectionToServer::putOrAdd");
@@ -171,18 +200,32 @@ void IDBConnectionToServer::didPutOrAdd(const IDBResultData& resultData)
     m_proxy->completeOperation(resultData);
 }
 
-void IDBConnectionToServer::getRecord(const IDBRequestData& requestData, const IDBKeyRangeData& keyRangeData)
+void IDBConnectionToServer::getRecord(const IDBRequestData& requestData, const IDBGetRecordData& getRecordData)
 {
     LOG(IndexedDB, "IDBConnectionToServer::getRecord");
     ASSERT(isMainThread());
-    ASSERT(!keyRangeData.isNull);
+    ASSERT(!getRecordData.keyRangeData.isNull);
 
-    m_delegate->getRecord(requestData, keyRangeData);
+    m_delegate->getRecord(requestData, getRecordData);
 }
 
 void IDBConnectionToServer::didGetRecord(const IDBResultData& resultData)
 {
     LOG(IndexedDB, "IDBConnectionToServer::didGetRecord");
+    m_proxy->completeOperation(resultData);
+}
+
+void IDBConnectionToServer::getAllRecords(const IDBRequestData& requestData, const IDBGetAllRecordsData& getAllRecordsData)
+{
+    LOG(IndexedDB, "IDBConnectionToServer::getAllRecords");
+    ASSERT(isMainThread());
+
+    m_delegate->getAllRecords(requestData, getAllRecordsData);
+}
+
+void IDBConnectionToServer::didGetAllRecords(const IDBResultData& resultData)
+{
+    LOG(IndexedDB, "IDBConnectionToServer::didGetAllRecords");
     m_proxy->completeOperation(resultData);
 }
 
@@ -230,12 +273,12 @@ void IDBConnectionToServer::didOpenCursor(const IDBResultData& resultData)
     m_proxy->completeOperation(resultData);
 }
 
-void IDBConnectionToServer::iterateCursor(const IDBRequestData& requestData, const IDBKeyData& key, unsigned long count)
+void IDBConnectionToServer::iterateCursor(const IDBRequestData& requestData, const IDBIterateCursorData& data)
 {
     LOG(IndexedDB, "IDBConnectionToServer::iterateCursor");
     ASSERT(isMainThread());
 
-    m_delegate->iterateCursor(requestData, key, count);
+    m_delegate->iterateCursor(requestData, data);
 }
 
 void IDBConnectionToServer::didIterateCursor(const IDBResultData& resultData)
@@ -330,6 +373,14 @@ void IDBConnectionToServer::confirmDidCloseFromServer(uint64_t databaseConnectio
     ASSERT(isMainThread());
 
     m_delegate->confirmDidCloseFromServer(databaseConnectionIdentifier);
+}
+
+void IDBConnectionToServer::connectionToServerLost(const IDBError& error)
+{
+    LOG(IndexedDB, "IDBConnectionToServer::connectionToServerLost");
+    ASSERT(isMainThread());
+
+    m_proxy->connectionToServerLost(error);
 }
 
 void IDBConnectionToServer::notifyOpenDBRequestBlocked(const IDBResourceIdentifier& requestIdentifier, uint64_t oldVersion, uint64_t newVersion)

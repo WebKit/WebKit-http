@@ -313,9 +313,9 @@ static Optional<PaymentRequest::MerchantCapabilities> createMerchantCapabilities
     return result;
 }
 
-static Optional<PaymentRequest::SupportedNetworks> createSupportedNetworks(DOMWindow& window, const ArrayValue& supportedNetworksArray)
+static Optional<Vector<String>> createSupportedNetworks(unsigned version, DOMWindow& window, const ArrayValue& supportedNetworksArray)
 {
-    PaymentRequest::SupportedNetworks result;
+    Vector<String> result;
 
     size_t supportedNetworksCount;
     if (!supportedNetworksArray.length(supportedNetworksCount))
@@ -326,25 +326,13 @@ static Optional<PaymentRequest::SupportedNetworks> createSupportedNetworks(DOMWi
         if (!supportedNetworksArray.get(i, supportedNetwork))
             return Nullopt;
 
-        if (supportedNetwork == "amex")
-            result.amex = true;
-        else if (supportedNetwork == "chinaUnionPay")
-            result.chinaUnionPay = true;
-        else if (supportedNetwork == "discover")
-            result.discover = true;
-        else if (supportedNetwork == "interac")
-            result.interac = true;
-        else if (supportedNetwork == "masterCard")
-            result.masterCard = true;
-        else if (supportedNetwork == "privateLabel")
-            result.privateLabel = true;
-        else if (supportedNetwork == "visa")
-            result.visa = true;
-        else {
+        if (!PaymentRequest::isValidSupportedNetwork(version, supportedNetwork)) {
             auto message = makeString("\"" + supportedNetwork, "\" is not a valid payment network.");
             window.printErrorMessage(message);
             return Nullopt;
         }
+
+        result.append(WTFMove(supportedNetwork));
     }
 
     return result;
@@ -472,10 +460,6 @@ static bool isValidPaymentRequestPropertyName(const String& propertyName)
         "total",
         "lineItems",
         "applicationData",
-
-        // FIXME: Get rid of these.
-        "requiredBillingAddressFields",
-        "requiredShippingAddressFields",
     };
 
     for (auto& validPropertyName : validPropertyNames) {
@@ -486,7 +470,7 @@ static bool isValidPaymentRequestPropertyName(const String& propertyName)
     return false;
 }
 
-static Optional<PaymentRequest> createPaymentRequest(DOMWindow& window, const Dictionary& dictionary)
+static Optional<PaymentRequest> createPaymentRequest(unsigned version, DOMWindow& window, const Dictionary& dictionary)
 {
     PaymentRequest paymentRequest;
 
@@ -494,6 +478,16 @@ static Optional<PaymentRequest> createPaymentRequest(DOMWindow& window, const Di
     dictionary.getOwnPropertyNames(propertyNames);
 
     for (auto& propertyName : propertyNames) {
+        if (propertyName == "requiredShippingAddressFields") {
+            window.printErrorMessage("\"requiredShippingAddressFields\" has been deprecated. Please switch to \"requiredShippingContactFields\" instead.");
+            return Nullopt;
+        }
+
+        if (propertyName == "requiredBillingAddressFields") {
+            window.printErrorMessage("\"requiredBillingAddressFields\" has been deprecated. Please switch to \"requiredBillingContactFields\" instead.");
+            return Nullopt;
+        }
+
         if (!isValidPaymentRequestPropertyName(propertyName)) {
             auto message = makeString("\"" + propertyName, "\" is not a valid payment request property name.");
             window.printErrorMessage(message);
@@ -510,7 +504,7 @@ static Optional<PaymentRequest> createPaymentRequest(DOMWindow& window, const Di
     }
 
     if (auto supportedNetworksArray = dictionary.get<ArrayValue>("supportedNetworks")) {
-        auto supportedNetworks = createSupportedNetworks(window, *supportedNetworksArray);
+        auto supportedNetworks = createSupportedNetworks(version, window, *supportedNetworksArray);
         if (!supportedNetworks)
             return Nullopt;
 
@@ -528,17 +522,7 @@ static Optional<PaymentRequest> createPaymentRequest(DOMWindow& window, const Di
             return Nullopt;
 
         paymentRequest.setRequiredBillingContactFields(*requiredBillingContactFields);
-    } else if (auto requiredBillingAddressFieldsArray = dictionary.get<ArrayValue>("requiredBillingAddressFields")) {
-        if (PageConsoleClient* pageConsole = window.console())
-            pageConsole->addMessage(MessageSource::JS, MessageLevel::Warning, "\"requiredShippingAddressFields\" has been deprecated and will stop working shortly. Please switch to \"requiredShippingContactFields\" instead.");
-
-        auto requiredBillingAddressFields = createContactFields(window, *requiredBillingAddressFieldsArray);
-        if (!requiredBillingAddressFields)
-            return Nullopt;
-
-        paymentRequest.setRequiredBillingContactFields(*requiredBillingAddressFields);
     }
-
 
     if (auto billingContactValue = dictionary.get<JSC::JSValue>("billingContact")) {
         String errorMessage;
@@ -557,17 +541,7 @@ static Optional<PaymentRequest> createPaymentRequest(DOMWindow& window, const Di
             return Nullopt;
 
         paymentRequest.setRequiredShippingContactFields(*requiredShippingContactFields);
-    } else if (auto requiredShippingAddressFieldsArray = dictionary.get<ArrayValue>("requiredShippingAddressFields")) {
-        if (PageConsoleClient* pageConsole = window.console())
-            pageConsole->addMessage(MessageSource::JS, MessageLevel::Warning, "\"requiredShippingAddressFields\" has been deprecated and will stop working shortly. Please switch to \"requiredShippingContactFields\" instead.");
-
-        auto requiredShippingAddressFields = createContactFields(window, *requiredShippingAddressFieldsArray);
-        if (!requiredShippingAddressFields)
-            return Nullopt;
-
-        paymentRequest.setRequiredShippingContactFields(*requiredShippingAddressFields);
     }
-
 
     if (auto shippingContactValue = dictionary.get<JSC::JSValue>("shippingContact")) {
         String errorMessage;
@@ -661,49 +635,40 @@ static bool canCallApplePaySessionAPIs(Document& document, String& errorMessage)
     return true;
 }
 
-RefPtr<ApplePaySession> ApplePaySession::create(Document& document, unsigned version, const Dictionary& dictionary, ExceptionCode& ec)
+ExceptionOr<Ref<ApplePaySession>> ApplePaySession::create(Document& document, unsigned version, const Dictionary& dictionary)
 {
     DOMWindow& window = *document.domWindow();
 
     String errorMessage;
     if (!canCallApplePaySessionAPIs(document, errorMessage)) {
         window.printErrorMessage(errorMessage);
-        ec = INVALID_ACCESS_ERR;
-        return nullptr;
+        return Exception { INVALID_ACCESS_ERR };
     }
 
     if (!ScriptController::processingUserGesture()) {
         window.printErrorMessage("Must create a new ApplePaySession from a user gesture handler.");
-        ec = INVALID_ACCESS_ERR;
-        return nullptr;
+        return Exception { INVALID_ACCESS_ERR };
     }
 
     auto& paymentCoordinator = document.frame()->mainFrame().paymentCoordinator();
 
     if (!version || !paymentCoordinator.supportsVersion(version)) {
         window.printErrorMessage(makeString("\"" + String::number(version), "\" is not a supported version."));
-        ec = INVALID_ACCESS_ERR;
-        return nullptr;
+        return Exception { INVALID_ACCESS_ERR };
     }
 
-    auto paymentRequest = createPaymentRequest(window, dictionary);
-    if (!paymentRequest) {
-        ec = TYPE_MISMATCH_ERR;
-        return nullptr;
-    }
+    auto paymentRequest = createPaymentRequest(version, window, dictionary);
+    if (!paymentRequest)
+        return Exception { TYPE_MISMATCH_ERR };
 
-    if (!PaymentRequestValidator(window).validate(*paymentRequest)) {
-        ec = INVALID_ACCESS_ERR;
-        return nullptr;
-    }
+    if (!PaymentRequestValidator(window).validate(*paymentRequest))
+        return Exception { INVALID_ACCESS_ERR };
 
-    return adoptRef(new ApplePaySession(document, WTFMove(*paymentRequest)));
+    return adoptRef(*new ApplePaySession(document, WTFMove(*paymentRequest)));
 }
 
 ApplePaySession::ApplePaySession(Document& document, PaymentRequest&& paymentRequest)
     : ActiveDOMObject(&document)
-    , m_state(State::Idle)
-    , m_merchantValidationState(MerchantValidationState::Idle)
     , m_paymentRequest(WTFMove(paymentRequest))
 {
     suspendIfNeeded();
@@ -713,12 +678,10 @@ ApplePaySession::~ApplePaySession()
 {
 }
 
-bool ApplePaySession::supportsVersion(ScriptExecutionContext& scriptExecutionContext, unsigned version, ExceptionCode& ec)
+ExceptionOr<bool> ApplePaySession::supportsVersion(ScriptExecutionContext& scriptExecutionContext, unsigned version)
 {
-    if (!version) {
-        ec = INVALID_ACCESS_ERR;
-        return false;
-    }
+    if (!version)
+        return Exception { INVALID_ACCESS_ERR };
 
     auto& document = downcast<Document>(scriptExecutionContext);
     DOMWindow& window = *document.domWindow();
@@ -726,12 +689,10 @@ bool ApplePaySession::supportsVersion(ScriptExecutionContext& scriptExecutionCon
     String errorMessage;
     if (!canCallApplePaySessionAPIs(document, errorMessage)) {
         window.printErrorMessage(errorMessage);
-        ec = INVALID_ACCESS_ERR;
-        return false;
+        return Exception { INVALID_ACCESS_ERR };
     }
 
-    auto& paymentCoordinator = document.frame()->mainFrame().paymentCoordinator();
-    return paymentCoordinator.supportsVersion(version);
+    return document.frame()->mainFrame().paymentCoordinator().supportsVersion(version);
 }
 
 static bool shouldDiscloseApplePayCapability(Document& document)
@@ -743,7 +704,7 @@ static bool shouldDiscloseApplePayCapability(Document& document)
     return document.frame()->settings().applePayCapabilityDisclosureAllowed();
 }
 
-bool ApplePaySession::canMakePayments(ScriptExecutionContext& scriptExecutionContext, ExceptionCode& ec)
+ExceptionOr<bool> ApplePaySession::canMakePayments(ScriptExecutionContext& scriptExecutionContext)
 {
     auto& document = downcast<Document>(scriptExecutionContext);
     DOMWindow& window = *document.domWindow();
@@ -751,15 +712,13 @@ bool ApplePaySession::canMakePayments(ScriptExecutionContext& scriptExecutionCon
     String errorMessage;
     if (!canCallApplePaySessionAPIs(document, errorMessage)) {
         window.printErrorMessage(errorMessage);
-        ec = INVALID_ACCESS_ERR;
-        return false;
+        return Exception { INVALID_ACCESS_ERR };
     }
 
-    auto& paymentCoordinator = document.frame()->mainFrame().paymentCoordinator();
-    return paymentCoordinator.canMakePayments();
+    return document.frame()->mainFrame().paymentCoordinator().canMakePayments();
 }
 
-void ApplePaySession::canMakePaymentsWithActiveCard(ScriptExecutionContext& scriptExecutionContext, const String& merchantIdentifier, DeferredWrapper&& promise, ExceptionCode& ec)
+ExceptionOr<void> ApplePaySession::canMakePaymentsWithActiveCard(ScriptExecutionContext& scriptExecutionContext, const String& merchantIdentifier, Ref<DeferredPromise>&& passedPromise)
 {
     auto& document = downcast<Document>(scriptExecutionContext);
     DOMWindow& window = *document.domWindow();
@@ -767,77 +726,105 @@ void ApplePaySession::canMakePaymentsWithActiveCard(ScriptExecutionContext& scri
     String errorMessage;
     if (!canCallApplePaySessionAPIs(document, errorMessage)) {
         window.printErrorMessage(errorMessage);
-        ec = INVALID_ACCESS_ERR;
-        return;
+        return Exception { INVALID_ACCESS_ERR };
     }
 
+    RefPtr<DeferredPromise> promise(WTFMove(passedPromise));
     if (!shouldDiscloseApplePayCapability(document)) {
         auto& paymentCoordinator = document.frame()->mainFrame().paymentCoordinator();
         bool canMakePayments = paymentCoordinator.canMakePayments();
 
         RunLoop::main().dispatch([promise, canMakePayments]() mutable {
-            promise.resolve(canMakePayments);
+            promise->resolve(canMakePayments);
         });
-        return;
+        return { };
     }
 
     auto& paymentCoordinator = document.frame()->mainFrame().paymentCoordinator();
 
     paymentCoordinator.canMakePaymentsWithActiveCard(merchantIdentifier, document.domain(), [promise](bool canMakePayments) mutable {
-        promise.resolve(canMakePayments);
+        promise->resolve(canMakePayments);
     });
+    return { };
 }
 
-void ApplePaySession::begin(ExceptionCode& ec)
+ExceptionOr<void> ApplePaySession::openPaymentSetup(ScriptExecutionContext& scriptExecutionContext, const String& merchantIdentifier, Ref<DeferredPromise>&& passedPromise)
+{
+    auto& document = downcast<Document>(scriptExecutionContext);
+    DOMWindow& window = *document.domWindow();
+
+    String errorMessage;
+    if (!canCallApplePaySessionAPIs(document, errorMessage)) {
+        window.printErrorMessage(errorMessage);
+        return Exception { INVALID_ACCESS_ERR };
+    }
+
+    if (!ScriptController::processingUserGesture()) {
+        window.printErrorMessage("Must call ApplePaySession.openPaymentSetup from a user gesture handler.");
+        return Exception { INVALID_ACCESS_ERR };
+    }
+
+    RefPtr<DeferredPromise> promise(WTFMove(passedPromise));
+    auto& paymentCoordinator = document.frame()->mainFrame().paymentCoordinator();
+
+    paymentCoordinator.openPaymentSetup(merchantIdentifier, document.domain(), [promise](bool result) mutable {
+        promise->resolve(result);
+    });
+
+    return { };
+}
+
+ExceptionOr<void> ApplePaySession::begin()
 {
     auto& document = *downcast<Document>(scriptExecutionContext());
     auto& window = *document.domWindow();
 
     if (!canBegin()) {
         window.printErrorMessage("Payment session is already active.");
-        ec = INVALID_ACCESS_ERR;
-        return;
+        return Exception { INVALID_ACCESS_ERR };
     }
 
     if (paymentCoordinator().hasActiveSession()) {
         window.printErrorMessage("Page already has an active payment session.");
-
-        ec = INVALID_ACCESS_ERR;
-        return;
+        return Exception { INVALID_ACCESS_ERR };
     }
-
-    paymentCoordinator().beginPaymentSession(*this);
 
     Vector<URL> linkIconURLs;
     for (auto& icon : LinkIconCollector { document }.iconsOfTypes({ LinkIconType::TouchIcon, LinkIconType::TouchPrecomposedIcon }))
         linkIconURLs.append(icon.url);
 
+    if (!paymentCoordinator().beginPaymentSession(*this, document.url(), linkIconURLs, m_paymentRequest)) {
+        window.printErrorMessage("There is already has an active payment session.");
+        return Exception { INVALID_ACCESS_ERR };
+    }
+
     m_state = State::Active;
 
-    paymentCoordinator().showPaymentUI(document.url(), linkIconURLs, m_paymentRequest);
-
     setPendingActivity(this);
+
+    return { };
 }
 
-void ApplePaySession::abort(ExceptionCode& ec)
+ExceptionOr<void> ApplePaySession::abort()
 {
-    if (!canAbort()) {
-        ec = INVALID_ACCESS_ERR;
-        return;
-    }
+    if (!canAbort())
+        return Exception { INVALID_ACCESS_ERR };
 
     m_state = State::Aborted;
     paymentCoordinator().abortPaymentSession();
 
     didReachFinalState();
+
+    return { };
 }
 
-void ApplePaySession::completeMerchantValidation(const Dictionary& merchantSessionDictionary, ExceptionCode& ec)
+ExceptionOr<void> ApplePaySession::completeMerchantValidation(const Dictionary& merchantSessionDictionary)
 {
-    if (!canCompleteMerchantValidation()) {
-        ec = INVALID_ACCESS_ERR;
-        return;
-    }
+    if (!canCompleteMerchantValidation())
+        return Exception { INVALID_ACCESS_ERR };
+
+    if (!merchantSessionDictionary.initializerObject())
+        return Exception { TypeError };
 
     auto& document = *downcast<Document>(scriptExecutionContext());
     auto& window = *document.domWindow();
@@ -846,14 +833,14 @@ void ApplePaySession::completeMerchantValidation(const Dictionary& merchantSessi
     auto merchantSession = PaymentMerchantSession::fromJS(*merchantSessionDictionary.execState(), merchantSessionDictionary.initializerObject(), errorMessage);
     if (!merchantSession) {
         window.printErrorMessage(errorMessage);
-        ec = INVALID_ACCESS_ERR;
-        return;
+        return Exception { INVALID_ACCESS_ERR };
     }
 
     m_merchantValidationState = MerchantValidationState::ValidationComplete;
     paymentCoordinator().completeMerchantValidation(*merchantSession);
-}
 
+    return { };
+}
 
 static Optional<PaymentAuthorizationStatus> toPaymentAuthorizationStatus(unsigned short status)
 {
@@ -887,137 +874,116 @@ static Optional<PaymentAuthorizationStatus> toPaymentAuthorizationStatus(unsigne
     }
 }
 
-void ApplePaySession::completeShippingMethodSelection(unsigned short status, const Dictionary& newTotalDictionary, const ArrayValue& newLineItemsArray, ExceptionCode& ec)
+ExceptionOr<void> ApplePaySession::completeShippingMethodSelection(unsigned short status, const Dictionary& newTotalDictionary, const ArrayValue& newLineItemsArray)
 {
-    if (!canCompleteShippingMethodSelection()) {
-        ec = INVALID_ACCESS_ERR;
-        return;
-    }
+    if (!canCompleteShippingMethodSelection())
+        return Exception { INVALID_ACCESS_ERR };
 
     auto authorizationStatus = toPaymentAuthorizationStatus(status);
-    if (!authorizationStatus) {
-        ec = INVALID_ACCESS_ERR;
-        return;
-    }
+    if (!authorizationStatus)
+        return Exception { INVALID_ACCESS_ERR };
 
     auto& window = *downcast<Document>(scriptExecutionContext())->domWindow();
     auto newTotal = createLineItem(window, newTotalDictionary);
-    if (!newTotal) {
-        ec = INVALID_ACCESS_ERR;
-        return;
-    }
+    if (!newTotal)
+        return Exception { INVALID_ACCESS_ERR };
 
-    if (!PaymentRequestValidator(window).validateTotal(*newTotal)) {
-        ec = INVALID_ACCESS_ERR;
-        return;
-    }
+    if (!PaymentRequestValidator(window).validateTotal(*newTotal))
+        return Exception { INVALID_ACCESS_ERR };
 
     auto newLineItems = createLineItems(window, newLineItemsArray);
-    if (!newLineItems) {
-        ec = INVALID_ACCESS_ERR;
-        return;
-    }
+    if (!newLineItems)
+        return Exception { INVALID_ACCESS_ERR };
 
     m_state = State::Active;
     PaymentRequest::TotalAndLineItems totalAndLineItems;
     totalAndLineItems.total = *newTotal;
     totalAndLineItems.lineItems = *newLineItems;
     paymentCoordinator().completeShippingMethodSelection(*authorizationStatus, totalAndLineItems);
+
+    return { };
 }
 
-void ApplePaySession::completeShippingContactSelection(unsigned short status, const ArrayValue& newShippingMethodsArray, const Dictionary& newTotalDictionary, const ArrayValue& newLineItemsArray, ExceptionCode& ec)
+ExceptionOr<void> ApplePaySession::completeShippingContactSelection(unsigned short status, const ArrayValue& newShippingMethodsArray, const Dictionary& newTotalDictionary, const ArrayValue& newLineItemsArray)
 {
-    if (!canCompleteShippingContactSelection()) {
-        ec = INVALID_ACCESS_ERR;
-        return;
-    }
+    if (!canCompleteShippingContactSelection())
+        return Exception { INVALID_ACCESS_ERR };
 
     auto authorizationStatus = toPaymentAuthorizationStatus(status);
-    if (!authorizationStatus) {
-        ec = INVALID_ACCESS_ERR;
-        return;
-    }
+    if (!authorizationStatus)
+        return Exception { INVALID_ACCESS_ERR };
 
     auto& window = *downcast<Document>(scriptExecutionContext())->domWindow();
 
     auto newShippingMethods = createShippingMethods(window, newShippingMethodsArray);
-    if (!newShippingMethods) {
-        ec = INVALID_ACCESS_ERR;
-        return;
-    }
+    if (!newShippingMethods)
+        return Exception { INVALID_ACCESS_ERR };
 
     auto newTotal = createLineItem(window, newTotalDictionary);
-    if (!newTotal) {
-        ec = INVALID_ACCESS_ERR;
-        return;
-    }
+    if (!newTotal)
+        return Exception { INVALID_ACCESS_ERR };
 
-    if (!PaymentRequestValidator(window).validateTotal(*newTotal)) {
-        ec = INVALID_ACCESS_ERR;
-        return;
-    }
+    if (!PaymentRequestValidator(window).validateTotal(*newTotal))
+        return Exception { INVALID_ACCESS_ERR };
 
     auto newLineItems = createLineItems(window, newLineItemsArray);
-    if (!newLineItems) {
-        ec = INVALID_ACCESS_ERR;
-        return;
-    }
+    if (!newLineItems)
+        return Exception { INVALID_ACCESS_ERR };
 
     m_state = State::Active;
     PaymentRequest::TotalAndLineItems totalAndLineItems;
     totalAndLineItems.total = *newTotal;
     totalAndLineItems.lineItems = *newLineItems;
     paymentCoordinator().completeShippingContactSelection(*authorizationStatus, *newShippingMethods, totalAndLineItems);
+
+    return { };
 }
 
-void ApplePaySession::completePaymentMethodSelection(const Dictionary& newTotalDictionary, const ArrayValue& newLineItemsArray, ExceptionCode& ec)
+ExceptionOr<void> ApplePaySession::completePaymentMethodSelection(const Dictionary& newTotalDictionary, const ArrayValue& newLineItemsArray)
 {
-    if (!canCompletePaymentMethodSelection()) {
-        ec = INVALID_ACCESS_ERR;
-        return;
-    }
+    if (!canCompletePaymentMethodSelection())
+        return Exception { INVALID_ACCESS_ERR };
 
-    auto& window = *downcast<Document>(scriptExecutionContext())->domWindow();
+    auto& window = *downcast<Document>(*scriptExecutionContext()).domWindow();
     auto newTotal = createLineItem(window, newTotalDictionary);
-    if (!newTotal) {
-        ec = INVALID_ACCESS_ERR;
-        return;
-    }
+    if (!newTotal)
+        return Exception { INVALID_ACCESS_ERR };
 
-    if (!PaymentRequestValidator(window).validateTotal(*newTotal)) {
-        ec = INVALID_ACCESS_ERR;
-        return;
-    }
+    if (!PaymentRequestValidator(window).validateTotal(*newTotal))
+        return Exception { INVALID_ACCESS_ERR };
 
     auto newLineItems = createLineItems(window, newLineItemsArray);
-    if (!newLineItems) {
-        ec = INVALID_ACCESS_ERR;
-        return;
-    }
+    if (!newLineItems)
+        return Exception { INVALID_ACCESS_ERR };
 
     m_state = State::Active;
     PaymentRequest::TotalAndLineItems totalAndLineItems;
     totalAndLineItems.total = *newTotal;
     totalAndLineItems.lineItems = *newLineItems;
     paymentCoordinator().completePaymentMethodSelection(totalAndLineItems);
+
+    return { };
 }
 
-void ApplePaySession::completePayment(unsigned short status, ExceptionCode& ec)
+ExceptionOr<void> ApplePaySession::completePayment(unsigned short status)
 {
-    if (!canCompletePayment()) {
-        ec = INVALID_ACCESS_ERR;
-        return;
-    }
+    if (!canCompletePayment())
+        return Exception { INVALID_ACCESS_ERR };
 
     auto authorizationStatus = toPaymentAuthorizationStatus(status);
-    if (!authorizationStatus) {
-        ec = INVALID_ACCESS_ERR;
-        return;
-    }
+    if (!authorizationStatus)
+        return Exception { INVALID_ACCESS_ERR };
 
     paymentCoordinator().completePaymentSession(*authorizationStatus);
+
+    if (!isFinalStateStatus(*authorizationStatus)) {
+        m_state = State::Active;
+        return { };
+    }
+
     m_state = State::Completed;
     unsetPendingActivity(this);
+    return { };
 }
 
 void ApplePaySession::validateMerchant(const URL& validationURL)
@@ -1038,8 +1004,8 @@ void ApplePaySession::validateMerchant(const URL& validationURL)
 
     m_merchantValidationState = MerchantValidationState::ValidatingMerchant;
 
-    RefPtr<ApplePayValidateMerchantEvent> event = ApplePayValidateMerchantEvent::create(eventNames().validatemerchantEvent, validationURL);
-    dispatchEvent(*event);
+    auto event = ApplePayValidateMerchantEvent::create(eventNames().validatemerchantEvent, validationURL);
+    dispatchEvent(event.get());
 }
 
 void ApplePaySession::didAuthorizePayment(const Payment& payment)
@@ -1048,8 +1014,8 @@ void ApplePaySession::didAuthorizePayment(const Payment& payment)
 
     m_state = State::Authorized;
 
-    RefPtr<ApplePayPaymentAuthorizedEvent> event = ApplePayPaymentAuthorizedEvent::create(eventNames().paymentauthorizedEvent, payment);
-    dispatchEvent(*event);
+    auto event = ApplePayPaymentAuthorizedEvent::create(eventNames().paymentauthorizedEvent, payment);
+    dispatchEvent(event.get());
 }
 
 void ApplePaySession::didSelectShippingMethod(const PaymentRequest::ShippingMethod& shippingMethod)
@@ -1062,8 +1028,8 @@ void ApplePaySession::didSelectShippingMethod(const PaymentRequest::ShippingMeth
     }
 
     m_state = State::ShippingMethodSelected;
-    RefPtr<ApplePayShippingMethodSelectedEvent> event = ApplePayShippingMethodSelectedEvent::create(eventNames().shippingmethodselectedEvent, shippingMethod);
-    dispatchEvent(*event);
+    auto event = ApplePayShippingMethodSelectedEvent::create(eventNames().shippingmethodselectedEvent, shippingMethod);
+    dispatchEvent(event.get());
 }
 
 void ApplePaySession::didSelectShippingContact(const PaymentContact& shippingContact)
@@ -1076,8 +1042,8 @@ void ApplePaySession::didSelectShippingContact(const PaymentContact& shippingCon
     }
 
     m_state = State::ShippingContactSelected;
-    RefPtr<ApplePayShippingContactSelectedEvent> event = ApplePayShippingContactSelectedEvent::create(eventNames().shippingcontactselectedEvent, shippingContact);
-    dispatchEvent(*event);
+    auto event = ApplePayShippingContactSelectedEvent::create(eventNames().shippingcontactselectedEvent, shippingContact);
+    dispatchEvent(event.get());
 }
 
 void ApplePaySession::didSelectPaymentMethod(const PaymentMethod& paymentMethod)
@@ -1090,8 +1056,8 @@ void ApplePaySession::didSelectPaymentMethod(const PaymentMethod& paymentMethod)
     }
 
     m_state = State::PaymentMethodSelected;
-    RefPtr<ApplePayPaymentMethodSelectedEvent> event = ApplePayPaymentMethodSelectedEvent::create(eventNames().paymentmethodselectedEvent, paymentMethod);
-    dispatchEvent(*event);
+    auto event = ApplePayPaymentMethodSelectedEvent::create(eventNames().paymentmethodselectedEvent, paymentMethod);
+    dispatchEvent(event.get());
 }
 
 void ApplePaySession::didCancelPayment()
@@ -1100,8 +1066,8 @@ void ApplePaySession::didCancelPayment()
 
     m_state = State::Canceled;
 
-    RefPtr<Event> event = Event::create(eventNames().cancelEvent, false, false);
-    dispatchEvent(*event);
+    auto event = Event::create(eventNames().cancelEvent, false, false);
+    dispatchEvent(event.get());
 
     didReachFinalState();
 }
@@ -1142,7 +1108,7 @@ void ApplePaySession::stop()
 
 PaymentCoordinator& ApplePaySession::paymentCoordinator() const
 {
-    return downcast<Document>(scriptExecutionContext())->frame()->mainFrame().paymentCoordinator();
+    return downcast<Document>(*scriptExecutionContext()).frame()->mainFrame().paymentCoordinator();
 }
 
 bool ApplePaySession::canBegin() const

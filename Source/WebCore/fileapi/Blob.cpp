@@ -42,17 +42,17 @@ namespace WebCore {
 
 class BlobURLRegistry final : public URLRegistry {
 public:
-    void registerURL(SecurityOrigin*, const URL&, URLRegistrable*) override;
+    void registerURL(SecurityOrigin*, const URL&, URLRegistrable&) override;
     void unregisterURL(const URL&) override;
 
     static URLRegistry& registry();
 };
 
 
-void BlobURLRegistry::registerURL(SecurityOrigin* origin, const URL& publicURL, URLRegistrable* blob)
+void BlobURLRegistry::registerURL(SecurityOrigin* origin, const URL& publicURL, URLRegistrable& blob)
 {
-    ASSERT(&blob->registry() == this);
-    ThreadableBlobRegistry::registerBlobURL(origin, publicURL, static_cast<Blob*>(blob)->url());
+    ASSERT(&blob.registry() == this);
+    ThreadableBlobRegistry::registerBlobURL(origin, publicURL, static_cast<Blob&>(blob).url());
 }
 
 void BlobURLRegistry::unregisterURL(const URL& url)
@@ -77,7 +77,7 @@ Blob::Blob()
     ThreadableBlobRegistry::registerBlobURL(m_internalURL, Vector<BlobPart>(), String());
 }
 
-Blob::Blob(Vector<uint8_t> data, const String& contentType)
+Blob::Blob(Vector<uint8_t>&& data, const String& contentType)
     : m_type(contentType)
     , m_size(data.size())
 {
@@ -87,7 +87,7 @@ Blob::Blob(Vector<uint8_t> data, const String& contentType)
     ThreadableBlobRegistry::registerBlobURL(m_internalURL, WTFMove(blobParts), contentType);
 }
 
-Blob::Blob(Vector<BlobPart> blobParts, const String& contentType)
+Blob::Blob(Vector<BlobPart>&& blobParts, const String& contentType)
     : m_type(contentType)
     , m_size(-1)
 {

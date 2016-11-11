@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,10 +23,10 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef JSGenericTypedArrayView_h
-#define JSGenericTypedArrayView_h
+#pragma once
 
 #include "JSArrayBufferView.h"
+#include "ThrowScope.h"
 #include "ToNativeFromValue.h"
 
 namespace JSC {
@@ -88,6 +88,8 @@ enum class CopyType {
     Unobservable,
 };
 
+static const char* const typedArrayBufferHasBeenDetachedErrorMessage = "Underlying ArrayBuffer has been detached from the view";
+
 template<typename Adaptor>
 class JSGenericTypedArrayView : public JSArrayBufferView {
 public:
@@ -103,6 +105,7 @@ protected:
     
 public:
     static JSGenericTypedArrayView* create(ExecState*, Structure*, unsigned length);
+    static JSGenericTypedArrayView* createWithFastVector(ExecState*, Structure*, unsigned length, void* vector);
     static JSGenericTypedArrayView* createUninitialized(ExecState*, Structure*, unsigned length);
     static JSGenericTypedArrayView* create(ExecState*, Structure*, PassRefPtr<ArrayBuffer>, unsigned byteOffset, unsigned length);
     static JSGenericTypedArrayView* create(VM&, Structure*, PassRefPtr<typename Adaptor::ViewType> impl);
@@ -155,19 +158,27 @@ public:
     
     void setIndexQuicklyToDouble(unsigned i, double value)
     {
-        setIndexQuicklyToNativeValue(i, toNativeFromValue<Adaptor>(value));
+        setIndexQuicklyToNativeValue(i, toNativeFromValue<Adaptor>(jsNumber(value)));
     }
     
     void setIndexQuickly(unsigned i, JSValue value)
     {
+        ASSERT(!value.isObject());
         setIndexQuicklyToNativeValue(i, toNativeFromValue<Adaptor>(value));
     }
     
     bool setIndex(ExecState* exec, unsigned i, JSValue jsValue)
     {
+        VM& vm = exec->vm();
+        auto scope = DECLARE_THROW_SCOPE(vm);
+
         typename Adaptor::Type value = toNativeFromValue<Adaptor>(exec, jsValue);
-        if (exec->hadException())
+        RETURN_IF_EXCEPTION(scope, false);
+
+        if (isNeutered()) {
+            throwTypeError(exec, scope, ASCIILiteral(typedArrayBufferHasBeenDetachedErrorMessage));
             return false;
+        }
 
         if (i >= m_length)
             return false;
@@ -178,24 +189,11 @@ public:
 
     static ElementType toAdaptorNativeFromValue(ExecState* exec, JSValue jsValue) { return toNativeFromValue<Adaptor>(exec, jsValue); }
 
-    bool setRangeToValue(ExecState* exec, unsigned start, unsigned end, JSValue jsValue)
-    {
-        ASSERT(0 <= start && start <= end && end <= m_length);
-
-        typename Adaptor::Type value = toNativeFromValue<Adaptor>(exec, jsValue);
-        if (exec->hadException())
-            return false;
-
-        // We might want to do something faster here (e.g. SIMD) if this is too slow.
-        typename Adaptor::Type* array = typedVector();
-        for (unsigned i = start; i < end; ++i)
-            array[i] = value;
-
-        return true;
-    }
+    static Optional<ElementType> toAdaptorNativeFromValueWithoutCoercion(JSValue jsValue) { return toNativeFromValueWithoutCoercion<Adaptor>(jsValue); }
 
     void sort()
     {
+        RELEASE_ASSERT(!isNeutered());
         switch (Adaptor::typeValue) {
         case TypeFloat32:
             sortFloat<int32_t>();
@@ -227,11 +225,9 @@ public:
     // then it will have thrown an exception.
     bool set(ExecState*, unsigned offset, JSObject*, unsigned objectOffset, unsigned length, CopyType type = CopyType::Unobservable);
     
-    PassRefPtr<typename Adaptor::ViewType> typedImpl()
-    {
-        return Adaptor::ViewType::create(buffer(), byteOffset(), length());
-    }
-    
+    PassRefPtr<typename Adaptor::ViewType> possiblySharedTypedImpl();
+    PassRefPtr<typename Adaptor::ViewType> unsharedTypedImpl();
+
     static Structure* createStructure(VM& vm, JSGlobalObject* globalObject, JSValue prototype)
     {
         return Structure::create(vm, globalObject, prototype, TypeInfo(typeForTypedArrayType(Adaptor::typeValue), StructureFlags), info(), NonArray);
@@ -269,9 +265,14 @@ public:
     ArrayBuffer* existingBuffer();
 
     static const TypedArrayType TypedArrayStorageType = Adaptor::typeValue;
+
+    // This is the default DOM unwrapping. It calls toUnsharedNativeTypedView().
+    static RefPtr<typename Adaptor::ViewType> toWrapped(JSValue);
     
 protected:
     friend struct TypedArrayClassInfos;
+
+    static EncodedJSValue throwNeuteredTypedArrayTypeError(ExecState*, EncodedJSValue, PropertyName);
 
     static bool getOwnPropertySlot(JSObject*, ExecState*, PropertyName, PropertySlot&);
     static bool put(JSCell*, ExecState*, PropertyName, JSValue, PutPropertySlot&);
@@ -286,7 +287,6 @@ protected:
 
     static size_t estimatedSize(JSCell*);
     static void visitChildren(JSCell*, SlotVisitor&);
-    static void copyBackingStore(JSCell*, CopyVisitor&, CopyToken);
 
     // Allocates the full-on native buffer and moves data into the C heap if
     // necessary. Note that this never allocates in the GC heap.
@@ -360,15 +360,27 @@ private:
 };
 
 template<typename Adaptor>
-inline RefPtr<typename Adaptor::ViewType> toNativeTypedView(JSValue value)
+inline RefPtr<typename Adaptor::ViewType> toPossiblySharedNativeTypedView(JSValue value)
 {
     typename Adaptor::JSViewType* wrapper = jsDynamicCast<typename Adaptor::JSViewType*>(value);
     if (!wrapper)
         return nullptr;
-    return wrapper->typedImpl();
+    return wrapper->possiblySharedTypedImpl();
+}
+
+template<typename Adaptor>
+inline RefPtr<typename Adaptor::ViewType> toUnsharedNativeTypedView(JSValue value)
+{
+    RefPtr<typename Adaptor::ViewType> result = toPossiblySharedNativeTypedView<Adaptor>(value);
+    if (!result || result->isShared())
+        return nullptr;
+    return result;
+}
+
+template<typename Adaptor>
+RefPtr<typename Adaptor::ViewType> JSGenericTypedArrayView<Adaptor>::toWrapped(JSValue value)
+{
+    return JSC::toUnsharedNativeTypedView<Adaptor>(value);
 }
 
 } // namespace JSC
-
-#endif // JSGenericTypedArrayView_h
-

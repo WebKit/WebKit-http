@@ -30,22 +30,27 @@
 
 namespace WebCore {
 
+class CSSValue;
 class CachedImage;
+class Document;
 
-class StyleCachedImage final : public StyleImage, private CachedImageClient {
+class StyleCachedImage final : public StyleImage {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    static Ref<StyleCachedImage> create(CachedImage* image) { return adoptRef(*new StyleCachedImage(image)); }
+    static Ref<StyleCachedImage> create(CSSValue& cssValue) { return adoptRef(*new StyleCachedImage(cssValue)); }
     virtual ~StyleCachedImage();
 
-    CachedImage* cachedImage() const override { return m_image.get(); }
+    bool operator==(const StyleImage& other) const override;
 
-private:
-    WrappedImagePtr data() const override { return m_image.get(); }
+    CachedImage* cachedImage() const override;
 
-    PassRefPtr<CSSValue> cssValue() const override;
+    WrappedImagePtr data() const override { return m_cachedImage.get(); }
+
+    Ref<CSSValue> cssValue() const override;
     
-    bool canRender(const RenderObject*, float multiplier) const override;
+    bool canRender(const RenderElement*, float multiplier) const override;
+    bool isPending() const override;
+    void load(CachedResourceLoader&, const ResourceLoaderOptions&) override;
     bool isLoaded() const override;
     bool errorOccurred() const override;
     FloatSize imageSize(const RenderElement*, float multiplier) const override;
@@ -57,11 +62,16 @@ private:
     void addClient(RenderElement*) override;
     void removeClient(RenderElement*) override;
     RefPtr<Image> image(RenderElement*, const FloatSize&) const override;
+    float imageScaleFactor() const override;
     bool knownToBeOpaque(const RenderElement*) const override;
 
-    explicit StyleCachedImage(CachedImage*);
+private:
+    StyleCachedImage(CSSValue&);
 
-    CachedResourceHandle<CachedImage> m_image;
+    Ref<CSSValue> m_cssValue;
+    bool m_isPending { true };
+    mutable float m_scaleFactor { 1 };
+    mutable CachedResourceHandle<CachedImage> m_cachedImage;
 };
 
 } // namespace WebCore

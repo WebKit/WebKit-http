@@ -32,9 +32,9 @@
 #include "MockRealtimeMediaSource.h"
 
 #if ENABLE(MEDIA_STREAM)
+#include "CaptureDevice.h"
 #include "Logging.h"
 #include "MediaConstraints.h"
-#include "MediaStreamTrackSourcesRequestClient.h"
 #include "NotImplemented.h"
 #include "RealtimeMediaSourceSettings.h"
 #include <math.h>
@@ -68,21 +68,21 @@ const AtomicString& MockRealtimeMediaSource::mockVideoSourceName()
     return name;
 }
 
-RefPtr<TrackSourceInfo> MockRealtimeMediaSource::trackSourceWithUID(const String& id, MediaConstraints*)
+CaptureDevice MockRealtimeMediaSource::audioDeviceInfo()
 {
-    // FIXME: validate constraints.
-
-    if (mockAudioSourcePersistentID() == id)
-        return TrackSourceInfo::create(mockAudioSourcePersistentID(), id, TrackSourceInfo::Audio, "Mock audio device");
-
-    if (mockVideoSourcePersistentID() == id)
-        return TrackSourceInfo::create(mockVideoSourcePersistentID(), id, TrackSourceInfo::Video, "Mock video device");
-    
-    return nullptr;
+    static NeverDestroyed<CaptureDevice> deviceInfo(mockAudioSourcePersistentID(), CaptureDevice::SourceKind::Audio, mockAudioSourceName(), "");
+    return deviceInfo;
 }
 
+CaptureDevice MockRealtimeMediaSource::videoDeviceInfo()
+{
+    static NeverDestroyed<CaptureDevice> deviceInfo(mockVideoSourcePersistentID(), CaptureDevice::SourceKind::Video, mockVideoSourceName(), "");
+    return deviceInfo;
+}
+
+
 MockRealtimeMediaSource::MockRealtimeMediaSource(const String& id, RealtimeMediaSource::Type type, const String& name)
-    : RealtimeMediaSource(id, type, name)
+    : BaseRealtimeMediaSourceClass(id, type, name)
 {
     if (type == RealtimeMediaSource::Audio)
         setPersistentID(mockAudioSourcePersistentID());
@@ -90,19 +90,21 @@ MockRealtimeMediaSource::MockRealtimeMediaSource(const String& id, RealtimeMedia
         setPersistentID(mockVideoSourcePersistentID());
 }
 
-RefPtr<RealtimeMediaSourceCapabilities> MockRealtimeMediaSource::capabilities()
+void MockRealtimeMediaSource::initializeCapabilities()
 {
-    if (m_capabilities)
-        return m_capabilities;
-
     m_capabilities = RealtimeMediaSourceCapabilities::create(supportedConstraints());
     m_capabilities->setDeviceId(id());
     initializeCapabilities(*m_capabilities.get());
+}
 
+RefPtr<RealtimeMediaSourceCapabilities> MockRealtimeMediaSource::capabilities() const
+{
+    if (!m_capabilities)
+        const_cast<MockRealtimeMediaSource&>(*this).initializeCapabilities();
     return m_capabilities;
 }
 
-const RealtimeMediaSourceSettings& MockRealtimeMediaSource::settings()
+void MockRealtimeMediaSource::initializeSettings()
 {
     if (m_currentSettings.deviceId().isEmpty()) {
         m_currentSettings.setSupportedConstraits(supportedConstraints());
@@ -110,6 +112,11 @@ const RealtimeMediaSourceSettings& MockRealtimeMediaSource::settings()
     }
 
     updateSettings(m_currentSettings);
+}
+
+const RealtimeMediaSourceSettings& MockRealtimeMediaSource::settings() const
+{
+    const_cast<MockRealtimeMediaSource&>(*this).initializeSettings();
     return m_currentSettings;
 }
 
@@ -124,6 +131,17 @@ RealtimeMediaSourceSupportedConstraints& MockRealtimeMediaSource::supportedConst
     return m_supportedConstraints;
 }
 
+void MockRealtimeMediaSource::startProducingData()
+{
+    m_isProducingData = true;
+    setMuted(false);
+}
+
+void MockRealtimeMediaSource::stopProducingData()
+{
+    m_isProducingData = false;
+    setMuted(true);
+}
 
 } // namespace WebCore
 

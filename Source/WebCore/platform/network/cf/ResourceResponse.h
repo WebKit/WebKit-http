@@ -28,7 +28,7 @@
 #include "ResourceResponseBase.h"
 #include <wtf/RetainPtr.h>
 
-#if USE(CFNETWORK)
+#if USE(CFURLCONNECTION)
 #include "CFNetworkSPI.h"
 #endif
 
@@ -43,7 +43,7 @@ public:
     {
     }
 
-#if USE(CFNETWORK)
+#if USE(CFURLCONNECTION)
     ResourceResponse(CFURLResponseRef cfResponse)
         : m_initLevel(Uninitialized)
         , m_cfResponse(cfResponse)
@@ -68,6 +68,10 @@ public:
     {
     }
 
+#if PLATFORM(COCOA)
+    WEBCORE_EXPORT void disableLazyInitialization();
+#endif
+
     unsigned memoryUsage() const
     {
         // FIXME: Find some programmatic lighweight way to calculate ResourceResponse and associated classes.
@@ -80,11 +84,16 @@ public:
          */
     }
 
-#if USE(CFNETWORK)
+#if USE(CFURLCONNECTION)
     WEBCORE_EXPORT CFURLResponseRef cfURLResponse() const;
 #endif
 #if PLATFORM(COCOA)
     WEBCORE_EXPORT NSURLResponse *nsURLResponse() const;
+#endif
+
+#if USE(QUICK_LOOK)
+    bool isQuickLook() const { return m_isQuickLook; }
+    void setIsQuickLook(bool isQuickLook) { m_isQuickLook = isQuickLook; }
 #endif
 
 private:
@@ -104,7 +113,11 @@ private:
 
     unsigned m_initLevel : 3;
 
-#if USE(CFNETWORK)
+#if USE(QUICK_LOOK)
+    bool m_isQuickLook { false };
+#endif
+
+#if USE(CFURLCONNECTION)
     mutable RetainPtr<CFURLResponseRef> m_cfResponse;
 #endif
 #if PLATFORM(COCOA)

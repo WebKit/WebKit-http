@@ -35,16 +35,6 @@ inline static unsigned determineDeltaMode(const PlatformWheelEvent& event)
     return event.granularity() == ScrollByPageWheelEvent ? WheelEvent::DOM_DELTA_PAGE : WheelEvent::DOM_DELTA_PIXEL;
 }
 
-WheelEventInit::WheelEventInit()
-    : deltaX(0)
-    , deltaY(0)
-    , deltaZ(0)
-    , deltaMode(WheelEvent::DOM_DELTA_PIXEL)
-    , wheelDeltaX(0)
-    , wheelDeltaY(0)
-{
-}
-
 WheelEvent::WheelEvent()
     : m_deltaX(0)
     , m_deltaY(0)
@@ -54,8 +44,8 @@ WheelEvent::WheelEvent()
 {
 }
 
-WheelEvent::WheelEvent(const AtomicString& type, const WheelEventInit& initializer)
-    : MouseEvent(type, initializer)
+WheelEvent::WheelEvent(const AtomicString& type, const Init& initializer, IsTrusted isTrusted)
+    : MouseEvent(type, initializer, isTrusted)
     , m_wheelDelta(initializer.wheelDeltaX ? initializer.wheelDeltaX : -initializer.deltaX, initializer.wheelDeltaY ? initializer.wheelDeltaY : -initializer.deltaY)
     , m_deltaX(initializer.deltaX ? initializer.deltaX : -initializer.wheelDeltaX)
     , m_deltaY(initializer.deltaY ? initializer.deltaY : -initializer.wheelDeltaY)
@@ -65,12 +55,12 @@ WheelEvent::WheelEvent(const AtomicString& type, const WheelEventInit& initializ
 {
 }
 
-WheelEvent::WheelEvent(const PlatformWheelEvent& event, AbstractView* view)
+WheelEvent::WheelEvent(const PlatformWheelEvent& event, DOMWindow* view)
     : MouseEvent(eventNames().wheelEvent, true, true, event.timestamp(), view, 0, event.globalPosition().x(), event.globalPosition().y(), event.position().x(), event.position().y()
 #if ENABLE(POINTER_LOCK)
                 , 0, 0
 #endif
-                , event.ctrlKey(), event.altKey(), event.shiftKey(), event.metaKey(), 0, 0, 0, 0, false)
+                , event.ctrlKey(), event.altKey(), event.shiftKey(), event.metaKey(), 0, 0, 0, 0, 0, false)
     , m_wheelDelta(event.wheelTicksX() * TickMultiplier, event.wheelTicksY() * TickMultiplier)
     , m_deltaX(-event.deltaX())
     , m_deltaY(-event.deltaY())
@@ -81,7 +71,7 @@ WheelEvent::WheelEvent(const PlatformWheelEvent& event, AbstractView* view)
 {
 }
 
-void WheelEvent::initWheelEvent(int rawDeltaX, int rawDeltaY, AbstractView* view, int screenX, int screenY, int pageX, int pageY, bool ctrlKey, bool altKey, bool shiftKey, bool metaKey)
+void WheelEvent::initWheelEvent(int rawDeltaX, int rawDeltaY, DOMWindow* view, int screenX, int screenY, int pageX, int pageY, bool ctrlKey, bool altKey, bool shiftKey, bool metaKey)
 {
     if (dispatched())
         return;
@@ -104,7 +94,7 @@ void WheelEvent::initWheelEvent(int rawDeltaX, int rawDeltaY, AbstractView* view
     initCoordinates(IntPoint(pageX, pageY));
 }
 
-void WheelEvent::initWebKitWheelEvent(int rawDeltaX, int rawDeltaY, AbstractView* view, int screenX, int screenY, int pageX, int pageY, bool ctrlKey, bool altKey, bool shiftKey, bool metaKey)
+void WheelEvent::initWebKitWheelEvent(int rawDeltaX, int rawDeltaY, DOMWindow* view, int screenX, int screenY, int pageX, int pageY, bool ctrlKey, bool altKey, bool shiftKey, bool metaKey)
 {
     initWheelEvent(rawDeltaX, rawDeltaY, view, screenX, screenY, pageX, pageY, ctrlKey, altKey, shiftKey, metaKey);
 }

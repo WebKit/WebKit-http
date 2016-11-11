@@ -23,14 +23,12 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef IDBDatabaseIdentifier_h
-#define IDBDatabaseIdentifier_h
+#pragma once
 
 #if ENABLE(INDEXED_DATABASE)
 
 #include "SecurityOriginData.h"
 #include <wtf/Ref.h>
-#include <wtf/RefCounted.h>
 #include <wtf/text/StringHash.h>
 #include <wtf/text/WTFString.h>
 
@@ -40,23 +38,17 @@ class SecurityOrigin;
 
 class IDBDatabaseIdentifier {
 public:
-    IDBDatabaseIdentifier()
-    {
-        m_openingOrigin.port = -2;
-        m_mainFrameOrigin.port = -2;
-    }
-
+    IDBDatabaseIdentifier() { }
     IDBDatabaseIdentifier(WTF::HashTableDeletedValueType)
+        : m_databaseName(WTF::HashTableDeletedValue)
     {
-        m_openingOrigin.port = -1;
-        m_mainFrameOrigin.port = -1;
     }
 
     IDBDatabaseIdentifier isolatedCopy() const;
 
     bool isHashTableDeletedValue() const
     {
-        return m_openingOrigin.port == -1 && m_mainFrameOrigin.port == -1;
+        return m_databaseName.isHashTableDeletedValue();
     }
 
     unsigned hash() const
@@ -67,7 +59,7 @@ public:
         unsigned mainFrameProtocolHash = StringHash::hash(m_mainFrameOrigin.protocol);
         unsigned mainFrameHostHash = StringHash::hash(m_mainFrameOrigin.host);
         
-        unsigned hashCodes[7] = { nameHash, openingProtocolHash, openingHostHash, static_cast<unsigned>(m_openingOrigin.port), mainFrameProtocolHash, mainFrameHostHash, static_cast<unsigned>(m_mainFrameOrigin.port) };
+        unsigned hashCodes[7] = { nameHash, openingProtocolHash, openingHostHash, m_openingOrigin.port.valueOr(0), mainFrameProtocolHash, mainFrameHostHash, m_mainFrameOrigin.port.valueOr(0) };
         return StringHasher::hashMemory<sizeof(hashCodes)>(hashCodes);
     }
 
@@ -75,12 +67,13 @@ public:
 
     bool isValid() const
     {
-        return !m_databaseName.isNull() && m_openingOrigin.port >= 0 && m_mainFrameOrigin.port >= 0;
+        return !m_databaseName.isNull()
+            && !m_databaseName.isHashTableDeletedValue();
     }
 
     bool isEmpty() const
     {
-        return m_openingOrigin.port == -2 && m_mainFrameOrigin.port == -2;
+        return m_databaseName.isNull();
     }
 
     bool operator==(const IDBDatabaseIdentifier& other) const
@@ -98,7 +91,7 @@ public:
     template<class Encoder> void encode(Encoder&) const;
     template<class Decoder> static bool decode(Decoder&, IDBDatabaseIdentifier&);
 
-#ifndef NDEBUG
+#if !LOG_DISABLED
     String debugString() const;
 #endif
 
@@ -158,4 +151,3 @@ template<> struct DefaultHash<WebCore::IDBDatabaseIdentifier> {
 } // namespace WTF
 
 #endif // ENABLE(INDEXED_DATABASE)
-#endif // IDBDatabaseIdentifier_h

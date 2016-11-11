@@ -45,9 +45,16 @@ void dataLog(const Types&... values)
     dataFile().print(values...);
 }
 
+template<typename... Types>
+void dataLogLn(const Types&... values)
+{
+    dataFile().print(values..., "\n");
+}
+
 } // namespace WTF
 
 using WTF::dataLog;
+using WTF::dataLogLn;
 using WTF::dataLogF;
 using WTF::dataLogFString;
 

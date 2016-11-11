@@ -33,8 +33,6 @@
 
 namespace WebCore {
 
-class IDBKeyPath;
-
 class IDBDatabaseInfo {
 public:
     IDBDatabaseInfo(const String& name, uint64_t version);
@@ -50,12 +48,14 @@ public:
     uint64_t version() const { return m_version; }
 
     bool hasObjectStore(const String& name) const;
-    IDBObjectStoreInfo createNewObjectStore(const String& name, const IDBKeyPath&, bool autoIncrement);
+    IDBObjectStoreInfo createNewObjectStore(const String& name, Optional<IDBKeyPath>&&, bool autoIncrement);
     void addExistingObjectStore(const IDBObjectStoreInfo&);
     IDBObjectStoreInfo* infoForExistingObjectStore(uint64_t objectStoreIdentifier);
     IDBObjectStoreInfo* infoForExistingObjectStore(const String& objectStoreName);
     const IDBObjectStoreInfo* infoForExistingObjectStore(uint64_t objectStoreIdentifier) const;
     const IDBObjectStoreInfo* infoForExistingObjectStore(const String& objectStoreName) const;
+
+    void renameObjectStore(uint64_t objectStoreIdentifier, const String& newName);
 
     Vector<String> objectStoreNames() const;
 
@@ -67,7 +67,7 @@ public:
     template<class Encoder> void encode(Encoder&) const;
     template<class Decoder> static bool decode(Decoder&, IDBDatabaseInfo&);
 
-#ifndef NDEBUG
+#if !LOG_DISABLED
     String loggingString() const;
 #endif
 

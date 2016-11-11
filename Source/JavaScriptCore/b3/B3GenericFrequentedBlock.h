@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef B3GenericFrequentedBlock_h
-#define B3GenericFrequentedBlock_h
+#pragma once
 
 #if ENABLE(B3_JIT)
 
@@ -39,7 +38,7 @@ namespace JSC { namespace B3 {
 template<typename BasicBlock>
 class GenericFrequentedBlock {
 public:
-    explicit GenericFrequentedBlock(
+    GenericFrequentedBlock(
         BasicBlock* block = nullptr, FrequencyClass frequency = FrequencyClass::Normal)
         : m_block(block)
         , m_frequency(frequency)
@@ -84,6 +83,3 @@ private:
 } } // namespace JSC::B3
 
 #endif // ENABLE(B3_JIT)
-
-#endif // B3GenericFrequentedBlock_h
-

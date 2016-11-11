@@ -23,15 +23,13 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef CDM_h
-#define CDM_h
+#pragma once
 
-#if ENABLE(ENCRYPTED_MEDIA_V2)
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
 
 #include "CDMSession.h"
 #include <runtime/Uint8Array.h>
 #include <wtf/Forward.h>
-#include <wtf/PassRefPtr.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
@@ -63,7 +61,7 @@ public:
     ~CDM();
 
     bool supportsMIMEType(const String&) const;
-    std::unique_ptr<CDMSession> createSession(CDMSessionClient*);
+    std::unique_ptr<CDMSession> createSession(CDMSessionClient&);
 
     const String& keySystem() const { return m_keySystem; }
 
@@ -80,6 +78,4 @@ private:
 
 }
 
-#endif // ENABLE(ENCRYPTED_MEDIA_V2)
-
-#endif // CDM_h
+#endif // ENABLE(LEGACY_ENCRYPTED_MEDIA)

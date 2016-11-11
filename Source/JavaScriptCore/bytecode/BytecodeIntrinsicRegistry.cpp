@@ -32,8 +32,8 @@
 #include "BytecodeGenerator.h"
 #include "JSCJSValueInlines.h"
 #include "JSGeneratorFunction.h"
+#include "JSModuleLoader.h"
 #include "JSPromise.h"
-#include "ModuleLoaderObject.h"
 #include "Nodes.h"
 #include "StrongInlines.h"
 
@@ -50,17 +50,17 @@ BytecodeIntrinsicRegistry::BytecodeIntrinsicRegistry(VM& vm)
 
     m_undefined.set(m_vm, jsUndefined());
     m_Infinity.set(m_vm, jsDoubleNumber(std::numeric_limits<double>::infinity()));
-    m_arrayIterationKindKey.set(m_vm, jsNumber(ArrayIterateKey));
-    m_arrayIterationKindValue.set(m_vm, jsNumber(ArrayIterateValue));
-    m_arrayIterationKindKeyValue.set(m_vm, jsNumber(ArrayIterateKeyValue));
+    m_iterationKindKey.set(m_vm, jsNumber(IterateKey));
+    m_iterationKindValue.set(m_vm, jsNumber(IterateValue));
+    m_iterationKindKeyValue.set(m_vm, jsNumber(IterateKeyValue));
     m_MAX_STRING_LENGTH.set(m_vm, jsNumber(JSString::MaxLength));
     m_MAX_SAFE_INTEGER.set(m_vm, jsDoubleNumber(maxSafeInteger()));
-    m_ModuleFetch.set(m_vm, jsNumber(static_cast<unsigned>(ModuleLoaderObject::Status::Fetch)));
-    m_ModuleTranslate.set(m_vm, jsNumber(static_cast<unsigned>(ModuleLoaderObject::Status::Translate)));
-    m_ModuleInstantiate.set(m_vm, jsNumber(static_cast<unsigned>(ModuleLoaderObject::Status::Instantiate)));
-    m_ModuleResolveDependencies.set(m_vm, jsNumber(static_cast<unsigned>(ModuleLoaderObject::Status::ResolveDependencies)));
-    m_ModuleLink.set(m_vm, jsNumber(static_cast<unsigned>(ModuleLoaderObject::Status::Link)));
-    m_ModuleReady.set(m_vm, jsNumber(static_cast<unsigned>(ModuleLoaderObject::Status::Ready)));
+    m_ModuleFetch.set(m_vm, jsNumber(static_cast<unsigned>(JSModuleLoader::Status::Fetch)));
+    m_ModuleTranslate.set(m_vm, jsNumber(static_cast<unsigned>(JSModuleLoader::Status::Translate)));
+    m_ModuleInstantiate.set(m_vm, jsNumber(static_cast<unsigned>(JSModuleLoader::Status::Instantiate)));
+    m_ModuleSatisfy.set(m_vm, jsNumber(static_cast<unsigned>(JSModuleLoader::Status::Satisfy)));
+    m_ModuleLink.set(m_vm, jsNumber(static_cast<unsigned>(JSModuleLoader::Status::Link)));
+    m_ModuleReady.set(m_vm, jsNumber(static_cast<unsigned>(JSModuleLoader::Status::Ready)));
     m_promiseStatePending.set(m_vm, jsNumber(static_cast<unsigned>(JSPromise::Status::Pending)));
     m_promiseStateFulfilled.set(m_vm, jsNumber(static_cast<unsigned>(JSPromise::Status::Fulfilled)));
     m_promiseStateRejected.set(m_vm, jsNumber(static_cast<unsigned>(JSPromise::Status::Rejected)));

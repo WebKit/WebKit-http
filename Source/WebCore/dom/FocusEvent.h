@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef FocusEvent_h
-#define FocusEvent_h
+#pragma once
 
 #include "EventTarget.h"
 #include "UIEvent.h"
@@ -33,20 +32,20 @@ namespace WebCore {
 
 class Node;
 
-struct FocusEventInit : public UIEventInit {
-    RefPtr<EventTarget> relatedTarget;
-};
-
 class FocusEvent final : public UIEvent {
 public:
-    static Ref<FocusEvent> create(const AtomicString& type, bool canBubble, bool cancelable, AbstractView* view, int detail, RefPtr<EventTarget>&& relatedTarget)
+    static Ref<FocusEvent> create(const AtomicString& type, bool canBubble, bool cancelable, DOMWindow* view, int detail, RefPtr<EventTarget>&& relatedTarget)
     {
         return adoptRef(*new FocusEvent(type, canBubble, cancelable, view, detail, WTFMove(relatedTarget)));
     }
 
-    static Ref<FocusEvent> createForBindings(const AtomicString& type, const FocusEventInit& initializer)
+    struct Init : UIEventInit {
+        RefPtr<EventTarget> relatedTarget;
+    };
+
+    static Ref<FocusEvent> create(const AtomicString& type, const Init& initializer, IsTrusted isTrusted = IsTrusted::No)
     {
-        return adoptRef(*new FocusEvent(type, initializer));
+        return adoptRef(*new FocusEvent(type, initializer, isTrusted));
     }
 
     EventTarget* relatedTarget() const override { return m_relatedTarget.get(); }
@@ -55,10 +54,8 @@ public:
     EventInterface eventInterface() const override;
 
 private:
-    FocusEvent(const AtomicString& type, bool canBubble, bool cancelable, AbstractView*, int, RefPtr<EventTarget>&&);
-    FocusEvent(const AtomicString& type, const FocusEventInit&);
-
-    bool relatedTargetScoped() const override;
+    FocusEvent(const AtomicString& type, bool canBubble, bool cancelable, DOMWindow*, int, RefPtr<EventTarget>&&);
+    FocusEvent(const AtomicString& type, const Init&, IsTrusted);
 
     bool isFocusEvent() const override;
 
@@ -68,5 +65,3 @@ private:
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_EVENT(FocusEvent)
-
-#endif // FocusEvent_h

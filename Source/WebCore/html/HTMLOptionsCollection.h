@@ -2,7 +2,7 @@
  * Copyright (C) 1999 Lars Knoll (knoll@kde.org)
  *           (C) 1999 Antti Koivisto (koivisto@kde.org)
  *           (C) 2000 Dirk Mueller (mueller@kde.org)
- * Copyright (C) 2004, 2005, 2006, 2007, 2008 Apple Inc. All rights reserved.
+ * Copyright (C) 2004-2016 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -21,16 +21,13 @@
  *
  */
 
-#ifndef HTMLOptionsCollection_h
-#define HTMLOptionsCollection_h
+#pragma once
 
 #include "CachedHTMLCollection.h"
 #include "HTMLOptionElement.h"
 #include "HTMLSelectElement.h"
 
 namespace WebCore {
-
-typedef int ExceptionCode;
 
 class HTMLOptionsCollection final : public CachedHTMLCollection<HTMLOptionsCollection, CollectionTypeTraits<SelectOptions>::traversalType> {
 public:
@@ -42,15 +39,16 @@ public:
     HTMLOptionElement* item(unsigned offset) const final;
     HTMLOptionElement* namedItem(const AtomicString& name) const final;
 
-    void add(HTMLElement&, HTMLElement* beforeElement, ExceptionCode&);
-    void add(HTMLElement&, int beforeIndex, ExceptionCode&);
-    void remove(int index);
+    using OptionOrOptGroupElement = Variant<RefPtr<HTMLOptionElement>, RefPtr<HTMLOptGroupElement>>;
+    using HTMLElementOrInt = Variant<RefPtr<HTMLElement>, int>;
+    WEBCORE_EXPORT ExceptionOr<void> add(const OptionOrOptGroupElement&, Optional<HTMLElementOrInt> before);
+    WEBCORE_EXPORT void remove(int index);
     void remove(HTMLOptionElement&);
 
-    int selectedIndex() const;
-    void setSelectedIndex(int);
+    WEBCORE_EXPORT int selectedIndex() const;
+    WEBCORE_EXPORT void setSelectedIndex(int);
 
-    void setLength(unsigned, ExceptionCode&);
+    WEBCORE_EXPORT ExceptionOr<void> setLength(unsigned);
 
     // For CachedHTMLCollection.
     bool elementMatches(Element&) const;
@@ -71,11 +69,16 @@ inline HTMLOptionElement* HTMLOptionsCollection::namedItem(const AtomicString& n
 
 inline bool HTMLOptionsCollection::elementMatches(Element& element) const
 {
-    return element.hasTagName(HTMLNames::optionTag);
+    if (!element.hasTagName(HTMLNames::optionTag))
+        return false;
+
+    if (element.parentNode() == &selectElement())
+        return true;
+
+    ASSERT(element.parentNode());
+    return element.parentNode()->hasTagName(HTMLNames::optgroupTag) && element.parentNode()->parentNode() == &selectElement();
 }
 
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_HTMLCOLLECTION(HTMLOptionsCollection, SelectOptions)
-
-#endif // HTMLOptionsCollection_h

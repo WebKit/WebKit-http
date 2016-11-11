@@ -176,7 +176,7 @@ void ScriptExecutionContext::destroyedMessagePort(MessagePort& messagePort)
     m_messagePorts.remove(&messagePort);
 }
 
-void ScriptExecutionContext::didLoadResourceSynchronously(const ResourceRequest&)
+void ScriptExecutionContext::didLoadResourceSynchronously()
 {
 }
 
@@ -352,9 +352,15 @@ void ScriptExecutionContext::willDestroyDestructionObserver(ContextDestructionOb
 
 bool ScriptExecutionContext::sanitizeScriptError(String& errorMessage, int& lineNumber, int& columnNumber, String& sourceURL, Deprecated::ScriptValue& error, CachedScript* cachedScript)
 {
-    URL targetURL = completeURL(sourceURL);
-    if (securityOrigin()->canRequest(targetURL) || (cachedScript && cachedScript->passesAccessControlCheck(*securityOrigin())))
+    ASSERT(securityOrigin());
+    if (cachedScript) {
+        ASSERT(cachedScript->origin());
+        ASSERT(securityOrigin()->toString() == cachedScript->origin()->toString());
+        if (cachedScript->isCORSSameOrigin())
+            return false;
+    } else if (securityOrigin()->canRequest(completeURL(sourceURL)))
         return false;
+
     errorMessage = "Script error.";
     sourceURL = String();
     lineNumber = 0;

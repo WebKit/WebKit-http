@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef TestRunner_h
-#define TestRunner_h
+#pragma once
 
 #include "JSWrappable.h"
 #include "StringFunctions.h"
@@ -32,7 +31,7 @@
 #include <WebKit/WKBundleScriptWorld.h>
 #include <WebKit/WKRetainPtr.h>
 #include <string>
-#include <wtf/PassRefPtr.h>
+#include <wtf/Ref.h>
 #include <wtf/text/WTFString.h>
 
 #if PLATFORM(COCOA)
@@ -53,7 +52,7 @@ namespace WTR {
 
 class TestRunner : public JSWrappable {
 public:
-    static PassRefPtr<TestRunner> create();
+    static Ref<TestRunner> create();
     virtual ~TestRunner();
 
     // JSWrappable
@@ -103,13 +102,16 @@ public:
     void setShadowDOMEnabled(bool);
     void setCustomElementsEnabled(bool);
     void setDOMIteratorEnabled(bool);
+    void setModernMediaControlsEnabled(bool);
     void setWebGL2Enabled(bool);
     void setFetchAPIEnabled(bool);
     void setAllowUniversalAccessFromFileURLs(bool);
     void setAllowFileAccessFromFileURLs(bool);
+    void setNeedsStorageAccessFromFileURLsQuirk(bool);
     void setPluginsEnabled(bool);
     void setJavaScriptCanAccessClipboard(bool);
     void setPrivateBrowsingEnabled(bool);
+    void setUseDashboardCompatibilityMode(bool);
     void setPopupBlockingEnabled(bool);
     void setAuthorAndUserStylesEnabled(bool);
     void setCustomPolicyDelegate(bool enabled, bool permissive = false);
@@ -164,6 +166,7 @@ public:
     void setPrinting() { m_isPrinting = true; }
 
     // Authentication
+    void setRejectsProtectionSpaceAndContinueForAuthenticationChallenges(bool);
     void setHandlesAuthenticationChallenges(bool);
     void setShouldLogCanAuthenticateAgainstProtectionSpace(bool);
     void setAuthenticationUsername(JSStringRef);
@@ -268,10 +271,10 @@ public:
     bool hasCustomFullScreenBehavior() const { return m_customFullScreenBehavior; }
 
     // Web notifications.
-    void grantWebNotificationPermission(JSStringRef origin);
-    void denyWebNotificationPermission(JSStringRef origin);
-    void removeAllWebNotificationPermissions();
-    void simulateWebNotificationClick(JSValueRef notification);
+    static void grantWebNotificationPermission(JSStringRef origin);
+    static void denyWebNotificationPermission(JSStringRef origin);
+    static void removeAllWebNotificationPermissions();
+    static void simulateWebNotificationClick(JSValueRef notification);
 
     // Geolocation.
     void setGeolocationPermission(bool);
@@ -308,6 +311,8 @@ public:
     bool shouldDecideNavigationPolicyAfterDelay() const { return m_shouldDecideNavigationPolicyAfterDelay; }
     void setShouldDecideNavigationPolicyAfterDelay(bool);
     void setNavigationGesturesEnabled(bool);
+    void setIgnoresViewportScaleLimits(bool);
+    void setShouldDownloadUndisplayableMIMETypes(bool);
 
     void runUIScript(JSStringRef script, JSValueRef callback);
     void runUIScriptCallback(unsigned callbackID, JSStringRef result);
@@ -326,6 +331,13 @@ public:
     void accummulateLogsForChannel(JSStringRef channel);
 
     unsigned imageCountInGeneralPasteboard() const;
+
+    // Gamepads
+    void connectMockGamepad(unsigned index);
+    void disconnectMockGamepad(unsigned index);
+    void setMockGamepadDetails(unsigned index, JSStringRef gamepadID, unsigned axisCount, unsigned buttonCount);
+    void setMockGamepadAxisValue(unsigned index, unsigned axisIndex, double value);
+    void setMockGamepadButtonValue(unsigned index, unsigned buttonIndex, double value);
 
 private:
     TestRunner();
@@ -390,5 +402,3 @@ private:
 };
 
 } // namespace WTR
-
-#endif // TestRunner_h

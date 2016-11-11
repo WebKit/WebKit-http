@@ -33,28 +33,9 @@ function initializeFetchHeaders(headersInit)
         return this;
 
     if (!@isObject(headersInit))
-        throw new @TypeError("headersInit must be an object");
+        @throwTypeError("headersInit must be an object");
 
-    if (headersInit instanceof this.constructor) {
-        this.@fillFromJS(headersInit);
-        return this;
-    }
-
-    if (@isArray(headersInit)) {
-        for (let i = 0; i < headersInit.length; i++) {
-            let header = headersInit[i];
-            if (header.length !== 2)
-                throw new @TypeError("headersInit sequence items should contain two values");
-            this.@appendFromJS(header[0], header[1]);
-        }
-        return this;
-    }
-
-    let propertyNames = @Object.@getOwnPropertyNames(headersInit);
-    for (let i = 0; i < propertyNames.length; ++i) {
-        let name = propertyNames[i];
-        this.@appendFromJS(name, headersInit[name]);
-    }
+    @fillFetchHeaders(this, headersInit);
 
     return this;
 }

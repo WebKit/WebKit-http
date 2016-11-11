@@ -18,10 +18,8 @@
  * Boston, MA 02110-1301, USA.
  */
 
-// Introduced in DOM Level 2:
 [
-    NoInterfaceObject,
-    ObjCProtocol,
+    NoInterfaceObject
 ] interface EventListener {
     void handleEvent(Event event);
 };

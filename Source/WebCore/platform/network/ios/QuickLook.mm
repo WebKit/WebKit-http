@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009 Apple Inc. All rights reserved.
+ * Copyright (C) 2009-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -185,7 +185,7 @@ const char* WebCore::QLPreviewProtocol()
     return previewProtocol.get().data();
 }
 
-#if USE(CFNETWORK)
+#if USE(CFURLCONNECTION)
 // The way QuickLook works is we pass it an NSURLConnectionDelegate callback object at creation
 // time. Then we pass it all the data as we receive it. Once we've downloaded the full URL,
 // QuickLook turns around and send us, through this delegate, the HTML version of the file which we
@@ -287,15 +287,18 @@ const char* WebCore::QLPreviewProtocol()
 
     // QuickLook might fail to convert a document without calling connection:didFailWithError: (see <rdar://problem/17927972>).
     // A nil MIME type is an indication of such a failure, so stop loading the resource and ignore subsequent delegate messages.
-    NSURLResponse *previewResponse = _quickLookHandle->nsResponse();
-    if (![previewResponse MIMEType]) {
+    NSURLResponse *nsResponse = _quickLookHandle->nsResponse();
+    if (![nsResponse MIMEType]) {
         _hasFailed = YES;
         _resourceLoader->didFail(_resourceLoader->cannotShowURLError());
         return;
     }
 
+    ResourceResponse response(nsResponse);
+    response.setIsQuickLook(true);
+
     _hasSentDidReceiveResponse = YES;
-    _resourceLoader->didReceiveResponse(previewResponse);
+    _resourceLoader->didReceiveResponse(response);
 }
 
 #if USE(NETWORK_CFDATA_ARRAY_CALLBACK)
@@ -309,7 +312,8 @@ const char* WebCore::QLPreviewProtocol()
     if (_hasFailed)
         return;
 
-    _resourceLoader->didReceiveDataArray(reinterpret_cast<CFArrayRef>(dataArray));
+    if (_resourceLoader)
+        _resourceLoader->didReceiveDataArray(reinterpret_cast<CFArrayRef>(dataArray));
 }
 #endif
 
@@ -327,7 +331,9 @@ const char* WebCore::QLPreviewProtocol()
     // ResourceHandleMac.cpp added for a different bug.
     if (![data length])
         return;
-    _resourceLoader->didReceiveData(reinterpret_cast<const char*>([data bytes]), [data length], lengthReceived, DataPayloadBytes);
+
+    if (_resourceLoader)
+        _resourceLoader->didReceiveData(reinterpret_cast<const char*>([data bytes]), [data length], lengthReceived, DataPayloadBytes);
 }
 
 - (void)connectionDidFinishLoading:(NSURLConnection *)connection
@@ -348,7 +354,8 @@ const char* WebCore::QLPreviewProtocol()
     if (_hasFailed)
         return;
 
-    _resourceLoader->didFail(ResourceError(error));
+    if (_resourceLoader)
+        _resourceLoader->didFail(ResourceError(error));
 }
 
 - (void)detachHandle
@@ -407,7 +414,7 @@ std::unique_ptr<QuickLookHandle> QuickLookHandle::create(ResourceHandle* handle,
     return quickLookHandle;
 }
 
-#if USE(CFNETWORK)
+#if USE(CFURLCONNECTION)
 std::unique_ptr<QuickLookHandle> QuickLookHandle::create(ResourceHandle* handle, SynchronousResourceHandleCFURLConnectionDelegate* connectionDelegate, CFURLResponseRef cfResponse)
 {
     ASSERT_ARG(handle, handle);

@@ -26,7 +26,7 @@
 
 namespace WebCore {
 
-class SVGPathSegCurvetoQuadraticSmoothAbs : public SVGPathSegSingleCoordinate {
+class SVGPathSegCurvetoQuadraticSmoothAbs final : public SVGPathSegSingleCoordinate {
 public:
     static Ref<SVGPathSegCurvetoQuadraticSmoothAbs> create(const SVGPathElement& element, SVGPathSegRole role, float x, float y)
     {
@@ -39,8 +39,8 @@ private:
     {
     }
 
-    unsigned short pathSegType() const override { return PATHSEG_CURVETO_QUADRATIC_SMOOTH_ABS; }
-    String pathSegTypeAsLetter() const override { return "T"; }
+    unsigned short pathSegType() const final { return PATHSEG_CURVETO_QUADRATIC_SMOOTH_ABS; }
+    String pathSegTypeAsLetter() const final { return "T"; }
 };
 
 } // namespace WebCore

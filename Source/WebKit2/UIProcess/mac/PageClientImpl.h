@@ -131,6 +131,8 @@ private:
     RefPtr<WebColorPicker> createColorPicker(WebPageProxy*, const WebCore::Color& initialColor, const WebCore::IntRect&) override;
 #endif
 
+    std::unique_ptr<WebCore::ValidationBubble> createValidationBubble(const String& message) final;
+
     void setTextIndicator(Ref<WebCore::TextIndicator>, WebCore::TextIndicatorWindowLifetime) override;
     void clearTextIndicator(WebCore::TextIndicatorWindowDismissalAnimation) override;
     void setTextIndicatorAnimationProgress(float) override;
@@ -138,7 +140,6 @@ private:
     void enterAcceleratedCompositingMode(const LayerTreeContext&) override;
     void exitAcceleratedCompositingMode() override;
     void updateAcceleratedCompositingMode(const LayerTreeContext&) override;
-    void willEnterAcceleratedCompositingMode() override;
 
     PassRefPtr<ViewSnapshot> takeViewSnapshot() override;
     void wheelEventWasNotHandledByWebCore(const NativeWebWheelEvent&) override;
@@ -171,6 +172,8 @@ private:
     void showDictationAlternativeUI(const WebCore::FloatRect& boundingBoxOfDictatedText, uint64_t dictationContext) override;
     Vector<String> dictationAlternatives(uint64_t dictationContext) override;
 #endif
+    void setEditableElementIsFocused(bool) override;
+
 #if USE(INSERTION_UNDO_GROUPING)
     void registerInsertionUndoGrouping() override;
 #endif
@@ -205,6 +208,8 @@ private:
     void didFailLoadForMainFrame() override;
     void didSameDocumentNavigationForMainFrame(SameDocumentNavigationType) override;
     void removeNavigationGestureSnapshot() override;
+    void handleControlledElementIDResponse(const String&) override;
+    void handleActiveNowPlayingSessionInfoResponse(bool hasActiveSession, const String& title, double duration, double elapsedTime) override;
 
     void didPerformImmediateActionHitTest(const WebHitTestResultData&, bool contentPreventsDefault, API::Object*) override;
     void* immediateActionAnimationControllerForHitTestResult(RefPtr<API::HitTestResult>, uint64_t, RefPtr<API::Object>) override;

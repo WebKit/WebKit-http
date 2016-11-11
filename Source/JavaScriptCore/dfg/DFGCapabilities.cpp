@@ -91,6 +91,10 @@ bool mightInlineFunctionForConstruct(CodeBlock* codeBlock)
     return codeBlock->instructionCount() <= Options::maximumFunctionForConstructInlineCandidateInstructionCount()
         && isSupportedForInlining(codeBlock);
 }
+bool canUseOSRExitFuzzing(CodeBlock* codeBlock)
+{
+    return codeBlock->ownerScriptExecutable()->canUseOSRExitFuzzing();
+}
 
 inline void debugFail(CodeBlock* codeBlock, OpcodeID opcodeID, CapabilityLevel result)
 {
@@ -123,6 +127,7 @@ CapabilityLevel capabilityLevel(OpcodeID opcodeID, CodeBlock* codeBlock, Instruc
     case op_negate:
     case op_mul:
     case op_mod:
+    case op_pow:
     case op_div:
     case op_debug:
     case op_profile_type:
@@ -135,10 +140,9 @@ CapabilityLevel capabilityLevel(OpcodeID opcodeID, CodeBlock* codeBlock, Instruc
     case op_is_undefined:
     case op_is_boolean:
     case op_is_number:
-    case op_is_string:
-    case op_is_jsarray:
     case op_is_object:
     case op_is_object_or_null:
+    case op_is_cell_with_type:
     case op_is_function:
     case op_not:
     case op_less:
@@ -169,6 +173,8 @@ CapabilityLevel capabilityLevel(OpcodeID opcodeID, CodeBlock* codeBlock, Instruc
     case op_put_getter_setter_by_id:
     case op_put_getter_by_val:
     case op_put_setter_by_val:
+    case op_define_data_property:
+    case op_define_accessor_property:
     case op_del_by_id:
     case op_del_by_val:
     case op_jmp:
@@ -208,6 +214,7 @@ CapabilityLevel capabilityLevel(OpcodeID opcodeID, CodeBlock* codeBlock, Instruc
     case op_create_cloned_arguments:
     case op_get_from_arguments:
     case op_put_to_arguments:
+    case op_get_argument:
     case op_jneq_ptr:
     case op_typeof:
     case op_to_number:
@@ -234,16 +241,17 @@ CapabilityLevel capabilityLevel(OpcodeID opcodeID, CodeBlock* codeBlock, Instruc
     case op_create_lexical_environment:
     case op_get_parent_scope:
     case op_catch:
-    case op_copy_rest:
+    case op_create_rest:
     case op_get_rest_length:
     case op_log_shadow_chicken_prologue:
     case op_log_shadow_chicken_tail:
     case op_put_to_scope:
     case op_resolve_scope:
+    case op_new_regexp:
         return CanCompileAndInline;
 
-    case op_new_regexp:
     case op_switch_string: // Don't inline because we don't want to copy string tables in the concurrent JIT.
+    case op_call_eval:
         return CanCompile;
 
     default:

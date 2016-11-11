@@ -322,7 +322,7 @@ WebInspector.ConsoleMessageView = class ConsoleMessageView extends WebInspector.
             if (this._message.url) {
                 var anchor = WebInspector.linkifyURLAsNode(this._message.url, this._message.url, "console-message-url");
                 anchor.classList.add("console-message-location");
-                this._element.appendChild(anchor);                
+                this._element.appendChild(anchor);
             }
             return;
         }
@@ -335,7 +335,7 @@ WebInspector.ConsoleMessageView = class ConsoleMessageView extends WebInspector.
             callFrame = firstNonNativeNonAnonymousCallFrame;
         } else if (this._message.url && !this._shouldHideURL(this._message.url)) {
             // CSS warnings have no stack traces.
-            callFrame = WebInspector.CallFrame.fromPayload({
+            callFrame = WebInspector.CallFrame.fromPayload(this._message.target, {
                 functionName: "",
                 url: this._message.url,
                 lineNumber: this._message.line,
@@ -416,7 +416,7 @@ WebInspector.ConsoleMessageView = class ConsoleMessageView extends WebInspector.
             return parameter;
 
         if (typeof parameter === "object")
-            return WebInspector.RemoteObject.fromPayload(parameter);
+            return WebInspector.RemoteObject.fromPayload(parameter, this._message.target);
 
         return WebInspector.RemoteObject.fromPrimitiveValue(parameter);
     }
@@ -536,6 +536,7 @@ WebInspector.ConsoleMessageView = class ConsoleMessageView extends WebInspector.
             "weakset": this._formatParameterAsObject,
             "iterator": this._formatParameterAsObject,
             "class": this._formatParameterAsObject,
+            "proxy": this._formatParameterAsObject,
             "array": this._formatParameterAsArray,
             "node": this._formatParameterAsNode,
             "string": this._formatParameterAsString,
@@ -556,7 +557,7 @@ WebInspector.ConsoleMessageView = class ConsoleMessageView extends WebInspector.
     _formatParameterAsString(object, fragment)
     {
         if (this._isStackTrace(object)) {
-            let stackTrace = WebInspector.StackTrace.fromString(object.description);
+            let stackTrace = WebInspector.StackTrace.fromString(this._message.target, object.description);
             if (stackTrace.callFrames.length) {
                 let stackView = new WebInspector.StackTraceView(stackTrace);
                 fragment.appendChild(stackView.element);
