@@ -24,18 +24,18 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <wpe-mesa/view-backend-exportable.h>
+#include <wpe-mesa/view-backend-exportable-dma-buf.h>
 
 #include "ipc.h"
 #include "ipc-gbm.h"
 
-namespace Exportable {
+namespace ExportableDmaBuf {
 
 class ViewBackend;
 
 class ClientBundle {
 public:
-    struct wpe_mesa_view_backend_exportable_client* client;
+    struct wpe_mesa_view_backend_exportable_dma_buf_client* client;
     void* data;
     ViewBackend* viewBackend;
 };
@@ -106,60 +106,60 @@ void ViewBackend::handleMessage(char* data, size_t size)
 
     auto& bufferCommit = IPC::GBM::BufferCommit::cast(message);
 
-    struct wpe_mesa_view_backend_exportable_dma_buf_egl_image_data imageData{
+    struct wpe_mesa_view_backend_exportable_dma_buf_data imageData{
         m_renderer.pendingBufferFd, bufferCommit.handle,
         bufferCommit.width, bufferCommit.height,
         bufferCommit.stride, bufferCommit.format
     };
-    m_clientBundle->client->export_dma_buf_egl_image(m_clientBundle->data, &imageData);
+    m_clientBundle->client->export_dma_buf(m_clientBundle->data, &imageData);
 
     m_renderer.pendingBufferFd = -1;
 }
 
-} // namespace Exportable
+} // namespace ExportableDmaBuf
 
 extern "C" {
 
-struct wpe_mesa_view_backend_exportable {
-    Exportable::ClientBundle* clientBundle;
+struct wpe_mesa_view_backend_exportable_dma_buf {
+    ExportableDmaBuf::ClientBundle* clientBundle;
     struct wpe_view_backend* backend;
 };
 
-struct wpe_view_backend_interface exportable_view_backend_interface = {
+struct wpe_view_backend_interface exportable_dma_buf_view_backend_interface = {
     // create
     [](void* data, struct wpe_view_backend* backend) -> void*
     {
-        auto* clientBundle = static_cast<Exportable::ClientBundle*>(data);
-        return new Exportable::ViewBackend(clientBundle, backend);
+        auto* clientBundle = static_cast<ExportableDmaBuf::ClientBundle*>(data);
+        return new ExportableDmaBuf::ViewBackend(clientBundle, backend);
     },
     // destroy
     [](void* data)
     {
-        auto* backend = static_cast<Exportable::ViewBackend*>(data);
+        auto* backend = static_cast<ExportableDmaBuf::ViewBackend*>(data);
         delete backend;
     },
     // initialize
     [](void* data)
     {
-        auto& backend = *static_cast<Exportable::ViewBackend*>(data);
+        auto& backend = *static_cast<ExportableDmaBuf::ViewBackend*>(data);
         backend.initialize();
     },
     // get_renderer_host_fd
     [](void* data) -> int
     {
-        auto& backend = *static_cast<Exportable::ViewBackend*>(data);
+        auto& backend = *static_cast<ExportableDmaBuf::ViewBackend*>(data);
         return backend.ipcHost().releaseClientFD();
     },
 };
 
 __attribute__((visibility("default")))
-struct wpe_mesa_view_backend_exportable*
-wpe_mesa_view_backend_exportable_create(struct wpe_mesa_view_backend_exportable_client* client, void* client_data)
+struct wpe_mesa_view_backend_exportable_dma_buf*
+wpe_mesa_view_backend_exportable_dma_buf_create(struct wpe_mesa_view_backend_exportable_dma_buf_client* client, void* client_data)
 {
-    auto* clientBundle = new Exportable::ClientBundle{ client, client_data, nullptr };
-    struct wpe_view_backend* backend = wpe_view_backend_create_with_backend_interface(&exportable_view_backend_interface, clientBundle);
+    auto* clientBundle = new ExportableDmaBuf::ClientBundle{ client, client_data, nullptr };
+    struct wpe_view_backend* backend = wpe_view_backend_create_with_backend_interface(&exportable_dma_buf_view_backend_interface, clientBundle);
 
-    auto* exportable = new struct wpe_mesa_view_backend_exportable;
+    auto* exportable = new struct wpe_mesa_view_backend_exportable_dma_buf;
     exportable->clientBundle = clientBundle;
     exportable->backend = backend;
 
@@ -168,7 +168,7 @@ wpe_mesa_view_backend_exportable_create(struct wpe_mesa_view_backend_exportable_
 
 __attribute__((visibility("default")))
 void
-wpe_mesa_view_backend_exportable_destroy(struct wpe_mesa_view_backend_exportable* exportable)
+wpe_mesa_view_backend_exportable_dma_buf_destroy(struct wpe_mesa_view_backend_exportable_dma_buf* exportable)
 {
     wpe_view_backend_destroy(exportable->backend);
     delete exportable->clientBundle;
@@ -177,14 +177,14 @@ wpe_mesa_view_backend_exportable_destroy(struct wpe_mesa_view_backend_exportable
 
 __attribute__((visibility("default")))
 struct wpe_view_backend*
-wpe_mesa_view_backend_exportable_get_view_backend(struct wpe_mesa_view_backend_exportable* exportable)
+wpe_mesa_view_backend_exportable_dma_buf_get_view_backend(struct wpe_mesa_view_backend_exportable_dma_buf* exportable)
 {
     return exportable->backend;
 }
 
 __attribute__((visibility("default")))
 void
-wpe_mesa_view_backend_exportable_dispatch_frame_complete(struct wpe_mesa_view_backend_exportable* exportable)
+wpe_mesa_view_backend_exportable_dma_buf_dispatch_frame_complete(struct wpe_mesa_view_backend_exportable_dma_buf* exportable)
 {
     IPC::Message message;
     IPC::GBM::FrameComplete::construct(message);
@@ -193,7 +193,7 @@ wpe_mesa_view_backend_exportable_dispatch_frame_complete(struct wpe_mesa_view_ba
 
 __attribute__((visibility("default")))
 void
-wpe_mesa_view_backend_exportable_dispatch_release_buffer(struct wpe_mesa_view_backend_exportable* exportable, uint32_t handle)
+wpe_mesa_view_backend_exportable_dma_buf_dispatch_release_buffer(struct wpe_mesa_view_backend_exportable_dma_buf* exportable, uint32_t handle)
 {
     IPC::Message message;
     IPC::GBM::ReleaseBuffer::construct(message, handle);

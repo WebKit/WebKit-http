@@ -19,7 +19,7 @@
 #include <cstdio>
 #include <glib.h>
 #include <unordered_map>
-#include <wpe-mesa/view-backend-exportable.h>
+#include <wpe-mesa/view-backend-exportable-dma-buf.h>
 
 class GLContext {
 public:
@@ -140,7 +140,7 @@ public:
     void snapshot();
 
 private:
-    static struct wpe_mesa_view_backend_exportable_client s_exportableClient;
+    static struct wpe_mesa_view_backend_exportable_dma_buf_client s_exportableClient;
     static WKPageNavigationClientV0 s_pageNavigationClient;
 
     GLContext& m_glContext;
@@ -148,7 +148,7 @@ private:
     WKContextRef m_context;
     WKPageConfigurationRef m_pageConfiguration;
 
-    struct wpe_mesa_view_backend_exportable* m_exportable;
+    struct wpe_mesa_view_backend_exportable_dma_buf* m_exportable;
     WKViewRef m_view;
 
     std::unordered_map<uint32_t, std::pair<int32_t, EGLImageKHR>> m_imageMap;
@@ -172,9 +172,9 @@ View::View(GLContext& glContext)
         WKPageConfigurationSetPageGroup(m_pageConfiguration, pageGroup.get());
     }
 
-    m_exportable = wpe_mesa_view_backend_exportable_create(&s_exportableClient, this);
+    m_exportable = wpe_mesa_view_backend_exportable_dma_buf_create(&s_exportableClient, this);
 
-    auto* backend = wpe_mesa_view_backend_exportable_get_view_backend(m_exportable);
+    auto* backend = wpe_mesa_view_backend_exportable_dma_buf_get_view_backend(m_exportable);
     m_view = WKViewCreateWithViewBackend(backend, m_pageConfiguration);
 
     WKPageSetPageNavigationClient(WKViewGetPage(m_view), &s_pageNavigationClient.base);
@@ -224,9 +224,9 @@ void View::performUpdate()
     if (!m_pendingImage.first)
         return;
 
-    wpe_mesa_view_backend_exportable_dispatch_frame_complete(m_exportable);
+    wpe_mesa_view_backend_exportable_dma_buf_dispatch_frame_complete(m_exportable);
     if (m_lockedImage.first) {
-        wpe_mesa_view_backend_exportable_dispatch_release_buffer(m_exportable, m_lockedImage.first);
+        wpe_mesa_view_backend_exportable_dma_buf_dispatch_release_buffer(m_exportable, m_lockedImage.first);
         m_glContext.destroyImage(m_glContext.eglDisplay(), std::get<0>(m_lockedImage.second));
     }
 
@@ -234,9 +234,9 @@ void View::performUpdate()
     m_pendingImage = std::pair<uint32_t, std::tuple<EGLImageKHR, uint32_t, uint32_t>> { };
 }
 
-struct wpe_mesa_view_backend_exportable_client View::s_exportableClient = {
+struct wpe_mesa_view_backend_exportable_dma_buf_client View::s_exportableClient = {
     // export_dma_buf
-    [](void* data, struct wpe_mesa_view_backend_exportable_dma_buf_egl_image_data* imageData)
+    [](void* data, struct wpe_mesa_view_backend_exportable_dma_buf_data* imageData)
     {
         auto& view = *static_cast<View*>(data);
 
