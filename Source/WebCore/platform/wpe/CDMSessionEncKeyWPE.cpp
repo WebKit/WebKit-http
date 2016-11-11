@@ -33,6 +33,13 @@
 #include "CDMSession.h"
 #include "MediaKeyError.h"
 
+#include <page/Base64Utilities.h> //TODO check and  remove unwanted headers
+#include <wtf/text/Base64.h>
+#include "TextEncoding.h"
+
+
+unsigned char message[3096] = "\0"; //TODO move to class member variable
+
 namespace WebCore {
 
 CDMSessionEncKey::CDMSessionEncKey(CDMSessionClient* client ,OpenCdm* openCdm)
@@ -41,9 +48,7 @@ CDMSessionEncKey::CDMSessionEncKey(CDMSessionClient* client ,OpenCdm* openCdm)
      m_msgLength(0),
      m_destUrlLength(0)
 {
-    printf ("This is file %s --function (%s)--%d \n",__FILE__,__func__, __LINE__);
 }
-
 
 RefPtr<Uint8Array> CDMSessionEncKey::generateKeyRequest(const String& mimeType, Uint8Array* initData, String& destUrl, unsigned short& errorCode, uint32_t& sysCode)
 {
@@ -52,7 +57,6 @@ RefPtr<Uint8Array> CDMSessionEncKey::generateKeyRequest(const String& mimeType, 
     int ret = 0;
     int i;
     unsigned char url[100] = "\0";
-    unsigned char message[3096] = "\0";
     unsigned char initial_value[] = {"00000042"
     "70737368"
     "00000000"
@@ -60,35 +64,24 @@ RefPtr<Uint8Array> CDMSessionEncKey::generateKeyRequest(const String& mimeType, 
     "00000022"
     "08011a0d7769646576696e655f746573"
     "74220f73747265616d696e675f636c69"
-    "7031" };
+    "7031" }; //TODO remove this and use initData param
 
-    printf ("This is file %s --function (%s)--%d \n",__FILE__,__func__, __LINE__);
+    string sessionId; //TODO check sessionId setting sequence and update
 
-    m_openCdmSession->CreateSession(mimeType.utf8().data(),initial_value,
-                                            strlen((const char*)initial_value)); //TODO Widvine
+    m_openCdmSession->CreateSession(mimeType.utf8().data(), initial_value,
+                                            strlen((const char*)initial_value), sessionId); 
+    cout << endl << "session_id:CDMSessionEncKey:generateKeyRequest: "<< sessionId << endl;
+    ret = m_openCdmSession->GetKeyMessage(message, &m_msgLength, url, &m_destUrlLength);
+
     printf("This is file %s --function (%s)--%d \n",__FILE__,__func__, __LINE__);
-    ret = m_openCdmSession->GetKeyMessage(message,
-                                   &m_msgLength, url, &m_destUrlLength);
-
-    printf("This is file %s --function (%s)--%d \n",__FILE__,__func__, __LINE__);
-    if ( (ret != 0) || (m_msgLength == 0) || (m_destUrlLength == 0) ) {
-
+    if ((ret != 0) || (m_msgLength == 0) || (m_destUrlLength == 0)) {
         printf("This is file %s --function (%s)--%d \n",__FILE__,__func__, __LINE__);
         errorCode = MediaKeyError::MEDIA_KEYERR_UNKNOWN;
         return nullptr;
-
     } else {
-
-        printf("\n*********WPE MESSAGE ************* \n");
-        for(i =0;i< m_msgLength;i++)
-	    printf(" %02x",message[i]);
-	printf("\n WPE :: message len  = %d ",m_msgLength);
-	printf("\n WPE :: message size of received content  = %d ",strlen((const char*)message));
-
         destUrl = String::fromUTF8(url);
-        return (Uint8Array::create(message,m_msgLength));
+        return (Uint8Array::create(message, m_msgLength));
     }
-
 }
 
 void CDMSessionEncKey::releaseKeys()
@@ -104,8 +97,21 @@ bool CDMSessionEncKey::update(Uint8Array* key, RefPtr<Uint8Array>& nextMessage, 
     UNUSED_PARAM(errorCode);
     UNUSED_PARAM(sysytemCode);
 
+    //TODO : remove debug prints
+    char lic[3096];
     String rawKeysString = String::fromUTF8(key->data(), key->length());
-    m_openCdmSession->Update(key->data(), key->length());//TODO implement for widevine
+    printf("**********LIC UPDTE ***************************\n");
+    memcpy(lic,key->data(), key->length());
+    printf("**********LIC UPDTE ***************************\n KEY LENGTH = %d ,KEYBYTELENGTH = %d",key->length(),key->byteLength());
+    int i;
+    printf("**********LIC FROM WEBKIT***************************\n");
+    for(i = 0; i< key->length();i++ )
+        printf(" %02X",lic[i]);
+    printf("\n**********LIC FROM WEBKIT***************************\n");
+    std::cout << key->data() << "\n";
+
+    m_openCdmSession->Update(key->data(), key->length());
+
     return true;
 }
 
