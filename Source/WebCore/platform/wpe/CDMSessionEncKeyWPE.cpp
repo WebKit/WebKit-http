@@ -50,21 +50,41 @@ RefPtr<Uint8Array> CDMSessionEncKey::generateKeyRequest(const String& mimeType, 
     UNUSED_PARAM(sysCode);
 
     int ret = 0;
+    int i;
     unsigned char url[100] = "\0";
-    unsigned char message[100] = "\0";
+    unsigned char message[3096] = "\0";
+    unsigned char initial_value[] = {"00000042"
+    "70737368"
+    "00000000"
+    "edef8ba979d64acea3c827dcd51d21ed"
+    "00000022"
+    "08011a0d7769646576696e655f746573"
+    "74220f73747265616d696e675f636c69"
+    "7031" };
 
     printf ("This is file %s --function (%s)--%d \n",__FILE__,__func__, __LINE__);
-    m_openCdmSession->CreateSession(mimeType.utf8().data(),
-                                    reinterpret_cast<unsigned char*>(initData),
-                                    initData->length()); //TODO Widevine
-    ret = m_openCdmSession->GetKeyMessage(message,
-                                          &m_msgLength, url, &m_destUrlLength);
 
+    m_openCdmSession->CreateSession(mimeType.utf8().data(),initial_value,
+                                            strlen((const char*)initial_value)); //TODO Widvine
+    printf("This is file %s --function (%s)--%d \n",__FILE__,__func__, __LINE__);
+    ret = m_openCdmSession->GetKeyMessage(message,
+                                   &m_msgLength, url, &m_destUrlLength);
+
+    printf("This is file %s --function (%s)--%d \n",__FILE__,__func__, __LINE__);
     if ( (ret != 0) || (m_msgLength == 0) || (m_destUrlLength == 0) ) {
+
+        printf("This is file %s --function (%s)--%d \n",__FILE__,__func__, __LINE__);
         errorCode = MediaKeyError::MEDIA_KEYERR_UNKNOWN;
         return nullptr;
 
     } else {
+
+        printf("\n*********WPE MESSAGE ************* \n");
+        for(i =0;i< m_msgLength;i++)
+	    printf(" %02x",message[i]);
+	printf("\n WPE :: message len  = %d ",m_msgLength);
+	printf("\n WPE :: message size of received content  = %d ",strlen((const char*)message));
+
         destUrl = String::fromUTF8(url);
         return (Uint8Array::create(message,m_msgLength));
     }
@@ -79,6 +99,7 @@ void CDMSessionEncKey::releaseKeys()
 
 bool CDMSessionEncKey::update(Uint8Array* key, RefPtr<Uint8Array>& nextMessage, unsigned short& errorCode, uint32_t& sysytemCode)
 {
+    printf("This is file %s --function (%s)--%d \n",__FILE__,__func__, __LINE__);
     UNUSED_PARAM(nextMessage);
     UNUSED_PARAM(errorCode);
     UNUSED_PARAM(sysytemCode);
@@ -92,7 +113,6 @@ CDMSessionEncKey::~CDMSessionEncKey()
 {
     printf ("This is file %s --function (%s)--%d \n",__FILE__,__func__, __LINE__);
 }
-
 }
 
 #endif // ENABLE(ENCRYPTED_MEDIA_V2)

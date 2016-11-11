@@ -42,9 +42,8 @@ unique_ptr<OpenCdm> CDMPrivateEncKey::m_openCdm(nullptr);
 bool CDMPrivateEncKey::supportsKeySystem(const String& keySystem)
 {
     m_openCdmKeySystem = keySystem;
-    printf ("This is file %s --function (%s)--%d \n",__FILE__,__func__, __LINE__);
-    return equalLettersIgnoringASCIICase(keySystem,
-                                         "org.chromium.externalclearkey");//TODO replace with exact key
+    printf ("This is file %s --function (%s)--%d \n: key system  = %s\n",__FILE__,__func__, __LINE__,keySystem.utf8().data());
+    return CDMPrivateEncKey::getOpenCdmInstance()->IsTypeSupported(keySystem.utf8().data(),"");
 }
 
 bool CDMPrivateEncKey::supportsKeySystemAndMimeType(const String& keySystem, const String& mimeType)
@@ -53,13 +52,14 @@ bool CDMPrivateEncKey::supportsKeySystemAndMimeType(const String& keySystem, con
         return false;
 
     printf ("This is file %s --function (%s)--%d \n",__FILE__,__func__, __LINE__);
-    return equalLettersIgnoringASCIICase(mimeType, "video/mock"); //TODO replace with exact mime type
+    return CDMPrivateEncKey::getOpenCdmInstance()->IsTypeSupported(keySystem.utf8().data(),
+                                                                   mimeType.utf8().data());
 }
 
 bool CDMPrivateEncKey::supportsMIMEType(const String& mimeType)
 {
-    printf ("This is file %s --function (%s)--%d \n",__FILE__,__func__, __LINE__);
-    return equalLettersIgnoringASCIICase(mimeType, "video/mock");//TODO replace with exact mime type
+    printf ("This is file %s --function (%s)--%d \n: key system  = %s ,mimeType = %s \n",__FILE__,__func__, __LINE__,m_cdm->keySystem().utf8().data(),mimeType.utf8().data());
+    return CDMPrivateEncKey::getOpenCdmInstance()->IsTypeSupported(m_cdm->keySystem().utf8().data(),mimeType.utf8().data());
 }
 
 std::unique_ptr<CDMSession> CDMPrivateEncKey::createSession(CDMSessionClient* client)
