@@ -75,7 +75,7 @@ public:
 private:
     WorkQueuePool()
     {
-#if PLATFORM(GTK)
+#if PLATFORM(GTK) || PLATFORM(WPE)
         m_threadCountLimit = 1;
 #else
         m_threadCountLimit = std::numeric_limits<unsigned>::max();
