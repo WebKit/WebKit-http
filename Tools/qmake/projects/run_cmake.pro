@@ -44,7 +44,16 @@ build_pass|!debug_and_release {
             ZLIB_INCLUDE_DIRS=$$system_path($$QTBASE_DIR/src/3rdparty/zlib)
     }
 
-    equals(QMAKE_HOST.os, Windows): cmake_args += "-G \"NMake Makefiles JOM\""
+    equals(QMAKE_HOST.os, Windows) {
+        if(equals(MAKEFILE_GENERATOR, MSVC.NET)|equals(MAKEFILE_GENERATOR, MSBUILD)) {
+            cmake_generator = "NMake Makefiles JOM"
+        } else: if(equals(MAKEFILE_GENERATOR, MINGW)) {
+            cmake_generator = "MinGW Makefiles"
+        } else {
+            cmake_generator = "Unix Makefiles"
+        }
+        cmake_args += "-G \"$$cmake_generator\""
+    }
 
     !silent: make_args += "VERBOSE=1"
 
