@@ -222,7 +222,7 @@ struct wpe_renderer_backend_egl_target_interface nc_renderer_backend_egl_target_
         delete target;
     },
     // initialize
-    [](void* data, void* backend_data, EGLDisplay display, uint32_t width, uint32_t height)
+    [](void* data, void* backend_data, uint32_t width, uint32_t height)
     {
         auto& target = *static_cast<NC::EGLTarget*>(data);
         auto& backend = *static_cast<NC::Backend*>(backend_data);

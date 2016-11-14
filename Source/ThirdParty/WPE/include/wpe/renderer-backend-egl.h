@@ -31,7 +31,6 @@
 extern "C" {
 #endif
 
-#include <EGL/egl.h>
 #include <EGL/eglplatform.h>
 
 struct wpe_renderer_backend_egl;
@@ -51,7 +50,7 @@ struct wpe_renderer_backend_egl_target_interface {
     void* (*create)(struct wpe_renderer_backend_egl_target*, int);
     void (*destroy)(void*);
 
-    void (*initialize)(void*, void*, EGLDisplay, uint32_t, uint32_t);
+    void (*initialize)(void*, void*, uint32_t, uint32_t);
     EGLNativeWindowType (*get_native_window)(void*);
     void (*resize)(void*, uint32_t, uint32_t);
     void (*frame_will_render)(void*);
@@ -62,7 +61,7 @@ struct wpe_renderer_backend_egl_offscreen_target_interface {
     void* (*create)();
     void (*destroy)(void*);
 
-    void (*initialize)(void*, void*, EGLDisplay);
+    void (*initialize)(void*, void*);
     EGLNativeWindowType (*get_native_window)(void*);
 };
 
@@ -87,7 +86,7 @@ void
 wpe_renderer_backend_egl_target_set_client(struct wpe_renderer_backend_egl_target*, struct wpe_renderer_backend_egl_target_client*, void*);
 
 void
-wpe_renderer_backend_egl_target_initialize(struct wpe_renderer_backend_egl_target*, struct wpe_renderer_backend_egl*, EGLDisplay, uint32_t, uint32_t);
+wpe_renderer_backend_egl_target_initialize(struct wpe_renderer_backend_egl_target*, struct wpe_renderer_backend_egl*, uint32_t, uint32_t);
 
 EGLNativeWindowType
 wpe_renderer_backend_egl_target_get_native_window(struct wpe_renderer_backend_egl_target*);
@@ -108,7 +107,7 @@ void
 wpe_renderer_backend_egl_offscreen_target_destroy(struct wpe_renderer_backend_egl_offscreen_target*);
 
 void
-wpe_renderer_backend_egl_offscreen_target_initialize(struct wpe_renderer_backend_egl_offscreen_target*, struct wpe_renderer_backend_egl*, EGLDisplay);
+wpe_renderer_backend_egl_offscreen_target_initialize(struct wpe_renderer_backend_egl_offscreen_target*, struct wpe_renderer_backend_egl*);
 
 EGLNativeWindowType
 wpe_renderer_backend_egl_offscreen_target_get_native_window(struct wpe_renderer_backend_egl_offscreen_target*);
