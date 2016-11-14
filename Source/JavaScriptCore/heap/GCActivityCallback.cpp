@@ -134,7 +134,8 @@ void GCActivityCallback::scheduleTimer(double newDelay)
     }
 
     auto delayDuration = std::chrono::duration<double>(m_delay);
-    auto safeDelayDuration = std::chrono::microseconds::max();
+    std::chrono::microseconds safeDelayDuration =
+        Options::maxDelayForGCTimers() ? std::chrono::seconds(Options::maxDelayForGCTimers()) : std::chrono::microseconds::max();
     if (delayDuration < safeDelayDuration)
         safeDelayDuration = std::chrono::duration_cast<std::chrono::microseconds>(delayDuration);
     gint64 currentTime = g_get_monotonic_time();

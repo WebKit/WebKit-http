@@ -306,6 +306,7 @@ typedef const char* optionString;
     v(double, percentCPUPerMBForFullTimer, 0.0003125, Normal, nullptr) \
     v(double, percentCPUPerMBForEdenTimer, 0.0025, Normal, nullptr) \
     v(double, collectionTimerMaxPercentCPU, 0.05, Normal, nullptr) \
+    v(unsigned, maxDelayForGCTimers, 0, Normal, "max delay in seconds for GC timers, if 0 means no delay") \
     \
     v(bool, forceWeakRandomSeed, false, Normal, nullptr) \
     v(unsigned, forcedWeakRandomSeed, 0, Normal, nullptr) \
