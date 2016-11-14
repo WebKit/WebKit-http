@@ -8,7 +8,7 @@
 #include <WebKit/WKURL.h>
 #include <WebKit/WKView.h>
 #include <glib.h>
-#include <wpe-mesa/view-backend-exportable.h>
+#include <wpe-mesa/view-backend-exportable-dma-buf.h>
 
 #include "xdg-shell-client-protocol.h"
 #include <cassert>
@@ -67,6 +67,7 @@ struct Embedder {
     EGLConfig eglConfig;
     EGLContext eglContext;
 
+    PFNEGLCREATEIMAGEKHRPROC createImage;
     PFNEGLDESTROYIMAGEKHRPROC destroyImage;
     PFNGLEGLIMAGETARGETTEXTURE2DOESPROC imageTargetTexture2DOES;
 
@@ -94,19 +95,19 @@ struct Embedder {
     static const char* vertexShaderSource;
     static const char* fragmentShaderSource;
 
+    std::unordered_map<uint32_t, std::pair<int32_t, EGLImageKHR>> imageMap;
     std::pair<uint32_t, EGLImageKHR> pendingImage { 0, nullptr };
     std::pair<uint32_t, EGLImageKHR> lockedImage { 0, nullptr };
-    bool sendFrameComplete {false};
 
     GSource* displaySource;
 
     WKContextRef context;
     WKPageConfigurationRef pageConfiguration;
 
-    struct wpe_mesa_view_backend_exportable* exportableBackend;
+    struct wpe_mesa_view_backend_exportable_dma_buf* exportableBackend;
     WKViewRef view;
 
-    static struct wpe_mesa_view_backend_exportable_client exportableClient;
+    static struct wpe_mesa_view_backend_exportable_dma_buf_client exportableClient;
 };
 
 const struct wl_registry_listener Embedder::registryListener = {
@@ -144,9 +145,11 @@ const struct wl_callback_listener Embedder::frameListener = {
 
         auto& e = *static_cast<Embedder*>(data);
 
-        if (e.sendFrameComplete) {
-            wpe_mesa_view_backend_exportable_dispatch_frame_complete(e.exportableBackend);
-            e.sendFrameComplete = false;
+        if (e.pendingImage.first)
+            wpe_mesa_view_backend_exportable_dma_buf_dispatch_frame_complete(e.exportableBackend);
+        if (e.lockedImage.first) {
+            wpe_mesa_view_backend_exportable_dma_buf_dispatch_release_buffer(e.exportableBackend, e.lockedImage.first);
+            e.lockedImage = { 0, nullptr };
         }
 
         Embedder::render(e);
@@ -243,15 +246,8 @@ void Embedder::render(Embedder& e)
         e.imageTargetTexture2DOES(GL_TEXTURE_2D, e.pendingImage.second);
         glUniform1i(e.textureUniform, 0);
 
-        if (e.lockedImage.first) {
-            wpe_mesa_view_backend_exportable_dispatch_release_buffer(e.exportableBackend, e.lockedImage.first);
-            e.destroyImage(e.eglDisplay, e.lockedImage.second);
-        }
-
         e.lockedImage = e.pendingImage;
         e.pendingImage = { 0, nullptr };
-
-        e.sendFrameComplete = true;
     }
 
     glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, vertices);
@@ -335,18 +331,40 @@ GSourceFuncs EventSource::sourceFuncs = {
     nullptr, // closure_marshall
 };
 
-struct wpe_mesa_view_backend_exportable_client Embedder::exportableClient = {
-    // export_egl_image
-    [](void* data, struct wpe_mesa_view_backend_exportable_egl_image_data* imageData)
+struct wpe_mesa_view_backend_exportable_dma_buf_client Embedder::exportableClient = {
+    // export_dma_buf
+    [](void* data, struct wpe_mesa_view_backend_exportable_dma_buf_data* imageData)
     {
         auto& e = *static_cast<Embedder*>(data);
 
-        if (e.pendingImage.first) {
-            wpe_mesa_view_backend_exportable_dispatch_release_buffer(e.exportableBackend, e.pendingImage.first);
-            e.destroyImage(e.eglDisplay, e.pendingImage.second);
+        auto it = e.imageMap.end();
+        if (imageData->fd >= 0) {
+            assert(e.imageMap.find(imageData->handle) == e.imageMap.end());
+
+            it = e.imageMap.insert({ imageData->handle, { imageData->fd, nullptr }}).first;
+        } else {
+            assert(e.imageMap.find(imageData->handle) != e.imageMap.end());
+            it = e.imageMap.find(imageData->handle);
         }
 
-        e.pendingImage = { imageData->handle, imageData->image };
+        assert(it != e.imageMap.end());
+        uint32_t handle = it->first;
+        int32_t fd = it->second.first;
+
+        eglMakeCurrent(e.eglDisplay, e.eglSurface, e.eglSurface, e.eglContext);
+
+        EGLint attributes[] = {
+            EGL_WIDTH, static_cast<EGLint>(imageData->width),
+            EGL_HEIGHT, static_cast<EGLint>(imageData->height),
+            EGL_LINUX_DRM_FOURCC_EXT, static_cast<EGLint>(imageData->format),
+            EGL_DMA_BUF_PLANE0_FD_EXT, fd,
+            EGL_DMA_BUF_PLANE0_OFFSET_EXT, 0,
+            EGL_DMA_BUF_PLANE0_PITCH_EXT, static_cast<EGLint>(imageData->stride),
+            EGL_NONE,
+        };
+        EGLImageKHR image = e.createImage(e.eglDisplay, EGL_NO_CONTEXT, EGL_LINUX_DMA_BUF_EXT, nullptr, attributes);
+
+        e.pendingImage = { handle, image };
     }
 };
 
@@ -359,7 +377,7 @@ int main(int argc, char* argv[])
     wl_registry_add_listener(e.registry, &Embedder::registryListener, &e);
     wl_display_roundtrip(e.display);
 
-    e.eglDisplay = eglGetDisplay((EGLNativeDisplayType)e.display);
+    e.eglDisplay = eglGetDisplay(e.display);
     eglInitialize(e.eglDisplay, nullptr, nullptr);
     eglBindAPI(EGL_OPENGL_ES_API);
 
@@ -367,12 +385,13 @@ int main(int argc, char* argv[])
     eglChooseConfig(e.eglDisplay, Embedder::configAttributes, &e.eglConfig, 1, &numConfigs);
 
     e.eglContext = eglCreateContext(e.eglDisplay, e.eglConfig, EGL_NO_CONTEXT, Embedder::contextAttributes);
+    e.createImage = reinterpret_cast<PFNEGLCREATEIMAGEKHRPROC>(eglGetProcAddress("eglCreateImageKHR"));
     e.destroyImage = reinterpret_cast<PFNEGLDESTROYIMAGEKHRPROC>(eglGetProcAddress("eglDestroyImageKHR"));
     e.imageTargetTexture2DOES = reinterpret_cast<PFNGLEGLIMAGETARGETTEXTURE2DOESPROC>(eglGetProcAddress("glEGLImageTargetTexture2DOES"));
 
     e.surface = wl_compositor_create_surface(e.compositor);
     e.nativeWindow = wl_egl_window_create(e.surface, 800, 600);
-    e.eglSurface = eglCreateWindowSurface(e.eglDisplay, e.eglConfig, (EGLNativeWindowType)e.nativeWindow, nullptr);
+    e.eglSurface = eglCreateWindowSurface(e.eglDisplay, e.eglConfig, e.nativeWindow, nullptr);
     e.xdgSurface = xdg_shell_get_xdg_surface(e.xdgShell, e.surface);
 
     eglMakeCurrent(e.eglDisplay, e.eglSurface, e.eglSurface, e.eglContext);
@@ -403,8 +422,8 @@ int main(int argc, char* argv[])
         WKPageConfigurationSetPageGroup(e.pageConfiguration, pageGroup.get());
     }
 
-    e.exportableBackend = wpe_mesa_view_backend_exportable_create(e.eglDisplay, &Embedder::exportableClient, &e);
-    e.view = WKViewCreateWithViewBackend(wpe_mesa_view_backend_exportable_get_view_backend(e.exportableBackend), e.pageConfiguration);
+    e.exportableBackend = wpe_mesa_view_backend_exportable_dma_buf_create(&Embedder::exportableClient, &e);
+    e.view = WKViewCreateWithViewBackend(wpe_mesa_view_backend_exportable_dma_buf_get_view_backend(e.exportableBackend), e.pageConfiguration);
     auto pageNavigationClient = createPageNavigationClient();
     WKPageSetPageNavigationClient(WKViewGetPage(e.view), &pageNavigationClient.base);
 
