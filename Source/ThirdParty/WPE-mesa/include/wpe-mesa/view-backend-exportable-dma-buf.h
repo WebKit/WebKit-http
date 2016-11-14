@@ -24,47 +24,47 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef wpe_mesa_view_backend_exportable_h
-#define wpe_mesa_view_backend_exportable_h
+#ifndef wpe_mesa_view_backend_exportable_dma_buf_h
+#define wpe_mesa_view_backend_exportable_dma_buf_h
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 #include <wpe/view-backend.h>
-#include <EGL/egl.h>
-#include <EGL/eglext.h>
 
-struct wpe_mesa_view_backend_exportable;
+struct wpe_mesa_view_backend_exportable_dma_buf;
 
-struct wpe_mesa_view_backend_exportable_egl_image_data {
+struct wpe_mesa_view_backend_exportable_dma_buf_data {
+    int32_t fd;
     uint32_t handle;
-    EGLImageKHR image;
-    int32_t width;
-    int32_t height;
+    uint32_t width;
+    uint32_t height;
+    uint32_t stride;
+    uint32_t format;
 };
 
-struct wpe_mesa_view_backend_exportable_client {
-    void (*export_egl_image)(void*, struct wpe_mesa_view_backend_exportable_egl_image_data*);
+struct wpe_mesa_view_backend_exportable_dma_buf_client {
+    void (*export_dma_buf)(void*, struct wpe_mesa_view_backend_exportable_dma_buf_data*);
 };
 
-struct wpe_mesa_view_backend_exportable*
-wpe_mesa_view_backend_exportable_create(EGLDisplay, struct wpe_mesa_view_backend_exportable_client*, void*);
+struct wpe_mesa_view_backend_exportable_dma_buf*
+wpe_mesa_view_backend_exportable_dma_buf_create(struct wpe_mesa_view_backend_exportable_dma_buf_client*, void*);
 
 void
-wpe_mesa_view_backend_exportable_destroy(struct wpe_mesa_view_backend_exportable*);
+wpe_mesa_view_backend_exportable_dma_buf_destroy(struct wpe_mesa_view_backend_exportable_dma_buf*);
 
 struct wpe_view_backend*
-wpe_mesa_view_backend_exportable_get_view_backend(struct wpe_mesa_view_backend_exportable*);
+wpe_mesa_view_backend_exportable_dma_buf_get_view_backend(struct wpe_mesa_view_backend_exportable_dma_buf*);
 
 void
-wpe_mesa_view_backend_exportable_dispatch_frame_complete(struct wpe_mesa_view_backend_exportable*);
+wpe_mesa_view_backend_exportable_dma_buf_dispatch_frame_complete(struct wpe_mesa_view_backend_exportable_dma_buf*);
 
 void
-wpe_mesa_view_backend_exportable_dispatch_release_buffer(struct wpe_mesa_view_backend_exportable*, uint32_t);
+wpe_mesa_view_backend_exportable_dma_buf_dispatch_release_buffer(struct wpe_mesa_view_backend_exportable_dma_buf*, uint32_t);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif // wpe_mesa_view_backend_exportable_h
+#endif // wpe_mesa_view_backend_exportable_dma_buf_h
