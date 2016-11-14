@@ -129,7 +129,15 @@ struct EGLOffscreenTarget {
 
     ~EGLOffscreenTarget()
     {
+        if (surface)
+            wl_surface_destroy(surface);
+
+        if (egl_window)
+            wl_egl_window_destroy(egl_window);
     }
+
+    struct wl_surface* surface {NULL};
+    struct wl_egl_window* egl_window {NULL};
 };
 
 Backend::Backend(int hostFd)
@@ -271,13 +279,19 @@ struct wpe_renderer_backend_egl_offscreen_target_interface nc_renderer_backend_e
         delete target;
     },
     // initialize
-    [](void* data, void* backend_data, EGLDisplay display)
+    [](void* data, void* backend_data)
     {
+        auto& target = *static_cast<NC::EGLOffscreenTarget*>(data);
+        auto& backend = *static_cast<NC::Backend*>(backend_data);
+
+        target.surface = backend.createSurface();
+        target.egl_window = wl_egl_window_create(target.surface, 1, 1);
     },
     // get_native_window
     [](void* data) -> EGLNativeWindowType
     {
-        return (EGLNativeWindowType)nullptr;
+        auto& target = *static_cast<NC::EGLOffscreenTarget*>(data);
+        return (EGLNativeWindowType)target.egl_window;
     },
 };
 
