@@ -1,5 +1,6 @@
 set(WPE_MESA_SOURCE_DIR "${CMAKE_SOURCE_DIR}/Source/ThirdParty/WPE-mesa")
 
+option(WPE_MESA_EXPORTABLE_DMA_BUF "Whether to enable support for the exportable dma-buf view backend" ON)
 option(WPE_MESA_DRM_TEGRA_SUPPORT "Whether to enable support for the Tegra-specific quirks in the DRM WPE backend" OFF)
 
 find_package(GLIB 2.40.0 REQUIRED COMPONENTS gio gobject gthread gmodule)
@@ -54,8 +55,6 @@ set(WPE_MESA_SOURCES
 
     src/drm/view-backend-drm.cpp
 
-    #src/exportable/view-backend-exportable.cpp
-
     src/gbm/renderer-backend-egl-gbm.cpp
     src/gbm/renderer-host-gbm.cpp
 
@@ -78,6 +77,12 @@ set(WPE_MESA_SOURCES
     src/wayland/protocols/wayland-drm-protocol.c
     src/wayland/protocols/xdg-shell-protocol.c
 )
+
+if (WPE_MESA_EXPORTABLE_DMA_BUF)
+    list(APPEND WPE_MESA_SOURCES
+        src/exportable/view-backend-exportable-dma-buf.cpp
+    )
+endif ()
 
 add_library(WPE-mesa SHARED ${WPE_MESA_SOURCES})
 target_include_directories(WPE-mesa PRIVATE ${WPE_MESA_INCLUDE_DIRECTORIES})
