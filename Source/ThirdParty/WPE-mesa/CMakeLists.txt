@@ -1,7 +1,7 @@
 set(WPE_MESA_SOURCE_DIR "${CMAKE_SOURCE_DIR}/Source/ThirdParty/WPE-mesa")
 
-option(WPE_MESA_GBM "Whether to enable support for the libgbm-based buffer sharing" OFF)
-option(WPE_MESA_EXPORTABLE_DMA_BUF "Whether to enable support for the exportable dma-buf view backend" OFF)
+option(WPE_MESA_GBM "Whether to enable support for the libgbm-based buffer sharing" ON)
+option(WPE_MESA_EXPORTABLE_DMA_BUF "Whether to enable support for the exportable dma-buf view backend" ON)
 
 option(WPE_MESA_EXPERIMENTAL_WAYLAND_EGL "Whether to enable support for the wayland-egl nested compositor-based buffer sharing" OFF)
 
