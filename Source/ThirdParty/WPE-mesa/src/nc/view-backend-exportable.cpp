@@ -23,6 +23,8 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#error This file shouldn't be built for now -- do we need it?
+
 #include <wpe-mesa/view-backend-exportable.h>
 
 #include "nested-compositor.h"
