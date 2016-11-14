@@ -27,16 +27,19 @@
 #include <wpe/loader.h>
 
 #include "input-libxkbcommon.h"
-#include "nested-compositor.h"
 #include "pasteboard-wayland.h"
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 
-#if 0
+#if defined(WPE_MESA_GBM) && WPE_MESA_GBM
 #include "renderer-gbm.h"
 #include "view-backend-drm.h"
 #include "view-backend-wayland.h"
+#endif
+
+#if defined(WPE_MESA_EXPERIMENTAL_WAYLAND_EGL) && WPE_MESA_EXPERIMENTAL_WAYLAND_EGL
+#include "nested-compositor.h"
 #endif
 
 extern "C" {
@@ -46,21 +49,8 @@ static bool under_wayland = !!(std::getenv("WAYLAND_DISPLAY") || std::getenv("WA
 __attribute__((visibility("default")))
 struct wpe_loader_interface _wpe_loader_interface = {
     [](const char* object_name) -> void* {
-        if (!std::strcmp(object_name, "_wpe_renderer_backend_egl_interface"))
-            return &nc_renderer_backend_egl_interface;
-        if (!std::strcmp(object_name, "_wpe_renderer_backend_egl_target_interface"))
-            return &nc_renderer_backend_egl_target_interface;
-        if (!std::strcmp(object_name, "_wpe_renderer_backend_egl_offscreen_target_interface"))
-            return &nc_renderer_backend_egl_offscreen_target_interface;
-        if (!std::strcmp(object_name, "_wpe_renderer_host_interface"))
-            return &nc_renderer_host_interface;
-        if (!std::strcmp(object_name, "_wpe_view_backend_interface")) {
-            if (under_wayland)
-                return &nc_view_backend_wayland_interface;
-            return &nc_view_backend_drm_interface;
-        }
 
-#if 0
+#if defined(WPE_MESA_GBM) && WPE_MESA_GBM
         if (!std::strcmp(object_name, "_wpe_view_backend_interface")) {
             if (under_wayland)
                 return reinterpret_cast<void*>(&wayland_view_backend_interface);
@@ -76,6 +66,22 @@ struct wpe_loader_interface _wpe_loader_interface = {
             return &gbm_renderer_backend_egl_target_interface;
         if (!std::strcmp(object_name, "_wpe_renderer_backend_egl_offscreen_target_interface"))
             return &gbm_renderer_backend_egl_offscreen_target_interface;
+#endif
+
+#if defined(WPE_MESA_EXPERIMENTAL_WAYLAND_EGL) && WPE_MESA_EXPERIMENTAL_WAYLAND_EGL
+        if (!std::strcmp(object_name, "_wpe_renderer_backend_egl_interface"))
+            return &nc_renderer_backend_egl_interface;
+        if (!std::strcmp(object_name, "_wpe_renderer_backend_egl_target_interface"))
+            return &nc_renderer_backend_egl_target_interface;
+        if (!std::strcmp(object_name, "_wpe_renderer_backend_egl_offscreen_target_interface"))
+            return &nc_renderer_backend_egl_offscreen_target_interface;
+        if (!std::strcmp(object_name, "_wpe_renderer_host_interface"))
+            return &nc_renderer_host_interface;
+        if (!std::strcmp(object_name, "_wpe_view_backend_interface")) {
+            if (under_wayland)
+                return &nc_view_backend_wayland_interface;
+            return &nc_view_backend_drm_interface;
+        }
 #endif
 
         if (!std::strcmp(object_name, "_wpe_pasteboard_interface") && under_wayland)
