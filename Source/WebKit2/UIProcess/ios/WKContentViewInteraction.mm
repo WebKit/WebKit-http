@@ -963,7 +963,7 @@ static NSValue *nsSizeForTapHighlightBorderRadius(WebCore::IntSize borderRadius,
         RetainPtr<NSMutableArray> quads = adoptNS([[NSMutableArray alloc] initWithCapacity:static_cast<const NSUInteger>(quadCount)]);
         for (size_t i = 0; i < quadCount; ++i) {
             FloatQuad quad = highlightedQuads[i];
-            quad.scale(selfScale, selfScale);
+            quad.scale(selfScale);
             FloatQuad extendedQuad = inflateQuad(quad, minimumTapHighlightRadius);
             [quads addObject:[NSValue valueWithCGPoint:extendedQuad.p1()]];
             [quads addObject:[NSValue valueWithCGPoint:extendedQuad.p2()]];
@@ -1591,10 +1591,13 @@ static void cancelPotentialTapIfNecessary(WKContentView* contentView)
 {
     [_webSelectionAssistant willStartScrollingOrZoomingPage];
     [_textSelectionAssistant willStartScrollingOverflow];
+    _page->setIsScrollingOrZooming(true);
 }
 
 - (void)scrollViewWillStartPanOrPinchGesture
 {
+    _page->hideValidationMessage();
+
     _canSendTouchEventsAsynchronously = YES;
 }
 
@@ -1602,6 +1605,7 @@ static void cancelPotentialTapIfNecessary(WKContentView* contentView)
 {
     [_webSelectionAssistant didEndScrollingOrZoomingPage];
     [_textSelectionAssistant didEndScrollingOverflow];
+    _page->setIsScrollingOrZooming(false);
 }
 
 - (BOOL)requiresAccessoryView
@@ -2890,18 +2894,18 @@ static void selectionChangedWithTouch(WKContentView *view, const WebCore::IntPoi
 
 // end of UITextInput protocol implementation
 
-static UITextAutocapitalizationType toUITextAutocapitalize(WebAutocapitalizeType webkitType)
+static UITextAutocapitalizationType toUITextAutocapitalize(AutocapitalizeType webkitType)
 {
     switch (webkitType) {
-    case WebAutocapitalizeTypeDefault:
+    case AutocapitalizeTypeDefault:
         return UITextAutocapitalizationTypeSentences;
-    case WebAutocapitalizeTypeNone:
+    case AutocapitalizeTypeNone:
         return UITextAutocapitalizationTypeNone;
-    case WebAutocapitalizeTypeWords:
+    case AutocapitalizeTypeWords:
         return UITextAutocapitalizationTypeWords;
-    case WebAutocapitalizeTypeSentences:
+    case AutocapitalizeTypeSentences:
         return UITextAutocapitalizationTypeSentences;
-    case WebAutocapitalizeTypeAllCharacters:
+    case AutocapitalizeTypeAllCharacters:
         return UITextAutocapitalizationTypeAllCharacters;
     }
 
@@ -3848,6 +3852,13 @@ static bool isAssistableInputType(InputType type)
 {
     if ([userInterfaceItem isEqualToString:@"actionSheet"])
         return @{ userInterfaceItem: [_actionSheetAssistant currentAvailableActionTitles] };
+
+#if HAVE(LINK_PREVIEW)
+    if ([userInterfaceItem isEqualToString:@"linkPreviewPopoverContents"]) {
+        NSString *url = [_previewItemController previewData][UIPreviewDataLink];
+        return @{ userInterfaceItem: @{ @"pageURL": url } };
+    }
+#endif
     
     return nil;
 }
@@ -4022,6 +4033,8 @@ static NSString *previewIdentifierForElementAction(_WKElementAction *action)
 - (UIViewController *)_presentedViewControllerForPreviewItemController:(UIPreviewItemController *)controller
 {
     id <WKUIDelegatePrivate> uiDelegate = static_cast<id <WKUIDelegatePrivate>>([_webView UIDelegate]);
+    
+    [_webView _didShowForcePressPreview];
 
     NSURL *targetURL = controller.previewData[UIPreviewDataLink];
     URL coreTargetURL = targetURL;
@@ -4128,6 +4141,8 @@ static NSString *previewIdentifierForElementAction(_WKElementAction *action)
         [uiDelegate _webView:_webView didDismissPreviewViewController:viewController committing:committing];
     else if ([uiDelegate respondsToSelector:@selector(_webView:didDismissPreviewViewController:)])
         [uiDelegate _webView:_webView didDismissPreviewViewController:viewController];
+    
+    [_webView _didDismissForcePressPreview];
 }
 
 - (UIImage *)_presentationSnapshotForPreviewItemController:(UIPreviewItemController *)controller
@@ -4161,6 +4176,8 @@ static NSString *previewIdentifierForElementAction(_WKElementAction *action)
 - (void)_previewItemControllerDidCancelPreview:(UIPreviewItemController *)controller
 {
     _highlightLongPressCanClick = NO;
+    
+    [_webView _didDismissForcePressPreview];
 }
 
 @end

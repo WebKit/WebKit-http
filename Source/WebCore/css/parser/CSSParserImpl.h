@@ -83,14 +83,11 @@ public:
     };
 
     static bool parseValue(MutableStyleProperties*, CSSPropertyID, const String&, bool important, const CSSParserContext&);
-    static bool parseVariableValue(MutableStyleProperties*, const AtomicString& propertyName, const String&, bool important, const CSSParserContext&);
     static Ref<ImmutableStyleProperties> parseInlineStyleDeclaration(const String&, Element*);
     static bool parseDeclarationList(MutableStyleProperties*, const String&, const CSSParserContext&);
     static RefPtr<StyleRuleBase> parseRule(const String&, const CSSParserContext&, StyleSheetContents*, AllowedRulesType);
     static void parseStyleSheet(const String&, const CSSParserContext&, StyleSheetContents*);
     static CSSSelectorList parsePageSelector(CSSParserTokenRange, StyleSheetContents*);
-
-    static RefPtr<ImmutableStyleProperties> parseCustomPropertySet(CSSParserTokenRange);
 
     static std::unique_ptr<Vector<double>> parseKeyframeKeyList(const String&);
 
@@ -123,6 +120,9 @@ private:
     RefPtr<StyleRuleFontFace> consumeFontFaceRule(CSSParserTokenRange prelude, CSSParserTokenRange block);
     RefPtr<StyleRuleKeyframes> consumeKeyframesRule(bool webkitPrefixed, CSSParserTokenRange prelude, CSSParserTokenRange block);
     RefPtr<StyleRulePage> consumePageRule(CSSParserTokenRange prelude, CSSParserTokenRange block);
+#if ENABLE(CSS_REGIONS)
+    RefPtr<StyleRuleRegion> consumeRegionRule(CSSParserTokenRange prelude, CSSParserTokenRange block);
+#endif
     // Updates m_parsedProperties
     
     // FIXME-NEWPARSER: Support "apply"

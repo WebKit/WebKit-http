@@ -52,12 +52,7 @@ public:
 protected:
     JSTestCEReactionsStringifier(JSC::Structure*, JSDOMGlobalObject&, Ref<TestCEReactionsStringifier>&&);
 
-    void finishCreation(JSC::VM& vm)
-    {
-        Base::finishCreation(vm);
-        ASSERT(inherits(info()));
-    }
-
+    void finishCreation(JSC::VM&);
 };
 
 class JSTestCEReactionsStringifierOwner : public JSC::WeakHandleOwner {
@@ -84,6 +79,7 @@ inline JSC::JSValue toJSNewlyCreated(JSC::ExecState* state, JSDOMGlobalObject* g
 
 template<> struct JSDOMWrapperConverterTraits<TestCEReactionsStringifier> {
     using WrapperClass = JSTestCEReactionsStringifier;
+    using ToWrappedReturnType = TestCEReactionsStringifier*;
 };
 
 } // namespace WebCore

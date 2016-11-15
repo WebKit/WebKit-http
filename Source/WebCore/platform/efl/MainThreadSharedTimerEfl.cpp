@@ -3,6 +3,7 @@
  *           (C) 2008 Afonso Rabelo Costa Jr.
  *           (C) 2009-2010 ProFUSION embedded systems
  *           (C) 2009-2010 Samsung Electronics
+ * Copyright (C) 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -53,10 +54,10 @@ void MainThreadSharedTimer::stop()
     }
 }
 
-void MainThreadSharedTimer::setFireInterval(double interval)
+void MainThreadSharedTimer::setFireInterval(Seconds interval)
 {
     stop();
-    sharedTimer = ecore_timer_loop_add(interval, timerEvent, nullptr);
+    sharedTimer = ecore_timer_loop_add(interval.value(), timerEvent, nullptr);
 }
 
 void MainThreadSharedTimer::invalidate()

@@ -109,7 +109,7 @@ enum Opcode : int16_t {
     // Takes Int32 and returns Int64:
     SExt32,
     ZExt32,
-    // Takes Int64 and returns Int32:
+    // Does a bitwise truncation of Int64->Int32 and Double->Float:
     Trunc,
     // Takes ints and returns floating point value. Note that we don't currently provide the opposite operation,
     // because double-to-int conversions have weirdly different semantics on different platforms. Use
@@ -157,6 +157,12 @@ enum Opcode : int16_t {
     Store16,
     // This is a polymorphic store for Int32, Int64, Float, and Double.
     Store,
+
+    // This is used to compute the actual address of a Wasm memory operation. It takes an IntPtr
+    // and a pinned register then computes the appropriate IntPtr address. For the use-case of
+    // Wasm it is important that the first child initially be a ZExt32 so the top bits are cleared.
+    // We do WasmAddress(ZExt32(ptr), ...) so that we can avoid generating extraneous moves in Air.
+    WasmAddress,
     
     // This is used to represent standalone fences - i.e. fences that are not part of other
     // instructions. It's expressive enough to expose mfence on x86 and dmb ish/ishst on ARM. On

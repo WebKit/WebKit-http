@@ -92,9 +92,12 @@ void CachedCSSStyleSheet::setBodyDataFrom(const CachedResource& resource)
     ASSERT(resource.type() == type());
     const CachedCSSStyleSheet& sheet = static_cast<const CachedCSSStyleSheet&>(resource);
 
+    CachedResource::setBodyDataFrom(resource);
+
     m_decoder = sheet.m_decoder;
     m_decodedSheetText = sheet.m_decodedSheetText;
-    m_parsedStyleSheetCache = sheet.m_parsedStyleSheetCache;
+    if (sheet.m_parsedStyleSheetCache)
+        saveParsedStyleSheet(*sheet.m_parsedStyleSheetCache);
 }
 
 void CachedCSSStyleSheet::finishLoading(SharedBuffer* data)

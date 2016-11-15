@@ -97,9 +97,60 @@ private:
     bool m_isFinishedCompiling { false };
 };
 
+class JITWorklist::Thread : public AutomaticThread {
+public:
+    Thread(const LockHolder& locker, JITWorklist& worklist)
+        : AutomaticThread(locker, worklist.m_lock, worklist.m_condition)
+        , m_worklist(worklist)
+    {
+        m_worklist.m_numAvailableThreads++;
+    }
+    
+protected:
+    PollResult poll(const LockHolder&) override
+    {
+        RELEASE_ASSERT(m_worklist.m_numAvailableThreads);
+        
+        if (m_worklist.m_queue.isEmpty())
+            return PollResult::Wait;
+        
+        m_myPlans = WTFMove(m_worklist.m_queue);
+        m_worklist.m_numAvailableThreads--;
+        return PollResult::Work;
+    }
+    
+    WorkResult work() override
+    {
+        RELEASE_ASSERT(!m_myPlans.isEmpty());
+        
+        for (RefPtr<Plan>& plan : m_myPlans) {
+            plan->compileInThread();
+            plan = nullptr;
+            
+            // Make sure that the main thread realizes that we just compiled something. Notifying
+            // a condition is basically free if nobody is waiting.
+            LockHolder locker(*m_worklist.m_lock);
+            m_worklist.m_condition->notifyAll(locker);
+        }
+        
+        m_myPlans.clear();
+        
+        LockHolder locker(*m_worklist.m_lock);
+        m_worklist.m_numAvailableThreads++;
+        return WorkResult::Continue;
+    }
+    
+private:
+    JITWorklist& m_worklist;
+    Plans m_myPlans;
+};
+
 JITWorklist::JITWorklist()
+    : m_lock(Box<Lock>::create())
+    , m_condition(AutomaticThreadCondition::create())
 {
-    createThread("JIT Worklist Worker Thread", [this] () { runThread(); });
+    LockHolder locker(*m_lock);
+    m_thread = new Thread(locker, *this);
 }
 
 JITWorklist::~JITWorklist()
@@ -107,13 +158,14 @@ JITWorklist::~JITWorklist()
     UNREACHABLE_FOR_PLATFORM();
 }
 
-void JITWorklist::completeAllForVM(VM& vm)
+bool JITWorklist::completeAllForVM(VM& vm)
 {
+    bool result = false;
     DeferGC deferGC(vm.heap);
     for (;;) {
         Vector<RefPtr<Plan>, 32> myPlans;
         {
-            LockHolder locker(m_lock);
+            LockHolder locker(*m_lock);
             for (;;) {
                 bool didFindUnfinishedPlan = false;
                 m_plans.removeAllMatching(
@@ -135,12 +187,14 @@ void JITWorklist::completeAllForVM(VM& vm)
                 // If we don't find plans, then we're either done or we need to wait, depending on
                 // whether we found some unfinished plans.
                 if (!didFindUnfinishedPlan)
-                    return;
+                    return result;
                 
-                m_condition.wait(m_lock);
+                m_condition->wait(*m_lock);
             }
         }
         
+        RELEASE_ASSERT(!myPlans.isEmpty());
+        result = true;
         finalizePlans(myPlans);
     }
 }
@@ -150,7 +204,7 @@ void JITWorklist::poll(VM& vm)
     DeferGC deferGC(vm.heap);
     Plans myPlans;
     {
-        LockHolder locker(m_lock);
+        LockHolder locker(*m_lock);
         m_plans.removeAllMatching(
             [&] (RefPtr<Plan>& plan) {
                 if (plan->vm() != &vm)
@@ -183,7 +237,7 @@ void JITWorklist::compileLater(CodeBlock* codeBlock)
     codeBlock->jitSoon();
 
     {
-        LockHolder locker(m_lock);
+        LockHolder locker(*m_lock);
         
         if (m_planned.contains(codeBlock))
             return;
@@ -193,7 +247,7 @@ void JITWorklist::compileLater(CodeBlock* codeBlock)
             RefPtr<Plan> plan = adoptRef(new Plan(codeBlock));
             m_plans.append(plan);
             m_queue.append(plan);
-            m_condition.notifyAll();
+            m_condition->notifyAll(locker);
             return;
         }
     }
@@ -225,7 +279,7 @@ void JITWorklist::compileNow(CodeBlock* codeBlock)
     
     bool isPlanned;
     {
-        LockHolder locker(m_lock);
+        LockHolder locker(*m_lock);
         isPlanned = m_planned.contains(codeBlock);
     }
     
@@ -248,42 +302,12 @@ void JITWorklist::compileNow(CodeBlock* codeBlock)
     codeBlock->ownerScriptExecutable()->installCode(codeBlock);
 }
 
-void JITWorklist::runThread()
-{
-    for (;;) {
-        Plans myPlans;
-        {
-            LockHolder locker(m_lock);
-            m_numAvailableThreads++;
-            while (m_queue.isEmpty())
-                m_condition.wait(m_lock);
-            m_numAvailableThreads--;
-            
-            // This is a fun way to dequeue. I don't know if it's any better or worse than dequeuing
-            // one thing at a time.
-            myPlans = WTFMove(m_queue);
-        }
-        
-        RELEASE_ASSERT(!myPlans.isEmpty());
-        
-        for (RefPtr<Plan>& plan : myPlans) {
-            plan->compileInThread();
-            plan = nullptr;
-            
-            // Make sure that the main thread realizes that we just compiled something. Notifying
-            // a WTF condition is basically free if nobody is waiting.
-            LockHolder locker(m_lock);
-            m_condition.notifyAll();
-        }
-    }
-}
-
 void JITWorklist::finalizePlans(Plans& myPlans)
 {
     for (RefPtr<Plan>& plan : myPlans) {
         plan->finalize();
         
-        LockHolder locker(m_lock);
+        LockHolder locker(*m_lock);
         m_planned.remove(plan->codeBlock());
     }
 }

@@ -19,8 +19,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef CSSSelector_h
-#define CSSSelector_h
+#pragma once
 
 #include "QualifiedName.h"
 #include "RenderStyleConstants.h"
@@ -81,16 +80,16 @@ namespace WebCore {
             PagePseudoClass
         };
 
-        enum Relation {
-            Descendant = 0,
+        enum RelationType {
+            Subselector,
+            DescendantSpace,
             Child,
             DirectAdjacent,
             IndirectAdjacent,
-            SubSelector,
-            ShadowDescendant, // FIXME-NEWPARSER: Remove this in favor of the new shadow values below.
-            ShadowPseudo, // Special case of shadow DOM pseudo elements / shadow pseudo element
-            ShadowDeep, // /deep/ combinator
-            ShadowSlot // slotted to <slot> e
+#if ENABLE(CSS_SELECTORS_LEVEL4)
+            DescendantDoubleChild,
+#endif
+            ShadowDescendant
         };
 
         enum PseudoClassType {
@@ -164,9 +163,7 @@ namespace WebCore {
             PseudoClassRole,
 #endif
             PseudoClassHost,
-#if ENABLE(CUSTOM_ELEMENTS)
             PseudoClassDefined,
-#endif
         };
 
         enum PseudoElementType {
@@ -244,9 +241,13 @@ namespace WebCore {
         const CSSSelectorList* selectorList() const { return m_hasRareData ? m_data.m_rareData->m_selectorList.get() : nullptr; }
 
         void setValue(const AtomicString&);
-        void setAttribute(const QualifiedName&, bool isCaseInsensitive);
-        void setArgument(const AtomicString&);
+        
+        // FIXME-NEWPARSER: These two methods can go away once the old parser is gone.
+        void setAttribute(const QualifiedName&, bool);
         void setAttributeValueMatchingIsCaseInsensitive(bool);
+        void setAttribute(const QualifiedName&, bool convertToLowercase, AttributeMatchType);
+        void setNth(int a, int b);
+        void setArgument(const AtomicString&);
         void setLangArgumentList(std::unique_ptr<Vector<AtomicString>>);
         void setSelectorList(std::unique_ptr<CSSSelectorList>);
 
@@ -254,6 +255,14 @@ namespace WebCore {
         bool matchNth(int count) const;
         int nthA() const;
         int nthB() const;
+
+#if ENABLE(CSS_SELECTORS_LEVEL4)
+        bool hasDescendantRelation() const { return relation() == DescendantSpace || relation() == DescendantDoubleChild; }
+#else
+        bool hasDescendantRelation() const { return relation() == DescendantSpace; }
+#endif
+
+        bool hasDescendantOrChildRelation() const { return relation() == Child || hasDescendantRelation(); }
 
         PseudoClassType pseudoClassType() const
         {
@@ -295,20 +304,12 @@ namespace WebCore {
         bool isSiblingSelector() const;
         bool isAttributeSelector() const;
 
-        Relation relation() const { return static_cast<Relation>(m_relation); }
-        void setRelation(Relation relation)
+        RelationType relation() const { return static_cast<RelationType>(m_relation); }
+        void setRelation(RelationType relation)
         {
             m_relation = relation;
             ASSERT(m_relation == relation);
         }
-
-#if ENABLE(CSS_SELECTORS_LEVEL4)
-        void setDescendantUseDoubleChildSyntax()
-        {
-            ASSERT(relation() == Descendant);
-            m_descendantDoubleChildSyntax = true;
-        }
-#endif
 
         Match match() const { return static_cast<Match>(m_match); }
         void setMatch(Match match)
@@ -326,7 +327,7 @@ namespace WebCore {
         void setForPage() { m_isForPage = true; }
 
     private:
-        unsigned m_relation              : 3; // enum Relation.
+        unsigned m_relation              : 4; // enum RelationType.
         mutable unsigned m_match         : 4; // enum Match.
         mutable unsigned m_pseudoType    : 8; // PseudoType.
         mutable unsigned m_parsedNth     : 1; // Used for :nth-*.
@@ -336,9 +337,6 @@ namespace WebCore {
         unsigned m_hasNameWithCase       : 1;
         unsigned m_isForPage             : 1;
         unsigned m_tagIsForNamespaceRule : 1;
-#if ENABLE(CSS_SELECTORS_LEVEL4)
-        unsigned m_descendantDoubleChildSyntax : 1;
-#endif
         unsigned m_caseInsensitiveAttributeValueMatching : 1;
 #if !ASSERT_WITH_SECURITY_IMPLICATION_DISABLED
         unsigned m_destructorHasBeenCalled : 1;
@@ -479,7 +477,7 @@ inline void CSSSelector::setValue(const AtomicString& value)
 }
 
 inline CSSSelector::CSSSelector()
-    : m_relation(Descendant)
+    : m_relation(DescendantSpace)
     , m_match(Unknown)
     , m_pseudoType(0)
     , m_parsedNth(false)
@@ -489,9 +487,6 @@ inline CSSSelector::CSSSelector()
     , m_hasNameWithCase(false)
     , m_isForPage(false)
     , m_tagIsForNamespaceRule(false)
-#if ENABLE(CSS_SELECTORS_LEVEL4)
-    , m_descendantDoubleChildSyntax(false)
-#endif
     , m_caseInsensitiveAttributeValueMatching(false)
 #if !ASSERT_WITH_SECURITY_IMPLICATION_DISABLED
     , m_destructorHasBeenCalled(false)
@@ -510,9 +505,6 @@ inline CSSSelector::CSSSelector(const CSSSelector& o)
     , m_hasNameWithCase(o.m_hasNameWithCase)
     , m_isForPage(o.m_isForPage)
     , m_tagIsForNamespaceRule(o.m_tagIsForNamespaceRule)
-#if ENABLE(CSS_SELECTORS_LEVEL4)
-    , m_descendantDoubleChildSyntax(o.m_descendantDoubleChildSyntax)
-#endif
     , m_caseInsensitiveAttributeValueMatching(o.m_caseInsensitiveAttributeValueMatching)
 #if !ASSERT_WITH_SECURITY_IMPLICATION_DISABLED
     , m_destructorHasBeenCalled(false)
@@ -585,12 +577,10 @@ inline void CSSSelector::setAttributeValueMatchingIsCaseInsensitive(bool isCaseI
     ASSERT(isAttributeSelector() && match() != CSSSelector::Set);
     m_caseInsensitiveAttributeValueMatching = isCaseInsensitive;
 }
-
+    
 inline bool CSSSelector::attributeValueMatchingIsCaseInsensitive() const
 {
     return m_caseInsensitiveAttributeValueMatching;
 }
 
 } // namespace WebCore
-
-#endif // CSSSelector_h

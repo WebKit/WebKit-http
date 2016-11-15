@@ -71,7 +71,13 @@ ID2D1Factory* GraphicsContext::systemFactory()
 {
     static ID2D1Factory* direct2DFactory = nullptr;
     if (!direct2DFactory) {
+#ifndef NDEBUG
+        D2D1_FACTORY_OPTIONS options = { };
+        options.debugLevel = D2D1_DEBUG_LEVEL_INFORMATION;
+        HRESULT hr = D2D1CreateFactory(D2D1_FACTORY_TYPE_MULTI_THREADED, options, &direct2DFactory);
+#else
         HRESULT hr = D2D1CreateFactory(D2D1_FACTORY_TYPE_MULTI_THREADED, &direct2DFactory);
+#endif
         RELEASE_ASSERT(SUCCEEDED(hr));
     }
 
@@ -92,23 +98,28 @@ ID2D1RenderTarget* GraphicsContext::defaultRenderTarget()
     return defaultRenderTarget;
 }
 
-void GraphicsContext::setDidBeginDraw(bool didBeginDraw)
-{
-    RELEASE_ASSERT(m_data);
-    m_data->m_didBeginDraw = didBeginDraw;
-}
-
-bool GraphicsContext::didBeginDraw() const
-{
-    return m_data->m_didBeginDraw;
-}
-
 void GraphicsContext::platformInit(HDC hdc, bool hasAlpha)
 {
     if (!hdc)
         return;
 
-    COMPtr<ID2D1RenderTarget> renderTarget;
+    HBITMAP bitmap = static_cast<HBITMAP>(GetCurrentObject(hdc, OBJ_BITMAP));
+
+    DIBPixelData pixelData(bitmap);
+
+    auto targetProperties = D2D1::RenderTargetProperties();
+    targetProperties.pixelFormat = D2D1::PixelFormat(DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_IGNORE);
+
+    COMPtr<ID2D1DCRenderTarget> renderTarget;
+    HRESULT hr = systemFactory()->CreateDCRenderTarget(&targetProperties, &renderTarget);
+    if (!SUCCEEDED(hr))
+        return;
+
+    RECT clientRect = IntRect(IntPoint(), pixelData.size());
+    hr = renderTarget->BindDC(hdc, &clientRect);
+    if (!SUCCEEDED(hr))
+        return;
+
     m_data = new GraphicsContextPlatformPrivate(renderTarget.get());
     m_data->m_hdc = hdc;
     // Make sure the context starts in sync with our state.
@@ -140,8 +151,29 @@ void GraphicsContext::platformDestroy()
 ID2D1RenderTarget* GraphicsContext::platformContext() const
 {
     ASSERT(!paintingDisabled());
-    ASSERT(m_data->renderTarget());
     return m_data->renderTarget();
+}
+
+ID2D1RenderTarget* GraphicsContextPlatformPrivate::renderTarget()
+{
+    if (!m_transparencyLayerStack.isEmpty())
+        return m_transparencyLayerStack.last().renderTarget.get();
+
+    return m_renderTarget.get();
+}
+
+void GraphicsContextPlatformPrivate::setAlpha(float alpha)
+{
+    ASSERT(m_transparencyLayerStack.isEmpty());
+    m_alpha = alpha;
+}
+
+float GraphicsContextPlatformPrivate::currentGlobalAlpha() const
+{
+    if (!m_transparencyLayerStack.isEmpty())
+        return m_transparencyLayerStack.last().opacity;
+
+    return m_alpha;
 }
 
 void GraphicsContext::savePlatformState()
@@ -229,12 +261,51 @@ void GraphicsContext::drawNativeImage(const COMPtr<ID2D1Bitmap>& image, const Fl
         renderTarget->DrawBitmap(image.get(), adjustedDestRect, 1.0f, D2D1_BITMAP_INTERPOLATION_MODE_LINEAR, static_cast<D2D1_RECT_F>(srcRect));
     });
 
+    flush();
+
     if (!stateSaver.didSave())
         context->SetTransform(ctm);
 }
 
 void GraphicsContext::releaseWindowsContext(HDC hdc, const IntRect& dstRect, bool supportAlphaBlend, bool mayCreateBitmap)
 {
+    bool createdBitmap = mayCreateBitmap && (!m_data->m_hdc || isInTransparencyLayer());
+    if (!createdBitmap) {
+        m_data->restore();
+        return;
+    }
+
+    if (!hdc || dstRect.isEmpty())
+        return;
+
+    auto sourceBitmap = adoptGDIObject(static_cast<HBITMAP>(::GetCurrentObject(hdc, OBJ_BITMAP)));
+
+    DIBPixelData pixelData(sourceBitmap.get());
+    ASSERT(pixelData.bitsPerPixel() == 32);
+
+    auto bitmapProperties = D2D1::BitmapProperties(D2D1::PixelFormat(DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_IGNORE));
+
+    COMPtr<ID2D1Bitmap> bitmap;
+    HRESULT hr = platformContext()->CreateBitmap(pixelData.size(), pixelData.buffer(), pixelData.bytesPerRow(), &bitmapProperties, &bitmap);
+    ASSERT(SUCCEEDED(hr));
+
+    D2DContextStateSaver stateSaver(*m_data);
+
+    // Note: The content in the HDC is inverted compared to Direct2D, so it needs to be flipped.
+    auto context = platformContext();
+
+    D2D1_MATRIX_3X2_F currentTransform;
+    context->GetTransform(&currentTransform);
+
+    AffineTransform transform(currentTransform);
+    transform.translate(dstRect.location());
+    transform.scale(1.0, -1.0);
+    transform.translate(0, -dstRect.height());
+
+    context->SetTransform(transform);
+    context->DrawBitmap(bitmap.get(), D2D1::RectF(0, 0, dstRect.width(), dstRect.height()));
+
+    ::DeleteDC(hdc);
 }
 
 void GraphicsContext::drawWindowsBitmap(WindowsBitmap* image, const IntPoint& point)
@@ -257,6 +328,23 @@ void GraphicsContext::drawLineForDocumentMarker(const FloatPoint& point, float w
 {
 }
 
+GraphicsContextPlatformPrivate::GraphicsContextPlatformPrivate(ID2D1RenderTarget* renderTarget)
+    : m_renderTarget(renderTarget)
+{
+    if (!m_renderTarget)
+        return;
+
+    beginDraw();
+}
+
+GraphicsContextPlatformPrivate::~GraphicsContextPlatformPrivate()
+{
+    if (!m_renderTarget)
+        return;
+
+    endDraw();
+}
+
 COMPtr<ID2D1SolidColorBrush> GraphicsContextPlatformPrivate::brushWithColor(const D2D1_COLOR_F& color)
 {
     RGBA32 colorKey = makeRGBA32FromFloats(color.r, color.g, color.b, color.a);
@@ -274,12 +362,17 @@ COMPtr<ID2D1SolidColorBrush> GraphicsContextPlatformPrivate::brushWithColor(cons
     }
 
     auto existingBrush = m_solidColoredBrushCache.ensure(colorKey, [this, color] {
-        ID2D1SolidColorBrush* colorBrush = nullptr;
+        COMPtr<ID2D1SolidColorBrush> colorBrush;
         m_renderTarget->CreateSolidColorBrush(color, &colorBrush);
         return colorBrush;
     });
 
     return existingBrush.iterator->value;
+}
+
+ID2D1SolidColorBrush* GraphicsContext::brushWithColor(const Color& color)
+{
+    return m_data->brushWithColor(colorWithGlobalAlpha(color)).get();
 }
 
 void GraphicsContextPlatformPrivate::clip(const FloatRect& rect)
@@ -320,7 +413,8 @@ void GraphicsContextPlatformPrivate::concatCTM(const AffineTransform& affineTran
     D2D1_MATRIX_3X2_F currentTransform;
     m_renderTarget->GetTransform(&currentTransform);
 
-    m_renderTarget->SetTransform(affineTransform * AffineTransform(currentTransform));
+    D2D1_MATRIX_3X2_F transformToConcat = affineTransform;
+    m_renderTarget->SetTransform(transformToConcat * currentTransform);
 }
 
 void GraphicsContextPlatformPrivate::flush()
@@ -332,13 +426,20 @@ void GraphicsContextPlatformPrivate::flush()
     RELEASE_ASSERT(SUCCEEDED(hr));
 }
 
+void GraphicsContextPlatformPrivate::beginDraw()
+{
+    ASSERT(m_renderTarget.get());
+    m_renderTarget->BeginDraw();
+}
+
 void GraphicsContextPlatformPrivate::endDraw()
 {
     ASSERT(m_renderTarget.get());
     D2D1_TAG first, second;
     HRESULT hr = m_renderTarget->EndDraw(&first, &second);
 
-    RELEASE_ASSERT(SUCCEEDED(hr));
+    if (!SUCCEEDED(hr))
+        WTFLogAlways("Failed in GraphicsContextPlatformPrivate::endDraw: hr=%ld, first=%ld, second=%ld", hr, first, second);
 }
 
 void GraphicsContextPlatformPrivate::restore()
@@ -409,8 +510,8 @@ void GraphicsContextPlatformPrivate::rotate(float angle)
 
 D2D1_COLOR_F GraphicsContext::colorWithGlobalAlpha(const Color& color) const
 {
-    float colorAlpha = color.alpha() / 255.0f;
-    float globalAlpha = m_state.alpha;
+    float colorAlpha = color.alphaAsFloat();
+    float globalAlpha = m_data->currentGlobalAlpha();
 
     return D2D1::ColorF(color.rgb(), globalAlpha * colorAlpha);
 }
@@ -433,6 +534,21 @@ ID2D1Brush* GraphicsContext::patternStrokeBrush() const
 ID2D1Brush* GraphicsContext::patternFillBrush() const
 {
     return m_data->m_patternFillBrush.get();
+}
+
+void GraphicsContext::beginDraw()
+{
+    m_data->beginDraw();
+}
+
+void GraphicsContext::endDraw()
+{
+    m_data->endDraw();
+}
+
+void GraphicsContext::flush()
+{
+    m_data->flush();
 }
 
 void GraphicsContext::drawPattern(Image& image, const FloatRect& destRect, const FloatRect& tileRect, const AffineTransform& patternTransform, const FloatPoint& phase, const FloatSize& spacing, CompositeOperator op, BlendMode blendMode)
@@ -664,6 +780,11 @@ ID2D1StrokeStyle* GraphicsContextPlatformPrivate::strokeStyle()
     return m_d2dStrokeStyle.get();
 }
 
+ID2D1StrokeStyle* GraphicsContext::platformStrokeStyle() const
+{
+    return m_data->strokeStyle();
+}
+
 // This is only used to draw borders.
 void GraphicsContext::drawLine(const FloatPoint& point1, const FloatPoint& point2)
 {
@@ -736,7 +857,7 @@ void GraphicsContext::drawEllipse(const FloatRect& rect)
         return;
     }
 
-    auto ellipse = D2D1::Ellipse(D2D1::Point2F(rect.x(), rect.y()), rect.width(), rect.height());
+    auto ellipse = D2D1::Ellipse(rect.center(), 0.5 * rect.width(), 0.5 * rect.height());
 
     auto context = platformContext();
 
@@ -758,7 +879,7 @@ void GraphicsContext::applyStrokePattern()
     AffineTransform userToBaseCTM; // FIXME: This isn't really needed on Windows
 
     const float patternAlpha = 1;
-    m_data->m_patternStrokeBrush = adoptCOM(m_state.strokePattern->createPlatformPattern(context, patternAlpha, userToBaseCTM));
+    m_data->m_patternStrokeBrush = adoptCOM(m_state.strokePattern->createPlatformPattern(*this, patternAlpha, userToBaseCTM));
 }
 
 void GraphicsContext::applyFillPattern()
@@ -770,7 +891,7 @@ void GraphicsContext::applyFillPattern()
     AffineTransform userToBaseCTM; // FIXME: This isn't really needed on Windows
 
     const float patternAlpha = 1;
-    m_data->m_patternFillBrush = adoptCOM(m_state.fillPattern->createPlatformPattern(context, patternAlpha, userToBaseCTM));
+    m_data->m_patternFillBrush = adoptCOM(m_state.fillPattern->createPlatformPattern(*this, patternAlpha, userToBaseCTM));
 }
 
 void GraphicsContext::drawPath(const Path& path)
@@ -810,19 +931,54 @@ void GraphicsContext::drawPath(const Path& path)
         auto brush = m_state.strokePattern ? patternStrokeBrush() : solidStrokeBrush();
         renderTarget->DrawGeometry(path.platformPath(), brush, strokeThickness(), m_data->strokeStyle());
     });
+
+    flush();
 }
 
 void GraphicsContext::drawWithoutShadow(const FloatRect& /*boundingRect*/, const std::function<void(ID2D1RenderTarget*)>& drawCommands)
 {
-    auto context = platformContext();
+    drawCommands(platformContext());
+}
 
-    if (!didBeginDraw())
-        context->BeginDraw();
+static void drawWithShadowHelper(ID2D1RenderTarget* context, ID2D1Bitmap* bitmap, const Color& shadowColor, const FloatSize& shadowOffset, float shadowBlur)
+{
+    COMPtr<ID2D1DeviceContext> deviceContext;
+    HRESULT hr = context->QueryInterface(&deviceContext);
+    RELEASE_ASSERT(SUCCEEDED(hr));
 
-    drawCommands(context);
+    // Create the shadow effect
+    COMPtr<ID2D1Effect> shadowEffect;
+    hr = deviceContext->CreateEffect(CLSID_D2D1Shadow, &shadowEffect);
+    RELEASE_ASSERT(SUCCEEDED(hr));
 
-    if (!didBeginDraw())
-        m_data->endDraw();
+    shadowEffect->SetInput(0, bitmap);
+    shadowEffect->SetValue(D2D1_SHADOW_PROP_COLOR, static_cast<D2D1_VECTOR_4F>(shadowColor));
+    shadowEffect->SetValue(D2D1_SHADOW_PROP_BLUR_STANDARD_DEVIATION, shadowBlur);
+
+    COMPtr<ID2D1Effect> transformEffect;
+    hr = deviceContext->CreateEffect(CLSID_D2D12DAffineTransform, &transformEffect);
+    RELEASE_ASSERT(SUCCEEDED(hr));
+
+    transformEffect->SetInputEffect(0, shadowEffect.get());
+
+    auto translation = D2D1::Matrix3x2F::Translation(shadowOffset.width(), shadowOffset.height());
+    transformEffect->SetValue(D2D1_2DAFFINETRANSFORM_PROP_TRANSFORM_MATRIX, translation);
+
+    COMPtr<ID2D1Effect> compositor;
+    hr = deviceContext->CreateEffect(CLSID_D2D1Composite, &compositor);
+    RELEASE_ASSERT(SUCCEEDED(hr));
+
+    compositor->SetInputEffect(0, transformEffect.get());
+    compositor->SetInput(1, bitmap);
+
+    // Flip the context
+    D2D1_MATRIX_3X2_F ctm;
+    deviceContext->GetTransform(&ctm);
+    auto translate = D2D1::Matrix3x2F::Translation(0.0f, deviceContext->GetSize().height);
+    auto flip = D2D1::Matrix3x2F::Scale(D2D1::SizeF(1.0f, -1.0f));
+    deviceContext->SetTransform(ctm * flip * translate);
+
+    deviceContext->DrawImage(compositor.get(), D2D1_INTERPOLATION_MODE_LINEAR);
 }
 
 void GraphicsContext::drawWithShadow(const FloatRect& boundingRect, const std::function<void(ID2D1RenderTarget*)>& drawCommands)
@@ -843,45 +999,7 @@ void GraphicsContext::drawWithShadow(const FloatRect& boundingRect, const std::f
     hr = bitmapTarget->GetBitmap(&bitmap);
     RELEASE_ASSERT(SUCCEEDED(hr));
 
-    COMPtr<ID2D1DeviceContext> deviceContext;
-    hr = context->QueryInterface(&deviceContext);
-    RELEASE_ASSERT(SUCCEEDED(hr));
-
-    // Create the shadow effect
-    COMPtr<ID2D1Effect> shadowEffect;
-    hr = deviceContext->CreateEffect(CLSID_D2D1Shadow, &shadowEffect);
-    RELEASE_ASSERT(SUCCEEDED(hr));
-
-    shadowEffect->SetInput(0, bitmap.get());
-    shadowEffect->SetValue(D2D1_SHADOW_PROP_COLOR, static_cast<D2D1_VECTOR_4F>(m_state.shadowColor));
-    shadowEffect->SetValue(D2D1_SHADOW_PROP_BLUR_STANDARD_DEVIATION, m_state.shadowBlur);
-
-    COMPtr<ID2D1Effect> transformEffect;
-    hr = deviceContext->CreateEffect(CLSID_D2D12DAffineTransform, &transformEffect);
-    RELEASE_ASSERT(SUCCEEDED(hr));
-
-    transformEffect->SetInputEffect(0, shadowEffect.get());
-
-    auto translation = D2D1::Matrix3x2F::Translation(m_state.shadowOffset.width(), m_state.shadowOffset.height());
-    transformEffect->SetValue(D2D1_2DAFFINETRANSFORM_PROP_TRANSFORM_MATRIX, translation);
-
-    COMPtr<ID2D1Effect> compositor;
-    hr = deviceContext->CreateEffect(CLSID_D2D1Composite, &compositor);
-    RELEASE_ASSERT(SUCCEEDED(hr));
-
-    compositor->SetInputEffect(0, transformEffect.get());
-    compositor->SetInput(1, bitmap.get());
-
-    // Flip the context
-    D2D1_MATRIX_3X2_F ctm;
-    deviceContext->GetTransform(&ctm);
-    auto translate = D2D1::Matrix3x2F::Translation(0.0f, deviceContext->GetSize().height);
-    auto flip = D2D1::Matrix3x2F::Scale(D2D1::SizeF(1.0f, -1.0f));
-    deviceContext->SetTransform(ctm * flip * translate);
-
-    deviceContext->BeginDraw();
-    deviceContext->DrawImage(compositor.get(), D2D1_INTERPOLATION_MODE_LINEAR);
-    deviceContext->EndDraw();
+    drawWithShadowHelper(context, bitmap.get(), m_state.shadowColor, m_state.shadowOffset, m_state.shadowBlur);
 }
 
 void GraphicsContext::fillPath(const Path& path)
@@ -934,6 +1052,8 @@ void GraphicsContext::fillPath(const Path& path)
         auto brush = m_state.fillPattern ? patternFillBrush() : solidFillBrush();
         renderTarget->FillGeometry(pathToFill.get(), brush);
     });
+
+    flush();
 }
 
 void GraphicsContext::strokePath(const Path& path)
@@ -977,6 +1097,8 @@ void GraphicsContext::strokePath(const Path& path)
         auto brush = m_state.strokePattern ? patternStrokeBrush() : solidStrokeBrush();
         renderTarget->DrawGeometry(path.platformPath(), brush, strokeThickness(), m_data->strokeStyle());
     });
+
+    flush();
 }
 
 void GraphicsContext::fillRect(const FloatRect& rect)
@@ -1050,7 +1172,7 @@ void GraphicsContext::fillRect(const FloatRect& rect, const Color& color)
 
     drawWithoutShadow(rect, [this, rect, color](ID2D1RenderTarget* renderTarget) {
         const D2D1_RECT_F d2dRect = rect;
-        renderTarget->FillRectangle(&d2dRect, m_data->brushWithColor(colorWithGlobalAlpha(color)).get());
+        renderTarget->FillRectangle(&d2dRect, brushWithColor(color));
     });
 }
 
@@ -1072,9 +1194,6 @@ void GraphicsContext::platformFillRoundedRect(const FloatRoundedRect& rect, cons
         notImplemented();
     }
 
-    if (!didBeginDraw())
-        context->BeginDraw();
-    
     context->SetTags(1, __LINE__);
 
     const FloatRect& r = rect.rect();
@@ -1084,8 +1203,7 @@ void GraphicsContext::platformFillRoundedRect(const FloatRoundedRect& rect, cons
     bool hasCustomFill = m_state.fillGradient || m_state.fillPattern;
     if (!hasCustomFill && equalWidths && equalHeights && radii.topLeft().width() * 2 == r.width() && radii.topLeft().height() * 2 == r.height()) {
         auto roundedRect = D2D1::RoundedRect(r, radii.topLeft().width(), radii.topLeft().height());
-        COMPtr<ID2D1SolidColorBrush> fillBrush = m_data->brushWithColor(colorWithGlobalAlpha(color));
-        context->FillRoundedRectangle(roundedRect, fillBrush.get());
+        context->FillRoundedRectangle(roundedRect, brushWithColor(color));
     } else {
         D2DContextStateSaver stateSaver(*m_data);
         setFillColor(color);
@@ -1094,9 +1212,6 @@ void GraphicsContext::platformFillRoundedRect(const FloatRoundedRect& rect, cons
         path.addRoundedRect(rect);
         fillPath(path);
     }
-
-    if (!didBeginDraw())
-        m_data->endDraw();
 
     if (drawOwnShadow)
         stateSaver.restore();
@@ -1113,9 +1228,6 @@ void GraphicsContext::fillRectWithRoundedHole(const FloatRect& rect, const Float
     }
 
     auto context = platformContext();
-
-    if (!didBeginDraw())
-        context->BeginDraw();
 
     context->SetTags(1, __LINE__);
 
@@ -1144,9 +1256,6 @@ void GraphicsContext::fillRectWithRoundedHole(const FloatRect& rect, const Float
     }
 
     fillPath(path);
-
-    if (!didBeginDraw())
-        m_data->endDraw();
 
     if (drawOwnShadow)
         stateSaver.restore();
@@ -1241,16 +1350,28 @@ IntRect GraphicsContext::clipBounds() const
         return IntRect(-2048, -2048, 4096, 4096); // FIXME: display lists.
     }
 
-    D2D1_RECT_F d2dClipBounds = D2D1::InfiniteRect();
-    FloatRect clipBounds(d2dClipBounds.left, d2dClipBounds.top, d2dClipBounds.right - d2dClipBounds.left, d2dClipBounds.bottom - d2dClipBounds.top);
+    D2D1_SIZE_F clipSize;
+    if (auto clipLayer = m_data->clipLayer())
+        clipSize = clipLayer->GetSize();
+    else
+        clipSize = platformContext()->GetSize();
 
-    if (m_data->clipLayer()) {
-        auto clipSize = m_data->clipLayer()->GetSize();
-        clipBounds.setWidth(clipSize.width);
-        clipBounds.setHeight(clipSize.height);
-    }
+    FloatRect clipBounds(IntPoint(), clipSize);
 
     return enclosingIntRect(clipBounds);
+}
+
+void GraphicsContextPlatformPrivate::beginTransparencyLayer(float opacity)
+{
+    TransparencyLayerState transparencyLayer;
+    transparencyLayer.opacity = opacity;
+
+    HRESULT hr = m_renderTarget->CreateCompatibleRenderTarget(&transparencyLayer.renderTarget);
+    RELEASE_ASSERT(SUCCEEDED(hr));
+    m_transparencyLayerStack.append(WTFMove(transparencyLayer));
+
+    m_transparencyLayerStack.last().renderTarget->BeginDraw();
+    m_transparencyLayerStack.last().renderTarget->Clear(D2D1::ColorF(0, 0, 0, 0));
 }
 
 void GraphicsContext::beginPlatformTransparencyLayer(float opacity)
@@ -1262,7 +1383,40 @@ void GraphicsContext::beginPlatformTransparencyLayer(float opacity)
 
     save();
 
-    notImplemented();
+    m_state.alpha = opacity;
+
+    m_data->beginTransparencyLayer(opacity);
+}
+
+void GraphicsContextPlatformPrivate::endTransparencyLayer()
+{
+    auto currentLayer = m_transparencyLayerStack.takeLast();
+    auto renderTarget = currentLayer.renderTarget;
+    if (!renderTarget)
+        return;
+
+    HRESULT hr = renderTarget->EndDraw();
+    RELEASE_ASSERT(SUCCEEDED(hr));
+
+    COMPtr<ID2D1Bitmap> bitmap;
+    hr = renderTarget->GetBitmap(&bitmap);
+    RELEASE_ASSERT(SUCCEEDED(hr));
+
+    auto context = this->renderTarget();
+
+    if (currentLayer.hasShadow)
+        drawWithShadowHelper(context, bitmap.get(), currentLayer.shadowColor, currentLayer.shadowOffset, currentLayer.shadowBlur);
+    else {
+        COMPtr<ID2D1BitmapBrush> bitmapBrush;
+        auto bitmapBrushProperties = D2D1::BitmapBrushProperties();
+        auto brushProperties = D2D1::BrushProperties();
+        HRESULT hr = context->CreateBitmapBrush(bitmap.get(), bitmapBrushProperties, brushProperties, &bitmapBrush);
+        RELEASE_ASSERT(SUCCEEDED(hr));
+
+        auto size = bitmap->GetSize();
+        auto rectInDIP = D2D1::RectF(0, 0, size.width, size.height);
+        context->FillRectangle(rectInDIP, bitmapBrush.get());
+    }
 }
 
 void GraphicsContext::endPlatformTransparencyLayer()
@@ -1270,9 +1424,11 @@ void GraphicsContext::endPlatformTransparencyLayer()
     if (paintingDisabled())
         return;
 
+    m_data->endTransparencyLayer();
+
     ASSERT(!isRecording());
 
-    notImplemented();
+    m_state.alpha = m_data->currentGlobalAlpha();
 
     restore();
 }
@@ -1329,24 +1485,58 @@ void GraphicsContext::clearRect(const FloatRect& rect)
         return;
     }
 
-    auto context = platformContext();
-
-    context->SetTags(1, __LINE__);
-
     drawWithoutShadow(rect, [this, rect](ID2D1RenderTarget* renderTarget) {
-        FloatSize renderTargetSize = renderTarget->GetSize();
-        if (rect.size() == renderTargetSize)
-            renderTarget->Clear();
-        else
-            renderTarget->FillRectangle(rect, m_data->brushWithColor(colorWithGlobalAlpha(fillColor())).get());
+        FloatRect renderTargetRect(FloatPoint(), renderTarget->GetSize());
+        FloatRect rectToClear(rect);
+
+        if (rectToClear.contains(renderTargetRect)) {
+            renderTarget->SetTags(1, __LINE__);
+            renderTarget->Clear(D2D1::ColorF(0, 0, 0, 0));
+            return;
+        }
+
+        if (!rectToClear.intersects(renderTargetRect))
+            return;
+
+        renderTarget->SetTags(1, __LINE__);
+        rectToClear.intersect(renderTargetRect);
+        renderTarget->FillRectangle(rectToClear, brushWithColor(Color(D2D1::ColorF(0, 0, 0, 0))));
     });
 }
 
 void GraphicsContext::strokeRect(const FloatRect& rect, float lineWidth)
 {
-    (void)rect;
-    (void)lineWidth;
-    notImplemented();
+    if (paintingDisabled())
+        return;
+
+    if (isRecording()) {
+        m_displayListRecorder->strokeRect(rect, lineWidth);
+        return;
+    }
+
+    if (m_state.strokeGradient) {
+        auto drawFunction = [this, rect, lineWidth](ID2D1RenderTarget* renderTarget) {
+            renderTarget->SetTags(1, __LINE__);
+            const D2D1_RECT_F d2dRect = rect;
+            renderTarget->DrawRectangle(&d2dRect, m_state.strokeGradient->createPlatformGradientIfNecessary(renderTarget), lineWidth, m_data->strokeStyle());
+        };
+
+        if (hasShadow())
+            drawWithShadow(rect, drawFunction);
+        else
+            drawWithoutShadow(rect, drawFunction);
+        return;
+    }
+
+    if (m_state.strokePattern)
+        applyStrokePattern();
+
+    drawWithoutShadow(rect, [this, rect, lineWidth](ID2D1RenderTarget* renderTarget) {
+        renderTarget->SetTags(1, __LINE__);
+        const D2D1_RECT_F d2dRect = rect;
+        auto brush = m_state.strokePattern ? patternStrokeBrush() : solidStrokeBrush();
+        renderTarget->DrawRectangle(&d2dRect, brush, lineWidth, m_data->strokeStyle());
+    });
 }
 
 void GraphicsContext::setLineCap(LineCap cap)
@@ -1526,7 +1716,7 @@ void GraphicsContext::drawLinesForText(const FloatPoint& point, const DashArray&
     notImplemented();
 }
 
-void GraphicsContext::setURLForRect(const URL& link, const IntRect& destRect)
+void GraphicsContext::setURLForRect(const URL& link, const FloatRect& destRect)
 {
     if (paintingDisabled())
         return;
@@ -1633,7 +1823,7 @@ void GraphicsContext::setPlatformStrokeColor(const Color& color)
 
     m_data->m_solidStrokeBrush = nullptr;
 
-    m_data->m_solidStrokeBrush = m_data->brushWithColor(colorWithGlobalAlpha(strokeColor()));
+    m_data->m_solidStrokeBrush = brushWithColor(strokeColor());
 }
 
 void GraphicsContext::setPlatformStrokeThickness(float thickness)
@@ -1648,7 +1838,7 @@ void GraphicsContext::setPlatformFillColor(const Color& color)
 
     m_data->m_solidFillBrush = nullptr;
 
-    m_data->m_solidFillBrush = m_data->brushWithColor(colorWithGlobalAlpha(fillColor()));
+    m_data->m_solidFillBrush = brushWithColor(fillColor());
 }
 
 void GraphicsContext::setPlatformShouldAntialias(bool enable)
@@ -1673,9 +1863,13 @@ void GraphicsContext::setPlatformShouldSmoothFonts(bool enable)
     platformContext()->SetTextAntialiasMode(fontSmoothingMode);
 }
 
-void GraphicsContext::setPlatformAlpha(float)
+void GraphicsContext::setPlatformAlpha(float alpha)
 {
-    /* No-op on this platform */
+    if (paintingDisabled())
+        return;
+
+    ASSERT(m_state.alpha == alpha);
+    m_data->setAlpha(alpha);
 }
 
 void GraphicsContext::setPlatformCompositeOperation(CompositeOperator mode, BlendMode blendMode)
@@ -1813,7 +2007,7 @@ void GraphicsContext::platformFillEllipse(const FloatRect& ellipse)
         return;
     }
 
-    auto d2dEllipse = D2D1::Ellipse(D2D1::Point2F(ellipse.x(), ellipse.y()), ellipse.width(), ellipse.height());
+    auto d2dEllipse = D2D1::Ellipse(ellipse.center(), 0.5 * ellipse.width(), 0.5 * ellipse.height());
 
     platformContext()->SetTags(1, __LINE__);
 
@@ -1835,7 +2029,7 @@ void GraphicsContext::platformStrokeEllipse(const FloatRect& ellipse)
         return;
     }
 
-    auto d2dEllipse = D2D1::Ellipse(D2D1::Point2F(ellipse.x(), ellipse.y()), ellipse.width(), ellipse.height());
+    auto d2dEllipse = D2D1::Ellipse(ellipse.center(), 0.5 * ellipse.width(), 0.5 * ellipse.height());
 
     platformContext()->SetTags(1, __LINE__);
 

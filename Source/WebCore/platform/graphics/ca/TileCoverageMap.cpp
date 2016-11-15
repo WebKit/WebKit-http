@@ -36,7 +36,8 @@ TileCoverageMap::TileCoverageMap(const TileController& controller)
     : m_controller(controller)
     , m_updateTimer(*this, &TileCoverageMap::updateTimerFired)
     , m_layer(*controller.rootLayer().createCompatibleLayer(PlatformCALayer::LayerTypeSimpleLayer, this))
-    , m_visibleRectIndicatorLayer(*controller.rootLayer().createCompatibleLayer(PlatformCALayer::LayerTypeLayer, nullptr))
+    , m_visibleViewportIndicatorLayer(*controller.rootLayer().createCompatibleLayer(PlatformCALayer::LayerTypeLayer, nullptr))
+    , m_layoutViewportIndicatorLayer(*controller.rootLayer().createCompatibleLayer(PlatformCALayer::LayerTypeLayer, nullptr))
     , m_coverageRectIndicatorLayer(*controller.rootLayer().createCompatibleLayer(PlatformCALayer::LayerTypeLayer, nullptr))
     , m_position(FloatPoint(0, controller.topContentInset()))
 {
@@ -47,18 +48,25 @@ TileCoverageMap::TileCoverageMap(const TileController& controller)
     m_layer.get().setPosition(FloatPoint(2, 2));
     m_layer.get().setContentsScale(m_controller.deviceScaleFactor());
 
-    m_visibleRectIndicatorLayer.get().setName("visible rect indicator");
-    m_visibleRectIndicatorLayer.get().setBorderWidth(2);
-    m_visibleRectIndicatorLayer.get().setAnchorPoint(FloatPoint3D());
-    m_visibleRectIndicatorLayer.get().setBorderColor(Color(255, 0, 0));
+    m_visibleViewportIndicatorLayer.get().setName("visible viewport indicator");
+    m_visibleViewportIndicatorLayer.get().setBorderWidth(2);
+    m_visibleViewportIndicatorLayer.get().setAnchorPoint(FloatPoint3D());
+    m_visibleViewportIndicatorLayer.get().setBorderColor(Color(255, 0, 0, 200));
+
+    m_layoutViewportIndicatorLayer.get().setName("layout viewport indicator");
+    m_layoutViewportIndicatorLayer.get().setBorderWidth(2);
+    m_layoutViewportIndicatorLayer.get().setAnchorPoint(FloatPoint3D());
+    m_layoutViewportIndicatorLayer.get().setBorderColor(Color(0, 128, 128, 200));
     
     m_coverageRectIndicatorLayer.get().setName("coverage indicator");
-    m_coverageRectIndicatorLayer.get().setBorderWidth(2);
     m_coverageRectIndicatorLayer.get().setAnchorPoint(FloatPoint3D());
-    m_coverageRectIndicatorLayer.get().setBorderColor(Color(0, 0, 128));
+    m_coverageRectIndicatorLayer.get().setBackgroundColor(Color(64, 64, 64, 50));
 
     m_layer.get().appendSublayer(m_coverageRectIndicatorLayer);
-    m_layer.get().appendSublayer(m_visibleRectIndicatorLayer);
+    m_layer.get().appendSublayer(m_visibleViewportIndicatorLayer);
+    
+    if (m_controller.layoutViewportRect())
+        m_layer.get().appendSublayer(m_layoutViewportIndicatorLayer);
 
     update();
 }
@@ -97,18 +105,30 @@ void TileCoverageMap::update()
     float indicatorScale = scale * m_controller.tileGrid().scale();
 
     FloatRect mapBounds = containerBounds;
-    mapBounds.scale(indicatorScale, indicatorScale);
+    mapBounds.scale(indicatorScale);
 
     m_layer.get().setPosition(m_position + FloatPoint(2, 2));
     m_layer.get().setBounds(mapBounds);
     m_layer.get().setNeedsDisplay();
 
-    visibleRect.scale(indicatorScale, indicatorScale);
+    visibleRect.scale(indicatorScale);
     visibleRect.expand(2, 2);
-    m_visibleRectIndicatorLayer->setPosition(visibleRect.location());
-    m_visibleRectIndicatorLayer->setBounds(FloatRect(FloatPoint(), visibleRect.size()));
+    m_visibleViewportIndicatorLayer->setPosition(visibleRect.location());
+    m_visibleViewportIndicatorLayer->setBounds(FloatRect(FloatPoint(), visibleRect.size()));
 
-    coverageRect.scale(indicatorScale, indicatorScale);
+    if (auto layoutViewportRect = m_controller.layoutViewportRect()) {
+        FloatRect layoutRect = layoutViewportRect.value();
+        layoutRect.scale(indicatorScale);
+        layoutRect.expand(2, 2);
+        m_layoutViewportIndicatorLayer->setPosition(layoutRect.location());
+        m_layoutViewportIndicatorLayer->setBounds(FloatRect(FloatPoint(), layoutRect.size()));
+
+        if (!m_layoutViewportIndicatorLayer->superlayer())
+            m_layer.get().appendSublayer(m_layoutViewportIndicatorLayer);
+    } else if (m_layoutViewportIndicatorLayer->superlayer())
+        m_layoutViewportIndicatorLayer->removeFromSuperlayer();
+
+    coverageRect.scale(indicatorScale);
     coverageRect.expand(2, 2);
     m_coverageRectIndicatorLayer->setPosition(coverageRect.location());
     m_coverageRectIndicatorLayer->setBounds(FloatRect(FloatPoint(), coverageRect.size()));
@@ -129,7 +149,7 @@ void TileCoverageMap::update()
         break;
     }
 
-    m_visibleRectIndicatorLayer.get().setBorderColor(visibleRectIndicatorColor);
+    m_visibleViewportIndicatorLayer.get().setBorderColor(visibleRectIndicatorColor);
 }
 
 void TileCoverageMap::platformCALayerPaintContents(PlatformCALayer* platformCALayer, GraphicsContext& context, const FloatRect&)

@@ -35,9 +35,9 @@
 #if ENABLE(MEDIA_SOURCE)
 
 #include "AudioTrackList.h"
+#include "BufferSource.h"
 #include "Event.h"
 #include "EventNames.h"
-#include "ExceptionCodePlaceholder.h"
 #include "GenericEventQueue.h"
 #include "HTMLMediaElement.h"
 #include "InbandTextTrack.h"
@@ -231,15 +231,9 @@ ExceptionOr<void> SourceBuffer::setAppendWindowEnd(double newValue)
     return { };
 }
 
-
-ExceptionOr<void> SourceBuffer::appendBuffer(ArrayBuffer& data)
+ExceptionOr<void> SourceBuffer::appendBuffer(const BufferSource& data)
 {
-    return appendBufferInternal(static_cast<unsigned char*>(data.data()), data.byteLength());
-}
-
-ExceptionOr<void> SourceBuffer::appendBuffer(ArrayBufferView& data)
-{
-    return appendBufferInternal(static_cast<unsigned char*>(data.baseAddress()), data.byteLength());
+    return appendBufferInternal(static_cast<const unsigned char*>(data.data()), data.length());
 }
 
 void SourceBuffer::resetParserState()
@@ -496,7 +490,7 @@ void SourceBuffer::scheduleEvent(const AtomicString& eventName)
     m_asyncEventQueue.enqueueEvent(WTFMove(event));
 }
 
-ExceptionOr<void> SourceBuffer::appendBufferInternal(unsigned char* data, unsigned size)
+ExceptionOr<void> SourceBuffer::appendBufferInternal(const unsigned char* data, unsigned size)
 {
     // Section 3.2 appendBuffer()
     // https://dvcs.w3.org/hg/html-media/raw-file/default/media-source/media-source.html#widl-SourceBuffer-appendBuffer-void-ArrayBufferView-data
@@ -520,7 +514,7 @@ ExceptionOr<void> SourceBuffer::appendBufferInternal(unsigned char* data, unsign
     evictCodedFrames(size);
 
     // FIXME: enable this code when MSE libraries have been updated to support it.
-#if 0
+#if USE(GSTREAMER)
     // 5. If the buffer full flag equals true, then throw a QUOTA_EXCEEDED_ERR exception and abort these step.
     if (m_bufferFull) {
         LOG(MediaSource, "SourceBuffer::appendBufferInternal(%p) -  buffer full, failing with QUOTA_EXCEEDED_ERR error", this);
@@ -829,6 +823,9 @@ void SourceBuffer::removeCodedFrames(const MediaTime& start, const MediaTime& en
 
 void SourceBuffer::removeTimerFired()
 {
+    if (isRemoved())
+        return;
+
     ASSERT(m_updating);
     ASSERT(m_pendingRemoveStart.isValid());
     ASSERT(m_pendingRemoveStart < m_pendingRemoveEnd);
@@ -1398,8 +1395,12 @@ void SourceBuffer::sourceBufferPrivateDidReceiveSample(SourceBufferPrivate*, Med
         // 1.5 Let track buffer equal the track buffer that the coded frame will be added to.
         AtomicString trackID = sample.trackID();
         auto it = m_trackBufferMap.find(trackID);
-        if (it == m_trackBufferMap.end())
-            it = m_trackBufferMap.add(trackID, TrackBuffer()).iterator;
+        if (it == m_trackBufferMap.end()) {
+            // The client managed to append a sample with a trackID not present in the initialization
+            // segment. This would be a good place to post an message to the developer console.
+            didDropSample();
+            return;
+        }
         TrackBuffer& trackBuffer = it->value;
 
         // 1.6 ↳ If last decode timestamp for track buffer is set and decode timestamp is less than last
@@ -1800,6 +1801,9 @@ void SourceBuffer::sourceBufferPrivateDidBecomeReadyForMoreSamples(SourceBufferP
 
 void SourceBuffer::provideMediaData(TrackBuffer& trackBuffer, AtomicString trackID)
 {
+    if (m_source->isSeeking())
+        return;
+
 #if !LOG_DISABLED
     unsigned enqueuedSamples = 0;
 #endif
@@ -1840,6 +1844,9 @@ void SourceBuffer::provideMediaData(TrackBuffer& trackBuffer, AtomicString track
 
 void SourceBuffer::reenqueueMediaForTime(TrackBuffer& trackBuffer, AtomicString trackID, const MediaTime& time)
 {
+    m_private->flush(trackID);
+    trackBuffer.decodeQueue.clear();
+
     // Find the sample which contains the current presentation time.
     auto currentSamplePTSIterator = trackBuffer.samples.presentationOrder().findSampleContainingPresentationTime(time);
 
@@ -1847,11 +1854,8 @@ void SourceBuffer::reenqueueMediaForTime(TrackBuffer& trackBuffer, AtomicString 
         currentSamplePTSIterator = trackBuffer.samples.presentationOrder().findSampleOnOrAfterPresentationTime(time);
 
     if (currentSamplePTSIterator == trackBuffer.samples.presentationOrder().end()
-        || (currentSamplePTSIterator->first - time) > MediaSource::currentTimeFudgeFactor()) {
-        trackBuffer.decodeQueue.clear();
-        m_private->flushAndEnqueueNonDisplayingSamples(Vector<RefPtr<MediaSample>>(), trackID);
+        || (currentSamplePTSIterator->first - time) > MediaSource::currentTimeFudgeFactor())
         return;
-    }
 
     // Seach backward for the previous sync sample.
     DecodeOrderSampleMap::KeyType decodeKey(currentSamplePTSIterator->second->decodeTime(), currentSamplePTSIterator->second->presentationTime());
@@ -1860,28 +1864,26 @@ void SourceBuffer::reenqueueMediaForTime(TrackBuffer& trackBuffer, AtomicString 
 
     auto reverseCurrentSampleIter = --DecodeOrderSampleMap::reverse_iterator(currentSampleDTSIterator);
     auto reverseLastSyncSampleIter = trackBuffer.samples.decodeOrder().findSyncSamplePriorToDecodeIterator(reverseCurrentSampleIter);
-    if (reverseLastSyncSampleIter == trackBuffer.samples.decodeOrder().rend()) {
-        trackBuffer.decodeQueue.clear();
-        m_private->flushAndEnqueueNonDisplayingSamples(Vector<RefPtr<MediaSample>>(), trackID);
+    if (reverseLastSyncSampleIter == trackBuffer.samples.decodeOrder().rend())
         return;
+
+    // Fill the decode queue with the non-displaying samples.
+    for (auto iter = reverseLastSyncSampleIter; iter != reverseCurrentSampleIter; --iter) {
+        auto copy = iter->second->createNonDisplayingCopy();
+        DecodeOrderSampleMap::KeyType decodeKey(copy->decodeTime(), copy->presentationTime());
+        trackBuffer.decodeQueue.insert(DecodeOrderSampleMap::MapType::value_type(decodeKey, WTFMove(copy)));
     }
 
-    Vector<RefPtr<MediaSample>> nonDisplayingSamples;
-    for (auto iter = reverseLastSyncSampleIter; iter != reverseCurrentSampleIter; --iter)
-        nonDisplayingSamples.append(iter->second);
-
-    m_private->flushAndEnqueueNonDisplayingSamples(nonDisplayingSamples, trackID);
-
-    if (!nonDisplayingSamples.isEmpty()) {
-        trackBuffer.lastEnqueuedPresentationTime = nonDisplayingSamples.last()->presentationTime();
-        trackBuffer.lastEnqueuedDecodeEndTime = nonDisplayingSamples.last()->decodeTime();
+    if (!trackBuffer.decodeQueue.empty()) {
+        auto& lastSample = trackBuffer.decodeQueue.rbegin()->second;
+        trackBuffer.lastEnqueuedPresentationTime = lastSample->presentationTime();
+        trackBuffer.lastEnqueuedDecodeEndTime = lastSample->decodeTime();
     } else {
         trackBuffer.lastEnqueuedPresentationTime = MediaTime::invalidTime();
         trackBuffer.lastEnqueuedDecodeEndTime = MediaTime::invalidTime();
     }
 
     // Fill the decode queue with the remaining samples.
-    trackBuffer.decodeQueue.clear();
     for (auto iter = currentSampleDTSIterator; iter != trackBuffer.samples.decodeOrder().end(); ++iter)
         trackBuffer.decodeQueue.insert(*iter);
     provideMediaData(trackBuffer, trackID);

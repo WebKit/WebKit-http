@@ -26,8 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef CurrentScriptIncrementer_h
-#define CurrentScriptIncrementer_h
+#pragma once
 
 #include "Document.h"
 #include "HTMLScriptElement.h"
@@ -39,23 +38,24 @@ class CurrentScriptIncrementer {
 public:
     CurrentScriptIncrementer(Document& document, Element& element)
         : m_document(document)
-        , m_isHTMLScriptElementOutsideShadowTree(is<HTMLScriptElement>(element) && !element.isInShadowTree())
+        , m_isHTMLScriptElement(is<HTMLScriptElement>(element))
     {
-        if (m_isHTMLScriptElementOutsideShadowTree)
-            m_document.pushCurrentScript(&downcast<HTMLScriptElement>(element));
+        if (!m_isHTMLScriptElement)
+            return;
+        auto& scriptElement = downcast<HTMLScriptElement>(element);
+        m_document.pushCurrentScript(scriptElement.isInShadowTree() ? nullptr : &scriptElement);
     }
 
     ~CurrentScriptIncrementer()
     {
-        if (m_isHTMLScriptElementOutsideShadowTree)
-            m_document.popCurrentScript();
+        if (!m_isHTMLScriptElement)
+            return;
+        m_document.popCurrentScript();
     }
 
 private:
     Document& m_document;
-    bool m_isHTMLScriptElementOutsideShadowTree;
+    bool m_isHTMLScriptElement;
 };
 
-}
-
-#endif
+} // namespace WebCore

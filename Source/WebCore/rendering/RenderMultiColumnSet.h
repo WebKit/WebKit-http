@@ -23,9 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-
-#ifndef RenderMultiColumnSet_h
-#define RenderMultiColumnSet_h
+#pragma once
 
 #include "LayerFragment.h"
 #include "RenderMultiColumnFlowThread.h"
@@ -60,7 +58,7 @@ public:
     RenderObject* lastRendererInFlowThread() const;
 
     // Return true if the specified renderer (descendant of the flow thread) is inside this column set.
-    bool containsRendererInFlowThread(RenderObject*) const;
+    bool containsRendererInFlowThread(const RenderObject&) const;
 
     void setLogicalTopInFlowThread(LayoutUnit);
     LayoutUnit logicalTopInFlowThread() const { return isHorizontalWritingMode() ? flowThreadPortionRect().y() : flowThreadPortionRect().x(); }
@@ -230,6 +228,3 @@ private:
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_RENDER_OBJECT(RenderMultiColumnSet, isRenderMultiColumnSet())
-
-#endif // RenderMultiColumnSet_h
-

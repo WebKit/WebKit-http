@@ -52,12 +52,7 @@ public:
 protected:
     JSTestNondeterministic(JSC::Structure*, JSDOMGlobalObject&, Ref<TestNondeterministic>&&);
 
-    void finishCreation(JSC::VM& vm)
-    {
-        Base::finishCreation(vm);
-        ASSERT(inherits(info()));
-    }
-
+    void finishCreation(JSC::VM&);
 };
 
 class JSTestNondeterministicOwner : public JSC::WeakHandleOwner {
@@ -84,6 +79,7 @@ inline JSC::JSValue toJSNewlyCreated(JSC::ExecState* state, JSDOMGlobalObject* g
 
 template<> struct JSDOMWrapperConverterTraits<TestNondeterministic> {
     using WrapperClass = JSTestNondeterministic;
+    using ToWrappedReturnType = TestNondeterministic*;
 };
 
 } // namespace WebCore

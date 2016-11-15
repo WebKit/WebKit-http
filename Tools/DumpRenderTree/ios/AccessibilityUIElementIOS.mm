@@ -97,6 +97,7 @@ AccessibilityUIElement::~AccessibilityUIElement()
 - (id)_accessibilityFieldsetAncestor;
 - (BOOL)_accessibilityHasTouchEventListener;
 - (NSString *)accessibilityExpandedTextValue;
+- (NSString *)accessibilitySortDirection;
 - (BOOL)accessibilityIsExpanded;
 
 // TextMarker related
@@ -660,6 +661,9 @@ JSStringRef AccessibilityUIElement::stringAttributeValue(JSStringRef attribute)
     if (JSStringIsEqualToUTF8CString(attribute, "AXExpandedTextValue"))
         return [[m_element accessibilityExpandedTextValue] createJSStringRef];
     
+    if (JSStringIsEqualToUTF8CString(attribute, "AXSortDirection"))
+        return [[m_element accessibilitySortDirection] createJSStringRef];
+    
     return JSStringCreateWithCharacters(0, 0);
 }
 
@@ -982,6 +986,11 @@ JSStringRef AccessibilityUIElement::accessibilityValue() const
     return JSStringCreateWithCharacters(0, 0);
 }
 
+void AccessibilityUIElement::clearSelectedChildren() const
+{
+    // FIXME: implement
+}
+
 JSStringRef AccessibilityUIElement::documentEncoding()
 {
     return JSStringCreateWithCharacters(0, 0);
@@ -1064,6 +1073,18 @@ bool AccessibilityUIElement::isCollapsed() const
 bool AccessibilityUIElement::isIgnored() const
 {
     return ![m_element isAccessibilityElement];
+}
+
+bool AccessibilityUIElement::isSingleLine() const
+{
+    // FIXME: implement
+    return false;
+}
+
+bool AccessibilityUIElement::isMultiLine() const
+{
+    // FIXME: implement
+    return false;
 }
 
 bool AccessibilityUIElement::hasPopup() const

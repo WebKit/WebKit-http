@@ -32,17 +32,22 @@
 #include "CommonSlowPathsExceptions.h"
 #include "Error.h"
 #include "ErrorHandlingScope.h"
+#include "EvalCodeBlock.h"
 #include "Exception.h"
 #include "ExceptionFuzz.h"
+#include "FunctionCodeBlock.h"
 #include "FunctionWhitelist.h"
 #include "GetterSetter.h"
 #include "HostCallReturnValue.h"
 #include "Interpreter.h"
+#include "IteratorOperations.h"
 #include "JIT.h"
 #include "JITExceptions.h"
 #include "JITWorklist.h"
+#include "JSAsyncFunction.h"
 #include "JSCInlines.h"
 #include "JSCJSValue.h"
+#include "JSFixedArray.h"
 #include "JSGeneratorFunction.h"
 #include "JSGlobalObjectFunctions.h"
 #include "JSLexicalEnvironment.h"
@@ -52,13 +57,16 @@
 #include "LLIntData.h"
 #include "LLIntExceptions.h"
 #include "LowLevelInterpreter.h"
+#include "ModuleProgramCodeBlock.h"
 #include "ObjectConstructor.h"
 #include "ObjectPropertyConditionSet.h"
+#include "ProgramCodeBlock.h"
 #include "ProtoCallFrame.h"
 #include "RegExpObject.h"
 #include "ShadowChicken.h"
 #include "StructureRareDataInlines.h"
 #include "VMInlines.h"
+#include "WebAssemblyCodeBlock.h"
 #include <wtf/NeverDestroyed.h>
 #include <wtf/StringPrintStream.h>
 
@@ -784,7 +792,7 @@ LLINT_SLOW_PATH_DECL(slow_path_del_by_id)
     bool couldDelete = baseObject->methodTable()->deleteProperty(baseObject, exec, codeBlock->identifier(pc[3].u.operand));
     LLINT_CHECK_EXCEPTION();
     if (!couldDelete && codeBlock->isStrictMode())
-        LLINT_THROW(createTypeError(exec, "Unable to delete property."));
+        LLINT_THROW(createTypeError(exec, UnableToDeletePropertyError));
     LLINT_RETURN(jsBoolean(couldDelete));
 }
 
@@ -915,7 +923,7 @@ LLINT_SLOW_PATH_DECL(slow_path_del_by_val)
     }
     
     if (!couldDelete && exec->codeBlock()->isStrictMode())
-        LLINT_THROW(createTypeError(exec, "Unable to delete property."));
+        LLINT_THROW(createTypeError(exec, UnableToDeletePropertyError));
     
     LLINT_RETURN(jsBoolean(couldDelete));
 }
@@ -1149,6 +1157,17 @@ LLINT_SLOW_PATH_DECL(slow_path_new_generator_func)
     LLINT_RETURN(JSGeneratorFunction::create(vm, codeBlock->functionDecl(pc[3].u.operand), scope));
 }
 
+LLINT_SLOW_PATH_DECL(slow_path_new_async_func)
+{
+    LLINT_BEGIN();
+    CodeBlock* codeBlock = exec->codeBlock();
+    JSScope* scope = exec->uncheckedR(pc[2].u.operand).Register::scope();
+#if LLINT_SLOW_PATH_TRACING
+    dataLogF("Creating async function!\n");
+#endif
+    LLINT_RETURN(JSAsyncFunction::create(vm, codeBlock->functionDecl(pc[3].u.operand), scope));
+}
+
 LLINT_SLOW_PATH_DECL(slow_path_new_func_exp)
 {
     LLINT_BEGIN();
@@ -1169,6 +1188,17 @@ LLINT_SLOW_PATH_DECL(slow_path_new_generator_func_exp)
     FunctionExecutable* executable = codeBlock->functionExpr(pc[3].u.operand);
 
     LLINT_RETURN(JSGeneratorFunction::create(vm, executable, scope));
+}
+
+LLINT_SLOW_PATH_DECL(slow_path_new_async_func_exp)
+{
+    LLINT_BEGIN();
+    
+    CodeBlock* codeBlock = exec->codeBlock();
+    JSScope* scope = exec->uncheckedR(pc[2].u.operand).Register::scope();
+    FunctionExecutable* executable = codeBlock->functionExpr(pc[3].u.operand);
+    
+    LLINT_RETURN(JSAsyncFunction::create(vm, executable, scope));
 }
 
 LLINT_SLOW_PATH_DECL(slow_path_set_function_name)
@@ -1275,7 +1305,7 @@ inline SlowPathReturnType setUpCall(ExecState* execCallee, Instruction* pc, Code
             LLINT_CALL_THROW(exec, createNotAConstructorError(exec, callee));
 
         CodeBlock** codeBlockSlot = execCallee->addressOfCodeBlock();
-        JSObject* error = functionExecutable->prepareForExecution<FunctionExecutable>(execCallee, callee, scope, kind, *codeBlockSlot);
+        JSObject* error = functionExecutable->prepareForExecution<FunctionExecutable>(vm, callee, scope, kind, *codeBlockSlot);
         if (error)
             LLINT_CALL_THROW(exec, error);
         codeBlock = *codeBlockSlot;

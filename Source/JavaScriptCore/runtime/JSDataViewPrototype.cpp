@@ -129,10 +129,7 @@ EncodedJSValue getData(ExecState* exec)
     if (!dataView)
         return throwVMTypeError(exec, scope, ASCIILiteral("Receiver of DataView method must be a DataView"));
     
-    if (!exec->argumentCount())
-        return throwVMTypeError(exec, scope, ASCIILiteral("Need at least one argument (the byteOffset)"));
-    
-    unsigned byteOffset = exec->uncheckedArgument(0).toUInt32(exec);
+    unsigned byteOffset = exec->argument(0).toIndex(exec, "byteOffset");
     RETURN_IF_EXCEPTION(scope, encodedJSValue());
     
     bool littleEndian = false;
@@ -175,10 +172,7 @@ EncodedJSValue setData(ExecState* exec)
     if (!dataView)
         return throwVMTypeError(exec, scope, ASCIILiteral("Receiver of DataView method must be a DataView"));
     
-    if (exec->argumentCount() < 2)
-        return throwVMTypeError(exec, scope, ASCIILiteral("Need at least two argument (the byteOffset and value)"));
-    
-    unsigned byteOffset = exec->uncheckedArgument(0).toUInt32(exec);
+    unsigned byteOffset = exec->argument(0).toIndex(exec, "byteOffset");
     RETURN_IF_EXCEPTION(scope, encodedJSValue());
 
     const unsigned dataSize = sizeof(typename Adaptor::Type);
@@ -187,7 +181,7 @@ EncodedJSValue setData(ExecState* exec)
         uint8_t rawBytes[dataSize];
     } u;
 
-    u.value = toNativeFromValue<Adaptor>(exec, exec->uncheckedArgument(1));
+    u.value = toNativeFromValue<Adaptor>(exec, exec->argument(1));
     RETURN_IF_EXCEPTION(scope, encodedJSValue());
     
     bool littleEndian = false;
@@ -228,7 +222,7 @@ EncodedJSValue JSC_HOST_CALL dataViewProtoGetterBuffer(ExecState* exec)
     if (!view)
         return throwVMTypeError(exec, scope, "DataView.prototype.buffer expects |this| to be a DataView object");
 
-    return JSValue::encode(view->jsBuffer(exec));
+    return JSValue::encode(view->possiblySharedJSBuffer(exec));
 }
 
 EncodedJSValue JSC_HOST_CALL dataViewProtoGetterByteLength(ExecState* exec)

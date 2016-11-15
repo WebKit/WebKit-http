@@ -166,11 +166,17 @@ namespace WebCore {
     String AXDescriptionListDetailText();
     String AXFooterRoleDescriptionText();
     String AXFileUploadButtonText();
+    String AXOutputText();
     String AXSearchFieldCancelButtonText();
     String AXAttachmentRoleText();
     String AXDetailsText();
     String AXSummaryText();
     String AXFigureText();
+    String AXEmailFieldText();
+    String AXTelephoneFieldText();
+    String AXURLFieldText();
+    String AXDateFieldText();
+    String AXTimeFieldText();
     
     String AXButtonActionVerb();
     String AXRadioButtonActionVerb();
@@ -190,6 +196,12 @@ namespace WebCore {
 #if PLATFORM(COCOA)
     String AXARIAContentGroupText(const String& ariaType);
     String AXHorizontalRuleDescriptionText();
+    String AXMarkText();
+#if ENABLE(METER_ELEMENT)
+    String AXMeterGaugeRegionOptimumText();
+    String AXMeterGaugeRegionSuboptimalText();
+    String AXMeterGaugeRegionLessGoodText();
+#endif
 #endif
     
     String AXAutoFillCredentialsLabel();

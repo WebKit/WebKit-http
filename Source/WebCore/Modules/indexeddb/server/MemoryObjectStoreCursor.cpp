@@ -190,8 +190,12 @@ void MemoryObjectStoreCursor::currentData(IDBGetResult& data)
     }
 
     m_currentPositionKey = **m_iterator;
-    IDBValue value = { m_objectStore.valueForKeyRange(m_currentPositionKey), { }, { } };
-    data = { m_currentPositionKey, m_currentPositionKey, WTFMove(value) };
+    if (m_info.cursorType() == IndexedDB::CursorType::KeyOnly)
+        data = { m_currentPositionKey, m_currentPositionKey };
+    else {
+        IDBValue value = { m_objectStore.valueForKeyRange(m_currentPositionKey), { }, { } };
+        data = { m_currentPositionKey, m_currentPositionKey, WTFMove(value) };
+    }
 }
 
 void MemoryObjectStoreCursor::incrementForwardIterator(std::set<IDBKeyData>& set, const IDBKeyData& key, uint32_t count)
@@ -310,9 +314,11 @@ void MemoryObjectStoreCursor::incrementReverseIterator(std::set<IDBKeyData>& set
     }
 }
 
-void MemoryObjectStoreCursor::iterate(const IDBKeyData& key, uint32_t count, IDBGetResult& outData)
+void MemoryObjectStoreCursor::iterate(const IDBKeyData& key, const IDBKeyData& primaryKeyData, uint32_t count, IDBGetResult& outData)
 {
     LOG(IndexedDB, "MemoryObjectStoreCursor::iterate to key %s", key.loggingString().utf8().data());
+
+    ASSERT_UNUSED(primaryKeyData, primaryKeyData.isNull());
 
     if (!m_objectStore.orderedKeys()) {
         m_currentPositionKey = { };

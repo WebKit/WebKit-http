@@ -53,12 +53,7 @@ public:
 protected:
     JSTestNamedConstructor(JSC::Structure*, JSDOMGlobalObject&, Ref<TestNamedConstructor>&&);
 
-    void finishCreation(JSC::VM& vm)
-    {
-        Base::finishCreation(vm);
-        ASSERT(inherits(info()));
-    }
-
+    void finishCreation(JSC::VM&);
 };
 
 class JSTestNamedConstructorOwner : public JSC::WeakHandleOwner {
@@ -85,6 +80,7 @@ inline JSC::JSValue toJSNewlyCreated(JSC::ExecState* state, JSDOMGlobalObject* g
 
 template<> struct JSDOMWrapperConverterTraits<TestNamedConstructor> {
     using WrapperClass = JSTestNamedConstructor;
+    using ToWrappedReturnType = TestNamedConstructor*;
 };
 
 } // namespace WebCore

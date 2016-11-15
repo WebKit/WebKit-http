@@ -20,12 +20,12 @@
 
 #pragma once
 
+#include "ActivityState.h"
 #include "FindOptions.h"
 #include "FrameLoaderTypes.h"
 #include "LayoutMilestones.h"
 #include "LayoutRect.h"
 #include "MediaProducer.h"
-#include "PageThrottler.h"
 #include "PageVisibilityState.h"
 #include "Pagination.h"
 #include "PlatformScreen.h"
@@ -33,8 +33,8 @@
 #include "ScrollTypes.h"
 #include "SessionID.h"
 #include "Supplementable.h"
+#include "Timer.h"
 #include "UserInterfaceLayoutDirection.h"
-#include "ViewState.h"
 #include "ViewportArguments.h"
 #include "WheelEventTestTrigger.h"
 #include <memory>
@@ -104,7 +104,6 @@ class PageConfiguration;
 class PageConsoleClient;
 class PageDebuggable;
 class PageGroup;
-class PageThrottler;
 class PlugInClient;
 class PluginData;
 class PluginInfoProvider;
@@ -126,7 +125,7 @@ class StorageNamespace;
 class StorageNamespaceProvider;
 class UserContentProvider;
 class ValidationMessageClient;
-class ViewStateChangeObserver;
+class ActivityStateChangeObserver;
 class VisitedLinkStore;
 
 typedef uint64_t LinkHash;
@@ -137,7 +136,6 @@ class Page : public Supplementable<Page> {
     WTF_MAKE_NONCOPYABLE(Page);
     WTF_MAKE_FAST_ALLOCATED;
     friend class Settings;
-    friend class PageThrottler;
 
 public:
     WEBCORE_EXPORT static void updateStyleForAllPagesAfterGlobalChangeInEnvironment();
@@ -207,7 +205,7 @@ public:
 #if ENABLE(POINTER_LOCK)
     PointerLockController& pointerLockController() const { return *m_pointerLockController; }
 #endif
-    ValidationMessageClient* validationMessageClient() const { return m_validationMessageClient; }
+    ValidationMessageClient* validationMessageClient() const { return m_validationMessageClient.get(); }
 
     WEBCORE_EXPORT ScrollingCoordinator* scrollingCoordinator();
 
@@ -334,22 +332,21 @@ public:
     WEBCORE_EXPORT DiagnosticLoggingClient& diagnosticLoggingClient() const;
 
     // Notifications when the Page starts and stops being presented via a native window.
-    WEBCORE_EXPORT void setViewState(ViewState::Flags);
+    WEBCORE_EXPORT void setActivityState(ActivityState::Flags);
     bool isVisibleAndActive() const;
-    void setPageActivityState(PageActivityState::Flags);
     WEBCORE_EXPORT void setIsVisible(bool);
     WEBCORE_EXPORT void setIsPrerender();
-    bool isVisible() const { return m_viewState & ViewState::IsVisible; }
+    bool isVisible() const { return m_activityState & ActivityState::IsVisible; }
 
     // Notification that this Page was moved into or out of a native window.
     WEBCORE_EXPORT void setIsInWindow(bool);
-    bool isInWindow() const { return m_viewState & ViewState::IsInWindow; }
+    bool isInWindow() const { return m_activityState & ActivityState::IsInWindow; }
 
     void setIsClosing() { m_isClosing = true; }
     bool isClosing() const { return m_isClosing; }
 
-    void addViewStateChangeObserver(ViewStateChangeObserver&);
-    void removeViewStateChangeObserver(ViewStateChangeObserver&);
+    void addActivityStateChangeObserver(ActivityStateChangeObserver&);
+    void removeActivityStateChangeObserver(ActivityStateChangeObserver&);
 
     WEBCORE_EXPORT void suspendScriptedAnimations();
     WEBCORE_EXPORT void resumeScriptedAnimations();
@@ -437,8 +434,6 @@ public:
     void sawMediaEngine(const String& engineName);
     void resetSeenMediaEngines();
 
-    PageThrottler& pageThrottler() { return m_pageThrottler; }
-
     PageConsoleClient& console() { return *m_consoleClient; }
 
 #if ENABLE(REMOTE_INSPECTOR)
@@ -480,8 +475,10 @@ public:
 
     MediaProducer::MediaStateFlags mediaState() const { return m_mediaState; }
     void updateIsPlayingMedia(uint64_t);
-    bool isMuted() const { return m_muted; }
-    WEBCORE_EXPORT void setMuted(bool);
+    MediaProducer::MutedStateFlags mutedState() const { return m_mutedState; }
+    bool isAudioMuted() const { return m_mutedState & MediaProducer::AudioIsMuted; }
+    bool isMediaCaptureMuted() const { return m_mutedState & MediaProducer::CaptureDevicesAreMuted; };
+    WEBCORE_EXPORT void setMuted(MediaProducer::MutedStateFlags);
 
 #if ENABLE(MEDIA_SESSION)
     WEBCORE_EXPORT void handleMediaEvent(MediaEventType);
@@ -552,7 +549,7 @@ private:
 
     unsigned findMatchesForText(const String&, FindOptions, unsigned maxMatchCount, ShouldHighlightMatches, ShouldMarkMatches);
 
-    MediaCanStartListener* takeAnyMediaCanStartListener();
+    Optional<std::pair<MediaCanStartListener&, Document&>> takeAnyMediaCanStartListener();
 
     Vector<Ref<PluginViewBase>> pluginViews();
 
@@ -595,7 +592,7 @@ private:
 
     UniqueRef<EditorClient> m_editorClient;
     PlugInClient* m_plugInClient;
-    ValidationMessageClient* m_validationMessageClient;
+    std::unique_ptr<ValidationMessageClient> m_validationMessageClient;
     std::unique_ptr<DiagnosticLoggingClient> m_diagnosticLoggingClient;
 
     int m_subframeCount;
@@ -609,7 +606,7 @@ private:
     bool m_inLowQualityInterpolationMode;
     bool m_areMemoryCacheClientCallsEnabled;
     float m_mediaVolume;
-    bool m_muted;
+    MediaProducer::MutedStateFlags m_mutedState { MediaProducer::NoneMuted };
 
     float m_pageScaleFactor;
     float m_zoomedOutPageScaleFactor;
@@ -664,8 +661,7 @@ private:
 
     bool m_isEditable;
     bool m_isPrerender;
-    ViewState::Flags m_viewState;
-    PageActivityState::Flags m_pageActivityState;
+    ActivityState::Flags m_activityState;
 
     LayoutMilestones m_requestedLayoutMilestones;
 
@@ -683,7 +679,6 @@ private:
     AlternativeTextClient* m_alternativeTextClient;
 
     bool m_scriptedAnimationsSuspended;
-    PageThrottler m_pageThrottler;
     const std::unique_ptr<PageConsoleClient> m_consoleClient;
 
 #if ENABLE(REMOTE_INSPECTOR)
@@ -709,7 +704,7 @@ private:
     Ref<VisitedLinkStore> m_visitedLinkStore;
     RefPtr<WheelEventTestTrigger> m_testTrigger;
 
-    HashSet<ViewStateChangeObserver*> m_viewStateChangeObservers;
+    HashSet<ActivityStateChangeObserver*> m_activityStateChangeObservers;
 
 #if ENABLE(RESOURCE_USAGE)
     std::unique_ptr<ResourceUsageOverlay> m_resourceUsageOverlay;

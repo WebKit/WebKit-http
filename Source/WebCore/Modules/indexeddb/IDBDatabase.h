@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -29,11 +29,12 @@
 
 #include "Dictionary.h"
 #include "EventTarget.h"
-#include "ExceptionCode.h"
 #include "IDBActiveDOMObject.h"
 #include "IDBConnectionProxy.h"
 #include "IDBConnectionToServer.h"
 #include "IDBDatabaseInfo.h"
+#include "IDBKeyPath.h"
+#include "IDBTransactionMode.h"
 
 namespace WebCore {
 
@@ -43,6 +44,7 @@ class IDBOpenDBRequest;
 class IDBResultData;
 class IDBTransaction;
 class IDBTransactionInfo;
+struct EventNames;
 
 class IDBDatabase : public ThreadSafeRefCounted<IDBDatabase>, public EventTargetWithInlineData, public IDBActiveDOMObject {
 public:
@@ -55,12 +57,20 @@ public:
     uint64_t version() const;
     RefPtr<DOMStringList> objectStoreNames() const;
 
-    ExceptionOr<Ref<IDBObjectStore>> createObjectStore(const String& name, const Dictionary&);
-    ExceptionOr<Ref<IDBObjectStore>> createObjectStore(const String& name, const IDBKeyPath&, bool autoIncrement);
-    ExceptionOr<Ref<IDBTransaction>> transaction(const Vector<String>&, const String& mode);
-    ExceptionOr<Ref<IDBTransaction>> transaction(const String&, const String& mode);
+    struct ObjectStoreParameters {
+        Optional<IDBKeyPath> keyPath;
+        bool autoIncrement;
+    };
+
+    ExceptionOr<Ref<IDBObjectStore>> createObjectStore(const String& name, ObjectStoreParameters&&);
+
+    using StringOrVectorOfStrings = WTF::Variant<String, Vector<String>>;
+    ExceptionOr<Ref<IDBTransaction>> transaction(StringOrVectorOfStrings&& storeNames, IDBTransactionMode);
     ExceptionOr<void> deleteObjectStore(const String& name);
     void close();
+
+    void renameObjectStore(IDBObjectStore&, const String& newName);
+    void renameIndex(IDBIndex&, const String& newName);
 
     // EventTarget
     EventTargetInterface eventTargetInterface() const final { return IDBDatabaseEventTargetInterfaceType; }
@@ -119,6 +129,8 @@ private:
     HashMap<IDBResourceIdentifier, RefPtr<IDBTransaction>> m_activeTransactions;
     HashMap<IDBResourceIdentifier, RefPtr<IDBTransaction>> m_committingTransactions;
     HashMap<IDBResourceIdentifier, RefPtr<IDBTransaction>> m_abortingTransactions;
+    
+    const EventNames& m_eventNames; // Need to cache this so we can use it from GC threads.
 };
 
 } // namespace WebCore

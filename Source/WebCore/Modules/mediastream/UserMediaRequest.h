@@ -30,76 +30,68 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef UserMediaRequest_h
-#define UserMediaRequest_h
+#pragma once
 
 #if ENABLE(MEDIA_STREAM)
 
 #include "ActiveDOMObject.h"
+#include "Document.h"
+#include "MediaConstraintsImpl.h"
 #include "MediaDevices.h"
-#include "MediaStreamCreationClient.h"
-#include <wtf/RefCounted.h>
-#include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
-class Dictionary;
-class Document;
-class Frame;
 class MediaConstraints;
 class MediaStreamPrivate;
 class UserMediaController;
 class SecurityOrigin;
 
-typedef int ExceptionCode;
-
-class UserMediaRequest : public MediaStreamCreationClient, public ContextDestructionObserver {
+class UserMediaRequest : public RefCounted<UserMediaRequest>, private ContextDestructionObserver {
 public:
-    static void start(Document*, Ref<MediaConstraintsImpl>&& audioConstraints, Ref<MediaConstraintsImpl>&& videoConstraints, MediaDevices::Promise&&, ExceptionCode&);
+    static ExceptionOr<void> start(Document&, Ref<MediaConstraintsImpl>&& audioConstraints, Ref<MediaConstraintsImpl>&& videoConstraints, MediaDevices::Promise&&);
 
-    ~UserMediaRequest();
-
-    WEBCORE_EXPORT SecurityOrigin* userMediaDocumentOrigin() const;
-    WEBCORE_EXPORT SecurityOrigin* topLevelDocumentOrigin() const;
+    virtual ~UserMediaRequest();
 
     void start();
-    WEBCORE_EXPORT void userMediaAccessGranted(const String& audioDeviceUID, const String& videoDeviceUID);
-    WEBCORE_EXPORT void userMediaAccessDenied();
+
+    WEBCORE_EXPORT void setAllowedMediaDeviceUIDs(const String& audioDeviceUID, const String& videoDeviceUID);
+    WEBCORE_EXPORT void allow(const String& audioDeviceUID, const String& videoDeviceUID);
+
+    enum MediaAccessDenialReason { NoConstraints, UserMediaDisabled, NoCaptureDevices, InvalidConstraint, HardwareError, PermissionDenied, OtherFailure };
+    WEBCORE_EXPORT void deny(MediaAccessDenialReason, const String& invalidConstraint);
 
     const Vector<String>& audioDeviceUIDs() const { return m_audioDeviceUIDs; }
     const Vector<String>& videoDeviceUIDs() const { return m_videoDeviceUIDs; }
 
-    const String& allowedAudioDeviceUID() const { return m_audioDeviceUIDAllowed; }
+    const MediaConstraintsImpl& audioConstraints() const { return m_audioConstraints; }
+    const MediaConstraintsImpl& videoConstraints() const { return m_videoConstraints; }
+
+    const String& allowedAudioDeviceUID() const { return m_allowedAudioDeviceUID; }
     const String& allowedVideoDeviceUID() const { return m_allowedVideoDeviceUID; }
 
+    WEBCORE_EXPORT SecurityOrigin* userMediaDocumentOrigin() const;
+    WEBCORE_EXPORT SecurityOrigin* topLevelDocumentOrigin() const;
+    Document* document() const { return downcast<Document>(scriptExecutionContext()); }
+
 private:
-    UserMediaRequest(ScriptExecutionContext*, UserMediaController*, Ref<MediaConstraints>&& audioConstraints, Ref<MediaConstraints>&& videoConstraints, MediaDevices::Promise&&);
+    UserMediaRequest(Document&, UserMediaController&, Ref<MediaConstraintsImpl>&& audioConstraints, Ref<MediaConstraintsImpl>&& videoConstraints, MediaDevices::Promise&&);
 
-    // MediaStreamCreationClient
-    void constraintsValidated(const Vector<RefPtr<RealtimeMediaSource>>& audioTracks, const Vector<RefPtr<RealtimeMediaSource>>& videoTracks) final;
-    void constraintsInvalid(const String& constraintName) final;
-    void didCreateStream(RefPtr<MediaStreamPrivate>&&) final;
-    void failedToCreateStreamWithConstraintsError(const String& constraintName) final;
-    void failedToCreateStreamWithPermissionError() final;
-
-    // ContextDestructionObserver
     void contextDestroyed() final;
     
-    Ref<MediaConstraints> m_audioConstraints;
-    Ref<MediaConstraints> m_videoConstraints;
+    Ref<MediaConstraintsImpl> m_audioConstraints;
+    Ref<MediaConstraintsImpl> m_videoConstraints;
 
     Vector<String> m_videoDeviceUIDs;
     Vector<String> m_audioDeviceUIDs;
 
     String m_allowedVideoDeviceUID;
-    String m_audioDeviceUIDAllowed;
+    String m_allowedAudioDeviceUID;
 
     UserMediaController* m_controller;
     MediaDevices::Promise m_promise;
+    RefPtr<UserMediaRequest> m_protector;
 };
 
 } // namespace WebCore
 
 #endif // ENABLE(MEDIA_STREAM)
-
-#endif // UserMediaRequest_h

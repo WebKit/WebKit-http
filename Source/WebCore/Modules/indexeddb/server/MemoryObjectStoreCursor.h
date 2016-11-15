@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef MemoryObjectStoreCursor_h
-#define MemoryObjectStoreCursor_h
+#pragma once
 
 #if ENABLE(INDEXED_DATABASE)
 
@@ -49,7 +48,7 @@ public:
 
 private:
     void currentData(IDBGetResult&) final;
-    void iterate(const IDBKeyData&, uint32_t count, IDBGetResult&) final;
+    void iterate(const IDBKeyData&, const IDBKeyData& primaryKey, uint32_t count, IDBGetResult&) final;
 
     void setFirstInRemainingRange(std::set<IDBKeyData>&);
     void setForwardIteratorFromRemainingRange(std::set<IDBKeyData>&);
@@ -73,4 +72,3 @@ private:
 } // namespace WebCore
 
 #endif // ENABLE(INDEXED_DATABASE)
-#endif // MemoryObjectStoreCursor_h

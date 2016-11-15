@@ -33,9 +33,9 @@ namespace WebCore {
 
 class RenderThemeWPE final : public RenderTheme {
 public:
-    static PassRefPtr<RenderTheme> create()
+    static Ref<RenderTheme> create()
     {
-        return adoptRef(new RenderThemeWPE);
+        return adoptRef(*new RenderThemeWPE);
     }
 
     virtual String extraDefaultStyleSheet() override;

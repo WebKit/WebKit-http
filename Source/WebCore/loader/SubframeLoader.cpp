@@ -42,7 +42,6 @@
 #include "FrameLoader.h"
 #include "FrameLoaderClient.h"
 #include "HTMLAppletElement.h"
-#include "HTMLAudioElement.h"
 #include "HTMLFrameElement.h"
 #include "HTMLIFrameElement.h"
 #include "HTMLNames.h"
@@ -421,7 +420,7 @@ bool SubframeLoader::loadPlugin(HTMLPlugInImageElement& pluginElement, const URL
     }
 
     pluginElement.subframeLoaderDidCreatePlugIn(*widget);
-    renderer->setWidget(widget);
+    renderer->setWidget(WTFMove(widget));
     m_containsPlugins = true;
     return true;
 }

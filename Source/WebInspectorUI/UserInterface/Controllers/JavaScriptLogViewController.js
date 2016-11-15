@@ -132,7 +132,7 @@ WebInspector.JavaScriptLogViewController = class JavaScriptLogViewController ext
 
         function saveResultCallback(savedResultIndex)
         {
-            let commandResultMessage = new WebInspector.ConsoleCommandResultMessage(result, false, savedResultIndex, shouldRevealConsole);
+            let commandResultMessage = new WebInspector.ConsoleCommandResultMessage(result.target, result, false, savedResultIndex, shouldRevealConsole);
             let commandResultMessageView = new WebInspector.ConsoleMessageView(commandResultMessage);
             this._appendConsoleMessageView(commandResultMessageView, true);
         }
@@ -212,7 +212,7 @@ WebInspector.JavaScriptLogViewController = class JavaScriptLogViewController ext
             handler(result !== RuntimeAgent.SyntaxErrorType.Recoverable);
         }
 
-        RuntimeAgent.parse(text, parseFinished.bind(this));
+        WebInspector.runtimeManager.activeExecutionContext.target.RuntimeAgent.parse(text, parseFinished.bind(this));
     }
 
     consolePromptTextCommitted(prompt, text)
@@ -231,7 +231,7 @@ WebInspector.JavaScriptLogViewController = class JavaScriptLogViewController ext
                 return;
 
             let shouldRevealConsole = true;
-            let commandResultMessage = new WebInspector.ConsoleCommandResultMessage(result, wasThrown, savedResultIndex, shouldRevealConsole);
+            let commandResultMessage = new WebInspector.ConsoleCommandResultMessage(result.target, result, wasThrown, savedResultIndex, shouldRevealConsole);
             let commandResultMessageView = new WebInspector.ConsoleMessageView(commandResultMessage);
             this._appendConsoleMessageView(commandResultMessageView, true);
         }

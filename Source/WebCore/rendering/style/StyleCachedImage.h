@@ -21,8 +21,7 @@
  *
  */
 
-#ifndef StyleCachedImage_h
-#define StyleCachedImage_h
+#pragma once
 
 #include "CachedImageClient.h"
 #include "CachedResourceHandle.h"
@@ -46,7 +45,7 @@ public:
 
     WrappedImagePtr data() const override { return m_cachedImage.get(); }
 
-    PassRefPtr<CSSValue> cssValue() const override;
+    Ref<CSSValue> cssValue() const override;
     
     bool canRender(const RenderElement*, float multiplier) const override;
     bool isPending() const override;
@@ -77,5 +76,3 @@ private:
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_STYLE_IMAGE(StyleCachedImage, isCachedImage)
-
-#endif // StyleCachedImage_h

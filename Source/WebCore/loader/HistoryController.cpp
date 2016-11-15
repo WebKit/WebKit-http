@@ -48,6 +48,7 @@
 #include "PageCache.h"
 #include "PageGroup.h"
 #include "ScrollingCoordinator.h"
+#include "SerializedScriptValue.h"
 #include "VisitedLinkStore.h"
 #include <wtf/text/CString.h>
 
@@ -786,7 +787,7 @@ bool HistoryController::currentFramesMatchItem(HistoryItem* item) const
     if ((!m_frame.tree().uniqueName().isEmpty() || !item->target().isEmpty()) && m_frame.tree().uniqueName() != item->target())
         return false;
         
-    const HistoryItemVector& childItems = item->children();
+    const auto& childItems = item->children();
     if (childItems.size() != m_frame.tree().childCount())
         return false;
     

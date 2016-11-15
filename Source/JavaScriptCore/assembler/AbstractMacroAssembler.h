@@ -31,6 +31,7 @@
 #include "CPU.h"
 #include "CodeLocation.h"
 #include "MacroAssemblerCodeRef.h"
+#include "MacroAssemblerHelpers.h"
 #include "Options.h"
 #include <wtf/CryptographicallyRandomNumber.h>
 #include <wtf/Noncopyable.h>
@@ -931,6 +932,11 @@ public:
     static void repatchJump(CodeLocationJump jump, CodeLocationLabel destination)
     {
         AssemblerType::relinkJump(jump.dataLocation(), destination.dataLocation());
+    }
+    
+    static void repatchJumpToNop(CodeLocationJump jump)
+    {
+        AssemblerType::relinkJumpToNop(jump.dataLocation());
     }
 
     static void repatchNearCall(CodeLocationNearCall nearCall, CodeLocationLabel destination)

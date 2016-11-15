@@ -59,6 +59,7 @@ BEGIN {
        &XcodeStaticAnalyzerOption
        &appDisplayNameFromBundle
        &appendToEnvironmentVariableList
+       &archCommandLineArgumentsForRestrictedEnvironmentVariables
        &baseProductDir
        &chdirWebKit
        &checkFrameworks
@@ -108,7 +109,6 @@ use constant {
 };
 
 use constant USE_OPEN_COMMAND => 1; # Used in runMacWebKitApp().
-use constant INCLUDE_OPTIONS_FOR_DEBUGGING => 1;
 use constant SIMULATOR_DEVICE_STATE_SHUTDOWN => "1";
 use constant SIMULATOR_DEVICE_STATE_BOOTED => "3";
 use constant SIMULATOR_DEVICE_SUFFIX_FOR_WEBKIT_DEVELOPMENT  => "For WebKit Development";
@@ -1979,6 +1979,8 @@ sub generateBuildSystemFromCMakeProject
     } elsif (isAnyWindows() && isWin64()) {
         push @args, '-G "Visual Studio 14 2015 Win64"';
     }
+    # Do not show progress of generating bindings in interactive Ninja build not to leave noisy lines on tty
+    push @args, '-DSHOW_BINDINGS_GENERATION_PROGRESS=1' unless ($willUseNinja && -t STDOUT);
 
     # Some ports have production mode, but build-webkit should always use developer mode.
     push @args, "-DDEVELOPER_MODE=ON" if isEfl() || isGtk() || isJSCOnly() || isWPE();
@@ -2133,8 +2135,6 @@ sub setPathForRunningWebKitApp
 sub printHelpAndExitForRunAndDebugWebKitAppIfNeeded
 {
     return unless checkForArgumentAndRemoveFromARGV("--help");
-
-    my ($includeOptionsForDebugging) = @_;
 
     print STDERR <<EOF;
 Usage: @{[basename($0)]} [options] [args ...]
@@ -2453,6 +2453,17 @@ sub runIOSWebKitApp($)
     die "Not using an iOS SDK."
 }
 
+sub archCommandLineArgumentsForRestrictedEnvironmentVariables()
+{
+    my @arguments = ();
+    foreach my $key (keys(%ENV)) {
+        if ($key =~ /^DYLD_/) {
+            push @arguments, "-e", "$key=$ENV{$key}";
+        }
+    }
+    return @arguments;
+}
+
 sub runMacWebKitApp($;$)
 {
     my ($appPath, $useOpenCommand) = @_;
@@ -2466,7 +2477,7 @@ sub runMacWebKitApp($;$)
         return system("open", "-W", "-a", $appPath, "--args", argumentsForRunAndDebugMacWebKitApp());
     }
     if (architecture()) {
-        return system "arch", "-" . architecture(), $appPath, argumentsForRunAndDebugMacWebKitApp();
+        return system "arch", "-" . architecture(), archCommandLineArgumentsForRestrictedEnvironmentVariables(), $appPath, argumentsForRunAndDebugMacWebKitApp();
     }
     return system { $appPath } $appPath, argumentsForRunAndDebugMacWebKitApp();
 }

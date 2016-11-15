@@ -30,13 +30,13 @@
 #include "ClassInfo.h"
 #include "CodeCache.h"
 #include "Debugger.h"
-#include "Executable.h"
 #include "ExecutableInfo.h"
 #include "FunctionOverrides.h"
 #include "JSCInlines.h"
 #include "Parser.h"
 #include "SourceProvider.h"
 #include "Structure.h"
+#include "UnlinkedFunctionCodeBlock.h"
 
 namespace JSC {
 
@@ -115,6 +115,11 @@ UnlinkedFunctionExecutable::UnlinkedFunctionExecutable(VM* vm, Structure* struct
     ASSERT(m_derivedContextType == static_cast<unsigned>(derivedContextType));
 
     m_parentScopeTDZVariables.swap(parentScopeTDZVariables);
+}
+
+void UnlinkedFunctionExecutable::destroy(JSCell* cell)
+{
+    jsCast<UnlinkedFunctionExecutable*>(cell)->~UnlinkedFunctionExecutable();
 }
 
 void UnlinkedFunctionExecutable::visitChildren(JSCell* cell, SlotVisitor& visitor)

@@ -29,8 +29,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef GridTrackSize_h
-#define GridTrackSize_h
+#pragma once
 
 #if ENABLE(CSS_GRID_LAYOUT)
 
@@ -93,7 +92,8 @@ public:
 
     bool operator==(const GridTrackSize& other) const
     {
-        return m_type == other.m_type && m_minTrackBreadth == other.m_minTrackBreadth && m_maxTrackBreadth == other.m_maxTrackBreadth;
+        return m_type == other.m_type && m_minTrackBreadth == other.m_minTrackBreadth && m_maxTrackBreadth == other.m_maxTrackBreadth
+            && m_fitContentTrackBreadth == other.m_fitContentTrackBreadth;
     }
 
     void cacheMinMaxTrackBreadthTypes()
@@ -104,9 +104,16 @@ public:
         m_maxTrackBreadthIsMaxContent = maxTrackBreadth().isLength() && maxTrackBreadth().length().isMaxContent();
         m_maxTrackBreadthIsMinContent = maxTrackBreadth().isLength() && maxTrackBreadth().length().isMinContent();
         m_maxTrackBreadthIsAuto = maxTrackBreadth().isLength() && maxTrackBreadth().length().isAuto();
+
+        // These values depend on the above ones so keep them here.
+        m_minTrackBreadthIsIntrinsic = m_minTrackBreadthIsMaxContent || m_minTrackBreadthIsMinContent
+            || m_minTrackBreadthIsAuto || isFitContent();
+        m_maxTrackBreadthIsIntrinsic = m_maxTrackBreadthIsMaxContent || m_maxTrackBreadthIsMinContent
+            || m_maxTrackBreadthIsAuto || isFitContent();
     }
 
-    bool hasIntrinsicMinTrackBreadth() const { return m_minTrackBreadthIsMaxContent || m_minTrackBreadthIsMinContent || m_minTrackBreadthIsAuto; }
+    bool hasIntrinsicMinTrackBreadth() const { return m_minTrackBreadthIsIntrinsic; }
+    bool hasIntrinsicMaxTrackBreadth() const { return m_maxTrackBreadthIsIntrinsic; }
     bool hasMinOrMaxContentMinTrackBreadth() const { return m_minTrackBreadthIsMaxContent || m_minTrackBreadthIsMinContent; }
     bool hasAutoMinTrackBreadth() const { return m_minTrackBreadthIsAuto; }
     bool hasAutoMaxTrackBreadth() const { return m_maxTrackBreadthIsAuto; }
@@ -117,7 +124,7 @@ public:
     bool hasMaxContentMinTrackBreadth() const { return m_minTrackBreadthIsMaxContent; }
     bool hasMinContentMinTrackBreadth() const { return m_minTrackBreadthIsMinContent; }
     bool hasMaxContentMinTrackBreadthAndMaxContentMaxTrackBreadth() const { return m_minTrackBreadthIsMaxContent && m_maxTrackBreadthIsMaxContent; }
-    bool hasAutoOrMinContentMinTrackBreadthAndIntrinsicMaxTrackBreadth() const { return (m_minTrackBreadthIsMinContent || m_minTrackBreadthIsAuto) && (m_maxTrackBreadthIsAuto || hasMinOrMaxContentMaxTrackBreadth()); }
+    bool hasAutoOrMinContentMinTrackBreadthAndIntrinsicMaxTrackBreadth() const { return (m_minTrackBreadthIsMinContent || m_minTrackBreadthIsAuto) && m_maxTrackBreadthIsIntrinsic; }
 
 private:
     GridTrackSizeType m_type;
@@ -131,10 +138,10 @@ private:
     bool m_minTrackBreadthIsMinContent : 1;
     bool m_maxTrackBreadthIsMaxContent : 1;
     bool m_maxTrackBreadthIsMinContent : 1;
+    bool m_minTrackBreadthIsIntrinsic : 1;
+    bool m_maxTrackBreadthIsIntrinsic : 1;
 };
 
 } // namespace WebCore
 
-#endif /* ENABLE(CSS_GRID_LAYOUT) */
-
-#endif // GridTrackSize_h
+#endif // ENABLE(CSS_GRID_LAYOUT)

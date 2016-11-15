@@ -2559,10 +2559,8 @@ bool RenderBlockFlow::positionNewFloats()
 
         m_floatingObjects->addPlacedObject(&floatingObject);
 
-#if ENABLE(CSS_SHAPES)
         if (ShapeOutsideInfo* shapeOutside = childBox.shapeOutsideInfo())
             shapeOutside->setReferenceBoxLogicalSize(logicalSizeForChild(childBox));
-#endif
         // If the child moved, we have to repaint it.
         if (childBox.checkForRepaintDuringLayout())
             childBox.repaintDuringLayoutIfMoved(oldRect);
@@ -3643,8 +3641,9 @@ void RenderBlockFlow::layoutSimpleLines(bool relayoutChildren, LayoutUnit& repai
         deleteLineBoxesBeforeSimpleLineLayout();
         m_simpleLineLayout = SimpleLineLayout::create(*this);
     }
+    for (auto& renderer : childrenOfType<RenderObject>(*this))
+        renderer.clearNeedsLayout();
     ASSERT(!m_lineBoxes.firstLineBox());
-
     LayoutUnit lineLayoutHeight = SimpleLineLayout::computeFlowHeight(*this, *m_simpleLineLayout);
     LayoutUnit lineLayoutTop = borderAndPaddingBefore();
     repaintLogicalTop = lineLayoutTop;
@@ -3884,7 +3883,7 @@ void RenderBlockFlow::removeChild(RenderObject& oldChild)
     if (!documentBeingDestroyed()) {
         RenderFlowThread* flowThread = multiColumnFlowThread();
         if (flowThread && flowThread != &oldChild)
-            flowThread->flowThreadRelativeWillBeRemoved(&oldChild);
+            flowThread->flowThreadRelativeWillBeRemoved(oldChild);
     }
     RenderBlock::removeChild(oldChild);
 }

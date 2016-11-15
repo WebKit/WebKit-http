@@ -36,7 +36,6 @@
 #include "CSSStyleSheet.h"
 #include "ContentSecurityPolicy.h"
 #include "DOMWindow.h"
-#include "ExceptionCodePlaceholder.h"
 #include "FontCache.h"
 #include "HTMLHeadElement.h"
 #include "HTMLStyleElement.h"
@@ -51,6 +50,7 @@
 #include "RenderNamedFlowFragment.h"
 #include "SVGStyleElement.h"
 #include "SelectorChecker.h"
+#include "ShadowRoot.h"
 #include "StyleProperties.h"
 #include "StylePropertyShorthand.h"
 #include "StyleResolver.h"
@@ -59,7 +59,6 @@
 #include "StyleSheetList.h"
 #include "WebKitNamedFlow.h"
 #include <inspector/InspectorProtocolObjects.h>
-#include <wtf/HashSet.h>
 #include <wtf/Ref.h>
 #include <wtf/Vector.h>
 #include <wtf/text/CString.h>
@@ -175,32 +174,35 @@ public:
     {
     }
 
-    bool perform(ExceptionCode& ec) override
+private:
+    ExceptionOr<void> perform() final
     {
-        if (!m_styleSheet->getText(&m_oldText))
-            return false;
-        return redo(ec);
+        auto result = m_styleSheet->text();
+        if (result.hasException())
+            return result.releaseException();
+        m_oldText = result.releaseReturnValue();
+        return redo();
     }
 
-    bool undo(ExceptionCode& ec) override
+    ExceptionOr<void> undo() final
     {
-        if (m_styleSheet->setText(m_oldText, ec)) {
-            m_styleSheet->reparseStyleSheet(m_oldText);
-            return true;
-        }
-        return false;
+        auto result = m_styleSheet->setText(m_oldText);
+        if (result.hasException())
+            return result.releaseException();
+        m_styleSheet->reparseStyleSheet(m_oldText);
+        return { };
     }
 
-    bool redo(ExceptionCode& ec) override
+    ExceptionOr<void> redo() final
     {
-        if (m_styleSheet->setText(m_text, ec)) {
-            m_styleSheet->reparseStyleSheet(m_text);
-            return true;
-        }
-        return false;
+        auto result = m_styleSheet->setText(m_text);
+        if (result.hasException())
+            return result.releaseException();
+        m_styleSheet->reparseStyleSheet(m_text);
+        return { };
     }
 
-    String mergeId() override
+    String mergeId() final
     {
         return String::format("SetStyleSheetText %s", m_styleSheet->id().utf8().data());
     }
@@ -208,12 +210,9 @@ public:
     void merge(std::unique_ptr<Action> action) override
     {
         ASSERT(action->mergeId() == mergeId());
-
-        SetStyleSheetTextAction* other = static_cast<SetStyleSheetTextAction*>(action.get());
-        m_text = other->m_text;
+        m_text = static_cast<SetStyleSheetTextAction&>(*action).m_text;
     }
 
-private:
     String m_text;
     String m_oldText;
 };
@@ -228,19 +227,19 @@ public:
     {
     }
 
-    bool perform(ExceptionCode& ec) override
+    ExceptionOr<void> perform() override
     {
-        return redo(ec);
+        return redo();
     }
 
-    bool undo(ExceptionCode& ec) override
+    ExceptionOr<void> undo() override
     {
-        return m_styleSheet->setStyleText(m_cssId, m_oldText, nullptr, ec);
+        return m_styleSheet->setStyleText(m_cssId, m_oldText, nullptr);
     }
 
-    bool redo(ExceptionCode& ec) override
+    ExceptionOr<void> redo() override
     {
-        return m_styleSheet->setStyleText(m_cssId, m_text, &m_oldText, ec);
+        return m_styleSheet->setStyleText(m_cssId, m_text, &m_oldText);
     }
 
     String mergeId() override
@@ -273,25 +272,26 @@ public:
     {
     }
 
-    bool perform(ExceptionCode& ec) override
-    {
-        m_oldSelector = m_styleSheet->ruleSelector(m_cssId, ec);
-        if (ec)
-            return false;
-        return redo(ec);
-    }
-
-    bool undo(ExceptionCode& ec) override
-    {
-        return m_styleSheet->setRuleSelector(m_cssId, m_oldSelector, ec);
-    }
-
-    bool redo(ExceptionCode& ec) override
-    {
-        return m_styleSheet->setRuleSelector(m_cssId, m_selector, ec);
-    }
-
 private:
+    ExceptionOr<void> perform() final
+    {
+        auto result = m_styleSheet->ruleSelector(m_cssId);
+        if (result.hasException())
+            return result.releaseException();
+        m_oldSelector = result.releaseReturnValue();
+        return redo();
+    }
+
+    ExceptionOr<void> undo() final
+    {
+        return m_styleSheet->setRuleSelector(m_cssId, m_oldSelector);
+    }
+
+    ExceptionOr<void> redo() final
+    {
+        return m_styleSheet->setRuleSelector(m_cssId, m_selector);
+    }
+
     InspectorCSSId m_cssId;
     String m_selector;
     String m_oldSelector;
@@ -306,34 +306,33 @@ public:
     {
     }
 
-    bool perform(ExceptionCode& ec) override
-    {
-        return redo(ec);
-    }
-
-    bool undo(ExceptionCode& ec) override
-    {
-        return m_styleSheet->deleteRule(m_newId, ec);
-    }
-
-    bool redo(ExceptionCode& ec) override
-    {
-        CSSStyleRule* cssStyleRule = m_styleSheet->addRule(m_selector, ec);
-        if (ec)
-            return false;
-        m_newId = m_styleSheet->ruleId(cssStyleRule);
-        return true;
-    }
-
-    InspectorCSSId newRuleId() { return m_newId; }
+    InspectorCSSId newRuleId() const { return m_newId; }
 
 private:
+    ExceptionOr<void> perform() final
+    {
+        return redo();
+    }
+
+    ExceptionOr<void> undo() final
+    {
+        return m_styleSheet->deleteRule(m_newId);
+    }
+
+    ExceptionOr<void> redo() final
+    {
+        auto result = m_styleSheet->addRule(m_selector);
+        if (result.hasException())
+            return result.releaseException();
+        m_newId = m_styleSheet->ruleId(result.releaseReturnValue());
+        return { };
+    }
+
     InspectorCSSId m_newId;
     String m_selector;
     String m_oldSelector;
 };
 
-// static
 CSSStyleRule* InspectorCSSAgent::asCSSStyleRule(CSSRule& rule)
 {
     if (!is<CSSStyleRule>(rule))
@@ -576,7 +575,7 @@ void InspectorCSSAgent::getMatchedStylesForNode(ErrorString& errorString, int no
     // Matched rules.
     StyleResolver& styleResolver = element->styleResolver();
     auto matchedRules = styleResolver.pseudoStyleRulesForElement(element, elementPseudoId, StyleResolver::AllCSSRules);
-    matchedCSSRules = buildArrayForMatchedRuleList(matchedRules, styleResolver, element, elementPseudoId);
+    matchedCSSRules = buildArrayForMatchedRuleList(matchedRules, styleResolver, *element, elementPseudoId);
 
     if (!originalElement->isPseudoElement()) {
         // Pseudo elements.
@@ -587,7 +586,7 @@ void InspectorCSSAgent::getMatchedStylesForNode(ErrorString& errorString, int no
                 if (!matchedRules.isEmpty()) {
                     auto matches = Inspector::Protocol::CSS::PseudoIdMatches::create()
                         .setPseudoId(static_cast<int>(pseudoId))
-                        .setMatches(buildArrayForMatchedRuleList(matchedRules, styleResolver, element, pseudoId))
+                        .setMatches(buildArrayForMatchedRuleList(matchedRules, styleResolver, *element, pseudoId))
                         .release();
                     pseudoElements->addItem(WTFMove(matches));
                 }
@@ -604,7 +603,7 @@ void InspectorCSSAgent::getMatchedStylesForNode(ErrorString& errorString, int no
                 StyleResolver& parentStyleResolver = parentElement->styleResolver();
                 auto parentMatchedRules = parentStyleResolver.styleRulesForElement(parentElement, StyleResolver::AllCSSRules);
                 auto entry = Inspector::Protocol::CSS::InheritedStyleEntry::create()
-                    .setMatchedCSSRules(buildArrayForMatchedRuleList(parentMatchedRules, styleResolver, parentElement, NOPSEUDO))
+                    .setMatchedCSSRules(buildArrayForMatchedRuleList(parentMatchedRules, styleResolver, *parentElement, NOPSEUDO))
                     .release();
                 if (parentElement->cssomStyle() && parentElement->cssomStyle()->length()) {
                     if (InspectorStyleSheetForInlineStyle* styleSheet = asInspectorStyleSheet(parentElement))
@@ -703,7 +702,9 @@ void InspectorCSSAgent::getStyleSheetText(ErrorString& errorString, const String
     if (!inspectorStyleSheet)
         return;
 
-    inspectorStyleSheet->getText(result);
+    auto text = inspectorStyleSheet->text();
+    if (!text.hasException())
+        *result = text.releaseReturnValue();
 }
 
 void InspectorCSSAgent::setStyleSheetText(ErrorString& errorString, const String& styleSheetId, const String& text)
@@ -712,9 +713,9 @@ void InspectorCSSAgent::setStyleSheetText(ErrorString& errorString, const String
     if (!inspectorStyleSheet)
         return;
 
-    ExceptionCode ec = 0;
-    m_domAgent->history()->perform(std::make_unique<SetStyleSheetTextAction>(inspectorStyleSheet, text), ec);
-    errorString = InspectorDOMAgent::toErrorString(ec);
+    auto result = m_domAgent->history()->perform(std::make_unique<SetStyleSheetTextAction>(inspectorStyleSheet, text));
+    if (result.hasException())
+        errorString = InspectorDOMAgent::toErrorString(result.releaseException());
 }
 
 void InspectorCSSAgent::setStyleText(ErrorString& errorString, const InspectorObject& fullStyleId, const String& text, RefPtr<Inspector::Protocol::CSS::CSSStyle>& result)
@@ -726,11 +727,13 @@ void InspectorCSSAgent::setStyleText(ErrorString& errorString, const InspectorOb
     if (!inspectorStyleSheet)
         return;
 
-    ExceptionCode ec = 0;
-    bool success = m_domAgent->history()->perform(std::make_unique<SetStyleTextAction>(inspectorStyleSheet, compoundId, text), ec);
-    if (success)
-        result = inspectorStyleSheet->buildObjectForStyle(inspectorStyleSheet->styleForId(compoundId));
-    errorString = InspectorDOMAgent::toErrorString(ec);
+    auto performResult = m_domAgent->history()->perform(std::make_unique<SetStyleTextAction>(inspectorStyleSheet, compoundId, text));
+    if (performResult.hasException()) {
+        errorString = InspectorDOMAgent::toErrorString(performResult.releaseException());
+        return;
+    }
+
+    result = inspectorStyleSheet->buildObjectForStyle(inspectorStyleSheet->styleForId(compoundId));
 }
 
 void InspectorCSSAgent::setRuleSelector(ErrorString& errorString, const InspectorObject& fullRuleId, const String& selector, RefPtr<Inspector::Protocol::CSS::CSSRule>& result)
@@ -742,12 +745,13 @@ void InspectorCSSAgent::setRuleSelector(ErrorString& errorString, const Inspecto
     if (!inspectorStyleSheet)
         return;
 
-    ExceptionCode ec = 0;
-    bool success = m_domAgent->history()->perform(std::make_unique<SetRuleSelectorAction>(inspectorStyleSheet, compoundId, selector), ec);
+    auto performResult = m_domAgent->history()->perform(std::make_unique<SetRuleSelectorAction>(inspectorStyleSheet, compoundId, selector));
+    if (performResult.hasException()) {
+        errorString = InspectorDOMAgent::toErrorString(performResult.releaseException());
+        return;
+    }
 
-    if (success)
-        result = inspectorStyleSheet->buildObjectForRule(inspectorStyleSheet->ruleForId(compoundId), nullptr);
-    errorString = InspectorDOMAgent::toErrorString(ec);
+    result = inspectorStyleSheet->buildObjectForRule(inspectorStyleSheet->ruleForId(compoundId), nullptr);
 }
 
 void InspectorCSSAgent::createStyleSheet(ErrorString& errorString, const String& frameId, String* styleSheetId)
@@ -778,7 +782,7 @@ InspectorStyleSheet* InspectorCSSAgent::createInspectorStyleSheetForDocument(Doc
     if (!document.isHTMLDocument() && !document.isSVGDocument())
         return nullptr;
 
-    Ref<Element> styleElement = document.createElement(HTMLNames::styleTag, false);
+    auto styleElement = HTMLStyleElement::create(document);
     styleElement->setAttributeWithoutSynchronization(HTMLNames::typeAttr, AtomicString("text/css", AtomicString::ConstructFromLiteral));
 
     ContainerNode* targetNode;
@@ -795,10 +799,10 @@ InspectorStyleSheet* InspectorCSSAgent::createInspectorStyleSheetForDocument(Doc
     // Set this flag, so when we create it, we put it into the via inspector map.
     m_creatingViaInspectorStyleSheet = true;
     InlineStyleOverrideScope overrideScope(document);
-    ExceptionCode ec = 0;
-    targetNode->appendChild(styleElement, ec);
+    auto appendResult = targetNode->appendChild(styleElement);
+    document.styleScope().flushPendingUpdate();
     m_creatingViaInspectorStyleSheet = false;
-    if (ec)
+    if (appendResult.hasException())
         return nullptr;
 
     auto iterator = m_documentToInspectorStyleSheet.find(&document);
@@ -822,16 +826,15 @@ void InspectorCSSAgent::addRule(ErrorString& errorString, const String& styleShe
         return;
     }
 
-    ExceptionCode ec = 0;
     auto action = std::make_unique<AddRuleAction>(inspectorStyleSheet, selector);
-    AddRuleAction* rawAction = action.get();
-    bool success = m_domAgent->history()->perform(WTFMove(action), ec);
-    if (!success) {
-        errorString = InspectorDOMAgent::toErrorString(ec);
+    auto& rawAction = *action;
+    auto performResult = m_domAgent->history()->perform(WTFMove(action));
+    if (performResult.hasException()) {
+        errorString = InspectorDOMAgent::toErrorString(performResult.releaseException());
         return;
     }
 
-    InspectorCSSId ruleId = rawAction->newRuleId();
+    InspectorCSSId ruleId = rawAction.newRuleId();
     CSSStyleRule* rule = inspectorStyleSheet->ruleForId(ruleId);
     result = inspectorStyleSheet->buildObjectForRule(rule, nullptr);
 }
@@ -889,7 +892,7 @@ void InspectorCSSAgent::forcePseudoState(ErrorString& errorString, int nodeId, c
         m_nodeIdToForcedPseudoState.set(nodeId, forcedPseudoState);
     else
         m_nodeIdToForcedPseudoState.remove(nodeId);
-    element->document().styleScope().didChangeContentsOrInterpretation();
+    element->document().styleScope().didChangeStyleSheetEnvironment();
 }
 
 void InspectorCSSAgent::getNamedFlowCollection(ErrorString& errorString, int documentNodeId, RefPtr<Inspector::Protocol::Array<Inspector::Protocol::CSS::NamedFlow>>& result)
@@ -1008,18 +1011,26 @@ Inspector::Protocol::CSS::StyleSheetOrigin InspectorCSSAgent::detectOrigin(CSSSt
     return Inspector::Protocol::CSS::StyleSheetOrigin::Regular;
 }
 
-RefPtr<Inspector::Protocol::CSS::CSSRule> InspectorCSSAgent::buildObjectForRule(StyleRule* styleRule, StyleResolver& styleResolver, Element* element)
+RefPtr<Inspector::Protocol::CSS::CSSRule> InspectorCSSAgent::buildObjectForRule(StyleRule* styleRule, StyleResolver& styleResolver, Element& element)
 {
     if (!styleRule)
         return nullptr;
 
     // StyleRules returned by StyleResolver::styleRulesForElement lack parent pointers since that infomation is not cheaply available.
     // Since the inspector wants to walk the parent chain, we construct the full wrappers here.
-    CSSStyleRule* cssomWrapper = styleResolver.inspectorCSSOMWrappers().getWrapperForRuleInSheets(styleRule, styleResolver.document().styleScope(), styleResolver.document().extensionStyleSheets());
+    styleResolver.inspectorCSSOMWrappers().collectDocumentWrappers(styleResolver.document().extensionStyleSheets());
+    styleResolver.inspectorCSSOMWrappers().collectScopeWrappers(Style::Scope::forNode(element));
+
+    // Possiblity of :host styles if this element has a shadow root.
+    if (ShadowRoot* shadowRoot = element.shadowRoot())
+        styleResolver.inspectorCSSOMWrappers().collectScopeWrappers(shadowRoot->styleScope());
+
+    CSSStyleRule* cssomWrapper = styleResolver.inspectorCSSOMWrappers().getWrapperForRuleInSheets(styleRule);
     if (!cssomWrapper)
         return nullptr;
+
     InspectorStyleSheet* inspectorStyleSheet = bindStyleSheet(cssomWrapper->parentStyleSheet());
-    return inspectorStyleSheet ? inspectorStyleSheet->buildObjectForRule(cssomWrapper, element) : nullptr;
+    return inspectorStyleSheet ? inspectorStyleSheet->buildObjectForRule(cssomWrapper, &element) : nullptr;
 }
 
 RefPtr<Inspector::Protocol::CSS::CSSRule> InspectorCSSAgent::buildObjectForRule(CSSStyleRule* rule)
@@ -1032,13 +1043,13 @@ RefPtr<Inspector::Protocol::CSS::CSSRule> InspectorCSSAgent::buildObjectForRule(
     return inspectorStyleSheet ? inspectorStyleSheet->buildObjectForRule(rule, nullptr) : nullptr;
 }
 
-RefPtr<Inspector::Protocol::Array<Inspector::Protocol::CSS::RuleMatch>> InspectorCSSAgent::buildArrayForMatchedRuleList(const Vector<RefPtr<StyleRule>>& matchedRules, StyleResolver& styleResolver, Element* element, PseudoId psuedoId)
+RefPtr<Inspector::Protocol::Array<Inspector::Protocol::CSS::RuleMatch>> InspectorCSSAgent::buildArrayForMatchedRuleList(const Vector<RefPtr<StyleRule>>& matchedRules, StyleResolver& styleResolver, Element& element, PseudoId psuedoId)
 {
     auto result = Inspector::Protocol::Array<Inspector::Protocol::CSS::RuleMatch>::create();
 
     SelectorChecker::CheckingContext context(SelectorChecker::Mode::CollectingRules);
-    context.pseudoId = psuedoId ? psuedoId : element->pseudoId();
-    SelectorChecker selectorChecker(element->document());
+    context.pseudoId = psuedoId ? psuedoId : element.pseudoId();
+    SelectorChecker selectorChecker(element.document());
 
     for (auto& matchedRule : matchedRules) {
         RefPtr<Inspector::Protocol::CSS::CSSRule> ruleObject = buildObjectForRule(matchedRule.get(), styleResolver, element);
@@ -1050,7 +1061,7 @@ RefPtr<Inspector::Protocol::Array<Inspector::Protocol::CSS::RuleMatch>> Inspecto
         int index = 0;
         for (const CSSSelector* selector = selectorList.first(); selector; selector = CSSSelectorList::next(selector)) {
             unsigned ignoredSpecificity;
-            bool matched = selectorChecker.match(*selector, *element, context, ignoredSpecificity);
+            bool matched = selectorChecker.match(*selector, element, context, ignoredSpecificity);
             if (matched)
                 matchingSelectors->addItem(index);
             ++index;
@@ -1189,7 +1200,7 @@ void InspectorCSSAgent::resetPseudoStates()
 
     m_nodeIdToForcedPseudoState.clear();
     for (auto& document : documentsToChange)
-        document->styleScope().didChangeContentsOrInterpretation();
+        document->styleScope().didChangeStyleSheetEnvironment();
 }
 
 } // namespace WebCore

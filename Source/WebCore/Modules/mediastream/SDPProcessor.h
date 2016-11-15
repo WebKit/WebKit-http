@@ -28,8 +28,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef SDPProcessor_h
-#define SDPProcessor_h
+#pragma once
 
 #if ENABLE(WEB_RTC)
 
@@ -37,6 +36,7 @@
 #include "IceCandidate.h"
 #include "MediaEndpointSessionConfiguration.h"
 #include <wtf/RefPtr.h>
+#include <wtf/Variant.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
@@ -58,7 +58,14 @@ public:
     Result parse(const String& sdp, RefPtr<MediaEndpointSessionConfiguration>&) const;
 
     Result generateCandidateLine(const IceCandidate&, String& outCandidateLine) const;
-    Result parseCandidateLine(const String& candidateLine, RefPtr<IceCandidate>&) const;
+
+    struct ParsingResult {
+        Variant<IceCandidate, Result> result;
+
+        Result parsingStatus() const { return WTF::holds_alternative<IceCandidate>(result) ? Result::Success : WTF::get<SDPProcessor::Result>(result); }
+        IceCandidate& candidate() { return WTF::get<IceCandidate>(result); }
+    };
+    ParsingResult parseCandidateLine(const String& candidateLine) const;
 
 private:
     bool callScript(const String& functionName, const String& argument, String& outResult) const;
@@ -69,5 +76,3 @@ private:
 } // namespace WebCore
 
 #endif // ENABLE(WEB_RTC)
-
-#endif // SDPProcessor_h

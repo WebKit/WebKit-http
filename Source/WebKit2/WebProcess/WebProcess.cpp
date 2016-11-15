@@ -37,6 +37,7 @@
 #include "Logging.h"
 #include "NetworkConnectionToWebProcessMessages.h"
 #include "NetworkProcessConnection.h"
+#include "NetworkSession.h"
 #include "PluginProcessConnectionManager.h"
 #include "SessionTracker.h"
 #include "StatisticsData.h"
@@ -73,6 +74,8 @@
 #include <WebCore/DNS.h>
 #include <WebCore/DatabaseManager.h>
 #include <WebCore/DatabaseTracker.h>
+#include <WebCore/DiagnosticLoggingClient.h>
+#include <WebCore/DiagnosticLoggingKeys.h>
 #include <WebCore/FontCache.h>
 #include <WebCore/FontCascade.h>
 #include <WebCore/Frame.h>
@@ -85,7 +88,7 @@
 #include <WebCore/Language.h>
 #include <WebCore/MainFrame.h>
 #include <WebCore/MemoryCache.h>
-#include <WebCore/MemoryPressureHandler.h>
+#include <WebCore/MemoryRelease.h>
 #include <WebCore/NetworkStorageSession.h>
 #include <WebCore/Page.h>
 #include <WebCore/PageCache.h>
@@ -126,10 +129,6 @@
 
 #if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
 #include "WebNotificationManager.h"
-#endif
-
-#if ENABLE(BATTERY_STATUS)
-#include "WebBatteryManager.h"
 #endif
 
 #if ENABLE(REMOTE_INSPECTOR)
@@ -193,9 +192,6 @@ WebProcess::WebProcess()
 
 #if ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
     addSupplement<WebNotificationManager>();
-#endif
-#if ENABLE(BATTERY_STATUS)
-    addSupplement<WebBatteryManager>();
 #endif
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
     addSupplement<WebMediaKeyStorageManager>();
@@ -277,8 +273,13 @@ void WebProcess::initializeWebProcess(WebProcessCreationParameters&& parameters)
     WTF::setCurrentThreadIsUserInteractive(-1);
 
     m_suppressMemoryPressureHandler = parameters.shouldSuppressMemoryPressureHandler;
-    if (!m_suppressMemoryPressureHandler)
-        MemoryPressureHandler::singleton().install();
+    if (!m_suppressMemoryPressureHandler) {
+        auto& memoryPressureHandler = MemoryPressureHandler::singleton();
+        memoryPressureHandler.setLowMemoryHandler([] (Critical critical, Synchronous synchronous) {
+            WebCore::releaseMemory(critical, synchronous);
+        });
+        memoryPressureHandler.install();
+    }
 
     if (!parameters.injectedBundlePath.isEmpty())
         m_injectedBundle = InjectedBundle::create(parameters, transformHandlesToObjects(parameters.initializationUserData.object()).get());
@@ -1087,13 +1088,35 @@ NetworkProcessConnection& WebProcess::networkConnection()
     return *m_networkProcessConnection;
 }
 
+void WebProcess::logDiagnosticMessageForNetworkProcessCrash()
+{
+    WebCore::Page* page = nullptr;
+
+    if (auto* webPage = focusedWebPage())
+        page = webPage->corePage();
+
+    if (!page) {
+        for (auto& webPage : m_pageMap.values()) {
+            if (auto* corePage = webPage->corePage()) {
+                page = corePage;
+                break;
+            }
+        }
+    }
+
+    if (page)
+        page->diagnosticLoggingClient().logDiagnosticMessage(WebCore::DiagnosticLoggingKeys::internalErrorKey(), WebCore::DiagnosticLoggingKeys::networkProcessCrashedKey(), WebCore::ShouldSample::No);
+}
+
 void WebProcess::networkProcessConnectionClosed(NetworkProcessConnection* connection)
 {
     ASSERT(m_networkProcessConnection);
     ASSERT_UNUSED(connection, m_networkProcessConnection == connection);
 
     m_networkProcessConnection = nullptr;
-    
+
+    logDiagnosticMessageForNetworkProcessCrash();
+
     m_webLoaderStrategy.networkProcessCrashed();
 }
 
@@ -1284,7 +1307,7 @@ void WebProcess::processWillSuspendImminently(bool& handled)
     }
 
     RELEASE_LOG(ProcessSuspension, "%p - WebProcess::processWillSuspendImminently()", this);
-    DatabaseTracker::tracker().closeAllDatabases(CurrentQueryBehavior::Interrupt);
+    DatabaseTracker::singleton().closeAllDatabases(CurrentQueryBehavior::Interrupt);
     actualPrepareToSuspend(ShouldAcknowledgeWhenReadyToSuspend::No);
     handled = true;
 }

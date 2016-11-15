@@ -52,12 +52,7 @@ public:
 protected:
     JSTestOverloadedConstructorsWithSequence(JSC::Structure*, JSDOMGlobalObject&, Ref<TestOverloadedConstructorsWithSequence>&&);
 
-    void finishCreation(JSC::VM& vm)
-    {
-        Base::finishCreation(vm);
-        ASSERT(inherits(info()));
-    }
-
+    void finishCreation(JSC::VM&);
 };
 
 class JSTestOverloadedConstructorsWithSequenceOwner : public JSC::WeakHandleOwner {
@@ -84,6 +79,7 @@ inline JSC::JSValue toJSNewlyCreated(JSC::ExecState* state, JSDOMGlobalObject* g
 
 template<> struct JSDOMWrapperConverterTraits<TestOverloadedConstructorsWithSequence> {
     using WrapperClass = JSTestOverloadedConstructorsWithSequence;
+    using ToWrappedReturnType = TestOverloadedConstructorsWithSequence*;
 };
 
 } // namespace WebCore

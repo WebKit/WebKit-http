@@ -161,9 +161,7 @@
 - (void)setInnerText:(NSString *)newInnerText
 {
     WebCore::JSMainThreadNullState state;
-    WebCore::ExceptionCode ec = 0;
-    IMPL->setInnerText(newInnerText, ec);
-    raiseOnDOMError(ec);
+    raiseOnDOMError(IMPL->setInnerText(newInnerText));
 }
 
 - (NSString *)outerText
@@ -175,9 +173,7 @@
 - (void)setOuterText:(NSString *)newOuterText
 {
     WebCore::JSMainThreadNullState state;
-    WebCore::ExceptionCode ec = 0;
-    IMPL->setOuterText(newOuterText, ec);
-    raiseOnDOMError(ec);
+    raiseOnDOMError(IMPL->setOuterText(newOuterText));
 }
 
 - (NSString *)contentEditable
@@ -189,9 +185,7 @@
 - (void)setContentEditable:(NSString *)newContentEditable
 {
     WebCore::JSMainThreadNullState state;
-    WebCore::ExceptionCode ec = 0;
-    IMPL->setContentEditable(newContentEditable, ec);
-    raiseOnDOMError(ec);
+    raiseOnDOMError(IMPL->setContentEditable(newContentEditable));
 }
 
 - (BOOL)isContentEditable
@@ -241,26 +235,19 @@
     WebCore::JSMainThreadNullState state;
     if (!element)
         raiseTypeErrorException();
-    WebCore::ExceptionCode ec = 0;
-    DOMElement *result = kit(WTF::getPtr(IMPL->insertAdjacentElement(where, *core(element), ec)));
-    raiseOnDOMError(ec);
-    return result;
+    return kit(raiseOnDOMError(IMPL->insertAdjacentElement(where, *core(element))));
 }
 
 - (void)insertAdjacentHTML:(NSString *)where html:(NSString *)html
 {
     WebCore::JSMainThreadNullState state;
-    WebCore::ExceptionCode ec = 0;
-    IMPL->insertAdjacentHTML(where, html, ec);
-    raiseOnDOMError(ec);
+    raiseOnDOMError(IMPL->insertAdjacentHTML(where, html));
 }
 
 - (void)insertAdjacentText:(NSString *)where text:(NSString *)text
 {
     WebCore::JSMainThreadNullState state;
-    WebCore::ExceptionCode ec = 0;
-    IMPL->insertAdjacentText(where, text, ec);
-    raiseOnDOMError(ec);
+    raiseOnDOMError(IMPL->insertAdjacentText(where, text));
 }
 
 - (void)click
@@ -268,6 +255,34 @@
     WebCore::JSMainThreadNullState state;
     IMPL->click();
 }
+
+#if ENABLE(IOS_AUTOCORRECT_AND_AUTOCAPITALIZE)
+
+- (BOOL)autocorrect
+{
+    WebCore::JSMainThreadNullState state;
+    return IMPL->shouldAutocorrect();
+}
+
+- (void)setAutocorrect:(BOOL)newAutocorrect
+{
+    WebCore::JSMainThreadNullState state;
+    IMPL->setAutocorrect(newAutocorrect);
+}
+
+- (NSString *)autocapitalize
+{
+    WebCore::JSMainThreadNullState state;
+    return IMPL->autocapitalize();
+}
+
+- (void)setAutocapitalize:(NSString *)newAutocapitalize
+{
+    WebCore::JSMainThreadNullState state;
+    IMPL->setAutocapitalize(newAutocapitalize);
+}
+
+#endif
 
 @end
 

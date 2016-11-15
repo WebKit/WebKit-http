@@ -51,9 +51,10 @@ list(APPEND WebCore_LIBRARIES
     ${ZLIB_LIBRARIES}
 )
 
-add_definitions(-iframework ${QUARTZ_LIBRARY}/Frameworks)
-add_definitions(-iframework ${AVFOUNDATION_LIBRARY}/Versions/Current/Frameworks)
 add_definitions(-iframework ${APPLICATIONSERVICES_LIBRARY}/Versions/Current/Frameworks)
+add_definitions(-iframework ${AVFOUNDATION_LIBRARY}/Versions/Current/Frameworks)
+add_definitions(-iframework ${CARBON_LIBRARY}/Versions/Current/Frameworks)
+add_definitions(-iframework ${QUARTZ_LIBRARY}/Frameworks)
 
 find_library(DATADETECTORSCORE_FRAMEWORK DataDetectorsCore HINTS /System/Library/PrivateFrameworks)
 if (NOT DATADETECTORSCORE_FRAMEWORK-NOTFOUND)
@@ -199,6 +200,7 @@ list(APPEND WebCore_SOURCES
     crypto/keys/CryptoKeyDataOctetSequence.cpp
     crypto/keys/CryptoKeyDataRSAComponents.cpp
     crypto/keys/CryptoKeyHMAC.cpp
+    crypto/keys/CryptoKeyRSA.cpp
     crypto/keys/CryptoKeySerializationRaw.cpp
 
     crypto/mac/CryptoAlgorithmAES_CBCMac.cpp
@@ -259,6 +261,7 @@ list(APPEND WebCore_SOURCES
     page/CaptionUserPreferencesMediaAF.cpp
     page/PageDebuggable.cpp
 
+    page/cocoa/MemoryReleaseCocoa.mm
     page/cocoa/UserAgent.mm
     page/cocoa/ResourceUsageOverlayCocoa.mm
     page/cocoa/ResourceUsageThreadCocoa.mm
@@ -491,6 +494,7 @@ list(APPEND WebCore_SOURCES
     platform/mac/ThreadCheck.mm
     platform/mac/URLMac.mm
     platform/mac/UserActivityMac.mm
+    platform/mac/ValidationBubbleMac.mm
     platform/mac/WebCoreFullScreenPlaceholderView.mm
     platform/mac/WebCoreFullScreenWarningView.mm
     platform/mac/WebCoreFullScreenWindow.mm
@@ -517,9 +521,6 @@ list(APPEND WebCore_SOURCES
     platform/network/cf/NetworkStorageSessionCFNet.cpp
     platform/network/cf/ProxyServerCFNet.cpp
     platform/network/cf/ResourceErrorCF.cpp
-    platform/network/cf/ResourceHandleCFNet.cpp
-    platform/network/cf/ResourceHandleCFURLConnectionDelegate.cpp
-    platform/network/cf/ResourceHandleCFURLConnectionDelegateWithOperationQueue.cpp
     platform/network/cf/ResourceRequestCFNet.cpp
     platform/network/cf/ResourceResponseCFNet.cpp
     platform/network/cf/SocketStreamHandleImplCFNet.cpp
@@ -543,7 +544,6 @@ list(APPEND WebCore_SOURCES
     platform/network/mac/NetworkStateNotifierMac.cpp
     platform/network/mac/ResourceErrorMac.mm
     platform/network/mac/ResourceHandleMac.mm
-    platform/network/mac/ResourceRequestMac.mm
     platform/network/mac/SynchronousLoaderClient.mm
     platform/network/mac/UTIUtilities.mm
     platform/network/mac/WebCoreResourceHandleAsDelegate.mm
@@ -590,6 +590,7 @@ set(WebCore_FORWARDING_HEADERS_DIRECTORIES
     Modules/applepay
     Modules/geolocation
     Modules/indexeddb
+    Modules/mediastream
     Modules/notifications
     Modules/webdatabase
     Modules/websockets
@@ -622,6 +623,7 @@ set(WebCore_FORWARDING_HEADERS_DIRECTORIES
 
     page/animation
     page/cocoa
+    page/csp
     page/mac
     page/scrolling
 
@@ -690,7 +692,6 @@ set(WebCore_FORWARDING_HEADERS_FILES
 
     editing/mac/TextAlternativeWithRange.h
 
-    history/BackForwardList.h
     history/HistoryItem.h
     history/PageCache.h
 

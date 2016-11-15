@@ -21,8 +21,7 @@
  *
  */
 
-#ifndef RenderMenuList_h
-#define RenderMenuList_h
+#pragma once
 
 #include "LayoutRect.h"
 #include "PopupMenu.h"
@@ -113,7 +112,7 @@ private:
     bool multiple() const override;
     FontSelector* fontSelector() const override;
     HostWindow* hostWindow() const override;
-    PassRefPtr<Scrollbar> createScrollbar(ScrollableArea&, ScrollbarOrientation, ScrollbarControlSize) override;
+    Ref<Scrollbar> createScrollbar(ScrollableArea&, ScrollbarOrientation, ScrollbarControlSize) override;
 
     bool hasLineIfEmpty() const override { return true; }
 
@@ -157,5 +156,3 @@ private:
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_RENDER_OBJECT(RenderMenuList, isMenuList())
-
-#endif

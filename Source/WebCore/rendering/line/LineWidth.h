@@ -27,8 +27,7 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef LineWidth_h
-#define LineWidth_h
+#pragma once
 
 #include "LayoutUnit.h"
 
@@ -79,9 +78,7 @@ private:
     void computeAvailableWidthFromLeftAndRight();
     bool fitsOnLineExcludingTrailingCollapsedWhitespace() const;
     void updateLineDimension(LayoutUnit newLineTop, LayoutUnit newLineWidth, float newLineLeft, float newLineRight);
-#if ENABLE(CSS_SHAPES)
     void wrapNextToShapeOutside(bool isFirstLine);
-#endif
 
     RenderBlockFlow& m_block;
     float m_uncommittedWidth { 0 };
@@ -99,6 +96,4 @@ private:
 
 IndentTextOrNot requiresIndent(bool isFirstLine, bool isAfterHardLineBreak, const RenderStyle&);
 
-}
-
-#endif // LineWidth_h
+} // namespace WebCore

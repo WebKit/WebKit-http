@@ -23,14 +23,14 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef EditAction_h
-#define EditAction_h
+#pragma once
 
 namespace WebCore {
     typedef enum {
         EditActionUnspecified,
         EditActionInsert,
         EditActionInsertReplacement,
+        EditActionInsertFromDrop,
         EditActionSetColor,
         EditActionSetBackgroundColor,
         EditActionTurnOffKerning,
@@ -55,7 +55,7 @@ namespace WebCore {
         EditActionUnderline,
         EditActionOutline,
         EditActionUnscript,
-        EditActionDrag,
+        EditActionDeleteByDrag,
         EditActionCut,
         EditActionBold,
         EditActionItalics,
@@ -71,9 +71,13 @@ namespace WebCore {
         EditActionTypingDeleteWordForward,
         EditActionTypingDeleteLineBackward,
         EditActionTypingDeleteLineForward,
+        EditActionTypingDeletePendingComposition,
+        EditActionTypingDeleteFinalComposition,
         EditActionTypingInsertText,
         EditActionTypingInsertLineBreak,
         EditActionTypingInsertParagraph,
+        EditActionTypingInsertPendingComposition,
+        EditActionTypingInsertFinalComposition,
         EditActionCreateLink,
         EditActionUnlink,
         EditActionFormatBlock,
@@ -82,6 +86,4 @@ namespace WebCore {
         EditActionIndent,
         EditActionOutdent
     } EditAction;    
-}
-
-#endif
+} // namespace WebCore

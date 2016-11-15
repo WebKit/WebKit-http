@@ -26,7 +26,7 @@
 #import "config.h"
 #import "Download.h"
 
-#if !USE(NETWORK_SESSION)
+#if !USE(CFURLCONNECTION) && !USE(NETWORK_SESSION)
 
 #import <WebCore/AuthenticationChallenge.h>
 #import <WebCore/AuthenticationMac.h>
@@ -109,7 +109,7 @@ void Download::resume(const IPC::DataReference& resumeData, const String& path, 
     [m_nsURLDownload setDeletesFileUponFailure:NO];
 }
 
-void Download::cancelNetworkLoad()
+void Download::platformCancelNetworkLoad()
 {
     [m_nsURLDownload cancel];
 
@@ -272,4 +272,4 @@ static void dispatchOnMainThread(void (^block)())
 
 @end
 
-#endif // !USE(NETWORK_SESSION)
+#endif // !USE(CFURLCONNECTION) && !USE(NETWORK_SESSION)

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006, 2007 Apple Inc. All rights reserved.
+ * Copyright (C) 2006-2007, 2016 Apple Inc. All rights reserved.
  * Copyright (C) 2010 Igalia S.L
  *
  * Redistribution and use in source and binary forms, with or without
@@ -43,7 +43,6 @@
 #include "Event.h"
 #include "EventHandler.h"
 #include "EventNames.h"
-#include "ExceptionCodePlaceholder.h"
 #include "FormState.h"
 #include "FrameLoadRequest.h"
 #include "FrameLoader.h"
@@ -222,6 +221,8 @@ void ContextMenuController::contextMenuItemSelected(ContextMenuAction action, co
     Frame* frame = m_context.hitTestResult().innerNonSharedNode()->document().frame();
     if (!frame)
         return;
+
+    Ref<Frame> protector(*frame);
 
     switch (action) {
     case ContextMenuItemTagOpenLinkInNewWindow:
@@ -411,10 +412,10 @@ void ContextMenuController::contextMenuItemSelected(ContextMenuAction action, co
     case ContextMenuItemTagStartSpeaking: {
         RefPtr<Range> selectedRange = frame->selection().toNormalizedRange();
         if (!selectedRange || selectedRange->collapsed()) {
-            Document& document = m_context.hitTestResult().innerNonSharedNode()->document();
+            auto& document = m_context.hitTestResult().innerNonSharedNode()->document();
             selectedRange = document.createRange();
-            if (document.documentElement())
-                selectedRange->selectNode(*document.documentElement(), IGNORE_EXCEPTION);
+            if (auto* element = document.documentElement())
+                selectedRange->selectNode(*element);
         }
         m_client.speak(plainText(selectedRange.get()));
         break;

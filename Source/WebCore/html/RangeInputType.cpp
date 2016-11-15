@@ -34,7 +34,6 @@
 
 #include "AXObjectCache.h"
 #include "EventNames.h"
-#include "ExceptionCodePlaceholder.h"
 #include "HTMLInputElement.h"
 #include "HTMLParserIdioms.h"
 #include "InputTypeNames.h"
@@ -77,9 +76,6 @@ static Decimal ensureMaximum(const Decimal& proposedValue, const Decimal& minimu
 
 RangeInputType::RangeInputType(HTMLInputElement& element)
     : InputType(element)
-#if ENABLE(DATALIST_ELEMENT)
-    , m_tickMarkValuesDirty(true)
-#endif
 {
 }
 
@@ -98,9 +94,10 @@ double RangeInputType::valueAsDouble() const
     return parseToDoubleForNumberType(element().value());
 }
 
-void RangeInputType::setValueAsDecimal(const Decimal& newValue, TextFieldEventBehavior eventBehavior, ExceptionCode&) const
+ExceptionOr<void> RangeInputType::setValueAsDecimal(const Decimal& newValue, TextFieldEventBehavior eventBehavior) const
 {
     element().setValue(serialize(newValue), eventBehavior);
+    return { };
 }
 
 bool RangeInputType::typeMismatchFor(const String& value) const
@@ -241,7 +238,7 @@ void RangeInputType::handleKeydownEvent(KeyboardEvent& event)
 
     if (newValue != current) {
         EventQueueScope scope;
-        setValueAsDecimal(newValue, DispatchInputAndChangeEvent, IGNORE_EXCEPTION);
+        setValueAsDecimal(newValue, DispatchInputAndChangeEvent);
 
         if (AXObjectCache* cache = element().document().existingAXObjectCache())
             cache->postNotification(&element(), AXObjectCache::AXValueChanged);
@@ -257,10 +254,10 @@ void RangeInputType::createShadowSubtree()
     Document& document = element().document();
     auto track = HTMLDivElement::create(document);
     track->setPseudo(AtomicString("-webkit-slider-runnable-track", AtomicString::ConstructFromLiteral));
-    track->appendChild(SliderThumbElement::create(document), IGNORE_EXCEPTION);
+    track->appendChild(SliderThumbElement::create(document));
     auto container = SliderContainerElement::create(document);
-    container->appendChild(track, IGNORE_EXCEPTION);
-    element().userAgentShadowRoot()->appendChild(container, IGNORE_EXCEPTION);
+    container->appendChild(track);
+    element().userAgentShadowRoot()->appendChild(container);
 }
 
 HTMLElement* RangeInputType::sliderTrackElement() const

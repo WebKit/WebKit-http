@@ -31,23 +31,20 @@
  */
 
 #include "config.h"
+#include "RTCIceCandidate.h"
 
 #if ENABLE(WEB_RTC)
-
-#include "RTCIceCandidate.h"
 
 #include "Dictionary.h"
 #include "ExceptionCode.h"
 
 namespace WebCore {
 
-RefPtr<RTCIceCandidate> RTCIceCandidate::create(const Dictionary& dictionary, ExceptionCode& ec)
+ExceptionOr<Ref<RTCIceCandidate>> RTCIceCandidate::create(const Dictionary& dictionary)
 {
     String candidate;
-    if (!dictionary.get("candidate", candidate)) {
-        ec = TypeError;
-        return nullptr;
-    }
+    if (!dictionary.get("candidate", candidate))
+        return Exception { TypeError };
 
     String sdpMid;
     dictionary.getWithUndefinedOrNullCheck("sdpMid", sdpMid);
@@ -58,19 +55,15 @@ RefPtr<RTCIceCandidate> RTCIceCandidate::create(const Dictionary& dictionary, Ex
     if (dictionary.getWithUndefinedOrNullCheck("sdpMLineIndex", sdpMLineIndexString)) {
         bool intConversionOk;
         unsigned result = sdpMLineIndexString.toUIntStrict(&intConversionOk);
-        if (!intConversionOk || result > USHRT_MAX) {
-            ec = TypeError;
-            return nullptr;
-        }
+        if (!intConversionOk || result > USHRT_MAX)
+            return Exception { TypeError };
         sdpMLineIndex = result;
     }
 
-    if (sdpMid.isNull() && !sdpMLineIndex) {
-        ec = TypeError;
-        return nullptr;
-    }
+    if (sdpMid.isNull() && !sdpMLineIndex)
+        return Exception { TypeError };
 
-    return adoptRef(new RTCIceCandidate(candidate, sdpMid, sdpMLineIndex));
+    return adoptRef(*new RTCIceCandidate(candidate, sdpMid, sdpMLineIndex));
 }
 
 Ref<RTCIceCandidate> RTCIceCandidate::create(const String& candidate, const String& sdpMid, Optional<unsigned short> sdpMLineIndex)

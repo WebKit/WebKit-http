@@ -33,9 +33,9 @@
 
 namespace WebCore {
 
-PassRefPtr<RenderTheme> RenderTheme::themeForPage(Page*)
+Ref<RenderTheme> RenderTheme::themeForPage(Page*)
 {
-    static RenderTheme* theme = RenderThemeWPE::create().leakRef();
+    static RenderTheme& theme = RenderThemeWPE::create().leakRef();
     return theme;
 }
 

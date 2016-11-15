@@ -47,6 +47,9 @@
 #include <wtf/StdLibExtras.h>
 
 namespace JSC {
+namespace DOMJIT {
+class Signature;
+}
 
 inline JSCell* getJSFunction(JSValue value)
 {
@@ -68,8 +71,14 @@ struct HashTable;
 struct HashTableValue;
 
 JS_EXPORT_PRIVATE JSObject* throwTypeError(ExecState*, ThrowScope&, const String&);
-extern JS_EXPORTDATA const char* ReadonlyPropertyWriteError;
-extern JS_EXPORTDATA const char* UnconfigurablePropertyChangeAccessMechanismError;
+extern JS_EXPORTDATA const char* const NonExtensibleObjectPropertyDefineError;
+extern JS_EXPORTDATA const char* const ReadonlyPropertyWriteError;
+extern JS_EXPORTDATA const char* const ReadonlyPropertyChangeError;
+extern JS_EXPORTDATA const char* const UnableToDeletePropertyError;
+extern JS_EXPORTDATA const char* const UnconfigurablePropertyChangeAccessMechanismError;
+extern JS_EXPORTDATA const char* const UnconfigurablePropertyChangeConfigurabilityError;
+extern JS_EXPORTDATA const char* const UnconfigurablePropertyChangeEnumerabilityError;
+extern JS_EXPORTDATA const char* const UnconfigurablePropertyChangeWritabilityError;
 
 COMPILE_ASSERT(None < FirstInternalAttribute, None_is_below_FirstInternalAttribute);
 COMPILE_ASSERT(ReadOnly < FirstInternalAttribute, ReadOnly_is_below_FirstInternalAttribute);
@@ -694,17 +703,21 @@ public:
 
     JS_EXPORT_PRIVATE bool putDirectNativeIntrinsicGetter(VM&, JSGlobalObject*, Identifier, NativeFunction, Intrinsic, unsigned attributes);
     JS_EXPORT_PRIVATE bool putDirectNativeFunction(VM&, JSGlobalObject*, const PropertyName&, unsigned functionLength, NativeFunction, Intrinsic, unsigned attributes);
+    JS_EXPORT_PRIVATE bool putDirectNativeFunction(VM&, JSGlobalObject*, const PropertyName&, unsigned functionLength, NativeFunction, Intrinsic, const DOMJIT::Signature*, unsigned attributes);
     JS_EXPORT_PRIVATE JSFunction* putDirectBuiltinFunction(VM&, JSGlobalObject*, const PropertyName&, FunctionExecutable*, unsigned attributes);
     JSFunction* putDirectBuiltinFunctionWithoutTransition(VM&, JSGlobalObject*, const PropertyName&, FunctionExecutable*, unsigned attributes);
     JS_EXPORT_PRIVATE void putDirectNativeFunctionWithoutTransition(VM&, JSGlobalObject*, const PropertyName&, unsigned functionLength, NativeFunction, Intrinsic, unsigned attributes);
 
     JS_EXPORT_PRIVATE static bool defineOwnProperty(JSObject*, ExecState*, PropertyName, const PropertyDescriptor&, bool shouldThrow);
 
+    bool isEnvironmentRecord() const;
     bool isGlobalObject() const;
     bool isJSLexicalEnvironment() const;
     bool isGlobalLexicalEnvironment() const;
-    bool isErrorInstance() const;
+    bool isStrictEvalActivation() const;
     bool isWithScope() const;
+
+    bool isErrorInstance() const;
 
     JS_EXPORT_PRIVATE void seal(VM&);
     JS_EXPORT_PRIVATE void freeze(VM&);
@@ -889,6 +902,7 @@ protected:
     void createInitialForValueAndSet(VM&, unsigned index, JSValue);
     void convertInt32ForValue(VM&, JSValue);
         
+    static Butterfly* createArrayStorageButterfly(VM&, JSCell* intendedOwner, Structure*, unsigned length, unsigned vectorLength, Butterfly* oldButterfly = nullptr);
     ArrayStorage* createArrayStorage(VM&, unsigned length, unsigned vectorLength);
     ArrayStorage* createInitialArrayStorage(VM&);
         
@@ -1167,6 +1181,18 @@ inline bool JSObject::isJSLexicalEnvironment() const
 inline bool JSObject::isGlobalLexicalEnvironment() const
 {
     return type() == GlobalLexicalEnvironmentType;
+}
+
+inline bool JSObject::isStrictEvalActivation() const
+{
+    return type() == StrictEvalActivationType;
+}
+
+inline bool JSObject::isEnvironmentRecord() const
+{
+    bool result = GlobalObjectType <= type() && type() <= StrictEvalActivationType;
+    ASSERT((isGlobalObject() || isJSLexicalEnvironment() || isGlobalLexicalEnvironment() || isStrictEvalActivation()) == result);
+    return result;
 }
 
 inline bool JSObject::isErrorInstance() const

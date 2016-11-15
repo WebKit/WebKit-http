@@ -23,13 +23,11 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef AsyncScrollingCoordinator_h
-#define AsyncScrollingCoordinator_h
+#pragma once
 
 #if ENABLE(ASYNC_SCROLLING)
 
 #include "ScrollingCoordinator.h"
-
 #include "ScrollingTree.h"
 #include "Timer.h"
 #include <wtf/PassRefPtr.h>
@@ -54,7 +52,7 @@ public:
 
     void scrollingStateTreePropertiesChanged();
 
-    WEBCORE_EXPORT void scheduleUpdateScrollPositionAfterAsyncScroll(ScrollingNodeID, const FloatPoint&, bool programmaticScroll, SetOrSyncScrollingLayerPosition);
+    WEBCORE_EXPORT void scheduleUpdateScrollPositionAfterAsyncScroll(ScrollingNodeID, const FloatPoint&, const Optional<FloatPoint>& layoutViewportOrigin, bool programmaticScroll, SetOrSyncScrollingLayerPosition);
 
 #if PLATFORM(COCOA)
     WEBCORE_EXPORT void setActiveScrollSnapIndices(ScrollingNodeID, unsigned horizontalIndex, unsigned verticalIndex);
@@ -75,7 +73,7 @@ protected:
 
     PassRefPtr<ScrollingTree> releaseScrollingTree() { return WTFMove(m_scrollingTree); }
 
-    void updateScrollPositionAfterAsyncScroll(ScrollingNodeID, const FloatPoint&, bool programmaticScroll, SetOrSyncScrollingLayerPosition);
+    void updateScrollPositionAfterAsyncScroll(ScrollingNodeID, const FloatPoint&, Optional<FloatPoint> layoutViewportOrigin, bool programmaticScroll, SetOrSyncScrollingLayerPosition);
 
     WEBCORE_EXPORT String scrollingStateTreeAsText() const override;
     WEBCORE_EXPORT void willCommitTree() override;
@@ -87,6 +85,8 @@ private:
 
     bool supportsFixedPositionLayers() const override { return true; }
     bool hasVisibleSlowRepaintViewportConstrainedObjects(const FrameView&) const override { return false; }
+    
+    bool visualViewportEnabled() const;
 
     WEBCORE_EXPORT void frameViewLayoutUpdated(FrameView&) override;
     WEBCORE_EXPORT void frameViewRootLayerDidChange(FrameView&) override;
@@ -103,6 +103,8 @@ private:
     WEBCORE_EXPORT void updateFrameScrollingNode(ScrollingNodeID, GraphicsLayer* scrollLayer, GraphicsLayer* scrolledContentsLayer, GraphicsLayer* counterScrollingLayer, GraphicsLayer* insetClipLayer, const ScrollingGeometry* = nullptr) override;
     WEBCORE_EXPORT void updateOverflowScrollingNode(ScrollingNodeID, GraphicsLayer* scrollLayer, GraphicsLayer* scrolledContentsLayer, const ScrollingGeometry* = nullptr) override;
     
+    WEBCORE_EXPORT void reconcileScrollingState(FrameView&, const FloatPoint&, const LayoutViewportOriginOrOverrideRect&, bool programmaticScroll, SetOrSyncScrollingLayerPosition) override;
+
     bool isRubberBandInProgress() const override;
     void setScrollPinningBehavior(ScrollPinningBehavior) override;
 
@@ -110,7 +112,7 @@ private:
     bool isScrollSnapInProgress() const override;
 #endif
 
-    WEBCORE_EXPORT void syncChildPositions(const LayoutRect& viewportRect) override;
+    WEBCORE_EXPORT void syncViewportConstrainedLayerPositions(const LayoutRect& viewportRect) override;
     WEBCORE_EXPORT void scrollableAreaScrollbarLayerDidChange(ScrollableArea&, ScrollbarOrientation) override;
 
     WEBCORE_EXPORT void setSynchronousScrollingReasons(SynchronousScrollingReasons) override;
@@ -129,23 +131,20 @@ private:
     Timer m_updateNodeScrollPositionTimer;
 
     struct ScheduledScrollUpdate {
-        ScheduledScrollUpdate()
-            : nodeID(0)
-            , isProgrammaticScroll(false)
-            , updateLayerPositionAction(SyncScrollingLayerPosition)
-        { }
-
-        ScheduledScrollUpdate(ScrollingNodeID scrollingNodeID, FloatPoint point, bool isProgrammatic, SetOrSyncScrollingLayerPosition udpateAction)
+        ScheduledScrollUpdate() = default;
+        ScheduledScrollUpdate(ScrollingNodeID scrollingNodeID, FloatPoint point, Optional<FloatPoint> viewportOrigin, bool isProgrammatic, SetOrSyncScrollingLayerPosition udpateAction)
             : nodeID(scrollingNodeID)
             , scrollPosition(point)
+            , layoutViewportOrigin(viewportOrigin)
             , isProgrammaticScroll(isProgrammatic)
             , updateLayerPositionAction(udpateAction)
         { }
 
-        ScrollingNodeID nodeID;
+        ScrollingNodeID nodeID { 0 };
         FloatPoint scrollPosition;
-        bool isProgrammaticScroll;
-        SetOrSyncScrollingLayerPosition updateLayerPositionAction;
+        Optional<FloatPoint> layoutViewportOrigin;
+        bool isProgrammaticScroll { false };
+        SetOrSyncScrollingLayerPosition updateLayerPositionAction { SyncScrollingLayerPosition };
         
         bool matchesUpdateType(const ScheduledScrollUpdate& other) const
         {
@@ -168,5 +167,3 @@ private:
 SPECIALIZE_TYPE_TRAITS_SCROLLING_COORDINATOR(WebCore::AsyncScrollingCoordinator, isAsyncScrollingCoordinator());
 
 #endif // ENABLE(ASYNC_SCROLLING)
-
-#endif // AsyncScrollingCoordinator_h

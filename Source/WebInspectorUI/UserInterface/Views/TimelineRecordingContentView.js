@@ -174,6 +174,8 @@ WebInspector.TimelineRecordingContentView = class TimelineRecordingContentView e
 
     shown()
     {
+        super.shown();
+
         this._timelineOverview.shown();
         this._timelineContentBrowser.shown();
         this._clearTimelineNavigationItem.enabled = !this._recording.readonly && !isNaN(this._recording.startTime);
@@ -186,6 +188,8 @@ WebInspector.TimelineRecordingContentView = class TimelineRecordingContentView e
 
     hidden()
     {
+        super.hidden();
+
         this._timelineOverview.hidden();
         this._timelineContentBrowser.hidden();
 
@@ -195,6 +199,8 @@ WebInspector.TimelineRecordingContentView = class TimelineRecordingContentView e
 
     closed()
     {
+        super.closed();
+
         this._timelineContentBrowser.contentViewContainer.closeAllContentViews();
 
         this._recording.removeEventListener(null, null, this);
@@ -439,9 +445,9 @@ WebInspector.TimelineRecordingContentView = class TimelineRecordingContentView e
         if (!WebInspector.visible)
             return;
 
-        if (typeof startTime === "number" && !isNaN(this._currentTime))
+        if (typeof startTime === "number")
             this._currentTime = startTime;
-        else {
+        else if (!isNaN(this._currentTime)) {
             // This happens when you stop and later restart recording.
             // COMPATIBILITY (iOS 9): Timeline.recordingStarted events did not include a timestamp.
             // We likely need to jump into the future to a better current time which we can

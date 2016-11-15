@@ -2,7 +2,8 @@
  * Copyright (C) 2007, 2009 Apple Inc.  All rights reserved.
  * Copyright (C) 2007 Collabora Ltd. All rights reserved.
  * Copyright (C) 2007 Alp Toker <alp@atoker.com>
- * Copyright (C) 2009, 2010 Igalia S.L
+ * Copyright (C) 2009, 2010, 2015, 2016 Igalia S.L
+ * Copyright (C) 2015, 2016 Metrological Group B.V.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -53,6 +54,8 @@ class GraphicsContext3D;
 class IntSize;
 class IntRect;
 class VideoTextureCopierGStreamer;
+
+void registerWebKitGStreamerElements();
 
 class MediaPlayerPrivateGStreamerBase : public MediaPlayerPrivateInterface
 #if USE(COORDINATED_GRAPHICS_THREADED) || (USE(TEXTURE_MAPPER_GL) && !USE(COORDINATED_GRAPHICS))
@@ -120,6 +123,16 @@ public:
     bool supportsAcceleratedRendering() const override { return true; }
 #endif
 
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
+    void needKey(RefPtr<Uint8Array>);
+    void setCDMSession(CDMSession*);
+    void keyAdded();
+    virtual void dispatchDecryptionKey(GstBuffer*);
+#endif
+
+    static bool supportsKeySystem(const String& keySystem, const String& mimeType);
+    static MediaPlayer::SupportsType extendedSupportsType(const MediaEngineSupportParameters&, MediaPlayer::SupportsType);
+
 #if USE(GSTREAMER_GL)
     bool copyVideoTextureToPlatformTexture(GraphicsContext3D*, Platform3DObject, GC3Denum, GC3Dint, GC3Denum, GC3Denum, GC3Denum, bool, bool) override;
     NativeImagePtr nativeImageForCurrentTime() override;
@@ -127,6 +140,7 @@ public:
 #endif
 
     void setVideoSourceOrientation(const ImageOrientation&);
+    GstElement* pipeline() const { return m_pipeline.get(); }
 
 protected:
     MediaPlayerPrivateGStreamerBase(MediaPlayer*);
@@ -145,6 +159,8 @@ protected:
 #endif
 #endif
 
+    GstElement* videoSink() const { return m_videoSink.get(); }
+
     void setStreamVolumeElement(GstStreamVolume*);
     virtual GstElement* createAudioSink() { return 0; }
     virtual GstElement* audioSink() const { return 0; }
@@ -153,9 +169,12 @@ protected:
 
     virtual bool handleSyncMessage(GstMessage*);
 
+    void triggerDrain();
+
     void triggerRepaint(GstSample*);
     void repaint();
 
+    static void drainCallback(MediaPlayerPrivateGStreamerBase*);
     static void repaintCallback(MediaPlayerPrivateGStreamerBase*, GstSample*);
 
     void notifyPlayerOfVolumeChange();
@@ -183,11 +202,11 @@ protected:
     GRefPtr<GstElement> m_videoSink;
     GRefPtr<GstElement> m_fpsSink;
     MediaPlayer::ReadyState m_readyState;
-    MediaPlayer::NetworkState m_networkState;
+    mutable MediaPlayer::NetworkState m_networkState;
     IntSize m_size;
     mutable GMutex m_sampleMutex;
     GRefPtr<GstSample> m_sample;
-#if USE(GSTREAMER_GL)
+#if USE(GSTREAMER_GL) || USE(COORDINATED_GRAPHICS_THREADED)
     RunLoop::Timer<MediaPlayerPrivateGStreamerBase> m_drawTimer;
 #endif
     mutable FloatSize m_videoSize;
@@ -214,11 +233,15 @@ protected:
 #endif
 
     ImageOrientation m_videoSourceOrientation;
-
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
+    std::unique_ptr<CDMSession> createSession(const String&, CDMSessionClient*);
+    CDMSession* m_cdmSession;
+#endif
 #if USE(GSTREAMER_GL)
     std::unique_ptr<VideoTextureCopierGStreamer> m_videoTextureCopier;
 #endif
 };
+
 }
 
 #endif // USE(GSTREAMER)

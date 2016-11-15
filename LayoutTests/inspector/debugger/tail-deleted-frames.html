@@ -10,6 +10,14 @@ function test()
 {
     var scriptObject;
 
+    function remoteObjectJSONFilter(key, value) {
+        if (key === "_target" || key === "_listeners")
+            return undefined;
+        if (key === "_objectId" || key === "_stackTrace")
+            return "<filtered>";
+        return value;
+    }
+
     function startTest() {
         InspectorTest.log("Starting Test");
         // 0 based indices.
@@ -39,10 +47,13 @@ function test()
             {functionName: 'c', scope: ['z', 60], isTailDeleted: true}
         ];
 
-        InspectorTest.assert(WebInspector.debuggerManager.callFrames.length >= expectedFrames.length);
+        let targetData = WebInspector.debuggerManager.dataForTarget(WebInspector.debuggerManager.activeCallFrame.target);
+        let callFrames = targetData.callFrames;
+
+        InspectorTest.assert(callFrames.length >= expectedFrames.length);
 
         for (let i = 0; i < expectedFrames.length; i++) {
-            let callFrame = WebInspector.debuggerManager.callFrames[i];
+            let callFrame = callFrames[i];
             let expectedFrame = expectedFrames[i];
             InspectorTest.log("Expected frame: " + JSON.stringify(expectedFrame));
             InspectorTest.assert(callFrame.functionName === expectedFrame.functionName);
@@ -58,7 +69,7 @@ function test()
                     if (propertyDescriptor.name === variableName) {
                         found = true;
                         InspectorTest.log("Looking at frame number: " + i);
-                        InspectorTest.log(`    variable '${variableName}': ${JSON.stringify(propertyDescriptor.value)}`);
+                        InspectorTest.log(`    variable '${variableName}': ${JSON.stringify(propertyDescriptor.value, remoteObjectJSONFilter)}`);
                         InspectorTest.assert(propertyDescriptor.value.type === 'number');
                         InspectorTest.assert(propertyDescriptor.value.value === variableValue);
                     }

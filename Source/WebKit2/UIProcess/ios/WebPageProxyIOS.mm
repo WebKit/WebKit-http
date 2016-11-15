@@ -50,6 +50,7 @@
 #import <WebCore/PlatformScreen.h>
 #import <WebCore/SharedBuffer.h>
 #import <WebCore/UserAgent.h>
+#import <WebCore/ValidationBubble.h>
 
 #if USE(QUICK_LOOK)
 #import "APILoaderClient.h"
@@ -267,6 +268,8 @@ void WebPageProxy::dynamicViewportSizeUpdate(const FloatSize& minimumLayoutSize,
     if (!isValid())
         return;
 
+    hideValidationMessage();
+
     m_dynamicViewportSizeUpdateWaitingForTarget = true;
     m_dynamicViewportSizeUpdateWaitingForLayerTreeCommit = true;
     m_process->send(Messages::WebPage::DynamicViewportSizeUpdate(minimumLayoutSize, maximumUnobscuredSize, targetExposedContentRect, targetUnobscuredRect, targetUnobscuredRectInScrollViewCoordinates, targetScale, deviceOrientation, ++m_currentDynamicViewportSizeUpdateID), m_pageID);
@@ -292,7 +295,7 @@ void WebPageProxy::synchronizeDynamicViewportUpdate()
         double newScale;
         FloatPoint newScrollPosition;
         uint64_t nextValidLayerTreeTransactionID;
-        if (m_process->sendSync(Messages::WebPage::SynchronizeDynamicViewportUpdate(), Messages::WebPage::SynchronizeDynamicViewportUpdate::Reply(newScale, newScrollPosition, nextValidLayerTreeTransactionID), m_pageID, std::chrono::seconds(2))) {
+        if (m_process->sendSync(Messages::WebPage::SynchronizeDynamicViewportUpdate(), Messages::WebPage::SynchronizeDynamicViewportUpdate::Reply(newScale, newScrollPosition, nextValidLayerTreeTransactionID), m_pageID, Seconds(2))) {
             m_dynamicViewportSizeUpdateWaitingForTarget = false;
             m_dynamicViewportSizeUpdateLayerTreeTransactionID = nextValidLayerTreeTransactionID;
             m_pageClient.dynamicViewportUpdateChangedTarget(newScale, newScrollPosition, nextValidLayerTreeTransactionID);
@@ -303,7 +306,7 @@ void WebPageProxy::synchronizeDynamicViewportUpdate()
     // If m_dynamicViewportSizeUpdateWaitingForTarget is false, we are waiting for the next valid frame with the hope it is the one for the new target.
     // If m_dynamicViewportSizeUpdateWaitingForTarget is still true, this is a desperate attempt to get the valid frame before finishing the animation.
     if (m_dynamicViewportSizeUpdateWaitingForLayerTreeCommit)
-        m_drawingArea->waitForDidUpdateViewState();
+        m_drawingArea->waitForDidUpdateActivityState();
 
     m_dynamicViewportSizeUpdateWaitingForTarget = false;
     m_dynamicViewportSizeUpdateWaitingForLayerTreeCommit = false;
@@ -361,7 +364,7 @@ void WebPageProxy::didCommitLayerTree(const WebKit::RemoteLayerTreeTransaction& 
     m_pageClient.didCommitLayerTree(layerTreeTransaction);
 
     // FIXME: Remove this special mechanism and fold it into the transaction's layout milestones.
-    if (m_wantsSessionRestorationRenderTreeSizeThresholdEvent && !m_hitRenderTreeSizeThreshold
+    if ((m_observedLayoutMilestones & WebCore::ReachedSessionRestorationRenderTreeSizeThreshold) && !m_hitRenderTreeSizeThreshold
         && exceedsRenderTreeSizeSizeThreshold(m_sessionRestorationRenderTreeSize, layerTreeTransaction.renderTreeSize())) {
         m_hitRenderTreeSizeThreshold = true;
         didReachLayoutMilestone(WebCore::ReachedSessionRestorationRenderTreeSizeThreshold);
@@ -752,6 +755,7 @@ void WebPageProxy::willStartUserTriggeredZooming()
 
 void WebPageProxy::potentialTapAtPosition(const WebCore::FloatPoint& position, uint64_t& requestID)
 {
+    hideValidationMessage();
     process().send(Messages::WebPage::PotentialTapAtPosition(requestID, position), m_pageID);
 }
 
@@ -1007,6 +1011,27 @@ void WebPageProxy::editorStateChanged(const EditorState& editorState)
     // We always need to notify the client on iOS to make sure the selection is redrawn,
     // even during composition to support phrase boundary gesture.
     m_pageClient.selectionDidChange();
+}
+
+void WebPageProxy::showValidationMessage(const IntRect& anchorClientRect, const String& message)
+{
+    m_validationBubble = m_pageClient.createValidationBubble(message);
+    m_validationBubble->setAnchorRect(anchorClientRect, uiClient().presentingViewController());
+
+    // If we are currently doing a scrolling / zoom animation, then we'll delay showing the validation
+    // bubble until the animation is over.
+    if (!m_isScrollingOrZooming)
+        m_validationBubble->show();
+}
+
+void WebPageProxy::setIsScrollingOrZooming(bool isScrollingOrZooming)
+{
+    m_isScrollingOrZooming = isScrollingOrZooming;
+
+    // We finished doing the scrolling / zoom animation so we can now show the validation
+    // bubble if we're supposed to.
+    if (!m_isScrollingOrZooming && m_validationBubble)
+        m_validationBubble->show();
 }
 
 #if USE(QUICK_LOOK)

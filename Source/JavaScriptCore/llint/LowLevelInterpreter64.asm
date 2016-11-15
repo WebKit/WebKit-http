@@ -486,11 +486,6 @@ macro loadStructureAndClobberFirstArg(cell, structure)
     loadp [cell, structure, 8], structure
 end
 
-macro storeStructureWithTypeInfo(cell, structure, scratch)
-    loadq Structure::m_blob + StructureIDBlob::u.doubleWord[structure], scratch
-    storeq scratch, JSCell::m_structureID[cell]
-end
-
 # Entrypoints into the interpreter.
 
 # Expects that CodeBlock is in t1, which is what prologue() leaves behind.
@@ -585,6 +580,23 @@ _llint_op_enter:
 .opEnterDone:
     callOpcodeSlowPath(_slow_path_enter)
     dispatch(1)
+
+
+_llint_op_get_argument:
+    traceExecution()
+    loadisFromInstruction(1, t1)
+    loadisFromInstruction(2, t2)
+    loadi PayloadOffset + ArgumentCount[cfr], t0
+    bilteq t0, t2, .opGetArgumentOutOfBounds
+    loadq ThisArgumentOffset[cfr, t2, 8], t0
+    storeq t0, [cfr, t1, 8]
+    valueProfile(t0, 3, t2)
+    dispatch(4)
+
+.opGetArgumentOutOfBounds:
+    storeq ValueUndefined, [cfr, t1, 8]
+    valueProfile(ValueUndefined, 3, t2)
+    dispatch(4)
 
 
 _llint_op_argument_count:
@@ -1409,6 +1421,10 @@ _llint_op_put_by_id:
 
 .opPutByIdTransitionDirect:
     storei t1, JSCell::m_structureID[t0]
+    writeBarrierOnOperand(1)
+    # Reload base into t0
+    loadisFromInstruction(1, t1)
+    loadConstantOrVariable(t1, t0)
 
 .opPutByIdNotTransition:
     # The only thing live right now is t0, which holds the base.

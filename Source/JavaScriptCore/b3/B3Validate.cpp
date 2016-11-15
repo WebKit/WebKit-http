@@ -267,8 +267,10 @@ public:
             case Trunc:
                 VALIDATE(!value->kind().hasExtraBits(), ("At ", *value));
                 VALIDATE(value->numChildren() == 1, ("At ", *value));
-                VALIDATE(value->child(0)->type() == Int64, ("At ", *value));
-                VALIDATE(value->type() == Int32, ("At ", *value));
+                VALIDATE(
+                    (value->type() == Int32 && value->child(0)->type() == Int64)
+                    || (value->type() == Float && value->child(0)->type() == Double),
+                    ("At ", *value));
                 break;
             case Abs:
             case Ceil:
@@ -370,6 +372,12 @@ public:
                 VALIDATE(value->child(1)->type() == pointerType(), ("At ", *value));
                 VALIDATE(value->type() == Void, ("At ", *value));
                 validateStackAccess(value);
+                break;
+            case WasmAddress:
+                VALIDATE(!value->kind().hasExtraBits(), ("At ", *value));
+                VALIDATE(value->numChildren() == 1, ("At ", *value));
+                VALIDATE(value->child(0)->type() == pointerType(), ("At ", *value));
+                VALIDATE(value->type() == pointerType(), ("At ", *value));
                 break;
             case CCall:
                 VALIDATE(!value->kind().hasExtraBits(), ("At ", *value));

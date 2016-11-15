@@ -44,10 +44,6 @@
 #include <wtf/text/Base64.h>
 #include <wtf/text/WTFString.h>
 
-#if PLATFORM(COCOA)
-#include "WebCoreSystemInterface.h"
-#endif
-
 
 namespace WebCore {
 
@@ -66,7 +62,7 @@ std::unique_ptr<ImageBuffer> ImageBuffer::createCompatibleBuffer(const FloatSize
     RenderingMode renderingMode = context.renderingMode();
     IntSize scaledSize = ImageBuffer::compatibleBufferSize(size, context);
     bool success = false;
-    std::unique_ptr<ImageBuffer> buffer(new ImageBuffer(scaledSize, 1, ColorSpaceSRGB, renderingMode, context.platformContext(), success));
+    std::unique_ptr<ImageBuffer> buffer(new ImageBuffer(scaledSize, 1, ColorSpaceSRGB, renderingMode, &context, success));
 
     if (!success)
         return nullptr;
@@ -76,7 +72,7 @@ std::unique_ptr<ImageBuffer> ImageBuffer::createCompatibleBuffer(const FloatSize
     return buffer;
 }
 
-ImageBuffer::ImageBuffer(const FloatSize& size, float resolutionScale, ColorSpace /*colorSpace*/, RenderingMode renderingMode, ID2D1RenderTarget* renderTarget, bool& success)
+ImageBuffer::ImageBuffer(const FloatSize& size, float resolutionScale, ColorSpace /*colorSpace*/, RenderingMode renderingMode, const GraphicsContext* targetContext, bool& success)
     : m_logicalSize(size)
     , m_resolutionScale(resolutionScale)
 {
@@ -101,12 +97,15 @@ ImageBuffer::ImageBuffer(const FloatSize& size, float resolutionScale, ColorSpac
     if (numBytes.hasOverflowed())
         return;
 
+    auto renderTarget = targetContext ? targetContext->platformContext() : nullptr;
     if (!renderTarget)
         renderTarget = GraphicsContext::defaultRenderTarget();
     RELEASE_ASSERT(renderTarget);
 
     COMPtr<ID2D1BitmapRenderTarget> bitmapContext;
-    HRESULT hr = renderTarget->CreateCompatibleRenderTarget(FloatSize(m_logicalSize), &bitmapContext);
+    D2D1_SIZE_F desiredSize = FloatSize(m_logicalSize);
+    D2D1_SIZE_U pixelSize = IntSize(m_logicalSize);
+    HRESULT hr = renderTarget->CreateCompatibleRenderTarget(&desiredSize, &pixelSize, nullptr, D2D1_COMPATIBLE_RENDER_TARGET_OPTIONS_GDI_COMPATIBLE, &bitmapContext);
     if (!bitmapContext || !SUCCEEDED(hr))
         return;
 
@@ -137,11 +136,7 @@ GraphicsContext& ImageBuffer::context() const
 
 void ImageBuffer::flushContext() const
 {
-    if (!context().didBeginDraw())
-        return;
-
-    HRESULT hr = context().platformContext()->Flush();
-    ASSERT(SUCCEEDED(hr));
+    context().flush();
 }
 
 RefPtr<Image> ImageBuffer::copyImage(BackingStoreCopy copyBehavior, ScaleBehavior scaleBehavior) const
@@ -197,6 +192,8 @@ void ImageBuffer::draw(GraphicsContext& destContext, const FloatRect& destRect, 
     adjustedSrcRect.scale(m_resolutionScale, m_resolutionScale);
 
     destContext.drawNativeImage(image, image->GetSize(), destRect, adjustedSrcRect, op, blendMode);
+
+    destContext.flush();
 }
 
 void ImageBuffer::drawPattern(GraphicsContext& destContext, const FloatRect& destRect, const FloatRect& srcRect, const AffineTransform& patternTransform, const FloatPoint& phase, const FloatSize& spacing, CompositeOperator op, BlendMode blendMode)
@@ -257,7 +254,7 @@ void ImageBuffer::putByteArray(Multiply multiplied, Uint8ClampedArray* source, c
     m_data.putData(source, scaledSourceSize, scaledSourceRect, destPoint, internalSize(), context().isAcceleratedContext(), multiplied == Unmultiplied, 1);
 }
 
-String ImageBuffer::toDataURL(const String& mimeType, const double* quality, CoordinateSystem) const
+String ImageBuffer::toDataURL(const String&, Optional<double>, CoordinateSystem) const
 {
     notImplemented();
     return ASCIILiteral("data:,");

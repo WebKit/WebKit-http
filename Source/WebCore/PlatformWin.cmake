@@ -1,4 +1,4 @@
-add_definitions(/bigobj)
+add_definitions(/bigobj -D__STDC_CONSTANT_MACROS)
 
 list(APPEND WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/ForwardingHeaders"
@@ -60,6 +60,7 @@ list(APPEND WebCore_SOURCES
     platform/Cursor.cpp
     platform/KillRingNone.cpp
     platform/LocalizedStrings.cpp
+    platform/StaticPasteboard.cpp
     platform/VNodeTracker.cpp
 
     platform/audio/PlatformMediaSessionManager.cpp

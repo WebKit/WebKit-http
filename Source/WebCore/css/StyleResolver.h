@@ -21,6 +21,7 @@
 
 #pragma once
 
+#include "CSSSelector.h"
 #include "CSSToLengthConversionData.h"
 #include "CSSToStyleMap.h"
 #include "DocumentRuleSets.h"
@@ -52,7 +53,6 @@ class CSSImageValue;
 class CSSPageRule;
 class CSSPrimitiveValue;
 class CSSProperty;
-class CSSSelector;
 class CSSStyleSheet;
 class CSSValue;
 class CSSVariableDependentValue;
@@ -86,7 +86,6 @@ class StyleSheetList;
 class StyledElement;
 class SVGSVGElement;
 class ViewportStyleResolver;
-class WebKitCSSFilterValue;
 struct ResourceLoaderOptions;
 
 // MatchOnlyUserAgentRules is used in media queries, where relative units
@@ -245,15 +244,9 @@ public:
         ~MatchedProperties();
         
         RefPtr<StyleProperties> properties;
-        union {
-            struct {
-                unsigned linkMatchType : 2;
-                unsigned whitelistType : 2;
-                unsigned treeContextOrdinal : 28;
-            };
-            // Used to make sure all memory is zero-initialized since we compute the hash over the bytes of this object.
-            void* possiblyPaddedMember;
-        };
+        uint16_t linkMatchType;
+        uint16_t whitelistType;
+        int treeContextOrdinal;
     };
 
     struct MatchResult {
@@ -264,7 +257,7 @@ public:
 
         const Vector<MatchedProperties, 64>& matchedProperties() const { return m_matchedProperties; }
 
-        void addMatchedProperties(const StyleProperties&, StyleRule* = nullptr, unsigned linkMatchType = SelectorChecker::MatchAll, PropertyWhitelistType = PropertyWhitelistNone, unsigned treeContextOrdinal = 0);
+        void addMatchedProperties(const StyleProperties&, StyleRule* = nullptr, unsigned linkMatchType = SelectorChecker::MatchAll, PropertyWhitelistType = PropertyWhitelistNone, int treeContextOrdinal = 0);
     private:
         Vector<MatchedProperties, 64> m_matchedProperties;
     };
@@ -475,7 +468,7 @@ private:
     void cacheBorderAndBackground();
 
     void applyProperty(CSSPropertyID, CSSValue*, SelectorChecker::LinkMatchMask = SelectorChecker::MatchDefault, const MatchResult* = nullptr);
-    RefPtr<CSSValue> resolvedVariableValue(CSSPropertyID, const CSSVariableDependentValue&);
+    RefPtr<CSSValue> resolvedVariableValue(CSSPropertyID, const CSSValue&);
 
     void applySVGProperty(CSSPropertyID, CSSValue*);
 

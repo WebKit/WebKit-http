@@ -256,7 +256,7 @@ void RenderImage::imageChanged(WrappedImagePtr newImage, const IntRect* rect)
             ASSERT(element());
             if (element()) {
                 m_needsToSetSizeForAltText = true;
-                element()->setNeedsStyleRecalc(SyntheticStyleChange);
+                element()->invalidateStyleAndLayerComposition();
             }
             return;
         }
@@ -633,7 +633,7 @@ bool RenderImage::nodeAtPoint(const HitTestRequest& request, HitTestResult& resu
             LayoutRect contentBox = contentBoxRect();
             float scaleFactor = 1 / style().effectiveZoom();
             LayoutPoint mapLocation = locationInContainer.point() - toLayoutSize(accumulatedOffset) - locationOffset() - toLayoutSize(contentBox.location());
-            mapLocation.scale(scaleFactor, scaleFactor);
+            mapLocation.scale(scaleFactor);
 
             if (map->mapMouseEvent(mapLocation, contentBox.size(), tempResult))
                 tempResult.setInnerNonSharedNode(element());

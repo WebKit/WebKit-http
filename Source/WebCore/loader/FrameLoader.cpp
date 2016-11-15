@@ -66,7 +66,6 @@
 #include "FrameTree.h"
 #include "FrameView.h"
 #include "GCController.h"
-#include "HTMLAnchorElement.h"
 #include "HTMLFormElement.h"
 #include "HTMLInputElement.h"
 #include "HTMLNames.h"
@@ -86,9 +85,9 @@
 #include "MIMETypeRegistry.h"
 #include "MainFrame.h"
 #include "MemoryCache.h"
+#include "MemoryRelease.h"
 #include "Page.h"
 #include "PageCache.h"
-#include "PageThrottler.h"
 #include "PageTransitionEvent.h"
 #include "PlatformStrategies.h"
 #include "PluginData.h"
@@ -102,7 +101,6 @@
 #include "SVGDocument.h"
 #include "SVGLocatable.h"
 #include "SVGNames.h"
-#include "SVGPreserveAspectRatio.h"
 #include "SVGViewElement.h"
 #include "SVGViewSpec.h"
 #include "SchemeRegistry.h"
@@ -135,7 +133,6 @@
 
 #if PLATFORM(IOS)
 #include "DocumentType.h"
-#include "MemoryPressureHandler.h"
 #include "ResourceLoader.h"
 #include "RuntimeApplicationChecks.h"
 #include "SystemMemory.h"
@@ -345,18 +342,10 @@ void FrameLoader::changeLocation(const FrameLoadRequest& request)
     urlSelected(request, nullptr);
 }
 
-void FrameLoader::urlSelected(const URL& url, const String& passedTarget, Event* triggeringEvent, LockHistory lockHistory, LockBackForwardList lockBackForwardList, ShouldSendReferrer shouldSendReferrer, ShouldOpenExternalURLsPolicy shouldOpenExternalURLsPolicy, const AtomicString& downloadAttribute)
+void FrameLoader::urlSelected(const URL& url, const String& passedTarget, Event* triggeringEvent, LockHistory lockHistory, LockBackForwardList lockBackForwardList, ShouldSendReferrer shouldSendReferrer, ShouldOpenExternalURLsPolicy shouldOpenExternalURLsPolicy, Optional<NewFrameOpenerPolicy> openerPolicy, const AtomicString& downloadAttribute)
 {
-    NewFrameOpenerPolicy newFrameOpenerPolicy = shouldSendReferrer == NeverSendReferrer ? NewFrameOpenerPolicy::Suppress : NewFrameOpenerPolicy::Allow;
-
+    NewFrameOpenerPolicy newFrameOpenerPolicy = openerPolicy.valueOr(shouldSendReferrer == NeverSendReferrer ? NewFrameOpenerPolicy::Suppress : NewFrameOpenerPolicy::Allow);
     urlSelected(FrameLoadRequest(m_frame.document()->securityOrigin(), ResourceRequest(url), passedTarget, lockHistory, lockBackForwardList, shouldSendReferrer, AllowNavigationToInvalidURL::Yes, newFrameOpenerPolicy, DoNotReplaceDocumentIfJavaScriptURL, shouldOpenExternalURLsPolicy, downloadAttribute), triggeringEvent);
-}
-
-void FrameLoader::urlSelected(const URL& url, const String& passedTarget, Event* triggeringEvent, LockHistory lockHistory, LockBackForwardList lockBackForwardList, ShouldSendReferrer shouldSendReferrer, ShouldOpenExternalURLsPolicy shouldOpenExternalURLsPolicy)
-{
-    NewFrameOpenerPolicy newFrameOpenerPolicy = shouldSendReferrer == NeverSendReferrer ? NewFrameOpenerPolicy::Suppress : NewFrameOpenerPolicy::Allow;
-
-    urlSelected(FrameLoadRequest(m_frame.document()->securityOrigin(), ResourceRequest(url), passedTarget, lockHistory, lockBackForwardList, shouldSendReferrer, AllowNavigationToInvalidURL::Yes, newFrameOpenerPolicy, DoNotReplaceDocumentIfJavaScriptURL, shouldOpenExternalURLsPolicy, nullAtom), triggeringEvent);
 }
 
 void FrameLoader::urlSelected(const FrameLoadRequest& passedRequest, Event* triggeringEvent)
@@ -466,13 +455,13 @@ void FrameLoader::stopLoading(UnloadEventPolicy unloadEventPolicy)
         m_frame.document()->setParsing(false);
     }
 
-    if (Document* doc = m_frame.document()) {
+    if (auto* document = m_frame.document()) {
         // FIXME: HTML5 doesn't tell us to set the state to complete when aborting, but we do anyway to match legacy behavior.
         // http://www.w3.org/Bugs/Public/show_bug.cgi?id=10537
-        doc->setReadyState(Document::Complete);
+        document->setReadyState(Document::Complete);
 
         // FIXME: Should the DatabaseManager watch for something like ActiveDOMObject::stop() rather than being special-cased here?
-        DatabaseManager::singleton().stopDatabases(doc, 0);
+        DatabaseManager::singleton().stopDatabases(*document, nullptr);
     }
 
     // FIXME: This will cancel redirection timer, which really needs to be restarted when restoring the frame from b/f cache.
@@ -602,7 +591,7 @@ void FrameLoader::clear(Document* newDocument, bool clearWindowProperties, bool 
 
     // Do this after detaching the document so that the unload event works.
     if (clearWindowProperties) {
-        InspectorInstrumentation::frameWindowDiscarded(&m_frame, m_frame.document()->domWindow());
+        InspectorInstrumentation::frameWindowDiscarded(m_frame, m_frame.document()->domWindow());
         m_frame.document()->domWindow()->resetUnlessSuspendedForDocumentSuspension();
         m_frame.script().clearWindowShell(newDocument->domWindow(), m_frame.document()->pageCacheState() == Document::AboutToEnterPageCache);
     }
@@ -875,7 +864,8 @@ void FrameLoader::loadURLIntoChildFrame(const URL& url, const String& referer, F
     ASSERT(childFrame);
 
 #if ENABLE(WEB_ARCHIVE) || ENABLE(MHTML)
-    auto subframeArchive = activeDocumentLoader()->popArchiveForSubframe(childFrame->tree().uniqueName(), url);
+    auto activeLoader = activeDocumentLoader();
+    auto subframeArchive = activeLoader ? activeLoader->popArchiveForSubframe(childFrame->tree().uniqueName(), url) : nullptr;
     if (subframeArchive) {
         childFrame->loader().loadArchive(WTFMove(subframeArchive));
         return;
@@ -1086,13 +1076,10 @@ void FrameLoader::completed()
 
     if (m_frame.view())
         m_frame.view()->maintainScrollPositionAtAnchor(nullptr);
-    m_activityAssertion = nullptr;
 }
 
 void FrameLoader::started()
 {
-    if (m_frame.page())
-        m_activityAssertion = m_frame.page()->pageThrottler().pageLoadActivityToken();
     for (Frame* frame = &m_frame; frame; frame = frame->tree().parent())
         frame->loader().m_isComplete = false;
 }
@@ -1787,7 +1774,7 @@ void FrameLoader::commitProvisionalLoad()
         // We are doing this here because we know for sure that a new page is about to be loaded.
         PageCache::singleton().addIfCacheable(*history().currentItem(), m_frame.page());
         
-        MemoryPressureHandler::singleton().jettisonExpensiveObjectsOnTopLevelNavigation();
+        WebCore::jettisonExpensiveObjectsOnTopLevelNavigation();
     }
 
     if (m_loadType != FrameLoadType::Replace)

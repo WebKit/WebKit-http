@@ -30,6 +30,7 @@
 #include "Document.h"
 #include "ElementIterator.h"
 #include "ElementRuleCollector.h"
+#include "HTMLSlotElement.h"
 #include "SelectorFilter.h"
 #include "ShadowRoot.h"
 #include "StyleRuleImport.h"
@@ -100,24 +101,36 @@ StyleInvalidationAnalysis::CheckDescendants StyleInvalidationAnalysis::invalidat
     if (m_hasShadowPseudoElementRulesInAuthorSheet) {
         // FIXME: This could do actual rule matching too.
         if (element.shadowRoot())
-            element.setNeedsStyleRecalc();
+            element.invalidateStyleForSubtree();
     }
 
-    switch (element.styleChangeType()) {
-    case NoStyleChange: {
+    bool shouldCheckForSlots = !m_ruleSet.slottedPseudoElementRules().isEmpty() && !m_didInvalidateHostChildren;
+    if (shouldCheckForSlots && is<HTMLSlotElement>(element)) {
+        auto* containingShadowRoot = element.containingShadowRoot();
+        if (containingShadowRoot && containingShadowRoot->host()) {
+            for (auto& possiblySlotted : childrenOfType<Element>(*containingShadowRoot->host()))
+                possiblySlotted.invalidateStyle();
+        }
+        // No need to do this again.
+        m_didInvalidateHostChildren = true;
+    }
+
+    switch (element.styleValidity()) {
+    case Style::Validity::Valid: {
         ElementRuleCollector ruleCollector(element, m_ruleSet, filter);
         ruleCollector.setMode(SelectorChecker::Mode::CollectingRulesIgnoringVirtualPseudoElements);
         ruleCollector.matchAuthorRules(false);
 
         if (ruleCollector.hasMatchedRules())
-            element.setNeedsStyleRecalc(InlineStyleChange);
+            element.invalidateStyle();
         return CheckDescendants::Yes;
     }
-    case InlineStyleChange:
+    case Style::Validity::ElementInvalid:
         return CheckDescendants::Yes;
-    case FullStyleChange:
-    case SyntheticStyleChange:
-    case ReconstructRenderTree:
+    case Style::Validity::SubtreeInvalid:
+    case Style::Validity::SubtreeAndRenderersInvalid:
+        if (shouldCheckForSlots)
+            return CheckDescendants::Yes;
         return CheckDescendants::No;
     }
     ASSERT_NOT_REACHED();
@@ -172,6 +185,9 @@ void StyleInvalidationAnalysis::invalidateStyle(Document& document)
 void StyleInvalidationAnalysis::invalidateStyle(ShadowRoot& shadowRoot)
 {
     ASSERT(!m_dirtiesAllStyle);
+
+    if (!m_ruleSet.hostPseudoClassRules().isEmpty() && shadowRoot.host())
+        shadowRoot.host()->invalidateStyle();
 
     for (auto& child : childrenOfType<Element>(shadowRoot)) {
         SelectorFilter filter;

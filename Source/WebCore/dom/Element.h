@@ -22,8 +22,7 @@
  *
  */
 
-#ifndef Element_h
-#define Element_h
+#pragma once
 
 #include "AXTextStateChangeIntent.h"
 #include "Document.h"
@@ -32,6 +31,7 @@
 #include "RegionOversetState.h"
 #include "ScrollToOptions.h"
 #include "ScrollTypes.h"
+#include "ShadowRootMode.h"
 #include "SimulatedClickOptions.h"
 #include "StyleChange.h"
 
@@ -39,6 +39,7 @@ namespace WebCore {
 
 class ClientRect;
 class ClientRectList;
+class CustomElementReactionQueue;
 class DatasetDOMStringMap;
 class Dictionary;
 class DOMTokenList;
@@ -110,9 +111,9 @@ public:
     WEBCORE_EXPORT const AtomicString& getAttribute(const AtomicString& name) const;
     WEBCORE_EXPORT const AtomicString& getAttributeNS(const AtomicString& namespaceURI, const AtomicString& localName) const;
 
-    WEBCORE_EXPORT void setAttribute(const AtomicString& name, const AtomicString& value, ExceptionCode&);
-    static bool parseAttributeName(QualifiedName&, const AtomicString& namespaceURI, const AtomicString& qualifiedName, ExceptionCode&);
-    WEBCORE_EXPORT void setAttributeNS(const AtomicString& namespaceURI, const AtomicString& qualifiedName, const AtomicString& value, ExceptionCode&);
+    WEBCORE_EXPORT ExceptionOr<void> setAttribute(const AtomicString& name, const AtomicString& value);
+    static ExceptionOr<QualifiedName> parseAttributeName(const AtomicString& namespaceURI, const AtomicString& qualifiedName);
+    WEBCORE_EXPORT ExceptionOr<void> setAttributeNS(const AtomicString& namespaceURI, const AtomicString& qualifiedName, const AtomicString& value);
 
     const AtomicString& getIdAttribute() const;
     void setIdAttribute(const AtomicString&);
@@ -188,9 +189,9 @@ public:
 
     WEBCORE_EXPORT RefPtr<Attr> getAttributeNode(const AtomicString& name);
     WEBCORE_EXPORT RefPtr<Attr> getAttributeNodeNS(const AtomicString& namespaceURI, const AtomicString& localName);
-    WEBCORE_EXPORT RefPtr<Attr> setAttributeNode(Attr&, ExceptionCode&);
-    WEBCORE_EXPORT RefPtr<Attr> setAttributeNodeNS(Attr&, ExceptionCode&);
-    WEBCORE_EXPORT RefPtr<Attr> removeAttributeNode(Attr&, ExceptionCode&);
+    WEBCORE_EXPORT ExceptionOr<RefPtr<Attr>> setAttributeNode(Attr&);
+    WEBCORE_EXPORT ExceptionOr<RefPtr<Attr>> setAttributeNodeNS(Attr&);
+    WEBCORE_EXPORT ExceptionOr<Ref<Attr>> removeAttributeNode(Attr&);
 
     RefPtr<Attr> attrIfExists(const QualifiedName&);
     RefPtr<Attr> attrIfExists(const AtomicString& localName, bool shouldIgnoreAttributeCase);
@@ -201,9 +202,9 @@ public:
     virtual CSSStyleDeclaration* cssomStyle();
 
     const QualifiedName& tagQName() const { return m_tagName; }
-#if ENABLE(CSS_SELECTOR_JIT)
+#if ENABLE(JIT)
     static ptrdiff_t tagQNameMemoryOffset() { return OBJECT_OFFSETOF(Element, m_tagName); }
-#endif // ENABLE(CSS_SELECTOR_JIT)
+#endif // ENABLE(JIT)
     String tagName() const { return nodeName(); }
     bool hasTagName(const QualifiedName& tagName) const { return m_tagName.matches(tagName); }
     bool hasTagName(const HTMLQualifiedName& tagName) const { return ContainerNode::hasTagName(tagName); }
@@ -217,7 +218,7 @@ public:
     const AtomicString& prefix() const final { return m_tagName.prefix(); }
     const AtomicString& namespaceURI() const final { return m_tagName.namespaceURI(); }
 
-    void setPrefix(const AtomicString&, ExceptionCode&) final;
+    ExceptionOr<void> setPrefix(const AtomicString&) final;
 
     String nodeName() const override;
 
@@ -267,25 +268,21 @@ public:
     virtual bool rendererIsNeeded(const RenderStyle&);
 
     WEBCORE_EXPORT ShadowRoot* shadowRoot() const;
-    WEBCORE_EXPORT RefPtr<ShadowRoot> createShadowRoot(ExceptionCode&);
+    ShadowRoot* shadowRootForBindings(JSC::ExecState&) const;
 
-    enum class ShadowRootMode { Open, Closed };
     struct ShadowRootInit {
         ShadowRootMode mode;
     };
-
-    ShadowRoot* shadowRootForBindings(JSC::ExecState&) const;
-    RefPtr<ShadowRoot> attachShadow(const ShadowRootInit&, ExceptionCode&);
+    ExceptionOr<ShadowRoot&> attachShadow(const ShadowRootInit&);
 
     ShadowRoot* userAgentShadowRoot() const;
     WEBCORE_EXPORT ShadowRoot& ensureUserAgentShadowRoot();
 
-#if ENABLE(CUSTOM_ELEMENTS)
     void setIsDefinedCustomElement(JSCustomElementInterface&);
     void setIsFailedCustomElement(JSCustomElementInterface&);
     void setIsCustomElementUpgradeCandidate();
-    JSCustomElementInterface* customElementInterface() const;
-#endif
+    void enqueueToUpgrade(JSCustomElementInterface&);
+    CustomElementReactionQueue* reactionQueue() const;
 
     // FIXME: this should not be virtual, do not override this.
     virtual const AtomicString& shadowPseudoId() const;
@@ -313,9 +310,9 @@ public:
     WEBCORE_EXPORT void setTabIndex(int);
     virtual Element* focusDelegate();
 
-    WEBCORE_EXPORT Element* insertAdjacentElement(const String& where, Element& newChild, ExceptionCode&);
-    WEBCORE_EXPORT void insertAdjacentHTML(const String& where, const String& html, ExceptionCode&);
-    WEBCORE_EXPORT void insertAdjacentText(const String& where, const String& text, ExceptionCode&);
+    WEBCORE_EXPORT ExceptionOr<Element*> insertAdjacentElement(const String& where, Element& newChild);
+    WEBCORE_EXPORT ExceptionOr<void> insertAdjacentHTML(const String& where, const String& html);
+    WEBCORE_EXPORT ExceptionOr<void> insertAdjacentText(const String& where, const String& text);
 
     bool ieForbidsInsertHTML() const;
 
@@ -378,8 +375,8 @@ public:
 
     WEBCORE_EXPORT String innerHTML() const;
     WEBCORE_EXPORT String outerHTML() const;
-    WEBCORE_EXPORT void setInnerHTML(const String&, ExceptionCode&);
-    WEBCORE_EXPORT void setOuterHTML(const String&, ExceptionCode&);
+    WEBCORE_EXPORT ExceptionOr<void> setInnerHTML(const String&);
+    WEBCORE_EXPORT ExceptionOr<void> setOuterHTML(const String&);
     WEBCORE_EXPORT String innerText();
     WEBCORE_EXPORT String outerText();
  
@@ -427,8 +424,8 @@ public:
     virtual bool matchesReadWritePseudoClass() const;
     virtual bool matchesIndeterminatePseudoClass() const;
     virtual bool matchesDefaultPseudoClass() const;
-    WEBCORE_EXPORT bool matches(const String& selectors, ExceptionCode&);
-    WEBCORE_EXPORT Element* closest(const String& selectors, ExceptionCode&);
+    WEBCORE_EXPORT ExceptionOr<bool> matches(const String& selectors);
+    WEBCORE_EXPORT ExceptionOr<Element*> closest(const String& selectors);
     virtual bool shouldAppearIndeterminate() const;
 
     WEBCORE_EXPORT DOMTokenList& classList();
@@ -477,7 +474,7 @@ public:
 #endif
 
 #if ENABLE(POINTER_LOCK)
-    void requestPointerLock();
+    WEBCORE_EXPORT void requestPointerLock();
 #endif
 
 #if ENABLE(INDIE_UI)
@@ -543,6 +540,26 @@ public:
     StyleResolver& styleResolver();
     ElementStyle resolveStyle(const RenderStyle* parentStyle);
 
+    // Invalidates the style of a single element. Style is resolved lazily.
+    // Descendant elements are resolved as needed, for example if an inherited property changes.
+    // This should be called whenever an element changes in a manner that can affect its style.
+    void invalidateStyle();
+
+    // As above but also call RenderElement::setStyle with StyleDifferenceRecompositeLayer flag for
+    // the element even when the style doesn't change. This is mostly needed by the animation code.
+    WEBCORE_EXPORT void invalidateStyleAndLayerComposition();
+
+    // Invalidate the element and all its descendants. This is used when there is some sort of change
+    // in the tree that may affect the style of any of the descendants and we don't know how to optimize
+    // the case to limit the scope. This is expensive and should be avoided.
+    void invalidateStyleForSubtree();
+
+    // Invalidates renderers for the element and all its descendants causing them to be torn down
+    // and rebuild during style resolution. Style is also recomputed. This is used in code dealing with
+    // custom (not style based) renderers. This is expensive and should be avoided.
+    // Elements newly added to the tree are also in this state.
+    void invalidateStyleAndRenderersForSubtree();
+
     bool hasDisplayContents() const;
     void setHasDisplayContents(bool);
 
@@ -558,6 +575,8 @@ public:
 #if ENABLE(WEB_ANIMATIONS)
     Vector<WebAnimation*> getAnimations();
 #endif
+
+    Element* findAnchorElementForLink(String& outAnchorName);
 
 protected:
     Element(const QualifiedName&, Document&, ConstructionType);
@@ -579,7 +598,7 @@ protected:
 
     void addShadowRoot(Ref<ShadowRoot>&&);
 
-    static void mergeWithNextTextNode(Text& node, ExceptionCode&);
+    static ExceptionOr<void> mergeWithNextTextNode(Text&);
 
 private:
     bool isTextNode() const;
@@ -617,7 +636,7 @@ private:
     void updateIdForDocument(HTMLDocument&, const AtomicString& oldId, const AtomicString& newId, HTMLDocumentNamedItemMapsUpdatingCondition);
     void updateLabel(TreeScope&, const AtomicString& oldForAttributeValue, const AtomicString& newForAttributeValue);
 
-    Node* insertAdjacent(const String& where, Ref<Node>&& newChild, ExceptionCode&);
+    ExceptionOr<Node*> insertAdjacent(const String& where, Ref<Node>&& newChild);
 
     void scrollByUnits(int units, ScrollGranularity);
 
@@ -808,7 +827,7 @@ inline void Element::setHasFocusWithin(bool flag)
         return;
     setFlag(flag, HasFocusWithin);
     if (styleAffectedByFocusWithin())
-        setNeedsStyleRecalc();
+        invalidateStyleForSubtree();
 }
 
 } // namespace WebCore
@@ -816,5 +835,3 @@ inline void Element::setHasFocusWithin(bool flag)
 SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::Element)
     static bool isType(const WebCore::Node& node) { return node.isElementNode(); }
 SPECIALIZE_TYPE_TRAITS_END()
-
-#endif

@@ -29,8 +29,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef AsyncFileStream_h
-#define AsyncFileStream_h
+#pragma once
 
 #include <functional>
 #include <wtf/Forward.h>
@@ -42,7 +41,7 @@ class FileStreamClient;
 class FileStream;
 class URL;
 
-class AsyncFileStream {
+class WEBCORE_EXPORT AsyncFileStream {
 public:
     explicit AsyncFileStream(FileStreamClient&);
     ~AsyncFileStream();
@@ -64,5 +63,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // AsyncFileStream_h

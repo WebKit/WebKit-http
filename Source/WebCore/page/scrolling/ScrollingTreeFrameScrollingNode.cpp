@@ -28,8 +28,11 @@
 
 #if ENABLE(ASYNC_SCROLLING)
 
+#include "FrameView.h"
+#include "Logging.h"
 #include "ScrollingStateTree.h"
 #include "ScrollingTree.h"
+#include "TextStream.h"
 
 namespace WebCore {
 
@@ -42,9 +45,9 @@ ScrollingTreeFrameScrollingNode::~ScrollingTreeFrameScrollingNode()
 {
 }
 
-void ScrollingTreeFrameScrollingNode::updateBeforeChildren(const ScrollingStateNode& stateNode)
+void ScrollingTreeFrameScrollingNode::commitStateBeforeChildren(const ScrollingStateNode& stateNode)
 {
-    ScrollingTreeScrollingNode::updateBeforeChildren(stateNode);
+    ScrollingTreeScrollingNode::commitStateBeforeChildren(stateNode);
     
     const ScrollingStateFrameScrollingNode& state = downcast<ScrollingStateFrameScrollingNode>(stateNode);
 
@@ -68,6 +71,15 @@ void ScrollingTreeFrameScrollingNode::updateBeforeChildren(const ScrollingStateN
 
     if (state.hasChangedProperty(ScrollingStateFrameScrollingNode::FixedElementsLayoutRelativeToFrame))
         m_fixedElementsLayoutRelativeToFrame = state.fixedElementsLayoutRelativeToFrame();
+
+    if (state.hasChangedProperty(ScrollingStateFrameScrollingNode::LayoutViewport))
+        m_layoutViewport = state.layoutViewport();
+
+    if (state.hasChangedProperty(ScrollingStateFrameScrollingNode::MinLayoutViewportOrigin))
+        m_minLayoutViewportOrigin = state.minLayoutViewportOrigin();
+
+    if (state.hasChangedProperty(ScrollingStateFrameScrollingNode::MaxLayoutViewportOrigin))
+        m_maxLayoutViewportOrigin = state.maxLayoutViewportOrigin();
 }
 
 void ScrollingTreeFrameScrollingNode::scrollBy(const FloatSize& delta)
@@ -86,10 +98,66 @@ void ScrollingTreeFrameScrollingNode::setScrollPosition(const FloatPoint& scroll
     setScrollPositionWithoutContentEdgeConstraints(newScrollPosition);
 }
 
+FloatRect ScrollingTreeFrameScrollingNode::layoutViewportForScrollPosition(const FloatPoint& visibleContentOrigin, float scale) const
+{
+    ASSERT(scrollingTree().visualViewportEnabled());
+
+    FloatSize visibleContentSize = scrollableAreaSize();
+#if PLATFORM(MAC)
+    // On Mac, FrameView.visibleContentRect(), which was used to set scrollableAreaSize(), returns a rect with scale applied (so it's not really a "content rect"),
+    // so we have to convert back to unscaled coordinates here.
+    visibleContentSize.scale(1 / scale);
+#else
+    UNUSED_PARAM(scale);
+#endif
+    FloatRect visualViewport(visibleContentOrigin, visibleContentSize);
+    LayoutRect layoutViewport(m_layoutViewport);
+
+    LOG_WITH_STREAM(Scrolling, stream << "\nScrolling thread: " << "(visibleContentOrigin " << visibleContentOrigin << ")");
+    LOG_WITH_STREAM(Scrolling, stream << "layoutViewport: " << layoutViewport);
+    LOG_WITH_STREAM(Scrolling, stream << "visualViewport: " << visualViewport);
+    LOG_WITH_STREAM(Scrolling, stream << "scroll positions: min: " << minLayoutViewportOrigin() << " max: "<< maxLayoutViewportOrigin());
+
+    LayoutPoint newLocation = FrameView::computeLayoutViewportOrigin(LayoutRect(visualViewport), LayoutPoint(minLayoutViewportOrigin()), LayoutPoint(maxLayoutViewportOrigin()), layoutViewport);
+
+    if (layoutViewport.location() != newLocation) {
+        layoutViewport.setLocation(newLocation);
+        LOG_WITH_STREAM(Scrolling, stream << " new layoutViewport " << layoutViewport);
+    }
+
+    return layoutViewport;
+}
+
 FloatSize ScrollingTreeFrameScrollingNode::viewToContentsOffset(const FloatPoint& scrollPosition) const
 {
     return toFloatSize(scrollPosition) - FloatSize(0, headerHeight() + topContentInset());
 }
+
+void ScrollingTreeFrameScrollingNode::dumpProperties(TextStream& ts, ScrollingStateTreeAsTextBehavior) const
+{
+    ts << "frame scrolling node";
+
+    ts.dumpProperty("layout viewport", m_layoutViewport);
+    ts.dumpProperty("min layoutViewport origin", m_minLayoutViewportOrigin);
+    ts.dumpProperty("max layoutViewport origin", m_maxLayoutViewportOrigin);
+
+    if (m_frameScaleFactor != 1)
+        ts.dumpProperty("frame scale factor", m_frameScaleFactor);
+    if (m_topContentInset)
+        ts.dumpProperty("top content inset", m_topContentInset);
+
+    if (m_headerHeight)
+        ts.dumpProperty("header height", m_headerHeight);
+    if (m_footerHeight)
+        ts.dumpProperty("footer height", m_footerHeight);
+    if (m_synchronousScrollingReasons)
+        ts.dumpProperty("synchronous scrolling reasons", ScrollingCoordinator::synchronousScrollingReasonsAsText(m_synchronousScrollingReasons));
+
+    ts.dumpProperty("behavior for fixed", m_behaviorForFixed);
+    if (m_fixedElementsLayoutRelativeToFrame)
+        ts.dumpProperty("fixed elements lay out relative to frame", m_fixedElementsLayoutRelativeToFrame);
+}
+
 
 } // namespace WebCore
 

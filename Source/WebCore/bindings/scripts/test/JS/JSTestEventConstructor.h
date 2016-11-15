@@ -44,7 +44,7 @@ public:
 
     static JSC::Structure* createStructure(JSC::VM& vm, JSC::JSGlobalObject* globalObject, JSC::JSValue prototype)
     {
-        return JSC::Structure::create(vm, globalObject, prototype, JSC::TypeInfo(JSC::ObjectType, StructureFlags), info());
+        return JSC::Structure::create(vm, globalObject, prototype, JSC::TypeInfo(JSC::JSType(JSEventType), StructureFlags), info());
     }
 
     static JSC::JSValue getConstructor(JSC::VM&, const JSC::JSGlobalObject*);
@@ -55,12 +55,7 @@ public:
 protected:
     JSTestEventConstructor(JSC::Structure*, JSDOMGlobalObject&, Ref<TestEventConstructor>&&);
 
-    void finishCreation(JSC::VM& vm)
-    {
-        Base::finishCreation(vm);
-        ASSERT(inherits(info()));
-    }
-
+    void finishCreation(JSC::VM&);
 };
 
 JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject*, TestEventConstructor&);
@@ -70,8 +65,9 @@ inline JSC::JSValue toJSNewlyCreated(JSC::ExecState* state, JSDOMGlobalObject* g
 
 template<> struct JSDOMWrapperConverterTraits<TestEventConstructor> {
     using WrapperClass = JSTestEventConstructor;
+    using ToWrappedReturnType = TestEventConstructor*;
 };
-template<> Optional<TestEventConstructor::Init> convertDictionary<TestEventConstructor::Init>(JSC::ExecState&, JSC::JSValue);
+template<> TestEventConstructor::Init convertDictionary<TestEventConstructor::Init>(JSC::ExecState&, JSC::JSValue);
 
 
 } // namespace WebCore

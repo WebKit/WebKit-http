@@ -48,6 +48,15 @@ PendingDownload::PendingDownload(NetworkLoadParameters&& parameters, DownloadID 
     send(Messages::DownloadProxy::DidStart(m_networkLoad->currentRequest(), suggestedName));
 }
 
+PendingDownload::PendingDownload(std::unique_ptr<NetworkLoad>&& networkLoad, DownloadID downloadID, const ResourceRequest& request, const ResourceResponse& response)
+    : m_networkLoad(WTFMove(networkLoad))
+{
+    m_networkLoad->setPendingDownloadID(downloadID);
+    send(Messages::DownloadProxy::DidStart(request, String()));
+
+    m_networkLoad->convertTaskToDownload(*this, request, response);
+}
+
 void PendingDownload::willSendRedirectedRequest(WebCore::ResourceRequest&&, WebCore::ResourceRequest&& redirectRequest, WebCore::ResourceResponse&& redirectResponse)
 {
     send(Messages::DownloadProxy::WillSendRequest(WTFMove(redirectRequest), WTFMove(redirectResponse)));
@@ -56,6 +65,13 @@ void PendingDownload::willSendRedirectedRequest(WebCore::ResourceRequest&&, WebC
 void PendingDownload::continueWillSendRequest(WebCore::ResourceRequest&& newRequest)
 {
     m_networkLoad->continueWillSendRequest(WTFMove(newRequest));
+}
+
+void PendingDownload::cancel()
+{
+    ASSERT(m_networkLoad);
+    m_networkLoad->cancel();
+    send(Messages::DownloadProxy::DidCancel({ }));
 }
 
 #if USE(PROTECTION_SPACE_AUTH_CALLBACK)
@@ -70,11 +86,6 @@ void PendingDownload::continueCanAuthenticateAgainstProtectionSpace(bool canAuth
 }
 #endif
 
-void PendingDownload::didBecomeDownload()
-{
-    m_networkLoad = nullptr;
-}
-    
 void PendingDownload::didFailLoading(const WebCore::ResourceError& error)
 {
     send(Messages::DownloadProxy::DidFail(error, { }));

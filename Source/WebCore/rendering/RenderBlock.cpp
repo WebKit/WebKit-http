@@ -33,7 +33,6 @@
 #include "FrameSelection.h"
 #include "FrameView.h"
 #include "GraphicsContext.h"
-#include "HTMLInputElement.h"
 #include "HTMLNames.h"
 #include "HitTestLocation.h"
 #include "HitTestResult.h"
@@ -68,6 +67,7 @@
 #include "RenderView.h"
 #include "Settings.h"
 #include "ShadowRoot.h"
+#include "ShapeOutsideInfo.h"
 #include <wtf/text/TextBreakIterator.h>
 #include "TransformState.h"
 
@@ -75,10 +75,6 @@
 #include <wtf/Optional.h>
 #include <wtf/StackStats.h>
 #include <wtf/TemporaryChange.h>
-
-#if ENABLE(CSS_SHAPES)
-#include "ShapeOutsideInfo.h"
-#endif
 
 using namespace WTF;
 using namespace Unicode;
@@ -427,20 +423,13 @@ static bool borderOrPaddingLogicalWidthChanged(const RenderStyle* oldStyle, cons
 
 void RenderBlock::styleDidChange(StyleDifference diff, const RenderStyle* oldStyle)
 {
-    auto& newStyle = style();
-
     bool hadTransform = hasTransform();
-    bool flowThreadContainingBlockInvalidated = false;
-    if (oldStyle && oldStyle->position() != newStyle.position()) {
-        invalidateFlowThreadContainingBlockIncludingDescendants();
-        flowThreadContainingBlockInvalidated = true;
-    }
-
     RenderBox::styleDidChange(diff, oldStyle);
 
-    if (hadTransform != hasTransform() && !flowThreadContainingBlockInvalidated)
-        invalidateFlowThreadContainingBlockIncludingDescendants();
+    if (hadTransform != hasTransform())
+        adjustFlowThreadStateOnContainingBlockChangeIfNeeded();
 
+    auto& newStyle = style();
     if (!isAnonymousBlock()) {
         // Ensure that all of our continuation blocks pick up the new style.
         for (RenderBlock* currCont = blockElementContinuation(); currCont; currCont = currCont->blockElementContinuation()) {
@@ -772,7 +761,7 @@ void RenderBlock::removeLeftoverAnonymousBlock(RenderBlock* child)
     child->m_next = 0;
 
     // Remove all the information in the flow thread associated with the leftover anonymous block.
-    child->removeFromRenderFlowThread();
+    child->resetFlowThreadStateOnRemoval();
 
     child->setParent(0);
     child->setPreviousSibling(0);
@@ -816,9 +805,6 @@ void RenderBlock::dropAnonymousBoxChild(RenderBlock& parent, RenderBlock& child)
 {
     parent.setNeedsLayoutAndPrefWidthsRecalc();
     parent.setChildrenInline(child.childrenInline());
-    if (auto* childFlowThread = child.flowThreadContainingBlock())
-        childFlowThread->removeFlowChildInfo(&child);
-
     RenderObject* nextSibling = child.nextSibling();
     parent.removeChildInternal(child, child.hasLayer() ? NotifyChildren : DontNotifyChildren);
     child.moveAllChildrenTo(&parent, nextSibling, child.hasLayer());
@@ -1343,9 +1329,14 @@ void RenderBlock::simplifiedNormalFlowLayout()
     }
 }
 
+bool RenderBlock::canPerformSimplifiedLayout() const
+{
+    return (posChildNeedsLayout() || needsSimplifiedNormalFlowLayout()) && !normalChildNeedsLayout() && !selfNeedsLayout();
+}
+
 bool RenderBlock::simplifiedLayout()
 {
-    if ((!posChildNeedsLayout() && !needsSimplifiedNormalFlowLayout()) || normalChildNeedsLayout() || selfNeedsLayout())
+    if (!canPerformSimplifiedLayout())
         return false;
 
     LayoutStateMaintainer statePusher(view(), *this, locationOffset(), hasTransform() || hasReflection() || style().isFlippedBlocksWritingMode());
@@ -2758,7 +2749,9 @@ void RenderBlock::computePreferredLogicalWidths()
 {
     ASSERT(preferredLogicalWidthsDirty());
 
-    updateFirstLetter();
+    // FIXME: Do not even try to reshuffle first letter renderers when we are not in layout
+    // until after webkit.org/b/163848 is fixed.
+    updateFirstLetter(view().frameView().isInRenderTreeLayout() ? RenderTreeMutationIsAllowed::Yes : RenderTreeMutationIsAllowed::No);
 
     m_minPreferredLogicalWidth = 0;
     m_maxPreferredLogicalWidth = 0;
@@ -3308,7 +3301,7 @@ void RenderBlock::getFirstLetter(RenderObject*& firstLetter, RenderElement*& fir
         firstLetterContainer = nullptr;
 }
 
-void RenderBlock::updateFirstLetter()
+void RenderBlock::updateFirstLetter(RenderTreeMutationIsAllowed mutationAllowedOrNot)
 {
     RenderObject* firstLetterObj;
     RenderElement* firstLetterContainer;
@@ -3329,6 +3322,8 @@ void RenderBlock::updateFirstLetter()
     if (!is<RenderText>(*firstLetterObj))
         return;
 
+    if (mutationAllowedOrNot != RenderTreeMutationIsAllowed::Yes)
+        return;
     // Our layout state is not valid for the repaints we are going to trigger by
     // adding and removing children of firstLetterContainer.
     LayoutStateDisabler layoutStateDisabler(view());
@@ -3378,6 +3373,28 @@ RenderFlowThread* RenderBlock::locateFlowThreadContainingBlock() const
 
     ASSERT(rareData->m_flowThreadContainingBlock.value() == RenderBox::locateFlowThreadContainingBlock());
     return rareData->m_flowThreadContainingBlock.value();
+}
+
+void RenderBlock::resetFlowThreadContainingBlockAndChildInfoIncludingDescendants()
+{
+    if (flowThreadState() == NotInsideFlowThread)
+        return;
+
+    if (cachedFlowThreadContainingBlockNeedsUpdate())
+        return;
+
+    auto* flowThread = cachedFlowThreadContainingBlock();
+    setCachedFlowThreadContainingBlockNeedsUpdate();
+
+    if (flowThread)
+        flowThread->removeFlowChildInfo(*this);
+
+    for (auto& child : childrenOfType<RenderElement>(*this)) {
+        if (flowThread)
+            flowThread->removeFlowChildInfo(child);
+        if (is<RenderBlock>(child))
+            downcast<RenderBlock>(child).resetFlowThreadContainingBlockAndChildInfoIncludingDescendants();
+    }
 }
 
 LayoutUnit RenderBlock::paginationStrut() const
@@ -3597,9 +3614,8 @@ RenderRegion* RenderBlock::regionAtBlockOffset(LayoutUnit blockOffset) const
     return flowThread->regionAtBlockOffset(this, offsetFromLogicalTopOfFirstPage() + blockOffset, true);
 }
 
-static bool canComputeRegionRangeForBox(const RenderBlock* parentBlock, const RenderBox& childBox, const RenderFlowThread* flowThreadContainingBlock)
+static bool canComputeRegionRangeForBox(const RenderBlock& parentBlock, const RenderBox& childBox, const RenderFlowThread* flowThreadContainingBlock)
 {
-    ASSERT(parentBlock);
     ASSERT(!childBox.isRenderNamedFlowThread());
 
     if (!flowThreadContainingBlock)
@@ -3629,7 +3645,7 @@ bool RenderBlock::childBoxIsUnsplittableForFragmentation(const RenderBox& child)
 void RenderBlock::computeRegionRangeForBoxChild(const RenderBox& box) const
 {
     RenderFlowThread* flowThread = flowThreadContainingBlock();
-    ASSERT(canComputeRegionRangeForBox(this, box, flowThread));
+    ASSERT(canComputeRegionRangeForBox(*this, box, flowThread));
 
     RenderRegion* startRegion;
     RenderRegion* endRegion;
@@ -3641,13 +3657,13 @@ void RenderBlock::computeRegionRangeForBoxChild(const RenderBox& box) const
         endRegion = flowThread->regionAtBlockOffset(this, offsetFromLogicalTopOfFirstRegion + logicalHeightForChild(box), true);
     }
 
-    flowThread->setRegionRangeForBox(&box, startRegion, endRegion);
+    flowThread->setRegionRangeForBox(box, startRegion, endRegion);
 }
 
 void RenderBlock::estimateRegionRangeForBoxChild(const RenderBox& box) const
 {
     RenderFlowThread* flowThread = flowThreadContainingBlock();
-    if (!canComputeRegionRangeForBox(this, box, flowThread))
+    if (!canComputeRegionRangeForBox(*this, box, flowThread))
         return;
 
     if (childBoxIsUnsplittableForFragmentation(box)) {
@@ -3662,13 +3678,13 @@ void RenderBlock::estimateRegionRangeForBoxChild(const RenderBox& box) const
     RenderRegion* startRegion = flowThread->regionAtBlockOffset(this, offsetFromLogicalTopOfFirstRegion, true);
     RenderRegion* endRegion = flowThread->regionAtBlockOffset(this, offsetFromLogicalTopOfFirstRegion + estimatedValues.m_extent, true);
 
-    flowThread->setRegionRangeForBox(&box, startRegion, endRegion);
+    flowThread->setRegionRangeForBox(box, startRegion, endRegion);
 }
 
 bool RenderBlock::updateRegionRangeForBoxChild(const RenderBox& box) const
 {
     RenderFlowThread* flowThread = flowThreadContainingBlock();
-    if (!canComputeRegionRangeForBox(this, box, flowThread))
+    if (!canComputeRegionRangeForBox(*this, box, flowThread))
         return false;
 
     RenderRegion* startRegion = nullptr;

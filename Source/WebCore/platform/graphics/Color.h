@@ -32,6 +32,7 @@
 #include <cmath>
 #include <unicode/uchar.h>
 #include <wtf/Forward.h>
+#include <wtf/HashFunctions.h>
 #include <wtf/Optional.h>
 #include <wtf/text/LChar.h>
 
@@ -141,7 +142,32 @@ public:
     WEBCORE_EXPORT explicit Color(const String&);
     explicit Color(const char*);
 
-    // FIXME: Add constructor for ExtendedColor type.
+    explicit Color(WTF::HashTableDeletedValueType)
+    {
+        static_assert(deletedHashValue & invalidRGBAColor, "Color's deleted hash value must not look like an ExtendedColor");
+        static_assert(!(deletedHashValue & validRGBAColorBit), "Color's deleted hash value must not look like a valid RGBA32 Color");
+        static_assert(deletedHashValue & (1 << 4), "Color's deleted hash value must have some bits set that an RGBA32 Color wouldn't have");
+        m_colorData.rgbaAndFlags = deletedHashValue;
+        ASSERT(!isExtended());
+    }
+
+    bool isHashTableDeletedValue() const
+    {
+        return m_colorData.rgbaAndFlags == deletedHashValue;
+    }
+
+    explicit Color(WTF::HashTableEmptyValueType)
+    {
+        static_assert(emptyHashValue & invalidRGBAColor, "Color's empty hash value must not look like an ExtendedColor");
+        static_assert(emptyHashValue & (1 << 4), "Color's deleted hash value must have some bits set that an RGBA32 Color wouldn't have");
+        m_colorData.rgbaAndFlags = emptyHashValue;
+        ASSERT(!isExtended());
+    }
+
+    // This creates an ExtendedColor.
+    // FIXME: If the colorSpace is sRGB and the values can all be
+    // converted exactly to integers, we should make a normal Color.
+    WEBCORE_EXPORT Color(float r, float g, float b, float a, ColorSpace colorSpace);
 
     Color(RGBA, ColorSpace);
     WEBCORE_EXPORT Color(const Color&);
@@ -164,26 +190,28 @@ public:
     // <https://html.spec.whatwg.org/multipage/scripting.html#fill-and-stroke-styles> (10 September 2015)
     WEBCORE_EXPORT String serialized() const;
 
-    String cssText() const;
+    WEBCORE_EXPORT String cssText() const;
 
     // Returns the color serialized as either #RRGGBB or #RRGGBBAA
-    // The latter format is not a valid CSS color, and should only be seen in DRT dumps.
     String nameForRenderTreeAsText() const;
 
-    void setNamedColor(const String&);
+    bool isValid() const { return isExtended() || (m_colorData.rgbaAndFlags & validRGBAColorBit); }
 
-    bool isValid() const { return m_colorData.rgbaAndFlags & validRGBAColorBit; }
-
-    bool hasAlpha() const { return alpha() < 255; }
+    bool isOpaque() const { return isValid() && (isExtended() ? asExtended().alpha() == 1.0 : alpha() == 255); }
+    bool isVisible() const { return isValid() && (isExtended() ? asExtended().alpha() > 0.0 : alpha() > 0); }
 
     int red() const { return redChannel(rgb()); }
     int green() const { return greenChannel(rgb()); }
     int blue() const { return blueChannel(rgb()); }
     int alpha() const { return alphaChannel(rgb()); }
-    
-    RGBA32 rgb() const { ASSERT(!isExtended()); return static_cast<RGBA32>(m_colorData.rgbaAndFlags >> 32); }
-    void setRGB(int r, int g, int b) { setRGB(makeRGB(r, g, b)); }
-    void setRGB(RGBA32);
+
+    float alphaAsFloat() const { return isExtended() ? asExtended().alpha() : static_cast<float>(alphaChannel(rgb())) / 255; }
+
+    RGBA32 rgb() const;
+
+    // FIXME: Like operator==, this will give different values for ExtendedColors that
+    // should be identical, since the respective pointer will be different.
+    unsigned hash() const { return WTF::intHash(m_colorData.rgbaAndFlags); }
 
     WEBCORE_EXPORT void getRGBA(float& r, float& g, float& b, float& a) const;
     WEBCORE_EXPORT void getRGBA(double& r, double& g, double& b, double& a) const;
@@ -198,6 +226,12 @@ public:
     // This is an implementation of Porter-Duff's "source-over" equation
     Color blend(const Color&) const;
     Color blendWithWhite() const;
+
+    Color colorWithAlphaMultipliedBy(float) const;
+
+    // Returns a color that has the same RGB values, but with the given A.
+    Color colorWithAlpha(float) const;
+    Color opaqueColor() const { return colorWithAlpha(1.0f); }
 
 #if PLATFORM(GTK)
     Color(const GdkColor&);
@@ -230,6 +264,7 @@ public:
     static const RGBA32 lightGray = 0xFFC0C0C0;
     WEBCORE_EXPORT static const RGBA32 transparent = 0x00000000;
     static const RGBA32 cyan = 0xFF00FFFF;
+    static const RGBA32 yellow = 0xFFFFFF00;
 
 #if PLATFORM(IOS)
     static const RGBA32 compositionFill = 0x3CAFC0E3;
@@ -238,14 +273,19 @@ public:
 #endif
 
     WEBCORE_EXPORT bool isExtended() const;
-    WEBCORE_EXPORT ExtendedColor* asExtended() const;
+    WEBCORE_EXPORT ExtendedColor& asExtended() const;
 
     WEBCORE_EXPORT Color& operator=(const Color&);
     WEBCORE_EXPORT Color& operator=(Color&&);
 
     friend bool operator==(const Color& a, const Color& b);
 
+    static bool isBlackColor(const Color&);
+    static bool isWhiteColor(const Color&);
+
 private:
+    void setRGB(int r, int g, int b) { setRGB(makeRGB(r, g, b)); }
+    void setRGB(RGBA32);
 
     // 0x_______00 is an ExtendedColor pointer.
     // 0x_______01 is an invalid RGBA32.
@@ -255,8 +295,10 @@ private:
     static const uint64_t validRGBAColorBit = 0x2;
     static const uint64_t validRGBAColor = 0x3;
 
+    static const uint64_t deletedHashValue = 0xFFFFFFFFFFFFFFFD;
+    static const uint64_t emptyHashValue = 0xFFFFFFFFFFFFFFFB;
+
     WEBCORE_EXPORT void tagAsValid();
-    void tagAsExtended();
 
     union {
         uint64_t rgbaAndFlags { invalidRGBAColor };
@@ -264,6 +306,8 @@ private:
     } m_colorData;
 };
 
+// FIXME: These do not work for ExtendedColor because
+// they become just pointer comparison.
 bool operator==(const Color&, const Color&);
 bool operator!=(const Color&, const Color&);
 
@@ -365,6 +409,14 @@ inline RGBA32 colorWithOverrideAlpha(RGBA32 color, Optional<float> overrideAlpha
     return overrideAlpha ? colorWithOverrideAlpha(color, overrideAlpha.value()) : color;
 }
 
+inline RGBA32 Color::rgb() const
+{
+    // FIXME: We should ASSERT(!isExtended()) here, or produce
+    // an RGBA32 equivalent for an ExtendedColor. Ideally the former,
+    // so we can audit all the rgb() call sites to handle extended.
+    return static_cast<RGBA32>(m_colorData.rgbaAndFlags >> 32);
+}
+
 inline void Color::setRGB(RGBA32 rgb)
 {
     m_colorData.rgbaAndFlags = static_cast<uint64_t>(rgb) << 32;
@@ -372,5 +424,25 @@ inline void Color::setRGB(RGBA32 rgb)
 }
 
 WEBCORE_EXPORT TextStream& operator<<(TextStream&, const Color&);
+
+inline bool Color::isBlackColor(const Color& color)
+{
+    if (color.isExtended()) {
+        const ExtendedColor& extendedColor = color.asExtended();
+        return !extendedColor.red() && !extendedColor.green() && !extendedColor.blue() && extendedColor.alpha() == 1;
+    }
+
+    return color.isValid() && color.rgb() == Color::black;
+}
+
+inline bool Color::isWhiteColor(const Color& color)
+{
+    if (color.isExtended()) {
+        const ExtendedColor& extendedColor = color.asExtended();
+        return extendedColor.red() == 1 && extendedColor.green() == 1 && extendedColor.blue() == 1 && extendedColor.alpha() == 1;
+    }
+    
+    return color.isValid() && color.rgb() == Color::white;
+}
 
 } // namespace WebCore

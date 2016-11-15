@@ -27,8 +27,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef AccessibilityObject_h
-#define AccessibilityObject_h
+#pragma once
 
 #include "FloatQuad.h"
 #include "HTMLTextFormControlElement.h"
@@ -78,15 +77,12 @@ class AXObjectCache;
 class Element;
 class Frame;
 class FrameView;
-class HTMLAnchorElement;
-class HTMLAreaElement;
 class IntPoint;
 class IntSize;
 class MainFrame;
 class Node;
 class Page;
 class RenderObject;
-class RenderListItem;
 class ScrollableArea;
 class ScrollView;
 class Widget;
@@ -160,6 +156,7 @@ enum AccessibilityRole {
     ListBoxOptionRole,
     ListItemRole,
     ListMarkerRole,
+    MarkRole,
     MathElementRole,
     MatteRole,
     MenuRole,
@@ -497,7 +494,8 @@ public:
     bool isWebArea() const { return roleValue() == WebAreaRole; }
     virtual bool isCheckbox() const { return roleValue() == CheckBoxRole; }
     virtual bool isRadioButton() const { return roleValue() == RadioButtonRole; }
-    virtual bool isListBox() const { return roleValue() == ListBoxRole; }
+    virtual bool isNativeListBox() const { return false; }
+    bool isListBox() const { return roleValue() == ListBoxRole; }
     virtual bool isListBoxOption() const { return false; }
     virtual bool isAttachment() const { return false; }
     virtual bool isMediaTimeline() const { return false; }
@@ -561,6 +559,8 @@ public:
     bool isSubscriptStyleGroup() const;
     bool isSuperscriptStyleGroup() const;
     bool isFigure() const;
+    bool isSummary() const { return roleValue() == SummaryRole; }
+    bool isOutput() const;
     
     virtual bool isChecked() const { return false; }
     virtual bool isEnabled() const { return false; }
@@ -1042,6 +1042,7 @@ public:
 #if PLATFORM(IOS)
     int accessibilityPasswordFieldLength();
     bool hasTouchEventListener() const;
+    bool isInputTypePopupButton() const;
 #endif
     
     // allows for an AccessibilityObject to update its render tree or perform
@@ -1061,6 +1062,8 @@ public:
     AccessibilityObject* focusableAncestor();
     AccessibilityObject* editableAncestor();
     AccessibilityObject* highestEditableAncestor();
+    
+    static const AccessibilityObject* matchedParent(const AccessibilityObject&, bool includeSelf, const std::function<bool(const AccessibilityObject&)>&);
     
 protected:
     AXID m_id;
@@ -1117,5 +1120,3 @@ inline void AccessibilityObject::updateBackingStore() { }
 SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::ToValueTypeName) \
     static bool isType(const WebCore::AccessibilityObject& object) { return object.predicate; } \
 SPECIALIZE_TYPE_TRAITS_END()
-
-#endif // AccessibilityObject_h

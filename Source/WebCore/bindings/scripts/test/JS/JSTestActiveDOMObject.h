@@ -54,12 +54,7 @@ public:
 protected:
     JSTestActiveDOMObject(JSC::Structure*, JSDOMGlobalObject&, Ref<TestActiveDOMObject>&&);
 
-    void finishCreation(JSC::VM& vm)
-    {
-        Base::finishCreation(vm);
-        ASSERT(inherits(info()));
-    }
-
+    void finishCreation(JSC::VM&);
 };
 
 class JSTestActiveDOMObjectOwner : public JSC::WeakHandleOwner {
@@ -86,6 +81,7 @@ inline JSC::JSValue toJSNewlyCreated(JSC::ExecState* state, JSDOMGlobalObject* g
 
 template<> struct JSDOMWrapperConverterTraits<TestActiveDOMObject> {
     using WrapperClass = JSTestActiveDOMObject;
+    using ToWrappedReturnType = TestActiveDOMObject*;
 };
 
 } // namespace WebCore

@@ -29,8 +29,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef GridLength_h
-#define GridLength_h
+#pragma once
 
 #if ENABLE(CSS_GRID_LAYOUT)
 
@@ -72,6 +71,7 @@ public:
     }
 
     bool isContentSized() const { return m_type == LengthType && (m_length.isAuto() || m_length.isMinContent() || m_length.isMaxContent()); }
+    bool isAuto() const { return m_type == LengthType && m_length.isAuto(); }
 
 private:
     // Ideally we would put the 2 following fields in a union, but Length has a constructor,
@@ -87,6 +87,4 @@ private:
 
 } // namespace WebCore
 
-#endif /* ENABLE(CSS_GRID_LAYOUT) */
-
-#endif // GridLength_h
+#endif // ENABLE(CSS_GRID_LAYOUT)

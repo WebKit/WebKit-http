@@ -28,9 +28,10 @@ VPATH = \
     $(JavaScriptCore) \
     $(JavaScriptCore)/parser \
     $(JavaScriptCore)/runtime \
-	$(JavaScriptCore)/interpreter \
-	$(JavaScriptCore)/jit \
-	$(JavaScriptCore)/builtins \
+    $(JavaScriptCore)/interpreter \
+    $(JavaScriptCore)/jit \
+    $(JavaScriptCore)/builtins \
+    $(JavaScriptCore)/wasm/js \
 #
 
 PYTHON = python
@@ -62,6 +63,8 @@ all : \
     RegExpJitTables.h \
     AirOpcode.h \
     YarrCanonicalizeUnicode.cpp \
+    WasmOps.h \
+    WasmValidateInlines.h \
 #
 
 # JavaScript builtins.
@@ -88,6 +91,7 @@ JavaScriptCore_BUILTINS_SOURCES = \
     $(JavaScriptCore)/builtins/ArrayConstructor.js \
     $(JavaScriptCore)/builtins/ArrayIteratorPrototype.js \
     $(JavaScriptCore)/builtins/ArrayPrototype.js \
+    $(JavaScriptCore)/builtins/AsyncFunctionPrototype.js \
     $(JavaScriptCore)/builtins/DatePrototype.js \
     $(JavaScriptCore)/builtins/FunctionPrototype.js \
     $(JavaScriptCore)/builtins/GeneratorPrototype.js \
@@ -95,6 +99,7 @@ JavaScriptCore_BUILTINS_SOURCES = \
     $(JavaScriptCore)/builtins/GlobalOperations.js \
     $(JavaScriptCore)/builtins/InspectorInstrumentationObject.js \
     $(JavaScriptCore)/builtins/InternalPromiseConstructor.js \
+    $(JavaScriptCore)/builtins/IteratorHelpers.js \
     $(JavaScriptCore)/builtins/IteratorPrototype.js \
     $(JavaScriptCore)/builtins/MapPrototype.js \
     $(JavaScriptCore)/builtins/ModuleLoaderPrototype.js \
@@ -159,6 +164,19 @@ OBJECT_LUT_HEADERS = \
     StringPrototype.lut.h \
     SymbolConstructor.lut.h \
     SymbolPrototype.lut.h \
+    WebAssemblyCompileErrorConstructor.lut.h \
+    WebAssemblyCompileErrorPrototype.lut.h \
+    WebAssemblyInstanceConstructor.lut.h \
+    WebAssemblyInstancePrototype.lut.h \
+    WebAssemblyMemoryConstructor.lut.h \
+    WebAssemblyMemoryPrototype.lut.h \
+    WebAssemblyModuleConstructor.lut.h \
+    WebAssemblyModulePrototype.lut.h \
+    WebAssemblyPrototype.lut.h \
+    WebAssemblyRuntimeErrorConstructor.lut.h \
+    WebAssemblyRuntimeErrorPrototype.lut.h \
+    WebAssemblyTableConstructor.lut.h \
+    WebAssemblyTablePrototype.lut.h \
 #
 
 $(OBJECT_LUT_HEADERS): %.lut.h : %.cpp $(JavaScriptCore)/create_hash_table
@@ -209,6 +227,7 @@ INSPECTOR_DOMAINS = \
     $(JavaScriptCore)/inspector/protocol/Runtime.json \
     $(JavaScriptCore)/inspector/protocol/ScriptProfiler.json \
     $(JavaScriptCore)/inspector/protocol/Timeline.json \
+    $(JavaScriptCore)/inspector/protocol/Worker.json \
 #
 
 ifeq ($(findstring ENABLE_INDEXED_DATABASE,$(FEATURE_DEFINES)), ENABLE_INDEXED_DATABASE)
@@ -280,6 +299,12 @@ AirOpcode.h: $(JavaScriptCore)/b3/air/opcode_generator.rb $(JavaScriptCore)/b3/a
 
 YarrCanonicalizeUnicode.cpp: $(JavaScriptCore)/generateYarrCanonicalizeUnicode $(JavaScriptCore)/ucd/CaseFolding.txt
 	$(PYTHON) $(JavaScriptCore)/generateYarrCanonicalizeUnicode $(JavaScriptCore)/ucd/CaseFolding.txt ./YarrCanonicalizeUnicode.cpp
+
+WasmOps.h: $(JavaScriptCore)/wasm/generateWasmOpsHeader.py $(JavaScriptCore)/wasm/generateWasm.py $(JavaScriptCore)/wasm/wasm.json
+	$(PYTHON) $(JavaScriptCore)/wasm/generateWasmOpsHeader.py $(JavaScriptCore)/wasm/wasm.json ./WasmOps.h
+
+WasmValidateInlines.h: $(JavaScriptCore)/wasm/generateWasmValidateInlinesHeader.py $(JavaScriptCore)/wasm/generateWasm.py $(JavaScriptCore)/wasm/wasm.json
+	$(PYTHON) $(JavaScriptCore)/wasm/generateWasmValidateInlinesHeader.py $(JavaScriptCore)/wasm/wasm.json ./WasmValidateInlines.h
 
 # Dynamically-defined targets are listed below. Static targets belong up top.
 

@@ -43,12 +43,15 @@
 #include "DFGJITCode.h"
 #include "DFGWorklist.h"
 #include "Debugger.h"
+#include "EvalCodeBlock.h"
+#include "FunctionCodeBlock.h"
 #include "FunctionExecutableDump.h"
 #include "GetPutInfo.h"
 #include "InlineCallFrame.h"
 #include "Interpreter.h"
 #include "JIT.h"
 #include "JITMathIC.h"
+#include "JSCInlines.h"
 #include "JSCJSValue.h"
 #include "JSFunction.h"
 #include "JSLexicalEnvironment.h"
@@ -57,10 +60,11 @@
 #include "LLIntEntrypoint.h"
 #include "LLIntPrototypeLoadAdaptiveStructureWatchpoint.h"
 #include "LowLevelInterpreter.h"
-#include "JSCInlines.h"
+#include "ModuleProgramCodeBlock.h"
 #include "PCToCodeOriginMap.h"
 #include "PolymorphicAccess.h"
 #include "ProfilerDatabase.h"
+#include "ProgramCodeBlock.h"
 #include "ReduceWhitespace.h"
 #include "Repatch.h"
 #include "SlotVisitorInlines.h"
@@ -70,6 +74,8 @@
 #include "TypeProfiler.h"
 #include "UnlinkedInstructionStream.h"
 #include "VMInlines.h"
+#include "WebAssemblyCodeBlock.h"
+#include "WebAssemblyExecutable.h"
 #include <wtf/BagToHashMap.h>
 #include <wtf/CommaPrinter.h>
 #include <wtf/SimpleStats.h>
@@ -95,65 +101,6 @@ const ClassInfo CodeBlock::s_info = {
     "CodeBlock", 0, 0,
     CREATE_METHOD_TABLE(CodeBlock)
 };
-
-const ClassInfo FunctionCodeBlock::s_info = {
-    "FunctionCodeBlock", &Base::s_info, 0,
-    CREATE_METHOD_TABLE(FunctionCodeBlock)
-};
-
-#if ENABLE(WEBASSEMBLY)
-const ClassInfo WebAssemblyCodeBlock::s_info = {
-    "WebAssemblyCodeBlock", &Base::s_info, 0,
-    CREATE_METHOD_TABLE(WebAssemblyCodeBlock)
-};
-#endif
-
-const ClassInfo GlobalCodeBlock::s_info = {
-    "GlobalCodeBlock", &Base::s_info, 0,
-    CREATE_METHOD_TABLE(GlobalCodeBlock)
-};
-
-const ClassInfo ProgramCodeBlock::s_info = {
-    "ProgramCodeBlock", &Base::s_info, 0,
-    CREATE_METHOD_TABLE(ProgramCodeBlock)
-};
-
-const ClassInfo ModuleProgramCodeBlock::s_info = {
-    "ModuleProgramCodeBlock", &Base::s_info, 0,
-    CREATE_METHOD_TABLE(ModuleProgramCodeBlock)
-};
-
-const ClassInfo EvalCodeBlock::s_info = {
-    "EvalCodeBlock", &Base::s_info, 0,
-    CREATE_METHOD_TABLE(EvalCodeBlock)
-};
-
-void FunctionCodeBlock::destroy(JSCell* cell)
-{
-    jsCast<FunctionCodeBlock*>(cell)->~FunctionCodeBlock();
-}
-
-#if ENABLE(WEBASSEMBLY)
-void WebAssemblyCodeBlock::destroy(JSCell* cell)
-{
-    jsCast<WebAssemblyCodeBlock*>(cell)->~WebAssemblyCodeBlock();
-}
-#endif
-
-void ProgramCodeBlock::destroy(JSCell* cell)
-{
-    jsCast<ProgramCodeBlock*>(cell)->~ProgramCodeBlock();
-}
-
-void ModuleProgramCodeBlock::destroy(JSCell* cell)
-{
-    jsCast<ModuleProgramCodeBlock*>(cell)->~ModuleProgramCodeBlock();
-}
-
-void EvalCodeBlock::destroy(JSCell* cell)
-{
-    jsCast<EvalCodeBlock*>(cell)->~EvalCodeBlock();
-}
 
 CString CodeBlock::inferredName() const
 {
@@ -826,6 +773,14 @@ void CodeBlock::dumpBytecode(
             printLocationOpAndRegisterOperand(out, exec, location, it, "argument_count", r0);
             break;
         }
+        case op_get_argument: {
+            int r0 = (++it)->u.operand;
+            int index = (++it)->u.operand;
+            printLocationOpAndRegisterOperand(out, exec, location, it, "argument", r0);
+            out.printf(", %d", index);
+            dumpValueProfiling(out, it, hasPrintedProfiling);
+            break;
+        }
         case op_create_rest: {
             int r0 = (++it)->u.operand;
             int r1 = (++it)->u.operand;
@@ -881,6 +836,30 @@ void CodeBlock::dumpBytecode(
             printLocationAndOp(out, exec, location, it, "new_array");
             out.printf("%s, %s, %d", registerName(dst).data(), registerName(argv).data(), argc);
             ++it; // Skip array allocation profile.
+            break;
+        }
+        case op_new_array_with_spread: {
+            int dst = (++it)->u.operand;
+            int argv = (++it)->u.operand;
+            int argc = (++it)->u.operand;
+            printLocationAndOp(out, exec, location, it, "new_array_with_spread");
+            out.printf("%s, %s, %d, ", registerName(dst).data(), registerName(argv).data(), argc);
+            unsigned bitVectorIndex = (++it)->u.unsignedValue;
+            const BitVector& bitVector = m_unlinkedCode->bitVector(bitVectorIndex);
+            out.print("BitVector:", bitVectorIndex, ":");
+            for (unsigned i = 0; i < static_cast<unsigned>(argc); i++) {
+                if (bitVector.get(i))
+                    out.print("1");
+                else
+                    out.print("0");
+            }
+            break;
+        }
+        case op_spread: {
+            int dst = (++it)->u.operand;
+            int arg = (++it)->u.operand;
+            printLocationAndOp(out, exec, location, it, "spread");
+            out.printf("%s, %s", registerName(dst).data(), registerName(arg).data());
             break;
         }
         case op_new_array_with_size: {
@@ -999,6 +978,7 @@ void CodeBlock::dumpBytecode(
         }
         case op_negate: {
             printUnaryOp(out, exec, location, it, "negate");
+            ++it; // op_negate has an extra operand for the ArithProfile.
             break;
         }
         case op_add: {
@@ -1463,6 +1443,14 @@ void CodeBlock::dumpBytecode(
             out.printf("%s, %s, f%d", registerName(r0).data(), registerName(r1).data(), f0);
             break;
         }
+        case op_new_async_func: {
+            int r0 = (++it)->u.operand;
+            int r1 = (++it)->u.operand;
+            int f0 = (++it)->u.operand;
+            printLocationAndOp(out, exec, location, it, "new_async_func");
+            out.printf("%s, %s, f%d", registerName(r0).data(), registerName(r1).data(), f0);
+            break;
+        }
         case op_new_func_exp: {
             int r0 = (++it)->u.operand;
             int r1 = (++it)->u.operand;
@@ -1476,6 +1464,14 @@ void CodeBlock::dumpBytecode(
             int r1 = (++it)->u.operand;
             int f0 = (++it)->u.operand;
             printLocationAndOp(out, exec, location, it, "new_generator_func_exp");
+            out.printf("%s, %s, f%d", registerName(r0).data(), registerName(r1).data(), f0);
+            break;
+        }
+        case op_new_async_func_exp: {
+            int r0 = (++it)->u.operand;
+            int r1 = (++it)->u.operand;
+            int f0 = (++it)->u.operand;
+            printLocationAndOp(out, exec, location, it, "new_async_func_exp");
             out.printf("%s, %s, f%d", registerName(r0).data(), registerName(r1).data(), f0);
             break;
         }
@@ -2107,7 +2103,8 @@ void CodeBlock::finishCreation(VM& vm, ScriptExecutable* ownerExecutable, Unlink
         case op_try_get_by_id:
         case op_get_by_val_with_this:
         case op_get_from_arguments:
-        case op_to_number: {
+        case op_to_number:
+        case op_get_argument: {
             linkValueProfile(i, opLength);
             break;
         }
@@ -2342,6 +2339,13 @@ void CodeBlock::finishCreation(VM& vm, ScriptExecutable* ownerExecutable, Unlink
             break;
         }
 
+        case op_create_rest: {
+            int numberOfArgumentsToSkip = instructions[i + 3].u.operand;
+            ASSERT_UNUSED(numberOfArgumentsToSkip, numberOfArgumentsToSkip >= 0);
+            ASSERT_WITH_MESSAGE(numberOfArgumentsToSkip == numParameters() - 1, "We assume that this is true when rematerializing the rest parameter during OSR exit in the FTL JIT.");
+            break;
+        }
+
         default:
             break;
         }
@@ -2504,7 +2508,7 @@ CodeBlock* CodeBlock::specialOSREntryBlockOrNull()
 
 void CodeBlock::visitWeakly(SlotVisitor& visitor)
 {
-    bool setByMe = m_visitWeaklyHasBeenCalled.compareExchangeStrong(false, true);
+    bool setByMe = !m_visitWeaklyHasBeenCalled.compareExchangeStrong(false, true);
     if (!setByMe)
         return;
 
@@ -2582,8 +2586,11 @@ void CodeBlock::visitChildren(SlotVisitor& visitor)
 
     if (m_jitCode)
         visitor.reportExtraMemoryVisited(m_jitCode->size());
-    if (m_instructions.size())
-        visitor.reportExtraMemoryVisited(m_instructions.size() * sizeof(Instruction) / m_instructions.refCount());
+    if (m_instructions.size()) {
+        unsigned refCount = m_instructions.refCount();
+        RELEASE_ASSERT(refCount);
+        visitor.reportExtraMemoryVisited(m_instructions.size() * sizeof(Instruction) / refCount);
+    }
 
     stronglyVisitStrongReferences(visitor);
     stronglyVisitWeakReferences(visitor);
@@ -3474,7 +3481,7 @@ void CodeBlock::jettison(Profiler::JettisonReason reason, ReoptimizationMode mod
         // This accomplishes (1), and does its own book-keeping about whether it has already happened.
         if (!jitCode()->dfgCommon()->invalidate()) {
             // We've already been invalidated.
-            RELEASE_ASSERT(this != replacement() || (m_vm->heap.isCollecting() && !Heap::isMarked(ownerScriptExecutable())));
+            RELEASE_ASSERT(this != replacement() || (m_vm->heap.isCurrentThreadBusy() && !Heap::isMarked(ownerScriptExecutable())));
             return;
         }
     }
@@ -3506,7 +3513,7 @@ void CodeBlock::jettison(Profiler::JettisonReason reason, ReoptimizationMode mod
 
     // Jettison can happen during GC. We don't want to install code to a dead executable
     // because that would add a dead object to the remembered set.
-    if (m_vm->heap.isCollecting() && !Heap::isMarked(ownerScriptExecutable()))
+    if (m_vm->heap.isCurrentThreadBusy() && !Heap::isMarked(ownerScriptExecutable()))
         return;
 
     // This accomplishes (2).

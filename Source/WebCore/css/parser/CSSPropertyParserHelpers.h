@@ -27,9 +27,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-
-#ifndef CSSPropertyParserHelpers_h
-#define CSSPropertyParserHelpers_h
+#pragma once
 
 #include "CSSCustomIdentValue.h"
 #include "CSSParserMode.h"
@@ -71,7 +69,7 @@ RefPtr<CSSPrimitiveValue> consumeIdentRange(CSSParserTokenRange&, CSSValueID low
 template<CSSValueID, CSSValueID...> inline bool identMatches(CSSValueID id);
 template<CSSValueID... allowedIdents> RefPtr<CSSPrimitiveValue> consumeIdent(CSSParserTokenRange&);
 
-RefPtr<CSSCustomIdentValue> consumeCustomIdent(CSSParserTokenRange&);
+RefPtr<CSSPrimitiveValue> consumeCustomIdent(CSSParserTokenRange&);
 RefPtr<CSSPrimitiveValue> consumeString(CSSParserTokenRange&);
 StringView consumeUrlAsStringView(CSSParserTokenRange&);
 RefPtr<CSSPrimitiveValue> consumeUrl(CSSParserTokenRange&);
@@ -114,5 +112,3 @@ static inline bool isCSSWideKeyword(const CSSValueID& id)
 } // namespace CSSPropertyParserHelpers
 
 } // namespace WebCore
-
-#endif // CSSPropertyParserHelpers_h

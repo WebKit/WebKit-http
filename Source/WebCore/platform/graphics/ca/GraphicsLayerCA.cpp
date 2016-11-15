@@ -786,6 +786,7 @@ bool GraphicsLayerCA::setBackdropFilters(const FilterOperations& filterOperation
         // FIXME: This would clear the backdrop filters if we had a software implementation.
         clearBackdropFilters();
     }
+
     noteLayerPropertyChanged(BackdropFiltersChanged);
     return canCompositeFilters;
 }
@@ -1003,7 +1004,7 @@ void GraphicsLayerCA::setContentsToSolidColor(const Color& color)
     
     bool contentsLayerChanged = false;
 
-    if (m_contentsSolidColor.isValid() && m_contentsSolidColor.alpha()) {
+    if (m_contentsSolidColor.isVisible()) {
         if (!m_contentsLayer || m_contentsLayerPurpose != ContentsLayerForBackgroundColor) {
             m_contentsLayerPurpose = ContentsLayerForBackgroundColor;
             m_contentsLayer = createPlatformCALayer(PlatformCALayer::LayerTypeLayer, this);
@@ -1970,6 +1971,7 @@ void GraphicsLayerCA::updateBackdropFilters()
         return;
     }
 
+    bool madeLayer = !m_backdropLayer;
     if (!m_backdropLayer) {
         m_backdropLayer = createPlatformCALayer(PlatformCALayer::LayerTypeBackdropLayer, this);
         m_backdropLayer->setAnchorPoint(FloatPoint3D());
@@ -1986,6 +1988,9 @@ void GraphicsLayerCA::updateBackdropFilters()
             cloneLayer->setFilters(m_backdropFilters);
         }
     }
+
+    if (madeLayer)
+        updateBackdropFiltersRect();
 }
 
 void GraphicsLayerCA::updateBackdropFiltersRect()
@@ -2066,6 +2071,7 @@ void GraphicsLayerCA::ensureStructuralLayer(StructuralLayerPurpose purpose)
         | BackfaceVisibilityChanged
         | FiltersChanged
         | BackdropFiltersChanged
+        | MaskLayerChanged
         | OpacityChanged;
 
     if (purpose == NoStructuralLayer) {
@@ -2329,7 +2335,7 @@ void GraphicsLayerCA::updateContentsImage()
         // but then what if the layer size changes?
         m_contentsLayer->setMinificationFilter(PlatformCALayer::Trilinear);
         m_contentsLayer->setContents(m_pendingContentsImage.get());
-        m_pendingContentsImage = 0;
+        m_pendingContentsImage = nullptr;
 
         if (m_contentsLayerClones) {
             LayerMap::const_iterator end = m_contentsLayerClones->end();
@@ -3405,7 +3411,7 @@ String GraphicsLayerCA::replayDisplayListAsText(DisplayList::AsTextFlags flags) 
 {
     auto it = layerDisplayListMap().find(this);
     if (it != layerDisplayListMap().end()) {
-        TextStream stream;
+        TextStream stream(TextStream::LineMode::MultipleLine, TextStream::Formatting::SVGStyleRect);
         
         TextStream::GroupScope scope(stream);
         stream.dumpProperty("clip", it->value.first);

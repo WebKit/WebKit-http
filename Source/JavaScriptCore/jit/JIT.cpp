@@ -238,6 +238,7 @@ void JIT::privateCompileMainPass()
         DEFINE_OP(op_create_direct_arguments)
         DEFINE_OP(op_create_scoped_arguments)
         DEFINE_OP(op_create_cloned_arguments)
+        DEFINE_OP(op_get_argument)
         DEFINE_OP(op_argument_count)
         DEFINE_OP(op_create_rest)
         DEFINE_OP(op_get_rest_length)
@@ -295,10 +296,14 @@ void JIT::privateCompileMainPass()
         DEFINE_OP(op_new_array)
         DEFINE_OP(op_new_array_with_size)
         DEFINE_OP(op_new_array_buffer)
+        DEFINE_OP(op_new_array_with_spread)
+        DEFINE_OP(op_spread)
         DEFINE_OP(op_new_func)
         DEFINE_OP(op_new_func_exp)
         DEFINE_OP(op_new_generator_func)
         DEFINE_OP(op_new_generator_func_exp)
+        DEFINE_OP(op_new_async_func)
+        DEFINE_OP(op_new_async_func_exp)
         DEFINE_OP(op_new_object)
         DEFINE_OP(op_new_regexp)
         DEFINE_OP(op_not)
@@ -760,8 +765,9 @@ CompilationResult JIT::link()
     for (unsigned i = 0; i < m_callCompilationInfo.size(); ++i) {
         CallCompilationInfo& compilationInfo = m_callCompilationInfo[i];
         CallLinkInfo& info = *compilationInfo.callLinkInfo;
-        info.setCallLocations(patchBuffer.locationOfNearCall(compilationInfo.callReturnLocation),
-            patchBuffer.locationOf(compilationInfo.hotPathBegin),
+        info.setCallLocations(
+            CodeLocationLabel(patchBuffer.locationOfNearCall(compilationInfo.callReturnLocation)),
+            CodeLocationLabel(patchBuffer.locationOf(compilationInfo.hotPathBegin)),
             patchBuffer.locationOfNearCall(compilationInfo.hotPathOther));
     }
 

@@ -41,7 +41,7 @@ private:
     // DrawingAreaProxy
     void deviceScaleFactorDidChange() override;
     void sizeDidChange() override;
-    void waitForPossibleGeometryUpdate(std::chrono::milliseconds timeout = didUpdateBackingStoreStateTimeout()) override;
+    void waitForPossibleGeometryUpdate(Seconds timeout = didUpdateBackingStoreStateTimeout()) override;
     void colorSpaceDidChange() override;
     void minimumLayoutSizeDidChange() override;
 
@@ -52,7 +52,7 @@ private:
     void adjustTransientZoom(double scale, WebCore::FloatPoint origin) override;
     void commitTransientZoom(double scale, WebCore::FloatPoint origin) override;
 
-    void waitForDidUpdateViewState() override;
+    void waitForDidUpdateActivityState() override;
     void dispatchAfterEnsuringDrawing(std::function<void (CallbackBase::Error)>) override;
 
     void willSendUpdateGeometry() override;

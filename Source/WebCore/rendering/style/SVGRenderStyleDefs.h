@@ -26,8 +26,7 @@
     Boston, MA 02110-1301, USA.
 */
 
-#ifndef SVGRenderStyleDefs_h
-#define SVGRenderStyleDefs_h
+#pragma once
 
 #include "Length.h"
 #include "SVGLength.h"
@@ -55,10 +54,6 @@ namespace WebCore {
     };
     enum EShapeRendering {
         SR_AUTO, SR_OPTIMIZESPEED, SR_CRISPEDGES, SR_GEOMETRICPRECISION
-    };
-
-    enum SVGWritingMode {
-        WM_LRTB, WM_LR, WM_RLTB, WM_RL, WM_TBRL, WM_TB
     };
 
     enum EGlyphOrientation {
@@ -315,5 +310,3 @@ namespace WebCore {
     };
 
 } // namespace WebCore
-
-#endif // SVGRenderStyleDefs_h

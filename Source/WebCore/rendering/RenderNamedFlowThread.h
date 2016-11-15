@@ -23,9 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-
-#ifndef RenderNamedFlowThread_h
-#define RenderNamedFlowThread_h
+#pragma once
 
 #include "RenderFlowThread.h"
 #include "SelectionSubtreeRoot.h"
@@ -52,15 +50,6 @@ public:
     const AtomicString& flowThreadName() const;
 
     const RenderRegionList& invalidRenderRegionList() const { return m_invalidRegionList; }
-
-    RenderElement* nextRendererForElement(Element&) const;
-
-    void addFlowChild(RenderElement&);
-    void removeFlowChild(RenderElement&);
-    bool hasChildren() const { return !m_flowThreadChildList.isEmpty(); }
-#ifndef NDEBUG
-    bool hasChild(RenderElement& child) const { return m_flowThreadChildList.contains(&child); }
-#endif
 
     static RenderBlock* fragmentFromRenderBoxAsRenderBlock(RenderBox*, const IntPoint& absolutePoint, const RenderBox& flowedBox);
 
@@ -91,9 +80,9 @@ public:
     bool hasRegionsWithStyling() const { return m_hasRegionsWithStyling; }
     void checkRegionsWithStyling();
 
-    void clearRenderObjectCustomStyle(const RenderElement*);
+    void clearRenderObjectCustomStyle(const RenderElement&);
 
-    void removeFlowChildInfo(RenderElement*) override;
+    void removeFlowChildInfo(RenderElement&) override;
 
     LayoutUnit flowContentBottom() const { return m_flowContentBottom; }
     void dispatchNamedFlowEvents();
@@ -141,9 +130,6 @@ private:
     // easy to sort the order of threads layout.
     RenderNamedFlowThreadCountedSet m_layoutBeforeThreadsSet;
 
-    // Holds the sorted children of a named flow. This is the only way we can get the ordering right.
-    ListHashSet<RenderElement*> m_flowThreadChildList;
-
     NamedFlowContentElements m_contentElements;
 
     RenderRegionList m_invalidRegionList;
@@ -162,5 +148,3 @@ private:
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_RENDER_OBJECT(RenderNamedFlowThread, isRenderNamedFlowThread())
-
-#endif // RenderNamedFlowThread_h

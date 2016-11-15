@@ -241,7 +241,7 @@ void FileInputType::setValue(const String&, bool, TextFieldEventBehavior)
     // FIXME: Should we clear the file list, or replace it with a new empty one here? This is observable from JavaScript through custom properties.
     m_fileList->clear();
     m_icon = nullptr;
-    element().setNeedsStyleRecalc();
+    element().invalidateStyleForSubtree();
 }
 
 PassRefPtr<FileList> FileInputType::createFileList(const Vector<FileChooserFileInfo>& files) const
@@ -261,7 +261,7 @@ bool FileInputType::isFileUpload() const
 void FileInputType::createShadowSubtree()
 {
     ASSERT(element().shadowRoot());
-    element().userAgentShadowRoot()->appendChild(element().multiple() ? UploadButtonElement::createForMultiple(element().document()): UploadButtonElement::create(element().document()), IGNORE_EXCEPTION);
+    element().userAgentShadowRoot()->appendChild(element().multiple() ? UploadButtonElement::createForMultiple(element().document()): UploadButtonElement::create(element().document()));
 }
 
 void FileInputType::disabledAttributeChanged()

@@ -22,8 +22,7 @@
  *
  */
 
-#ifndef BorderValue_h
-#define BorderValue_h
+#pragma once
 
 #include "Color.h"
 #include "RenderStyleConstants.h"
@@ -46,7 +45,7 @@ public:
 
     bool isTransparent() const
     {
-        return m_color.isValid() && !m_color.alpha();
+        return m_color.isValid() && !m_color.isVisible();
     }
 
     bool isVisible(bool checkStyle = true) const
@@ -85,5 +84,3 @@ protected:
 };
 
 } // namespace WebCore
-
-#endif // BorderValue_h

@@ -17,8 +17,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef SVGAnimatedEnumerationPropertyTearOff_h
-#define SVGAnimatedEnumerationPropertyTearOff_h
+#pragma once
 
 #include "SVGAnimatedStaticPropertyTearOff.h"
 #include "SVGException.h"
@@ -49,14 +48,12 @@ public:
         return animVal;
     }
 
-    void setBaseVal(const unsigned& property, ExceptionCode& ec) final
+    ExceptionOr<void> setBaseVal(const unsigned& property) final
     {
         // All SVG enumeration values, that are allowed to be set via SVG DOM start with 1, 0 corresponds to unknown and is not settable through SVG DOM.
-        if (!property || property > SVGIDLEnumLimits<EnumType>::highestExposedEnumValue()) {
-            ec = SVGException::SVG_INVALID_VALUE_ERR;
-            return;
-        }
-        SVGAnimatedStaticPropertyTearOff<unsigned>::setBaseVal(property, ec);
+        if (!property || property > SVGIDLEnumLimits<EnumType>::highestExposedEnumValue())
+            return Exception { SVGException::SVG_INVALID_VALUE_ERR };
+        return SVGAnimatedStaticPropertyTearOff<unsigned>::setBaseVal(property);
     }
 
     static Ref<SVGAnimatedEnumerationPropertyTearOff<EnumType>> create(SVGElement* contextElement, const QualifiedName& attributeName, AnimatedPropertyType animatedPropertyType, EnumType& property)
@@ -85,6 +82,4 @@ private:
 template<typename EnumType>
 unsigned SVGAnimatedEnumerationPropertyTearOff<EnumType>::m_outOfRangeEnumValue = 0;
 
-}
-
-#endif // SVGAnimatedEnumerationPropertyTearOff_h
+} // namespace WebCore

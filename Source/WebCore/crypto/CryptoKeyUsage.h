@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef CryptoKeyUsage_h
-#define CryptoKeyUsage_h
+#pragma once
 
 #if ENABLE(SUBTLE_CRYPTO)
 
@@ -41,9 +40,20 @@ enum {
     CryptoKeyUsageUnwrapKey = 1 << 7
 };
 
-typedef int CryptoKeyUsage;
+typedef int CryptoKeyUsageBitmap;
 
-}
+// Only for binding purpose.
+enum class CryptoKeyUsage {
+    Encrypt,
+    Decrypt,
+    Sign,
+    Verify,
+    DeriveKey,
+    DeriveBits,
+    WrapKey,
+    UnwrapKey
+};
+
+} // namespace WebCore
 
 #endif // ENABLE(SUBTLE_CRYPTO)
-#endif // CryptoKeyUsage_h

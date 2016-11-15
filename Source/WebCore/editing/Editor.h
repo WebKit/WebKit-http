@@ -36,6 +36,7 @@
 #include "FindOptions.h"
 #include "FrameSelection.h"
 #include "TextChecking.h"
+#include "TextEventInputType.h"
 #include "TextIteratorBehavior.h"
 #include "VisibleSelection.h"
 #include "WritingDirection.h"
@@ -68,6 +69,7 @@ class SharedBuffer;
 class Font;
 class SpellCheckRequest;
 class SpellChecker;
+class StaticRange;
 class StyleProperties;
 class Text;
 class TextCheckerClient;
@@ -199,7 +201,7 @@ public:
     void applyParagraphStyleToSelection(StyleProperties*, EditAction);
 
     // Returns whether or not we should proceed with editing.
-    bool willApplyEditing(CompositeEditCommand&) const;
+    bool willApplyEditing(CompositeEditCommand&, Vector<RefPtr<StaticRange>>&&) const;
     bool willUnapplyEditing(const EditCommandComposition&) const;
     bool willReapplyEditing(const EditCommandComposition&) const;
 
@@ -238,7 +240,7 @@ public:
     Command command(const String& commandName, EditorCommandSource);
     WEBCORE_EXPORT static bool commandIsSupportedFromMenuOrKeyBinding(const String& commandName); // Works without a frame.
 
-    WEBCORE_EXPORT bool insertText(const String&, Event* triggeringEvent);
+    WEBCORE_EXPORT bool insertText(const String&, Event* triggeringEvent, TextEventInputType = TextEventInputKeyboard);
     bool insertTextForConfirmedComposition(const String& text);
     WEBCORE_EXPORT bool insertDictatedText(const String&, const Vector<DictationAlternative>& dictationAlternatives, Event* triggeringEvent);
     bool insertTextWithoutSendingTextEvent(const String&, bool selectInsertedText, TextEvent* triggeringEvent);
@@ -388,6 +390,7 @@ public:
 
     WEBCORE_EXPORT IntRect firstRectForRange(Range*) const;
 
+    void selectionWillChange();
     void respondToChangedSelection(const VisibleSelection& oldSelection, FrameSelection::SetSelectionOptions);
     WEBCORE_EXPORT void updateEditorUINowIfScheduled();
     bool shouldChangeSelection(const VisibleSelection& oldSelection, const VisibleSelection& newSelection, EAffinity, bool stillSelecting) const;
@@ -474,6 +477,9 @@ public:
     RefPtr<Range> rangeForTextCheckingResult(const TextCheckingResult&) const;
     bool isHandlingAcceptedCandidate() const { return m_isHandlingAcceptedCandidate; }
 
+    void setIsGettingDictionaryPopupInfo(bool b) { m_isGettingDictionaryPopupInfo = b; }
+    bool isGettingDictionaryPopupInfo() const { return m_isGettingDictionaryPopupInfo; }
+
 private:
     class WebContentReader;
 
@@ -508,9 +514,11 @@ private:
 
 #if PLATFORM(COCOA)
     RefPtr<SharedBuffer> selectionInWebArchiveFormat();
+    String selectionInHTMLFormat();
     RefPtr<SharedBuffer> imageInWebArchiveFormat(Element&);
     RefPtr<Range> adjustedSelectionRange();
     RefPtr<DocumentFragment> createFragmentForImageResourceAndAddResource(RefPtr<ArchiveResource>&&);
+    Ref<DocumentFragment> createFragmentForImageAndURL(const String&);
     RefPtr<DocumentFragment> createFragmentAndAddResources(NSAttributedString *);
     FragmentAndResources createFragment(NSAttributedString *);
     void fillInUserVisibleForm(PasteboardURL&);
@@ -548,6 +556,8 @@ private:
     Timer m_telephoneNumberDetectionUpdateTimer;
     Vector<RefPtr<Range>> m_detectedTelephoneNumberRanges;
 #endif
+
+    bool m_isGettingDictionaryPopupInfo { false };
 };
 
 inline void Editor::setStartNewKillRingSequence(bool flag)

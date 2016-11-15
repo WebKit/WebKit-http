@@ -30,8 +30,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef InputType_h
-#define InputType_h
+#pragma once
 
 #include "HTMLTextFormControlElement.h"
 #include "RenderPtr.h"
@@ -65,8 +64,6 @@ class TouchEvent;
 class TextControlInnerTextElement;
 
 struct InputElementClickState;
-
-typedef int ExceptionCode;
 
 // An InputType object represents the type-specific part of an HTMLInputElement.
 // Do not expose instances of InputType and classes derived from it to classes
@@ -131,10 +128,10 @@ public:
     virtual String fallbackValue() const; // Checked last, if both internal storage and value attribute are missing.
     virtual String defaultValue() const; // Checked after even fallbackValue, only when the valueWithDefault function is called.
     virtual double valueAsDate() const;
-    virtual void setValueAsDate(double, ExceptionCode&) const;
+    virtual ExceptionOr<void> setValueAsDate(double) const;
     virtual double valueAsDouble() const;
-    virtual void setValueAsDouble(double, TextFieldEventBehavior, ExceptionCode&) const;
-    virtual void setValueAsDecimal(const Decimal&, TextFieldEventBehavior, ExceptionCode&) const;
+    virtual ExceptionOr<void> setValueAsDouble(double, TextFieldEventBehavior) const;
+    virtual ExceptionOr<void> setValueAsDecimal(const Decimal&, TextFieldEventBehavior) const;
 
     // Validation functions.
 
@@ -157,7 +154,7 @@ public:
     bool stepMismatch(const String&) const;
     virtual bool getAllowedValueStep(Decimal*) const;
     virtual StepRange createStepRange(AnyStepHandling) const;
-    virtual void stepUp(int, ExceptionCode&);
+    virtual ExceptionOr<void> stepUp(int);
     virtual void stepUpFromRenderer(int);
     virtual String badInputText() const;
     virtual String typeMismatchText() const;
@@ -258,7 +255,7 @@ public:
     virtual bool supportsReadOnly() const;
     virtual void updateInnerTextValue();
     virtual void updatePlaceholderText();
-    virtual void attributeChanged();
+    virtual void attributeChanged(const QualifiedName&);
     virtual void multipleAttributeChanged();
     virtual void disabledAttributeChanged();
     virtual void readonlyAttributeChanged();
@@ -318,12 +315,10 @@ protected:
 
 private:
     // Helper for stepUp()/stepDown(). Adds step value * count to the current value.
-    void applyStep(int count, AnyStepHandling, TextFieldEventBehavior, ExceptionCode&);
+    ExceptionOr<void> applyStep(int count, AnyStepHandling, TextFieldEventBehavior);
 
     // Raw pointer because the HTMLInputElement object owns this InputType object.
     HTMLInputElement& m_element;
 };
 
 } // namespace WebCore
-
-#endif

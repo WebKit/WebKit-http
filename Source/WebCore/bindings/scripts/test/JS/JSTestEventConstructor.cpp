@@ -21,19 +21,16 @@
 #include "config.h"
 #include "JSTestEventConstructor.h"
 
-#include "ExceptionCode.h"
 #include "JSDOMBinding.h"
 #include "JSDOMConstructor.h"
-#include "URL.h"
 #include <runtime/Error.h>
-#include <runtime/JSString.h>
 #include <wtf/GetPtr.h>
 
 using namespace JSC;
 
 namespace WebCore {
 
-template<> Optional<TestEventConstructor::Init> convertDictionary<TestEventConstructor::Init>(ExecState& state, JSValue value)
+template<> TestEventConstructor::Init convertDictionary<TestEventConstructor::Init>(ExecState& state, JSValue value)
 {
     VM& vm = state.vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);
@@ -41,44 +38,44 @@ template<> Optional<TestEventConstructor::Init> convertDictionary<TestEventConst
     auto* object = isNullOrUndefined ? nullptr : value.getObject();
     if (UNLIKELY(!isNullOrUndefined && !object)) {
         throwTypeError(&state, throwScope);
-        return Nullopt;
+        return { };
     }
     if (UNLIKELY(object && object->type() == RegExpObjectType)) {
         throwTypeError(&state, throwScope);
-        return Nullopt;
+        return { };
     }
     TestEventConstructor::Init result;
     JSValue bubblesValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "bubbles"));
     if (!bubblesValue.isUndefined()) {
         result.bubbles = convert<IDLBoolean>(state, bubblesValue);
-        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+        RETURN_IF_EXCEPTION(throwScope, { });
     } else
         result.bubbles = false;
     JSValue cancelableValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "cancelable"));
     if (!cancelableValue.isUndefined()) {
         result.cancelable = convert<IDLBoolean>(state, cancelableValue);
-        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+        RETURN_IF_EXCEPTION(throwScope, { });
     } else
         result.cancelable = false;
     JSValue composedValue = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "composed"));
     if (!composedValue.isUndefined()) {
         result.composed = convert<IDLBoolean>(state, composedValue);
-        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+        RETURN_IF_EXCEPTION(throwScope, { });
     } else
         result.composed = false;
     JSValue attr2Value = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "attr2"));
     if (!attr2Value.isUndefined()) {
         result.attr2 = convert<IDLDOMString>(state, attr2Value);
-        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+        RETURN_IF_EXCEPTION(throwScope, { });
     } else
         result.attr2 = "";
     JSValue attr3Value = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "attr3"));
     if (!attr3Value.isUndefined()) {
         result.attr3 = convert<IDLDOMString>(state, attr3Value);
-        RETURN_IF_EXCEPTION(throwScope, Nullopt);
+        RETURN_IF_EXCEPTION(throwScope, { });
     } else
         result.attr3 = "";
-    return WTFMove(result);
+    return result;
 }
 
 // Attributes
@@ -127,11 +124,11 @@ template<> EncodedJSValue JSC_HOST_CALL JSTestEventConstructorConstructor::const
     ASSERT(castedThis);
     if (UNLIKELY(state->argumentCount() < 1))
         return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
-    auto type = state->uncheckedArgument(0).toWTFString(state);
+    auto type = convert<IDLDOMString>(*state, state->uncheckedArgument(0), StringConversionConfiguration::Normal);
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
     auto eventInitDict = convert<IDLDictionary<TestEventConstructor::Init>>(*state, state->argument(1));
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
-    auto object = TestEventConstructor::create(WTFMove(type), eventInitDict.value());
+    auto object = TestEventConstructor::create(WTFMove(type), WTFMove(eventInitDict));
     return JSValue::encode(toJSNewlyCreated(state, castedThis->globalObject(), WTFMove(object)));
 }
 
@@ -178,6 +175,13 @@ JSTestEventConstructor::JSTestEventConstructor(Structure* structure, JSDOMGlobal
 {
 }
 
+void JSTestEventConstructor::finishCreation(VM& vm)
+{
+    Base::finishCreation(vm);
+    ASSERT(inherits(info()));
+
+}
+
 JSObject* JSTestEventConstructor::createPrototype(VM& vm, JSGlobalObject* globalObject)
 {
     return JSTestEventConstructorPrototype::create(vm, globalObject, JSTestEventConstructorPrototype::createStructure(vm, globalObject, JSEvent::prototype(vm, globalObject)));
@@ -190,7 +194,7 @@ JSObject* JSTestEventConstructor::prototype(VM& vm, JSGlobalObject* globalObject
 
 template<> inline JSTestEventConstructor* BindingCaller<JSTestEventConstructor>::castForAttribute(ExecState&, EncodedJSValue thisValue)
 {
-    return jsDynamicCast<JSTestEventConstructor*>(JSValue::decode(thisValue));
+    return jsDynamicDowncast<JSTestEventConstructor*>(JSValue::decode(thisValue));
 }
 
 static inline JSValue jsTestEventConstructorAttr1Getter(ExecState&, JSTestEventConstructor&, ThrowScope& throwScope);
@@ -205,7 +209,7 @@ static inline JSValue jsTestEventConstructorAttr1Getter(ExecState& state, JSTest
     UNUSED_PARAM(throwScope);
     UNUSED_PARAM(state);
     auto& impl = thisObject.wrapped();
-    JSValue result = jsStringWithCache(&state, impl.attr1());
+    JSValue result = toJS<IDLDOMString>(state, impl.attr1());
     return result;
 }
 
@@ -221,7 +225,7 @@ static inline JSValue jsTestEventConstructorAttr2Getter(ExecState& state, JSTest
     UNUSED_PARAM(throwScope);
     UNUSED_PARAM(state);
     auto& impl = thisObject.wrapped();
-    JSValue result = jsStringWithCache(&state, impl.attr2());
+    JSValue result = toJS<IDLDOMString>(state, impl.attr2());
     return result;
 }
 
@@ -238,7 +242,7 @@ static inline JSValue jsTestEventConstructorAttr3Getter(ExecState& state, JSTest
     UNUSED_PARAM(throwScope);
     UNUSED_PARAM(state);
     auto& impl = thisObject.wrapped();
-    JSValue result = jsStringWithCache(&state, impl.attr3());
+    JSValue result = toJS<IDLDOMString>(state, impl.attr3());
     return result;
 }
 
@@ -248,7 +252,7 @@ EncodedJSValue jsTestEventConstructorConstructor(ExecState* state, EncodedJSValu
 {
     VM& vm = state->vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);
-    JSTestEventConstructorPrototype* domObject = jsDynamicCast<JSTestEventConstructorPrototype*>(JSValue::decode(thisValue));
+    JSTestEventConstructorPrototype* domObject = jsDynamicDowncast<JSTestEventConstructorPrototype*>(JSValue::decode(thisValue));
     if (UNLIKELY(!domObject))
         return throwVMTypeError(state, throwScope);
     return JSValue::encode(JSTestEventConstructor::getConstructor(state->vm(), domObject->globalObject()));
@@ -259,7 +263,7 @@ bool setJSTestEventConstructorConstructor(ExecState* state, EncodedJSValue thisV
     VM& vm = state->vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);
     JSValue value = JSValue::decode(encodedValue);
-    JSTestEventConstructorPrototype* domObject = jsDynamicCast<JSTestEventConstructorPrototype*>(JSValue::decode(thisValue));
+    JSTestEventConstructorPrototype* domObject = jsDynamicDowncast<JSTestEventConstructorPrototype*>(JSValue::decode(thisValue));
     if (UNLIKELY(!domObject)) {
         throwVMTypeError(state, throwScope);
         return false;

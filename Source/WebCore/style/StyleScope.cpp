@@ -71,9 +71,25 @@ Scope::Scope(ShadowRoot& shadowRoot)
 {
 }
 
+Scope::~Scope()
+{
+}
+
+bool Scope::shouldUseSharedUserAgentShadowTreeStyleResolver() const
+{
+    if (!m_shadowRoot)
+        return false;
+    if (m_shadowRoot->mode() != ShadowRootMode::UserAgent)
+        return false;
+    // If we have stylesheets in the user agent shadow tree use per-scope resolver.
+    if (!m_styleSheetCandidateNodes.isEmpty())
+        return false;
+    return true;
+}
+
 StyleResolver& Scope::resolver()
 {
-    if (m_shadowRoot && m_shadowRoot->mode() == ShadowRoot::Mode::UserAgent)
+    if (shouldUseSharedUserAgentShadowTreeStyleResolver())
         return m_document.userAgentShadowTreeStyleResolver();
 
     if (!m_resolver) {
@@ -85,7 +101,7 @@ StyleResolver& Scope::resolver()
 
 StyleResolver* Scope::resolverIfExists()
 {
-    if (m_shadowRoot && m_shadowRoot->mode() == ShadowRoot::Mode::UserAgent)
+    if (shouldUseSharedUserAgentShadowTreeStyleResolver())
         return &m_document.userAgentShadowTreeStyleResolver();
 
     return m_resolver.get();
@@ -106,6 +122,22 @@ Scope& Scope::forNode(Node& node)
     if (shadowRoot)
         return shadowRoot->styleScope();
     return node.document().styleScope();
+}
+
+void Scope::setPreferredStylesheetSetName(const String& name)
+{
+    if (m_preferredStylesheetSetName == name)
+        return;
+    m_preferredStylesheetSetName = name;
+    didChangeActiveStyleSheetCandidates();
+}
+
+void Scope::setSelectedStylesheetSetName(const String& name)
+{
+    if (m_selectedStylesheetSetName == name)
+        return;
+    m_selectedStylesheetSetName = name;
+    didChangeActiveStyleSheetCandidates();
 }
 
 // This method is called whenever a top-level stylesheet has finished loading.
@@ -129,7 +161,7 @@ void Scope::removePendingSheet(RemovePendingSheetNotificationType notification)
         return;
     }
 
-    didChangeCandidatesForActiveSet();
+    didChangeActiveStyleSheetCandidates();
 
     if (!m_shadowRoot)
         m_document.didRemoveAllPendingStylesheet();
@@ -171,7 +203,7 @@ void Scope::addStyleSheetCandidateNode(Node& node, bool createdByParser)
 void Scope::removeStyleSheetCandidateNode(Node& node)
 {
     if (m_styleSheetCandidateNodes.remove(&node))
-        scheduleActiveSetUpdate();
+        didChangeActiveStyleSheetCandidates();
 }
 
 void Scope::collectActiveStyleSheets(Vector<RefPtr<StyleSheet>>& sheets)
@@ -326,19 +358,17 @@ static void filterEnabledNonemptyCSSStyleSheets(Vector<RefPtr<CSSStyleSheet>>& r
 
 void Scope::updateActiveStyleSheets(UpdateType updateType)
 {
-    ASSERT(!m_pendingUpdateType);
+    ASSERT(!m_pendingUpdate);
+
+    if (!m_document.hasLivingRenderTree())
+        return;
 
     if (m_document.inStyleRecalc() || m_document.inRenderTreeUpdate()) {
         // Protect against deleting style resolver in the middle of a style resolution.
         // Crash stacks indicate we can get here when a resource load fails synchronously (for example due to content blocking).
         // FIXME: These kind of cases should be eliminated and this path replaced by an assert.
-        m_pendingUpdateType = UpdateType::ContentsOrInterpretation;
+        m_pendingUpdate = UpdateType::ContentsOrInterpretation;
         m_document.scheduleForcedStyleRecalc();
-        return;
-    }
-
-    if (!m_document.hasLivingRenderTree()) {
-        clearResolver();
         return;
     }
 
@@ -377,10 +407,19 @@ void Scope::updateActiveStyleSheets(UpdateType updateType)
             m_usesStyleBasedEditability = true;
     }
 
+    // FIXME: Move this code somewhere else.
     if (requiresFullStyleRecalc) {
         if (m_shadowRoot) {
             for (auto& shadowChild : childrenOfType<Element>(*m_shadowRoot))
-                shadowChild.setNeedsStyleRecalc();
+                shadowChild.invalidateStyleForSubtree();
+            if (m_shadowRoot->host()) {
+                if (!resolver().ruleSets().authorStyle().hostPseudoClassRules().isEmpty())
+                    m_shadowRoot->host()->invalidateStyle();
+                if (!resolver().ruleSets().authorStyle().slottedPseudoElementRules().isEmpty()) {
+                    for (auto& shadowChild : childrenOfType<Element>(*m_shadowRoot->host()))
+                        shadowChild.invalidateStyle();
+                }
+            }
         } else
             m_document.scheduleForcedStyleRecalc();
     }
@@ -406,7 +445,7 @@ void Scope::updateStyleResolver(Vector<RefPtr<CSSStyleSheet>>& activeStyleSheets
     }
 }
 
-const Vector<RefPtr<CSSStyleSheet>> Scope::activeStyleSheetsForInspector() const
+const Vector<RefPtr<CSSStyleSheet>> Scope::activeStyleSheetsForInspector()
 {
     Vector<RefPtr<CSSStyleSheet>> result;
 
@@ -437,53 +476,76 @@ bool Scope::activeStyleSheetsContains(const CSSStyleSheet* sheet) const
     return m_weakCopyOfActiveStyleSheetListForFastLookup->contains(sheet);
 }
 
-void Scope::flushPendingUpdate()
+void Scope::flushPendingSelfUpdate()
 {
-    if (!m_pendingUpdateType)
-        return;
-    auto updateType = *m_pendingUpdateType;
+    ASSERT(m_pendingUpdate);
+
+    auto updateType = *m_pendingUpdate;
 
     clearPendingUpdate();
-
     updateActiveStyleSheets(updateType);
+}
+
+void Scope::flushPendingDescendantUpdates()
+{
+    ASSERT(m_hasDescendantWithPendingUpdate);
+    ASSERT(!m_shadowRoot);
+    for (auto* descendantShadowRoot : m_document.inDocumentShadowRoots())
+        descendantShadowRoot->styleScope().flushPendingUpdate();
+    m_hasDescendantWithPendingUpdate = false;
 }
 
 void Scope::clearPendingUpdate()
 {
     m_pendingUpdateTimer.stop();
-    m_pendingUpdateType = { };
+    m_pendingUpdate = { };
 }
 
-void Scope::scheduleActiveSetUpdate()
+void Scope::scheduleUpdate(UpdateType update)
 {
-    if (m_shadowRoot) {
-        // FIXME: We need to flush updates recursively to support asynchronous updates in shadow trees.
-        didChangeCandidatesForActiveSet();
-        return;
+    if (!m_pendingUpdate || *m_pendingUpdate < update) {
+        m_pendingUpdate = update;
+        if (m_shadowRoot)
+            m_document.styleScope().m_hasDescendantWithPendingUpdate = true;
     }
+
     if (m_pendingUpdateTimer.isActive())
         return;
-    if (!m_pendingUpdateType)
-        m_pendingUpdateType = UpdateType::ActiveSet;
     m_pendingUpdateTimer.startOneShot(0);
 }
 
-void Scope::didChangeCandidatesForActiveSet()
+void Scope::didChangeActiveStyleSheetCandidates()
 {
-    auto updateType = m_pendingUpdateType.valueOr(UpdateType::ActiveSet);
-    clearPendingUpdate();
-    updateActiveStyleSheets(updateType);
+    scheduleUpdate(UpdateType::ActiveSet);
 }
 
-void Scope::didChangeContentsOrInterpretation()
+void Scope::didChangeStyleSheetContents()
 {
-    clearPendingUpdate();
-    updateActiveStyleSheets(UpdateType::ContentsOrInterpretation);
+    scheduleUpdate(UpdateType::ContentsOrInterpretation);
+}
+
+void Scope::didChangeStyleSheetEnvironment()
+{
+    if (!m_shadowRoot) {
+        for (auto* descendantShadowRoot : m_document.inDocumentShadowRoots()) {
+            // Stylesheets is author shadow roots are are potentially affected.
+            if (descendantShadowRoot->mode() != ShadowRootMode::UserAgent)
+                descendantShadowRoot->styleScope().scheduleUpdate(UpdateType::ContentsOrInterpretation);
+        }
+    }
+    scheduleUpdate(UpdateType::ContentsOrInterpretation);
 }
 
 void Scope::pendingUpdateTimerFired()
 {
     flushPendingUpdate();
+}
+
+const Vector<RefPtr<StyleSheet>>& Scope::styleSheetsForStyleSheetList()
+{
+    // FIXME: StyleSheetList content should be updated separately from style resolver updates.
+    flushPendingUpdate();
+    return m_styleSheetsForStyleSheetList;
 }
 
 }

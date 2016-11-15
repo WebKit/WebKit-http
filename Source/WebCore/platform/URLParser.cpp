@@ -624,7 +624,7 @@ void URLParser::encodeQuery(const Vector<UChar>& source, const TextEncoding& enc
     }
 }
 
-ALWAYS_INLINE static bool isDefaultPort(StringView scheme, uint16_t port)
+Optional<uint16_t> URLParser::defaultPortForProtocol(StringView scheme)
 {
     static const uint16_t ftpPort = 21;
     static const uint16_t gopherPort = 70;
@@ -635,52 +635,57 @@ ALWAYS_INLINE static bool isDefaultPort(StringView scheme, uint16_t port)
     
     auto length = scheme.length();
     if (!length)
-        return false;
+        return Nullopt;
     switch (scheme[0]) {
     case 'w':
         switch (length) {
         case 2:
-            return scheme[1] == 's'
-                && port == wsPort;
+            if (scheme[1] == 's')
+                return wsPort;
+            return Nullopt;
         case 3:
-            return scheme[1] == 's'
-                && scheme[2] == 's'
-                && port == wssPort;
+            if (scheme[1] == 's'
+                && scheme[2] == 's')
+                return wssPort;
+            return Nullopt;
         default:
             return false;
         }
     case 'h':
         switch (length) {
         case 4:
-            return scheme[1] == 't'
+            if (scheme[1] == 't'
                 && scheme[2] == 't'
-                && scheme[3] == 'p'
-                && port == httpPort;
+                && scheme[3] == 'p')
+                return httpPort;
+            return Nullopt;
         case 5:
-            return scheme[1] == 't'
+            if (scheme[1] == 't'
                 && scheme[2] == 't'
                 && scheme[3] == 'p'
-                && scheme[4] == 's'
-                && port == httpsPort;
+                && scheme[4] == 's')
+                return httpsPort;
+            return Nullopt;
         default:
-            return false;
+            return Nullopt;
         }
     case 'g':
-        return length == 6
+        if (length == 6
             && scheme[1] == 'o'
             && scheme[2] == 'p'
             && scheme[3] == 'h'
             && scheme[4] == 'e'
-            && scheme[5] == 'r'
-            && port == gopherPort;
+            && scheme[5] == 'r')
+            return gopherPort;
+        return Nullopt;
     case 'f':
-        return length == 3
+        if (length == 3
             && scheme[1] == 't'
-            && scheme[2] == 'p'
-            && port == ftpPort;
-        return false;
+            && scheme[2] == 'p')
+            return ftpPort;
+        return Nullopt;
     default:
-        return false;
+        return Nullopt;
     }
 }
 
@@ -881,25 +886,7 @@ void URLParser::copyURLPartsUntil(const URL& base, URLPart part, const CodePoint
     ASSERT_NOT_REACHED();
 }
 
-static const char* dotASCIICode = "2e";
-
-template<typename CharacterType>
-ALWAYS_INLINE bool URLParser::isPercentEncodedDot(CodePointIterator<CharacterType> c)
-{
-    if (c.atEnd())
-        return false;
-    if (*c != '%')
-        return false;
-    advance<CharacterType, ReportSyntaxViolation::No>(c);
-    if (c.atEnd())
-        return false;
-    if (*c != dotASCIICode[0])
-        return false;
-    advance<CharacterType, ReportSyntaxViolation::No>(c);
-    if (c.atEnd())
-        return false;
-    return toASCIILower(*c) == dotASCIICode[1];
-}
+static const char dotASCIICode[2] = {'2', 'e'};
 
 template<typename CharacterType>
 ALWAYS_INLINE bool URLParser::isSingleDotPathSegment(CodePointIterator<CharacterType> c)
@@ -1128,12 +1115,6 @@ URLParser::URLParser(const String& input, const URL& base, const TextEncoding& e
 template<typename CharacterType>
 void URLParser::parse(const CharacterType* input, const unsigned length, const URL& base, const TextEncoding& encoding)
 {
-#if PLATFORM(MAC)
-    static bool isMail = MacApplication::isAppleMail();
-#else
-    static bool isMail = false;
-#endif
-    
     URL_PARSER_LOG("Parsing URL <%s> base <%s> encoding <%s>", String(input, length).utf8().data(), base.string().utf8().data(), encoding.name());
     m_url = { };
     ASSERT(m_asciiBuffer.isEmpty());
@@ -1446,21 +1427,15 @@ void URLParser::parse(const CharacterType* input, const unsigned length, const U
                 if (isSlash || *c == '?' || *c == '#') {
                     auto iterator = CodePointIterator<CharacterType>(authorityOrHostBegin, c);
                     if (iterator.atEnd()) {
-                        size_t position = currentPosition(c);
-                        ASSERT(m_url.m_userStart == position);
-                        RELEASE_ASSERT(position >= 2);
-                        position -= 2;
-                        ASSERT(parsedDataView(position, 2) == "//");
-                        m_url.m_userStart = position;
-                        m_url.m_userEnd = position;
-                        m_url.m_passwordEnd = position;
-                        m_url.m_hostEnd = position;
-                        m_url.m_portEnd = position;
-                        m_url.m_pathAfterLastSlash = position + 2;
+                        m_url.m_userEnd = currentPosition(c);
+                        m_url.m_passwordEnd = m_url.m_userEnd;
+                        m_url.m_hostEnd = m_url.m_userEnd;
+                        m_url.m_portEnd = m_url.m_userEnd;
+                        m_url.m_pathAfterLastSlash = m_url.m_userEnd;
                     } else {
                         m_url.m_userEnd = currentPosition(authorityOrHostBegin);
                         m_url.m_passwordEnd = m_url.m_userEnd;
-                        if (!parseHostAndPort(iterator, isMail)) {
+                        if (!parseHostAndPort(iterator)) {
                             failure();
                             return;
                         }
@@ -1482,7 +1457,7 @@ void URLParser::parse(const CharacterType* input, const unsigned length, const U
             do {
                 LOG_STATE("Host");
                 if (*c == '/' || *c == '?' || *c == '#') {
-                    if (!parseHostAndPort(CodePointIterator<CharacterType>(authorityOrHostBegin, c), isMail)) {
+                    if (!parseHostAndPort(CodePointIterator<CharacterType>(authorityOrHostBegin, c))) {
                         failure();
                         return;
                     }
@@ -1653,7 +1628,7 @@ void URLParser::parse(const CharacterType* input, const unsigned length, const U
                         state = State::Path;
                         break;
                     }
-                    if (!parseHostAndPort(CodePointIterator<CharacterType>(authorityOrHostBegin, c), isMail)) {
+                    if (!parseHostAndPort(CodePointIterator<CharacterType>(authorityOrHostBegin, c))) {
                         failure();
                         return;
                     }
@@ -1717,17 +1692,6 @@ void URLParser::parse(const CharacterType* input, const unsigned length, const U
                 m_url.m_pathEnd = currentPosition(c);
                 m_url.m_queryEnd = m_url.m_pathEnd;
                 state = State::Fragment;
-                break;
-            }
-            if (UNLIKELY(isPercentEncodedDot(c))) {
-                syntaxViolation(c);
-                appendToASCIIBuffer('.');
-                ASSERT(*c == '%');
-                advance(c);
-                ASSERT(*c == dotASCIICode[0]);
-                advance(c);
-                ASSERT(toASCIILower(*c) == dotASCIICode[1]);
-                advance(c);
                 break;
             }
             utf8PercentEncode<isInDefaultEncodeSet>(c);
@@ -1865,19 +1829,16 @@ void URLParser::parse(const CharacterType* input, const unsigned length, const U
         m_url.m_userEnd = currentPosition(authorityOrHostBegin);
         m_url.m_passwordEnd = m_url.m_userEnd;
         if (authorityOrHostBegin.atEnd()) {
-            RELEASE_ASSERT(m_url.m_userStart >= 2);
-            ASSERT(parsedDataView(m_url.m_userStart - 2, 2) == "//");
-            m_url.m_userStart -= 2;
             m_url.m_userEnd = m_url.m_userStart;
             m_url.m_passwordEnd = m_url.m_userStart;
             m_url.m_hostEnd = m_url.m_userStart;
             m_url.m_portEnd = m_url.m_userStart;
-            m_url.m_pathEnd = m_url.m_userStart + 2;
-        } else if (!parseHostAndPort(authorityOrHostBegin, isMail)) {
+            m_url.m_pathEnd = m_url.m_userStart;
+        } else if (!parseHostAndPort(authorityOrHostBegin)) {
             failure();
             return;
         } else {
-            if (LIKELY(!isMail || m_urlIsSpecial)) {
+            if (m_urlIsSpecial) {
                 syntaxViolation(c);
                 appendToASCIIBuffer('/');
                 m_url.m_pathEnd = m_url.m_portEnd + 1;
@@ -1890,11 +1851,11 @@ void URLParser::parse(const CharacterType* input, const unsigned length, const U
         break;
     case State::Host:
         LOG_FINAL_STATE("Host");
-        if (!parseHostAndPort(authorityOrHostBegin, isMail)) {
+        if (!parseHostAndPort(authorityOrHostBegin)) {
             failure();
             return;
         }
-        if (LIKELY(!isMail || m_urlIsSpecial)) {
+        if (m_urlIsSpecial) {
             syntaxViolation(c);
             appendToASCIIBuffer('/');
             m_url.m_pathEnd = m_url.m_portEnd + 1;
@@ -1953,7 +1914,7 @@ void URLParser::parse(const CharacterType* input, const unsigned length, const U
             break;
         }
 
-        if (!parseHostAndPort(CodePointIterator<CharacterType>(authorityOrHostBegin, c), isMail)) {
+        if (!parseHostAndPort(CodePointIterator<CharacterType>(authorityOrHostBegin, c))) {
             failure();
             return;
         }
@@ -2434,9 +2395,30 @@ Optional<URLParser::IPv6Address> URLParser::parseIPv6Host(CodePointIterator<Char
     return address;
 }
 
-const size_t defaultInlineBufferSize = 2048;
-
-static Vector<LChar, defaultInlineBufferSize> percentDecode(const LChar* input, size_t length)
+template<typename CharacterType>
+Vector<LChar, URLParser::defaultInlineBufferSize> URLParser::percentDecode(const LChar* input, size_t length, const CodePointIterator<CharacterType>& iteratorForSyntaxViolationPosition)
+{
+    Vector<LChar, defaultInlineBufferSize> output;
+    output.reserveInitialCapacity(length);
+    
+    for (size_t i = 0; i < length; ++i) {
+        uint8_t byte = input[i];
+        if (byte != '%')
+            output.uncheckedAppend(byte);
+        else if (length > 2 && i < length - 2) {
+            if (isASCIIHexDigit(input[i + 1]) && isASCIIHexDigit(input[i + 2])) {
+                syntaxViolation(iteratorForSyntaxViolationPosition);
+                output.uncheckedAppend(toASCIIHexValue(input[i + 1], input[i + 2]));
+                i += 2;
+            } else
+                output.uncheckedAppend(byte);
+        } else
+            output.uncheckedAppend(byte);
+    }
+    return output;
+}
+    
+Vector<LChar, URLParser::defaultInlineBufferSize> URLParser::percentDecode(const LChar* input, size_t length)
 {
     Vector<LChar, defaultInlineBufferSize> output;
     output.reserveInitialCapacity(length);
@@ -2464,7 +2446,8 @@ ALWAYS_INLINE static bool containsOnlyASCII(const String& string)
     return charactersAreAllASCII(string.characters16(), string.length());
 }
 
-static Optional<Vector<LChar, defaultInlineBufferSize>> domainToASCII(const String& domain)
+template<typename CharacterType>
+Optional<Vector<LChar, URLParser::defaultInlineBufferSize>> URLParser::domainToASCII(const String& domain, const CodePointIterator<CharacterType>& iteratorForSyntaxViolationPosition)
 {
     Vector<LChar, defaultInlineBufferSize> ascii;
     if (containsOnlyASCII(domain)) {
@@ -2472,13 +2455,19 @@ static Optional<Vector<LChar, defaultInlineBufferSize>> domainToASCII(const Stri
         if (domain.is8Bit()) {
             const LChar* characters = domain.characters8();
             ascii.reserveInitialCapacity(length);
-            for (size_t i = 0; i < length; ++i)
+            for (size_t i = 0; i < length; ++i) {
+                if (UNLIKELY(isASCIIUpper(characters[i])))
+                    syntaxViolation(iteratorForSyntaxViolationPosition);
                 ascii.uncheckedAppend(toASCIILower(characters[i]));
+            }
         } else {
             const UChar* characters = domain.characters16();
             ascii.reserveInitialCapacity(length);
-            for (size_t i = 0; i < length; ++i)
+            for (size_t i = 0; i < length; ++i) {
+                if (UNLIKELY(isASCIIUpper(characters[i])))
+                    syntaxViolation(iteratorForSyntaxViolationPosition);
                 ascii.uncheckedAppend(toASCIILower(characters[i]));
+            }
         }
         return ascii;
     }
@@ -2503,6 +2492,8 @@ static Optional<Vector<LChar, defaultInlineBufferSize>> domainToASCII(const Stri
             ASSERT(!isASCIIUpper(hostnameBuffer[i]));
         }
         ascii.append(hostnameBuffer, numCharactersConverted);
+        if (domain != StringView(ascii.data(), ascii.size()))
+            syntaxViolation(iteratorForSyntaxViolationPosition);
         return ascii;
     }
 
@@ -2510,7 +2501,7 @@ static Optional<Vector<LChar, defaultInlineBufferSize>> domainToASCII(const Stri
     return Nullopt;
 }
 
-static bool hasInvalidDomainCharacter(const Vector<LChar, defaultInlineBufferSize>& asciiDomain)
+bool URLParser::hasInvalidDomainCharacter(const Vector<LChar, URLParser::defaultInlineBufferSize>& asciiDomain)
 {
     for (size_t i = 0; i < asciiDomain.size(); ++i) {
         if (isInvalidDomainCharacter(asciiDomain[i]))
@@ -2555,7 +2546,8 @@ bool URLParser::parsePort(CodePointIterator<CharacterType>& iterator)
     if (!port && digitCount > 1)
         syntaxViolation(colonIterator);
 
-    if (UNLIKELY(isDefaultPort(parsedDataView(0, m_url.m_schemeEnd), port)))
+    ASSERT(port == static_cast<uint16_t>(port));
+    if (UNLIKELY(defaultPortForProtocol(parsedDataView(0, m_url.m_schemeEnd)) == static_cast<uint16_t>(port)))
         syntaxViolation(colonIterator);
     else {
         appendToASCIIBuffer(':');
@@ -2568,7 +2560,7 @@ bool URLParser::parsePort(CodePointIterator<CharacterType>& iterator)
 }
 
 template<typename CharacterType>
-bool URLParser::parseHostAndPort(CodePointIterator<CharacterType> iterator, const bool& isMail)
+bool URLParser::parseHostAndPort(CodePointIterator<CharacterType> iterator)
 {
     if (iterator.atEnd())
         return false;
@@ -2595,8 +2587,27 @@ bool URLParser::parseHostAndPort(CodePointIterator<CharacterType> iterator, cons
             m_url.m_hostEnd = currentPosition(ipv6End);
             return true;
         }
+        return false;
     }
 
+    if (!m_urlIsSpecial) {
+        for (; !iterator.atEnd(); ++iterator) {
+            if (UNLIKELY(isTabOrNewline(*iterator))) {
+                syntaxViolation(iterator);
+                continue;
+            }
+            if (*iterator == ':')
+                break;
+            utf8PercentEncode<isInSimpleEncodeSet>(iterator);
+        }
+        m_url.m_hostEnd = currentPosition(iterator);
+        if (iterator.atEnd()) {
+            m_url.m_portEnd = currentPosition(iterator);
+            return true;
+        }
+        return parsePort(iterator);
+    }
+    
     if (LIKELY(!m_hostHasPercentOrNonASCII)) {
         auto hostIterator = iterator;
         for (; !iterator.atEnd(); ++iterator) {
@@ -2617,16 +2628,13 @@ bool URLParser::parseHostAndPort(CodePointIterator<CharacterType> iterator, cons
             return parsePort(iterator);
         }
         for (; hostIterator != iterator; ++hostIterator) {
-            if (LIKELY(!isTabOrNewline(*hostIterator))) {
-                if (UNLIKELY(isMail && !m_urlIsSpecial))
-                    appendToASCIIBuffer(*hostIterator);
-                else {
-                    if (UNLIKELY(isASCIIUpper(*hostIterator)))
-                        syntaxViolation(hostIterator);
-                    appendToASCIIBuffer(toASCIILower(*hostIterator));
-                }
-            } else
+            if (UNLIKELY(isTabOrNewline(*hostIterator))) {
                 syntaxViolation(hostIterator);
+                continue;
+            }
+            if (UNLIKELY(isASCIIUpper(*hostIterator)))
+                syntaxViolation(hostIterator);
+            appendToASCIIBuffer(toASCIILower(*hostIterator));
         }
         m_url.m_hostEnd = currentPosition(iterator);
         if (!hostIterator.atEnd())
@@ -2635,14 +2643,19 @@ bool URLParser::parseHostAndPort(CodePointIterator<CharacterType> iterator, cons
         return true;
     }
     
-    syntaxViolation(iterator);
+    auto hostBegin = iterator;
     
     Vector<LChar, defaultInlineBufferSize> utf8Encoded;
     for (; !iterator.atEnd(); ++iterator) {
-        if (isTabOrNewline(*iterator))
+        if (UNLIKELY(isTabOrNewline(*iterator))) {
+            syntaxViolation(hostBegin);
             continue;
+        }
         if (*iterator == ':')
             break;
+        if (UNLIKELY(!isASCII(*iterator)))
+            syntaxViolation(hostBegin);
+
         uint8_t buffer[U8_MAX_LENGTH];
         int32_t offset = 0;
         UBool error = false;
@@ -2651,9 +2664,11 @@ bool URLParser::parseHostAndPort(CodePointIterator<CharacterType> iterator, cons
         // FIXME: Check error.
         utf8Encoded.append(buffer, offset);
     }
-    Vector<LChar, defaultInlineBufferSize> percentDecoded = percentDecode(utf8Encoded.data(), utf8Encoded.size());
+    Vector<LChar, defaultInlineBufferSize> percentDecoded = percentDecode(utf8Encoded.data(), utf8Encoded.size(), hostBegin);
     String domain = String::fromUTF8(percentDecoded.data(), percentDecoded.size());
-    auto asciiDomain = domainToASCII(domain);
+    if (domain != StringView(percentDecoded.data(), percentDecoded.size()))
+        syntaxViolation(hostBegin);
+    auto asciiDomain = domainToASCII(domain, hostBegin);
     if (!asciiDomain || hasInvalidDomainCharacter(asciiDomain.value()))
         return false;
     Vector<LChar, defaultInlineBufferSize>& asciiDomainValue = asciiDomain.value();
@@ -2677,7 +2692,7 @@ bool URLParser::parseHostAndPort(CodePointIterator<CharacterType> iterator, cons
     return true;
 }
 
-static Optional<String> formURLDecode(StringView input)
+Optional<String> URLParser::formURLDecode(StringView input)
 {
     auto utf8 = input.utf8(StrictConversion);
     if (utf8.isNull())

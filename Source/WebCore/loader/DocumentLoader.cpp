@@ -81,6 +81,10 @@
 #include "ContentFilter.h"
 #endif
 
+#if USE(QUICK_LOOK)
+#include "QuickLook.h"
+#endif
+
 #define RELEASE_LOG_IF_ALLOWED(fmt, ...) RELEASE_LOG_IF(isAlwaysOnLoggingAllowed(), Network, "%p - DocumentLoader::" fmt, this, ##__VA_ARGS__)
 
 namespace WebCore {
@@ -230,8 +234,11 @@ void DocumentLoader::setRequest(const ResourceRequest& req)
 
     handlingUnreachableURL = m_substituteData.isValid() && !m_substituteData.failingURL().isEmpty();
 
+    bool shouldNotifyAboutProvisionalURLChange = false;
     if (handlingUnreachableURL)
         m_committed = false;
+    else if (isLoadingMainResource() && req.url() != m_request.url())
+        shouldNotifyAboutProvisionalURLChange = true;
 
     // We should never be getting a redirect callback after the data
     // source is committed, except in the unreachable URL case. It 
@@ -239,6 +246,8 @@ void DocumentLoader::setRequest(const ResourceRequest& req)
     ASSERT(!m_committed);
 
     m_request = req;
+    if (shouldNotifyAboutProvisionalURLChange)
+        frameLoader()->client().dispatchDidChangeProvisionalURL();
 }
 
 void DocumentLoader::setMainDocumentError(const ResourceError& error)
@@ -725,23 +734,44 @@ void DocumentLoader::responseReceived(const ResourceResponse& response)
     if (m_response.isHttpVersion0_9()) {
         // Non-HTTP responses are interpreted as HTTP/0.9 which may allow exfiltration of data
         // from non-HTTP services. Therefore cancel if the request was to a non-default port.
-        if (!isDefaultPortForProtocol(url.port(), url.protocol())) {
+        if (url.port() && !isDefaultPortForProtocol(url.port().value(), url.protocol())) {
             String message = "Stopped document load from '" + url.string() + "' because it is using HTTP/0.9 on a non-default port.";
             m_frame->document()->addConsoleMessage(MessageSource::Security, MessageLevel::Error, message, identifier);
             stopLoading();
             return;
         }
-
-        ASSERT(m_identifierForLoadWithoutResourceLoader || m_mainResource);
-        unsigned long identifier = m_identifierForLoadWithoutResourceLoader ? m_identifierForLoadWithoutResourceLoader : m_mainResource->identifier();
-        String message = "Sandboxing '" + url.string() + "' because it is using HTTP/0.9.";
-        m_frame->document()->addConsoleMessage(MessageSource::Security, MessageLevel::Error, message, identifier);
-        frameLoader()->forceSandboxFlags(SandboxScripts | SandboxPlugins);
     }
 
     frameLoader()->policyChecker().checkContentPolicy(m_response, [this](PolicyAction policy) {
         continueAfterContentPolicy(policy);
     });
+}
+
+static bool isRemoteWebArchive(const DocumentLoader& documentLoader)
+{
+    using MIMETypeHashSet = HashSet<String, ASCIICaseInsensitiveHash>;
+    static NeverDestroyed<MIMETypeHashSet> webArchiveMIMETypes {
+        MIMETypeHashSet {
+            ASCIILiteral("application/x-webarchive"),
+            ASCIILiteral("application/x-mimearchive"),
+            ASCIILiteral("multipart/related"),
+#if PLATFORM(GTK)
+            ASCIILiteral("message/rfc822"),
+#endif
+        }
+    };
+
+    const ResourceResponse& response = documentLoader.response();
+    String mimeType = response.mimeType();
+    if (mimeType.isNull() || !webArchiveMIMETypes.get().contains(mimeType))
+        return false;
+
+#if USE(QUICK_LOOK)
+    if (response.url().protocolIs(QLPreviewProtocol()))
+        return false;
+#endif
+
+    return !documentLoader.substituteData().isValid() && !SchemeRegistry::shouldTreatURLSchemeAsLocal(documentLoader.request().url().protocol().toStringWithoutCopying());
 }
 
 void DocumentLoader::continueAfterContentPolicy(PolicyAction policy)
@@ -751,20 +781,10 @@ void DocumentLoader::continueAfterContentPolicy(PolicyAction policy)
     if (isStopping())
         return;
 
-    URL url = m_request.url();
-    const String& mimeType = m_response.mimeType();
-    
     switch (policy) {
     case PolicyUse: {
         // Prevent remote web archives from loading because they can claim to be from any domain and thus avoid cross-domain security checks (4120255).
-        bool isRemoteWebArchive = (equalLettersIgnoringASCIICase(mimeType, "application/x-webarchive")
-            || equalLettersIgnoringASCIICase(mimeType, "application/x-mimearchive")
-#if PLATFORM(GTK)
-            || equalLettersIgnoringASCIICase(mimeType, "message/rfc822")
-#endif
-            || equalLettersIgnoringASCIICase(mimeType, "multipart/related"))
-            && !m_substituteData.isValid() && !SchemeRegistry::shouldTreatURLSchemeAsLocal(url.protocol());
-        if (!frameLoader()->client().canShowMIMEType(mimeType) || isRemoteWebArchive) {
+        if (!frameLoader()->client().canShowMIMEType(m_response.mimeType()) || isRemoteWebArchive(*this)) {
             frameLoader()->policyChecker().cannotShowMIMEType(m_response);
             // Check reachedTerminalState since the load may have already been canceled inside of _handleUnimplementablePolicyWithErrorCode::.
             stopLoadingForPolicyChange();
@@ -1459,8 +1479,8 @@ bool DocumentLoader::isMultipartReplacingLoad() const
 
 bool DocumentLoader::maybeLoadEmpty()
 {
-    bool shouldLoadEmpty = !m_substituteData.isValid() && (m_request.url().isEmpty() || SchemeRegistry::shouldLoadURLSchemeAsEmptyDocument(m_request.url().protocol()));
-    if (!shouldLoadEmpty && !frameLoader()->client().representationExistsForURLScheme(m_request.url().protocol()))
+    bool shouldLoadEmpty = !m_substituteData.isValid() && (m_request.url().isEmpty() || SchemeRegistry::shouldLoadURLSchemeAsEmptyDocument(m_request.url().protocol().toStringWithoutCopying()));
+    if (!shouldLoadEmpty && !frameLoader()->client().representationExistsForURLScheme(m_request.url().protocol().toStringWithoutCopying()))
         return false;
 
     if (m_request.url().isEmpty() && !frameLoader()->stateMachine().creatingInitialEmptyDocument()) {
@@ -1469,7 +1489,7 @@ bool DocumentLoader::maybeLoadEmpty()
             frameLoader()->client().dispatchDidChangeProvisionalURL();
     }
 
-    String mimeType = shouldLoadEmpty ? "text/html" : frameLoader()->client().generatedMIMETypeForURLScheme(m_request.url().protocol());
+    String mimeType = shouldLoadEmpty ? "text/html" : frameLoader()->client().generatedMIMETypeForURLScheme(m_request.url().protocol().toStringWithoutCopying());
     m_response = ResourceResponse(m_request.url(), mimeType, 0, String());
     finishedLoading(monotonicallyIncreasingTime());
     return true;
@@ -1601,6 +1621,11 @@ void DocumentLoader::cancelMainResourceLoad(const ResourceError& resourceError)
     clearMainResource();
 
     mainReceivedError(error);
+}
+
+void DocumentLoader::willContinueMainResourceLoadAfterRedirect(const ResourceRequest& newRequest)
+{
+    setRequest(newRequest);
 }
 
 void DocumentLoader::clearMainResource()

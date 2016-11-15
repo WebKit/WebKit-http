@@ -99,6 +99,13 @@ JSInterfaceName::JSInterfaceName(Structure* structure, JSDOMGlobalObject& global
 {
 }
 
+void JSInterfaceName::finishCreation(VM& vm)
+{
+    Base::finishCreation(vm);
+    ASSERT(inherits(info()));
+
+}
+
 JSObject* JSInterfaceName::createPrototype(VM& vm, JSGlobalObject* globalObject)
 {
     return JSInterfaceNamePrototype::create(vm, globalObject, JSInterfaceNamePrototype::createStructure(vm, globalObject, globalObject->objectPrototype()));
@@ -119,7 +126,7 @@ EncodedJSValue jsInterfaceNameConstructor(ExecState* state, EncodedJSValue thisV
 {
     VM& vm = state->vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);
-    JSInterfaceNamePrototype* domObject = jsDynamicCast<JSInterfaceNamePrototype*>(JSValue::decode(thisValue));
+    JSInterfaceNamePrototype* domObject = jsDynamicDowncast<JSInterfaceNamePrototype*>(JSValue::decode(thisValue));
     if (UNLIKELY(!domObject))
         return throwVMTypeError(state, throwScope);
     return JSValue::encode(JSInterfaceName::getConstructor(state->vm(), domObject->globalObject()));
@@ -130,7 +137,7 @@ bool setJSInterfaceNameConstructor(ExecState* state, EncodedJSValue thisValue, E
     VM& vm = state->vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);
     JSValue value = JSValue::decode(encodedValue);
-    JSInterfaceNamePrototype* domObject = jsDynamicCast<JSInterfaceNamePrototype*>(JSValue::decode(thisValue));
+    JSInterfaceNamePrototype* domObject = jsDynamicDowncast<JSInterfaceNamePrototype*>(JSValue::decode(thisValue));
     if (UNLIKELY(!domObject)) {
         throwVMTypeError(state, throwScope);
         return false;
@@ -213,7 +220,7 @@ JSC::JSValue toJS(JSC::ExecState* state, JSDOMGlobalObject* globalObject, Interf
 
 InterfaceName* JSInterfaceName::toWrapped(JSC::JSValue value)
 {
-    if (auto* wrapper = jsDynamicCast<JSInterfaceName*>(value))
+    if (auto* wrapper = jsDynamicDowncast<JSInterfaceName*>(value))
         return &wrapper->wrapped();
     return nullptr;
 }

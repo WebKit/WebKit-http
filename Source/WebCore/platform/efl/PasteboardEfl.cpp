@@ -96,6 +96,11 @@ void Pasteboard::write(const PasteboardURL&)
     notImplemented();
 }
 
+void Pasteboard::writeTrustworthyWebURLsPboardType(const PasteboardURL&)
+{
+    notImplemented();
+}
+
 void Pasteboard::writeString(const String&, const String&)
 {
     notImplemented();
@@ -121,6 +126,26 @@ void Pasteboard::setDragImage(DragImageRef, const IntPoint&)
 #endif
 
 void Pasteboard::writePasteboard(const Pasteboard&)
+{
+    notImplemented();
+}
+
+void Pasteboard::writeMarkup(const String&)
+{
+    notImplemented();
+}
+
+void Pasteboard::write(const PasteboardWebContent&)
+{
+    notImplemented();
+}
+
+void Pasteboard::read(PasteboardWebContentReader&)
+{
+    notImplemented();
+}
+
+void Pasteboard::write(const PasteboardImage&)
 {
     notImplemented();
 }

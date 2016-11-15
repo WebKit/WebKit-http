@@ -33,6 +33,7 @@
 #include "RenderSVGViewportContainer.h"
 #include "RenderView.h"
 #include "SMILTimeContainer.h"
+#include "SVGAngle.h"
 #include "SVGViewElement.h"
 #include "SVGViewSpec.h"
 #include "StaticNodeList.h"
@@ -153,7 +154,7 @@ float SVGSVGElement::screenPixelToMillimeterY() const
 SVGViewSpec& SVGSVGElement::currentView()
 {
     if (!m_viewSpec)
-        m_viewSpec = SVGViewSpec::create(this);
+        m_viewSpec = SVGViewSpec::create(*this);
     return *m_viewSpec;
 }
 
@@ -350,9 +351,9 @@ SVGLength SVGSVGElement::createSVGLength()
     return { };
 }
 
-SVGAngle SVGSVGElement::createSVGAngle()
+Ref<SVGAngle> SVGSVGElement::createSVGAngle()
 {
-    return { };
+    return SVGAngle::create();
 }
 
 SVGPoint SVGSVGElement::createSVGPoint()
@@ -409,7 +410,7 @@ AffineTransform SVGSVGElement::localCoordinateSpaceTransform(SVGLocatable::CTMSc
             // Translate in our CSS parent coordinate space
             // FIXME: This doesn't work correctly with CSS transforms.
             location = renderer->localToAbsolute(location, UseTransforms);
-            location.scale(zoomFactor, zoomFactor);
+            location.scale(zoomFactor);
 
             // Be careful here! localToBorderBoxTransform() included the x/y offset coming from the viewBoxToViewTransform(),
             // so we have to subtract it here (original cause of bug #27183)
@@ -418,7 +419,7 @@ AffineTransform SVGSVGElement::localCoordinateSpaceTransform(SVGLocatable::CTMSc
             // Respect scroll offset.
             if (FrameView* view = document().view()) {
                 LayoutPoint scrollPosition = view->scrollPosition();
-                scrollPosition.scale(zoomFactor, zoomFactor);
+                scrollPosition.scale(zoomFactor);
                 transform.translate(-scrollPosition.x(), -scrollPosition.y());
             }
         }

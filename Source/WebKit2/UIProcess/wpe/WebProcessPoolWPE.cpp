@@ -86,13 +86,13 @@ static void initInspectorServer()
 WTF::String WebProcessPool::legacyPlatformDefaultApplicationCacheDirectory()
 {
     GUniquePtr<gchar> cacheDirectory(g_build_filename(g_get_user_cache_dir(), "wpe", "appcache", nullptr));
-    return WebCore::filenameToString(cacheDirectory.get());
+    return WebCore::stringFromFileSystemRepresentation(cacheDirectory.get());
 }
 
 WTF::String WebProcessPool::legacyPlatformDefaultMediaCacheDirectory()
 {
     GUniquePtr<gchar> cacheDirectory(g_build_filename(g_get_user_cache_dir(), "wpe", "mediacache", nullptr));
-    return WebCore::filenameToString(cacheDirectory.get());
+    return WebCore::stringFromFileSystemRepresentation(cacheDirectory.get());
 }
 
 void WebProcessPool::platformInitialize()
@@ -116,37 +116,37 @@ void WebProcessPool::platformInvalidateContext()
 String WebProcessPool::legacyPlatformDefaultWebSQLDatabaseDirectory()
 {
     GUniquePtr<gchar> databaseDirectory(g_build_filename(g_get_user_data_dir(), "wpe", "databases", nullptr));
-    return WebCore::filenameToString(databaseDirectory.get());
+    return WebCore::stringFromFileSystemRepresentation(databaseDirectory.get());
 }
 
 String WebProcessPool::legacyPlatformDefaultIndexedDBDatabaseDirectory()
 {
     GUniquePtr<gchar> indexedDBDatabaseDirectory(g_build_filename(g_get_user_data_dir(), "wpe", "databases", "indexeddb", nullptr));
-    return WebCore::filenameToString(indexedDBDatabaseDirectory.get());
+    return WebCore::stringFromFileSystemRepresentation(indexedDBDatabaseDirectory.get());
 }
 
 String WebProcessPool::platformDefaultIconDatabasePath() const
 {
     GUniquePtr<gchar> databaseDirectory(g_build_filename(g_get_user_cache_dir(), "wpe", "icondatabase", nullptr));
-    return WebCore::filenameToString(databaseDirectory.get());
+    return WebCore::stringFromFileSystemRepresentation(databaseDirectory.get());
 }
 
 String WebProcessPool::legacyPlatformDefaultLocalStorageDirectory()
 {
     GUniquePtr<gchar> storageDirectory(g_build_filename(g_get_user_data_dir(), "wpe", "localstorage", nullptr));
-    return WebCore::filenameToString(storageDirectory.get());
+    return WebCore::stringFromFileSystemRepresentation(storageDirectory.get());
 }
 
 String WebProcessPool::legacyPlatformDefaultMediaKeysStorageDirectory()
 {
     GUniquePtr<gchar> mediaKeysStorageDirectory(g_build_filename(g_get_user_data_dir(), "wpe", "mediakeys", nullptr));
-    return WebCore::filenameToString(mediaKeysStorageDirectory.get());
+    return WebCore::stringFromFileSystemRepresentation(mediaKeysStorageDirectory.get());
 }
 
 String WebProcessPool::legacyPlatformDefaultNetworkCacheDirectory()
 {
     GUniquePtr<char> diskCacheDirectory(g_build_filename(g_get_user_cache_dir(), "wpe", "cache", nullptr));
-    return WebCore::filenameToString(diskCacheDirectory.get());
+    return WebCore::stringFromFileSystemRepresentation(diskCacheDirectory.get());
 }
 
 } // namespace WebKit

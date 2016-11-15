@@ -21,8 +21,7 @@
  *
  */
 
-#ifndef FormAssociatedElement_h
-#define FormAssociatedElement_h
+#pragma once
 
 #include "FormNamedItem.h"
 #include <wtf/text/WTFString.h>
@@ -83,7 +82,7 @@ public:
     virtual bool typeMismatch() const;
     virtual bool valueMissing() const;
     virtual String validationMessage() const;
-    bool valid() const;
+    virtual bool isValid() const;
     virtual void setCustomValidity(const String&);
 
     void formAttributeTargetChanged();
@@ -122,5 +121,3 @@ private:
 };
 
 } // namespace
-
-#endif // FormAssociatedElement_h

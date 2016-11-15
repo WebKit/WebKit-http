@@ -447,6 +447,8 @@
 #define WTF_PLATFORM_GTK 1
 #elif defined(BUILDING_WPE__)
 #define WTF_PLATFORM_WPE 1
+#elif defined(BUILDING_JSCONLY__)
+/* JSCOnly does not provide PLATFORM() macro */
 #elif OS(MAC_OS_X)
 #define WTF_PLATFORM_MAC 1
 #elif OS(IOS)
@@ -561,6 +563,13 @@
 
 #if PLATFORM(IOS)
 
+#if USE(APPLE_INTERNAL_SDK) \
+    && ((TARGET_OS_IOS && __IPHONE_OS_VERSION_MAX_ALLOWED < 100000) \
+     || (PLATFORM(APPLETV) && __TV_OS_VERSION_MAX_ALLOWED < 100000) \
+     || (PLATFORM(WATCHOS) && __WATCH_OS_VERSION_MAX_ALLOWED < 30000))
+#define USE_CFURLCONNECTION 1
+#endif
+
 #define HAVE_NETWORK_EXTENSION 1
 #define HAVE_READLINE 1
 #define USE_UIKIT_EDITING 1
@@ -591,10 +600,6 @@
 
 #if PLATFORM(WIN) && !USE(WINGDI) && !PLATFORM(WIN_CAIRO)
 #define USE_CFURLCONNECTION 1
-#endif
-
-#if USE(CFURLCONNECTION) || PLATFORM(COCOA)
-#define USE_CFURLCACHE 1
 #endif
 
 #if !defined(HAVE_ACCESSIBILITY)
@@ -944,7 +949,6 @@
 #define USE_TEXTURE_MAPPER_GL 1
 #endif
 
-/* Compositing on the UI-process in WebKit2 */
 #if PLATFORM(COCOA)
 #define USE_PROTECTION_SPACE_AUTH_CALLBACK 1
 #endif
@@ -1135,7 +1139,7 @@
 #define HAVE_NS_ACTIVITY 1
 #endif
 
-#if (OS(DARWIN) && USE(CG)) || USE(FREETYPE) || (PLATFORM(WIN) && (USE(CG) || USE(CAIRO)))
+#if (OS(DARWIN) && USE(CG)) || (USE(FREETYPE) && !PLATFORM(GTK)) || (PLATFORM(WIN) && (USE(CG) || USE(CAIRO)))
 #undef ENABLE_OPENTYPE_MATH
 #define ENABLE_OPENTYPE_MATH 1
 #endif
@@ -1204,5 +1208,14 @@
 /* Enable strict runtime stack buffer checks. */
 #pragma strict_gs_check(on)
 #endif
+
+#if PLATFORM(MAC) && __MAC_OS_X_VERSION_MAX_ALLOWED >= 101201 && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200
+#define HAVE_TOUCH_BAR 1
+#define HAVE_ADVANCED_SPELL_CHECKING 1
+
+#if defined(__LP64__)
+#define ENABLE_WEB_PLAYBACK_CONTROLS_MANAGER 1
+#endif
+#endif /* PLATFORM(MAC) && __MAC_OS_X_VERSION_MAX_ALLOWED >= 101201 && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200 */
 
 #endif /* WTF_Platform_h */

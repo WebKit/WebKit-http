@@ -18,8 +18,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef SVGStringList_h
-#define SVGStringList_h
+#pragma once
 
 #include "QualifiedName.h"
 #include "SVGPropertyTraits.h"
@@ -28,6 +27,9 @@
 namespace WebCore {
 
 class SVGElement;
+
+template<typename T> 
+class SVGPropertyTearOff;
 
 class SVGStringList final : public Vector<String> {
 public:
@@ -48,11 +50,9 @@ private:
     const QualifiedName& m_attributeName;
 };
 
-template<>
-struct SVGPropertyTraits<SVGStringList> {
-    typedef String ListItemType;
+template<> struct SVGPropertyTraits<SVGStringList> {
+    using ListItemType = String;
+    using ListItemTearOff = SVGPropertyTearOff<String>;
 };
 
 } // namespace WebCore
-
-#endif

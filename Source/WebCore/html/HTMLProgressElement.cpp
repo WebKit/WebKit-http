@@ -23,7 +23,6 @@
 
 #include "ElementIterator.h"
 #include "EventNames.h"
-#include "ExceptionCode.h"
 #include "HTMLNames.h"
 #include "HTMLParserIdioms.h"
 #include "ProgressShadowElement.h"
@@ -98,12 +97,8 @@ double HTMLProgressElement::value() const
     return !std::isfinite(value) || value < 0 ? 0 : std::min(value, max());
 }
 
-void HTMLProgressElement::setValue(double value, ExceptionCode& ec)
+void HTMLProgressElement::setValue(double value)
 {
-    if (!std::isfinite(value)) {
-        ec = NOT_SUPPORTED_ERR;
-        return;
-    }
     setAttributeWithoutSynchronization(valueAttr, AtomicString::number(value >= 0 ? value : 0));
 }
 
@@ -113,12 +108,8 @@ double HTMLProgressElement::max() const
     return !std::isfinite(max) || max <= 0 ? 1 : max;
 }
 
-void HTMLProgressElement::setMax(double max, ExceptionCode& ec)
+void HTMLProgressElement::setMax(double max)
 {
-    if (!std::isfinite(max)) {
-        ec = NOT_SUPPORTED_ERR;
-        return;
-    }
     setAttributeWithoutSynchronization(maxAttr, AtomicString::number(max > 0 ? max : 1));
 }
 
@@ -141,7 +132,7 @@ void HTMLProgressElement::didElementStateChange()
         bool wasDeterminate = render->isDeterminate();
         render->updateFromElement();
         if (wasDeterminate != isDeterminate())
-            setNeedsStyleRecalc();
+            invalidateStyleForSubtree();
     }
 }
 
@@ -156,9 +147,9 @@ void HTMLProgressElement::didAddUserAgentShadowRoot(ShadowRoot* root)
     auto value = ProgressValueElement::create(document());
     m_value = value.ptr();
     m_value->setWidthPercentage(HTMLProgressElement::IndeterminatePosition * 100);
-    bar->appendChild(value, ASSERT_NO_EXCEPTION);
+    bar->appendChild(value);
 
-    inner->appendChild(bar, ASSERT_NO_EXCEPTION);
+    inner->appendChild(bar);
 }
 
 bool HTMLProgressElement::shouldAppearIndeterminate() const

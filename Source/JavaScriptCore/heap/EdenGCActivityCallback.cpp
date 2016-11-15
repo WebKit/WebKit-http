@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2014, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -39,7 +39,7 @@ EdenGCActivityCallback::EdenGCActivityCallback(Heap* heap)
 
 void EdenGCActivityCallback::doCollection()
 {
-    m_vm->heap.collect(EdenCollection);
+    m_vm->heap.collectAsync(CollectionScope::Eden);
 }
 
 double EdenGCActivityCallback::lastGCLength()
@@ -94,6 +94,6 @@ double EdenGCActivityCallback::gcTimeSlice(size_t)
     return 0;
 }
 
-#endif // USE(CF) || PLATFORM(EFL)
+#endif // USE(CF) || USE(GLIB)
 
 } // namespace JSC

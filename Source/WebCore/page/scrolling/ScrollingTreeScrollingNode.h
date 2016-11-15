@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ScrollingTreeScrollingNode_h
-#define ScrollingTreeScrollingNode_h
+#pragma once
 
 #if ENABLE(ASYNC_SCROLLING)
 
@@ -42,8 +41,8 @@ class ScrollingTreeScrollingNode : public ScrollingTreeNode {
 public:
     virtual ~ScrollingTreeScrollingNode();
 
-    WEBCORE_EXPORT void updateBeforeChildren(const ScrollingStateNode&) override;
-    WEBCORE_EXPORT void updateAfterChildren(const ScrollingStateNode&) override;
+    WEBCORE_EXPORT void commitStateBeforeChildren(const ScrollingStateNode&) override;
+    WEBCORE_EXPORT void commitStateAfterChildren(const ScrollingStateNode&) override;
 
     WEBCORE_EXPORT void updateLayersAfterAncestorChange(const ScrollingTreeNode& changedNode, const FloatRect& fixedPositionRect, const FloatSize& cumulativeDelta) override;
 
@@ -71,7 +70,7 @@ protected:
     WEBCORE_EXPORT virtual FloatPoint minimumScrollPosition() const;
     WEBCORE_EXPORT virtual FloatPoint maximumScrollPosition() const;
 
-    virtual void setScrollLayerPosition(const FloatPoint&) = 0;
+    virtual void setScrollLayerPosition(const FloatPoint&, const FloatRect& layoutViewport) = 0;
 
     FloatPoint lastCommittedScrollPosition() const { return m_lastCommittedScrollPosition; }
     const FloatSize& scrollableAreaSize() const { return m_scrollableAreaSize; }
@@ -92,6 +91,8 @@ protected:
     bool hasEnabledVerticalScrollbar() const { return m_scrollableAreaParameters.hasEnabledVerticalScrollbar; }
 
     bool canHaveScrollbars() const { return m_scrollableAreaParameters.horizontalScrollbarMode != ScrollbarAlwaysOff || m_scrollableAreaParameters.verticalScrollbarMode != ScrollbarAlwaysOff; }
+
+    WEBCORE_EXPORT void dumpProperties(TextStream&, ScrollingStateTreeAsTextBehavior) const override;
 
 private:
     FloatSize m_scrollableAreaSize;
@@ -114,5 +115,3 @@ private:
 SPECIALIZE_TYPE_TRAITS_SCROLLING_NODE(ScrollingTreeScrollingNode, isScrollingNode())
 
 #endif // ENABLE(ASYNC_SCROLLING)
-
-#endif // ScrollingTreeScrollingNode_h

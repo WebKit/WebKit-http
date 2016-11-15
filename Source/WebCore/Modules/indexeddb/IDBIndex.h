@@ -48,10 +48,13 @@ public:
     virtual ~IDBIndex();
 
     const String& name() const;
+    ExceptionOr<void> setName(const String&);
     IDBObjectStore& objectStore();
     const IDBKeyPath& keyPath() const;
     bool unique() const;
     bool multiEntry() const;
+
+    void rollbackInfoForVersionChangeAbort();
 
     ExceptionOr<Ref<IDBRequest>> openCursor(JSC::ExecState&, IDBKeyRange*, const String& direction);
     ExceptionOr<Ref<IDBRequest>> openCursor(JSC::ExecState&, JSC::JSValue key, const String& direction);
@@ -66,6 +69,11 @@ public:
     ExceptionOr<Ref<IDBRequest>> get(JSC::ExecState&, JSC::JSValue key);
     ExceptionOr<Ref<IDBRequest>> getKey(JSC::ExecState&, IDBKeyRange*);
     ExceptionOr<Ref<IDBRequest>> getKey(JSC::ExecState&, JSC::JSValue key);
+
+    ExceptionOr<Ref<IDBRequest>> getAll(JSC::ExecState&, RefPtr<IDBKeyRange>, Optional<uint32_t> count);
+    ExceptionOr<Ref<IDBRequest>> getAll(JSC::ExecState&, JSC::JSValue key, Optional<uint32_t> count);
+    ExceptionOr<Ref<IDBRequest>> getAllKeys(JSC::ExecState&, RefPtr<IDBKeyRange>, Optional<uint32_t> count);
+    ExceptionOr<Ref<IDBRequest>> getAllKeys(JSC::ExecState&, JSC::JSValue key, Optional<uint32_t> count);
 
     const IDBIndexInfo& info() const { return m_info; }
 
@@ -87,6 +95,7 @@ private:
     bool hasPendingActivity() const final;
 
     IDBIndexInfo m_info;
+    IDBIndexInfo m_originalInfo;
 
     bool m_deleted { false };
 

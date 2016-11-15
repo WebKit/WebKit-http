@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef CSSFontSelector_h
-#define CSSFontSelector_h
+#pragma once
 
 #include "CSSFontFace.h"
 #include "CSSFontFaceSet.h"
@@ -83,6 +82,8 @@ public:
 
     FontFaceSet& fontFaceSet();
 
+    void setIsComputingRootStyleFont(bool value) { m_isComputingRootStyleFont = value; }
+
 private:
     explicit CSSFontSelector(Document&);
 
@@ -112,8 +113,7 @@ private:
     unsigned m_version;
     bool m_creatingFont { false };
     bool m_buildIsUnderway { false };
+    bool m_isComputingRootStyleFont { false };
 };
 
 } // namespace WebCore
-
-#endif // CSSFontSelector_h

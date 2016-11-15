@@ -26,7 +26,9 @@
 #pragma once
 
 #include "ArgumentCoders.h"
+#include <WebCore/ColorSpace.h>
 #include <WebCore/FrameLoaderTypes.h>
+#include <WebCore/IndexedDB.h>
 #include <WebCore/PaymentHeaders.h>
 
 namespace WebCore {
@@ -130,6 +132,19 @@ class MediaPlaybackTargetContext;
 #if ENABLE(MEDIA_SESSION)
 namespace WebCore {
 class MediaSessionMetadata;
+}
+#endif
+
+#if ENABLE(MEDIA_STREAM)
+namespace WebCore {
+class CaptureDevice;
+struct MediaConstraintsData;
+}
+#endif
+
+#if ENABLE(INDEXED_DATABASE)
+namespace WebCore {
+using IDBKeyPath = Variant<String, Vector<String>>;
 }
 #endif
 
@@ -541,9 +556,40 @@ template<> struct ArgumentCoder<WebCore::PaymentRequest::TotalAndLineItems> {
 
 #endif
 
+#if ENABLE(MEDIA_STREAM)
+template<> struct ArgumentCoder<WebCore::MediaConstraintsData> {
+    static void encode(Encoder&, const WebCore::MediaConstraintsData&);
+    static bool decode(Decoder&, WebCore::MediaConstraintsData&);
+};
+
+template<> struct ArgumentCoder<WebCore::CaptureDevice> {
+    static void encode(Encoder&, const WebCore::CaptureDevice&);
+    static bool decode(Decoder&, WebCore::CaptureDevice&);
+};
+#endif
+
+#if ENABLE(INDEXED_DATABASE)
+
+template<> struct ArgumentCoder<WebCore::IDBKeyPath> {
+    static void encode(Encoder&, const WebCore::IDBKeyPath&);
+    static bool decode(Decoder&, WebCore::IDBKeyPath&);
+};
+
+#endif
+
 } // namespace IPC
 
 namespace WTF {
+
+template<> struct EnumTraits<WebCore::ColorSpace> {
+    using values = EnumValues<
+    WebCore::ColorSpace,
+    WebCore::ColorSpace::ColorSpaceDeviceRGB,
+    WebCore::ColorSpace::ColorSpaceSRGB,
+    WebCore::ColorSpace::ColorSpaceLinearRGB,
+    WebCore::ColorSpace::ColorSpaceDisplayP3
+    >;
+};
 
 template<> struct EnumTraits<WebCore::HasInsecureContent> {
     using values = EnumValues<
@@ -552,5 +598,15 @@ template<> struct EnumTraits<WebCore::HasInsecureContent> {
         WebCore::HasInsecureContent::Yes
     >;
 };
+
+#if ENABLE(INDEXED_DATABASE)
+template<> struct EnumTraits<WebCore::IndexedDB::GetAllType> {
+    using values = EnumValues<
+        WebCore::IndexedDB::GetAllType,
+        WebCore::IndexedDB::GetAllType::Keys,
+        WebCore::IndexedDB::GetAllType::Values
+    >;
+};
+#endif
 
 } // namespace WTF

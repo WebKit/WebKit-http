@@ -28,8 +28,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef RenderRubyRun_h
-#define RenderRubyRun_h
+#pragma once
 
 #include "RenderBlockFlow.h"
 
@@ -61,7 +60,7 @@ public:
     void removeChild(RenderObject&) override;
 
     RenderBlock* firstLineBlock() const override;
-    void updateFirstLetter() override;
+    void updateFirstLetter(RenderTreeMutationIsAllowed = RenderTreeMutationIsAllowed::Yes) override;
 
     void getOverhang(bool firstLine, RenderObject* startRenderer, RenderObject* endRenderer, float& startOverhang, float& endOverhang) const;
 
@@ -92,5 +91,3 @@ private:
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_RENDER_OBJECT(RenderRubyRun, isRubyRun())
-
-#endif // RenderRubyRun_h

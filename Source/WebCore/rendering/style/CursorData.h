@@ -22,8 +22,7 @@
  *
  */
 
-#ifndef CursorData_h
-#define CursorData_h
+#pragma once
 
 #include "IntPoint.h"
 #include "StyleImage.h"
@@ -32,8 +31,8 @@ namespace WebCore {
 
 class CursorData {
 public:
-    CursorData(PassRefPtr<StyleImage> image, const IntPoint& hotSpot)
-        : m_image(image)
+    CursorData(RefPtr<StyleImage>&& image, const IntPoint& hotSpot)
+        : m_image(WTFMove(image))
         , m_hotSpot(hotSpot)
     {
     }
@@ -49,7 +48,7 @@ public:
     }
 
     StyleImage* image() const { return m_image.get(); }    
-    void setImage(PassRefPtr<StyleImage> image) { m_image = image; }    
+    void setImage(RefPtr<StyleImage>&& image) { m_image = WTFMove(image); }
 
     // Hot spot in the image in logical pixels.
     const IntPoint& hotSpot() const { return m_hotSpot; }
@@ -60,5 +59,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // CursorData_h

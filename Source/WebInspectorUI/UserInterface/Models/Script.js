@@ -25,13 +25,15 @@
 
 WebInspector.Script = class Script extends WebInspector.SourceCode
 {
-    constructor(id, range, url, injected, sourceURL, sourceMapURL)
+    constructor(target, id, range, url, injected, sourceURL, sourceMapURL)
     {
         super();
 
         console.assert(id);
+        console.assert(target instanceof WebInspector.Target);
         console.assert(range instanceof WebInspector.TextRange);
 
+        this._target = target;
         this._id = id || null;
         this._range = range || null;
         this._url = url || null;
@@ -52,7 +54,7 @@ WebInspector.Script = class Script extends WebInspector.SourceCode
             this._resource = null;
             this._dynamicallyAddedScriptElement = true;
             documentResource.parentFrame.addExtraScript(this);
-            this._dynamicallyAddedScriptElementNumber = documentResource.parentFrame.extraScripts.length;
+            this._dynamicallyAddedScriptElementNumber = documentResource.parentFrame.extraScriptCollection.items.size;
         } else if (this._resource)
             this._resource.associateWithScript(this);
 
@@ -74,6 +76,11 @@ WebInspector.Script = class Script extends WebInspector.SourceCode
     }
 
     // Public
+
+    get target()
+    {
+        return this._target;
+    }
 
     get id()
     {
@@ -197,6 +204,11 @@ WebInspector.Script = class Script extends WebInspector.SourceCode
         return this._scriptSyntaxTree;
     }
 
+    isMainResource()
+    {
+        return this._target.mainResource === this;
+    }
+
     requestContentFromBackend()
     {
         if (!this._id) {
@@ -205,7 +217,7 @@ WebInspector.Script = class Script extends WebInspector.SourceCode
             return Promise.reject(new Error("There is no identifier to request content with."));
         }
 
-        return DebuggerAgent.getScriptSource(this._id);
+        return this._target.DebuggerAgent.getScriptSource(this._id);
     }
 
     saveIdentityToCookie(cookie)
@@ -254,32 +266,36 @@ WebInspector.Script = class Script extends WebInspector.SourceCode
         if (!this._url)
             return null;
 
+        let resolver = WebInspector.frameResourceManager;
+        if (this._target !== WebInspector.mainTarget)
+            resolver = this._target.resourceCollection;
+
         try {
             // Try with the Script's full URL.
-            var resource = WebInspector.frameResourceManager.resourceForURL(this.url);
+            let resource = resolver.resourceForURL(this._url);
             if (resource)
                 return resource;
 
             // Try with the Script's full decoded URL.
-            var decodedURL = decodeURI(this._url);
+            let decodedURL = decodeURI(this._url);
             if (decodedURL !== this._url) {
-                resource = WebInspector.frameResourceManager.resourceForURL(decodedURL);
+                resource = resolver.resourceForURL(decodedURL);
                 if (resource)
                     return resource;
             }
 
             // Next try removing any fragment in the original URL.
-            var urlWithoutFragment = removeURLFragment(this._url);
+            let urlWithoutFragment = removeURLFragment(this._url);
             if (urlWithoutFragment !== this._url) {
-                resource = WebInspector.frameResourceManager.resourceForURL(urlWithoutFragment);
+                resource = resolver.resourceForURL(urlWithoutFragment);
                 if (resource)
                     return resource;
             }
 
             // Finally try removing any fragment in the decoded URL.
-            var decodedURLWithoutFragment = removeURLFragment(decodedURL);
+            let decodedURLWithoutFragment = removeURLFragment(decodedURL);
             if (decodedURLWithoutFragment !== decodedURL) {
-                resource = WebInspector.frameResourceManager.resourceForURL(decodedURLWithoutFragment);
+                resource = resolver.resourceForURL(decodedURLWithoutFragment);
                 if (resource)
                     return resource;
             }

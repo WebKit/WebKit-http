@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WillChangeData_h
-#define WillChangeData_h
+#pragma once
 
 #include "CSSPropertyNames.h"
 #include "RenderStyleConstants.h"
@@ -69,6 +68,8 @@ public:
     
     typedef std::pair<Feature, CSSPropertyID> FeaturePropertyPair;
     FeaturePropertyPair featureAt(size_t) const;
+
+    static bool propertyCreatesStackingContext(CSSPropertyID);
 
 private:
     WillChangeData()
@@ -126,7 +127,4 @@ private:
     bool m_canTriggerCompositingOnInline { false };
 };
 
-
 } // namespace WebCore
-
-#endif // WillChangeData_h

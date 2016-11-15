@@ -314,8 +314,9 @@
       <dd>Returns a 64-bit integer such that the low 32 bits are the given Int32 value and the
         high 32 bits are zero.</dd>
 
-      <dt>Int32 Trunc(Int64)</dt>
-      <dd>Returns the low 32 bits of the 64-bit value.</dd>
+      <dt>U Trunc(T)</dt>
+      <dd>Returns the low 32 bits of the 64-bit value. If T is Int64 then U is Int32.
+        If T is Double then U is Float.</dd>
 
       <dt>Double IToD(T)</dt>
       <dd>Converts the given integer into a double.  Value for Int32 or Int64 inputs.</dd>
@@ -423,7 +424,12 @@
       <dd>Stores the value in the first child into the address computed by adding the
         compile-time 32-bit signed integer offset to the second child.  Misaligned stores are
         not penalized.  Must use the MemoryValue class.  May have the Traps flag set.</dd>
-      
+
+      <dt>IntPtr WasmAddress(IntPtr, pinnedGPR)</dt>
+      <dd>This is used to compute the address of a wasm memory load from a pinned base GPR.
+        Must use the WasmAddressValue class.</dd>
+
+
       <dt>Void Fence()</dt>
       <dd>Abstracts standalone data fences on x86 and ARM. Must use the FenceValue class, which has
         two additional members that configure the precise meaning of the fence:

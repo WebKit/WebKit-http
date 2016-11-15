@@ -27,17 +27,14 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef CSSPrimitiveValueMappings_h
-#define CSSPrimitiveValueMappings_h
+#pragma once
 
 #include "CSSCalculationValue.h"
 #include "CSSFontFamily.h"
 #include "CSSPrimitiveValue.h"
 #include "CSSReflectionDirection.h"
 #include "CSSToLengthConversionData.h"
-#include "ColorSpace.h"
 #include "CSSValueKeywords.h"
-#include "FontDescription.h"
 #include "GraphicsTypes.h"
 #include "Length.h"
 #include "LineClampValue.h"
@@ -82,7 +79,7 @@ template<> inline CSSPrimitiveValue::CSSPrimitiveValue(unsigned short i)
 template<> inline CSSPrimitiveValue::operator unsigned short() const
 {
     if (primitiveType() == CSS_NUMBER)
-        return getValue<unsigned short>();
+        return value<unsigned short>();
 
     ASSERT_NOT_REACHED();
     return 0;
@@ -91,7 +88,7 @@ template<> inline CSSPrimitiveValue::operator unsigned short() const
 template<> inline CSSPrimitiveValue::operator int() const
 {
     if (primitiveType() == CSS_NUMBER)
-        return getValue<int>();
+        return value<int>();
 
     ASSERT_NOT_REACHED();
     return 0;
@@ -100,7 +97,7 @@ template<> inline CSSPrimitiveValue::operator int() const
 template<> inline CSSPrimitiveValue::operator unsigned() const
 {
     if (primitiveType() == CSS_NUMBER)
-        return getValue<unsigned>();
+        return value<unsigned>();
 
     ASSERT_NOT_REACHED();
     return 0;
@@ -117,7 +114,7 @@ template<> inline CSSPrimitiveValue::CSSPrimitiveValue(float i)
 template<> inline CSSPrimitiveValue::operator float() const
 {
     if (primitiveType() == CSS_NUMBER)
-        return getValue<float>();
+        return value<float>();
 
     ASSERT_NOT_REACHED();
     return 0.0f;
@@ -133,10 +130,10 @@ template<> inline CSSPrimitiveValue::CSSPrimitiveValue(LineClampValue i)
 template<> inline CSSPrimitiveValue::operator LineClampValue() const
 {
     if (primitiveType() == CSS_NUMBER)
-        return LineClampValue(getValue<int>(), LineClampLineCount);
+        return LineClampValue(value<int>(), LineClampLineCount);
 
     if (primitiveType() == CSS_PERCENTAGE)
-        return LineClampValue(getValue<int>(), LineClampPercentage);
+        return LineClampValue(value<int>(), LineClampPercentage);
 
     ASSERT_NOT_REACHED();
     return LineClampValue();
@@ -3243,8 +3240,13 @@ template<> inline CSSPrimitiveValue::operator WritingMode() const
 
     switch (m_value.valueID) {
     case CSSValueHorizontalTb:
+    case CSSValueLrTb:
+    case CSSValueRl:
+    case CSSValueRlTb:
         return TopToBottomWritingMode;
     case CSSValueVerticalRl:
+    case CSSValueTb:
+    case CSSValueTbRl:
         return RightToLeftWritingMode;
     case CSSValueVerticalLr:
         return LeftToRightWritingMode;
@@ -4614,8 +4616,8 @@ template<int supported> Length CSSPrimitiveValue::convertToLength(const CSSToLen
     if ((supported & FixedFloatConversion) && isLength())
         return Length(computeLength<double>(conversionData), Fixed);
     if ((supported & PercentConversion) && isPercentage())
-        return Length(getDoubleValue(), Percent);
-    if ((supported & AutoConversion) && getValueID() == CSSValueAuto)
+        return Length(doubleValue(), Percent);
+    if ((supported & AutoConversion) && valueID() == CSSValueAuto)
         return Length(Auto);
     if ((supported & CalculatedConversion) && isCalculated())
         return Length(cssCalcValue()->createCalculationValue(conversionData));
@@ -4888,55 +4890,11 @@ template<> inline CSSPrimitiveValue::operator ETextAnchor() const
     return TA_START;
 }
 
-template<> inline CSSPrimitiveValue::CSSPrimitiveValue(SVGWritingMode e)
+template<> inline CSSPrimitiveValue::CSSPrimitiveValue(const Color& color)
     : CSSValue(PrimitiveClass)
 {
-    m_primitiveUnitType = CSS_VALUE_ID;
-    switch (e) {
-    case WM_LRTB:
-        m_value.valueID = CSSValueLrTb;
-        break;
-    case WM_LR:
-        m_value.valueID = CSSValueLr;
-        break;
-    case WM_RLTB:
-        m_value.valueID = CSSValueRlTb;
-        break;
-    case WM_RL:
-        m_value.valueID = CSSValueRl;
-        break;
-    case WM_TBRL:
-        m_value.valueID = CSSValueTbRl;
-        break;
-    case WM_TB:
-        m_value.valueID = CSSValueTb;
-        break;
-    }
-}
-
-template<> inline CSSPrimitiveValue::operator SVGWritingMode() const
-{
-    ASSERT(isValueID());
-
-    switch (m_value.valueID) {
-    case CSSValueLrTb:
-        return WM_LRTB;
-    case CSSValueLr:
-        return WM_LR;
-    case CSSValueRlTb:
-        return WM_RLTB;
-    case CSSValueRl:
-        return WM_RL;
-    case CSSValueTbRl:
-        return WM_TBRL;
-    case CSSValueTb:
-        return WM_TB;
-    default:
-        break;
-    }
-
-    ASSERT_NOT_REACHED();
-    return WM_LRTB;
+    m_primitiveUnitType = CSS_RGBCOLOR;
+    m_value.color = new Color(color);
 }
 
 template<> inline CSSPrimitiveValue::CSSPrimitiveValue(CSSFontFamily fontFamily)
@@ -5038,7 +4996,7 @@ template<> inline CSSPrimitiveValue::CSSPrimitiveValue(ImageOrientationEnum e)
 template<> inline CSSPrimitiveValue::operator ImageOrientationEnum() const
 {
     ASSERT(isAngle());
-    double quarters = 4 * getDoubleValue(CSS_TURN);
+    double quarters = 4 * doubleValue(CSS_TURN);
     int orientation = 3 & static_cast<int>(quarters < 0 ? floor(quarters) : ceil(quarters));
     switch (orientation) {
     case 0:
@@ -5092,7 +5050,7 @@ template<> inline CSSPrimitiveValue::CSSPrimitiveValue(CSSBoxType cssBox)
 
 template<> inline CSSPrimitiveValue::operator CSSBoxType() const
 {
-    switch (getValueID()) {
+    switch (valueID()) {
     case CSSValueMarginBox:
         return MarginBox;
     case CSSValueBorderBox:
@@ -5530,6 +5488,10 @@ template<> inline CSSPrimitiveValue::CSSPrimitiveValue(ApplePayButtonType e)
     case ApplePayButtonType::SetUp:
         m_value.valueID = CSSValueSetUp;
         break;
+    case ApplePayButtonType::Other:
+        m_value.valueID = CSSValueOther;
+        break;
+
     default:
         ASSERT_NOT_REACHED();
         break;
@@ -5546,6 +5508,8 @@ template<> inline CSSPrimitiveValue::operator ApplePayButtonType() const
         return ApplePayButtonType::Buy;
     case CSSValueSetUp:
         return ApplePayButtonType::SetUp;
+    case CSSValueOther:
+        return ApplePayButtonType::Other;
     default:
         break;
     }
@@ -5679,6 +5643,5 @@ template<> inline CSSPrimitiveValue::operator FontVariantAlternates() const
     ASSERT_NOT_REACHED();
     return FontVariantAlternates::Normal;
 }
-}
 
-#endif
+}

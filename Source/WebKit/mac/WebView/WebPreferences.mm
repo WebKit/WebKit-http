@@ -507,6 +507,7 @@ public:
         [NSNumber numberWithBool:NO],   WebKitAccelerated2dCanvasEnabledPreferenceKey,
         [NSNumber numberWithBool:NO],  WebKitSubpixelCSSOMElementMetricsEnabledPreferenceKey,
         [NSNumber numberWithBool:NO],  WebKitResourceLoadStatisticsEnabledPreferenceKey,
+        [NSNumber numberWithBool:YES],  WebKitAsyncImageDecodingEnabledPreferenceKey,
 #if PLATFORM(IOS)
         [NSNumber numberWithBool:YES],  WebKitFrameFlatteningEnabledPreferenceKey,
 #else
@@ -606,11 +607,10 @@ public:
 #endif
 #if ENABLE(MEDIA_STREAM)
         [NSNumber numberWithBool:NO], WebKitMockCaptureDevicesEnabledPreferenceKey,
+        [NSNumber numberWithBool:YES], WebKitMediaCaptureRequiresSecureConnectionPreferenceKey,
 #endif
         [NSNumber numberWithBool:YES], WebKitShadowDOMEnabledPreferenceKey,
-#if ENABLE(CUSTOM_ELEMENTS)
-        [NSNumber numberWithBool:NO], WebKitCustomElementsEnabledPreferenceKey,
-#endif
+        [NSNumber numberWithBool:YES], WebKitCustomElementsEnabledPreferenceKey,
 #if ENABLE(WEBGL2)
         [NSNumber numberWithBool:NO], WebKitWebGL2EnabledPreferenceKey,
 #endif
@@ -627,6 +627,7 @@ public:
         [NSNumber numberWithBool:NO], WebKitWebAnimationsEnabledPreferenceKey,
 #endif
         [NSNumber numberWithBool:NO], WebKitVisualViewportEnabledPreferenceKey,
+        [NSNumber numberWithBool:YES], WebKitNeedsStorageAccessFromFileURLsQuirkKey,
         nil];
 
 #if !PLATFORM(IOS)
@@ -1445,6 +1446,16 @@ public:
     [self _setBoolValue: flag forKey: WebKitAllowFileAccessFromFileURLsPreferenceKey];
 }
 
+- (BOOL)needsStorageAccessFromFileURLsQuirk
+{
+    return [self _boolValueForKey: WebKitNeedsStorageAccessFromFileURLsQuirkKey];
+}
+
+-(void)setNeedsStorageAccessFromFileURLsQuirk:(BOOL)flag
+{
+    [self _setBoolValue: flag forKey: WebKitNeedsStorageAccessFromFileURLsQuirkKey];
+}
+
 - (NSTimeInterval)_backForwardCacheExpirationInterval
 {
     return (NSTimeInterval)[self _floatValueForKey:WebKitBackForwardCacheExpirationIntervalKey];
@@ -1801,7 +1812,7 @@ static NSString *classIBCreatorID = nil;
 + (void)_setCurrentNetworkLoaderSessionCookieAcceptPolicy:(NSHTTPCookieAcceptPolicy)policy
 {
     RetainPtr<CFHTTPCookieStorageRef> cookieStorage = NetworkStorageSession::defaultStorageSession().cookieStorage();
-    ASSERT(cookieStorage); // Will fail when NetworkStorageSession::switchToNewTestingSession() was not called beforehand.
+    ASSERT(cookieStorage); // Will fail when building without USE(CFURLCONNECTION) and NetworkStorageSession::switchToNewTestingSession() was not called beforehand.
     CFHTTPCookieStorageSetCookieAcceptPolicy(cookieStorage.get(), policy);
 }
 
@@ -1873,6 +1884,16 @@ static NSString *classIBCreatorID = nil;
 - (void)setResourceLoadStatisticsEnabled:(BOOL)enabled
 {
     [self _setBoolValue:enabled forKey:WebKitResourceLoadStatisticsEnabledPreferenceKey];
+}
+
+- (BOOL)asyncImageDecodingEnabled
+{
+    return [self _boolValueForKey:WebKitAsyncImageDecodingEnabledPreferenceKey];
+}
+
+- (void)setAsyncImageDecodingEnabled:(BOOL)enabled
+{
+    [self _setBoolValue:enabled forKey:WebKitAsyncImageDecodingEnabledPreferenceKey];
 }
 
 - (BOOL)canvasUsesAcceleratedDrawing
@@ -2705,6 +2726,16 @@ static NSString *classIBCreatorID = nil;
 - (void)setMockCaptureDevicesEnabled:(BOOL)flag
 {
     [self _setBoolValue:flag forKey:WebKitMockCaptureDevicesEnabledPreferenceKey];
+}
+
+- (BOOL)mediaCaptureRequiresSecureConnection
+{
+    return [self _boolValueForKey:WebKitMediaCaptureRequiresSecureConnectionPreferenceKey];
+}
+
+- (void)setMediaCaptureRequiresSecureConnection:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitMediaCaptureRequiresSecureConnectionPreferenceKey];
 }
 
 - (BOOL)shadowDOMEnabled

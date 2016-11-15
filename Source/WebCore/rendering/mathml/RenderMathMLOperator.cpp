@@ -117,7 +117,7 @@ bool RenderMathMLOperator::isVertical() const
 
 void RenderMathMLOperator::stretchTo(LayoutUnit heightAboveBaseline, LayoutUnit depthBelowBaseline)
 {
-    ASSERT(hasOperatorFlag(MathMLOperatorDictionary::Stretchy));
+    ASSERT(isStretchy());
     ASSERT(isVertical());
 
     if (!isVertical() || (heightAboveBaseline == m_stretchHeightAboveBaseline && depthBelowBaseline == m_stretchDepthBelowBaseline))
@@ -157,7 +157,7 @@ void RenderMathMLOperator::stretchTo(LayoutUnit heightAboveBaseline, LayoutUnit 
 
 void RenderMathMLOperator::stretchTo(LayoutUnit width)
 {
-    ASSERT(hasOperatorFlag(MathMLOperatorDictionary::Stretchy));
+    ASSERT(isStretchy());
     ASSERT(!isVertical());
 
     if (isVertical() || m_stretchWidth == width)
@@ -242,12 +242,13 @@ void RenderMathMLOperator::updateMathOperator()
 {
     ASSERT(useMathOperator());
     MathOperator::Type type;
-    if (!shouldAllowStretching())
-        type = MathOperator::Type::NormalOperator;
-    else if (isLargeOperatorInDisplayStyle())
+    if (isStretchy())
+        type = isVertical() ? MathOperator::Type::VerticalOperator : MathOperator::Type::HorizontalOperator;
+    else if (textContent() && isLargeOperatorInDisplayStyle())
         type = MathOperator::Type::DisplayOperator;
     else
-        type = isVertical() ? MathOperator::Type::VerticalOperator : MathOperator::Type::HorizontalOperator;
+        type = MathOperator::Type::NormalOperator;
+
     m_mathOperator.setOperator(style(), textContent(), type);
 }
 
@@ -264,17 +265,12 @@ void RenderMathMLOperator::updateFromElement()
     updateTokenContent();
 }
 
-bool RenderMathMLOperator::shouldAllowStretching() const
-{
-    return textContent() && (hasOperatorFlag(MathMLOperatorDictionary::Stretchy) || isLargeOperatorInDisplayStyle());
-}
-
 bool RenderMathMLOperator::useMathOperator() const
 {
     // We use the MathOperator class to handle the following cases:
     // 1) Stretchy and large operators, since they require special painting.
     // 2) The minus sign, since it can be obtained from a hyphen in the DOM.
-    return shouldAllowStretching() || textContent() == minusSign;
+    return isStretchy() || (textContent() && isLargeOperatorInDisplayStyle()) || textContent() == minusSign;
 }
 
 void RenderMathMLOperator::styleDidChange(StyleDifference diff, const RenderStyle* oldStyle)

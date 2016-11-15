@@ -42,28 +42,19 @@
 #include "FrameLoader.h"
 #include "FrameSelection.h"
 #include "FrameView.h"
-#include "HTMLAreaElement.h"
 #include "HTMLCanvasElement.h"
 #include "HTMLDetailsElement.h"
 #include "HTMLFieldSetElement.h"
 #include "HTMLFormElement.h"
-#include "HTMLFrameElementBase.h"
 #include "HTMLImageElement.h"
 #include "HTMLInputElement.h"
 #include "HTMLLabelElement.h"
 #include "HTMLLegendElement.h"
-#include "HTMLMapElement.h"
 #include "HTMLNames.h"
-#include "HTMLOptGroupElement.h"
-#include "HTMLOptionElement.h"
-#include "HTMLOptionsCollection.h"
 #include "HTMLParserIdioms.h"
-#include "HTMLPlugInImageElement.h"
 #include "HTMLSelectElement.h"
 #include "HTMLTextAreaElement.h"
 #include "HTMLTextFormControlElement.h"
-#include "HitTestRequest.h"
-#include "HitTestResult.h"
 #include "LabelableElement.h"
 #include "LocalizedStrings.h"
 #include "MathMLElement.h"
@@ -810,6 +801,11 @@ int AccessibilityNodeObject::headingLevel() const
     if (node->hasTagName(h6Tag))
         return 6;
 
+    // The implicit value of aria-level is 2 for the heading role.
+    // https://www.w3.org/TR/wai-aria-1.1/#heading
+    if (ariaRoleAttribute() == HeadingRole)
+        return 2;
+
     return 0;
 }
 
@@ -1407,6 +1403,9 @@ void AccessibilityNodeObject::visibleText(Vector<AccessibilityText>& textOrder) 
     if (isHeading() || isLink())
         useTextUnderElement = true;
     
+    if (isOutput())
+        useTextUnderElement = true;
+    
     if (useTextUnderElement) {
         AccessibilityTextUnderElementMode mode;
         
@@ -1612,7 +1611,7 @@ unsigned AccessibilityNodeObject::hierarchicalLevel() const
     // We measure tree hierarchy by the number of groups that the item is within.
     unsigned level = 1;
     for (AccessibilityObject* parent = parentObject(); parent; parent = parent->parentObject()) {
-        AccessibilityRole parentRole = parent->roleValue();
+        AccessibilityRole parentRole = parent->ariaRoleAttribute();
         if (parentRole == GroupRole)
             level++;
         else if (parentRole == TreeRole)

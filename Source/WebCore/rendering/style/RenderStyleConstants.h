@@ -23,8 +23,7 @@
  *
  */
 
-#ifndef RenderStyleConstants_h
-#define RenderStyleConstants_h
+#pragma once
 
 #include <initializer_list>
 
@@ -707,6 +706,7 @@ enum class ApplePayButtonType {
     Plain,
     Buy,
     SetUp,
+    Other,
 };
 #endif
 
@@ -718,5 +718,3 @@ TextStream& operator<<(TextStream&, EMaskSourceType);
 TextStream& operator<<(TextStream&, Edge);
 
 } // namespace WebCore
-
-#endif // RenderStyleConstants_h

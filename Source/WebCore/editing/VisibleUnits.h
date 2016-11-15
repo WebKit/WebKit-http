@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef VisibleUnits_h
-#define VisibleUnits_h
+#pragma once
 
 #include "EditingBoundary.h"
 #include "TextFlags.h"
@@ -117,13 +116,11 @@ unsigned startWordBoundary(StringView, unsigned, BoundarySearchContextAvailabili
 unsigned endWordBoundary(StringView, unsigned, BoundarySearchContextAvailability, bool&);
 unsigned startSentenceBoundary(StringView, unsigned, BoundarySearchContextAvailability, bool&);
 unsigned endSentenceBoundary(StringView, unsigned, BoundarySearchContextAvailability, bool&);
-unsigned suffixLengthForRange(RefPtr<Range>, Vector<UChar, 1024>&);
-unsigned prefixLengthForRange(RefPtr<Range>, Vector<UChar, 1024>&);
+unsigned suffixLengthForRange(const Range&, Vector<UChar, 1024>&);
+unsigned prefixLengthForRange(const Range&, Vector<UChar, 1024>&);
 unsigned backwardSearchForBoundaryWithTextIterator(SimplifiedBackwardsTextIterator&, Vector<UChar, 1024>&, unsigned, BoundarySearchFunction);
 unsigned forwardSearchForBoundaryWithTextIterator(TextIterator&, Vector<UChar, 1024>&, unsigned, BoundarySearchFunction);
 Node* findStartOfParagraph(Node*, Node*, Node*, int&, Position::AnchorType&, EditingBoundaryCrossingRule);
 Node* findEndOfParagraph(Node*, Node*, Node*, int&, Position::AnchorType&, EditingBoundaryCrossingRule);
 
 } // namespace WebCore
-
-#endif // VisibleUnits_h

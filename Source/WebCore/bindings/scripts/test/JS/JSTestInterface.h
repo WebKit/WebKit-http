@@ -79,12 +79,7 @@ public:
 protected:
     JSTestInterface(JSC::Structure*, JSDOMGlobalObject&, Ref<TestInterface>&&);
 
-    void finishCreation(JSC::VM& vm)
-    {
-        Base::finishCreation(vm);
-        ASSERT(inherits(info()));
-    }
-
+    void finishCreation(JSC::VM&);
 };
 
 class JSTestInterfaceOwner : public JSC::WeakHandleOwner {
@@ -111,6 +106,7 @@ inline JSC::JSValue toJSNewlyCreated(JSC::ExecState* state, JSDOMGlobalObject* g
 
 template<> struct JSDOMWrapperConverterTraits<TestInterface> {
     using WrapperClass = JSTestInterface;
+    using ToWrappedReturnType = TestInterface*;
 };
 
 } // namespace WebCore

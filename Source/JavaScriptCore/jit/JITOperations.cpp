@@ -40,7 +40,9 @@
 #include "DirectArguments.h"
 #include "Error.h"
 #include "ErrorHandlingScope.h"
+#include "EvalCodeBlock.h"
 #include "ExceptionFuzz.h"
+#include "FunctionCodeBlock.h"
 #include "GetterSetter.h"
 #include "HostCallReturnValue.h"
 #include "ICStats.h"
@@ -48,13 +50,16 @@
 #include "JIT.h"
 #include "JITExceptions.h"
 #include "JITToDFGDeferredCompilationCallback.h"
+#include "JSAsyncFunction.h"
 #include "JSCInlines.h"
 #include "JSGeneratorFunction.h"
 #include "JSGlobalObjectFunctions.h"
 #include "JSLexicalEnvironment.h"
 #include "JSPropertyNameEnumerator.h"
+#include "ModuleProgramCodeBlock.h"
 #include "ObjectConstructor.h"
 #include "PolymorphicAccess.h"
+#include "ProgramCodeBlock.h"
 #include "PropertyName.h"
 #include "RegExpObject.h"
 #include "Repatch.h"
@@ -65,6 +70,7 @@
 #include "TestRunnerUtils.h"
 #include "TypeProfilerLog.h"
 #include "VMInlines.h"
+#include "WebAssemblyCodeBlock.h"
 #include <wtf/InlineASM.h>
 
 namespace JSC {
@@ -196,12 +202,15 @@ EncodedJSValue JIT_OPERATION operationTryGetByIdOptimize(ExecState* exec, Struct
 {
     VM* vm = &exec->vm();
     NativeCallFrameTracer tracer(vm, exec);
+    auto scope = DECLARE_THROW_SCOPE(*vm);
     Identifier ident = Identifier::fromUid(vm, uid);
 
     JSValue baseValue = JSValue::decode(base);
     PropertySlot slot(baseValue, PropertySlot::InternalMethodType::VMInquiry);
 
     baseValue.getPropertySlot(exec, ident, slot);
+    RETURN_IF_EXCEPTION(scope, encodedJSValue());
+
     if (stubInfo->considerCaching(baseValue.structureOrNull()) && !slot.isTaintedByOpaqueObject() && (slot.isCacheableValue() || slot.isCacheableGetter() || slot.isUnset()))
         repatchGetByID(exec, baseValue, ident, slot, *stubInfo, GetByIDKind::Pure);
 
@@ -387,7 +396,8 @@ void JIT_OPERATION operationPutByIdStrictOptimize(ExecState* exec, StructureStub
     
     VM* vm = &exec->vm();
     NativeCallFrameTracer tracer(vm, exec);
-    
+    auto scope = DECLARE_THROW_SCOPE(*vm);
+
     Identifier ident = Identifier::fromUid(vm, uid);
     AccessType accessType = static_cast<AccessType>(stubInfo->accessType);
 
@@ -398,7 +408,8 @@ void JIT_OPERATION operationPutByIdStrictOptimize(ExecState* exec, StructureStub
 
     Structure* structure = baseValue.isCell() ? baseValue.asCell()->structure(*vm) : nullptr;
     baseValue.putInline(exec, ident, value, slot);
-    
+    RETURN_IF_EXCEPTION(scope, void());
+
     if (accessType != static_cast<AccessType>(stubInfo->accessType))
         return;
     
@@ -412,7 +423,8 @@ void JIT_OPERATION operationPutByIdNonStrictOptimize(ExecState* exec, StructureS
     
     VM* vm = &exec->vm();
     NativeCallFrameTracer tracer(vm, exec);
-    
+    auto scope = DECLARE_THROW_SCOPE(*vm);
+
     Identifier ident = Identifier::fromUid(vm, uid);
     AccessType accessType = static_cast<AccessType>(stubInfo->accessType);
 
@@ -423,7 +435,8 @@ void JIT_OPERATION operationPutByIdNonStrictOptimize(ExecState* exec, StructureS
 
     Structure* structure = baseValue.isCell() ? baseValue.asCell()->structure(*vm) : nullptr;    
     baseValue.putInline(exec, ident, value, slot);
-    
+    RETURN_IF_EXCEPTION(scope, void());
+
     if (accessType != static_cast<AccessType>(stubInfo->accessType))
         return;
     
@@ -516,6 +529,7 @@ static void putByVal(CallFrame* callFrame, JSValue baseValue, JSValue subscript,
     if (byValInfo->stubInfo && (!isStringOrSymbol(subscript) || byValInfo->cachedId != property))
         byValInfo->tookSlowPath = true;
 
+    scope.release();
     PutPropertySlot slot(baseValue, callFrame->codeBlock()->isStrictMode());
     baseValue.putInline(callFrame, property, value, slot);
 }
@@ -861,6 +875,8 @@ SlowPathReturnType JIT_OPERATION operationLinkCall(ExecState* execCallee, CallLi
     CodeSpecializationKind kind = callLinkInfo->specializationKind();
     NativeCallFrameTracer tracer(vm, exec);
     
+    RELEASE_ASSERT(!callLinkInfo->isDirect());
+    
     JSValue calleeAsValue = execCallee->calleeAsValue();
     JSCell* calleeAsFunctionCell = getJSFunction(calleeAsValue);
     if (!calleeAsFunctionCell) {
@@ -902,7 +918,7 @@ SlowPathReturnType JIT_OPERATION operationLinkCall(ExecState* execCallee, CallLi
         }
 
         CodeBlock** codeBlockSlot = execCallee->addressOfCodeBlock();
-        JSObject* error = functionExecutable->prepareForExecution<FunctionExecutable>(execCallee, callee, scope, kind, *codeBlockSlot);
+        JSObject* error = functionExecutable->prepareForExecution<FunctionExecutable>(*vm, callee, scope, kind, *codeBlockSlot);
         ASSERT(throwScope.exception() == reinterpret_cast<Exception*>(error));
         if (error) {
             throwException(exec, throwScope, error);
@@ -924,6 +940,60 @@ SlowPathReturnType JIT_OPERATION operationLinkCall(ExecState* execCallee, CallLi
         linkFor(execCallee, *callLinkInfo, codeBlock, callee, codePtr);
     
     return encodeResult(codePtr.executableAddress(), reinterpret_cast<void*>(callLinkInfo->callMode() == CallMode::Tail ? ReuseTheFrame : KeepTheFrame));
+}
+
+void JIT_OPERATION operationLinkDirectCall(ExecState* exec, CallLinkInfo* callLinkInfo, JSFunction* callee)
+{
+    VM* vm = &exec->vm();
+    auto throwScope = DECLARE_THROW_SCOPE(*vm);
+
+    CodeSpecializationKind kind = callLinkInfo->specializationKind();
+    NativeCallFrameTracer tracer(vm, exec);
+    
+    RELEASE_ASSERT(callLinkInfo->isDirect());
+    
+    // This would happen if the executable died during GC but the CodeBlock did not die. That should
+    // not happen because the CodeBlock should have a weak reference to any executable it uses for
+    // this purpose.
+    RELEASE_ASSERT(callLinkInfo->executable());
+    
+    // Having a CodeBlock indicates that this is linked. We shouldn't be taking this path if it's
+    // linked.
+    RELEASE_ASSERT(!callLinkInfo->codeBlock());
+    
+    // We just don't support this yet.
+    RELEASE_ASSERT(!callLinkInfo->isVarargs());
+    
+    ExecutableBase* executable = callLinkInfo->executable();
+    RELEASE_ASSERT(callee->executable() == callLinkInfo->executable());
+
+    JSScope* scope = callee->scopeUnchecked();
+
+    MacroAssemblerCodePtr codePtr;
+    CodeBlock* codeBlock = nullptr;
+    if (executable->isHostFunction())
+        codePtr = executable->entrypointFor(kind, MustCheckArity);
+    else {
+        FunctionExecutable* functionExecutable = static_cast<FunctionExecutable*>(executable);
+
+        RELEASE_ASSERT(isCall(kind) || functionExecutable->constructAbility() != ConstructAbility::CannotConstruct);
+        
+        JSObject* error = functionExecutable->prepareForExecution<FunctionExecutable>(*vm, callee, scope, kind, codeBlock);
+        ASSERT(throwScope.exception() == reinterpret_cast<Exception*>(error));
+        if (error) {
+            throwException(exec, throwScope, error);
+            return;
+        }
+        ArityCheckMode arity;
+        unsigned argumentStackSlots = callLinkInfo->maxNumArguments();
+        if (argumentStackSlots < static_cast<size_t>(codeBlock->numParameters()))
+            arity = MustCheckArity;
+        else
+            arity = ArityCheckNotRequired;
+        codePtr = functionExecutable->entrypointFor(kind, arity);
+    }
+    
+    linkDirectFor(exec, *callLinkInfo, codeBlock, codePtr);
 }
 
 inline SlowPathReturnType virtualForWithFunction(
@@ -960,7 +1030,7 @@ inline SlowPathReturnType virtualForWithFunction(
             }
 
             CodeBlock** codeBlockSlot = execCallee->addressOfCodeBlock();
-            JSObject* error = functionExecutable->prepareForExecution<FunctionExecutable>(execCallee, function, scope, kind, *codeBlockSlot);
+            JSObject* error = functionExecutable->prepareForExecution<FunctionExecutable>(*vm, function, scope, kind, *codeBlockSlot);
             if (error) {
                 throwException(exec, throwScope, error);
                 return encodeResult(
@@ -1112,6 +1182,16 @@ EncodedJSValue JIT_OPERATION operationNewGeneratorFunction(ExecState* exec, JSSc
 EncodedJSValue JIT_OPERATION operationNewGeneratorFunctionWithInvalidatedReallocationWatchpoint(ExecState* exec, JSScope* scope, JSCell* functionExecutable)
 {
     return operationNewFunctionCommon<JSGeneratorFunction>(exec, scope, functionExecutable, true);
+}
+
+EncodedJSValue JIT_OPERATION operationNewAsyncFunction(ExecState* exec, JSScope* scope, JSCell* functionExecutable)
+{
+    return operationNewFunctionCommon<JSAsyncFunction>(exec, scope, functionExecutable, false);
+}
+
+EncodedJSValue JIT_OPERATION operationNewAsyncFunctionWithInvalidatedReallocationWatchpoint(ExecState* exec, JSScope* scope, JSCell* functionExecutable)
+{
+    return operationNewFunctionCommon<JSAsyncFunction>(exec, scope, functionExecutable, true);
 }
 
 void JIT_OPERATION operationSetFunctionName(ExecState* exec, JSCell* funcCell, EncodedJSValue encodedName)
@@ -1866,7 +1946,7 @@ size_t JIT_OPERATION operationDeleteById(ExecState* exec, EncodedJSValue encoded
         return false;
     bool couldDelete = baseObj->methodTable(vm)->deleteProperty(baseObj, exec, Identifier::fromUid(&vm, uid));
     if (!couldDelete && exec->codeBlock()->isStrictMode())
-        throwTypeError(exec, scope, ASCIILiteral("Unable to delete property."));
+        throwTypeError(exec, scope, ASCIILiteral(UnableToDeletePropertyError));
     return couldDelete;
 }
 
@@ -1897,7 +1977,7 @@ size_t JIT_OPERATION operationDeleteByVal(ExecState* exec, EncodedJSValue encode
         couldDelete = baseObj->methodTable(vm)->deleteProperty(baseObj, exec, property);
     }
     if (!couldDelete && exec->codeBlock()->isStrictMode())
-        throwTypeError(exec, scope, ASCIILiteral("Unable to delete property."));
+        throwTypeError(exec, scope, ASCIILiteral(UnableToDeletePropertyError));
     return couldDelete;
 }
 
@@ -2470,7 +2550,10 @@ ALWAYS_INLINE static EncodedJSValue profiledNegate(ExecState* exec, EncodedJSVal
     double number = operand.toNumber(exec);
     if (UNLIKELY(scope.exception()))
         return JSValue::encode(JSValue());
-    return JSValue::encode(jsNumber(-number));
+
+    JSValue result = jsNumber(-number);
+    arithProfile.observeResult(result);
+    return JSValue::encode(result);
 }
 
 EncodedJSValue JIT_OPERATION operationArithNegate(ExecState* exec, EncodedJSValue operand)
@@ -2504,7 +2587,9 @@ EncodedJSValue JIT_OPERATION operationArithNegateProfiledOptimize(ExecState* exe
     double number = operand.toNumber(exec);
     if (UNLIKELY(scope.exception()))
         return JSValue::encode(JSValue());
-    return JSValue::encode(jsNumber(-number));
+    JSValue result = jsNumber(-number);
+    arithProfile->observeResult(result);
+    return JSValue::encode(result);
 }
 
 EncodedJSValue JIT_OPERATION operationArithNegateOptimize(ExecState* exec, EncodedJSValue encodedOperand, JITNegIC* negIC)

@@ -174,6 +174,29 @@ bool MediaElementSession::playbackPermitted(const HTMLMediaElement& element) con
     return true;
 }
 
+bool MediaElementSession::autoplayPermitted() const
+{
+    const Document& document = m_element.document();
+    if (document.pageCacheState() != Document::NotInPageCache)
+        return false;
+    if (document.activeDOMObjectsAreSuspended())
+        return false;
+
+    if (!hasBehaviorRestriction(MediaElementSession::InvisibleAutoplayNotPermitted))
+        return true;
+
+    auto* renderer = m_element.renderer();
+    if (!renderer)
+        return false;
+    if (renderer->style().visibility() != VISIBLE)
+        return false;
+    if (renderer->view().frameView().isOffscreen())
+        return false;
+    if (renderer->visibleInViewportState() != RenderElement::VisibleInViewport)
+        return false;
+    return true;
+}
+
 bool MediaElementSession::dataLoadingPermitted(const HTMLMediaElement&) const
 {
     if (m_restrictions & OverrideUserGestureRequirementForMainContent && updateIsMainContent())
@@ -653,7 +676,7 @@ static bool isMainContentForPurposesOfAutoplay(const HTMLMediaElement& element)
     // Elements which are obscured by other elements cannot be main content.
     mainRenderView.hitTest(request, result);
     result.setToNonUserAgentShadowAncestor();
-    Element* hitElement = result.innerElement();
+    Element* hitElement = result.targetElement();
     if (hitElement != &element)
         return false;
 
@@ -675,10 +698,13 @@ static bool isElementRectMostlyInMainFrame(const HTMLMediaElement& element)
 
     IntRect mainFrameRectAdjustedForScrollPosition = IntRect(-mainFrameView->documentScrollPositionRelativeToViewOrigin(), mainFrameView->contentsSize());
     IntRect elementRectInMainFrame = element.clientRect();
-    unsigned int totalElementArea = elementRectInMainFrame.area();
+    auto totalElementArea = elementRectInMainFrame.area<RecordOverflow>();
+    if (totalElementArea.hasOverflowed())
+        return false;
+
     elementRectInMainFrame.intersect(mainFrameRectAdjustedForScrollPosition);
 
-    return elementRectInMainFrame.area() > totalElementArea / 2;
+    return elementRectInMainFrame.area().unsafeGet() > totalElementArea.unsafeGet() / 2;
 }
 
 static bool isElementLargeRelativeToMainFrame(const HTMLMediaElement& element)

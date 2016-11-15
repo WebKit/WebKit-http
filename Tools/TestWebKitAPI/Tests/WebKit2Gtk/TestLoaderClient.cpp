@@ -27,6 +27,7 @@
 #include "WebViewTest.h"
 #include <gtk/gtk.h>
 #include <libsoup/soup.h>
+#include <wtf/Vector.h>
 #include <wtf/text/CString.h>
 
 static WebKitTestBus* bus;
@@ -209,51 +210,100 @@ public:
 
     static void uriChanged(GObject*, GParamSpec*, ViewURITrackingTest* test)
     {
-        g_assert_cmpstr(test->m_activeURI.data(), !=, webkit_web_view_get_uri(test->m_webView));
-        test->m_activeURI = webkit_web_view_get_uri(test->m_webView);
+        g_assert_cmpstr(test->m_currentURI.data(), !=, webkit_web_view_get_uri(test->m_webView));
+        test->m_currentURI = webkit_web_view_get_uri(test->m_webView);
     }
 
     ViewURITrackingTest()
-        : m_activeURI(webkit_web_view_get_uri(m_webView))
+        : m_currentURI(webkit_web_view_get_uri(m_webView))
     {
-        g_assert(m_activeURI.isNull());
+        g_assert(m_currentURI.isNull());
+        m_currentURIList.grow(m_currentURIList.capacity());
         g_signal_connect(m_webView, "notify::uri", G_CALLBACK(uriChanged), this);
+    }
+
+    enum State { Provisional, ProvisionalAfterRedirect, Commited, Finished };
+
+    void loadURI(const char* uri)
+    {
+        reset();
+        LoadTrackingTest::loadURI(uri);
     }
 
     void provisionalLoadStarted()
     {
-        checkActiveURI("/redirect");
+        m_currentURIList[Provisional] = m_currentURI;
     }
 
     void provisionalLoadReceivedServerRedirect()
     {
-        checkActiveURI("/normal");
+        m_currentURIList[ProvisionalAfterRedirect] = m_currentURI;
     }
 
     void loadCommitted()
     {
-        checkActiveURI("/normal");
+        m_currentURIList[Commited] = m_currentURI;
     }
 
     void loadFinished()
     {
-        checkActiveURI("/normal");
+        m_currentURIList[Finished] = m_currentURI;
         LoadTrackingTest::loadFinished();
     }
 
-    CString m_activeURI;
+    void checkURIAtState(State state, const char* path)
+    {
+        if (path)
+            ASSERT_CMP_CSTRING(m_currentURIList[state], ==, kServer->getURIForPath(path));
+        else
+            g_assert(m_currentURIList[state].isNull());
+    }
 
 private:
-    void checkActiveURI(const char* uri)
+    void reset()
     {
-        ASSERT_CMP_CSTRING(m_activeURI, ==, kServer->getURIForPath(uri));
+        m_currentURI = CString();
+        m_currentURIList.clear();
+        m_currentURIList.grow(m_currentURIList.capacity());
     }
+
+    CString m_currentURI;
+    Vector<CString, 4> m_currentURIList;
 };
 
 static void testWebViewActiveURI(ViewURITrackingTest* test, gconstpointer)
 {
+    // Normal load, the URL doesn't change.
+    test->loadURI(kServer->getURIForPath("/normal1").data());
+    test->waitUntilLoadFinished();
+    test->checkURIAtState(ViewURITrackingTest::State::Provisional, "/normal1");
+    test->checkURIAtState(ViewURITrackingTest::State::ProvisionalAfterRedirect, nullptr);
+    test->checkURIAtState(ViewURITrackingTest::State::Commited, "/normal1");
+    test->checkURIAtState(ViewURITrackingTest::State::Finished, "/normal1");
+
+    // Redirect, the URL changes after the redirect.
     test->loadURI(kServer->getURIForPath("/redirect").data());
     test->waitUntilLoadFinished();
+    test->checkURIAtState(ViewURITrackingTest::State::Provisional, "/redirect");
+    test->checkURIAtState(ViewURITrackingTest::State::ProvisionalAfterRedirect, "/normal");
+    test->checkURIAtState(ViewURITrackingTest::State::Commited, "/normal");
+    test->checkURIAtState(ViewURITrackingTest::State::Finished, "/normal");
+
+    // Normal load, URL changed by WebKitPage::send-request.
+    test->loadURI(kServer->getURIForPath("/normal-change-request").data());
+    test->waitUntilLoadFinished();
+    test->checkURIAtState(ViewURITrackingTest::State::Provisional, "/normal-change-request");
+    test->checkURIAtState(ViewURITrackingTest::State::ProvisionalAfterRedirect, nullptr);
+    test->checkURIAtState(ViewURITrackingTest::State::Commited, "/request-changed");
+    test->checkURIAtState(ViewURITrackingTest::State::Finished, "/request-changed");
+
+    // Redirect, URL changed by WebKitPage::send-request.
+    test->loadURI(kServer->getURIForPath("/redirect-to-change-request").data());
+    test->waitUntilLoadFinished();
+    test->checkURIAtState(ViewURITrackingTest::State::Provisional, "/redirect-to-change-request");
+    test->checkURIAtState(ViewURITrackingTest::State::ProvisionalAfterRedirect, "/normal-change-request");
+    test->checkURIAtState(ViewURITrackingTest::State::Commited, "/request-changed-on-redirect");
+    test->checkURIAtState(ViewURITrackingTest::State::Finished, "/request-changed-on-redirect");
 }
 
 class ViewIsLoadingTest: public LoadTrackingTest {
@@ -355,6 +405,20 @@ public:
         g_dbus_connection_signal_unsubscribe(bus->connection(), m_uriChangedSignalID);
     }
 
+    void loadURI(const char* uri)
+    {
+        m_webPageURIs.clear();
+        m_webViewURIs.clear();
+        WebViewTest::loadURI(uri);
+    }
+
+    void checkViewAndPageURIsMatch() const
+    {
+        g_assert_cmpint(m_webPageURIs.size(), ==, m_webViewURIs.size());
+        for (size_t i = 0; i < m_webPageURIs.size(); ++i)
+            ASSERT_CMP_CSTRING(m_webPageURIs[i], ==, m_webViewURIs[i]);
+    }
+
     unsigned m_uriChangedSignalID;
     Vector<CString> m_webPageURIs;
     Vector<CString> m_webViewURIs;
@@ -362,17 +426,37 @@ public:
 
 static void testWebPageURI(WebPageURITest* test, gconstpointer)
 {
+    // Normal load.
+    test->loadURI(kServer->getURIForPath("/normal1").data());
+    test->waitUntilLoadFinished();
+    test->checkViewAndPageURIsMatch();
+    g_assert_cmpint(test->m_webPageURIs.size(), ==, 1);
+    ASSERT_CMP_CSTRING(test->m_webPageURIs[0], ==, kServer->getURIForPath("/normal1"));
+
+    // Redirect
     test->loadURI(kServer->getURIForPath("/redirect").data());
     test->waitUntilLoadFinished();
-
-    g_assert_cmpint(test->m_webPageURIs.size(), ==, test->m_webViewURIs.size());
-    for (size_t i = 0; i < test->m_webPageURIs.size(); ++i)
-        ASSERT_CMP_CSTRING(test->m_webPageURIs[i], ==, test->m_webViewURIs[i]);
-
+    test->checkViewAndPageURIsMatch();
     g_assert_cmpint(test->m_webPageURIs.size(), ==, 2);
     ASSERT_CMP_CSTRING(test->m_webPageURIs[0], ==, kServer->getURIForPath("/redirect"));
     ASSERT_CMP_CSTRING(test->m_webPageURIs[1], ==, kServer->getURIForPath("/normal"));
 
+    // Normal load, URL changed by WebKitPage::send-request.
+    test->loadURI(kServer->getURIForPath("/normal-change-request").data());
+    test->waitUntilLoadFinished();
+    test->checkViewAndPageURIsMatch();
+    g_assert_cmpint(test->m_webPageURIs.size(), ==, 2);
+    ASSERT_CMP_CSTRING(test->m_webPageURIs[0], ==, kServer->getURIForPath("/normal-change-request"));
+    ASSERT_CMP_CSTRING(test->m_webPageURIs[1], ==, kServer->getURIForPath("/request-changed"));
+
+    // Redirect, URL changed by WebKitPage::send-request.
+    test->loadURI(kServer->getURIForPath("/redirect-to-change-request").data());
+    test->waitUntilLoadFinished();
+    test->checkViewAndPageURIsMatch();
+    g_assert_cmpint(test->m_webPageURIs.size(), ==, 3);
+    ASSERT_CMP_CSTRING(test->m_webPageURIs[0], ==, kServer->getURIForPath("/redirect-to-change-request"));
+    ASSERT_CMP_CSTRING(test->m_webPageURIs[1], ==, kServer->getURIForPath("/normal-change-request"));
+    ASSERT_CMP_CSTRING(test->m_webPageURIs[2], ==, kServer->getURIForPath("/request-changed-on-redirect"));
 }
 
 static void testURIRequestHTTPHeaders(WebViewTest* test, gconstpointer)
@@ -484,6 +568,9 @@ static void serverCallback(SoupServer* server, SoupMessage* message, const char*
     else if (g_str_equal(path, "/redirect")) {
         soup_message_set_status(message, SOUP_STATUS_MOVED_PERMANENTLY);
         soup_message_headers_append(message->response_headers, "Location", "/normal");
+    } else if (g_str_equal(path, "/redirect-to-change-request")) {
+        soup_message_set_status(message, SOUP_STATUS_MOVED_PERMANENTLY);
+        soup_message_headers_append(message->response_headers, "Location", "/normal-change-request");
     } else if (g_str_equal(path, "/cancelled")) {
         soup_message_headers_set_encoding(message->response_headers, SOUP_ENCODING_CHUNKED);
         soup_message_body_append(message->response_body, SOUP_MEMORY_STATIC, responseString, strlen(responseString));

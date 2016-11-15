@@ -77,8 +77,8 @@ namespace WebCore {
 SQLStatement::SQLStatement(Database& database, const String& statement, const Vector<SQLValue>& arguments, RefPtr<SQLStatementCallback>&& callback, RefPtr<SQLStatementErrorCallback>&& errorCallback, int permissions)
     : m_statement(statement.isolatedCopy())
     , m_arguments(arguments)
-    , m_statementCallbackWrapper(WTFMove(callback), database.scriptExecutionContext())
-    , m_statementErrorCallbackWrapper(WTFMove(errorCallback), database.scriptExecutionContext())
+    , m_statementCallbackWrapper(WTFMove(callback), &database.scriptExecutionContext())
+    , m_statementErrorCallbackWrapper(WTFMove(errorCallback), &database.scriptExecutionContext())
     , m_permissions(permissions)
 {
 }
@@ -154,14 +154,14 @@ bool SQLStatement::execute(Database& db)
     switch (result) {
     case SQLITE_ROW: {
         int columnCount = statement.columnCount();
-        SQLResultSetRowList* rows = resultSet->rows();
+        auto& rows = resultSet->rows();
 
         for (int i = 0; i < columnCount; i++)
-            rows->addColumn(statement.getColumnName(i));
+            rows.addColumn(statement.getColumnName(i));
 
         do {
             for (int i = 0; i < columnCount; i++)
-                rows->addResult(statement.getColumnValue(i));
+                rows.addResult(statement.getColumnValue(i));
 
             result = statement.step();
         } while (result == SQLITE_ROW);

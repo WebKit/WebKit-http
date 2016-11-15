@@ -37,7 +37,6 @@
 #include "GeometryUtilities.h"
 #include "GraphicsContext.h"
 #include "HTMLElement.h"
-#include "HTMLImageElement.h"
 #include "HTMLNames.h"
 #include "HTMLTableCellElement.h"
 #include "HTMLTableElement.h"
@@ -65,7 +64,6 @@
 #include "RenderView.h"
 #include "RenderWidget.h"
 #include "SVGRenderSupport.h"
-#include "Settings.h"
 #include "StyleResolver.h"
 #include "TransformState.h"
 #include "htmlediting.h"
@@ -179,16 +177,58 @@ void RenderObject::setFlowThreadStateIncludingDescendants(FlowThreadState state)
     }
 }
 
+RenderObject::FlowThreadState RenderObject::computedFlowThreadState(const RenderObject& renderer)
+{
+    if (!renderer.parent())
+        return renderer.flowThreadState();
+
+    auto inheritedFlowState = RenderObject::NotInsideFlowThread;
+    if (is<RenderText>(renderer))
+        inheritedFlowState = renderer.parent()->flowThreadState();
+    else if (auto* containingBlock = renderer.containingBlock())
+        inheritedFlowState = containingBlock->flowThreadState();
+    else {
+        // Splitting lines or doing continuation, so just keep the current state.
+        inheritedFlowState = renderer.flowThreadState();
+    }
+    return inheritedFlowState;
+}
+
+void RenderObject::initializeFlowThreadStateOnInsertion()
+{
+    ASSERT(parent());
+
+    // A RenderFlowThread is always considered to be inside itself, so it never has to change its state in response to parent changes.
+    if (isRenderFlowThread())
+        return;
+
+    auto computedState = computedFlowThreadState(*this);
+    if (flowThreadState() == computedState)
+        return;
+
+    setFlowThreadStateIncludingDescendants(computedState);
+}
+
+void RenderObject::resetFlowThreadStateOnRemoval()
+{
+    if (flowThreadState() == NotInsideFlowThread)
+        return;
+
+    if (!documentBeingDestroyed() && is<RenderElement>(*this)) {
+        downcast<RenderElement>(*this).removeFromRenderFlowThread();
+        return;
+    }
+
+    // A RenderFlowThread is always considered to be inside itself, so it never has to change its state in response to parent changes.
+    if (isRenderFlowThread())
+        return;
+
+    setFlowThreadStateIncludingDescendants(NotInsideFlowThread);
+}
+
 void RenderObject::setParent(RenderElement* parent)
 {
     m_parent = parent;
-
-    // Only update if our flow thread state is different from our new parent and if we're not a RenderFlowThread.
-    // A RenderFlowThread is always considered to be inside itself, so it never has to change its state
-    // in response to parent changes.
-    FlowThreadState newState = parent ? parent->flowThreadState() : NotInsideFlowThread;
-    if (newState != flowThreadState() && !isRenderFlowThread())
-        setFlowThreadStateIncludingDescendants(newState);
 }
 
 void RenderObject::removeFromParent()
@@ -606,10 +646,22 @@ void RenderObject::addPDFURLRect(PaintInfo& paintInfo, const LayoutPoint& paintO
     Node* node = this->node();
     if (!is<Element>(node) || !node->isLink())
         return;
-    const AtomicString& href = downcast<Element>(*node).getAttribute(hrefAttr);
+    Element& element = downcast<Element>(*node);
+    const AtomicString& href = element.getAttribute(hrefAttr);
     if (href.isNull())
         return;
-    paintInfo.context().setURLForRect(node->document().completeURL(href), snappedIntRect(urlRect));
+
+    if (paintInfo.context().supportsInternalLinks()) {
+        String outAnchorName;
+        Element* linkTarget = element.findAnchorElementForLink(outAnchorName);
+        if (linkTarget) {
+            paintInfo.context().setDestinationForRect(outAnchorName, urlRect);
+            return;
+        }
+    }
+
+    paintInfo.context().setURLForRect(node->document().completeURL(href), urlRect);
+
 }
 
 #if PLATFORM(IOS)
@@ -885,8 +937,6 @@ void RenderObject::repaintSlowRepaintObject() const
         return;
 
     const RenderLayerModelObject* repaintContainer = containerForRepaint();
-    if (!repaintContainer)
-        repaintContainer = &view;
 
     bool shouldClipToLayer = true;
     IntRect repaintRect;
@@ -1127,8 +1177,25 @@ void RenderObject::showRenderObject(bool mark, int depth) const
                 fprintf(stderr, " \"%s\"", value.utf8().data());
         }
     }
-
+    if (is<RenderBoxModelObject>(*this)) {
+        auto& renderer = downcast<RenderBoxModelObject>(*this);
+        if (renderer.hasContinuation())
+            fprintf(stderr, " continuation->(%p)", renderer.continuation());
+    }
     showRegionsInformation();
+    if (needsLayout()) {
+        fprintf(stderr, " layout->");
+        if (selfNeedsLayout())
+            fprintf(stderr, "[self]");
+        if (normalChildNeedsLayout())
+            fprintf(stderr, "[normal child]");
+        if (posChildNeedsLayout())
+            fprintf(stderr, "[positioned child]");
+        if (needsSimplifiedNormalFlowLayout())
+            fprintf(stderr, "[simplified]");
+        if (needsPositionedMovementLayout())
+            fprintf(stderr, "[positioned movement]");
+    }
     fprintf(stderr, "\n");
 }
 
@@ -1419,15 +1486,12 @@ void RenderObject::insertedIntoTree()
         parent()->dirtyLinesFromChangedChild(*this);
 
     if (RenderFlowThread* flowThread = flowThreadContainingBlock())
-        flowThread->flowThreadDescendantInserted(this);
+        flowThread->flowThreadDescendantInserted(*this);
 }
 
 void RenderObject::willBeRemovedFromTree()
 {
     // FIXME: We should ASSERT(isRooted()) but we have some out-of-order removals which would need to be fixed first.
-
-    setFlowThreadState(NotInsideFlowThread);
-
     // Update cached boundaries in SVG renderers, if a child is removed.
     parent()->setNeedsBoundariesUpdate();
 }
@@ -1488,13 +1552,15 @@ void RenderObject::updateDragState(bool dragOn)
 {
     bool valueChanged = (dragOn != isDragging());
     setIsDragging(dragOn);
-    if (valueChanged && node() && (style().affectedByDrag() || (is<Element>(*node()) && downcast<Element>(*node()).childrenAffectedByDrag())))
-        node()->setNeedsStyleRecalc();
 
     if (!is<RenderElement>(*this))
         return;
+    auto& renderElement = downcast<RenderElement>(*this);
 
-    for (auto& child : childrenOfType<RenderObject>(downcast<RenderElement>(*this)))
+    if (valueChanged && renderElement.element() && (style().affectedByDrag() || renderElement.element()->childrenAffectedByDrag()))
+        renderElement.element()->invalidateStyleForSubtree();
+
+    for (auto& child : childrenOfType<RenderObject>(renderElement))
         child.updateDragState(dragOn);
 }
 

@@ -27,6 +27,7 @@
 #define UIScriptController_h
 
 #include "JSWrappable.h"
+#include <JavaScriptCore/JSRetainPtr.h>
 #include <wtf/Ref.h>
 
 namespace WebCore {
@@ -70,6 +71,8 @@ public:
     void keyDownUsingHardwareKeyboard(JSStringRef character, JSValueRef callback);
     void keyUpUsingHardwareKeyboard(JSStringRef character, JSValueRef callback);
 
+    void selectTextCandidateAtIndex(long index, JSValueRef callback);
+
     void keyboardAccessoryBarNext();
     void keyboardAccessoryBarPrevious();
     
@@ -85,6 +88,12 @@ public:
 
     void setDidEndFormControlInteractionCallback(JSValueRef);
     JSValueRef didEndFormControlInteractionCallback() const;
+    
+    void setDidShowForcePressPreviewCallback(JSValueRef);
+    JSValueRef didShowForcePressPreviewCallback() const;
+    
+    void setDidDismissForcePressPreviewCallback(JSValueRef);
+    JSValueRef didDismissForcePressPreviewCallback() const;
 
     void setWillBeginZoomingCallback(JSValueRef);
     JSValueRef willBeginZoomingCallback() const;
@@ -109,6 +118,11 @@ public:
     
     JSObjectRef selectionRangeViewRects() const;
 
+    void insertText(JSStringRef, int location, int length);
+    void removeAllDynamicDictionaries();
+    
+    JSRetainPtr<JSStringRef> scrollingTreeAsText() const;
+
     void uiScriptComplete(JSStringRef result);
 
 private:
@@ -118,6 +132,8 @@ private:
 
     void platformSetDidStartFormControlInteractionCallback();
     void platformSetDidEndFormControlInteractionCallback();
+    void platformSetDidShowForcePressPreviewCallback();
+    void platformSetDidDismissForcePressPreviewCallback();
     void platformSetWillBeginZoomingCallback();
     void platformSetDidEndZoomingCallback();
     void platformSetDidShowKeyboardCallback();
@@ -128,6 +144,7 @@ private:
     JSClassRef wrapperClass() final;
 
     JSObjectRef objectFromRect(const WebCore::FloatRect&) const;
+    void waitForTextPredictionsViewAndSelectCandidateAtIndex(long index, unsigned callbackID, float interval);
 
     UIScriptContext* m_context;
 };

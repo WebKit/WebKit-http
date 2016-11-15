@@ -28,8 +28,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef MessagePortChannel_h
-#define MessagePortChannel_h
+#pragma once
 
 #include "SerializedScriptValue.h"
 #include <memory>
@@ -43,7 +42,6 @@ namespace WebCore {
     class MessagePortChannel;
     class PlatformMessagePortChannel;
     class ScriptExecutionContext;
-    class SerializedScriptValue;
 
     // The overwhelmingly common case is sending a single port, so handle that efficiently with an inline buffer of size 1.
     typedef Vector<std::unique_ptr<MessagePortChannel>, 1> MessagePortChannelArray;
@@ -88,5 +86,3 @@ namespace WebCore {
     };
 
 } // namespace WebCore
-
-#endif // MessagePortChannel_h

@@ -27,7 +27,7 @@
 
 #include "WebView.h"
 
-#include "BackForwardController.h"
+#include "BackForwardList.h"
 #include "COMVariantSetter.h"
 #include "DOMCoreClasses.h"
 #include "FullscreenVideoController.h"
@@ -84,7 +84,6 @@
 #include <WebCore/ApplicationCacheStorage.h>
 #include <WebCore/BString.h>
 #include <WebCore/BackForwardController.h>
-#include <WebCore/BackForwardList.h>
 #include <WebCore/BitmapInfo.h>
 #include <WebCore/Chrome.h>
 #include <WebCore/ContextMenu.h>
@@ -128,7 +127,7 @@
 #include <WebCore/MIMETypeRegistry.h>
 #include <WebCore/MainFrame.h>
 #include <WebCore/MemoryCache.h>
-#include <WebCore/MemoryPressureHandler.h>
+#include <WebCore/MemoryRelease.h>
 #include <WebCore/NotImplemented.h>
 #include <WebCore/Page.h>
 #include <WebCore/PageCache.h>
@@ -165,6 +164,7 @@
 #include <WebCore/WindowMessageBroadcaster.h>
 #include <WebCore/WindowsTouch.h>
 #include <bindings/ScriptValue.h>
+#include <comdef.h>
 #include <d2d1.h>
 #include <wtf/MainThread.h>
 #include <wtf/RAMSize.h>
@@ -1064,7 +1064,7 @@ void WebView::sizeChanged(const IntSize& newSize)
     // Create a Direct2D render target.
     auto renderTargetProperties = D2D1::RenderTargetProperties();
     renderTargetProperties.usage = D2D1_RENDER_TARGET_USAGE_GDI_COMPATIBLE;
-    auto hwndRenderTargetProperties = D2D1::HwndRenderTargetProperties(m_viewWindow, newSize);
+    auto hwndRenderTargetProperties = D2D1::HwndRenderTargetProperties(m_viewWindow, newSize, D2D1_PRESENT_OPTIONS_IMMEDIATELY);
     HRESULT hr = GraphicsContext::systemFactory()->CreateHwndRenderTarget(&renderTargetProperties, &hwndRenderTargetProperties, &m_renderTarget);
     ASSERT(SUCCEEDED(hr));
 #endif
@@ -1237,45 +1237,40 @@ void WebView::paintWithDirect2D()
 
         auto pixelSize = D2D1::SizeU(clientRect.width(), clientRect.height());
 
-        auto hwndRenderTargetProperties = D2D1::HwndRenderTargetProperties(m_viewWindow, pixelSize);
+        auto hwndRenderTargetProperties = D2D1::HwndRenderTargetProperties(m_viewWindow, pixelSize, D2D1_PRESENT_OPTIONS_IMMEDIATELY);
         HRESULT hr = GraphicsContext::systemFactory()->CreateHwndRenderTarget(&renderTargetProperties, &hwndRenderTargetProperties, &m_renderTarget);
         if (!SUCCEEDED(hr))
             return;
     }
 
-    m_renderTarget->BeginDraw();
-
-    m_renderTarget->SetTags(WEBKIT_DRAWING, __LINE__);
-    m_renderTarget->Clear();
-
-    // Direct2D honors the scale factor natively.
-    float scaleFactor = 1.0f;
-    float inverseScaleFactor = 1.0f / scaleFactor;
-
-    RECT clientRect;
-    GetClientRect(m_viewWindow, &clientRect);
-
-    IntRect dirtyRectPixels(0, 0, clientRect.right, clientRect.bottom);
-    FloatRect logicalDirtyRectFloat = dirtyRectPixels;
-    logicalDirtyRectFloat.scale(inverseScaleFactor);
-    IntRect logicalDirtyRect(enclosingIntRect(logicalDirtyRectFloat));
-
+    RECT clientRect = {};
     GraphicsContext gc(m_renderTarget.get());
-    gc.setDidBeginDraw(true);
 
-    if (frameView && frameView->frame().contentRenderer()) {
-        gc.save();
-        gc.scale(FloatSize(scaleFactor, scaleFactor));
-        gc.clip(logicalDirtyRect);
-        frameView->paint(gc, logicalDirtyRect);
-        gc.restore();
-        if (m_shouldInvertColors)
-            gc.fillRect(logicalDirtyRect, Color::white, CompositeDifference);
+    {
+        m_renderTarget->SetTags(WEBKIT_DRAWING, __LINE__);
+        m_renderTarget->Clear();
+
+        // Direct2D honors the scale factor natively.
+        float scaleFactor = 1.0f;
+        float inverseScaleFactor = 1.0f / scaleFactor;
+
+        GetClientRect(m_viewWindow, &clientRect);
+
+        IntRect dirtyRectPixels(0, 0, clientRect.right, clientRect.bottom);
+        FloatRect logicalDirtyRectFloat = dirtyRectPixels;
+        logicalDirtyRectFloat.scale(inverseScaleFactor);
+        IntRect logicalDirtyRect(enclosingIntRect(logicalDirtyRectFloat));
+
+        if (frameView && frameView->frame().contentRenderer()) {
+            gc.save();
+            gc.scale(FloatSize(scaleFactor, scaleFactor));
+            gc.clip(logicalDirtyRect);
+            frameView->paint(gc, logicalDirtyRect);
+            gc.restore();
+            if (m_shouldInvertColors)
+                gc.fillRect(logicalDirtyRect, Color::white, CompositeDifference);
+        }
     }
-
-    HRESULT hr = m_renderTarget->EndDraw();
-    // FIXME: Recognize and recover from error state:
-    UNUSED_PARAM(hr);
 
     ::ValidateRect(m_viewWindow, &clientRect);
 #else
@@ -2892,6 +2887,8 @@ HRESULT WebView::QueryInterface(_In_ REFIID riid, _COM_Outptr_ void** ppvObject)
         *ppvObject = static_cast<IWebViewPrivate2*>(this);
     else if (IsEqualGUID(riid, IID_IWebViewPrivate3))
         *ppvObject = static_cast<IWebViewPrivate3*>(this);
+    else if (IsEqualGUID(riid, IID_IWebViewPrivate4))
+        *ppvObject = static_cast<IWebViewPrivate4*>(this);
     else if (IsEqualGUID(riid, IID_IWebIBActions))
         *ppvObject = static_cast<IWebIBActions*>(this);
     else if (IsEqualGUID(riid, IID_IWebViewCSS))
@@ -3087,7 +3084,11 @@ HRESULT WebView::initWithFrame(RECT frame, _In_ BSTR frameName, _In_ BSTR groupN
 
         WebKitInitializeWebDatabasesIfNecessary();
 
-        MemoryPressureHandler::singleton().install();
+        auto& memoryPressureHandler = MemoryPressureHandler::singleton();
+        memoryPressureHandler.setLowMemoryHandler([] (Critical critical, Synchronous synchronous) {
+            WebCore::releaseMemory(critical, synchronous);
+        });
+        memoryPressureHandler.install();
 
         didOneTimeInitialization = true;
      }
@@ -3099,6 +3100,7 @@ HRESULT WebView::initWithFrame(RECT frame, _In_ BSTR frameName, _In_ BSTR groupN
     m_inspectorClient = new WebInspectorClient(this);
 
     PageConfiguration configuration(makeUniqueRef<WebEditorClient>(this), SocketProvider::create());
+    configuration.backForwardClient = BackForwardList::create();
     configuration.chromeClient = new WebChromeClient(this);
     configuration.contextMenuClient = new WebContextMenuClient(this);
     configuration.dragClient = new WebDragClient(this);
@@ -3151,6 +3153,7 @@ HRESULT WebView::initWithFrame(RECT frame, _In_ BSTR frameName, _In_ BSTR groupN
     m_page->setDeviceScaleFactor(deviceScaleFactor());
 
     setSmartInsertDeleteEnabled(TRUE);
+
     return hr;
 }
 
@@ -3430,7 +3433,7 @@ HRESULT WebView::backForwardList(_COM_Outptr_opt_ IWebBackForwardList** list)
     if (!m_useBackForwardList)
         return E_FAIL;
  
-    *list = WebBackForwardList::createInstance(static_cast<WebCore::BackForwardList*>(m_page->backForward().client()));
+    *list = WebBackForwardList::createInstance(static_cast<BackForwardList*>(m_page->backForward().client()));
 
     return S_OK;
 }
@@ -5246,12 +5249,10 @@ HRESULT WebView::notifyPreferencesChanged(IWebNotification* notification)
         return hr;
     RuntimeEnabledFeatures::sharedFeatures().setShadowDOMEnabled(!!enabled);
 
-#if ENABLE(CUSTOM_ELEMENTS)
     hr = prefsPrivate->customElementsEnabled(&enabled);
     if (FAILED(hr))
         return hr;
     RuntimeEnabledFeatures::sharedFeatures().setCustomElementsEnabled(!!enabled);
-#endif
 
     hr = prefsPrivate->modernMediaControlsEnabled(&enabled);
     if (FAILED(hr))
@@ -5261,7 +5262,7 @@ HRESULT WebView::notifyPreferencesChanged(IWebNotification* notification)
     hr = preferences->privateBrowsingEnabled(&enabled);
     if (FAILED(hr))
         return hr;
-#if USE(CFURLCONNECTION)
+#if PLATFORM(WIN) || USE(CFURLCONNECTION)
     if (enabled)
         WebFrameNetworkingContext::ensurePrivateBrowsingSession();
     else
@@ -6324,9 +6325,8 @@ LRESULT WebView::onIMERequestCharPosition(Frame* targetFrame, IMECHARPOSITION* c
         return 0;
     IntRect caret;
     if (RefPtr<Range> range = targetFrame->editor().hasComposition() ? targetFrame->editor().compositionRange() : targetFrame->selection().selection().toNormalizedRange()) {
-        ExceptionCode ec = 0;
         RefPtr<Range> tempRange = range->cloneRange();
-        tempRange->setStart(tempRange->startContainer(), tempRange->startOffset() + charPos->dwCharPos, ec);
+        tempRange->setStart(tempRange->startContainer(), tempRange->startOffset() + charPos->dwCharPos);
         caret = targetFrame->editor().firstRectForRange(tempRange.get());
     }
     caret = targetFrame->view()->contentsToWindow(caret);
@@ -7797,5 +7797,18 @@ HRESULT WebView::findString(_In_ BSTR string, WebFindOptions options, _Deref_opt
         return E_POINTER;
 
     *found = m_page->findString(toString(string), options);
+    return S_OK;
+}
+
+HRESULT WebView::setVisibilityState(WebPageVisibilityState visibilityState)
+{
+    if (!m_page)
+        return E_FAIL;
+    
+    m_page->setIsVisible(visibilityState == WebPageVisibilityStateVisible);
+
+    if (visibilityState == WebPageVisibilityStatePrerender)
+        m_page->setIsPrerender();
+
     return S_OK;
 }

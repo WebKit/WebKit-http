@@ -31,9 +31,10 @@
 #import "WebApplicationCacheQuotaManager.h"
 #import "WebDatabaseQuotaManager.h"
 #import "WebQuotaManager.h"
-#import <WebCore/URL.h>
-#import <WebCore/DatabaseManager.h>
+#import <WebCore/DatabaseTracker.h>
 #import <WebCore/SecurityOrigin.h>
+#import <WebCore/SecurityOriginData.h>
+#import <WebCore/URL.h>
 
 using namespace WebCore;
 
@@ -54,10 +55,7 @@ using namespace WebCore;
     if (!self)
         return nil;
 
-    auto origin = SecurityOrigin::create(URL([url absoluteURL]));
-    SecurityOrigin* rawOrigin = &origin.leakRef();
-    _private = reinterpret_cast<WebSecurityOriginPrivate *>(rawOrigin);
-
+    _private = reinterpret_cast<WebSecurityOriginPrivate *>(&SecurityOrigin::create(URL([url absoluteURL])).leakRef());
     return self;
 }
 
@@ -73,7 +71,7 @@ using namespace WebCore;
 
 - (NSString *)databaseIdentifier
 {
-    return reinterpret_cast<SecurityOrigin*>(_private)->databaseIdentifier();
+    return SecurityOriginData::fromSecurityOrigin(*reinterpret_cast<SecurityOrigin*>(_private)).databaseIdentifier();
 }
 
 #if PLATFORM(IOS)
@@ -90,7 +88,7 @@ using namespace WebCore;
 
 - (unsigned short)port
 {
-    return reinterpret_cast<SecurityOrigin*>(_private)->port();
+    return reinterpret_cast<SecurityOrigin*>(_private)->port().valueOr(0);
 }
 
 // FIXME: Overriding isEqual: without overriding hash will cause trouble if this ever goes into an NSSet or is the key in an NSDictionary,
@@ -166,23 +164,22 @@ using namespace WebCore;
 
 // FIXME: The following methods are deprecated and should removed later.
 // Clients should instead get a WebQuotaManager, and query / set the quota via the Manager.
-// NOTE: the <WebCore/DatabaseManager.h> #include should be removed as well.
 
 @implementation WebSecurityOrigin (Deprecated)
 
 - (unsigned long long)usage
 {
-    return DatabaseManager::singleton().usageForOrigin(reinterpret_cast<SecurityOrigin*>(_private));
+    return DatabaseTracker::singleton().usage(*reinterpret_cast<SecurityOrigin*>(_private));
 }
 
 - (unsigned long long)quota
 {
-    return DatabaseManager::singleton().quotaForOrigin(reinterpret_cast<SecurityOrigin*>(_private));
+    return DatabaseTracker::singleton().quota(*reinterpret_cast<SecurityOrigin*>(_private));
 }
 
 - (void)setQuota:(unsigned long long)quota
 {
-    DatabaseManager::singleton().setQuota(reinterpret_cast<SecurityOrigin*>(_private), quota);
+    DatabaseTracker::singleton().setQuota(*reinterpret_cast<SecurityOrigin*>(_private), quota);
 }
 
 @end

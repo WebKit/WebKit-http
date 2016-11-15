@@ -108,7 +108,6 @@
 #include "markup.h"
 #include "npruntime_impl.h"
 #include "runtime_root.h"
-#include <bindings/ScriptValue.h>
 #include <wtf/RefCountedLeakCounter.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/text/StringBuilder.h>
@@ -281,7 +280,7 @@ void Frame::setDocument(RefPtr<Document>&& newDocument)
     if (newDocument)
         newDocument->didBecomeCurrentDocumentInFrame();
 
-    InspectorInstrumentation::frameDocumentUpdated(this);
+    InspectorInstrumentation::frameDocumentUpdated(*this);
 }
 
 #if ENABLE(ORIENTATION_EVENTS)
@@ -605,6 +604,8 @@ int Frame::checkOverflowScroll(OverflowScrollAction action)
         }
     }
 
+    Ref<Frame> protectedThis(*this);
+
     if (action == PerformOverflowScroll && (deltaX || deltaY)) {
         layer->scrollToOffset(layer->scrollOffset() + IntSize(deltaX, deltaY));
 
@@ -644,7 +645,7 @@ void Frame::setPrinting(bool printing, const FloatSize& pageSize, const FloatSiz
     m_doc->setPrinting(printing);
     view()->adjustMediaTypeForPrinting(printing);
 
-    m_doc->styleScope().didChangeContentsOrInterpretation();
+    m_doc->styleScope().didChangeStyleSheetEnvironment();
     if (shouldUsePrintingLayout()) {
         view()->forceLayoutForPagination(pageSize, originalPageSize, maximumShrinkRatio, shouldAdjustViewSize);
     } else {
@@ -963,9 +964,6 @@ void Frame::setPageAndTextZoomFactors(float pageZoomFactor, float textZoomFactor
         if (document->renderView() && document->renderView()->needsLayout() && view->didFirstLayout())
             view->layout();
     }
-
-    if (isMainFrame())
-        PageCache::singleton().markPagesForFullStyleRecalc(*page);
 }
 
 float Frame::frameScaleFactor() const

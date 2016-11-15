@@ -971,9 +971,11 @@ void JIT::emitNewFuncCommon(Instruction* currentInstruction)
     OpcodeID opcodeID = m_vm->interpreter->getOpcodeID(currentInstruction->u.opcode);
     if (opcodeID == op_new_func)
         callOperation(operationNewFunction, dst, regT0, funcExec);
-    else {
-        ASSERT(opcodeID == op_new_generator_func);
+    else if (opcodeID == op_new_generator_func)
         callOperation(operationNewGeneratorFunction, dst, regT0, funcExec);
+    else {
+        ASSERT(opcodeID == op_new_async_func);
+        callOperation(operationNewAsyncFunction, dst, regT0, funcExec);
     }
 }
 
@@ -983,6 +985,11 @@ void JIT::emit_op_new_func(Instruction* currentInstruction)
 }
 
 void JIT::emit_op_new_generator_func(Instruction* currentInstruction)
+{
+    emitNewFuncCommon(currentInstruction);
+}
+
+void JIT::emit_op_new_async_func(Instruction* currentInstruction)
 {
     emitNewFuncCommon(currentInstruction);
 }
@@ -1008,9 +1015,11 @@ void JIT::emitNewFuncExprCommon(Instruction* currentInstruction)
 
     if (opcodeID == op_new_func_exp)
         callOperation(operationNewFunction, dst, regT0, function);
-    else {
-        ASSERT(opcodeID == op_new_generator_func_exp);
+    else if (opcodeID == op_new_generator_func_exp)
         callOperation(operationNewGeneratorFunction, dst, regT0, function);
+    else {
+        ASSERT(opcodeID == op_new_async_func_exp);
+        callOperation(operationNewAsyncFunction, dst, regT0, function);
     }
 
     done.link(this);
@@ -1022,6 +1031,11 @@ void JIT::emit_op_new_func_exp(Instruction* currentInstruction)
 }
 
 void JIT::emit_op_new_generator_func_exp(Instruction* currentInstruction)
+{
+    emitNewFuncExprCommon(currentInstruction);
+}
+
+void JIT::emit_op_new_async_func_exp(Instruction* currentInstruction)
 {
     emitNewFuncExprCommon(currentInstruction);
 }
@@ -1058,6 +1072,18 @@ void JIT::emit_op_new_array_buffer(Instruction* currentInstruction)
     int size = currentInstruction[3].u.operand;
     const JSValue* values = codeBlock()->constantBuffer(valuesIndex);
     callOperation(operationNewArrayBufferWithProfile, dst, currentInstruction[4].u.arrayAllocationProfile, values, size);
+}
+
+void JIT::emit_op_new_array_with_spread(Instruction* currentInstruction)
+{
+    JITSlowPathCall slowPathCall(this, currentInstruction, slow_path_new_array_with_spread);
+    slowPathCall.call();
+}
+
+void JIT::emit_op_spread(Instruction* currentInstruction)
+{
+    JITSlowPathCall slowPathCall(this, currentInstruction, slow_path_spread);
+    slowPathCall.call();
 }
 
 #if USE(JSVALUE64)
@@ -1462,6 +1488,29 @@ void JIT::emit_op_get_rest_length(Instruction* currentInstruction)
     move(TrustedImm32(JSValue::Int32Tag), regT1);
     emitPutVirtualRegister(dst, JSValueRegs(regT1, regT0));
 #endif
+}
+
+void JIT::emit_op_get_argument(Instruction* currentInstruction)
+{
+    int dst = currentInstruction[1].u.operand;
+    int index = currentInstruction[2].u.operand;
+#if USE(JSVALUE64)
+    JSValueRegs resultRegs(regT0);
+#else
+    JSValueRegs resultRegs(regT1, regT0);
+#endif
+
+    load32(payloadFor(CallFrameSlot::argumentCount), regT2);
+    Jump argumentOutOfBounds = branch32(LessThanOrEqual, regT2, TrustedImm32(index));
+    loadValue(addressFor(CallFrameSlot::thisArgument + index), resultRegs);
+    Jump done = jump();
+
+    argumentOutOfBounds.link(this);
+    moveValue(jsUndefined(), resultRegs);
+
+    done.link(this);
+    emitValueProfilingSite();
+    emitPutVirtualRegister(dst, resultRegs);
 }
 
 } // namespace JSC

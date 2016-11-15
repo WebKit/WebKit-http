@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 2011 Google Inc. All rights reserved.
  * Copyright (C) 2011, 2012, 2015 Ericsson AB. All rights reserved.
- * Copyright (C) 2013-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2016 Apple Inc. All rights reserved.
  * Copyright (C) 2013 Nokia Corporation and/or its subsidiary(-ies).
  *
  * Redistribution and use in source and binary forms, with or without
@@ -33,7 +33,7 @@
 #include "Document.h"
 #include "Event.h"
 #include "EventNames.h"
-#include "ExceptionCode.h"
+#include "Logging.h"
 #include "MediaStreamRegistry.h"
 #include "MediaStreamTrackEvent.h"
 #include "Page.h"
@@ -111,8 +111,11 @@ MediaStream::~MediaStream()
     m_private->removeObserver(*this);
     for (auto& track : m_trackSet.values())
         track->removeObserver(this);
-    if (Document* document = this->document())
+    if (Document* document = this->document()) {
         document->removeAudioProducer(this);
+        if (m_isWaitingUntilMediaCanStart)
+            document->removeMediaCanStartListener(this);
+    }
 }
 
 RefPtr<MediaStream> MediaStream::clone()
@@ -247,6 +250,41 @@ void MediaStream::setIsActive(bool active)
     statusDidChange();
 }
 
+void MediaStream::mediaCanStart(Document& document)
+{
+    ASSERT_UNUSED(document, &document == this->document());
+    ASSERT(m_isWaitingUntilMediaCanStart);
+    if (m_isWaitingUntilMediaCanStart) {
+        m_isWaitingUntilMediaCanStart = false;
+        startProducingData();
+    }
+}
+
+void MediaStream::startProducingData()
+{
+    Document* document = this->document();
+    if (!document || !document->page())
+        return;
+
+    // If we can't start a load right away, start it later.
+    if (!document->page()->canStartMedia()) {
+        LOG(Media, "MediaStream::startProducingData(%p) - not allowed to start in background, waiting", this);
+        if (m_isWaitingUntilMediaCanStart)
+            return;
+
+        m_isWaitingUntilMediaCanStart = true;
+        document->addMediaCanStartListener(this);
+        return;
+    }
+
+    m_private->startProducingData();
+}
+
+void MediaStream::stopProducingData()
+{
+    m_private->stopProducingData();
+}
+
 void MediaStream::pageMutedStateDidChange()
 {
     if (!m_isActive)
@@ -256,15 +294,15 @@ void MediaStream::pageMutedStateDidChange()
     if (!document)
         return;
 
-    bool pageMuted = document->page()->isMuted();
+    bool pageMuted = document->page()->isMediaCaptureMuted();
     if (m_externallyMuted == pageMuted)
         return;
 
     m_externallyMuted = pageMuted;
     if (pageMuted)
-        m_private->stopProducingData();
+        stopProducingData();
     else
-        m_private->startProducingData();
+        startProducingData();
 }
 
 MediaProducer::MediaStateFlags MediaStream::mediaState() const
@@ -274,7 +312,8 @@ MediaProducer::MediaStateFlags MediaStream::mediaState() const
     if (!m_isActive)
         return state;
 
-    if (m_externallyMuted || m_private->isProducingData())
+    state |= HasMediaCaptureDevice;
+    if (m_private->isProducingData())
         state |= HasActiveMediaCaptureDevice;
 
     if (m_private->hasAudio() || m_private->hasVideo())

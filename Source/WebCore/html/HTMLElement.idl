@@ -19,35 +19,36 @@
  */
 
 [
-#if defined(ENABLE_CUSTOM_ELEMENTS) && ENABLE_CUSTOM_ELEMENTS
     CustomConstructor(),
-#endif
-    JSGenerateToNativeObject,
-    JSCustomPushEventHandlerScope,
     ExportMacro=WEBCORE_EXPORT,
+    JSCustomPushEventHandlerScope,
+    JSGenerateToNativeObject,
 ] interface HTMLElement : Element {
-    [Reflect] attribute DOMString title;
-    [Reflect] attribute DOMString lang;
-    attribute boolean translate;
-    attribute DOMString dir;
+    [CEReactions, Reflect] attribute DOMString title;
+    [CEReactions, Reflect] attribute DOMString lang;
+    [CEReactions] attribute boolean translate;
+    [CEReactions] attribute DOMString dir;
 
-    attribute long tabIndex;
-    attribute boolean draggable;
+    [CEReactions] attribute long tabIndex;
+    [CEReactions] attribute boolean draggable;
 
-    [Reflect] attribute DOMString webkitdropzone;
+    [CEReactions, Reflect] attribute DOMString webkitdropzone;
     // FIXME: Support the standard HTML equivalent.
     // [PutForwards=value] readonly attribute DOMTokenList dropzone;
 
-    [Reflect] attribute boolean hidden;
-    [Reflect] attribute DOMString accessKey;
+    [CEReactions, Reflect] attribute boolean hidden;
+    [CEReactions, Reflect] attribute DOMString accessKey;
 
-    [TreatNullAs=EmptyString, SetterMayThrowLegacyException] attribute DOMString innerText;
-    [TreatNullAs=EmptyString, SetterMayThrowLegacyException] attribute DOMString outerText;
+    [CEReactions, SetterMayThrowException, TreatNullAs=EmptyString] attribute DOMString innerText;
+    [CEReactions, SetterMayThrowException, TreatNullAs=EmptyString] attribute DOMString outerText;
 
-    [SetterMayThrowLegacyException] attribute DOMString contentEditable;
+    [CEReactions, SetterMayThrowException] attribute DOMString contentEditable;
     readonly attribute boolean isContentEditable;
 
-    attribute boolean spellcheck;
+    [CEReactions] attribute boolean spellcheck;
+
+    [Conditional=IOS_AUTOCORRECT_AND_AUTOCAPITALIZE] attribute boolean autocorrect;
+    [Conditional=IOS_AUTOCORRECT_AND_AUTOCAPITALIZE, TreatNullAs=EmptyString] attribute DOMString autocapitalize;
 
     void click();
 

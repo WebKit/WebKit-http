@@ -44,7 +44,9 @@ class IDBResultData;
 class IDBValue;
 class SecurityOrigin;
 
+struct IDBGetAllRecordsData;
 struct IDBGetRecordData;
+struct IDBIterateCursorData;
 
 namespace IDBClient {
 
@@ -68,6 +70,9 @@ public:
     void deleteObjectStore(const IDBRequestData&, const String& objectStoreName);
     WEBCORE_EXPORT void didDeleteObjectStore(const IDBResultData&);
 
+    void renameObjectStore(const IDBRequestData&, uint64_t objectStoreIdentifier, const String& newName);
+    WEBCORE_EXPORT void didRenameObjectStore(const IDBResultData&);
+
     void clearObjectStore(const IDBRequestData&, uint64_t objectStoreIdentifier);
     WEBCORE_EXPORT void didClearObjectStore(const IDBResultData&);
 
@@ -77,11 +82,17 @@ public:
     void deleteIndex(const IDBRequestData&, uint64_t objectStoreIdentifier, const String& indexName);
     WEBCORE_EXPORT void didDeleteIndex(const IDBResultData&);
 
+    void renameIndex(const IDBRequestData&, uint64_t objectStoreIdentifier, uint64_t indexIdentifier, const String& newName);
+    WEBCORE_EXPORT void didRenameIndex(const IDBResultData&);
+
     void putOrAdd(const IDBRequestData&, const IDBKeyData&, const IDBValue&, const IndexedDB::ObjectStoreOverwriteMode);
     WEBCORE_EXPORT void didPutOrAdd(const IDBResultData&);
 
     void getRecord(const IDBRequestData&, const IDBGetRecordData&);
     WEBCORE_EXPORT void didGetRecord(const IDBResultData&);
+
+    void getAllRecords(const IDBRequestData&, const IDBGetAllRecordsData&);
+    WEBCORE_EXPORT void didGetAllRecords(const IDBResultData&);
 
     void getCount(const IDBRequestData&, const IDBKeyRangeData&);
     WEBCORE_EXPORT void didGetCount(const IDBResultData&);
@@ -92,7 +103,7 @@ public:
     void openCursor(const IDBRequestData&, const IDBCursorInfo&);
     WEBCORE_EXPORT void didOpenCursor(const IDBResultData&);
 
-    void iterateCursor(const IDBRequestData&, const IDBKeyData&, unsigned long count);
+    void iterateCursor(const IDBRequestData&, const IDBIterateCursorData&);
     WEBCORE_EXPORT void didIterateCursor(const IDBResultData&);
 
     void commitTransaction(const IDBResourceIdentifier& transactionIdentifier);
@@ -118,6 +129,7 @@ public:
 
     void establishTransaction(uint64_t databaseConnectionIdentifier, const IDBTransactionInfo&);
 
+    void databaseConnectionPendingClose(uint64_t databaseConnectionIdentifier);
     void databaseConnectionClosed(uint64_t databaseConnectionIdentifier);
 
     // To be used when an IDBOpenDBRequest gets a new database connection, optionally with a

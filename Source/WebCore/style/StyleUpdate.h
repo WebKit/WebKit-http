@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef StyleUpdate_h
-#define StyleUpdate_h
+#pragma once
 
 #include "Node.h"
 #include "StyleChange.h"
@@ -48,7 +47,7 @@ namespace Style {
 struct ElementUpdate {
     std::unique_ptr<RenderStyle> style;
     Change change { NoChange };
-    bool isSynthetic { false };
+    bool recompositeLayer { false };
 };
 
 class Update {
@@ -68,6 +67,8 @@ public:
 
     const Document& document() const { return m_document; }
 
+    unsigned size() const { return m_elements.size() + m_texts.size(); }
+
     void addElement(Element&, Element* parent, ElementUpdate&&);
     void addText(Text&, Element* parent);
     void addText(Text&);
@@ -83,4 +84,3 @@ private:
 
 }
 }
-#endif

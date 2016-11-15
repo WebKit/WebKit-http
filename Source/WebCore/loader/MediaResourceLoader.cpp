@@ -65,18 +65,16 @@ RefPtr<PlatformMediaResource> MediaResourceLoader::requestResource(ResourceReque
     DataBufferingPolicy bufferingPolicy = options & LoadOption::BufferData ? WebCore::BufferData : WebCore::DoNotBufferData;
     auto cachingPolicy = options & LoadOption::DisallowCaching ? CachingPolicy::DisallowCaching : CachingPolicy::AllowCaching;
 
+    request.setRequester(ResourceRequest::Requester::Media);
+#if HAVE(AVFOUNDATION_LOADER_DELEGATE) && PLATFORM(MAC)
+    // FIXME: Workaround for <rdar://problem/26071607>. We are not able to do CORS checking on 304 responses because they are usually missing the headers we need.
+    if (!m_crossOriginMode.isNull())
+        request.makeUnconditional();
+#endif
+
     // FIXME: Skip Content Security Policy check if the element that initiated this request is in a user-agent shadow tree. See <https://bugs.webkit.org/show_bug.cgi?id=155505>.
     CachedResourceRequest cacheRequest(WTFMove(request), ResourceLoaderOptions(SendCallbacks, DoNotSniffContent, bufferingPolicy, AllowStoredCredentials, ClientCredentialPolicy::MayAskClientForCredentials, FetchOptions::Credentials::Include, DoSecurityCheck, FetchOptions::Mode::NoCors, DoNotIncludeCertificateInfo, ContentSecurityPolicyImposition::DoPolicyCheck, DefersLoadingPolicy::AllowDefersLoading, cachingPolicy));
-
     cacheRequest.setAsPotentiallyCrossOrigin(m_crossOriginMode, *m_document);
-
-    cacheRequest.mutableResourceRequest().setRequester(ResourceRequest::Requester::Media);
-#if HAVE(AVFOUNDATION_LOADER_DELEGATE) && PLATFORM(MAC)
-    // FIXME: Workaround for <rdar://problem/26071607>. We are not able to do CORS checking on 304 responses because they
-    // are usually missing the headers we need.
-    if (cacheRequest.options().mode == FetchOptions::Mode::Cors)
-        cacheRequest.mutableResourceRequest().makeUnconditional();
-#endif
 
     CachedResourceHandle<CachedRawResource> resource = m_document->cachedResourceLoader().requestMedia(WTFMove(cacheRequest));
     if (!resource)
@@ -136,7 +134,7 @@ void MediaResource::responseReceived(CachedResource& resource, const ResourceRes
         return;
 
     RefPtr<MediaResource> protectedThis(this);
-    if (!m_loader->crossOriginMode().isNull() && !m_resource->passesSameOriginPolicyCheck(*m_loader->document()->securityOrigin())) {
+    if (m_resource->resourceError().isAccessControl()) {
         static NeverDestroyed<const String> consoleMessage("Cross-origin media resource load denied by Cross-Origin Resource Sharing policy.");
         m_loader->document()->addConsoleMessage(MessageSource::Security, MessageLevel::Error, consoleMessage.get());
         m_didPassAccessControlCheck = false;
@@ -146,7 +144,7 @@ void MediaResource::responseReceived(CachedResource& resource, const ResourceRes
         return;
     }
 
-    m_didPassAccessControlCheck = !m_loader->crossOriginMode().isNull();
+    m_didPassAccessControlCheck = m_resource->options().mode == FetchOptions::Mode::Cors;
     if (m_client)
         m_client->responseReceived(*this, response);
 }

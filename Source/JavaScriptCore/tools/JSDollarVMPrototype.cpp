@@ -27,6 +27,7 @@
 #include "JSDollarVMPrototype.h"
 
 #include "CodeBlock.h"
+#include "FunctionCodeBlock.h"
 #include "Heap.h"
 #include "HeapIterationScope.h"
 #include "JSCInlines.h"
@@ -130,7 +131,7 @@ void JSDollarVMPrototype::edenGC(ExecState* exec)
 {
     if (!ensureCurrentThreadOwnsJSLock(exec))
         return;
-    exec->heap()->collect(EdenCollection);
+    exec->heap()->collectSync(CollectionScope::Eden);
 }
 
 static EncodedJSValue JSC_HOST_CALL functionEdenGC(ExecState* exec)
@@ -267,7 +268,10 @@ static EncodedJSValue JSC_HOST_CALL functionCodeBlockForFrame(ExecState* exec)
     // function.
     unsigned frameNumber = value.asUInt32() + 1;
     CodeBlock* codeBlock = JSDollarVMPrototype::codeBlockForFrame(exec, frameNumber);
-    return JSValue::encode(JSValue(bitwise_cast<double>(reinterpret_cast<uint64_t>(codeBlock))));
+    // Though CodeBlock is a JSCell, it is not safe to return it directly back to JS code
+    // as it is an internal type that the JS code cannot handle. Hence, we first encode the
+    // CodeBlock* as a double token (which is safe for JS code to handle) before returning it.
+    return JSValue::encode(JSValue(bitwise_cast<double>(static_cast<uint64_t>(reinterpret_cast<uintptr_t>(codeBlock)))));
 }
 
 static CodeBlock* codeBlockFromArg(ExecState* exec)
@@ -276,19 +280,41 @@ static CodeBlock* codeBlockFromArg(ExecState* exec)
         return nullptr;
 
     JSValue value = exec->uncheckedArgument(0);
-    if (!value.isDouble()) {
-        dataLog("Invalid codeBlock: ", value, "\n");
-        return nullptr;
+    CodeBlock* candidateCodeBlock = nullptr;
+    if (value.isCell()) {
+        JSFunction* func = jsDynamicCast<JSFunction*>(value.asCell());
+        if (func) {
+            if (func->isHostFunction())
+                candidateCodeBlock = nullptr;
+            else
+                candidateCodeBlock = func->jsExecutable()->eitherCodeBlock();
+        }
+    } else if (value.isDouble()) {
+        // If the value is a double, it may be an encoded CodeBlock* that came from
+        // $vm.codeBlockForFrame(). We'll treat it as a candidate codeBlock and check if it's
+        // valid below before using.
+        candidateCodeBlock = reinterpret_cast<CodeBlock*>(bitwise_cast<uint64_t>(value.asDouble()));
     }
 
-    CodeBlock* codeBlock = reinterpret_cast<CodeBlock*>(bitwise_cast<uint64_t>(value.asDouble()));
-    if (JSDollarVMPrototype::isValidCodeBlock(exec, codeBlock))
-        return codeBlock;
+    if (candidateCodeBlock && JSDollarVMPrototype::isValidCodeBlock(exec, candidateCodeBlock))
+        return candidateCodeBlock;
 
-    dataLogF("Invalid codeBlock: %p ", codeBlock);
-    dataLog(value, "\n");
+    if (candidateCodeBlock)
+        dataLog("Invalid codeBlock: ", RawPointer(candidateCodeBlock), " ", value, "\n");
+    else
+        dataLog("Invalid codeBlock: ", value, "\n");
     return nullptr;
-    
+}
+
+static EncodedJSValue JSC_HOST_CALL functionCodeBlockFor(ExecState* exec)
+{
+    CodeBlock* codeBlock = codeBlockFromArg(exec);
+    WTF::StringPrintStream stream;
+    if (codeBlock) {
+        stream.print(*codeBlock);
+        return JSValue::encode(jsString(exec, stream.toString()));
+    }
+    return JSValue::encode(jsUndefined());
 }
 
 static EncodedJSValue JSC_HOST_CALL functionPrintSourceFor(ExecState* exec)
@@ -411,6 +437,13 @@ static EncodedJSValue JSC_HOST_CALL functionValue(ExecState* exec)
     return JSValue::encode(jsString(exec, stream.toString()));
 }
 
+#if !PLATFORM(WIN)
+static EncodedJSValue JSC_HOST_CALL functionGetPID(ExecState*)
+{
+    return JSValue::encode(jsNumber(getpid()));
+}
+#endif
+
 void JSDollarVMPrototype::finishCreation(VM& vm, JSGlobalObject* globalObject)
 {
     Base::finishCreation(vm);
@@ -425,6 +458,7 @@ void JSDollarVMPrototype::finishCreation(VM& vm, JSGlobalObject* globalObject)
     addFunction(vm, globalObject, "gc", functionGC, 0);
     addFunction(vm, globalObject, "edenGC", functionEdenGC, 0);
     
+    addFunction(vm, globalObject, "codeBlockFor", functionCodeBlockFor, 1);
     addFunction(vm, globalObject, "codeBlockForFrame", functionCodeBlockForFrame, 1);
     addFunction(vm, globalObject, "printSourceFor", functionPrintSourceFor, 1);
     addFunction(vm, globalObject, "printByteCodeFor", functionPrintByteCodeFor, 1);
@@ -434,6 +468,9 @@ void JSDollarVMPrototype::finishCreation(VM& vm, JSGlobalObject* globalObject)
     addFunction(vm, globalObject, "printStack", functionPrintStack, 0);
 
     addFunction(vm, globalObject, "value", functionValue, 1);
+#if !PLATFORM(WIN)
+    addFunction(vm, globalObject, "getpid", functionGetPID, 0);
+#endif
 }
 
 } // namespace JSC

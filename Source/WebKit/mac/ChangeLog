@@ -1,3 +1,1294 @@
+2016-11-13  Darin Adler  <darin@apple.com>
+
+        Fix exception handling in SQL database code, streamline and update code
+        https://bugs.webkit.org/show_bug.cgi?id=164685
+
+        Reviewed by Sam Weinig.
+
+        * Storage/WebDatabaseManager.mm:
+        (-[WebDatabaseManager origins]): Updated to use DatabaseTracker and pass
+        a reference.
+        (-[WebDatabaseManager databasesWithOrigin:]): Ditto.
+        (-[WebDatabaseManager detailsForDatabase:withOrigin:]): Pass reference,
+        but continue to use DatabaseManager.
+        (-[WebDatabaseManager deleteOrigin:]): Use DatabaseTracker and pass a
+        reference.
+        (-[WebDatabaseManager deleteDatabase:withOrigin:]): Ditto.
+
+        * Storage/WebDatabaseManagerClient.h: Updated to take references.
+        * Storage/WebDatabaseManagerClient.mm:
+        (WebDatabaseManagerClient::WebDatabaseManagerClient): Initialize data
+        members in the class definition.
+        (DidModifyOriginData::dispatchToMainThread): Take references.
+        (DidModifyOriginData::DidModifyOriginData): Ditto.
+        (WebDatabaseManagerClient::dispatchDidModifyOrigin): Ditto.
+        (WebDatabaseManagerClient::dispatchDidModifyDatabase): Ditto.
+        (WebDatabaseManagerClient::dispatchDidAddNewOrigin): Ditto. Also use
+        DatabaseTracker::singleton instead of tracker.
+
+        * Storage/WebDatabaseQuotaManager.mm:
+        (-[WebDatabaseQuotaManager initWithOrigin:]): Reject nil pointer argument.
+        (-[WebDatabaseQuotaManager usage]): Use reference instead of pointer.
+        (-[WebDatabaseQuotaManager quota]): Ditto.
+        (-[WebDatabaseQuotaManager setQuota:]): Ditto.
+        * WebCoreSupport/WebSecurityOrigin.mm:
+        (-[WebSecurityOrigin initWithURL:]): Tweaked code a bit.
+        (-[WebSecurityOrigin usage]): Use DatabaseTracker and pass a reference.
+        (-[WebSecurityOrigin quota]): Ditto.
+        (-[WebSecurityOrigin setQuota:]): Ditto.
+        * WebView/WebFrame.mm:
+        (-[WebFrame _cacheabilityDictionary]): Pass a reference.
+
+2016-11-12  Darin Adler  <darin@apple.com>
+
+        Remove a few assorted uses of ExceptionCode
+        https://bugs.webkit.org/show_bug.cgi?id=164683
+
+        Reviewed by Chris Dumez.
+
+        * DOM/DOMDOMImplementation.mm:
+        (-[DOMImplementation createDocumentType:publicId:systemId:]):
+        Use raiseOnDOMError instead of much longer hand written equivalent.
+        (-[DOMImplementation createDocument:qualifiedName:doctype:]): Ditto.
+
+        * DOM/DOMDocument.mm:
+        (-[DOMDocument createEntityReference:]): Use raiseNotSupportedErrorException
+        so we are not using a specific exception code.
+
+        * DOM/DOMHTMLOptionsCollection.mm:
+        (-[DOMHTMLOptionsCollection add:index:]): Use raiseOnDOMError instead of
+        much longer hand written equivalent.
+        * DOM/DOMHTMLSelectElement.mm:
+        (-[DOMHTMLSelectElement add:before:]): Ditto. Also removed unneeded return
+        statement after calling a "no return" function.
+
+        * DOM/ExceptionHandlers.h: Removed overloads of raiseDOMException and
+        raiseOnDOMError functions that take ExceptionCode; keep the ones that take
+        Exception and ExceptionOr. Renamed the other overload of raiseDOMException
+        to raiseDOMErrorException; it is only used as the non-inline implementation
+        part of the inline raiseOnDOMError function.
+        * DOM/ExceptionHandlers.mm:
+        (raiseDOMErrorException): Renamed. Made the ExceptionCode overload be local
+        to this source file instead of in the header.
+        (raiseTypeErrorException): Updated for name change.
+        (raiseNotSupportedErrorException): Added.
+
+2016-11-11  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Hovering over a slotted Text node clears hover state
+        https://bugs.webkit.org/show_bug.cgi?id=164002
+        <rdar://problem/29040471>
+
+        Reviewed by Simon Fraser.
+
+        * WebView/WebImmediateActionController.mm:
+        (-[WebImmediateActionController performHitTestAtPoint:]):
+
+2016-11-11  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [WK2] autocorrect and autocapitalize attributes do not work in contenteditable elements
+        https://bugs.webkit.org/show_bug.cgi?id=164538
+        <rdar://problem/8418711>
+
+        Reviewed by Ryosuke Niwa.
+
+        Account for renaming HTMLElement::autocorrect to HTMLElement::shouldAutocorrect, as well as moving
+        WebAutocapitalizeType to WebKit from WebCore. Additionally, moves the -autocorrect and -autocapitalize SPIs out
+        of HTML(Input|Form|TextArea)ElementPrivate.h and into HTMLElementPrivate.h. This also means removing redundant
+        code for interfacing with the unwrapped HTMLElement's autocorrect and autocapitalize attributes.
+
+        * DOM/DOMHTML.mm:
+        (webAutocapitalizeType):
+        (-[DOMHTMLInputElement _autocapitalizeType]):
+        (-[DOMHTMLTextAreaElement _autocapitalizeType]):
+        * DOM/DOMHTMLElement.mm:
+        (-[DOMHTMLElement autocorrect]):
+        (-[DOMHTMLElement setAutocorrect:]):
+        (-[DOMHTMLElement autocapitalize]):
+        (-[DOMHTMLElement setAutocapitalize:]):
+        * DOM/DOMHTMLElementPrivate.h: Copied from Source/WebCore/html/Autocapitalize.h.
+        * DOM/DOMHTMLFormElement.mm:
+        (-[DOMHTMLFormElement autocorrect]): Deleted.
+        (-[DOMHTMLFormElement setAutocorrect:]): Deleted.
+        (-[DOMHTMLFormElement autocapitalize]): Deleted.
+        (-[DOMHTMLFormElement setAutocapitalize:]): Deleted.
+        * DOM/DOMHTMLInputElement.mm:
+        (-[DOMHTMLInputElement autocorrect]): Deleted.
+        (-[DOMHTMLInputElement setAutocorrect:]): Deleted.
+        (-[DOMHTMLInputElement autocapitalize]): Deleted.
+        (-[DOMHTMLInputElement setAutocapitalize:]): Deleted.
+        * DOM/DOMHTMLInputElementPrivate.h:
+        * DOM/DOMHTMLTextAreaElement.mm:
+        (-[DOMHTMLTextAreaElement autocorrect]): Deleted.
+        (-[DOMHTMLTextAreaElement setAutocorrect:]): Deleted.
+        (-[DOMHTMLTextAreaElement autocapitalize]): Deleted.
+        (-[DOMHTMLTextAreaElement setAutocapitalize:]): Deleted.
+        * DOM/DOMHTMLTextAreaElementPrivate.h:
+
+        We need to import DOMHTMLElementPrivate.h here to avoid breaking UIKit. We should follow this up with a UIKit
+        change to import DOMHTMLElementPrivate.h directly.
+
+        * DOM/DOMPrivate.h:
+        * DOM/WebAutocapitalizeTypes.h: Copied from Tools/WebKitTestRunner/ios/UIKitSPI.h.
+        * MigrateHeaders.make:
+
+2016-11-11  Beth Dakin  <bdakin@apple.com>
+
+        Move to modern TouchBar methods
+        https://bugs.webkit.org/show_bug.cgi?id=164655
+        -and corresponding-
+        rdar://problem/29226911
+
+        Reviewed by Wenson Hsieh.
+
+        customizationDefaultItemIdentifiers -> defaultItemIdentifiers
+        itemIdentifiers -> defaultItemIdentifiers
+        defaultItems -> templateItems
+
+        * WebView/WebView.mm:
+        (-[WebView _plainTextTouchBarDefaultItemIdentifiers]):
+        (-[WebView _richTextTouchBarDefaultItemIdentifiers]):
+        (-[WebView setUpTextTouchBar:]):
+        (-[WebView updateTextTouchBar]):
+        (-[WebView _plainTextTouchBarCustomizationDefaultItemIdentifiers]): Deleted.
+        (-[WebView _richTextTouchBarCustomizationDefaultItemIdentifiers]): Deleted.
+
+2016-11-11  Darin Adler  <darin@apple.com>
+
+        Move Node from ExceptionCode to ExceptionOr
+        https://bugs.webkit.org/show_bug.cgi?id=164515
+
+        Reviewed by Sam Weinig.
+
+        * DOM/DOMHTMLSelectElement.mm:
+        (-[DOMHTMLSelectElement remove:]): Call remove instead of removeByIndex
+        now that it was renamed.
+        * DOM/DOMNode.mm:
+        (-[DOMNode setNodeValue:]): Updated exception handling.
+        (-[DOMNode setPrefix:]): Ditto.
+        (-[DOMNode setTextContent:]): Ditto.
+        (-[DOMNode insertBefore:refChild:]): Ditto.
+        (-[DOMNode replaceChild:oldChild:]): Ditto.
+        (-[DOMNode removeChild:]): Ditto.
+        (-[DOMNode appendChild:]): Ditto.
+        (-[DOMNode cloneNode:]): Ditto.
+
+2016-11-11  Beth Dakin  <bdakin@apple.com>
+
+        Get touch bar code building for open source builds
+        https://bugs.webkit.org/show_bug.cgi?id=164610
+
+        Reviewed by Wenson Hsieh.
+
+        * WebKitPrefix.h:
+
+2016-11-10  Alex Christensen  <achristensen@webkit.org>
+
+        Fix assertion after r208534.
+        https://bugs.webkit.org/show_bug.cgi?id=160497
+
+        * WebView/WebView.mm:
+        (-[WebView _commonInitializationWithFrameName:groupName:]):
+        (WebInstallMemoryPressureHandler):
+        WebInstallMemoryPressureHandler can be called before [WebView initWithFrame:frameName:groupName:]
+        When this happens, we should use the same std::once_flag to make sure we install the MemoryPressureHandler::singleton
+        only once, otherwise we get an assertion !m_installed in MemoryPressureHandler::setLowMemoryHandler.
+
+2016-11-10  Alex Christensen  <achristensen@webkit.org>
+
+        Move SecurityOrigin::databaseIdentifier() to SecurityOriginData
+        https://bugs.webkit.org/show_bug.cgi?id=164573
+
+        Reviewed by Brady Eidson.
+
+        * WebCoreSupport/WebSecurityOrigin.mm:
+        (-[WebSecurityOrigin databaseIdentifier]):
+
+2016-10-14  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        MemoryPressureHandler shouldn't know how to release WebCore memory
+        https://bugs.webkit.org/show_bug.cgi?id=160497
+
+        Reviewed by Michael Catanzaro.
+
+        Set the low memory handler before installing the memory pressure handler.
+
+        * WebView/WebView.mm:
+        (-[WebView _commonInitializationWithFrameName:groupName:]):
+
+2016-11-09  Ryosuke Niwa  <rniwa@webkit.org>
+
+        WebHTMLView's _attributeStringFromDOMRange should use HTMLConverter instead of NSAttributedString's _initWithDOMRange
+        https://bugs.webkit.org/show_bug.cgi?id=164501
+        <rdar://problem/29152282>
+
+        Reviewed by Sam Weinig.
+
+        Align what [WebHTMLView attributedString] returns to what would be used on copy & paste by using HTMLConverter
+        instead of _initWithDOMRange in [WebHTMLView _attributeStringFromDOMRange].
+
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView _attributedStringFromDOMRange:]): Renamed from _attributeStringFromDOMRange.
+        (-[WebHTMLView attributedString]):
+        (-[WebHTMLView selectedAttributedString]):
+        (-[WebHTMLView selectedString]): Moved to reduce the number of occurrences of the if-defs.
+
+2016-11-04  Brent Fulgham  <bfulgham@apple.com>
+
+        Local HTML should be blocked from localStorage access unless "Disable Local File Restrictions" is checked
+        https://bugs.webkit.org/show_bug.cgi?id=155185
+        <rdar://problem/11101440>
+
+        Reviewed by Brady Eidson.
+
+        Provide SPI to access the new quirk for localStorage. The quirk defaults to 'on'. When active, this
+        quirk says that localStorage access should be granted, without needing to grant universal file access.
+
+        If the quirk is turned off, then localStorage is blocked unless the WebKit client explicitly
+        grants universal file access.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (-[WebPreferences needsLocalStorageQuirk]): Added.
+        (-[WebPreferences setNeedsLocalStorageQuirk:]): Added.
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]): Honor the new localStorage quirk.
+
+2016-11-09  Alex Christensen  <achristensen@webkit.org>
+
+        Clean up Storage code
+        https://bugs.webkit.org/show_bug.cgi?id=164562
+
+        Reviewed by Brady Eidson.
+
+        * Storage/WebStorageManager.mm:
+        (-[WebStorageManager origins]):
+        (-[WebStorageManager deleteAllOrigins]):
+        (-[WebStorageManager deleteOrigin:]):
+        (-[WebStorageManager diskUsageForOrigin:]):
+        (-[WebStorageManager syncLocalStorage]):
+        (-[WebStorageManager syncFileSystemAndTrackerDatabase]):
+        (+[WebStorageManager setStorageDatabaseIdleInterval:]):
+        (+[WebStorageManager closeIdleLocalStorageDatabases]):
+        (WebKitInitializeStorageIfNecessary):
+        * WebView/WebView.mm:
+        (+[WebView _applicationWillTerminate]):
+
+2016-11-09  Beth Dakin  <bdakin@apple.com>
+
+        Another attempted build fix.
+
+        * WebView/WebView.mm:
+
+2016-11-09  Beth Dakin  <bdakin@apple.com>
+
+        Attempted build fix.
+
+        * WebView/WebView.mm:
+
+2016-11-09  Darin Adler  <darin@apple.com>
+
+        Move Range from ExceptionCode to ExceptionOr
+        https://bugs.webkit.org/show_bug.cgi?id=164457
+
+        Reviewed by Alex Christensen.
+
+        * DOM/DOMRange.mm:
+        (-[DOMRange setStart:offset:]): Updated exception handling.
+        (-[DOMRange setEnd:offset:]): Ditto.
+        (-[DOMRange setStartBefore:]): Ditto.
+        (-[DOMRange setStartAfter:]): Ditto.
+        (-[DOMRange setEndBefore:]): Ditto.
+        (-[DOMRange setEndAfter:]): Ditto.
+        (-[DOMRange selectNode:]): Ditto.
+        (-[DOMRange selectNodeContents:]): Ditto.
+        (-[DOMRange compareBoundaryPoints:sourceRange:]): Ditto.
+        (-[DOMRange deleteContents]): Ditto.
+        (-[DOMRange extractContents]): Ditto.
+        (-[DOMRange cloneContents]): Ditto.
+        (-[DOMRange insertNode:]): Ditto.
+        (-[DOMRange surroundContents:]): Ditto.
+        (-[DOMRange createContextualFragment:]): Ditto.
+        (-[DOMRange compareNode:]): Ditto.
+        (-[DOMRange intersectsNode:]): Ditto.
+        (-[DOMRange comparePoint:offset:]): Ditto.
+        (-[DOMRange isPointInRange:offset:]): Ditto.
+        (-[DOMRange expand:]): Ditto.
+        * WebView/WebFrame.mm:
+        (-[WebFrame _documentFragmentWithMarkupString:baseURLString:]): Ditto.
+        (-[WebFrame _smartDeleteRangeForProposedRange:]): Deleted.
+        This function was incorrectly implemented (set both start and end of
+        the range to the computed start), not declared in any header file,
+        not used anywhere inside WebKit, and I also could not find a use of it
+        in outside-WebKit Apple code.
+        * mac/DOM/DOMUIKitExtensions.mm:
+        (-[DOMRange move:inDirection:]): Ditto.
+        (-[DOMRange extend:inDirection:]): Ditto.
+
+2016-11-09  Darin Adler  <darin@apple.com>
+
+        Move EventTarget from ExceptionCode to ExceptionOr
+        https://bugs.webkit.org/show_bug.cgi?id=164465
+
+        Reviewed by Youenn Fablet.
+
+        * DOM/DOMNode.mm:
+        (-[DOMNode dispatchEvent:]): Updated exception handling.
+
+2016-11-09  Chris Dumez  <cdumez@apple.com>
+
+        [Mac] Stop using deprecated AppKit enumeration values
+        https://bugs.webkit.org/show_bug.cgi?id=164494
+
+        Reviewed by Darin Adler.
+
+        Stop using deprecated AppKit enumeration values.
+
+        * Carbon/CarbonWindowAdapter.mm:
+        (-[CarbonWindowAdapter initWithCarbonWindowRef:takingOwnership:disableOrdering:carbon:]):
+        (-[CarbonWindowAdapter sendSuperEvent:]):
+        * Plugins/Hosted/NetscapePluginHostProxy.mm:
+        (WebKit::NetscapePluginHostProxy::beginModal):
+        * Plugins/Hosted/NetscapePluginInstanceProxy.mm:
+        (WebKit::NetscapePluginInstanceProxy::syntheticKeyDownWithCommandModifier):
+        * Plugins/Hosted/WebHostedNetscapePluginView.mm:
+        (-[WebHostedNetscapePluginView drawRect:]):
+        * Plugins/WebNetscapePluginEventHandlerCocoa.mm:
+        (WebNetscapePluginEventHandlerCocoa::syntheticKeyDownWithCommandModifier):
+        * WebCoreSupport/PopupMenuMac.mm:
+        (PopupMenuMac::populate):
+        (PopupMenuMac::show):
+        * WebCoreSupport/WebContextMenuClient.mm:
+        (WebContextMenuClient::showContextMenu):
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::actionDictionary):
+        * WebCoreSupport/WebInspectorClient.mm:
+        (WebInspectorFrontendClient::canAttach):
+        (-[WebInspectorWindowController window]):
+        * WebInspector/WebNodeHighlight.mm:
+        (-[WebNodeHighlight initWithTargetView:inspectorController:]):
+        * WebView/WebFrameView.mm:
+        (-[WebFrameView keyDown:keyDown:]):
+        * WebView/WebFullScreenController.mm:
+        (-[WebFullScreenController init]):
+        (createBackgroundFullscreenWindow):
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView _postFakeMouseMovedEventForFlagsChangedEvent:]):
+        (-[WebHTMLView _setMouseDownEvent:_setMouseDownEvent:]):
+        (-[WebHTMLView _updateMouseoverWithFakeEvent]):
+        (isQuickLookEvent):
+        (-[WebHTMLView hitTest:]):
+        (-[WebHTMLView _sendToolTipMouseExited]):
+        (-[WebHTMLView _sendToolTipMouseEntered]):
+        (mouseEventIsPartOfClickOrDrag):
+        (-[WebHTMLView _updateMouseoverWithEvent:]):
+        (-[WebHTMLView _autoscroll]):
+        (-[WebHTMLView acceptsFirstResponder]):
+        (-[WebHTMLView viewDidMoveToWindow]):
+        (-[WebHTMLView mouseDown:mouseDown:]):
+        (currentKeyboardEvent):
+        (-[WebHTMLView _handleStyleKeyEquivalent:]):
+        (-[WebHTMLView _interpretKeyEvent:savingCommands:]):
+        * WebView/WebPDFView.mm:
+        (-[WebPDFView hitTest:]):
+        (-[WebPDFView PDFViewWillClickOnLink:withURL:]):
+        (-[WebPDFView _fakeKeyEventWithFunctionKey:]):
+        * WebView/WebTextCompletionController.mm:
+        (-[WebTextCompletionController _buildUI]):
+        (-[WebTextCompletionController _placePopupWindow:]):
+        * WebView/WebView.mm:
+        (-[WebView applicationFlags:]):
+
+2016-11-09  Beth Dakin  <bdakin@apple.com>
+
+        Support TouchBar in WebKit
+        https://bugs.webkit.org/show_bug.cgi?id=164437
+        -and corresponding-
+        rdar://problem/28876524
+
+        Reviewed by Darin Adler.
+
+        * WebCoreSupport/WebEditorClient.mm:
+        (WebEditorClient::respondToChangedSelection):
+        (WebEditorClient::updateEditorStateAfterLayoutIfEditabilityChanged):
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView candidateListTouchBarItem]):
+        * WebView/WebView.mm:
+        (-[_WebTextListTouchBarViewController initWithWebView:]):
+        (-[_WebTextListTouchBarViewController _selectList:]):
+        (-[_WebTextListTouchBarViewController setCurrentListType:]):
+        (-[WebTextTouchBarItemController initWithWebView:]):
+        (-[WebTextTouchBarItemController itemForIdentifier:]):
+        (-[WebTextTouchBarItemController webTextListTouchBarViewController]):
+        (-[WebTextTouchBarItemController setTextIsBold:]):
+        (-[WebTextTouchBarItemController setTextIsItalic:]):
+        (-[WebTextTouchBarItemController setTextIsUnderlined:]):
+        (-[WebTextTouchBarItemController _webChangeTextStyle:]):
+        (-[WebTextTouchBarItemController setCurrentTextAlignment:]):
+        (-[WebTextTouchBarItemController _webChangeTextAlignment:]):
+        (-[WebTextTouchBarItemController textColor]):
+        (-[WebTextTouchBarItemController setTextColor:]):
+        (-[WebTextTouchBarItemController _webChangeColor:]):
+        (-[WebTextTouchBarItemController textListViewController]):
+        (-[WebView _commonInitializationWithFrameName:groupName:]):
+        (-[WebView showCandidates:forString:inRect:forSelectedRange:view:completionHandler:]):
+        (-[WebView shouldRequestCandidates]):
+        (-[WebView forceRequestCandidatesForTesting]):
+        (-[WebView makeTouchBar]):
+        (-[WebView touchBar:makeItemForIdentifier:]):
+        (textCheckingResultFromNSTextCheckingResult):
+        (-[WebView candidateListTouchBarItem:endSelectingCandidateAtIndex:]):
+        (-[WebView candidateListTouchBarItem:changedCandidateListVisibility:]):
+        (-[WebView _setUpPlaybackControlsManagerForMediaElement:]):
+        (-[WebView _clearPlaybackControlsManager]):
+        (-[WebView _dismissTextTouchBarPopoverItemWithIdentifier:]):
+        (-[WebView _textTouchBarCustomizationAllowedIdentifiers]):
+        (-[WebView _plainTextTouchBarCustomizationDefaultItemIdentifiers]):
+        (-[WebView _richTextTouchBarCustomizationDefaultItemIdentifiers]):
+        (-[WebView touchBarDidExitCustomization:]):
+        (-[WebView touchBarWillEnterCustomization:]):
+        (-[WebView didChangeAutomaticTextCompletion:]):
+        (-[WebView setUpTextTouchBar:]):
+        (-[WebView _isRichlyEditable]):
+        (-[WebView textTouchBar]):
+        (-[WebView updateTextTouchBar]):
+        (-[WebView updateMediaTouchBar]):
+        (-[WebView updateTouchBar]):
+        (-[WebView prepareForMouseDown]):
+        (-[WebView prepareForMouseUp]):
+        (-[WebView webViewAdditionsWillDestroyView]):
+        (-[WebView candidateList]):
+        (-[WebView updateWebViewAdditions]): Deleted.
+        * WebView/WebViewData.h:
+        * WebView/WebViewInternal.h:
+        * WebView/WebViewPrivate.h:
+
+2016-11-04  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Safari does not emit composition end if blurred for dead key / Japanese IME
+        https://bugs.webkit.org/show_bug.cgi?id=164369
+        <rdar://problem/29050439>
+
+        Reviewed by Ryosuke Niwa.
+
+        When canceling a composition, make sure that we clear the system IME state.
+
+        * WebCoreSupport/WebEditorClient.h:
+        * WebCoreSupport/WebEditorClient.mm:
+        (WebEditorClient::canceledComposition):
+
+2016-11-04  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Add a setting and preferences to enable/disable async image decoding
+        https://bugs.webkit.org/show_bug.cgi?id=164417
+
+        Reviewed by Simon Fraser.
+
+        Hook up the asyncImageDecodingEnabled setting for WebKit1.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences asyncImageDecodingEnabled]):
+        (-[WebPreferences setAsyncImageDecodingEnabled:]):
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2016-11-01  Alex Christensen  <achristensen@webkit.org>
+
+        Remove PassRefPtr from DumpRenderTree
+        https://bugs.webkit.org/show_bug.cgi?id=164307
+
+        Reviewed by Sam Weinig.
+
+        * WebView/WebGeolocationPosition.mm:
+        (-[WebGeolocationPosition initWithGeolocationPosition:]):
+
+2016-11-02  Romain Bellessort  <romain.bellessort@crf.canon.fr>
+
+        [Readable Streams API] Enable creation of ReadableByteStreamController
+        https://bugs.webkit.org/show_bug.cgi?id=164014
+
+        Reviewed by Youenn Fablet.
+
+        Added flag for the byte stream part of Readable Streams API.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2016-11-01  Ryosuke Niwa  <rniwa@webkit.org>
+
+        Remove CUSTOM_ELEMENTS build flag
+        https://bugs.webkit.org/show_bug.cgi?id=164267
+
+        Reviewed by Antti Koivisto.
+
+        Removed the build flag.
+
+        * Configurations/FeatureDefines.xcconfig:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2016-11-01  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream] restrict media capture secure connections
+        https://bugs.webkit.org/show_bug.cgi?id=164234
+        <rdar://problem/28944906>
+
+        Reviewed by Alex Christensen.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]): Initialize WebKitMediaCaptureRequiresSecureConnectionPreferenceKey.
+        (-[WebPreferences mediaCaptureRequiresSecureConnection]): New.
+        (-[WebPreferences setMediaCaptureRequiresSecureConnection:]): New.
+        * WebView/WebPreferencesPrivate.h:
+
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]): Sync mediaCaptureRequiresSecureConnection.
+
+2016-10-29  Filip Pizlo  <fpizlo@apple.com>
+
+        JSC should support SharedArrayBuffer
+        https://bugs.webkit.org/show_bug.cgi?id=163986
+
+        Reviewed by Keith Miller.
+        
+        Support the RuntimeFlag.
+
+        * WebView/WebPreferencesPrivate.h:
+
+2016-10-31  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [WK1] Candidate visibility should not update as a result of selection during a dictionary lookup
+        https://bugs.webkit.org/show_bug.cgi?id=164236
+        <rdar://problem/28747712>
+
+        Reviewed by Beth Dakin.
+
+        See WebCore ChangeLog for more detail. Sets the Editor's isGettingDictionaryPopupInfo state to true during a
+        dictionary lookup.
+
+        * WebCoreSupport/WebEditorClient.mm:
+        (WebEditorClient::respondToChangedSelection):
+        * WebView/WebImmediateActionController.mm:
+        (+[WebImmediateActionController _dictionaryPopupInfoForRange:inFrame:withLookupOptions:indicatorOptions:transition:]):
+
+2016-10-31  Darin Adler  <darin@apple.com>
+
+        Move ChildNode and ParentNode from ExceptionCode to Exception, add support for ExceptionOr<T&>
+        https://bugs.webkit.org/show_bug.cgi?id=164214
+
+        Reviewed by Alex Christensen.
+
+        * DOM/DOMCSSPrimitiveValue.mm:
+        (-[DOMCSSPrimitiveValue getCounterValue]): Updated since return value
+        is a reference now.
+        (-[DOMCSSPrimitiveValue getRectValue]): Ditto.
+
+        * DOM/DOMDocument.mm:
+        (-[DOMDocument querySelector:]): Updated exception handling.
+        (-[DOMDocument querySelectorAll:]): Ditto.
+        * DOM/DOMDocumentFragment.mm:
+        (-[DOMDocumentFragment querySelector:]): Ditto.
+        (-[DOMDocumentFragment querySelectorAll:]): Ditto.
+        * DOM/DOMElement.mm:
+        (-[DOMElement querySelector:]): Ditto.
+        (-[DOMElement querySelectorAll:]): Ditto.
+
+2016-10-31  Darin Adler  <darin@apple.com>
+
+        Convert Document from ExceptionCode to Exception
+        https://bugs.webkit.org/show_bug.cgi?id=164212
+
+        Reviewed by Alex Christensen.
+
+        * DOM/DOMDocument.mm:
+        (-[DOMDocument setXmlVersion:]): Updated exception handling.
+        (-[DOMDocument cookie]): Ditto.
+        (-[DOMDocument setCookie:]): Ditto.
+        (-[DOMDocument setBody:]): Ditto.
+        (-[DOMDocument createElement:]): Ditto.
+        (-[DOMDocument createCDATASection:]): Ditto.
+        (-[DOMDocument createProcessingInstruction:data:]): Ditto.
+        (-[DOMDocument createAttribute:]): Ditto.
+        (-[DOMDocument createEntityReference:]): Ditto.
+        (-[DOMDocument importNode:deep:]): Ditto.
+        (-[DOMDocument createElementNS:qualifiedName:]): Ditto.
+        (-[DOMDocument createAttributeNS:qualifiedName:]): Ditto.
+        (-[DOMDocument getElementsByTagNameNS:localName:]): Ditto.
+        (-[DOMDocument adoptNode:]): Ditto.
+        (-[DOMDocument createEvent:]): Ditto.
+
+2016-10-30  Darin Adler  <darin@apple.com>
+
+        Move Element, NamedNodeMap, and DOMStringMap from ExceptionCode to Exception
+        https://bugs.webkit.org/show_bug.cgi?id=164206
+
+        Reviewed by Chris Dumez.
+
+        * DOM/DOMElement.mm:
+        (-[DOMElement setInnerHTML:]): Updated exception handling.
+        (-[DOMElement setOuterHTML:]): Ditto.
+        (-[DOMElement setAttribute:value:]): Ditto.
+        (-[DOMElement setAttributeNode:]): Ditto.
+        (-[DOMElement removeAttributeNode:]): Ditto.
+        (-[DOMElement setAttributeNS:qualifiedName:value:]): Ditto.
+        (-[DOMElement setAttributeNodeNS:]): Ditto.
+        (-[DOMElement matches:]): Ditto.
+        (-[DOMElement closest:]): Ditto.
+        (-[DOMElement webkitMatchesSelector:]): Ditto.
+        * DOM/DOMHTMLElement.mm:
+        (-[DOMHTMLElement insertAdjacentElement:element:]): Ditto.
+        (-[DOMHTMLElement insertAdjacentHTML:html:]): Ditto.
+        (-[DOMHTMLElement insertAdjacentText:text:]): Ditto.
+        * DOM/DOMNamedNodeMap.mm:
+        (-[DOMNamedNodeMap setNamedItem:]): Ditto.
+        (-[DOMNamedNodeMap removeNamedItem:]): Ditto.
+        (-[DOMNamedNodeMap setNamedItemNS:]): Ditto.
+        (-[DOMNamedNodeMap removeNamedItemNS:localName:]): Ditto.
+
+2016-10-29  Darin Adler  <darin@apple.com>
+
+        Convert more of DOM from ExceptionCode to Exception
+        https://bugs.webkit.org/show_bug.cgi?id=164173
+
+        Reviewed by Ryosuke Niwa.
+
+        * DOM/DOMCharacterData.mm:
+        (-[DOMCharacterData substringData:length:]): Updated since this
+        now uses ExceptionOr.
+        (-[DOMCharacterData insertData:data:]): Ditto.
+        (-[DOMCharacterData deleteData:length:]): Ditto.
+        (-[DOMCharacterData replaceData:length:data:]): Ditto.
+        * DOM/DOMText.mm:
+        (-[DOMText splitText:]): Ditto.
+        (-[DOMText replaceWholeText:]): Removed unneeded exception code
+        handling from function that does not throw an exception.
+
+2016-10-28  Darin Adler  <darin@apple.com>
+
+        Move all classes in the HTML directory from ExceptionCode to Exception
+        https://bugs.webkit.org/show_bug.cgi?id=163876
+
+        Reviewed by Sam Weinig.
+
+        * DOM/DOMCharacterData.mm:
+        (-[DOMCharacterData remove]): Updated exception handling.
+        * DOM/DOMDOMTokenList.mm:
+        (-[DOMDOMTokenList toggle:force:]): Ditto.
+        * DOM/DOMDocumentType.mm:
+        (-[DOMDocumentType remove]): Ditto.
+        * DOM/DOMElement.mm:
+        (-[DOMElement remove]): Ditto.
+        * DOM/DOMHTML.mm:
+        (-[DOMHTMLInputElement setValueAsNumberWithChangeEvent:]): Ditto.
+        * DOM/DOMHTMLCanvasElement.mm:
+        (-[DOMHTMLCanvasElement toDataURL:]): Ditto.
+        * DOM/DOMHTMLElement.mm:
+        (-[DOMHTMLElement setInnerText:]): Ditto.
+        (-[DOMHTMLElement setOuterText:]): Ditto.
+        (-[DOMHTMLElement setContentEditable:]): Ditto.
+        * DOM/DOMHTMLInputElement.mm:
+        (-[DOMHTMLInputElement setMaxLength:]): Ditto.
+        (-[DOMHTMLInputElement setValueAsDate:]): Ditto.
+        (-[DOMHTMLInputElement setValueAsNumber:]): Ditto.
+        (-[DOMHTMLInputElement stepUp:]): Ditto.
+        (-[DOMHTMLInputElement stepDown:]): Ditto.
+        (-[DOMHTMLInputElement setRangeText:]): Ditto.
+        (-[DOMHTMLInputElement setRangeText:start:end:selectionMode:]): Ditto.
+        * DOM/DOMHTMLMarqueeElement.mm:
+        (-[DOMHTMLMarqueeElement setLoop:]): Ditto.
+        * DOM/DOMHTMLMediaElement.mm:
+        (-[DOMHTMLMediaElement setCurrentTime:]): Ditto.
+        (-[DOMHTMLMediaElement setVolume:]): Ditto.
+        * DOM/DOMHTMLOptionsCollection.mm:
+        (-[DOMHTMLOptionsCollection setLength:]): Ditto.
+        * DOM/DOMHTMLTableElement.mm:
+        (-[DOMHTMLTableElement setCaption:]): Ditto.
+        (-[DOMHTMLTableElement setTHead:]): Ditto.
+        (-[DOMHTMLTableElement setTFoot:]): Ditto.
+        (-[DOMHTMLTableElement insertRow:]): Ditto.
+        (-[DOMHTMLTableElement deleteRow:]): Ditto.
+        * DOM/DOMHTMLTableRowElement.mm:
+        (-[DOMHTMLTableRowElement insertCell:]): Ditto.
+        (-[DOMHTMLTableRowElement deleteCell:]): Ditto.
+        * DOM/DOMHTMLTableSectionElement.mm:
+        (-[DOMHTMLTableSectionElement insertRow:]): Ditto.
+        (-[DOMHTMLTableSectionElement deleteRow:]): Ditto.
+        * DOM/DOMHTMLTextAreaElement.mm:
+        (-[DOMHTMLTextAreaElement setMaxLength:]): Ditto.
+        (-[DOMHTMLTextAreaElement setRangeText:]): Ditto.
+        (-[DOMHTMLTextAreaElement setRangeText:start:end:selectionMode:]): Ditto.
+        * DOM/DOMHTMLVideoElement.mm:
+        (-[DOMHTMLVideoElement webkitEnterFullscreen]): Ditto.
+        (-[DOMHTMLVideoElement webkitEnterFullScreen]): Changed to call the other named
+        version (lowercase S) instead of repeating the logic from that method.
+        (-[DOMHTMLVideoElement webkitExitFullScreen]): Ditto.
+        * DOM/DOMTimeRanges.mm:
+        (-[DOMTimeRanges start:]): Updated exception handling.
+        (-[DOMTimeRanges end:]): Ditto.
+
+2016-10-27  Chris Dumez  <cdumez@apple.com>
+
+        Regression(r203601): Caused crashes in iBooks
+        https://bugs.webkit.org/show_bug.cgi?id=164093
+        <rdar://problem/28745634>
+
+        Reviewed by Darin Adler.
+
+        Restore pre-r203601 behavior when calling [DOMNode compareDocumentPosition:nil],
+        which was to return Node::DOCUMENT_POSITION_DISCONNECTED.
+
+        * DOM/DOMNode.mm:
+        (-[DOMNode compareDocumentPosition:]):
+
+2016-10-27  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Support "insertFromDrop" and "deleteByDrag" for the InputEvent spec
+        https://bugs.webkit.org/show_bug.cgi?id=163948
+        <rdar://problem/28921433>
+
+        Reviewed by Darin Adler.
+
+        Add support for new drag and drop-related EditAction enum values.
+
+        * WebCoreSupport/WebEditorClient.mm:
+        (undoNameForEditAction):
+
+2016-10-27  Dan Bernstein  <mitz@apple.com>
+
+        Reapplied the configuration changes from r207934 without breaking iOS builds.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/WebKitLegacy.xcconfig:
+
+2016-10-27  Dan Bernstein  <mitz@apple.com>
+
+        Reverted the configuration changes from r207934 because they broke iOS builds not using the Apple-internal SDK.
+
+        * Configurations/Base.xcconfig:
+        * Configurations/WebKitLegacy.xcconfig:
+
+2016-10-26  Dan Bernstein  <mitz@apple.com>
+
+        [Xcode] WebKit fails to build when CLANG_WARN_DOCUMENTATION_COMMENTS is enabled
+        https://bugs.webkit.org/show_bug.cgi?id=164048
+
+        Reviewed by Tim Horton.
+
+        * Configurations/Base.xcconfig: Enabled CLANG_WARN_DOCUMENTATION_COMMENTS.
+        * Configurations/WebKitLegacy.xcconfig: Made the compiler treat the icu headers as system
+          headers.
+
+        * History/WebBackForwardList.h: Fixed parameter name in @param entry.
+        * Misc/WebDownload.h: Removed empty entries.
+        * Misc/WebIconDatabase.h: Remove incorrect @param entries.
+        * Misc/WebQuotaManager.h: Added missing parameter names in @param entries.
+        * WebView/WebFrameLoadDelegate.h: Corrected parameter names in @param entries.
+        * WebView/WebFrameViewPrivate.h: Changed incorrect @result to @abstract.
+        * WebView/WebPolicyDelegate.h: Fixed parameter name and removed incorrect @param entries.
+        * WebView/WebPreferences.h: Changed @method to @property in a couple of places.
+        * WebView/WebResourceLoadDelegate.h: Fixed parameter names.
+        * WebView/WebUIDelegate.h: Filled in two empty @param entries. Added missing parameter name,
+          Fixed a typo and removed empty @discussion entry. Fixed some parameter names.
+        * WebView/WebUIDelegatePrivate.h: Fixed parameter names.
+        * WebView/WebView.h: Changed @method to @property in a couple of places.
+        * WebView/WebViewPrivate.h: Fixed parameter names, changed incorrect @result to @abstract.
+
+2016-10-26  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: remove unused bool return value from FrontendChannel::sendMessageToFrontend
+        https://bugs.webkit.org/show_bug.cgi?id=164046
+
+        Reviewed by Joseph Pecoraro.
+
+        * WebCoreSupport/WebInspectorClient.h:
+
+2016-10-21  Alex Christensen  <achristensen@webkit.org>
+
+        URL::port should return Optional<uint16_t>
+        https://bugs.webkit.org/show_bug.cgi?id=163806
+
+        Reviewed by Darin Adler.
+
+        * WebCoreSupport/WebSecurityOrigin.mm:
+        (-[WebSecurityOrigin port]):
+
+2016-10-24  Dave Hyatt  <hyatt@apple.com>
+
+        Remove CSSCharsetRule from the CSS OM
+        https://bugs.webkit.org/show_bug.cgi?id=163891
+
+        Reviewed by Darin Adler.
+
+        * DOM/DOMCSSCharsetRule.mm:
+        (-[DOMCSSCharsetRule encoding]):
+
+2016-10-24  Youenn Fablet  <youenn@apple.com>
+
+        Activate WEB_RTC compilation flags for Mac bots
+        https://bugs.webkit.org/show_bug.cgi?id=163886
+
+        Reviewed by Eric Carlson.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2016-10-23  Chris Dumez  <cdumez@apple.com>
+
+        addEventListener() / removeEventListener() should use a union for last parameter
+        https://bugs.webkit.org/show_bug.cgi?id=163863
+
+        Reviewed by Darin Adler.
+
+        Cast BOOL to bool to help to compiler construct the new variant-type parameter.
+
+        * DOM/DOMNode.mm:
+        (-[DOMNode addEventListener:listener:useCapture:]):
+        (-[DOMNode addEventListener:::]):
+        (-[DOMNode removeEventListener:listener:useCapture:]):
+        (-[DOMNode removeEventListener:::]):
+
+2016-10-21  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Support (insertFrom|deleteBy)Composition and (insert|delete)CompositionText inputTypes for InputEvents
+        https://bugs.webkit.org/show_bug.cgi?id=163460
+        <rdar://problem/28784142>
+
+        Reviewed by Darin Adler.
+
+        Handle new EditAction types for inserting/deleting pending/final compositions.
+
+        * WebCoreSupport/WebEditorClient.mm:
+        (undoNameForEditAction):
+
+2016-10-21  Jeremy Jones  <jeremyj@apple.com>
+
+        Implement basic pointer lock behavior for WebKit and WebKit2.
+        https://bugs.webkit.org/show_bug.cgi?id=162745
+
+        Reviewed by Simon Fraser.
+
+        Add basic pointer lock functionality. User permission is not yet implemented.
+
+        * WebCoreSupport/WebChromeClient.h:
+        * WebCoreSupport/WebChromeClient.mm:
+        (WebChromeClient::requestPointerLock):
+        (WebChromeClient::requestPointerUnlock):
+
+2016-10-19  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [macOS] [iOS] Disable variation fonts on macOS El Capitan and iOS 9
+        https://bugs.webkit.org/show_bug.cgi?id=163374
+
+        Reviewed by Darin Adler.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2016-10-19  Alex Christensen  <achristensen@webkit.org>
+
+        Revert r207151
+        https://bugs.webkit.org/show_bug.cgi?id=163675
+
+        Reviewed by Brent Fulgham.
+
+        * Misc/WebDownload.mm:
+        (-[WebDownload _initWithLoadingCFURLConnection:request:response:delegate:proxy:]):
+        * Misc/WebDownloadInternal.h:
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::convertMainResourceLoadToDownload):
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences _setCurrentNetworkLoaderSessionCookieAcceptPolicy:]):
+        * WebView/WebView.mm:
+        (-[WebView scheduleInRunLoop:forMode:]):
+        (-[WebView unscheduleFromRunLoop:forMode:]):
+
+2016-10-19  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Unreviewed, rolling out r207557.
+
+        This change caused animations/font-variations tests to time
+        out on pre-Sierra Macs.
+
+        Reverted changeset:
+
+        "[macOS] [iOS] Disable variation fonts on macOS El Capitan and
+        iOS 9"
+        https://bugs.webkit.org/show_bug.cgi?id=163374
+        http://trac.webkit.org/changeset/207557
+
+2016-10-19  Chris Dumez  <cdumez@apple.com>
+
+        Move HTML Interactive Form Validation behind an experimental flag
+        https://bugs.webkit.org/show_bug.cgi?id=163673
+
+        Reviewed by Daniel Bates.
+
+        Re-disable HTML Interactive Form Validation by default on Mac WK1.
+
+        * WebView/WebViewData.mm:
+        (-[WebViewPrivate init]):
+
+2016-10-19  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [macOS] [iOS] Disable variation fonts on macOS El Capitan and iOS 9
+        https://bugs.webkit.org/show_bug.cgi?id=163374
+
+        Reviewed by Darin Adler.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2016-10-19  Simon Fraser  <simon.fraser@apple.com>
+
+        WebView needs to initialize the visualViewportEnabled Setting from WebKit preferences
+        https://bugs.webkit.org/show_bug.cgi?id=163680
+
+        Reviewed by Dean Jackson.
+
+        Add code to set the Setting from WebKit prefs. This code is a mess and needs to be autogenerated.
+
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2016-10-19  Darin Adler  <darin@apple.com>
+
+        Move XPath from ExceptionCode to Exception
+        https://bugs.webkit.org/show_bug.cgi?id=163656
+
+        Reviewed by Chris Dumez.
+
+        * DOM/DOMDocument.mm:
+        (wrap): Added. Helper function for wrapping a resolver.
+        (-[DOMDocument createExpression:resolver:]): Use raiseOnDOMError.
+        (-[DOMDocument evaluate:contextNode:resolver:type:inResult:]): Ditto.
+        * DOM/DOMXPathExpression.mm:
+        (-[DOMXPathExpression evaluate:type:inResult:]): Ditto.
+        * DOM/DOMXPathResult.mm:
+        (-[DOMXPathResult numberValue]): Ditto.
+        (-[DOMXPathResult stringValue]): Ditto.
+        (-[DOMXPathResult booleanValue]): Ditto.
+        (-[DOMXPathResult singleNodeValue]): Ditto.
+        (-[DOMXPathResult snapshotLength]): Ditto.
+        (-[DOMXPathResult iterateNext]): Ditto.
+        (-[DOMXPathResult snapshotItem:]): Ditto.
+
+2016-10-18  Sam Weinig  <sam@webkit.org>
+
+        Replace std::experimental::variant with WTF::Variant (or similar)
+        https://bugs.webkit.org/show_bug.cgi?id=163626
+
+        Reviewed by Chris Dumez.
+
+        Rename std::experimental::variant, Variant. Move helpers get/holds_alternative/etc.
+        into the WTF namespace.
+
+        * DOM/DOMHTMLSelectElement.mm:
+        (-[DOMHTMLSelectElement add:before:]):
+
+2016-10-18  Simon Fraser  <simon.fraser@apple.com>
+
+        Add a MiniBrowser menu item to apply page scale in WK1 and WK2
+        https://bugs.webkit.org/show_bug.cgi?id=163627
+
+        Reviewed by Dean Jackson.
+
+        Add an explanatory comment about viewScaleFactor not really being viewScaleFactor.
+
+        * WebView/WebViewPrivate.h:
+
+2016-10-18  Dean Jackson  <dino@apple.com>
+
+        Remove CSS_SHAPES feature definition. This should always be on.
+        https://bugs.webkit.org/show_bug.cgi?id=163628
+        <rdar://problem/28834613>
+
+        Reviewed by Tim Horton.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2016-10-18  Chris Dumez  <cdumez@apple.com>
+
+        Leverage new union type support for HTMLSelectElement.add() / HTMLOptionsCollection.add()
+        https://bugs.webkit.org/show_bug.cgi?id=163608
+
+        Reviewed by Ryosuke Niwa.
+
+        Update add() call sites now that it takes std::variant types in.
+
+        * DOM/DOMHTMLOptionsCollection.mm:
+        (-[DOMHTMLOptionsCollection add:index:]):
+        * DOM/DOMHTMLSelectElement.mm:
+        (-[DOMHTMLSelectElement add:before:]):
+
+2016-10-18  Anders Carlsson  <andersca@apple.com>
+
+        Get rid of more WebHistoryItem cruft
+        https://bugs.webkit.org/show_bug.cgi?id=163623
+
+        Reviewed by Tim Horton.
+
+        * History/WebHistoryItem.mm:
+        (-[WebHistoryItem initFromDictionaryRepresentation:]):
+        * History/WebHistoryItemPrivate.h:
+
+2016-10-18  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Showing and hiding candidates list is very distracting after selecting word
+        https://bugs.webkit.org/show_bug.cgi?id=163609
+        <rdar://problem/28747712>
+
+        Reviewed by Tim Horton.
+
+        Introduce WebView hooks for mousedown and mouseup. See radar for more details.
+
+        * WebView/WebHTMLView.mm:
+        (-[WebHTMLView mouseDown:mouseDown:]):
+        (-[WebHTMLView mouseUp:mouseUp:]):
+        * WebView/WebView.mm:
+        (-[WebView prepareForMouseDown]):
+        (-[WebView prepareForMouseUp]):
+        * WebView/WebViewInternal.h:
+
+2016-10-17  Anders Carlsson  <andersca@apple.com>
+
+        Move some history specific HistoryItem code to WebHistoryItem
+        https://bugs.webkit.org/show_bug.cgi?id=163567
+
+        Reviewed by Tim Horton.
+
+        * History/HistoryPropertyList.mm:
+        (HistoryPropertyListWriter::writeHistoryItem):
+        * History/WebHistory.mm:
+        (-[WebHistory _visitedURL:withTitle:method:wasFailure:]):
+        * History/WebHistoryItem.mm:
+        (-[WebHistoryItem initFromDictionaryRepresentation:]):
+        * History/WebHistoryItemInternal.h:
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (addRedirectURL):
+        (WebFrameLoaderClient::updateGlobalHistoryRedirectLinks):
+
+2016-10-18  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream] Resolve constraints and enumerate devices in the UI process
+        https://bugs.webkit.org/show_bug.cgi?id=162147
+        <rdar://problem/28803569>
+
+        Reviewed by Darin Adler.
+
+        * WebCoreSupport/WebUserMediaClient.h:
+        * WebCoreSupport/WebUserMediaClient.mm:
+        (AddPermissionCheckToMap):
+        (RemovePermissionCheckFromMap):
+        (WebUserMediaClient::pageDestroyed):
+        (WebUserMediaClient::requestUserMediaAccess):
+        (WebUserMediaClient::enumerateMediaDevices):
+        (WebUserMediaClient::cancelMediaDevicesEnumerationRequest):
+        (-[WebUserMediaPolicyListener allow]):
+        (-[WebUserMediaPolicyListener deny]):
+        (-[WebUserMediaPolicyCheckerListener initWithMediaDevicesEnumerationRequest:]):
+        (-[WebUserMediaPolicyCheckerListener cancelMediaDevicesEnumerationRequest]):
+        (-[WebUserMediaPolicyCheckerListener allow]):
+        (-[WebUserMediaPolicyCheckerListener deny]):
+        (WebUserMediaClient::checkUserMediaPermission): Deleted.
+        (WebUserMediaClient::cancelUserMediaPermissionCheck): Deleted.
+        (-[WebUserMediaPolicyCheckerListener initWithUserMediaPermissionCheck:]): Deleted.
+        (-[WebUserMediaPolicyCheckerListener cancelUserMediaPermissionCheck]): Deleted.
+
+2016-10-17  Antti Koivisto  <antti@apple.com>
+
+        Rename setNeedsStyleRecalc to invalidateStyle
+        https://bugs.webkit.org/show_bug.cgi?id=163542
+
+        Reviewed by Darin Adler.
+
+        * Plugins/Hosted/WebHostedNetscapePluginView.mm:
+        (-[WebHostedNetscapePluginView createPluginLayer]):
+        * Plugins/WebNetscapePluginView.mm:
+        (-[WebNetscapePluginView createPlugin]):
+
+2016-10-17  Jeremy Jones  <jeremyj@apple.com>
+
+        Enable keyboard in fullscreen.
+        https://bugs.webkit.org/show_bug.cgi?id=163146
+
+        Reviewed by Jer Noble.
+
+        Allow keyboard in fullscreen.
+
+        * WebView/WebView.mm:
+        (-[WebView _supportsFullScreenForElement:withKeyboard:]):
+
+2016-10-17  Chris Dumez  <cdumez@apple.com>
+
+        Move form.reportValidity() behind InteractiveFormValidation setting
+        https://bugs.webkit.org/show_bug.cgi?id=163550
+
+        Reviewed by Darin Adler.
+
+        Enable InteractiveFormValidation setting by default and link it to
+        RuntimeEnabledFeatures so we can use it in the IDL.
+
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+        * WebView/WebViewData.mm:
+        (-[WebViewPrivate init]):
+
+2016-10-17  Anders Carlsson  <andersca@apple.com>
+
+        Fix iOS build.
+
+        * History/WebBackForwardList.mm:
+        (-[WebBackForwardList dictionaryRepresentation]):
+
+2016-10-17  Anders Carlsson  <andersca@apple.com>
+
+        CTTE some of the BackForwardList member functions
+        https://bugs.webkit.org/show_bug.cgi?id=163555
+
+        Reviewed by Dan Bernstein.
+
+        * History/BackForwardList.h:
+        (BackForwardList::entries):
+        * History/BackForwardList.mm:
+        (BackForwardList::removeItem):
+        (BackForwardList::containsItem):
+        (BackForwardList::entries): Deleted.
+        * History/WebBackForwardList.mm:
+        (-[WebBackForwardList removeItem:]):
+        (-[WebBackForwardList containsItem:]):
+        (-[WebBackForwardList description]):
+
+2016-10-17  Anders Carlsson  <andersca@apple.com>
+
+        Remove WEBCORE_EXPORT from BackForwardList, it lives in WebKit now
+        https://bugs.webkit.org/show_bug.cgi?id=163551
+
+        Reviewed by Tim Horton.
+
+        * History/BackForwardList.h:
+
+2016-10-16  Darin Adler  <darin@apple.com>
+
+        Move CSS classes from ExceptionCode to Exception
+        https://bugs.webkit.org/show_bug.cgi?id=163494
+
+        Reviewed by Sam Weinig.
+
+        * DOM/DOMCSSMediaRule.mm:
+        (-[DOMCSSMediaRule insertRule:index:]): Use raiseOnDOMError
+        the new way to handle ExceptionOr instead of ExceptionCode.
+        (-[DOMCSSMediaRule deleteRule:]): Ditto.
+        * DOM/DOMCSSPrimitiveValue.mm:
+        (-[DOMCSSPrimitiveValue setFloatValue:floatValue:]): Ditto.
+        (-[DOMCSSPrimitiveValue getFloatValue:]): Ditto.
+        (-[DOMCSSPrimitiveValue setStringValue:stringValue:]): Ditto.
+        (-[DOMCSSPrimitiveValue getStringValue]): Ditto.
+        (-[DOMCSSPrimitiveValue getCounterValue]): Ditto.
+        (-[DOMCSSPrimitiveValue getRectValue]): Ditto.
+        (-[DOMCSSPrimitiveValue getRGBColorValue]): Ditto.
+        * DOM/DOMCSSRule.mm:
+        (-[DOMCSSRule setCssText:]): Ditto.
+        * DOM/DOMCSSStyleDeclaration.mm:
+        (-[DOMCSSStyleDeclaration setCssText:]): Ditto.
+        (-[DOMCSSStyleDeclaration removeProperty:]): Ditto.
+        (-[DOMCSSStyleDeclaration setProperty:value:priority:]): Ditto.
+        * DOM/DOMCSSStyleSheet.mm:
+        (-[DOMCSSStyleSheet insertRule:index:]): Ditto.
+        (-[DOMCSSStyleSheet deleteRule:]): Ditto.
+        (-[DOMCSSStyleSheet addRule:style:index:]): Ditto.
+        (-[DOMCSSStyleSheet removeRule:]): Ditto.
+        * DOM/DOMCSSValue.mm:
+        (-[DOMCSSValue setCssText:]): Ditto.
+        * DOM/DOMMediaList.mm:
+        (-[DOMMediaList setMediaText:]): Ditto.
+        (-[DOMMediaList deleteMedium:]): Ditto.
+        (-[DOMMediaList appendMedium:]): Ditto.
+
+        * DOM/ExceptionHandlers.h: Added an overload of raiseDOMException
+        that works with a WebCore::Exception&& and overloads of
+        raiseOnDOMError that work with WebCore::ExceptionOr&&.
+        * DOM/ExceptionHandlers.mm:
+        (raiseDOMException): Implemented the new version.
+
+2016-10-15  Dan Bernstein  <mitz@apple.com>
+
+        REGRESSION (r191699): Contextual menu in Mail compose view doesn’t include any of the standard submenus
+        https://bugs.webkit.org/show_bug.cgi?id=163492
+        <rdar://problem/28654799>
+
+        Reviewed by Darin Adler.
+
+        Test: TestWebKitAPI/Tests/mac/ContextMenuDefaultItemsHaveTags.mm
+
+        * WebView/WebHTMLView.mm:
+        (createMenuItem): Set the tag for items that have submenus as well.
+
+2016-10-14  Anders Carlsson  <andersca@apple.com>
+
+        Clean up BackForwardClient
+        https://bugs.webkit.org/show_bug.cgi?id=163454
+
+        Reviewed by Sam Weinig.
+
+        * History/BackForwardList.h:
+        Remove override keywords.
+
+        * History/BackForwardList.mm:
+        (BackForwardList::clearAllPageCaches): Deleted.
+        Remove this, it's no longer used.
+
+        * WebView/WebView.mm:
+        (-[WebView _clearBackForwardCache]): Deleted.
+        * WebView/WebViewPrivate.h:
+        Remove SPI that's no longer used by anyone.
+
+2016-10-13  Anders Carlsson  <andersca@apple.com>
+
+        Move BackForwardList from WebCore to WebKitLegacy
+        https://bugs.webkit.org/show_bug.cgi?id=163418
+
+        Reviewed by Tim Horton.
+
+        * History/BackForwardList.h: Renamed from Source/WebCore/history/BackForwardList.h.
+        (BackForwardList::create):
+        (BackForwardList::webView):
+        * History/BackForwardList.mm: Renamed from Source/WebCore/history/BackForwardList.cpp.
+        (BackForwardList::BackForwardList):
+        (BackForwardList::close):
+        (BackForwardList::containsItem):
+        * History/WebBackForwardList.mm:
+        (kit):
+        (-[WebBackForwardList initWithBackForwardList:]):
+        (-[WebBackForwardList setPageCacheSize:]):
+        (-[WebBackForwardList pageCacheSize]):
+        * History/WebBackForwardListInternal.h:
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        * WebView/WebFrameView.mm:
+        * WebView/WebView.mm:
+        (-[WebView _commonInitializationWithFrameName:groupName:]):
+        (-[WebView initSimpleHTMLDocumentWithStyle:frame:preferences:groupName:]):
+
+2016-10-13  Anders Carlsson  <andersca@apple.com>
+
+        Get rid of the HistoryItemVector typedef
+        https://bugs.webkit.org/show_bug.cgi?id=163398
+
+        Reviewed by Beth Dakin.
+
+        Expand the HistoryitemVector typedef instead to make it more clear what types we are dealing with.
+
+        * History/WebBackForwardList.mm:
+        (-[WebBackForwardList dictionaryRepresentation]):
+        (vectorToNSArray):
+        (-[WebBackForwardList backListWithLimit:]):
+        (-[WebBackForwardList forwardListWithLimit:]):
+        (-[WebBackForwardList description]):
+        * History/WebHistoryItem.mm:
+        (-[WebHistoryItem description]):
+
 2016-10-12  Chris Dumez  <cdumez@apple.com>
 
         [Web IDL] Drop support for legacy [ConstructorConditional=*]

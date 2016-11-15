@@ -190,6 +190,15 @@ void TileController::setVisibleRect(const FloatRect& rect)
     updateTileCoverageMap();
 }
 
+void TileController::setLayoutViewportRect(Optional<FloatRect> rect)
+{
+    if (rect == m_layoutViewportRect)
+        return;
+
+    m_layoutViewportRect = rect;
+    updateTileCoverageMap();
+}
+
 void TileController::setCoverageRect(const FloatRect& rect)
 {
     ASSERT(owningGraphicsLayer()->isCommittingChanges());
@@ -442,7 +451,7 @@ void TileController::adjustTileCoverageRect(FloatRect& coverageRect, const Float
     FloatRect coverageBounds = boundsForSize(newSize);
     
     FloatRect coverage = expandRectWithinRect(visibleRect, coverageSize, coverageBounds);
-    LOG_WITH_STREAM(Scrolling, stream << "TileController::computeTileCoverageRect newSize=" << newSize << " mode " << m_tileCoverage << " expanded to " << coverageSize << " bounds with margin " << coverageBounds << " coverage " << coverage);
+    LOG_WITH_STREAM(Tiling, stream << "TileController::computeTileCoverageRect newSize=" << newSize << " mode " << m_tileCoverage << " expanded to " << coverageSize << " bounds with margin " << coverageBounds << " coverage " << coverage);
     coverageRect.unite(coverage);
 #endif
 }

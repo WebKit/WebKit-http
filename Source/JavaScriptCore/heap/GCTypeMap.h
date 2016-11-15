@@ -25,7 +25,7 @@
 
 #pragma once
 
-#include "HeapOperation.h"
+#include "CollectionScope.h"
 #include <wtf/Assertions.h>
 
 namespace JSC {
@@ -35,20 +35,28 @@ struct GCTypeMap {
     T eden;
     T full;
     
-    T& operator[](HeapOperation operation)
+    T& operator[](CollectionScope scope)
     {
-        if (operation == FullCollection)
+        switch (scope) {
+        case CollectionScope::Full:
             return full;
-        ASSERT(operation == EdenCollection);
-        return eden;
+        case CollectionScope::Eden:
+            return eden;
+        }
+        ASSERT_NOT_REACHED();
+        return full;
     }
     
-    const T& operator[](HeapOperation operation) const
+    const T& operator[](CollectionScope scope) const
     {
-        if (operation == FullCollection)
+        switch (scope) {
+        case CollectionScope::Full:
             return full;
-        ASSERT(operation == EdenCollection);
-        return eden;
+        case CollectionScope::Eden:
+            return eden;
+        }
+        RELEASE_ASSERT_NOT_REACHED();
+        return full;
     }
 };
 

@@ -28,17 +28,19 @@
  */
 
 #include "config.h"
+#include "MediaControlElements.h"
 
 #if ENABLE(VIDEO)
-#include "MediaControlElements.h"
 
 #include "DOMTokenList.h"
 #include "ElementChildIterator.h"
 #include "EventHandler.h"
 #include "EventNames.h"
-#include "ExceptionCodePlaceholder.h"
 #include "Frame.h"
 #include "GraphicsContext.h"
+#include "HTMLHeadingElement.h"
+#include "HTMLLIElement.h"
+#include "HTMLUListElement.h"
 #include "HTMLVideoElement.h"
 #include "ImageBuffer.h"
 #include "Language.h"
@@ -54,9 +56,7 @@
 #include "RenderView.h"
 #include "Settings.h"
 #include "ShadowRoot.h"
-#if ENABLE(VIDEO_TRACK)
 #include "TextTrackList.h"
-#endif
 #include "VTTRegionList.h"
 
 namespace WebCore {
@@ -167,7 +167,7 @@ void MediaControlPanelElement::setPosition(const LayoutPoint& position)
     setInlineStyleProperty(CSSPropertyMarginLeft, 0.0, CSSPrimitiveValue::CSS_PX);
     setInlineStyleProperty(CSSPropertyMarginTop, 0.0, CSSPrimitiveValue::CSS_PX);
 
-    classList().add("dragged", IGNORE_EXCEPTION);
+    classList().add("dragged");
 }
 
 void MediaControlPanelElement::resetPosition()
@@ -177,7 +177,7 @@ void MediaControlPanelElement::resetPosition()
     removeInlineStyleProperty(CSSPropertyMarginLeft);
     removeInlineStyleProperty(CSSPropertyMarginTop);
 
-    classList().remove("dragged", IGNORE_EXCEPTION);
+    classList().remove("dragged");
 
     m_cumulativeDragOffset.setX(0);
     m_cumulativeDragOffset.setY(0);
@@ -388,13 +388,13 @@ void MediaControlStatusDisplayElement::update()
 
     switch (m_stateBeingDisplayed) {
     case Nothing:
-        setInnerText(emptyString(), IGNORE_EXCEPTION);
+        setInnerText(emptyString());
         break;
     case Loading:
-        setInnerText(mediaElementLoadingStateText(), IGNORE_EXCEPTION);
+        setInnerText(mediaElementLoadingStateText());
         break;
     case LiveBroadcast:
-        setInnerText(mediaElementLiveBroadcastStateText(), IGNORE_EXCEPTION);
+        setInnerText(mediaElementLiveBroadcastStateText());
         break;
     }
 }
@@ -759,24 +759,24 @@ void MediaControlClosedCaptionsTrackListElement::updateDisplay()
 
         if (textTrack == TextTrack::captionMenuAutomaticItem()) {
             if (displayMode == CaptionUserPreferences::Automatic)
-                trackItem->classList().add(selectedClassValue, ASSERT_NO_EXCEPTION);
+                trackItem->classList().add(selectedClassValue);
             else
-                trackItem->classList().remove(selectedClassValue, ASSERT_NO_EXCEPTION);
+                trackItem->classList().remove(selectedClassValue);
             continue;
         }
 
         if (displayMode != CaptionUserPreferences::Automatic && textTrack->mode() == TextTrack::Mode::Showing) {
             trackMenuItemSelected = true;
-            trackItem->classList().add(selectedClassValue, ASSERT_NO_EXCEPTION);
+            trackItem->classList().add(selectedClassValue);
         } else
-            trackItem->classList().remove(selectedClassValue, ASSERT_NO_EXCEPTION);
+            trackItem->classList().remove(selectedClassValue);
     }
 
     if (offMenuItem) {
         if (displayMode == CaptionUserPreferences::ForcedOnly && !trackMenuItemSelected)
-            offMenuItem->classList().add(selectedClassValue, ASSERT_NO_EXCEPTION);
+            offMenuItem->classList().add(selectedClassValue);
         else
-            offMenuItem->classList().remove(selectedClassValue, ASSERT_NO_EXCEPTION);
+            offMenuItem->classList().remove(selectedClassValue);
     }
 #endif
 }
@@ -805,13 +805,13 @@ void MediaControlClosedCaptionsTrackListElement::rebuildTrackListMenu()
     auto& captionPreferences = document().page()->group().captionPreferences();
     Vector<RefPtr<TextTrack>> tracksForMenu = captionPreferences.sortedTrackListForMenu(&trackList);
 
-    auto captionsHeader = document().createElement(h3Tag, ASSERT_NO_EXCEPTION);
+    auto captionsHeader = HTMLHeadingElement::create(h3Tag, document());
     captionsHeader->appendChild(document().createTextNode(textTrackSubtitlesText()));
     appendChild(captionsHeader);
-    auto captionsMenuList = document().createElement(ulTag, ASSERT_NO_EXCEPTION);
+    auto captionsMenuList = HTMLUListElement::create(document());
 
     for (auto& textTrack : tracksForMenu) {
-        auto menuItem = document().createElement(liTag, ASSERT_NO_EXCEPTION);
+        auto menuItem = HTMLLIElement::create(document());
         menuItem->appendChild(document().createTextNode(captionPreferences.displayNameForTrack(textTrack.get())));
         captionsMenuList->appendChild(menuItem);
         m_menuItems.append(menuItem.ptr());
@@ -990,8 +990,7 @@ Ref<MediaControlFullscreenVolumeMinButtonElement> MediaControlFullscreenVolumeMi
 void MediaControlFullscreenVolumeMinButtonElement::defaultEventHandler(Event& event)
 {
     if (event.type() == eventNames().clickEvent) {
-        ExceptionCode code = 0;
-        mediaController()->setVolume(0, code);
+        mediaController()->setVolume(0);
         event.setDefaultHandled();
     }
     HTMLInputElement::defaultEventHandler(event);
@@ -1016,8 +1015,7 @@ Ref<MediaControlFullscreenVolumeMaxButtonElement> MediaControlFullscreenVolumeMa
 void MediaControlFullscreenVolumeMaxButtonElement::defaultEventHandler(Event& event)
 {
     if (event.type() == eventNames().clickEvent) {
-        ExceptionCode code = 0;
-        mediaController()->setVolume(1, code);
+        mediaController()->setVolume(1);
         event.setDefaultHandled();
     }
     HTMLInputElement::defaultEventHandler(event);
@@ -1172,7 +1170,7 @@ void MediaControlTextTrackContainerElement::updateDisplay()
 
         LOG(Media, "MediaControlTextTrackContainerElement::updateDisplay(%p) - adding and positioning cue #%zu: \"%s\", start=%.2f, end=%.2f, line=%.2f", this, i, cue->text().utf8().data(), cue->startTime(), cue->endTime(), cue->line());
 
-        RefPtr<VTTCueBox> displayBox = cue->getDisplayTree(m_videoDisplaySize.size(), m_fontSize);
+        Ref<VTTCueBox> displayBox = cue->getDisplayTree(m_videoDisplaySize.size(), m_fontSize);
         if (cue->track()->mode() == TextTrack::Mode::Disabled)
             continue;
 
@@ -1181,9 +1179,9 @@ void MediaControlTextTrackContainerElement::updateDisplay()
             // If cue has an empty text track cue region identifier or there is no
             // WebVTT region whose region identifier is identical to cue's text
             // track cue region identifier, run the following substeps:
-            if (displayBox->hasChildNodes() && !contains(displayBox.get())) {
+            if (displayBox->hasChildNodes() && !contains(displayBox.ptr())) {
                 // Note: the display tree of a cue is removed when the active flag of the cue is unset.
-                appendChild(*displayBox, ASSERT_NO_EXCEPTION);
+                appendChild(displayBox);
                 cue->setFontSize(m_fontSize, m_videoDisplaySize.size(), m_fontSizeIsImportant);
             }
         } else {
@@ -1195,7 +1193,7 @@ void MediaControlTextTrackContainerElement::updateDisplay()
             if (!contains(regionNode.ptr()))
                 appendChild(region->getDisplayTree());
 
-            region->appendTextTrackCueBox(displayBox);
+            region->appendTextTrackCueBox(WTFMove(displayBox));
         }
     }
 

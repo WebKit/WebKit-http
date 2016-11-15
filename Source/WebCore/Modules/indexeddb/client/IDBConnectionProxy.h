@@ -51,6 +51,7 @@ class ScriptExecutionContext;
 class SecurityOrigin;
 
 struct IDBGetRecordData;
+struct IDBIterateCursorData;
 
 namespace IDBClient {
 
@@ -73,11 +74,14 @@ public:
     void deleteIndex(TransactionOperation&, uint64_t objectStoreIdentifier, const String& indexName);
     void putOrAdd(TransactionOperation&, IDBKeyData&&, const IDBValue&, const IndexedDB::ObjectStoreOverwriteMode);
     void getRecord(TransactionOperation&, const IDBGetRecordData&);
+    void getAllRecords(TransactionOperation&, const IDBGetAllRecordsData&);
     void getCount(TransactionOperation&, const IDBKeyRangeData&);
     void deleteRecord(TransactionOperation&, const IDBKeyRangeData&);
     void openCursor(TransactionOperation&, const IDBCursorInfo&);
-    void iterateCursor(TransactionOperation&, const IDBKeyData&, unsigned long count);
-    
+    void iterateCursor(TransactionOperation&, const IDBIterateCursorData&);
+    void renameObjectStore(TransactionOperation&, uint64_t objectStoreIdentifier, const String& newName);
+    void renameIndex(TransactionOperation&, uint64_t objectStoreIdentifier, uint64_t indexIdentifier, const String& newName);
+
     void fireVersionChangeEvent(uint64_t databaseConnectionIdentifier, const IDBResourceIdentifier& requestIdentifier, uint64_t requestedVersion);
     void didFireVersionChangeEvent(uint64_t databaseConnectionIdentifier, const IDBResourceIdentifier& requestIdentifier);
 
@@ -93,6 +97,7 @@ public:
     void didAbortTransaction(const IDBResourceIdentifier& transactionIdentifier, const IDBError&);
 
     void didFinishHandlingVersionChangeTransaction(uint64_t databaseConnectionIdentifier, IDBTransaction&);
+    void databaseConnectionPendingClose(IDBDatabase&);
     void databaseConnectionClosed(IDBDatabase&);
 
     void didCloseFromServer(uint64_t databaseConnectionIdentifier, const IDBError&);

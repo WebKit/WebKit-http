@@ -36,6 +36,7 @@
 #include "HTMLNames.h"
 #include "HTMLSpanElement.h"
 #include "InlineTextBox.h"
+#include "Logging.h"
 #include "PrintContext.h"
 #include "PseudoElement.h"
 #include "RenderBlockFlow.h"
@@ -880,10 +881,12 @@ static void writeSelection(TextStream& ts, const RenderObject* renderer)
 
 static String externalRepresentation(RenderBox* renderer, RenderAsTextBehavior behavior)
 {
-    TextStream ts;
+    TextStream ts(TextStream::LineMode::MultipleLine, TextStream::Formatting::SVGStyleRect | TextStream::Formatting::LayoutUnitsAsIntegers);
     if (!renderer->hasLayer())
         return ts.release();
-        
+
+    LOG(Layout, "externalRepresentation: dumping layer tree");
+
     RenderLayer* layer = renderer->layer();
     writeLayers(ts, layer, layer, layer->rect(), 0, behavior);
     writeSelection(ts, renderer);
@@ -936,7 +939,7 @@ String counterValueForElement(Element* element)
     // Make sure the element is not freed during the layout.
     RefPtr<Element> elementRef(element);
     element->document().updateLayout();
-    TextStream stream;
+    TextStream stream(TextStream::LineMode::MultipleLine, TextStream::Formatting::SVGStyleRect | TextStream::Formatting::LayoutUnitsAsIntegers);
     bool isFirstCounter = true;
     // The counter renderers should be children of :before or :after pseudo-elements.
     if (PseudoElement* before = element->beforePseudoElement())

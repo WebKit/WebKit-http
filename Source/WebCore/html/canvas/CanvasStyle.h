@@ -24,8 +24,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef CanvasStyle_h
-#define CanvasStyle_h
+#pragma once
 
 #include "Color.h"
 #include <wtf/Assertions.h>
@@ -113,8 +112,8 @@ namespace WebCore {
         Type m_type;
     };
 
-    RGBA32 currentColor(HTMLCanvasElement*);
-    bool parseColorOrCurrentColor(RGBA32& parsedColor, const String& colorString, HTMLCanvasElement*);
+    Color currentColor(HTMLCanvasElement*);
+    Color parseColorOrCurrentColor(const String& colorString, HTMLCanvasElement*);
 
     inline CanvasStyle::CanvasStyle()
         : m_type(Invalid)
@@ -159,5 +158,3 @@ namespace WebCore {
     }
 
 } // namespace WebCore
-
-#endif

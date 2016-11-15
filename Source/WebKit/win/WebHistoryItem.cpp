@@ -124,9 +124,6 @@ HRESULT WebHistoryItem::initFromDictionaryRepresentation(_In_opt_ void* dictiona
     if (lastVisitWasFailure)
         m_historyItem->setLastVisitWasFailure(true);
 
-    if (redirectURLsVector.get())
-        m_historyItem->setRedirectURLs(WTFMove(redirectURLsVector));
-
     return S_OK;
 }
 
@@ -153,22 +150,6 @@ HRESULT WebHistoryItem::dictionaryRepresentation(__deref_out_opt void** dictiona
     if (m_historyItem->lastVisitWasFailure()) {
         keys[keyCount] = lastVisitWasFailureKey;
         values[keyCount] = CFRetain(kCFBooleanTrue);
-        ++keyCount;
-    }
-
-    if (Vector<String>* redirectURLs = m_historyItem->redirectURLs()) {
-        size_t size = redirectURLs->size();
-        ASSERT(size);
-        CFStringRef* items = new CFStringRef[size];
-        for (size_t i = 0; i < size; ++i)
-            items[i] = redirectURLs->at(i).createCFString().leakRef();
-        CFArrayRef result = CFArrayCreate(0, (const void**)items, size, &kCFTypeArrayCallBacks);
-        for (size_t i = 0; i < size; ++i)
-            CFRelease(items[i]);
-        delete[] items;
-
-        keys[keyCount] = redirectURLsKey;
-        values[keyCount] = result;
         ++keyCount;
     }
 
@@ -289,7 +270,7 @@ HRESULT WebHistoryItem::children(unsigned* outChildCount, SAFEARRAY** outChildre
     *outChildCount = 0;
     *outChildren = 0;
 
-    const HistoryItemVector& coreChildren = m_historyItem->children();
+    const auto& coreChildren = m_historyItem->children();
     if (coreChildren.isEmpty())
         return S_OK;
     size_t childCount = coreChildren.size();
@@ -351,23 +332,10 @@ HRESULT WebHistoryItem::setLastVisitWasHTTPNonGet(BOOL)
     return E_NOTIMPL;
 }
 
+// FIXME: This function should be removed from the IWebHistoryItem interface.
 HRESULT WebHistoryItem::redirectURLs(_COM_Outptr_opt_ IEnumVARIANT** urls)
 {
-    if (!urls) {
-        ASSERT_NOT_REACHED();
-        return E_POINTER;
-    }
-
-    Vector<String>* urlVector = m_historyItem->redirectURLs();
-    if (!urlVector) {
-        *urls = 0;
-        return S_OK;
-    }
-
-    COMPtr<COMEnumVariant<Vector<String> > > enumVariant(AdoptCOM, COMEnumVariant<Vector<String> >::createInstance(*urlVector));
-    *urls = enumVariant.leakRef();
-
-    return S_OK;
+    return E_NOTIMPL;
 }
 
 // FIXME: This function should be removed from the IWebHistoryItem interface.

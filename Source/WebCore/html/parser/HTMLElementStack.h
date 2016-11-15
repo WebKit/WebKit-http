@@ -24,8 +24,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef HTMLElementStack_h
-#define HTMLElementStack_h
+#pragma once
 
 #include "HTMLStackItem.h"
 #include <wtf/Forward.h>
@@ -35,7 +34,6 @@
 namespace WebCore {
 
 class ContainerNode;
-class DocumentFragment;
 class Element;
 class QualifiedName;
 
@@ -180,5 +178,3 @@ private:
 };
     
 } // namespace WebCore
-
-#endif // HTMLElementStack_h

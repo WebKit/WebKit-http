@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef MoveSelectionCommand_h
-#define MoveSelectionCommand_h
+#pragma once
 
 #include "CompositeEditCommand.h"
 
@@ -44,6 +43,7 @@ private:
 
     virtual void doApply();
     virtual EditAction editingAction() const;
+    bool shouldDispatchInputEvents() const final { return false; }
     
     RefPtr<DocumentFragment> m_fragment;
     Position m_position;
@@ -52,5 +52,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // MoveSelectionCommand_h

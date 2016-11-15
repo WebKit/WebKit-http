@@ -42,7 +42,7 @@ namespace WKWPE {
 View::View(struct wpe_view_backend* backend, const API::PageConfiguration& baseConfiguration)
     : m_pageClient(std::make_unique<PageClientImpl>(*this))
     , m_size{ 800, 600 }
-    , m_viewStateFlags(WebCore::ViewState::WindowIsActive | WebCore::ViewState::IsFocused | WebCore::ViewState::IsVisible | WebCore::ViewState::IsInWindow)
+    , m_viewStateFlags(WebCore::ActivityState::WindowIsActive | WebCore::ActivityState::IsFocused | WebCore::ActivityState::IsVisible | WebCore::ActivityState::IsInWindow)
     , m_compositingManagerProxy(*this)
 {
     auto configuration = baseConfiguration.copy();
@@ -123,15 +123,15 @@ void View::setSize(const WebCore::IntSize& size)
         m_pageProxy->drawingArea()->setSize(size, WebCore::IntSize(), WebCore::IntSize());
 }
 
-void View::setViewState(WebCore::ViewState::Flags flags)
+void View::setViewState(WebCore::ActivityState::Flags flags)
 {
-    static const WebCore::ViewState::Flags defaultFlags = WebCore::ViewState::WindowIsActive | WebCore::ViewState::IsFocused;
+    static const WebCore::ActivityState::Flags defaultFlags = WebCore::ActivityState::WindowIsActive | WebCore::ActivityState::IsFocused;
 
-    WebCore::ViewState::Flags changedFlags = m_viewStateFlags ^ (defaultFlags | flags);
+    WebCore::ActivityState::Flags changedFlags = m_viewStateFlags ^ (defaultFlags | flags);
     m_viewStateFlags = defaultFlags | flags;
 
     if (changedFlags)
-        m_pageProxy->viewStateDidChange(changedFlags);
+        m_pageProxy->activityStateDidChange(changedFlags);
 }
 
 } // namespace WKWPE

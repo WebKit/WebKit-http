@@ -30,7 +30,6 @@
 
 #import "CDMSessionMediaSourceAVFObjC.h"
 #import "ContentType.h"
-#import "ExceptionCodePlaceholder.h"
 #import "MediaPlayerPrivateMediaSourceAVFObjC.h"
 #import "MediaSourcePrivateClient.h"
 #import "SourceBufferPrivateAVFObjC.h"
@@ -183,6 +182,12 @@ static bool MediaSourcePrivateAVFObjCHasVideo(SourceBufferPrivateAVFObjC* source
 bool MediaSourcePrivateAVFObjC::hasVideo() const
 {
     return std::any_of(m_activeSourceBuffers.begin(), m_activeSourceBuffers.end(), MediaSourcePrivateAVFObjCHasVideo);
+}
+
+void MediaSourcePrivateAVFObjC::willSeek()
+{
+    for (auto* sourceBuffer : m_activeSourceBuffers)
+        sourceBuffer->willSeek();
 }
 
 void MediaSourcePrivateAVFObjC::seekToTime(const MediaTime& time)

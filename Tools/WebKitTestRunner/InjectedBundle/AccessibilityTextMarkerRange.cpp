@@ -26,6 +26,8 @@
 #include "config.h"
 #include "AccessibilityTextMarker.h"
 
+#if HAVE(ACCESSIBILITY)
+
 #include "AccessibilityUIElement.h"
 #include "JSAccessibilityTextMarkerRange.h"
 
@@ -33,14 +35,14 @@
 
 namespace WTR {
     
-PassRefPtr<AccessibilityTextMarkerRange> AccessibilityTextMarkerRange::create(PlatformTextMarkerRange markerRange)
+Ref<AccessibilityTextMarkerRange> AccessibilityTextMarkerRange::create(PlatformTextMarkerRange markerRange)
 {
-    return adoptRef(new AccessibilityTextMarkerRange(markerRange));
+    return adoptRef(*new AccessibilityTextMarkerRange(markerRange));
 }
 
-PassRefPtr<AccessibilityTextMarkerRange> AccessibilityTextMarkerRange::create(const AccessibilityTextMarkerRange& markerRange)
+Ref<AccessibilityTextMarkerRange> AccessibilityTextMarkerRange::create(const AccessibilityTextMarkerRange& markerRange)
 {
-    return adoptRef(new AccessibilityTextMarkerRange(markerRange));
+    return adoptRef(*new AccessibilityTextMarkerRange(markerRange));
 }
 
 AccessibilityTextMarkerRange::AccessibilityTextMarkerRange(PlatformTextMarkerRange markerRange)
@@ -74,3 +76,4 @@ JSClassRef AccessibilityTextMarkerRange::wrapperClass()
     
 } // namespace WTR
 
+#endif // HAVE(ACCESSIBILITY)

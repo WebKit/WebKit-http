@@ -40,6 +40,8 @@
 #include "DFGClobbersExitState.h"
 #include "DFGControlEquivalenceAnalysis.h"
 #include "DFGDominators.h"
+#include "DFGFlowIndexing.h"
+#include "DFGFlowMap.h"
 #include "DFGJITCode.h"
 #include "DFGMayExit.h"
 #include "DFGNaturalLoops.h"
@@ -83,6 +85,9 @@ Graph::Graph(VM& vm, Plan& plan, LongLivedState& longLivedState)
     ASSERT(m_profiledBlock);
     
     m_hasDebuggerEnabled = m_profiledBlock->wasCompiledWithDebuggingOpcodes() || Options::forceDebuggerBytecodeGeneration();
+    
+    m_indexingCache = std::make_unique<FlowIndexing>(*this);
+    m_abstractValuesCache = std::make_unique<FlowMap<AbstractValue>>(*this);
 }
 
 Graph::~Graph()
@@ -231,6 +236,8 @@ void Graph::dump(PrintStream& out, const char* prefix, Node* node, DumpContext* 
         out.print(comma, node->scopeOffset());
     if (node->hasDirectArgumentsOffset())
         out.print(comma, node->capturedArgumentsOffset());
+    if (node->hasArgumentIndex())
+        out.print(comma, node->argumentIndex());
     if (node->hasRegisterPointer())
         out.print(comma, "global", "(", RawPointer(node->variablePointer()), ")");
     if (node->hasIdentifier())
@@ -347,6 +354,11 @@ void Graph::dump(PrintStream& out, const char* prefix, Node* node, DumpContext* 
             out.print(", machineCount = ", data->machineCount);
         out.print(", offset = ", data->offset, ", mandatoryMinimum = ", data->mandatoryMinimum);
         out.print(", limit = ", data->limit);
+    }
+    if (node->hasCallDOMGetterData()) {
+        CallDOMGetterData* data = node->callDOMGetterData();
+        out.print(comma, "id", data->identifierNumber, "{", identifiers()[data->identifierNumber], "}");
+        out.print(", domJIT = ", RawPointer(data->domJIT));
     }
     if (node->isConstant())
         out.print(comma, pointerDumpInContext(node->constant(), context));
@@ -1159,6 +1171,13 @@ BitVector Graph::localsLiveInBytecode(CodeOrigin codeOrigin)
     return result;
 }
 
+unsigned Graph::parameterSlotsForArgCount(unsigned argCount)
+{
+    size_t frameSize = CallFrame::headerSizeInRegisters + argCount;
+    size_t alignedFrameSize = WTF::roundUpToMultipleOf(stackAlignmentRegisters(), frameSize);
+    return alignedFrameSize - CallerFrameAndPC::sizeInRegisters;
+}
+
 unsigned Graph::frameRegisterCount()
 {
     unsigned result = m_nextMachineLocal + std::max(m_parameterSlots, static_cast<unsigned>(maxFrameExtentForSlowPathCallInRegisters));
@@ -1594,45 +1613,47 @@ ControlEquivalenceAnalysis& Graph::ensureControlEquivalenceAnalysis()
     return *m_controlEquivalenceAnalysis;
 }
 
-MethodOfGettingAValueProfile Graph::methodOfGettingAValueProfileFor(Node* node)
+MethodOfGettingAValueProfile Graph::methodOfGettingAValueProfileFor(Node* currentNode, Node* operandNode)
 {
-    while (node) {
-        CodeBlock* profiledBlock = baselineCodeBlockFor(node->origin.semantic);
-        
-        if (node->accessesStack(*this)) {
-            ValueProfile* result = [&] () -> ValueProfile* {
-                if (!node->local().isArgument())
-                    return nullptr;
-                int argument = node->local().toArgument();
-                Node* argumentNode = m_arguments[argument];
-                if (!argumentNode)
-                    return nullptr;
-                if (node->variableAccessData() != argumentNode->variableAccessData())
-                    return nullptr;
-                return profiledBlock->valueProfileForArgument(argument);
-            }();
-            if (result)
-                return result;
-            
-            if (node->op() == GetLocal) {
-                return MethodOfGettingAValueProfile::fromLazyOperand(
-                    profiledBlock,
-                    LazyOperandValueProfileKey(
-                        node->origin.semantic.bytecodeIndex, node->local()));
+    for (Node* node = operandNode; node;) {
+        // currentNode is null when we're doing speculation checks for checkArgumentTypes().
+        if (!currentNode || node->origin != currentNode->origin) {
+            CodeBlock* profiledBlock = baselineCodeBlockFor(node->origin.semantic);
+
+            if (node->accessesStack(*this)) {
+                ValueProfile* result = [&] () -> ValueProfile* {
+                    if (!node->local().isArgument())
+                        return nullptr;
+                    int argument = node->local().toArgument();
+                    Node* argumentNode = m_arguments[argument];
+                    if (!argumentNode)
+                        return nullptr;
+                    if (node->variableAccessData() != argumentNode->variableAccessData())
+                        return nullptr;
+                    return profiledBlock->valueProfileForArgument(argument);
+                }();
+                if (result)
+                    return result;
+
+                if (node->op() == GetLocal) {
+                    return MethodOfGettingAValueProfile::fromLazyOperand(
+                        profiledBlock,
+                        LazyOperandValueProfileKey(
+                            node->origin.semantic.bytecodeIndex, node->local()));
+                }
             }
-        }
-        
-        if (node->hasHeapPrediction())
-            return profiledBlock->valueProfileForBytecodeOffset(node->origin.semantic.bytecodeIndex);
-        
-        {
+
+            if (node->hasHeapPrediction())
+                return profiledBlock->valueProfileForBytecodeOffset(node->origin.semantic.bytecodeIndex);
+
             if (profiledBlock->hasBaselineJITProfiling()) {
                 if (ArithProfile* result = profiledBlock->arithProfileForBytecodeOffset(node->origin.semantic.bytecodeIndex))
                     return result;
             }
         }
-        
+
         switch (node->op()) {
+        case BooleanToNumber:
         case Identity:
         case ValueRep:
         case DoubleRep:

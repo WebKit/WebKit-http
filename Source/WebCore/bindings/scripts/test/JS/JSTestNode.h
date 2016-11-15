@@ -56,12 +56,7 @@ public:
 protected:
     JSTestNode(JSC::Structure*, JSDOMGlobalObject&, Ref<TestNode>&&);
 
-    void finishCreation(JSC::VM& vm)
-    {
-        Base::finishCreation(vm);
-        ASSERT(inherits(info()));
-    }
-
+    void finishCreation(JSC::VM&);
 };
 
 WEBCORE_TESTSUPPORT_EXPORT JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject*, TestNode&);
@@ -71,6 +66,7 @@ inline JSC::JSValue toJSNewlyCreated(JSC::ExecState* state, JSDOMGlobalObject* g
 
 template<> struct JSDOMWrapperConverterTraits<TestNode> {
     using WrapperClass = JSTestNode;
+    using ToWrappedReturnType = TestNode*;
 };
 
 } // namespace WebCore

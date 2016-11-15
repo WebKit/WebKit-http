@@ -446,6 +446,16 @@ void RenderGrid::repeatTracksSizingIfNeeded(GridSizingData& sizingData, LayoutUn
     }
 }
 
+bool RenderGrid::canPerformSimplifiedLayout() const
+{
+    // We cannot perform a simplified layout if the grid is dirty and we have
+    // some positioned items to be laid out.
+    if (m_gridIsDirty && posChildNeedsLayout())
+        return false;
+
+    return RenderBlock::canPerformSimplifiedLayout();
+}
+
 void RenderGrid::layoutBlock(bool relayoutChildren, LayoutUnit)
 {
     ASSERT(needsLayout());
@@ -459,6 +469,19 @@ void RenderGrid::layoutBlock(bool relayoutChildren, LayoutUnit)
     preparePaginationBeforeBlockLayout(relayoutChildren);
 
     LayoutSize previousSize = size();
+
+    // We need to clear both own and containingBlock override sizes of orthogonal items to ensure we get the
+    // same result when grid's intrinsic size is computed again in the updateLogicalWidth call bellow.
+    if (sizesLogicalWidthToFitContent(MaxSize) || style().logicalWidth().isIntrinsicOrAuto()) {
+        for (auto* child = firstChildBox(); child; child = child->nextSiblingBox()) {
+            if (child->isOutOfFlowPositioned() || !isOrthogonalChild(*child))
+                continue;
+            child->clearOverrideSize();
+            child->clearContainingBlockOverrideSize();
+            child->setNeedsLayout();
+            child->layoutIfNeeded();
+        }
+    }
 
     setLogicalHeight(0);
     updateLogicalWidth();
@@ -481,10 +504,16 @@ void RenderGrid::layoutBlock(bool relayoutChildren, LayoutUnit)
         computeIntrinsicLogicalHeight(sizingData);
     else
         computeTrackSizesForDirection(ForRows, sizingData, availableLogicalHeight(ExcludeMarginBorderPadding));
-    setLogicalHeight(computeTrackBasedLogicalHeight(sizingData) + borderAndPaddingLogicalHeight() + scrollbarLogicalHeight());
+    LayoutUnit trackBasedLogicalHeight = computeTrackBasedLogicalHeight(sizingData) + borderAndPaddingLogicalHeight() + scrollbarLogicalHeight();
+    setLogicalHeight(trackBasedLogicalHeight);
 
     LayoutUnit oldClientAfterEdge = clientLogicalBottom();
     updateLogicalHeight();
+
+    // Once grid's indefinite height is resolved, we can compute the
+    // available free space for Content Alignment.
+    if (!hasDefiniteLogicalHeight)
+        sizingData.setFreeSpace(ForRows, logicalHeight() - trackBasedLogicalHeight);
 
     // 3- If the min-content contribution of any grid items have changed based on the row
     // sizes calculated in step 2, steps 1 and 2 are repeated with the new min-content
@@ -780,19 +809,57 @@ void RenderGrid::computeUsedBreadthOfGridTracks(GridTrackSizingDirection directi
             }
         }
     }
+    LayoutUnit totalGrowth;
+    Vector<LayoutUnit> increments;
+    increments.grow(flexibleSizedTracksIndex.size());
+    computeFlexSizedTracksGrowth(direction, sizingData.sizingOperation, tracks, flexibleSizedTracksIndex, flexFraction, increments, totalGrowth);
 
-    for (auto trackIndex : flexibleSizedTracksIndex) {
-        const GridTrackSize& trackSize = gridTrackSize(direction, trackIndex, sizingData.sizingOperation);
-        GridTrack& track = tracks[trackIndex];
-        LayoutUnit oldBaseSize = track.baseSize();
-        LayoutUnit baseSize = std::max<LayoutUnit>(oldBaseSize, flexFraction * trackSize.maxTrackBreadth().flex());
-        if (LayoutUnit increment = baseSize - oldBaseSize) {
-            track.setBaseSize(baseSize);
-            freeSpace -= increment;
-            growthLimitsWithoutMaximization += increment;
+    // We only need to redo the flex fraction computation for indefinite heights (definite sizes are
+    // already constrained by min/max sizes). Regarding widths, they are always definite at layout
+    // time so we shouldn't ever have to do this.
+    if (!hasDefiniteFreeSpace && direction == ForRows) {
+        auto minSize = computeContentLogicalHeight(MinSize, style().logicalMinHeight(), LayoutUnit(-1));
+        auto maxSize = computeContentLogicalHeight(MaxSize, style().logicalMaxHeight(), LayoutUnit(-1));
+
+        // Redo the flex fraction computation using min|max-height as definite available space in
+        // case the total height is smaller than min-height or larger than max-height.
+        LayoutUnit rowsSize = totalGrowth + computeTrackBasedLogicalHeight(sizingData);
+        bool checkMinSize = minSize && rowsSize < minSize.value();
+        bool checkMaxSize = maxSize && rowsSize > maxSize.value();
+        if (checkMinSize || checkMaxSize) {
+            LayoutUnit constrainedFreeSpace = checkMaxSize ? maxSize.value() : LayoutUnit(-1);
+            constrainedFreeSpace = std::max(constrainedFreeSpace, minSize.value()) - guttersSize(ForRows, 0, gridRowCount());
+            flexFraction = findFlexFactorUnitSize(tracks, GridSpan::translatedDefiniteGridSpan(0, tracks.size()), ForRows, sizingData.sizingOperation, constrainedFreeSpace);
+
+            totalGrowth = LayoutUnit(0);
+            computeFlexSizedTracksGrowth(ForRows, sizingData.sizingOperation, tracks, flexibleSizedTracksIndex, flexFraction, increments, totalGrowth);
         }
     }
+
+    for (size_t i = 0; i < flexibleSizedTracksIndex.size(); ++i) {
+        if (LayoutUnit increment = increments[i]) {
+            auto& track = tracks[flexibleSizedTracksIndex[i]];
+            track.setBaseSize(track.baseSize() + increment);
+        }
+    }
+    freeSpace -= totalGrowth;
+    growthLimitsWithoutMaximization += totalGrowth;
     sizingData.setFreeSpace(direction, freeSpace);
+}
+
+void RenderGrid::computeFlexSizedTracksGrowth(GridTrackSizingDirection direction, SizingOperation sizingOperation, Vector<GridTrack>& tracks, const Vector<unsigned>& flexibleSizedTracksIndex, double flexFraction, Vector<LayoutUnit>& increments, LayoutUnit& totalGrowth) const
+{
+    size_t numFlexTracks = flexibleSizedTracksIndex.size();
+    ASSERT(increments.size() == numFlexTracks);
+    for (size_t i = 0; i < numFlexTracks; ++i) {
+        unsigned trackIndex = flexibleSizedTracksIndex[i];
+        auto trackSize = gridTrackSize(direction, trackIndex, sizingOperation);
+        ASSERT(trackSize.maxTrackBreadth().isFlex());
+        LayoutUnit oldBaseSize = tracks[trackIndex].baseSize();
+        LayoutUnit newBaseSize = std::max(oldBaseSize, LayoutUnit(flexFraction * trackSize.maxTrackBreadth().flex()));
+        increments[i] = newBaseSize - oldBaseSize;
+        totalGrowth += increments[i];
+    }
 }
 
 LayoutUnit RenderGrid::computeUsedBreadthOfMinLength(const GridTrackSize& trackSize, LayoutUnit maxSize) const
@@ -1212,7 +1279,7 @@ bool RenderGrid::shouldProcessTrackForTrackSizeComputationPhase(TrackSizeComputa
     case ResolveMaxContentMinimums:
         return trackSize.hasMaxContentMinTrackBreadth();
     case ResolveIntrinsicMaximums:
-        return trackSize.hasMinOrMaxContentMaxTrackBreadth();
+        return trackSize.hasIntrinsicMaxTrackBreadth();
     case ResolveMaxContentMaximums:
         return trackSize.hasMaxContentOrAutoMaxTrackBreadth();
     case MaximizeTracks:
@@ -1291,9 +1358,9 @@ LayoutUnit RenderGrid::currentItemSizeForTrackSizeComputationPhase(TrackSizeComp
 {
     switch (phase) {
     case ResolveIntrinsicMinimums:
+    case ResolveIntrinsicMaximums:
         return minSizeForChild(gridItem, direction, sizingData);
     case ResolveContentBasedMinimums:
-    case ResolveIntrinsicMaximums:
         return minContentForChild(gridItem, direction, sizingData);
     case ResolveMaxContentMinimums:
     case ResolveMaxContentMaximums:
@@ -1488,14 +1555,14 @@ unsigned RenderGrid::computeAutoRepeatTracksCount(GridTrackSizingDirection direc
         if (sizingOperation != IntrinsicSizeComputation)
             availableSize =  availableLogicalWidth();
     } else {
-        availableSize = computeContentLogicalHeight(MainOrPreferredSize, style().logicalHeight(), LayoutUnit(-1));
+        availableSize = computeContentLogicalHeight(MainOrPreferredSize, style().logicalHeight(), Nullopt);
         if (!availableSize) {
             const Length& maxLength = style().logicalMaxHeight();
             if (!maxLength.isUndefined())
-                availableSize = computeContentLogicalHeight(MaxSize, maxLength, LayoutUnit(-1));
-        } else {
-            availableSize = constrainLogicalHeightByMinMax(availableSize.value(), LayoutUnit(-1));
+                availableSize = computeContentLogicalHeight(MaxSize, maxLength, Nullopt);
         }
+        if (availableSize)
+            availableSize = constrainContentBoxLogicalHeightByMinMax(availableSize.value(), Nullopt);
     }
 
     bool needsToFulfillMinimumSize = false;

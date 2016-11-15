@@ -341,10 +341,13 @@ void WebEditorClient::respondToChangedContents()
 
 void WebEditorClient::respondToChangedSelection(Frame* frame)
 {
+    if (frame->editor().isGettingDictionaryPopupInfo())
+        return;
+
     NSView<WebDocumentView> *documentView = [[kit(frame) frameView] documentView];
     if ([documentView isKindOfClass:[WebHTMLView class]]) {
         [(WebHTMLView *)documentView _selectionChanged];
-        [m_webView updateWebViewAdditions];
+        [m_webView updateTouchBar];
         m_lastEditorStateWasContentEditable = [(WebHTMLView *)documentView _isEditable] ? EditorStateIsContentEditable::Yes : EditorStateIsContentEditable::No;
     }
 
@@ -370,6 +373,13 @@ void WebEditorClient::respondToChangedSelection(Frame* frame)
 void WebEditorClient::discardedComposition(Frame*)
 {
     // The effects of this function are currently achieved via -[WebHTMLView _updateSelectionForInputManager].
+}
+
+void WebEditorClient::canceledComposition()
+{
+#if !PLATFORM(IOS)
+    [[NSTextInputContext currentInputContext] discardMarkedText];
+#endif
 }
 
 void WebEditorClient::didEndEditing()
@@ -564,6 +574,7 @@ static NSString* undoNameForEditAction(EditAction editAction)
         case EditActionUnspecified: return nil;
         case EditActionInsert: return nil;
         case EditActionInsertReplacement: return nil;
+        case EditActionInsertFromDrop: return nil;
         case EditActionSetColor: return UI_STRING_KEY_INTERNAL("Set Color", "Set Color (Undo action name)", "Undo action name");
         case EditActionSetBackgroundColor: return UI_STRING_KEY_INTERNAL("Set Background Color", "Set Background Color (Undo action name)", "Undo action name");
         case EditActionTurnOffKerning: return UI_STRING_KEY_INTERNAL("Turn Off Kerning", "Turn Off Kerning (Undo action name)", "Undo action name");
@@ -588,7 +599,7 @@ static NSString* undoNameForEditAction(EditAction editAction)
         case EditActionUnderline: return UI_STRING_KEY_INTERNAL("Underline", "Underline (Undo action name)", "Undo action name");
         case EditActionOutline: return UI_STRING_KEY_INTERNAL("Outline", "Outline (Undo action name)", "Undo action name");
         case EditActionUnscript: return UI_STRING_KEY_INTERNAL("Unscript", "Unscript (Undo action name)", "Undo action name");
-        case EditActionDrag: return UI_STRING_KEY_INTERNAL("Drag", "Drag (Undo action name)", "Undo action name");
+        case EditActionDeleteByDrag: return UI_STRING_KEY_INTERNAL("Drag", "Drag (Undo action name)", "Undo action name");
         case EditActionCut: return UI_STRING_KEY_INTERNAL("Cut", "Cut (Undo action name)", "Undo action name");
         case EditActionPaste: return UI_STRING_KEY_INTERNAL("Paste", "Paste (Undo action name)", "Undo action name");
         case EditActionPasteFont: return UI_STRING_KEY_INTERNAL("Paste Font", "Paste Font (Undo action name)", "Undo action name");
@@ -600,9 +611,13 @@ static NSString* undoNameForEditAction(EditAction editAction)
         case EditActionTypingDeleteWordForward:
         case EditActionTypingDeleteLineBackward:
         case EditActionTypingDeleteLineForward:
+        case EditActionTypingDeletePendingComposition:
+        case EditActionTypingDeleteFinalComposition:
         case EditActionTypingInsertText:
         case EditActionTypingInsertLineBreak:
         case EditActionTypingInsertParagraph:
+        case EditActionTypingInsertPendingComposition:
+        case EditActionTypingInsertFinalComposition:
             return UI_STRING_KEY_INTERNAL("Typing", "Typing (Undo action name)", "Undo action name");
         case EditActionCreateLink: return UI_STRING_KEY_INTERNAL("Create Link", "Create Link (Undo action name)", "Undo action name");
         case EditActionUnlink: return UI_STRING_KEY_INTERNAL("Unlink", "Unlink (Undo action name)", "Undo action name");
@@ -659,7 +674,7 @@ void WebEditorClient::updateEditorStateAfterLayoutIfEditabilityChanged()
 
     EditorStateIsContentEditable editorStateIsContentEditable = [(WebHTMLView *)documentView _isEditable] ? EditorStateIsContentEditable::Yes : EditorStateIsContentEditable::No;
     if (m_lastEditorStateWasContentEditable != editorStateIsContentEditable)
-        [m_webView updateWebViewAdditions];
+        [m_webView updateTouchBar];
 }
 
 void WebEditorClient::registerUndoStep(PassRefPtr<UndoStep> cmd)

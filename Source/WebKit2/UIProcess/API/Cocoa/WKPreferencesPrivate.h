@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2014, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -43,7 +43,8 @@ typedef NS_OPTIONS(NSUInteger, _WKDebugOverlayRegions) {
 } WK_API_AVAILABLE(macosx(10.11), ios(9.0));
 
 typedef NS_OPTIONS(NSUInteger, _WKJavaScriptRuntimeFlags) {
-    _WKJavaScriptRuntimeFlagsAllEnabled = 0
+    _WKJavaScriptRuntimeFlagsSharedArrayBufferEnabled = 1 << 0,
+    _WKJavaScriptRuntimeFlagsAllEnabled = _WKJavaScriptRuntimeFlagsSharedArrayBufferEnabled
 } WK_API_AVAILABLE(macosx(10.11), ios(9.0));
 
 @class _WKExperimentalFeature;
@@ -63,6 +64,7 @@ typedef NS_OPTIONS(NSUInteger, _WKJavaScriptRuntimeFlags) {
 @property (nonatomic, setter=_setAcceleratedDrawingEnabled:) BOOL _acceleratedDrawingEnabled WK_API_AVAILABLE(macosx(10.12), ios(10.0));
 @property (nonatomic, setter=_setDisplayListDrawingEnabled:) BOOL _displayListDrawingEnabled WK_API_AVAILABLE(macosx(10.12), ios(10.0));
 @property (nonatomic, setter=_setVisualViewportEnabled:) BOOL _visualViewportEnabled WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
+@property (nonatomic, setter=_setAsyncImageDecodingEnabled:) BOOL _asyncImageDecodingEnabled WK_API_AVAILABLE(macosx(WK_MAC_TBA), ios(WK_IOS_TBA));
 @property (nonatomic, setter=_setTextAutosizingEnabled:) BOOL _textAutosizingEnabled WK_API_AVAILABLE(macosx(10.12), ios(10.0));
 
 @property (nonatomic, setter=_setDeveloperExtrasEnabled:) BOOL _developerExtrasEnabled WK_API_AVAILABLE(macosx(10.11), ios(9.0));

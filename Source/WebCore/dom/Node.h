@@ -25,11 +25,13 @@
 #pragma once
 
 #include "EventTarget.h"
-#include "URLHash.h"
+#include "ExceptionOr.h"
 #include "LayoutRect.h"
 #include "MutationObserver.h"
 #include "RenderStyleConstants.h"
+#include "StyleValidity.h"
 #include "TreeScope.h"
+#include "URLHash.h"
 #include <wtf/Forward.h>
 #include <wtf/ListHashSet.h>
 #include <wtf/MainThread.h>
@@ -61,18 +63,7 @@ class ShadowRoot;
 class TouchEvent;
 class UIRequestEvent;
 
-const int nodeStyleChangeShift = 14;
-
-// SyntheticStyleChange means that we need to go through the entire style change logic even though
-// no style property has actually changed. It is used to restructure the tree when, for instance,
-// RenderLayers are created or destroyed due to animation changes.
-enum StyleChangeType { 
-    NoStyleChange = 0, 
-    InlineStyleChange = 1 << nodeStyleChangeShift, 
-    FullStyleChange = 2 << nodeStyleChangeShift, 
-    SyntheticStyleChange = 3 << nodeStyleChangeShift,
-    ReconstructRenderTree = 4 << nodeStyleChangeShift,
-};
+using NodeOrString = Variant<RefPtr<Node>, String>;
 
 class NodeRareDataBase {
 public:
@@ -136,7 +127,7 @@ public:
     bool hasTagName(const SVGQualifiedName&) const;
     virtual String nodeName() const = 0;
     virtual String nodeValue() const;
-    virtual void setNodeValue(const String&, ExceptionCode&);
+    virtual ExceptionOr<void> setNodeValue(const String&);
     virtual NodeType nodeType() const = 0;
     virtual size_t approximateMemoryCost() const { return sizeof(*this); }
     ContainerNode* parentNode() const;
@@ -160,13 +151,10 @@ public:
     
     void getSubresourceURLs(ListHashSet<URL>&) const;
 
-    // These should all actually return a node, but this is only important for language bindings,
-    // which will already know and hold a ref on the right node to return. Returning bool allows
-    // these methods to be more efficient since they don't need to return a ref
-    WEBCORE_EXPORT bool insertBefore(Node& newChild, Node* refChild, ExceptionCode&);
-    WEBCORE_EXPORT bool replaceChild(Node& newChild, Node& oldChild, ExceptionCode&);
-    WEBCORE_EXPORT bool removeChild(Node& child, ExceptionCode&);
-    WEBCORE_EXPORT bool appendChild(Node& newChild, ExceptionCode&);
+    WEBCORE_EXPORT ExceptionOr<void> insertBefore(Node& newChild, Node* refChild);
+    WEBCORE_EXPORT ExceptionOr<void> replaceChild(Node& newChild, Node& oldChild);
+    WEBCORE_EXPORT ExceptionOr<void> removeChild(Node& child);
+    WEBCORE_EXPORT ExceptionOr<void> appendChild(Node& newChild);
 
     bool hasChildNodes() const { return firstChild(); }
 
@@ -177,12 +165,12 @@ public:
     };
     virtual Ref<Node> cloneNodeInternal(Document&, CloningOperation) = 0;
     Ref<Node> cloneNode(bool deep) { return cloneNodeInternal(document(), deep ? CloningOperation::Everything : CloningOperation::OnlySelf); }
-    WEBCORE_EXPORT RefPtr<Node> cloneNodeForBindings(bool deep, ExceptionCode&);
+    WEBCORE_EXPORT ExceptionOr<Ref<Node>> cloneNodeForBindings(bool deep);
 
     virtual const AtomicString& localName() const;
     virtual const AtomicString& namespaceURI() const;
     virtual const AtomicString& prefix() const;
-    virtual void setPrefix(const AtomicString&, ExceptionCode&);
+    virtual ExceptionOr<void> setPrefix(const AtomicString&);
     WEBCORE_EXPORT void normalize();
 
     bool isSameNode(Node* other) const { return this == other; }
@@ -192,7 +180,7 @@ public:
     WEBCORE_EXPORT const AtomicString& lookupNamespaceURI(const AtomicString& prefix) const;
 
     WEBCORE_EXPORT String textContent(bool convertBRsToNewlines = false) const;
-    WEBCORE_EXPORT void setTextContent(const String&, ExceptionCode&);
+    WEBCORE_EXPORT ExceptionOr<void> setTextContent(const String&);
     
     Node* lastDescendant() const;
     Node* firstDescendant() const;
@@ -202,10 +190,10 @@ public:
     WEBCORE_EXPORT Element* nextElementSibling() const;
 
     // From the ChildNode - https://dom.spec.whatwg.org/#childnode
-    void before(Vector<std::experimental::variant<std::reference_wrapper<Node>, String>>&&, ExceptionCode&);
-    void after(Vector<std::experimental::variant<std::reference_wrapper<Node>, String>>&&, ExceptionCode&);
-    void replaceWith(Vector<std::experimental::variant<std::reference_wrapper<Node>, String>>&&, ExceptionCode&);
-    WEBCORE_EXPORT void remove(ExceptionCode&);
+    ExceptionOr<void> before(Vector<NodeOrString>&&);
+    ExceptionOr<void> after(Vector<NodeOrString>&&);
+    ExceptionOr<void> replaceWith(Vector<NodeOrString>&&);
+    WEBCORE_EXPORT ExceptionOr<void> remove();
 
     // Other methods (not part of DOM)
 
@@ -258,12 +246,10 @@ public:
     HTMLSlotElement* assignedSlot() const;
     HTMLSlotElement* assignedSlotForBindings() const;
 
-#if ENABLE(CUSTOM_ELEMENTS)
     bool isUndefinedCustomElement() const { return isElementNode() && getFlag(IsEditingTextOrUndefinedCustomElementFlag); }
     bool isCustomElementUpgradeCandidate() const { return getFlag(IsCustomElement) && getFlag(IsEditingTextOrUndefinedCustomElementFlag); }
     bool isDefinedCustomElement() const { return getFlag(IsCustomElement) && !getFlag(IsEditingTextOrUndefinedCustomElementFlag); }
     bool isFailedCustomElement() const { return isElementNode() && !getFlag(IsCustomElement) && getFlag(IsEditingTextOrUndefinedCustomElementFlag); }
-#endif
 
     // Returns null, a child of ShadowRoot, or a legacy shadow root.
     Node* nonBoundaryShadowTreeRootNode();
@@ -319,8 +305,9 @@ public:
     void setUserActionElement(bool flag) { setFlag(flag, IsUserActionElement); }
 
     bool inRenderedDocument() const;
-    bool needsStyleRecalc() const { return styleChangeType() != NoStyleChange; }
-    StyleChangeType styleChangeType() const { return static_cast<StyleChangeType>(m_nodeFlags & StyleChangeMask); }
+    bool needsStyleRecalc() const { return styleValidity() != Style::Validity::Valid; }
+    Style::Validity styleValidity() const;
+    bool styleResolutionShouldRecompositeLayer() const;
     bool childNeedsStyleRecalc() const { return getFlag(ChildNeedsStyleRecalcFlag); }
     bool styleIsAffectedByPreviousSibling() const { return getFlag(StyleIsAffectedByPreviousSibling); }
     bool isEditingText() const { return getFlag(IsTextFlag) && getFlag(IsEditingTextOrUndefinedCustomElementFlag); }
@@ -328,8 +315,7 @@ public:
     void setChildNeedsStyleRecalc() { setFlag(ChildNeedsStyleRecalcFlag); }
     void clearChildNeedsStyleRecalc() { m_nodeFlags &= ~(ChildNeedsStyleRecalcFlag | DirectChildNeedsStyleRecalcFlag); }
 
-    WEBCORE_EXPORT void setNeedsStyleRecalc(StyleChangeType = FullStyleChange);
-    void clearNeedsStyleRecalc() { m_nodeFlags &= ~StyleChangeMask; }
+    void setHasValidStyle();
 
     bool isLink() const { return getFlag(IsLinkFlag); }
     void setIsLink(bool flag) { setFlag(flag, IsLinkFlag); }
@@ -398,7 +384,7 @@ public:
     unsigned countChildNodes() const;
     Node* traverseToChildAt(unsigned) const;
 
-    void checkSetPrefix(const AtomicString& prefix, ExceptionCode&);
+    ExceptionOr<void> checkSetPrefix(const AtomicString& prefix);
 
     WEBCORE_EXPORT bool isDescendantOf(const Node*) const;
     bool isDescendantOrShadowDescendantOf(const Node*) const;
@@ -595,8 +581,9 @@ protected:
         // These bits are used by derived classes, pulled up here so they can
         // be stored in the same memory word as the Node bits above.
         IsParsingChildrenFinishedFlag = 1 << 13, // Element
-
-        StyleChangeMask = 1 << nodeStyleChangeShift | 1 << (nodeStyleChangeShift + 1) | 1 << (nodeStyleChangeShift + 2),
+        StyleValidityShift = 14,
+        StyleValidityMask = 3 << StyleValidityShift,
+        StyleResolutionShouldRecompositeLayerFlag = 1 << 16,
         IsEditingTextOrUndefinedCustomElementFlag = 1 << 17,
         HasFocusWithin = 1 << 18,
         HasSyntheticAttrChildNodesFlag = 1 << 19,
@@ -657,10 +644,10 @@ protected:
 
     void setTreeScope(TreeScope& scope) { m_treeScope = &scope; }
 
-    void setStyleChange(StyleChangeType changeType) { m_nodeFlags = (m_nodeFlags & ~StyleChangeMask) | changeType; }
+    void invalidateStyle(Style::Validity, Style::InvalidationMode = Style::InvalidationMode::Normal);
     void updateAncestorsForStyleRecalc();
 
-    RefPtr<Node> convertNodesOrStringsIntoNode(Vector<std::experimental::variant<std::reference_wrapper<Node>, String>>&&, ExceptionCode&);
+    ExceptionOr<RefPtr<Node>> convertNodesOrStringsIntoNode(Vector<NodeOrString>&&);
 
 private:
     virtual PseudoId customPseudoId() const
@@ -679,6 +666,8 @@ private:
 
     Vector<std::unique_ptr<MutationObserverRegistration>>* mutationObserverRegistry();
     HashSet<MutationObserverRegistration*>* transientMutationObserverRegistry();
+
+    void adjustStyleValidity(Style::Validity, Style::InvalidationMode);
 
     int m_refCount;
     mutable uint32_t m_nodeFlags;
@@ -769,6 +758,22 @@ inline ContainerNode* Node::parentNodeGuaranteedHostFree() const
 {
     ASSERT(!isShadowRoot());
     return parentNode();
+}
+
+inline Style::Validity Node::styleValidity() const
+{
+    return static_cast<Style::Validity>((m_nodeFlags & StyleValidityMask) >> StyleValidityShift);
+}
+
+inline bool Node::styleResolutionShouldRecompositeLayer() const
+{
+    return getFlag(StyleResolutionShouldRecompositeLayerFlag);
+}
+
+inline void Node::setHasValidStyle()
+{
+    m_nodeFlags &= ~StyleValidityMask;
+    clearFlag(StyleResolutionShouldRecompositeLayerFlag);
 }
 
 } // namespace WebCore

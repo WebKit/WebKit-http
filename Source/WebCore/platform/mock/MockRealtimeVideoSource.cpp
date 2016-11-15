@@ -48,14 +48,18 @@
 namespace WebCore {
 
 #if !PLATFORM(MAC) && !PLATFORM(IOS)
-Ref<MockRealtimeVideoSource> MockRealtimeVideoSource::create()
+RefPtr<MockRealtimeVideoSource> MockRealtimeVideoSource::create(const String& name, const MediaConstraints* constraints)
 {
-    return adoptRef(*new MockRealtimeVideoSource(MockRealtimeMediaSource::mockVideoSourceName()));
+    auto source = adoptRef(new MockRealtimeVideoSource(name));
+    if (constraints && source->applyConstraints(*constraints))
+        source = nullptr;
+
+    return source;
 }
 
-Ref<MockRealtimeVideoSource> MockRealtimeVideoSource::createMuted(const String& name)
+RefPtr<MockRealtimeVideoSource> MockRealtimeVideoSource::createMuted(const String& name)
 {
-    auto source = adoptRef(*new MockRealtimeVideoSource(name));
+    auto source = adoptRef(new MockRealtimeVideoSource(name));
     source->m_muted = true;
     return source;
 }
@@ -85,7 +89,7 @@ void MockRealtimeVideoSource::startProducingData()
 
 void MockRealtimeVideoSource::stopProducingData()
 {
-    MockRealtimeMediaSource::startProducingData();
+    MockRealtimeMediaSource::stopProducingData();
     m_timer.stop();
     m_elapsedTime += monotonicallyIncreasingTime() - m_startTime;
     m_startTime = NAN;
@@ -199,6 +203,7 @@ void MockRealtimeVideoSource::drawBoxes(GraphicsContext& context)
     static const RGBA32 blue = 0xff0000ff;
     static const RGBA32 red = 0xffff0000;
     static const RGBA32 green = 0xff008000;
+    static const RGBA32 cyan = 0xFF00FFFF;
 
     IntSize size = this->size();
     float boxSize = size.width() * .035;
@@ -248,7 +253,7 @@ void MockRealtimeVideoSource::drawBoxes(GraphicsContext& context)
 
     boxTop += boxSize + 2;
     boxLeft = boxSize;
-    Color boxColors[] = { Color::white, yellow, Color::cyan, green, magenta, red, blue };
+    Color boxColors[] = { Color::white, yellow, cyan, green, magenta, red, blue };
     for (unsigned i = 0; i < sizeof(boxColors) / sizeof(boxColors[0]); i++) {
         context.fillRect(FloatRect(boxLeft, boxTop, boxSize + 1, boxSize + 1), boxColors[i]);
         boxLeft += boxSize + 1;

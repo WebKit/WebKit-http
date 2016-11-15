@@ -59,6 +59,8 @@ public:
     const ResourceRequest& iOSOriginalRequest() const override { return m_iOSOriginalRequest; }
 #endif
 
+    unsigned redirectCount() const { return m_redirectCount; }
+
 private:
     SubresourceLoader(Frame&, CachedResource&, const ResourceLoaderOptions&);
 
@@ -74,8 +76,11 @@ private:
     void willCancel(const ResourceError&) override;
     void didCancel(const ResourceError&) override;
 
-#if PLATFORM(COCOA)
+#if PLATFORM(COCOA) && !USE(CFURLCONNECTION)
     NSCachedURLResponse *willCacheResponse(ResourceHandle*, NSCachedURLResponse*) override;
+#endif
+#if PLATFORM(COCOA) && USE(CFURLCONNECTION)
+    CFCachedURLResponseRef willCacheResponse(ResourceHandle*, CFCachedURLResponseRef) override;
 #endif
 
 #if USE(NETWORK_CFDATA_ARRAY_CALLBACK)
@@ -125,6 +130,7 @@ private:
     SubresourceLoaderState m_state;
     Optional<RequestCountTracker> m_requestCountTracker;
     RefPtr<SecurityOrigin> m_origin;
+    unsigned m_redirectCount { 0 };
 };
 
 }

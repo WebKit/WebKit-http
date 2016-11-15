@@ -38,6 +38,7 @@
 #include "CSSValueKeywords.h"
 #include "DocumentFragment.h"
 #include "Event.h"
+#include "ExceptionCode.h"
 #include "HTMLDivElement.h"
 #include "HTMLSpanElement.h"
 #include "Logging.h"
@@ -158,7 +159,7 @@ void VTTCueBox::applyCSSProperties(const IntSize& videoSize)
     setInlineStyleProperty(CSSPropertyDirection, m_cue.getCSSWritingDirection());
 
     // the 'writing-mode' property must be set to writing-mode
-    setInlineStyleProperty(CSSPropertyWebkitWritingMode, m_cue.getCSSWritingMode(), false);
+    setInlineStyleProperty(CSSPropertyWritingMode, m_cue.getCSSWritingMode(), false);
 
     std::pair<float, float> position = m_cue.getCSSPosition();
 
@@ -270,7 +271,7 @@ VTTCue::~VTTCue()
 {
     // FIXME: We should set m_cue in VTTCueBox to nullptr instead.
     if (m_displayTree && m_displayTree->document().refCount())
-        m_displayTree->remove(ASSERT_NO_EXCEPTION);
+        m_displayTree->remove();
 }
 
 void VTTCue::initialize(ScriptExecutionContext& context)
@@ -292,16 +293,16 @@ void VTTCue::initialize(ScriptExecutionContext& context)
     m_originalStartTime = MediaTime::zeroTime();
 }
 
-PassRefPtr<VTTCueBox> VTTCue::createDisplayTree()
+Ref<VTTCueBox> VTTCue::createDisplayTree()
 {
     return VTTCueBox::create(ownerDocument(), *this);
 }
 
-VTTCueBox* VTTCue::displayTreeInternal()
+VTTCueBox& VTTCue::displayTreeInternal()
 {
     if (!m_displayTree)
         m_displayTree = createDisplayTree();
-    return m_displayTree.get();
+    return *m_displayTree;
 }
 
 void VTTCue::didChange()
@@ -325,7 +326,7 @@ const String& VTTCue::vertical() const
     }
 }
 
-void VTTCue::setVertical(const String& value, ExceptionCode& ec)
+ExceptionOr<void> VTTCue::setVertical(const String& value)
 {
     // http://www.whatwg.org/specs/web-apps/current-work/multipage/the-video-element.html#dom-texttrackcue-vertical
     // On setting, the text track cue writing direction must be set to the value given 
@@ -341,14 +342,16 @@ void VTTCue::setVertical(const String& value, ExceptionCode& ec)
     else if (value == verticalGrowingRightKeyword())
         direction = VerticalGrowingRight;
     else
-        ec = SYNTAX_ERR;
+        return Exception { SYNTAX_ERR };
     
     if (direction == m_writingDirection)
-        return;
+        return { };
 
     willChange();
     m_writingDirection = direction;
     didChange();
+
+    return { };
 }
 
 void VTTCue::setSnapToLines(bool value)
@@ -361,62 +364,62 @@ void VTTCue::setSnapToLines(bool value)
     didChange();
 }
 
-void VTTCue::setLine(double position, ExceptionCode& ec)
+ExceptionOr<void> VTTCue::setLine(double position)
 {
     // http://www.whatwg.org/specs/web-apps/current-work/multipage/the-video-element.html#dom-texttrackcue-line
     // On setting, if the text track cue snap-to-lines flag is not set, and the new
     // value is negative or greater than 100, then throw an IndexSizeError exception.
-    if (!m_snapToLines && (position < 0 || position > 100)) {
-        ec = INDEX_SIZE_ERR;
-        return;
-    }
+    if (!m_snapToLines && !(position >= 0 && position <= 100))
+        return Exception { INDEX_SIZE_ERR };
 
     // Otherwise, set the text track cue line position to the new value.
     if (m_linePosition == position)
-        return;
+        return { };
 
     willChange();
     m_linePosition = position;
     m_computedLinePosition = calculateComputedLinePosition();
     didChange();
+
+    return { };
 }
 
-void VTTCue::setPosition(double position, ExceptionCode& ec)
+ExceptionOr<void> VTTCue::setPosition(double position)
 {
     // http://www.whatwg.org/specs/web-apps/current-work/multipage/the-video-element.html#dom-texttrackcue-position
     // On setting, if the new value is negative or greater than 100, then throw an IndexSizeError exception.
     // Otherwise, set the text track cue text position to the new value.
-    if (position < 0 || position > 100) {
-        ec = INDEX_SIZE_ERR;
-        return;
-    }
-    
+    if (!(position >= 0 && position <= 100))
+        return Exception { INDEX_SIZE_ERR };
+
     // Otherwise, set the text track cue line position to the new value.
     if (m_textPosition == position)
-        return;
+        return { };
     
     willChange();
     m_textPosition = position;
     didChange();
+
+    return { };
 }
 
-void VTTCue::setSize(int size, ExceptionCode& ec)
+ExceptionOr<void> VTTCue::setSize(int size)
 {
     // http://www.whatwg.org/specs/web-apps/current-work/multipage/the-video-element.html#dom-texttrackcue-size
     // On setting, if the new value is negative or greater than 100, then throw an IndexSizeError
     // exception. Otherwise, set the text track cue size to the new value.
-    if (size < 0 || size > 100) {
-        ec = INDEX_SIZE_ERR;
-        return;
-    }
-    
+    if (!(size >= 0 && size <= 100))
+        return Exception { INDEX_SIZE_ERR };
+
     // Otherwise, set the text track cue line position to the new value.
     if (m_cueSize == size)
-        return;
+        return { };
     
     willChange();
     m_cueSize = size;
     didChange();
+
+    return { };
 }
 
 const String& VTTCue::align() const
@@ -438,7 +441,7 @@ const String& VTTCue::align() const
     }
 }
 
-void VTTCue::setAlign(const String& value, ExceptionCode& ec)
+ExceptionOr<void> VTTCue::setAlign(const String& value)
 {
     // http://www.whatwg.org/specs/web-apps/current-work/multipage/the-video-element.html#dom-texttrackcue-align
     // On setting, the text track cue alignment must be set to the value given in the 
@@ -446,7 +449,7 @@ void VTTCue::setAlign(const String& value, ExceptionCode& ec)
     // match for the new value, if any. If none of the values match, then the user
     // agent must instead throw a SyntaxError exception.
     
-    CueAlignment alignment = m_cueAlignment;
+    CueAlignment alignment;
     if (value == startKeyword())
         alignment = Start;
     else if (value == middleKeyword())
@@ -458,14 +461,16 @@ void VTTCue::setAlign(const String& value, ExceptionCode& ec)
     else if (value == rightKeyword())
         alignment = Right;
     else
-        ec = SYNTAX_ERR;
+        return Exception { SYNTAX_ERR };
     
     if (alignment == m_cueAlignment)
-        return;
+        return { };
 
     willChange();
     m_cueAlignment = alignment;
     didChange();
+
+    return { };
 }
     
 void VTTCue::setText(const String& text)
@@ -495,7 +500,7 @@ void VTTCue::copyWebVTTNodeToDOMTree(ContainerNode* webVTTNode, ContainerNode* p
             clonedNode = downcast<WebVTTElement>(*node).createEquivalentHTMLElement(ownerDocument());
         else
             clonedNode = node->cloneNode(false);
-        parent->appendChild(*clonedNode, ASSERT_NO_EXCEPTION);
+        parent->appendChild(*clonedNode);
         if (is<ContainerNode>(*node))
             copyWebVTTNodeToDOMTree(downcast<ContainerNode>(node), downcast<ContainerNode>(clonedNode.get()));
     }
@@ -786,9 +791,9 @@ void VTTCue::updateDisplayTree(const MediaTime& movieTime)
     m_cueHighlightBox->appendChild(*referenceTree);
 }
 
-VTTCueBox* VTTCue::getDisplayTree(const IntSize& videoSize, int fontSize)
+VTTCueBox& VTTCue::getDisplayTree(const IntSize& videoSize, int fontSize)
 {
-    RefPtr<VTTCueBox> displayTree = displayTreeInternal();
+    Ref<VTTCueBox> displayTree = displayTreeInternal();
     if (!m_displayTreeShouldChange || !track()->isRendered())
         return displayTree.get();
 
@@ -810,8 +815,8 @@ VTTCueBox* VTTCue::getDisplayTree(const IntSize& videoSize, int fontSize)
     m_cueHighlightBox->setPseudo(cueShadowPseudoId());
 
     m_cueBackdropBox->setPseudo(cueBackdropShadowPseudoId());
-    m_cueBackdropBox->appendChild(*m_cueHighlightBox, ASSERT_NO_EXCEPTION);
-    displayTree->appendChild(*m_cueBackdropBox, ASSERT_NO_EXCEPTION);
+    m_cueBackdropBox->appendChild(*m_cueHighlightBox);
+    displayTree->appendChild(*m_cueBackdropBox);
 
     // FIXME(BUG 79916): Runs of children of WebVTT Ruby Objects that are not
     // WebVTT Ruby Text Objects must be wrapped in anonymous boxes whose
@@ -839,7 +844,7 @@ void VTTCue::removeDisplayTree()
 
     if (!hasDisplayTree())
         return;
-    displayTreeInternal()->remove(ASSERT_NO_EXCEPTION);
+    displayTreeInternal().remove();
 }
 
 std::pair<double, double> VTTCue::getPositionCoordinates() const
@@ -1141,7 +1146,7 @@ void VTTCue::setFontSize(int fontSize, const IntSize&, bool important)
     LOG(Media, "TextTrackCue::setFontSize - setting cue font size to %i", fontSize);
 
     m_displayTreeShouldChange = true;
-    displayTreeInternal()->setInlineStyleProperty(CSSPropertyFontSize, fontSize, CSSPrimitiveValue::CSS_PX, important);
+    displayTreeInternal().setInlineStyleProperty(CSSPropertyFontSize, fontSize, CSSPrimitiveValue::CSS_PX, important);
 }
 
 VTTCue* toVTTCue(TextTrackCue* cue)

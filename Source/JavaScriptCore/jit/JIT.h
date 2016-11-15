@@ -483,6 +483,7 @@ namespace JSC {
         void emit_op_create_direct_arguments(Instruction*);
         void emit_op_create_scoped_arguments(Instruction*);
         void emit_op_create_cloned_arguments(Instruction*);
+        void emit_op_get_argument(Instruction*);
         void emit_op_argument_count(Instruction*);
         void emit_op_create_rest(Instruction*);
         void emit_op_get_rest_length(Instruction*);
@@ -540,10 +541,14 @@ namespace JSC {
         void emit_op_new_array(Instruction*);
         void emit_op_new_array_with_size(Instruction*);
         void emit_op_new_array_buffer(Instruction*);
+        void emit_op_new_array_with_spread(Instruction*);
+        void emit_op_spread(Instruction*);
         void emit_op_new_func(Instruction*);
         void emit_op_new_func_exp(Instruction*);
         void emit_op_new_generator_func(Instruction*);
         void emit_op_new_generator_func_exp(Instruction*);
+        void emit_op_new_async_func(Instruction*);
+        void emit_op_new_async_func_exp(Instruction*);
         void emit_op_new_object(Instruction*);
         void emit_op_new_regexp(Instruction*);
         void emit_op_not(Instruction*);

@@ -278,3 +278,116 @@ function testSyntaxError(script, message) {
 
     testSyntaxError(`"use strict"; var O = { async method(dupe, dupe) {} }`);
 })();
+
+(function testAwaitInFormalParameters() {
+    var testData = [
+        `async function f(await) {}`,
+        `async function f(...await) {}`,
+        `async function f(await = 1) {}`,
+        `async function f([await]) {}`,
+        `async function f([await = 1]) {}`,
+        `async function f({ await }) {}`,
+        `async function f({ await = 1 }) {}`,
+        `async function f({ } = await) {}`,
+
+        `(async function(await) {})`,
+        `(async function(...await) {})`,
+        `(async function(await = 1) {})`,
+        `(async function([await]) {})`,
+        `(async function([await = 1]) {})`,
+        `(async function({ await }) {})`,
+        `(async function({ await = 1 }) {})`,
+        `(async function({ } = await) {})`,
+
+        `var asyncArrow = async(await) => 1;`,
+        `var asyncArrow = async(await) => {};`,
+        `var asyncArrow = async(...await) => 1;`,
+        `var asyncArrow = async(...await) => {};`,
+        `var asyncArrow = async(await = 1) => 1;`,
+        `var asyncArrow = async(await = 1) => {};`,
+        `var asyncArrow = async([await]) => 1;`,
+        `var asyncArrow = async([await]) => {};`,
+        `var asyncArrow = async([await = 1]) => 1;`,
+        `var asyncArrow = async([await = 1]) => {};`,
+        `var asyncArrow = async([] = await) => 1;`,
+        `var asyncArrow = async([] = await) => {};`,
+        `var asyncArrow = async({ await }) => 1;`,
+        `var asyncArrow = async({ await } ) => {};`,
+        `var asyncArrow = async({ await = 1}) => 1;`,
+        `var asyncArrow = async({ await = 1}) => {};`,
+        `var asyncArrow = async({ } = await) => 1;`,
+        `var asyncArrow = async({ } = await) => {};`,
+
+        `({ async method(await) {} })`,
+        `({ async method(...await) {} })`,
+        `({ async method(await = 1) {} })`,
+        `({ async method([await]) {} })`,
+        `({ async method([await = 1]) {} })`,
+        `({ async method({ await }) {} })`,
+        `({ async method({ await = 1 }) {} })`,
+        `({ async method({ } = await) {} })`,
+
+        `(class { async method(await) {} })`,
+        `(class { async method(...await) {} })`,
+        `(class { async method(await = 1) {} })`,
+        `(class { async method([await]) {} })`,
+        `(class { async method([await = 1]) {} })`,
+        `(class { async method({ await }) {} })`,
+        `(class { async method({ await = 1 }) {} })`,
+        `(class { async method({ } = await) {} })`,
+
+        `(class { static async method(await) {} })`,
+        `(class { static async method(...await) {} })`,
+        `(class { static async method(await = 1) {} })`,
+        `(class { static async method([await]) {} })`,
+        `(class { static async method([await = 1]) {} })`,
+        `(class { static async method({ await }) {} })`,
+        `(class { static async method({ await = 1 }) {} })`,
+        `(class { static async method({ } = await) {} })`,
+    ];
+
+    for (let script of testData) {
+        testSyntaxError(script);
+        testSyntaxError(`"use strict"; ${script}`);
+
+        var nested = `var await; var f = (async function() { ${script} });`;
+        testSyntaxError(nested);
+        testSyntaxError(`"use strict"; ${nested}`);
+    }
+})();
+
+testSyntaxError(`
+async function fn(arguments) {
+    "use strict";
+}
+`, `SyntaxError: Invalid parameters or function name in strict mode.`);
+
+testSyntaxError(`
+async function fn(eval) {
+    "use strict";
+}
+`, `SyntaxError: Invalid parameters or function name in strict mode.`);
+
+testSyntaxError(`
+async function arguments() {
+    "use strict";
+}
+`, `SyntaxError: 'arguments' is not a valid function name in strict mode.`);
+
+testSyntaxError(`
+async function eval() {
+    "use strict";
+}
+`, `SyntaxError: 'eval' is not a valid function name in strict mode.`);
+
+testSyntaxError(`
+async function fn(a) {
+    let a = 1;
+}
+`, `SyntaxError: Cannot declare a let variable twice: 'a'.`);
+
+testSyntaxError(`
+async function fn(b) {
+    const b = 1;
+}
+`, `SyntaxError: Cannot declare a const variable twice: 'b'.`);

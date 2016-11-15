@@ -25,8 +25,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef MemoizedDOMResult_h
-#define MemoizedDOMResult_h
+#pragma once
 
 #if ENABLE(WEB_REPLAY)
 
@@ -38,7 +37,7 @@ namespace WebCore {
 
 class SerializedScriptValue;
 
-typedef int ExceptionCode;
+using ExceptionCode = int;
 
 // Add new memoized ctypes here. The first argument is the enum value,
 // which cannot conflict with built-in primitive types. The second is
@@ -160,5 +159,3 @@ static bool isType(const NondeterministicInputBase& input) { return input.type()
 SPECIALIZE_TYPE_TRAITS_END()
 
 #endif // ENABLE(WEB_REPLAY)
-
-#endif // MemoizedDOMResult_h

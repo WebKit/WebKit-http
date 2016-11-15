@@ -33,6 +33,7 @@
 #import "StringFunctions.h"
 #import "TestController.h"
 #import "TestRunnerWKWebView.h"
+#import "UIKitSPI.h"
 #import "UIScriptContext.h"
 #import <JavaScriptCore/JavaScriptCore.h>
 #import <JavaScriptCore/OpaqueJSString.h>
@@ -255,6 +256,51 @@ void UIScriptController::keyUpUsingHardwareKeyboard(JSStringRef character, JSVal
     }];
 }
 
+void UIScriptController::selectTextCandidateAtIndex(long index, JSValueRef callback)
+{
+#if USE(APPLE_INTERNAL_SDK)
+    static const float textPredictionsPollingInterval = 0.1;
+    unsigned callbackID = m_context->prepareForAsyncTask(callback, CallbackTypeNonPersistent);
+    waitForTextPredictionsViewAndSelectCandidateAtIndex(index, callbackID, textPredictionsPollingInterval);
+#else
+    // FIXME: This is a no-op on non-internal builds due to UIKeyboardPredictionView being unavailable. Ideally, there should be a better way to
+    // retrieve information and interact with the predictive text view that will be compatible with OpenSource.
+    UNUSED_PARAM(index);
+    UNUSED_PARAM(callback);
+#endif
+}
+
+void UIScriptController::waitForTextPredictionsViewAndSelectCandidateAtIndex(long index, unsigned callbackID, float interval)
+{
+    id UIKeyboardPredictionViewClass = NSClassFromString(@"UIKeyboardPredictionView");
+    if (!UIKeyboardPredictionViewClass)
+        return;
+
+#if USE(APPLE_INTERNAL_SDK)
+    UIKeyboardPredictionView *predictionView = (UIKeyboardPredictionView *)[UIKeyboardPredictionViewClass activeInstance];
+    if (![predictionView hasPredictions]) {
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, interval * NSEC_PER_SEC), dispatch_get_main_queue(), ^() {
+            waitForTextPredictionsViewAndSelectCandidateAtIndex(index, callbackID, interval);
+        });
+        return;
+    }
+
+    PlatformWKView webView = TestController::singleton().mainWebView()->platformView();
+    CGRect predictionViewFrame = [predictionView frame];
+    // This assumes there are 3 predicted text cells of equal width, which is the case on iOS.
+    float offsetX = (index * 2 + 1) * CGRectGetWidth(predictionViewFrame) / 6;
+    float offsetY = CGRectGetHeight(webView.window.frame) - CGRectGetHeight([[predictionView superview] frame]) + CGRectGetHeight(predictionViewFrame) / 2;
+    [[HIDEventGenerator sharedHIDEventGenerator] tap:CGPointMake(offsetX, offsetY) completionBlock:^{
+        if (m_context)
+            m_context->asyncTaskComplete(callbackID);
+    }];
+#else
+    UNUSED_PARAM(index);
+    UNUSED_PARAM(callbackID);
+    UNUSED_PARAM(interval);
+#endif
+}
+
 void UIScriptController::dismissFormAccessoryView()
 {
     TestRunnerWKWebView *webView = TestController::singleton().mainWebView()->platformView();
@@ -348,6 +394,17 @@ JSObjectRef UIScriptController::selectionRangeViewRects() const
     return JSValueToObject(m_context->jsContext(), [JSValue valueWithObject:selectionRects inContext:[JSContext contextWithJSGlobalContextRef:m_context->jsContext()]].JSValueRef, nullptr);
 }
 
+void UIScriptController::removeAllDynamicDictionaries()
+{
+    [UIKeyboard removeAllDynamicDictionaries];
+}
+
+JSRetainPtr<JSStringRef> UIScriptController::scrollingTreeAsText() const
+{
+    TestRunnerWKWebView *webView = TestController::singleton().mainWebView()->platformView();
+    return JSStringCreateWithCFString((CFStringRef)[webView _scrollingTreeAsText]);
+}
+
 void UIScriptController::platformSetDidStartFormControlInteractionCallback()
 {
     TestRunnerWKWebView *webView = TestController::singleton().mainWebView()->platformView();
@@ -362,6 +419,26 @@ void UIScriptController::platformSetDidEndFormControlInteractionCallback()
 {
     TestRunnerWKWebView *webView = TestController::singleton().mainWebView()->platformView();
     webView.didEndFormControlInteractionCallback = ^{
+        if (!m_context)
+            return;
+        m_context->fireCallback(CallbackTypeDidEndFormControlInteraction);
+    };
+}
+    
+void UIScriptController::platformSetDidShowForcePressPreviewCallback()
+{
+    TestRunnerWKWebView *webView = TestController::singleton().mainWebView()->platformView();
+    webView.didShowForcePressPreviewCallback = ^ {
+        if (!m_context)
+            return;
+        m_context->fireCallback(CallbackTypeDidShowForcePressPreview);
+    };
+}
+
+void UIScriptController::platformSetDidDismissForcePressPreviewCallback()
+{
+    TestRunnerWKWebView *webView = TestController::singleton().mainWebView()->platformView();
+    webView.didDismissForcePressPreviewCallback = ^ {
         if (!m_context)
             return;
         m_context->fireCallback(CallbackTypeDidEndFormControlInteraction);

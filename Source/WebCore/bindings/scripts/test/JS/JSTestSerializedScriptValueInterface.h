@@ -58,12 +58,7 @@ public:
 protected:
     JSTestSerializedScriptValueInterface(JSC::Structure*, JSDOMGlobalObject&, Ref<TestSerializedScriptValueInterface>&&);
 
-    void finishCreation(JSC::VM& vm)
-    {
-        Base::finishCreation(vm);
-        ASSERT(inherits(info()));
-    }
-
+    void finishCreation(JSC::VM&);
 };
 
 class JSTestSerializedScriptValueInterfaceOwner : public JSC::WeakHandleOwner {
@@ -90,6 +85,7 @@ inline JSC::JSValue toJSNewlyCreated(JSC::ExecState* state, JSDOMGlobalObject* g
 
 template<> struct JSDOMWrapperConverterTraits<TestSerializedScriptValueInterface> {
     using WrapperClass = JSTestSerializedScriptValueInterface;
+    using ToWrappedReturnType = TestSerializedScriptValueInterface*;
 };
 
 } // namespace WebCore

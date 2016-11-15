@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006, 2007, 2008 Apple Inc. All rights reserved.
+ * Copyright (C) 2006-2008, 2016 Apple Inc. All rights reserved.
  * Copyright (C) 2008 Nokia Corporation and/or its subsidiary(-ies)
  *
  * Redistribution and use in source and binary forms, with or without
@@ -32,7 +32,6 @@
 #include "Editor.h"
 #include "Element.h"
 #include "Event.h"
-#include "ExceptionCodePlaceholder.h"
 #include "FloatQuad.h"
 #include "Frame.h"
 #include "FrameView.h"
@@ -257,11 +256,10 @@ void AlternativeTextController::applyAlternativeTextToRange(const Range* range, 
     RefPtr<Range> correctionStartOffsetInParagraphAsRange = Range::create(paragraphRangeContainingCorrection->startContainer().document(), paragraphRangeContainingCorrection->startPosition(), paragraphRangeContainingCorrection->startPosition());
 
     Position startPositionOfRangeWithAlternative = range->startPosition();
-    ExceptionCode ec = 0;
     if (!startPositionOfRangeWithAlternative.containerNode())
         return;
-    correctionStartOffsetInParagraphAsRange->setEnd(*startPositionOfRangeWithAlternative.containerNode(), startPositionOfRangeWithAlternative.computeOffsetInContainerNode(), ec);
-    if (ec)
+    auto setEndResult = correctionStartOffsetInParagraphAsRange->setEnd(*startPositionOfRangeWithAlternative.containerNode(), startPositionOfRangeWithAlternative.computeOffsetInContainerNode());
+    if (setEndResult.hasException())
         return;
 
     // Take note of the location of autocorrection so that we can add marker after the replacement took place.
@@ -317,6 +315,8 @@ void AlternativeTextController::respondToUnappliedSpellCorrection(const VisibleS
 {
     if (AlternativeTextClient* client = alternativeTextClient())
         client->recordAutocorrectionResponse(AutocorrectionReverted, corrected, correction);
+
+    Ref<Frame> protector(m_frame);
     m_frame.document()->updateLayout();
     m_frame.selection().setSelection(selectionOfCorrected, FrameSelection::defaultSetSelectionOptions() | FrameSelection::SpellCorrectionTriggered);
     RefPtr<Range> range = Range::create(*m_frame.document(), m_frame.selection().selection().start(), m_frame.selection().selection().end());

@@ -1,3 +1,928 @@
+2016-11-13  Mark Lam  <mark.lam@apple.com>
+
+        Add debugging facility to limit the max single allocation size.
+        https://bugs.webkit.org/show_bug.cgi?id=164681
+
+        Reviewed by Keith Miller.
+
+        This is useful for simulating memory allocation failures on resource constraint
+        devices for testing purposes.
+
+        This facility is only conditionally compiled in on debug builds.  It does not
+        have any burden on release builds at all.  When in use, the max single allocation
+        size limit applies to individual allocations.  For malloc (and similar), the
+        allocation will crash in FastMalloc if the requested size exceeds the set max
+        single allocation size.  For tryMalloc (and similar), the allocation returns
+        nullptr if the requested size exceeds the set max single allocation size.  The
+        max single allocation size is set to std::numeric_limit<size_t>::max() by default
+        (i.e. when not set and no limit is in effect).
+
+        Also fixed non-bmalloc versions of fastAlignedMalloc() to crash when allocation
+        fails.
+
+        * wtf/FastMalloc.cpp:
+        (WTF::fastSetMaxSingleAllocationSize):
+        (WTF::fastAlignedMalloc):
+        (WTF::tryFastAlignedMalloc):
+        (WTF::tryFastMalloc):
+        (WTF::fastMalloc):
+        (WTF::tryFastCalloc):
+        (WTF::fastCalloc):
+        (WTF::fastRealloc):
+        * wtf/FastMalloc.h:
+
+2016-11-13  JF Bastien  <jfbastien@apple.com>
+
+        Implement WTF::Expected
+        https://bugs.webkit.org/show_bug.cgi?id=164526
+
+        Reviewed by Yusuke Suzuki.
+
+        std::expected isn't in C++17, and may be in C++20. It's a nice
+        complement to std::any / std::optional because it's a type-tagged
+        union which has a single expected result but could also contain an
+        error.
+
+        This would be useful in the WebAssembly parser, for example.
+
+        Using this implementation will allow us to provide feedback to the
+        standards committee and guide std::expected's design before it
+        gets standardized. I've already sent a bunch of feedback to the
+        author based on my experience implementing this.
+
+        This could supplement WTF::Either and WTF::ExceptionOr.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/Compiler.h: Add RELAXED_CONSTEXPR
+        * wtf/Expected.h: Added.
+        (WTF::UnexpectedType::UnexpectedType):
+        (WTF::UnexpectedType::value):
+        (WTF::operator==):
+        (WTF::operator!=):
+        (WTF::operator<):
+        (WTF::operator>):
+        (WTF::operator<=):
+        (WTF::operator>=):
+        (WTF::makeUnexpected):
+        (WTF::ExpectedDetail::Throw):
+        (WTF::ExpectedDetail::ConstexprBase::ConstexprBase):
+        (WTF::ExpectedDetail::Base::Base):
+        (WTF::ExpectedDetail::Base::~Base):
+        (WTF::Expected::Expected):
+        (WTF::Expected::operator=):
+        (WTF::Expected::swap):
+        (WTF::Expected::operator->):
+        (WTF::Expected::operator*):
+        (WTF::Expected::operator bool):
+        (WTF::Expected::hasValue):
+        (WTF::Expected::value):
+        (WTF::Expected::error):
+        (WTF::Expected::getUnexpected):
+        (WTF::Expected::valueOr):
+        (WTF::swap):
+        (WTF::makeExpected):
+        (WTF::makeExpectedFromError):
+
+2016-11-11  Alex Christensen  <achristensen@webkit.org>
+
+        Allow mutable lambdas in HashMap::ensure
+        https://bugs.webkit.org/show_bug.cgi?id=164642
+
+        Reviewed by Sam Weinig.
+
+        * wtf/HashMap.h:
+        (WTF::HashMapEnsureTranslator::translate):
+        (WTF::X>::removeIf):
+
+2016-11-11  Beth Dakin  <bdakin@apple.com>
+
+        Get touch bar code building for open source builds
+        https://bugs.webkit.org/show_bug.cgi?id=164610
+
+        Reviewed by Wenson Hsieh.
+
+        * wtf/Platform.h:
+
+2016-11-10  JF Bastien  <jfbastien@apple.com>
+
+        ASSERTION FAILED: length > offset encountered with wasm.yaml/wasm/js-api/test_Module.js.default-wasm
+        https://bugs.webkit.org/show_bug.cgi?id=164597
+
+        Reviewed by Keith Miller.
+
+        Decoding at end of file should fail, not assert.
+
+        * wtf/LEBDecoder.h:
+        (WTF::LEBDecoder::decodeUInt):
+        (WTF::LEBDecoder::decodeInt32):
+
+2016-11-10  Alex Christensen  <achristensen@webkit.org>
+
+        Remove unused CFURLCACHE code
+        https://bugs.webkit.org/show_bug.cgi?id=164551
+
+        Reviewed by Antti Koivisto.
+
+        * wtf/Platform.h:
+
+2016-11-09  Alex Christensen  <achristensen@webkit.org>
+
+        Allow RefPtrs of const ThreadSafeRefCounted types
+        https://bugs.webkit.org/show_bug.cgi?id=164548
+
+        Reviewed by Tim Horton.
+
+        * wtf/ThreadSafeRefCounted.h:
+        Make m_refCount mutable like we did with RefCounted in r203257.
+
+2016-11-09  Chris Dumez  <cdumez@apple.com>
+
+        [Mac] Stop using deprecated AppKit enumeration values
+        https://bugs.webkit.org/show_bug.cgi?id=164494
+
+        Reviewed by Darin Adler.
+
+        Stop using deprecated AppKit enumeration values.
+
+        * wtf/mac/AppKitCompatibilityDeclarations.h:
+
+2016-11-05  Konstantin Tokarev  <annulen@yandex.ru>
+
+        Fixed compilation of LLInt with MinGW
+        https://bugs.webkit.org/show_bug.cgi?id=164449
+
+        Reviewed by Michael Catanzaro.
+
+        MinGW uses LLIntAssembly.h with GNU assembler syntax, just like GCC on
+        other platforms.
+
+        * wtf/InlineASM.h: Define LOCAL_LABEL_STRING as .L#name for MinGW.
+
+2016-11-05  Konstantin Tokarev  <annulen@yandex.ru>
+
+        [MinGW] Fixed C99/C++11 format attributes in printf-like functions
+        https://bugs.webkit.org/show_bug.cgi?id=164448
+
+        Reviewed by Michael Catanzaro.
+
+        By default MinGW uses printf-like function provided in msvcrt.dll,
+        however they miss support for C99/C++11 format attributes. Use MinGW
+        implementations instead.
+
+        * wtf/Assertions.h: Use gnu_printf format in WTF_ATTRIBUTE_PRINTF
+
+2016-11-05  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSCOnly] RunLoopGeneric should adopt MonotonicTime / WallTime change
+        https://bugs.webkit.org/show_bug.cgi?id=164447
+
+        Reviewed by Csaba Osztrogonác.
+
+        Build fix for JSCOnly.
+
+        * wtf/generic/RunLoopGeneric.cpp:
+        (WTF::RunLoop::TimerBase::ScheduledTask::create):
+        (WTF::RunLoop::TimerBase::ScheduledTask::ScheduledTask):
+        (WTF::RunLoop::TimerBase::ScheduledTask::scheduledTimePoint):
+        (WTF::RunLoop::TimerBase::ScheduledTask::updateReadyTime):
+        (WTF::RunLoop::populateTasks):
+        (WTF::RunLoop::dispatchAfter):
+        (WTF::RunLoop::TimerBase::start):
+
+2016-11-04  Filip Pizlo  <fpizlo@apple.com>
+
+        WTF::ParkingLot should stop using std::chrono because std::chrono::duration casts are prone to overflows
+        https://bugs.webkit.org/show_bug.cgi?id=152045
+
+        Reviewed by Andy Estes.
+        
+        We used to use 'double' for all time measurements. Sometimes it was milliseconds,
+        sometimes it was seconds. Sometimes we measured a span of time, sometimes we spoke of time
+        since some epoch. When we spoke of time since epoch, we either used a monotonic clock or
+        a wall clock. The type - always 'double' - never told us what kind of time we had, even
+        though there were roughly six of them (sec interval, ms interval, sec since epoch on wall,
+        ms since epoch on wall, sec since epoch monotonic, ms since epoch monotonic).
+        
+        At some point, we thought that it would be a good idea to replace these doubles with
+        std::chrono. But since replacing some things with std::chrono, we found it to be terribly
+        inconvenient:
+        
+        - Outrageous API. I never want to say std::chrono::milliseconds(blah). I never want to say
+          std::chrono::steady_clock::timepoint. The syntax for duration_cast is ugly, and ideally
+          duration_cast would not even be a thing.
+        
+        - No overflow protection. std::chrono uses integers by default and using anything else is
+          clumsy. But the integer math is done without regard for the rough edges of integer math,
+          so any cast between std::chrono types risks overflow. Any comparison risks overflow
+          because it may do conversions silently. We have even found bugs where some C++
+          implementations had more overflows than others, which ends up being a special kind of
+          hell. In many cases, the overflow also has nasal demons.
+        
+        It's an error to represent time using integers. It would have been excusable back when
+        floating point math was not guaranteed to be supported on all platforms, but that would
+        have been a long time ago. Time is a continuous, infinite concept and it's a perfect fit
+        for floating point:
+        
+        - Floating point preserves precision under multiplication in all but extreme cases, so
+          using floating point for time means that unit conversions are almost completely
+          lossless. This means that we don't have to think very hard about what units to use. In
+          this patch, we use seconds almost everywhere. We only convert at boundaries, like an API
+          boundary that wants something other than seconds.
+        
+        - Floating point makes it easy to reason about infinity, which is something that time code
+          wants to do a lot. Example: when would you like to timeout? Infinity please! This is the
+          most elegant way of having an API support both a timeout variant and a no-timeout
+          variant.
+
+        - Floating point does well-understood things when math goes wrong, and these things are
+          pretty well optimized to match what a mathematician would do when computing with real
+          numbers represented using scientific notation with a finite number of significant
+          digits. This means that time math under floating point looks like normal math. On the
+          other hand, std::chrono time math looks like garbage because you have to always check
+          for multiple possible UB corners whenever you touch large integers. Integers that
+          represent time are very likely to be large and you don't have to do much to overflow
+          them. At this time, based on the number of bugs we have already seen due to chrono
+          overflows, I am not certain that we even understand what are all of the corner cases
+          that we should even check for.
+        
+        This patch introduces a new set of timekeeping classes that are all based on double, and
+        all internally use seconds. These classes support algebraic typing. The classes are:
+        
+        - Seconds: this is for measuring a duration.
+        - WallTime: time since epoch according to a wall clock (aka real time clock).
+        - MonotonicTime: time since epoch according to a monotonic clock.
+        - ClockType: enum that says either Wall or Monotonic.
+        - TimeWithDynamicClockType: a tuple of double and ClockType, which represents either a
+          wall time or a monotonic time.
+        
+        All of these classes behave like C++ values and are cheap to copy around since they are
+        very nearly POD. This supports comprehensive conversions between the various time types.
+        Most of this is by way of algebra. Here are just some of the rules we recognize:
+        
+        WallTime = WallTime + Seconds
+        Seconds = WallTime - WallTime
+        MonotonicTime = MonotonicTime + Seconds
+        etc...
+        
+        We support negative, infinite, and NaN times because math.
+        
+        We support conversions between MonotonicTime and WallTime, like:
+        
+        WallTime wt = mt.approximateWallTime()
+        
+        This is called this "approximate" because the only way to do it is to get the current time
+        on both clocks and convert relative to that.
+        
+        Many of our APIs would be happy using whatever notion of time the user wanted to use. For
+        those APIs, which includes Condition and ParkingLot, we have TimeWithDynamicClockType. You
+        can automatically convert WallTime or MonotonicTime to TimeWithDynamicClockType. This
+        means that if you use a WallTime with Condition::waitUntil, then Condition's internal
+        logic for when it should wake up makes its decision based on the current WallTime - but if
+        you use MonotonicTime then waitUntil will make its decision based on current
+        MonotonicTime. This is a greater level of flexibility than chrono allowed, since chrono
+        did not have the concept of a dynamic clock type.
+        
+        This patch does not include conversions between std::chrono and these new time classes,
+        because past experience shows that we're quite bad at getting conversions between
+        std::chrono and anything else right. Also, I didn't need such conversion code because this
+        patch only converts code that transitively touches ParkingLot and Condition. It was easy
+        to get all of that code onto the new time classes.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/AutomaticThread.cpp:
+        (WTF::AutomaticThread::start):
+        * wtf/CMakeLists.txt:
+        * wtf/ClockType.cpp: Added.
+        (WTF::printInternal):
+        * wtf/ClockType.h: Added.
+        * wtf/Condition.h:
+        (WTF::ConditionBase::waitUntil):
+        (WTF::ConditionBase::waitFor):
+        (WTF::ConditionBase::wait):
+        (WTF::ConditionBase::waitUntilWallClockSeconds): Deleted.
+        (WTF::ConditionBase::waitUntilMonotonicClockSeconds): Deleted.
+        (WTF::ConditionBase::waitForSeconds): Deleted.
+        (WTF::ConditionBase::waitForSecondsImpl): Deleted.
+        (WTF::ConditionBase::waitForImpl): Deleted.
+        (WTF::ConditionBase::absoluteFromRelative): Deleted.
+        * wtf/CrossThreadQueue.h:
+        (WTF::CrossThreadQueue<DataType>::waitForMessage):
+        * wtf/CurrentTime.cpp:
+        (WTF::sleep):
+        * wtf/MessageQueue.h:
+        (WTF::MessageQueue::infiniteTime): Deleted.
+        * wtf/MonotonicTime.cpp: Added.
+        (WTF::MonotonicTime::now):
+        (WTF::MonotonicTime::approximateWallTime):
+        (WTF::MonotonicTime::dump):
+        (WTF::MonotonicTime::sleep):
+        * wtf/MonotonicTime.h: Added.
+        (WTF::MonotonicTime::MonotonicTime):
+        (WTF::MonotonicTime::fromRawDouble):
+        (WTF::MonotonicTime::infinity):
+        (WTF::MonotonicTime::secondsSinceEpoch):
+        (WTF::MonotonicTime::approximateMonotonicTime):
+        (WTF::MonotonicTime::operator bool):
+        (WTF::MonotonicTime::operator+):
+        (WTF::MonotonicTime::operator-):
+        (WTF::MonotonicTime::operator+=):
+        (WTF::MonotonicTime::operator-=):
+        (WTF::MonotonicTime::operator==):
+        (WTF::MonotonicTime::operator!=):
+        (WTF::MonotonicTime::operator<):
+        (WTF::MonotonicTime::operator>):
+        (WTF::MonotonicTime::operator<=):
+        (WTF::MonotonicTime::operator>=):
+        * wtf/ParkingLot.cpp:
+        (WTF::ParkingLot::parkConditionallyImpl):
+        (WTF::ParkingLot::unparkOne):
+        (WTF::ParkingLot::unparkOneImpl):
+        (WTF::ParkingLot::unparkCount):
+        * wtf/ParkingLot.h:
+        (WTF::ParkingLot::parkConditionally):
+        (WTF::ParkingLot::compareAndPark):
+        * wtf/Seconds.cpp: Added.
+        (WTF::Seconds::operator+):
+        (WTF::Seconds::operator-):
+        (WTF::Seconds::dump):
+        (WTF::Seconds::sleep):
+        * wtf/Seconds.h: Added.
+        (WTF::Seconds::Seconds):
+        (WTF::Seconds::value):
+        (WTF::Seconds::seconds):
+        (WTF::Seconds::milliseconds):
+        (WTF::Seconds::microseconds):
+        (WTF::Seconds::nanoseconds):
+        (WTF::Seconds::fromMilliseconds):
+        (WTF::Seconds::fromMicroseconds):
+        (WTF::Seconds::fromNanoseconds):
+        (WTF::Seconds::infinity):
+        (WTF::Seconds::operator bool):
+        (WTF::Seconds::operator+):
+        (WTF::Seconds::operator-):
+        (WTF::Seconds::operator*):
+        (WTF::Seconds::operator/):
+        (WTF::Seconds::operator+=):
+        (WTF::Seconds::operator-=):
+        (WTF::Seconds::operator*=):
+        (WTF::Seconds::operator/=):
+        (WTF::Seconds::operator==):
+        (WTF::Seconds::operator!=):
+        (WTF::Seconds::operator<):
+        (WTF::Seconds::operator>):
+        (WTF::Seconds::operator<=):
+        (WTF::Seconds::operator>=):
+        * wtf/TimeWithDynamicClockType.cpp: Added.
+        (WTF::TimeWithDynamicClockType::now):
+        (WTF::TimeWithDynamicClockType::nowWithSameClock):
+        (WTF::TimeWithDynamicClockType::wallTime):
+        (WTF::TimeWithDynamicClockType::monotonicTime):
+        (WTF::TimeWithDynamicClockType::approximateWallTime):
+        (WTF::TimeWithDynamicClockType::approximateMonotonicTime):
+        (WTF::TimeWithDynamicClockType::operator-):
+        (WTF::TimeWithDynamicClockType::operator<):
+        (WTF::TimeWithDynamicClockType::operator>):
+        (WTF::TimeWithDynamicClockType::operator<=):
+        (WTF::TimeWithDynamicClockType::operator>=):
+        (WTF::TimeWithDynamicClockType::dump):
+        (WTF::TimeWithDynamicClockType::sleep):
+        * wtf/TimeWithDynamicClockType.h: Added.
+        (WTF::TimeWithDynamicClockType::TimeWithDynamicClockType):
+        (WTF::TimeWithDynamicClockType::fromRawDouble):
+        (WTF::TimeWithDynamicClockType::secondsSinceEpoch):
+        (WTF::TimeWithDynamicClockType::clockType):
+        (WTF::TimeWithDynamicClockType::withSameClockAndRawDouble):
+        (WTF::TimeWithDynamicClockType::operator bool):
+        (WTF::TimeWithDynamicClockType::operator+):
+        (WTF::TimeWithDynamicClockType::operator-):
+        (WTF::TimeWithDynamicClockType::operator+=):
+        (WTF::TimeWithDynamicClockType::operator-=):
+        (WTF::TimeWithDynamicClockType::operator==):
+        (WTF::TimeWithDynamicClockType::operator!=):
+        * wtf/WallTime.cpp: Added.
+        (WTF::WallTime::now):
+        (WTF::WallTime::approximateMonotonicTime):
+        (WTF::WallTime::dump):
+        (WTF::WallTime::sleep):
+        * wtf/WallTime.h: Added.
+        (WTF::WallTime::WallTime):
+        (WTF::WallTime::fromRawDouble):
+        (WTF::WallTime::infinity):
+        (WTF::WallTime::secondsSinceEpoch):
+        (WTF::WallTime::approximateWallTime):
+        (WTF::WallTime::operator bool):
+        (WTF::WallTime::operator+):
+        (WTF::WallTime::operator-):
+        (WTF::WallTime::operator+=):
+        (WTF::WallTime::operator-=):
+        (WTF::WallTime::operator==):
+        (WTF::WallTime::operator!=):
+        (WTF::WallTime::operator<):
+        (WTF::WallTime::operator>):
+        (WTF::WallTime::operator<=):
+        (WTF::WallTime::operator>=):
+        * wtf/threads/BinarySemaphore.cpp:
+        (WTF::BinarySemaphore::wait):
+        * wtf/threads/BinarySemaphore.h:
+
+2016-11-03  Filip Pizlo  <fpizlo@apple.com>
+
+        DFG plays fast and loose with the shadow values of a Phi
+        https://bugs.webkit.org/show_bug.cgi?id=164309
+
+        Reviewed by Saam Barati.
+        
+        Made this API use size rather than maxIndex as its initialization parameter, because that's
+        less confusing.
+
+        * wtf/IndexSparseSet.h:
+        (WTF::IndexSparseSet<OverflowHandler>::IndexSparseSet):
+
+2016-11-03  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r208364.
+        https://bugs.webkit.org/show_bug.cgi?id=164402
+
+        broke the build (Requested by smfr on #webkit).
+
+        Reverted changeset:
+
+        "DFG plays fast and loose with the shadow values of a Phi"
+        https://bugs.webkit.org/show_bug.cgi?id=164309
+        http://trac.webkit.org/changeset/208364
+
+2016-11-03  Filip Pizlo  <fpizlo@apple.com>
+
+        DFG plays fast and loose with the shadow values of a Phi
+        https://bugs.webkit.org/show_bug.cgi?id=164309
+
+        Reviewed by Saam Barati.
+        
+        Made this API use size rather than maxIndex as its initialization parameter, because that's
+        less confusing.
+
+        * wtf/IndexSparseSet.h:
+        (WTF::IndexSparseSet<OverflowHandler>::IndexSparseSet):
+
+2016-11-03  Konstantin Tokarev  <annulen@yandex.ru>
+
+        Fixes to build JSCOnly on macOS
+        https://bugs.webkit.org/show_bug.cgi?id=164379
+
+        Reviewed by Michael Catanzaro.
+
+        * wtf/Platform.h: JSCOnly port should not provide any PLATFORM() macro
+
+2016-11-03  Brady Eidson  <beidson@apple.com>
+
+        IndexedDB 2.0: Support binary keys.
+        <rdar://problem/28806927> and https://bugs.webkit.org/show_bug.cgi?id=164359
+
+        Reviewed by Alex Christensen.
+
+        * wtf/Hasher.h:
+        (WTF::StringHasher::hashMemory): Teach hashMemory() to handle buffers with odd lengths.
+
+2016-11-02  Filip Pizlo  <fpizlo@apple.com>
+
+        The GC should be in a thread
+        https://bugs.webkit.org/show_bug.cgi?id=163562
+
+        Reviewed by Geoffrey Garen and Andreas Kling.
+        
+        This fixes some bugs and adds a few features.
+
+        * wtf/Atomics.h: The GC may do work on behalf of the JIT. If it does, the main thread needs to execute a cross-modifying code fence. This is cpuid on x86 and I believe it's isb on ARM. It would have been an isync on PPC and I think that isb is the ARM equivalent.
+        (WTF::arm_isb):
+        (WTF::crossModifyingCodeFence):
+        (WTF::x86_ortop):
+        (WTF::x86_cpuid):
+        * wtf/AutomaticThread.cpp: I accidentally had AutomaticThreadCondition inherit from ThreadSafeRefCounted<AutomaticThread> [sic]. This never crashed before because all of our prior AutomaticThreadConditions were immortal.
+        (WTF::AutomaticThread::AutomaticThread):
+        (WTF::AutomaticThread::~AutomaticThread):
+        (WTF::AutomaticThread::start):
+        * wtf/AutomaticThread.h:
+        * wtf/MainThread.cpp: Need to allow initializeGCThreads() to be called separately because it's now more than just a debugging thing.
+        (WTF::initializeGCThreads):
+
+2016-11-02  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        Clean wrong comment about compositing on the UI process.
+        https://bugs.webkit.org/show_bug.cgi?id=164339
+
+        Reviewed by Michael Catanzaro.
+
+        * wtf/Platform.h: The comment about compositing on the UI process
+        was added on r109302 but was not removed properly when the Qt port
+        was removed from trunk.
+        USE_PROTECTION_SPACE_AUTH_CALLBACK has nothing to do with it.
+
+2016-11-02  Alex Christensen  <achristensen@webkit.org>
+
+        Remove Battery Status API from the tree
+        https://bugs.webkit.org/show_bug.cgi?id=164213
+
+        Reviewed by Sam Weinig.
+
+        * wtf/FeatureDefines.h:
+
+2016-11-02  Romain Bellessort  <romain.bellessort@crf.canon.fr>
+
+        [Readable Streams API] Enable creation of ReadableByteStreamController
+        https://bugs.webkit.org/show_bug.cgi?id=164014
+
+        Reviewed by Youenn Fablet.
+
+        Added flag for the byte stream part of Readable Streams API.
+
+        * wtf/FeatureDefines.h:
+
+2016-11-02  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Copy build results to AAS 'Program Files' folder.
+        https://bugs.webkit.org/show_bug.cgi?id=164273
+
+        Reviewed by Brent Fulgham.
+
+        The preferred location for the binaries is the AAS 'Program Files' folder.
+
+        * WTF.vcxproj/WTF.proj:
+
+2016-10-29  Filip Pizlo  <fpizlo@apple.com>
+
+        JSC should support SharedArrayBuffer
+        https://bugs.webkit.org/show_bug.cgi?id=163986
+
+        Reviewed by Keith Miller.
+        
+        Adds some small things we need for SharedArrayBuffer.
+        
+        * wtf/Atomics.h:
+        (WTF::Atomic::compareExchangeWeakRelaxed):
+        (WTF::Atomic::exchangeAdd):
+        (WTF::Atomic::exchangeAnd):
+        (WTF::Atomic::exchangeOr):
+        (WTF::Atomic::exchangeSub):
+        (WTF::Atomic::exchangeXor):
+        (WTF::atomicLoad):
+        (WTF::atomicStore):
+        (WTF::atomicCompareExchangeWeak):
+        (WTF::atomicCompareExchangeWeakRelaxed):
+        (WTF::atomicCompareExchangeStrong):
+        (WTF::atomicExchangeAdd):
+        (WTF::atomicExchangeAnd):
+        (WTF::atomicExchangeOr):
+        (WTF::atomicExchangeSub):
+        (WTF::atomicExchangeXor):
+        (WTF::atomicExchange):
+        (WTF::Atomic::exchangeAndAdd): Deleted.
+        (WTF::weakCompareAndSwap): Deleted.
+        We need to be able to do atomics operations on naked pointers. We also need to be able to do
+        all of the things that std::atomic does. This adds those things and renames
+        weakCompareAndSwap to atomicCompareExchangeWeakRelaxed so that we're using consistent
+        terminology.
+        
+        * wtf/Bitmap.h:
+        (WTF::WordType>::concurrentTestAndSet): Renamed weakCompareAndSwap.
+        (WTF::WordType>::concurrentTestAndClear): Renamed weakCompareAndSwap.
+        * wtf/FastBitVector.h:
+        (WTF::FastBitVector::atomicSetAndCheck): Renamed weakCompareAndSwap.
+        * wtf/ParkingLot.cpp:
+        (WTF::ParkingLot::unparkOne):
+        (WTF::ParkingLot::unparkCount):
+        * wtf/ParkingLot.h:
+        Added unparkCount(), which lets you unpark some bounded number of threads and returns the
+        number of threads unparked. This is just a modest extension of unparkAll(). unparkAll() now
+        just calls unparkCount(ptr, UINT_MAX).
+
+2016-10-30  Frederic Wang  <fwang@igalia.com>
+
+        Use HarfBuzz ot-math API to parse the OpenType MATH table
+        https://bugs.webkit.org/show_bug.cgi?id=162671
+
+        Reviewed by Michael Catanzaro.
+
+        * wtf/Platform.h: By default, do not enable internal OpenType MATH parsing on GTK.
+
+2016-10-25  Mark Lam  <mark.lam@apple.com>
+
+        String.prototype.replace() should throw an OutOfMemoryError when using too much memory.
+        https://bugs.webkit.org/show_bug.cgi?id=163996
+        <rdar://problem/28263117>
+
+        Reviewed by Geoffrey Garen.
+
+        * wtf/Vector.h:
+        (WTF::minCapacity>::tryConstructAndAppend):
+        (WTF::minCapacity>::tryConstructAndAppendSlowCase):
+        - Added try versions of constructAndAppend() so that we can handle the failure
+          to allocate more gracefully.
+
+2016-10-25  Konstantin Tokarev  <annulen@yandex.ru>
+
+        Non-specialized version of deleteObject should not have template argument
+        https://bugs.webkit.org/show_bug.cgi?id=163943
+
+        Reviewed by Anders Carlsson.
+
+        Fixes compilation of GDIObject.h with MinGW
+
+        * wtf/win/GDIObject.h:
+        (WTF::deleteObject):
+
+2016-10-24  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] CMake build type is not set.
+        https://bugs.webkit.org/show_bug.cgi?id=163917
+
+        Reviewed by Alex Christensen.
+
+        The CMAKE_BUILD_TYPE variable should be set to Debug or Release.
+
+        * WTF.vcxproj/WTF.proj:
+
+2016-10-23  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [DOMJIT] Add a way for DOMJIT::Patchpoint to express effects
+        https://bugs.webkit.org/show_bug.cgi?id=163657
+
+        Reviewed by Saam Barati.
+
+        Simplify nonEmptyRangesOverlap.
+
+        * wtf/MathExtras.h:
+        (WTF::nonEmptyRangesOverlap):
+
+2016-10-23  Chris Dumez  <cdumez@apple.com>
+
+        Another unreviewed attempt to fix the WatchOS / TvOS build after r207585.
+        <rdar://problem/28902292>
+
+        Disable USE_CFURLCONNECTION on newer WatchOS / TvOS.
+
+        * wtf/Platform.h:
+
+2016-10-20  Keith Miller  <keith_miller@apple.com>
+
+        Add support for WASM calls
+        https://bugs.webkit.org/show_bug.cgi?id=161727
+
+        Reviewed by Filip Pizlo and Michael Saboff.
+
+        Added a new decodeUInt64. Also, added WTF::LEBDecoder namespace.
+
+        * wtf/LEBDecoder.h:
+        (WTF::LEBDecoder::decodeUInt):
+        (WTF::LEBDecoder::decodeUInt32):
+        (WTF::LEBDecoder::decodeUInt64):
+        (WTF::LEBDecoder::decodeInt32):
+        (decodeUInt32): Deleted.
+        (decodeInt32): Deleted.
+
+2016-10-20  Filip Pizlo  <fpizlo@apple.com>
+
+        The tracking of the coarse-grain Heap state (allocating or not, collector or not, eden vs full) should respect the orthogonality between allocating and collecting
+        https://bugs.webkit.org/show_bug.cgi?id=163738
+
+        Reviewed by Geoffrey Garen.
+        
+        There will soon be different kinds of GC threads, and WTF's "are you a GC thread" thing
+        should know about this.
+
+        * wtf/MainThread.cpp:
+        (WTF::initializeGCThreads):
+        (WTF::registerGCThread):
+        (WTF::mayBeGCThread):
+        * wtf/MainThread.h:
+
+2016-10-19  Sam Weinig  <sam@webkit.org>
+
+        Add convenience function that combines WTF::visit(...) with WTF::makeVisitor(...)
+        https://bugs.webkit.org/show_bug.cgi?id=163713
+
+        Reviewed by Dan Bernstein.
+
+        - Add WTF::switchOn which merges WTF::visit with WTF::makeVisitor in the following
+          way:
+                WTF::visit(WTF::makeVisitor(...), variant)
+
+        * wtf/Variant.h:
+        (WTF::switchOn):
+
+2016-10-19  Alex Christensen  <achristensen@webkit.org>
+
+        Revert r207151
+        https://bugs.webkit.org/show_bug.cgi?id=163675
+
+        Reviewed by Brent Fulgham.
+
+        * wtf/Platform.h:
+        * wtf/SchedulePair.h:
+        * wtf/SchedulePairMac.mm:
+
+2016-10-19  Filip Pizlo  <fpizlo@apple.com>
+
+        REGRESSION (r207480): 3 Dromaeo tests failing
+        https://bugs.webkit.org/show_bug.cgi?id=163633
+
+        Reviewed by Mark Lam.
+        
+        It's a ParkingLot bug: if we timeout and get unparked at the same time, then the unparking
+        thread will clear our address eventually - but not immediately. This causes a nasty
+        assertion failure. The tricky thing is that when we detect this, we need to wait until that
+        unparking thread does the deed. Otherwise, they will still do it at some later time.
+        
+        Alternatively, we could use some kind of versioning to detect this - increment the version
+        when you park, so that unparking threads will know if they are time travelers. That seems
+        more yucky.
+        
+        I don't think it matters too much what we do here, so long as it's simple and correct, since
+        this requires a race that is rare enough that it didn't happen once in my testing, and I was
+        pretty thorough. For example, it didn't happen once in 15 runs of JetStream. The race is
+        rare because it requires the timeout to happen right as someone else is unparking. Since
+        it's so rare, its probably OK that the unparked thread waits just a tiny moment until the
+        unparking thread is done.
+
+        * wtf/ParkingLot.cpp:
+        (WTF::ParkingLot::parkConditionallyImpl):
+        (WTF::ParkingLot::unparkOneImpl):
+
+2016-10-19  Filip Pizlo  <fpizlo@apple.com>
+
+        Baseline JIT should use AutomaticThread
+        https://bugs.webkit.org/show_bug.cgi?id=163686
+
+        Reviewed by Geoffrey Garen.
+        
+        Added a AutomaticThreadCondition::wait() method, so that if you really want to use one
+        common condition for your thread and something else, you can do it. This trivially works
+        if you only use notifyAll(), and behaves as you'd expect for notifyOne() (i.e. it's
+        dangerous, since you don't know who will wake up).
+        
+        The Baseline JIT used the one-true-Condition idiom because it used notifyAll() in an
+        optimal way: there are just two threads talking to each other, so it wakes up at most one
+        thread and that thread is exactly the one you want woken up. Adding wait() means that I did
+        not have to change that code.
+
+        * wtf/AutomaticThread.cpp:
+        (WTF::AutomaticThreadCondition::wait):
+        * wtf/AutomaticThread.h:
+
+2016-10-18  Filip Pizlo  <fpizlo@apple.com>
+
+        DFG worklist should use AutomaticThread
+        https://bugs.webkit.org/show_bug.cgi?id=163615
+
+        Reviewed by Mark Lam.
+        
+        This adds new functionality to AutomaticThread to support DFG::Worklist:
+        
+        - AutomaticThread::threadDidStart/threadWillStop virtual methods called at the start and end
+          of a thread's lifetime. This allows Worklist to tie some resources to the life of the
+          thread, and also means that now those resources will naturally free up when the Worklist is
+          not in use.
+        
+        - AutomaticThreadCondition::notifyOne(). This required changes to Condition::notifyOne(). We
+          need to know if the Condition woke up anyone. If it didn't, then we need to launch one of
+          our threads.
+
+        * wtf/AutomaticThread.cpp:
+        (WTF::AutomaticThreadCondition::notifyOne):
+        (WTF::AutomaticThread::ThreadScope::ThreadScope):
+        (WTF::AutomaticThread::ThreadScope::~ThreadScope):
+        (WTF::AutomaticThread::start):
+        (WTF::AutomaticThread::threadDidStart):
+        (WTF::AutomaticThread::threadWillStop):
+        * wtf/AutomaticThread.h:
+        * wtf/Condition.h:
+        (WTF::ConditionBase::notifyOne):
+
+2016-10-18  Sam Weinig  <sam@webkit.org>
+
+        Replace std::experimental::variant with WTF::Variant (or similar)
+        https://bugs.webkit.org/show_bug.cgi?id=163626
+
+        Reviewed by Chris Dumez.
+
+        Rename std::experimental::variant, Variant. Move helpers get/holds_alternative/etc.
+        into the WTF namespace.
+
+        * wtf/Forward.h:
+        * wtf/Variant.h:
+
+2016-10-18  Filip Pizlo  <fpizlo@apple.com>
+
+        WTF should make it easier to create threads that die automatically after inactivity
+        https://bugs.webkit.org/show_bug.cgi?id=163576
+
+        Reviewed by Andreas Kling.
+        
+        For a long time now, I've been adding threads to WTF/JSC and each time I do this, I feel
+        guilty because those threads don't shut down when they are inactive. For example, in bug
+        163562, I need to add a new GC thread. There will be one of them per VM. This means that a
+        JSC API client that starts a lot of VMs will have a lot of threads. I don't think that's
+        good.
+        
+        A common pattern for all of these threads is that they have some well-defined trigger that
+        causes them to run. This trigger has a lock, a condition variable, some logic that determines
+        if there is work to do, and then of course the logic for the thread's actual work. The thread
+        bodies usually look like this:
+        
+        void Thingy::runThread()
+        {
+            for (;;) {
+                Work work;
+                {
+                    LockHolder locker(m_lock);
+                    while (!hasWork())
+                        m_cond.wait(m_lock);
+                    work = takeWork();
+                }
+                doWork(work);
+            }
+        }
+        
+        If you look at ParallelHelperPool (the GC's threads) and DFG::Worklist (some of the JIT's
+        threads), you will see this pattern.
+        
+        This change adds a new kind of thread, called AutomaticThread, that lets you write threads to
+        this pattern while getting automatic thread shutdown for free: instead of just waiting on a
+        condition variable, AutomaticThread will have a timeout that causes the thread to die. The
+        condition variable associated with AutomaticThread, called AutomaticThreadCondition, is smart
+        enough to restart any threads that have decided to stop due to inactivity. The inactivity
+        threshold is current just 1 second.
+        
+        In this patch I only adopt AutomaticThread for ParallelHelperPool. I plan to adopt it in more
+        places soon.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/AutomaticThread.cpp: Added.
+        (WTF::AutomaticThreadCondition::create):
+        (WTF::AutomaticThreadCondition::AutomaticThreadCondition):
+        (WTF::AutomaticThreadCondition::~AutomaticThreadCondition):
+        (WTF::AutomaticThreadCondition::notifyAll):
+        (WTF::AutomaticThreadCondition::add):
+        (WTF::AutomaticThreadCondition::remove):
+        (WTF::AutomaticThreadCondition::contains):
+        (WTF::AutomaticThread::AutomaticThread):
+        (WTF::AutomaticThread::~AutomaticThread):
+        (WTF::AutomaticThread::join):
+        (WTF::AutomaticThread::start):
+        * wtf/AutomaticThread.h: Added.
+        * wtf/CMakeLists.txt:
+        * wtf/ParallelHelperPool.cpp:
+        (WTF::ParallelHelperClient::ParallelHelperClient):
+        (WTF::ParallelHelperClient::~ParallelHelperClient):
+        (WTF::ParallelHelperClient::setTask):
+        (WTF::ParallelHelperClient::finish):
+        (WTF::ParallelHelperClient::doSomeHelping):
+        (WTF::ParallelHelperClient::runTask):
+        (WTF::ParallelHelperPool::ParallelHelperPool):
+        (WTF::ParallelHelperPool::~ParallelHelperPool):
+        (WTF::ParallelHelperPool::ensureThreads):
+        (WTF::ParallelHelperPool::doSomeHelping):
+        (WTF::ParallelHelperPool::Thread::Thread):
+        (WTF::ParallelHelperPool::didMakeWorkAvailable):
+        (WTF::ParallelHelperPool::helperThreadBody): Deleted.
+        (WTF::ParallelHelperPool::waitForClientWithTask): Deleted.
+        * wtf/ParallelHelperPool.h:
+
+2016-10-18  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        SVGCSSParser: m_implicitShorthand value is not reset after adding the shorthand property
+        https://bugs.webkit.org/show_bug.cgi?id=116470
+
+        Reviewed by Simon Fraser.
+
+        * wtf/TemporaryChange.h:
+        (WTF::TemporaryChange::TemporaryChange):
+        Add a new constructor to make TemporaryChange work as a restorer. The
+        temporary change will happen after we construct the object.
+
+2016-10-17  Simon Fraser  <simon.fraser@apple.com>
+
+        Implement DOMRect/DOMRectReadOnly
+        https://bugs.webkit.org/show_bug.cgi?id=163464
+
+        Reviewed by Darin Adler.
+        
+        Implement min()/max() in a way that follows Math.min/Math.max, which return
+        NaN if either argument is NaN.
+
+        * wtf/MathExtras.h:
+        (WTF::nanPropagatingMin):
+        (WTF::nanPropagatingMax):
+
+2016-10-15  Sam Weinig  <sam@webkit.org>
+
+        MessageEvent's source property should be a (DOMWindow or MessagePort)? rather than a EventTarget?
+        https://bugs.webkit.org/show_bug.cgi?id=163475
+
+        Reviewed by Simon Fraser.
+
+        * wtf/Variant.h:
+        Add missing return statement that was tripping up some compilers.
+
 2016-10-12  Ryan Haddad  <ryanhaddad@apple.com>
 
         Unreviewed, rolling out r207225.

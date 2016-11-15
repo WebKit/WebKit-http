@@ -1,0 +1,24 @@
+CONSOLE MESSAGE: Unsafe attempt to load URL http://127.0.0.1:8800/fetch/api/request/resources/cache.py?token=ba172d39-45a6-4f65-989a-a500bb5056a3&content=0.5336064804239897&tag=0.46453612856618554&expires=Wed,%2004%20Oct%202017%2022:00:00%20GMT from frame with URL http://localhost:8800/fetch/api/request/request-cache-only-if-cached.html. Domains, protocols and ports must match.
+
+CONSOLE MESSAGE: Unsafe attempt to load URL http://127.0.0.1:8800/fetch/api/request/resources/cache.py?token=e02cf9bc-fa40-44bd-af2d-4a6d534d0656&content=0.021466740348400903&date=Fri,%2028%20Oct%202016%2009:22:28%20GMT&expires=Wed,%2004%20Oct%202017%2022:00:00%20GMT from frame with URL http://localhost:8800/fetch/api/request/request-cache-only-if-cached.html. Domains, protocols and ports must match.
+
+CONSOLE MESSAGE: Unsafe attempt to load URL http://127.0.0.1:8800/fetch/api/request/resources/cache.py?token=6d031cde-bf54-4c7f-b7bc-a5f9924440bd&content=0.10583250676458489&tag=0.8657810433316643&expires=Sun,%2004%20Oct%202015%2022:00:00%20GMT from frame with URL http://localhost:8800/fetch/api/request/request-cache-only-if-cached.html. Domains, protocols and ports must match.
+
+CONSOLE MESSAGE: Unsafe attempt to load URL http://127.0.0.1:8800/fetch/api/request/resources/cache.py?token=8e5f669a-a795-4744-963d-184b082cc7a5&content=0.2908942432786532&date=Fri,%2028%20Oct%202016%2009:22:28%20GMT&expires=Sun,%2004%20Oct%202015%2022:00:00%20GMT from frame with URL http://localhost:8800/fetch/api/request/request-cache-only-if-cached.html. Domains, protocols and ports must match.
+
+
+PASS RequestCache "only-if-cached" mode checks the cache for previously cached content and avoids revalidation for stale responses with Etag and stale response 
+PASS RequestCache "only-if-cached" mode checks the cache for previously cached content and avoids revalidation for stale responses with date and stale response 
+PASS RequestCache "only-if-cached" mode checks the cache for previously cached content and avoids revalidation for fresh responses with Etag and fresh response 
+PASS RequestCache "only-if-cached" mode checks the cache for previously cached content and avoids revalidation for fresh responses with date and fresh response 
+PASS RequestCache "only-if-cached" mode checks the cache for previously cached content and does not go to the network if a cached response is not found with Etag and fresh response 
+PASS RequestCache "only-if-cached" mode checks the cache for previously cached content and does not go to the network if a cached response is not found with date and fresh response 
+PASS RequestCache "only-if-cached" (with "same-origin") uses cached same-origin redirects to same-origin content with Etag and fresh response 
+PASS RequestCache "only-if-cached" (with "same-origin") uses cached same-origin redirects to same-origin content with date and fresh response 
+PASS RequestCache "only-if-cached" (with "same-origin") uses cached same-origin redirects to same-origin content with Etag and stale response 
+PASS RequestCache "only-if-cached" (with "same-origin") uses cached same-origin redirects to same-origin content with date and stale response 
+PASS RequestCache "only-if-cached" (with "same-origin") does not follow redirects across origins and rejects with Etag and fresh response 
+PASS RequestCache "only-if-cached" (with "same-origin") does not follow redirects across origins and rejects with date and fresh response 
+PASS RequestCache "only-if-cached" (with "same-origin") does not follow redirects across origins and rejects with Etag and stale response 
+PASS RequestCache "only-if-cached" (with "same-origin") does not follow redirects across origins and rejects with date and stale response 
+

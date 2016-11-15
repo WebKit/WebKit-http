@@ -2,7 +2,7 @@ include(GNUInstallDirs)
 
 set(PROJECT_VERSION_MAJOR 2)
 set(PROJECT_VERSION_MINOR 15)
-set(PROJECT_VERSION_MICRO 0)
+set(PROJECT_VERSION_MICRO 1)
 set(PROJECT_VERSION ${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT_VERSION_MICRO})
 set(WEBKITGTK_API_VERSION 4.0)
 
@@ -32,7 +32,7 @@ set(INTROSPECTION_INSTALL_TYPELIBDIR "${LIB_INSTALL_DIR}/girepository-1.0")
 find_package(Cairo 1.10.2 REQUIRED)
 find_package(Fontconfig 2.8.0 REQUIRED)
 find_package(Freetype2 2.4.2 REQUIRED)
-find_package(GnuTLS 3.0.0 REQUIRED)
+find_package(LibGcrypt 1.6.0 REQUIRED)
 find_package(GTK3 3.6.0 REQUIRED)
 find_package(GDK3 3.6.0 REQUIRED)
 find_package(HarfBuzz 0.9.2 REQUIRED)
@@ -56,6 +56,12 @@ find_package(OpenGLES2)
 WEBKIT_OPTION_BEGIN()
 
 set(USE_WOFF2 ON)
+
+# For old versions of HarfBuzz that do not expose an API for the OpenType MATH
+# table, we enable our own code to parse that table.
+if ("${PC_HARFBUZZ_VERSION}" VERSION_LESS "1.3.3")
+    add_definitions(-DENABLE_OPENTYPE_MATH=1)
+endif ()
 
 # Set the default value for ENABLE_GLES2 automatically.
 # We are not enabling or disabling automatically a feature here, because
@@ -110,7 +116,6 @@ WEBKIT_OPTION_DEPEND(USE_REDIRECTED_XCOMPOSITE_WINDOW ENABLE_X11_TARGET)
 WEBKIT_OPTION_DEPEND(USE_GSTREAMER_GL ENABLE_OPENGL)
 WEBKIT_OPTION_DEPEND(USE_GSTREAMER_GL ENABLE_VIDEO)
 WEBKIT_OPTION_DEPEND(USE_GSTREAMER_MPEGTS ENABLE_VIDEO)
-WEBKIT_OPTION_DEPEND(ENABLE_WAYLAND_TARGET ENABLE_OPENGL)
 
 SET_AND_EXPOSE_TO_BUILD(ENABLE_DEVELOPER_MODE ${DEVELOPER_MODE})
 if (DEVELOPER_MODE)

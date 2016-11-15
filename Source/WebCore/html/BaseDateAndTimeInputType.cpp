@@ -30,8 +30,9 @@
  */
 
 #include "config.h"
-#if ENABLE(DATE_AND_TIME_INPUT_TYPES)
 #include "BaseDateAndTimeInputType.h"
+
+#if ENABLE(DATE_AND_TIME_INPUT_TYPES)
 
 #include "HTMLInputElement.h"
 #include "HTMLNames.h"
@@ -55,9 +56,10 @@ double BaseDateAndTimeInputType::valueAsDate() const
     return valueAsDouble();
 }
 
-void BaseDateAndTimeInputType::setValueAsDate(double value, ExceptionCode&) const
+ExceptionOr<void> BaseDateAndTimeInputType::setValueAsDate(double value) const
 {
     element().setValue(serializeWithMilliseconds(value));
+    return { };
 }
 
 double BaseDateAndTimeInputType::valueAsDouble() const
@@ -66,9 +68,10 @@ double BaseDateAndTimeInputType::valueAsDouble() const
     return value.isFinite() ? value.toDouble() : DateComponents::invalidMilliseconds();
 }
 
-void BaseDateAndTimeInputType::setValueAsDecimal(const Decimal& newValue, TextFieldEventBehavior eventBehavior, ExceptionCode&) const
+ExceptionOr<void> BaseDateAndTimeInputType::setValueAsDecimal(const Decimal& newValue, TextFieldEventBehavior eventBehavior) const
 {
     element().setValue(serialize(newValue), eventBehavior);
+    return { };
 }
 
 bool BaseDateAndTimeInputType::typeMismatchFor(const String& value) const
@@ -95,7 +98,7 @@ bool BaseDateAndTimeInputType::isSteppable() const
 
 void BaseDateAndTimeInputType::minOrMaxAttributeChanged()
 {
-    element().setNeedsStyleRecalc();
+    element().invalidateStyleForSubtree();
 }
 
 Decimal BaseDateAndTimeInputType::parseToNumber(const String& source, const Decimal& defaultValue) const

@@ -96,6 +96,11 @@
 #include <WebCore/MediaSessionMetadata.h>
 #endif
 
+#if ENABLE(MEDIA_STREAM)
+#include <WebCore/CaptureDevice.h>
+#include <WebCore/MediaConstraintsImpl.h>
+#endif
+
 using namespace WebCore;
 using namespace WebKit;
 
@@ -1094,6 +1099,18 @@ bool ArgumentCoder<WindowFeatures>::decode(Decoder& decoder, WindowFeatures& win
 
 void ArgumentCoder<Color>::encode(Encoder& encoder, const Color& color)
 {
+    if (color.isExtended()) {
+        encoder << true;
+        encoder << color.asExtended().red();
+        encoder << color.asExtended().green();
+        encoder << color.asExtended().blue();
+        encoder << color.asExtended().alpha();
+        encoder << color.asExtended().colorSpace();
+        return;
+    }
+
+    encoder << false;
+
     if (!color.isValid()) {
         encoder << false;
         return;
@@ -1105,6 +1122,30 @@ void ArgumentCoder<Color>::encode(Encoder& encoder, const Color& color)
 
 bool ArgumentCoder<Color>::decode(Decoder& decoder, Color& color)
 {
+    bool isExtended;
+    if (!decoder.decode(isExtended))
+        return false;
+
+    if (isExtended) {
+        float red;
+        float green;
+        float blue;
+        float alpha;
+        ColorSpace colorSpace;
+        if (!decoder.decode(red))
+            return false;
+        if (!decoder.decode(green))
+            return false;
+        if (!decoder.decode(blue))
+            return false;
+        if (!decoder.decode(alpha))
+            return false;
+        if (!decoder.decode(colorSpace))
+            return false;
+        color = Color(red, green, blue, alpha, colorSpace);
+        return true;
+    }
+
     bool isValid;
     if (!decoder.decode(isValid))
         return false;
@@ -2239,5 +2280,114 @@ bool ArgumentCoder<ResourceLoadStatistics>::decode(Decoder& decoder, WebCore::Re
     return true;
 }
 
+#if ENABLE(MEDIA_STREAM)
+void ArgumentCoder<MediaConstraintsData>::encode(Encoder& encoder, const WebCore::MediaConstraintsData& constraint)
+{
+    encoder << constraint.mandatoryConstraints;
+
+    auto& advancedConstraints = constraint.advancedConstraints;
+    encoder << static_cast<uint64_t>(advancedConstraints.size());
+    for (const auto& advancedConstraint : advancedConstraints)
+        encoder << advancedConstraint;
+
+    encoder << constraint.isValid;
+}
+
+bool ArgumentCoder<MediaConstraintsData>::decode(Decoder& decoder, WebCore::MediaConstraintsData& constraints)
+{
+    MediaTrackConstraintSetMap mandatoryConstraints;
+    if (!decoder.decode(mandatoryConstraints))
+        return false;
+
+    uint64_t advancedCount;
+    if (!decoder.decode(advancedCount))
+        return false;
+
+    Vector<MediaTrackConstraintSetMap> advancedConstraints;
+    advancedConstraints.reserveInitialCapacity(advancedCount);
+    for (size_t i = 0; i < advancedCount; ++i) {
+        MediaTrackConstraintSetMap map;
+        if (!decoder.decode(map))
+            return false;
+
+        advancedConstraints.uncheckedAppend(WTFMove(map));
+    }
+
+    bool isValid;
+    if (!decoder.decode(isValid))
+        return false;
+
+    constraints.mandatoryConstraints = WTFMove(mandatoryConstraints);
+    constraints.advancedConstraints = WTFMove(advancedConstraints);
+    constraints.isValid = isValid;
+
+    return true;
+}
+
+void ArgumentCoder<CaptureDevice>::encode(Encoder& encoder, const WebCore::CaptureDevice& device)
+{
+    encoder << device.persistentId();
+    encoder << device.label();
+    encoder << device.groupId();
+    encoder.encodeEnum(device.kind());
+}
+
+bool ArgumentCoder<CaptureDevice>::decode(Decoder& decoder, WebCore::CaptureDevice& device)
+{
+    String persistentId;
+    if (!decoder.decode(persistentId))
+        return false;
+
+    String label;
+    if (!decoder.decode(label))
+        return false;
+
+    String groupId;
+    if (!decoder.decode(groupId))
+        return false;
+
+    CaptureDevice::SourceKind kind;
+    if (!decoder.decodeEnum(kind))
+        return false;
+
+    device.setPersistentId(persistentId);
+    device.setLabel(label);
+    device.setGroupId(groupId);
+    device.setKind(kind);
+
+    return true;
+}
+#endif
+
+#if ENABLE(INDEXED_DATABASE)
+void ArgumentCoder<IDBKeyPath>::encode(Encoder& encoder, const IDBKeyPath& keyPath)
+{
+    bool isString = WTF::holds_alternative<String>(keyPath);
+    encoder << isString;
+    if (isString)
+        encoder << WTF::get<String>(keyPath);
+    else
+        encoder << WTF::get<Vector<String>>(keyPath);
+}
+
+bool ArgumentCoder<IDBKeyPath>::decode(Decoder& decoder, IDBKeyPath& keyPath)
+{
+    bool isString;
+    if (!decoder.decode(isString))
+        return false;
+    if (isString) {
+        String string;
+        if (!decoder.decode(string))
+            return false;
+        keyPath = string;
+    } else {
+        Vector<String> vector;
+        if (!decoder.decode(vector))
+            return false;
+        keyPath = vector;
+    }
+    return true;
+}
+#endif
 
 } // namespace IPC

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008, 2015 Apple Inc. All Rights Reserved.
+ * Copyright (C) 2008, 2015, 2016 Apple Inc. All Rights Reserved.
  * Copyright (C) 2012 Google Inc. All Rights Reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -22,21 +22,15 @@
  * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
- *
  */
 
-#ifndef WorkerScriptController_h
-#define WorkerScriptController_h
+#pragma once
 
 #include <debugger/Debugger.h>
 #include <heap/Strong.h>
 #include <wtf/Forward.h>
 #include <wtf/Lock.h>
 #include <wtf/NakedPtr.h>
-
-namespace Deprecated {
-class ScriptValue;
-}
 
 namespace JSC {
 class VM;
@@ -82,6 +76,9 @@ namespace WebCore {
         void disableEval(const String& errorMessage);
 
         JSC::VM& vm() { return *m_vm; }
+        
+        void releaseHeapAccess();
+        void acquireHeapAccess();
 
         void attachDebugger(JSC::Debugger*);
         void detachDebugger(JSC::Debugger*);
@@ -98,11 +95,9 @@ namespace WebCore {
         WorkerGlobalScope* m_workerGlobalScope;
         JSC::Strong<JSWorkerGlobalScope> m_workerGlobalScopeWrapper;
         std::unique_ptr<WorkerConsoleClient> m_consoleClient;
-        bool m_executionForbidden;
+        bool m_executionForbidden { false };
         bool m_isTerminatingExecution { false };
         mutable Lock m_scheduledTerminationMutex;
     };
 
 } // namespace WebCore
-
-#endif // WorkerScriptController_h

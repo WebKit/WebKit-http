@@ -43,7 +43,9 @@ class IDBObjectStoreInfo;
 class IDBRequestData;
 class IDBValue;
 
+struct IDBGetAllRecordsData;
 struct IDBGetRecordData;
+struct IDBIterateCursorData;
 struct IDBKeyRangeData;
 
 namespace IDBServer {
@@ -69,15 +71,18 @@ public:
 
     void createObjectStore(const IDBRequestData&, const IDBObjectStoreInfo&);
     void deleteObjectStore(const IDBRequestData&, const String& objectStoreName);
+    void renameObjectStore(const IDBRequestData&, uint64_t objectStoreIdentifier, const String& newName);
     void clearObjectStore(const IDBRequestData&, uint64_t objectStoreIdentifier);
     void createIndex(const IDBRequestData&, const IDBIndexInfo&);
     void deleteIndex(const IDBRequestData&, uint64_t objectStoreIdentifier, const String& indexName);
+    void renameIndex(const IDBRequestData&, uint64_t objectStoreIdentifier, uint64_t indexIdentifier, const String& newName);
     void putOrAdd(const IDBRequestData&, const IDBKeyData&, const IDBValue&, IndexedDB::ObjectStoreOverwriteMode);
     void getRecord(const IDBRequestData&, const IDBGetRecordData&);
+    void getAllRecords(const IDBRequestData&, const IDBGetAllRecordsData&);
     void getCount(const IDBRequestData&, const IDBKeyRangeData&);
     void deleteRecord(const IDBRequestData&, const IDBKeyRangeData&);
     void openCursor(const IDBRequestData&, const IDBCursorInfo&);
-    void iterateCursor(const IDBRequestData&, const IDBKeyData&, unsigned long count);
+    void iterateCursor(const IDBRequestData&, const IDBIterateCursorData&);
 
     void didActivateInBackingStore(const IDBError&);
 

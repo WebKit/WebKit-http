@@ -221,7 +221,7 @@ static bool methodCanHaveBody(const FetchRequest::InternalRequest& internalReque
     return internalRequest.request.httpMethod() != "GET" && internalRequest.request.httpMethod() != "HEAD";
 }
 
-ExceptionOr<Ref<FetchHeaders>> FetchRequest::initializeOptions(const Dictionary& init)
+ExceptionOr<FetchHeaders&> FetchRequest::initializeOptions(const Dictionary& init)
 {
     ASSERT(scriptExecutionContext());
 
@@ -237,10 +237,10 @@ ExceptionOr<Ref<FetchHeaders>> FetchRequest::initializeOptions(const Dictionary&
             return Exception { TypeError, ASCIILiteral("There cannot be an integrity in no-cors mode.") };
         m_headers->setGuard(FetchHeaders::Guard::RequestNoCors);
     }
-    return m_headers.copyRef();
+    return m_headers.get();
 }
 
-ExceptionOr<Ref<FetchHeaders>> FetchRequest::initializeWith(const String& url, const Dictionary& init)
+ExceptionOr<FetchHeaders&> FetchRequest::initializeWith(const String& url, const Dictionary& init)
 {
     ASSERT(scriptExecutionContext());
     // FIXME: Tighten the URL parsing algorithm according https://url.spec.whatwg.org/#concept-url-parser.
@@ -252,11 +252,12 @@ ExceptionOr<Ref<FetchHeaders>> FetchRequest::initializeWith(const String& url, c
     m_internalRequest.options.credentials = Credentials::Omit;
     m_internalRequest.referrer = ASCIILiteral("client");
     m_internalRequest.request.setURL(requestURL);
+    m_internalRequest.request.setInitiatorIdentifier(scriptExecutionContext()->resourceRequestIdentifier());
 
     return initializeOptions(init);
 }
 
-ExceptionOr<Ref<FetchHeaders>> FetchRequest::initializeWith(FetchRequest& input, const Dictionary& init)
+ExceptionOr<FetchHeaders&> FetchRequest::initializeWith(FetchRequest& input, const Dictionary& init)
 {
     if (input.isDisturbedOrLocked())
         return Exception {TypeError, ASCIILiteral("Request input is disturbed or locked.") };

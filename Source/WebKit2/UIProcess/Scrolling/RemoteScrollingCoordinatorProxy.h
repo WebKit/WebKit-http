@@ -53,7 +53,7 @@ public:
     virtual ~RemoteScrollingCoordinatorProxy();
     
     // Inform the web process that the scroll position changed (called from the scrolling tree)
-    void scrollingTreeNodeDidScroll(WebCore::ScrollingNodeID, const WebCore::FloatPoint& newScrollPosition, WebCore::SetOrSyncScrollingLayerPosition);
+    void scrollingTreeNodeDidScroll(WebCore::ScrollingNodeID, const WebCore::FloatPoint& newScrollPosition, const Optional<WebCore::FloatPoint>& layoutViewportOrigin, WebCore::SetOrSyncScrollingLayerPosition);
     void scrollingTreeNodeRequestsScroll(WebCore::ScrollingNodeID, const WebCore::FloatPoint& scrollPosition, bool representsProgrammaticScroll);
 
     WebCore::TrackingType eventTrackingTypeForPoint(const AtomicString& eventName, WebCore::IntPoint) const;
@@ -75,7 +75,7 @@ public:
         bool requestIsProgrammaticScroll { };
         WebCore::FloatPoint requestedScrollPosition;
     };
-    void updateScrollingTree(const RemoteScrollingCoordinatorTransaction&, RequestedScrollInfo&);
+    void commitScrollingTreeState(const RemoteScrollingCoordinatorTransaction&, RequestedScrollInfo&);
 
     void setPropagatesMainFrameScrolls(bool propagatesMainFrameScrolls) { m_propagatesMainFrameScrolls = propagatesMainFrameScrolls; }
     bool propagatesMainFrameScrolls() const { return m_propagatesMainFrameScrolls; }
@@ -93,6 +93,8 @@ public:
     bool shouldSetScrollViewDecelerationRateFast() const;
 #endif
 #endif
+
+    String scrollingTreeAsText() const;
 
 private:
     void connectStateNodeLayers(WebCore::ScrollingStateTree&, const RemoteLayerTreeHost&);

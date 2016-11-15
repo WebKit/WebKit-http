@@ -28,12 +28,10 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef RenderListBox_h
-#define RenderListBox_h
+#pragma once
 
 #include "RenderBlockFlow.h"
 #include "ScrollableArea.h"
-
 #include <wtf/Optional.h>
 
 namespace WebCore {
@@ -147,7 +145,7 @@ private:
     void paintItem(PaintInfo&, const LayoutPoint&, PaintFunction);
 
     void setHasVerticalScrollbar(bool hasScrollbar);
-    PassRefPtr<Scrollbar> createScrollbar();
+    Ref<Scrollbar> createScrollbar();
     void destroyScrollbar();
     
     int maximumNumberOfItemsThatFitInPaddingBottomArea() const;
@@ -186,5 +184,3 @@ private:
 } // namepace WebCore
 
 SPECIALIZE_TYPE_TRAITS_RENDER_OBJECT(RenderListBox, isListBox())
-
-#endif // RenderListBox_h

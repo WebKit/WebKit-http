@@ -42,8 +42,6 @@ namespace WebCore {
 class IDBKey;
 class ScriptExecutionContext;
 
-typedef int ExceptionCode;
-
 class IDBKeyRange : public ScriptWrappable, public RefCounted<IDBKeyRange> {
 public:
     static Ref<IDBKeyRange> create(RefPtr<IDBKey>&& lower, RefPtr<IDBKey>&& upper, bool isLowerOpen, bool isUpperOpen);
@@ -62,6 +60,8 @@ public:
     static ExceptionOr<Ref<IDBKeyRange>> upperBound(JSC::ExecState&, JSC::JSValue bound, bool open);
 
     static ExceptionOr<Ref<IDBKeyRange>> bound(JSC::ExecState&, JSC::JSValue lower, JSC::JSValue upper, bool lowerOpen, bool upperOpen);
+
+    ExceptionOr<bool> includes(JSC::ExecState&, JSC::JSValue key);
 
     WEBCORE_EXPORT bool isOnlyKey() const;
 

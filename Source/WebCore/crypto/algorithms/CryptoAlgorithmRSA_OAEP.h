@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef CryptoAlgorithmRSA_OAEP_h
-#define CryptoAlgorithmRSA_OAEP_h
+#pragma once
 
 #include "CryptoAlgorithm.h"
 
@@ -37,28 +36,27 @@ class CryptoKeyRSA;
 
 class CryptoAlgorithmRSA_OAEP final : public CryptoAlgorithm {
 public:
-    static const char* const s_name;
-    static const CryptoAlgorithmIdentifier s_identifier = CryptoAlgorithmIdentifier::RSA_OAEP;
-
+    static constexpr const char* s_name = "RSA-OAEP";
+    static constexpr CryptoAlgorithmIdentifier s_identifier = CryptoAlgorithmIdentifier::RSA_OAEP;
     static Ref<CryptoAlgorithm> create();
 
-    CryptoAlgorithmIdentifier identifier() const override;
-
-    void encrypt(const CryptoAlgorithmParametersDeprecated&, const CryptoKey&, const CryptoOperationData&, VectorCallback&&, VoidCallback&& failureCallback, ExceptionCode&) override;
-    void decrypt(const CryptoAlgorithmParametersDeprecated&, const CryptoKey&, const CryptoOperationData&, VectorCallback&&, VoidCallback&& failureCallback, ExceptionCode&) override;
-    void generateKey(const CryptoAlgorithmParametersDeprecated&, bool extractable, CryptoKeyUsage, KeyOrKeyPairCallback&&, VoidCallback&& failureCallback, ExceptionCode&) override;
-    void importKey(const CryptoAlgorithmParametersDeprecated&, const CryptoKeyData&, bool extractable, CryptoKeyUsage, KeyCallback&&, VoidCallback&& failureCallback, ExceptionCode&) override;
-
 private:
-    CryptoAlgorithmRSA_OAEP();
-    virtual ~CryptoAlgorithmRSA_OAEP();
+    CryptoAlgorithmRSA_OAEP() = default;
+    CryptoAlgorithmIdentifier identifier() const final;
+
+    void generateKey(const std::unique_ptr<CryptoAlgorithmParameters>&&, bool extractable, CryptoKeyUsageBitmap, KeyOrKeyPairCallback&&, ExceptionCallback&&, ScriptExecutionContext&) final;
+    void importKey(SubtleCrypto::KeyFormat, KeyData&&, const std::unique_ptr<CryptoAlgorithmParameters>&&, bool extractable, CryptoKeyUsageBitmap, KeyCallback&&, ExceptionCallback&&) final;
+
+    ExceptionOr<void> encrypt(const CryptoAlgorithmParametersDeprecated&, const CryptoKey&, const CryptoOperationData&, VectorCallback&&, VoidCallback&& failureCallback) final;
+    ExceptionOr<void> decrypt(const CryptoAlgorithmParametersDeprecated&, const CryptoKey&, const CryptoOperationData&, VectorCallback&&, VoidCallback&& failureCallback) final;
+    ExceptionOr<void> generateKey(const CryptoAlgorithmParametersDeprecated&, bool extractable, CryptoKeyUsageBitmap, KeyOrKeyPairCallback&&, VoidCallback&& failureCallback, ScriptExecutionContext&) final;
+    ExceptionOr<void> importKey(const CryptoAlgorithmParametersDeprecated&, const CryptoKeyData&, bool extractable, CryptoKeyUsageBitmap, KeyCallback&&, VoidCallback&& failureCallback) final;
 
     bool keyAlgorithmMatches(const CryptoAlgorithmRsaOaepParamsDeprecated& algorithmParameters, const CryptoKey&) const;
-    void platformEncrypt(const CryptoAlgorithmRsaOaepParamsDeprecated&, const CryptoKeyRSA&, const CryptoOperationData&, VectorCallback&&, VoidCallback&& failureCallback, ExceptionCode&);
-    void platformDecrypt(const CryptoAlgorithmRsaOaepParamsDeprecated&, const CryptoKeyRSA&, const CryptoOperationData&, VectorCallback&&, VoidCallback&& failureCallback, ExceptionCode&);
+    ExceptionOr<void> platformEncrypt(const CryptoAlgorithmRsaOaepParamsDeprecated&, const CryptoKeyRSA&, const CryptoOperationData&, VectorCallback&&, VoidCallback&& failureCallback);
+    ExceptionOr<void> platformDecrypt(const CryptoAlgorithmRsaOaepParamsDeprecated&, const CryptoKeyRSA&, const CryptoOperationData&, VectorCallback&&, VoidCallback&& failureCallback);
 };
 
-}
+} // namespace WebCore
 
 #endif // ENABLE(SUBTLE_CRYPTO)
-#endif // CryptoAlgorithmRSA_OAEP_h

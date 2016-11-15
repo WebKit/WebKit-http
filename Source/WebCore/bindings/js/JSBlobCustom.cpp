@@ -34,7 +34,6 @@
 
 #include "Blob.h"
 #include "ExceptionCode.h"
-#include "ExceptionCodePlaceholder.h"
 #include "JSDOMBinding.h"
 #include "JSDictionary.h"
 #include "JSFile.h"
@@ -120,9 +119,9 @@ EncodedJSValue JSC_HOST_CALL constructJSBlob(ExecState& exec)
         JSValue item = blobParts->get(&exec, i);
         RETURN_IF_EXCEPTION(scope, encodedJSValue());
 
-        if (ArrayBuffer* arrayBuffer = toArrayBuffer(item))
+        if (ArrayBuffer* arrayBuffer = toUnsharedArrayBuffer(item))
             blobBuilder.append(arrayBuffer);
-        else if (auto arrayBufferView = toArrayBufferView(item))
+        else if (auto arrayBufferView = toUnsharedArrayBufferView(item))
             blobBuilder.append(WTFMove(arrayBufferView));
         else if (Blob* blob = JSBlob::toWrapped(item))
             blobBuilder.append(blob);

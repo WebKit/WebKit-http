@@ -19,8 +19,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef RenderSVGText_h
-#define RenderSVGText_h
+#pragma once
 
 #include "AffineTransform.h"
 #include "RenderSVGBlock.h"
@@ -92,7 +91,7 @@ private:
     std::unique_ptr<RootInlineBox> createRootInlineBox() override;
 
     RenderBlock* firstLineBlock() const override;
-    void updateFirstLetter() override;
+    void updateFirstLetter(RenderTreeMutationIsAllowed = RenderTreeMutationIsAllowed::Yes) override;
 
     bool shouldHandleSubtreeMutations() const;
 
@@ -108,5 +107,3 @@ private:
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_RENDER_OBJECT(RenderSVGText, isSVGText())
-
-#endif // RenderSVGText_h

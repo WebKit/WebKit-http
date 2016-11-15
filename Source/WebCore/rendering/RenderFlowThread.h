@@ -27,8 +27,7 @@
  * SUCH DAMAGE.
  */
 
-#ifndef RenderFlowThread_h
-#define RenderFlowThread_h
+#pragma once
 
 #include "LayerFragment.h"
 #include "RenderBlockFlow.h"
@@ -60,13 +59,13 @@ class RenderFlowThread: public RenderBlockFlow {
 public:
     virtual ~RenderFlowThread() { }
 
-    virtual void removeFlowChildInfo(RenderElement*);
+    virtual void removeFlowChildInfo(RenderElement&);
 #ifndef NDEBUG
     bool hasChildInfo(RenderObject* child) const { return is<RenderBox>(child) && m_regionRangeMap.contains(downcast<RenderBox>(child)); }
 #endif
 
 #if !ASSERT_WITH_SECURITY_IMPLICATION_DISABLED
-    bool checkLinesConsistency(const RenderBlockFlow*) const;
+    bool checkLinesConsistency(const RenderBlockFlow&) const;
 #endif
     
     void deleteLines() override;
@@ -92,9 +91,9 @@ public:
     // location in the tree.
     virtual RenderObject* resolveMovedChild(RenderObject* child) const { return child; }
     // Called when a descendant of the flow thread has been inserted.
-    virtual void flowThreadDescendantInserted(RenderObject*) { }
+    virtual void flowThreadDescendantInserted(RenderObject&) { }
     // Called when a sibling or descendant of the flow thread is about to be removed.
-    virtual void flowThreadRelativeWillBeRemoved(RenderObject*) { }
+    virtual void flowThreadRelativeWillBeRemoved(RenderObject&) { }
     // Called when a descendant box's layout is finished and it has been positioned within its container.
     virtual void flowThreadDescendantBoxLaidOut(RenderBox*) { }
 
@@ -133,10 +132,10 @@ public:
     bool previousRegionCountChanged() const { return m_previousRegionCount != m_regionList.size(); };
     void updatePreviousRegionCount() { m_previousRegionCount = m_regionList.size(); };
 
-    virtual void setRegionRangeForBox(const RenderBox*, RenderRegion*, RenderRegion*);
+    virtual void setRegionRangeForBox(const RenderBox&, RenderRegion*, RenderRegion*);
     bool getRegionRangeForBox(const RenderBox*, RenderRegion*& startRegion, RenderRegion*& endRegion) const;
     bool computedRegionRangeForBox(const RenderBox*, RenderRegion*& startRegion, RenderRegion*& endRegion) const;
-    bool hasCachedRegionRangeForBox(const RenderBox*) const;
+    bool hasCachedRegionRangeForBox(const RenderBox&) const;
 
     // Check if the object is in region and the region is part of this flow thread.
     bool objectInFlowRegion(const RenderObject*, const RenderRegion*) const;
@@ -200,7 +199,7 @@ public:
     void pushFlowThreadLayoutState(const RenderObject&);
     void popFlowThreadLayoutState();
     LayoutUnit offsetFromLogicalTopOfFirstRegion(const RenderBlock*) const;
-    void clearRenderBoxRegionInfoAndCustomStyle(const RenderBox*, const RenderRegion*, const RenderRegion*, const RenderRegion*, const RenderRegion*);
+    void clearRenderBoxRegionInfoAndCustomStyle(const RenderBox&, const RenderRegion*, const RenderRegion*, const RenderRegion*, const RenderRegion*);
 
     void addRegionsVisualEffectOverflow(const RenderBox*);
     void addRegionsVisualOverflowFromTheme(const RenderBlock*);
@@ -274,8 +273,8 @@ protected:
 
     bool getRegionRangeForBoxFromCachedInfo(const RenderBox*, RenderRegion*& startRegion, RenderRegion*& endRegion) const;
 
-    void removeRenderBoxRegionInfo(RenderBox*);
-    void removeLineRegionInfo(const RenderBlockFlow*);
+    void removeRenderBoxRegionInfo(RenderBox&);
+    void removeLineRegionInfo(const RenderBlockFlow&);
 
     RenderRegionList m_regionList;
     unsigned short m_previousRegionCount;
@@ -381,5 +380,3 @@ template <> struct ValueToString<RenderRegion*> {
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_RENDER_OBJECT(RenderFlowThread, isRenderFlowThread())
-
-#endif // RenderFlowThread_h

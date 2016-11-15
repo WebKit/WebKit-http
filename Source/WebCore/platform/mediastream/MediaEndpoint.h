@@ -39,15 +39,18 @@
 
 namespace WebCore {
 
-class IceCandidate;
 class MediaEndpoint;
 class MediaEndpointClient;
 class MediaEndpointSessionConfiguration;
-class MediaPayload;
+class RTCDataChannelHandler;
 class RealtimeMediaSource;
 
+struct IceCandidate;
+struct MediaPayload;
+struct RTCDataChannelInit;
+
 typedef std::unique_ptr<MediaEndpoint> (*CreateMediaEndpoint)(MediaEndpointClient&);
-typedef Vector<RefPtr<MediaPayload>> MediaPayloadVector;
+typedef Vector<MediaPayload> MediaPayloadVector;
 typedef HashMap<String, RealtimeMediaSource*> RealtimeMediaSourceMap;
 
 class MediaEndpoint {
@@ -63,7 +66,7 @@ public:
 
     using IceTransportState = PeerConnectionStates::IceTransportState;
 
-    virtual void setConfiguration(RefPtr<MediaEndpointConfiguration>&&) = 0;
+    virtual void setConfiguration(MediaEndpointConfiguration&&) = 0;
 
     virtual void generateDtlsInfo() = 0;
     virtual MediaPayloadVector getDefaultAudioPayloads() = 0;
@@ -73,11 +76,13 @@ public:
     virtual UpdateResult updateReceiveConfiguration(MediaEndpointSessionConfiguration*, bool isInitiator) = 0;
     virtual UpdateResult updateSendConfiguration(MediaEndpointSessionConfiguration*, const RealtimeMediaSourceMap&, bool isInitiator) = 0;
 
-    virtual void addRemoteCandidate(IceCandidate&, const String& mid, const String& ufrag, const String& password) = 0;
+    virtual void addRemoteCandidate(const IceCandidate&, const String& mid, const String& ufrag, const String& password) = 0;
 
     virtual Ref<RealtimeMediaSource> createMutedRemoteSource(const String& mid, RealtimeMediaSource::Type) = 0;
     virtual void replaceSendSource(RealtimeMediaSource&, const String& mid) = 0;
     virtual void replaceMutedRemoteSourceMid(const String& oldMid, const String& newMid) = 0;
+
+    virtual std::unique_ptr<RTCDataChannelHandler> createDataChannelHandler(const String&, const RTCDataChannelInit&) = 0;
 
     virtual void stop() = 0;
 
@@ -87,7 +92,7 @@ public:
 class MediaEndpointClient {
 public:
     virtual void gotDtlsFingerprint(const String& fingerprint, const String& fingerprintFunction) = 0;
-    virtual void gotIceCandidate(const String& mid, RefPtr<IceCandidate>&&) = 0;
+    virtual void gotIceCandidate(const String& mid, IceCandidate&&) = 0;
     virtual void doneGatheringCandidates(const String& mid) = 0;
     virtual void iceTransportStateChanged(const String& mid, MediaEndpoint::IceTransportState) = 0;
 

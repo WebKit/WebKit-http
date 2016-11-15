@@ -26,8 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ImplicitAnimation_h
-#define ImplicitAnimation_h
+#pragma once
 
 #include "AnimationBase.h"
 #include "CSSPropertyNames.h"
@@ -54,7 +53,7 @@ public:
     void pauseAnimation(double timeOffset) override;
     void endAnimation() override;
 
-    bool animate(CompositeAnimation*, RenderElement*, const RenderStyle* currentStyle, const RenderStyle* targetStyle, std::unique_ptr<RenderStyle>& animatedStyle) override;
+    bool animate(CompositeAnimation*, RenderElement*, const RenderStyle* currentStyle, const RenderStyle* targetStyle, std::unique_ptr<RenderStyle>& animatedStyle, bool& didBlendStyle) override;
     void getAnimatedStyle(std::unique_ptr<RenderStyle>& animatedStyle) override;
     void reset(const RenderStyle* to);
 
@@ -102,5 +101,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // ImplicitAnimation_h

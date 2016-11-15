@@ -27,8 +27,7 @@
  * SUCH DAMAGE.
  */
 
-#ifndef RenderNamedFlowFragment_h
-#define RenderNamedFlowFragment_h
+#pragma once
 
 #include "RenderRegion.h"
 
@@ -79,7 +78,7 @@ public:
     RenderLayerModelObject& layerOwner() const { return downcast<RenderLayerModelObject>(*parent()); }
 
     bool hasCustomRegionStyle() const { return m_hasCustomRegionStyle; }
-    void clearObjectStyleInRegion(const RenderElement*);
+    void clearObjectStyleInRegion(const RenderElement&);
 
     void setRegionObjectsRegionStyle();
     void restoreRegionObjectsOriginalStyle();
@@ -166,5 +165,3 @@ private:
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_RENDER_OBJECT(RenderNamedFlowFragment, isRenderNamedFlowFragment())
-
-#endif // RenderNamedFlowFragment_h

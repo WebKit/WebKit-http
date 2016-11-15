@@ -33,6 +33,7 @@
 #import "EditingStyle.h"
 #import "Frame.h"
 #import "FrameSelection.h"
+#import "HTMLSpanElement.h"
 #import "NSAttributedStringSPI.h"
 #import "RenderElement.h"
 #import "RenderStyle.h"
@@ -40,7 +41,13 @@
 #import "Text.h"
 #import "htmlediting.h"
 
-SOFT_LINK_FRAMEWORK(WebKitLegacy)
+#if PLATFORM(IOS)
+SOFT_LINK_PRIVATE_FRAMEWORK(WebKitLegacy)
+#endif
+
+#if PLATFORM(MAC)
+SOFT_LINK_FRAMEWORK_IN_UMBRELLA(WebKit, WebKitLegacy)
+#endif
 
 SOFT_LINK(WebKitLegacy, _WebCreateFragment, void, (WebCore::Document& document, NSAttributedString *string, WebCore::FragmentAndResources& result), (document, string, result))
 
@@ -62,19 +69,15 @@ const RenderStyle* Editor::styleForSelectionStart(Frame* frame, Node*& nodeToRem
     if (!typingStyle || !typingStyle->style())
         return &position.deprecatedNode()->renderer()->style();
 
-    Ref<Element> styleElement = frame->document()->createElement(HTMLNames::spanTag, false);
+    auto styleElement = HTMLSpanElement::create(*frame->document());
 
     String styleText = typingStyle->style()->asText() + " display: inline";
     styleElement->setAttribute(HTMLNames::styleAttr, styleText);
 
-    styleElement->appendChild(frame->document()->createEditingTextNode(emptyString()), ASSERT_NO_EXCEPTION);
+    styleElement->appendChild(frame->document()->createEditingTextNode(emptyString()));
 
-    ContainerNode* parentNode = position.deprecatedNode()->parentNode();
-
-    if (!parentNode->ensurePreInsertionValidity(styleElement.copyRef(), nullptr, IGNORE_EXCEPTION))
+    if (position.deprecatedNode()->parentNode()->appendChild(styleElement).hasException())
         return nullptr; 
-
-    parentNode->appendChild(styleElement, ASSERT_NO_EXCEPTION);
 
     nodeToRemove = styleElement.ptr();
 

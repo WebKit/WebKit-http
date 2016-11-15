@@ -245,17 +245,23 @@ private:
             break;
         }
 
-        case ArithNegate:
-            if (node->child1()->prediction()) {
-                if (m_graph.unaryArithShouldSpeculateInt32(node, m_pass))
+        case ArithNegate: {
+            SpeculatedType prediction = node->child1()->prediction();
+            if (prediction) {
+                if (isInt32OrBooleanSpeculation(prediction) && node->canSpeculateInt32(m_pass))
                     changed |= mergePrediction(SpecInt32Only);
                 else if (m_graph.unaryArithShouldSpeculateAnyInt(node, m_pass))
                     changed |= mergePrediction(SpecInt52Only);
-                else
+                else if (isBytecodeNumberSpeculation(prediction))
                     changed |= mergePrediction(speculatedDoubleTypeForPrediction(node->child1()->prediction()));
+                else {
+                    changed |= mergePrediction(SpecInt32Only);
+                    if (node->mayHaveDoubleResult())
+                        changed |= mergePrediction(SpecBytecodeDouble);
+                }
             }
             break;
-            
+        }
         case ArithMin:
         case ArithMax: {
             SpeculatedType left = node->child1()->prediction();
@@ -685,8 +691,11 @@ private:
         case MultiGetByOffset:
         case GetDirectPname:
         case Call:
+        case DirectCall:
         case TailCallInlinedCaller:
+        case DirectTailCallInlinedCaller:
         case Construct:
+        case DirectConstruct:
         case CallVarargs:
         case CallEval:
         case TailCallVarargsInlinedCaller:
@@ -700,7 +709,8 @@ private:
         case GetFromArguments:
         case LoadFromJSMapBucket:
         case ToNumber:
-        case CallDOM: {
+        case GetArgument:
+        case CallDOMGetter: {
             setPrediction(m_currentNode->getHeapPrediction());
             break;
         }
@@ -849,6 +859,7 @@ private:
             break;
         }
             
+        case NewArrayWithSpread:
         case NewArray:
         case NewArrayWithSize:
         case CreateRest:
@@ -856,6 +867,10 @@ private:
             setPrediction(SpecArray);
             break;
         }
+
+        case Spread:
+            setPrediction(SpecCellOther);
+            break;
             
         case NewTypedArray: {
             setPrediction(speculationFromTypedArrayType(m_currentNode->typedArrayType()));
@@ -994,6 +1009,7 @@ private:
         case PhantomNewGeneratorFunction:
         case PhantomCreateActivation:
         case PhantomDirectArguments:
+        case PhantomCreateRest:
         case PhantomClonedArguments:
         case GetMyArgumentByVal:
         case GetMyArgumentByValOutOfBounds:
@@ -1009,7 +1025,8 @@ private:
         case GetRegExpObjectLastIndex:
         case SetRegExpObjectLastIndex:
         case RecordRegExpCachedResult:
-        case LazyJSConstant: {
+        case LazyJSConstant:
+        case CallDOM: {
             // This node should never be visible at this stage of compilation. It is
             // inserted by fixup(), which follows this phase.
             DFG_CRASH(m_graph, m_currentNode, "Unexpected node during prediction propagation");
@@ -1037,6 +1054,7 @@ private:
         case PutToArguments:
         case Return:
         case TailCall:
+        case DirectTailCall:
         case TailCallVarargs:
         case TailCallForwardVarargs:
         case Throw:

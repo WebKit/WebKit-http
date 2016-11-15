@@ -63,6 +63,9 @@ WebInspector.ScopeChainDetailsSidebarPanel = class ScopeChainDetailsSidebarPanel
         // Update on console prompt eval as objects in the scope chain may have changed.
         WebInspector.runtimeManager.addEventListener(WebInspector.RuntimeManager.Event.DidEvaluate, this._didEvaluateExpression, this);
 
+        // Update watch expressions when console execution context changes.
+        WebInspector.runtimeManager.addEventListener(WebInspector.RuntimeManager.Event.ActiveExecutionContextChanged, this._activeExecutionContextChanged, this)
+
         // Update watch expressions on navigations.
         WebInspector.Frame.addEventListener(WebInspector.Frame.Event.MainResourceDidChange, this._mainResourceDidChange, this);
     }
@@ -168,6 +171,10 @@ WebInspector.ScopeChainDetailsSidebarPanel = class ScopeChainDetailsSidebarPanel
 
         let scopeChain = callFrame.mergedScopeChain();
         for (let scope of scopeChain) {
+            // Don't show sections for empty scopes unless it is the local scope, since it has "this".
+            if (scope.empty && scope.type !== WebInspector.ScopeChainNode.Type.Local)
+                continue;
+
             let title = null;
             let extraPropertyDescriptor = null;
             let collapsedByDefault = false;
@@ -261,12 +268,14 @@ WebInspector.ScopeChainDetailsSidebarPanel = class ScopeChainDetailsSidebarPanel
         if (!watchExpressions.length) {
             if (this._usedWatchExpressionsObjectGroup) {
                 this._usedWatchExpressionsObjectGroup = false;
-                RuntimeAgent.releaseObjectGroup(WebInspector.ScopeChainDetailsSidebarPanel.WatchExpressionsObjectGroupName);
+                for (let target of WebInspector.targets)
+                    target.RuntimeAgent.releaseObjectGroup(WebInspector.ScopeChainDetailsSidebarPanel.WatchExpressionsObjectGroupName);
             }
             return Promise.resolve(null);
         }
 
-        RuntimeAgent.releaseObjectGroup(WebInspector.ScopeChainDetailsSidebarPanel.WatchExpressionsObjectGroupName);
+        for (let target of WebInspector.targets)
+            target.RuntimeAgent.releaseObjectGroup(WebInspector.ScopeChainDetailsSidebarPanel.WatchExpressionsObjectGroupName);
         this._usedWatchExpressionsObjectGroup = true;
 
         let watchExpressionsRemoteObject = WebInspector.RemoteObject.createFakeRemoteObject();
@@ -285,6 +294,8 @@ WebInspector.ScopeChainDetailsSidebarPanel = class ScopeChainDetailsSidebarPanel
             promises.push(new Promise(function(resolve, reject) {
                 let options = {objectGroup: WebInspector.ScopeChainDetailsSidebarPanel.WatchExpressionsObjectGroupName, includeCommandLineAPI: false, doNotPauseOnExceptionsAndMuteConsole: true, returnByValue: false, generatePreview: true, saveResult: false};
                 WebInspector.runtimeManager.evaluateInInspectedWindow(expression, options, function(object, wasThrown) {
+                    if (!object)
+                        return;
                     let propertyDescriptor = new WebInspector.PropertyDescriptor({name: expression, value: object}, undefined, undefined, wasThrown);
                     objectTree.appendExtraPropertyDescriptor(propertyDescriptor);
                     resolve(propertyDescriptor);
@@ -405,6 +416,11 @@ WebInspector.ScopeChainDetailsSidebarPanel = class ScopeChainDetailsSidebarPanel
         if (event.data.objectGroup === WebInspector.ScopeChainDetailsSidebarPanel.WatchExpressionsObjectGroupName)
             return;
 
+        this.needsLayout();
+    }
+
+    _activeExecutionContextChanged()
+    {
         this.needsLayout();
     }
 

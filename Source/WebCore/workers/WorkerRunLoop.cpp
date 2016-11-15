@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2009 Google Inc. All rights reserved.
+ * Copyright (C) 2016 Apple Inc.  All rights reserved.
  * 
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -49,16 +50,16 @@ class WorkerSharedTimer final : public SharedTimer {
 public:
     // SharedTimer interface.
     void setFiredFunction(std::function<void()>&& function) override { m_sharedTimerFunction = WTFMove(function); }
-    void setFireInterval(double interval) override { m_nextFireTime = interval + currentTime(); }
-    void stop() override { m_nextFireTime = 0; }
+    void setFireInterval(Seconds interval) override { m_nextFireTime = interval + WallTime::now(); }
+    void stop() override { m_nextFireTime = WallTime(); }
 
     bool isActive() { return m_sharedTimerFunction && m_nextFireTime; }
-    double fireTime() { return m_nextFireTime; }
+    WallTime fireTime() { return m_nextFireTime; }
     void fire() { m_sharedTimerFunction(); }
 
 private:
     std::function<void()> m_sharedTimerFunction;
-    double m_nextFireTime { 0 };
+    WallTime m_nextFireTime;
 };
 
 class ModePredicate {
@@ -101,6 +102,11 @@ String WorkerRunLoop::defaultMode()
     return String();
 }
 
+String WorkerRunLoop::debuggerMode()
+{
+    return ASCIILiteral("debugger");
+}
+
 class RunLoopSetup {
     WTF_MAKE_NONCOPYABLE(RunLoopSetup);
 public:
@@ -116,7 +122,7 @@ public:
     {
         m_runLoop.m_nestedCount--;
         if (!m_runLoop.m_nestedCount)
-            threadGlobalData().threadTimers().setSharedTimer(0);
+            threadGlobalData().threadTimers().setSharedTimer(nullptr);
     }
 private:
     WorkerRunLoop& m_runLoop;
@@ -152,15 +158,16 @@ MessageQueueWaitResult WorkerRunLoop::runInMode(WorkerGlobalScope* context, cons
         g_main_context_iteration(mainContext, FALSE);
 #endif
 
-    double deadline = MessageQueue<Task>::infiniteTime();
+    WallTime deadline = WallTime::infinity();
 
 #if USE(CF)
     CFAbsoluteTime nextCFRunLoopTimerFireDate = CFRunLoopGetNextTimerFireDate(CFRunLoopGetCurrent(), kCFRunLoopDefaultMode);
     double timeUntilNextCFRunLoopTimerInSeconds = nextCFRunLoopTimerFireDate - CFAbsoluteTimeGetCurrent();
-    deadline = currentTime() + std::max(0.0, timeUntilNextCFRunLoopTimerInSeconds);
+    deadline = WallTime::now() + std::max(
+        Seconds(0), Seconds(timeUntilNextCFRunLoopTimerInSeconds));
 #endif
 
-    double absoluteTime = 0.0;
+    WallTime absoluteTime;
     if (waitMode == WaitForMessage) {
         if (predicate.isDefaultMode() && m_sharedTimer->isActive())
             absoluteTime = std::min(deadline, m_sharedTimer->fireTime());
@@ -168,7 +175,11 @@ MessageQueueWaitResult WorkerRunLoop::runInMode(WorkerGlobalScope* context, cons
             absoluteTime = deadline;
     }
     MessageQueueWaitResult result;
+    if (WorkerScriptController* script = context->script())
+        script->releaseHeapAccess();
     auto task = m_messageQueue.waitForMessageFilteredWithTimeout(result, predicate, absoluteTime);
+    if (WorkerScriptController* script = context->script())
+        script->acquireHeapAccess();
 
     // If the context is closing, don't execute any further JavaScript tasks (per section 4.1.1 of the Web Workers spec).  However, there may be implementation cleanup tasks in the queue, so keep running through it.
 

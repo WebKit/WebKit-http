@@ -33,8 +33,6 @@
 #include "Event.h"
 #include "EventHandler.h"
 #include "EventNames.h"
-#include "ExceptionCode.h"
-#include "ExceptionCodePlaceholder.h"
 #include "FormController.h"
 #include "FormDataList.h"
 #include "Frame.h"
@@ -105,7 +103,7 @@ Ref<HTMLTextAreaElement> HTMLTextAreaElement::create(const QualifiedName& tagNam
 
 void HTMLTextAreaElement::didAddUserAgentShadowRoot(ShadowRoot* root)
 {
-    root->appendChild(TextControlInnerTextElement::create(document()), ASSERT_NO_EXCEPTION);
+    root->appendChild(TextControlInnerTextElement::create(document()));
     updateInnerTextElementEditability();
 }
 
@@ -205,21 +203,13 @@ void HTMLTextAreaElement::parseAttribute(const QualifiedName& name, const Atomic
 
 void HTMLTextAreaElement::maxLengthAttributeChanged(const AtomicString& newValue)
 {
-    if (Optional<unsigned> maxLength = parseHTMLNonNegativeInteger(newValue))
-        setMaxLength(maxLength.value());
-    else
-        setMaxLength(-1);
-
+    internalSetMaxLength(parseHTMLNonNegativeInteger(newValue).valueOr(-1));
     updateValidity();
 }
 
 void HTMLTextAreaElement::minLengthAttributeChanged(const AtomicString& newValue)
 {
-    if (Optional<unsigned> minLength = parseHTMLNonNegativeInteger(newValue))
-        setMinLength(minLength.value());
-    else
-        setMinLength(-1);
-
+    internalSetMinLength(parseHTMLNonNegativeInteger(newValue).valueOr(-1));
     updateValidity();
 }
 
@@ -397,7 +387,7 @@ void HTMLTextAreaElement::setValueCommon(const String& newValue)
     setInnerTextValue(m_value);
     setLastChangeWasNotUserEdit();
     updatePlaceholderVisibility();
-    setNeedsStyleRecalc();
+    invalidateStyleForSubtree();
     setFormControlValueMatchesRenderer(true);
 
     // Set the caret to the end of the text value.
@@ -424,14 +414,14 @@ void HTMLTextAreaElement::setDefaultValue(const String& defaultValue)
         textNodes.append(*textNode);
 
     for (auto& textNode : textNodes)
-        removeChild(textNode.get(), IGNORE_EXCEPTION);
+        removeChild(textNode.get());
 
     // Normalize line endings.
     String value = defaultValue;
     value.replace("\r\n", "\n");
     value.replace('\r', '\n');
 
-    insertBefore(document().createTextNode(value), firstChild(), IGNORE_EXCEPTION);
+    insertBefore(document().createTextNode(value), firstChild());
 
     if (!m_isDirty)
         setNonDirtyValue(value);
@@ -554,7 +544,7 @@ void HTMLTextAreaElement::updatePlaceholderText()
     String placeholderText = strippedPlaceholder();
     if (placeholderText.isEmpty()) {
         if (m_placeholder) {
-            userAgentShadowRoot()->removeChild(*m_placeholder, ASSERT_NO_EXCEPTION);
+            userAgentShadowRoot()->removeChild(*m_placeholder);
             m_placeholder = nullptr;
         }
         return;
@@ -563,7 +553,7 @@ void HTMLTextAreaElement::updatePlaceholderText()
         m_placeholder = TextControlPlaceholderElement::create(document());
         userAgentShadowRoot()->insertBefore(*m_placeholder, innerTextElement()->nextSibling());
     }
-    m_placeholder->setInnerText(placeholderText, ASSERT_NO_EXCEPTION);
+    m_placeholder->setInnerText(placeholderText);
 }
 
 bool HTMLTextAreaElement::willRespondToMouseClickEvents()

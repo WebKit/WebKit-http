@@ -20,8 +20,7 @@
  *
  */
 
-#ifndef HTMLEmbedElement_h
-#define HTMLEmbedElement_h
+#pragma once
 
 #include "HTMLPlugInImageElement.h"
 
@@ -29,6 +28,7 @@ namespace WebCore {
 
 class HTMLEmbedElement final : public HTMLPlugInImageElement {
 public:
+    static Ref<HTMLEmbedElement> create(Document&);
     static Ref<HTMLEmbedElement> create(const QualifiedName&, Document&, bool createdByParser);
 
 private:
@@ -52,6 +52,4 @@ private:
     void parametersForPlugin(Vector<String>& paramNames, Vector<String>& paramValues);
 };
 
-}
-
-#endif
+} // namespace WebCore

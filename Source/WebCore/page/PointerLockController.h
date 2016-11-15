@@ -22,8 +22,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef PointerLockController_h
-#define PointerLockController_h
+#pragma once
 
 #if ENABLE(POINTER_LOCK)
 
@@ -50,9 +49,9 @@ public:
     bool lockPending() const;
     Element* element() const;
 
-    void didAcquirePointerLock();
-    void didNotAcquirePointerLock();
-    void didLosePointerLock();
+    WEBCORE_EXPORT void didAcquirePointerLock();
+    WEBCORE_EXPORT void didNotAcquirePointerLock();
+    WEBCORE_EXPORT void didLosePointerLock();
     void dispatchLockedMouseEvent(const PlatformMouseEvent&, const AtomicString& eventType);
 
 private:
@@ -68,5 +67,3 @@ private:
 } // namespace WebCore
 
 #endif // ENABLE(POINTER_LOCK)
-
-#endif // PointerLockController_h

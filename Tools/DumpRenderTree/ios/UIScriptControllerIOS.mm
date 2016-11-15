@@ -116,6 +116,10 @@ void UIScriptController::typeCharacterUsingHardwareKeyboard(JSStringRef characte
 {
 }
 
+void UIScriptController::selectTextCandidateAtIndex(long, JSValueRef)
+{
+}
+
 void UIScriptController::keyDownUsingHardwareKeyboard(JSStringRef character, JSValueRef callback)
 {
 }
@@ -173,6 +177,14 @@ void UIScriptController::platformSetDidStartFormControlInteractionCallback()
 void UIScriptController::platformSetDidEndFormControlInteractionCallback()
 {
 }
+    
+void UIScriptController::platformSetDidShowForcePressPreviewCallback()
+{
+}
+
+void UIScriptController::platformSetDidDismissForcePressPreviewCallback()
+{
+}
 
 void UIScriptController::platformSetWillBeginZoomingCallback()
 {
@@ -199,6 +211,15 @@ void UIScriptController::platformClearAllCallbacks()
 }
 
 JSObjectRef UIScriptController::selectionRangeViewRects() const
+{
+    return nullptr;
+}
+
+void UIScriptController::removeAllDynamicDictionaries()
+{
+}
+
+JSRetainPtr<JSStringRef> UIScriptController::scrollingTreeAsText() const
 {
     return nullptr;
 }

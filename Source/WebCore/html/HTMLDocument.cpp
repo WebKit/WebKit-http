@@ -58,7 +58,6 @@
 #include "DocumentLoader.h"
 #include "DocumentType.h"
 #include "ElementChildIterator.h"
-#include "ExceptionCode.h"
 #include "FocusController.h"
 #include "Frame.h"
 #include "FrameLoader.h"
@@ -75,7 +74,6 @@
 #include "JSDOMBinding.h"
 #include "Page.h"
 #include "ScriptController.h"
-#include "Settings.h"
 #include "StyleResolver.h"
 #include <wtf/text/CString.h>
 

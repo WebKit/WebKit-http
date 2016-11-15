@@ -29,6 +29,7 @@
 #import "DOMInternal.h"
 #import "DOMNodeInternal.h"
 #import "ExceptionHandlers.h"
+#import <WebCore/HTMLOptGroupElement.h>
 #import <WebCore/HTMLOptionElement.h>
 #import <WebCore/HTMLOptionsCollection.h>
 #import <WebCore/JSMainThreadExecState.h>
@@ -38,6 +39,7 @@
 #import <WebCore/WebCoreObjCExtras.h>
 #import <WebCore/WebScriptObjectPrivate.h>
 #import <wtf/GetPtr.h>
+#import <wtf/Variant.h>
 
 #define IMPL reinterpret_cast<WebCore::HTMLOptionsCollection*>(_internal)
 
@@ -74,9 +76,7 @@
 - (void)setLength:(unsigned)newLength
 {
     WebCore::JSMainThreadNullState state;
-    WebCore::ExceptionCode ec = 0;
-    IMPL->setLength(newLength, ec);
-    raiseOnDOMError(ec);
+    raiseOnDOMError(IMPL->setLength(newLength));
 }
 
 - (DOMNode *)namedItem:(NSString *)name
@@ -90,9 +90,7 @@
     WebCore::JSMainThreadNullState state;
     if (!option)
         raiseTypeErrorException();
-    WebCore::ExceptionCode ec = 0;
-    IMPL->add(*core(option), index, ec);
-    raiseOnDOMError(ec);
+    raiseOnDOMError(IMPL->add(core(option), Optional<WebCore::HTMLOptionsCollection::HTMLElementOrInt> { static_cast<int>(index) }));
 }
 
 - (void)remove:(unsigned)index

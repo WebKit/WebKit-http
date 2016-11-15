@@ -40,7 +40,9 @@ class IDBResourceIdentifier;
 class IDBTransactionInfo;
 class IDBValue;
 
+struct IDBGetAllRecordsData;
 struct IDBGetRecordData;
+struct IDBIterateCursorData;
 struct SecurityOriginData;
 
 namespace IndexedDB {
@@ -63,17 +65,21 @@ public:
     virtual void didFinishHandlingVersionChangeTransaction(uint64_t databaseConnectionIdentifier, const IDBResourceIdentifier&) = 0;
     virtual void createObjectStore(const IDBRequestData&, const IDBObjectStoreInfo&) = 0;
     virtual void deleteObjectStore(const IDBRequestData&, const String& objectStoreName) = 0;
+    virtual void renameObjectStore(const IDBRequestData&, uint64_t objectStoreIdentifier, const String& newName) = 0;
     virtual void clearObjectStore(const IDBRequestData&, uint64_t objectStoreIdentifier) = 0;
     virtual void createIndex(const IDBRequestData&, const IDBIndexInfo&) = 0;
     virtual void deleteIndex(const IDBRequestData&, uint64_t objectStoreIdentifier, const String& indexName) = 0;
+    virtual void renameIndex(const IDBRequestData&, uint64_t objectStoreIdentifier, uint64_t indexIdentifier, const String& newName) = 0;
     virtual void putOrAdd(const IDBRequestData&, const IDBKeyData&, const IDBValue&, const IndexedDB::ObjectStoreOverwriteMode) = 0;
     virtual void getRecord(const IDBRequestData&, const IDBGetRecordData&) = 0;
+    virtual void getAllRecords(const IDBRequestData&, const IDBGetAllRecordsData&) = 0;
     virtual void getCount(const IDBRequestData&, const IDBKeyRangeData&) = 0;
     virtual void deleteRecord(const IDBRequestData&, const IDBKeyRangeData&) = 0;
     virtual void openCursor(const IDBRequestData&, const IDBCursorInfo&) = 0;
-    virtual void iterateCursor(const IDBRequestData&, const IDBKeyData&, unsigned long count) = 0;
+    virtual void iterateCursor(const IDBRequestData&, const IDBIterateCursorData&) = 0;
 
     virtual void establishTransaction(uint64_t databaseConnectionIdentifier, const IDBTransactionInfo&) = 0;
+    virtual void databaseConnectionPendingClose(uint64_t databaseConnectionIdentifier) = 0;
     virtual void databaseConnectionClosed(uint64_t databaseConnectionIdentifier) = 0;
     virtual void abortOpenAndUpgradeNeeded(uint64_t databaseConnectionIdentifier, const IDBResourceIdentifier& transactionIdentifier) = 0;
     virtual void didFireVersionChangeEvent(uint64_t databaseConnectionIdentifier, const IDBResourceIdentifier& requestIdentifier) = 0;

@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef MediaElementSession_h
-#define MediaElementSession_h
+#pragma once
 
 #if ENABLE(VIDEO)
 
@@ -54,6 +53,7 @@ public:
     void unregisterWithDocument(Document&);
 
     bool playbackPermitted(const HTMLMediaElement&) const;
+    bool autoplayPermitted() const;
     bool dataLoadingPermitted(const HTMLMediaElement&) const;
     bool fullscreenPermitted(const HTMLMediaElement&) const;
     bool pageAllowsDataLoading(const HTMLMediaElement&) const;
@@ -127,6 +127,13 @@ public:
     bool allowsPlaybackControlsForAutoplayingAudio() const;
     bool allowsNowPlayingControlsVisibility() const override;
 
+    static bool isMediaElementSessionMediaType(MediaType type)
+    {
+        return type == Video
+            || type == Audio
+            || type == VideoAudio;
+    }
+
 private:
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
@@ -162,12 +169,10 @@ private:
     Timer m_mainContentCheckTimer;
 };
 
-}
+} // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::MediaElementSession)
-static bool isType(const WebCore::PlatformMediaSession& session) { return session.mediaType() == WebCore::PlatformMediaSession::Video || session.mediaType() == WebCore::PlatformMediaSession::Audio; }
+static bool isType(const WebCore::PlatformMediaSession& session) { return WebCore::MediaElementSession::isMediaElementSessionMediaType(session.mediaType()); }
 SPECIALIZE_TYPE_TRAITS_END()
 
 #endif // ENABLE(VIDEO)
-
-#endif // MediaElementSession_h

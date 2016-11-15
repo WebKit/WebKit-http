@@ -73,10 +73,9 @@ String WebEditCommandProxy::nameForEditAction(EditAction editAction)
     // FIXME: This is identical to code in WebKit's WebEditorClient class; would be nice to share the strings instead of having two copies.
     switch (editAction) {
     case EditActionUnspecified:
-        return String();
     case EditActionInsert:
-        return String();
     case EditActionInsertReplacement:
+    case EditActionInsertFromDrop:
         return String();
     case EditActionSetColor:
         return WEB_UI_STRING_KEY("Set Color", "Set Color (Undo action name)", "Undo action name");
@@ -126,7 +125,7 @@ String WebEditCommandProxy::nameForEditAction(EditAction editAction)
         return WEB_UI_STRING_KEY("Outline", "Outline (Undo action name)", "Undo action name");
     case EditActionUnscript:
         return WEB_UI_STRING_KEY("Unscript", "Unscript (Undo action name)", "Undo action name");
-    case EditActionDrag:
+    case EditActionDeleteByDrag:
         return WEB_UI_STRING_KEY("Drag", "Drag (Undo action name)", "Undo action name");
     case EditActionCut:
         return WEB_UI_STRING_KEY("Cut", "Cut (Undo action name)", "Undo action name");
@@ -151,9 +150,13 @@ String WebEditCommandProxy::nameForEditAction(EditAction editAction)
     case EditActionTypingDeleteWordForward:
     case EditActionTypingDeleteLineBackward:
     case EditActionTypingDeleteLineForward:
+    case EditActionTypingDeletePendingComposition:
+    case EditActionTypingDeleteFinalComposition:
     case EditActionTypingInsertText:
     case EditActionTypingInsertLineBreak:
     case EditActionTypingInsertParagraph:
+    case EditActionTypingInsertPendingComposition:
+    case EditActionTypingInsertFinalComposition:
         return WEB_UI_STRING_KEY("Typing", "Typing (Undo action name)", "Undo action name");
     case EditActionCreateLink:
         return WEB_UI_STRING_KEY("Create Link", "Create Link (Undo action name)", "Undo action name");

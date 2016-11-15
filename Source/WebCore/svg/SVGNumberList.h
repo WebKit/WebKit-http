@@ -18,30 +18,28 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef SVGNumberList_h
-#define SVGNumberList_h
+#pragma once
 
 #include "SVGPropertyTraits.h"
 #include <wtf/Vector.h>
 
 namespace WebCore {
 
+template<typename T> 
+class SVGPropertyTearOff;
+
 class SVGNumberList final : public Vector<float> {
 public:
-    SVGNumberList() { }
-
     void parse(const String&);
     String valueAsString() const;
 };
 
-template<>
-struct SVGPropertyTraits<SVGNumberList> {
-    typedef float ListItemType;
-
+template<> struct SVGPropertyTraits<SVGNumberList> {
     static SVGNumberList initialValue() { return SVGNumberList(); }
     static String toString(const SVGNumberList& type) { return type.valueAsString(); }
+
+    using ListItemType = float;
+    using ListItemTearOff = SVGPropertyTearOff<float>;
 };
 
 } // namespace WebCore
-
-#endif

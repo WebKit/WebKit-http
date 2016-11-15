@@ -733,6 +733,16 @@ bool WKPreferencesGetFileAccessFromFileURLsAllowed(WKPreferencesRef preferencesR
     return toImpl(preferencesRef)->allowFileAccessFromFileURLs();
 }
 
+void WKPreferencesSetNeedsStorageAccessFromFileURLsQuirk(WKPreferencesRef preferencesRef, bool needsQuirk)
+{
+    toImpl(preferencesRef)->setNeedsStorageAccessFromFileURLsQuirk(needsQuirk);
+}
+
+bool WKPreferencesGetNeedsStorageAccessFromFileURLsQuirk(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->needsStorageAccessFromFileURLsQuirk();
+}
+
 void WKPreferencesSetHixie76WebSocketProtocolEnabled(WKPreferencesRef, bool /*enabled*/)
 {
 }
@@ -1499,6 +1509,16 @@ void WKPreferencesSetMockCaptureDevicesEnabled(WKPreferencesRef preferencesRef, 
 bool WKPreferencesGetMockCaptureDevicesEnabled(WKPreferencesRef preferencesRef)
 {
     return toImpl(preferencesRef)->mockCaptureDevicesEnabled();
+}
+
+void WKPreferencesSetMediaCaptureRequiresSecureConnection(WKPreferencesRef preferencesRef, bool enabled)
+{
+    toImpl(preferencesRef)->setMediaCaptureRequiresSecureConnection(enabled);
+}
+
+bool WKPreferencesGetMediaCaptureRequiresSecureConnection(WKPreferencesRef preferencesRef)
+{
+    return toImpl(preferencesRef)->mediaCaptureRequiresSecureConnection();
 }
 
 void WKPreferencesSetFetchAPIEnabled(WKPreferencesRef preferencesRef, bool flag)

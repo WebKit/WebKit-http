@@ -144,7 +144,6 @@ static inline PassRefPtr<ClipPathOperation> blendFunc(const AnimationBase*, Clip
     return ShapeClipPathOperation::create(toShape.blend(fromShape, progress));
 }
 
-#if ENABLE(CSS_SHAPES)
 static inline PassRefPtr<ShapeValue> blendFunc(const AnimationBase*, ShapeValue* from, ShapeValue* to, double progress)
 {
     if (!from || !to)
@@ -164,7 +163,6 @@ static inline PassRefPtr<ShapeValue> blendFunc(const AnimationBase*, ShapeValue*
 
     return ShapeValue::createShapeValue(toShape.blend(fromShape, progress), to->cssBox());
 }
-#endif
 
 static inline PassRefPtr<FilterOperation> blendFunc(const AnimationBase* animation, FilterOperation* fromOp, FilterOperation* toOp, double progress, bool blendToPassthrough = false)
 {
@@ -476,7 +474,7 @@ template <typename T>
 class RefCountedPropertyWrapper : public PropertyWrapperGetter<T*> {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    RefCountedPropertyWrapper(CSSPropertyID prop, T* (RenderStyle::*getter)() const, void (RenderStyle::*setter)(PassRefPtr<T>))
+    RefCountedPropertyWrapper(CSSPropertyID prop, T* (RenderStyle::*getter)() const, void (RenderStyle::*setter)(RefPtr<T>&&))
         : PropertyWrapperGetter<T*>(prop, getter)
         , m_setter(setter)
     {
@@ -488,7 +486,7 @@ public:
     }
 
 protected:
-    void (RenderStyle::*m_setter)(PassRefPtr<T>);
+    void (RenderStyle::*m_setter)(RefPtr<T>&&);
 };
 
 template <typename T>
@@ -513,7 +511,7 @@ protected:
 class PropertyWrapperClipPath : public RefCountedPropertyWrapper<ClipPathOperation> {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    PropertyWrapperClipPath(CSSPropertyID prop, ClipPathOperation* (RenderStyle::*getter)() const, void (RenderStyle::*setter)(PassRefPtr<ClipPathOperation>))
+    PropertyWrapperClipPath(CSSPropertyID prop, ClipPathOperation* (RenderStyle::*getter)() const, void (RenderStyle::*setter)(RefPtr<ClipPathOperation>&&))
         : RefCountedPropertyWrapper<ClipPathOperation>(prop, getter, setter)
     {
     }
@@ -562,11 +560,10 @@ public:
 };
 #endif
 
-#if ENABLE(CSS_SHAPES)
 class PropertyWrapperShape : public RefCountedPropertyWrapper<ShapeValue> {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    PropertyWrapperShape(CSSPropertyID prop, ShapeValue* (RenderStyle::*getter)() const, void (RenderStyle::*setter)(PassRefPtr<ShapeValue>))
+    PropertyWrapperShape(CSSPropertyID prop, ShapeValue* (RenderStyle::*getter)() const, void (RenderStyle::*setter)(RefPtr<ShapeValue>&&))
         : RefCountedPropertyWrapper<ShapeValue>(prop, getter, setter)
     {
     }
@@ -589,12 +586,11 @@ public:
         return *shapeA == *shapeB;
     }
 };
-#endif
 
 class StyleImagePropertyWrapper : public RefCountedPropertyWrapper<StyleImage> {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    StyleImagePropertyWrapper(CSSPropertyID prop, StyleImage* (RenderStyle::*getter)() const, void (RenderStyle::*setter)(PassRefPtr<StyleImage>))
+    StyleImagePropertyWrapper(CSSPropertyID prop, StyleImage* (RenderStyle::*getter)() const, void (RenderStyle::*setter)(RefPtr<StyleImage>&&))
         : RefCountedPropertyWrapper<StyleImage>(prop, getter, setter)
     {
     }
@@ -642,10 +638,7 @@ public:
 
     void blend(const AnimationBase* anim, RenderStyle* dst, const RenderStyle* a, const RenderStyle* b, double progress) const override
     {
-        float fromOpacity = a->opacity();
-
-        // This makes sure we put the object being animated into a RenderLayer during the animation
-        dst->setOpacity(blendFunc(anim, (fromOpacity == 1) ? 0.999999f : fromOpacity, b->opacity(), progress));
+        dst->setOpacity(blendFunc(anim, a->opacity(), b->opacity(), progress));
     }
 };
 
@@ -1018,7 +1011,7 @@ template <typename T>
 class FillLayerRefCountedPropertyWrapper : public FillLayerPropertyWrapperGetter<T*> {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    FillLayerRefCountedPropertyWrapper(T* (FillLayer::*getter)() const, void (FillLayer::*setter)(PassRefPtr<T>))
+    FillLayerRefCountedPropertyWrapper(T* (FillLayer::*getter)() const, void (FillLayer::*setter)(RefPtr<T>&&))
         : FillLayerPropertyWrapperGetter<T*>(getter)
         , m_setter(setter)
     {
@@ -1030,13 +1023,13 @@ public:
     }
 
 protected:
-    void (FillLayer::*m_setter)(PassRefPtr<T>);
+    void (FillLayer::*m_setter)(RefPtr<T>&&);
 };
 
 class FillLayerStyleImagePropertyWrapper : public FillLayerRefCountedPropertyWrapper<StyleImage> {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    FillLayerStyleImagePropertyWrapper(StyleImage* (FillLayer::*getter)() const, void (FillLayer::*setter)(PassRefPtr<StyleImage>))
+    FillLayerStyleImagePropertyWrapper(StyleImage* (FillLayer::*getter)() const, void (FillLayer::*setter)(RefPtr<StyleImage>&&))
         : FillLayerRefCountedPropertyWrapper<StyleImage>(getter, setter)
     {
     }
@@ -1436,11 +1429,9 @@ CSSPropertyAnimationWrapperMap::CSSPropertyAnimationWrapperMap()
 #endif
         new PropertyWrapperClipPath(CSSPropertyWebkitClipPath, &RenderStyle::clipPath, &RenderStyle::setClipPath),
 
-#if ENABLE(CSS_SHAPES)
-        new PropertyWrapperShape(CSSPropertyWebkitShapeOutside, &RenderStyle::shapeOutside, &RenderStyle::setShapeOutside),
-        new LengthPropertyWrapper<Length>(CSSPropertyWebkitShapeMargin, &RenderStyle::shapeMargin, &RenderStyle::setShapeMargin),
-        new PropertyWrapper<float>(CSSPropertyWebkitShapeImageThreshold, &RenderStyle::shapeImageThreshold, &RenderStyle::setShapeImageThreshold),
-#endif
+        new PropertyWrapperShape(CSSPropertyShapeOutside, &RenderStyle::shapeOutside, &RenderStyle::setShapeOutside),
+        new LengthPropertyWrapper<Length>(CSSPropertyShapeMargin, &RenderStyle::shapeMargin, &RenderStyle::setShapeMargin),
+        new PropertyWrapper<float>(CSSPropertyShapeImageThreshold, &RenderStyle::shapeImageThreshold, &RenderStyle::setShapeImageThreshold),
 
         new PropertyWrapperVisitedAffectedColor(CSSPropertyColumnRuleColor, MaybeInvalidColor, &RenderStyle::columnRuleColor, &RenderStyle::setColumnRuleColor, &RenderStyle::visitedLinkColumnRuleColor, &RenderStyle::setVisitedLinkColumnRuleColor),
         new PropertyWrapperVisitedAffectedColor(CSSPropertyWebkitTextStrokeColor, MaybeInvalidColor, &RenderStyle::textStrokeColor, &RenderStyle::setTextStrokeColor, &RenderStyle::visitedLinkTextStrokeColor, &RenderStyle::setVisitedLinkTextStrokeColor),
@@ -1585,10 +1576,10 @@ bool CSSPropertyAnimation::blendProperties(const AnimationBase* anim, CSSPropert
 
     AnimationPropertyWrapperBase* wrapper = CSSPropertyAnimationWrapperMap::singleton().wrapperForProperty(prop);
     if (wrapper) {
+        wrapper->blend(anim, dst, a, b, progress);
 #if !LOG_DISABLED
         wrapper->logBlend(a, b, dst, progress);
 #endif
-        wrapper->blend(anim, dst, a, b, progress);
         return !wrapper->animationIsAccelerated() || !anim->isAccelerated();
     }
     return false;

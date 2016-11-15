@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef ApplyStyleCommand_h
-#define ApplyStyleCommand_h
+#pragma once
 
 #include "CompositeEditCommand.h"
 #include "HTMLElement.h"
@@ -72,6 +71,7 @@ private:
     ApplyStyleCommand(Document&, const EditingStyle*, bool (*isInlineElementToRemove)(const Element*), EditAction);
 
     void doApply() override;
+    bool shouldDispatchInputEvents() const final { return false; }
 
     // style-removal helpers
     bool isStyledInlineElementToRemove(Element*) const;
@@ -137,5 +137,3 @@ bool isStyleSpanOrSpanWithOnlyStyleAttribute(const Element*);
 RefPtr<HTMLElement> createStyleSpanElement(Document&);
 
 } // namespace WebCore
-
-#endif

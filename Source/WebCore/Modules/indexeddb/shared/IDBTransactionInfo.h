@@ -23,13 +23,13 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef IDBTransactionInfo_h
-#define IDBTransactionInfo_h
+#pragma once
 
 #if ENABLE(INDEXED_DATABASE)
 
 #include "IDBDatabaseInfo.h"
 #include "IDBResourceIdentifier.h"
+#include "IDBTransactionMode.h"
 #include "IndexedDB.h"
 #include <wtf/Vector.h>
 
@@ -45,7 +45,7 @@ class IDBConnectionToClient;
 
 class IDBTransactionInfo {
 public:
-    static IDBTransactionInfo clientTransaction(const IDBClient::IDBConnectionProxy&, const Vector<String>& objectStores, IndexedDB::TransactionMode);
+    static IDBTransactionInfo clientTransaction(const IDBClient::IDBConnectionProxy&, const Vector<String>& objectStores, IDBTransactionMode);
     static IDBTransactionInfo versionChange(const IDBServer::IDBConnectionToClient&, const IDBDatabaseInfo& originalDatabaseInfo, uint64_t newVersion);
 
     IDBTransactionInfo(const IDBTransactionInfo&);
@@ -57,7 +57,7 @@ public:
 
     const IDBResourceIdentifier& identifier() const { return m_identifier; }
 
-    IndexedDB::TransactionMode mode() const { return m_mode; }
+    IDBTransactionMode mode() const { return m_mode; }
     uint64_t newVersion() const { return m_newVersion; }
 
     const Vector<String>& objectStores() const { return m_objectStores; }
@@ -79,7 +79,7 @@ private:
 
     IDBResourceIdentifier m_identifier;
 
-    IndexedDB::TransactionMode m_mode { IndexedDB::TransactionMode::ReadOnly };
+    IDBTransactionMode m_mode { IDBTransactionMode::Readonly };
     uint64_t m_newVersion { 0 };
     Vector<String> m_objectStores;
     std::unique_ptr<IDBDatabaseInfo> m_originalDatabaseInfo;
@@ -128,4 +128,3 @@ bool IDBTransactionInfo::decode(Decoder& decoder, IDBTransactionInfo& info)
 } // namespace WebCore
 
 #endif // ENABLE(INDEXED_DATABASE)
-#endif // IDBTransactionInfo_h
