@@ -320,7 +320,7 @@ void AcceleratedDrawingArea::enterAcceleratedCompositingMode(GraphicsLayer* grap
 
     ASSERT(!m_layerTreeHost);
     m_layerTreeHost = LayerTreeHost::create(m_webPage);
-#if USE(TEXTURE_MAPPER) && PLATFORM(GTK) && PLATFORM(X11) && !USE(REDIRECTED_XCOMPOSITE_WINDOW)
+#if USE(TEXTURE_MAPPER_GL) && PLATFORM(GTK) && PLATFORM(X11) && !USE(REDIRECTED_XCOMPOSITE_WINDOW)
     if (m_nativeSurfaceHandleForCompositing)
         m_layerTreeHost->setNativeSurfaceHandleForCompositing(m_nativeSurfaceHandleForCompositing);
 #endif
@@ -352,7 +352,7 @@ void AcceleratedDrawingArea::didReceiveCoordinatedLayerTreeHostMessage(IPC::Conn
 }
 #endif
 
-#if USE(TEXTURE_MAPPER) && PLATFORM(GTK) && PLATFORM(X11) && !USE(REDIRECTED_XCOMPOSITE_WINDOW)
+#if USE(TEXTURE_MAPPER_GL) && PLATFORM(GTK) && PLATFORM(X11) && !USE(REDIRECTED_XCOMPOSITE_WINDOW)
 void AcceleratedDrawingArea::setNativeSurfaceHandleForCompositing(uint64_t handle)
 {
     m_nativeSurfaceHandleForCompositing = handle;
@@ -369,9 +369,9 @@ void AcceleratedDrawingArea::destroyNativeSurfaceHandleForCompositing(bool& hand
 }
 #endif
 
-void AcceleratedDrawingArea::viewStateDidChange(ViewState::Flags changed, bool, const Vector<uint64_t>&)
+void AcceleratedDrawingArea::activityStateDidChange(ActivityState::Flags changed, bool, const Vector<uint64_t>&)
 {
-    if (changed & ViewState::IsVisible) {
+    if (changed & ActivityState::IsVisible) {
         if (m_webPage.isVisible())
             resumePainting();
         else

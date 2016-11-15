@@ -37,12 +37,9 @@ namespace WebCore {
 
 class Event;
 class FormAssociatedElement;
-class FormData;
 class HTMLFormControlElement;
 class HTMLFormControlsCollection;
 class HTMLImageElement;
-class HTMLInputElement;
-class TextEncoding;
 
 class HTMLFormElement final : public HTMLElement {
 public:
@@ -66,12 +63,7 @@ public:
     WEBCORE_EXPORT const AtomicString& autocomplete() const;
 
 #if ENABLE(IOS_AUTOCORRECT_AND_AUTOCAPITALIZE)
-    WEBCORE_EXPORT bool autocorrect() const;
-    WEBCORE_EXPORT void setAutocorrect(bool);
-
-    WEBCORE_EXPORT WebAutocapitalizeType autocapitalizeType() const;
-    WEBCORE_EXPORT const AtomicString& autocapitalize() const;
-    WEBCORE_EXPORT void setAutocapitalize(const AtomicString&);
+    WEBCORE_EXPORT bool shouldAutocorrect() const final;
 #endif
 
     // FIXME: Should rename these two functions to say "form control" or "form-associated element" instead of "form element".
@@ -115,6 +107,7 @@ public:
     void resetDefaultButton();
 
     WEBCORE_EXPORT bool checkValidity();
+    bool reportValidity();
 
 #if ENABLE(REQUEST_AUTOCOMPLETE)
     enum class AutocompleteResult {
@@ -161,13 +154,12 @@ private:
     unsigned formElementIndexWithFormAttribute(Element*, unsigned rangeStart, unsigned rangeEnd);
     unsigned formElementIndex(FormAssociatedElement*);
 
-    // Returns true if the submission should proceed.
-    bool validateInteractively(Event&);
+    bool validateInteractively();
 
     // Validates each of the controls, and stores controls of which 'invalid'
     // event was not canceled to the specified vector. Returns true if there
     // are any invalid controls in this form.
-    bool checkInvalidControlsAndCollectUnhandled(Vector<RefPtr<FormAssociatedElement>>&);
+    bool checkInvalidControlsAndCollectUnhandled(Vector<RefPtr<HTMLFormControlElement>>&);
 
     HTMLElement* elementFromPastNamesMap(const AtomicString&) const;
     void addToPastNamesMap(FormNamedItem*, const AtomicString& pastName);

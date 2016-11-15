@@ -24,8 +24,7 @@
  *
  */
 
-#ifndef CrossOriginAccessControl_h
-#define CrossOriginAccessControl_h
+#pragma once
 
 #include "ResourceHandleTypes.h"
 #include <wtf/Forward.h>
@@ -45,7 +44,7 @@ bool isOnAccessControlSimpleRequestHeaderWhitelist(HTTPHeaderName, const String&
 bool isOnAccessControlResponseHeaderWhitelist(const String&);
 
 void updateRequestForAccessControl(ResourceRequest&, SecurityOrigin&, StoredCredentials);
-ResourceRequest createAccessControlPreflightRequest(const ResourceRequest&, SecurityOrigin&);
+ResourceRequest createAccessControlPreflightRequest(const ResourceRequest&, SecurityOrigin&, const String&);
 
 bool isValidCrossOriginRedirectionURL(const URL&);
 void cleanRedirectedRequestForAccessControl(ResourceRequest&);
@@ -53,5 +52,3 @@ void cleanRedirectedRequestForAccessControl(ResourceRequest&);
 bool passesAccessControlCheck(const ResourceResponse&, StoredCredentials, SecurityOrigin&, String& errorDescription);
 
 } // namespace WebCore
-
-#endif // CrossOriginAccessControl_h

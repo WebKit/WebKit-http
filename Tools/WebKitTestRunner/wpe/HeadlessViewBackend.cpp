@@ -71,7 +71,7 @@ HeadlessViewBackend::HeadlessViewBackend()
     m_egl.destroyImage = reinterpret_cast<PFNEGLDESTROYIMAGEKHRPROC>(eglGetProcAddress("eglDestroyImageKHR"));
     m_egl.imageTargetTexture2DOES = reinterpret_cast<PFNGLEGLIMAGETARGETTEXTURE2DOESPROC>(eglGetProcAddress("glEGLImageTargetTexture2DOES"));
 
-    m_exportable = wpe_mesa_view_backend_exportable_create(&s_exportableClient, this);
+    m_exportable = wpe_mesa_view_backend_exportable_dma_buf_create(&s_exportableClient, this);
 
     m_updateSource = g_timeout_source_new(m_frameRate / 1000);
     g_source_set_callback(m_updateSource,
@@ -85,7 +85,7 @@ HeadlessViewBackend::HeadlessViewBackend()
 
 struct wpe_view_backend* HeadlessViewBackend::backend() const
 {
-    return wpe_mesa_view_backend_exportable_get_view_backend(m_exportable);
+    return wpe_mesa_view_backend_exportable_dma_buf_get_view_backend(m_exportable);
 }
 
 cairo_surface_t* HeadlessViewBackend::createSnapshot()
@@ -160,9 +160,9 @@ void HeadlessViewBackend::performUpdate()
     if (!m_pendingImage.first)
         return;
 
-    wpe_mesa_view_backend_exportable_dispatch_frame_complete(m_exportable);
+    wpe_mesa_view_backend_exportable_dma_buf_dispatch_frame_complete(m_exportable);
     if (m_lockedImage.first) {
-        wpe_mesa_view_backend_exportable_dispatch_release_buffer(m_exportable, m_lockedImage.first);
+        wpe_mesa_view_backend_exportable_dma_buf_dispatch_release_buffer(m_exportable, m_lockedImage.first);
         m_egl.destroyImage(m_egl.display, std::get<0>(m_lockedImage.second));
     }
 
@@ -170,9 +170,9 @@ void HeadlessViewBackend::performUpdate()
     m_pendingImage = std::pair<uint32_t, std::tuple<EGLImageKHR, uint32_t, uint32_t>> { };
 }
 
-struct wpe_mesa_view_backend_exportable_client HeadlessViewBackend::s_exportableClient = {
+struct wpe_mesa_view_backend_exportable_dma_buf_client HeadlessViewBackend::s_exportableClient = {
     // export_dma_buf
-    [](void* data, struct wpe_mesa_view_backend_exportable_dma_buf_egl_image_data* imageData)
+    [](void* data, struct wpe_mesa_view_backend_exportable_dma_buf_data* imageData)
     {
         auto& backend = *static_cast<HeadlessViewBackend*>(data);
 

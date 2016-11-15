@@ -76,6 +76,8 @@ WebInspector.ResourceContentView = class ResourceContentView extends WebInspecto
 
     closed()
     {
+        super.closed();
+
         if (!this.managesOwnIssues)
             WebInspector.issueManager.removeEventListener(null, null, this);
     }
@@ -102,6 +104,8 @@ WebInspector.ResourceContentView = class ResourceContentView extends WebInspecto
 
         this.element.removeChildren();
         this.element.appendChild(WebInspector.createMessageTextView(error, true));
+
+        this.dispatchEventToListeners(WebInspector.ResourceContentView.Event.ContentError);
     }
 
     _protocolError(error)
@@ -129,4 +133,8 @@ WebInspector.ResourceContentView = class ResourceContentView extends WebInspecto
     {
         WebInspector.handlePossibleLinkClick(event, this.resource.parentFrame);
     }
+};
+
+WebInspector.ResourceContentView.Event = {
+    ContentError: "resource-content-view-content-error",
 };

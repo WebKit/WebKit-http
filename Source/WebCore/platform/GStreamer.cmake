@@ -14,6 +14,7 @@ if (ENABLE_MEDIA_STREAM)
     list(APPEND WebCore_SOURCES
         platform/graphics/gstreamer/MediaPlayerPrivateGStreamerOwr.cpp
 
+        platform/mediastream/openwebrtc/MediaEndpointOwr.cpp
         platform/mediastream/openwebrtc/OpenWebRTCUtilities.cpp
         platform/mediastream/openwebrtc/RealtimeMediaSourceCenterOwr.cpp
     )
@@ -22,6 +23,8 @@ endif ()
 if (ENABLE_VIDEO OR ENABLE_WEB_AUDIO)
     list(APPEND WebCore_INCLUDE_DIRECTORIES
         "${WEBCORE_DIR}/platform/graphics/gstreamer"
+        "${WEBCORE_DIR}/platform/graphics/gstreamer/mse"
+        "${WEBCORE_DIR}/platform/graphics/gstreamer/eme"
     )
 
     list(APPEND WebCore_SOURCES
@@ -31,15 +34,24 @@ if (ENABLE_VIDEO OR ENABLE_WEB_AUDIO)
         platform/graphics/gstreamer/InbandTextTrackPrivateGStreamer.cpp
         platform/graphics/gstreamer/MediaPlayerPrivateGStreamer.cpp
         platform/graphics/gstreamer/MediaPlayerPrivateGStreamerBase.cpp
-        platform/graphics/gstreamer/MediaPlayerPrivateGStreamerMSE.cpp
-        platform/graphics/gstreamer/MediaSourceGStreamer.cpp
-        platform/graphics/gstreamer/SourceBufferPrivateGStreamer.cpp
         platform/graphics/gstreamer/TextCombinerGStreamer.cpp
         platform/graphics/gstreamer/TextSinkGStreamer.cpp
         platform/graphics/gstreamer/TrackPrivateBaseGStreamer.cpp
         platform/graphics/gstreamer/VideoTrackPrivateGStreamer.cpp
-        platform/graphics/gstreamer/WebKitMediaSourceGStreamer.cpp
         platform/graphics/gstreamer/WebKitWebSourceGStreamer.cpp
+
+        platform/graphics/gstreamer/eme/WebKitClearKeyDecryptorGStreamer.cpp
+        platform/graphics/gstreamer/eme/WebKitCommonEncryptionDecryptorGStreamer.cpp
+
+        platform/graphics/gstreamer/mse/AppendPipeline.cpp
+        platform/graphics/gstreamer/mse/GStreamerMediaDescription.cpp
+        platform/graphics/gstreamer/mse/GStreamerMediaSample.cpp
+        platform/graphics/gstreamer/mse/MediaPlayerPrivateGStreamerMSE.cpp
+        platform/graphics/gstreamer/mse/MediaSourceClientGStreamerMSE.cpp
+        platform/graphics/gstreamer/mse/MediaSourceGStreamer.cpp
+        platform/graphics/gstreamer/mse/PlaybackPipeline.cpp
+        platform/graphics/gstreamer/mse/SourceBufferPrivateGStreamer.cpp
+        platform/graphics/gstreamer/mse/WebKitMediaSourceGStreamer.cpp
     )
 
     list(APPEND WebCore_SYSTEM_INCLUDE_DIRECTORIES

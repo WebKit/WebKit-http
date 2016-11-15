@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef RubyTextElement_h
-#define RubyTextElement_h
+#pragma once
 
 #include "HTMLElement.h"
 
@@ -32,6 +31,7 @@ namespace WebCore {
 
 class RubyTextElement final : public HTMLElement {
 public:
+    static Ref<RubyTextElement> create(Document&);
     static Ref<RubyTextElement> create(const QualifiedName&, Document&);
 
 private:
@@ -39,6 +39,4 @@ private:
     RenderPtr<RenderElement> createElementRenderer(RenderStyle&&, const RenderTreePosition&) override;
 };
 
-}
-
-#endif
+} // namespace WebCore

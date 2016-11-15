@@ -367,6 +367,7 @@ void GraphicsContext::restore()
         LOG_ERROR("ERROR void GraphicsContext::restore() stack is empty");
         return;
     }
+
     m_state = m_stack.last();
     m_stack.removeLast();
 
@@ -1020,7 +1021,7 @@ void GraphicsContext::platformApplyDeviceScaleFactor(float)
 
 void GraphicsContext::applyDeviceScaleFactor(float deviceScaleFactor)
 {
-    scale(FloatSize(deviceScaleFactor, deviceScaleFactor));
+    scale(deviceScaleFactor);
 
     if (isRecording()) {
         m_displayListRecorder->applyDeviceScaleFactor(deviceScaleFactor);
@@ -1100,8 +1101,7 @@ FloatRect GraphicsContext::computeLineBoundsAndAntialiasingModeForText(const Flo
         // effect, an alpha is applied to the underline color when text is at small scales.
         static const float minimumUnderlineAlpha = 0.4f;
         float shade = scale > minimumUnderlineAlpha ? scale : minimumUnderlineAlpha;
-        int alpha = color.alpha() * shade;
-        color = Color(color.red(), color.green(), color.blue(), alpha);
+        color = color.colorWithAlphaMultipliedBy(shade);
     }
 
     FloatPoint devicePoint = transform.mapPoint(point);
@@ -1176,5 +1176,20 @@ Vector<FloatPoint> GraphicsContext::centerLineAndCutOffCorners(bool isVerticalLi
 
     return { point1, point2 };
 }
+
+#if !USE(CG)
+bool GraphicsContext::supportsInternalLinks() const
+{
+    return false;
+}
+
+void GraphicsContext::setDestinationForRect(const String&, const FloatRect&)
+{
+}
+
+void GraphicsContext::addDestinationAtPoint(const String&, const FloatPoint&)
+{
+}
+#endif
 
 }

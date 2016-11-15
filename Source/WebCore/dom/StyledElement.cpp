@@ -155,11 +155,13 @@ MutableStyleProperties& StyledElement::ensureMutableInlineStyle()
 
 void StyledElement::attributeChanged(const QualifiedName& name, const AtomicString& oldValue, const AtomicString& newValue, AttributeModificationReason reason)
 {
-    if (name == styleAttr)
-        styleAttributeChanged(newValue, reason);
-    else if (isPresentationAttribute(name)) {
-        elementData()->setPresentationAttributeStyleIsDirty(true);
-        setNeedsStyleRecalc(InlineStyleChange);
+    if (oldValue != newValue) {
+        if (name == styleAttr)
+            styleAttributeChanged(newValue, reason);
+        else if (isPresentationAttribute(name)) {
+            elementData()->setPresentationAttributeStyleIsDirty(true);
+            invalidateStyle();
+        }
     }
 
     Element::attributeChanged(name, oldValue, newValue, reason);
@@ -216,7 +218,7 @@ void StyledElement::styleAttributeChanged(const AtomicString& newStyleString, At
 
     elementData()->setStyleAttributeIsDirty(false);
 
-    setNeedsStyleRecalc(InlineStyleChange);
+    invalidateStyle();
     InspectorInstrumentation::didInvalidateStyleAttr(document(), *this);
 }
 
@@ -226,7 +228,7 @@ void StyledElement::invalidateStyleAttribute()
         document().setHasElementUsingStyleBasedEditability();
 
     elementData()->setStyleAttributeIsDirty(true);
-    setNeedsStyleRecalc(InlineStyleChange);
+    invalidateStyle();
 }
 
 void StyledElement::inlineStyleChanged()

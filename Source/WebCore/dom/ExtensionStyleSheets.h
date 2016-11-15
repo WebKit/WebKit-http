@@ -25,8 +25,7 @@
  *
  */
 
-#ifndef ExtensionStyleSheets_h
-#define ExtensionStyleSheets_h
+#pragma once
 
 #include "Timer.h"
 #include <memory>
@@ -77,8 +76,6 @@ public:
     void detachFromDocument();
 
 private:
-    void styleResolverChangedTimerFired();
-
     Document& m_document;
 
     RefPtr<CSSStyleSheet> m_pageUserSheet;
@@ -94,11 +91,6 @@ private:
     HashMap<String, RefPtr<CSSStyleSheet>> m_contentExtensionSheets;
     HashMap<String, RefPtr<ContentExtensions::ContentExtensionStyleSheet>> m_contentExtensionSelectorSheets;
 #endif
-
-    Timer m_styleResolverChangedTimer;
 };
 
-}
-
-#endif
-
+} // namespace WebCore

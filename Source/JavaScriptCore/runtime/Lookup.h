@@ -24,6 +24,7 @@
 #include "CallFrame.h"
 #include "CustomGetterSetter.h"
 #include "DOMJITGetterSetter.h"
+#include "DOMJITSignature.h"
 #include "Identifier.h"
 #include "IdentifierInlines.h"
 #include "Intrinsic.h"
@@ -31,7 +32,7 @@
 #include "LazyProperty.h"
 #include "PropertySlot.h"
 #include "PutPropertySlot.h"
-#include "Reject.h"
+#include "TypeError.h"
 #include <wtf/Assertions.h>
 
 namespace JSC {
@@ -75,12 +76,19 @@ struct HashTableValue {
     Intrinsic intrinsic() const { ASSERT(m_attributes & Function); return m_intrinsic; }
     BuiltinGenerator builtinGenerator() const { ASSERT(m_attributes & Builtin); return reinterpret_cast<BuiltinGenerator>(m_values.value1); }
     NativeFunction function() const { ASSERT(m_attributes & Function); return reinterpret_cast<NativeFunction>(m_values.value1); }
-    unsigned char functionLength() const { ASSERT(m_attributes & Function); return static_cast<unsigned char>(m_values.value2); }
+    unsigned char functionLength() const
+    {
+        ASSERT(m_attributes & Function);
+        if (m_attributes & DOMJITFunction)
+            return signature()->argumentCount;
+        return static_cast<unsigned char>(m_values.value2);
+    }
 
     GetFunction propertyGetter() const { ASSERT(!(m_attributes & BuiltinOrFunctionOrAccessorOrLazyPropertyOrConstant)); return reinterpret_cast<GetFunction>(m_values.value1); }
     PutFunction propertyPutter() const { ASSERT(!(m_attributes & BuiltinOrFunctionOrAccessorOrLazyPropertyOrConstant)); return reinterpret_cast<PutFunction>(m_values.value2); }
 
     DOMJIT::GetterSetter* domJIT() const { ASSERT(m_attributes & DOMJITAttribute); return reinterpret_cast<DOMJITGetterSetterGenerator>(m_values.value1)(); }
+    const DOMJIT::Signature* signature() const { ASSERT(m_attributes & DOMJITFunction); return reinterpret_cast<const DOMJIT::Signature*>(m_values.value2); }
 
     NativeFunction accessorGetter() const { ASSERT(m_attributes & Accessor); return reinterpret_cast<NativeFunction>(m_values.value1); }
     NativeFunction accessorSetter() const { ASSERT(m_attributes & Accessor); return reinterpret_cast<NativeFunction>(m_values.value2); }
@@ -254,19 +262,22 @@ inline bool replaceStaticPropertySlot(VM& vm, JSObject* thisObject, PropertyName
 // 'slot.thisValue()' is the object the put was originally performed on (in the case of a proxy, the proxy itself).
 inline bool putEntry(ExecState* exec, const HashTableValue* entry, JSObject* base, JSObject* thisValue, PropertyName propertyName, JSValue value, PutPropertySlot& slot)
 {
+    VM& vm = exec->vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
     if (entry->attributes() & BuiltinOrFunctionOrLazyProperty) {
         if (!(entry->attributes() & ReadOnly)) {
             // If this is a function or lazy property put then we just do the put because
             // logically the object already had the property, so this is just a replace.
             if (JSObject* thisObject = jsDynamicCast<JSObject*>(thisValue))
-                thisObject->putDirect(exec->vm(), propertyName, value);
+                thisObject->putDirect(vm, propertyName, value);
             return true;
         }
-        return reject(exec, slot.isStrictMode(), ReadonlyPropertyWriteError);
+        return typeError(exec, scope, slot.isStrictMode(), ASCIILiteral(ReadonlyPropertyWriteError));
     }
 
     if (entry->attributes() & Accessor)
-        return reject(exec, slot.isStrictMode(), ReadonlyPropertyWriteError);
+        return typeError(exec, scope, slot.isStrictMode(), ASCIILiteral(ReadonlyPropertyWriteError));
 
     if (!(entry->attributes() & ReadOnly)) {
         ASSERT_WITH_MESSAGE(!(entry->attributes() & DOMJITAttribute), "DOMJITAttribute supports readonly attributes currently.");
@@ -280,7 +291,7 @@ inline bool putEntry(ExecState* exec, const HashTableValue* entry, JSObject* bas
         return result;
     }
 
-    return reject(exec, slot.isStrictMode(), ReadonlyPropertyWriteError);
+    return typeError(exec, scope, slot.isStrictMode(), ASCIILiteral(ReadonlyPropertyWriteError));
 }
 
 /**
@@ -310,6 +321,12 @@ inline void reifyStaticProperty(VM& vm, const PropertyName& propertyName, const 
     }
 
     if (value.attributes() & Function) {
+        if (value.attributes() & DOMJITFunction) {
+            thisObj.putDirectNativeFunction(
+                vm, thisObj.globalObject(), propertyName, value.functionLength(),
+                value.function(), value.intrinsic(), value.signature(), attributesForStructure(value.attributes()));
+            return;
+        }
         thisObj.putDirectNativeFunction(
             vm, thisObj.globalObject(), propertyName, value.functionLength(),
             value.function(), value.intrinsic(), attributesForStructure(value.attributes()));

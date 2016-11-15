@@ -28,7 +28,7 @@
 #include <cairo.h>
 #include <glib.h>
 #include <unordered_map>
-#include <wpe-mesa/view-backend-exportable.h>
+#include <wpe-mesa/view-backend-exportable-dma-buf.h>
 #include <GLES2/gl2.h>
 #include <GLES2/gl2ext.h>
 #include <EGL/egl.h>
@@ -46,7 +46,7 @@ private:
     bool makeCurrent();
     void performUpdate();
 
-    static struct wpe_mesa_view_backend_exportable_client s_exportableClient;
+    static struct wpe_mesa_view_backend_exportable_dma_buf_client s_exportableClient;
 
     struct {
         EGLDisplay display;
@@ -58,7 +58,7 @@ private:
         PFNGLEGLIMAGETARGETTEXTURE2DOESPROC imageTargetTexture2DOES;
     } m_egl;
 
-    struct wpe_mesa_view_backend_exportable* m_exportable;
+    struct wpe_mesa_view_backend_exportable_dma_buf* m_exportable;
 
     std::unordered_map<uint32_t, std::pair<int32_t, EGLImageKHR>> m_imageMap;
     std::pair<uint32_t, std::tuple<EGLImageKHR, uint32_t, uint32_t>> m_pendingImage { };

@@ -19,8 +19,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef SVGSVGElement_h
-#define SVGSVGElement_h
+#pragma once
 
 #include "SVGAnimatedBoolean.h"
 #include "SVGAnimatedLength.h"
@@ -33,6 +32,7 @@
 
 namespace WebCore {
 
+class SVGAngle;
 class SVGViewSpec;
 class SMILTimeContainer;
 
@@ -90,7 +90,7 @@ public: // DOM
 
     static float createSVGNumber();
     static SVGLength createSVGLength();
-    static SVGAngle createSVGAngle();
+    static Ref<SVGAngle> createSVGAngle();
     static SVGPoint createSVGPoint();
     static SVGMatrix createSVGMatrix();
     static FloatRect createSVGRect();
@@ -190,5 +190,3 @@ inline float SVGSVGElement::createSVGNumber()
 }
 
 } // namespace WebCore
-
-#endif

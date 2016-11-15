@@ -26,8 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef SecurityOrigin_h
-#define SecurityOrigin_h
+#pragma once
 
 #include <wtf/ThreadSafeRefCounted.h>
 #include <wtf/text/WTFString.h>
@@ -60,7 +59,7 @@ public:
     WEBCORE_EXPORT static RefPtr<SecurityOrigin> maybeCreateFromDatabaseIdentifier(const String&);
 
     WEBCORE_EXPORT static Ref<SecurityOrigin> createFromString(const String&);
-    WEBCORE_EXPORT static Ref<SecurityOrigin> create(const String& protocol, const String& host, int port);
+    WEBCORE_EXPORT static Ref<SecurityOrigin> create(const String& protocol, const String& host, Optional<uint16_t> port);
 
     // Some URL schemes use nested URLs for their security context. For example,
     // filesystem URLs look like the following:
@@ -85,10 +84,10 @@ public:
     void setDomainFromDOM(const String& newDomain);
     bool domainWasSetInDOM() const { return m_domainWasSetInDOM; }
 
-    String protocol() const { return m_protocol; }
-    String host() const { return m_host; }
-    String domain() const { return m_domain; }
-    unsigned short port() const { return m_port; }
+    const String& protocol() const { return m_protocol; }
+    const String& host() const { return m_host; }
+    const String& domain() const { return m_domain; }
+    Optional<uint16_t> port() const { return m_port; }
 
     // Returns true if a given URL is secure, based either directly on its
     // own protocol, or, when relevant, on the protocol of its "inner URL"
@@ -105,11 +104,6 @@ public:
     // the given URL. For example, call this function before issuing
     // XMLHttpRequests.
     bool canRequest(const URL&) const;
-
-    // Returns true if drawing an image from this URL taints a canvas from
-    // this security origin. For example, call this function before
-    // drawing an image onto an HTML canvas element with the drawImage API.
-    bool taintsCanvas(const URL&) const;
 
     // Returns true if this SecurityOrigin can receive drag content from the
     // initiator. For example, call this function before allowing content to be
@@ -146,6 +140,9 @@ public:
     bool hasUniversalAccess() const { return m_universalAccess; }
 
     void setStorageBlockingPolicy(StorageBlockingPolicy policy) { m_storageBlockingPolicy = policy; }
+
+    void grantStorageAccessFromFileURLsQuirk();
+    bool needsStorageAccessFromFileURLsQuirk() const { return m_needsStorageAccessFromFileURLsQuirk; }
 
 #if ENABLE(CACHE_PARTITIONING)
     WEBCORE_EXPORT String domainForCachePartition() const;
@@ -194,10 +191,6 @@ public:
     // could make the string return "null".
     WEBCORE_EXPORT String toRawString() const;
 
-    // Serialize the security origin to a string that could be used as part of
-    // file names. This format should be used in storage APIs only.
-    WEBCORE_EXPORT String databaseIdentifier() const;
-
     // This method checks for equality between SecurityOrigins, not whether
     // one origin can access another. It is used for hash table keys.
     // For access checks, use canAccess().
@@ -231,16 +224,18 @@ private:
     String m_host;
     String m_domain;
     String m_filePath;
-    unsigned short m_port;
-    bool m_isUnique;
-    bool m_universalAccess;
-    bool m_domainWasSetInDOM;
-    bool m_canLoadLocalResources;
-    StorageBlockingPolicy m_storageBlockingPolicy;
-    bool m_enforceFilePathSeparation;
-    bool m_needsDatabaseIdentifierQuirkForFiles;
+    Optional<uint16_t> m_port;
+    bool m_isUnique { false };
+    bool m_universalAccess { false };
+    bool m_domainWasSetInDOM { false };
+    bool m_canLoadLocalResources { false };
+    StorageBlockingPolicy m_storageBlockingPolicy { AllowAllStorage };
+    bool m_enforceFilePathSeparation { false };
+    bool m_needsStorageAccessFromFileURLsQuirk { false };
 };
 
-} // namespace WebCore
+// Returns true if the Origin header values serialized from these two origins would be the same.
+bool originsMatch(const SecurityOrigin&, const SecurityOrigin&);
+bool originsMatch(const SecurityOrigin*, const SecurityOrigin*);
 
-#endif // SecurityOrigin_h
+} // namespace WebCore

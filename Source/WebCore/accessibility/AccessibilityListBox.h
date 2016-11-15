@@ -26,8 +26,7 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef AccessibilityListBox_h
-#define AccessibilityListBox_h
+#pragma once
 
 #include "AccessibilityRenderObject.h"
 
@@ -50,13 +49,11 @@ public:
 private:
     explicit AccessibilityListBox(RenderObject*);
 
-    bool isListBox() const override { return true; }
+    bool isNativeListBox() const override { return true; }
     AccessibilityObject* listBoxOptionAccessibilityObject(HTMLElement*) const;
     AccessibilityObject* elementAccessibilityHitTest(const IntPoint&) const override;
 };
     
 } // namespace WebCore
 
-SPECIALIZE_TYPE_TRAITS_ACCESSIBILITY(AccessibilityListBox, isListBox())
-
-#endif // AccessibilityListBox_h
+SPECIALIZE_TYPE_TRAITS_ACCESSIBILITY(AccessibilityListBox, isNativeListBox())

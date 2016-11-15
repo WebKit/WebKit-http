@@ -36,7 +36,6 @@
 #include "Frame.h"
 #include "FrameView.h"
 #include "GraphicsContext.h"
-#include "HTMLAnchorElement.h"
 #include "HTMLBodyElement.h"
 #include "HTMLButtonElement.h"
 #include "HTMLFrameOwnerElement.h"
@@ -167,9 +166,7 @@ RenderBox::~RenderBox()
 
     RenderBlock::removePercentHeightDescendantIfNeeded(*this);
 
-#if ENABLE(CSS_SHAPES)
     ShapeOutsideInfo::removeInfo(*this);
-#endif
 
     view().unscheduleLazyRepaint(*this);
     removeControlStatesForRenderer(*this);
@@ -206,7 +203,7 @@ bool RenderBox::hasRegionRangeInFlowThread() const
     if (!flowThread || !flowThread->hasValidRegionInfo())
         return false;
 
-    return flowThread->hasCachedRegionRangeForBox(this);
+    return flowThread->hasCachedRegionRangeForBox(*this);
 }
 
 LayoutRect RenderBox::clientBoxRectInRegion(RenderRegion* region) const
@@ -460,10 +457,8 @@ void RenderBox::styleDidChange(StyleDifference diff, const RenderStyle* oldStyle
             view().compositor().rootOrBodyStyleChanged(*this, oldStyle);
     }
 
-#if ENABLE(CSS_SHAPES)
     if ((oldStyle && oldStyle->shapeOutside()) || style().shapeOutside())
         updateShapeOutsideInfoAfterStyleChange(style(), oldStyle);
-#endif
 }
 
 void RenderBox::willBeRemovedFromTree()
@@ -476,8 +471,6 @@ void RenderBox::willBeRemovedFromTree()
     RenderBoxModelObject::willBeRemovedFromTree();
 }
     
-
-#if ENABLE(CSS_SHAPES)
 void RenderBox::updateShapeOutsideInfoAfterStyleChange(const RenderStyle& style, const RenderStyle* oldStyle)
 {
     const ShapeValue* shapeOutside = style.shapeOutside();
@@ -501,7 +494,6 @@ void RenderBox::updateShapeOutsideInfoAfterStyleChange(const RenderStyle& style,
     if (shapeOutside || shapeOutside != oldShapeOutside)
         markShapeOutsideDependentsForLayout();
 }
-#endif
 
 void RenderBox::updateFromStyle()
 {
@@ -1410,7 +1402,7 @@ bool RenderBox::getBackgroundPaintedExtent(const LayoutPoint& paintOffset, Layou
     LayoutRect backgroundRect = snappedIntRect(borderBoxRect());
 
     Color backgroundColor = style().visitedDependentColor(CSSPropertyBackgroundColor);
-    if (backgroundColor.isValid() && backgroundColor.alpha()) {
+    if (backgroundColor.isVisible()) {
         paintedExtent = backgroundRect;
         return true;
     }
@@ -1431,7 +1423,7 @@ bool RenderBox::backgroundIsKnownToBeOpaqueInRect(const LayoutRect& localRect) c
         return false;
 
     Color backgroundColor = style().visitedDependentColor(CSSPropertyBackgroundColor);
-    if (!backgroundColor.isValid() || backgroundColor.hasAlpha())
+    if (!backgroundColor.isOpaque())
         return false;
 
     // If the element has appearance, it might be painted by theme.
@@ -1476,10 +1468,8 @@ static bool isCandidateForOpaquenessTest(const RenderBox& childBox)
         return false;
     if (childStyle.visibility() != VISIBLE)
         return false;
-#if ENABLE(CSS_SHAPES)
     if (childStyle.shapeOutside())
         return false;
-#endif
     if (!childBox.width() || !childBox.height())
         return false;
     if (RenderLayer* childLayer = childBox.layer()) {
@@ -1553,10 +1543,10 @@ bool RenderBox::backgroundHasOpaqueTopLayer() const
     if (fillLayer->hasOpaqueImage(*this) && fillLayer->hasRepeatXY() && fillLayer->image()->canRender(this, style().effectiveZoom()))
         return true;
 
-    // If there is only one layer and no image, check whether the background color is opaque
+    // If there is only one layer and no image, check whether the background color is opaque.
     if (!fillLayer->next() && !fillLayer->hasImage()) {
         Color bgColor = style().visitedDependentColor(CSSPropertyBackgroundColor);
-        if (bgColor.isValid() && bgColor.alpha() == 255)
+        if (bgColor.isOpaque())
             return true;
     }
 
@@ -1709,13 +1699,11 @@ void RenderBox::imageChanged(WrappedImagePtr image, const IntRect*)
         return;
     }
 
-#if ENABLE(CSS_SHAPES)
     ShapeValue* shapeOutsideValue = style().shapeOutside();
     if (!view().frameView().isInRenderTreeLayout() && isFloating() && shapeOutsideValue && shapeOutsideValue->image() && shapeOutsideValue->image()->data() == image) {
         ShapeOutsideInfo::ensureInfo(*this).markShapeAsDirty();
         markShapeOutsideDependentsForLayout();
     }
-#endif
 
     bool didFullRepaint = repaintLayerRectsForImage(image, style().backgroundLayers(), true);
     if (!didFullRepaint)

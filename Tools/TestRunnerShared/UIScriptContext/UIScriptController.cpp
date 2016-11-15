@@ -79,6 +79,28 @@ JSValueRef UIScriptController::didEndFormControlInteractionCallback() const
 {
     return m_context->callbackWithID(CallbackTypeDidEndFormControlInteraction);
 }
+    
+void UIScriptController::setDidShowForcePressPreviewCallback(JSValueRef callback)
+{
+    m_context->registerCallback(callback, CallbackTypeDidShowForcePressPreview);
+    platformSetDidShowForcePressPreviewCallback();
+}
+
+JSValueRef UIScriptController::didShowForcePressPreviewCallback() const
+{
+    return m_context->callbackWithID(CallbackTypeDidShowForcePressPreview);
+}
+
+void UIScriptController::setDidDismissForcePressPreviewCallback(JSValueRef callback)
+{
+    m_context->registerCallback(callback, CallbackTypeDidDismissForcePressPreview);
+    platformSetDidDismissForcePressPreviewCallback();
+}
+
+JSValueRef UIScriptController::didDismissForcePressPreviewCallback() const
+{
+    return m_context->callbackWithID(CallbackTypeDidDismissForcePressPreview);
+}
 
 void UIScriptController::setWillBeginZoomingCallback(JSValueRef callback)
 {
@@ -135,11 +157,18 @@ JSValueRef UIScriptController::didHideKeyboardCallback() const
     return m_context->callbackWithID(CallbackTypeDidHideKeyboard);
 }
 
-#if !PLATFORM(IOS)
+#if !PLATFORM(COCOA)
 void UIScriptController::zoomToScale(double, JSValueRef)
 {
 }
 
+JSObjectRef UIScriptController::contentsOfUserInterfaceItem(JSStringRef interfaceItem) const
+{
+    return nullptr;
+}
+#endif
+
+#if !PLATFORM(IOS)
 void UIScriptController::touchDownAtPoint(long x, long y, long touchCount, JSValueRef)
 {
 }
@@ -192,6 +221,14 @@ void UIScriptController::keyUpUsingHardwareKeyboard(JSStringRef, JSValueRef)
 {
 }
 
+void UIScriptController::selectTextCandidateAtIndex(long, JSValueRef)
+{
+}
+
+void UIScriptController::waitForTextPredictionsViewAndSelectCandidateAtIndex(long, unsigned, float)
+{
+}
+
 void UIScriptController::keyDownUsingHardwareKeyboard(JSStringRef, JSValueRef)
 {
 }
@@ -202,11 +239,6 @@ void UIScriptController::dismissFormAccessoryView()
 
 void UIScriptController::selectFormAccessoryPickerRow(long)
 {
-}
-    
-JSObjectRef UIScriptController::contentsOfUserInterfaceItem(JSStringRef interfaceItem) const
-{
-    return nullptr;
 }
 
 void UIScriptController::scrollToOffset(long x, long y)
@@ -246,11 +278,28 @@ JSObjectRef UIScriptController::selectionRangeViewRects() const
     return nullptr;
 }
 
+void UIScriptController::removeAllDynamicDictionaries()
+{
+}
+
+JSRetainPtr<JSStringRef> UIScriptController::scrollingTreeAsText() const
+{
+    return nullptr;
+}
+
 void UIScriptController::platformSetDidStartFormControlInteractionCallback()
 {
 }
 
 void UIScriptController::platformSetDidEndFormControlInteractionCallback()
+{
+}
+    
+void UIScriptController::platformSetDidShowForcePressPreviewCallback()
+{
+}
+
+void UIScriptController::platformSetDidDismissForcePressPreviewCallback()
 {
 }
 
@@ -277,6 +326,14 @@ void UIScriptController::platformSetDidHideKeyboardCallback()
 void UIScriptController::platformClearAllCallbacks()
 {
 }
+#endif
+
+#if !PLATFORM(MAC)
+
+void UIScriptController::insertText(JSStringRef, int, int)
+{
+}
+
 #endif
 
 void UIScriptController::uiScriptComplete(JSStringRef result)

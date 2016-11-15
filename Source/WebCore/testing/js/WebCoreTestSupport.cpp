@@ -35,6 +35,7 @@
 #include "LogInitialization.h"
 #include "MockGamepadProvider.h"
 #include "Page.h"
+#include "URLParser.h"
 #include "WheelEventTestTrigger.h"
 #include <JavaScriptCore/APICast.h>
 #include <JavaScriptCore/JSValueRef.h>

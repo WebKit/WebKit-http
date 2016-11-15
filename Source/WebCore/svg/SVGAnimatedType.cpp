@@ -90,7 +90,7 @@ SVGAnimatedType::~SVGAnimatedType()
     }
 }
 
-std::unique_ptr<SVGAnimatedType> SVGAnimatedType::createAngleAndEnumeration(std::unique_ptr<std::pair<SVGAngle, unsigned>> angleAndEnumeration)
+std::unique_ptr<SVGAnimatedType> SVGAnimatedType::createAngleAndEnumeration(std::unique_ptr<std::pair<SVGAngleValue, unsigned>> angleAndEnumeration)
 {
     ASSERT(angleAndEnumeration);
     auto animatedType = std::make_unique<SVGAnimatedType>(AnimatedAngle);
@@ -194,7 +194,7 @@ std::unique_ptr<SVGAnimatedType> SVGAnimatedType::createPointList(std::unique_pt
     return animatedType;
 }
 
-std::unique_ptr<SVGAnimatedType> SVGAnimatedType::createPreserveAspectRatio(std::unique_ptr<SVGPreserveAspectRatio> preserveAspectRatio)
+std::unique_ptr<SVGAnimatedType> SVGAnimatedType::createPreserveAspectRatio(std::unique_ptr<SVGPreserveAspectRatioValue> preserveAspectRatio)
 {
     ASSERT(preserveAspectRatio);
     auto animatedType = std::make_unique<SVGAnimatedType>(AnimatedPreserveAspectRatio);
@@ -276,29 +276,26 @@ bool SVGAnimatedType::setValueAsString(const QualifiedName& attrName, const Stri
     case AnimatedColor:
         ASSERT(m_data.color);
         *m_data.color = SVGColor::colorFromRGBColorString(value);
-        break;
-    case AnimatedLength: {
+        return true;
+    case AnimatedLength:
         ASSERT(m_data.length);
-        ExceptionCode ec = 0;
-        m_data.length->setValueAsString(value, SVGLength::lengthModeForAnimatedLengthAttribute(attrName), ec);
-        return !ec;
-    }
+        return !m_data.length->setValueAsString(value, SVGLength::lengthModeForAnimatedLengthAttribute(attrName)).hasException();
     case AnimatedLengthList:
         ASSERT(m_data.lengthList);
         m_data.lengthList->parse(value, SVGLength::lengthModeForAnimatedLengthAttribute(attrName));
-        break;
+        return true;
     case AnimatedNumber:
         ASSERT(m_data.number);
         parseNumberFromString(value, *m_data.number);
-        break;
+        return true;
     case AnimatedRect:
         ASSERT(m_data.rect);
         parseRect(value, *m_data.rect);
-        break;
+        return true;
     case AnimatedString:
         ASSERT(m_data.string);
         *m_data.string = value;
-        break;
+        return true;
 
     // These types don't appear in the table in SVGElement::cssPropertyToTypeMap() and thus don't need setValueAsString() support. 
     case AnimatedAngle:

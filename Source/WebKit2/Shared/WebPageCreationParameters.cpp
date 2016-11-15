@@ -33,7 +33,7 @@ namespace WebKit {
 void WebPageCreationParameters::encode(IPC::Encoder& encoder) const
 {
     encoder << viewSize;
-    encoder << viewState;
+    encoder << activityState;
 
     encoder << store;
     encoder.encodeEnum(drawingAreaType);
@@ -88,13 +88,14 @@ void WebPageCreationParameters::encode(IPC::Encoder& encoder) const
     encoder << appleMailPaginationQuirkEnabled;
     encoder << shouldScaleViewToFitDocument;
     encoder.encodeEnum(userInterfaceLayoutDirection);
+    encoder.encodeEnum(observedLayoutMilestones);
 }
 
 bool WebPageCreationParameters::decode(IPC::Decoder& decoder, WebPageCreationParameters& parameters)
 {
     if (!decoder.decode(parameters.viewSize))
         return false;
-    if (!decoder.decode(parameters.viewState))
+    if (!decoder.decode(parameters.activityState))
         return false;
     if (!decoder.decode(parameters.store))
         return false;
@@ -199,6 +200,8 @@ bool WebPageCreationParameters::decode(IPC::Decoder& decoder, WebPageCreationPar
         return false;
 
     if (!decoder.decodeEnum(parameters.userInterfaceLayoutDirection))
+        return false;
+    if (!decoder.decodeEnum(parameters.observedLayoutMilestones))
         return false;
 
     return true;

@@ -23,13 +23,14 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef AccessibilityTextMarker_h
-#define AccessibilityTextMarker_h
+#pragma once
+
+#if HAVE(ACCESSIBILITY)
 
 #include "JSWrappable.h"
 #include <JavaScriptCore/JSObjectRef.h>
-#include <wtf/PassRefPtr.h>
 #include <wtf/Platform.h>
+#include <wtf/Ref.h>
 
 #if PLATFORM(COCOA)
 #include <wtf/RetainPtr.h>
@@ -44,8 +45,8 @@ class AccessibilityUIElement;
 
 class AccessibilityTextMarker : public JSWrappable {
 public:
-    static PassRefPtr<AccessibilityTextMarker> create(PlatformTextMarker);
-    static PassRefPtr<AccessibilityTextMarker> create(const AccessibilityTextMarker&);
+    static Ref<AccessibilityTextMarker> create(PlatformTextMarker);
+    static Ref<AccessibilityTextMarker> create(const AccessibilityTextMarker&);
 
     ~AccessibilityTextMarker();
     
@@ -71,5 +72,5 @@ inline bool AccessibilityTextMarker::isEqual(AccessibilityTextMarker*) { return 
 #endif
 
 } // namespace WTR
-    
-#endif // AccessibilityTextMarker_h
+
+#endif // HAVE(ACCESSIBILITY)

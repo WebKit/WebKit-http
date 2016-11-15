@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef HTMLSourceElement_h
-#define HTMLSourceElement_h
+#pragma once
 
 #include "HTMLElement.h"
 #include "MediaList.h"
@@ -34,6 +33,7 @@ namespace WebCore {
 
 class HTMLSourceElement final : public HTMLElement, public ActiveDOMObject {
 public:
+    static Ref<HTMLSourceElement> create(Document&);
     static Ref<HTMLSourceElement> create(const QualifiedName&, Document&);
 
     String media() const;
@@ -70,7 +70,4 @@ private:
     RefPtr<MediaQuerySet> m_mediaQuerySet;
 };
 
-} //namespace
-
-#endif
-
+} // namespace WebCore

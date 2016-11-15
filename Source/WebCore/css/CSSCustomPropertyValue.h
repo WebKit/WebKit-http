@@ -23,14 +23,14 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef CSSCustomPropertyValue_h
-#define CSSCustomPropertyValue_h
+#pragma once
 
 #include "CSSValue.h"
+#include "CSSVariableData.h"
+#include "CSSVariableDependentValue.h"
 #include <wtf/RefPtr.h>
 #include <wtf/text/WTFString.h>
 
-// FIXME-NEWPARSER: This will be removed in favor of CSSCustomPropertyDeclaration
 namespace WebCore {
 
 class CSSCustomPropertyValue final : public CSSValue {
@@ -38,6 +38,16 @@ public:
     static Ref<CSSCustomPropertyValue> create(const AtomicString& name, Ref<CSSValue>&& value)
     {
         return adoptRef(*new CSSCustomPropertyValue(name, WTFMove(value)));
+    }
+    
+    static Ref<CSSCustomPropertyValue> createWithVariableData(const AtomicString& name, Ref<CSSVariableData>&& value)
+    {
+        return adoptRef(*new CSSCustomPropertyValue(name, WTFMove(value)));
+    }
+    
+    static Ref<CSSCustomPropertyValue> createWithID(const AtomicString& name, CSSValueID value)
+    {
+        return adoptRef(*new CSSCustomPropertyValue(name, value));
     }
     
     static Ref<CSSCustomPropertyValue> createInvalid()
@@ -49,29 +59,38 @@ public:
     {
         if (!m_serialized) {
             m_serialized = true;
-            m_stringValue = m_value ? m_value->cssText() : emptyString();
+            if (m_deprecatedValue)
+                m_stringValue = m_deprecatedValue->cssText();
+            else if (m_value)
+                m_stringValue = m_value->tokenRange().serialize();
+            else if (m_valueId != CSSValueInvalid)
+                m_stringValue = getValueName(m_valueId);
+            else
+                m_stringValue = emptyString();
         }
         return m_stringValue;
     }
 
     const AtomicString& name() const { return m_name; }
     
-    // FIXME: Should arguably implement equals on all of the CSSParserValues, but CSSValue equivalence
-    // is rarely used, so serialization to compare is probably fine.
-    bool equals(const CSSCustomPropertyValue& other) const { return m_name == other.m_name && customCSSText() == other.customCSSText(); }
+    bool equals(const CSSCustomPropertyValue& other) const { return m_name == other.m_name && m_deprecatedValue == other.m_deprecatedValue && m_value == other.m_value && m_valueId == other.m_valueId; }
 
-    bool isInvalid() const { return !m_value; }
     bool containsVariables() const { return m_containsVariables; }
+    bool checkVariablesForCycles(const AtomicString& name, CustomPropertyValueMap&, HashSet<AtomicString>& seenProperties, HashSet<AtomicString>& invalidProperties) const;
 
-    const RefPtr<CSSValue> value() const { return m_value.get(); }
+    void resolveVariableReferences(const CustomPropertyValueMap&, Vector<Ref<CSSCustomPropertyValue>>&) const;
+
+    const RefPtr<CSSValue> deprecatedValue() const { return m_deprecatedValue.get(); }
+    
+    CSSValueID valueID() const { return m_valueId; }
+    CSSVariableData* value() const { return m_value.get(); }
 
 private:
     CSSCustomPropertyValue(const AtomicString& name, Ref<CSSValue>&& value)
         : CSSValue(CustomPropertyClass)
         , m_name(name)
-        , m_value(WTFMove(value))
-        , m_containsVariables(m_value->isVariableDependentValue())
-        , m_serialized(false)
+        , m_deprecatedValue(WTFMove(value))
+        , m_containsVariables(m_deprecatedValue->isVariableDependentValue())
     {
     }
     
@@ -83,15 +102,34 @@ private:
     {
     }
 
+    CSSCustomPropertyValue(const AtomicString& name, CSSValueID id)
+        : CSSValue(CustomPropertyClass)
+        , m_name(name)
+        , m_valueId(id)
+    {
+        ASSERT(id == CSSValueInherit || id == CSSValueInitial || id == CSSValueUnset || id == CSSValueRevert);
+    }
+    
+    CSSCustomPropertyValue(const AtomicString& name, Ref<CSSVariableData>&& value)
+        : CSSValue(CustomPropertyClass)
+        , m_name(name)
+        , m_value(WTFMove(value))
+        , m_valueId(CSSValueInternalVariableValue)
+        , m_containsVariables(m_value->needsVariableResolution())
+    {
+    }
+    
     const AtomicString m_name;
-    RefPtr<CSSValue> m_value;
+    
+    RefPtr<CSSValue> m_deprecatedValue; // Used by old parser
+    RefPtr<CSSVariableData> m_value; // Used by new parser.
+    CSSValueID m_valueId { CSSValueInvalid }; // Used by new parser.
+    
     mutable String m_stringValue;
     bool m_containsVariables { false };
-    mutable bool m_serialized;
+    mutable bool m_serialized { false };
 };
 
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_CSS_VALUE(CSSCustomPropertyValue, isCustomPropertyValue())
-
-#endif // CSSCustomPropertyValue_h

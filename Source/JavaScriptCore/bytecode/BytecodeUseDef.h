@@ -54,6 +54,7 @@ void computeUsesForBytecodeOffset(Block* codeBlock, OpcodeID opcodeID, Instructi
     case op_create_cloned_arguments:
     case op_get_rest_length:
     case op_watchdog:
+    case op_get_argument:
         return;
     case op_assert:
     case op_get_scope:
@@ -160,10 +161,12 @@ void computeUsesForBytecodeOffset(Block* codeBlock, OpcodeID opcodeID, Instructi
         functor(codeBlock, instruction, opcodeID, instruction[5].u.operand);
         return;
     }
+    case op_spread:
     case op_get_property_enumerator:
     case op_get_enumerable_length:
     case op_new_func_exp:
     case op_new_generator_func_exp:
+    case op_new_async_func_exp:
     case op_to_index_string:
     case op_create_lexical_environment:
     case op_resolve_scope:
@@ -196,6 +199,7 @@ void computeUsesForBytecodeOffset(Block* codeBlock, OpcodeID opcodeID, Instructi
     case op_unsigned:
     case op_new_func:
     case op_new_generator_func:
+    case op_new_async_func:
     case op_get_parent_scope:
     case op_create_scoped_arguments:
     case op_create_rest:
@@ -274,6 +278,7 @@ void computeUsesForBytecodeOffset(Block* codeBlock, OpcodeID opcodeID, Instructi
         functor(codeBlock, instruction, opcodeID, instruction[3].u.operand);
         return;
     }
+    case op_new_array_with_spread:
     case op_new_array:
     case op_strcat: {
         int base = instruction[2].u.operand;
@@ -381,6 +386,8 @@ void computeDefsForBytecodeOffset(Block* codeBlock, OpcodeID opcodeID, Instructi
     case op_to_primitive:
     case op_create_this:
     case op_new_array:
+    case op_new_array_with_spread:
+    case op_spread:
     case op_new_array_buffer:
     case op_new_array_with_size:
     case op_new_regexp:
@@ -388,6 +395,8 @@ void computeDefsForBytecodeOffset(Block* codeBlock, OpcodeID opcodeID, Instructi
     case op_new_func_exp:
     case op_new_generator_func:
     case op_new_generator_func_exp:
+    case op_new_async_func:
+    case op_new_async_func_exp:
     case op_call_varargs:
     case op_tail_call_varargs:
     case op_tail_call_forward_arguments:
@@ -458,6 +467,7 @@ void computeDefsForBytecodeOffset(Block* codeBlock, OpcodeID opcodeID, Instructi
     case op_del_by_val:
     case op_unsigned:
     case op_get_from_arguments: 
+    case op_get_argument:
     case op_create_rest:
     case op_get_rest_length: {
         ASSERT(opcodeLengths[opcodeID] > 1);

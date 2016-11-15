@@ -36,7 +36,6 @@
 #include "FrameLoaderTypes.h"
 #include "LayoutMilestones.h"
 #include "MixedContentChecker.h"
-#include "PageThrottler.h"
 #include "ResourceHandleTypes.h"
 #include "ResourceLoadNotifier.h"
 #include "ResourceLoaderOptions.h"
@@ -119,8 +118,7 @@ public:
     unsigned long loadResourceSynchronously(const ResourceRequest&, StoredCredentials, ClientCredentialPolicy, ResourceError&, ResourceResponse&, RefPtr<SharedBuffer>& data);
 
     void changeLocation(const FrameLoadRequest&);
-    WEBCORE_EXPORT void urlSelected(const URL&, const String& target, Event*, LockHistory, LockBackForwardList, ShouldSendReferrer, ShouldOpenExternalURLsPolicy, const AtomicString& downloadAttribute);
-    WEBCORE_EXPORT void urlSelected(const URL&, const String& target, Event*, LockHistory, LockBackForwardList, ShouldSendReferrer, ShouldOpenExternalURLsPolicy);
+    WEBCORE_EXPORT void urlSelected(const URL&, const String& target, Event*, LockHistory, LockBackForwardList, ShouldSendReferrer, ShouldOpenExternalURLsPolicy, Optional<NewFrameOpenerPolicy> = Nullopt, const AtomicString& downloadAttribute = nullAtom);
     void submitForm(PassRefPtr<FormSubmission>);
 
     WEBCORE_EXPORT void reload(bool endToEndReload = false, bool contentBlockersEnabled = true);
@@ -460,7 +458,6 @@ private:
 
     URL m_previousURL;
     RefPtr<HistoryItem> m_requestedHistoryItem;
-    PageActivityAssertionToken m_activityAssertion;
 };
 
 // This function is called by createWindow() in JSDOMWindowBase.cpp, for example, for

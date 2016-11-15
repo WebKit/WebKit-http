@@ -38,6 +38,7 @@
 #include "JSWithScope.h"
 #include "ModuleAnalyzer.h"
 #include "Parser.h"
+#include "ProgramExecutable.h"
 #include "ScriptProfilingScope.h"
 #include <wtf/WTFThreadData.h>
 
@@ -91,7 +92,7 @@ JSValue evaluate(ExecState* exec, const SourceCode& source, JSValue thisValue, N
     JSLockHolder lock(vm);
     auto scope = DECLARE_CATCH_SCOPE(vm);
     RELEASE_ASSERT(vm.atomicStringTable() == wtfThreadData().atomicStringTable());
-    RELEASE_ASSERT(!vm.isCollectorBusy());
+    RELEASE_ASSERT(!vm.isCollectorBusyOnCurrentThread());
 
     CodeProfiling profile(source);
 
@@ -174,7 +175,7 @@ JSInternalPromise* loadAndEvaluateModule(ExecState* exec, const String& moduleNa
 {
     JSLockHolder lock(exec);
     RELEASE_ASSERT(exec->vm().atomicStringTable() == wtfThreadData().atomicStringTable());
-    RELEASE_ASSERT(!exec->vm().isCollectorBusy());
+    RELEASE_ASSERT(!exec->vm().isCollectorBusyOnCurrentThread());
 
     return loadAndEvaluateModule(lock, exec, exec->vmEntryGlobalObject(), Identifier::fromString(exec, moduleName), initiator);
 }
@@ -185,7 +186,7 @@ JSInternalPromise* loadAndEvaluateModule(ExecState* exec, const SourceCode& sour
     JSLockHolder lock(vm);
     auto scope = DECLARE_THROW_SCOPE(vm);
     RELEASE_ASSERT(vm.atomicStringTable() == wtfThreadData().atomicStringTable());
-    RELEASE_ASSERT(!vm.isCollectorBusy());
+    RELEASE_ASSERT(!vm.isCollectorBusyOnCurrentThread());
 
     Symbol* key = createSymbolForEntryPointModule(vm);
 
@@ -212,7 +213,7 @@ JSInternalPromise* loadModule(ExecState* exec, const String& moduleName, JSValue
 {
     JSLockHolder lock(exec);
     RELEASE_ASSERT(exec->vm().atomicStringTable() == wtfThreadData().atomicStringTable());
-    RELEASE_ASSERT(!exec->vm().isCollectorBusy());
+    RELEASE_ASSERT(!exec->vm().isCollectorBusyOnCurrentThread());
 
     return loadModule(lock, exec, exec->vmEntryGlobalObject(), Identifier::fromString(exec, moduleName), initiator);
 }
@@ -223,7 +224,7 @@ JSInternalPromise* loadModule(ExecState* exec, const SourceCode& source, JSValue
     JSLockHolder lock(vm);
     auto scope = DECLARE_THROW_SCOPE(vm);
     RELEASE_ASSERT(vm.atomicStringTable() == wtfThreadData().atomicStringTable());
-    RELEASE_ASSERT(!vm.isCollectorBusy());
+    RELEASE_ASSERT(!vm.isCollectorBusyOnCurrentThread());
 
     Symbol* key = createSymbolForEntryPointModule(vm);
 
@@ -241,7 +242,7 @@ JSValue linkAndEvaluateModule(ExecState* exec, const Identifier& moduleKey, JSVa
 {
     JSLockHolder lock(exec);
     RELEASE_ASSERT(exec->vm().atomicStringTable() == wtfThreadData().atomicStringTable());
-    RELEASE_ASSERT(!exec->vm().isCollectorBusy());
+    RELEASE_ASSERT(!exec->vm().isCollectorBusyOnCurrentThread());
 
     JSGlobalObject* globalObject = exec->vmEntryGlobalObject();
     return globalObject->moduleLoader()->linkAndEvaluateModule(exec, identifierToJSValue(exec->vm(), moduleKey), initiator);

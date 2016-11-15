@@ -40,6 +40,7 @@
 #include "RenderLineBreak.h"
 #include "RenderListMarker.h"
 #include "RenderNamedFlowThread.h"
+#include "RenderTable.h"
 #include "RenderTheme.h"
 #include "RenderView.h"
 #include "Settings.h"
@@ -521,7 +522,8 @@ void RenderInline::splitInlines(RenderBlock* fromBlock, RenderBlock* toBlock,
     }
 
     // Clear the flow thread containing blocks cached during the detached state insertions.
-    cloneInline->invalidateFlowThreadContainingBlockIncludingDescendants();
+    for (auto& cloneBlockChild : childrenOfType<RenderBlock>(*cloneInline))
+        cloneBlockChild.resetFlowThreadContainingBlockAndChildInfoIncludingDescendants();
 
     // Now we are at the block level. We need to put the clone into the toBlock.
     toBlock->insertChildInternal(cloneInline.leakPtr(), nullptr, NotifyChildren);
@@ -601,30 +603,36 @@ void RenderInline::splitFlow(RenderObject* beforeChild, RenderBlock* newBlockBox
     post.setNeedsLayoutAndPrefWidthsRecalc();
 }
 
+static bool canUseAsParentForContinuation(const RenderObject* renderer)
+{
+    if (!renderer)
+        return false;
+    if (!is<RenderBlock>(renderer) && renderer->isAnonymous())
+        return false;
+    if (is<RenderTable>(renderer))
+        return false;
+    return true;
+}
+
 void RenderInline::addChildToContinuation(RenderObject* newChild, RenderObject* beforeChild)
 {
-    RenderBoxModelObject* flow = continuationBefore(beforeChild);
+    auto* flow = continuationBefore(beforeChild);
     // It may or may not be the direct parent of the beforeChild.
     RenderBoxModelObject* beforeChildAncestor = nullptr;
-    // In case of anonymous wrappers, the parent of the beforeChild is mostly irrelevant. What we need is
-    // the topmost wrapper.
-    if (beforeChild && !is<RenderBlock>(beforeChild->parent()) && beforeChild->parent()->isAnonymous()) {
-        RenderElement* anonymousParent = beforeChild->parent();
-        while (anonymousParent && anonymousParent->parent() && anonymousParent->parent()->isAnonymous())
-            anonymousParent = anonymousParent->parent();
-        ASSERT(anonymousParent && anonymousParent->parent());
-        beforeChildAncestor = downcast<RenderBoxModelObject>(anonymousParent->parent());
-    } else {
-        ASSERT(!beforeChild || is<RenderBlock>(*beforeChild->parent()) || is<RenderInline>(*beforeChild->parent()));
-        if (beforeChild)
-            beforeChildAncestor = downcast<RenderBoxModelObject>(beforeChild->parent());
-        else {
-            if (RenderBoxModelObject* continuation = nextContinuation(flow))
-                beforeChildAncestor = continuation;
-            else
-                beforeChildAncestor = flow;
-        }
-    }
+    // In case of anonymous wrappers, the parent of the beforeChild is mostly irrelevant. What we need is the topmost wrapper.
+    if (!beforeChild) {
+        auto* continuation = nextContinuation(flow);
+        beforeChildAncestor = continuation ? continuation : flow;
+    } else if (canUseAsParentForContinuation(beforeChild->parent()))
+        beforeChildAncestor = downcast<RenderBoxModelObject>(beforeChild->parent());
+    else if (beforeChild->parent()) {
+        auto* parent = beforeChild->parent();
+        while (parent && parent->parent() && parent->parent()->isAnonymous())
+            parent = parent->parent();
+        ASSERT(parent && parent->parent());
+        beforeChildAncestor = downcast<RenderBoxModelObject>(parent->parent());
+    } else
+        ASSERT_NOT_REACHED();
 
     if (newChild->isFloatingOrOutOfFlowPositioned())
         return beforeChildAncestor->addChildIgnoringContinuation(newChild, beforeChild);
@@ -1630,10 +1638,10 @@ void RenderInline::paintOutline(PaintInfo& paintInfo, const LayoutPoint& paintOf
     rects.append(LayoutRect());
 
     Color outlineColor = styleToUse.visitedDependentColor(CSSPropertyOutlineColor);
-    bool useTransparencyLayer = outlineColor.hasAlpha();
+    bool useTransparencyLayer = !outlineColor.isOpaque();
     if (useTransparencyLayer) {
-        graphicsContext.beginTransparencyLayer(static_cast<float>(outlineColor.alpha()) / 255);
-        outlineColor = Color(outlineColor.red(), outlineColor.green(), outlineColor.blue());
+        graphicsContext.beginTransparencyLayer(outlineColor.alphaAsFloat());
+        outlineColor = outlineColor.opaqueColor();
     }
 
     for (unsigned i = 1; i < rects.size() - 1; i++)

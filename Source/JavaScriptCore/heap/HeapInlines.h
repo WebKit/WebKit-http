@@ -40,29 +40,6 @@
 
 namespace JSC {
 
-inline bool Heap::shouldCollect()
-{
-    if (isDeferred())
-        return false;
-    if (!m_isSafeToCollect)
-        return false;
-    if (m_operationInProgress != NoOperation)
-        return false;
-    if (Options::gcMaxHeapSize())
-        return m_bytesAllocatedThisCycle > Options::gcMaxHeapSize();
-    return m_bytesAllocatedThisCycle > m_maxEdenSize;
-}
-
-inline bool Heap::isBusy()
-{
-    return m_operationInProgress != NoOperation;
-}
-
-inline bool Heap::isCollecting()
-{
-    return m_operationInProgress == FullCollection || m_operationInProgress == EdenCollection;
-}
-
 ALWAYS_INLINE Heap* Heap::heap(const HeapCell* cell)
 {
     return cell->heap();
@@ -75,9 +52,37 @@ inline Heap* Heap::heap(const JSValue v)
     return heap(v.asCell());
 }
 
+inline bool Heap::hasHeapAccess() const
+{
+    return m_worldState.load() & hasAccessBit;
+}
+
+inline bool Heap::mutatorIsStopped() const
+{
+    unsigned state = m_worldState.load();
+    bool shouldStop = state & shouldStopBit;
+    bool stopped = state & stoppedBit;
+    // I only got it right when I considered all four configurations of shouldStop/stopped:
+    // !shouldStop, !stopped: The GC has not requested that we stop and we aren't stopped, so we
+    //     should return false.
+    // !shouldStop, stopped: The mutator is still stopped but the GC is done and the GC has requested
+    //     that we resume, so we should return false.
+    // shouldStop, !stopped: The GC called stopTheWorld() but the mutator hasn't hit a safepoint yet.
+    //     The mutator should be able to do whatever it wants in this state, as if we were not
+    //     stopped. So return false.
+    // shouldStop, stopped: The GC requested stop the world and the mutator obliged. The world is
+    //     stopped, so return true.
+    return shouldStop & stopped;
+}
+
+inline bool Heap::collectorBelievesThatTheWorldIsStopped() const
+{
+    return m_collectorBelievesThatTheWorldIsStopped;
+}
+
 ALWAYS_INLINE bool Heap::isMarked(const void* rawCell)
 {
-    ASSERT(!mayBeGCThread());
+    ASSERT(mayBeGCThread() != GCThreadType::Helper);
     HeapCell* cell = bitwise_cast<HeapCell*>(rawCell);
     if (cell->isLargeAllocation())
         return cell->largeAllocation().isMarked();
@@ -151,50 +156,6 @@ inline void Heap::writeBarrierWithoutFence(const JSCell* from)
         return;
     if (UNLIKELY(isWithinThreshold(from->cellState(), blackThreshold)))
         addToRememberedSet(from);
-}
-
-inline void Heap::reportExtraMemoryAllocated(size_t size)
-{
-    if (size > minExtraMemory) 
-        reportExtraMemoryAllocatedSlowCase(size);
-}
-
-inline void Heap::reportExtraMemoryVisited(CellState oldState, size_t size)
-{
-    // We don't want to double-count the extra memory that was reported in previous collections.
-    if (operationInProgress() == EdenCollection && oldState == CellState::OldGrey)
-        return;
-
-    size_t* counter = &m_extraMemorySize;
-    
-    for (;;) {
-        size_t oldSize = *counter;
-        if (WTF::weakCompareAndSwap(counter, oldSize, oldSize + size))
-            return;
-    }
-}
-
-#if ENABLE(RESOURCE_USAGE)
-inline void Heap::reportExternalMemoryVisited(CellState oldState, size_t size)
-{
-    // We don't want to double-count the external memory that was reported in previous collections.
-    if (operationInProgress() == EdenCollection && oldState == CellState::OldGrey)
-        return;
-
-    size_t* counter = &m_externalMemorySize;
-
-    for (;;) {
-        size_t oldSize = *counter;
-        if (WTF::weakCompareAndSwap(counter, oldSize, oldSize + size))
-            return;
-    }
-}
-#endif
-
-inline void Heap::deprecatedReportExtraMemory(size_t size)
-{
-    if (size > minExtraMemory) 
-        deprecatedReportExtraMemorySlowCase(size);
 }
 
 template<typename Functor> inline void Heap::forEachCodeBlock(const Functor& func)
@@ -367,42 +328,6 @@ inline void Heap::decrementDeferralDepth()
     m_deferralDepth--;
 }
 
-inline bool Heap::collectIfNecessaryOrDefer(GCDeferralContext* deferralContext)
-{
-    if (!shouldCollect())
-        return false;
-
-    if (deferralContext)
-        deferralContext->m_shouldGC = true;
-    else
-        collect();
-    return true;
-}
-
-inline void Heap::collectAccordingToDeferGCProbability()
-{
-    if (isDeferred() || !m_isSafeToCollect || m_operationInProgress != NoOperation)
-        return;
-
-    if (randomNumber() < Options::deferGCProbability()) {
-        collect();
-        return;
-    }
-
-    // If our coin flip told us not to GC, we still might GC,
-    // but we GC according to our memory pressure markers.
-    collectIfNecessaryOrDefer();
-}
-
-inline void Heap::decrementDeferralDepthAndGCIfNeeded()
-{
-    decrementDeferralDepth();
-    if (UNLIKELY(Options::deferGCShouldCollectWithProbability()))
-        collectAccordingToDeferGCProbability();
-    else
-        collectIfNecessaryOrDefer();
-}
-
 inline HashSet<MarkedArgumentBuffer*>& Heap::markListSet()
 {
     if (!m_markListSet)
@@ -410,32 +335,42 @@ inline HashSet<MarkedArgumentBuffer*>& Heap::markListSet()
     return *m_markListSet;
 }
 
-inline void Heap::registerWeakGCMap(void* weakGCMap, std::function<void()> pruningCallback)
+inline void Heap::reportExtraMemoryAllocated(size_t size)
 {
-    m_weakGCMaps.add(weakGCMap, WTFMove(pruningCallback));
+    if (size > minExtraMemory) 
+        reportExtraMemoryAllocatedSlowCase(size);
 }
 
-inline void Heap::unregisterWeakGCMap(void* weakGCMap)
+inline void Heap::deprecatedReportExtraMemory(size_t size)
 {
-    m_weakGCMaps.remove(weakGCMap);
+    if (size > minExtraMemory) 
+        deprecatedReportExtraMemorySlowCase(size);
 }
 
-inline void Heap::didAllocateBlock(size_t capacity)
+inline void Heap::acquireAccess()
 {
-#if ENABLE(RESOURCE_USAGE)
-    m_blockBytesAllocated += capacity;
-#else
-    UNUSED_PARAM(capacity);
-#endif
+    if (m_worldState.compareExchangeWeak(0, hasAccessBit))
+        return;
+    acquireAccessSlow();
 }
 
-inline void Heap::didFreeBlock(size_t capacity)
+inline bool Heap::hasAccess() const
 {
-#if ENABLE(RESOURCE_USAGE)
-    m_blockBytesAllocated -= capacity;
-#else
-    UNUSED_PARAM(capacity);
-#endif
+    return m_worldState.loadRelaxed() & hasAccessBit;
+}
+
+inline void Heap::releaseAccess()
+{
+    if (m_worldState.compareExchangeWeak(hasAccessBit, 0))
+        return;
+    releaseAccessSlow();
+}
+
+inline void Heap::stopIfNecessary()
+{
+    if (m_worldState.loadRelaxed() == hasAccessBit)
+        return;
+    stopIfNecessarySlow();
 }
 
 } // namespace JSC

@@ -1290,6 +1290,19 @@ public:
     {
         return argumentsStart(codeOrigin.inlineCallFrame);
     }
+
+    static VirtualRegister argumentCount(InlineCallFrame* inlineCallFrame)
+    {
+        ASSERT(!inlineCallFrame || inlineCallFrame->isVarargs());
+        if (!inlineCallFrame)
+            return VirtualRegister(CallFrameSlot::argumentCount);
+        return inlineCallFrame->argumentCountRegister;
+    }
+
+    static VirtualRegister argumentCount(const CodeOrigin& codeOrigin)
+    {
+        return argumentCount(codeOrigin.inlineCallFrame);
+    }
     
     void emitLoadStructure(RegisterID source, RegisterID dest, RegisterID scratch);
 
@@ -1554,11 +1567,17 @@ public:
     }
     
     template<typename ClassType, typename StructureType>
-    void emitAllocateVariableSizedJSObject(GPRReg resultGPR, StructureType structure, GPRReg allocationSize, GPRReg scratchGPR1, GPRReg scratchGPR2, JumpList& slowPath)
+    void emitAllocateVariableSizedCell(GPRReg resultGPR, StructureType structure, GPRReg allocationSize, GPRReg scratchGPR1, GPRReg scratchGPR2, JumpList& slowPath)
     {
         MarkedSpace::Subspace& subspace = vm()->heap.template subspaceForObjectOfType<ClassType>();
         emitAllocateVariableSized(resultGPR, subspace, allocationSize, scratchGPR1, scratchGPR2, slowPath);
         emitStoreStructureWithTypeInfo(structure, resultGPR, scratchGPR2);
+    }
+
+    template<typename ClassType, typename StructureType>
+    void emitAllocateVariableSizedJSObject(GPRReg resultGPR, StructureType structure, GPRReg allocationSize, GPRReg scratchGPR1, GPRReg scratchGPR2, JumpList& slowPath)
+    {
+        emitAllocateVariableSizedCell<ClassType>(resultGPR, structure, allocationSize, scratchGPR1, scratchGPR2, slowPath);
         storePtr(TrustedImmPtr(0), Address(resultGPR, JSObject::butterflyOffset()));
     }
 

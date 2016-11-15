@@ -138,6 +138,10 @@ bool Options::isAvailable(Options::ID id, Options::Availability availability)
     if (id == reportLLIntStatsID || id == llintStatsFileID)
         return true;
 #endif
+#if !defined(NDEBUG)
+    if (id == maxSingleAllocationSizeID)
+        return true;
+#endif
     return false;
 }
 
@@ -310,6 +314,7 @@ static void recomputeDependentOptions()
     Options::useJIT() = false;
     Options::useDFGJIT() = false;
     Options::useFTLJIT() = false;
+    Options::useDOMJIT() = false;
 #endif
 #if !ENABLE(YARR_JIT)
     Options::useRegExpJIT() = false;
@@ -350,6 +355,7 @@ static void recomputeDependentOptions()
         || Options::reportBaselineCompileTimes()
         || Options::reportDFGCompileTimes()
         || Options::reportFTLCompileTimes()
+        || Options::reportDFGPhaseTimes()
         || Options::verboseCFA()
         || Options::verboseFTLFailure())
         Options::alwaysComputeHash() = true;
@@ -395,6 +401,12 @@ static void recomputeDependentOptions()
 
 #if ENABLE(LLINT_STATS)
     LLInt::Data::loadStats();
+#endif
+#if !defined(NDEBUG)
+    if (Options::maxSingleAllocationSize())
+        fastSetMaxSingleAllocationSize(Options::maxSingleAllocationSize());
+    else
+        fastSetMaxSingleAllocationSize(std::numeric_limits<size_t>::max());
 #endif
 }
 

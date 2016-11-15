@@ -26,22 +26,18 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef Location_h
-#define Location_h
+#pragma once
 
 #include "DOMStringList.h"
 #include "DOMWindowProperty.h"
+#include "ExceptionOr.h"
 #include "ScriptWrappable.h"
-#include <wtf/RefCounted.h>
-#include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
 class DOMWindow;
 class Frame;
 class URL;
-
-typedef int ExceptionCode;
 
 class Location : public ScriptWrappable, public RefCounted<Location>, public DOMWindowProperty {
 public:
@@ -54,7 +50,7 @@ public:
     void replace(DOMWindow& activeWindow, DOMWindow& firstWindow, const String&);
     void reload(DOMWindow& activeWindow);
 
-    void setProtocol(DOMWindow& activeWindow, DOMWindow& firstWindow, const String&, ExceptionCode&);
+    ExceptionOr<void> setProtocol(DOMWindow& activeWindow, DOMWindow& firstWindow, const String&);
     String protocol() const;
     void setHost(DOMWindow& activeWindow, DOMWindow& firstWindow, const String&);
     String host() const;
@@ -83,5 +79,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // Location_h

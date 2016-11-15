@@ -224,6 +224,7 @@ fast/harness/use-page-cache.html
 fast/events/controlclick-no-onclick.html
 fast/events/moving-text-should-fire-drop-and-dragend-events.html
 fast/events/moving-text-should-fire-drop-and-dragend-events-2.html
+fast/events/ondrop-text-html.html
 editing/pasteboard/drag-drop-url-with-style.html
 
 # WTR needs an implementation for eventSender.continuousMouseScrollBy
@@ -685,7 +686,7 @@ fast/images/gif-loop-count.html [ Pass ]
 http/tests/misc/will-send-request-with-client-provided-http-body.html [ Pass ]
 
 # bug 162281
-imported/w3c/web-platform-tests/fetch/api/request/request-cache.html [ Skip ]
+imported/w3c/web-platform-tests/fetch/api/request/request-cache-only-if-cached.html [ Failure ]
 
 ### END OF (5) Progressions, expected successes that are expected failures in WebKit1.
 ########################################

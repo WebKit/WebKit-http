@@ -272,6 +272,8 @@ public:
 #endif
 
     virtual void notifyActiveSourceBuffersChanged() { }
+
+    virtual void setShouldDisableSleep(bool) { }
 };
 
 }

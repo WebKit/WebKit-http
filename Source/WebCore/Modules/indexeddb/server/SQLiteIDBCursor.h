@@ -22,8 +22,8 @@
  * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
-#ifndef SQLiteIDBCursor_h
-#define SQLiteIDBCursor_h
+
+#pragma once
 
 #if ENABLE(INDEXED_DATABASE)
 
@@ -65,7 +65,7 @@ public:
     IDBValue* currentValue() const { return m_currentValue.get(); }
 
     bool advance(uint64_t count);
-    bool iterate(const IDBKeyData& targetKey);
+    bool iterate(const IDBKeyData& targetKey, const IDBKeyData& targetPrimaryKey);
 
     bool didComplete() const { return m_completed; }
     bool didError() const { return m_errored; }
@@ -96,6 +96,7 @@ private:
     int64_t m_objectStoreID;
     int64_t m_indexID { IDBIndexInfo::InvalidId };
     IndexedDB::CursorDirection m_cursorDirection { IndexedDB::CursorDirection::Next };
+    IndexedDB::CursorType m_cursorType;
     IDBKeyRangeData m_keyRange;
 
     IDBKeyData m_currentLowerKey;
@@ -115,9 +116,7 @@ private:
     bool m_backingStoreCursor { false };
 };
 
-
 } // namespace IDBServer
 } // namespace WebCore
 
 #endif // ENABLE(INDEXED_DATABASE)
-#endif // SQLiteIDBCursor_h

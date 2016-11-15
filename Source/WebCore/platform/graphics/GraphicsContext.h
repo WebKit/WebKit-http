@@ -42,6 +42,7 @@ typedef struct CGContext PlatformGraphicsContext;
 interface ID2D1DCRenderTarget;
 interface ID2D1RenderTarget;
 interface ID2D1Factory;
+interface ID2D1SolidColorBrush;
 typedef ID2D1RenderTarget PlatformGraphicsContext;
 #elif USE(CAIRO)
 namespace WebCore {
@@ -426,7 +427,7 @@ public:
     WEBCORE_EXPORT void clearShadow();
     bool getShadow(FloatSize&, float&, Color&) const;
 
-    bool hasVisibleShadow() const { return m_state.shadowColor.isValid() && m_state.shadowColor.alpha(); }
+    bool hasVisibleShadow() const { return m_state.shadowColor.isVisible(); }
     bool hasShadow() const { return hasVisibleShadow() && (m_state.shadowBlur || m_state.shadowOffset.width() || m_state.shadowOffset.height()); }
     bool hasBlurredShadow() const { return hasVisibleShadow() && m_state.shadowBlur; }
 
@@ -462,12 +463,19 @@ public:
     void canvasClip(const Path&, WindRule = RULE_EVENODD);
     void clipOut(const Path&);
 
+    void scale(float s)
+    {
+        scale({ s, s });
+    }
     WEBCORE_EXPORT void scale(const FloatSize&);
     void rotate(float angleInRadians);
     void translate(const FloatSize& size) { translate(size.width(), size.height()); }
     WEBCORE_EXPORT void translate(float x, float y);
 
-    void setURLForRect(const URL&, const IntRect&);
+    void setURLForRect(const URL&, const FloatRect&);
+
+    void setDestinationForRect(const String& name, const FloatRect&);
+    void addDestinationAtPoint(const String& name, const FloatPoint&);
 
     void concatCTM(const AffineTransform&);
     void setCTM(const AffineTransform&);
@@ -551,14 +559,18 @@ public:
     WEBCORE_EXPORT static ID2D1Factory* systemFactory();
     WEBCORE_EXPORT static ID2D1RenderTarget* defaultRenderTarget();
 
-    WEBCORE_EXPORT void setDidBeginDraw(bool);
-    WEBCORE_EXPORT bool didBeginDraw() const;
+    WEBCORE_EXPORT void beginDraw();
     D2D1_COLOR_F colorWithGlobalAlpha(const Color&) const;
+    WEBCORE_EXPORT void endDraw();
+    void flush();
 
     ID2D1Brush* solidStrokeBrush() const;
     ID2D1Brush* solidFillBrush() const;
     ID2D1Brush* patternStrokeBrush() const;
     ID2D1Brush* patternFillBrush() const;
+    ID2D1StrokeStyle* platformStrokeStyle() const;
+
+    ID2D1SolidColorBrush* brushWithColor(const Color&);
 #endif
 #else // PLATFORM(WIN)
     bool shouldIncludeChildWindows() const { return false; }
@@ -570,6 +582,8 @@ public:
 #endif
 
     static void adjustLineToPixelBoundaries(FloatPoint& p1, FloatPoint& p2, float strokeWidth, StrokeStyle);
+
+    bool supportsInternalLinks() const;
 
 private:
     void platformInit(PlatformGraphicsContext*);

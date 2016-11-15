@@ -491,7 +491,7 @@ Could be worth adding to the API.
     @discussion Register classes that implement WebDocumentView and WebDocumentRepresentation respectively.
     @param viewClass The WebDocumentView class to use to render data for a given MIME type.
     @param representationClass The WebDocumentRepresentation class to use to represent data of the given MIME type.
-    @param scheme The URL scheme to represent with an object of the given class.
+    @param URLScheme The URL scheme to represent with an object of the given class.
 */
 + (void)_registerViewClass:(Class)viewClass representationClass:(Class)representationClass forURLScheme:(NSString *)URLScheme;
 
@@ -574,7 +574,7 @@ Could be worth adding to the API.
 #if !TARGET_OS_IPHONE
 /*!
     @method setAlwaysShowVerticalScroller:
-    @result Forces the vertical scroller to be visible if flag is YES, otherwise
+    @abstract Forces the vertical scroller to be visible if flag is YES, otherwise
     if flag is NO the scroller with automatically show and hide as needed.
  */
 - (void)setAlwaysShowVerticalScroller:(BOOL)flag;
@@ -587,7 +587,7 @@ Could be worth adding to the API.
 
 /*!
     @method setAlwaysShowHorizontalScroller:
-    @result Forces the horizontal scroller to be visible if flag is YES, otherwise
+    @abstract Forces the horizontal scroller to be visible if flag is YES, otherwise
     if flag is NO the scroller with automatically show and hide as needed.
  */
 - (void)setAlwaysShowHorizontalScroller:(BOOL)flag;
@@ -654,12 +654,6 @@ Could be worth adding to the API.
     remove was successful.
  */
 - (BOOL)_setMediaLayer:(CALayer*)layer forPluginView:(NSView*)pluginView;
-
-/*!
-    @method _clearBackForwardCache
-    @abstract Clear's this WebView's back/forward cache on the WebThread.
- */
-- (void)_clearBackForwardCache;
 
 /*!
  @method _wantsTelephoneNumberParsing
@@ -800,7 +794,7 @@ Could be worth adding to the API.
 
 /*!
     @method setCSSAnimationsSuspended
-    @param paused YES to suspend animations, NO to resume animations.
+    @param suspended YES to suspend animations, NO to resume animations.
     @discussion Suspends or resumes all running animations and transitions in the page.
 */
 - (void)setCSSAnimationsSuspended:(BOOL)suspended;
@@ -819,7 +813,7 @@ Could be worth adding to the API.
 + (void)_registerURLSchemeAsAllowingDatabaseAccessInPrivateBrowsing:(NSString *)scheme;
 
 - (void)_scaleWebView:(float)scale atOrigin:(NSPoint)origin;
-- (float)_viewScaleFactor;
+- (float)_viewScaleFactor; // This is actually pageScaleFactor.
 
 - (void)_setUseFixedLayout:(BOOL)fixed;
 - (void)_setFixedLayoutSize:(NSSize)size;
@@ -894,6 +888,10 @@ Could be worth adding to the API.
 @property (nonatomic, copy, getter=_sourceApplicationAuditData, setter=_setSourceApplicationAuditData:) NSData *sourceApplicationAuditData;
 
 - (void)_setFontFallbackPrefersPictographs:(BOOL)flag;
+
+- (void)showCandidates:(NSArray *)candidates forString:(NSString *)string inRect:(NSRect)rectOfTypedString forSelectedRange:(NSRange)range view:(NSView *)view completionHandler:(void (^)(NSTextCheckingResult *acceptedCandidate))completionBlock;
+- (void)forceRequestCandidatesForTesting;
+- (BOOL)shouldRequestCandidates;
 
 @end
 
@@ -1065,12 +1063,6 @@ Could be worth adding to the API.
 @interface NSObject (WebViewResourceLoadDelegatePrivate)
 // Addresses <rdar://problem/5008925> - SPI for now
 - (NSCachedURLResponse *)webView:(WebView *)sender resource:(id)identifier willCacheResponse:(NSCachedURLResponse *)response fromDataSource:(WebDataSource *)dataSource;
-@end
-
-@interface WebView (WebShowCandidates)
-- (void)showCandidates:(NSArray *)candidates forString:(NSString *)string inRect:(NSRect)rectOfTypedString forSelectedRange:(NSRange)range view:(NSView *)view completionHandler:(void (^)(NSTextCheckingResult *acceptedCandidate))completionBlock;
-- (void)forceRequestCandidatesForTesting;
-- (BOOL)shouldRequestCandidates;
 @end
 
 #ifdef __cplusplus

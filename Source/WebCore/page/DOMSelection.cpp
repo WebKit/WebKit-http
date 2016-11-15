@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2007, 2009 Apple Inc. All rights reserved.
+ * Copyright (C) 2007, 2009, 2016 Apple Inc. All rights reserved.
  * Copyright (C) 2012 Google Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -169,6 +169,8 @@ void DOMSelection::collapse(Node* node, unsigned offset)
 {
     if (!isValidForPosition(node))
         return;
+
+    Ref<Frame> protector(*m_frame);
     m_frame->selection().moveTo(createLegacyEditingPosition(node, offset), DOWNSTREAM);
 }
 
@@ -179,6 +181,8 @@ ExceptionOr<void> DOMSelection::collapseToEnd()
     auto& selection = m_frame->selection();
     if (selection.isNone())
         return Exception { INVALID_STATE_ERR };
+
+    Ref<Frame> protector(*m_frame);
     selection.moveTo(selection.selection().end(), DOWNSTREAM);
     return { };
 }
@@ -190,6 +194,8 @@ ExceptionOr<void> DOMSelection::collapseToStart()
     auto& selection = m_frame->selection();
     if (selection.isNone())
         return Exception { INVALID_STATE_ERR };
+
+    Ref<Frame> protector(*m_frame);
     selection.moveTo(selection.selection().start(), DOWNSTREAM);
     return { };
 }
@@ -205,6 +211,8 @@ void DOMSelection::setBaseAndExtent(Node* baseNode, unsigned baseOffset, Node* e
 {
     if (!isValidForPosition(baseNode) || !isValidForPosition(extentNode))
         return;
+
+    Ref<Frame> protector(*m_frame);
     m_frame->selection().moveTo(createLegacyEditingPosition(baseNode, baseOffset), createLegacyEditingPosition(extentNode, extentOffset), DOWNSTREAM);
 }
 
@@ -212,6 +220,8 @@ void DOMSelection::setPosition(Node* node, unsigned offset)
 {
     if (!isValidForPosition(node))
         return;
+
+    Ref<Frame> protector(*m_frame);
     m_frame->selection().moveTo(createLegacyEditingPosition(node, offset), DOWNSTREAM);
 }
 
@@ -262,6 +272,7 @@ void DOMSelection::modify(const String& alterString, const String& directionStri
     else
         return;
 
+    Ref<Frame> protector(*m_frame);
     m_frame->selection().modify(alter, direction, granularity);
 }
 
@@ -273,6 +284,8 @@ ExceptionOr<void> DOMSelection::extend(Node& node, unsigned offset)
         return Exception { INDEX_SIZE_ERR };
     if (!isValidForPosition(&node))
         return { };
+
+    Ref<Frame> protector(*m_frame);
     m_frame->selection().setExtent(createLegacyEditingPosition(&node, offset), DOWNSTREAM);
     return { };
 }
@@ -306,6 +319,8 @@ void DOMSelection::addRange(Range& range)
     if (!m_frame)
         return;
 
+    Ref<Frame> protector(*m_frame);
+
     auto& selection = m_frame->selection();
     if (selection.isNone()) {
         selection.moveTo(&range);
@@ -316,26 +331,30 @@ void DOMSelection::addRange(Range& range)
     if (!normalizedRange)
         return;
 
-    if (range.compareBoundaryPoints(Range::START_TO_START, *normalizedRange, IGNORE_EXCEPTION) == -1) {
-        // We don't support discontiguous selection. We don't do anything if r and range don't intersect.
-        if (range.compareBoundaryPoints(Range::START_TO_END, *normalizedRange, IGNORE_EXCEPTION) > -1) {
-            if (range.compareBoundaryPoints(Range::END_TO_END, *normalizedRange, IGNORE_EXCEPTION) == -1) {
-                // The original range and r intersect.
+    auto result = range.compareBoundaryPoints(Range::START_TO_START, *normalizedRange);
+    if (!result.hasException() && result.releaseReturnValue() == -1) {
+        // We don't support discontiguous selection. We don't do anything if the two ranges don't intersect.
+        result = range.compareBoundaryPoints(Range::START_TO_END, *normalizedRange);
+        if (!result.hasException() && result.releaseReturnValue() > -1) {
+            result = range.compareBoundaryPoints(Range::END_TO_END, *normalizedRange);
+            if (!result.hasException() && result.releaseReturnValue() == -1) {
+                // The ranges intersect.
                 selection.moveTo(range.startPosition(), normalizedRange->endPosition(), DOWNSTREAM);
             } else {
-                // r contains the original range.
+                // The new range contains the original range.
                 selection.moveTo(&range);
             }
         }
     } else {
-        // We don't support discontiguous selection. We don't do anything if r and range don't intersect.
-        ExceptionCode ec = 0;
-        if (range.compareBoundaryPoints(Range::END_TO_START, *normalizedRange, ec) < 1 && !ec) {
-            if (range.compareBoundaryPoints(Range::END_TO_END, *normalizedRange, IGNORE_EXCEPTION) == -1) {
-                // The original range contains r.
+        // We don't support discontiguous selection. We don't do anything if the two ranges don't intersect.
+        result = range.compareBoundaryPoints(Range::END_TO_START, *normalizedRange);
+        if (!result.hasException() && result.releaseReturnValue() < 1) {
+            result = range.compareBoundaryPoints(Range::END_TO_END, *normalizedRange);
+            if (!result.hasException() && result.releaseReturnValue() == -1) {
+                // The original range contains the new range.
                 selection.moveTo(normalizedRange.get());
             } else {
-                // The original range and r intersect.
+                // The ranges intersect.
                 selection.moveTo(normalizedRange->startPosition(), range.endPosition(), DOWNSTREAM);
             }
         }
@@ -355,7 +374,8 @@ void DOMSelection::deleteFromDocument()
     if (!selectedRange)
         return;
 
-    selectedRange->deleteContents(ASSERT_NO_EXCEPTION);
+    Ref<Frame> protector(*m_frame);
+    selectedRange->deleteContents();
     setBaseAndExtent(&selectedRange->startContainer(), selectedRange->startOffset(), &selectedRange->startContainer(), selectedRange->startOffset());
 }
 
@@ -376,17 +396,22 @@ bool DOMSelection::containsNode(Node& node, bool allowPartial) const
         return false;
     unsigned nodeIndex = node.computeNodeIndex();
 
-    ExceptionCode ec = 0;
-    bool nodeFullySelected = Range::compareBoundaryPoints(parentNode, nodeIndex, &selectedRange->startContainer(), selectedRange->startOffset(), ec) >= 0 && !ec
-        && Range::compareBoundaryPoints(parentNode, nodeIndex + 1, &selectedRange->endContainer(), selectedRange->endOffset(), ec) <= 0 && !ec;
-    ASSERT(!ec);
-    if (nodeFullySelected)
+    auto startsResult = Range::compareBoundaryPoints(parentNode, nodeIndex, &selectedRange->startContainer(), selectedRange->startOffset());
+    ASSERT(!startsResult.hasException());
+    auto endsResult = Range::compareBoundaryPoints(parentNode, nodeIndex + 1, &selectedRange->endContainer(), selectedRange->endOffset());
+    ASSERT(!endsResult.hasException());
+    bool isNodeFullySelected = !startsResult.hasException() && startsResult.releaseReturnValue() >= 0
+        && !endsResult.hasException() && endsResult.releaseReturnValue() <= 0;
+    if (isNodeFullySelected)
         return true;
 
-    bool nodeFullyUnselected = (Range::compareBoundaryPoints(parentNode, nodeIndex, &selectedRange->endContainer(), selectedRange->endOffset(), ec) > 0 && !ec)
-        || (Range::compareBoundaryPoints(parentNode, nodeIndex + 1, &selectedRange->startContainer(), selectedRange->startOffset(), ec) < 0 && !ec);
-    ASSERT(!ec);
-    if (nodeFullyUnselected)
+    auto startEndResult = Range::compareBoundaryPoints(parentNode, nodeIndex, &selectedRange->endContainer(), selectedRange->endOffset());
+    ASSERT(!startEndResult.hasException());
+    auto endStartResult = Range::compareBoundaryPoints(parentNode, nodeIndex + 1, &selectedRange->startContainer(), selectedRange->startOffset());
+    ASSERT(!endStartResult.hasException());
+    bool isNodeFullyUnselected = (!startEndResult.hasException() && startEndResult.releaseReturnValue() > 0)
+        || (!endStartResult.hasException() && endStartResult.releaseReturnValue() < 0);
+    if (isNodeFullyUnselected)
         return false;
 
     return allowPartial || node.isTextNode();

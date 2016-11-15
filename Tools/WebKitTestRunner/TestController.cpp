@@ -685,6 +685,8 @@ void TestController::resetPreferencesToConsistentValues(const TestOptions& optio
 
     WKCookieManagerDeleteAllCookies(WKContextGetCookieManager(m_context.get()));
 
+    WKPreferencesSetMockCaptureDevicesEnabled(preferences, true);
+
     platformResetPreferencesToConsistentValues();
 }
 
@@ -750,6 +752,8 @@ bool TestController::resetStateToConsistentValues(const TestOptions& options)
     m_mainWebView->setWindowFrame(WKRectMake(rect.origin.x, rect.origin.y, TestController::viewWidth, TestController::viewHeight));
 #endif
 
+    WKPageSetMuted(m_mainWebView->page(), true);
+
     // Reset notification permissions
     m_webNotificationProvider.reset();
 
@@ -766,6 +770,8 @@ bool TestController::resetStateToConsistentValues(const TestOptions& options)
 
     // Reset Custom Policy Delegate.
     setCustomPolicyDelegate(false, false);
+
+    m_shouldDownloadUndisplayableMIMETypes = false;
 
     m_workQueueManager.clearWorkQueue();
 
@@ -1955,26 +1961,32 @@ void TestController::decidePolicyForUserMediaPermissionRequestIfPossible()
         if (settings)
             persistentPermission = settings->persistentPermission();
 
+        if (!m_isUserMediaPermissionAllowed && !persistentPermission) {
+            WKUserMediaPermissionRequestDeny(request, kWKPermissionDenied);
+            continue;
+        }
+
         WKRetainPtr<WKArrayRef> audioDeviceUIDs = WKUserMediaPermissionRequestAudioDeviceUIDs(request);
         WKRetainPtr<WKArrayRef> videoDeviceUIDs = WKUserMediaPermissionRequestVideoDeviceUIDs(request);
 
-        if ((m_isUserMediaPermissionAllowed || persistentPermission) && (WKArrayGetSize(videoDeviceUIDs.get()) || WKArrayGetSize(audioDeviceUIDs.get()))) {
-            WKRetainPtr<WKStringRef> videoDeviceUID;
-            if (WKArrayGetSize(videoDeviceUIDs.get()))
-                videoDeviceUID = reinterpret_cast<WKStringRef>(WKArrayGetItemAtIndex(videoDeviceUIDs.get(), 0));
-            else
-                videoDeviceUID = WKStringCreateWithUTF8CString("");
+        if (!WKArrayGetSize(videoDeviceUIDs.get()) && !WKArrayGetSize(audioDeviceUIDs.get())) {
+            WKUserMediaPermissionRequestDeny(request, kWKNoConstraints);
+            continue;
+        }
 
-            WKRetainPtr<WKStringRef> audioDeviceUID;
-            if (WKArrayGetSize(audioDeviceUIDs.get()))
-                audioDeviceUID = reinterpret_cast<WKStringRef>(WKArrayGetItemAtIndex(audioDeviceUIDs.get(), 0));
-            else
-                audioDeviceUID = WKStringCreateWithUTF8CString("");
+        WKRetainPtr<WKStringRef> videoDeviceUID;
+        if (WKArrayGetSize(videoDeviceUIDs.get()))
+            videoDeviceUID = reinterpret_cast<WKStringRef>(WKArrayGetItemAtIndex(videoDeviceUIDs.get(), 0));
+        else
+            videoDeviceUID = WKStringCreateWithUTF8CString("");
 
-            WKUserMediaPermissionRequestAllow(request, audioDeviceUID.get(), videoDeviceUID.get());
+        WKRetainPtr<WKStringRef> audioDeviceUID;
+        if (WKArrayGetSize(audioDeviceUIDs.get()))
+            audioDeviceUID = reinterpret_cast<WKStringRef>(WKArrayGetItemAtIndex(audioDeviceUIDs.get(), 0));
+        else
+            audioDeviceUID = WKStringCreateWithUTF8CString("");
 
-        } else
-            WKUserMediaPermissionRequestDeny(request);
+        WKUserMediaPermissionRequestAllow(request, audioDeviceUID.get(), videoDeviceUID.get());
     }
     m_userMediaPermissionRequests.clear();
 }
@@ -2051,7 +2063,10 @@ void TestController::decidePolicyForNavigationResponse(WKNavigationResponseRef n
         return;
     }
 
-    WKFramePolicyListenerIgnore(listener);
+    if (m_shouldDownloadUndisplayableMIMETypes)
+        WKFramePolicyListenerDownload(listener);
+    else
+        WKFramePolicyListenerIgnore(listener);
 }
 
 void TestController::didNavigateWithNavigationData(WKContextRef, WKPageRef, WKNavigationDataRef navigationData, WKFrameRef frame, const void* clientInfo)

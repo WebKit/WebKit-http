@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebGLContextGroup_h
-#define WebGLContextGroup_h
+#pragma once
 
 #include "WebGLRenderingContextBase.h"
 #include <wtf/HashSet.h>
@@ -36,8 +35,6 @@ class GraphicsContext3D;
 class WebGLExtension;
 class WebGLSharedObject;
 class WebGLRenderingContextBase;
-
-typedef int ExceptionCode;
 
 class WebGLContextGroup final : public RefCounted<WebGLContextGroup> {
 public:
@@ -66,5 +63,3 @@ public:
 };
 
 } // namespace WebCore
-
-#endif // WebGLContextGroup_h

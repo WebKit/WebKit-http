@@ -27,17 +27,21 @@
 #pragma once
 
 #include "JSDOMWrapper.h"
+#include "Node.h"
 #include <domjit/DOMJITPatchpoint.h>
 #include <domjit/DOMJITPatchpointParams.h>
+#include <interpreter/FrameTracers.h>
 
 #if ENABLE(JIT)
 
-namespace WebCore {
-namespace DOMJITHelpers {
+namespace WebCore { namespace DOMJIT {
 
 using JSC::CCallHelpers;
 using JSC::GPRReg;
 using JSC::JSValueRegs;
+using JSC::MacroAssembler;
+
+static_assert(std::is_same<GPRReg, MacroAssembler::RegisterID>::value, "GPRReg is the alias to the MacroAssembler::RegisterID");
 
 inline CCallHelpers::Jump branchIfNotWorldIsNormal(CCallHelpers& jit, GPRReg globalObject)
 {
@@ -47,6 +51,16 @@ inline CCallHelpers::Jump branchIfNotWorldIsNormal(CCallHelpers& jit, GPRReg glo
 inline CCallHelpers::Jump branchIfNotWeakIsLive(CCallHelpers& jit, GPRReg weakImpl)
 {
     return jit.branchTestPtr(CCallHelpers::NonZero, CCallHelpers::Address(weakImpl, JSC::WeakImpl::offsetOfWeakHandleOwner()), CCallHelpers::TrustedImm32(JSC::WeakImpl::StateMask));
+}
+
+template<typename WrappedNode>
+JSC::EncodedJSValue JIT_OPERATION toWrapperSlow(JSC::ExecState* exec, JSC::JSGlobalObject* globalObject, void* result)
+{
+    ASSERT(exec);
+    ASSERT(result);
+    ASSERT(globalObject);
+    JSC::NativeCallFrameTracer tracer(&exec->vm(), exec);
+    return JSC::JSValue::encode(toJS(exec, static_cast<JSDOMGlobalObject*>(globalObject), *static_cast<WrappedNode*>(result)));
 }
 
 template<typename WrappedType>
@@ -59,7 +73,7 @@ void tryLookUpWrapperCache(CCallHelpers& jit, CCallHelpers::JumpList& failureCas
 }
 
 template<typename WrappedType, typename ToJSFunction>
-void toWrapper(CCallHelpers& jit, const JSC::DOMJIT::PatchpointParams& params, GPRReg wrapped, GPRReg globalObject, JSValueRegs result, ToJSFunction function, JSC::JSValue globalObjectConstant)
+void toWrapper(CCallHelpers& jit, JSC::DOMJIT::PatchpointParams& params, GPRReg wrapped, GPRReg globalObject, JSValueRegs result, ToJSFunction function, JSC::JSValue globalObjectConstant)
 {
     ASSERT(wrapped != result.payloadGPR());
     ASSERT(globalObject != result.payloadGPR());
@@ -96,6 +110,16 @@ inline CCallHelpers::Jump branchIfNotDOMWrapper(CCallHelpers& jit, GPRReg target
         CCallHelpers::TrustedImm32(JSC::JSType(JSDOMWrapperType)));
 }
 
+inline CCallHelpers::Jump branchIfEvent(CCallHelpers& jit, GPRReg target)
+{
+    return jit.branchIfType(target, JSC::JSType(JSEventType));
+}
+
+inline CCallHelpers::Jump branchIfNotEvent(CCallHelpers& jit, GPRReg target)
+{
+    return jit.branchIfNotType(target, JSC::JSType(JSEventType));
+}
+
 inline CCallHelpers::Jump branchIfNode(CCallHelpers& jit, GPRReg target)
 {
     return jit.branch8(
@@ -128,6 +152,16 @@ inline CCallHelpers::Jump branchIfNotElement(CCallHelpers& jit, GPRReg target)
         CCallHelpers::TrustedImm32(JSC::JSType(JSElementType)));
 }
 
+inline CCallHelpers::Jump branchIfDocumentFragment(CCallHelpers& jit, GPRReg target)
+{
+    return jit.branchIfType(target, JSC::JSType(JSDocumentFragmentNodeType));
+}
+
+inline CCallHelpers::Jump branchIfNotDocumentFragment(CCallHelpers& jit, GPRReg target)
+{
+    return jit.branchIfNotType(target, JSC::JSType(JSDocumentFragmentNodeType));
+}
+
 inline CCallHelpers::Jump branchIfDocumentWrapper(CCallHelpers& jit, GPRReg target)
 {
     return jit.branchIfType(target, JSC::JSType(JSDocumentWrapperType));
@@ -136,6 +170,19 @@ inline CCallHelpers::Jump branchIfDocumentWrapper(CCallHelpers& jit, GPRReg targ
 inline CCallHelpers::Jump branchIfNotDocumentWrapper(CCallHelpers& jit, GPRReg target)
 {
     return jit.branchIfNotType(target, JSC::JSType(JSDocumentWrapperType));
+}
+
+void loadDocument(MacroAssembler&, GPRReg node, GPRReg output);
+void loadDocumentElement(MacroAssembler&, GPRReg document, GPRReg output);
+
+inline CCallHelpers::Jump branchTestIsElementFlagOnNode(MacroAssembler& jit, CCallHelpers::ResultCondition condition, GPRReg nodeAddress)
+{
+    return jit.branchTest32(condition, CCallHelpers::Address(nodeAddress, Node::nodeFlagsMemoryOffset()), CCallHelpers::TrustedImm32(Node::flagIsElement()));
+}
+
+inline CCallHelpers::Jump branchTestIsHTMLFlagOnNode(MacroAssembler& jit, CCallHelpers::ResultCondition condition, GPRReg nodeAddress)
+{
+    return jit.branchTest32(condition, CCallHelpers::Address(nodeAddress, Node::nodeFlagsMemoryOffset()), CCallHelpers::TrustedImm32(Node::flagIsHTML()));
 }
 
 } }

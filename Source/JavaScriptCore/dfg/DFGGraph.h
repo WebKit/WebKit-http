@@ -59,8 +59,11 @@ class BackwardsDominators;
 class CFG;
 class ControlEquivalenceAnalysis;
 class Dominators;
+class FlowIndexing;
 class NaturalLoops;
 class PrePostNumbering;
+
+template<typename> class FlowMap;
 
 #define DFG_NODE_DO_TO_CHILDREN(graph, node, thingToDo) do {            \
         Node* _node = (node);                                           \
@@ -200,8 +203,6 @@ public:
     unsigned maxNodeCount() const { return m_nodesByIndex.size(); }
     Node* nodeAt(unsigned index) const { return m_nodesByIndex[index]; }
     void packNodeIndices();
-
-    Vector<AbstractValue, 0, UnsafeVectorOverflow>& abstractValuesCache() { return m_abstractValuesCache; }
 
     void dethread();
     
@@ -416,7 +417,7 @@ public:
         return hasExitSite(node->origin.semantic, exitKind);
     }
     
-    MethodOfGettingAValueProfile methodOfGettingAValueProfileFor(Node*);
+    MethodOfGettingAValueProfile methodOfGettingAValueProfileFor(Node* currentNode, Node* operandNode);
     
     BlockIndex numBlocks() const { return m_blocks.size(); }
     BasicBlock* block(BlockIndex blockIndex) const { return m_blocks[blockIndex].get(); }
@@ -664,6 +665,26 @@ public:
         JSGlobalObject* globalObject = globalObjectFor(node->origin.semantic);
         return watchpoints().isWatched(globalObject->havingABadTimeWatchpoint());
     }
+
+    bool isWatchingArrayIteratorProtocolWatchpoint(Node* node)
+    {
+        JSGlobalObject* globalObject = globalObjectFor(node->origin.semantic);
+        InlineWatchpointSet& set = globalObject->arrayIteratorProtocolWatchpoint();
+        if (watchpoints().isWatched(set))
+            return true;
+
+        if (set.isStillValid()) {
+            // Since the global object owns this watchpoint, we make ourselves have a weak pointer to it.
+            // If the global object got deallocated, it wouldn't fire the watchpoint. It's unlikely the
+            // global object would get deallocated without this code ever getting thrown away, however,
+            // it's more sound logically to depend on the global object lifetime weakly.
+            freeze(globalObject);
+            watchpoints().addLazily(set);
+            return true;
+        }
+
+        return false;
+    }
     
     Profiler::Compilation* compilation() { return m_plan.compilation.get(); }
     
@@ -790,6 +811,8 @@ public:
     BytecodeKills& killsFor(CodeBlock*);
     BytecodeKills& killsFor(InlineCallFrame*);
     
+    static unsigned parameterSlotsForArgCount(unsigned);
+    
     unsigned frameRegisterCount();
     unsigned stackPointerOffset();
     unsigned requiredRegisterCountForExit();
@@ -899,6 +922,8 @@ public:
     Bag<LoadVarargsData> m_loadVarargsData;
     Bag<StackAccessData> m_stackAccessData;
     Bag<LazyJSValue> m_lazyJSValues;
+    Bag<CallDOMGetterData> m_callDOMGetterData;
+    Bag<BitVector> m_bitVectors;
     Vector<InlineVariableData, 4> m_inlineVariableData;
     HashMap<CodeBlock*, std::unique_ptr<FullBytecodeLiveness>> m_bytecodeLiveness;
     HashMap<CodeBlock*, std::unique_ptr<BytecodeKills>> m_bytecodeKills;
@@ -932,6 +957,9 @@ public:
     RefCountState m_refCountState;
     bool m_hasDebuggerEnabled;
     bool m_hasExceptionHandlers { false };
+    std::unique_ptr<FlowIndexing> m_indexingCache;
+    std::unique_ptr<FlowMap<AbstractValue>> m_abstractValuesCache;
+
 private:
     void addNodeToMapByIndex(Node*);
 
@@ -969,7 +997,6 @@ private:
 
     Vector<Node*, 0, UnsafeVectorOverflow> m_nodesByIndex;
     Vector<unsigned, 0, UnsafeVectorOverflow> m_nodeIndexFreeList;
-    Vector<AbstractValue, 0, UnsafeVectorOverflow> m_abstractValuesCache;
 };
 
 } } // namespace JSC::DFG

@@ -168,7 +168,7 @@ extern "C" {
         // Eagerly enter compositing mode, since we know we'll need it. This avoids firing setNeedsStyleRecalc()
         // for iframes that contain composited plugins at bad times. https://bugs.webkit.org/show_bug.cgi?id=39033
         core([self webFrame])->view()->enterCompositingMode();
-        [self element]->setNeedsStyleRecalc(SyntheticStyleChange);
+        [self element]->invalidateStyleAndLayerComposition();
     } else
         self.wantsLayer = YES;
 }
@@ -443,10 +443,7 @@ extern "C" {
 {
     if (_cachedSnapshot) {
         NSRect sourceRect = { NSZeroPoint, [_cachedSnapshot.get() size] };
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-        [_cachedSnapshot.get() drawInRect:[self bounds] fromRect:sourceRect operation:NSCompositeSourceOver fraction:1];
-#pragma clang diagnostic pop
+        [_cachedSnapshot.get() drawInRect:[self bounds] fromRect:sourceRect operation:NSCompositingOperationSourceOver fraction:1];
         return;
     }
 

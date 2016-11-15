@@ -54,7 +54,6 @@
 #include "HTMLMapElement.h"
 #include "HTMLMeterElement.h"
 #include "HTMLNames.h"
-#include "HTMLOptGroupElement.h"
 #include "HTMLOptionElement.h"
 #include "HTMLOptionsCollection.h"
 #include "HTMLSelectElement.h"
@@ -777,6 +776,11 @@ String AccessibilityRenderObject::stringValue() const
     if (isTextControl())
         return text();
     
+#if PLATFORM(IOS)
+    if (isInputTypePopupButton())
+        return textUnderElement();
+#endif
+    
     if (is<RenderFileUploadControl>(*m_renderer))
         return downcast<RenderFileUploadControl>(*m_renderer).fileTextValue();
     
@@ -1454,15 +1458,22 @@ PlainTextRange AccessibilityRenderObject::documentBasedSelectedTextRange() const
     Node* node = m_renderer->node();
     if (!node)
         return PlainTextRange();
-    
+
     VisibleSelection visibleSelection = selection();
     RefPtr<Range> currentSelectionRange = visibleSelection.toNormalizedRange();
-    if (!currentSelectionRange || !currentSelectionRange->intersectsNode(*node, IGNORE_EXCEPTION))
+    if (!currentSelectionRange)
         return PlainTextRange();
-    
+    // FIXME: The reason this does the correct thing when the selection is in the
+    // shadow tree of an input element is that we get an exception below, and we
+    // choose to interpret all exceptions as "does not intersect". Seems likely
+    // that does not handle all cases correctly.
+    auto intersectsResult = currentSelectionRange->intersectsNode(*node);
+    if (!intersectsResult.hasException() && !intersectsResult.releaseReturnValue())
+        return PlainTextRange();
+
     int start = indexForVisiblePosition(visibleSelection.start());
     int end = indexForVisiblePosition(visibleSelection.end());
-    
+
     return PlainTextRange(start, end - start);
 }
 
@@ -2741,6 +2752,9 @@ AccessibilityRole AccessibilityRenderObject::determineAccessibilityRole()
 
     if (node && node->hasTagName(captionTag))
         return CaptionRole;
+    
+    if (node && node->hasTagName(markTag))
+        return MarkRole;
 
     if (node && node->hasTagName(preTag))
         return PreRole;
@@ -2749,6 +2763,11 @@ AccessibilityRole AccessibilityRenderObject::determineAccessibilityRole()
         return DetailsRole;
     if (is<HTMLSummaryElement>(node))
         return SummaryRole;
+    
+    // http://rawgit.com/w3c/aria/master/html-aam/html-aam.html
+    // Output elements should be mapped to status role.
+    if (isOutput())
+        return ApplicationStatusRole;
 
 #if ENABLE(VIDEO)
     if (is<HTMLVideoElement>(node))

@@ -26,16 +26,15 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ExceptionBase_h
-#define ExceptionBase_h
+#pragma once
 
-#include "ExceptionCode.h"
-#include <wtf/RefCounted.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
 struct ExceptionCodeDescription;
+
+using ExceptionCode = int;
 
 class ExceptionBase : public RefCounted<ExceptionBase> {
 public:
@@ -58,5 +57,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // ExceptionBase_h

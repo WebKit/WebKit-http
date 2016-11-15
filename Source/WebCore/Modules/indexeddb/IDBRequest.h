@@ -40,10 +40,12 @@ namespace WebCore {
 class DOMError;
 class Event;
 class IDBCursor;
+class IDBDatabase;
 class IDBIndex;
 class IDBKeyData;
 class IDBObjectStore;
 class IDBResultData;
+class IDBTransaction;
 class IDBValue;
 class ScopeGuard;
 class ThreadSafeDataBuffer;
@@ -57,8 +59,8 @@ class IDBRequest : public EventTargetWithInlineData, public IDBActiveDOMObject, 
 public:
     static Ref<IDBRequest> create(ScriptExecutionContext&, IDBObjectStore&, IDBTransaction&);
     static Ref<IDBRequest> create(ScriptExecutionContext&, IDBCursor&, IDBTransaction&);
-    static Ref<IDBRequest> createCount(ScriptExecutionContext&, IDBIndex&, IDBTransaction&);
-    static Ref<IDBRequest> createGet(ScriptExecutionContext&, IDBIndex&, IndexedDB::IndexRecordType, IDBTransaction&);
+    static Ref<IDBRequest> create(ScriptExecutionContext&, IDBIndex&, IDBTransaction&);
+    static Ref<IDBRequest> createIndexGet(ScriptExecutionContext&, IDBIndex&, IndexedDB::IndexRecordType, IDBTransaction&);
 
     const IDBResourceIdentifier& resourceIdentifier() const { return m_resourceIdentifier; }
 
@@ -88,6 +90,8 @@ public:
     void requestCompleted(const IDBResultData&);
 
     void setResult(const IDBKeyData&);
+    void setResult(const Vector<IDBKeyData>&);
+    void setResult(const Vector<IDBValue>&);
     void setResult(uint64_t);
     void setResultToStructuredClone(const IDBValue&);
     void setResultToUndefined();

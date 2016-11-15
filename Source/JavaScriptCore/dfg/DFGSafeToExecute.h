@@ -218,6 +218,7 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case CheckStructure:
     case GetExecutable:
     case GetButterfly:
+    case CallDOMGetter:
     case CallDOM:
     case CheckDOM:
     case CheckArray:
@@ -245,8 +246,11 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case CompareStrictEq:
     case CompareEqPtr:
     case Call:
+    case DirectCall:
     case TailCallInlinedCaller:
+    case DirectTailCallInlinedCaller:
     case Construct:
+    case DirectConstruct:
     case CallVarargs:
     case CallEval:
     case TailCallVarargsInlinedCaller:
@@ -259,6 +263,8 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case NewArray:
     case NewArrayWithSize:
     case NewArrayBuffer:
+    case NewArrayWithSpread:
+    case Spread:
     case NewRegexp:
     case ProfileType:
     case ProfileControlFlow:
@@ -293,6 +299,7 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case CreateScopedArguments:
     case CreateClonedArguments:
     case GetFromArguments:
+    case GetArgument:
     case PutToArguments:
     case NewFunction:
     case NewGeneratorFunction:
@@ -301,6 +308,7 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case Switch:
     case Return:
     case TailCall:
+    case DirectTailCall:
     case TailCallVarargs:
     case TailCallForwardVarargs:
     case Throw:
@@ -349,6 +357,7 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case MaterializeNewObject:
     case MaterializeCreateActivation:
     case PhantomDirectArguments:
+    case PhantomCreateRest:
     case PhantomClonedArguments:
     case GetMyArgumentByVal:
     case GetMyArgumentByValOutOfBounds:

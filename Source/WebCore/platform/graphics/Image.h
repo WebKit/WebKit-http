@@ -126,10 +126,10 @@ public:
 
     // Animation begins whenever someone draws the image, so startAnimation() is not normally called.
     // It will automatically pause once all observers no longer want to render the image anywhere.
-    enum CatchUpAnimation { DoNotCatchUp, CatchUp };
-    virtual void startAnimation(CatchUpAnimation = CatchUp) { }
+    virtual void startAnimation() { }
     virtual void stopAnimation() {}
     virtual void resetAnimation() {}
+    virtual void newFrameNativeImageAvailableAtIndex(size_t) { }
     
     // Typically the CachedImage that owns us.
     ImageObserver* imageObserver() const { return m_imageObserver; }
@@ -137,9 +137,9 @@ public:
 
     enum TileRule { StretchTile, RoundTile, SpaceTile, RepeatTile };
 
-    virtual NativeImagePtr nativeImage() { return nullptr; }
-    virtual NativeImagePtr nativeImageOfSize(const IntSize&) { return nullptr; }
-    virtual NativeImagePtr nativeImageForCurrentFrame() { return nullptr; }
+    virtual NativeImagePtr nativeImage(const GraphicsContext* = nullptr) { return nullptr; }
+    virtual NativeImagePtr nativeImageOfSize(const IntSize&, const GraphicsContext* = nullptr) { return nullptr; }
+    virtual NativeImagePtr nativeImageForCurrentFrame(const GraphicsContext* = nullptr) { return nullptr; }
     virtual ImageOrientation orientationForCurrentFrame() const { return ImageOrientation(); }
     virtual Vector<NativeImagePtr> framesNativeImages() { return { }; }
 

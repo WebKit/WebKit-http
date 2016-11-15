@@ -559,7 +559,7 @@ static cairo_status_t writeFunction(void* output, const unsigned char* data, uns
     return CAIRO_STATUS_SUCCESS;
 }
 
-static bool encodeImage(cairo_surface_t* image, const String& mimeType, Vector<char>* output, const double* quality)
+static bool encodeImage(cairo_surface_t* image, const String& mimeType, Vector<char>* output, Optional<double> quality)
 {
     ASSERT_UNUSED(mimeType, mimeType == "image/png" || mimeType == "image/jpeg"); // Only PNG  and JPEG output are supported for now.
 
@@ -576,7 +576,7 @@ static bool encodeImage(cairo_surface_t* image, const String& mimeType, Vector<c
     return false;
 }
 
-String ImageBuffer::toDataURL(const String& mimeType, const double* quality, CoordinateSystem) const
+String ImageBuffer::toDataURL(const String& mimeType, Optional<double> quality, CoordinateSystem) const
 {
     ASSERT(MIMETypeRegistry::isSupportedImageMIMETypeForEncoding(mimeType));
 

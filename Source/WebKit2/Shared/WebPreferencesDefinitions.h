@@ -181,7 +181,6 @@
     macro(AsynchronousPluginInitializationEnabledForAllPlugins, asynchronousPluginInitializationEnabledForAllPlugins, Bool, bool, false, "", "") \
     macro(ArtificialPluginInitializationDelayEnabled, artificialPluginInitializationDelayEnabled, Bool, bool, false, "", "") \
     macro(TabToLinksEnabled, tabToLinksEnabled, Bool, bool, false, "", "") \
-    macro(InteractiveFormValidationEnabled, interactiveFormValidationEnabled, Bool, bool, false, "", "") \
     macro(ScrollingPerformanceLoggingEnabled, scrollingPerformanceLoggingEnabled, Bool, bool, false, "", "") \
     macro(ScrollAnimatorEnabled, scrollAnimatorEnabled, Bool, bool, DEFAULT_WEBKIT_SCROLL_ANIMATOR_ENABLED, "", "") \
     macro(ForceUpdateScrollbarsOnMainThreadForPerformanceTesting, forceUpdateScrollbarsOnMainThreadForPerformanceTesting, Bool, bool, false, "", "") \
@@ -227,6 +226,7 @@
     macro(NewCSSParserEnabled, newCSSParserEnabled, Bool, bool, false, "", "") \
     macro(HTTPEquivEnabled, httpEquivEnabled, Bool, bool, true, "", "") \
     macro(MockCaptureDevicesEnabled, mockCaptureDevicesEnabled, Bool, bool, false, "", "") \
+    macro(MediaCaptureRequiresSecureConnection, mediaCaptureRequiresSecureConnection, Bool, bool, true, "", "") \
     macro(ShadowDOMEnabled, shadowDOMEnabled, Bool, bool, true, "Shadow DOM", "HTML Shadow DOM prototype") \
     macro(DOMIteratorEnabled, domIteratorEnabled, Bool, bool, true, "", "") \
     macro(FetchAPIEnabled, fetchAPIEnabled, Bool, bool, true, "", "") \
@@ -234,6 +234,10 @@
     macro(SelectionPaintingWithoutSelectionGapsEnabled, selectionPaintingWithoutSelectionGapsEnabled, Bool, bool, DEFAULT_SELECTION_PAINTING_WITHOUT_SELECTION_GAPS_ENABLED, "", "") \
     macro(ApplePayEnabled, applePayEnabled, Bool, bool, false, "", "") \
     macro(ApplePayCapabilityDisclosureAllowed, applePayCapabilityDisclosureAllowed, Bool, bool, true, "", "") \
+    macro(VisualViewportEnabled, visualViewportEnabled, Bool, bool, false, "", "") \
+    macro(NeedsStorageAccessFromFileURLsQuirk, needsStorageAccessFromFileURLsQuirk, Bool, bool, true, "", "") \
+    macro(AsyncImageDecodingEnabled, asyncImageDecodingEnabled, Bool, bool, true, "", "") \
+    macro(CustomElementsEnabled, customElementsEnabled, Bool, bool, true, "", "") \
     \
 
 #define FOR_EACH_WEBKIT_DOUBLE_PREFERENCE(macro) \
@@ -281,23 +285,32 @@
 #define FOR_EACH_WEBKIT_DEBUG_UINT32_PREFERENCE(macro) \
     macro(VisibleDebugOverlayRegions, visibleDebugOverlayRegions, UInt32, uint32_t, 0, "", "")
 
+// Our XCode build system does not currently have any concept of DEVELOPER_MODE.
+// Cocoa ports must disable experimental features on release branches for now.
+#if ENABLE(DEVELOPER_MODE) || PLATFORM(COCOA)
+#define DEFAULT_EXPERIMENTAL_FEATURES_ENABLED true
+#else
+#define DEFAULT_EXPERIMENTAL_FEATURES_ENABLED false
+#endif
+
 // For experimental features:
 // - The type should be boolean.
 // - You must provide the last two parameters for all experimental features. They
 //   are the text exposed to the user from the WebKit client.
 // - They should be alphabetically ordered by the human readable text.
-// - They should be false by default, although they are currently set to true while we develop client UI.
+// - The default value may be either false (for very unstable features) or
+//   DEFAULT_EXPERIMENTAL_FEATURE_ENABLED (for features that are ready for
+//   wider testing).
 
 #define FOR_EACH_WEBKIT_EXPERIMENTAL_FEATURE_PREFERENCE(macro) \
-    macro(CSSGridLayoutEnabled, cssGridLayoutEnabled, Bool, bool, true, "CSS Grid", "CSS Grid Layout Module support") \
-    macro(SpringTimingFunctionEnabled, springTimingFunctionEnabled, Bool, bool, true, "CSS Spring Animations", "CSS Spring Animation prototype") \
-    macro(CustomElementsEnabled, customElementsEnabled, Bool, bool, true, "Custom Elements", "HTML Custom Elements prototype") \
-    macro(GamepadsEnabled, gamepadsEnabled, Bool, bool, false, "Gamepads", "Web Gamepad API support") \
+    macro(CSSGridLayoutEnabled, cssGridLayoutEnabled, Bool, bool, DEFAULT_EXPERIMENTAL_FEATURES_ENABLED, "CSS Grid", "CSS Grid Layout Module support") \
+    macro(SpringTimingFunctionEnabled, springTimingFunctionEnabled, Bool, bool, DEFAULT_EXPERIMENTAL_FEATURES_ENABLED, "CSS Spring Animations", "CSS Spring Animation prototype") \
+    macro(InteractiveFormValidationEnabled, interactiveFormValidationEnabled, Bool, bool, false, "HTML Interactive Form Validation", "HTML interactive form validation prototype") \
+    macro(GamepadsEnabled, gamepadsEnabled, Bool, bool, DEFAULT_EXPERIMENTAL_FEATURES_ENABLED, "Gamepads", "Web Gamepad API support") \
     macro(ModernMediaControlsEnabled, modernMediaControlsEnabled, Bool, bool, false, "Modern Media Controls", "Use modern media controls look") \
-    macro(VariationFontsEnabled, variationFontsEnabled, Bool, bool, true, "Variation Fonts", "Enable variation fonts") \
-    macro(InputEventsEnabled, inputEventsEnabled, Bool, bool, false, "Input Events", "Enable InputEvents support") \
-    macro(VisualViewportEnabled, visualViewportEnabled, Bool, bool, false, "Visual Viewport", "Use Visual Viewport for fixed elements when zooming") \
-    macro(WebGL2Enabled, webGL2Enabled, Bool, bool, true, "WebGL 2.0", "WebGL 2 prototype") \
+    macro(VariationFontsEnabled, variationFontsEnabled, Bool, bool, DEFAULT_EXPERIMENTAL_FEATURES_ENABLED, "Variation Fonts", "Enable variation fonts") \
+    macro(InputEventsEnabled, inputEventsEnabled, Bool, bool, DEFAULT_EXPERIMENTAL_FEATURES_ENABLED, "Input Events", "Enable InputEvents support") \
+    macro(WebGL2Enabled, webGL2Enabled, Bool, bool, DEFAULT_EXPERIMENTAL_FEATURES_ENABLED, "WebGL 2.0", "WebGL 2 prototype") \
     \
 
 #if PLATFORM(COCOA)

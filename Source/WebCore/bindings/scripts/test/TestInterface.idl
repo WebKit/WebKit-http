@@ -34,15 +34,10 @@
     Conditional=Condition1|Condition2,
     ConstructorCallWith=ScriptExecutionContext,
     Constructor(DOMString str1, optional DOMString str2 = "defaultString"),
-    ConstructorMayThrowLegacyException,
+    ConstructorMayThrowException,
     ExportMacro=WEBCORE_EXPORT,
     ImplementationLacksVTable
 ] interface TestInterface {
 };
 
 TestInterface implements TestImplements;
-
-[
-    ImplementationLacksVTable
-] interface _readonly {
-};

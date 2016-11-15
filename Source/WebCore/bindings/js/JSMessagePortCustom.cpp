@@ -54,16 +54,14 @@ void JSMessagePort::visitAdditionalChildren(SlotVisitor& visitor)
 
 JSC::JSValue JSMessagePort::postMessage(JSC::ExecState& state)
 {
-    return handlePostMessage(state, &wrapped());
+    return handlePostMessage(state, wrapped());
 }
 
-void fillMessagePortArray(JSC::ExecState& state, JSC::JSValue value, MessagePortArray& portArray, ArrayBufferArray& arrayBuffers)
+void extractTransferables(JSC::ExecState& state, JSC::JSValue value, Vector<RefPtr<MessagePort>>& portArray, Vector<RefPtr<JSC::ArrayBuffer>>& arrayBuffers)
 {
     VM& vm = state.vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
 
-    // Convert from the passed-in JS array-like object to a MessagePortArray.
-    // Also validates the elements per sections 4.1.13 and 4.1.15 of the WebIDL spec and section 8.3.3 of the HTML5 spec.
     if (value.isUndefinedOrNull()) {
         portArray.resize(0);
         arrayBuffers.resize(0);
@@ -78,7 +76,7 @@ void fillMessagePortArray(JSC::ExecState& state, JSC::JSValue value, MessagePort
     for (unsigned i = 0 ; i < length; ++i) {
         JSValue value = object->get(&state, i);
         RETURN_IF_EXCEPTION(scope, void());
-        // Validation of non-null objects, per HTML5 spec 10.3.3.
+
         if (value.isUndefinedOrNull()) {
             setDOMException(&state, INVALID_STATE_ERR);
             return;
@@ -93,7 +91,7 @@ void fillMessagePortArray(JSC::ExecState& state, JSC::JSValue value, MessagePort
             }
             portArray.append(WTFMove(port));
         } else {
-            if (RefPtr<ArrayBuffer> arrayBuffer = toArrayBuffer(value))
+            if (RefPtr<ArrayBuffer> arrayBuffer = toPossiblySharedArrayBuffer(value))
                 arrayBuffers.append(WTFMove(arrayBuffer));
             else {
                 throwTypeError(&state, scope);

@@ -32,6 +32,7 @@
 #include "CryptoAlgorithmRegistry.h"
 #include "CryptoKeyDataRSAComponents.h"
 #include "CryptoKeyPair.h"
+#include "ScriptExecutionContext.h"
 #include <wtf/MainThread.h>
 
 namespace WebCore {
@@ -95,7 +96,7 @@ static CCCryptorStatus getPrivateKeyComponents(CCRSACryptorRef rsaKey, Vector<ui
     return status;
 }
 
-CryptoKeyRSA::CryptoKeyRSA(CryptoAlgorithmIdentifier identifier, CryptoAlgorithmIdentifier hash, bool hasHash, CryptoKeyType type, PlatformRSAKey platformKey, bool extractable, CryptoKeyUsage usage)
+CryptoKeyRSA::CryptoKeyRSA(CryptoAlgorithmIdentifier identifier, CryptoAlgorithmIdentifier hash, bool hasHash, CryptoKeyType type, PlatformRSAKey platformKey, bool extractable, CryptoKeyUsageBitmap usage)
     : CryptoKey(identifier, type, extractable, usage)
     , m_platformKey(platformKey)
     , m_restrictedToSpecificHash(hasHash)
@@ -103,7 +104,7 @@ CryptoKeyRSA::CryptoKeyRSA(CryptoAlgorithmIdentifier identifier, CryptoAlgorithm
 {
 }
 
-RefPtr<CryptoKeyRSA> CryptoKeyRSA::create(CryptoAlgorithmIdentifier identifier, CryptoAlgorithmIdentifier hash, bool hasHash, const CryptoKeyDataRSAComponents& keyData, bool extractable, CryptoKeyUsage usage)
+RefPtr<CryptoKeyRSA> CryptoKeyRSA::create(CryptoAlgorithmIdentifier identifier, CryptoAlgorithmIdentifier hash, bool hasHash, const CryptoKeyDataRSAComponents& keyData, bool extractable, CryptoKeyUsageBitmap usage)
 {
     if (keyData.type() == CryptoKeyDataRSAComponents::Type::Private && !keyData.hasAdditionalPrivateKeyParameters()) {
         // <rdar://problem/15452324> tracks adding support.
@@ -161,7 +162,7 @@ size_t CryptoKeyRSA::keySizeInBits() const
 
 std::unique_ptr<KeyAlgorithm> CryptoKeyRSA::buildAlgorithm() const
 {
-    String name = CryptoAlgorithmRegistry::singleton().nameForIdentifier(algorithmIdentifier());
+    String name = CryptoAlgorithmRegistry::singleton().name(algorithmIdentifier());
     Vector<uint8_t> modulus;
     Vector<uint8_t> publicExponent;
     CCCryptorStatus status = getPublicKeyComponents(m_platformKey, modulus, publicExponent);
@@ -173,7 +174,7 @@ std::unique_ptr<KeyAlgorithm> CryptoKeyRSA::buildAlgorithm() const
 
     size_t modulusLength = modulus.size() * 8;
     if (m_restrictedToSpecificHash)
-        return std::make_unique<RsaHashedKeyAlgorithm>(name, modulusLength, WTFMove(publicExponent), CryptoAlgorithmRegistry::singleton().nameForIdentifier(m_hash));
+        return std::make_unique<RsaHashedKeyAlgorithm>(name, modulusLength, WTFMove(publicExponent), CryptoAlgorithmRegistry::singleton().name(m_hash));
     return std::make_unique<RsaKeyAlgorithm>(name, modulusLength, WTFMove(publicExponent));
 }
 
@@ -229,7 +230,7 @@ static bool bigIntegerToUInt32(const Vector<uint8_t>& bigInteger, uint32_t& resu
     return true;
 }
 
-void CryptoKeyRSA::generatePair(CryptoAlgorithmIdentifier algorithm, CryptoAlgorithmIdentifier hash, bool hasHash, unsigned modulusLength, const Vector<uint8_t>& publicExponent, bool extractable, CryptoKeyUsage usage, KeyPairCallback callback, VoidCallback failureCallback)
+void CryptoKeyRSA::generatePair(CryptoAlgorithmIdentifier algorithm, CryptoAlgorithmIdentifier hash, bool hasHash, unsigned modulusLength, const Vector<uint8_t>& publicExponent, bool extractable, CryptoKeyUsageBitmap usage, KeyPairCallback callback, VoidCallback failureCallback, ScriptExecutionContext* context)
 {
     uint32_t e;
     if (!bigIntegerToUInt32(publicExponent, e)) {
@@ -239,29 +240,33 @@ void CryptoKeyRSA::generatePair(CryptoAlgorithmIdentifier algorithm, CryptoAlgor
         return;
     }
 
-    // We only use the callback functions when back on the main thread, but captured variables are copied on a secondary thread too.
+    // We only use the callback functions when back on the main/worker thread, but captured variables are copied on a secondary thread too.
     KeyPairCallback* localCallback = new KeyPairCallback(WTFMove(callback));
     VoidCallback* localFailureCallback = new VoidCallback(WTFMove(failureCallback));
+    context->ref();
 
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        ASSERT(context);
         CCRSACryptorRef ccPublicKey;
         CCRSACryptorRef ccPrivateKey;
         CCCryptorStatus status = CCRSACryptorGeneratePair(modulusLength, e, &ccPublicKey, &ccPrivateKey);
         if (status) {
             WTFLogAlways("Could not generate a key pair, status %d", status);
-            callOnWebThreadOrDispatchAsyncOnMainThread(^{
+            context->postTask([localCallback, localFailureCallback](ScriptExecutionContext& context) {
                 (*localFailureCallback)();
                 delete localCallback;
                 delete localFailureCallback;
+                context.deref();
             });
             return;
         }
-        callOnWebThreadOrDispatchAsyncOnMainThread(^{
+        context->postTask([algorithm, hash, hasHash, extractable, usage, localCallback, localFailureCallback, ccPublicKey, ccPrivateKey](ScriptExecutionContext& context) {
             auto publicKey = CryptoKeyRSA::create(algorithm, hash, hasHash, CryptoKeyType::Public, ccPublicKey, true, usage);
             auto privateKey = CryptoKeyRSA::create(algorithm, hash, hasHash, CryptoKeyType::Private, ccPrivateKey, extractable, usage);
             (*localCallback)(CryptoKeyPair::create(WTFMove(publicKey), WTFMove(privateKey)));
             delete localCallback;
             delete localFailureCallback;
+            context.deref();
         });
     });
 }

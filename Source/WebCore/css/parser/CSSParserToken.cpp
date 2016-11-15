@@ -296,10 +296,10 @@ double CSSParserToken::numericValue() const
     return m_numericValue;
 }
 
-CSSPropertyID CSSParserToken::parseAsUnresolvedCSSPropertyID() const
+CSSPropertyID CSSParserToken::parseAsCSSPropertyID() const
 {
     ASSERT(m_type == IdentToken);
-    return unresolvedCSSPropertyID(value());
+    return cssPropertyID(value());
 }
 
 CSSValueID CSSParserToken::id() const
@@ -412,6 +412,8 @@ void CSSParserToken::serialize(StringBuilder& builder) const
         return builder.append(delimiter());
     case NumberToken:
         // These won't properly preserve the NumericValueType flag
+        if (m_numericSign == PlusSign)
+            builder.append('+');
         return builder.appendNumber(numericValue());
     case PercentageToken:
         builder.appendNumber(numericValue());

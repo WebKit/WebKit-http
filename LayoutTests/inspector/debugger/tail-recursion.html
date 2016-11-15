@@ -10,6 +10,14 @@ function test()
 {
     var scriptObject;
 
+    function remoteObjectJSONFilter(key, value) {
+        if (key === "_target" || key === "_listeners")
+            return undefined;
+        if (key === "_objectId" || key === "_stackTrace")
+            return "<filtered>";
+        return value;
+    }
+
     function startTest() {
         InspectorTest.log("Starting Test");
         // 0 based indices.
@@ -39,9 +47,12 @@ function test()
         InspectorTest.log("Going to look at the top " + numFramesToInspect + " frames.");
         InspectorTest.log("------------------------------------");
 
-        InspectorTest.assert(WebInspector.debuggerManager.callFrames.length > numFramesToInspect); // We just look at top 50. This isn't a precise number. But it gets at the gist of the debugging experience.
+        let targetData = WebInspector.debuggerManager.dataForTarget(WebInspector.debuggerManager.activeCallFrame.target);
+        let callFrames = targetData.callFrames;
+
+        InspectorTest.assert(callFrames.length > numFramesToInspect); // We just look at top 50. This isn't a precise number. But it gets at the gist of the debugging experience.
         for (let i = 0; i < numFramesToInspect; i++) {
-            let callFrame = WebInspector.debuggerManager.callFrames[i];
+            let callFrame = callFrames[i];
             InspectorTest.assert(callFrame.functionName === "recurse");
             let topScope = callFrame.scopeChain[0];
 
@@ -56,7 +67,7 @@ function test()
                     if (propertyDescriptor.name === 'i') {
                         found = true;
                         InspectorTest.log("Looking at frame number: " + i);
-                        InspectorTest.log("    variable 'i': " + JSON.stringify(propertyDescriptor.value));
+                        InspectorTest.log("    variable 'i': " + JSON.stringify(propertyDescriptor.value, remoteObjectJSONFilter));
                         InspectorTest.assert(propertyDescriptor.value.type === 'number');
                         if (numBreakpointHits === 2 && i === 0)
                             InspectorTest.assert(propertyDescriptor.value.value === i + 1); // this tests the i++ inside tail-recurse.js

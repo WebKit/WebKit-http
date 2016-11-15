@@ -21,12 +21,12 @@
  *
  */
 
-#ifndef Event_h
-#define Event_h
+#pragma once
 
 #include "DOMTimeStamp.h"
 #include "EventInit.h"
 #include "EventInterfaces.h"
+#include "ExceptionOr.h"
 #include "ScriptWrappable.h"
 #include <wtf/RefCounted.h>
 #include <wtf/TypeCasts.h>
@@ -38,6 +38,7 @@ class DataTransfer;
 class EventPath;
 class EventTarget;
 class HTMLIFrameElement;
+class ScriptExecutionContext;
 
 enum EventInterface {
 
@@ -87,14 +88,16 @@ public:
         return adoptRef(*new Event);
     }
 
-    static Ref<Event> createForBindings(const AtomicString& type, const EventInit& initializer)
+    static Ref<Event> create(const AtomicString& type, const EventInit& initializer, IsTrusted isTrusted = IsTrusted::No)
     {
-        return adoptRef(*new Event(type, initializer));
+        return adoptRef(*new Event(type, initializer, isTrusted));
     }
 
     virtual ~Event();
 
     WEBCORE_EXPORT void initEvent(const AtomicString& type, bool canBubble, bool cancelable);
+    ExceptionOr<void> initEventForBindings(ScriptExecutionContext&, const AtomicString& type, bool bubbles); // Quirk.
+
     bool isInitialized() const { return m_isInitialized; }
 
     const AtomicString& type() const { return m_type; }
@@ -193,7 +196,7 @@ protected:
     Event(IsTrusted = IsTrusted::No);
     WEBCORE_EXPORT Event(const AtomicString& type, bool canBubble, bool cancelable);
     Event(const AtomicString& type, bool canBubble, bool cancelable, double timestamp);
-    Event(const AtomicString& type, const EventInit&, IsTrusted = IsTrusted::No);
+    Event(const AtomicString& type, const EventInit&, IsTrusted);
 
     virtual void receivedTarget();
     bool dispatched() const { return m_target; }
@@ -235,5 +238,3 @@ inline void Event::resetPropagationFlags()
 SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::ToValueTypeName) \
     static bool isType(const WebCore::Event& event) { return event.is##ToValueTypeName(); } \
 SPECIALIZE_TYPE_TRAITS_END()
-
-#endif // Event_h

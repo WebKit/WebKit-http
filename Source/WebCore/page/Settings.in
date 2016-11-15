@@ -50,6 +50,7 @@ preventKeyboardDOMEventDispatch initial=false
 localStorageEnabled initial=false
 allowUniversalAccessFromFileURLs initial=true
 allowFileAccessFromFileURLs initial=true
+needsStorageAccessFromFileURLsQuirk initial=true
 javaScriptCanOpenWindowsAutomatically initial=false
 javaScriptCanAccessClipboard initial=false
 shouldPrintBackgrounds initial=false
@@ -277,11 +278,14 @@ treatIPAddressAsDomain initial=false
 variationFontsEnabled initial=true, setNeedsStyleRecalcInAllFrames=1, conditional=VARIATION_FONTS
 
 # Runtime-enabled features
-visualViewportEnabled initial=false
+visualViewportEnabled initial=false, setNeedsStyleRecalcInAllFrames=1
+intersectionObserverEnabled initial=false
 
-inputEventsEnabled initial=false
+inputEventsEnabled initial=true
 
 quickTimePluginReplacementEnabled initial=defaultQuickTimePluginReplacementEnabled
 youTubeFlashPluginReplacementEnabled initial=defaultYouTubeFlashPluginReplacementEnabled
 
 forcedPrefersReducedMotionValue type=ForcedPrefersReducedMotionValue, initial=defaultForcedPrefersReducedMotionValue
+
+asyncImageDecodingEnabled initial=true

@@ -36,11 +36,11 @@
 #include "ErrorEvent.h"
 #include "Event.h"
 #include "EventNames.h"
-#include "ExceptionCode.h"
 #include "MessageEvent.h"
 #include "PageGroup.h"
 #include "ScriptExecutionContext.h"
 #include "Worker.h"
+#include "WorkerInspectorProxy.h"
 #include <inspector/ScriptCallStack.h>
 #include <runtime/ConsoleTypes.h>
 #include <wtf/MainThread.h>
@@ -54,6 +54,7 @@ WorkerGlobalScopeProxy* WorkerGlobalScopeProxy::create(Worker* worker)
 
 WorkerMessagingProxy::WorkerMessagingProxy(Worker* workerObject)
     : m_scriptExecutionContext(workerObject->scriptExecutionContext())
+    , m_inspectorProxy(std::make_unique<WorkerInspectorProxy>(workerObject->identifier()))
     , m_workerObject(workerObject)
     , m_mayBeDestroyed(false)
     , m_unconfirmedMessageCount(0)
@@ -72,11 +73,13 @@ WorkerMessagingProxy::~WorkerMessagingProxy()
         || (is<WorkerGlobalScope>(*m_scriptExecutionContext) && currentThread() == downcast<WorkerGlobalScope>(*m_scriptExecutionContext).thread().threadID()));
 }
 
-void WorkerMessagingProxy::startWorkerGlobalScope(const URL& scriptURL, const String& userAgent, const String& sourceCode, const ContentSecurityPolicyResponseHeaders& contentSecurityPolicyResponseHeaders, bool shouldBypassMainWorldContentSecurityPolicy, WorkerThreadStartMode startMode)
+void WorkerMessagingProxy::startWorkerGlobalScope(const URL& scriptURL, const String& userAgent, const String& sourceCode, const ContentSecurityPolicyResponseHeaders& contentSecurityPolicyResponseHeaders, bool shouldBypassMainWorldContentSecurityPolicy, JSC::RuntimeFlags runtimeFlags)
 {
     // FIXME: This need to be revisited when we support nested worker one day
     ASSERT(m_scriptExecutionContext);
     Document& document = downcast<Document>(*m_scriptExecutionContext);
+    WorkerThreadStartMode startMode = m_inspectorProxy->workerStartMode(*m_scriptExecutionContext.get());
+    String identifier = m_inspectorProxy->identifier();
 
 #if ENABLE(INDEXED_DATABASE)
     IDBClient::IDBConnectionProxy* proxy = document.idbConnectionProxy();
@@ -90,10 +93,12 @@ void WorkerMessagingProxy::startWorkerGlobalScope(const URL& scriptURL, const St
     SocketProvider* socketProvider = nullptr;
 #endif
 
-    RefPtr<DedicatedWorkerThread> thread = DedicatedWorkerThread::create(scriptURL, userAgent, sourceCode, *this, *this, startMode, contentSecurityPolicyResponseHeaders, shouldBypassMainWorldContentSecurityPolicy, document.topOrigin(), proxy, socketProvider);
+    RefPtr<DedicatedWorkerThread> thread = DedicatedWorkerThread::create(scriptURL, identifier, userAgent, sourceCode, *this, *this, startMode, contentSecurityPolicyResponseHeaders, shouldBypassMainWorldContentSecurityPolicy, document.topOrigin(), proxy, socketProvider, runtimeFlags);
 
     workerThreadCreated(thread);
     thread->start();
+
+    m_inspectorProxy->workerStarted(m_scriptExecutionContext.get(), thread.get(), scriptURL);
 }
 
 void WorkerMessagingProxy::postMessageToWorkerObject(RefPtr<SerializedScriptValue>&& message, std::unique_ptr<MessagePortChannelArray> channels)
@@ -161,12 +166,10 @@ void WorkerMessagingProxy::postExceptionToWorkerObject(const String& errorMessag
     });
 }
 
-void WorkerMessagingProxy::postConsoleMessageToWorkerObject(MessageSource source, MessageLevel level, const String& message, int lineNumber, int columnNumber, const String& sourceURL)
+void WorkerMessagingProxy::postMessageToPageInspector(const String& message)
 {
-    m_scriptExecutionContext->postTask([this, source, level, message = message.isolatedCopy(), sourceURL = sourceURL.isolatedCopy(), lineNumber, columnNumber] (ScriptExecutionContext& context) {
-        if (askedToTerminate())
-            return;
-        context.addConsoleMessage(source, level, message, sourceURL, lineNumber, columnNumber);
+    m_scriptExecutionContext->postTask([this, message = message.isolatedCopy()] (ScriptExecutionContext&) {
+        m_inspectorProxy->sendMessageFromWorkerToFrontend(message);
     });
 }
 
@@ -190,7 +193,7 @@ void WorkerMessagingProxy::workerThreadCreated(PassRefPtr<DedicatedWorkerThread>
 
 void WorkerMessagingProxy::workerObjectDestroyed()
 {
-    m_workerObject = 0;
+    m_workerObject = nullptr;
     m_scriptExecutionContext->postTask([this] (ScriptExecutionContext&) {
         m_mayBeDestroyed = true;
         if (m_workerThread)
@@ -218,12 +221,10 @@ void WorkerMessagingProxy::workerGlobalScopeDestroyed()
     m_scriptExecutionContext->postTask([this] (ScriptExecutionContext&) {
         workerGlobalScopeDestroyedInternal();
     });
-    // Will execute workerGlobalScopeDestroyedInternal() on context's thread.
 }
 
 void WorkerMessagingProxy::workerGlobalScopeClosed()
 {
-    // Executes terminateWorkerGlobalScope() on parent context's thread.
     m_scriptExecutionContext->postTask([this] (ScriptExecutionContext&) {
         terminateWorkerGlobalScope();
     });
@@ -231,10 +232,12 @@ void WorkerMessagingProxy::workerGlobalScopeClosed()
 
 void WorkerMessagingProxy::workerGlobalScopeDestroyedInternal()
 {
-    // WorkerGlobalScopeDestroyedTask is always the last to be performed, so the proxy is not needed for communication
+    // This is always the last task to be performed, so the proxy is not needed for communication
     // in either side any more. However, the Worker object may still exist, and it assumes that the proxy exists, too.
     m_askedToTerminate = true;
     m_workerThread = nullptr;
+
+    m_inspectorProxy->workerTerminated();
 
     if (m_mayBeDestroyed)
         delete this;
@@ -246,6 +249,8 @@ void WorkerMessagingProxy::terminateWorkerGlobalScope()
         return;
     m_askedToTerminate = true;
 
+    m_inspectorProxy->workerTerminated();
+
     if (m_workerThread)
         m_workerThread->stop();
 }
@@ -255,7 +260,6 @@ void WorkerMessagingProxy::confirmMessageFromWorkerObject(bool hasPendingActivit
     m_scriptExecutionContext->postTask([this, hasPendingActivity] (ScriptExecutionContext&) {
         reportPendingActivityInternal(true, hasPendingActivity);
     });
-    // Will execute reportPendingActivityInternal() on context's thread.
 }
 
 void WorkerMessagingProxy::reportPendingActivity(bool hasPendingActivity)
@@ -263,7 +267,6 @@ void WorkerMessagingProxy::reportPendingActivity(bool hasPendingActivity)
     m_scriptExecutionContext->postTask([this, hasPendingActivity] (ScriptExecutionContext&) {
         reportPendingActivityInternal(false, hasPendingActivity);
     });
-    // Will execute reportPendingActivityInternal() on context's thread.
 }
 
 void WorkerMessagingProxy::reportPendingActivityInternal(bool confirmingMessage, bool hasPendingActivity)

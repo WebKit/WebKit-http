@@ -824,6 +824,8 @@ void RenderLayer::updateLayerPositionsAfterDocumentScroll()
 {
     ASSERT(this == renderer().view().layer());
 
+    LOG(Scrolling, "RenderLayer::updateLayerPositionsAfterDocumentScroll");
+
     RenderGeometryMap geometryMap(UseTransforms);
     updateLayerPositionsAfterScroll(&geometryMap);
 }
@@ -995,8 +997,8 @@ TransformationMatrix RenderLayer::currentTransform(RenderStyle::ApplyTransformOr
         return TransformationMatrix();
     
     RenderBox* box = renderBox();
-    ASSERT(box);
-    if (renderer().style().isRunningAcceleratedAnimation()) {
+
+    if (renderer().animation().isRunningAcceleratedAnimationOnRenderer(renderer(), CSSPropertyTransform, AnimationBase::Running | AnimationBase::Paused)) {
         TransformationMatrix currTransform;
         FloatRect pixelSnappedBorderRect = snapRectToDevicePixels(box->borderBoxRect(), box->document().deviceScaleFactor());
         std::unique_ptr<RenderStyle> style = renderer().animation().getAnimatedStyleForRenderer(renderer());
@@ -1809,6 +1811,7 @@ void RenderLayer::beginTransparencyLayers(GraphicsContext& context, const LayerP
         ancestor->beginTransparencyLayers(context, paintingInfo, dirtyRect);
     
     if (paintsWithTransparency(paintingInfo.paintBehavior)) {
+        ASSERT(isStackingContext());
         m_usedTransparency = true;
         context.save();
         LayoutRect adjustedClipRect = paintingExtent(*this, paintingInfo.rootLayer, dirtyRect, paintingInfo.paintBehavior);
@@ -3097,7 +3100,7 @@ static inline RenderElement* rendererForScrollbar(RenderLayerModelObject& render
 {
     if (Element* element = renderer.element()) {
         if (ShadowRoot* shadowRoot = element->containingShadowRoot()) {
-            if (shadowRoot->mode() == ShadowRoot::Mode::UserAgent)
+            if (shadowRoot->mode() == ShadowRootMode::UserAgent)
                 return shadowRoot->host()->renderer();
         }
     }
@@ -3105,7 +3108,7 @@ static inline RenderElement* rendererForScrollbar(RenderLayerModelObject& render
     return &renderer;
 }
 
-PassRefPtr<Scrollbar> RenderLayer::createScrollbar(ScrollbarOrientation orientation)
+Ref<Scrollbar> RenderLayer::createScrollbar(ScrollbarOrientation orientation)
 {
     RefPtr<Scrollbar> widget;
     RenderElement* actualRenderer = rendererForScrollbar(renderer());
@@ -3121,7 +3124,7 @@ PassRefPtr<Scrollbar> RenderLayer::createScrollbar(ScrollbarOrientation orientat
         }
     }
     renderer().view().frameView().addChild(widget.get());
-    return WTFMove(widget);
+    return widget.releaseNonNull();
 }
 
 void RenderLayer::destroyScrollbar(ScrollbarOrientation orientation)
@@ -4168,7 +4171,7 @@ bool RenderLayer::hasFilterThatIsPainting(GraphicsContext& context, PaintLayerFl
     if (!hasPaintedFilter)
         return false;
 
-    auto filterPainter = std::make_unique<FilterEffectRendererHelper>(hasPaintedFilter);
+    auto filterPainter = std::make_unique<FilterEffectRendererHelper>(hasPaintedFilter, context);
     if (!filterPainter->haveFilterEffect())
         return false;
 
@@ -4182,7 +4185,7 @@ std::unique_ptr<FilterEffectRendererHelper> RenderLayer::setupFilters(GraphicsCo
 
     FilterInfo* filterInfo = FilterInfo::getIfExists(*this);
     bool hasPaintedFilter = filterInfo && filterInfo->renderer() && paintsWithFilters();
-    auto filterPainter = std::make_unique<FilterEffectRendererHelper>(hasPaintedFilter);
+    auto filterPainter = std::make_unique<FilterEffectRendererHelper>(hasPaintedFilter, context);
 
     LayoutRect filterRepaintRect = filterInfo->dirtySourceRect();
     filterRepaintRect.move(offsetFromRoot);
@@ -4926,7 +4929,7 @@ static double computeZOffset(const HitTestingTransformState& transformState)
     return backmappedPoint.z();
 }
 
-PassRefPtr<HitTestingTransformState> RenderLayer::createLocalTransformState(RenderLayer* rootLayer, RenderLayer* containerLayer,
+Ref<HitTestingTransformState> RenderLayer::createLocalTransformState(RenderLayer* rootLayer, RenderLayer* containerLayer,
                                         const LayoutRect& hitTestRect, const HitTestLocation& hitTestLocation,
                                         const HitTestingTransformState* containerTransformState,
                                         const LayoutSize& translationOffset) const
@@ -4954,7 +4957,7 @@ PassRefPtr<HitTestingTransformState> RenderLayer::createLocalTransformState(Rend
         transformState->translate(offset.width(), offset.height(), HitTestingTransformState::AccumulateTransform);
     }
     
-    return transformState;
+    return transformState.releaseNonNull();
 }
 
 
@@ -5308,7 +5311,7 @@ RenderLayer* RenderLayer::hitTestLayerByApplyingTransform(RenderLayer* rootLayer
     const LayoutSize& translationOffset)
 {
     // Create a transform state to accumulate this transform.
-    RefPtr<HitTestingTransformState> newTransformState = createLocalTransformState(rootLayer, containerLayer, hitTestRect, hitTestLocation, transformState, translationOffset);
+    Ref<HitTestingTransformState> newTransformState = createLocalTransformState(rootLayer, containerLayer, hitTestRect, hitTestLocation, transformState, translationOffset);
 
     // If the transform can't be inverted, then don't hit test this layer at all.
     if (!newTransformState->m_accumulatedTransform.isInvertible())
@@ -5330,7 +5333,7 @@ RenderLayer* RenderLayer::hitTestLayerByApplyingTransform(RenderLayer* rootLayer
         newHitTestLocation = HitTestLocation(localPoint);
 
     // Now do a hit test with the root layer shifted to be us.
-    return hitTestLayer(this, containerLayer, request, result, localHitTestRect, newHitTestLocation, true, newTransformState.get(), zOffset);
+    return hitTestLayer(this, containerLayer, request, result, localHitTestRect, newHitTestLocation, true, newTransformState.ptr(), zOffset);
 }
 
 bool RenderLayer::hitTestContents(const HitTestRequest& request, HitTestResult& result, const LayoutRect& layerBounds, const HitTestLocation& hitTestLocation, HitTestFilter hitTestFilter) const
@@ -6924,6 +6927,9 @@ RenderStyle RenderLayer::createReflectionStyle()
 
     // Map in our mask.
     newStyle.setMaskBoxImage(renderer().style().boxReflect()->mask());
+    
+    // Style has transform and mask, so needs to be stacking context.
+    newStyle.setZIndex(0);
 
     return newStyle;
 }
@@ -6985,7 +6991,7 @@ void RenderLayer::filterNeedsRepaint()
 {
     // We use the enclosing element so that we recalculate style for the ancestor of an anonymous object.
     if (Element* element = enclosingElement())
-        element->setNeedsStyleRecalc(SyntheticStyleChange);
+        element->invalidateStyleAndLayerComposition();
     renderer().repaint();
 }
 

@@ -58,21 +58,26 @@
 #include "CSSPageRule.h"
 #include "CSSParserFastPaths.h"
 #include "CSSParserImpl.h"
+#include "CSSPendingSubstitutionValue.h"
 #include "CSSPrimitiveValue.h"
 #include "CSSPrimitiveValueMappings.h"
+#include "CSSPropertyParser.h"
 #include "CSSPropertySourceData.h"
 #include "CSSReflectValue.h"
 #include "CSSRevertValue.h"
 #include "CSSSelector.h"
+#include "CSSSelectorParser.h"
 #include "CSSShadowValue.h"
 #include "CSSStyleSheet.h"
 #include "CSSTimingFunctionValue.h"
+#include "CSSTokenizer.h"
 #include "CSSUnicodeRangeValue.h"
 #include "CSSUnsetValue.h"
 #include "CSSValueKeywords.h"
 #include "CSSValueList.h"
 #include "CSSValuePool.h"
 #include "CSSVariableDependentValue.h"
+#include "CSSVariableReferenceValue.h"
 #include "Counter.h"
 #include "Document.h"
 #include "FloatConversion.h"
@@ -101,7 +106,6 @@
 #include "StyleRuleImport.h"
 #include "StyleSheetContents.h"
 #include "TextEncoding.h"
-#include "WebKitCSSFilterValue.h"
 #include "WebKitCSSRegionRule.h"
 #include "WebKitCSSTransformValue.h"
 #include <bitset>
@@ -109,6 +113,7 @@
 #include <wtf/HexNumber.h>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/StdLibExtras.h>
+#include <wtf/TemporaryChange.h>
 #include <wtf/dtoa.h>
 #include <wtf/text/StringBuffer.h>
 #include <wtf/text/StringBuilder.h>
@@ -137,33 +142,6 @@ extern int cssyydebug;
 extern int cssyyparse(WebCore::CSSParser*);
 
 using namespace WTF;
-
-namespace {
-
-enum PropertyType {
-    PropertyExplicit,
-    PropertyImplicit
-};
-
-class ImplicitScope {
-    WTF_MAKE_NONCOPYABLE(ImplicitScope);
-public:
-    ImplicitScope(WebCore::CSSParser& parser, PropertyType propertyType)
-        : m_parser(parser)
-    {
-        m_parser.m_implicitShorthand = propertyType == PropertyImplicit;
-    }
-
-    ~ImplicitScope()
-    {
-        m_parser.m_implicitShorthand = false;
-    }
-
-private:
-    WebCore::CSSParser& m_parser;
-};
-
-} // namespace
 
 namespace WebCore {
 
@@ -415,6 +393,8 @@ void CSSParser::parseSheet(StyleSheetContents* sheet, const String& string, cons
 
 RefPtr<StyleRuleBase> CSSParser::parseRule(StyleSheetContents* sheet, const String& string)
 {
+    if (m_context.useNewParser && m_context.mode != UASheetMode)
+        return CSSParserImpl::parseRule(string, m_context, sheet, CSSParserImpl::AllowImportRules);
     setStyleSheet(sheet);
     m_allowNamespaceDeclarations = false;
     setupParser("@-webkit-rule{", string, "} ");
@@ -494,8 +474,8 @@ static CSSParser::ParseResult parseColorValue(MutableStyleProperties& declaratio
         auto value = CSSValuePool::singleton().createIdentifierValue(valueID);
         return declaration.addParsedProperty(CSSProperty(propertyId, WTFMove(value), important)) ? CSSParser::ParseResult::Changed : CSSParser::ParseResult::Unchanged;
     }
-    RGBA32 color;
-    if (!CSSParser::fastParseColor(color, string, strict && string[0] != '#'))
+    Color color = CSSParser::fastParseColor(string, strict && string[0] != '#');
+    if (!color.isValid())
         return CSSParser::ParseResult::Error;
 
     auto value = CSSValuePool::singleton().createColorValue(color);
@@ -526,9 +506,7 @@ static inline bool isSimpleLengthPropertyID(CSSPropertyID propertyId, bool& acce
     case CSSPropertyGridColumnGap:
     case CSSPropertyGridRowGap:
 #endif
-#if ENABLE(CSS_SHAPES)
-    case CSSPropertyWebkitShapeMargin:
-#endif
+    case CSSPropertyShapeMargin:
         acceptsNegativeNumbers = false;
         return true;
     case CSSPropertyBottom:
@@ -861,7 +839,7 @@ static inline bool isValidKeywordPropertyAndValue(CSSPropertyID propertyId, int 
         if (valueID == CSSValueAuto || valueID == CSSValueBalance)
             return true;
         break;
-    case CSSPropertyColumnProgression:
+    case CSSPropertyWebkitColumnProgression:
         if (valueID == CSSValueNormal || valueID == CSSValueReverse)
             return true;
         break;
@@ -1041,10 +1019,6 @@ static inline bool isValidKeywordPropertyAndValue(CSSPropertyID propertyId, int 
             return true;
         }
         break;
-    case CSSPropertyWebkitWritingMode:
-        if (valueID >= CSSValueHorizontalTb && valueID <= CSSValueHorizontalBt)
-            return true;
-        break;
     case CSSPropertyWhiteSpace: // normal | pre | nowrap | inherit
         if (valueID == CSSValueNormal || valueID == CSSValuePre || valueID == CSSValuePreWrap || valueID == CSSValuePreLine || valueID == CSSValueNowrap)
             return true;
@@ -1064,8 +1038,8 @@ static inline bool isValidKeywordPropertyAndValue(CSSPropertyID propertyId, int 
         if (valueID == CSSValueWhite || valueID == CSSValueWhiteOutline || valueID == CSSValueBlack)
             return true;
         break;
-    case CSSPropertyApplePayButtonType: // plain | buy | set-up
-        if (valueID == CSSValuePlain || valueID == CSSValueBuy || valueID == CSSValueSetUp)
+    case CSSPropertyApplePayButtonType: // plain | buy | set-up | other
+        if (valueID == CSSValuePlain || valueID == CSSValueBuy || valueID == CSSValueSetUp || valueID == CSSValueOther)
             return true;
         break;
 #endif
@@ -1155,7 +1129,9 @@ static inline bool isValidKeywordPropertyAndValue(CSSPropertyID propertyId, int 
             return true;
         break;
     case CSSPropertyWritingMode:
-        if (valueID == CSSValueLrTb || valueID == CSSValueRlTb || valueID == CSSValueTbRl || valueID == CSSValueLr || valueID == CSSValueRl || valueID == CSSValueTb)
+        if ((valueID >= CSSValueHorizontalTb && valueID <= CSSValueHorizontalBt)
+            || valueID == CSSValueLrTb || valueID == CSSValueRlTb || valueID == CSSValueTbRl
+            || valueID == CSSValueLr || valueID == CSSValueRl || valueID == CSSValueTb)
             return true;
         break;
     default:
@@ -1177,11 +1153,30 @@ static bool isUniversalKeyword(const String& string)
         || equalLettersIgnoringASCIICase(string, "revert");
 }
 
+static bool isKeywordPropertyID(CSSPropertyID propertyID)
+{
+    switch (propertyID) {
+        case CSSPropertyWebkitColumnBreakAfter:
+        case CSSPropertyWebkitColumnBreakBefore:
+        case CSSPropertyWebkitColumnBreakInside:
+#if ENABLE(CSS_REGIONS)
+        case CSSPropertyWebkitRegionBreakAfter:
+        case CSSPropertyWebkitRegionBreakBefore:
+        case CSSPropertyWebkitRegionBreakInside:
+#endif
+            return true;
+        default:
+            break;
+    }
+    
+    return CSSParserFastPaths::isKeywordPropertyID(propertyID);
+}
+
 static CSSParser::ParseResult parseKeywordValue(MutableStyleProperties& declaration, CSSPropertyID propertyId, const String& string, bool important, const CSSParserContext& parserContext, StyleSheetContents* styleSheetContents)
 {
     ASSERT(!string.isEmpty());
 
-    if (!CSSParserFastPaths::isKeywordPropertyID(propertyId)) {
+    if (!isKeywordPropertyID(propertyId)) {
         if (!isUniversalKeyword(string))
             return CSSParser::ParseResult::Error;
 
@@ -1370,36 +1365,34 @@ CSSParser::ParseResult CSSParser::parseValue(MutableStyleProperties& declaration
     return result;
 }
 
-// The color will only be changed when string contains a valid CSS color, so callers
-// can set it to a default color and ignore the boolean result.
-bool CSSParser::parseColor(RGBA32& color, const String& string, bool strict)
+Color CSSParser::parseColor(const String& string, bool strict)
 {
     if (string.isEmpty())
-        return false;
+        return Color();
 
     // First try creating a color specified by name, rgba(), rgb() or "#" syntax.
-    if (fastParseColor(color, string, strict))
-        return true;
+    Color color = fastParseColor(string, strict);
+    if (color.isValid())
+        return color;
 
     CSSParser parser(HTMLStandardMode);
 
     // In case the fast-path parser didn't understand the color, try the full parser.
-    if (!parser.parseColor(string))
-        return false;
+    if (!parser.parseColorFromString(string))
+        return Color();
 
     CSSValue& value = *parser.m_parsedProperties.first().value();
     if (!is<CSSPrimitiveValue>(value))
-        return false;
+        return Color();
 
     CSSPrimitiveValue& primitiveValue = downcast<CSSPrimitiveValue>(value);
     if (!primitiveValue.isRGBColor())
-        return false;
+        return Color();
 
-    color = primitiveValue.getRGBA32Value();
-    return true;
+    return primitiveValue.color();
 }
 
-bool CSSParser::parseColor(const String& string)
+bool CSSParser::parseColorFromString(const String& string)
 {
     setupParser("@-webkit-decls{color:", string, "} ");
     cssyyparse(this);
@@ -1408,29 +1401,30 @@ bool CSSParser::parseColor(const String& string)
     return !m_parsedProperties.isEmpty() && m_parsedProperties.first().id() == CSSPropertyColor;
 }
 
-bool CSSParser::parseSystemColor(RGBA32& color, const String& string, Document* document)
+Color CSSParser::parseSystemColor(const String& string, Document* document)
 {
     if (!document || !document->page())
-        return false;
+        return Color();
 
     CSSParserString cssColor;
     cssColor.init(string);
     CSSValueID id = cssValueKeywordID(cssColor);
     if (!validPrimitiveValueColor(id))
-        return false;
+        return Color();
 
-    Color parsedColor = document->page()->theme().systemColor(id);
-    if (!parsedColor.isValid())
-        return false;
-
-    color = parsedColor.rgb();
-    return true;
+    return document->page()->theme().systemColor(id);
 }
 
 void CSSParser::parseSelector(const String& string, CSSSelectorList& selectorList)
 {
-    m_selectorListForParseSelector = &selectorList;
+    if (m_context.useNewParser && m_context.mode != UASheetMode) {
+        CSSTokenizer::Scope scope(string);
+        selectorList = CSSSelectorParser::parseSelector(scope.tokenRange(), m_context, nullptr);
+        return;
+    }
 
+    m_selectorListForParseSelector = &selectorList;
+    
     setupParser("@-webkit-selector{", string, "}");
 
     cssyyparse(this);
@@ -1442,6 +1436,10 @@ Ref<ImmutableStyleProperties> CSSParser::parseInlineStyleDeclaration(const Strin
 {
     CSSParserContext context(element->document());
     context.mode = strictToCSSParserMode(element->isHTMLElement() && !element->document().inQuirksMode());
+
+    if (context.useNewParser)
+        return CSSParserImpl::parseInlineStyleDeclaration(string, element);
+
     return CSSParser(context).parseDeclaration(string, nullptr);
 }
 
@@ -1587,16 +1585,12 @@ void CSSParser::clearProperties()
 
 URL CSSParser::completeURL(const CSSParserContext& context, const String& url)
 {
-    if (url.isNull())
-        return URL();
-    if (context.charset.isEmpty())
-        return URL(context.baseURL, url);
-    return URL(context.baseURL, url, context.charset);
+    return context.completeURL(url);
 }
 
 URL CSSParser::completeURL(const String& url) const
 {
-    return completeURL(m_context, url);
+    return m_context.completeURL(url);
 }
 
 bool CSSParser::validateCalculationUnit(ValueWithCalculation& valueWithCalculation, Units unitFlags)
@@ -1810,23 +1804,68 @@ void CSSParser::addExpandedPropertyForValue(CSSPropertyID propId, Ref<CSSValue>&
         addProperty(longhands[i], value.copyRef(), important);
 }
 
-RefPtr<CSSValue> CSSParser::parseVariableDependentValue(CSSPropertyID propID, const CSSVariableDependentValue& dependentValue, const CustomPropertyValueMap& customProperties, TextDirection direction, WritingMode writingMode)
+RefPtr<CSSValue> CSSParser::parseValueWithVariableReferences(CSSPropertyID propID, const CSSValue& value, const CustomPropertyValueMap& customProperties, TextDirection direction, WritingMode writingMode)
 {
-    m_valueList.reset(new CSSParserValueList());
-    if (!dependentValue.valueList().buildParserValueListSubstitutingVariables(m_valueList.get(), customProperties))
+    if (value.isVariableDependentValue()) {
+        const CSSVariableDependentValue& dependentValue = downcast<CSSVariableDependentValue>(value);
+        m_valueList.reset(new CSSParserValueList());
+        if (!dependentValue.valueList().buildParserValueListSubstitutingVariables(m_valueList.get(), customProperties))
+            return nullptr;
+
+        CSSPropertyID dependentValuePropertyID = dependentValue.propertyID();
+        if (CSSProperty::isDirectionAwareProperty(dependentValuePropertyID))
+            dependentValuePropertyID = CSSProperty::resolveDirectionAwareProperty(dependentValuePropertyID, direction, writingMode);
+
+        if (!parseValue(dependentValuePropertyID, false))
+            return nullptr;
+
+        for (auto& property : m_parsedProperties) {
+            if (property.id() == propID)
+                return property.value();
+        }
+        
         return nullptr;
-
-    CSSPropertyID dependentValuePropertyID = dependentValue.propertyID();
-    if (CSSProperty::isDirectionAwareProperty(dependentValuePropertyID))
-        dependentValuePropertyID = CSSProperty::resolveDirectionAwareProperty(dependentValuePropertyID, direction, writingMode);
-
-    if (!parseValue(dependentValuePropertyID, false))
-        return nullptr;
-
-    for (auto& property : m_parsedProperties) {
-        if (property.id() == propID)
-            return property.value();
     }
+    
+    if (value.isPendingSubstitutionValue()) {
+        // FIXME: Should have a resolvedShorthands cache to stop this from being done
+        // over and over for each longhand value.
+        const CSSPendingSubstitutionValue& pendingSubstitution = downcast<CSSPendingSubstitutionValue>(value);
+        CSSPropertyID shorthandID = pendingSubstitution.shorthandPropertyId();
+        if (CSSProperty::isDirectionAwareProperty(shorthandID))
+            shorthandID = CSSProperty::resolveDirectionAwareProperty(shorthandID, direction, writingMode);
+        CSSVariableReferenceValue* shorthandValue = pendingSubstitution.shorthandValue();
+        const CSSVariableData* variableData = shorthandValue->variableDataValue();
+        ASSERT(variableData);
+        
+        Vector<CSSParserToken> resolvedTokens;
+        if (!variableData->resolveTokenRange(customProperties, variableData->tokens(), resolvedTokens))
+            return nullptr;
+        
+        ParsedPropertyVector parsedProperties;
+        if (!CSSPropertyParser::parseValue(shorthandID, false, resolvedTokens, m_context, parsedProperties, StyleRule::Style))
+            return nullptr;
+        
+        for (auto& property : parsedProperties) {
+            if (property.id() == propID)
+                return property.value();
+        }
+        
+        return nullptr;
+    }
+
+    if (value.isVariableReferenceValue()) {
+        const CSSVariableReferenceValue& valueWithReferences = downcast<CSSVariableReferenceValue>(value);
+        const CSSVariableData* variableData = valueWithReferences.variableDataValue();
+        ASSERT(variableData);
+        
+        Vector<CSSParserToken> resolvedTokens;
+        if (!variableData->resolveTokenRange(customProperties, variableData->tokens(), resolvedTokens))
+            return nullptr;
+        
+        return CSSPropertyParser::parseSingleValue(propID, resolvedTokens, m_context);
+    }
+    
     return nullptr;
 }
 
@@ -1881,7 +1920,7 @@ bool CSSParser::parseValue(CSSPropertyID propId, bool important)
     if (propId == CSSPropertyAll)
         return false; // "all" doesn't allow you to specify anything other than inherit/initial/unset.
 
-    if (CSSParserFastPaths::isKeywordPropertyID(propId)) {
+    if (isKeywordPropertyID(propId)) {
         if (!isValidKeywordPropertyAndValue(propId, id, m_context, m_styleSheet))
             return false;
         if (m_valueList->next() && !inShorthand())
@@ -2141,7 +2180,6 @@ bool CSSParser::parseValue(CSSPropertyID propId, bool important)
                 addProperty(propId2, val2.releaseNonNull(), important);
             result = true;
         }
-        m_implicitShorthand = false;
         return result;
     }
     case CSSPropertyListStyleImage:     // <uri> | none | inherit
@@ -3016,17 +3054,15 @@ bool CSSParser::parseValue(CSSPropertyID propId, bool important)
     case CSSPropertyWebkitClipPath:
         parsedValue = parseClipPath();
         break;
-#if ENABLE(CSS_SHAPES)
-    case CSSPropertyWebkitShapeOutside:
+    case CSSPropertyShapeOutside:
         parsedValue = parseShapeProperty(propId);
         break;
-    case CSSPropertyWebkitShapeMargin:
+    case CSSPropertyShapeMargin:
         validPrimitive = !id && validateUnit(valueWithCalculation, FLength | FPercent | FNonNeg);
         break;
-    case CSSPropertyWebkitShapeImageThreshold:
+    case CSSPropertyShapeImageThreshold:
         validPrimitive = !id && validateUnit(valueWithCalculation, FNumber);
         break;
-#endif
 #if ENABLE(CSS_IMAGE_ORIENTATION)
     case CSSPropertyImageOrientation:
         validPrimitive = !id && validateUnit(valueWithCalculation, FAngle);
@@ -3380,6 +3416,7 @@ bool CSSParser::parseFillShorthand(CSSPropertyID propId, const CSSPropertyID* pr
         return false;
 
     ShorthandScope scope(this, propId);
+    TemporaryChange<bool> change(m_implicitShorthand);
 
     bool parsedProperty[cMaxFillProperties] = { false };
     RefPtr<CSSValue> values[cMaxFillProperties];
@@ -3775,7 +3812,7 @@ bool CSSParser::parseShorthand(CSSPropertyID propId, const StylePropertyShorthan
 
     // Fill in any remaining properties with the initial value.
     auto& cssValuePool = CSSValuePool::singleton();
-    ImplicitScope implicitScope(*this, PropertyImplicit);
+    TemporaryChange<bool> change(m_implicitShorthand, true);
     const StylePropertyShorthand* propertiesForInitialization = shorthand.propertiesForInitialization();
     for (unsigned i = 0; i < shorthand.length(); ++i) {
         if (propertyFound[i])
@@ -3812,7 +3849,7 @@ bool CSSParser::parse4Values(CSSPropertyID propId, const CSSPropertyID *properti
             if (!parseValue(properties[0], important))
                 return false;
             CSSValue* value = m_parsedProperties.last().value();
-            ImplicitScope implicitScope(*this, PropertyImplicit);
+            TemporaryChange<bool> change(m_implicitShorthand, true);
             addProperty(properties[1], value, important);
             addProperty(properties[2], value, important);
             addProperty(properties[3], value, important);
@@ -3822,7 +3859,7 @@ bool CSSParser::parse4Values(CSSPropertyID propId, const CSSPropertyID *properti
             if (!parseValue(properties[0], important) || !parseValue(properties[1], important))
                 return false;
             CSSValue* value = m_parsedProperties[m_parsedProperties.size() - 2].value();
-            ImplicitScope implicitScope(*this, PropertyImplicit);
+            TemporaryChange<bool> change(m_implicitShorthand, true);
             addProperty(properties[2], value, important);
             value = m_parsedProperties[m_parsedProperties.size() - 2].value();
             addProperty(properties[3], value, important);
@@ -3832,7 +3869,7 @@ bool CSSParser::parse4Values(CSSPropertyID propId, const CSSPropertyID *properti
             if (!parseValue(properties[0], important) || !parseValue(properties[1], important) || !parseValue(properties[2], important))
                 return false;
             CSSValue* value = m_parsedProperties[m_parsedProperties.size() - 2].value();
-            ImplicitScope implicitScope(*this, PropertyImplicit);
+            TemporaryChange<bool> change(m_implicitShorthand, true);
             addProperty(properties[3], value, important);
             break;
         }
@@ -4252,7 +4289,7 @@ void CSSParser::parse4ValuesFillPosition(CSSParserValueList& valueList, RefPtr<C
 {
     // [ left | right ] [ <percentage] | <length> ] && [ top | bottom ] [ <percentage> | <length> ]
     // In the case of 4 values <position> requires the second value to be a length or a percentage.
-    if (isFillPositionKeyword(parsedValue2->getValueID()))
+    if (isFillPositionKeyword(parsedValue2->valueID()))
         return;
 
     unsigned cumulativeFlags = 0;
@@ -4261,8 +4298,8 @@ void CSSParser::parse4ValuesFillPosition(CSSParserValueList& valueList, RefPtr<C
     if (!value3)
         return;
 
-    CSSValueID ident1 = parsedValue1->getValueID();
-    CSSValueID ident3 = value3->getValueID();
+    CSSValueID ident1 = parsedValue1->valueID();
+    CSSValueID ident3 = value3->valueID();
 
     if (ident1 == CSSValueCenter)
         return;
@@ -4285,7 +4322,7 @@ void CSSParser::parse4ValuesFillPosition(CSSParserValueList& valueList, RefPtr<C
         return;
 
     // 4th value must be a length or a percentage.
-    if (isFillPositionKeyword(value4->getValueID()))
+    if (isFillPositionKeyword(value4->valueID()))
         return;
 
     value1 = createPrimitiveValuePair(WTFMove(parsedValue1), WTFMove(parsedValue2));
@@ -4310,9 +4347,9 @@ void CSSParser::parse3ValuesFillPosition(CSSParserValueList& valueList, RefPtr<C
     valueList.next();
 
     bool swapNeeded = false;
-    CSSValueID ident1 = parsedValue1->getValueID();
-    CSSValueID ident2 = parsedValue2->getValueID();
-    CSSValueID ident3 = value3->getValueID();
+    CSSValueID ident1 = parsedValue1->valueID();
+    CSSValueID ident2 = parsedValue2->valueID();
+    CSSValueID ident3 = value3->valueID();
 
     CSSValueID firstPositionKeyword;
     CSSValueID secondPositionKeyword;
@@ -4382,8 +4419,8 @@ void CSSParser::parse3ValuesFillPosition(CSSParserValueList& valueList, RefPtr<C
 #ifndef NDEBUG
     CSSPrimitiveValue& first = *value1;
     CSSPrimitiveValue& second = *value2;
-    ident1 = first.getPairValue()->first()->getValueID();
-    ident2 = second.getPairValue()->first()->getValueID();
+    ident1 = first.pairValue()->first()->valueID();
+    ident2 = second.pairValue()->first()->valueID();
     ASSERT(ident1 == CSSValueLeft || ident1 == CSSValueRight);
     ASSERT(ident2 == CSSValueBottom || ident2 == CSSValueTop);
 #endif
@@ -4448,7 +4485,7 @@ void CSSParser::parseFillPosition(CSSParserValueList& valueList, RefPtr<CSSPrimi
     auto parsedValue2 = value2.releaseNonNull();
 
     // Per CSS3 syntax, <position> can't have 'center' as its second keyword as we have more arguments to follow.
-    if (parsedValue2->getValueID() == CSSValueCenter)
+    if (parsedValue2->valueID() == CSSValueCenter)
         return;
 
     if (numberOfValues == 3)
@@ -4539,7 +4576,7 @@ void CSSParser::parseFillRepeat(RefPtr<CSSValue>& value1, RefPtr<CSSValue>& valu
 
     // If only one value was specified, value2 is the same as value1.
     m_implicitShorthand = true;
-    value2 = CSSValuePool::singleton().createIdentifierValue(downcast<CSSPrimitiveValue>(*value1).getValueID());
+    value2 = CSSValuePool::singleton().createIdentifierValue(downcast<CSSPrimitiveValue>(*value1).valueID());
 }
 
 RefPtr<CSSPrimitiveValue> CSSParser::parseFillSize(CSSPropertyID propId, bool& allowComma)
@@ -5281,12 +5318,12 @@ RefPtr<CSSValue> CSSParser::parseGridPosition()
         return nullptr;
 
     // Negative numbers are not allowed for span (but are for <integer>).
-    if (hasSeenSpanKeyword && numericValue && numericValue->getIntValue() < 0)
+    if (hasSeenSpanKeyword && numericValue && numericValue->intValue() < 0)
         return nullptr;
 
     // For the <custom-ident> case.
     if (gridLineName && !numericValue && !hasSeenSpanKeyword)
-        return CSSValuePool::singleton().createValue(gridLineName->getStringValue(), CSSPrimitiveValue::CSS_STRING);
+        return CSSValuePool::singleton().createValue(gridLineName->stringValue(), CSSPrimitiveValue::CSS_STRING);
 
     auto values = CSSValueList::createSpaceSeparated();
     if (hasSeenSpanKeyword)
@@ -5444,7 +5481,7 @@ bool CSSParser::parseGridTemplateRowsAndAreasAndColumns(bool important)
         if (!templateColumns)
             return false;
         // The template-columns <track-list> can't be 'none'.
-        if (templateColumns->isPrimitiveValue() && downcast<CSSPrimitiveValue>(*templateColumns).getValueID() == CSSValueNone)
+        if (templateColumns->isPrimitiveValue() && downcast<CSSPrimitiveValue>(*templateColumns).valueID() == CSSValueNone)
             return false;
     }
 
@@ -5708,7 +5745,7 @@ bool CSSParser::parseGridLineNames(CSSParserValueList& inputList, CSSValueList& 
 
 static bool isGridTrackFixedSized(const CSSPrimitiveValue& value)
 {
-    CSSValueID valueID = value.getValueID();
+    CSSValueID valueID = value.valueID();
     if (valueID == CSSValueWebkitMinContent || valueID == CSSValueWebkitMaxContent || valueID == CSSValueAuto || value.isFlex())
         return false;
 
@@ -6712,7 +6749,6 @@ RefPtr<CSSValueList> CSSParser::parseBasicShapeAndOrBox(CSSPropertyID propId)
     return WTFMove(list);
 }
 
-#if ENABLE(CSS_SHAPES)
 RefPtr<CSSValue> CSSParser::parseShapeProperty(CSSPropertyID propId)
 {
     CSSParserValue& value = *m_valueList->current();
@@ -6731,7 +6767,6 @@ RefPtr<CSSValue> CSSParser::parseShapeProperty(CSSPropertyID propId)
 
     return parseBasicShapeAndOrBox(propId);
 }
-#endif
 
 RefPtr<CSSValue> CSSParser::parseClipPath()
 {
@@ -7481,17 +7516,18 @@ static inline bool mightBeRGB(const CharacterType* characters, unsigned length)
 }
 
 template <typename CharacterType>
-static inline bool fastParseColorInternal(RGBA32& rgb, const CharacterType* characters, unsigned length , bool strict)
+static inline Color fastParseColorInternal(const CharacterType* characters, unsigned length , bool strict)
 {
     CSSPrimitiveValue::UnitTypes expect = CSSPrimitiveValue::CSS_UNKNOWN;
-    
+
     if (!strict && length >= 3) {
+        RGBA32 rgb;
         if (characters[0] == '#') {
             if (Color::parseHexColor(characters + 1, length - 1, rgb))
-                return true;
+                return Color(rgb);
         } else {
             if (Color::parseHexColor(characters, length, rgb))
-                return true;
+                return Color(rgb);
         }
     }
 
@@ -7505,17 +7541,16 @@ static inline bool fastParseColorInternal(RGBA32& rgb, const CharacterType* char
         int alpha;
         
         if (!parseColorIntOrPercentage(current, end, ',', expect, red))
-            return false;
+            return Color();
         if (!parseColorIntOrPercentage(current, end, ',', expect, green))
-            return false;
+            return Color();
         if (!parseColorIntOrPercentage(current, end, ',', expect, blue))
-            return false;
+            return Color();
         if (!parseAlphaValue(current, end, ')', alpha))
-            return false;
+            return Color();
         if (current != end)
-            return false;
-        rgb = makeRGBA(red, green, blue, alpha);
-        return true;
+            return Color();
+        return Color(makeRGBA(red, green, blue, alpha));
     }
 
     // Try rgb() syntax.
@@ -7526,45 +7561,38 @@ static inline bool fastParseColorInternal(RGBA32& rgb, const CharacterType* char
         int green;
         int blue;
         if (!parseColorIntOrPercentage(current, end, ',', expect, red))
-            return false;
+            return Color();
         if (!parseColorIntOrPercentage(current, end, ',', expect, green))
-            return false;
+            return Color();
         if (!parseColorIntOrPercentage(current, end, ')', expect, blue))
-            return false;
+            return Color();
         if (current != end)
-            return false;
-        rgb = makeRGB(red, green, blue);
-        return true;
+            return Color();
+        return Color(makeRGB(red, green, blue));
     }
 
-    return false;
+    return Color();
 }
 
 template<typename StringType>
-bool CSSParser::fastParseColor(RGBA32& rgb, const StringType& name, bool strict)
+Color CSSParser::fastParseColor(const StringType& name, bool strict)
 {
     unsigned length = name.length();
-    bool parseResult;
 
     if (!length)
-        return false;
+        return Color();
 
+    Color color;
     if (name.is8Bit())
-        parseResult = fastParseColorInternal(rgb, name.characters8(), length, strict);
+        color = fastParseColorInternal(name.characters8(), length, strict);
     else
-        parseResult = fastParseColorInternal(rgb, name.characters16(), length, strict);
+        color = fastParseColorInternal(name.characters16(), length, strict);
 
-    if (parseResult)
-        return true;
+    if (color.isValid())
+        return color;
 
     // Try named colors.
-    Color tc;
-    tc.setNamedColor(name);
-    if (tc.isValid()) {
-        rgb = tc.rgb();
-        return true;
-    }
-    return false;
+    return Color { name };
 }
     
 inline double CSSParser::parsedDouble(ValueWithCalculation& valueWithCalculation)
@@ -7579,21 +7607,22 @@ bool CSSParser::isCalculation(CSSParserValue& value)
             || equalLettersIgnoringASCIICase(value.function->name, "-webkit-calc("));
 }
 
-inline int CSSParser::colorIntFromValue(ValueWithCalculation& valueWithCalculation)
+static bool isPercent(const CSSParser::ValueWithCalculation& valueWithCalculation)
 {
-    bool isPercent;
-    
     if (valueWithCalculation.calculation())
-        isPercent = valueWithCalculation.calculation()->category() == CalcPercent;
-    else
-        isPercent = valueWithCalculation.value().unit == CSSPrimitiveValue::CSS_PERCENTAGE;
+        return valueWithCalculation.calculation()->category() == CalcPercent;
 
-    const double doubleValue = parsedDouble(valueWithCalculation);
+    return valueWithCalculation.value().unit == CSSPrimitiveValue::CSS_PERCENTAGE;
+}
+
+inline int CSSParser::parseColorInt(ValueWithCalculation& valueWithCalculation)
+{
+    double doubleValue = parsedDouble(valueWithCalculation);
     
     if (doubleValue <= 0.0)
         return 0;
 
-    if (isPercent) {
+    if (isPercent(valueWithCalculation)) {
         if (doubleValue >= 100.0)
             return 255;
         return static_cast<int>(doubleValue * 256.0 / 100.0);
@@ -7603,6 +7632,16 @@ inline int CSSParser::colorIntFromValue(ValueWithCalculation& valueWithCalculati
         return 255;
 
     return static_cast<int>(doubleValue);
+}
+
+inline double CSSParser::parseColorDouble(ValueWithCalculation& valueWithCalculation)
+{
+    double doubleValue = parsedDouble(valueWithCalculation);
+
+    if (isPercent(valueWithCalculation))
+        return doubleValue / 100.0;
+
+    return doubleValue;
 }
 
 bool CSSParser::parseRGBParameters(CSSParserValue& value, int* colorArray, bool parseAlpha)
@@ -7618,7 +7657,7 @@ bool CSSParser::parseRGBParameters(CSSParserValue& value, int* colorArray, bool 
     else
         return false;
     
-    colorArray[0] = colorIntFromValue(firstArgumentWithCalculation);
+    colorArray[0] = parseColorInt(firstArgumentWithCalculation);
     for (int i = 1; i < 3; i++) {
         CSSParserValue& operatorArgument = *args->next();
         if (operatorArgument.unit != CSSParserValue::Operator && operatorArgument.iValue != ',')
@@ -7626,7 +7665,7 @@ bool CSSParser::parseRGBParameters(CSSParserValue& value, int* colorArray, bool 
         ValueWithCalculation argumentWithCalculation(*args->next());
         if (!validateUnit(argumentWithCalculation, unitType, HTMLStandardMode))
             return false;
-        colorArray[i] = colorIntFromValue(argumentWithCalculation);
+        colorArray[i] = parseColorInt(argumentWithCalculation);
     }
     if (parseAlpha) {
         CSSParserValue& operatorArgument = *args->next();
@@ -7638,9 +7677,63 @@ bool CSSParser::parseRGBParameters(CSSParserValue& value, int* colorArray, bool 
         double doubleValue = parsedDouble(argumentWithCalculation);
         // Convert the floating pointer number of alpha to an integer in the range [0, 256),
         // with an equal distribution across all 256 values.
-        colorArray[3] = static_cast<int>(std::max<double>(0, std::min<double>(1, doubleValue)) * nextafter(256.0, 0.0));
+        colorArray[3] = static_cast<int>(std::max(0.0, std::min(1.0, doubleValue)) * nextafter(256.0, 0.0));
     }
     return true;
+}
+
+Optional<std::pair<std::array<double, 4>, ColorSpace>> CSSParser::parseColorFunctionParameters(CSSParserValue& value)
+{
+    CSSParserValueList* args = value.function->args.get();
+    if (!args->size())
+        return Nullopt;
+
+    ColorSpace colorSpace;
+    switch (args->current()->id) {
+    case CSSValueSrgb:
+        colorSpace = ColorSpaceSRGB;
+        break;
+    case CSSValueDisplayP3:
+        colorSpace = ColorSpaceDisplayP3;
+        break;
+    default:
+        return Nullopt;
+    }
+
+    std::array<double, 4> colorValues = { { 0, 0, 0, 1 } };
+
+    for (int i = 0; i < 3; ++i) {
+        auto valueOrNull = args->next();
+        if (valueOrNull) {
+            ValueWithCalculation argumentWithCalculation(*valueOrNull);
+            if (!validateUnit(argumentWithCalculation, FNumber))
+                return Nullopt;
+            colorValues[i] = std::max(0.0, std::min(1.0, parsedDouble(argumentWithCalculation)));
+        }
+    }
+
+    auto slashOrNull = args->next();
+    if (!slashOrNull)
+        return { { colorValues, colorSpace } };
+
+    if (!isForwardSlashOperator(*slashOrNull))
+        return Nullopt;
+
+    // Handle alpha.
+
+    ValueWithCalculation argumentWithCalculation(*args->next());
+    if (!validateUnit(argumentWithCalculation, FNumber | FPercent))
+        return Nullopt;
+    colorValues[3] = std::max(0.0, std::min(1.0, parseColorDouble(argumentWithCalculation)));
+
+    // FIXME: Support the comma-separated list of fallback color values.
+    // If there is another argument, it should be a comma.
+
+    auto commaOrNull = args->next();
+    if (commaOrNull && !isComma(commaOrNull))
+        return Nullopt;
+
+    return { { colorValues, colorSpace } };
 }
 
 // The CSS3 specification defines the format of a HSL color as
@@ -7664,7 +7757,7 @@ bool CSSParser::parseHSLParameters(CSSParserValue& value, double* colorArray, bo
         ValueWithCalculation argumentWithCalculation(*args->next());
         if (!validateUnit(argumentWithCalculation, FPercent, HTMLStandardMode))
             return false;
-        colorArray[i] = std::max<double>(0, std::min<double>(100, parsedDouble(argumentWithCalculation))) / 100.0; // needs to be value between 0 and 1.0
+        colorArray[i] = std::max(0.0, std::min(100.0, parsedDouble(argumentWithCalculation))) / 100.0; // needs to be value between 0 and 1.0
     }
     if (parseAlpha) {
         CSSParserValue& operatorArgument = *args->next();
@@ -7673,68 +7766,72 @@ bool CSSParser::parseHSLParameters(CSSParserValue& value, double* colorArray, bo
         ValueWithCalculation argumentWithCalculation(*args->next());
         if (!validateUnit(argumentWithCalculation, FNumber, HTMLStandardMode))
             return false;
-        colorArray[3] = std::max<double>(0, std::min<double>(1, parsedDouble(argumentWithCalculation)));
+        colorArray[3] = std::max(0.0, std::min(1.0, parsedDouble(argumentWithCalculation)));
     }
     return true;
 }
 
 RefPtr<CSSPrimitiveValue> CSSParser::parseColor(CSSParserValue* value)
 {
-    RGBA32 c = Color::transparent;
-    if (!parseColorFromValue(value ? *value : *m_valueList->current(), c))
+    Color color = parseColorFromValue(value ? *value : *m_valueList->current());
+    if (!color.isValid())
         return nullptr;
-    return CSSValuePool::singleton().createColorValue(c);
+    return CSSValuePool::singleton().createColorValue(color);
 }
 
-bool CSSParser::parseColorFromValue(CSSParserValue& value, RGBA32& c)
+Color CSSParser::parseColorFromValue(CSSParserValue& value)
 {
     if (inQuirksMode() && value.unit == CSSPrimitiveValue::CSS_NUMBER
         && value.fValue >= 0. && value.fValue < 1000000.) {
         String str = String::format("%06d", static_cast<int>((value.fValue+.5)));
         // FIXME: This should be strict parsing for SVG as well.
-        if (!fastParseColor(c, str, inStrictMode()))
-            return false;
+        return fastParseColor(str, inStrictMode());
     } else if (value.unit == CSSPrimitiveValue::CSS_PARSER_HEXCOLOR
         || value.unit == CSSPrimitiveValue::CSS_IDENT
         || (inQuirksMode() && value.unit == CSSPrimitiveValue::CSS_DIMENSION)) {
-        if (!fastParseColor(c, value.string, inStrictMode() && value.unit == CSSPrimitiveValue::CSS_IDENT))
-            return false;
+        return fastParseColor(value.string, inStrictMode() && value.unit == CSSPrimitiveValue::CSS_IDENT);
     } else if (value.unit == CSSParserValue::Function
         && value.function->args
         && value.function->args->size() == 5 /* rgb + two commas */
         && equalLettersIgnoringASCIICase(value.function->name, "rgb(")) {
         int colorValues[3];
         if (!parseRGBParameters(value, colorValues, false))
-            return false;
-        c = makeRGB(colorValues[0], colorValues[1], colorValues[2]);
+            return Color();
+        return Color(makeRGB(colorValues[0], colorValues[1], colorValues[2]));
     } else if (value.unit == CSSParserValue::Function
         && value.function->args
         && value.function->args->size() == 7 /* rgba + three commas */
         && equalLettersIgnoringASCIICase(value.function->name, "rgba(")) {
         int colorValues[4];
         if (!parseRGBParameters(value, colorValues, true))
-            return false;
-        c = makeRGBA(colorValues[0], colorValues[1], colorValues[2], colorValues[3]);
+            return Color();
+        return Color(makeRGBA(colorValues[0], colorValues[1], colorValues[2], colorValues[3]));
     } else if (value.unit == CSSParserValue::Function
         && value.function->args
         && value.function->args->size() == 5 /* hsl + two commas */
         && equalLettersIgnoringASCIICase(value.function->name, "hsl(")) {
         double colorValues[3];
         if (!parseHSLParameters(value, colorValues, false))
-            return false;
-        c = makeRGBAFromHSLA(colorValues[0], colorValues[1], colorValues[2], 1.0);
+            return Color();
+        return Color(makeRGBAFromHSLA(colorValues[0], colorValues[1], colorValues[2], 1.0));
     } else if (value.unit == CSSParserValue::Function
         && value.function->args
         && value.function->args->size() == 7 /* hsla + three commas */
         && equalLettersIgnoringASCIICase(value.function->name, "hsla(")) {
         double colorValues[4];
         if (!parseHSLParameters(value, colorValues, true))
-            return false;
-        c = makeRGBAFromHSLA(colorValues[0], colorValues[1], colorValues[2], colorValues[3]);
-    } else
-        return false;
+            return Color();
+        return Color(makeRGBAFromHSLA(colorValues[0], colorValues[1], colorValues[2], colorValues[3]));
+    } else if (value.unit == CSSParserValue::Function
+        && value.function->args
+        && equalLettersIgnoringASCIICase(value.function->name, "color(")) {
+        Optional<std::pair<std::array<double, 4>, ColorSpace>> colorData = parseColorFunctionParameters(value);
+        if (!colorData)
+            return Color();
+        return Color(colorData.value().first[0], colorData.value().first[1], colorData.value().first[2], colorData.value().first[3], colorData.value().second);
+    }
 
-    return true;
+    return Color();
 }
 
 // This class tracks parsing state for shadow values.  If it goes out of scope (e.g., due to an early return)
@@ -8527,7 +8624,7 @@ bool CSSParser::parseBorderRadius(CSSPropertyID propId, bool important)
     } else
         completeBorderRadii(radii[1]);
 
-    ImplicitScope implicitScope(*this, PropertyImplicit);
+    TemporaryChange<bool> change(m_implicitShorthand, true);
     addProperty(CSSPropertyBorderTopLeftRadius, createPrimitiveValuePair(WTFMove(radii[0][0]), WTFMove(radii[1][0])), important);
     addProperty(CSSPropertyBorderTopRightRadius, createPrimitiveValuePair(WTFMove(radii[0][1]), WTFMove(radii[1][1])), important);
     addProperty(CSSPropertyBorderBottomRightRadius, createPrimitiveValuePair(WTFMove(radii[0][2]), WTFMove(radii[1][2])), important);
@@ -9194,10 +9291,10 @@ bool CSSParser::parseRadialGradient(CSSParserValueList& valueList, RefPtr<CSSVal
     if (sizeValue && horizontalSize)
         return false;
     // Circles must have 0 or 1 lengths.
-    if (shapeValue && shapeValue->getValueID() == CSSValueCircle && verticalSize)
+    if (shapeValue && shapeValue->valueID() == CSSValueCircle && verticalSize)
         return false;
     // Ellipses must have 0 or 2 length/percentages.
-    if (shapeValue && shapeValue->getValueID() == CSSValueEllipse && horizontalSize && !verticalSize)
+    if (shapeValue && shapeValue->valueID() == CSSValueEllipse && horizontalSize && !verticalSize)
         return false;
     // If there's only one size, it must be a length.
     if (!verticalSize && horizontalSize && horizontalSize->isPercentage())
@@ -9921,43 +10018,37 @@ bool CSSParser::isCompositeOperator(CSSValueID valueID)
     return valueID >= CSSValueClear && valueID <= CSSValueXor;
 }
 
-static void filterInfoForName(const CSSParserString& name, WebKitCSSFilterValue::FilterOperationType& filterType, unsigned& maximumArgumentCount)
+static bool isValidPrimitiveFilterFunction(CSSValueID filterFunction)
 {
-    if (equalLettersIgnoringASCIICase(name, "grayscale("))
-        filterType = WebKitCSSFilterValue::GrayscaleFilterOperation;
-    else if (equalLettersIgnoringASCIICase(name, "sepia("))
-        filterType = WebKitCSSFilterValue::SepiaFilterOperation;
-    else if (equalLettersIgnoringASCIICase(name, "saturate("))
-        filterType = WebKitCSSFilterValue::SaturateFilterOperation;
-    else if (equalLettersIgnoringASCIICase(name, "hue-rotate("))
-        filterType = WebKitCSSFilterValue::HueRotateFilterOperation;
-    else if (equalLettersIgnoringASCIICase(name, "invert("))
-        filterType = WebKitCSSFilterValue::InvertFilterOperation;
-    else if (equalLettersIgnoringASCIICase(name, "opacity("))
-        filterType = WebKitCSSFilterValue::OpacityFilterOperation;
-    else if (equalLettersIgnoringASCIICase(name, "brightness("))
-        filterType = WebKitCSSFilterValue::BrightnessFilterOperation;
-    else if (equalLettersIgnoringASCIICase(name, "contrast("))
-        filterType = WebKitCSSFilterValue::ContrastFilterOperation;
-    else if (equalLettersIgnoringASCIICase(name, "blur("))
-        filterType = WebKitCSSFilterValue::BlurFilterOperation;
-    else if (equalLettersIgnoringASCIICase(name, "drop-shadow(")) {
-        filterType = WebKitCSSFilterValue::DropShadowFilterOperation;
-        maximumArgumentCount = 4;  // x-offset, y-offset, blur-radius, color -- spread and inset style not allowed.
+    switch (filterFunction) {
+    case CSSValueBlur:
+    case CSSValueBrightness:
+    case CSSValueContrast:
+    case CSSValueDropShadow:
+    case CSSValueGrayscale:
+    case CSSValueHueRotate:
+    case CSSValueInvert:
+    case CSSValueOpacity:
+    case CSSValueSaturate:
+    case CSSValueSepia:
+        return true;
+    default:
+        return false;
     }
 }
 
-RefPtr<WebKitCSSFilterValue> CSSParser::parseBuiltinFilterArguments(CSSParserValueList& args, WebKitCSSFilterValue::FilterOperationType filterType)
+RefPtr<CSSFunctionValue> CSSParser::parseBuiltinFilterArguments(CSSValueID filterFunction, CSSParserValueList& args)
 {
-    auto filterValue = WebKitCSSFilterValue::create(filterType);
+    ASSERT(isValidPrimitiveFilterFunction(filterFunction));
+    auto filterValue = CSSFunctionValue::create(filterFunction);
 
-    switch (filterType) {    
-    case WebKitCSSFilterValue::GrayscaleFilterOperation:
-    case WebKitCSSFilterValue::SepiaFilterOperation:
-    case WebKitCSSFilterValue::SaturateFilterOperation:
-    case WebKitCSSFilterValue::InvertFilterOperation:
-    case WebKitCSSFilterValue::OpacityFilterOperation:
-    case WebKitCSSFilterValue::ContrastFilterOperation: {
+    switch (filterFunction) {
+    case CSSValueGrayscale:
+    case CSSValueSepia:
+    case CSSValueSaturate:
+    case CSSValueInvert:
+    case CSSValueOpacity:
+    case CSSValueContrast: {
         // One optional argument, 0-1 or 0%-100%, if missing use 100%.
         if (args.size() > 1)
             return nullptr;
@@ -9969,19 +10060,18 @@ RefPtr<WebKitCSSFilterValue> CSSParser::parseBuiltinFilterArguments(CSSParserVal
 
             auto primitiveValue = createPrimitiveNumericValue(argumentWithCalculation);
 
-            // Saturate and Contrast allow values over 100%.
-            if (filterType != WebKitCSSFilterValue::SaturateFilterOperation
-                && filterType != WebKitCSSFilterValue::ContrastFilterOperation) {
+            // Saturate and contrast allow values over 100%. Otherwise clamp.
+            if (filterFunction != CSSValueSaturate && filterFunction != CSSValueContrast) {
                 double maxAllowed = primitiveValue->primitiveType() == CSSPrimitiveValue::CSS_PERCENTAGE ? 100.0 : 1.0;
-                if (primitiveValue->getDoubleValue() > maxAllowed)
-                    return nullptr;
+                if (primitiveValue->doubleValue() > maxAllowed)
+                    primitiveValue = CSSValuePool::singleton().createValue(maxAllowed, static_cast<CSSPrimitiveValue::UnitTypes>(primitiveValue->primitiveType()));
             }
 
             filterValue->append(WTFMove(primitiveValue));
         }
         break;
     }
-    case WebKitCSSFilterValue::BrightnessFilterOperation: {
+    case CSSValueBrightness: {
         // One optional argument, if missing use 100%.
         if (args.size() > 1)
             return nullptr;
@@ -9995,7 +10085,7 @@ RefPtr<WebKitCSSFilterValue> CSSParser::parseBuiltinFilterArguments(CSSParserVal
         }
         break;
     }
-    case WebKitCSSFilterValue::HueRotateFilterOperation: {
+    case CSSValueHueRotate: {
         // hue-rotate() takes one optional angle.
         if (args.size() > 1)
             return nullptr;
@@ -10009,7 +10099,7 @@ RefPtr<WebKitCSSFilterValue> CSSParser::parseBuiltinFilterArguments(CSSParserVal
         }
         break;
     }
-    case WebKitCSSFilterValue::BlurFilterOperation: {
+    case CSSValueBlur: {
         // Blur takes a single length. Zero parameters are allowed.
         if (args.size() > 1)
             return nullptr;
@@ -10023,7 +10113,7 @@ RefPtr<WebKitCSSFilterValue> CSSParser::parseBuiltinFilterArguments(CSSParserVal
         }
         break;
     }
-    case WebKitCSSFilterValue::DropShadowFilterOperation: {
+    case CSSValueDropShadow: {
         // drop-shadow() takes a single shadow.
         RefPtr<CSSValueList> shadowValueList = parseShadow(args, CSSPropertyFilter);
         if (!shadowValueList || shadowValueList->length() != 1)
@@ -10035,7 +10125,31 @@ RefPtr<WebKitCSSFilterValue> CSSParser::parseBuiltinFilterArguments(CSSParserVal
     default:
         ASSERT_NOT_REACHED();
     }
+
+    // In all cases there should be nothing left over in the function.
+    auto nextArgument = args.next();
+    if (nextArgument)
+        return nullptr;
+
     return WTFMove(filterValue);
+}
+
+// FIXME-NEWPARSER: The code for this is at the end of the file. Since this is only
+// needed while using cssValueKeywordIDForFunctionName for the old CSS parser, I just
+// declared it here.
+template <typename CharacterType> static CSSValueID cssValueKeywordID(const CharacterType* valueKeyword, unsigned length);
+
+static CSSValueID cssValueKeywordIDForFunctionName(const CSSParserString& string)
+{
+    // FIXME-NEWPARSER: We can remove this when the new CSS parser is
+    // enabled and just use cssValueKeywordID. This is just covering
+    // the old parser's crazy behavior of including the '(' in the
+    // function->name.
+    unsigned length = string.length();
+    if (length < 2 || length > maxCSSValueKeywordLength)
+        return CSSValueInvalid;
+
+    return string.is8Bit() ? cssValueKeywordID(string.characters8(), length - 1) : cssValueKeywordID(string.characters16(), length - 1);
 }
 
 bool CSSParser::parseFilter(CSSParserValueList& valueList, RefPtr<CSSValueList>& result)
@@ -10046,30 +10160,23 @@ bool CSSParser::parseFilter(CSSParserValueList& valueList, RefPtr<CSSValueList>&
         if (value->unit != CSSPrimitiveValue::CSS_URI && (value->unit != CSSParserValue::Function || !value->function))
             return false;
 
-        WebKitCSSFilterValue::FilterOperationType filterType = WebKitCSSFilterValue::UnknownFilterOperation;
-
         // See if the specified primitive is one we understand.
-        if (value->unit == CSSPrimitiveValue::CSS_URI) {
-            auto referenceFilterValue = WebKitCSSFilterValue::create(WebKitCSSFilterValue::ReferenceFilterOperation);
-            referenceFilterValue->append(CSSPrimitiveValue::create(value->string, CSSPrimitiveValue::CSS_URI));
-            list->append(WTFMove(referenceFilterValue));
-        } else {
-            const CSSParserString name = value->function->name;
-            unsigned maximumArgumentCount = 1;
+        if (value->unit == CSSPrimitiveValue::CSS_URI)
+            list->append(CSSPrimitiveValue::create(value->string, CSSPrimitiveValue::CSS_URI));
+        else {
+            CSSValueID filterFunction = cssValueKeywordIDForFunctionName(value->function->name);
 
-            filterInfoForName(name, filterType, maximumArgumentCount);
-
-            if (filterType == WebKitCSSFilterValue::UnknownFilterOperation)
+            if (!isValidPrimitiveFilterFunction(filterFunction))
                 return false;
 
             CSSParserValueList* args = value->function->args.get();
             if (!args)
                 return false;
 
-            RefPtr<WebKitCSSFilterValue> filterValue = parseBuiltinFilterArguments(*args, filterType);
+            RefPtr<CSSFunctionValue> filterValue = parseBuiltinFilterArguments(filterFunction, *args);
             if (!filterValue)
                 return false;
-            
+
             list->append(filterValue.releaseNonNull());
         }
     }
@@ -10646,7 +10753,7 @@ bool CSSParser::parseFontVariationTag(CSSValueList& settings)
         UChar character = value->string[i];
         if (character < 0x20 || character > 0x7E)
             return false;
-        tag[i] = toASCIILower(character);
+        tag[i] = character;
     }
 
     value = m_valueList->next();
@@ -13034,10 +13141,10 @@ std::unique_ptr<CSSParserSelector> CSSParser::rewriteSpecifiers(std::unique_ptr<
     }
     if (specifiers->isCustomPseudoElement()) {
         // Specifiers for unknown pseudo element go right behind it in the chain.
-        specifiers->insertTagHistory(CSSSelector::SubSelector, WTFMove(newSpecifier), CSSSelector::ShadowDescendant);
+        specifiers->insertTagHistory(CSSSelector::Subselector, WTFMove(newSpecifier), CSSSelector::ShadowDescendant);
         return specifiers;
     }
-    specifiers->appendTagHistory(CSSSelector::SubSelector, WTFMove(newSpecifier));
+    specifiers->appendTagHistory(CSSSelector::Subselector, WTFMove(newSpecifier));
     return specifiers;
 }
 

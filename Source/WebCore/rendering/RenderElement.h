@@ -20,8 +20,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef RenderElement_h
-#define RenderElement_h
+#pragma once
 
 #include "AnimationController.h"
 #include "LengthFunctions.h"
@@ -189,11 +188,7 @@ public:
     bool hasBlendMode() const { return false; }
 #endif
 
-#if ENABLE(CSS_SHAPES)
     bool hasShapeOutside() const { return style().shapeOutside(); }
-#else
-    bool hasShapeOutside() const { return false; }
-#endif
 
     void registerForVisibleInViewportCallback();
     void unregisterForVisibleInViewportCallback();
@@ -202,8 +197,6 @@ public:
     bool repaintForPausedImageAnimationsIfNeeded(const IntRect& visibleRect);
     bool hasPausedImageAnimations() const { return m_hasPausedImageAnimations; }
     void setHasPausedImageAnimations(bool b) { m_hasPausedImageAnimations = b; }
-
-    RenderNamedFlowThread* renderNamedFlowThreadWrapper();
 
     void setRenderBoxNeedsLazyRepaint(bool b) { m_renderBoxNeedsLazyRepaint = b; }
     bool renderBoxNeedsLazyRepaint() const { return m_renderBoxNeedsLazyRepaint; }
@@ -230,7 +223,6 @@ public:
     RespectImageOrientationEnum shouldRespectImageOrientation() const;
 
     void removeFromRenderFlowThread();
-    void invalidateFlowThreadContainingBlockIncludingDescendants(RenderFlowThread* = nullptr);
 
 protected:
     enum BaseTypeFlag {
@@ -288,6 +280,7 @@ protected:
     void updateOutlineAutoAncestor(bool hasOutlineAuto);
 
     void removeFromRenderFlowThreadIncludingDescendants(bool shouldUpdateState);
+    void adjustFlowThreadStateOnContainingBlockChangeIfNeeded();
 
 private:
     RenderElement(ContainerNode&, RenderStyle&&, BaseTypeFlags);
@@ -311,9 +304,7 @@ private:
 
     void updateFillImages(const FillLayer*, const FillLayer*);
     void updateImage(StyleImage*, StyleImage*);
-#if ENABLE(CSS_SHAPES)
     void updateShapeImage(const ShapeValue*, const ShapeValue*);
-#endif
 
     StyleDifference adjustStyleDifference(StyleDifference, unsigned contextSensitiveProperties) const;
     const RenderStyle* cachedFirstLineStyle() const;
@@ -498,5 +489,3 @@ inline LayoutUnit adjustLayoutUnitForAbsoluteZoom(LayoutUnit value, const Render
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_RENDER_OBJECT(RenderElement, isRenderElement())
-
-#endif // RenderElement_h

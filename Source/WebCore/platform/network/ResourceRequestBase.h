@@ -36,10 +36,12 @@
 namespace WebCore {
 
 enum ResourceRequestCachePolicy {
-    UseProtocolCachePolicy, // normal load
-    ReloadIgnoringCacheData, // reload
-    ReturnCacheDataElseLoad, // back/forward or encoding change - allow stale data
-    ReturnCacheDataDontLoad  // results of a post - allow stale data and only use cache
+    UseProtocolCachePolicy, // normal load, equivalent to fetch "default" cache mode.
+    ReloadIgnoringCacheData, // reload, equivalent to fetch "reload"cache mode.
+    ReturnCacheDataElseLoad, // back/forward or encoding change - allow stale data, equivalent to fetch "force-cache" cache mode.
+    ReturnCacheDataDontLoad, // results of a post - allow stale data and only use cache, equivalent to fetch "only-if-cached" cache mode.
+    DoNotUseAnyCache, // Bypass the cache entirely, equivalent to fetch "no-store" cache mode.
+    RefreshAnyCacheData, // Serve cache data only if revalidated, equivalent to fetch "no-cache" mode.
 };
 
 enum HTTPBodyUpdatePolicy {
@@ -162,6 +164,10 @@ public:
     Requester requester() const { return m_requester; }
     void setRequester(Requester requester) { m_requester = requester; }
 
+    // Who initiated the request so the Inspector can associate it with a context. E.g. a Web Worker.
+    String initiatorIdentifier() const { return m_initiatorIdentifier; }
+    void setInitiatorIdentifier(const String& identifier) { m_initiatorIdentifier = identifier; }
+
 #if !PLATFORM(COCOA)
     bool encodingRequiresPlatformData() const { return true; }
 #endif
@@ -204,6 +210,9 @@ protected:
     void updatePlatformRequest(HTTPBodyUpdatePolicy = DoNotUpdateHTTPBody) const;
     void updateResourceRequest(HTTPBodyUpdatePolicy = DoNotUpdateHTTPBody) const;
 
+    template<class Encoder> void encodeBase(Encoder&) const;
+    template<class Decoder> bool decodeBase(Decoder&);
+
     // The ResourceRequest subclass may "shadow" this method to compare platform specific fields
     static bool platformCompare(const ResourceRequest&, const ResourceRequest&) { return true; }
 
@@ -227,6 +236,7 @@ protected:
     bool m_ignoreForRequestCount { false };
     ResourceLoadPriority m_priority { ResourceLoadPriority::Low };
     Requester m_requester { Requester::Unspecified };
+    String m_initiatorIdentifier;
 
 private:
     const ResourceRequest& asResourceRequest() const;
@@ -248,10 +258,8 @@ WEBCORE_EXPORT void initializeHTTPConnectionSettingsOnStartup();
 #endif
 
 template<class Encoder>
-void ResourceRequestBase::encodeWithoutPlatformData(Encoder& encoder) const
+ALWAYS_INLINE void ResourceRequestBase::encodeBase(Encoder& encoder) const
 {
-    ASSERT(!m_httpBody);
-    ASSERT(!m_platformRequestUpdated);
     encoder << m_url;
     encoder << m_timeoutInterval;
     encoder << m_firstPartyForCookies.string();
@@ -265,7 +273,7 @@ void ResourceRequestBase::encodeWithoutPlatformData(Encoder& encoder) const
 }
 
 template<class Decoder>
-bool ResourceRequestBase::decodeWithoutPlatformData(Decoder& decoder)
+ALWAYS_INLINE bool ResourceRequestBase::decodeBase(Decoder& decoder)
 {
     if (!decoder.decode(m_url))
         return false;
@@ -306,6 +314,20 @@ bool ResourceRequestBase::decodeWithoutPlatformData(Decoder& decoder)
         return false;
 
     return true;
+}
+
+template<class Encoder>
+void ResourceRequestBase::encodeWithoutPlatformData(Encoder& encoder) const
+{
+    ASSERT(!m_httpBody);
+    ASSERT(!m_platformRequestUpdated);
+    encodeBase(encoder);
+}
+
+template<class Decoder>
+bool ResourceRequestBase::decodeWithoutPlatformData(Decoder& decoder)
+{
+    return decodeBase(decoder);
 }
 
 } // namespace WebCore

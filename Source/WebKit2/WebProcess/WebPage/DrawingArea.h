@@ -28,12 +28,12 @@
 #include "DrawingAreaInfo.h"
 #include "LayerTreeContext.h"
 #include "MessageReceiver.h"
+#include <WebCore/ActivityState.h>
 #include <WebCore/FloatRect.h>
 #include <WebCore/IntRect.h>
 #include <WebCore/LayerFlushThrottleState.h>
 #include <WebCore/LayoutMilestones.h>
 #include <WebCore/PlatformScreen.h>
-#include <WebCore/ViewState.h>
 #include <functional>
 #include <wtf/Forward.h>
 #include <wtf/Noncopyable.h>
@@ -120,7 +120,7 @@ public:
 
     virtual void dispatchAfterEnsuringUpdatedScrollPosition(std::function<void ()>);
 
-    virtual void viewStateDidChange(WebCore::ViewState::Flags, bool /* wantsDidUpdateViewState */, const Vector<uint64_t>& /* callbackIDs */) { }
+    virtual void activityStateDidChange(WebCore::ActivityState::Flags, bool /* wantsDidUpdateActivityState */, const Vector<uint64_t>& /* callbackIDs */) { }
     virtual void setLayerHostingMode(LayerHostingMode) { }
 
     virtual bool markLayersVolatileImmediatelyIfPossible() { return true; }
@@ -146,7 +146,7 @@ protected:
     DrawingAreaType m_type;
     WebPage& m_webPage;
 
-#if USE(TEXTURE_MAPPER) && PLATFORM(GTK) && PLATFORM(X11) && !USE(REDIRECTED_XCOMPOSITE_WINDOW)
+#if USE(TEXTURE_MAPPER_GL) && PLATFORM(GTK) && PLATFORM(X11) && !USE(REDIRECTED_XCOMPOSITE_WINDOW)
     uint64_t m_nativeSurfaceHandleForCompositing { 0 };
 #endif
 
@@ -172,7 +172,7 @@ private:
     virtual void addTransactionCallbackID(uint64_t callbackID) { ASSERT_NOT_REACHED(); }
 #endif
 
-#if USE(TEXTURE_MAPPER) && PLATFORM(GTK) && PLATFORM(X11) && !USE(REDIRECTED_XCOMPOSITE_WINDOW)
+#if USE(TEXTURE_MAPPER_GL) && PLATFORM(GTK) && PLATFORM(X11) && !USE(REDIRECTED_XCOMPOSITE_WINDOW)
     virtual void setNativeSurfaceHandleForCompositing(uint64_t) = 0;
     virtual void destroyNativeSurfaceHandleForCompositing(bool&) = 0;
 #endif

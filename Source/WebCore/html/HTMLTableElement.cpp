@@ -29,8 +29,8 @@
 #include "CSSPropertyNames.h"
 #include "CSSValueKeywords.h"
 #include "CSSValuePool.h"
+#include "ElementChildIterator.h"
 #include "ExceptionCode.h"
-#include "ExceptionCodePlaceholder.h"
 #include "GenericCachedHTMLCollection.h"
 #include "HTMLNames.h"
 #include "HTMLParserIdioms.h"
@@ -49,11 +49,6 @@ using namespace HTMLNames;
 
 HTMLTableElement::HTMLTableElement(const QualifiedName& tagName, Document& document)
     : HTMLElement(tagName, document)
-    , m_borderAttr(false)
-    , m_borderColorAttr(false)
-    , m_frameAttr(false)
-    , m_rulesAttr(UnsetRules)
-    , m_padding(1)
 {
     ASSERT(hasTagName(tableTag));
 }
@@ -70,18 +65,15 @@ Ref<HTMLTableElement> HTMLTableElement::create(const QualifiedName& tagName, Doc
 
 HTMLTableCaptionElement* HTMLTableElement::caption() const
 {
-    for (Node* child = firstChild(); child; child = child->nextSibling()) {
-        if (is<HTMLTableCaptionElement>(*child))
-            return downcast<HTMLTableCaptionElement>(child);
-    }
-    return nullptr;
+    return childrenOfType<HTMLTableCaptionElement>(const_cast<HTMLTableElement&>(*this)).first();
 }
 
-void HTMLTableElement::setCaption(RefPtr<HTMLTableCaptionElement>&& newCaption, ExceptionCode& ec)
+ExceptionOr<void> HTMLTableElement::setCaption(RefPtr<HTMLTableCaptionElement>&& newCaption)
 {
     deleteCaption();
-    if (newCaption)
-        insertBefore(*newCaption, firstChild(), ec);
+    if (!newCaption)
+        return { };
+    return insertBefore(*newCaption, firstChild());
 }
 
 HTMLTableSectionElement* HTMLTableElement::tHead() const
@@ -93,17 +85,14 @@ HTMLTableSectionElement* HTMLTableElement::tHead() const
     return nullptr;
 }
 
-void HTMLTableElement::setTHead(RefPtr<HTMLTableSectionElement>&& newHead, ExceptionCode& ec)
+ExceptionOr<void> HTMLTableElement::setTHead(RefPtr<HTMLTableSectionElement>&& newHead)
 {
-    if (UNLIKELY(newHead && !newHead->hasTagName(theadTag))) {
-        ec = HIERARCHY_REQUEST_ERR;
-        return;
-    }
+    if (UNLIKELY(newHead && !newHead->hasTagName(theadTag)))
+        return Exception { HIERARCHY_REQUEST_ERR };
 
     deleteTHead();
-
     if (!newHead)
-        return;
+        return { };
 
     Node* child;
     for (child = firstChild(); child; child = child->nextSibling()) {
@@ -111,7 +100,7 @@ void HTMLTableElement::setTHead(RefPtr<HTMLTableSectionElement>&& newHead, Excep
             break;
     }
 
-    insertBefore(*newHead, child, ec);
+    return insertBefore(*newHead, child);
 }
 
 HTMLTableSectionElement* HTMLTableElement::tFoot() const
@@ -123,72 +112,67 @@ HTMLTableSectionElement* HTMLTableElement::tFoot() const
     return nullptr;
 }
 
-void HTMLTableElement::setTFoot(RefPtr<HTMLTableSectionElement>&& newFoot, ExceptionCode& ec)
+ExceptionOr<void> HTMLTableElement::setTFoot(RefPtr<HTMLTableSectionElement>&& newFoot)
 {
-    if (UNLIKELY(newFoot && !newFoot->hasTagName(tfootTag))) {
-        ec = HIERARCHY_REQUEST_ERR;
-        return;
-    }
-
+    if (UNLIKELY(newFoot && !newFoot->hasTagName(tfootTag)))
+        return Exception { HIERARCHY_REQUEST_ERR };
     deleteTFoot();
-
     if (!newFoot)
-        return;
-
-    appendChild(*newFoot, ec);
+        return { };
+    return appendChild(*newFoot);
 }
 
 Ref<HTMLTableSectionElement> HTMLTableElement::createTHead()
 {
-    if (HTMLTableSectionElement* existingHead = tHead())
+    if (auto* existingHead = tHead())
         return *existingHead;
-    Ref<HTMLTableSectionElement> head = HTMLTableSectionElement::create(theadTag, document());
-    setTHead(head.copyRef(), IGNORE_EXCEPTION);
+    auto head = HTMLTableSectionElement::create(theadTag, document());
+    setTHead(head.copyRef());
     return head;
 }
 
 void HTMLTableElement::deleteTHead()
 {
-    if (auto* tHead = this->tHead())
-        removeChild(*tHead, IGNORE_EXCEPTION);
+    if (auto* head = tHead())
+        removeChild(*head);
 }
 
 Ref<HTMLTableSectionElement> HTMLTableElement::createTFoot()
 {
-    if (HTMLTableSectionElement* existingFoot = tFoot())
+    if (auto* existingFoot = tFoot())
         return *existingFoot;
-    Ref<HTMLTableSectionElement> foot = HTMLTableSectionElement::create(tfootTag, document());
-    setTFoot(foot.copyRef(), IGNORE_EXCEPTION);
+    auto foot = HTMLTableSectionElement::create(tfootTag, document());
+    setTFoot(foot.copyRef());
     return foot;
 }
 
 void HTMLTableElement::deleteTFoot()
 {
-    if (auto* tFoot = this->tFoot())
-        removeChild(*tFoot, IGNORE_EXCEPTION);
+    if (auto* foot = tFoot())
+        removeChild(*foot);
 }
 
 Ref<HTMLTableSectionElement> HTMLTableElement::createTBody()
 {
-    Ref<HTMLTableSectionElement> body = HTMLTableSectionElement::create(tbodyTag, document());
+    auto body = HTMLTableSectionElement::create(tbodyTag, document());
     Node* referenceElement = lastBody() ? lastBody()->nextSibling() : nullptr;
-    insertBefore(body, referenceElement, ASSERT_NO_EXCEPTION);
+    insertBefore(body, referenceElement);
     return body;
 }
 
 Ref<HTMLTableCaptionElement> HTMLTableElement::createCaption()
 {
-    if (HTMLTableCaptionElement* existingCaption = caption())
+    if (auto* existingCaption = caption())
         return *existingCaption;
-    Ref<HTMLTableCaptionElement> caption = HTMLTableCaptionElement::create(captionTag, document());
-    setCaption(caption.copyRef(), IGNORE_EXCEPTION);
+    auto caption = HTMLTableCaptionElement::create(captionTag, document());
+    setCaption(caption.copyRef());
     return caption;
 }
 
 void HTMLTableElement::deleteCaption()
 {
     if (auto* caption = this->caption())
-        removeChild(*caption, IGNORE_EXCEPTION);
+        removeChild(*caption);
 }
 
 HTMLTableSectionElement* HTMLTableElement::lastBody() const
@@ -200,27 +184,23 @@ HTMLTableSectionElement* HTMLTableElement::lastBody() const
     return nullptr;
 }
 
-RefPtr<HTMLElement> HTMLTableElement::insertRow(int index, ExceptionCode& ec)
+ExceptionOr<Ref<HTMLElement>> HTMLTableElement::insertRow(int index)
 {
-    if (index < -1) {
-        ec = INDEX_SIZE_ERR;
-        return 0;
-    }
+    if (index < -1)
+        return Exception { INDEX_SIZE_ERR };
 
     Ref<HTMLTableElement> protectedThis(*this);
 
-    RefPtr<HTMLTableRowElement> lastRow = 0;
-    RefPtr<HTMLTableRowElement> row = 0;
+    RefPtr<HTMLTableRowElement> lastRow;
+    RefPtr<HTMLTableRowElement> row;
     if (index == -1)
         lastRow = HTMLTableRowsCollection::lastRow(*this);
     else {
         for (int i = 0; i <= index; ++i) {
             row = HTMLTableRowsCollection::rowAfter(*this, lastRow.get());
             if (!row) {
-                if (i != index) {
-                    ec = INDEX_SIZE_ERR;
-                    return 0;
-                }
+                if (i != index)
+                    return Exception { INDEX_SIZE_ERR };
                 break;
             }
             lastRow = row;
@@ -235,57 +215,63 @@ RefPtr<HTMLElement> HTMLTableElement::insertRow(int index, ExceptionCode& ec)
         if (!parent) {
             auto newBody = HTMLTableSectionElement::create(tbodyTag, document());
             auto newRow = HTMLTableRowElement::create(document());
-            newBody->appendChild(newRow, ec);
-            appendChild(newBody, ec);
-            return WTFMove(newRow);
+            newBody->appendChild(newRow);
+            // FIXME: Why ignore the exception if the first appendChild failed?
+            auto result = appendChild(newBody);
+            if (result.hasException())
+                return result.releaseException();
+            return Ref<HTMLElement> { WTFMove(newRow) };
         }
     }
 
     auto newRow = HTMLTableRowElement::create(document());
-    parent->insertBefore(newRow, row.get(), ec);
-    return WTFMove(newRow);
+    auto result = parent->insertBefore(newRow, row.get());
+    if (result.hasException())
+        return result.releaseException();
+    return Ref<HTMLElement> { WTFMove(newRow) };
 }
 
-void HTMLTableElement::deleteRow(int index, ExceptionCode& ec)
+ExceptionOr<void> HTMLTableElement::deleteRow(int index)
 {
     HTMLTableRowElement* row = nullptr;
-    if (index == -1)
+    if (index == -1) {
         row = HTMLTableRowsCollection::lastRow(*this);
-    else {
+        if (!row)
+            return { };
+    } else {
         for (int i = 0; i <= index; ++i) {
             row = HTMLTableRowsCollection::rowAfter(*this, row);
             if (!row)
                 break;
         }
+        if (!row)
+            return Exception { INDEX_SIZE_ERR };
     }
-    if (!row) {
-        ec = INDEX_SIZE_ERR;
-        return;
-    }
-    row->remove(ec);
+    return row->remove();
 }
 
-static inline bool isTableCellAncestor(Node* n)
+static inline bool isTableCellAncestor(const Element& element)
 {
-    return n->hasTagName(theadTag) || n->hasTagName(tbodyTag) ||
-           n->hasTagName(tfootTag) || n->hasTagName(trTag) ||
-           n->hasTagName(thTag);
+    return element.hasTagName(theadTag)
+        || element.hasTagName(tbodyTag)
+        || element.hasTagName(tfootTag)
+        || element.hasTagName(trTag)
+        || element.hasTagName(thTag);
 }
 
-static bool setTableCellsChanged(Node* n)
+static bool setTableCellsChanged(Element& element)
 {
-    ASSERT(n);
     bool cellChanged = false;
 
-    if (n->hasTagName(tdTag))
+    if (element.hasTagName(tdTag))
         cellChanged = true;
-    else if (isTableCellAncestor(n)) {
-        for (Node* child = n->firstChild(); child; child = child->nextSibling())
+    else if (isTableCellAncestor(element)) {
+        for (auto& child : childrenOfType<Element>(element))
             cellChanged |= setTableCellsChanged(child);
     }
 
     if (cellChanged)
-       n->setNeedsStyleRecalc();
+        element.invalidateStyleForSubtree();
 
     return cellChanged;
 }
@@ -422,10 +408,10 @@ void HTMLTableElement::parseAttribute(const QualifiedName& name, const AtomicStr
     if (bordersBefore != cellBorders() || oldPadding != m_padding) {
         m_sharedCellStyle = nullptr;
         bool cellChanged = false;
-        for (Node* child = firstChild(); child; child = child->nextSibling())
+        for (auto& child : childrenOfType<Element>(*this))
             cellChanged |= setTableCellsChanged(child);
         if (cellChanged)
-            setNeedsStyleRecalc();
+            invalidateStyleForSubtree();
     }
 }
 

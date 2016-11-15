@@ -6,6 +6,7 @@
 #//////////////////////////////////////////////////////////////////////////////////////////
 
 tiled-drawing [ Pass ]
+fast/visual-viewport/tiled-drawing [ Pass ]
 swipe [ Pass ]
 
 fast/events/cancelled-force-click-link-navigation.html [ Pass ]
@@ -173,6 +174,10 @@ fast/events/drag-and-drop-subframe-dataTransfer.html
 fast/events/drag-selects-image.html
 fast/events/remove-target-with-shadow-in-drag.html
 
+fast/events/before-input-events-prevent-drag-and-drop.html [ Failure ]
+fast/events/input-events-drag-and-drop.html [ Failure ]
+fast/events/input-events-insert-by-drop.html [ Failure ]
+
 webkit.org/b/81833 fast/events/drag-and-drop-link-into-focused-contenteditable.html [ Failure ]
 
 # Missing functionality of textInputController
@@ -188,6 +193,17 @@ webkit.org/b/89199 editing/spelling/grammar-edit-word.html [ Skip ]
 webkit.org/b/90156 editing/mac/spelling/autocorrection-blockquote-crash.html [ Failure ]
 
 webkit.org/b/95043 http/tests/security/local-user-CSS-from-remote.html [ Failure ]
+
+# These tests test the Shadow DOM based HTML form validation UI but Mac WK2 is using native dialogs instead.
+fast/forms/validation-message-on-listbox.html
+fast/forms/validation-message-on-menulist.html
+fast/forms/validation-message-on-radio.html
+fast/forms/validation-message-on-checkbox.html
+fast/forms/validation-message-on-range.html
+fast/forms/validation-message-clone.html
+fast/forms/validation-message-in-relative-body.html
+fast/forms/validation-message-appearance.html
+fast/forms/validation-message-on-textarea.html
 
 # All spatial navigation tests fail on Mac WK2
 webkit.org/b/96438 fast/spatial-navigation
@@ -523,6 +539,9 @@ webkit.org/b/162638 [ Sierra+ ] fast/scrolling/rtl-scrollbars-alternate-iframe-b
 webkit.org/b/160445 [ Sierra+ ] http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/upgrade-insecure-fetch-in-worker.html [ Failure ]
 webkit.org/b/160445 [ Sierra+ ] http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/upgrade-insecure-fetch-in-main-frame.html [ Failure ]
 
+webkit.org/b/163932 inspector/css/pseudo-element-matches.html [ Pass Failure ]
+
+webkit.org/b/163604 inspector/debugger/breakpoint-action-eval.html [ Pass Timeout ]
 webkit.org/b/161774 inspector/debugger/breakpoint-columns.html [ Pass Failure ]
 webkit.org/b/159447 [ Debug ] inspector/debugger/tail-deleted-frames-from-vm-entry.html [ Pass Failure ]
 
@@ -576,3 +595,10 @@ webkit.org/b/163139 http/tests/loading/basic-auth-load-URL-with-consecutive-slas
 webkit.org/b/162975 [ Debug ] http/tests/cache/disk-cache/memory-cache-revalidation-updates-disk-cache.html [ Pass Failure ]
 
 webkit.org/b/161653 [ Debug ] storage/indexeddb/key-generator.html [ Pass Timeout ]
+
+webkit.org/b/163453 [ Sierra Release ] http/tests/security/contentSecurityPolicy/upgrade-insecure-requests/basic-upgrade-cors.https.html [ Pass Timeout ]
+
+webkit.org/b/163702 platform/mac-wk2/plugins/muted-state.html [ Failure ]
+
+webkit.org/b/164572 [ ElCapitan ] swipe/main-frame-pinning-requirement.html [ Failure ]
+webkit.org/b/164572 [ ElCapitan ] swipe/pushState-cached-back-swipe.html [ Failure ]

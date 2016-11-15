@@ -44,7 +44,7 @@ namespace WebKit {
 
 std::unique_ptr<AcceleratedBackingStore> AcceleratedBackingStore::create(WebPageProxy& webPage)
 {
-#if PLATFORM(WAYLAND)
+#if PLATFORM(WAYLAND) && USE(EGL)
     if (PlatformDisplay::sharedDisplay().type() == PlatformDisplay::Type::Wayland)
         return AcceleratedBackingStoreWayland::create(webPage);
 #endif
@@ -66,13 +66,13 @@ bool AcceleratedBackingStore::paint(cairo_t* cr, const IntRect& clipRect)
         return true;
 
     const WebCore::Color& color = m_webPage.backgroundColor();
-    if (color.hasAlpha()) {
+    if (!color.isOpaque()) {
         cairo_rectangle(cr, clipRect.x(), clipRect.y(), clipRect.width(), clipRect.height());
         cairo_set_operator(cr, CAIRO_OPERATOR_CLEAR);
         cairo_fill(cr);
     }
 
-    if (color.alpha() > 0) {
+    if (color.isVisible()) {
         setSourceRGBAFromColor(cr, color);
         cairo_set_operator(cr, CAIRO_OPERATOR_SOURCE);
         cairo_rectangle(cr, clipRect.x(), clipRect.y(), clipRect.width(), clipRect.height());

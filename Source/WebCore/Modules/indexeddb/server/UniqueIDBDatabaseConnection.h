@@ -55,6 +55,7 @@ public:
     UniqueIDBDatabase& database() { return m_database; }
     IDBConnectionToClient& connectionToClient() { return m_connectionToClient; }
 
+    void connectionPendingCloseFromClient();
     void connectionClosedFromClient();
 
     bool closePending() const { return m_closePending; }
@@ -69,14 +70,18 @@ public:
     void didCommitTransaction(UniqueIDBDatabaseTransaction&, const IDBError&);
     void didCreateObjectStore(const IDBResultData&);
     void didDeleteObjectStore(const IDBResultData&);
+    void didRenameObjectStore(const IDBResultData&);
     void didClearObjectStore(const IDBResultData&);
     void didCreateIndex(const IDBResultData&);
     void didDeleteIndex(const IDBResultData&);
+    void didRenameIndex(const IDBResultData&);
     void didFireVersionChangeEvent(const IDBResourceIdentifier& requestIdentifier);
     void didFinishHandlingVersionChange(const IDBResourceIdentifier& transactionIdentifier);
     void confirmDidCloseFromServer();
 
     void abortTransactionWithoutCallback(UniqueIDBDatabaseTransaction&);
+
+    bool connectionIsClosing() const;
 
 private:
     UniqueIDBDatabaseConnection(UniqueIDBDatabase&, ServerOpenDBRequest&);

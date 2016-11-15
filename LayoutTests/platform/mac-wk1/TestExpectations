@@ -84,9 +84,14 @@ fast/forms/file/open-file-panel.html [ Skip ]
 # WK1 and WK2 mousemove events are subtly different in ways that break this test on WK1.
 fast/events/ghostly-mousemoves-in-subframe.html [ Skip ]
 
+# Test support for inserting special characters is not yet implemented on WK1.
+fast/events/before-input-prevent-insert-replacement.html [ Skip ]
+fast/events/input-event-insert-replacement.html [ Skip ]
+
 # Media Stream API testing is not supported for WK1 yet.
 fast/mediastream
 http/tests/media/media-stream
+http/tests/ssl/media-stream
 
 # Disable snapshotting tests on WK1 only
 plugins/snapshotting
@@ -192,11 +197,15 @@ webkit.org/b/156069 fast/dom/HTMLAnchorElement/anchor-nodownload-set.html [ Fail
 webkit.org/b/156069 fast/dom/HTMLAnchorElement/anchor-download.html [ Failure ]
 webkit.org/b/156069 fast/dom/HTMLAnchorElement/anchor-download-synthetic-click.html [ Skip ]
 webkit.org/b/156069 fast/dom/HTMLAnchorElement/anchor-download-user-triggered-synthetic-click.html [ Skip ]
+webkit.org/b/156069 fast/dom/HTMLAnchorElement/anchor-file-blob-download.html [ Skip ]
 webkit.org/b/156069 http/tests/download/area-download.html [ Skip ]
 webkit.org/b/156069 http/tests/security/anchor-download-allow-blob.html [ Skip ]
 webkit.org/b/156069 http/tests/security/anchor-download-allow-data.html [ Skip ]
 webkit.org/b/156069 http/tests/security/anchor-download-allow-sameorigin.html [ Skip ]
 webkit.org/b/156069 http/tests/security/anchor-download-block-crossorigin.html [ Skip ]
+
+# testRunner.setShouldDownloadUndisplayableMIMETypes() is not supported on WK1.
+fast/dom/HTMLAnchorElement/anchor-file-blob-convert-to-download.html [ Skip ]
 
 webkit.org/b/156629 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-img-element/sizes/parse-a-sizes-attribute.html [ Pass Failure ]
 
@@ -234,6 +243,10 @@ webkit.org/b/158585 webgl/webgl-backing-store-size-update.html [ Pass Timeout ]
 # rdar://problem/26478296
 [ Sierra+ ] svg/hixie/text/003.html [ Failure ]
 
+# We do not support the new HTML validation UI on WebKit1 yet (rdar://problem/28944652).
+fast/forms/validation-custom-message.html [ Skip ]
+fast/forms/validation-messages.html [ Skip ]
+
 [ Yosemite ] http/tests/media/hls/video-controller-getStartDate.html [ Pass Timeout ]
 
 webkit.org/b/159893 [ Debug ] imported/w3c/web-platform-tests/XMLHttpRequest/event-readystatechange-loaded.htm [ Pass Failure ]
@@ -260,3 +273,17 @@ webkit.org/b/162591 [ Sierra+ ] css3/filters/backdrop/backdrop-filter-with-refle
 webkit.org/b/162507 http/tests/media/hls/hls-video-resize.html [ Pass Failure ]
 
 webkit.org/b/162986 inspector/formatting/formatting-javascript.html [ Pass Crash ]
+
+webkit.org/b/161360 [ Release ] imported/w3c/web-platform-tests/html/browsers/browsing-the-web/history-traversal/persisted-user-state-restoration/scroll-restoration-fragment-scrolling-cross-origin.html [ Pass Failure ]
+
+webkit.org/b/163598 media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-buttons-styles.html [ Pass Failure ]
+
+webkit.org/b/163361 [ Release ] imported/w3c/web-platform-tests/html/webappapis/animation-frames/callback-exception.html [ Pass Failure ]
+webkit.org/b/163361 [ Release ] imported/w3c/web-platform-tests/html/webappapis/animation-frames/callback-invoked.html [ Pass Failure ]
+webkit.org/b/163361 [ Release ] imported/w3c/web-platform-tests/html/webappapis/animation-frames/callback-multicalls.html [ Pass Failure ]
+
+webkit.org/b/163750 compositing/iframes/page-cache-layer-tree.html [ Pass Failure ]
+
+webkit.org/b/164491 [ Yosemite ElCapitan ] fast/visual-viewport/rtl-zoomed-rects.html [ Failure ]
+
+webkit.org/b/164336 [ Debug ] media/modern-media-controls/pip-support/pip-support-enabled.html [ Pass Crash ]

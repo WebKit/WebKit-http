@@ -25,13 +25,12 @@
 #include "CachedImage.h"
 #include "CachedResourceLoader.h"
 #include "CachedResourceRequest.h"
-#include "ColorSpace.h"
 #include "Document.h"
 #include "Image.h"
 #include "RenderObject.h"
 #include "RenderSVGResource.h"
 #include "SVGNames.h"
-#include "SVGPreserveAspectRatio.h"
+#include "SVGPreserveAspectRatioValue.h"
 #include "XLinkNames.h"
 
 namespace WebCore {
@@ -123,7 +122,7 @@ void SVGFEImageElement::buildPendingResource()
 void SVGFEImageElement::parseAttribute(const QualifiedName& name, const AtomicString& value)
 {
     if (name == SVGNames::preserveAspectRatioAttr) {
-        SVGPreserveAspectRatio preserveAspectRatio;
+        SVGPreserveAspectRatioValue preserveAspectRatio;
         preserveAspectRatio.parse(value);
         setPreserveAspectRatioBaseValue(preserveAspectRatio);
         return;

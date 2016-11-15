@@ -113,6 +113,13 @@ JSTestIterable::JSTestIterable(Structure* structure, JSDOMGlobalObject& globalOb
 {
 }
 
+void JSTestIterable::finishCreation(VM& vm)
+{
+    Base::finishCreation(vm);
+    ASSERT(inherits(info()));
+
+}
+
 JSObject* JSTestIterable::createPrototype(VM& vm, JSGlobalObject* globalObject)
 {
     return JSTestIterablePrototype::create(vm, globalObject, JSTestIterablePrototype::createStructure(vm, globalObject, globalObject->objectPrototype()));
@@ -131,14 +138,14 @@ void JSTestIterable::destroy(JSC::JSCell* cell)
 
 template<> inline JSTestIterable* BindingCaller<JSTestIterable>::castForOperation(ExecState& state)
 {
-    return jsDynamicCast<JSTestIterable*>(state.thisValue());
+    return jsDynamicDowncast<JSTestIterable*>(state.thisValue());
 }
 
 EncodedJSValue jsTestIterableConstructor(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
     VM& vm = state->vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);
-    JSTestIterablePrototype* domObject = jsDynamicCast<JSTestIterablePrototype*>(JSValue::decode(thisValue));
+    JSTestIterablePrototype* domObject = jsDynamicDowncast<JSTestIterablePrototype*>(JSValue::decode(thisValue));
     if (UNLIKELY(!domObject))
         return throwVMTypeError(state, throwScope);
     return JSValue::encode(JSTestIterable::getConstructor(state->vm(), domObject->globalObject()));
@@ -149,7 +156,7 @@ bool setJSTestIterableConstructor(ExecState* state, EncodedJSValue thisValue, En
     VM& vm = state->vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);
     JSValue value = JSValue::decode(encodedValue);
-    JSTestIterablePrototype* domObject = jsDynamicCast<JSTestIterablePrototype*>(JSValue::decode(thisValue));
+    JSTestIterablePrototype* domObject = jsDynamicDowncast<JSTestIterablePrototype*>(JSValue::decode(thisValue));
     if (UNLIKELY(!domObject)) {
         throwVMTypeError(state, throwScope);
         return false;
@@ -163,8 +170,14 @@ JSValue JSTestIterable::getConstructor(VM& vm, const JSGlobalObject* globalObjec
     return getDOMConstructor<JSTestIterableConstructor>(vm, *jsCast<const JSDOMGlobalObject*>(globalObject));
 }
 
-using TestIterableIterator = JSDOMIterator<JSTestIterable>;
-using TestIterableIteratorPrototype = JSDOMIteratorPrototype<JSTestIterable>;
+struct TestIterableIteratorTraits {
+    static constexpr JSDOMIteratorType type = JSDOMIteratorType::Set;
+    using KeyType = void;
+    using ValueType = IDLInterface<TestNode>;
+};
+
+using TestIterableIterator = JSDOMIterator<JSTestIterable, TestIterableIteratorTraits>;
+using TestIterableIteratorPrototype = JSDOMIteratorPrototype<JSTestIterable, TestIterableIteratorTraits>;
 
 template<>
 const JSC::ClassInfo TestIterableIterator::s_info = { "TestIterable Iterator", &Base::s_info, 0, CREATE_METHOD_TABLE(TestIterableIterator) };
@@ -172,29 +185,54 @@ const JSC::ClassInfo TestIterableIterator::s_info = { "TestIterable Iterator", &
 template<>
 const JSC::ClassInfo TestIterableIteratorPrototype::s_info = { "TestIterable Iterator", &Base::s_info, 0, CREATE_METHOD_TABLE(TestIterableIteratorPrototype) };
 
+static inline EncodedJSValue jsTestIterablePrototypeFunctionSymbolIteratorCaller(ExecState*, JSTestIterable* thisObject, JSC::ThrowScope&)
+{
+    return JSValue::encode(iteratorCreate<TestIterableIterator>(*thisObject, IterationKind::Value));
+}
+
 JSC::EncodedJSValue JSC_HOST_CALL jsTestIterablePrototypeFunctionSymbolIterator(JSC::ExecState* state)
 {
-    return iteratorCreate<JSTestIterable>(*state, IterationKind::Value, "[Symbol.Iterator]");
+    return BindingCaller<JSTestIterable>::callOperation<jsTestIterablePrototypeFunctionSymbolIteratorCaller>(state, "[Symbol.Iterator]");
+}
+
+static inline EncodedJSValue jsTestIterablePrototypeFunctionEntriesCaller(ExecState*, JSTestIterable* thisObject, JSC::ThrowScope&)
+{
+    return JSValue::encode(iteratorCreate<TestIterableIterator>(*thisObject, IterationKind::KeyValue));
 }
 
 JSC::EncodedJSValue JSC_HOST_CALL jsTestIterablePrototypeFunctionEntries(JSC::ExecState* state)
 {
-    return iteratorCreate<JSTestIterable>(*state, IterationKind::KeyValue, "entries");
+    return BindingCaller<JSTestIterable>::callOperation<jsTestIterablePrototypeFunctionEntriesCaller>(state, "entries");
+}
+
+static inline EncodedJSValue jsTestIterablePrototypeFunctionKeysCaller(ExecState*, JSTestIterable* thisObject, JSC::ThrowScope&)
+{
+    return JSValue::encode(iteratorCreate<TestIterableIterator>(*thisObject, IterationKind::Key));
 }
 
 JSC::EncodedJSValue JSC_HOST_CALL jsTestIterablePrototypeFunctionKeys(JSC::ExecState* state)
 {
-    return iteratorCreate<JSTestIterable>(*state, IterationKind::Key, "keys");
+    return BindingCaller<JSTestIterable>::callOperation<jsTestIterablePrototypeFunctionKeysCaller>(state, "keys");
+}
+
+static inline EncodedJSValue jsTestIterablePrototypeFunctionValuesCaller(ExecState*, JSTestIterable* thisObject, JSC::ThrowScope&)
+{
+    return JSValue::encode(iteratorCreate<TestIterableIterator>(*thisObject, IterationKind::Value));
 }
 
 JSC::EncodedJSValue JSC_HOST_CALL jsTestIterablePrototypeFunctionValues(JSC::ExecState* state)
 {
-    return iteratorCreate<JSTestIterable>(*state, IterationKind::Value, "values");
+    return BindingCaller<JSTestIterable>::callOperation<jsTestIterablePrototypeFunctionValuesCaller>(state, "values");
+}
+
+static inline EncodedJSValue jsTestIterablePrototypeFunctionForEachCaller(ExecState* state, JSTestIterable* thisObject, JSC::ThrowScope& throwScope)
+{
+    return JSValue::encode(iteratorForEach<TestIterableIterator>(*state, *thisObject, throwScope));
 }
 
 JSC::EncodedJSValue JSC_HOST_CALL jsTestIterablePrototypeFunctionForEach(JSC::ExecState* state)
 {
-    return iteratorForEach<JSTestIterable>(*state, "forEach");
+    return BindingCaller<JSTestIterable>::callOperation<jsTestIterablePrototypeFunctionForEachCaller>(state, "forEach");
 }
 
 bool JSTestIterableOwner::isReachableFromOpaqueRoots(JSC::Handle<JSC::Unknown> handle, void*, SlotVisitor& visitor)
@@ -251,7 +289,7 @@ JSC::JSValue toJS(JSC::ExecState* state, JSDOMGlobalObject* globalObject, TestIt
 
 TestIterable* JSTestIterable::toWrapped(JSC::JSValue value)
 {
-    if (auto* wrapper = jsDynamicCast<JSTestIterable*>(value))
+    if (auto* wrapper = jsDynamicDowncast<JSTestIterable*>(value))
         return &wrapper->wrapped();
     return nullptr;
 }

@@ -35,7 +35,13 @@
 #if USE(APPLE_INTERNAL_SDK)
 
 #import <UIKit/UIApplication_Private.h>
+#import <UIKit/UIKeyboard.h>
 #import <UIKit/UIWindow_Private.h>
+
+@interface UIKeyboardPredictionView : UIView
++ (UIKeyboardPredictionView *)activeInstance;
+- (BOOL)hasPredictions;
+@end
 
 #else
 
@@ -48,6 +54,10 @@
 
 @interface UIWindow ()
 - (uint32_t)_contextId;
+@end
+
+@interface UIKeyboard : UIView
++ (void)removeAllDynamicDictionaries;
 @end
 
 #endif // USE(APPLE_INTERNAL_SDK)

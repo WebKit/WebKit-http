@@ -48,7 +48,6 @@
 #include "WebCoreJSClientData.h"
 #include "npruntime_impl.h"
 #include "runtime_root.h"
-#include <bindings/ScriptValue.h>
 #include <debugger/Debugger.h>
 #include <heap/StrongInlines.h>
 #include <inspector/ScriptCallStack.h>
@@ -298,14 +297,15 @@ bool ScriptController::processingUserGestureForMedia()
     return UserGestureIndicator::processingUserGestureForMedia();
 }
 
-bool ScriptController::canAccessFromCurrentOrigin(Frame *frame)
+bool ScriptController::canAccessFromCurrentOrigin(Frame* frame)
 {
-    ExecState* exec = JSMainThreadExecState::currentState();
-    if (exec)
-        return shouldAllowAccessToFrame(exec, frame);
-    // If the current state is 0 we're in a call path where the DOM security 
-    // check doesn't apply (eg. parser).
-    return true;
+    ExecState* state = JSMainThreadExecState::currentState();
+
+    // If the current state is null we're in a call path where the DOM security check doesn't apply (eg. parser).
+    if (!state)
+        return true;
+
+    return BindingSecurity::shouldAllowAccessToFrame(state, frame);
 }
 
 void ScriptController::attachDebugger(JSC::Debugger* debugger)

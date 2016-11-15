@@ -66,9 +66,9 @@ bool IDBDatabaseInfo::hasObjectStore(const String& name) const
     return false;
 }
 
-IDBObjectStoreInfo IDBDatabaseInfo::createNewObjectStore(const String& name, const IDBKeyPath& keyPath, bool autoIncrement)
+IDBObjectStoreInfo IDBDatabaseInfo::createNewObjectStore(const String& name, Optional<IDBKeyPath>&& keyPath, bool autoIncrement)
 {
-    IDBObjectStoreInfo info(++m_maxObjectStoreID, name, keyPath, autoIncrement);
+    IDBObjectStoreInfo info(++m_maxObjectStoreID, name, WTFMove(keyPath), autoIncrement);
     m_objectStoreMap.set(info.identifier(), info);
     return info;
 }
@@ -120,6 +120,15 @@ const IDBObjectStoreInfo* IDBDatabaseInfo::infoForExistingObjectStore(const Stri
 IDBObjectStoreInfo* IDBDatabaseInfo::infoForExistingObjectStore(const String& name)
 {
     return getInfoForExistingObjectStore(name);
+}
+
+void IDBDatabaseInfo::renameObjectStore(uint64_t objectStoreIdentifier, const String& newName)
+{
+    auto* info = infoForExistingObjectStore(objectStoreIdentifier);
+    if (!info)
+        return;
+
+    info->rename(newName);
 }
 
 Vector<String> IDBDatabaseInfo::objectStoreNames() const

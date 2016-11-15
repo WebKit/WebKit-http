@@ -48,6 +48,7 @@
 #include "ShareableBitmap.h"
 #include "UserData.h"
 #include "UserMediaPermissionRequestManager.h"
+#include <WebCore/ActivityState.h>
 #include <WebCore/DictationAlternative.h>
 #include <WebCore/DictionaryPopupInfo.h>
 #include <WebCore/DragData.h>
@@ -68,7 +69,6 @@
 #include <WebCore/UserContentTypes.h>
 #include <WebCore/UserInterfaceLayoutDirection.h>
 #include <WebCore/UserScriptTypes.h>
-#include <WebCore/ViewState.h>
 #include <WebCore/ViewportConfiguration.h>
 #include <WebCore/WebCoreKeyboardUIMode.h>
 #include <memory>
@@ -437,8 +437,8 @@ public:
     void addPluginView(PluginView*);
     void removePluginView(PluginView*);
 
-    bool isVisible() const { return m_viewState & WebCore::ViewState::IsVisible; }
-    bool isVisibleOrOccluded() const { return m_viewState & WebCore::ViewState::IsVisibleOrOccluded; }
+    bool isVisible() const { return m_activityState & WebCore::ActivityState::IsVisible; }
+    bool isVisibleOrOccluded() const { return m_activityState & WebCore::ActivityState::IsVisibleOrOccluded; }
 
     LayerHostingMode layerHostingMode() const { return m_layerHostingMode; }
     void setLayerHostingMode(LayerHostingMode);
@@ -660,6 +660,7 @@ public:
     void didApplyStyle();
     void didChangeSelection();
     void discardedComposition();
+    void canceledComposition();
 
 #if PLATFORM(COCOA)
     void registerUIProcessAccessibilityTokens(const IPC::DataReference& elemenToken, const IPC::DataReference& windowToken);
@@ -765,7 +766,7 @@ public:
     void removeResourceRequest(unsigned long);
 
     void setMediaVolume(float);
-    void setMuted(bool);
+    void setMuted(WebCore::MediaProducer::MutedStateFlags);
     void setMayStartMediaWhenInWindow(bool);
 
 #if ENABLE(MEDIA_SESSION)
@@ -846,7 +847,6 @@ public:
 #endif
 
     bool shouldUseCustomContentProviderForResponse(const WebCore::ResourceResponse&);
-    bool canPluginHandleResponse(const WebCore::ResourceResponse& response);
 
     bool asynchronousPluginInitializationEnabled() const { return m_asynchronousPluginInitializationEnabled; }
     void setAsynchronousPluginInitializationEnabled(bool enabled) { m_asynchronousPluginInitializationEnabled = enabled; }
@@ -926,7 +926,7 @@ public:
     void setMainFrameProgressCompleted(bool completed) { m_mainFrameProgressCompleted = completed; }
     bool shouldDispatchFakeMouseMoveEvents() const { return m_shouldDispatchFakeMouseMoveEvents; }
 
-    void setPageActivityState(WebCore::PageActivityState::Flags);
+    void setPageSuppressed(bool);
 
     void postMessage(const String& messageName, API::Object* messageBody);
     void postSynchronousMessageForTesting(const String& messageName, API::Object* messageBody, RefPtr<API::Object>& returnData);
@@ -962,9 +962,17 @@ public:
 #if ENABLE(GAMEPAD)
     void gamepadActivity(const Vector<GamepadData>&);
 #endif
+    
+#if ENABLE(POINTER_LOCK)
+    void didAcquirePointerLock();
+    void didNotAcquirePointerLock();
+    void didLosePointerLock();
+#endif
 
 private:
     WebPage(uint64_t pageID, const WebPageCreationParameters&);
+
+    void updateUserActivity();
 
     // IPC::MessageSender
     IPC::Connection* messageSenderConnection() override;
@@ -1035,12 +1043,10 @@ private:
     void tryRestoreScrollPosition();
     void setInitialFocus(bool forward, bool isKeyboardEventValid, const WebKeyboardEvent&, uint64_t callbackID);
     void updateIsInWindow(bool isInitialState = false);
-    void setViewState(WebCore::ViewState::Flags, bool wantsDidUpdateViewState, const Vector<uint64_t>& callbackIDs);
+    void setActivityState(WebCore::ActivityState::Flags, bool wantsDidUpdateActivityState, const Vector<uint64_t>& callbackIDs);
     void validateCommand(const String&, uint64_t);
     void executeEditCommand(const String&, const String&);
     void setEditable(bool);
-
-    void updateUserActivity();
 
     void mouseEvent(const WebMouseEvent&);
     void keyEvent(const WebKeyboardEvent&);
@@ -1162,8 +1168,11 @@ private:
     void didReceiveNotificationPermissionDecision(uint64_t notificationID, bool allowed);
 
 #if ENABLE(MEDIA_STREAM)
-    void didReceiveUserMediaPermissionDecision(uint64_t userMediaID, bool allowed, const String& audioDeviceUID, const String& videoDeviceUID);
-    void didCompleteUserMediaPermissionCheck(uint64_t userMediaID, const String&, bool allowed);
+    void userMediaAccessWasGranted(uint64_t userMediaID, const String& audioDeviceUID, const String& videoDeviceUID);
+    void userMediaAccessWasDenied(uint64_t userMediaID, uint64_t reason, String invalidConstraint);
+
+    void didCompleteMediaDeviceEnumeration(uint64_t userMediaID, const Vector<WebCore::CaptureDevice>& devices, const String& deviceIdentifierHashSalt, bool originHasPersistentAccess);
+    void grantUserMediaDevicesSandboxExtension(const SandboxExtension::HandleArray&);
 #endif
 
     void advanceToNextMisspelling(bool startBeforeSelection);
@@ -1226,6 +1235,8 @@ private:
 
     void setResourceCachingDisabled(bool);
     void setUserInterfaceLayoutDirection(uint32_t);
+
+    bool canPluginHandleResponse(const WebCore::ResourceResponse&);
 
     uint64_t m_pageID;
 
@@ -1476,11 +1487,10 @@ private:
 
     bool m_useAsyncScrolling;
 
-    WebCore::ViewState::Flags m_viewState;
-    WebCore::PageActivityState::Flags m_activityState;
+    WebCore::ActivityState::Flags m_activityState;
 
-    bool m_processSuppressionEnabled;
     UserActivity m_userActivity;
+    WebCore::HysteresisActivity m_userActivityHysteresis;
 
     uint64_t m_pendingNavigationID;
 
@@ -1491,7 +1501,6 @@ private:
     bool m_mainFrameProgressCompleted;
     bool m_shouldDispatchFakeMouseMoveEvents;
     bool m_isEditorStateMissingPostLayoutData { false };
-    bool m_isGettingDictionaryPopupInfo { false };
     bool m_isSelectingTextWhileInsertingAsynchronously { false };
 
     enum class EditorStateIsContentEditable { No, Yes, Unset };

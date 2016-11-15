@@ -42,6 +42,8 @@
 #include "WebResourceLoader.h"
 #include <WebCore/ApplicationCacheHost.h>
 #include <WebCore/CachedResource.h>
+#include <WebCore/DiagnosticLoggingClient.h>
+#include <WebCore/DiagnosticLoggingKeys.h>
 #include <WebCore/Document.h>
 #include <WebCore/DocumentLoader.h>
 #include <WebCore/Frame.h>
@@ -77,7 +79,7 @@ RefPtr<SubresourceLoader> WebLoaderStrategy::loadResource(Frame& frame, CachedRe
     if (loader)
         scheduleLoad(*loader, &resource, frame.document()->referrerPolicy() == ReferrerPolicy::Default);
     else
-        RELEASE_LOG_ERROR_IF_ALLOWED(frame, "loadResource: Unable to create SubresourceLoader (frame = %p", &frame);
+        RELEASE_LOG_IF_ALLOWED(frame, "loadResource: Unable to create SubresourceLoader (frame = %p", &frame);
     return loader;
 }
 
@@ -340,6 +342,8 @@ void WebLoaderStrategy::loadResourceSynchronously(NetworkingContext* context, un
 
     if (!WebProcess::singleton().networkConnection().connection().sendSync(Messages::NetworkConnectionToWebProcess::PerformSynchronousLoad(loadParameters), Messages::NetworkConnectionToWebProcess::PerformSynchronousLoad::Reply(error, response, data), 0)) {
         RELEASE_LOG_ERROR_IF_ALLOWED(loadParameters.sessionID, "loadResourceSynchronously: failed sending synchronous network process message (pageID = %" PRIu64 ", frameID = %" PRIu64 ", resourceID = %" PRIu64 ")", loadParameters.webPageID, loadParameters.webFrameID, loadParameters.identifier);
+        if (auto* page = webPage->corePage())
+            page->diagnosticLoggingClient().logDiagnosticMessage(WebCore::DiagnosticLoggingKeys::internalErrorKey(), WebCore::DiagnosticLoggingKeys::synchronousMessageFailedKey(), WebCore::ShouldSample::No);
         response = ResourceResponse();
         error = internalError(request.url());
     }

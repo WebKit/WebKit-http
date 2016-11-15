@@ -727,6 +727,12 @@ private:
         case NewArray:
             compileNewArray();
             break;
+        case NewArrayWithSpread:
+            compileNewArrayWithSpread();
+            break;
+        case Spread:
+            compileSpread();
+            break;
         case NewArrayBuffer:
             compileNewArrayBuffer();
             break;
@@ -823,6 +829,9 @@ private:
         case PutToArguments:
             compilePutToArguments();
             break;
+        case GetArgument:
+            compileGetArgument();
+            break;
         case CompareEq:
             compileCompareEq();
             break;
@@ -851,6 +860,12 @@ private:
         case TailCallInlinedCaller:
         case Construct:
             compileCallOrConstruct();
+            break;
+        case DirectCall:
+        case DirectTailCallInlinedCaller:
+        case DirectConstruct:
+        case DirectTailCall:
+            compileDirectCallOrConstruct();
             break;
         case TailCall:
             compileTailCall();
@@ -1054,6 +1069,9 @@ private:
         case CallDOM:
             compileCallDOM();
             break;
+        case CallDOMGetter:
+            compileCallDOMGetter();
+            break;
 
         case PhantomLocal:
         case LoopHint:
@@ -1065,6 +1083,7 @@ private:
         case PhantomNewGeneratorFunction:
         case PhantomCreateActivation:
         case PhantomDirectArguments:
+        case PhantomCreateRest:
         case PhantomClonedArguments:
         case PutHint:
         case BottomValue:
@@ -1577,6 +1596,90 @@ private:
         auto repatchingFunction = operationValueAddOptimize;
         auto nonRepatchingFunction = operationValueAdd;
         compileMathIC(addIC, repatchingFunction, nonRepatchingFunction);
+    }
+
+    template <typename Generator>
+    void compileMathIC(JITUnaryMathIC<Generator>* mathIC, FunctionPtr repatchingFunction, FunctionPtr nonRepatchingFunction)
+    {
+        Node* node = m_node;
+
+        LValue operand = lowJSValue(node->child1());
+
+        PatchpointValue* patchpoint = m_out.patchpoint(Int64);
+        patchpoint->appendSomeRegister(operand);
+        patchpoint->append(m_tagMask, ValueRep::lateReg(GPRInfo::tagMaskRegister));
+        patchpoint->append(m_tagTypeNumber, ValueRep::lateReg(GPRInfo::tagTypeNumberRegister));
+        RefPtr<PatchpointExceptionHandle> exceptionHandle = preparePatchpointForExceptions(patchpoint);
+        patchpoint->numGPScratchRegisters = 1;
+        patchpoint->clobber(RegisterSet::macroScratchRegisters());
+        State* state = &m_ftlState;
+        patchpoint->setGenerator(
+            [=] (CCallHelpers& jit, const StackmapGenerationParams& params) {
+                AllowMacroScratchRegisterUsage allowScratch(jit);
+
+                Box<CCallHelpers::JumpList> exceptions =
+                    exceptionHandle->scheduleExitCreation(params)->jumps(jit);
+
+#if ENABLE(MATH_IC_STATS)
+                auto inlineStart = jit.label();
+#endif
+
+                Box<MathICGenerationState> mathICGenerationState = Box<MathICGenerationState>::create();
+                mathIC->m_generator = Generator(JSValueRegs(params[0].gpr()), JSValueRegs(params[1].gpr()), params.gpScratch(0));
+
+                bool shouldEmitProfiling = false;
+                bool generatedInline = mathIC->generateInline(jit, *mathICGenerationState, shouldEmitProfiling);
+
+                if (generatedInline) {
+                    ASSERT(!mathICGenerationState->slowPathJumps.empty());
+                    auto done = jit.label();
+                    params.addLatePath([=] (CCallHelpers& jit) {
+                        AllowMacroScratchRegisterUsage allowScratch(jit);
+                        mathICGenerationState->slowPathJumps.link(&jit);
+                        mathICGenerationState->slowPathStart = jit.label();
+#if ENABLE(MATH_IC_STATS)
+                        auto slowPathStart = jit.label();
+#endif
+
+                        if (mathICGenerationState->shouldSlowPathRepatch) {
+                            SlowPathCall call = callOperation(*state, params.unavailableRegisters(), jit, node->origin.semantic, exceptions.get(),
+                                repatchingFunction, params[0].gpr(), params[1].gpr(), CCallHelpers::TrustedImmPtr(mathIC));
+                            mathICGenerationState->slowPathCall = call.call();
+                        } else {
+                            SlowPathCall call = callOperation(*state, params.unavailableRegisters(), jit, node->origin.semantic,
+                                exceptions.get(), nonRepatchingFunction, params[0].gpr(), params[1].gpr());
+                            mathICGenerationState->slowPathCall = call.call();
+                        }
+                        jit.jump().linkTo(done, &jit);
+
+                        jit.addLinkTask([=] (LinkBuffer& linkBuffer) {
+                            mathIC->finalizeInlineCode(*mathICGenerationState, linkBuffer);
+                        });
+
+#if ENABLE(MATH_IC_STATS)
+                        auto slowPathEnd = jit.label();
+                        jit.addLinkTask([=] (LinkBuffer& linkBuffer) {
+                            size_t size = static_cast<char*>(linkBuffer.locationOf(slowPathEnd).executableAddress()) - static_cast<char*>(linkBuffer.locationOf(slowPathStart).executableAddress());
+                            mathIC->m_generatedCodeSize += size;
+                        });
+#endif
+                    });
+                } else {
+                    callOperation(
+                        *state, params.unavailableRegisters(), jit, node->origin.semantic, exceptions.get(),
+                        nonRepatchingFunction, params[0].gpr(), params[1].gpr());
+                }
+
+#if ENABLE(MATH_IC_STATS)
+                auto inlineEnd = jit.label();
+                jit.addLinkTask([=] (LinkBuffer& linkBuffer) {
+                    size_t size = static_cast<char*>(linkBuffer.locationOf(inlineEnd).executableAddress()) - static_cast<char*>(linkBuffer.locationOf(inlineStart).executableAddress());
+                    mathIC->m_generatedCodeSize += size;
+                });
+#endif
+            });
+
+        setJSValue(patchpoint);
     }
 
     template <typename Generator>
@@ -2451,7 +2554,12 @@ private:
         }
             
         default:
-            DFG_CRASH(m_graph, m_node, "Bad use kind");
+            DFG_ASSERT(m_graph, m_node, m_node->child1().useKind() == UntypedUse);
+            ArithProfile* arithProfile = m_ftlState.graph.baselineCodeBlockFor(m_node->origin.semantic)->arithProfileForBytecodeOffset(m_node->origin.semantic.bytecodeIndex);
+            JITNegIC* negIC = codeBlock()->addJITNegIC(arithProfile);
+            auto repatchingFunction = operationArithNegateOptimize;
+            auto nonRepatchingFunction = operationArithNegate;
+            compileMathIC(negIC, repatchingFunction, nonRepatchingFunction);
             break;
         }
     }
@@ -3334,16 +3442,14 @@ private:
         InlineCallFrame* inlineCallFrame = m_node->child1()->origin.semantic.inlineCallFrame;
         
         LValue index = lowInt32(m_node->child2());
+        if (m_node->numberOfArgumentsToSkip())
+            index = m_out.add(index, m_out.constInt32(m_node->numberOfArgumentsToSkip()));
         
         LValue limit;
         if (inlineCallFrame && !inlineCallFrame->isVarargs())
             limit = m_out.constInt32(inlineCallFrame->arguments.size() - 1);
         else {
-            VirtualRegister argumentCountRegister;
-            if (!inlineCallFrame)
-                argumentCountRegister = VirtualRegister(CallFrameSlot::argumentCount);
-            else
-                argumentCountRegister = inlineCallFrame->argumentCountRegister;
+            VirtualRegister argumentCountRegister = AssemblyHelpers::argumentCount(inlineCallFrame);
             limit = m_out.sub(m_out.load32(payloadFor(argumentCountRegister)), m_out.int32One);
         }
         
@@ -4057,7 +4163,7 @@ private:
             LValue arrayLength = lowInt32(m_node->child1());
             LBasicBlock loopStart = m_out.newBlock();
             JSGlobalObject* globalObject = m_graph.globalObjectFor(m_node->origin.semantic);
-            Structure* structure = globalObject->arrayStructureForIndexingTypeDuringAllocation(ArrayWithContiguous);
+            Structure* structure = globalObject->restParameterStructure();
             ArrayValues arrayValues = allocateUninitializedContiguousJSArray(arrayLength, structure);
             LValue array = arrayValues.array;
             LValue butterfly = arrayValues.butterfly;
@@ -4194,6 +4300,195 @@ private:
         
         m_out.storePtr(m_out.intPtrZero, m_out.absolute(scratchBuffer->activeLengthPtr()));
         
+        setJSValue(result);
+    }
+
+    void compileNewArrayWithSpread()
+    {
+        if (m_graph.isWatchingHavingABadTimeWatchpoint(m_node)) {
+            unsigned startLength = 0;
+            BitVector* bitVector = m_node->bitVector();
+            for (unsigned i = 0; i < m_node->numChildren(); ++i) {
+                if (!bitVector->get(i))
+                    ++startLength;
+            }
+
+            LValue length = m_out.constInt32(startLength);
+
+            for (unsigned i = 0; i < m_node->numChildren(); ++i) {
+                if (bitVector->get(i)) {
+                    Edge use = m_graph.varArgChild(m_node, i);
+                    LValue fixedArray = lowCell(use);
+                    length = m_out.add(length, m_out.load32(fixedArray, m_heaps.JSFixedArray_size));
+                }
+            }
+
+            Structure* structure = m_graph.globalObjectFor(m_node->origin.semantic)->originalArrayStructureForIndexingType(ArrayWithContiguous);
+            ArrayValues arrayValues = allocateUninitializedContiguousJSArray(length, structure);
+            LValue result = arrayValues.array;
+            LValue storage = arrayValues.butterfly;
+            LValue index = m_out.constIntPtr(0);
+
+            for (unsigned i = 0; i < m_node->numChildren(); ++i) {
+                Edge use = m_graph.varArgChild(m_node, i);
+                if (bitVector->get(i)) {
+                    LBasicBlock loopStart = m_out.newBlock();
+                    LBasicBlock continuation = m_out.newBlock();
+
+                    LValue fixedArray = lowCell(use);
+
+                    ValueFromBlock fixedIndexStart = m_out.anchor(m_out.constIntPtr(0));
+                    ValueFromBlock arrayIndexStart = m_out.anchor(index);
+                    ValueFromBlock arrayIndexStartForFinish = m_out.anchor(index);
+
+                    LValue fixedArraySize = m_out.zeroExtPtr(m_out.load32(fixedArray, m_heaps.JSFixedArray_size));
+
+                    m_out.branch(
+                        m_out.isZero64(fixedArraySize),
+                        unsure(continuation), unsure(loopStart));
+
+                    LBasicBlock lastNext = m_out.appendTo(loopStart, continuation);
+
+                    LValue arrayIndex = m_out.phi(pointerType(), arrayIndexStart);
+                    LValue fixedArrayIndex = m_out.phi(pointerType(), fixedIndexStart);
+
+                    LValue item = m_out.load64(m_out.baseIndex(m_heaps.JSFixedArray_buffer, fixedArray, fixedArrayIndex));
+                    m_out.store64(item, m_out.baseIndex(m_heaps.indexedContiguousProperties, storage, arrayIndex));
+
+                    LValue nextArrayIndex = m_out.add(arrayIndex, m_out.constIntPtr(1));
+                    LValue nextFixedArrayIndex = m_out.add(fixedArrayIndex, m_out.constIntPtr(1));
+                    ValueFromBlock arrayIndexLoopForFinish = m_out.anchor(nextArrayIndex);
+
+                    m_out.addIncomingToPhi(fixedArrayIndex, m_out.anchor(nextFixedArrayIndex));
+                    m_out.addIncomingToPhi(arrayIndex, m_out.anchor(nextArrayIndex));
+
+                    m_out.branch(
+                        m_out.below(nextFixedArrayIndex, fixedArraySize),
+                        unsure(loopStart), unsure(continuation));
+
+                    m_out.appendTo(continuation, lastNext);
+                    index = m_out.phi(pointerType(), arrayIndexStartForFinish, arrayIndexLoopForFinish);
+                } else {
+                    IndexedAbstractHeap& heap = m_heaps.indexedContiguousProperties;
+                    LValue item = lowJSValue(use);
+                    m_out.store64(item, m_out.baseIndex(heap, storage, index));
+                    index = m_out.add(index, m_out.constIntPtr(1));
+                }
+            }
+
+            setJSValue(result);
+            return;
+        }
+
+        ASSERT(m_node->numChildren());
+        size_t scratchSize = sizeof(EncodedJSValue) * m_node->numChildren();
+        ScratchBuffer* scratchBuffer = vm().scratchBufferForSize(scratchSize);
+        EncodedJSValue* buffer = static_cast<EncodedJSValue*>(scratchBuffer->dataBuffer());
+        BitVector* bitVector = m_node->bitVector();
+        for (unsigned i = 0; i < m_node->numChildren(); ++i) {
+            Edge use = m_graph.m_varArgChildren[m_node->firstChild() + i];
+            LValue value;
+            if (bitVector->get(i))
+                value = lowCell(use);
+            else
+                value = lowJSValue(use);
+            m_out.store64(value, m_out.absolute(&buffer[i]));
+        }
+
+        m_out.storePtr(m_out.constIntPtr(scratchSize), m_out.absolute(scratchBuffer->activeLengthPtr()));
+        LValue result = vmCall(Int64, m_out.operation(operationNewArrayWithSpreadSlow), m_callFrame, m_out.constIntPtr(buffer), m_out.constInt32(m_node->numChildren()));
+        m_out.storePtr(m_out.constIntPtr(0), m_out.absolute(scratchBuffer->activeLengthPtr()));
+
+        setJSValue(result);
+    }
+
+    void compileSpread()
+    {
+        LValue argument = lowCell(m_node->child1());
+
+        LValue result;
+        if (m_node->child1().useKind() == ArrayUse) {
+            speculateArray(m_node->child1());
+
+            LBasicBlock preLoop = m_out.newBlock();
+            LBasicBlock loopSelection = m_out.newBlock();
+            LBasicBlock contiguousLoopStart = m_out.newBlock();
+            LBasicBlock doubleLoopStart = m_out.newBlock();
+            LBasicBlock slowPath = m_out.newBlock();
+            LBasicBlock continuation = m_out.newBlock();
+
+            LValue indexingShape = m_out.load8ZeroExt32(argument, m_heaps.JSCell_indexingType);
+            indexingShape = m_out.bitAnd(indexingShape, m_out.constInt32(IndexingShapeMask));
+            LValue isOKIndexingType = m_out.belowOrEqual(
+                m_out.sub(indexingShape, m_out.constInt32(Int32Shape)),
+                m_out.constInt32(ContiguousShape - Int32Shape));
+
+            m_out.branch(isOKIndexingType, unsure(preLoop), unsure(slowPath));
+            LBasicBlock lastNext = m_out.appendTo(preLoop, loopSelection);
+
+            LValue butterfly = m_out.loadPtr(argument, m_heaps.JSObject_butterfly);
+            LValue length = m_out.load32NonNegative(butterfly, m_heaps.Butterfly_publicLength);
+            static_assert(sizeof(JSValue) == 8 && 1 << 3 == 8, "Assumed in the code below.");
+            LValue size = m_out.add(
+                m_out.shl(m_out.zeroExtPtr(length), m_out.constInt32(3)),
+                m_out.constIntPtr(JSFixedArray::offsetOfData()));
+
+            LValue fastAllocation = allocateVariableSizedCell<JSFixedArray>(size, m_graph.m_vm.fixedArrayStructure.get(), slowPath);
+            ValueFromBlock fastResult = m_out.anchor(fastAllocation);
+            m_out.store32(length, fastAllocation, m_heaps.JSFixedArray_size);
+
+            ValueFromBlock startIndexForContiguous = m_out.anchor(m_out.constIntPtr(0));
+            ValueFromBlock startIndexForDouble = m_out.anchor(m_out.constIntPtr(0));
+
+            m_out.branch(m_out.isZero32(length), unsure(continuation), unsure(loopSelection));
+
+            m_out.appendTo(loopSelection, contiguousLoopStart);
+            m_out.branch(m_out.equal(indexingShape, m_out.constInt32(DoubleShape)),
+                unsure(doubleLoopStart), unsure(contiguousLoopStart));
+
+            {
+                m_out.appendTo(contiguousLoopStart, doubleLoopStart);
+                LValue index = m_out.phi(pointerType(), startIndexForContiguous);
+
+                TypedPointer loadSite = m_out.baseIndex(m_heaps.root, butterfly, index, ScaleEight); // We read TOP here since we can be reading either int32 or contiguous properties.
+                LValue value = m_out.load64(loadSite);
+                value = m_out.select(m_out.isZero64(value), m_out.constInt64(JSValue::encode(jsUndefined())), value);
+                m_out.store64(value, m_out.baseIndex(m_heaps.JSFixedArray_buffer, fastAllocation, index));
+
+                LValue nextIndex = m_out.add(index, m_out.constIntPtr(1));
+                m_out.addIncomingToPhi(index, m_out.anchor(nextIndex));
+
+                m_out.branch(m_out.below(nextIndex, m_out.zeroExtPtr(length)),
+                    unsure(contiguousLoopStart), unsure(continuation));
+            }
+
+            {
+                m_out.appendTo(doubleLoopStart, slowPath);
+                LValue index = m_out.phi(pointerType(), startIndexForDouble);
+
+                LValue value = m_out.loadDouble(m_out.baseIndex(m_heaps.indexedDoubleProperties, butterfly, index));
+                LValue isNaN = m_out.doubleNotEqualOrUnordered(value, value);
+                LValue holeResult = m_out.constInt64(JSValue::encode(jsUndefined()));
+                LValue normalResult = boxDouble(value);
+                value = m_out.select(isNaN, holeResult, normalResult);
+                m_out.store64(value, m_out.baseIndex(m_heaps.JSFixedArray_buffer, fastAllocation, index));
+
+                LValue nextIndex = m_out.add(index, m_out.constIntPtr(1));
+                m_out.addIncomingToPhi(index, m_out.anchor(nextIndex));
+
+                m_out.branch(m_out.below(nextIndex, m_out.zeroExtPtr(length)),
+                    unsure(doubleLoopStart), unsure(continuation));
+            }
+
+            m_out.appendTo(slowPath, continuation);
+            ValueFromBlock slowResult = m_out.anchor(vmCall(Int64, m_out.operation(operationSpreadFastArray), m_callFrame, argument));
+            m_out.jump(continuation);
+
+            m_out.appendTo(continuation, lastNext);
+            result = m_out.phi(Int64, fastResult, slowResult);
+        } else
+            result = vmCall(Int64, m_out.operation(operationSpreadGeneric), m_callFrame, argument);
+
         setJSValue(result);
     }
     
@@ -5053,6 +5348,29 @@ private:
             lowCell(m_node->child1()),
             m_heaps.DirectArguments_storage[m_node->capturedArgumentsOffset().offset()]);
     }
+
+    void compileGetArgument()
+    {
+        LValue argumentCount = m_out.load32(payloadFor(AssemblyHelpers::argumentCount(m_node->origin.semantic)));
+
+        LBasicBlock inBounds = m_out.newBlock();
+        LBasicBlock outOfBounds = m_out.newBlock();
+        LBasicBlock continuation = m_out.newBlock();
+
+        m_out.branch(m_out.lessThanOrEqual(argumentCount, m_out.constInt32(m_node->argumentIndex())), unsure(outOfBounds), unsure(inBounds));
+
+        LBasicBlock lastNext = m_out.appendTo(inBounds, outOfBounds);
+        VirtualRegister arg = AssemblyHelpers::argumentsStart(m_node->origin.semantic) + m_node->argumentIndex() - 1;
+        ValueFromBlock inBoundsResult = m_out.anchor(m_out.load64(addressFor(arg)));
+        m_out.jump(continuation);
+
+        m_out.appendTo(outOfBounds, continuation);
+        ValueFromBlock outOfBoundsResult = m_out.anchor(m_out.constInt64(ValueUndefined));
+        m_out.jump(continuation);
+
+        m_out.appendTo(continuation, lastNext);
+        setJSValue(m_out.phi(Int64, inBoundsResult, outOfBoundsResult));
+    }
     
     void compileCompareEq()
     {
@@ -5466,13 +5784,213 @@ private:
                         linkBuffer.link(slowCall, FunctionPtr(linkCall.executableAddress()));
 
                         callLinkInfo->setCallLocations(
-                            linkBuffer.locationOfNearCall(slowCall),
-                            linkBuffer.locationOf(targetToCheck),
+                            CodeLocationLabel(linkBuffer.locationOfNearCall(slowCall)),
+                            CodeLocationLabel(linkBuffer.locationOf(targetToCheck)),
                             linkBuffer.locationOfNearCall(fastCall));
                     });
             });
 
         setJSValue(patchpoint);
+    }
+    
+    void compileDirectCallOrConstruct()
+    {
+        Node* node = m_node;
+        bool isTail = node->op() == DirectTailCall;
+        bool isConstruct = node->op() == DirectConstruct;
+        
+        ExecutableBase* executable = node->castOperand<ExecutableBase*>();
+        FunctionExecutable* functionExecutable = jsDynamicCast<FunctionExecutable*>(executable);
+        
+        unsigned numPassedArgs = node->numChildren() - 1;
+        unsigned numAllocatedArgs = numPassedArgs;
+        
+        if (functionExecutable) {
+            numAllocatedArgs = std::max(
+                numAllocatedArgs,
+                std::min(
+                    static_cast<unsigned>(functionExecutable->parameterCount()) + 1,
+                    Options::maximumDirectCallStackSize()));
+        }
+        
+        LValue jsCallee = lowJSValue(m_graph.varArgChild(node, 0));
+        
+        if (!isTail) {
+            unsigned frameSize = (CallFrame::headerSizeInRegisters + numAllocatedArgs) * sizeof(EncodedJSValue);
+            unsigned alignedFrameSize = WTF::roundUpToMultipleOf(stackAlignmentBytes(), frameSize);
+            
+            m_proc.requestCallArgAreaSizeInBytes(alignedFrameSize);
+        }
+        
+        Vector<ConstrainedValue> arguments;
+        
+        arguments.append(ConstrainedValue(jsCallee, ValueRep::SomeRegister));
+        if (!isTail) {
+            auto addArgument = [&] (LValue value, VirtualRegister reg, int offset) {
+                intptr_t offsetFromSP =
+                    (reg.offset() - CallerFrameAndPC::sizeInRegisters) * sizeof(EncodedJSValue) + offset;
+                arguments.append(ConstrainedValue(value, ValueRep::stackArgument(offsetFromSP)));
+            };
+            
+            addArgument(jsCallee, VirtualRegister(CallFrameSlot::callee), 0);
+            addArgument(m_out.constInt32(numPassedArgs), VirtualRegister(CallFrameSlot::argumentCount), PayloadOffset);
+            for (unsigned i = 0; i < numPassedArgs; ++i)
+                addArgument(lowJSValue(m_graph.varArgChild(node, 1 + i)), virtualRegisterForArgument(i), 0);
+            for (unsigned i = numPassedArgs; i < numAllocatedArgs; ++i)
+                addArgument(m_out.constInt64(JSValue::encode(jsUndefined())), virtualRegisterForArgument(i), 0);
+        } else {
+            for (unsigned i = 0; i < numPassedArgs; ++i)
+                arguments.append(ConstrainedValue(lowJSValue(m_graph.varArgChild(node, 1 + i)), ValueRep::WarmAny));
+        }
+        
+        PatchpointValue* patchpoint = m_out.patchpoint(isTail ? Void : Int64);
+        patchpoint->appendVector(arguments);
+        
+        RefPtr<PatchpointExceptionHandle> exceptionHandle = preparePatchpointForExceptions(patchpoint);
+        
+        if (isTail) {
+            // The shuffler needs tags.
+            patchpoint->append(m_tagMask, ValueRep::reg(GPRInfo::tagMaskRegister));
+            patchpoint->append(m_tagTypeNumber, ValueRep::reg(GPRInfo::tagTypeNumberRegister));
+        }
+        
+        patchpoint->clobber(RegisterSet::macroScratchRegisters());
+        if (!isTail) {
+            patchpoint->clobberLate(RegisterSet::volatileRegistersForJSCall());
+            patchpoint->resultConstraint = ValueRep::reg(GPRInfo::returnValueGPR);
+        }
+        
+        CodeOrigin codeOrigin = codeOriginDescriptionOfCallSite();
+        State* state = &m_ftlState;
+        patchpoint->setGenerator(
+            [=] (CCallHelpers& jit, const StackmapGenerationParams& params) {
+                AllowMacroScratchRegisterUsage allowScratch(jit);
+                CallSiteIndex callSiteIndex = state->jitCode->common.addUniqueCallSiteIndex(codeOrigin);
+                
+                GPRReg calleeGPR = params[!isTail].gpr();
+
+                exceptionHandle->scheduleExitCreationForUnwind(params, callSiteIndex);
+                
+                Box<CCallHelpers::JumpList> exceptions =
+                    exceptionHandle->scheduleExitCreation(params)->jumps(jit);
+                
+                if (isTail) {
+                    CallFrameShuffleData shuffleData;
+                    shuffleData.numLocals = state->jitCode->common.frameRegisterCount;
+                    
+                    RegisterSet toSave = params.unavailableRegisters();
+                    shuffleData.callee = ValueRecovery::inGPR(calleeGPR, DataFormatCell);
+                    toSave.set(calleeGPR);
+                    for (unsigned i = 0; i < numPassedArgs; ++i) {
+                        ValueRecovery recovery = params[1 + i].recoveryForJSValue();
+                        shuffleData.args.append(recovery);
+                        recovery.forEachReg(
+                            [&] (Reg reg) {
+                                toSave.set(reg);
+                            });
+                    }
+                    for (unsigned i = numPassedArgs; i < numAllocatedArgs; ++i)
+                        shuffleData.args.append(ValueRecovery::constant(jsUndefined()));
+                    shuffleData.setupCalleeSaveRegisters(jit.codeBlock());
+                    
+                    CallLinkInfo* callLinkInfo = jit.codeBlock()->addCallLinkInfo();
+                    
+                    CCallHelpers::PatchableJump patchableJump = jit.patchableJump();
+                    CCallHelpers::Label mainPath = jit.label();
+                    
+                    jit.store32(
+                        CCallHelpers::TrustedImm32(callSiteIndex.bits()),
+                        CCallHelpers::tagFor(VirtualRegister(CallFrameSlot::argumentCount)));
+                
+                    callLinkInfo->setFrameShuffleData(shuffleData);
+                    CallFrameShuffler(jit, shuffleData).prepareForTailCall();
+                    
+                    CCallHelpers::Call call = jit.nearTailCall();
+                    
+                    jit.abortWithReason(JITDidReturnFromTailCall);
+                    
+                    CCallHelpers::Label slowPath = jit.label();
+                    patchableJump.m_jump.linkTo(slowPath, &jit);
+                    callOperation(
+                        *state, toSave, jit,
+                        node->origin.semantic, exceptions.get(), operationLinkDirectCall,
+                        InvalidGPRReg, CCallHelpers::TrustedImmPtr(callLinkInfo), calleeGPR).call();
+                    jit.jump().linkTo(mainPath, &jit);
+                    
+                    callLinkInfo->setUpCall(
+                        CallLinkInfo::DirectTailCall, node->origin.semantic, InvalidGPRReg);
+                    callLinkInfo->setExecutableDuringCompilation(executable);
+                    if (numAllocatedArgs > numPassedArgs)
+                        callLinkInfo->setMaxNumArguments(numAllocatedArgs);
+                    
+                    jit.addLinkTask(
+                        [=] (LinkBuffer& linkBuffer) {
+                            CodeLocationLabel patchableJumpLocation = linkBuffer.locationOf(patchableJump);
+                            CodeLocationNearCall callLocation = linkBuffer.locationOfNearCall(call);
+                            CodeLocationLabel slowPathLocation = linkBuffer.locationOf(slowPath);
+                            
+                            callLinkInfo->setCallLocations(
+                                patchableJumpLocation,
+                                slowPathLocation,
+                                callLocation);
+                        });
+                    return;
+                }
+                
+                CallLinkInfo* callLinkInfo = jit.codeBlock()->addCallLinkInfo();
+                
+                CCallHelpers::Label mainPath = jit.label();
+
+                jit.store32(
+                    CCallHelpers::TrustedImm32(callSiteIndex.bits()),
+                    CCallHelpers::tagFor(VirtualRegister(CallFrameSlot::argumentCount)));
+                
+                CCallHelpers::Call call = jit.nearCall();
+                jit.addPtr(
+                    CCallHelpers::TrustedImm32(-params.proc().frameSize()),
+                    GPRInfo::callFrameRegister, CCallHelpers::stackPointerRegister);
+                
+                callLinkInfo->setUpCall(
+                    isConstruct ? CallLinkInfo::DirectConstruct : CallLinkInfo::DirectCall,
+                    node->origin.semantic, InvalidGPRReg);
+                callLinkInfo->setExecutableDuringCompilation(executable);
+                if (numAllocatedArgs > numPassedArgs)
+                    callLinkInfo->setMaxNumArguments(numAllocatedArgs);
+                
+                params.addLatePath(
+                    [=] (CCallHelpers& jit) {
+                        AllowMacroScratchRegisterUsage allowScratch(jit);
+                        
+                        CCallHelpers::Label slowPath = jit.label();
+                        if (isX86())
+                            jit.pop(CCallHelpers::selectScratchGPR(calleeGPR));
+                        
+                        callOperation(
+                            *state, params.unavailableRegisters(), jit,
+                            node->origin.semantic, exceptions.get(), operationLinkDirectCall,
+                            InvalidGPRReg, CCallHelpers::TrustedImmPtr(callLinkInfo),
+                            calleeGPR).call();
+                        jit.jump().linkTo(mainPath, &jit);
+                        
+                        jit.addLinkTask(
+                            [=] (LinkBuffer& linkBuffer) {
+                                CodeLocationNearCall callLocation = linkBuffer.locationOfNearCall(call);
+                                CodeLocationLabel slowPathLocation = linkBuffer.locationOf(slowPath);
+                                
+                                linkBuffer.link(call, slowPathLocation);
+                                
+                                callLinkInfo->setCallLocations(
+                                    CodeLocationLabel(),
+                                    slowPathLocation,
+                                    callLocation);
+                            });
+                    });
+            });
+        
+        if (isTail)
+            patchpoint->effects.terminal = true;
+        else
+            setJSValue(patchpoint);
     }
 
     void compileTailCall()
@@ -5512,6 +6030,8 @@ private:
 
         // Prevent any of the arguments from using the scratch register.
         patchpoint->clobberEarly(RegisterSet::macroScratchRegisters());
+        
+        patchpoint->effects.terminal = true;
 
         // We don't have to tell the patchpoint that we will clobber registers, since we won't return
         // anyway.
@@ -5571,13 +6091,11 @@ private:
                         linkBuffer.link(slowCall, FunctionPtr(linkCall.executableAddress()));
 
                         callLinkInfo->setCallLocations(
-                            linkBuffer.locationOfNearCall(slowCall),
-                            linkBuffer.locationOf(targetToCheck),
+                            CodeLocationLabel(linkBuffer.locationOfNearCall(slowCall)),
+                            CodeLocationLabel(linkBuffer.locationOf(targetToCheck)),
                             linkBuffer.locationOfNearCall(fastCall));
                     });
             });
-        
-        m_out.unreachable();
     }
     
     void compileCallOrConstructVarargs()
@@ -5840,8 +6358,8 @@ private:
                         linkBuffer.link(slowCall, FunctionPtr(linkCall.executableAddress()));
                         
                         callLinkInfo->setCallLocations(
-                            linkBuffer.locationOfNearCall(slowCall),
-                            linkBuffer.locationOf(targetToCheck),
+                            CodeLocationLabel(linkBuffer.locationOfNearCall(slowCall)),
+                            CodeLocationLabel(linkBuffer.locationOf(targetToCheck)),
                             linkBuffer.locationOfNearCall(fastCall));
                     });
             });
@@ -5985,17 +6503,47 @@ private:
             inlineCallFrame = m_node->child1()->origin.semantic.inlineCallFrame;
         else
             inlineCallFrame = m_node->origin.semantic.inlineCallFrame;
-        
-        LValue length = getArgumentsLength(inlineCallFrame).value;
-        LValue lengthIncludingThis = m_out.add(length, m_out.constInt32(1 - data->offset));
-        
+
+        LValue length = nullptr; 
+        LValue lengthIncludingThis = nullptr;
+        ArgumentsLength argumentsLength = getArgumentsLength(inlineCallFrame);
+        if (argumentsLength.isKnown) {
+            unsigned knownLength = argumentsLength.known;
+            if (knownLength >= data->offset)
+                knownLength = knownLength - data->offset;
+            else
+                knownLength = 0;
+            length = m_out.constInt32(knownLength);
+            lengthIncludingThis = m_out.constInt32(knownLength + 1);
+        } else {
+            // We need to perform the same logical operation as the code above, but through dynamic operations.
+            if (!data->offset)
+                length = argumentsLength.value;
+            else {
+                LBasicBlock isLarger = m_out.newBlock();
+                LBasicBlock continuation = m_out.newBlock();
+
+                ValueFromBlock smallerOrEqualLengthResult = m_out.anchor(m_out.constInt32(0));
+                m_out.branch(
+                    m_out.above(argumentsLength.value, m_out.constInt32(data->offset)), unsure(isLarger), unsure(continuation));
+                LBasicBlock lastNext = m_out.appendTo(isLarger, continuation);
+                ValueFromBlock largerLengthResult = m_out.anchor(m_out.sub(argumentsLength.value, m_out.constInt32(data->offset)));
+                m_out.jump(continuation);
+
+                m_out.appendTo(continuation, lastNext);
+                length = m_out.phi(Int32, smallerOrEqualLengthResult, largerLengthResult);
+            }
+            lengthIncludingThis = m_out.add(length, m_out.constInt32(1));
+        }
+
         speculate(
             VarargsOverflow, noValue(), nullptr,
             m_out.above(lengthIncludingThis, m_out.constInt32(data->limit)));
         
         m_out.store32(lengthIncludingThis, payloadFor(data->machineCount));
         
-        LValue sourceStart = getArgumentsStart(inlineCallFrame);
+        unsigned numberOfArgumentsToSkip = data->offset;
+        LValue sourceStart = getArgumentsStart(inlineCallFrame, numberOfArgumentsToSkip);
         LValue targetStart = addressFor(data->machineStart).value();
 
         LBasicBlock undefinedLoop = m_out.newBlock();
@@ -6028,9 +6576,7 @@ private:
         previousIndex = m_out.phi(pointerType(), loopBound);
         currentIndex = m_out.sub(previousIndex, m_out.intPtrOne);
         LValue value = m_out.load64(
-            m_out.baseIndex(
-                m_heaps.variables, sourceStart,
-                m_out.add(currentIndex, m_out.constIntPtr(data->offset))));
+            m_out.baseIndex(m_heaps.variables, sourceStart, currentIndex));
         m_out.store64(value, m_out.baseIndex(m_heaps.variables, targetStart, currentIndex));
         nextIndex = m_out.anchor(currentIndex);
         m_out.addIncomingToPhi(previousIndex, nextIndex);
@@ -8076,9 +8622,9 @@ private:
         return m_out.loadPtr(addressFor(CallFrameSlot::callee));
     }
     
-    LValue getArgumentsStart(InlineCallFrame* inlineCallFrame)
+    LValue getArgumentsStart(InlineCallFrame* inlineCallFrame, unsigned offset = 0)
     {
-        VirtualRegister start = AssemblyHelpers::argumentsStart(inlineCallFrame);
+        VirtualRegister start = AssemblyHelpers::argumentsStart(inlineCallFrame) + offset;
         return addressFor(start).value();
     }
     
@@ -8769,25 +9315,75 @@ private:
 
     void compileCallDOM()
     {
-        DOMJIT::CallDOMPatchpoint* domJIT = m_node->callDOMPatchpoint();
-        int childIndex = 0;
+        const DOMJIT::Signature* signature = m_node->signature();
+
+        // FIXME: We should have a way to call functions with the vector of registers.
+        // https://bugs.webkit.org/show_bug.cgi?id=163099
+        Vector<LValue, JSC_DOMJIT_SIGNATURE_MAX_ARGUMENTS_INCLUDING_THIS> operands;
+
+        unsigned index = 0;
+        DFG_NODE_DO_TO_CHILDREN(m_graph, m_node, [&](Node*, Edge edge) {
+            if (!index)
+                operands.append(lowCell(edge));
+            else {
+                switch (signature->arguments[index - 1]) {
+                case SpecString:
+                    operands.append(lowString(edge));
+                    break;
+                case SpecInt32Only:
+                    operands.append(lowInt32(edge));
+                    break;
+                case SpecBoolean:
+                    operands.append(lowBoolean(edge));
+                    break;
+                default:
+                    RELEASE_ASSERT_NOT_REACHED();
+                    break;
+                }
+            }
+            ++index;
+        });
+
+        unsigned argumentCountIncludingThis = signature->argumentCount + 1;
+        LValue result;
+        switch (argumentCountIncludingThis) {
+        case 1:
+            result = vmCall(Int64, m_out.operation(reinterpret_cast<J_JITOperation_EP>(signature->unsafeFunction)), m_callFrame, operands[0]);
+            break;
+        case 2:
+            result = vmCall(Int64, m_out.operation(reinterpret_cast<J_JITOperation_EPP>(signature->unsafeFunction)), m_callFrame, operands[0], operands[1]);
+            break;
+        case 3:
+            result = vmCall(Int64, m_out.operation(reinterpret_cast<J_JITOperation_EPPP>(signature->unsafeFunction)), m_callFrame, operands[0], operands[1], operands[2]);
+            break;
+        default:
+            RELEASE_ASSERT_NOT_REACHED();
+            break;
+        }
+
+        setJSValue(result);
+    }
+
+    void compileCallDOMGetter()
+    {
+        DOMJIT::CallDOMGetterPatchpoint* domJIT = m_node->callDOMGetterData()->patchpoint;
+
+        Edge& baseEdge = m_node->child1();
+        LValue base = lowCell(baseEdge);
+        JSValue baseConstant = m_state.forNode(baseEdge).value();
 
         LValue globalObject;
         JSValue globalObjectConstant;
         if (domJIT->requireGlobalObject) {
-            Edge& globalObjectEdge = m_graph.varArgChild(m_node, childIndex++);
+            Edge& globalObjectEdge = m_node->child2();
             globalObject = lowCell(globalObjectEdge);
             globalObjectConstant = m_state.forNode(globalObjectEdge).value();
         }
 
-        Edge& baseEdge = m_graph.varArgChild(m_node, childIndex++);
-        LValue base = lowCell(baseEdge);
-        JSValue baseConstant = m_state.forNode(baseEdge).value();
-
         PatchpointValue* patchpoint = m_out.patchpoint(Int64);
+        patchpoint->appendSomeRegister(base);
         if (domJIT->requireGlobalObject)
             patchpoint->appendSomeRegister(globalObject);
-        patchpoint->appendSomeRegister(base);
         patchpoint->append(m_tagMask, ValueRep::reg(GPRInfo::tagMaskRegister));
         patchpoint->append(m_tagTypeNumber, ValueRep::reg(GPRInfo::tagTypeNumberRegister));
         RefPtr<PatchpointExceptionHandle> exceptionHandle = preparePatchpointForExceptions(patchpoint);
@@ -8806,11 +9402,10 @@ private:
                 Vector<FPRReg> fpScratch;
                 Vector<DOMJIT::Value> regs;
 
-                int childIndex = 1;
                 regs.append(JSValueRegs(params[0].gpr()));
+                regs.append(DOMJIT::Value(params[1].gpr(), baseConstant));
                 if (domJIT->requireGlobalObject)
-                    regs.append(DOMJIT::Value(params[childIndex++].gpr(), globalObjectConstant));
-                regs.append(DOMJIT::Value(params[childIndex++].gpr(), baseConstant));
+                    regs.append(DOMJIT::Value(params[2].gpr(), globalObjectConstant));
 
                 for (unsigned i = 0; i < domJIT->numGPScratchRegisters; ++i)
                     gpScratch.append(params.gpScratch(i));
@@ -9340,6 +9935,15 @@ private:
         LValue allocator = allocatorForSize(
             vm().heap.subspaceForObjectOfType<ClassType>(), size, slowPath);
         return allocateObject(allocator, structure, butterfly, slowPath);
+    }
+
+    template<typename ClassType>
+    LValue allocateVariableSizedCell(
+        LValue size, Structure* structure, LBasicBlock slowPath)
+    {
+        LValue allocator = allocatorForSize(
+            vm().heap.subspaceForObjectOfType<ClassType>(), size, slowPath);
+        return allocateCell(allocator, structure, slowPath);
     }
     
     LValue allocateObject(Structure* structure)
@@ -11921,7 +12525,8 @@ private:
         CodeOrigin codeOrigin = m_node->origin.semantic;
         if (m_node->op() == TailCallInlinedCaller
             || m_node->op() == TailCallVarargsInlinedCaller
-            || m_node->op() == TailCallForwardVarargsInlinedCaller) {
+            || m_node->op() == TailCallForwardVarargsInlinedCaller
+            || m_node->op() == DirectTailCallInlinedCaller) {
             // This case arises when you have a situation like this:
             // foo makes a call to bar, bar is inlined in foo. bar makes a call
             // to baz and baz is inlined in bar. And then baz makes a tail-call to jaz,
@@ -12004,7 +12609,7 @@ private:
     OSRExitDescriptor* appendOSRExitDescriptor(FormattedValue lowValue, Node* highValue)
     {
         return &m_ftlState.jitCode->osrExitDescriptors.alloc(
-            lowValue.format(), m_graph.methodOfGettingAValueProfileFor(highValue),
+            lowValue.format(), m_graph.methodOfGettingAValueProfileFor(m_node, highValue),
             availabilityMap().m_locals.numberOfArguments(),
             availabilityMap().m_locals.numberOfLocals());
     }

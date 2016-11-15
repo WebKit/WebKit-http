@@ -63,12 +63,7 @@ public:
 protected:
     JSTestEventTarget(JSC::Structure*, JSDOMGlobalObject&, Ref<TestEventTarget>&&);
 
-    void finishCreation(JSC::VM& vm)
-    {
-        Base::finishCreation(vm);
-        ASSERT(inherits(info()));
-    }
-
+    void finishCreation(JSC::VM&);
 private:
     bool nameGetter(JSC::ExecState*, JSC::PropertyName, JSC::JSValue&);
 };
@@ -80,6 +75,7 @@ inline JSC::JSValue toJSNewlyCreated(JSC::ExecState* state, JSDOMGlobalObject* g
 
 template<> struct JSDOMWrapperConverterTraits<TestEventTarget> {
     using WrapperClass = JSTestEventTarget;
+    using ToWrappedReturnType = TestEventTarget*;
 };
 
 } // namespace WebCore

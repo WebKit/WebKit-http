@@ -19,8 +19,7 @@
  *
  */
 
-#ifndef RenderWidget_h
-#define RenderWidget_h
+#pragma once
 
 #include "HTMLFrameOwnerElement.h"
 #include "OverlapTestRequestClient.h"
@@ -63,7 +62,7 @@ public:
     HTMLFrameOwnerElement& frameOwnerElement() const { return downcast<HTMLFrameOwnerElement>(nodeForNonAnonymous()); }
 
     Widget* widget() const { return m_widget.get(); }
-    WEBCORE_EXPORT void setWidget(PassRefPtr<Widget>);
+    WEBCORE_EXPORT void setWidget(RefPtr<Widget>&&);
 
     static RenderWidget* find(const Widget*);
 
@@ -119,5 +118,3 @@ inline void RenderWidget::deref()
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_RENDER_OBJECT(RenderWidget, isWidget())
-
-#endif // RenderWidget_h

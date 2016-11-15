@@ -18,8 +18,7 @@
  *
  */
 
-#ifndef QualifiedName_h
-#define QualifiedName_h
+#pragma once
 
 #include <wtf/Forward.h>
 #include <wtf/HashTraits.h>
@@ -54,10 +53,10 @@ public:
         const AtomicString m_namespace;
         mutable AtomicString m_localNameUpper;
 
-#if ENABLE(CSS_SELECTOR_JIT)
+#if ENABLE(JIT)
         static ptrdiff_t localNameMemoryOffset() { return OBJECT_OFFSETOF(QualifiedNameImpl, m_localName); }
         static ptrdiff_t namespaceMemoryOffset() { return OBJECT_OFFSETOF(QualifiedNameImpl, m_namespace); }
-#endif // ENABLE(CSS_SELECTOR_JIT)
+#endif // ENABLE(JIT)
 
     private:
         QualifiedNameImpl(const AtomicString& prefix, const AtomicString& localName, const AtomicString& namespaceURI)
@@ -95,9 +94,9 @@ public:
     WEBCORE_EXPORT String toString() const;
 
     QualifiedNameImpl* impl() const { return m_impl.get(); }
-#if ENABLE(CSS_SELECTOR_JIT)
+#if ENABLE(JIT)
     static ptrdiff_t implMemoryOffset() { return OBJECT_OFFSETOF(QualifiedName, m_impl); }
-#endif // ENABLE(CSS_SELECTOR_JIT)
+#endif // ENABLE(JIT)
     
     // Init routine for globals
     static void init();
@@ -144,7 +143,7 @@ struct QualifiedNameHash {
 void createQualifiedName(void* targetAddress, StringImpl* name);
 void createQualifiedName(void* targetAddress, StringImpl* name, const AtomicString& nameNamespace);
 
-}
+} // namespace WebCore
 
 namespace WTF {
     
@@ -158,6 +157,5 @@ namespace WTF {
         static const bool emptyValueIsZero = false;
         static WebCore::QualifiedName emptyValue() { return WebCore::nullQName(); }
     };
-}
 
-#endif
+} // namespace WTF

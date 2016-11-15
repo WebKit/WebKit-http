@@ -46,6 +46,11 @@ class SpeculativeJIT;
 class JITCompiler;
 }
 
+namespace DOMJIT {
+class Signature;
+}
+
+
 JS_EXPORT_PRIVATE EncodedJSValue JSC_HOST_CALL callHostFunctionAsConstructor(ExecState*);
 
 JS_EXPORT_PRIVATE String getCalculatedDisplayName(VM&, JSObject*);
@@ -67,7 +72,7 @@ public:
         return sizeof(JSFunction);
     }
 
-    JS_EXPORT_PRIVATE static JSFunction* create(VM&, JSGlobalObject*, int length, const String& name, NativeFunction, Intrinsic = NoIntrinsic, NativeFunction nativeConstructor = callHostFunctionAsConstructor);
+    JS_EXPORT_PRIVATE static JSFunction* create(VM&, JSGlobalObject*, int length, const String& name, NativeFunction, Intrinsic = NoIntrinsic, NativeFunction nativeConstructor = callHostFunctionAsConstructor, const DOMJIT::Signature* = nullptr);
     
     static JSFunction* createWithInvalidatedReallocationWatchpoint(VM&, FunctionExecutable*, JSScope*);
 
@@ -190,9 +195,11 @@ private:
     bool hasReifiedName() const;
     void reifyLength(VM&);
     void reifyName(VM&, ExecState*);
-    void reifyBoundNameIfNeeded(VM&, ExecState*, PropertyName);
     void reifyName(VM&, ExecState*, String name);
-    void reifyLazyPropertyIfNeeded(VM&, ExecState*, PropertyName propertyName);
+
+    enum class LazyPropertyType { NotLazyProperty, IsLazyProperty };
+    LazyPropertyType reifyLazyPropertyIfNeeded(VM&, ExecState*, PropertyName);
+    LazyPropertyType reifyBoundNameIfNeeded(VM&, ExecState*, PropertyName);
 
     friend class LLIntOffsetsExtractor;
 

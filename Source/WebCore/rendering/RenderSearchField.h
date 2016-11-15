@@ -20,8 +20,7 @@
  *
  */
 
-#ifndef RenderSearchField_h
-#define RenderSearchField_h
+#pragma once
 
 #include "PopupMenuClient.h"
 #include "RenderTextControlSingleLine.h"
@@ -80,7 +79,7 @@ private:
     void setTextFromItem(unsigned listIndex) override;
     FontSelector* fontSelector() const override;
     HostWindow* hostWindow() const override;
-    PassRefPtr<Scrollbar> createScrollbar(ScrollableArea&, ScrollbarOrientation, ScrollbarControlSize) override;
+    Ref<Scrollbar> createScrollbar(ScrollableArea&, ScrollbarOrientation, ScrollbarControlSize) override;
 
     HTMLElement* resultsButtonElement() const;
     HTMLElement* cancelButtonElement() const;
@@ -93,5 +92,3 @@ private:
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_RENDER_OBJECT(RenderSearchField, isTextField())
-
-#endif

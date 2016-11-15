@@ -5,6 +5,38 @@ if (this.importScripts) {
 
 description("Test IndexedDB's KeyRange.");
 
+function incrementedKey(key)
+{
+    if (typeof key == "number")
+        return key + 0.1;
+    if (typeof key == "string") {
+        if (key.length < 2)
+            testFailed("String key is too short: " + key);
+        if (key.charAt(key.length - 1) != "'")
+            testFailed("Completely unexpected string key: " + key);
+        
+        return key.substring(0, key.length - 1) + key.charAt(key.length - 2) + "'";
+    }
+    
+    testFailed("Incrementing unexpected key type: " + typeof key);
+}
+
+function decrementedKey(key)
+{
+    if (typeof key == "number")
+        return key - 0.1;
+    if (typeof key == "string") {
+        if (key.length < 3)
+            testFailed("String key is too short: " + key);
+        if (key.charAt(key.length - 1) != "'")
+            testFailed("Completely unexpected string key: " + key);
+        
+        return key.substring(0, key.length - 2) + "'";
+    }
+    
+    testFailed("Decrementing unexpected key type: " + typeof key);
+}
+
 function checkSingleKeyRange(value)
 {
     keyRange = evalAndLog("IDBKeyRange.only(" + value + ")");
@@ -12,6 +44,9 @@ function checkSingleKeyRange(value)
     shouldBe("keyRange.upper", "" + value);
     shouldBeFalse("keyRange.lowerOpen");
     shouldBeFalse("keyRange.upperOpen");
+    shouldBeFalse("keyRange.includes(" + incrementedKey(value) + ")");
+    shouldBeFalse("keyRange.includes(" + decrementedKey(value) + ")");
+    shouldBeTrue("keyRange.includes(" + value + ")");
 }
 
 function checkLowerBoundKeyRange(value, open)
@@ -23,6 +58,14 @@ function checkLowerBoundKeyRange(value, open)
     shouldBe("keyRange.lowerOpen", "" + open);
     shouldBeUndefined("keyRange.upper");
     shouldBeTrue("keyRange.upperOpen");
+
+    if (open)
+        shouldBeFalse("keyRange.includes(" + value + ")");
+    else
+        shouldBeTrue("keyRange.includes(" + value + ")");
+
+    shouldBeTrue("keyRange.includes(" + incrementedKey(value) + ")");
+    shouldBeFalse("keyRange.includes(" + decrementedKey(value) + ")");
 }
 
 function checkUpperBoundKeyRange(value, open)
@@ -34,6 +77,14 @@ function checkUpperBoundKeyRange(value, open)
     shouldBe("keyRange.upperOpen", "" + open);
     shouldBeUndefined("keyRange.lower");
     shouldBeTrue("keyRange.lowerOpen");
+
+    if (open)
+        shouldBeFalse("keyRange.includes(" + value + ")");
+    else
+        shouldBeTrue("keyRange.includes(" + value + ")");
+
+    shouldBeFalse("keyRange.includes(" + incrementedKey(value) + ")");
+    shouldBeTrue("keyRange.includes(" + decrementedKey(value) + ")");
 }
 
 function checkBoundKeyRange(lower, upper, lowerOpen, upperOpen)
@@ -47,6 +98,16 @@ function checkBoundKeyRange(lower, upper, lowerOpen, upperOpen)
         upperOpen = false;
     shouldBe("keyRange.lowerOpen", "" + lowerOpen);
     shouldBe("keyRange.upperOpen", "" + upperOpen);
+    
+    if (lowerOpen)
+        shouldBeFalse("keyRange.includes(" + lower + ")");
+    else
+        shouldBeTrue("keyRange.includes(" + lower + ")");
+
+    if (upperOpen)
+        shouldBeFalse("keyRange.includes(" + upper + ")");
+    else
+        shouldBeTrue("keyRange.includes(" + upper + ")");
 }
 
 function test()
@@ -56,6 +117,7 @@ function test()
     shouldBeFalse("'upper' in IDBKeyRange");
     shouldBeFalse("'lowerOpen' in IDBKeyRange");
     shouldBeFalse("'upperOpen' in IDBKeyRange");
+    shouldBeFalse("'includes' in IDBKeyRange");
     shouldBeTrue("'only' in IDBKeyRange");
     shouldBeTrue("'lowerBound' in IDBKeyRange");
     shouldBeTrue("'upperBound' in IDBKeyRange");
@@ -68,6 +130,7 @@ function test()
     shouldBeTrue("'upper' in instance");
     shouldBeTrue("'lowerOpen' in instance");
     shouldBeTrue("'upperOpen' in instance");
+    shouldBeTrue("'includes' in instance");
     shouldBeFalse("'only' in instance");
     shouldBeFalse("'lowerBound' in instance");
     shouldBeFalse("'upperBound' in instance");
@@ -150,6 +213,10 @@ function test()
 
     debug("Equal keys, none of the bounds is open, bound(4, 4, false, false)");
     IDBKeyRange.bound(4, 4, false, false);
+
+    debug("Passing an invalid key in to IDBKeyRange.includes({})");
+    eval("invalidKeyKeyRange = IDBKeyRange.only('a')");
+    evalAndExpectException("invalidKeyKeyRange.includes({})", "0", "'DataError'");
 }
 
 test();

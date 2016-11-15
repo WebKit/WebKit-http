@@ -33,6 +33,8 @@
 #include "DFGHeapLocation.h"
 #include "DFGLazyNode.h"
 #include "DFGPureValue.h"
+#include "DOMJITCallDOMGetterPatchpoint.h"
+#include "DOMJITSignature.h"
 
 namespace JSC { namespace DFG {
 
@@ -211,6 +213,17 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         }
         return;
 
+    case ArithNegate:
+        if (node->child1().useKind() == Int32Use
+            || node->child1().useKind() == DoubleRepUse
+            || node->child1().useKind() == Int52RepUse)
+            def(PureValue(node));
+        else {
+            read(World);
+            write(Heap);
+        }
+        return;
+
     case IsCellWithType:
         def(PureValue(node, node->queriedType()));
         return;
@@ -334,7 +347,6 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         return;
 
     case ArithAdd:
-    case ArithNegate:
     case ArithMod:
     case DoubleAsInt32:
     case UInt32ToNumber:
@@ -466,6 +478,12 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         write(HeapObjectCount);
         return;
 
+    case PhantomCreateRest:
+        // Even though it's phantom, it still has the property that one can't be replaced with another.
+        read(HeapObjectCount);
+        write(HeapObjectCount);
+        return;
+
     case CallObjectConstructor:
     case ToThis:
     case CreateThis:
@@ -505,8 +523,11 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     case ArrayPush:
     case ArrayPop:
     case Call:
+    case DirectCall:
     case TailCallInlinedCaller:
+    case DirectTailCallInlinedCaller:
     case Construct:
+    case DirectConstruct:
     case CallVarargs:
     case CallForwardVarargs:
     case TailCallVarargsInlinedCaller:
@@ -534,6 +555,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         return;
 
     case TailCall:
+    case DirectTailCall:
     case TailCallVarargs:
     case TailCallForwardVarargs:
         read(World);
@@ -893,10 +915,52 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         def(PureValue(node, node->classInfo()));
         return;
 
-    case CallDOM:
-        read(World);
-        write(Heap);
+    case CallDOMGetter: {
+        DOMJIT::CallDOMGetterPatchpoint* patchpoint = node->callDOMGetterData()->patchpoint;
+        DOMJIT::Effect effect = patchpoint->effect;
+        if (effect.reads) {
+            if (effect.reads == DOMJIT::HeapRange::top())
+                read(World);
+            else
+                read(AbstractHeap(DOMState, effect.reads.rawRepresentation()));
+        }
+        if (effect.writes) {
+            if (effect.writes == DOMJIT::HeapRange::top())
+                write(Heap);
+            else
+                write(AbstractHeap(DOMState, effect.writes.rawRepresentation()));
+        }
+        if (effect.def != DOMJIT::HeapRange::top()) {
+            DOMJIT::HeapRange range = effect.def;
+            if (range == DOMJIT::HeapRange::none())
+                def(PureValue(node, node->callDOMGetterData()->domJIT));
+            else {
+                // Def with heap location. We do not include "GlobalObject" for that since this information is included in the base node.
+                // We only see the DOMJIT getter here. So just including "base" is ok.
+                def(HeapLocation(DOMStateLoc, AbstractHeap(DOMState, range.rawRepresentation()), node->child1()), LazyNode(node));
+            }
+        }
         return;
+    }
+
+    case CallDOM: {
+        const DOMJIT::Signature* signature = node->signature();
+        DOMJIT::Effect effect = signature->effect;
+        if (effect.reads) {
+            if (effect.reads == DOMJIT::HeapRange::top())
+                read(World);
+            else
+                read(AbstractHeap(DOMState, effect.reads.rawRepresentation()));
+        }
+        if (effect.writes) {
+            if (effect.writes == DOMJIT::HeapRange::top())
+                write(Heap);
+            else
+                write(AbstractHeap(DOMState, effect.writes.rawRepresentation()));
+        }
+        ASSERT_WITH_MESSAGE(effect.def == DOMJIT::HeapRange::top(), "Currently, we do not accept any def for CallDOM.");
+        return;
+    }
 
     case Arrayify:
     case ArrayifyToStructure:
@@ -1037,6 +1101,13 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         def(HeapLocation(DirectArgumentsLoc, heap, node->child1()), LazyNode(node->child2().node()));
         return;
     }
+
+    case GetArgument: {
+        read(Stack);
+        // FIXME: It would be trivial to have a def here.
+        // https://bugs.webkit.org/show_bug.cgi?id=143077
+        return;
+    }
         
     case GetGlobalVar:
     case GetGlobalLexicalVariable:
@@ -1054,6 +1125,35 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         read(HeapObjectCount);
         write(HeapObjectCount);
         return;
+
+    case NewArrayWithSpread: {
+        // This also reads from JSFixedArray's data store, but we don't have any way of describing that yet.
+        read(HeapObjectCount);
+        write(HeapObjectCount);
+        return;
+    }
+
+    case Spread: {
+        if (node->child1().useKind() == ArrayUse) {
+            // FIXME: We can probably CSE these together, but we need to construct the right rules
+            // to prove that nobody writes to child1() in between two Spreads: https://bugs.webkit.org/show_bug.cgi?id=164531
+            read(HeapObjectCount); 
+            read(JSCell_indexingType);
+            read(JSObject_butterfly);
+            read(Butterfly_publicLength);
+            read(IndexedDoubleProperties);
+            read(IndexedInt32Properties);
+            read(IndexedContiguousProperties);
+            read(IndexedArrayStorageProperties);
+
+            write(HeapObjectCount);
+            return;
+        }
+
+        read(World);
+        write(Heap);
+        return;
+    }
 
     case NewArray: {
         read(HeapObjectCount);

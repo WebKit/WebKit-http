@@ -66,6 +66,7 @@
 #import <WebCore/GeometryUtilities.h>
 #import <WebCore/HTMLAreaElement.h>
 #import <WebCore/HTMLAttachmentElement.h>
+#import <WebCore/HTMLElement.h>
 #import <WebCore/HTMLElementTypeHelpers.h>
 #import <WebCore/HTMLFormElement.h>
 #import <WebCore/HTMLImageElement.h>
@@ -299,7 +300,7 @@ void WebPage::restorePageState(const HistoryItem& historyItem)
             newCenter = FloatRect(historyItem.unobscuredContentRect()).center();
 
         FloatSize unobscuredRectAtNewScale = frameView.customSizeForResizeEvent();
-        unobscuredRectAtNewScale.scale(1 / newScale, 1 / newScale);
+        unobscuredRectAtNewScale.scale(1 / newScale);
 
         FloatRect oldExposedRect = frameView.exposedContentRect();
         FloatRect adjustedExposedRect = adjustExposedRectForNewScale(oldExposedRect, m_page->pageScaleFactor(), newScale);
@@ -753,27 +754,21 @@ void WebPage::blurAssistedNode()
 
 void WebPage::setAssistedNodeValue(const String& value)
 {
-    if (is<HTMLInputElement>(m_assistedNode.get())) {
-        HTMLInputElement& element = downcast<HTMLInputElement>(*m_assistedNode);
-        element.setValue(value, DispatchInputAndChangeEvent);
-    }
     // FIXME: should also handle the case of HTMLSelectElement.
+    if (is<HTMLInputElement>(m_assistedNode.get()))
+        downcast<HTMLInputElement>(*m_assistedNode).setValue(value, DispatchInputAndChangeEvent);
 }
 
 void WebPage::setAssistedNodeValueAsNumber(double value)
 {
-    if (is<HTMLInputElement>(m_assistedNode.get())) {
-        HTMLInputElement& element = downcast<HTMLInputElement>(*m_assistedNode);
-        element.setValueAsNumber(value, ASSERT_NO_EXCEPTION, DispatchInputAndChangeEvent);
-    }
+    if (is<HTMLInputElement>(m_assistedNode.get()))
+        downcast<HTMLInputElement>(*m_assistedNode).setValueAsNumber(value, DispatchInputAndChangeEvent);
 }
 
 void WebPage::setAssistedNodeSelectedIndex(uint32_t index, bool allowMultipleSelection)
 {
-    if (!is<HTMLSelectElement>(m_assistedNode.get()))
-        return;
-    HTMLSelectElement& select = downcast<HTMLSelectElement>(*m_assistedNode);
-    select.optionSelectedByUser(index, true, allowMultipleSelection);
+    if (is<HTMLSelectElement>(m_assistedNode.get()))
+        downcast<HTMLSelectElement>(*m_assistedNode).optionSelectedByUser(index, true, allowMultipleSelection);
 }
 
 void WebPage::showInspectorHighlight(const WebCore::Highlight& highlight)
@@ -970,7 +965,7 @@ PassRefPtr<Range> WebPage::rangeForWebSelectionAtPosition(const IntPoint& point,
 
     flags = IsBlockSelection;
     range = Range::create(bestChoice->document());
-    range->selectNodeContents(*bestChoice, ASSERT_NO_EXCEPTION);
+    range->selectNodeContents(*bestChoice);
     return range->collapsed() ? nullptr : range;
 }
 
@@ -994,7 +989,7 @@ PassRefPtr<Range> WebPage::rangeForBlockAtPoint(const IntPoint& point)
         return nullptr;
 
     range = Range::create(currentNode->document());
-    range->selectNodeContents(*currentNode, ASSERT_NO_EXCEPTION);
+    range->selectNodeContents(*currentNode);
     return range;
 }
 
@@ -1078,9 +1073,9 @@ void WebPage::selectWithGesture(const IntPoint& point, uint32_t granularity, uin
                 break;
             range = Range::create(*frame.document(), m_currentWordRange->startPosition(), m_currentWordRange->endPosition());
             if (position < range->startPosition())
-                range->setStart(position.deepEquivalent(), ASSERT_NO_EXCEPTION);
+                range->setStart(position.deepEquivalent());
             if (position > range->endPosition())
-                range->setEnd(position.deepEquivalent(), ASSERT_NO_EXCEPTION);
+                range->setEnd(position.deepEquivalent());
             break;
         case GestureRecognizerState::Ended:
         case GestureRecognizerState::Cancelled:
@@ -1249,9 +1244,9 @@ static inline bool containsRange(Range* first, Range* second)
 {
     if (!first || !second)
         return false;
-    return (first->commonAncestorContainer()->ownerDocument() == second->commonAncestorContainer()->ownerDocument()
-        && first->compareBoundaryPoints(Range::START_TO_START, *second, ASSERT_NO_EXCEPTION) <= 0
-        && first->compareBoundaryPoints(Range::END_TO_END, *second, ASSERT_NO_EXCEPTION) >= 0);
+    return first->commonAncestorContainer()->ownerDocument() == second->commonAncestorContainer()->ownerDocument()
+        && first->compareBoundaryPoints(Range::START_TO_START, *second).releaseReturnValue() <= 0
+        && first->compareBoundaryPoints(Range::END_TO_END, *second).releaseReturnValue() >= 0;
 }
 
 static inline RefPtr<Range> unionDOMRanges(Range* rangeA, Range* rangeB)
@@ -1261,8 +1256,8 @@ static inline RefPtr<Range> unionDOMRanges(Range* rangeA, Range* rangeB)
     if (!rangeA)
         return rangeB;
 
-    Range* start = rangeA->compareBoundaryPoints(Range::START_TO_START, *rangeB, ASSERT_NO_EXCEPTION) <= 0 ? rangeA : rangeB;
-    Range* end = rangeA->compareBoundaryPoints(Range::END_TO_END, *rangeB, ASSERT_NO_EXCEPTION) <= 0 ? rangeB : rangeA;
+    Range* start = rangeA->compareBoundaryPoints(Range::START_TO_START, *rangeB).releaseReturnValue() <= 0 ? rangeA : rangeB;
+    Range* end = rangeA->compareBoundaryPoints(Range::END_TO_END, *rangeB).releaseReturnValue() <= 0 ? rangeB : rangeA;
 
     return Range::create(rangeA->ownerDocument(), &start->startContainer(), start->startOffset(), &end->endContainer(), end->endOffset());
 }
@@ -1650,7 +1645,7 @@ RefPtr<Range> WebPage::switchToBlockSelectionAtPoint(const IntPoint& point, Sele
         
         if (!newRange && currentNode) {
             newRange = Range::create(currentNode->document());
-            newRange->selectNodeContents(*currentNode, ASSERT_NO_EXCEPTION);
+            newRange->selectNodeContents(*currentNode);
         }
     }
     return newRange;
@@ -2171,7 +2166,7 @@ void WebPage::syncApplyAutocorrection(const String& correction, const String& or
     
     frame.selection().setSelectedRange(range.get(), UPSTREAM, true);
     if (correction.length())
-        frame.editor().insertText(correction, 0);
+        frame.editor().insertText(correction, 0, originalText.isEmpty() ? TextEventInputKeyboard : TextEventInputAutocompletion);
     else
         frame.editor().deleteWithDirection(DirectionBackward, CharacterGranularity, false, true);
     correctionApplied = true;
@@ -2338,7 +2333,7 @@ void WebPage::getPositionInformation(const IntPoint& point, InteractionInformati
                         info.dataDetectorResults = element->document().frame()->dataDetectionResults();
                         if (DataDetection::requiresExtendedContext(*element)) {
                             RefPtr<Range> linkRange = Range::create(element->document());
-                            linkRange->selectNodeContents(*element, ASSERT_NO_EXCEPTION);
+                            linkRange->selectNodeContents(*element);
                             info.textBefore = plainTextReplacingNoBreakSpace(rangeExpandedByCharactersInDirectionAtWordBoundary(linkRange->startPosition(), dataDetectionExtendedContextLength, DirectionBackward).get(), TextIteratorDefaultBehavior, true);
                             info.textAfter = plainTextReplacingNoBreakSpace(rangeExpandedByCharactersInDirectionAtWordBoundary(linkRange->endPosition(), dataDetectionExtendedContextLength, DirectionForward).get(), TextIteratorDefaultBehavior, true);
                         }
@@ -2357,7 +2352,10 @@ void WebPage::getPositionInformation(const IntPoint& point, InteractionInformati
                                 screenSizeInPixels.scale(corePage()->deviceScaleFactor());
                                 FloatSize scaledSize = largestRectWithAspectRatioInsideRect(image->size().width() / image->size().height(), FloatRect(0, 0, screenSizeInPixels.width(), screenSizeInPixels.height())).size();
                                 FloatSize bitmapSize = scaledSize.width() < image->size().width() ? scaledSize : image->size();
-                                if (RefPtr<ShareableBitmap> sharedBitmap = ShareableBitmap::createShareable(IntSize(bitmapSize), ShareableBitmap::SupportsAlpha)) {
+                                // FIXME: Only select ExtendedColor on images known to need wide gamut
+                                ShareableBitmap::Flags flags = ShareableBitmap::SupportsAlpha;
+                                flags |= screenSupportsExtendedColor() ? ShareableBitmap::SupportsExtendedColor : 0;
+                                if (RefPtr<ShareableBitmap> sharedBitmap = ShareableBitmap::createShareable(IntSize(bitmapSize), flags)) {
                                     auto graphicsContext = sharedBitmap->createGraphicsContext();
                                     graphicsContext->drawImage(*image, FloatRect(0, 0, bitmapSize.width(), bitmapSize.height()));
                                     info.image = sharedBitmap;
@@ -2580,8 +2578,8 @@ void WebPage::getAssistedNodeInformation(AssistedNodeInformation& information)
         information.isMultiSelect = element.multiple();
     } else if (is<HTMLTextAreaElement>(*m_assistedNode)) {
         HTMLTextAreaElement& element = downcast<HTMLTextAreaElement>(*m_assistedNode);
-        information.autocapitalizeType = static_cast<WebAutocapitalizeType>(element.autocapitalizeType());
-        information.isAutocorrect = element.autocorrect();
+        information.autocapitalizeType = element.autocapitalizeType();
+        information.isAutocorrect = element.shouldAutocorrect();
         information.elementType = InputType::TextArea;
         information.isReadOnly = element.isReadOnly();
         information.value = element.value();
@@ -2591,8 +2589,8 @@ void WebPage::getAssistedNodeInformation(AssistedNodeInformation& information)
         HTMLFormElement* form = element.form();
         if (form)
             information.formAction = form->getURLAttribute(WebCore::HTMLNames::actionAttr);
-        information.autocapitalizeType = static_cast<WebAutocapitalizeType>(element.autocapitalizeType());
-        information.isAutocorrect = element.autocorrect();
+        information.autocapitalizeType = element.autocapitalizeType();
+        information.isAutocorrect = element.shouldAutocorrect();
         if (element.isPasswordField())
             information.elementType = InputType::Password;
         else if (element.isSearchField())
@@ -2636,8 +2634,14 @@ void WebPage::getAssistedNodeInformation(AssistedNodeInformation& information)
         information.autofillFieldName = WebCore::toAutofillFieldName(element.autofillData().fieldName);
     } else if (m_assistedNode->hasEditableStyle()) {
         information.elementType = InputType::ContentEditable;
-        information.isAutocorrect = true;   // FIXME: Should we look at the attribute?
-        information.autocapitalizeType = WebAutocapitalizeTypeSentences; // FIXME: Should we look at the attribute?
+        if (is<HTMLElement>(*m_assistedNode)) {
+            auto& assistedElement = downcast<HTMLElement>(*m_assistedNode);
+            information.isAutocorrect = assistedElement.shouldAutocorrect();
+            information.autocapitalizeType = assistedElement.autocapitalizeType();
+        } else {
+            information.isAutocorrect = true;
+            information.autocapitalizeType = AutocapitalizeTypeDefault;
+        }
         information.isReadOnly = false;
     }
 }
@@ -3056,9 +3060,12 @@ void WebPage::updateVisibleContentRects(const VisibleContentRectUpdateInfo& visi
     if (!visibleContentRectUpdateInfo.isChangingObscuredInsetsInteractively())
         frameView.setCustomSizeForResizeEvent(expandedIntSize(visibleContentRectUpdateInfo.unobscuredRectInScrollViewCoordinates().size()));
 
-    frameView.setConstrainsScrollingToContentEdge(false);
-    frameView.setScrollOffset(frameView.scrollOffsetFromPosition(scrollPosition));
-    frameView.setConstrainsScrollingToContentEdge(true);
+    if (ScrollingCoordinator* scrollingCoordinator = this->scrollingCoordinator()) {
+        Optional<FloatRect> customFixedPositionRect;
+        if (m_isInStableState)
+            customFixedPositionRect = visibleContentRectUpdateInfo.customFixedPositionRect();
+        scrollingCoordinator->reconcileScrollingState(frameView, scrollPosition, customFixedPositionRect, false, SetOrSyncScrollingLayerPosition::SyncScrollingLayerPosition);
+    }
 }
 
 void WebPage::willStartUserTriggeredZooming()

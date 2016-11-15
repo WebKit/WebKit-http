@@ -527,6 +527,7 @@ namespace JSC {
         void liftTDZCheckIfPossible(const Variable&);
         RegisterID* emitNewObject(RegisterID* dst);
         RegisterID* emitNewArray(RegisterID* dst, ElementNode*, unsigned length); // stops at first elision
+        RegisterID* emitNewArrayWithSpread(RegisterID* dst, ElementNode*);
         RegisterID* emitNewArrayWithSize(RegisterID* dst, RegisterID* length);
 
         RegisterID* emitNewFunction(RegisterID* dst, FunctionMetadataNode*);
@@ -576,7 +577,12 @@ namespace JSC {
         void emitPutGetterSetter(RegisterID* base, const Identifier& property, unsigned attributes, RegisterID* getter, RegisterID* setter);
         void emitPutGetterByVal(RegisterID* base, RegisterID* property, unsigned propertyDescriptorOptions, RegisterID* getter);
         void emitPutSetterByVal(RegisterID* base, RegisterID* property, unsigned propertyDescriptorOptions, RegisterID* setter);
-        
+
+        RegisterID* emitGetArgument(RegisterID* dst, int32_t index);
+
+        // Initialize object with generator fields (@generatorThis, @generatorNext, @generatorState, @generatorFrame)
+        void emitPutGeneratorFields(RegisterID* nextFunction);
+
         ExpectedFunction expectedFunctionForIdentifier(const Identifier&);
         RegisterID* emitCall(RegisterID* dst, RegisterID* func, ExpectedFunction, CallArguments&, const JSTextPosition& divot, const JSTextPosition& divotStart, const JSTextPosition& divotEnd, DebuggableCall);
         RegisterID* emitCallInTailPosition(RegisterID* dst, RegisterID* func, ExpectedFunction, CallArguments&, const JSTextPosition& divot, const JSTextPosition& divotStart, const JSTextPosition& divotEnd, DebuggableCall);
@@ -842,7 +848,7 @@ namespace JSC {
         {
             DerivedContextType newDerivedContextType = DerivedContextType::None;
 
-            if (metadata->parseMode() == SourceParseMode::ArrowFunctionMode) {
+            if (SourceParseModeSet(SourceParseMode::ArrowFunctionMode, SourceParseMode::AsyncArrowFunctionMode).contains(metadata->parseMode())) {
                 if (constructorKind() == ConstructorKind::Extends || isDerivedConstructorContext())
                     newDerivedContextType = DerivedContextType::DerivedConstructorContext;
                 else if (m_codeBlock->isClassContext() || isDerivedClassContext())
@@ -855,11 +861,9 @@ namespace JSC {
             // FIXME: These flags, ParserModes and propagation to XXXCodeBlocks should be reorganized.
             // https://bugs.webkit.org/show_bug.cgi?id=151547
             SourceParseMode parseMode = metadata->parseMode();
-            ConstructAbility constructAbility = ConstructAbility::CanConstruct;
-            if (parseMode == SourceParseMode::GetterMode || parseMode == SourceParseMode::SetterMode || parseMode == SourceParseMode::ArrowFunctionMode || parseMode == SourceParseMode::GeneratorWrapperFunctionMode)
-                constructAbility = ConstructAbility::CannotConstruct;
-            else if (parseMode == SourceParseMode::MethodMode && metadata->constructorKind() == ConstructorKind::None)
-                constructAbility = ConstructAbility::CannotConstruct;
+            ConstructAbility constructAbility = constructAbilityForParseMode(parseMode);
+            if (parseMode == SourceParseMode::MethodMode && metadata->constructorKind() != ConstructorKind::None)
+                constructAbility = ConstructAbility::CanConstruct;
 
             return UnlinkedFunctionExecutable::create(m_vm, m_scopeNode->source(), metadata, isBuiltinFunction() ? UnlinkedBuiltinFunction : UnlinkedNormalFunction, constructAbility, scriptMode(), variablesUnderTDZ, newDerivedContextType);
         }

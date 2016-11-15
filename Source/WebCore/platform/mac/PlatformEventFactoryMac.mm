@@ -51,27 +51,24 @@ static NSPoint globalPointForEvent(NSEvent *event)
 {
     switch ([event type]) {
 #if defined(__LP64__) && __MAC_OS_X_VERSION_MAX_ALLOWED >= 101003
-        case NSEventTypePressure:
+    case NSEventTypePressure:
 #endif
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-        case NSLeftMouseDown:
-        case NSLeftMouseDragged:
-        case NSLeftMouseUp:
-        case NSMouseEntered:
-        case NSMouseExited:
-        case NSMouseMoved:
-        case NSOtherMouseDown:
-        case NSOtherMouseDragged:
-        case NSOtherMouseUp:
-        case NSRightMouseDown:
-        case NSRightMouseDragged:
-        case NSRightMouseUp:
-        case NSScrollWheel:
-#pragma clang diagnostic pop
-            return globalPoint([event locationInWindow], [event window]);
-        default:
-            return { 0, 0 };
+    case NSEventTypeLeftMouseDown:
+    case NSEventTypeLeftMouseDragged:
+    case NSEventTypeLeftMouseUp:
+    case NSEventTypeMouseEntered:
+    case NSEventTypeMouseExited:
+    case NSEventTypeMouseMoved:
+    case NSEventTypeOtherMouseDown:
+    case NSEventTypeOtherMouseDragged:
+    case NSEventTypeOtherMouseUp:
+    case NSEventTypeRightMouseDown:
+    case NSEventTypeRightMouseDragged:
+    case NSEventTypeRightMouseUp:
+    case NSEventTypeScrollWheel:
+        return globalPoint([event locationInWindow], [event window]);
+    default:
+        return { 0, 0 };
     }
 }
 
@@ -79,33 +76,30 @@ static IntPoint pointForEvent(NSEvent *event, NSView *windowView)
 {
     switch ([event type]) {
 #if defined(__LP64__) && __MAC_OS_X_VERSION_MAX_ALLOWED >= 101003
-        case NSEventTypePressure:
+    case NSEventTypePressure:
 #endif
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-        case NSLeftMouseDown:
-        case NSLeftMouseDragged:
-        case NSLeftMouseUp:
-        case NSMouseEntered:
-        case NSMouseExited:
-        case NSMouseMoved:
-        case NSOtherMouseDown:
-        case NSOtherMouseDragged:
-        case NSOtherMouseUp:
-        case NSRightMouseDown:
-        case NSRightMouseDragged:
-        case NSRightMouseUp:
-        case NSScrollWheel: {
-            // Note: This will have its origin at the bottom left of the window unless windowView is flipped.
-            // In those cases, the Y coordinate gets flipped by Widget::convertFromContainingWindow.
-            NSPoint location = [event locationInWindow];
-            if (windowView)
-                location = [windowView convertPoint:location fromView:nil];
-            return IntPoint(location);
-        }
-#pragma clang diagnostic pop
-        default:
-            return IntPoint();
+    case NSEventTypeLeftMouseDown:
+    case NSEventTypeLeftMouseDragged:
+    case NSEventTypeLeftMouseUp:
+    case NSEventTypeMouseEntered:
+    case NSEventTypeMouseExited:
+    case NSEventTypeMouseMoved:
+    case NSEventTypeOtherMouseDown:
+    case NSEventTypeOtherMouseDragged:
+    case NSEventTypeOtherMouseUp:
+    case NSEventTypeRightMouseDown:
+    case NSEventTypeRightMouseDragged:
+    case NSEventTypeRightMouseUp:
+    case NSEventTypeScrollWheel: {
+        // Note: This will have its origin at the bottom left of the window unless windowView is flipped.
+        // In those cases, the Y coordinate gets flipped by Widget::convertFromContainingWindow.
+        NSPoint location = [event locationInWindow];
+        if (windowView)
+            location = [windowView convertPoint:location fromView:nil];
+        return IntPoint(location);
+    }
+    default:
+        return IntPoint();
     }
 }
 
@@ -113,72 +107,63 @@ static MouseButton mouseButtonForEvent(NSEvent *event)
 {
     switch ([event type]) {
 #if defined(__LP64__) && __MAC_OS_X_VERSION_MAX_ALLOWED >= 101003
-        case NSEventTypePressure:
+    case NSEventTypePressure:
 #endif
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-        case NSLeftMouseDown:
-        case NSLeftMouseUp:
-        case NSLeftMouseDragged:
-            return LeftButton;
-        case NSRightMouseDown:
-        case NSRightMouseUp:
-        case NSRightMouseDragged:
-            return RightButton;
-        case NSOtherMouseDown:
-        case NSOtherMouseUp:
-        case NSOtherMouseDragged:
-            return MiddleButton;
-#pragma clang diagnostic pop
-        default:
-            return NoButton;
+    case NSEventTypeLeftMouseDown:
+    case NSEventTypeLeftMouseUp:
+    case NSEventTypeLeftMouseDragged:
+        return LeftButton;
+    case NSEventTypeRightMouseDown:
+    case NSEventTypeRightMouseUp:
+    case NSEventTypeRightMouseDragged:
+        return RightButton;
+    case NSEventTypeOtherMouseDown:
+    case NSEventTypeOtherMouseUp:
+    case NSEventTypeOtherMouseDragged:
+        return MiddleButton;
+    default:
+        return NoButton;
     }
 }
 
 static PlatformEvent::Type mouseEventTypeForEvent(NSEvent* event)
 {
     switch ([event type]) {
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-        case NSLeftMouseDragged:
-        case NSMouseEntered:
-        case NSMouseExited:
-        case NSMouseMoved:
-        case NSOtherMouseDragged:
-        case NSRightMouseDragged:
-            return PlatformEvent::MouseMoved;
-        case NSLeftMouseDown:
-        case NSRightMouseDown:
-        case NSOtherMouseDown:
-            return PlatformEvent::MousePressed;
-        case NSLeftMouseUp:
-        case NSRightMouseUp:
-        case NSOtherMouseUp:
-            return PlatformEvent::MouseReleased;
-#pragma clang diagnostic pop
-        default:
-            return PlatformEvent::MouseMoved;
+    case NSEventTypeLeftMouseDragged:
+    case NSEventTypeMouseEntered:
+    case NSEventTypeMouseExited:
+    case NSEventTypeMouseMoved:
+    case NSEventTypeOtherMouseDragged:
+    case NSEventTypeRightMouseDragged:
+        return PlatformEvent::MouseMoved;
+    case NSEventTypeLeftMouseDown:
+    case NSEventTypeRightMouseDown:
+    case NSEventTypeOtherMouseDown:
+        return PlatformEvent::MousePressed;
+    case NSEventTypeLeftMouseUp:
+    case NSEventTypeRightMouseUp:
+    case NSEventTypeOtherMouseUp:
+        return PlatformEvent::MouseReleased;
+    default:
+        return PlatformEvent::MouseMoved;
     }
 }
 
 static int clickCountForEvent(NSEvent *event)
 {
     switch ([event type]) {
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-        case NSLeftMouseDown:
-        case NSLeftMouseUp:
-        case NSLeftMouseDragged:
-        case NSRightMouseDown:
-        case NSRightMouseUp:
-        case NSRightMouseDragged:
-        case NSOtherMouseDown:
-        case NSOtherMouseUp:
-        case NSOtherMouseDragged:
-#pragma clang diagnostic pop
-            return [event clickCount];
-        default:
-            return 0;
+    case NSEventTypeLeftMouseDown:
+    case NSEventTypeLeftMouseUp:
+    case NSEventTypeLeftMouseDragged:
+    case NSEventTypeRightMouseDown:
+    case NSEventTypeRightMouseUp:
+    case NSEventTypeRightMouseDragged:
+    case NSEventTypeOtherMouseDown:
+    case NSEventTypeOtherMouseUp:
+    case NSEventTypeOtherMouseDragged:
+        return [event clickCount];
+    default:
+        return 0;
     }
 }
 
@@ -221,22 +206,14 @@ static PlatformWheelEventPhase phaseForEvent(NSEvent *event)
 
 static inline String textFromEvent(NSEvent* event)
 {
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200
     if ([event type] == NSEventTypeFlagsChanged)
-#else
-    if ([event type] == NSFlagsChanged)
-#endif
         return emptyString();
     return String([event characters]);
 }
 
 static inline String unmodifiedTextFromEvent(NSEvent* event)
 {
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200
     if ([event type] == NSEventTypeFlagsChanged)
-#else
-    if ([event type] == NSFlagsChanged)
-#endif
         return emptyString();
     return String([event charactersIgnoringModifiers]);
 }
@@ -264,16 +241,18 @@ String keyForKeyEvent(NSEvent *event)
         return ASCIILiteral("Control");
     }
 
+    // If the event is an NSEventTypeFlagsChanged events and we have not returned yet then this means we could not
+    // identify the modifier key. We return now and report the key as "Unidentified".
+    // Note that [event characters] below raises an exception if called on an NSEventTypeFlagsChanged event.
+    if ([event type] == NSEventTypeFlagsChanged)
+        return ASCIILiteral("Unidentified");
+
     // If more than one key is being pressed and the key combination includes one or more modifier keys
     // that result in the key no longer producing a printable character (e.g., Control + a), then the
     // key value should be the printable key value that would have been produced if the key had been
     // typed with the default keyboard layout with no modifier keys except for Shift and AltGr applied.
     // https://w3c.github.io/uievents/#keys-guidelines
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200
     bool isControlDown = ([event modifierFlags] & NSEventModifierFlagControl);
-#else
-    bool isControlDown = ([event modifierFlags] & NSControlKeyMask);
-#endif
     NSString *s = isControlDown ? [event charactersIgnoringModifiers] : [event characters];
     auto length = [s length];
     // characters / charactersIgnoringModifiers return an empty string for dead keys.
@@ -500,34 +479,30 @@ String codeForKeyEvent(NSEvent *event)
 
 String keyIdentifierForKeyEvent(NSEvent* event)
 {
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200
     if ([event type] == NSEventTypeFlagsChanged) {
-#else
-    if ([event type] == NSFlagsChanged) {
-#endif
         switch ([event keyCode]) {
-            case 54: // Right Command
-            case 55: // Left Command
-                return String("Meta");
-                
-            case 57: // Capslock
-                return String("CapsLock");
-                
-            case 56: // Left Shift
-            case 60: // Right Shift
-                return String("Shift");
-                
-            case 58: // Left Alt
-            case 61: // Right Alt
-                return String("Alt");
-                
-            case 59: // Left Ctrl
-            case 62: // Right Ctrl
-                return String("Control");
-                
-            default:
-                ASSERT_NOT_REACHED();
-                return emptyString();
+        case 54: // Right Command
+        case 55: // Left Command
+            return String("Meta");
+
+        case 57: // Capslock
+            return String("CapsLock");
+
+        case 56: // Left Shift
+        case 60: // Right Shift
+            return String("Shift");
+
+        case 58: // Left Alt
+        case 61: // Right Alt
+            return String("Alt");
+
+        case 59: // Left Ctrl
+        case 62: // Right Ctrl
+            return String("Control");
+
+        default:
+            ASSERT_NOT_REACHED();
+            return emptyString();
         }
     }
     
@@ -543,44 +518,38 @@ static bool isKeypadEvent(NSEvent* event)
 {
     // Check that this is the type of event that has a keyCode.
     switch ([event type]) {
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-        case NSKeyDown:
-        case NSKeyUp:
-        case NSFlagsChanged:
-            break;
-#pragma clang diagnostic pop
-        default:
-            return false;
+    case NSEventTypeKeyDown:
+    case NSEventTypeKeyUp:
+    case NSEventTypeFlagsChanged:
+        break;
+    default:
+        return false;
     }
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-    if ([event modifierFlags] & NSNumericPadKeyMask)
-#pragma clang diagnostic pop
+    if ([event modifierFlags] & NSEventModifierFlagNumericPad)
         return true;
 
     switch ([event keyCode]) {
-        case 71: // Clear
-        case 81: // =
-        case 75: // /
-        case 67: // *
-        case 78: // -
-        case 69: // +
-        case 76: // Enter
-        case 65: // .
-        case 82: // 0
-        case 83: // 1
-        case 84: // 2
-        case 85: // 3
-        case 86: // 4
-        case 87: // 5
-        case 88: // 6
-        case 89: // 7
-        case 91: // 8
-        case 92: // 9
-            return true;
-     }
+    case 71: // Clear
+    case 81: // =
+    case 75: // /
+    case 67: // *
+    case 78: // -
+    case 69: // +
+    case 76: // Enter
+    case 65: // .
+    case 82: // 0
+    case 83: // 1
+    case 84: // 2
+    case 85: // 3
+    case 86: // 4
+    case 87: // 5
+    case 88: // 6
+    case 89: // 7
+    case 91: // 8
+    case 92: // 9
+        return true;
+    }
      
      return false;
 }
@@ -594,10 +563,7 @@ int windowsKeyCodeForKeyEvent(NSEvent* event)
     // 2. Keys for which there is no known Mac virtual key codes, like PrintScreen.
     // 3. Certain punctuation keys. On Windows, these are also remapped depending on current keyboard layout,
     //    but see comment in windowsKeyCodeForCharCode().
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-    if (!isKeypadEvent(event) && ([event type] == NSKeyDown || [event type] == NSKeyUp)) {
-#pragma clang diagnostic pop
+    if (!isKeypadEvent(event) && ([event type] == NSEventTypeKeyDown || [event type] == NSEventTypeKeyUp)) {
         // Cmd switches Roman letters for Dvorak-QWERTY layout, so try modified characters first.
         NSString* s = [event characters];
         code = [s length] > 0 ? windowsKeyCodeForCharCode([s characterAtIndex:0]) : 0;
@@ -655,35 +621,32 @@ double eventTimeStampSince1970(NSEvent* event)
 
 static inline bool isKeyUpEvent(NSEvent *event)
 {
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-    if ([event type] != NSFlagsChanged)
-        return [event type] == NSKeyUp;
+    if ([event type] != NSEventTypeFlagsChanged)
+        return [event type] == NSEventTypeKeyUp;
     // FIXME: This logic fails if the user presses both Shift keys at once, for example:
     // we treat releasing one of them as keyDown.
     switch ([event keyCode]) {
-        case 54: // Right Command
-        case 55: // Left Command
-            return ([event modifierFlags] & NSCommandKeyMask) == 0;
-            
-        case 57: // Capslock
-            return ([event modifierFlags] & NSAlphaShiftKeyMask) == 0;
-            
-        case 56: // Left Shift
-        case 60: // Right Shift
-            return ([event modifierFlags] & NSShiftKeyMask) == 0;
-            
-        case 58: // Left Alt
-        case 61: // Right Alt
-            return ([event modifierFlags] & NSAlternateKeyMask) == 0;
-            
-        case 59: // Left Ctrl
-        case 62: // Right Ctrl
-            return ([event modifierFlags] & NSControlKeyMask) == 0;
-            
-        case 63: // Function
-            return ([event modifierFlags] & NSFunctionKeyMask) == 0;
-#pragma clang diagnostic pop
+    case 54: // Right Command
+    case 55: // Left Command
+        return !([event modifierFlags] & NSEventModifierFlagCommand);
+
+    case 57: // Capslock
+        return !([event modifierFlags] & NSEventModifierFlagCapsLock);
+
+    case 56: // Left Shift
+    case 60: // Right Shift
+        return !([event modifierFlags] & NSEventModifierFlagShift);
+
+    case 58: // Left Alt
+    case 61: // Right Alt
+        return !([event modifierFlags] & NSEventModifierFlagOption);
+
+    case 59: // Left Ctrl
+    case 62: // Right Ctrl
+        return !([event modifierFlags] & NSEventModifierFlagControl);
+
+    case 63: // Function
+        return !([event modifierFlags] & NSEventModifierFlagFunction);
     }
     return false;
 }
@@ -692,7 +655,6 @@ static inline OptionSet<PlatformEvent::Modifier> modifiersForEvent(NSEvent *even
 {
     OptionSet<PlatformEvent::Modifier> modifiers;
 
-#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200
     if (event.modifierFlags & NSEventModifierFlagShift)
         modifiers |= PlatformEvent::Modifier::ShiftKey;
     if (event.modifierFlags & NSEventModifierFlagControl)
@@ -703,18 +665,6 @@ static inline OptionSet<PlatformEvent::Modifier> modifiersForEvent(NSEvent *even
         modifiers |= PlatformEvent::Modifier::MetaKey;
     if (event.modifierFlags & NSEventModifierFlagCapsLock)
         modifiers |= PlatformEvent::Modifier::CapsLockKey;
-#else
-    if (event.modifierFlags & NSShiftKeyMask)
-        modifiers |= PlatformEvent::Modifier::ShiftKey;
-    if (event.modifierFlags & NSControlKeyMask)
-        modifiers |= PlatformEvent::Modifier::CtrlKey;
-    if (event.modifierFlags & NSAlternateKeyMask)
-        modifiers |= PlatformEvent::Modifier::AltKey;
-    if (event.modifierFlags & NSCommandKeyMask)
-        modifiers |= PlatformEvent::Modifier::MetaKey;
-    if (event.modifierFlags & NSAlphaShiftKeyMask)
-        modifiers |= PlatformEvent::Modifier::CapsLockKey;
-#endif
 
     return modifiers;
 }
@@ -840,10 +790,7 @@ public:
         m_key = keyForKeyEvent(event);
         m_code = codeForKeyEvent(event);
         m_windowsVirtualKeyCode = windowsKeyCodeForKeyEvent(event);
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-        m_autoRepeat = [event type] != NSFlagsChanged && [event isARepeat];
-#pragma clang diagnostic pop
+        m_autoRepeat = [event type] != NSEventTypeFlagsChanged && [event isARepeat];
         m_isKeypad = isKeypadEvent(event);
         m_isSystemKey = false; // SystemKey is always false on the Mac.
 

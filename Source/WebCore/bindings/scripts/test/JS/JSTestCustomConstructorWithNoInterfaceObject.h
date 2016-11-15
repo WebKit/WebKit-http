@@ -51,12 +51,7 @@ public:
 protected:
     JSTestCustomConstructorWithNoInterfaceObject(JSC::Structure*, JSDOMGlobalObject&, Ref<TestCustomConstructorWithNoInterfaceObject>&&);
 
-    void finishCreation(JSC::VM& vm)
-    {
-        Base::finishCreation(vm);
-        ASSERT(inherits(info()));
-    }
-
+    void finishCreation(JSC::VM&);
 };
 
 class JSTestCustomConstructorWithNoInterfaceObjectOwner : public JSC::WeakHandleOwner {
@@ -86,6 +81,7 @@ JSC::EncodedJSValue JSC_HOST_CALL constructJSTestCustomConstructorWithNoInterfac
 
 template<> struct JSDOMWrapperConverterTraits<TestCustomConstructorWithNoInterfaceObject> {
     using WrapperClass = JSTestCustomConstructorWithNoInterfaceObject;
+    using ToWrappedReturnType = TestCustomConstructorWithNoInterfaceObject*;
 };
 
 } // namespace WebCore

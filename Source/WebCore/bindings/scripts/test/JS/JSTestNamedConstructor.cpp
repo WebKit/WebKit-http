@@ -21,9 +21,9 @@
 #include "config.h"
 #include "JSTestNamedConstructor.h"
 
-#include "ExceptionCode.h"
 #include "JSDOMBinding.h"
 #include "JSDOMConstructor.h"
+#include "JSDOMConvert.h"
 #include <runtime/Error.h>
 #include <runtime/FunctionPrototype.h>
 #include <wtf/GetPtr.h>
@@ -89,19 +89,14 @@ template<> EncodedJSValue JSC_HOST_CALL JSTestNamedConstructorNamedConstructor::
     ASSERT(castedThis);
     if (UNLIKELY(state->argumentCount() < 1))
         return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
-    ExceptionCode ec = 0;
-    auto str1 = state->uncheckedArgument(0).toWTFString(state);
+    auto str1 = convert<IDLDOMString>(*state, state->uncheckedArgument(0), StringConversionConfiguration::Normal);
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
-    auto str2 = state->argument(1).isUndefined() ? ASCIILiteral("defaultString") : state->uncheckedArgument(1).toWTFString(state);
+    auto str2 = state->argument(1).isUndefined() ? ASCIILiteral("defaultString") : convert<IDLDOMString>(*state, state->uncheckedArgument(1), StringConversionConfiguration::Normal);
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
-    auto str3 = state->argument(2).isUndefined() ? String() : state->uncheckedArgument(2).toWTFString(state);
+    auto str3 = state->argument(2).isUndefined() ? String() : convert<IDLDOMString>(*state, state->uncheckedArgument(2), StringConversionConfiguration::Normal);
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
-    auto object = TestNamedConstructor::createForJSConstructor(*castedThis->document(), WTFMove(str1), WTFMove(str2), WTFMove(str3), ec);
-    if (UNLIKELY(ec)) {
-        setDOMException(state, throwScope, ec);
-        return encodedJSValue();
-    }
-    return JSValue::encode(toJSNewlyCreated(state, castedThis->globalObject(), WTFMove(object)));
+    auto object = TestNamedConstructor::createForJSConstructor(*castedThis->document(), WTFMove(str1), WTFMove(str2), WTFMove(str3));
+    return JSValue::encode(toJSNewlyCreated(*state, *castedThis->globalObject(), throwScope, WTFMove(object)));
 }
 
 template<> JSValue JSTestNamedConstructorNamedConstructor::prototypeForStructure(JSC::VM& vm, const JSDOMGlobalObject& globalObject)
@@ -141,6 +136,13 @@ JSTestNamedConstructor::JSTestNamedConstructor(Structure* structure, JSDOMGlobal
 {
 }
 
+void JSTestNamedConstructor::finishCreation(VM& vm)
+{
+    Base::finishCreation(vm);
+    ASSERT(inherits(info()));
+
+}
+
 JSObject* JSTestNamedConstructor::createPrototype(VM& vm, JSGlobalObject* globalObject)
 {
     return JSTestNamedConstructorPrototype::create(vm, globalObject, JSTestNamedConstructorPrototype::createStructure(vm, globalObject, globalObject->objectPrototype()));
@@ -161,7 +163,7 @@ EncodedJSValue jsTestNamedConstructorConstructor(ExecState* state, EncodedJSValu
 {
     VM& vm = state->vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);
-    JSTestNamedConstructorPrototype* domObject = jsDynamicCast<JSTestNamedConstructorPrototype*>(JSValue::decode(thisValue));
+    JSTestNamedConstructorPrototype* domObject = jsDynamicDowncast<JSTestNamedConstructorPrototype*>(JSValue::decode(thisValue));
     if (UNLIKELY(!domObject))
         return throwVMTypeError(state, throwScope);
     return JSValue::encode(JSTestNamedConstructor::getConstructor(state->vm(), domObject->globalObject()));
@@ -172,7 +174,7 @@ bool setJSTestNamedConstructorConstructor(ExecState* state, EncodedJSValue thisV
     VM& vm = state->vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);
     JSValue value = JSValue::decode(encodedValue);
-    JSTestNamedConstructorPrototype* domObject = jsDynamicCast<JSTestNamedConstructorPrototype*>(JSValue::decode(thisValue));
+    JSTestNamedConstructorPrototype* domObject = jsDynamicDowncast<JSTestNamedConstructorPrototype*>(JSValue::decode(thisValue));
     if (UNLIKELY(!domObject)) {
         throwVMTypeError(state, throwScope);
         return false;
@@ -247,7 +249,7 @@ JSC::JSValue toJS(JSC::ExecState* state, JSDOMGlobalObject* globalObject, TestNa
 
 TestNamedConstructor* JSTestNamedConstructor::toWrapped(JSC::JSValue value)
 {
-    if (auto* wrapper = jsDynamicCast<JSTestNamedConstructor*>(value))
+    if (auto* wrapper = jsDynamicDowncast<JSTestNamedConstructor*>(value))
         return &wrapper->wrapped();
     return nullptr;
 }

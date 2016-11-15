@@ -76,7 +76,7 @@ public:
 private:
     WorkQueuePool()
     {
-#if PLATFORM(GTK)
+#if PLATFORM(GTK) || PLATFORM(WPE)
         m_threadCountLimit = 1;
 #else
         m_threadCountLimit = std::numeric_limits<unsigned>::max();
@@ -153,12 +153,12 @@ bool CompositingRunLoop::isActive()
 
 void CompositingRunLoop::scheduleUpdate()
 {
-    if (m_updateState.compareExchangeStrong(UpdateState::Completed, UpdateState::InProgress)) {
+    if (m_updateState.compareExchangeStrong(UpdateState::Completed, UpdateState::InProgress) == UpdateState::Completed) {
         m_updateTimer.startOneShot(0);
         return;
     }
 
-    if (m_updateState.compareExchangeStrong(UpdateState::InProgress, UpdateState::PendingAfterCompletion))
+    if (m_updateState.compareExchangeStrong(UpdateState::InProgress, UpdateState::PendingAfterCompletion) == UpdateState::InProgress)
         return;
 }
 
@@ -170,10 +170,10 @@ void CompositingRunLoop::stopUpdates()
 
 void CompositingRunLoop::updateCompleted()
 {
-    if (m_updateState.compareExchangeStrong(UpdateState::InProgress, UpdateState::Completed))
+    if (m_updateState.compareExchangeStrong(UpdateState::InProgress, UpdateState::Completed) == UpdateState::InProgress)
         return;
 
-    if (m_updateState.compareExchangeStrong(UpdateState::PendingAfterCompletion, UpdateState::InProgress)) {
+    if (m_updateState.compareExchangeStrong(UpdateState::PendingAfterCompletion, UpdateState::InProgress) == UpdateState::PendingAfterCompletion) {
         m_updateTimer.startOneShot(0);
         return;
     }

@@ -39,6 +39,7 @@ interface AccessibilityUIElement {
     void setSelectedChild(AccessibilityUIElement element);
     void setSelectedChildAtIndex(unsigned long index);
     void removeSelectionAtIndex(unsigned long index);
+    void clearSelectedChildren();
     AccessibilityUIElement titleUIElement();
     AccessibilityUIElement parentElement();
     
@@ -89,6 +90,8 @@ interface AccessibilityUIElement {
     readonly attribute boolean isCollapsed;
     readonly attribute boolean hasPopup;
     readonly attribute boolean isIgnored;
+    readonly attribute boolean isSingleLine;
+    readonly attribute boolean isMultiLine;
     readonly attribute boolean isOffScreen;
     readonly attribute boolean isValid;
     readonly attribute long hierarchicalLevel;

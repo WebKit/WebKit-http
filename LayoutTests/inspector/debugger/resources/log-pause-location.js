@@ -2,21 +2,12 @@ TestPage.registerInitializer(() => {
     let lines = [];
     let linesSourceCode = null;
 
-    // Switch back to String.prototype.padStart once this is fixed:
-    // FIXME: <https://webkit.org/b/161944> stringProtoFuncRepeatCharacter will return `null` when it should not
-    String.prototype.myPadStart = function(desired) {
-        let length = this.length;
-        if (length >= desired)
-            return this;
-        return " ".repeat(desired - length) + this;
-    };
-
     function insertCaretIntoStringAtIndex(str, index, caret="|") {
         return str.slice(0, index) + caret + str.slice(index);
     }
 
     window.findScript = function(regex) {
-        let resources = WebInspector.frameResourceManager.mainFrame.resources;
+        let resources = WebInspector.frameResourceManager.mainFrame.resourceCollection.items;
         for (let resource of resources) {
             if (regex.test(resource.url))
                 return resource.scripts[0];
@@ -98,7 +89,7 @@ TestPage.registerInitializer(() => {
                 lineContent = insertCaretIntoStringAtIndex(lineContent, resolvedLocation.columnNumber, resolvedCaret);
             }
 
-            let number = lineNumber.toString().myPadStart(3);
+            let number = lineNumber.toString().padStart(3);
             InspectorTest.log(`${prefix}${number}    ${lineContent}`);
         }
     }
@@ -118,7 +109,7 @@ TestPage.registerInitializer(() => {
 
             let active = lineNumber === location.lineNumber;
             let prefix = active ? " -> " : "    ";
-            let number = lineNumber.toString().myPadStart(3);
+            let number = lineNumber.toString().padStart(3);
             lineContent = active ? insertCaretIntoStringAtIndex(lineContent, location.columnNumber) : lineContent;
             InspectorTest.log(`${prefix}${number}    ${lineContent}`);
         }
@@ -187,7 +178,7 @@ TestPage.registerInitializer(() => {
                 InspectorTest.log(`EXPRESSION: ${expression}`);
                 InspectorTest.log(`STEPS: ${steps.join(", ")}`);
                 WebInspector.debuggerManager.singleFireEventListener(WebInspector.DebuggerManager.Event.Paused, (event) => {
-                    InspectorTest.log(`PAUSED (${WebInspector.debuggerManager.pauseReason})`);
+                    InspectorTest.log(`PAUSED (${WebInspector.debuggerManager.dataForTarget(WebInspector.debuggerManager.activeCallFrame.target).pauseReason})`);
                 });
                 WebInspector.debuggerManager.singleFireEventListener(WebInspector.DebuggerManager.Event.Resumed, (event) => {
                     InspectorTest.log("RESUMED");

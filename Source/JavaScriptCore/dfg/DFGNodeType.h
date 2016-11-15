@@ -270,12 +270,15 @@ namespace JSC { namespace DFG {
     \
     /* Calls. */\
     macro(Call, NodeResultJS | NodeMustGenerate | NodeHasVarArgs) \
+    macro(DirectCall, NodeResultJS | NodeMustGenerate | NodeHasVarArgs) \
     macro(Construct, NodeResultJS | NodeMustGenerate | NodeHasVarArgs) \
+    macro(DirectConstruct, NodeResultJS | NodeMustGenerate | NodeHasVarArgs) \
     macro(CallVarargs, NodeResultJS | NodeMustGenerate) \
     macro(CallForwardVarargs, NodeResultJS | NodeMustGenerate) \
     macro(ConstructVarargs, NodeResultJS | NodeMustGenerate) \
     macro(ConstructForwardVarargs, NodeResultJS | NodeMustGenerate) \
     macro(TailCallInlinedCaller, NodeResultJS | NodeMustGenerate | NodeHasVarArgs) \
+    macro(DirectTailCallInlinedCaller, NodeResultJS | NodeMustGenerate | NodeHasVarArgs) \
     macro(TailCallVarargsInlinedCaller, NodeResultJS | NodeMustGenerate) \
     macro(TailCallForwardVarargsInlinedCaller, NodeResultJS | NodeMustGenerate) \
     macro(CallEval, NodeResultJS | NodeMustGenerate | NodeHasVarArgs) \
@@ -287,6 +290,7 @@ namespace JSC { namespace DFG {
     /* Allocations. */\
     macro(NewObject, NodeResultJS) \
     macro(NewArray, NodeResultJS | NodeHasVarArgs) \
+    macro(NewArrayWithSpread, NodeResultJS | NodeHasVarArgs) \
     macro(NewArrayWithSize, NodeResultJS | NodeMustGenerate) \
     macro(NewArrayBuffer, NodeResultJS) \
     macro(NewTypedArray, NodeResultJS | NodeMustGenerate) \
@@ -295,6 +299,7 @@ namespace JSC { namespace DFG {
     macro(GetRestLength, NodeResultInt32) \
     macro(CreateRest, NodeResultJS | NodeMustGenerate) \
     \
+    macro(Spread, NodeResultJS | NodeMustGenerate) \
     /* Support for allocation sinking. */\
     macro(PhantomNewObject, NodeResultJS | NodeMustGenerate) \
     macro(PutHint, NodeMustGenerate) \
@@ -338,11 +343,13 @@ namespace JSC { namespace DFG {
     \
     macro(CreateDirectArguments, NodeResultJS) \
     macro(PhantomDirectArguments, NodeResultJS | NodeMustGenerate) \
+    macro(PhantomCreateRest, NodeResultJS | NodeMustGenerate) \
     macro(CreateScopedArguments, NodeResultJS) \
     macro(CreateClonedArguments, NodeResultJS) \
     macro(PhantomClonedArguments, NodeResultJS | NodeMustGenerate) \
     macro(GetFromArguments, NodeResultJS) \
     macro(PutToArguments, NodeMustGenerate) \
+    macro(GetArgument, NodeResultJS) \
     \
     macro(NewFunction, NodeResultJS) \
     \
@@ -358,6 +365,7 @@ namespace JSC { namespace DFG {
     macro(Switch, NodeMustGenerate) \
     macro(Return, NodeMustGenerate) \
     macro(TailCall, NodeMustGenerate | NodeHasVarArgs) \
+    macro(DirectTailCall, NodeMustGenerate | NodeHasVarArgs) \
     macro(TailCallVarargs, NodeMustGenerate) \
     macro(TailCallForwardVarargs, NodeMustGenerate) \
     macro(Unreachable, NodeMustGenerate) \
@@ -400,7 +408,8 @@ namespace JSC { namespace DFG {
     macro(ToLowerCase, NodeResultJS) \
     /* Nodes for DOM JIT */\
     macro(CheckDOM, NodeMustGenerate) \
-    macro(CallDOM, NodeResultJS | NodeMustGenerate | NodeHasVarArgs) \
+    macro(CallDOMGetter, NodeResultJS | NodeMustGenerate) \
+    macro(CallDOM, NodeResultJS | NodeMustGenerate) \
 
 // This enum generates a monotonically increasing id for all Node types,
 // and is used by the subsequent enum to fill out the id (as accessed via the NodeIdMask).

@@ -36,6 +36,7 @@
 #import <WebCore/HTMLElement.h>
 #import <WebCore/HTMLFormElement.h>
 #import <WebCore/HTMLNames.h>
+#import <WebCore/HTMLOptGroupElement.h>
 #import <WebCore/HTMLOptionsCollection.h>
 #import <WebCore/HTMLSelectElement.h>
 #import <WebCore/JSMainThreadExecState.h>
@@ -182,15 +183,22 @@
     WebCore::JSMainThreadNullState state;
     if (!element)
         raiseTypeErrorException();
-    WebCore::ExceptionCode ec = 0;
-    IMPL->add(*core(element), core(before), ec);
-    raiseOnDOMError(ec);
+
+    auto& coreElement = *core(element);
+    Variant<RefPtr<WebCore::HTMLOptionElement>, RefPtr<WebCore::HTMLOptGroupElement>> variantElement;
+    if (is<WebCore::HTMLOptionElement>(coreElement))
+        variantElement = &downcast<WebCore::HTMLOptionElement>(coreElement);
+    else if (is<WebCore::HTMLOptGroupElement>(coreElement))
+        variantElement = &downcast<WebCore::HTMLOptGroupElement>(coreElement);
+    else
+        raiseTypeErrorException();
+    raiseOnDOMError(IMPL->add(WTFMove(variantElement), WebCore::HTMLSelectElement::HTMLElementOrInt(core(before))));
 }
 
 - (void)remove:(int)index
 {
     WebCore::JSMainThreadNullState state;
-    IMPL->removeByIndex(index);
+    IMPL->remove(index);
 }
 
 @end

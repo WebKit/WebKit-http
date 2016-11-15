@@ -63,6 +63,7 @@
     macro(IDBTransaction) \
     macro(IDBVersionChangeEvent) \
     macro(Infinity) \
+    macro(InputEvent) \
     macro(Intl) \
     macro(JSON) \
     macro(Loader) \
@@ -88,6 +89,8 @@
     macro(Set)\
     macro(SetIterator)\
     macro(ShadowRoot) \
+    macro(SharedArrayBuffer) \
+    macro(StaticRange) \
     macro(String) \
     macro(Symbol) \
     macro(SyntaxError) \

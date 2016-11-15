@@ -56,12 +56,7 @@ public:
 protected:
     JSTestCustomNamedGetter(JSC::Structure*, JSDOMGlobalObject&, Ref<TestCustomNamedGetter>&&);
 
-    void finishCreation(JSC::VM& vm)
-    {
-        Base::finishCreation(vm);
-        ASSERT(inherits(info()));
-    }
-
+    void finishCreation(JSC::VM&);
 private:
     bool nameGetter(JSC::ExecState*, JSC::PropertyName, JSC::JSValue&);
 };
@@ -90,6 +85,7 @@ inline JSC::JSValue toJSNewlyCreated(JSC::ExecState* state, JSDOMGlobalObject* g
 
 template<> struct JSDOMWrapperConverterTraits<TestCustomNamedGetter> {
     using WrapperClass = JSTestCustomNamedGetter;
+    using ToWrappedReturnType = TestCustomNamedGetter*;
 };
 
 } // namespace WebCore

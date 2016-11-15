@@ -28,8 +28,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WorkerGlobalScopeProxy_h
-#define WorkerGlobalScopeProxy_h
+#pragma once
 
 #include "MessagePort.h"
 #include "WorkerThread.h"
@@ -49,7 +48,7 @@ namespace WebCore {
 
         virtual ~WorkerGlobalScopeProxy() { }
 
-        virtual void startWorkerGlobalScope(const URL& scriptURL, const String& userAgent, const String& sourceCode, const ContentSecurityPolicyResponseHeaders&, bool shouldBypassMainWorldContentSecurityPolicy, WorkerThreadStartMode) = 0;
+        virtual void startWorkerGlobalScope(const URL& scriptURL, const String& userAgent, const String& sourceCode, const ContentSecurityPolicyResponseHeaders&, bool shouldBypassMainWorldContentSecurityPolicy, JSC::RuntimeFlags) = 0;
 
         virtual void terminateWorkerGlobalScope() = 0;
 
@@ -63,5 +62,3 @@ namespace WebCore {
     };
 
 } // namespace WebCore
-
-#endif // WorkerGlobalScopeProxy_h

@@ -25,12 +25,11 @@
  */
 
 #include "config.h"
-
-#if ENABLE(VIDEO_TRACK)
 #include "InbandDataTextTrack.h"
 
+#if ENABLE(VIDEO_TRACK)
+
 #include "DataCue.h"
-#include "ExceptionCodePlaceholder.h"
 #include "HTMLMediaElement.h"
 #include "InbandTextTrackPrivate.h"
 #include "Logging.h"
@@ -38,12 +37,12 @@
 
 namespace WebCore {
 
-Ref<InbandDataTextTrack> InbandDataTextTrack::create(ScriptExecutionContext* context, TextTrackClient* client, PassRefPtr<InbandTextTrackPrivate> playerPrivate)
+Ref<InbandDataTextTrack> InbandDataTextTrack::create(ScriptExecutionContext* context, TextTrackClient* client, RefPtr<InbandTextTrackPrivate>&& trackPrivate)
 {
-    return adoptRef(*new InbandDataTextTrack(context, client, playerPrivate));
+    return adoptRef(*new InbandDataTextTrack(context, client, WTFMove(trackPrivate)));
 }
 
-InbandDataTextTrack::InbandDataTextTrack(ScriptExecutionContext* context, TextTrackClient* client, PassRefPtr<InbandTextTrackPrivate> trackPrivate)
+InbandDataTextTrack::InbandDataTextTrack(ScriptExecutionContext* context, TextTrackClient* client, RefPtr<InbandTextTrackPrivate>&& trackPrivate)
     : InbandTextTrack(context, client, trackPrivate)
 {
 }
@@ -54,11 +53,11 @@ InbandDataTextTrack::~InbandDataTextTrack()
 
 void InbandDataTextTrack::addDataCue(InbandTextTrackPrivate*, const MediaTime& start, const MediaTime& end, const void* data, unsigned length)
 {
-    auto cue = DataCue::create(*scriptExecutionContext(), start, end, data, length);
-    addCue(WTFMove(cue), ASSERT_NO_EXCEPTION);
+    addCue(DataCue::create(*scriptExecutionContext(), start, end, data, length));
 }
 
 #if ENABLE(DATACUE_VALUE)
+
 void InbandDataTextTrack::addDataCue(InbandTextTrackPrivate*, const MediaTime& start, const MediaTime& end, PassRefPtr<SerializedPlatformRepresentation> prpPlatformValue, const String& type)
 {
     RefPtr<SerializedPlatformRepresentation> platformValue = prpPlatformValue;
@@ -76,7 +75,7 @@ void InbandDataTextTrack::addDataCue(InbandTextTrackPrivate*, const MediaTime& s
         m_incompleteCueMap.add(WTFMove(platformValue), cue.copyRef());
     }
 
-    addCue(WTFMove(cue), ASSERT_NO_EXCEPTION);
+    addCue(WTFMove(cue));
 }
 
 void InbandDataTextTrack::updateDataCue(InbandTextTrackPrivate*, const MediaTime& start, const MediaTime& inEnd, PassRefPtr<SerializedPlatformRepresentation> prpPlatformValue)
@@ -114,23 +113,19 @@ void InbandDataTextTrack::removeDataCue(InbandTextTrackPrivate*, const MediaTime
     if (iter == m_incompleteCueMap.end())
         return;
 
-    RefPtr<DataCue> cue = iter->value;
-    if (cue) {
+    if (RefPtr<DataCue> cue = iter->value) {
         LOG(Media, "InbandDataTextTrack::removeDataCue removing cue: start=%s, end=%s\n", toString(cue->startTime()).utf8().data(), toString(cue->endTime()).utf8().data());
-        removeCue(cue.get(), IGNORE_EXCEPTION);
+        removeCue(*cue);
     }
 }
 
-void InbandDataTextTrack::removeCue(TextTrackCue* cue, ExceptionCode& ec)
+ExceptionOr<void> InbandDataTextTrack::removeCue(TextTrackCue& cue)
 {
-    ASSERT(cue->cueType() == TextTrackCue::Data);
+    ASSERT(cue.cueType() == TextTrackCue::Data);
 
-    SerializedPlatformRepresentation* platformValue = const_cast<SerializedPlatformRepresentation*>(toDataCue(cue)->platformValue());
-    auto iter = m_incompleteCueMap.find(platformValue);
-    if (iter != m_incompleteCueMap.end())
-        m_incompleteCueMap.remove(platformValue);
+    m_incompleteCueMap.remove(const_cast<SerializedPlatformRepresentation*>(toDataCue(&cue)->platformValue()));
 
-    InbandTextTrack::removeCue(cue, ec);
+    return InbandTextTrack::removeCue(cue);
 }
 
 #endif

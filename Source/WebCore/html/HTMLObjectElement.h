@@ -20,8 +20,7 @@
  *
  */
 
-#ifndef HTMLObjectElement_h
-#define HTMLObjectElement_h
+#pragma once
 
 #include "FormAssociatedElement.h"
 #include "HTMLPlugInImageElement.h"
@@ -47,6 +46,8 @@ public:
     // Implementation of constraint validation API.
     // Note that the object elements are always barred from constraint validation.
     static bool checkValidity() { return true; }
+    static bool reportValidity() { return true; }
+
     void setCustomValidity(const String&) final { }
     String validationMessage() const final { return String(); }
 
@@ -107,6 +108,4 @@ private:
     bool m_useFallbackContent : 1;
 };
 
-}
-
-#endif
+} // namespace WebCore

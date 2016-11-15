@@ -27,8 +27,7 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#ifndef CSSParserToken_h
-#define CSSParserToken_h
+#pragma once
 
 #include "CSSPrimitiveValue.h"
 #include <wtf/text/StringView.h>
@@ -136,7 +135,7 @@ public:
 
     bool hasStringBacking() const;
 
-    CSSPropertyID parseAsUnresolvedCSSPropertyID() const;
+    CSSPropertyID parseAsCSSPropertyID() const;
 
     void serialize(StringBuilder&) const;
 
@@ -177,5 +176,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // CSSSParserToken_h

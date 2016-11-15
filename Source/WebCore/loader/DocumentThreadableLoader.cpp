@@ -145,7 +145,7 @@ void DocumentThreadableLoader::makeSimpleCrossOriginAccessRequest(ResourceReques
     ASSERT(m_options.preflightPolicy == PreventPreflight || isSimpleCrossOriginAccessRequest(request.httpMethod(), request.httpHeaderFields()));
 
     // Cross-origin requests are only allowed for HTTP and registered schemes. We would catch this when checking response headers later, but there is no reason to send a request that's guaranteed to be denied.
-    if (!SchemeRegistry::shouldTreatURLSchemeAsCORSEnabled(request.url().protocol())) {
+    if (!SchemeRegistry::shouldTreatURLSchemeAsCORSEnabled(request.url().protocol().toStringWithoutCopying())) {
         m_client->didFail(ResourceError(errorDomainWebKitInternal, 0, request.url(), "Cross origin requests are only supported for HTTP.", ResourceError::Type::AccessControl));
         return;
     }
@@ -264,6 +264,7 @@ void DocumentThreadableLoader::redirectReceived(CachedResource& resource, Resour
         return;
 
     m_options.allowCredentials = DoNotAllowStoredCredentials;
+    m_options.maxRedirectCount -= m_resource->loader()->redirectCount();
 
     clearResource();
 
@@ -380,10 +381,10 @@ void DocumentThreadableLoader::loadRequest(ResourceRequest&& request, SecurityCh
         options.clientCredentialPolicy = m_sameOriginRequest ? ClientCredentialPolicy::MayAskClientForCredentials : ClientCredentialPolicy::CannotAskClientForCredentials;
         options.contentSecurityPolicyImposition = ContentSecurityPolicyImposition::SkipPolicyCheck;
 
+        request.setAllowCookies(m_options.allowCredentials == AllowStoredCredentials);
         CachedResourceRequest newRequest(WTFMove(request), options);
         if (RuntimeEnabledFeatures::sharedFeatures().resourceTimingEnabled())
             newRequest.setInitiator(m_options.initiator);
-        newRequest.mutableResourceRequest().setAllowCookies(m_options.allowCredentials == AllowStoredCredentials);
         newRequest.setOrigin(&securityOrigin());
 
         ASSERT(!m_resource);

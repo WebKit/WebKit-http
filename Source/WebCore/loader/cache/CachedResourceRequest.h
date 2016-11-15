@@ -23,9 +23,9 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef CachedResourceRequest_h
-#define CachedResourceRequest_h
+#pragma once
 
+#include "CachedResource.h"
 #include "DocumentLoader.h"
 #include "Element.h"
 #include "ResourceLoadPriority.h"
@@ -36,13 +36,22 @@
 #include <wtf/text/AtomicString.h>
 
 namespace WebCore {
+
+namespace ContentExtensions {
+struct BlockedStatus;
+}
+
 class Document;
+class FrameLoader;
+enum class ReferrerPolicy;
+
+bool isRequestCrossOrigin(SecurityOrigin*, const URL& requestURL, const ResourceLoaderOptions&);
 
 class CachedResourceRequest {
 public:
     CachedResourceRequest(ResourceRequest&&, const ResourceLoaderOptions&, Optional<ResourceLoadPriority> = Nullopt, String&& charset = String());
 
-    ResourceRequest& mutableResourceRequest() { return m_resourceRequest; }
+    ResourceRequest&& releaseResourceRequest() { return WTFMove(m_resourceRequest); }
     const ResourceRequest& resourceRequest() const { return m_resourceRequest; }
     const String& charset() const { return m_charset; }
     void setCharset(const String& charset) { m_charset = charset; }
@@ -53,14 +62,31 @@ public:
     void setInitiator(const AtomicString& name);
     const AtomicString& initiatorName() const;
     bool allowsCaching() const { return m_options.cachingPolicy == CachingPolicy::AllowCaching; }
-    void setCachingPolicy(CachingPolicy policy) { m_options.cachingPolicy = policy; }
+    void setCachingPolicy(CachingPolicy policy) { m_options.cachingPolicy = policy;  }
 
     void setAsPotentiallyCrossOrigin(const String&, Document&);
-    void setOrigin(RefPtr<SecurityOrigin>&& origin) { ASSERT(!m_origin); m_origin = WTFMove(origin); }
+    void updateForAccessControl(Document&);
+
+    void updateReferrerOriginAndUserAgentHeaders(FrameLoader&, ReferrerPolicy);
+    void upgradeInsecureRequestIfNeeded(Document&);
+    void setAcceptHeaderIfNone(CachedResource::Type);
+    void updateAccordingCacheMode();
+    void removeFragmentIdentifierIfNeeded();
+#if ENABLE(CONTENT_EXTENSIONS)
+    void applyBlockedStatus(const ContentExtensions::BlockedStatus&);
+#endif
+#if ENABLE(CACHE_PARTITIONING)
+    void setDomainForCachePartition(Document&);
+#endif
+
+    void setOrigin(RefPtr<SecurityOrigin>&& origin) { m_origin = WTFMove(origin); }
     RefPtr<SecurityOrigin> releaseOrigin() { return WTFMove(m_origin); }
     SecurityOrigin* origin() const { return m_origin.get(); }
 
-    void setCacheModeToNoStore() { m_options.cache = FetchOptions::Cache::NoStore; }
+    String&& releaseFragmentIdentifier() { return WTFMove(m_fragmentIdentifier); }
+    void clearFragmentIdentifier() { m_fragmentIdentifier = { }; }
+
+    static String splitFragmentIdentifierFromRequestURL(ResourceRequest&);
 
 private:
     ResourceRequest m_resourceRequest;
@@ -70,8 +96,9 @@ private:
     RefPtr<Element> m_initiatorElement;
     AtomicString m_initiatorName;
     RefPtr<SecurityOrigin> m_origin;
+    String m_fragmentIdentifier;
 };
 
-} // namespace WebCore
+void upgradeInsecureResourceRequestIfNeeded(ResourceRequest&, Document&);
 
-#endif
+} // namespace WebCore

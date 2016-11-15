@@ -57,12 +57,7 @@ public:
 protected:
     JSTestOverrideBuiltins(JSC::Structure*, JSDOMGlobalObject&, Ref<TestOverrideBuiltins>&&);
 
-    void finishCreation(JSC::VM& vm)
-    {
-        Base::finishCreation(vm);
-        ASSERT(inherits(info()));
-    }
-
+    void finishCreation(JSC::VM&);
 private:
     bool nameGetter(JSC::ExecState*, JSC::PropertyName, JSC::JSValue&);
 };
@@ -91,6 +86,7 @@ inline JSC::JSValue toJSNewlyCreated(JSC::ExecState* state, JSDOMGlobalObject* g
 
 template<> struct JSDOMWrapperConverterTraits<TestOverrideBuiltins> {
     using WrapperClass = JSTestOverrideBuiltins;
+    using ToWrappedReturnType = TestOverrideBuiltins*;
 };
 
 } // namespace WebCore

@@ -854,6 +854,8 @@ WebView *createWebViewAndOffscreenWindow()
     }
 #endif
 
+    [webView setMediaVolume:0];
+
     return webView;
 }
 
@@ -897,6 +899,7 @@ static void resetWebPreferencesToConsistentValues()
 {
     WebPreferences *preferences = [WebPreferences standardPreferences];
 
+    [preferences setNeedsStorageAccessFromFileURLsQuirk: NO];
     [preferences setAllowUniversalAccessFromFileURLs:YES];
     [preferences setAllowFileAccessFromFileURLs:YES];
     [preferences setStandardFontFamily:@"Times"];
@@ -1809,7 +1812,7 @@ static bool shouldEnableDeveloperExtras(const char* pathOrURL)
 #if PLATFORM(IOS)
 static bool shouldMakeViewportFlexible(const char* pathOrURL)
 {
-    return strstr(pathOrURL, "viewport/");
+    return strstr(pathOrURL, "viewport/") && !strstr(pathOrURL, "visual-viewport/");
 }
 #endif
 

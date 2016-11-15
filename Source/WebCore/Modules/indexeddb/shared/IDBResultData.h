@@ -23,13 +23,13 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef IDBResultData_h
-#define IDBResultData_h
+#pragma once
 
 #if ENABLE(INDEXED_DATABASE)
 
 #include "IDBDatabaseInfo.h"
 #include "IDBError.h"
+#include "IDBGetAllResult.h"
 #include "IDBGetResult.h"
 #include "IDBKeyData.h"
 #include "IDBResourceIdentifier.h"
@@ -38,7 +38,6 @@
 
 namespace WebCore {
 
-class IDBResourceIdentifier;
 class ThreadSafeDataBuffer;
 
 enum class IDBResultType {
@@ -51,12 +50,15 @@ enum class IDBResultType {
     ClearObjectStoreSuccess,
     PutOrAddSuccess,
     GetRecordSuccess,
+    GetAllRecordsSuccess,
     GetCountSuccess,
     DeleteRecordSuccess,
     CreateIndexSuccess,
     DeleteIndexSuccess,
     OpenCursorSuccess,
     IterateCursorSuccess,
+    RenameObjectStoreSuccess,
+    RenameIndexSuccess,
 };
 
 namespace IDBServer {
@@ -72,11 +74,14 @@ public:
     static IDBResultData deleteDatabaseSuccess(const IDBResourceIdentifier&, const IDBDatabaseInfo&);
     static IDBResultData createObjectStoreSuccess(const IDBResourceIdentifier&);
     static IDBResultData deleteObjectStoreSuccess(const IDBResourceIdentifier&);
+    static IDBResultData renameObjectStoreSuccess(const IDBResourceIdentifier&);
     static IDBResultData clearObjectStoreSuccess(const IDBResourceIdentifier&);
     static IDBResultData createIndexSuccess(const IDBResourceIdentifier&);
     static IDBResultData deleteIndexSuccess(const IDBResourceIdentifier&);
+    static IDBResultData renameIndexSuccess(const IDBResourceIdentifier&);
     static IDBResultData putOrAddSuccess(const IDBResourceIdentifier&, const IDBKeyData&);
     static IDBResultData getRecordSuccess(const IDBResourceIdentifier&, const IDBGetResult&);
+    static IDBResultData getAllRecordsSuccess(const IDBResourceIdentifier&, const IDBGetAllResult&);
     static IDBResultData getCountSuccess(const IDBResourceIdentifier&, uint64_t count);
     static IDBResultData deleteRecordSuccess(const IDBResourceIdentifier&);
     static IDBResultData openCursorSuccess(const IDBResourceIdentifier&, const IDBGetResult&);
@@ -101,6 +106,7 @@ public:
     uint64_t resultInteger() const { return m_resultInteger; }
 
     WEBCORE_EXPORT const IDBGetResult& getResult() const;
+    WEBCORE_EXPORT const IDBGetAllResult& getAllResult() const;
 
     WEBCORE_EXPORT IDBResultData();
     template<class Encoder> void encode(Encoder&) const;
@@ -121,6 +127,7 @@ private:
     std::unique_ptr<IDBTransactionInfo> m_transactionInfo;
     std::unique_ptr<IDBKeyData> m_resultKey;
     std::unique_ptr<IDBGetResult> m_getResult;
+    std::unique_ptr<IDBGetAllResult> m_getAllResult;
     uint64_t m_resultInteger { 0 };
 };
 
@@ -146,6 +153,10 @@ void IDBResultData::encode(Encoder& encoder) const
     encoder << !!m_getResult;
     if (m_getResult)
         encoder << *m_getResult;
+
+    encoder << !!m_getAllResult;
+    if (m_getAllResult)
+        encoder << *m_getAllResult;
 }
 
 template<class Decoder> bool IDBResultData::decode(Decoder& decoder, IDBResultData& result)
@@ -170,7 +181,7 @@ template<class Decoder> bool IDBResultData::decode(Decoder& decoder, IDBResultDa
     if (!decoder.decode(hasObject))
         return false;
     if (hasObject) {
-        std::unique_ptr<IDBDatabaseInfo> object = std::make_unique<IDBDatabaseInfo>();
+        auto object = std::make_unique<IDBDatabaseInfo>();
         if (!decoder.decode(*object))
             return false;
         result.m_databaseInfo = WTFMove(object);
@@ -179,7 +190,7 @@ template<class Decoder> bool IDBResultData::decode(Decoder& decoder, IDBResultDa
     if (!decoder.decode(hasObject))
         return false;
     if (hasObject) {
-        std::unique_ptr<IDBTransactionInfo> object = std::make_unique<IDBTransactionInfo>();
+        auto object = std::make_unique<IDBTransactionInfo>();
         if (!decoder.decode(*object))
             return false;
         result.m_transactionInfo = WTFMove(object);
@@ -188,7 +199,7 @@ template<class Decoder> bool IDBResultData::decode(Decoder& decoder, IDBResultDa
     if (!decoder.decode(hasObject))
         return false;
     if (hasObject) {
-        std::unique_ptr<IDBKeyData> object = std::make_unique<IDBKeyData>();
+        auto object = std::make_unique<IDBKeyData>();
         if (!decoder.decode(*object))
             return false;
         result.m_resultKey = WTFMove(object);
@@ -197,10 +208,19 @@ template<class Decoder> bool IDBResultData::decode(Decoder& decoder, IDBResultDa
     if (!decoder.decode(hasObject))
         return false;
     if (hasObject) {
-        std::unique_ptr<IDBGetResult> object = std::make_unique<IDBGetResult>();
+        auto object = std::make_unique<IDBGetResult>();
         if (!decoder.decode(*object))
             return false;
         result.m_getResult = WTFMove(object);
+    }
+
+    if (!decoder.decode(hasObject))
+        return false;
+    if (hasObject) {
+        auto object = std::make_unique<IDBGetAllResult>();
+        if (!decoder.decode(*object))
+            return false;
+        result.m_getAllResult = WTFMove(object);
     }
 
     return true;
@@ -209,4 +229,3 @@ template<class Decoder> bool IDBResultData::decode(Decoder& decoder, IDBResultDa
 } // namespace WebCore
 
 #endif // ENABLE(INDEXED_DATABASE)
-#endif // IDBResultData_h

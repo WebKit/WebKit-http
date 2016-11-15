@@ -26,6 +26,7 @@
 #include "config.h"
 #include "Pasteboard.h"
 
+#include "NotImplemented.h"
 #include "PasteboardStrategy.h"
 #include "PlatformStrategies.h"
 
@@ -83,9 +84,19 @@ void Pasteboard::read(PasteboardPlainText& text)
     text.text = platformStrategies()->pasteboardStrategy()->readStringFromPasteboard(0, "text/plain;charset=utf-8");
 }
 
+void Pasteboard::read(PasteboardWebContentReader&)
+{
+    notImplemented();
+}
+
 void Pasteboard::write(const PasteboardURL& url)
 {
     platformStrategies()->pasteboardStrategy()->writeToPasteboard("text/plain;charset=utf-8", url.url.string());
+}
+
+void Pasteboard::writeTrustworthyWebURLsPboardType(const PasteboardURL&)
+{
+    notImplemented();
 }
 
 void Pasteboard::write(const PasteboardImage&)

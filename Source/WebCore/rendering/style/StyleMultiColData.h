@@ -22,13 +22,11 @@
  *
  */
 
-#ifndef StyleMultiColData_h
-#define StyleMultiColData_h
+#pragma once
 
 #include "BorderValue.h"
 #include "Length.h"
 #include "RenderStyleConstants.h"
-#include <wtf/PassRefPtr.h>
 #include <wtf/RefCounted.h>
 
 namespace WebCore {
@@ -73,5 +71,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // StyleMultiColData_h

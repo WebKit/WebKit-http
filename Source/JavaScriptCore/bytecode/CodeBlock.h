@@ -45,6 +45,7 @@
 #include "EvalCodeCache.h"
 #include "ExecutionCounter.h"
 #include "ExpressionRangeInfo.h"
+#include "FunctionExecutable.h"
 #include "HandlerInfo.h"
 #include "Instruction.h"
 #include "JITCode.h"
@@ -55,9 +56,11 @@
 #include "LLIntCallLinkInfo.h"
 #include "LLIntPrototypeLoadAdaptiveStructureWatchpoint.h"
 #include "LazyOperandValueProfile.h"
+#include "ModuleProgramExecutable.h"
 #include "ObjectAllocationProfile.h"
 #include "Options.h"
 #include "ProfilerJettisonReason.h"
+#include "ProgramExecutable.h"
 #include "PutPropertySlot.h"
 #include "UnconditionalFinalizer.h"
 #include "ValueProfile.h"
@@ -411,7 +414,9 @@ public:
     ValueProfile* valueProfileForBytecodeOffset(int bytecodeOffset);
     SpeculatedType valueProfilePredictionForBytecodeOffset(const ConcurrentJITLocker& locker, int bytecodeOffset)
     {
-        return valueProfileForBytecodeOffset(bytecodeOffset)->computeUpdatedPrediction(locker);
+        if (ValueProfile* valueProfile = valueProfileForBytecodeOffset(bytecodeOffset))
+            return valueProfile->computeUpdatedPrediction(locker);
+        return SpecNone;
     }
 
     unsigned totalNumberOfValueProfiles()
@@ -1047,241 +1052,6 @@ private:
     WeakReferenceHarvester m_weakReferenceHarvester;
 };
 
-// Program code is not marked by any function, so we make the global object
-// responsible for marking it.
-
-class GlobalCodeBlock : public CodeBlock {
-    typedef CodeBlock Base;
-    DECLARE_INFO;
-
-protected:
-    GlobalCodeBlock(VM* vm, Structure* structure, CopyParsedBlockTag, GlobalCodeBlock& other)
-        : CodeBlock(vm, structure, CopyParsedBlock, other)
-    {
-    }
-
-    GlobalCodeBlock(VM* vm, Structure* structure, ScriptExecutable* ownerExecutable, UnlinkedCodeBlock* unlinkedCodeBlock, JSScope* scope, PassRefPtr<SourceProvider> sourceProvider, unsigned sourceOffset, unsigned firstLineColumnOffset)
-        : CodeBlock(vm, structure, ownerExecutable, unlinkedCodeBlock, scope, sourceProvider, sourceOffset, firstLineColumnOffset)
-    {
-    }
-};
-
-class ProgramCodeBlock : public GlobalCodeBlock {
-public:
-    typedef GlobalCodeBlock Base;
-    DECLARE_INFO;
-
-    static ProgramCodeBlock* create(VM* vm, CopyParsedBlockTag, ProgramCodeBlock& other)
-    {
-        ProgramCodeBlock* instance = new (NotNull, allocateCell<ProgramCodeBlock>(vm->heap))
-            ProgramCodeBlock(vm, vm->programCodeBlockStructure.get(), CopyParsedBlock, other);
-        instance->finishCreation(*vm, CopyParsedBlock, other);
-        return instance;
-    }
-
-    static ProgramCodeBlock* create(VM* vm, ProgramExecutable* ownerExecutable, UnlinkedProgramCodeBlock* unlinkedCodeBlock,
-        JSScope* scope, PassRefPtr<SourceProvider> sourceProvider, unsigned firstLineColumnOffset)
-    {
-        ProgramCodeBlock* instance = new (NotNull, allocateCell<ProgramCodeBlock>(vm->heap))
-            ProgramCodeBlock(vm, vm->programCodeBlockStructure.get(), ownerExecutable, unlinkedCodeBlock, scope, sourceProvider, firstLineColumnOffset);
-        instance->finishCreation(*vm, ownerExecutable, unlinkedCodeBlock, scope);
-        return instance;
-    }
-
-    static Structure* createStructure(VM& vm, JSGlobalObject* globalObject, JSValue prototype)
-    {
-        return Structure::create(vm, globalObject, prototype, TypeInfo(CellType, StructureFlags), info());
-    }
-
-private:
-    ProgramCodeBlock(VM* vm, Structure* structure, CopyParsedBlockTag, ProgramCodeBlock& other)
-        : GlobalCodeBlock(vm, structure, CopyParsedBlock, other)
-    {
-    }
-
-    ProgramCodeBlock(VM* vm, Structure* structure, ProgramExecutable* ownerExecutable, UnlinkedProgramCodeBlock* unlinkedCodeBlock,
-        JSScope* scope, PassRefPtr<SourceProvider> sourceProvider, unsigned firstLineColumnOffset)
-        : GlobalCodeBlock(vm, structure, ownerExecutable, unlinkedCodeBlock, scope, sourceProvider, 0, firstLineColumnOffset)
-    {
-    }
-
-    static void destroy(JSCell*);
-};
-
-class ModuleProgramCodeBlock : public GlobalCodeBlock {
-public:
-    typedef GlobalCodeBlock Base;
-    DECLARE_INFO;
-
-    static ModuleProgramCodeBlock* create(VM* vm, CopyParsedBlockTag, ModuleProgramCodeBlock& other)
-    {
-        ModuleProgramCodeBlock* instance = new (NotNull, allocateCell<ModuleProgramCodeBlock>(vm->heap))
-            ModuleProgramCodeBlock(vm, vm->moduleProgramCodeBlockStructure.get(), CopyParsedBlock, other);
-        instance->finishCreation(*vm, CopyParsedBlock, other);
-        return instance;
-    }
-
-    static ModuleProgramCodeBlock* create(VM* vm, ModuleProgramExecutable* ownerExecutable, UnlinkedModuleProgramCodeBlock* unlinkedCodeBlock,
-        JSScope* scope, PassRefPtr<SourceProvider> sourceProvider, unsigned firstLineColumnOffset)
-    {
-        ModuleProgramCodeBlock* instance = new (NotNull, allocateCell<ModuleProgramCodeBlock>(vm->heap))
-            ModuleProgramCodeBlock(vm, vm->moduleProgramCodeBlockStructure.get(), ownerExecutable, unlinkedCodeBlock, scope, sourceProvider, firstLineColumnOffset);
-        instance->finishCreation(*vm, ownerExecutable, unlinkedCodeBlock, scope);
-        return instance;
-    }
-
-    static Structure* createStructure(VM& vm, JSGlobalObject* globalObject, JSValue prototype)
-    {
-        return Structure::create(vm, globalObject, prototype, TypeInfo(CellType, StructureFlags), info());
-    }
-
-private:
-    ModuleProgramCodeBlock(VM* vm, Structure* structure, CopyParsedBlockTag, ModuleProgramCodeBlock& other)
-        : GlobalCodeBlock(vm, structure, CopyParsedBlock, other)
-    {
-    }
-
-    ModuleProgramCodeBlock(VM* vm, Structure* structure, ModuleProgramExecutable* ownerExecutable, UnlinkedModuleProgramCodeBlock* unlinkedCodeBlock,
-        JSScope* scope, PassRefPtr<SourceProvider> sourceProvider, unsigned firstLineColumnOffset)
-        : GlobalCodeBlock(vm, structure, ownerExecutable, unlinkedCodeBlock, scope, sourceProvider, 0, firstLineColumnOffset)
-    {
-    }
-
-    static void destroy(JSCell*);
-};
-
-class EvalCodeBlock : public GlobalCodeBlock {
-public:
-    typedef GlobalCodeBlock Base;
-    DECLARE_INFO;
-
-    static EvalCodeBlock* create(VM* vm, CopyParsedBlockTag, EvalCodeBlock& other)
-    {
-        EvalCodeBlock* instance = new (NotNull, allocateCell<EvalCodeBlock>(vm->heap))
-            EvalCodeBlock(vm, vm->evalCodeBlockStructure.get(), CopyParsedBlock, other);
-        instance->finishCreation(*vm, CopyParsedBlock, other);
-        return instance;
-    }
-
-    static EvalCodeBlock* create(VM* vm, EvalExecutable* ownerExecutable, UnlinkedEvalCodeBlock* unlinkedCodeBlock,
-        JSScope* scope, PassRefPtr<SourceProvider> sourceProvider)
-    {
-        EvalCodeBlock* instance = new (NotNull, allocateCell<EvalCodeBlock>(vm->heap))
-            EvalCodeBlock(vm, vm->evalCodeBlockStructure.get(), ownerExecutable, unlinkedCodeBlock, scope, sourceProvider);
-        instance->finishCreation(*vm, ownerExecutable, unlinkedCodeBlock, scope);
-        return instance;
-    }
-
-    static Structure* createStructure(VM& vm, JSGlobalObject* globalObject, JSValue prototype)
-    {
-        return Structure::create(vm, globalObject, prototype, TypeInfo(CellType, StructureFlags), info());
-    }
-
-    const Identifier& variable(unsigned index) { return unlinkedEvalCodeBlock()->variable(index); }
-    unsigned numVariables() { return unlinkedEvalCodeBlock()->numVariables(); }
-    
-private:
-    EvalCodeBlock(VM* vm, Structure* structure, CopyParsedBlockTag, EvalCodeBlock& other)
-        : GlobalCodeBlock(vm, structure, CopyParsedBlock, other)
-    {
-    }
-        
-    EvalCodeBlock(VM* vm, Structure* structure, EvalExecutable* ownerExecutable, UnlinkedEvalCodeBlock* unlinkedCodeBlock,
-        JSScope* scope, PassRefPtr<SourceProvider> sourceProvider)
-        : GlobalCodeBlock(vm, structure, ownerExecutable, unlinkedCodeBlock, scope, sourceProvider, 0, 1)
-    {
-    }
-    
-    static void destroy(JSCell*);
-
-private:
-    UnlinkedEvalCodeBlock* unlinkedEvalCodeBlock() const { return jsCast<UnlinkedEvalCodeBlock*>(unlinkedCodeBlock()); }
-};
-
-class FunctionCodeBlock : public CodeBlock {
-public:
-    typedef CodeBlock Base;
-    DECLARE_INFO;
-
-    static FunctionCodeBlock* create(VM* vm, CopyParsedBlockTag, FunctionCodeBlock& other)
-    {
-        FunctionCodeBlock* instance = new (NotNull, allocateCell<FunctionCodeBlock>(vm->heap))
-            FunctionCodeBlock(vm, vm->functionCodeBlockStructure.get(), CopyParsedBlock, other);
-        instance->finishCreation(*vm, CopyParsedBlock, other);
-        return instance;
-    }
-
-    static FunctionCodeBlock* create(VM* vm, FunctionExecutable* ownerExecutable, UnlinkedFunctionCodeBlock* unlinkedCodeBlock, JSScope* scope,
-        PassRefPtr<SourceProvider> sourceProvider, unsigned sourceOffset, unsigned firstLineColumnOffset)
-    {
-        FunctionCodeBlock* instance = new (NotNull, allocateCell<FunctionCodeBlock>(vm->heap))
-            FunctionCodeBlock(vm, vm->functionCodeBlockStructure.get(), ownerExecutable, unlinkedCodeBlock, scope, sourceProvider, sourceOffset, firstLineColumnOffset);
-        instance->finishCreation(*vm, ownerExecutable, unlinkedCodeBlock, scope);
-        return instance;
-    }
-
-    static Structure* createStructure(VM& vm, JSGlobalObject* globalObject, JSValue prototype)
-    {
-        return Structure::create(vm, globalObject, prototype, TypeInfo(CellType, StructureFlags), info());
-    }
-
-private:
-    FunctionCodeBlock(VM* vm, Structure* structure, CopyParsedBlockTag, FunctionCodeBlock& other)
-        : CodeBlock(vm, structure, CopyParsedBlock, other)
-    {
-    }
-
-    FunctionCodeBlock(VM* vm, Structure* structure, FunctionExecutable* ownerExecutable, UnlinkedFunctionCodeBlock* unlinkedCodeBlock, JSScope* scope,
-        PassRefPtr<SourceProvider> sourceProvider, unsigned sourceOffset, unsigned firstLineColumnOffset)
-        : CodeBlock(vm, structure, ownerExecutable, unlinkedCodeBlock, scope, sourceProvider, sourceOffset, firstLineColumnOffset)
-    {
-    }
-    
-    static void destroy(JSCell*);
-};
-
-#if ENABLE(WEBASSEMBLY)
-class WebAssemblyCodeBlock : public CodeBlock {
-public:
-    typedef CodeBlock Base;
-    DECLARE_INFO;
-
-    static WebAssemblyCodeBlock* create(VM* vm, CopyParsedBlockTag, WebAssemblyCodeBlock& other)
-    {
-        WebAssemblyCodeBlock* instance = new (NotNull, allocateCell<WebAssemblyCodeBlock>(vm->heap))
-            WebAssemblyCodeBlock(vm, vm->webAssemblyCodeBlockStructure.get(), CopyParsedBlock, other);
-        instance->finishCreation(*vm, CopyParsedBlock, other);
-        return instance;
-    }
-
-    static WebAssemblyCodeBlock* create(VM* vm, WebAssemblyExecutable* ownerExecutable, JSGlobalObject* globalObject)
-    {
-        WebAssemblyCodeBlock* instance = new (NotNull, allocateCell<WebAssemblyCodeBlock>(vm->heap))
-            WebAssemblyCodeBlock(vm, vm->webAssemblyCodeBlockStructure.get(), ownerExecutable, globalObject);
-        instance->finishCreation(*vm, ownerExecutable, globalObject);
-        return instance;
-    }
-
-    static Structure* createStructure(VM& vm, JSGlobalObject* globalObject, JSValue prototype)
-    {
-        return Structure::create(vm, globalObject, prototype, TypeInfo(CellType, StructureFlags), info());
-    }
-
-private:
-    WebAssemblyCodeBlock(VM* vm, Structure* structure, CopyParsedBlockTag, WebAssemblyCodeBlock& other)
-        : CodeBlock(vm, structure, CopyParsedBlock, other)
-    {
-    }
-
-    WebAssemblyCodeBlock(VM* vm, Structure* structure, WebAssemblyExecutable* ownerExecutable, JSGlobalObject* globalObject)
-        : CodeBlock(vm, structure, ownerExecutable, globalObject)
-    {
-    }
-
-    static void destroy(JSCell*);
-};
-#endif
-
 inline Register& ExecState::r(int index)
 {
     CodeBlock* codeBlock = this->codeBlock();
@@ -1311,40 +1081,23 @@ inline void CodeBlock::clearVisitWeaklyHasBeenCalled()
     m_visitWeaklyHasBeenCalled.store(false, std::memory_order_relaxed);
 }
 
-template <typename Functor> inline void ScriptExecutable::forEachCodeBlock(Functor&& functor)
+template <typename ExecutableType>
+JSObject* ScriptExecutable::prepareForExecution(VM& vm, JSFunction* function, JSScope* scope, CodeSpecializationKind kind, CodeBlock*& resultCodeBlock)
 {
-    switch (type()) {
-    case ProgramExecutableType: {
-        if (CodeBlock* codeBlock = static_cast<CodeBlock*>(jsCast<ProgramExecutable*>(this)->m_programCodeBlock.get()))
-            codeBlock->forEachRelatedCodeBlock(std::forward<Functor>(functor));
-        break;
+    if (hasJITCodeFor(kind)) {
+        if (std::is_same<ExecutableType, EvalExecutable>::value)
+            resultCodeBlock = jsCast<CodeBlock*>(jsCast<EvalExecutable*>(this)->codeBlock());
+        else if (std::is_same<ExecutableType, ProgramExecutable>::value)
+            resultCodeBlock = jsCast<CodeBlock*>(jsCast<ProgramExecutable*>(this)->codeBlock());
+        else if (std::is_same<ExecutableType, ModuleProgramExecutable>::value)
+            resultCodeBlock = jsCast<CodeBlock*>(jsCast<ModuleProgramExecutable*>(this)->codeBlock());
+        else if (std::is_same<ExecutableType, FunctionExecutable>::value)
+            resultCodeBlock = jsCast<CodeBlock*>(jsCast<FunctionExecutable*>(this)->codeBlockFor(kind));
+        else
+            RELEASE_ASSERT_NOT_REACHED();
+        return nullptr;
     }
-
-    case EvalExecutableType: {
-        if (CodeBlock* codeBlock = static_cast<CodeBlock*>(jsCast<EvalExecutable*>(this)->m_evalCodeBlock.get()))
-            codeBlock->forEachRelatedCodeBlock(std::forward<Functor>(functor));
-        break;
-    }
-
-    case FunctionExecutableType: {
-        Functor f(std::forward<Functor>(functor));
-        FunctionExecutable* executable = jsCast<FunctionExecutable*>(this);
-        if (CodeBlock* codeBlock = static_cast<CodeBlock*>(executable->m_codeBlockForCall.get()))
-            codeBlock->forEachRelatedCodeBlock(f);
-        if (CodeBlock* codeBlock = static_cast<CodeBlock*>(executable->m_codeBlockForConstruct.get()))
-            codeBlock->forEachRelatedCodeBlock(f);
-        break;
-    }
-
-    case ModuleProgramExecutableType: {
-        if (CodeBlock* codeBlock = static_cast<CodeBlock*>(jsCast<ModuleProgramExecutable*>(this)->m_moduleProgramCodeBlock.get()))
-            codeBlock->forEachRelatedCodeBlock(std::forward<Functor>(functor));
-        break;
-    }
-
-    default:
-        RELEASE_ASSERT_NOT_REACHED();
-    }
+    return prepareForExecutionImpl(vm, function, scope, kind, resultCodeBlock);
 }
 
 #define CODEBLOCK_LOG_EVENT(codeBlock, summary, details) \

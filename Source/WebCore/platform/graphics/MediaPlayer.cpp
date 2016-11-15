@@ -1248,32 +1248,33 @@ PassRefPtr<PlatformMediaResourceLoader> MediaPlayer::createResourceLoader()
 }
 
 #if ENABLE(VIDEO_TRACK)
-void MediaPlayer::addAudioTrack(PassRefPtr<AudioTrackPrivate> track)
+
+void MediaPlayer::addAudioTrack(AudioTrackPrivate& track)
 {
     m_client.mediaPlayerDidAddAudioTrack(track);
 }
 
-void MediaPlayer::removeAudioTrack(PassRefPtr<AudioTrackPrivate> track)
+void MediaPlayer::removeAudioTrack(AudioTrackPrivate& track)
 {
     m_client.mediaPlayerDidRemoveAudioTrack(track);
 }
 
-void MediaPlayer::addTextTrack(PassRefPtr<InbandTextTrackPrivate> track)
+void MediaPlayer::addTextTrack(InbandTextTrackPrivate& track)
 {
     m_client.mediaPlayerDidAddTextTrack(track);
 }
 
-void MediaPlayer::removeTextTrack(PassRefPtr<InbandTextTrackPrivate> track)
+void MediaPlayer::removeTextTrack(InbandTextTrackPrivate& track)
 {
     m_client.mediaPlayerDidRemoveTextTrack(track);
 }
 
-void MediaPlayer::addVideoTrack(PassRefPtr<VideoTrackPrivate> track)
+void MediaPlayer::addVideoTrack(VideoTrackPrivate& track)
 {
     m_client.mediaPlayerDidAddVideoTrack(track);
 }
 
-void MediaPlayer::removeVideoTrack(PassRefPtr<VideoTrackPrivate> track)
+void MediaPlayer::removeVideoTrack(VideoTrackPrivate& track)
 {
     m_client.mediaPlayerDidRemoveVideoTrack(track);
 }
@@ -1299,6 +1300,7 @@ void MediaPlayer::tracksChanged()
 }
 
 #if ENABLE(AVF_CAPTIONS)
+
 void MediaPlayer::notifyTrackModeChanged()
 {
     if (m_private)
@@ -1309,6 +1311,7 @@ Vector<RefPtr<PlatformTextTrack>> MediaPlayer::outOfBandTrackSources()
 {
     return m_client.outOfBandTrackSources();
 }
+
 #endif
 
 #endif // ENABLE(VIDEO_TRACK)
@@ -1435,6 +1438,17 @@ bool MediaPlayer::getRawCookies(const URL& url, Vector<Cookie>& cookies) const
     return m_client.mediaPlayerGetRawCookies(url, cookies);
 }
 #endif
+
+void MediaPlayer::setShouldDisableSleep(bool flag)
+{
+    if (m_private)
+        m_private->setShouldDisableSleep(flag);
+}
+
+bool MediaPlayer::shouldDisableSleep() const
+{
+    return m_client.mediaPlayerShouldDisableSleep();
+}
 
 }
 

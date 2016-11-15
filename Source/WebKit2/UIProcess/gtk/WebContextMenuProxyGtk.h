@@ -52,6 +52,7 @@ public:
 
 private:
     void show() override;
+    void showContextMenuWithItems(const Vector<WebContextMenuItemData>&) override;
     void append(GMenu*, const WebContextMenuItemGtk&);
     GRefPtr<GMenu> buildMenu(const Vector<WebContextMenuItemGtk>&);
     void populate(const Vector<RefPtr<WebContextMenuItem>>&);

@@ -123,9 +123,9 @@ TestRunner::TestRunner(const std::string& testURL, const std::string& expectedPi
 {
 }
 
-PassRefPtr<TestRunner> TestRunner::create(const std::string& testURL, const std::string& expectedPixelHash)
+Ref<TestRunner> TestRunner::create(const std::string& testURL, const std::string& expectedPixelHash)
 {
-    return adoptRef(new TestRunner(testURL, expectedPixelHash));
+    return adoptRef(*new TestRunner(testURL, expectedPixelHash));
 }
 
 // Static Functions
@@ -340,7 +340,7 @@ static JSValueRef setAudioResultCallback(JSContextRef context, JSObjectRef funct
     // FIXME (123058): Use a JSC API to get buffer contents once such is exposed.
     JSC::JSArrayBufferView* jsBufferView = JSC::jsDynamicCast<JSC::JSArrayBufferView*>(toJS(toJS(context), arguments[0]));
     ASSERT(jsBufferView);
-    RefPtr<JSC::ArrayBufferView> bufferView = jsBufferView->impl();
+    RefPtr<JSC::ArrayBufferView> bufferView = jsBufferView->unsharedImpl();
     const char* buffer = static_cast<const char*>(bufferView->baseAddress());
     std::vector<char> audioData(buffer, buffer + bufferView->byteLength());
 
@@ -1215,6 +1215,18 @@ static JSValueRef setAllowFileAccessFromFileURLsCallback(JSContextRef context, J
     TestRunner* controller = static_cast<TestRunner*>(JSObjectGetPrivate(thisObject));
     controller->setAllowFileAccessFromFileURLs(JSValueToBoolean(context, arguments[0]));
 
+    return JSValueMakeUndefined(context);
+}
+
+static JSValueRef setNeedsStorageAccessFromFileURLsQuirkCallback(JSContextRef context, JSObjectRef function, JSObjectRef thisObject, size_t argumentCount, const JSValueRef arguments[], JSValueRef* exception)
+{
+    // Has mac & windows implementation
+    if (argumentCount < 1)
+        return JSValueMakeUndefined(context);
+    
+    TestRunner* controller = static_cast<TestRunner*>(JSObjectGetPrivate(thisObject));
+    controller->setNeedsStorageAccessFromFileURLsQuirk(JSValueToBoolean(context, arguments[0]));
+    
     return JSValueMakeUndefined(context);
 }
 
@@ -2125,6 +2137,7 @@ JSStaticFunction* TestRunner::staticFunctions()
         { "setAcceptsEditing", setAcceptsEditingCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "setAllowUniversalAccessFromFileURLs", setAllowUniversalAccessFromFileURLsCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "setAllowFileAccessFromFileURLs", setAllowFileAccessFromFileURLsCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
+        { "setNeedsStorageAccessFromFileURLsQuirk", setNeedsStorageAccessFromFileURLsQuirkCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "setAllowsAnySSLCertificate", setAllowsAnySSLCertificateCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "setAlwaysAcceptCookies", setAlwaysAcceptCookiesCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },
         { "setAppCacheMaximumSize", setAppCacheMaximumSizeCallback, kJSPropertyAttributeReadOnly | kJSPropertyAttributeDontDelete },

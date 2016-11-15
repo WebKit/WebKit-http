@@ -77,10 +77,6 @@
 #include <wtf/RunLoop.h>
 #include <wtf/text/StringBuilder.h>
 
-#if ENABLE(BATTERY_STATUS)
-#include "WebBatteryManagerProxy.h"
-#endif
-
 #if ENABLE(DATABASE_PROCESS)
 #include "DatabaseProcessCreationParameters.h"
 #include "DatabaseProcessMessages.h"
@@ -177,6 +173,7 @@ WebProcessPool::WebProcessPool(API::ProcessPoolConfiguration& configuration)
     , m_canHandleHTTPSServerTrustEvaluation(true)
     , m_didNetworkProcessCrash(false)
     , m_memoryCacheDisabled(false)
+    , m_alwaysRunsAtBackgroundPriority(m_configuration->alwaysRunsAtBackgroundPriority())
     , m_userObservablePageCounter([this](RefCounterEvent) { updateProcessSuppressionState(); })
     , m_processSuppressionDisabledForPageCounter([this](RefCounterEvent) { updateProcessSuppressionState(); })
     , m_hiddenPageThrottlingAutoIncreasesCounter([this](RefCounterEvent) { m_hiddenPageThrottlingTimer.startOneShot(0); })
@@ -202,9 +199,6 @@ WebProcessPool::WebProcessPool(API::ProcessPoolConfiguration& configuration)
     addSupplement<WebNotificationManagerProxy>();
 #if USE(SOUP)
     addSupplement<WebSoupCustomProtocolRequestManager>();
-#endif
-#if ENABLE(BATTERY_STATUS)
-    addSupplement<WebBatteryManagerProxy>();
 #endif
 #if ENABLE(MEDIA_SESSION)
     addSupplement<WebMediaSessionFocusManager>();
@@ -646,7 +640,7 @@ WebProcessProxy& WebProcessPool::createNewWebProcess()
         parameters.memoryPressureMonitorHandle = MemoryPressureMonitor::singleton().createHandle();
 #endif
 
-#if PLATFORM(WAYLAND)
+#if PLATFORM(WAYLAND) && USE(EGL)
     if (PlatformDisplay::sharedDisplay().type() == PlatformDisplay::Type::Wayland)
         parameters.waylandCompositorDisplayName = WaylandCompositor::singleton().displayName();
 #endif
@@ -813,7 +807,7 @@ Ref<WebPageProxy> WebProcessPool::createWebPage(PageClient& pageClient, Ref<API:
     return process->createWebPage(pageClient, WTFMove(pageConfiguration));
 }
 
-DownloadProxy* WebProcessPool::download(WebPageProxy* initiatingPage, const ResourceRequest& request)
+DownloadProxy* WebProcessPool::download(WebPageProxy* initiatingPage, const ResourceRequest& request, const String& suggestedFilename)
 {
     DownloadProxy* downloadProxy = createDownloadProxy(request);
     SessionID sessionID = initiatingPage ? initiatingPage->sessionID() : SessionID::defaultSessionID();
@@ -826,7 +820,7 @@ DownloadProxy* WebProcessPool::download(WebPageProxy* initiatingPage, const Reso
             updatedRequest.setFirstPartyForCookies(URL(URL(), initiatingPage->pageLoadState().url()));
         else
             updatedRequest.setFirstPartyForCookies(URL());
-        networkProcess()->send(Messages::NetworkProcess::DownloadRequest(sessionID, downloadProxy->downloadID(), updatedRequest), 0);
+        networkProcess()->send(Messages::NetworkProcess::DownloadRequest(sessionID, downloadProxy->downloadID(), updatedRequest, suggestedFilename), 0);
         return downloadProxy;
     }
 

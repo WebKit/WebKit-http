@@ -290,7 +290,9 @@ void InjectedBundle::beginTesting(WKDictionaryRef settings)
     m_gcController = GCController::create();
     m_eventSendingController = EventSendingController::create();
     m_textInputController = TextInputController::create();
+#if HAVE(ACCESSIBILITY)
     m_accessibilityController = AccessibilityController::create();
+#endif
 
     WKBundleSetAllowUniversalAccessFromFileURLs(m_bundle, m_pageGroup, true);
     WKBundleSetJavaScriptCanAccessClipboard(m_bundle, m_pageGroup, true);
@@ -303,6 +305,7 @@ void InjectedBundle::beginTesting(WKDictionaryRef settings)
     WKBundleSetAllowFileAccessFromFileURLs(m_bundle, m_pageGroup, true);
     WKBundleSetPluginsEnabled(m_bundle, m_pageGroup, true);
     WKBundleSetPopupBlockingEnabled(m_bundle, m_pageGroup, false);
+    WKBundleSetAllowStorageAccessFromFileURLS(m_bundle, m_pageGroup, false);
 
 #if PLATFORM(IOS)
     WKBundlePageSetUseTestingViewportConfiguration(page()->page(), !booleanForKey(settings, "UseFlexibleViewport"));
@@ -355,7 +358,9 @@ void InjectedBundle::done()
 
     m_testRunner->invalidateWaitToDumpWatchdogTimer();
 
+#if HAVE(ACCESSIBILITY)
     m_accessibilityController->resetToConsistentState();
+#endif
 
     WKRetainPtr<WKStringRef> doneMessageName(AdoptWK, WKStringCreateWithUTF8CString("Done"));
     WKRetainPtr<WKMutableDictionaryRef> doneMessageBody(AdoptWK, WKMutableDictionaryCreate());

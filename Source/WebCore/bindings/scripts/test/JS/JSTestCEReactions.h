@@ -52,12 +52,7 @@ public:
 protected:
     JSTestCEReactions(JSC::Structure*, JSDOMGlobalObject&, Ref<TestCEReactions>&&);
 
-    void finishCreation(JSC::VM& vm)
-    {
-        Base::finishCreation(vm);
-        ASSERT(inherits(info()));
-    }
-
+    void finishCreation(JSC::VM&);
 };
 
 class JSTestCEReactionsOwner : public JSC::WeakHandleOwner {
@@ -84,6 +79,7 @@ inline JSC::JSValue toJSNewlyCreated(JSC::ExecState* state, JSDOMGlobalObject* g
 
 template<> struct JSDOMWrapperConverterTraits<TestCEReactions> {
     using WrapperClass = JSTestCEReactions;
+    using ToWrappedReturnType = TestCEReactions*;
 };
 
 } // namespace WebCore

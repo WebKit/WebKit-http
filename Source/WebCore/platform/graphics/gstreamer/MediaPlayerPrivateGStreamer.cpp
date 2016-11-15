@@ -3,8 +3,9 @@
  * Copyright (C) 2007 Collabora Ltd.  All rights reserved.
  * Copyright (C) 2007 Alp Toker <alp@atoker.com>
  * Copyright (C) 2009 Gustavo Noronha Silva <gns@gnome.org>
- * Copyright (C) 2009, 2010, 2011, 2012, 2013 Igalia S.L
+ * Copyright (C) 2009, 2010, 2011, 2012, 2013, 2015, 2016 Igalia S.L
  * Copyright (C) 2014 Cable Television Laboratories, Inc.
+ * Copyright (C) 2015, 2016 Metrological Group B.V.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -104,7 +105,7 @@ void MediaPlayerPrivateGStreamer::setAudioStreamProperties(GObject* object)
 void MediaPlayerPrivateGStreamer::registerMediaEngine(MediaEngineRegistrar registrar)
 {
     if (isAvailable())
-         registrar([](MediaPlayer* player) { return std::make_unique<MediaPlayerPrivateGStreamer>(player); },
+        registrar([](MediaPlayer* player) { return std::make_unique<MediaPlayerPrivateGStreamer>(player); },
             getSupportedTypes, supportsType, 0, 0, 0, supportsKeySystem);
 }
 
@@ -148,6 +149,7 @@ MediaPlayerPrivateGStreamer::MediaPlayerPrivateGStreamer(MediaPlayer* player)
     , m_changingRate(false)
     , m_downloadFinished(false)
     , m_errorOccured(false)
+    , m_isEndReached(false)
     , m_isStreaming(false)
     , m_durationAtEOS(0)
     , m_paused(true)
@@ -234,12 +236,6 @@ MediaPlayerPrivateGStreamer::~MediaPlayerPrivateGStreamer()
         gst_element_set_state(m_pipeline.get(), GST_STATE_NULL);
     }
 }
-
-#if ENABLE(MEDIA_SOURCE)
-void MediaPlayerPrivateGStreamer::load(const String&, MediaSourcePrivateClient*)
-{
-    notImplemented();
-}
 #endif
 
 void MediaPlayerPrivateGStreamer::load(const String& urlString)
@@ -293,6 +289,13 @@ void MediaPlayerPrivateGStreamer::load(const String& urlString)
     if (!m_delayingLoad)
         commitLoad();
 }
+
+#if ENABLE(MEDIA_SOURCE)
+void MediaPlayerPrivateGStreamer::load(const String&, MediaSourcePrivateClient*)
+{
+    notImplemented();
+}
+#endif
 
 #if ENABLE(MEDIA_STREAM)
 void MediaPlayerPrivateGStreamer::load(MediaStreamPrivate&)
@@ -361,7 +364,7 @@ double MediaPlayerPrivateGStreamer::playbackPosition() const
         if (m_seeking)
             return m_seekTime;
 
-        auto mediaDuration = durationMediaTime();
+        MediaTime mediaDuration = durationMediaTime();
         if (mediaDuration)
             return mediaDuration.toDouble();
         return 0;
@@ -724,7 +727,7 @@ void MediaPlayerPrivateGStreamer::videoChangedCallback(MediaPlayerPrivateGStream
 
 void MediaPlayerPrivateGStreamer::notifyPlayerOfVideo()
 {
-    if (!m_pipeline || !m_source)
+    if (UNLIKELY(!m_pipeline || !m_source))
         return;
 
     gint numTracks = 0;
@@ -757,16 +760,15 @@ void MediaPlayerPrivateGStreamer::notifyPlayerOfVideo()
         }
 
         RefPtr<VideoTrackPrivateGStreamer> track = VideoTrackPrivateGStreamer::create(m_pipeline, i, pad);
-
-        m_videoTracks.insert(i, track);
-        m_player->addVideoTrack(track.release());
+        m_videoTracks.append(track);
+        m_player->addVideoTrack(*track);
     }
 
     while (static_cast<gint>(m_videoTracks.size()) > numTracks) {
         RefPtr<VideoTrackPrivateGStreamer> track = m_videoTracks.last();
         track->disconnect();
         m_videoTracks.removeLast();
-        m_player->removeVideoTrack(track.release());
+        m_player->removeVideoTrack(*track);
     }
 #endif
 
@@ -792,7 +794,7 @@ void MediaPlayerPrivateGStreamer::audioChangedCallback(MediaPlayerPrivateGStream
 
 void MediaPlayerPrivateGStreamer::notifyPlayerOfAudio()
 {
-    if (!m_pipeline || !m_source)
+    if (UNLIKELY(!m_pipeline || !m_source))
         return;
 
     gint numTracks = 0;
@@ -825,7 +827,7 @@ void MediaPlayerPrivateGStreamer::notifyPlayerOfAudio()
         RefPtr<AudioTrackPrivateGStreamer> track = AudioTrackPrivateGStreamer::create(m_pipeline, i, pad);
 
         m_audioTracks.insert(i, track);
-        m_player->addAudioTrack(track.release());
+        m_player->addAudioTrack(*track);
     }
 
     GST_DEBUG("%d tracks currently cached", static_cast<gint>(m_audioTracks.size()));
@@ -833,7 +835,7 @@ void MediaPlayerPrivateGStreamer::notifyPlayerOfAudio()
         RefPtr<AudioTrackPrivateGStreamer> track = m_audioTracks.last();
         track->disconnect();
         m_audioTracks.removeLast();
-        m_player->removeAudioTrack(track.release());
+        m_player->removeAudioTrack(*track);
     }
 #endif
 
@@ -848,7 +850,7 @@ void MediaPlayerPrivateGStreamer::textChangedCallback(MediaPlayerPrivateGStreame
 
 void MediaPlayerPrivateGStreamer::notifyPlayerOfText()
 {
-    if (!m_pipeline || !m_source)
+    if (UNLIKELY(!m_pipeline || !m_source))
         return;
 
     gint numTracks = 0;
@@ -875,14 +877,14 @@ void MediaPlayerPrivateGStreamer::notifyPlayerOfText()
 
         RefPtr<InbandTextTrackPrivateGStreamer> track = InbandTextTrackPrivateGStreamer::create(i, pad);
         m_textTracks.insert(i, track);
-        m_player->addTextTrack(track.release());
+        m_player->addTextTrack(*track);
     }
 
     while (static_cast<gint>(m_textTracks.size()) > numTracks) {
         RefPtr<InbandTextTrackPrivateGStreamer> track = m_textTracks.last();
         track->disconnect();
         m_textTracks.removeLast();
-        m_player->removeTextTrack(track.release());
+        m_player->removeTextTrack(*track);
     }
 }
 
@@ -1105,7 +1107,9 @@ void MediaPlayerPrivateGStreamer::handleMessage(GstMessage* message)
         processBufferingStats(message);
         break;
     case GST_MESSAGE_DURATION_CHANGED:
-        durationChanged();
+        // Duration in MSE is managed by MediaSource, SourceBuffer and AppendPipeline.
+        if (messageSourceIsPlaybin && !isMediaSource())
+            durationChanged();
         break;
     case GST_MESSAGE_REQUEST_STATE:
         gst_message_parse_request_state(message, &requestedState);
@@ -1249,7 +1253,7 @@ void MediaPlayerPrivateGStreamer::processMpegTsSection(GstMpegtsSection* section
                 track->setInBandMetadataTrackDispatchType(inbandMetadataTrackDispatchType);
 
                 m_metadataTracks.add(pid, track);
-                m_player->addTextTrack(track);
+                m_player->addTextTrack(*track);
             }
         }
     } else {
@@ -1271,10 +1275,10 @@ void MediaPlayerPrivateGStreamer::processMpegTsSection(GstMpegtsSection* section
 void MediaPlayerPrivateGStreamer::processTableOfContents(GstMessage* message)
 {
     if (m_chaptersTrack)
-        m_player->removeTextTrack(m_chaptersTrack);
+        m_player->removeTextTrack(*m_chaptersTrack);
 
     m_chaptersTrack = InbandMetadataTextTrackPrivateGStreamer::create(InbandTextTrackPrivate::Chapters, InbandTextTrackPrivate::Generic);
-    m_player->addTextTrack(m_chaptersTrack);
+    m_player->addTextTrack(*m_chaptersTrack);
 
     GRefPtr<GstToc> toc;
     gboolean updated;
@@ -1397,7 +1401,7 @@ float MediaPlayerPrivateGStreamer::maxTimeLoaded() const
 
 bool MediaPlayerPrivateGStreamer::didLoadingProgress() const
 {
-    if (!m_pipeline || !totalBytes() || !durationMediaTime())
+    if (UNLIKELY(!m_pipeline || !durationMediaTime() || (!isMediaSource() && !totalBytes())))
         return false;
     float currentMaxTimeLoaded = maxTimeLoaded();
     bool didLoadingProgress = currentMaxTimeLoaded != m_maxTimeLoadedAtLastDidLoadingProgress;
@@ -1780,8 +1784,8 @@ void MediaPlayerPrivateGStreamer::didEnd()
     // Synchronize position and duration values to not confuse the
     // HTMLMediaElement. In some cases like reverse playback the
     // position is not always reported as 0 for instance.
-    auto now = currentMediaTime();
-    if (now > MediaTime{ } && now <= durationMediaTime())
+    MediaTime now = currentMediaTime();
+    if (now > MediaTime { } && now <= durationMediaTime())
         m_player->durationChanged();
 
     m_isEndReached = true;
@@ -1969,6 +1973,9 @@ MediaPlayer::SupportsType MediaPlayerPrivateGStreamer::supportsType(const MediaE
     if (parameters.isMediaSource)
         return result;
 #endif
+    // MediaStream playback is handled by the OpenWebRTC player.
+    if (parameters.isMediaStream)
+        return result;
 
     if (parameters.type.isNull() || parameters.type.isEmpty())
         return result;
@@ -2200,6 +2207,8 @@ void MediaPlayerPrivateGStreamer::createGSTPlayBin()
 #endif
     configurePlaySink();
 
+    configurePlaySink();
+
     // On 1.4.2 and newer we use the audio-filter property instead.
     // See https://bugzilla.gnome.org/show_bug.cgi?id=735748 for
     // the reason for using >= 1.4.2 instead of >= 1.4.0.
@@ -2255,6 +2264,11 @@ bool MediaPlayerPrivateGStreamer::canSaveMediaData() const
         return true;
 
     return false;
+}
+
+bool MediaPlayerPrivateGStreamer::handleSyncMessage(GstMessage* message)
+{
+    return MediaPlayerPrivateGStreamerBase::handleSyncMessage(message);
 }
 
 }

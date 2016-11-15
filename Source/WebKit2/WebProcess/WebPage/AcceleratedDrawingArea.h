@@ -63,12 +63,12 @@ protected:
     void didReceiveCoordinatedLayerTreeHostMessage(IPC::Connection&, IPC::Decoder&) override;
 #endif
 
-#if USE(TEXTURE_MAPPER) && PLATFORM(GTK) && PLATFORM(X11) && !USE(REDIRECTED_XCOMPOSITE_WINDOW)
+#if USE(TEXTURE_MAPPER_GL) && PLATFORM(GTK) && PLATFORM(X11) && !USE(REDIRECTED_XCOMPOSITE_WINDOW)
     void setNativeSurfaceHandleForCompositing(uint64_t) override;
     void destroyNativeSurfaceHandleForCompositing(bool&) override;
 #endif
 
-    void viewStateDidChange(WebCore::ViewState::Flags, bool /* wantsDidUpdateViewState */, const Vector<uint64_t>& /* callbackIDs */) override;
+    void activityStateDidChange(WebCore::ActivityState::Flags, bool /* wantsDidUpdateActivityState */, const Vector<uint64_t>& /* callbackIDs */) override;
     void attachViewOverlayGraphicsLayer(WebCore::Frame*, WebCore::GraphicsLayer*) override;
 
     void layerHostDidFlushLayers() override;

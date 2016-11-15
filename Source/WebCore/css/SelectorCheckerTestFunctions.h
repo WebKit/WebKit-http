@@ -24,8 +24,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef SelectorCheckerTestFunctions_h
-#define SelectorCheckerTestFunctions_h
+#pragma once
 
 #include "FocusController.h"
 #include "HTMLInputElement.h"
@@ -63,12 +62,10 @@ ALWAYS_INLINE bool matchesEnabledPseudoClass(const Element& element)
     return is<HTMLElement>(element) && downcast<HTMLElement>(element).canBeActuallyDisabled() && !element.isDisabledFormControl();
 }
 
-#if ENABLE(CUSTOM_ELEMENTS)
 ALWAYS_INLINE bool isDefinedElement(const Element& element)
 {
     return !element.isUndefinedCustomElement();
 }
-#endif
 
 ALWAYS_INLINE bool isMediaDocument(const Element& element)
 {
@@ -378,5 +375,3 @@ ALWAYS_INLINE bool matchesPastCuePseudoClass(const Element& element)
 #endif
 
 } // namespace WebCore
-
-#endif // SelectorCheckerTestFunctions_h

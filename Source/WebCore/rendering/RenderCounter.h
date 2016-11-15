@@ -19,8 +19,7 @@
  *
  */
 
-#ifndef RenderCounter_h
-#define RenderCounter_h
+#pragma once
 
 #include "CounterContent.h"
 #include "RenderText.h"
@@ -49,13 +48,9 @@ private:
     
     void computePreferredLogicalWidths(float leadWidth) override;
 
-    // Removes the reference to the CounterNode associated with this renderer.
-    // This is used to cause a counter display update when the CounterNode tree changes.
-    void invalidate();
-
     CounterContent m_counter;
-    CounterNode* m_counterNode;
-    RenderCounter* m_nextForSameCounter;
+    CounterNode* m_counterNode { nullptr };
+    RenderCounter* m_nextForSameCounter { nullptr };
     friend class CounterNode;
 };
 
@@ -65,7 +60,5 @@ SPECIALIZE_TYPE_TRAITS_RENDER_OBJECT(RenderCounter, isCounter())
 
 #if ENABLE(TREE_DEBUGGING)
 // Outside the WebCore namespace for ease of invocation from gdb.
-void showCounterRendererTree(const WebCore::RenderObject*, const char* counterName = 0);
+void showCounterRendererTree(const WebCore::RenderObject*, const char* counterName = nullptr);
 #endif
-
-#endif // RenderCounter_h

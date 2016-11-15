@@ -123,10 +123,12 @@ private:
     BOOL _requiresUserActionForEditingControlsManager;
 #endif
     BOOL _initialCapitalizationEnabled;
+    BOOL _waitsForPaintAfterViewDidMoveToWindow;
 
 #if ENABLE(APPLE_PAY)
     BOOL _applePayEnabled;
 #endif
+    BOOL _needsStorageAccessFromFileURLsQuirk;
 }
 
 - (instancetype)init
@@ -174,6 +176,7 @@ private:
     _requiresUserActionForEditingControlsManager = NO;
 #endif
     _initialCapitalizationEnabled = YES;
+    _waitsForPaintAfterViewDidMoveToWindow = YES;
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
     _allowsAirPlayForMediaPlayback = YES;
@@ -185,6 +188,7 @@ private:
     _allowsMetaRefresh = YES;
     _allowUniversalAccessFromFileURLs = NO;
     _treatsSHA1SignedCertificatesAsInsecure = YES;
+    _needsStorageAccessFromFileURLsQuirk = YES;
 
     return self;
 }
@@ -284,6 +288,7 @@ private:
     configuration->_mediaTypesRequiringUserActionForPlayback = self->_mediaTypesRequiringUserActionForPlayback;
     configuration->_mainContentUserGestureOverrideEnabled = self->_mainContentUserGestureOverrideEnabled;
     configuration->_initialCapitalizationEnabled = self->_initialCapitalizationEnabled;
+    configuration->_waitsForPaintAfterViewDidMoveToWindow = self->_waitsForPaintAfterViewDidMoveToWindow;
 
 #if PLATFORM(IOS)
     configuration->_allowsInlineMediaPlayback = self->_allowsInlineMediaPlayback;
@@ -310,6 +315,7 @@ private:
 #if ENABLE(APPLE_PAY)
     configuration->_applePayEnabled = self->_applePayEnabled;
 #endif
+    configuration->_needsStorageAccessFromFileURLsQuirk = self->_needsStorageAccessFromFileURLsQuirk;
 
     return configuration;
 }
@@ -655,6 +661,16 @@ static NSString *defaultApplicationNameForUserAgent()
     _initialCapitalizationEnabled = initialCapitalizationEnabled;
 }
 
+- (BOOL)_waitsForPaintAfterViewDidMoveToWindow
+{
+    return _waitsForPaintAfterViewDidMoveToWindow;
+}
+
+- (void)_setWaitsForPaintAfterViewDidMoveToWindow:(BOOL)shouldSynchronize
+{
+    _waitsForPaintAfterViewDidMoveToWindow = shouldSynchronize;
+}
+
 #if PLATFORM(MAC)
 - (BOOL)_showsURLsInToolTips
 {
@@ -712,6 +728,16 @@ static NSString *defaultApplicationNameForUserAgent()
 #if ENABLE(APPLE_PAY)
     _applePayEnabled = applePayEnabled;
 #endif
+}
+
+- (BOOL)_needsStorageAccessFromFileURLsQuirk
+{
+    return _needsStorageAccessFromFileURLsQuirk;
+}
+
+- (void)_setNeedsStorageAccessFromFileURLsQuirk:(BOOL)needsLocalStorageQuirk
+{
+    _needsStorageAccessFromFileURLsQuirk = needsLocalStorageQuirk;
 }
 
 @end

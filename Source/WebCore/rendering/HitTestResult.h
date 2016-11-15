@@ -19,8 +19,7 @@
  *
 */
 
-#ifndef HitTestResult_h
-#define HitTestResult_h
+#pragma once
 
 #include "FloatQuad.h"
 #include "FloatRect.h"
@@ -37,13 +36,11 @@ namespace WebCore {
 
 class Element;
 class Frame;
-#if ENABLE(VIDEO)
 class HTMLMediaElement;
-#endif
 class Image;
-class URL;
 class Node;
 class Scrollbar;
+class URL;
 
 class HitTestResult {
 public:
@@ -59,12 +56,13 @@ public:
     WEBCORE_EXPORT HitTestResult& operator=(const HitTestResult&);
 
     Node* innerNode() const { return m_innerNode.get(); }
-    WEBCORE_EXPORT Element* innerElement() const;
     Node* innerNonSharedNode() const { return m_innerNonSharedNode.get(); }
     WEBCORE_EXPORT Element* innerNonSharedElement() const;
     Element* URLElement() const { return m_innerURLElement.get(); }
     Scrollbar* scrollbar() const { return m_scrollbar.get(); }
     bool isOverWidget() const { return m_isOverWidget; }
+
+    WEBCORE_EXPORT const AtomicString& URLElementDownloadAttribute() const;
 
     // Forwarded from HitTestLocation
     bool isRectBasedTest() const { return m_hitTestLocation.isRectBasedTest(); }
@@ -149,6 +147,7 @@ public:
     Vector<String> dictationAlternatives() const;
 
     Node* targetNode() const;
+    WEBCORE_EXPORT Element* targetElement() const;
 
 private:
     NodeSet& mutableRectBasedTestResult(); // See above.
@@ -173,5 +172,3 @@ private:
 WEBCORE_EXPORT String displayString(const String&, const Node*);
 
 } // namespace WebCore
-
-#endif // HitTestResult_h

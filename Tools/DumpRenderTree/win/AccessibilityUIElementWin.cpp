@@ -802,6 +802,10 @@ JSStringRef AccessibilityUIElement::accessibilityValue() const
     return JSStringCreateWithBSTR(valueBSTR);
 }
 
+void AccessibilityUIElement::clearSelectedChildren() const
+{
+    // FIXME: implement
+}
 
 JSStringRef AccessibilityUIElement::documentEncoding()
 {
@@ -877,6 +881,18 @@ bool AccessibilityUIElement::isCollapsed() const
 }
 
 bool AccessibilityUIElement::isIgnored() const
+{
+    // FIXME: implement
+    return false;
+}
+
+bool AccessibilityUIElement::isSingleLine() const
+{
+    // FIXME: implement
+    return false;
+}
+
+bool AccessibilityUIElement::isMultiLine() const
 {
     // FIXME: implement
     return false;

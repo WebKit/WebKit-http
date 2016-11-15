@@ -23,8 +23,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#ifndef EditCommand_h
-#define EditCommand_h
+#pragma once
 
 #include "AXTextStateChangeIntent.h"
 #include "EditAction.h"
@@ -66,7 +65,9 @@ protected:
     explicit EditCommand(Document&, EditAction = EditActionUnspecified);
     EditCommand(Document&, const VisibleSelection&, const VisibleSelection&);
 
+    const Frame& frame() const;
     Frame& frame();
+    const Document& document() const { return m_document; }
     Document& document() { return m_document; }
     CompositeEditCommand* parent() const { return m_parent; }
     void setStartingSelection(const VisibleSelection&);
@@ -118,5 +119,3 @@ inline SimpleEditCommand* toSimpleEditCommand(EditCommand* command)
 }
 
 } // namespace WebCore
-
-#endif // EditCommand_h

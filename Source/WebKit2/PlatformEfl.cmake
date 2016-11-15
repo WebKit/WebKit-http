@@ -6,15 +6,15 @@ list(APPEND WebKit2_SOURCES
 
     NetworkProcess/Downloads/efl/DownloadSoupErrorsEfl.cpp
 
-    NetworkProcess/Downloads/soup/DownloadSoup.cpp
-
     NetworkProcess/cache/NetworkCacheCodersSoup.cpp
     NetworkProcess/cache/NetworkCacheDataSoup.cpp
     NetworkProcess/cache/NetworkCacheIOChannelSoup.cpp
 
     NetworkProcess/efl/NetworkProcessMainEfl.cpp
 
+    NetworkProcess/soup/NetworkDataTaskSoup.cpp
     NetworkProcess/soup/NetworkProcessSoup.cpp
+    NetworkProcess/soup/NetworkSessionSoup.cpp
     NetworkProcess/soup/RemoteNetworkingContextSoup.cpp
 
     Platform/IPC/unix/AttachmentUnix.cpp
@@ -143,7 +143,6 @@ list(APPEND WebKit2_SOURCES
 
     UIProcess/cairo/BackingStoreCairo.cpp
 
-    UIProcess/efl/BatteryProvider.cpp
     UIProcess/efl/ContextHistoryClientEfl.cpp
     UIProcess/efl/ContextMenuClientEfl.cpp
     UIProcess/efl/DownloadManagerEfl.cpp
@@ -247,6 +246,7 @@ list(APPEND WebKit2_INCLUDE_DIRECTORIES
     "${WEBKIT2_DIR}/NetworkProcess/CustomProtocols/soup"
     "${WEBKIT2_DIR}/NetworkProcess/Downloads/soup"
     "${WEBKIT2_DIR}/NetworkProcess/efl"
+    "${WEBKIT2_DIR}/NetworkProcess/soup"
     "${WEBKIT2_DIR}/NetworkProcess/unix"
     "${WEBKIT2_DIR}/Platform/efl"
     "${WEBKIT2_DIR}/Shared/API/c/efl"
@@ -576,14 +576,5 @@ if (ENABLE_ACCESSIBILITY)
     )
     list(APPEND WebKit2_LIBRARIES
         ${ATK_LIBRARIES}
-    )
-endif ()
-
-if (ENABLE_BATTERY_STATUS)
-    list(APPEND WebKit2_LIBRARIES
-        ${ELDBUS_LIBRARIES}
-    )
-    list(APPEND WebKit2_SYSTEM_INCLUDE_DIRECTORIES
-        ${ELDBUS_INCLUDE_DIRS}
     )
 endif ()

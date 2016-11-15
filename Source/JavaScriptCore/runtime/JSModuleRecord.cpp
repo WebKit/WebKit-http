@@ -27,12 +27,12 @@
 #include "JSModuleRecord.h"
 
 #include "Error.h"
-#include "Executable.h"
 #include "Interpreter.h"
 #include "JSCInlines.h"
 #include "JSMap.h"
 #include "JSModuleEnvironment.h"
 #include "JSModuleNamespaceObject.h"
+#include "UnlinkedModuleProgramCodeBlock.h"
 
 namespace JSC {
 

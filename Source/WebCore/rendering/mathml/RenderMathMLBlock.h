@@ -34,8 +34,6 @@
 #include "RenderTable.h"
 #include "StyleInheritedData.h"
 
-#define ENABLE_DEBUG_MATH_LAYOUT 0
-
 namespace WebCore {
 
 class RenderMathMLOperator;
@@ -85,6 +83,7 @@ protected:
     }
 
     void layoutBlock(bool relayoutChildren, LayoutUnit pageLogicalHeight = 0) override;
+    void layoutInvalidMarkup();
 
 private:
     bool isRenderMathMLBlock() const final { return true; }

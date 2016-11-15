@@ -166,9 +166,6 @@
         "Editing": {
             "filename": r"Source/WebCore/editing/",
         },
-        "Battery": {
-            "filename": r"Source/WebCore/Modules/battery",
-        },
         "WTF": {
             "filename": r"Source/WTF/wtf",
         },
@@ -222,6 +219,10 @@
         "JSBuiltinsGenerator": {
             "filename": r"Source/JavaScriptCore/Scripts/builtins"
                         r"|Source/JavaScriptCore/Scripts/generate-js-builtins\.py",
+        },
+        "WasmJSON": {
+            "filename": r"Source/JavaScriptCore/wasm/wasm\.json"
+                        r"|JSTests/wasm/wasm\.json",
         },
         "MediaStream": {
             "filename": r"Source/WebCore/Modules/mediastream"
@@ -353,8 +354,7 @@
         "Animation" : [ "simon.fraser@apple.com", "dino@apple.com", "dstockwell@chromium.org" ],
         "Animometer" : [ "sabouhallawa@apple.com" ],
         "AppleMacPublicApi": [ "timothy@apple.com" ],
-        "Battery": [ "gyuyoung.kim@webkit.org" ],
-        "BindingsScripts": [ "cdumez@apple.com", "cgarcia@igalia.com" ],
+        "BindingsScripts": [ "cdumez@apple.com" ],
         "CMake": [ "rakuco@webkit.org", "gyuyoung.kim@webkit.org", "ryuan.choi@gmail.com", "sergio.correia@openbossa.org", "mcatanzaro@igalia.com" ],
         "CoordinatedGraphics" : [ "noam@webkit.org", "zeno@webkit.org", "cmarcelo@webkit.org", "luiz@webkit.org", "ryuan.choi@gmail.com", "sergio.correia@openbossa.org", "gyuyoung.kim@webkit.org" ],
         "ConsoleUsage" : [ "mkwst@chromium.org" ],
@@ -429,5 +429,6 @@
         "WebInspectorGenerator": [ "This patch modifies the inspector protocol generator. Please ensure that you have rebaselined any generator test results (i.e., by running `Tools/Scripts/run-inspector-generator-tests --reset-results`)" ],
         "WebReplayGenerator": [ "This patch modifies the WEB_REPLAY inputs generator. Please ensure that you have rebaselined any generator test results (i.e., by running `Tools/Scripts/run-input-generator-tests --reset-results`)" ],
         "JSBuiltinsGenerator": [ "This patch modifies the JS builtins code generator. Please ensure that you have rebaselined any generator test results (i.e., by running `Tools/Scripts/run-builtins-generator-tests --reset-results`)" ],
+        "WasmJSON": [ "This patch modifies one of the wasm.json files. Please ensure that any changes in one have been mirrored to the other. You can find the wasm.json files at \"Source/JavaScriptCore/wasm/wasm.json\" and \"JSTests/wasm/wasm.json\"." ],
     },
 }

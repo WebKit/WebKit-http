@@ -1,3 +1,91 @@
+2016-10-30  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        -Wpragmas warning spam from angleutils.h
+        https://bugs.webkit.org/show_bug.cgi?id=164207
+
+        Reviewed by Darin Adler.
+
+        Use #pragma clang instead of #pragma GCC since all of the warnings we need to suppress are
+        Clang-specific warnings. GCC ignores unknown pragmas and does not warn, but it does warn if
+        any GCC pragma is invalid.
+
+        Note that this might still be broken for MSVCC, as MSVCC warns when it sees unknown pragmas.
+
+        * changes.diff:
+        * src/common/angleutils.cpp:
+        (FormatString):
+        * src/common/angleutils.h:
+        (MakeStaticString):
+        * src/common/debug.cpp:
+        * src/common/mathutil.cpp:
+        * src/libANGLE/Caps.cpp:
+        (gl::TextureCapsMap::get):
+        (gl::GetExtensionInfoMap):
+        * src/libANGLE/Device.cpp:
+        (egl::GetDeviceSet):
+        * src/libANGLE/Display.cpp:
+        (egl::Display::getClientExtensionString):
+        * src/libANGLE/formatutils.cpp:
+        (gl::GetInternalFormatMap):
+        (gl::GetAllSizedInternalFormats):
+        * src/libANGLE/validationES3.cpp:
+        (gl::IsValidES3CopyTexImageCombination):
+
+2016-10-28  Alex Christensen  <achristensen@webkit.org>
+
+        Another build fix.
+
+        * CMakeLists.txt:
+
+2016-10-28  Alex Christensen  <achristensen@webkit.org>
+
+        Fix Windows WebGL build after r208036
+        https://bugs.webkit.org/show_bug.cgi?id=164101
+
+        * CMakeLists.txt:
+
+2016-10-27  Alex Christensen  <achristensen@webkit.org>
+
+        Fix Windows WebGL build after r208036
+        https://bugs.webkit.org/show_bug.cgi?id=164101
+
+        * CMakeLists.txt:
+        Add new files, remove deleted files.
+
+2016-10-27  Alex Christensen  <achristensen@webkit.org>
+
+        Update ANGLE
+        https://bugs.webkit.org/show_bug.cgi?id=164101
+
+        Reviewed by Darin Adler.
+
+        Updated to f01731530e7f754e5ebaf32d00f3e23b62376424
+        Differences between upstream ANGLE and WebKit's copy of ANGLE are in changes.diff
+
+2016-10-24  Alex Christensen  <achristensen@webkit.org>
+
+        Remove unused ANGLE.vcxproj after switching to CMake on Windows
+
+        * ANGLE.vcxproj: Removed.
+        * ANGLE.vcxproj/ANGLERelease.props: Removed.
+        * ANGLE.vcxproj/DirectX32.props: Removed.
+        * ANGLE.vcxproj/DirectX64.props: Removed.
+        * ANGLE.vcxproj/libEGL.vcxproj: Removed.
+        * ANGLE.vcxproj/libEGL.vcxproj.filters: Removed.
+        * ANGLE.vcxproj/libEGLCommon.props: Removed.
+        * ANGLE.vcxproj/libGLESv2.vcxproj: Removed.
+        * ANGLE.vcxproj/libGLESv2.vcxproj.filters: Removed.
+        * ANGLE.vcxproj/libGLESv2Common.props: Removed.
+        * ANGLE.vcxproj/preprocessor.vcxproj: Removed.
+        * ANGLE.vcxproj/preprocessor.vcxproj.filters: Removed.
+        * ANGLE.vcxproj/translatorCommon.props: Removed.
+        * ANGLE.vcxproj/translator_common.vcxproj: Removed.
+        * ANGLE.vcxproj/translator_common.vcxproj.filters: Removed.
+        * ANGLE.vcxproj/translator_glsl.vcxproj: Removed.
+        * ANGLE.vcxproj/translator_glsl.vcxproj.filters: Removed.
+        * ANGLE.vcxproj/translator_hlsl.vcxproj: Removed.
+        * ANGLE.vcxproj/translator_hlsl.vcxproj.filters: Removed.
+
 2016-09-09  Dean Jackson  <dino@apple.com>
 
         [ANGLE] instantiation of variable 'gl::GLTypeToGLenum<float>::value' required here, but no definition is available

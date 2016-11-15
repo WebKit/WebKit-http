@@ -190,14 +190,19 @@ bool canAccessThreadLocalDataForThread(ThreadIdentifier threadId)
 }
 #endif
 
-static ThreadSpecific<bool>* isGCThread;
+static ThreadSpecific<Optional<GCThreadType>, CanBeGCThread::True>* isGCThread;
 
 void initializeGCThreads()
 {
-    isGCThread = new ThreadSpecific<bool>();
+    static std::once_flag flag;
+    std::call_once(
+        flag,
+        [] {
+            isGCThread = new ThreadSpecific<Optional<GCThreadType>, CanBeGCThread::True>();
+        });
 }
 
-void registerGCThread()
+void registerGCThread(GCThreadType type)
 {
     if (!isGCThread) {
         // This happens if we're running in a process that doesn't care about
@@ -205,7 +210,7 @@ void registerGCThread()
         return;
     }
 
-    **isGCThread = true;
+    **isGCThread = type;
 }
 
 bool isMainThreadOrGCThread()
@@ -216,9 +221,13 @@ bool isMainThreadOrGCThread()
     return isMainThread();
 }
 
-bool mayBeGCThread()
+Optional<GCThreadType> mayBeGCThread()
 {
-    return isGCThread && isGCThread->isSet() && **isGCThread;
+    if (!isGCThread)
+        return Nullopt;
+    if (!isGCThread->isSet())
+        return Nullopt;
+    return **isGCThread;
 }
 
 } // namespace WTF

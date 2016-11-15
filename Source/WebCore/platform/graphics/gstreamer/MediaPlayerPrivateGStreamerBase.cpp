@@ -3,7 +3,8 @@
  * Copyright (C) 2007 Collabora Ltd.  All rights reserved.
  * Copyright (C) 2007 Alp Toker <alp@atoker.com>
  * Copyright (C) 2009 Gustavo Noronha Silva <gns@gnome.org>
- * Copyright (C) 2009, 2010 Igalia S.L
+ * Copyright (C) 2009, 2010, 2015, 2016 Igalia S.L
+ * Copyright (C) 2015, 2016 Metrological Group B.V.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -26,7 +27,6 @@
 
 #if ENABLE(VIDEO) && USE(GSTREAMER)
 
-#include "ColorSpace.h"
 #include "GStreamerUtilities.h"
 #include "GraphicsContext.h"
 #include "GraphicsTypes.h"
@@ -123,6 +123,14 @@
 #include <cairo-gl.h>
 #endif
 
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
+#include "UUID.h"
+#include "WebKitClearKeyDecryptorGStreamer.h"
+#include <runtime/JSCInlines.h>
+#include <runtime/TypedArrayInlines.h>
+#include <runtime/Uint8Array.h>
+#endif
+
 GST_DEBUG_CATEGORY(webkit_media_player_debug);
 #define GST_CAT_DEFAULT webkit_media_player_debug
 
@@ -134,6 +142,12 @@ void registerWebKitGStreamerElements()
 {
     if (!webkitGstCheckVersion(1, 6, 1))
         return;
+
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
+    GRefPtr<GstElementFactory> clearKeyDecryptorFactory = gst_element_factory_find("webkitclearkey");
+    if (!clearKeyDecryptorFactory)
+        gst_element_register(nullptr, "webkitclearkey", GST_RANK_PRIMARY + 100, WEBKIT_TYPE_MEDIA_CK_DECRYPT);
+#endif
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA) && USE(PLAYREADY)
     GRefPtr<GstElementFactory> playReadyDecryptorFactory = gst_element_factory_find("webkitplayreadydec");
@@ -222,12 +236,11 @@ MediaPlayerPrivateGStreamerBase::MediaPlayerPrivateGStreamerBase(MediaPlayer* pl
     , m_fpsSink(0)
     , m_readyState(MediaPlayer::HaveNothing)
     , m_networkState(MediaPlayer::Empty)
-    , m_isEndReached(false)
-    , m_sample(0)
-#if USE(GSTREAMER_GL)
+#if USE(GSTREAMER_GL) || USE(COORDINATED_GRAPHICS_THREADED)
     , m_drawTimer(RunLoop::main(), this, &MediaPlayerPrivateGStreamerBase::repaint)
 #endif
     , m_repaintHandler(0)
+    , m_drainHandler(0)
     , m_usingFallbackVideoSink(false)
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
     , m_cdmSession(0)
@@ -295,6 +308,11 @@ void MediaPlayerPrivateGStreamerBase::clearSamples()
     if (m_repaintHandler) {
         g_signal_handler_disconnect(m_videoSink.get(), m_repaintHandler);
         m_repaintHandler = 0;
+    }
+
+    if (m_drainHandler) {
+        g_signal_handler_disconnect(m_videoSink.get(), m_drainHandler);
+        m_drainHandler = 0;
     }
 #endif
 
@@ -370,6 +388,37 @@ bool MediaPlayerPrivateGStreamerBase::handleSyncMessage(GstMessage* message)
             ASSERT_NOT_REACHED();
 #endif
             gst_buffer_unmap(data, &mapInfo);
+            return true;
+        }
+    }
+#endif // ENABLE(LEGACY_ENCRYPTED_MEDIA)
+
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
+    if (GST_MESSAGE_TYPE(message) == GST_MESSAGE_ELEMENT) {
+        const GstStructure* structure = gst_message_get_structure(message);
+        if (gst_structure_has_name(structure, "drm-key-needed")) {
+            GST_DEBUG("handling drm-key-needed message");
+
+            // Here we receive the DRM init data from the pipeline: we will emit
+            // the needkey event with that data and the browser might create a
+            // CDMSession from this event handler. If such a session was created
+            // We will emit the message event from the session to provide the
+            // DRM challenge to the browser and wait for an update. If on the
+            // contrary no session was created we won't wait and let the pipeline
+            // error out by itself.
+            GRefPtr<GstBuffer> data;
+            GUniqueOutPtr<gchar> keySystemId;
+            gboolean valid = gst_structure_get(structure, "data", GST_TYPE_BUFFER, &data.outPtr(),
+                "key-system-id", G_TYPE_STRING, &keySystemId.outPtr(), nullptr);
+            GstMapInfo mapInfo;
+            if (UNLIKELY(!valid || !gst_buffer_map(data.get(), &mapInfo, GST_MAP_READ)))
+                return false;
+
+            GST_DEBUG("scheduling keyNeeded event");
+            // FIXME: Provide a somehow valid sessionId.
+            RefPtr<Uint8Array> initData = Uint8Array::create(reinterpret_cast<const unsigned char *>(mapInfo.data), mapInfo.size);
+            needKey(initData);
+            gst_buffer_unmap(data.get(), &mapInfo);
             return true;
         }
     }
@@ -735,7 +784,7 @@ void MediaPlayerPrivateGStreamerBase::repaint()
 
     m_player->repaint();
 
-#if USE(GSTREAMER_GL)
+#if USE(GSTREAMER_GL) || USE(COORDINATED_GRAPHICS_THREADED)
     m_drawCondition.notifyOne();
 #endif
 }
@@ -755,6 +804,13 @@ void MediaPlayerPrivateGStreamerBase::triggerRepaint(GstSample* sample)
     }
 
 #if USE(COORDINATED_GRAPHICS_THREADED)
+    if (!m_player->client().mediaPlayerAcceleratedCompositingEnabled()) {
+        LockHolder locker(m_drawMutex);
+        m_drawTimer.startOneShot(0);
+        m_drawCondition.wait(m_drawMutex);
+        return;
+    }
+
 #if USE(GSTREAMER_GL)
     pushTextureToCompositor();
 #else
@@ -781,12 +837,24 @@ void MediaPlayerPrivateGStreamerBase::triggerRepaint(GstSample* sample)
 #endif
 }
 
+void MediaPlayerPrivateGStreamerBase::triggerDrain()
+{
+    WTF::GMutexLocker<GMutex> lock(m_sampleMutex);
+    m_videoSize = FloatSize();
+    m_sample = nullptr;
+}
+
 #if !USE(HOLE_PUNCH_GSTREAMER)
 void MediaPlayerPrivateGStreamerBase::repaintCallback(MediaPlayerPrivateGStreamerBase* player, GstSample* sample)
 {
     player->triggerRepaint(sample);
 }
 #endif
+
+void MediaPlayerPrivateGStreamerBase::drainCallback(MediaPlayerPrivateGStreamerBase* player)
+{
+    player->triggerDrain();
+}
 
 #if USE(GSTREAMER_GL)
 GstFlowReturn MediaPlayerPrivateGStreamerBase::newSampleCallback(GstElement* sink, MediaPlayerPrivateGStreamerBase* player)
@@ -1199,13 +1267,15 @@ GstElement* MediaPlayerPrivateGStreamerBase::createVideoSinkGL()
 GstElement* MediaPlayerPrivateGStreamerBase::createVideoSink()
 {
 #if USE(GSTREAMER_GL)
-    m_videoSink = createVideoSinkGL();
+    if (m_player->client().mediaPlayerRenderingCanBeAccelerated(m_player))
+        m_videoSink = createVideoSinkGL();
 #endif
 
     if (!m_videoSink) {
         m_usingFallbackVideoSink = true;
         m_videoSink = webkitVideoSinkNew();
         m_repaintHandler = g_signal_connect_swapped(m_videoSink.get(), "repaint-requested", G_CALLBACK(repaintCallback), this);
+        m_drainHandler = g_signal_connect_swapped(m_videoSink.get(), "drain", G_CALLBACK(drainCallback), this);
     }
 
     GstElement* videoSink = nullptr;
@@ -1327,7 +1397,7 @@ void MediaPlayerPrivateGStreamerBase::emitSession()
 void MediaPlayerPrivateGStreamerBase::needKey(RefPtr<Uint8Array> initData)
 {
     if (!m_player->keyNeeded(initData.get()))
-        GST_DEBUG("no event handler for key needed");
+        GST_INFO("no event handler for key needed");
 }
 
 void MediaPlayerPrivateGStreamerBase::setCDMSession(CDMSession* session)
@@ -1369,7 +1439,7 @@ void MediaPlayerPrivateGStreamerBase::dispatchDecryptionKey(GstBuffer* buffer)
 
 bool MediaPlayerPrivateGStreamerBase::supportsKeySystem(const String& keySystem, const String& mimeType)
 {
-    GST_DEBUG("Checking for KeySystem support with %s and type %s", keySystem.utf8().data(), mimeType.utf8().data());
+    GST_INFO("Checking for KeySystem support with %s and type %s: false.", keySystem.utf8().data(), mimeType.utf8().data());
 
 #if USE(PLAYREADY) && ENABLE(LEGACY_ENCRYPTED_MEDIA)
     if (equalIgnoringASCIICase(keySystem, "com.microsoft.playready")

@@ -76,7 +76,7 @@ String Location::protocol() const
     if (!m_frame)
         return String();
 
-    return url().protocol() + ":";
+    return makeString(url().protocol(), ":");
 }
 
 String Location::host() const
@@ -87,7 +87,7 @@ String Location::host() const
     // Note: this is the IE spec. The NS spec swaps the two, it says
     // "The hostname property is the concatenation of the host and port properties, separated by a colon."
     const URL& url = this->url();
-    return url.hasPort() ? url.host() + ":" + String::number(url.port()) : url.host();
+    return url.port() ? url.host() + ":" + String::number(url.port().value()) : url.host();
 }
 
 String Location::hostname() const
@@ -104,7 +104,7 @@ String Location::port() const
         return String();
 
     const URL& url = this->url();
-    return url.hasPort() ? String::number(url.port()) : emptyString();
+    return url.port() ? String::number(url.port().value()) : emptyString();
 }
 
 String Location::pathname() const
@@ -158,16 +158,15 @@ void Location::setHref(DOMWindow& activeWindow, DOMWindow& firstWindow, const St
     setLocation(activeWindow, firstWindow, url);
 }
 
-void Location::setProtocol(DOMWindow& activeWindow, DOMWindow& firstWindow, const String& protocol, ExceptionCode& ec)
+ExceptionOr<void> Location::setProtocol(DOMWindow& activeWindow, DOMWindow& firstWindow, const String& protocol)
 {
     if (!m_frame)
-        return;
+        return { };
     URL url = m_frame->document()->url();
-    if (!url.setProtocol(protocol)) {
-        ec = SYNTAX_ERR;
-        return;
-    }
+    if (!url.setProtocol(protocol))
+        return Exception { SYNTAX_ERR };
     setLocation(activeWindow, firstWindow, url.string());
+    return { };
 }
 
 void Location::setHost(DOMWindow& activeWindow, DOMWindow& firstWindow, const String& host)

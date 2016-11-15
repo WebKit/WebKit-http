@@ -73,7 +73,7 @@ public:
 
     bool attachToElement(HTMLMediaElement&);
     void detachFromElement(HTMLMediaElement&);
-    void monitorSourceBuffers();
+    void monitorSourceBuffers() override;
     bool isSeeking() const { return m_pendingSeekTime.isValid(); }
     Ref<TimeRanges> seekable();
     ExceptionOr<void> setLiveSeekableRange(double start, double end);
@@ -89,7 +89,7 @@ public:
 
     SourceBufferList* sourceBuffers() { return m_sourceBuffers.get(); }
     SourceBufferList* activeSourceBuffers() { return m_activeSourceBuffers.get(); }
-    ExceptionOr<SourceBuffer*> addSourceBuffer(const String& type);
+    ExceptionOr<SourceBuffer&> addSourceBuffer(const String& type);
     ExceptionOr<void> removeSourceBuffer(SourceBuffer&);
     static bool isTypeSupported(const String& type);
 

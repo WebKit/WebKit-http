@@ -2,7 +2,8 @@
  * Copyright (C) 2007, 2009 Apple Inc.  All rights reserved.
  * Copyright (C) 2007 Collabora Ltd. All rights reserved.
  * Copyright (C) 2007 Alp Toker <alp@atoker.com>
- * Copyright (C) 2009, 2010 Igalia S.L
+ * Copyright (C) 2009, 2010, 2015, 2016 Igalia S.L
+ * Copyright (C) 2015, 2016 Metrological Group B.V.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -130,22 +131,19 @@ public:
 #endif
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
-    void needKey(RefPtr<Uint8Array> initData);
-    void setCDMSession(CDMSession*);
-    void keyAdded();
-#endif
-
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
-    virtual void dispatchDecryptionKey(GstBuffer*);
-#endif
-
 #if USE(PLAYREADY)
     PlayreadySession* prSession() const;
     virtual void emitSession();
 #endif
 
+    void needKey(RefPtr<Uint8Array>);
+    void setCDMSession(CDMSession*);
+    void keyAdded();
+    virtual void dispatchDecryptionKey(GstBuffer*);
+#endif
+
     static bool supportsKeySystem(const String& keySystem, const String& mimeType);
-    static MediaPlayer::SupportsType extendedSupportsType(const MediaEngineSupportParameters& parameters, MediaPlayer::SupportsType);
+    static MediaPlayer::SupportsType extendedSupportsType(const MediaEngineSupportParameters&, MediaPlayer::SupportsType);
 
 #if USE(GSTREAMER_GL)
     bool copyVideoTextureToPlatformTexture(GraphicsContext3D*, Platform3DObject, GC3Denum, GC3Dint, GC3Denum, GC3Denum, GC3Denum, bool, bool) override;
@@ -154,6 +152,7 @@ public:
 #endif
 
     void setVideoSourceOrientation(const ImageOrientation&);
+    GstElement* pipeline() const { return m_pipeline.get(); }
 
     GstElement* pipeline() const { return m_pipeline.get(); }
 
@@ -179,6 +178,8 @@ protected:
 #endif
 #endif
 
+    GstElement* videoSink() const { return m_videoSink.get(); }
+
     void setStreamVolumeElement(GstStreamVolume*);
     virtual GstElement* createAudioSink() { return 0; }
     virtual GstElement* audioSink() const { return 0; }
@@ -186,10 +187,13 @@ protected:
     void setPipeline(GstElement*);
     void clearSamples();
 
+    void triggerDrain();
+
     void triggerRepaint(GstSample*);
     void repaint();
 
 #if !USE(HOLE_PUNCH_GSTREAMER)
+    static void drainCallback(MediaPlayerPrivateGStreamerBase*);
     static void repaintCallback(MediaPlayerPrivateGStreamerBase*, GstSample*);
 #endif
 
@@ -219,12 +223,11 @@ protected:
     GRefPtr<GstElement> m_fpsSink;
     MediaPlayer::ReadyState m_readyState;
     mutable MediaPlayer::NetworkState m_networkState;
-    mutable bool m_isEndReached;
     IntSize m_size;
     IntPoint m_position;
     mutable GMutex m_sampleMutex;
     GRefPtr<GstSample> m_sample;
-#if USE(GSTREAMER_GL)
+#if USE(GSTREAMER_GL) || USE(COORDINATED_GRAPHICS_THREADED)
     RunLoop::Timer<MediaPlayerPrivateGStreamerBase> m_drawTimer;
 #endif
     unsigned long m_repaintHandler;
@@ -262,11 +265,15 @@ private:
     CDMSession* m_cdmSession;
 #endif
     ImageOrientation m_videoSourceOrientation;
-
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
+    std::unique_ptr<CDMSession> createSession(const String&, CDMSessionClient*);
+    CDMSession* m_cdmSession;
+#endif
 #if USE(GSTREAMER_GL)
     std::unique_ptr<VideoTextureCopierGStreamer> m_videoTextureCopier;
 #endif
 };
+
 }
 
 #endif // USE(GSTREAMER)

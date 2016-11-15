@@ -83,21 +83,27 @@ set(WebKitTestRunnerInjectedBundle_SOURCES
 )
 
 set(WebKitTestRunnerInjectedBundle_IDL_FILES
-    "${WEBKIT_TESTRUNNER_INJECTEDBUNDLE_DIR}/Bindings/AccessibilityController.idl"
-    "${WEBKIT_TESTRUNNER_INJECTEDBUNDLE_DIR}/Bindings/AccessibilityTextMarker.idl"
-    "${WEBKIT_TESTRUNNER_INJECTEDBUNDLE_DIR}/Bindings/AccessibilityTextMarkerRange.idl"
-    "${WEBKIT_TESTRUNNER_INJECTEDBUNDLE_DIR}/Bindings/AccessibilityUIElement.idl"
     "${WEBKIT_TESTRUNNER_INJECTEDBUNDLE_DIR}/Bindings/EventSendingController.idl"
     "${WEBKIT_TESTRUNNER_INJECTEDBUNDLE_DIR}/Bindings/GCController.idl"
     "${WEBKIT_TESTRUNNER_INJECTEDBUNDLE_DIR}/Bindings/TestRunner.idl"
     "${WEBKIT_TESTRUNNER_INJECTEDBUNDLE_DIR}/Bindings/TextInputController.idl"
 )
 
+# FIXME: this way we work around the WPE port currently disabling a11y support.
+if (NOT "${PORT}" STREQUAL "WPE")
+    list(APPEND WebKitTestRunnerInjectedBundle_IDL_FILES
+        "${WEBKIT_TESTRUNNER_INJECTEDBUNDLE_DIR}/Bindings/AccessibilityController.idl"
+        "${WEBKIT_TESTRUNNER_INJECTEDBUNDLE_DIR}/Bindings/AccessibilityTextMarker.idl"
+        "${WEBKIT_TESTRUNNER_INJECTEDBUNDLE_DIR}/Bindings/AccessibilityTextMarkerRange.idl"
+        "${WEBKIT_TESTRUNNER_INJECTEDBUNDLE_DIR}/Bindings/AccessibilityUIElement.idl"
+    )
+endif ()
+
 set(WebKitTestRunner_IDL_FILES
     "${WEBKIT_TESTRUNNER_UISCRIPTCONTEXT_DIR}/Bindings/UIScriptController.idl"
 )
 
-GENERATE_BINDINGS(
+GENERATE_BINDINGS(WebKitTestRunnerInjectedBundleBindings
     OUTPUT_SOURCE WebKitTestRunnerInjectedBundle_SOURCES
     INPUT_FILES ${WebKitTestRunnerInjectedBundle_IDL_FILES}
     BASE_DIR ${WEBKIT_TESTRUNNER_INJECTEDBUNDLE_DIR}/Bindings
@@ -106,7 +112,7 @@ GENERATE_BINDINGS(
     DESTINATION ${DERIVED_SOURCES_DIR}/InjectedBundle
     GENERATOR TestRunner)
 
-GENERATE_BINDINGS(
+GENERATE_BINDINGS(WebKitTestRunnerBindings
     OUTPUT_SOURCE WebKitTestRunner_SOURCES
     INPUT_FILES ${WebKitTestRunner_IDL_FILES}
     BASE_DIR ${WEBKIT_TESTRUNNER_INJECTEDBUNDLE_DIR}/Bindings
@@ -122,9 +128,11 @@ include_directories(SYSTEM ${WebKitTestRunner_SYSTEM_INCLUDE_DIRECTORIES})
 
 add_library(TestRunnerInjectedBundle SHARED ${WebKitTestRunnerInjectedBundle_SOURCES})
 target_link_libraries(TestRunnerInjectedBundle ${WebKitTestRunner_LIBRARIES})
+add_dependencies(TestRunnerInjectedBundle WebKitTestRunnerInjectedBundleBindings)
 
 add_executable(WebKitTestRunner ${WebKitTestRunner_SOURCES})
 target_link_libraries(WebKitTestRunner ${WebKitTestRunner_LIBRARIES})
+add_dependencies(WebKitTestRunner WebKitTestRunnerBindings)
 
 if (NOT APPLE)
     add_dependencies(WebKit2 ${ForwardingHeadersForWebKitTestRunner_NAME})

@@ -29,6 +29,7 @@
 
 #include <bindings/ScriptObject.h>
 #include <wtf/RefCounted.h>
+#include <wtf/Variant.h>
 #include <wtf/Vector.h>
 #include <wtf/text/WTFString.h>
 
@@ -52,10 +53,12 @@ public:
     static const AtomicString& alwaysOnKeyword();
     static const AtomicString& manualKeyword();
 
-    Vector<RefPtr<TextTrack>> sortedTrackListForMenu(TextTrackList*);
-    Vector<RefPtr<AudioTrack>> sortedTrackListForMenu(AudioTrackList*);
-    String displayNameForTrack(TextTrack*);
-    String displayNameForTrack(AudioTrack*);
+    Vector<RefPtr<TextTrack>> sortedTrackListForMenu(TextTrackList&);
+    Vector<RefPtr<AudioTrack>> sortedTrackListForMenu(AudioTrackList&);
+
+    using TextOrAudioTrack = WTF::Variant<RefPtr<TextTrack>, RefPtr<AudioTrack>>;
+    String displayNameForTrack(const Optional<TextOrAudioTrack>&);
+
     TextTrack* captionMenuOffItem();
     TextTrack* captionMenuAutomaticItem();
     AtomicString captionDisplayMode();
@@ -81,6 +84,9 @@ public:
     void setControlsDependOnPageScaleFactor(bool v);
 
     String generateUUID() const;
+
+    String shadowRootCSSText() const;
+    String base64StringForIconAndPlatform(const String& iconName, const String& platform) const;
 
 private:
     MediaControlsHost(HTMLMediaElement*);

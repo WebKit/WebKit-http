@@ -344,9 +344,7 @@ String WebFrame::contentsAsString() const
 
     RefPtr<Range> range = document->createRange();
 
-    ExceptionCode ec = 0;
-    range->selectNode(*documentElement, ec);
-    if (ec)
+    if (range->selectNode(*documentElement).hasException())
         return String();
 
     return plainText(range.get());
@@ -840,7 +838,7 @@ PassRefPtr<ShareableBitmap> WebFrame::createSelectionSnapshot() const
     // if we're compositing this image onto a solid color (e.g. the modern find indicator style).
     auto graphicsContext = sharedSnapshot->createGraphicsContext();
     float deviceScaleFactor = coreFrame()->page()->deviceScaleFactor();
-    graphicsContext->scale(FloatSize(deviceScaleFactor, deviceScaleFactor));
+    graphicsContext->scale(deviceScaleFactor);
     graphicsContext->drawConsumingImageBuffer(WTFMove(snapshot), FloatPoint());
 
     return WTFMove(sharedSnapshot);

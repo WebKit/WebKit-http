@@ -31,7 +31,7 @@
 
 #include "ExceptionCode.h"
 #include "Frame.h"
-#include "JSDOMBinding.h"
+#include "JSDOMConvert.h"
 #include "SerializedScriptValue.h"
 #include <runtime/JSFunction.h>
 
@@ -48,7 +48,7 @@ JSValue JSHistory::state(ExecState& state) const
         return cachedValue;
 
     RefPtr<SerializedScriptValue> serialized = history.state();
-    JSValue result = serialized ? serialized->deserialize(&state, globalObject(), 0) : jsNull();
+    JSValue result = serialized ? serialized->deserialize(state, globalObject()) : jsNull();
     m_state.set(state.vm(), this, result);
     return result;
 }
@@ -62,16 +62,16 @@ JSValue JSHistory::pushState(ExecState& state)
     if (UNLIKELY(argCount < 2))
         return throwException(&state, scope, createNotEnoughArgumentsError(&state));
 
-    auto historyState = SerializedScriptValue::create(&state, state.uncheckedArgument(0), 0, 0);
+    auto historyState = SerializedScriptValue::create(state, state.uncheckedArgument(0));
     RETURN_IF_EXCEPTION(scope, JSValue());
 
     // FIXME: title should not be nullable.
-    String title = valueToStringWithUndefinedOrNullCheck(&state, state.uncheckedArgument(1));
+    String title = convert<IDLNullable<IDLDOMString>>(state, state.uncheckedArgument(1));
     RETURN_IF_EXCEPTION(scope, JSValue());
 
     String url;
     if (argCount > 2) {
-        url = valueToUSVStringWithUndefinedOrNullCheck(&state, state.uncheckedArgument(2));
+        url = convert<IDLNullable<IDLUSVString>>(state, state.uncheckedArgument(2));
         RETURN_IF_EXCEPTION(scope, JSValue());
     }
 
@@ -91,16 +91,16 @@ JSValue JSHistory::replaceState(ExecState& state)
     if (UNLIKELY(argCount < 2))
         return throwException(&state, scope, createNotEnoughArgumentsError(&state));
 
-    auto historyState = SerializedScriptValue::create(&state, state.uncheckedArgument(0), 0, 0);
+    auto historyState = SerializedScriptValue::create(state, state.uncheckedArgument(0));
     RETURN_IF_EXCEPTION(scope, JSValue());
 
     // FIXME: title should not be nullable.
-    String title = valueToStringWithUndefinedOrNullCheck(&state, state.uncheckedArgument(1));
+    String title = convert<IDLNullable<IDLDOMString>>(state, state.uncheckedArgument(1));
     RETURN_IF_EXCEPTION(scope, JSValue());
 
     String url;
     if (argCount > 2) {
-        url = valueToUSVStringWithUndefinedOrNullCheck(&state, state.uncheckedArgument(2));
+        url = convert<IDLNullable<IDLUSVString>>(state, state.uncheckedArgument(2));
         RETURN_IF_EXCEPTION(scope, JSValue());
     }
 

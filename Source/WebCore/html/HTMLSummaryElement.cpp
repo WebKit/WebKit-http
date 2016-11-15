@@ -40,7 +40,7 @@ using namespace HTMLNames;
 Ref<HTMLSummaryElement> HTMLSummaryElement::create(const QualifiedName& tagName, Document& document)
 {
     Ref<HTMLSummaryElement> summary = adoptRef(*new HTMLSummaryElement(tagName, document));
-    summary->addShadowRoot(ShadowRoot::create(document, ShadowRoot::Mode::UserAgent));
+    summary->addShadowRoot(ShadowRoot::create(document, ShadowRootMode::UserAgent));
     return summary;
 }
 
@@ -57,7 +57,7 @@ RenderPtr<RenderElement> HTMLSummaryElement::createElementRenderer(RenderStyle&&
 
 void HTMLSummaryElement::didAddUserAgentShadowRoot(ShadowRoot* root)
 {
-    root->appendChild(DetailsMarkerControl::create(document()), ASSERT_NO_EXCEPTION);
+    root->appendChild(DetailsMarkerControl::create(document()));
     root->appendChild(HTMLSlotElement::create(slotTag, document()));
 }
 

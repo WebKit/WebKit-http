@@ -56,6 +56,7 @@
 #define WebKitWebSecurityEnabledPreferenceKey @"WebKitWebSecurityEnabled"
 #define WebKitAllowUniversalAccessFromFileURLsPreferenceKey @"WebKitAllowUniversalAccessFromFileURLs"
 #define WebKitAllowFileAccessFromFileURLsPreferenceKey @"WebKitAllowFileAccessFromFileURLs"
+#define WebKitNeedsStorageAccessFromFileURLsQuirkKey @"WebKitNeedsStorageAccessFromFileURLsQuirk"
 #define WebKitJavaScriptCanOpenWindowsAutomaticallyPreferenceKey @"WebKitJavaScriptCanOpenWindowsAutomatically"
 #define WebKitPluginsEnabledPreferenceKey @"WebKitPluginsEnabled"
 #define WebKitDatabasesEnabledPreferenceKey @"WebKitDatabasesEnabledPreferenceKey"
@@ -140,6 +141,7 @@
 #define WebKitSuppressesIncrementalRenderingKey @"WebKitSuppressesIncrementalRendering"
 #define WebKitSubpixelCSSOMElementMetricsEnabledPreferenceKey @"WebKitSubpixelCSSOMElementMetricsEnabled"
 #define WebKitResourceLoadStatisticsEnabledPreferenceKey @"WebKitResourceLoadStatisticsEnabled"
+#define WebKitAsyncImageDecodingEnabledPreferenceKey @"WebKitAsyncImageDecodingEnabledEnabled"
 #if TARGET_OS_IPHONE
 #define WebKitAudioSessionCategoryOverride @"WebKitAudioSessionCategoryOverride"
 #define WebKitAVKitEnabled @"WebKitAVKitEnabled"
@@ -211,6 +213,7 @@
 #define WebKitEnableInheritURIQueryComponentPreferenceKey @"WebKitEnableInheritURIQueryComponent"
 #define WebKitMediaDataLoadsAutomaticallyPreferenceKey @"WebKitMediaDataLoadsAutomatically"
 #define WebKitMockCaptureDevicesEnabledPreferenceKey @"WebKitMockCaptureDevicesEnabled"
+#define WebKitMediaCaptureRequiresSecureConnectionPreferenceKey @"WebKitMediaCaptureRequiresSecureConnection"
 
 #define WebKitAttachmentElementEnabledPreferenceKey @"WebKitAttachmentElementEnabled"
 

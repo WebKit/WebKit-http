@@ -86,11 +86,14 @@ public:
     void inspectorFrontendLoaded(const WebPageProxy&);
     void keyboardEventsFlushedForPage(const WebPageProxy&);
 
+#if ENABLE(REMOTE_INSPECTOR)
     // Inspector::RemoteAutomationTarget API
-    String name() const { return m_sessionIdentifier; }
-    void dispatchMessageFromRemote(const String& message);
-    void connect(Inspector::FrontendChannel*, bool isAutomaticConnection = false);
-    void disconnect(Inspector::FrontendChannel*);
+    String name() const override { return m_sessionIdentifier; }
+    void dispatchMessageFromRemote(const String& message) override;
+    void connect(Inspector::FrontendChannel*, bool isAutomaticConnection = false) override;
+    void disconnect(Inspector::FrontendChannel*) override;
+#endif
+    void terminate();
 
     // Inspector::AutomationBackendDispatcherHandler API
     void getBrowsingContexts(Inspector::ErrorString&, RefPtr<Inspector::Protocol::Array<Inspector::Protocol::Automation::BrowsingContext>>&) override;

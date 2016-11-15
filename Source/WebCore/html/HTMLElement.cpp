@@ -58,7 +58,6 @@
 #include "NodeTraversal.h"
 #include "RenderElement.h"
 #include "ScriptController.h"
-#include "Settings.h"
 #include "SimulatedClick.h"
 #include "StyleProperties.h"
 #include "SubframeLoader.h"
@@ -295,6 +294,7 @@ HTMLElement::EventHandlerNameMap HTMLElement::createEventHandlerNameMap()
         &onsubmitAttr,
         &onsuspendAttr,
         &ontimeupdateAttr,
+        &ontoggleAttr,
         &ontouchcancelAttr,
         &ontouchendAttr,
         &ontouchforcechangeAttr,
@@ -434,10 +434,8 @@ void HTMLElement::parseAttribute(const QualifiedName& name, const AtomicString& 
         setAttributeEventListener(eventName, name, value);
 }
 
-Ref<DocumentFragment> HTMLElement::textToFragment(const String& text, ExceptionCode& ec)
+ExceptionOr<Ref<DocumentFragment>> HTMLElement::textToFragment(const String& text)
 {
-    ec = 0;
-
     auto fragment = DocumentFragment::create(document());
 
     for (unsigned start = 0, length = text.length(); start < length; ) {
@@ -451,16 +449,16 @@ Ref<DocumentFragment> HTMLElement::textToFragment(const String& text, ExceptionC
                 break;
         }
 
-        fragment->appendChild(Text::create(document(), text.substring(start, i - start)), ec);
-        if (ec)
-            break;
+        auto appendResult = fragment->appendChild(Text::create(document(), text.substring(start, i - start)));
+        if (appendResult.hasException())
+            return appendResult.releaseException();
 
         if (i == length)
             break;
 
-        fragment->appendChild(HTMLBRElement::create(document()), ec);
-        if (ec)
-            break;
+        appendResult = fragment->appendChild(HTMLBRElement::create(document()));
+        if (appendResult.hasException())
+            return appendResult.releaseException();
 
         // Make sure \r\n doesn't result in two line breaks.
         if (c == '\r' && i + 1 < length && text[i + 1] == '\n')
@@ -469,7 +467,7 @@ Ref<DocumentFragment> HTMLElement::textToFragment(const String& text, ExceptionC
         start = i + 1; // Character after line break.
     }
 
-    return fragment;
+    return WTFMove(fragment);
 }
 
 static inline bool shouldProhibitSetInnerOuterText(const HTMLElement& element)
@@ -514,26 +512,21 @@ void HTMLElement::setDir(const AtomicString& value)
     setAttributeWithoutSynchronization(dirAttr, value);
 }
 
-void HTMLElement::setInnerText(const String& text, ExceptionCode& ec)
+ExceptionOr<void> HTMLElement::setInnerText(const String& text)
 {
-    if (ieForbidsInsertHTML()) {
-        ec = NO_MODIFICATION_ALLOWED_ERR;
-        return;
-    }
-    if (shouldProhibitSetInnerOuterText(*this)) {
-        ec = NO_MODIFICATION_ALLOWED_ERR;
-        return;
-    }
+    if (ieForbidsInsertHTML())
+        return Exception { NO_MODIFICATION_ALLOWED_ERR };
+    if (shouldProhibitSetInnerOuterText(*this))
+        return Exception { NO_MODIFICATION_ALLOWED_ERR };
 
     // FIXME: This doesn't take whitespace collapsing into account at all.
 
     if (!text.contains('\n') && !text.contains('\r')) {
         if (text.isEmpty()) {
             removeChildren();
-            return;
+            return { };
         }
-        replaceChildrenWithText(*this, text, ec);
-        return;
+        return replaceChildrenWithText(*this, text);
     }
 
     // FIXME: Do we need to be able to detect preserveNewline style even when there's no renderer?
@@ -541,63 +534,64 @@ void HTMLElement::setInnerText(const String& text, ExceptionCode& ec)
     // For example, for the contents of textarea elements that are display:none?
     auto r = renderer();
     if ((r && r->style().preserveNewline()) || (inDocument() && isTextControlInnerTextElement())) {
-        if (!text.contains('\r')) {
-            replaceChildrenWithText(*this, text, ec);
-            return;
-        }
+        if (!text.contains('\r'))
+            return replaceChildrenWithText(*this, text);
         String textWithConsistentLineBreaks = text;
         textWithConsistentLineBreaks.replace("\r\n", "\n");
         textWithConsistentLineBreaks.replace('\r', '\n');
-        replaceChildrenWithText(*this, textWithConsistentLineBreaks, ec);
-        return;
+        return replaceChildrenWithText(*this, textWithConsistentLineBreaks);
     }
 
     // Add text nodes and <br> elements.
-    ec = 0;
-    Ref<DocumentFragment> fragment = textToFragment(text, ec);
-    if (!ec)
-        replaceChildrenWithFragment(*this, WTFMove(fragment), ec);
+    auto fragment = textToFragment(text);
+    if (fragment.hasException())
+        return fragment.releaseException();
+    return replaceChildrenWithFragment(*this, fragment.releaseReturnValue());
 }
 
-void HTMLElement::setOuterText(const String& text, ExceptionCode& ec)
+ExceptionOr<void> HTMLElement::setOuterText(const String& text)
 {
-    if (ieForbidsInsertHTML()) {
-        ec = NO_MODIFICATION_ALLOWED_ERR;
-        return;
-    }
-    if (shouldProhibitSetInnerOuterText(*this)) {
-        ec = NO_MODIFICATION_ALLOWED_ERR;
-        return;
-    }
+    if (ieForbidsInsertHTML())
+        return Exception { NO_MODIFICATION_ALLOWED_ERR };
+    if (shouldProhibitSetInnerOuterText(*this))
+        return Exception { NO_MODIFICATION_ALLOWED_ERR };
 
     RefPtr<ContainerNode> parent = parentNode();
-    if (!parent) {
-        ec = NO_MODIFICATION_ALLOWED_ERR;
-        return;
-    }
+    if (!parent)
+        return Exception { NO_MODIFICATION_ALLOWED_ERR };
 
     RefPtr<Node> prev = previousSibling();
     RefPtr<Node> next = nextSibling();
     RefPtr<Node> newChild;
-    ec = 0;
-    
+
     // Convert text to fragment with <br> tags instead of linebreaks if needed.
-    if (text.contains('\r') || text.contains('\n'))
-        newChild = textToFragment(text, ec);
-    else
+    if (text.contains('\r') || text.contains('\n')) {
+        auto result = textToFragment(text);
+        if (result.hasException())
+            return result.releaseException();
+        newChild = result.releaseReturnValue();
+    } else
         newChild = Text::create(document(), text);
 
     if (!parentNode())
-        ec = HIERARCHY_REQUEST_ERR;
-    if (ec)
-        return;
-    parent->replaceChild(*newChild, *this, ec);
+        return Exception { HIERARCHY_REQUEST_ERR };
+
+    auto replaceResult = parent->replaceChild(*newChild, *this);
+    if (replaceResult.hasException())
+        return replaceResult.releaseException();
 
     RefPtr<Node> node = next ? next->previousSibling() : nullptr;
-    if (!ec && is<Text>(node.get()))
-        mergeWithNextTextNode(downcast<Text>(*node), ec);
-    if (!ec && is<Text>(prev.get()))
-        mergeWithNextTextNode(downcast<Text>(*prev), ec);
+    if (is<Text>(node.get())) {
+        auto result = mergeWithNextTextNode(downcast<Text>(*node));
+        if (result.hasException())
+            return result.releaseException();
+    }
+    if (is<Text>(prev.get())) {
+        auto result = mergeWithNextTextNode(downcast<Text>(*prev));
+        if (result.hasException())
+            return result.releaseException();
+    }
+    return { };
 }
 
 void HTMLElement::applyAlignmentAttributeToStyle(const AtomicString& alignment, MutableStyleProperties& style)
@@ -660,7 +654,7 @@ String HTMLElement::contentEditable() const
     return ASCIILiteral("inherit");
 }
 
-void HTMLElement::setContentEditable(const String& enabled, ExceptionCode& ec)
+ExceptionOr<void> HTMLElement::setContentEditable(const String& enabled)
 {
     if (equalLettersIgnoringASCIICase(enabled, "true"))
         setAttributeWithoutSynchronization(contenteditableAttr, AtomicString("true", AtomicString::ConstructFromLiteral));
@@ -671,7 +665,8 @@ void HTMLElement::setContentEditable(const String& enabled, ExceptionCode& ec)
     else if (equalLettersIgnoringASCIICase(enabled, "inherit"))
         removeAttribute(contenteditableAttr);
     else
-        ec = SYNTAX_ERR;
+        return Exception { SYNTAX_ERR };
+    return { };
 }
 
 bool HTMLElement::draggable() const
@@ -700,7 +695,7 @@ void HTMLElement::setSpellcheck(bool enable)
 
 void HTMLElement::click()
 {
-    simulateClick(*this, nullptr, SendNoEvents, DoNotShowPressedLook, SimulatedClickCreationOptions::FromBindings);
+    simulateClick(*this, nullptr, SendNoEvents, DoNotShowPressedLook, SimulatedClickSource::Bindings);
 }
 
 void HTMLElement::accessKeyAction(bool sendMouseEvents)
@@ -720,30 +715,15 @@ int HTMLElement::tabIndex() const
     return -1;
 }
 
-TranslateAttributeMode HTMLElement::translateAttributeMode() const
-{
-    const AtomicString& value = attributeWithoutSynchronization(translateAttr);
-
-    if (value.isNull())
-        return TranslateAttributeInherit;
-    if (equalLettersIgnoringASCIICase(value, "yes") || value.isEmpty())
-        return TranslateAttributeYes;
-    if (equalLettersIgnoringASCIICase(value, "no"))
-        return TranslateAttributeNo;
-
-    return TranslateAttributeInherit;
-}
-
 bool HTMLElement::translate() const
 {
     for (auto& element : lineageOfType<HTMLElement>(*this)) {
-        TranslateAttributeMode mode = element.translateAttributeMode();
-        if (mode == TranslateAttributeInherit)
-            continue;
-        ASSERT(mode == TranslateAttributeYes || mode == TranslateAttributeNo);
-        return mode == TranslateAttributeYes;
+        const AtomicString& value = element.attributeWithoutSynchronization(translateAttr);
+        if (equalLettersIgnoringASCIICase(value, "yes") || (value.isEmpty() && !value.isNull()))
+            return true;
+        if (equalLettersIgnoringASCIICase(value, "no"))
+            return false;
     }
-
     // Default on the root element is translate=yes.
     return true;
 }
@@ -897,7 +877,7 @@ void HTMLElement::adjustDirectionalityIfNeededAfterChildAttributeChanged(Element
         return;
     for (auto& elementToAdjust : elementLineage(this)) {
         if (elementAffectsDirectionality(elementToAdjust)) {
-            elementToAdjust.setNeedsStyleRecalc();
+            elementToAdjust.invalidateStyleForSubtree();
             return;
         }
     }
@@ -909,7 +889,7 @@ void HTMLElement::calculateAndAdjustDirectionality()
     TextDirection textDirection = directionality(&strongDirectionalityTextNode);
     setHasDirAutoFlagRecursively(this, true, strongDirectionalityTextNode);
     if (renderer() && renderer()->style().direction() != textDirection)
-        setNeedsStyleRecalc();
+        invalidateStyleForSubtree();
 }
 
 void HTMLElement::adjustDirectionalityIfNeededAfterChildrenChanged(Element* beforeChange, ChildChangeType changeType)
@@ -1037,18 +1017,13 @@ void HTMLElement::addHTMLColorToStyle(MutableStyleProperties& style, CSSProperty
     if (equalLettersIgnoringASCIICase(colorString, "transparent"))
         return;
 
-    // If the string is a named CSS color or a 3/6-digit hex color, use that.
-    // We can't use the default Color constructor because it accepts
-    // 4/8-digit hex, which conflict with some legacy HTML content using attributes.
-
     Color color;
-
-    if ((colorString.length() == 4 || colorString.length() == 7) && colorString[0] == '#')
+    // We can't always use the default Color constructor because it accepts
+    // 4/8-digit hex, which conflict with some legacy HTML content using attributes.
+    if ((colorString.length() != 5 && colorString.length() != 9) || colorString[0] != '#')
         color = Color(colorString);
     if (!color.isValid())
-        color.setNamedColor(colorString);
-    if (!color.isValid())
-        color.setRGB(parseColorStringWithCrazyLegacyRules(colorString));
+        color = Color(parseColorStringWithCrazyLegacyRules(colorString));
 
     style.setProperty(propertyID, CSSValuePool::singleton().createColorValue(color.rgb()));
 }
@@ -1083,6 +1058,37 @@ bool HTMLElement::isActuallyDisabled() const
 {
     return canBeActuallyDisabled() && isDisabledFormControl();
 }
+
+#if ENABLE(IOS_AUTOCORRECT_AND_AUTOCAPITALIZE)
+
+const AtomicString& HTMLElement::autocapitalize() const
+{
+    return stringForAutocapitalizeType(autocapitalizeType());
+}
+
+AutocapitalizeType HTMLElement::autocapitalizeType() const
+{
+    return autocapitalizeTypeForAttributeValue(attributeWithoutSynchronization(HTMLNames::autocapitalizeAttr));
+}
+
+void HTMLElement::setAutocapitalize(const AtomicString& value)
+{
+    setAttributeWithoutSynchronization(autocapitalizeAttr, value);
+}
+
+bool HTMLElement::shouldAutocorrect() const
+{
+    auto autocorrectValue = attributeWithoutSynchronization(HTMLNames::autocorrectAttr);
+    // Unrecognized values fall back to "on".
+    return !equalLettersIgnoringASCIICase(autocorrectValue, "off");
+}
+
+void HTMLElement::setAutocorrect(bool autocorrect)
+{
+    setAttributeWithoutSynchronization(autocorrectAttr, autocorrect ? AtomicString("on", AtomicString::ConstructFromLiteral) : AtomicString("off", AtomicString::ConstructFromLiteral));
+}
+
+#endif
 
 } // namespace WebCore
 

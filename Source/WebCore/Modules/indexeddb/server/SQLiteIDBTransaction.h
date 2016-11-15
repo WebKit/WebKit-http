@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef SQLiteIDBTransaction_h
-#define SQLiteIDBTransaction_h
+#pragma once
 
 #if ENABLE(INDEXED_DATABASE)
 
@@ -66,7 +65,7 @@ public:
     void closeCursor(SQLiteIDBCursor&);
     void notifyCursorsOfChanges(int64_t objectStoreID);
 
-    IndexedDB::TransactionMode mode() const { return m_info.mode(); }
+    IDBTransactionMode mode() const { return m_info.mode(); }
     bool inProgress() const;
 
     SQLiteTransaction* sqliteTransaction() const { return m_sqliteTransaction.get(); }
@@ -96,4 +95,3 @@ private:
 } // namespace WebCore
 
 #endif // ENABLE(INDEXED_DATABASE)
-#endif // SQLiteIDBTransaction_h

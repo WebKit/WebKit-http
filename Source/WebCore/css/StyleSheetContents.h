@@ -18,8 +18,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef StyleSheetContents_h
-#define StyleSheetContents_h
+#pragma once
 
 #include "CSSParserMode.h"
 #include "CachePolicy.h"
@@ -41,6 +40,7 @@ class Node;
 class SecurityOrigin;
 class StyleRuleBase;
 class StyleRuleImport;
+class StyleRuleNamespace;
 
 class StyleSheetContents final : public RefCounted<StyleSheetContents> {
 public:
@@ -100,11 +100,11 @@ public:
 
     void clearRules();
 
-    bool hasCharsetRule() const { return !m_encodingFromCharsetRule.isNull(); }
     String encodingFromCharsetRule() const { return m_encodingFromCharsetRule; }
     // Rules other than @charset and @import.
     const Vector<RefPtr<StyleRuleBase>>& childRules() const { return m_childRules; }
     const Vector<RefPtr<StyleRuleImport>>& importRules() const { return m_importRules; }
+    const Vector<RefPtr<StyleRuleNamespace>>& namespaceRules() const { return m_namespaceRules; }
 
     void notifyLoadedSheet(const CachedCSSStyleSheet*);
     
@@ -137,7 +137,7 @@ public:
     bool isMutable() const { return m_isMutable; }
     void setMutable() { m_isMutable = true; }
 
-    bool isInMemoryCache() const { return m_isInMemoryCache; }
+    bool isInMemoryCache() const { return m_inMemoryCacheCount; }
     void addedToMemoryCache();
     void removedFromMemoryCache();
 
@@ -155,24 +155,23 @@ private:
 
     String m_encodingFromCharsetRule;
     Vector<RefPtr<StyleRuleImport>> m_importRules;
+    Vector<RefPtr<StyleRuleNamespace>> m_namespaceRules;
     Vector<RefPtr<StyleRuleBase>> m_childRules;
     typedef HashMap<AtomicString, AtomicString> PrefixNamespaceURIMap;
     PrefixNamespaceURIMap m_namespaces;
     AtomicString m_defaultNamespace;
 
-    bool m_loadCompleted : 1;
-    bool m_isUserStyleSheet : 1;
-    bool m_hasSyntacticallyValidCSSHeader : 1;
-    bool m_didLoadErrorOccur : 1;
-    bool m_usesStyleBasedEditability : 1;
-    bool m_isMutable : 1;
-    bool m_isInMemoryCache : 1;
-    
+    bool m_isUserStyleSheet;
+    bool m_loadCompleted { false };
+    bool m_hasSyntacticallyValidCSSHeader { true };
+    bool m_didLoadErrorOccur { false };
+    bool m_usesStyleBasedEditability { false };
+    bool m_isMutable { false };
+    unsigned m_inMemoryCacheCount { 0 };
+
     CSSParserContext m_parserContext;
 
     Vector<CSSStyleSheet*> m_clients;
 };
 
-} // namespace
-
-#endif
+} // namespace WebCore

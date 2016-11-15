@@ -44,6 +44,9 @@ using namespace WebCore;
 @synthesize rate=_rate;
 @synthesize playing=_playing;
 @synthesize canTogglePlayback=_canTogglePlayback;
+#if ENABLE(WEB_PLAYBACK_CONTROLS_MANAGER)
+@synthesize seekToTime=_seekToTime;
+#endif
 
 - (WebPlaybackSessionInterfaceMac*)webPlaybackSessionInterfaceMac
 {
@@ -73,6 +76,18 @@ using namespace WebCore;
 - (void)setSeekableTimeRanges:(NSArray *)timeRanges
 {
     _seekableTimeRanges = timeRanges;
+}
+
+- (BOOL)isSeeking
+{
+    return NO;
+}
+
+- (void)seekToTime:(NSTimeInterval)time toleranceBefore:(NSTimeInterval)toleranceBefore toleranceAfter:(NSTimeInterval)toleranceAfter
+{
+    UNUSED_PARAM(toleranceBefore);
+    UNUSED_PARAM(toleranceAfter);
+    _webPlaybackSessionInterfaceMac->webPlaybackSessionModel()->seekToTime(time);
 }
 
 - (void)setAudioMediaSelectionOptions:(const Vector<WTF::String>&)options withSelectedIndex:(NSUInteger)selectedIndex

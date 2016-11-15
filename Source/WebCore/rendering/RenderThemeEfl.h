@@ -27,11 +27,9 @@
  *
  */
 
-#ifndef RenderThemeEfl_h
-#define RenderThemeEfl_h
+#pragma once
 
 #include "RenderTheme.h"
-
 #include <Eina.h>
 #include <cairo.h>
 #include <wtf/efl/UniquePtrEfl.h>
@@ -67,7 +65,7 @@ private:
     virtual ~RenderThemeEfl();
 
 public:
-    static PassRefPtr<RenderTheme> create(Page*);
+    static Ref<RenderTheme> create(Page*);
 
     // A method asking if the theme's controls actually care about redrawing when hovered.
     bool supportsHover(const RenderStyle&) const override { return true; }
@@ -255,6 +253,5 @@ private:
     ThemePartCacheEntry* getThemePartFromCache(FormType, const IntSize&);
     void clearThemePartCache();
 };
-}
 
-#endif // RenderThemeEfl_h
+} // namespace WebCore

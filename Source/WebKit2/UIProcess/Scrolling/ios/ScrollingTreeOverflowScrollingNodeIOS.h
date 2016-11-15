@@ -52,12 +52,12 @@ public:
 private:
     ScrollingTreeOverflowScrollingNodeIOS(WebCore::ScrollingTree&, WebCore::ScrollingNodeID);
 
-    void updateBeforeChildren(const WebCore::ScrollingStateNode&) override;
-    void updateAfterChildren(const WebCore::ScrollingStateNode&) override;
+    void commitStateBeforeChildren(const WebCore::ScrollingStateNode&) override;
+    void commitStateAfterChildren(const WebCore::ScrollingStateNode&) override;
     
     WebCore::FloatPoint scrollPosition() const override;
 
-    void setScrollLayerPosition(const WebCore::FloatPoint&) override;
+    void setScrollLayerPosition(const WebCore::FloatPoint&, const WebCore::FloatRect& layoutViewport) override;
 
     void updateLayersAfterViewportChange(const WebCore::FloatRect& fixedPositionRect, double scale) override { }
     void updateLayersAfterDelegatedScroll(const WebCore::FloatPoint& scrollPosition) override;

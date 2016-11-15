@@ -24,8 +24,7 @@
  *
  */
 
-#ifndef JSDOMGlobalObject_h
-#define JSDOMGlobalObject_h
+#pragma once
 
 #include "PlatformExportMacros.h"
 #include "WebCoreJSBuiltinInternals.h"
@@ -82,7 +81,7 @@ namespace WebCore {
     public:
         ~JSDOMGlobalObject();
 
-        static const JSC::ClassInfo* info() { return &s_info; }
+        static constexpr const JSC::ClassInfo* info() { return &s_info; }
 
         static JSC::Structure* createStructure(JSC::VM& vm, JSC::JSValue prototype)
         {
@@ -124,5 +123,3 @@ namespace WebCore {
     JSDOMGlobalObject* toJSDOMGlobalObject(ScriptExecutionContext*, DOMWrapperWorld&);
 
 } // namespace WebCore
-
-#endif // JSDOMGlobalObject_h

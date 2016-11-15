@@ -17,8 +17,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef PatternAttributes_h
-#define PatternAttributes_h
+#pragma once
 
 #include "SVGLength.h"
 #include "SVGPreserveAspectRatio.h"
@@ -56,7 +55,7 @@ struct PatternAttributes {
     SVGLength width() const { return m_width; }
     SVGLength height() const { return m_height; }
     FloatRect viewBox() const { return m_viewBox; }
-    SVGPreserveAspectRatio preserveAspectRatio() const { return m_preserveAspectRatio; }
+    SVGPreserveAspectRatioValue preserveAspectRatio() const { return m_preserveAspectRatio; }
     SVGUnitTypes::SVGUnitType patternUnits() const { return m_patternUnits; }
     SVGUnitTypes::SVGUnitType patternContentUnits() const { return m_patternContentUnits; }
     AffineTransform patternTransform() const { return m_patternTransform; }
@@ -92,7 +91,7 @@ struct PatternAttributes {
         m_viewBoxSet = true;
     }
 
-    void setPreserveAspectRatio(const SVGPreserveAspectRatio& value)
+    void setPreserveAspectRatio(const SVGPreserveAspectRatioValue& value)
     {
         m_preserveAspectRatio = value;
         m_preserveAspectRatioSet = true;
@@ -140,7 +139,7 @@ private:
     SVGLength m_width;
     SVGLength m_height;
     FloatRect m_viewBox;
-    SVGPreserveAspectRatio m_preserveAspectRatio;
+    SVGPreserveAspectRatioValue m_preserveAspectRatio;
     SVGUnitTypes::SVGUnitType m_patternUnits;
     SVGUnitTypes::SVGUnitType m_patternContentUnits;
     AffineTransform m_patternTransform;
@@ -160,5 +159,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif

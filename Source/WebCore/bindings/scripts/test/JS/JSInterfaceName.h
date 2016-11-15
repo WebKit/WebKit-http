@@ -55,12 +55,7 @@ public:
 protected:
     JSInterfaceName(JSC::Structure*, JSDOMGlobalObject&, Ref<InterfaceName>&&);
 
-    void finishCreation(JSC::VM& vm)
-    {
-        Base::finishCreation(vm);
-        ASSERT(inherits(info()));
-    }
-
+    void finishCreation(JSC::VM&);
 };
 
 class JSInterfaceNameOwner : public JSC::WeakHandleOwner {
@@ -87,6 +82,7 @@ inline JSC::JSValue toJSNewlyCreated(JSC::ExecState* state, JSDOMGlobalObject* g
 
 template<> struct JSDOMWrapperConverterTraits<InterfaceName> {
     using WrapperClass = JSInterfaceName;
+    using ToWrappedReturnType = InterfaceName*;
 };
 
 } // namespace WebCore

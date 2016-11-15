@@ -133,7 +133,13 @@ static void* keyValueObservingContext = &keyValueObservingContext;
     }
 }
 
-static CGFloat viewScaleForMenuItemTag(NSInteger tag)
+- (IBAction)setPageScale:(id)sender
+{
+    CGFloat scale = [self pageScaleForMenuItemTag:[sender tag]];
+    [_webView _setPageScale:scale withOrigin:CGPointZero];
+}
+
+- (CGFloat)viewScaleForMenuItemTag:(NSInteger)tag
 {
     if (tag == 1)
         return 1;
@@ -147,9 +153,9 @@ static CGFloat viewScaleForMenuItemTag(NSInteger tag)
     return 1;
 }
 
-- (IBAction)setScale:(id)sender
+- (IBAction)setViewScale:(id)sender
 {
-    CGFloat scale = viewScaleForMenuItemTag([sender tag]);
+    CGFloat scale = [self viewScaleForMenuItemTag:[sender tag]];
     CGFloat oldScale = [_webView _viewScale];
 
     if (scale == oldScale)
@@ -162,6 +168,12 @@ static CGFloat viewScaleForMenuItemTag(NSInteger tag)
     [self.window setFrame:NSMakeRect(oldFrame.origin.x, oldFrame.origin.y - (newFrameSize.height - oldFrame.size.height), newFrameSize.width, newFrameSize.height) display:NO animate:NO];
 
     [_webView _setViewScale:scale];
+}
+
+static BOOL areEssentiallyEqual(double a, double b)
+{
+    double tolerance = 0.001;
+    return (fabs(a - b) <= tolerance);
 }
 
 - (BOOL)validateMenuItem:(NSMenuItem *)menuItem
@@ -188,8 +200,11 @@ static CGFloat viewScaleForMenuItemTag(NSInteger tag)
     else if (action == @selector(toggleZoomMode:))
         [menuItem setState:_zoomTextOnly ? NSOnState : NSOffState];
 
-    if (action == @selector(setScale:))
-        [menuItem setState:[_webView _viewScale] == viewScaleForMenuItemTag([menuItem tag])];
+    if (action == @selector(setPageScale:))
+        [menuItem setState:areEssentiallyEqual([_webView _pageScale], [self pageScaleForMenuItemTag:[menuItem tag]])];
+
+    if (action == @selector(setViewScale:))
+        [menuItem setState:areEssentiallyEqual([_webView _viewScale], [self viewScaleForMenuItemTag:[menuItem tag]])];
 
     return YES;
 }
@@ -353,6 +368,7 @@ static CGFloat viewScaleForMenuItemTag(NSInteger tag)
     preferences._resourceUsageOverlayVisible = settings.resourceUsageOverlayVisible;
     preferences._displayListDrawingEnabled = settings.displayListDrawingEnabled;
     preferences._visualViewportEnabled = settings.visualViewportEnabled;
+    preferences._asyncImageDecodingEnabled = settings.asyncImageDecodingEnabled;
 
     _webView.configuration.websiteDataStore._resourceLoadStatisticsEnabled = settings.resourceLoadStatisticsEnabled;
 
@@ -388,9 +404,11 @@ static CGFloat viewScaleForMenuItemTag(NSInteger tag)
 
 - (void)updateTitle:(NSString *)title
 {
-    if (!title)
-        title = _webView.URL.lastPathComponent;
-    
+    if (!title) {
+        NSURL *url = _webView.URL;
+        title = url.lastPathComponent ?: url._web_userVisibleString;
+    }
+
     self.window.title = [NSString stringWithFormat:@"%@%@ [WK2 %d]", _isPrivateBrowsingWindow ? @"🙈 " : @"", title, _webView._webProcessIdentifier];
 }
 
@@ -542,7 +560,7 @@ static NSSet *dataTypes()
 
 - (IBAction)printWebView:(id)sender
 {
-    [[_webView _printOperationWithPrintInfo:[NSPrintInfo sharedPrintInfo] forFrame:nil] runOperationModalForWindow:self.window delegate:nil didRunSelector:nil contextInfo:nil];
+    [[_webView _printOperationWithPrintInfo:[NSPrintInfo sharedPrintInfo]] runOperationModalForWindow:self.window delegate:nil didRunSelector:nil contextInfo:nil];
 }
 
 #pragma mark WKNavigationDelegate

@@ -26,7 +26,10 @@
 #import "config.h"
 #import "UIScriptController.h"
 
+#import "DumpRenderTree.h"
 #import "UIScriptContext.h"
+#import <WebKit/WebKit.h>
+#import <WebKit/WebViewPrivate.h>
 
 #if PLATFORM(MAC)
 
@@ -41,6 +44,29 @@ void UIScriptController::doAsyncTask(JSValueRef callback)
             return;
         m_context->asyncTaskComplete(callbackID);
     });
+}
+
+void UIScriptController::insertText(JSStringRef, int, int)
+{
+}
+
+void UIScriptController::zoomToScale(double scale, JSValueRef callback)
+{
+    unsigned callbackID = m_context->prepareForAsyncTask(callback, CallbackTypeNonPersistent);
+
+    WebView *webView = [mainFrame webView];
+    [webView _scaleWebView:scale atOrigin:NSZeroPoint];
+
+    dispatch_async(dispatch_get_main_queue(), ^ {
+        if (!m_context)
+            return;
+        m_context->asyncTaskComplete(callbackID);
+    });
+}
+
+JSObjectRef UIScriptController::contentsOfUserInterfaceItem(JSStringRef interfaceItem) const
+{
+    return nullptr;
 }
 
 }

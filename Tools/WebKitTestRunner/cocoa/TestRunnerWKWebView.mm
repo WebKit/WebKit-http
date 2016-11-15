@@ -46,6 +46,7 @@
 @interface TestRunnerWKWebView ()
 @property (nonatomic, copy) void (^zoomToScaleCompletionHandler)(void);
 @property (nonatomic, copy) void (^showKeyboardCompletionHandler)(void);
+@property (nonatomic) BOOL isShowingKeyboard;
 @end
 
 @implementation TestRunnerWKWebView
@@ -75,6 +76,8 @@
 
     self.didStartFormControlInteractionCallback = nil;
     self.didEndFormControlInteractionCallback = nil;
+    self.didShowForcePressPreviewCallback = nil;
+    self.didDismissForcePressPreviewCallback = nil;
     self.willBeginZoomingCallback = nil;
     self.didEndZoomingCallback = nil;
     self.didShowKeyboardCallback = nil;
@@ -99,6 +102,18 @@
         self.didEndFormControlInteractionCallback();
 }
 
+- (void)_didShowForcePressPreview
+{
+    if (self.didShowForcePressPreviewCallback)
+        self.didShowForcePressPreviewCallback();
+}
+
+- (void)_didDismissForcePressPreview
+{
+    if (self.didDismissForcePressPreviewCallback)
+        self.didDismissForcePressPreviewCallback();
+}
+
 - (void)zoomToScale:(double)scale animated:(BOOL)animated completionHandler:(void (^)(void))completionHandler
 {
     ASSERT(!self.zoomToScaleCompletionHandler);
@@ -109,12 +124,20 @@
 
 - (void)_keyboardDidShow:(NSNotification *)notification
 {
+    if (self.isShowingKeyboard)
+        return;
+
+    self.isShowingKeyboard = YES;
     if (self.didShowKeyboardCallback)
         self.didShowKeyboardCallback();
 }
 
 - (void)_keyboardDidHide:(NSNotification *)notification
 {
+    if (!self.isShowingKeyboard)
+        return;
+
+    self.isShowingKeyboard = NO;
     if (self.didHideKeyboardCallback)
         self.didHideKeyboardCallback();
 }

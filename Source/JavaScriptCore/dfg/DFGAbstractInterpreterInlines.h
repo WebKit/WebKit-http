@@ -30,6 +30,7 @@
 #include "ArrayConstructor.h"
 #include "DFGAbstractInterpreter.h"
 #include "DOMJITGetterSetter.h"
+#include "DOMJITSignature.h"
 #include "GetByIdStatus.h"
 #include "GetterSetter.h"
 #include "HashMapImpl.h"
@@ -657,7 +658,8 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
                     forNode(node->child1()).m_type));
             break;
         default:
-            RELEASE_ASSERT_NOT_REACHED();
+            DFG_ASSERT(m_graph, node, node->child1().useKind() == UntypedUse);
+            forNode(node).setType(SpecBytecodeNumber);
             break;
         }
         break;
@@ -1664,16 +1666,17 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
             // that's the conservative thing to do. Otherwise we'd need to write more code to mark such
             // paths as unreachable, or to return undefined. We could implement that eventually.
             
+            unsigned argumentIndex = index.asUInt32() + node->numberOfArgumentsToSkip();
             if (inlineCallFrame) {
-                if (index.asUInt32() < inlineCallFrame->arguments.size() - 1) {
+                if (argumentIndex < inlineCallFrame->arguments.size() - 1) {
                     forNode(node) = m_state.variables().operand(
-                        virtualRegisterForArgument(index.asInt32() + 1) + inlineCallFrame->stackOffset);
+                        virtualRegisterForArgument(argumentIndex + 1) + inlineCallFrame->stackOffset);
                     m_state.setFoundConstants(true);
                     break;
                 }
             } else {
-                if (index.asUInt32() < m_state.variables().numberOfArguments() - 1) {
-                    forNode(node) = m_state.variables().argument(index.asInt32() + 1);
+                if (argumentIndex < m_state.variables().numberOfArguments() - 1) {
+                    forNode(node) = m_state.variables().argument(argumentIndex + 1);
                     m_state.setFoundConstants(true);
                     break;
                 }
@@ -1684,7 +1687,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
             // We have a bound on the types even though it's random access. Take advantage of this.
             
             AbstractValue result;
-            for (unsigned i = inlineCallFrame->arguments.size(); i-- > 1;) {
+            for (unsigned i = 1 + node->numberOfArgumentsToSkip(); i < inlineCallFrame->arguments.size(); ++i) {
                 result.merge(
                     m_state.variables().operand(
                         virtualRegisterForArgument(i) + inlineCallFrame->stackOffset));
@@ -1778,6 +1781,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         break;
 
     case TailCall:
+    case DirectTailCall:
     case TailCallVarargs:
     case TailCallForwardVarargs:
         clobberWorld(node->origin.semantic, clobberLimit);
@@ -1865,6 +1869,27 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
             m_graph,
             m_graph.globalObjectFor(node->origin.semantic)->arrayStructureForIndexingTypeDuringAllocation(node->indexingType()));
         break;
+
+    case NewArrayWithSpread:
+        if (m_graph.isWatchingHavingABadTimeWatchpoint(node)) {
+            // We've compiled assuming we're not having a bad time, so to be consistent
+            // with StructureRegisterationPhase we must say we produce an original array
+            // allocation structure.
+            forNode(node).set(
+                m_graph,
+                m_graph.globalObjectFor(node->origin.semantic)->originalArrayStructureForIndexingType(ArrayWithContiguous));
+        } else {
+            forNode(node).set(
+                m_graph,
+                m_graph.globalObjectFor(node->origin.semantic)->arrayStructureForIndexingTypeDuringAllocation(ArrayWithContiguous));
+        }
+
+        break;
+
+    case Spread:
+        forNode(node).set(
+            m_graph, m_graph.m_vm.fixedArrayStructure.get());
+        break;
         
     case NewArrayBuffer:
         forNode(node).set(
@@ -1948,6 +1973,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
     case PhantomCreateActivation:
     case PhantomDirectArguments:
     case PhantomClonedArguments:
+    case PhantomCreateRest:
     case BottomValue:
         m_state.setDidClobber(true); // Prevent constant folding.
         // This claims to return bottom.
@@ -1976,6 +2002,10 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         break;
         
     case CreateClonedArguments:
+        if (!m_graph.isWatchingHavingABadTimeWatchpoint(node)) {
+            forNode(node).setType(m_graph, SpecObject);
+            break;
+        }
         forNode(node).set(m_graph, m_codeBlock->globalObjectFor(node->origin.semantic)->clonedArgumentsStructure());
         break;
 
@@ -2109,6 +2139,10 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         break;
         
     case PutToArguments:
+        break;
+
+    case GetArgument:
+        forNode(node).makeHeapTop();
         break;
 
     case TryGetById:
@@ -2287,10 +2321,21 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         filterClassInfo(value, node->classInfo());
         break;
     }
-    case CallDOM:
-        clobberWorld(node->origin.semantic, clobberLimit);
-        forNode(node).makeBytecodeTop();
+    case CallDOMGetter: {
+        CallDOMGetterData* callDOMGetterData = node->callDOMGetterData();
+        DOMJIT::CallDOMGetterPatchpoint* patchpoint = callDOMGetterData->patchpoint;
+        if (patchpoint->effect.writes)
+            clobberWorld(node->origin.semantic, clobberLimit);
+        forNode(node).setType(m_graph, callDOMGetterData->domJIT->resultType());
         break;
+    }
+    case CallDOM: {
+        const DOMJIT::Signature* signature = node->signature();
+        if (signature->effect.writes)
+            clobberWorld(node->origin.semantic, clobberLimit);
+        forNode(node).setType(m_graph, signature->result);
+        break;
+    }
     case CheckArray: {
         if (node->arrayMode().alreadyChecked(m_graph, node, forNode(node->child1()))) {
             m_state.setFoundConstants(true);
@@ -2797,6 +2842,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
             
     case Phi:
         RELEASE_ASSERT(m_graph.m_form == SSA);
+        forNode(node) = forNode(NodeFlowProjection(node, NodeFlowProjection::Shadow));
         // The state of this node would have already been decided, but it may have become a
         // constant, in which case we'd like to know.
         if (forNode(node).m_value)
@@ -2804,8 +2850,11 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         break;
         
     case Upsilon: {
-        m_state.createValueForNode(node->phi());
-        forNode(node->phi()) = forNode(node->child1());
+        NodeFlowProjection shadow(node->phi(), NodeFlowProjection::Shadow);
+        if (shadow.isStillValid()) {
+            m_state.createValueForNode(shadow);
+            forNode(shadow) = forNode(node->child1());
+        }
         break;
     }
         
@@ -2823,6 +2872,9 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
     case ConstructForwardVarargs:
     case TailCallForwardVarargsInlinedCaller:
     case CallEval:
+    case DirectCall:
+    case DirectConstruct:
+    case DirectTailCallInlinedCaller:
         clobberWorld(node->origin.semantic, clobberLimit);
         forNode(node).makeHeapTop();
         break;
@@ -2852,9 +2904,15 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         break;
 
     case CreateRest:
-        if (!m_graph.isWatchingHavingABadTimeWatchpoint(node)) // This means we're already having a bad time.
+        if (!m_graph.isWatchingHavingABadTimeWatchpoint(node)) {
+            // This means we're already having a bad time.
             clobberWorld(node->origin.semantic, clobberLimit);
-        forNode(node).setType(m_graph, SpecArray);
+            forNode(node).setType(m_graph, SpecArray);
+            break;
+        }
+        forNode(node).set(
+            m_graph,
+            m_graph.globalObjectFor(node->origin.semantic)->restParameterStructure());
         break;
             
     case Check: {
@@ -2948,11 +3006,18 @@ void AbstractInterpreter<AbstractStateType>::forAllValues(
     else
         clobberLimit++;
     ASSERT(clobberLimit <= m_state.block()->size());
-    for (size_t i = clobberLimit; i--;)
-        functor(forNode(m_state.block()->at(i)));
+    for (size_t i = clobberLimit; i--;) {
+        NodeFlowProjection::forEach(
+            m_state.block()->at(i),
+            [&] (NodeFlowProjection nodeProjection) {
+                functor(forNode(nodeProjection));
+            });
+    }
     if (m_graph.m_form == SSA) {
-        for (Node* node : m_state.block()->ssa->liveAtHead)
-            functor(forNode(node));
+        for (NodeFlowProjection node : m_state.block()->ssa->liveAtHead) {
+            if (node.isStillValid())
+                functor(forNode(node));
+        }
     }
     for (size_t i = m_state.variables().numberOfArguments(); i--;)
         functor(m_state.variables().argument(i));
@@ -3008,9 +3073,9 @@ template<typename AbstractStateType>
 void AbstractInterpreter<AbstractStateType>::dump(PrintStream& out)
 {
     CommaPrinter comma(" ");
-    HashSet<Node*> seen;
+    HashSet<NodeFlowProjection> seen;
     if (m_graph.m_form == SSA) {
-        for (Node* node : m_state.block()->ssa->liveAtHead) {
+        for (NodeFlowProjection node : m_state.block()->ssa->liveAtHead) {
             seen.add(node);
             AbstractValue& value = forNode(node);
             if (value.isClear())
@@ -3019,15 +3084,17 @@ void AbstractInterpreter<AbstractStateType>::dump(PrintStream& out)
         }
     }
     for (size_t i = 0; i < m_state.block()->size(); ++i) {
-        Node* node = m_state.block()->at(i);
-        seen.add(node);
-        AbstractValue& value = forNode(node);
-        if (value.isClear())
-            continue;
-        out.print(comma, node, ":", value);
+        NodeFlowProjection::forEach(
+            m_state.block()->at(i), [&] (NodeFlowProjection nodeProjection) {
+                seen.add(nodeProjection);
+                AbstractValue& value = forNode(nodeProjection);
+                if (value.isClear())
+                    return;
+                out.print(comma, nodeProjection, ":", value);
+            });
     }
     if (m_graph.m_form == SSA) {
-        for (Node* node : m_state.block()->ssa->liveAtTail) {
+        for (NodeFlowProjection node : m_state.block()->ssa->liveAtTail) {
             if (seen.contains(node))
                 continue;
             AbstractValue& value = forNode(node);

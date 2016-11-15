@@ -54,10 +54,9 @@ public:
     RealtimeMediaSourceCenterOwr();
     ~RealtimeMediaSourceCenterOwr();
 
-    void validateRequestConstraints(MediaStreamCreationClient*, MediaConstraints& audioConstraints, MediaConstraints& videoConstraints) final;
+    void validateRequestConstraints(ValidConstraintsHandler validHandler, InvalidConstraintsHandler invalidHandler, const MediaConstraints& audioConstraints, const MediaConstraints& videoConstraints) final;
 
-    void createMediaStream(PassRefPtr<MediaStreamCreationClient>, MediaConstraints& audioConstraints, MediaConstraints& videoConstraints) final;
-    void createMediaStream(MediaStreamCreationClient*, const String& audioDeviceID, const String& videoDeviceID) final;
+    void createMediaStream(NewMediaStreamHandler, const String& audioDeviceID, const String& videoDeviceID, const MediaConstraints* videoConstraints, const MediaConstraints* audioConstraints) final;
 
     Vector<CaptureDevice> getMediaStreamDevices() final;
 
@@ -66,7 +65,9 @@ public:
 private:
     PassRefPtr<RealtimeMediaSource> firstSource(RealtimeMediaSource::Type);
     RealtimeMediaSourceOwrMap m_sourceMap;
-    RefPtr<MediaStreamCreationClient> m_client;
+    ValidConstraintsHandler m_validConstraintsHandler;
+    InvalidConstraintsHandler m_invalidConstraintsHandler;
+    NewMediaStreamHandler m_completionHandler;
 };
 
 } // namespace WebCore

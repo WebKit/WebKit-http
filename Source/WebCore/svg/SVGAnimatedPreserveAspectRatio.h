@@ -17,8 +17,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef SVGAnimatedPreserveAspectRatio_h
-#define SVGAnimatedPreserveAspectRatio_h
+#pragma once
 
 #include "SVGAnimatedPropertyTearOff.h"
 #include "SVGAnimatedTypeAnimator.h"
@@ -26,11 +25,14 @@
 
 namespace WebCore {
 
-typedef SVGAnimatedPropertyTearOff<SVGPreserveAspectRatio> SVGAnimatedPreserveAspectRatio;
+template<typename T> 
+class SVGPropertyTearOff;
+
+using SVGAnimatedPreserveAspectRatio = SVGAnimatedPropertyTearOff<SVGPreserveAspectRatio>;
 
 // Helper macros to declare/define a SVGAnimatedPreserveAspectRatio object
 #define DECLARE_ANIMATED_PRESERVEASPECTRATIO(UpperProperty, LowerProperty) \
-DECLARE_ANIMATED_PROPERTY(SVGAnimatedPreserveAspectRatio, SVGPreserveAspectRatio, UpperProperty, LowerProperty, )
+DECLARE_ANIMATED_PROPERTY(SVGAnimatedPreserveAspectRatio, SVGPreserveAspectRatioValue, UpperProperty, LowerProperty, )
 
 #define DEFINE_ANIMATED_PRESERVEASPECTRATIO(OwnerType, DOMAttribute, UpperProperty, LowerProperty) \
 DEFINE_ANIMATED_PROPERTY(AnimatedPreserveAspectRatio, OwnerType, DOMAttribute, DOMAttribute.localName(), UpperProperty, LowerProperty)
@@ -54,5 +56,3 @@ public:
 };
 
 } // namespace WebCore
-
-#endif

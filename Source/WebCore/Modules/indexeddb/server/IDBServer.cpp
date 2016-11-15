@@ -213,6 +213,18 @@ void IDBServer::deleteObjectStore(const IDBRequestData& requestData, const Strin
     transaction->deleteObjectStore(requestData, objectStoreName);
 }
 
+void IDBServer::renameObjectStore(const IDBRequestData& requestData, uint64_t objectStoreIdentifier, const String& newName)
+{
+    LOG(IndexedDB, "IDBServer::renameObjectStore");
+
+    auto transaction = m_transactions.get(requestData.transactionIdentifier());
+    if (!transaction)
+        return;
+
+    ASSERT(transaction->isVersionChange());
+    transaction->renameObjectStore(requestData, objectStoreIdentifier, newName);
+}
+
 void IDBServer::clearObjectStore(const IDBRequestData& requestData, uint64_t objectStoreIdentifier)
 {
     LOG(IndexedDB, "IDBServer::clearObjectStore");
@@ -248,6 +260,18 @@ void IDBServer::deleteIndex(const IDBRequestData& requestData, uint64_t objectSt
     transaction->deleteIndex(requestData, objectStoreIdentifier, indexName);
 }
 
+void IDBServer::renameIndex(const IDBRequestData& requestData, uint64_t objectStoreIdentifier, uint64_t indexIdentifier, const String& newName)
+{
+    LOG(IndexedDB, "IDBServer::renameIndex");
+
+    auto transaction = m_transactions.get(requestData.transactionIdentifier());
+    if (!transaction)
+        return;
+
+    ASSERT(transaction->isVersionChange());
+    transaction->renameIndex(requestData, objectStoreIdentifier, indexIdentifier, newName);
+}
+
 void IDBServer::putOrAdd(const IDBRequestData& requestData, const IDBKeyData& keyData, const IDBValue& value, IndexedDB::ObjectStoreOverwriteMode overwriteMode)
 {
     LOG(IndexedDB, "IDBServer::putOrAdd");
@@ -268,6 +292,17 @@ void IDBServer::getRecord(const IDBRequestData& requestData, const IDBGetRecordD
         return;
 
     transaction->getRecord(requestData, getRecordData);
+}
+
+void IDBServer::getAllRecords(const IDBRequestData& requestData, const IDBGetAllRecordsData& getAllRecordsData)
+{
+    LOG(IndexedDB, "IDBServer::getAllRecords");
+
+    auto transaction = m_transactions.get(requestData.transactionIdentifier());
+    if (!transaction)
+        return;
+
+    transaction->getAllRecords(requestData, getAllRecordsData);
 }
 
 void IDBServer::getCount(const IDBRequestData& requestData, const IDBKeyRangeData& keyRangeData)
@@ -303,7 +338,7 @@ void IDBServer::openCursor(const IDBRequestData& requestData, const IDBCursorInf
     transaction->openCursor(requestData, info);
 }
 
-void IDBServer::iterateCursor(const IDBRequestData& requestData, const IDBKeyData& key, unsigned long count)
+void IDBServer::iterateCursor(const IDBRequestData& requestData, const IDBIterateCursorData& data)
 {
     LOG(IndexedDB, "IDBServer::iterateCursor");
 
@@ -311,7 +346,7 @@ void IDBServer::iterateCursor(const IDBRequestData& requestData, const IDBKeyDat
     if (!transaction)
         return;
 
-    transaction->iterateCursor(requestData, key, count);
+    transaction->iterateCursor(requestData, data);
 }
 
 void IDBServer::establishTransaction(uint64_t databaseConnectionIdentifier, const IDBTransactionInfo& info)
@@ -348,6 +383,17 @@ void IDBServer::didFinishHandlingVersionChangeTransaction(uint64_t databaseConne
         return;
 
     connection->didFinishHandlingVersionChange(transactionIdentifier);
+}
+
+void IDBServer::databaseConnectionPendingClose(uint64_t databaseConnectionIdentifier)
+{
+    LOG(IndexedDB, "IDBServer::databaseConnectionPendingClose - %" PRIu64, databaseConnectionIdentifier);
+
+    auto databaseConnection = m_databaseConnections.get(databaseConnectionIdentifier);
+    if (!databaseConnection)
+        return;
+
+    databaseConnection->connectionPendingCloseFromClient();
 }
 
 void IDBServer::databaseConnectionClosed(uint64_t databaseConnectionIdentifier)
@@ -616,7 +662,7 @@ void IDBServer::performCloseAndDeleteDatabasesForOrigins(const Vector<SecurityOr
 {
     if (!m_databaseDirectoryPath.isEmpty()) {
         for (const auto& origin : origins) {
-            String originPath = pathByAppendingComponent(m_databaseDirectoryPath, origin.securityOrigin()->databaseIdentifier());
+            String originPath = pathByAppendingComponent(m_databaseDirectoryPath, origin.databaseIdentifier());
             removeAllDatabasesForOriginPath(originPath, std::chrono::system_clock::time_point::min());
         }
     }

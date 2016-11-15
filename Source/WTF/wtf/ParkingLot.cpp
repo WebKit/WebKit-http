@@ -54,8 +54,8 @@ public:
 
     ThreadIdentifier threadIdentifier;
     
-    std::mutex parkingLock;
-    std::condition_variable parkingCondition;
+    Mutex parkingLock;
+    ThreadCondition parkingCondition;
 
     const void* address { nullptr };
     
@@ -416,7 +416,7 @@ void ensureHashtableSize(unsigned numThreads)
     // OK, right now the old hashtable is locked up and the new hashtable is ready to rock and
     // roll. After we install the new hashtable, we can release all bucket locks.
     
-    bool result = hashtable.compareExchangeStrong(oldHashtable, newHashtable);
+    bool result = hashtable.compareExchangeStrong(oldHashtable, newHashtable) == oldHashtable;
     RELEASE_ASSERT(result);
 
     unlockHashtable(bucketsToUnlock);
@@ -447,12 +447,12 @@ ThreadData::~ThreadData()
 
 ThreadData* myThreadData()
 {
-    static ThreadSpecific<RefPtr<ThreadData>>* threadData;
+    static ThreadSpecific<RefPtr<ThreadData>, CanBeGCThread::True>* threadData;
     static std::once_flag initializeOnce;
     std::call_once(
         initializeOnce,
         [] {
-            threadData = new ThreadSpecific<RefPtr<ThreadData>>();
+            threadData = new ThreadSpecific<RefPtr<ThreadData>, CanBeGCThread::True>();
         });
     
     RefPtr<ThreadData>& result = **threadData;
@@ -564,7 +564,7 @@ NEVER_INLINE ParkingLot::ParkResult ParkingLot::parkConditionallyImpl(
     const void* address,
     const ScopedLambda<bool()>& validation,
     const ScopedLambda<void()>& beforeSleep,
-    Clock::time_point timeout)
+    const TimeWithDynamicClockType& timeout)
 {
     if (verbose)
         dataLog(toString(currentThread(), ": parking.\n"));
@@ -592,20 +592,17 @@ NEVER_INLINE ParkingLot::ParkResult ParkingLot::parkConditionallyImpl(
     
     bool didGetDequeued;
     {
-        std::unique_lock<std::mutex> locker(me->parkingLock);
-        while (me->address && Clock::now() < timeout) {
-            // Falling back to wait() works around a bug in libstdc++ implementation of std::condition_variable. See:
-            // - https://bugs.webkit.org/show_bug.cgi?id=148027
-            // - https://gcc.gnu.org/bugzilla/show_bug.cgi?id=58931
-            if (timeout == Clock::time_point::max())
-                me->parkingCondition.wait(locker);
-            else
-                me->parkingCondition.wait_until(locker, timeout);
+        MutexLocker locker(me->parkingLock);
+        while (me->address && timeout.nowWithSameClock() < timeout) {
+            me->parkingCondition.timedWait(
+                me->parkingLock, timeout.approximateWallTime().secondsSinceEpoch().value());
             
-            // Because of the above, we do this thing, which is hilariously awful, but ensures that the worst case is
-            // a CPU-eating spin but not a deadlock.
-            locker.unlock();
-            locker.lock();
+            // It's possible for the OS to decide not to wait. If it does that then it will also
+            // decide not to release the lock. If there's a bug in the time math, then this could
+            // result in a deadlock. Flashing the lock means that at worst it's just a CPU-eating
+            // spin.
+            me->parkingLock.unlock();
+            me->parkingLock.lock();
         }
         ASSERT(!me->address || me->address == address);
         didGetDequeued = !me->address;
@@ -640,10 +637,14 @@ NEVER_INLINE ParkingLot::ParkResult ParkingLot::parkConditionallyImpl(
 
     // Make sure that no matter what, me->address is null after this point.
     {
-        std::lock_guard<std::mutex> locker(me->parkingLock);
+        MutexLocker locker(me->parkingLock);
         if (!didDequeue) {
-            // If we were unparked then our address would have been reset by the unparker.
-            RELEASE_ASSERT(!me->address);
+            // If we did not dequeue ourselves, then someone else did. They will set our address to
+            // null. We don't want to proceed until they do this, because otherwise, they may set
+            // our address to null in some distant future when we're already trying to wait for
+            // other things.
+            while (me->address)
+                me->parkingCondition.wait(me->parkingLock);
         }
         me->address = nullptr;
     }
@@ -667,6 +668,11 @@ NEVER_INLINE ParkingLot::UnparkResult ParkingLot::unparkOne(const void* address)
     RefPtr<ThreadData> threadData;
     result.mayHaveMoreThreads = dequeue(
         address,
+        // Why is this here?
+        // FIXME: It seems like this could be IgnoreEmpty, but I switched this to EnsureNonEmpty
+        // without explanation in r199760. We need it to use EnsureNonEmpty if we need to perform
+        // some operation while holding the bucket lock, which usually goes into the finish func.
+        // But if that operation is a no-op, then it's not clear why we need this.
         BucketMode::EnsureNonEmpty,
         [&] (ThreadData* element, bool) {
             if (element->address != address)
@@ -686,11 +692,11 @@ NEVER_INLINE ParkingLot::UnparkResult ParkingLot::unparkOne(const void* address)
     ASSERT(threadData->address);
     
     {
-        std::unique_lock<std::mutex> locker(threadData->parkingLock);
+        MutexLocker locker(threadData->parkingLock);
         threadData->address = nullptr;
         threadData->token = 0;
     }
-    threadData->parkingCondition.notify_one();
+    threadData->parkingCondition.signal();
 
     return result;
 }
@@ -732,20 +738,26 @@ NEVER_INLINE void ParkingLot::unparkOneImpl(
     ASSERT(threadData->address);
     
     {
-        std::unique_lock<std::mutex> locker(threadData->parkingLock);
+        MutexLocker locker(threadData->parkingLock);
         threadData->address = nullptr;
     }
-    threadData->parkingCondition.notify_one();
+    // At this point, the threadData may die. Good thing we have a RefPtr<> on it.
+    threadData->parkingCondition.signal();
 }
 
-NEVER_INLINE void ParkingLot::unparkAll(const void* address)
+NEVER_INLINE unsigned ParkingLot::unparkCount(const void* address, unsigned count)
 {
+    if (!count)
+        return 0;
+    
     if (verbose)
-        dataLog(toString(currentThread(), ": unparking all from ", RawPointer(address), ".\n"));
+        dataLog(toString(currentThread(), ": unparking count = ", count, " from ", RawPointer(address), ".\n"));
     
     Vector<RefPtr<ThreadData>, 8> threadDatas;
     dequeue(
         address,
+        // FIXME: It seems like this ought to be EnsureNonEmpty if we follow what unparkOne() does,
+        // but that seems wrong.
         BucketMode::IgnoreEmpty,
         [&] (ThreadData* element, bool) {
             if (verbose)
@@ -753,6 +765,8 @@ NEVER_INLINE void ParkingLot::unparkAll(const void* address)
             if (element->address != address)
                 return DequeueResult::Ignore;
             threadDatas.append(element);
+            if (threadDatas.size() == count)
+                return DequeueResult::RemoveAndStop;
             return DequeueResult::RemoveAndContinue;
         },
         [] (bool) { });
@@ -762,14 +776,21 @@ NEVER_INLINE void ParkingLot::unparkAll(const void* address)
             dataLog(toString(currentThread(), ": unparking ", RawPointer(threadData.get()), " with address ", RawPointer(threadData->address), "\n"));
         ASSERT(threadData->address);
         {
-            std::unique_lock<std::mutex> locker(threadData->parkingLock);
+            MutexLocker locker(threadData->parkingLock);
             threadData->address = nullptr;
         }
-        threadData->parkingCondition.notify_one();
+        threadData->parkingCondition.signal();
     }
 
     if (verbose)
         dataLog(toString(currentThread(), ": done unparking.\n"));
+    
+    return threadDatas.size();
+}
+
+NEVER_INLINE void ParkingLot::unparkAll(const void* address)
+{
+    unparkCount(address, UINT_MAX);
 }
 
 NEVER_INLINE void ParkingLot::forEachImpl(const ScopedLambda<void(ThreadIdentifier, const void*)>& callback)

@@ -72,6 +72,7 @@ class WebSelectionServiceController;
 
 #endif
 
+@class NSCandidateListTouchBarItem;
 @class WebBasePluginPackage;
 @class WebDownload;
 @class WebImmediateActionController;
@@ -293,10 +294,10 @@ OBJC_CLASS NSTextAlternatives;
 - (void)_setMockMediaPlaybackTargetPickerName:(NSString *)name state:(WebCore::MediaPlaybackTargetContext::State)state;
 #endif
 
-@end
+- (void)prepareForMouseUp;
+- (void)prepareForMouseDown;
+- (void)updateTouchBar;
+- (void)_dismissTextTouchBarPopoverItemWithIdentifier:(NSString *)identifier;
+- (NSCandidateListTouchBarItem *)candidateList;
 
-@interface WebView (WebUpdateWebViewAdditions)
-- (void)updateWebViewAdditions;
-- (void)webViewAdditionsWillDestroyView;
-- (id)candidateList;
 @end

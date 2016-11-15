@@ -25,8 +25,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ReplayController_h
-#define ReplayController_h
+#pragma once
 
 #if ENABLE(WEB_REPLAY)
 
@@ -131,7 +130,7 @@ public:
     void switchSession(RefPtr<ReplaySession>&&);
 
     // InspectorReplayAgent notifications.
-    void frameNavigated(DocumentLoader*);
+    void frameNavigated(Frame&);
     void frameDetached(Frame&);
     void willDispatchEvent(const Event&, Frame*);
 
@@ -196,5 +195,3 @@ private:
 } // namespace WebCore
 
 #endif // ENABLE(WEB_REPLAY)
-
-#endif // ReplayController_h

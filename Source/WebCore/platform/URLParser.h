@@ -49,6 +49,9 @@ public:
     static String serialize(const URLEncodedForm&);
 
 private:
+    static Optional<uint16_t> defaultPortForProtocol(StringView);
+    friend Optional<uint16_t> defaultPortForProtocol(StringView);
+
     URL m_url;
     Vector<LChar> m_asciiBuffer;
     bool m_urlIsSpecial { false };
@@ -57,10 +60,11 @@ private:
     const void* m_inputBegin { nullptr };
 
     bool m_didSeeSyntaxViolation { false };
+    const static size_t defaultInlineBufferSize = 2048;
 
     template<typename CharacterType> void parse(const CharacterType*, const unsigned length, const URL&, const TextEncoding&);
     template<typename CharacterType> void parseAuthority(CodePointIterator<CharacterType>);
-    template<typename CharacterType> bool parseHostAndPort(CodePointIterator<CharacterType>, const bool& isMail);
+    template<typename CharacterType> bool parseHostAndPort(CodePointIterator<CharacterType>);
     template<typename CharacterType> bool parsePort(CodePointIterator<CharacterType>&);
 
     void failure();
@@ -86,6 +90,11 @@ private:
     template<typename UnsignedIntegerType> void appendNumberToASCIIBuffer(UnsignedIntegerType);
     template<bool(*isInCodeSet)(UChar32), typename CharacterType> void utf8PercentEncode(const CodePointIterator<CharacterType>&);
     template<typename CharacterType> void utf8QueryEncode(const CodePointIterator<CharacterType>&);
+    template<typename CharacterType> Optional<Vector<LChar, defaultInlineBufferSize>> domainToASCII(const String&, const CodePointIterator<CharacterType>& iteratorForSyntaxViolationPosition);
+    template<typename CharacterType> Vector<LChar, defaultInlineBufferSize> percentDecode(const LChar*, size_t, const CodePointIterator<CharacterType>& iteratorForSyntaxViolationPosition);
+    static Vector<LChar, defaultInlineBufferSize> percentDecode(const LChar*, size_t);
+    static Optional<String> formURLDecode(StringView input);
+    static bool hasInvalidDomainCharacter(const Vector<LChar, defaultInlineBufferSize>&);
     void percentEncodeByte(uint8_t);
     void appendToASCIIBuffer(UChar32);
     void appendToASCIIBuffer(const char*, size_t);

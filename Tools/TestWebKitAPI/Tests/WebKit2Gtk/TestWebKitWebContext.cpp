@@ -22,6 +22,8 @@
 #include "LoadTrackingTest.h"
 #include "WebKitTestServer.h"
 #include <gtk/gtk.h>
+#include <limits.h>
+#include <stdlib.h>
 #include <webkit2/webkit2.h>
 #include <wtf/HashMap.h>
 #include <wtf/glib/GRefPtr.h>
@@ -171,7 +173,9 @@ static void testWebContextGetPlugins(PluginsTest* test, gconstpointer)
     }
     g_assert(WEBKIT_IS_PLUGIN(testPlugin.get()));
 
-    GUniquePtr<char> pluginPath(g_build_filename(WEBKIT_TEST_PLUGIN_DIR, "libTestNetscapePlugin.so", nullptr));
+    char normalizedPath[PATH_MAX];
+    g_assert(realpath(WEBKIT_TEST_PLUGIN_DIR, normalizedPath));
+    GUniquePtr<char> pluginPath(g_build_filename(normalizedPath, "libTestNetscapePlugin.so", nullptr));
     g_assert_cmpstr(webkit_plugin_get_path(testPlugin.get()), ==, pluginPath.get());
     g_assert_cmpstr(webkit_plugin_get_description(testPlugin.get()), ==, "Simple Netscape® plug-in that handles test content for WebKit");
     GList* mimeInfoList = webkit_plugin_get_mime_info_list(testPlugin.get());
@@ -465,7 +469,7 @@ static void testWebContextSpellChecker(Test* test, gconstpointer)
 
 static void testWebContextLanguages(WebViewTest* test, gconstpointer)
 {
-    static const char* expectedDefaultLanguage = "en-us";
+    static const char* expectedDefaultLanguage = "en-US";
     test->loadURI(kServer->getURIForPath("/").data());
     test->waitUntilLoadFinished();
     size_t mainResourceDataSize = 0;
@@ -496,7 +500,7 @@ static void testWebContextLanguages(WebViewTest* test, gconstpointer)
     g_assert(javascriptResult);
     g_assert(!error);
     GUniquePtr<char> locale(WebViewTest::javascriptResultToCString(javascriptResult));
-    g_assert_cmpstr(locale.get(), ==, "en-US");
+    g_assert_cmpstr(locale.get(), ==, expectedDefaultLanguage);
 
     // When using the POSIX locale, en-US should be used as default.
     const char* posixLanguage[] = { "POSIX", nullptr };
@@ -505,7 +509,7 @@ static void testWebContextLanguages(WebViewTest* test, gconstpointer)
     g_assert(javascriptResult);
     g_assert(!error);
     locale.reset(WebViewTest::javascriptResultToCString(javascriptResult));
-    g_assert_cmpstr(locale.get(), ==, "en-US");
+    g_assert_cmpstr(locale.get(), ==, expectedDefaultLanguage);
 
     // An invalid locale should throw an exception.
     const char* invalidLanguage[] = { "A", nullptr };

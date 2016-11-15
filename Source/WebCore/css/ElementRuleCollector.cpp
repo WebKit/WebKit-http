@@ -37,7 +37,6 @@
 #include "CSSValueKeywords.h"
 #include "HTMLElement.h"
 #include "HTMLSlotElement.h"
-#include "InspectorInstrumentation.h"
 #include "NodeRenderStyle.h"
 #include "RenderRegion.h"
 #include "SVGElement.h"
@@ -47,7 +46,6 @@
 #include "StyleProperties.h"
 #include "StyleScope.h"
 #include "StyledElement.h"
-
 #include <wtf/TemporaryChange.h>
 
 namespace WebCore {
@@ -70,7 +68,7 @@ static const StyleProperties& rightToLeftDeclaration()
 
 class MatchRequest {
 public:
-    MatchRequest(const RuleSet* ruleSet, bool includeEmptyRules = false, unsigned treeContextOrdinal = 0)
+    MatchRequest(const RuleSet* ruleSet, bool includeEmptyRules = false, int treeContextOrdinal = 0)
         : ruleSet(ruleSet)
         , includeEmptyRules(includeEmptyRules)
         , treeContextOrdinal(treeContextOrdinal)
@@ -78,7 +76,7 @@ public:
     }
     const RuleSet* ruleSet;
     const bool includeEmptyRules;
-    unsigned treeContextOrdinal;
+    int treeContextOrdinal;
 };
 
 ElementRuleCollector::ElementRuleCollector(const Element& element, const DocumentRuleSets& ruleSets, const SelectorFilter* selectorFilter)
@@ -110,7 +108,7 @@ const Vector<RefPtr<StyleRule>>& ElementRuleCollector::matchedRuleList() const
     return m_matchedRuleList;
 }
 
-inline void ElementRuleCollector::addMatchedRule(const RuleData& ruleData, unsigned specificity, unsigned treeContextOrdinal, StyleResolver::RuleRange& ruleRange)
+inline void ElementRuleCollector::addMatchedRule(const RuleData& ruleData, unsigned specificity, int treeContextOrdinal, StyleResolver::RuleRange& ruleRange)
 {
     // Update our first/last rule indices in the matched rules array.
     ++ruleRange.lastRuleIndex;
@@ -144,7 +142,7 @@ void ElementRuleCollector::collectMatchingRules(const MatchRequest& matchRequest
     ASSERT_WITH_MESSAGE(!(m_mode == SelectorChecker::Mode::CollectingRulesIgnoringVirtualPseudoElements && m_pseudoStyleRequest.pseudoId != NOPSEUDO), "When in StyleInvalidation or SharingRules, SelectorChecker does not try to match the pseudo ID. While ElementRuleCollector supports matching a particular pseudoId in this case, this would indicate a error at the call site since matching a particular element should be unnecessary.");
 
     auto* shadowRoot = m_element.containingShadowRoot();
-    if (shadowRoot && shadowRoot->mode() == ShadowRoot::Mode::UserAgent)
+    if (shadowRoot && shadowRoot->mode() == ShadowRootMode::UserAgent)
         collectMatchingShadowPseudoElementRules(matchRequest, ruleRange);
 
     // We need to collect the rules for id, class, tag, and everything else into a buffer and
@@ -215,7 +213,7 @@ void ElementRuleCollector::matchAuthorRules(bool includeEmptyRules)
     if (parent && parent->shadowRoot())
         matchSlottedPseudoElementRules(matchRequest, ruleRange);
 
-    if (m_element.shadowRoot())
+    if (m_element.shadowRoot() && m_pseudoStyleRequest.pseudoId == NOPSEUDO)
         matchHostPseudoClassRules(matchRequest, ruleRange);
 
     if (m_element.isInShadowTree())
@@ -228,11 +226,11 @@ void ElementRuleCollector::matchAuthorShadowPseudoElementRules(const MatchReques
 {
     ASSERT(m_element.isInShadowTree());
     auto& shadowRoot = *m_element.containingShadowRoot();
-    if (shadowRoot.mode() != ShadowRoot::Mode::UserAgent)
+    if (shadowRoot.mode() != ShadowRootMode::UserAgent)
         return;
     // Look up shadow pseudo elements also from the host scope author style as they are web-exposed.
     auto& hostAuthorRules = Style::Scope::forNode(*shadowRoot.host()).resolver().ruleSets().authorStyle();
-    MatchRequest hostAuthorRequest { &hostAuthorRules, matchRequest.includeEmptyRules };
+    MatchRequest hostAuthorRequest { &hostAuthorRules, matchRequest.includeEmptyRules, matchRequest.treeContextOrdinal - 1 };
     collectMatchingShadowPseudoElementRules(hostAuthorRequest, ruleRange);
 }
 
@@ -294,7 +292,7 @@ void ElementRuleCollector::matchSlottedPseudoElementRules(MatchRequest& matchReq
 void ElementRuleCollector::collectMatchingShadowPseudoElementRules(const MatchRequest& matchRequest, StyleResolver::RuleRange& ruleRange)
 {
     ASSERT(matchRequest.ruleSet);
-    ASSERT(m_element.containingShadowRoot()->mode() == ShadowRoot::Mode::UserAgent);
+    ASSERT(m_element.containingShadowRoot()->mode() == ShadowRootMode::UserAgent);
 
     auto& rules = *matchRequest.ruleSet;
 #if ENABLE(VIDEO_TRACK)

@@ -1,6 +1,17 @@
 {
     "specification": [
     {
+        "name": "Battery Status API",
+        "status": {
+            "status": "Removed"
+        },
+        "url": "https://w3c.github.io/battery/",
+        "webkit-url": "https://webkit.org/b/62698",
+        "keywords": ["battery"],
+        "category": "webapps",
+        "description": "An API that provides information about the battery status of the hosting device."
+    },
+    {
         "name": "Beacon API",
         "status": {
             "status": "Under Consideration",
@@ -16,6 +27,17 @@
             "email": "web-evangelist@apple.com",
             "twitter": "@jonathandavis"
         }
+    },
+    {
+        "name": "CSS Color Level 4",
+        "status": {
+            "status": "In Development",
+            "enabled-by-default": true
+        },
+        "url": "https://drafts.csswg.org/css-color/",
+        "keywords": ["css color", "color"],
+        "category": "css",
+        "description": "Allows content to specify colors outside of the sRGB Color Space."
     },
     {
         "name": "CSS Fonts Level 4",
@@ -203,20 +225,45 @@
         "category": "css"
     },
     {
+        "name": "Geometry Interfaces",
+        "url": "https://drafts.fxtf.org/geometry/",
+        "keywords": ["geometry", "dompointreadonly", "dompoint", "domrectreadonly", "domrect", "domquad", "dommatrixreadonly", "dommatrix"],
+        "category": "html",
+        "status": {
+            "status": "In Development"
+        },
+        "webkit-url": "https://bugs.webkit.org/show_bug.cgi?id=163505"
+    },
+    {
         "name": "HTML5",
         "url": "https://html.spec.whatwg.org",
         "keywords": ["html", "html5", "html5.1"],
         "category": "html"
     },
     {
-        "name": "IndexedDB",
+        "name": "Indexed Database",
         "status": {
             "status": "Done"
         },
         "url": "http://www.w3.org/TR/IndexedDB/",
         "webkit-url": "https://bugs.webkit.org/show_bug.cgi?id=149117",
         "keywords": ["indexeddb", "index db", "indexed db", "indexed database", "idb"],
-        "description": "A standard interface to a browser database of records for simple values and objects. IndexedDB currently matches the W3C recommended spec (version 1). We are participating in development of version 2 of the spec and plan to implement new features as they stabilize.",
+        "description": "A standard interface to a database of records for simple values and objects. WebKit supports the full W3C recommended standard.",
+        "contact": {
+            "name": "Brady Eidson",
+            "twitter": "@bradeeoh",
+            "email": "beidson@webkit.org"
+        }
+    },
+    {
+        "name": "Indexed Database 2.0",
+        "status": {
+            "status": "In Development"
+        },
+        "url": "http://w3c.github.io/IndexedDB/",
+        "webkit-url": "https://bugs.webkit.org/show_bug.cgi?id=160306",
+        "keywords": ["indexeddb", "index db", "indexed db", "indexed database", "idb"],
+        "description": "Version 2.0 of the Indexed Database API. We are participating in development of the standard and are implementing new features as they stabilize.",
         "contact": {
             "name": "Brady Eidson",
             "twitter": "@bradeeoh",
@@ -338,7 +385,6 @@
         "description": "A collection of technologies to improve modularization of DOM subtrees.",
         "contact": {
             "name": "Ryosuke Niwa",
-            "twitter": "@RyosukeNiwa",
             "email": "rniwa@webkit.org"
         }
     },
@@ -546,7 +592,7 @@
     {
         "name": "Custom Elements",
         "status": {
-            "status": "In Development"
+            "status": "Done"
         },
         "url": "http://w3c.github.io/webcomponents/spec/custom/",
         "webkit-url": "https://bugs.webkit.org/show_bug.cgi?id=150225",
@@ -554,17 +600,16 @@
         "description": "Define a custom HTML tag and associate it with an ES6 class.",
         "contact": {
             "name": "Ryosuke Niwa",
-            "twitter": "@RyosukeNiwa",
             "email": "rniwa@webkit.org"
         }
     },
     {
         "name": "Download Attribute",
         "status": {
-            "status": "In Development"
+            "status": "Done"
         },
         "url": "https://html.spec.whatwg.org/multipage/semantics.html#downloading-resources",
-        "webkit-url": "https://webkit.org/b/102914",
+        "webkit-url": "https://bugs.webkit.org/show_bug.cgi?id=156056",
         "specification": "HTML5",
         "description": "An attribute to an anchor or area element to indicate that a resource is intended to be downloaded for use later rather than immediately.",
         "contact": {
@@ -610,6 +655,23 @@
         "description": "Provide the events necessary to handle force click events in the page, overriding the default behavior."
     },
     {
+        "name": "HTML Interactive Form Validation",
+        "status": {
+            "status": "In Development",
+            "enabled-by-default": false
+        },
+        "url": "https://html.spec.whatwg.org/#constraint-validation",
+        "webkit-url": "https://bugs.webkit.org/show_bug.cgi?id=164382",
+        "keywords": ["form validation", "bubble"],
+        "specification": "HTML5",
+        "description": "Interactive validation of constraints on HTML forms by displaying bubbles with a validation message next to incomplete / invalid form controls.",
+        "contact": {
+            "name": "Chris Dumez",
+            "email": "cdumez@apple.com",
+            "twitter": "@chris_dumez"
+        }
+    },
+    {
         "name": "HTML imports",
         "status": {
             "status": "Not Considering"
@@ -617,11 +679,10 @@
         "url": "http://w3c.github.io/webcomponents/spec/imports/",
         "specification": "Web Components",
         "description": "Includes resusable HTML documents in other HTML documents.",
-        "comment": "There are concerns about the disconnect between this specification and ES6 Modules. WebKit has no intent to support the current specification.",
+        "comment": "Multile browser vendors have raised concerns about how the HTML imports currently works. For example, its dependency model is not fully compatible with ES6 Modules. We are exploring other ways to package web components by integrating into ES6 Modules with other browser vendors.",
         "contact": {
-            "name": "Jon Davis",
-            "twitter": "@jonathandavis",
-            "email": "web-evangelist@apple.com"
+            "name": "Ryosuke Niwa",
+            "email": "rniwa@webkit.org"
         }
     },
     {
@@ -648,6 +709,17 @@
         "url": "http://dev.w3.org/csswg/css-inline/#propdef-initial-letter",
         "specification": "CSS Inline Layout Module Level 3",
         "description": "This property specifies styling for dropped, raised, and sunken initial letters."
+    },
+    {
+        "name": "Input Events",
+        "status": {
+            "status": "In Development",
+            "enabled-by-default": false
+        },
+        "url": "https://w3c.github.io/input-events",
+        "webkit-url": "https://bugs.webkit.org/show_bug.cgi?id=163112",
+        "documentation-url": "https://w3c.github.io/input-events",
+        "description": "Allows pages to override default editing behaviors and to monitor DOM changes due to user input."
     },
     {
         "name": "Interaction Media Features (pointer, hover, any-pointer, any-hover)",
@@ -736,15 +808,16 @@
     {
         "name": "Shadow DOM",
         "status": {
-            "status": "In Development"
+            "status": "Done",
+            "enabled-by-default": true
         },
         "url": "http://w3c.github.io/webcomponents/spec/shadow/",
         "webkit-url": "https://bugs.webkit.org/show_bug.cgi?id=148695",
         "specification": "Web Components",
         "description": "Functional encapsulation of HTML and CSS for Web Components.",
+        "comment": "We are fixing the remainig bugs in our implementation.",
         "contact": {
             "name": "Ryosuke Niwa",
-            "twitter": "@RyosukeNiwa",
             "email": "rniwa@webkit.org"
         }
     },
@@ -826,6 +899,25 @@
         "documentation-url": "https://drafts.csswg.org/css-fonts-4/",
         "specification": "CSS Fonts Level 4",
         "description": "Allows selection of variation values along fonts' exposed axes."
+    },
+    {
+        "name": "ViewportAPI",
+        "status": {
+        	"status": "Under Consideration"
+        },
+        "url": "https://github.com/WICG/ViewportAPI",
+        "description": "A proposal to add explicit APIs to the Web for querying and setting the visual viewport.",
+        "keywords": ["visual viewport", "viewport", "viewportapi"]
+    },
+    {
+        "name": "requestIdleCallback",
+        "status": {
+            "status": "Under Consideration"
+        },
+        "url": "https://w3c.github.io/requestidlecallback/",
+        "webkit-url": "https://bugs.webkit.org/show_bug.cgi?id=164193",
+        "keywords": ["requestIdleCallback", "idle callback"],
+        "description": "An API that can be used to cooperatively schedule background tasks."
     }
     ]
 }

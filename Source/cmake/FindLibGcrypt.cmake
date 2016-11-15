@@ -16,6 +16,7 @@
 #     The linker libraries needed to use the gcrypt library
 
 # Copyright 2014 Nicolás Alvarez <nicolas.alvarez@gmail.com>
+# Copyright 2016 Igalia S.L
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -41,7 +42,7 @@
 # THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 find_program(LIBGCRYPTCONFIG_SCRIPT NAMES libgcrypt-config)
-if(LIBGCRYPTCONFIG_SCRIPT)
+if (LIBGCRYPTCONFIG_SCRIPT)
     execute_process(
         COMMAND "${LIBGCRYPTCONFIG_SCRIPT}" --prefix
         RESULT_VARIABLE CONFIGSCRIPT_RESULT
@@ -51,8 +52,8 @@ if(LIBGCRYPTCONFIG_SCRIPT)
     if (CONFIGSCRIPT_RESULT EQUAL 0)
         set(LIBGCRYPT_LIB_HINT "${PREFIX}/lib")
         set(LIBGCRYPT_INCLUDE_HINT "${PREFIX}/include")
-    endif()
-endif()
+    endif ()
+endif ()
 
 find_library(LIBGCRYPT_LIBRARY
     NAMES gcrypt
@@ -63,10 +64,10 @@ find_path(LIBGCRYPT_INCLUDE_DIR
     HINTS ${LIBGCRYPT_INCLUDE_HINT}
 )
 
-if(LIBGCRYPT_INCLUDE_DIR)
+if (LIBGCRYPT_INCLUDE_DIR)
     file(STRINGS ${LIBGCRYPT_INCLUDE_DIR}/gcrypt.h GCRYPT_H REGEX "^#define GCRYPT_VERSION ")
     string(REGEX REPLACE "^#define GCRYPT_VERSION \"(.*)\".*$" "\\1" LIBGCRYPT_VERSION "${GCRYPT_H}")
-endif()
+endif ()
 
 include(FindPackageHandleStandardArgs)
 
@@ -75,10 +76,10 @@ find_package_handle_standard_args(LibGcrypt
     REQUIRED_VARS LIBGCRYPT_LIBRARY LIBGCRYPT_INCLUDE_DIR
     VERSION_VAR LIBGCRYPT_VERSION
 )
-if(LIBGCRYPT_FOUND)
+if (LIBGCRYPT_FOUND)
     set(LIBGCRYPT_LIBRARIES ${LIBGCRYPT_LIBRARY})
     set(LIBGCRYPT_INCLUDE_DIRS ${LIBGCRYPT_INCLUDE_DIR})
-endif()
+endif ()
 
 mark_as_advanced(LIBGCRYPT_LIBRARY LIBGCRYPT_INCLUDE_DIR)
 

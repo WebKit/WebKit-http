@@ -222,6 +222,10 @@ http/tests/misc/image-checks-for-accept.html [ Skip ]
 # TODO Need to add functionality to DumpRenderTree to handle enable/disable Spatial Navigation
 fast/spatial-navigation/ [ Skip ]
 
+# Need to implement AccessibilityUIElement::clearSelectedChildren()
+accessibility/aria-listbox-clear-selection-crash.html [ Skip ]
+accessibility/listbox-clear-selection.html [ Skip ]
+
 # TODO Investigate why these mouse scroll tests are failing.
 fast/events/platform-wheelevent-in-scrolling-div.html [ Failure ]
 fast/events/continuous-platform-wheelevent-in-scrolling-div.html [ Failure ]
@@ -372,7 +376,6 @@ webkit.org/b/42435 http/tests/misc/webtiming-resolution.html [ Skip ]
 webkit.org/b/42435 http/tests/misc/webtiming-slow-load.php [ Skip ]
 webkit.org/b/42435 http/tests/misc/webtiming-ssl.php [ Skip ]
 webkit.org/b/42435 http/tests/misc/webtiming-two-redirects.php [ Skip ]
-webkit.org/b/42435 http/tests/w3c/webperf [ Skip ]
 
 # TODO Application Cache Quotas
 webkit.org/b/43458 http/tests/appcache/origin-quota.html [ Skip ]
@@ -444,9 +447,13 @@ fast/dom/HTMLAnchorElement/anchor-nodownload-set.html [ Skip ]
 fast/dom/HTMLAnchorElement/anchor-download-unset.html [ Skip ]
 fast/dom/HTMLAnchorElement/anchor-download-synthetic-click.html [ Skip ]
 fast/dom/HTMLAnchorElement/anchor-download-user-triggered-synthetic-click.html [ Skip ]
+fast/dom/HTMLAnchorElement/anchor-file-blob-download.html [ Skip ]
 http/tests/download/area-download.html [ Skip ]
 http/tests/security/anchor-download-allow-data.html [ Skip ]
 http/tests/security/anchor-download-allow-sameorigin.html [ Skip ]
+
+# testRunner.setShouldDownloadUndisplayableMIMETypes() is not supported on WK1.
+fast/dom/HTMLAnchorElement/anchor-file-blob-convert-to-download.html [ Skip ]
 
 # TODO Expose title direction in WebKit API (Chromium Only)
 webkit.org/b/58845 fast/dom/title-directionality.html [ Skip ]
@@ -530,9 +537,6 @@ http/tests/pointer-lock/ [ Skip ]
 # TODO Vibration API is not implemented.
 vibration/ [ Skip ]
 
-# Needs BatteryClient implementation.
-webkit.org/b/62698 batterystatus/ [ Skip ]
-
 # Proximity Events is not supported.
 proximity/ [ Skip ]
 fast/events/constructors/device-proximity-event-constructor.html
@@ -576,12 +580,6 @@ compositing/overflow/updating-scrolling-content.html [ Skip ]
 webkit.org/b/140518 [ Debug ] fast/events/drag-and-drop-autoscroll.html [ Skip ]  # Crashing
 webkit.org/b/140518 [ Release ] fast/events/drag-and-drop-autoscroll.html [ Failure ]
 fast/events/clear-drag-state.html [ Failure ]
-
-# TODO User Timing is not enabled yet. so skip it.
-webkit.org/b/84893 http/tests/w3c/webperf/submission/Intel/user-timing [ Skip ]
-
-# TODO Resource Timing is not enable yet, skip it.
-webkit.org/b/61138 http/tests/w3c/webperf/submission/Intel/resource-timing [ Skip ]
 
 # Need support for ResourceHandle::didChangePriority and DRT support
 webkit.org/b/111016 http/tests/loading/promote-img-preload-priority.html [ Skip ] # Crash
@@ -638,6 +636,8 @@ webkit.org/b/149245 imported/w3c/css/css-multicol-1/multicol-span-all-margin-nes
 
 # font-variant-* not implemented on Windows
 webkit.org/b/149630 css3/font-variant-all.html [ ImageOnlyFailure ]
+
+webkit.org/b/158836 imported/w3c/web-platform-tests/encrypted-media [ Skip ]
 
 ################################################################################
 ###########    End Missing Functionality Prevents Testing         ##############
@@ -2521,6 +2521,8 @@ webkit.org/b/140703 security/block-test-no-port.html [ Failure ]
 webkit.org/b/140707 storage/domstorage/localstorage/close-idle-localstorage-databases-immediately.html [ Failure ]
 webkit.org/b/140707 storage/domstorage/storage-close-database-on-idle.html [ Failure ]
 
+webkit.org/b/155185 storage/domstorage/localstorage [ Failure ]
+
 webkit.org/b/140725 fast/dom/34176.html [ Failure ]
 
 # Windows doesn't seem to have some of these fonts:
@@ -2717,11 +2719,7 @@ webkit.org/b/103043 fast/events/frame-scroll-fake-mouse-move.html [ Skip ]
 webkit.org/b/97026 [ Release ] fast/events/keydown-leftright-keys.html [ Failure ]
 webkit.org/b/97026 [ Debug ] fast/events/keydown-leftright-keys.html [ Skip ] # Debug Assertion
 # fast/events/page-visibility tests timeout.
-webkit.org/b/121509 fast/events/page-visibility-iframe-delete-test.html [ Skip ] #  [ Timeout ]
 webkit.org/b/121509 fast/events/wheelevent-mousewheel-interaction.html [ Skip ] #  [ Timeout ]
-webkit.org/b/121509 fast/events/page-visibility-iframe-propagation-test.html [ Skip ] #  [ Timeout ]
-webkit.org/b/121509 fast/events/page-visibility-transition-test.html [ Skip ] #  [ Timeout ]
-webkit.org/b/121509 fast/events/page-visibility-iframe-move-test.html [ Skip ] #  [ Timeout ]
 fast/events/special-key-events-in-input-text.html [ Failure ]
 fast/events/attribute-listener-cloned-from-frameless-doc-context.html [ Pass Failure ]
 [ Release ] fast/events/drag-outside-window.html [ Pass Timeout ]
@@ -3297,10 +3295,6 @@ webkit.org/b/152411 http/tests/contentdispositionattachmentsandbox/referer-heade
 webkit.org/b/152411 http/tests/contentdispositionattachmentsandbox/referer-header-stripped-with-meta-referer-unsafe-url.html [ Failure ]
 webkit.org/b/152411 http/tests/contentdispositionattachmentsandbox/referer-header-stripped.html [ Failure ]
 
-webkit.org/b/150225 fast/custom-elements [ Pass ]
-
-webkit.org/b/148695 fast/shadow-dom [ Pass ]
-
 # Touch events is not enabled on Windows
 webkit.org/b/149592 fast/shadow-dom/touch-event-ios.html [ Failure ]
 
@@ -3494,7 +3488,8 @@ imported/w3c/web-platform-tests/fetch/api/credentials/cookies.html [ Failure ]
 imported/w3c/web-platform-tests/fetch/api/credentials/cookies-worker.html [ Failure ]
 imported/w3c/web-platform-tests/fetch/api/redirect/redirect-method.html [ Failure ]
 imported/w3c/web-platform-tests/fetch/api/redirect/redirect-method-worker.html [ Failure ]
-imported/w3c/web-platform-tests/fetch/api/request/request-cache.html [ Failure ]
+imported/w3c/web-platform-tests/fetch/api/request/request-cache-reload.html [ Failure ]
+imported/w3c/web-platform-tests/fetch/api/request/request-cache-only-if-cached.html [ Failure ]
 imported/w3c/web-platform-tests/html/browsers/browsing-the-web/unloading-documents/unload/007.html [ Failure ]
 imported/w3c/web-platform-tests/html/browsers/history/the-history-interface/history_forward_1.html [ Failure ]
 imported/w3c/web-platform-tests/html/browsers/history/the-history-interface/history_go_no_argument.html [ Failure ]
@@ -3619,3 +3614,9 @@ mathml/presentation/bug159513.html [ Missing ]
 
 # html/syntax web platform tests are failing on Windows.
 webkit.org/b/162415 imported/w3c/web-platform-tests/html/syntax [ Skip ]
+
+# Only Mac has implemented DictionaryLookup
+fast/layers/prevent-hit-test-during-layout.html [ Skip ]
+
+# webrtc not supported
+imported/w3c/web-platform-tests/webrtc [ Skip ]

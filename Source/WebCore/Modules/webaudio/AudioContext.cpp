@@ -280,7 +280,7 @@ bool AudioContext::isInitialized() const
     return m_isInitialized;
 }
 
-void AudioContext::addReaction(State state, Promise&& promise)
+void AudioContext::addReaction(State state, DOMPromise<void>&& promise)
 {
     size_t stateIndex = static_cast<size_t>(state);
     if (stateIndex >= m_stateReactions.size())
@@ -301,11 +301,11 @@ void AudioContext::setState(State state)
     if (stateIndex >= m_stateReactions.size())
         return;
 
-    Vector<Promise> reactions;
+    Vector<DOMPromise<void>> reactions;
     m_stateReactions[stateIndex].swap(reactions);
 
     for (auto& promise : reactions)
-        promise.resolve(nullptr);
+        promise.resolve();
 }
 
 void AudioContext::stop()
@@ -957,9 +957,11 @@ void AudioContext::startRendering()
     setState(State::Running);
 }
 
-void AudioContext::mediaCanStart()
+void AudioContext::mediaCanStart(Document& document)
 {
+    ASSERT_UNUSED(document, &document == this->document());
     removeBehaviorRestriction(AudioContext::RequirePageConsentForAudioStartRestriction);
+    mayResumePlayback(true);
 }
 
 MediaProducer::MediaStateFlags AudioContext::mediaState() const
@@ -973,7 +975,7 @@ MediaProducer::MediaStateFlags AudioContext::mediaState() const
 void AudioContext::pageMutedStateDidChange()
 {
     if (m_destinationNode && document()->page())
-        m_destinationNode->setMuted(document()->page()->isMuted());
+        m_destinationNode->setMuted(document()->page()->isAudioMuted());
 }
 
 void AudioContext::isPlayingAudioDidChange()
@@ -1016,7 +1018,7 @@ void AudioContext::decrementActiveSourceCount()
     --m_activeSourceCount;
 }
 
-void AudioContext::suspend(Promise&& promise)
+void AudioContext::suspend(DOMPromise<void>&& promise)
 {
     if (isOfflineContext()) {
         promise.reject(INVALID_STATE_ERR);
@@ -1024,7 +1026,7 @@ void AudioContext::suspend(Promise&& promise)
     }
 
     if (m_state == State::Suspended) {
-        promise.resolve(nullptr);
+        promise.resolve();
         return;
     }
 
@@ -1045,7 +1047,7 @@ void AudioContext::suspend(Promise&& promise)
     });
 }
 
-void AudioContext::resume(Promise&& promise)
+void AudioContext::resume(DOMPromise<void>&& promise)
 {
     if (isOfflineContext()) {
         promise.reject(INVALID_STATE_ERR);
@@ -1053,7 +1055,7 @@ void AudioContext::resume(Promise&& promise)
     }
 
     if (m_state == State::Running) {
-        promise.resolve(nullptr);
+        promise.resolve();
         return;
     }
 
@@ -1074,7 +1076,7 @@ void AudioContext::resume(Promise&& promise)
     });
 }
 
-void AudioContext::close(Promise&& promise)
+void AudioContext::close(DOMPromise<void>&& promise)
 {
     if (isOfflineContext()) {
         promise.reject(INVALID_STATE_ERR);
@@ -1082,7 +1084,7 @@ void AudioContext::close(Promise&& promise)
     }
 
     if (m_state == State::Closed || !m_destinationNode) {
-        promise.resolve(nullptr);
+        promise.resolve();
         return;
     }
 

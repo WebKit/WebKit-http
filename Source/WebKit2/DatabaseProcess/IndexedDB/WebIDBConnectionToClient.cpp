@@ -34,6 +34,7 @@
 #include "WebIDBConnectionToServerMessages.h"
 #include "WebIDBResult.h"
 #include <WebCore/IDBError.h>
+#include <WebCore/IDBGetAllRecordsData.h>
 #include <WebCore/IDBGetRecordData.h>
 #include <WebCore/IDBResultData.h>
 #include <WebCore/IDBValue.h>
@@ -107,6 +108,11 @@ void WebIDBConnectionToClient::didDeleteObjectStore(const WebCore::IDBResultData
     send(Messages::WebIDBConnectionToServer::DidDeleteObjectStore(resultData));
 }
 
+void WebIDBConnectionToClient::didRenameObjectStore(const WebCore::IDBResultData& resultData)
+{
+    send(Messages::WebIDBConnectionToServer::DidRenameObjectStore(resultData));
+}
+
 void WebIDBConnectionToClient::didClearObjectStore(const WebCore::IDBResultData& resultData)
 {
     send(Messages::WebIDBConnectionToServer::DidClearObjectStore(resultData));
@@ -122,6 +128,11 @@ void WebIDBConnectionToClient::didDeleteIndex(const WebCore::IDBResultData& resu
     send(Messages::WebIDBConnectionToServer::DidDeleteIndex(resultData));
 }
 
+void WebIDBConnectionToClient::didRenameIndex(const WebCore::IDBResultData& resultData)
+{
+    send(Messages::WebIDBConnectionToServer::DidRenameIndex(resultData));
+}
+
 void WebIDBConnectionToClient::didPutOrAdd(const WebCore::IDBResultData& resultData)
 {
     send(Messages::WebIDBConnectionToServer::DidPutOrAdd(resultData));
@@ -134,7 +145,12 @@ template<class MessageType> void WebIDBConnectionToClient::handleGetResult(const
         return;
     }
 
-    auto& blobFilePaths = resultData.getResult().value().blobFilePaths();
+    if (resultData.type() == IDBResultType::GetAllRecordsSuccess && resultData.getAllResult().type() == IndexedDB::GetAllType::Keys) {
+        send(MessageType(resultData));
+        return;
+    }
+
+    auto blobFilePaths = resultData.type() == IDBResultType::GetAllRecordsSuccess ? resultData.getAllResult().allBlobFilePaths() : resultData.getResult().value().blobFilePaths();
     if (blobFilePaths.isEmpty()) {
         send(MessageType(resultData));
         return;
@@ -153,6 +169,11 @@ template<class MessageType> void WebIDBConnectionToClient::handleGetResult(const
 void WebIDBConnectionToClient::didGetRecord(const WebCore::IDBResultData& resultData)
 {
     handleGetResult<Messages::WebIDBConnectionToServer::DidGetRecord>(resultData);
+}
+
+void WebIDBConnectionToClient::didGetAllRecords(const WebCore::IDBResultData& resultData)
+{
+    handleGetResult<Messages::WebIDBConnectionToServer::DidGetAllRecords>(resultData);
 }
 
 void WebIDBConnectionToClient::didGetCount(const WebCore::IDBResultData& resultData)
@@ -235,6 +256,11 @@ void WebIDBConnectionToClient::deleteObjectStore(const IDBRequestData& request, 
     DatabaseProcess::singleton().idbServer().deleteObjectStore(request, name);
 }
 
+void WebIDBConnectionToClient::renameObjectStore(const IDBRequestData& request, uint64_t objectStoreIdentifier, const String& newName)
+{
+    DatabaseProcess::singleton().idbServer().renameObjectStore(request, objectStoreIdentifier, newName);
+}
+
 void WebIDBConnectionToClient::clearObjectStore(const IDBRequestData& request, uint64_t objectStoreIdentifier)
 {
     DatabaseProcess::singleton().idbServer().clearObjectStore(request, objectStoreIdentifier);
@@ -248,6 +274,11 @@ void WebIDBConnectionToClient::createIndex(const IDBRequestData& request, const 
 void WebIDBConnectionToClient::deleteIndex(const IDBRequestData& request, uint64_t objectStoreIdentifier, const String& name)
 {
     DatabaseProcess::singleton().idbServer().deleteIndex(request, objectStoreIdentifier, name);
+}
+
+void WebIDBConnectionToClient::renameIndex(const IDBRequestData& request, uint64_t objectStoreIdentifier, uint64_t indexIdentifier, const String& newName)
+{
+    DatabaseProcess::singleton().idbServer().renameIndex(request, objectStoreIdentifier, indexIdentifier, newName);
 }
 
 void WebIDBConnectionToClient::putOrAdd(const IDBRequestData& request, const IDBKeyData& key, const IDBValue& value, unsigned overwriteMode)
@@ -270,6 +301,11 @@ void WebIDBConnectionToClient::getRecord(const IDBRequestData& request, const ID
     DatabaseProcess::singleton().idbServer().getRecord(request, getRecordData);
 }
 
+void WebIDBConnectionToClient::getAllRecords(const IDBRequestData& request, const IDBGetAllRecordsData& getAllRecordsData)
+{
+    DatabaseProcess::singleton().idbServer().getAllRecords(request, getAllRecordsData);
+}
+
 void WebIDBConnectionToClient::getCount(const IDBRequestData& request, const IDBKeyRangeData& range)
 {
     DatabaseProcess::singleton().idbServer().getCount(request, range);
@@ -285,14 +321,19 @@ void WebIDBConnectionToClient::openCursor(const IDBRequestData& request, const I
     DatabaseProcess::singleton().idbServer().openCursor(request, info);
 }
 
-void WebIDBConnectionToClient::iterateCursor(const IDBRequestData& request, const IDBKeyData& key, unsigned long count)
+void WebIDBConnectionToClient::iterateCursor(const IDBRequestData& request, const IDBIterateCursorData& data)
 {
-    DatabaseProcess::singleton().idbServer().iterateCursor(request, key, count);
+    DatabaseProcess::singleton().idbServer().iterateCursor(request, data);
 }
 
 void WebIDBConnectionToClient::establishTransaction(uint64_t databaseConnectionIdentifier, const IDBTransactionInfo& info)
 {
     DatabaseProcess::singleton().idbServer().establishTransaction(databaseConnectionIdentifier, info);
+}
+
+void WebIDBConnectionToClient::databaseConnectionPendingClose(uint64_t databaseConnectionIdentifier)
+{
+    DatabaseProcess::singleton().idbServer().databaseConnectionPendingClose(databaseConnectionIdentifier);
 }
 
 void WebIDBConnectionToClient::databaseConnectionClosed(uint64_t databaseConnectionIdentifier)

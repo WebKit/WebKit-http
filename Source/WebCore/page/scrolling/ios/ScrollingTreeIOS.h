@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef ScrollingTreeIOS_h
-#define ScrollingTreeIOS_h
+#pragma once
 
 #if ENABLE(ASYNC_SCROLLING)
 
@@ -42,8 +41,6 @@ public:
     static Ref<ScrollingTreeIOS> create(AsyncScrollingCoordinator*);
     virtual ~ScrollingTreeIOS();
 
-    void commitNewTreeState(std::unique_ptr<ScrollingStateTree>) override;
-
     // No wheel events on iOS
     void handleWheelEvent(const PlatformWheelEvent&) override { }
     EventResult tryToHandleWheelEvent(const PlatformWheelEvent&) override { return DidNotHandleEvent; }
@@ -56,7 +53,7 @@ private:
 
     PassRefPtr<ScrollingTreeNode> createScrollingTreeNode(ScrollingNodeType, ScrollingNodeID) override;
 
-    void scrollingTreeNodeDidScroll(ScrollingNodeID, const FloatPoint& scrollPosition, SetOrSyncScrollingLayerPosition = SyncScrollingLayerPosition) override;
+    void scrollingTreeNodeDidScroll(ScrollingNodeID, const FloatPoint& scrollPosition, const Optional<FloatPoint>& layoutViewportOrigin, SetOrSyncScrollingLayerPosition = SyncScrollingLayerPosition) override;
 
     void currentSnapPointIndicesDidChange(WebCore::ScrollingNodeID, unsigned horizontal, unsigned vertical) override;
 
@@ -70,5 +67,3 @@ private:
 SPECIALIZE_TYPE_TRAITS_SCROLLING_TREE(WebCore::ScrollingTreeIOS, isScrollingTreeIOS())
 
 #endif // ENABLE(ASYNC_SCROLLING)
-
-#endif // ScrollingTreeIOS_h

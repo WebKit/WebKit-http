@@ -19,8 +19,7 @@
  *
 */
 
-#ifndef CounterNode_h
-#define CounterNode_h
+#pragma once
 
 #include <wtf/Forward.h>
 #include <wtf/Noncopyable.h>
@@ -49,8 +48,8 @@ public:
     int value() const { return m_value; }
     int countInParent() const { return m_countInParent; }
     RenderElement& owner() const { return m_owner; }
-    void addRenderer(RenderCounter*);
-    void removeRenderer(RenderCounter*);
+    void addRenderer(RenderCounter&);
+    void removeRenderer(RenderCounter&);
 
     // Invalidates the text in the renderers of this counter, if any.
     void resetRenderers();
@@ -62,8 +61,8 @@ public:
     CounterNode* lastChild() const { return m_lastChild; }
     CounterNode* lastDescendant() const;
     CounterNode* previousInPreOrder() const;
-    CounterNode* nextInPreOrder(const CounterNode* stayWithin = 0) const;
-    CounterNode* nextInPreOrderAfterChildren(const CounterNode* stayWithin = 0) const;
+    CounterNode* nextInPreOrder(const CounterNode* stayWithin = nullptr) const;
+    CounterNode* nextInPreOrderAfterChildren(const CounterNode* stayWithin = nullptr) const;
 
     void insertAfter(CounterNode* newChild, CounterNode* beforeChild, const AtomicString& identifier);
 
@@ -82,13 +81,13 @@ private:
     int m_value;
     int m_countInParent;
     RenderElement& m_owner;
-    RenderCounter* m_rootRenderer;
+    RenderCounter* m_rootRenderer { nullptr };
 
-    CounterNode* m_parent;
-    CounterNode* m_previousSibling;
-    CounterNode* m_nextSibling;
-    CounterNode* m_firstChild;
-    CounterNode* m_lastChild;
+    CounterNode* m_parent { nullptr };
+    CounterNode* m_previousSibling { nullptr };
+    CounterNode* m_nextSibling { nullptr };
+    CounterNode* m_firstChild { nullptr };
+    CounterNode* m_lastChild { nullptr };
 };
 
 } // namespace WebCore
@@ -97,5 +96,3 @@ private:
 // Outside the WebCore namespace for ease of invocation from gdb.
 void showCounterTree(const WebCore::CounterNode*);
 #endif
-
-#endif // CounterNode_h

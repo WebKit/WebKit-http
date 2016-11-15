@@ -20,8 +20,11 @@
  *
  */
 
-#ifndef HTMLElement_h
-#define HTMLElement_h
+#pragma once
+
+#if ENABLE(IOS_AUTOCORRECT_AND_AUTOCAPITALIZE)
+#include "Autocapitalize.h"
+#endif
 
 #include "StyledElement.h"
 
@@ -32,12 +35,6 @@ class FormNamedItem;
 class HTMLCollection;
 class HTMLFormElement;
 
-enum TranslateAttributeMode {
-    TranslateAttributeYes,
-    TranslateAttributeNo,
-    TranslateAttributeInherit
-};
-
 class HTMLElement : public StyledElement {
 public:
     static Ref<HTMLElement> create(const QualifiedName& tagName, Document&);
@@ -46,14 +43,14 @@ public:
 
     int tabIndex() const override;
 
-    WEBCORE_EXPORT void setInnerText(const String&, ExceptionCode&);
-    WEBCORE_EXPORT void setOuterText(const String&, ExceptionCode&);
+    WEBCORE_EXPORT ExceptionOr<void> setInnerText(const String&);
+    WEBCORE_EXPORT ExceptionOr<void> setOuterText(const String&);
 
     virtual bool hasCustomFocusLogic() const;
     bool supportsFocus() const override;
 
     WEBCORE_EXPORT String contentEditable() const;
-    WEBCORE_EXPORT void setContentEditable(const String&, ExceptionCode&);
+    WEBCORE_EXPORT ExceptionOr<void> setContentEditable(const String&);
 
     static Editability editabilityFromContentEditableAttr(const Node&);
 
@@ -99,6 +96,16 @@ public:
     bool canBeActuallyDisabled() const;
     bool isActuallyDisabled() const;
 
+#if ENABLE(IOS_AUTOCORRECT_AND_AUTOCAPITALIZE)
+    WEBCORE_EXPORT virtual AutocapitalizeType autocapitalizeType() const;
+    WEBCORE_EXPORT const AtomicString& autocapitalize() const;
+    WEBCORE_EXPORT void setAutocapitalize(const AtomicString& value);
+
+    bool autocorrect() const { return shouldAutocorrect(); }
+    WEBCORE_EXPORT virtual bool shouldAutocorrect() const;
+    WEBCORE_EXPORT void setAutocorrect(bool);
+#endif
+
 protected:
     HTMLElement(const QualifiedName& tagName, Document&, ConstructionType);
 
@@ -128,14 +135,12 @@ private:
 
     virtual HTMLFormElement* virtualForm() const;
 
-    Ref<DocumentFragment> textToFragment(const String&, ExceptionCode&);
+    ExceptionOr<Ref<DocumentFragment>> textToFragment(const String&);
 
     void dirAttributeChanged(const AtomicString&);
     void adjustDirectionalityIfNeededAfterChildAttributeChanged(Element* child);
     void adjustDirectionalityIfNeededAfterChildrenChanged(Element* beforeChange, ChildChangeType);
     TextDirection directionality(Node** strongDirectionalityTextNode= 0) const;
-
-    TranslateAttributeMode translateAttributeMode() const;
 
     static void populateEventHandlerNameMap(EventHandlerNameMap&, const QualifiedName* const table[], size_t tableSize);
     static EventHandlerNameMap createEventHandlerNameMap();
@@ -164,5 +169,3 @@ SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::HTMLElement)
 SPECIALIZE_TYPE_TRAITS_END()
 
 #include "HTMLElementTypeHelpers.h"
-
-#endif // HTMLElement_h

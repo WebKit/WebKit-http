@@ -27,7 +27,6 @@
 #include "InsertListCommand.h"
 
 #include "ElementTraversal.h"
-#include "ExceptionCodePlaceholder.h"
 #include "HTMLBRElement.h"
 #include "HTMLLIElement.h"
 #include "HTMLNames.h"
@@ -246,9 +245,9 @@ void InsertListCommand::doApplyForSingleParagraph(bool forceCreateList, const HT
             // Restore the start and the end of current selection if they started inside listNode
             // because moveParagraphWithClones could have removed them.
             if (rangeStartIsInList && newList)
-                currentSelection->setStart(*newList, 0, IGNORE_EXCEPTION);
+                currentSelection->setStart(*newList, 0);
             if (rangeEndIsInList && newList)
-                currentSelection->setEnd(*newList, lastOffsetInNode(newList.get()), IGNORE_EXCEPTION);
+                currentSelection->setEnd(*newList, lastOffsetInNode(newList.get()));
 
             setEndingSelection(VisiblePosition(firstPositionInNode(newList.get())));
 

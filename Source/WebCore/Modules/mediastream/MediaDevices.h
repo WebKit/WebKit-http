@@ -28,49 +28,37 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef MediaDevices_h
-#define MediaDevices_h
+#pragma once
 
 #if ENABLE(MEDIA_STREAM)
 
-#include "ContextDestructionObserver.h"
 #include "JSDOMPromise.h"
 #include "MediaDeviceInfo.h"
-#include "ScriptWrappable.h"
-#include <functional>
-#include <wtf/RefCounted.h>
-#include <wtf/RefPtr.h>
 
 namespace WebCore {
 
-class Dictionary;
 class Document;
 class MediaConstraintsImpl;
 class MediaStream;
 class MediaTrackSupportedConstraints;
 
-typedef int ExceptionCode;
-
 class MediaDevices : public ScriptWrappable, public RefCounted<MediaDevices>, public ContextDestructionObserver {
 public:
-    static Ref<MediaDevices> create(ScriptExecutionContext*);
-    virtual ~MediaDevices();
+    static Ref<MediaDevices> create(Document&);
 
     Document* document() const;
 
-    typedef DOMPromise<MediaStream> Promise;
-    typedef DOMPromise<MediaDeviceInfoVector> EnumerateDevicesPromise;
+    using Promise = DOMPromise<MediaStream>;
+    using EnumerateDevicesPromise = DOMPromise<MediaDeviceInfoVector>;
 
-    void getUserMedia(Ref<MediaConstraintsImpl>&& audioConstraints, Ref<MediaConstraintsImpl>&& videoConstraints, Promise&&, ExceptionCode&) const;
-    void enumerateDevices(EnumerateDevicesPromise&&, ExceptionCode&) const;
+    ExceptionOr<void> getUserMedia(Ref<MediaConstraintsImpl>&& audioConstraints, Ref<MediaConstraintsImpl>&& videoConstraints, Promise&&) const;
+    void enumerateDevices(EnumerateDevicesPromise&&) const;
     RefPtr<MediaTrackSupportedConstraints> getSupportedConstraints();
 
 private:
-    explicit MediaDevices(ScriptExecutionContext*);
+    explicit MediaDevices(Document&);
 };
 
 } // namespace WebCore
 
 #endif // ENABLE(MEDIA_STREAM)
-
-#endif // MediaDevices_h

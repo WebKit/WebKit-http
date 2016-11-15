@@ -25,8 +25,7 @@
  *
  */
 
-#ifndef DatabaseContext_h
-#define DatabaseContext_h
+#pragma once
 
 #include "ActiveDOMObject.h"
 #include <wtf/RefPtr.h>
@@ -48,6 +47,7 @@ class DatabaseContext final : public ThreadSafeRefCounted<DatabaseContext>, priv
 public:
     virtual ~DatabaseContext();
 
+    DatabaseThread* existingDatabaseThread() const { return m_databaseThread.get(); }
     DatabaseThread* databaseThread();
 
     void setHasOpenDatabases() { m_hasOpenDatabases = true; }
@@ -59,13 +59,13 @@ public:
     bool allowDatabaseAccess() const;
     void databaseExceededQuota(const String& name, DatabaseDetails);
 
-    ScriptExecutionContext* scriptExecutionContext() const { return m_scriptExecutionContext; }
+    using ActiveDOMObject::scriptExecutionContext;
     SecurityOrigin* securityOrigin() const;
 
     bool isContextThread() const;
 
 private:
-    explicit DatabaseContext(ScriptExecutionContext*);
+    explicit DatabaseContext(ScriptExecutionContext&);
 
     void stopDatabases() { stopDatabases(nullptr); }
 
@@ -75,13 +75,10 @@ private:
     const char* activeDOMObjectName() const override { return "DatabaseContext"; }
 
     RefPtr<DatabaseThread> m_databaseThread;
-    bool m_hasOpenDatabases; // This never changes back to false, even after the database thread is closed.
-    bool m_isRegistered;
-    bool m_hasRequestedTermination;
+    bool m_hasOpenDatabases { false }; // This never changes back to false, even after the database thread is closed.
+    bool m_hasRequestedTermination { false };
 
     friend class DatabaseManager;
 };
 
 } // namespace WebCore
-
-#endif // DatabaseContext_h

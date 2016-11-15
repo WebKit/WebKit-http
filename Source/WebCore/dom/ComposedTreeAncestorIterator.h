@@ -23,12 +23,11 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#pragma once
+
 #include "HTMLSlotElement.h"
 #include "PseudoElement.h"
 #include "ShadowRoot.h"
-
-#ifndef ComposedTreeAncestorIterator_h
-#define ComposedTreeAncestorIterator_h
 
 namespace WebCore {
 
@@ -129,6 +128,4 @@ inline ComposedTreeAncestorAdapter composedTreeAncestors(Node& node)
     return ComposedTreeAncestorAdapter(node);
 }
 
-}
-
-#endif
+} // namespace WebCore

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010, 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2010, 2015-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -114,6 +114,8 @@ PassRefPtr<WebImage> InjectedBundleRangeHandle::renderedImage(SnapshotOptions op
     if (!frameView)
         return nullptr;
 
+    Ref<Frame> protector(*frame);
+
     VisibleSelection oldSelection = frame->selection().selection();
     frame->selection().setSelection(VisibleSelection(*m_range));
 
@@ -127,7 +129,7 @@ PassRefPtr<WebImage> InjectedBundleRangeHandle::renderedImage(SnapshotOptions op
         return nullptr;
 
     auto graphicsContext = backingStore->createGraphicsContext();
-    graphicsContext->scale(FloatSize(scaleFactor, scaleFactor));
+    graphicsContext->scale(scaleFactor);
 
     paintRect.move(frameView->frameRect().x(), frameView->frameRect().y());
     paintRect.moveBy(-frameView->scrollPosition());

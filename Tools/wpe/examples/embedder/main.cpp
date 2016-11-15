@@ -8,7 +8,7 @@
 #include <WebKit/WKURL.h>
 #include <WebKit/WKView.h>
 #include <glib.h>
-#include <wpe-mesa/view-backend-exportable.h>
+#include <wpe-mesa/view-backend-exportable-dma-buf.h>
 
 #include "xdg-shell-client-protocol.h"
 #include <cassert>
@@ -104,10 +104,10 @@ struct Embedder {
     WKContextRef context;
     WKPageConfigurationRef pageConfiguration;
 
-    struct wpe_mesa_view_backend_exportable* exportableBackend;
+    struct wpe_mesa_view_backend_exportable_dma_buf* exportableBackend;
     WKViewRef view;
 
-    static struct wpe_mesa_view_backend_exportable_client exportableClient;
+    static struct wpe_mesa_view_backend_exportable_dma_buf_client exportableClient;
 };
 
 const struct wl_registry_listener Embedder::registryListener = {
@@ -146,9 +146,9 @@ const struct wl_callback_listener Embedder::frameListener = {
         auto& e = *static_cast<Embedder*>(data);
 
         if (e.pendingImage.first)
-            wpe_mesa_view_backend_exportable_dispatch_frame_complete(e.exportableBackend);
+            wpe_mesa_view_backend_exportable_dma_buf_dispatch_frame_complete(e.exportableBackend);
         if (e.lockedImage.first) {
-            wpe_mesa_view_backend_exportable_dispatch_release_buffer(e.exportableBackend, e.lockedImage.first);
+            wpe_mesa_view_backend_exportable_dma_buf_dispatch_release_buffer(e.exportableBackend, e.lockedImage.first);
             e.lockedImage = { 0, nullptr };
         }
 
@@ -331,9 +331,9 @@ GSourceFuncs EventSource::sourceFuncs = {
     nullptr, // closure_marshall
 };
 
-struct wpe_mesa_view_backend_exportable_client Embedder::exportableClient = {
+struct wpe_mesa_view_backend_exportable_dma_buf_client Embedder::exportableClient = {
     // export_dma_buf
-    [](void* data, struct wpe_mesa_view_backend_exportable_dma_buf_egl_image_data* imageData)
+    [](void* data, struct wpe_mesa_view_backend_exportable_dma_buf_data* imageData)
     {
         auto& e = *static_cast<Embedder*>(data);
 
@@ -422,8 +422,8 @@ int main(int argc, char* argv[])
         WKPageConfigurationSetPageGroup(e.pageConfiguration, pageGroup.get());
     }
 
-    e.exportableBackend = wpe_mesa_view_backend_exportable_create(&Embedder::exportableClient, &e);
-    e.view = WKViewCreateWithViewBackend(wpe_mesa_view_backend_exportable_get_view_backend(e.exportableBackend), e.pageConfiguration);
+    e.exportableBackend = wpe_mesa_view_backend_exportable_dma_buf_create(&Embedder::exportableClient, &e);
+    e.view = WKViewCreateWithViewBackend(wpe_mesa_view_backend_exportable_dma_buf_get_view_backend(e.exportableBackend), e.pageConfiguration);
     auto pageNavigationClient = createPageNavigationClient();
     WKPageSetPageNavigationClient(WKViewGetPage(e.view), &pageNavigationClient.base);
 

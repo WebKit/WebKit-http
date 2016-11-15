@@ -55,12 +55,7 @@ public:
 protected:
     JSTestException(JSC::Structure*, JSDOMGlobalObject&, Ref<TestException>&&);
 
-    void finishCreation(JSC::VM& vm)
-    {
-        Base::finishCreation(vm);
-        ASSERT(inherits(info()));
-    }
-
+    void finishCreation(JSC::VM&);
 };
 
 class JSTestExceptionOwner : public JSC::WeakHandleOwner {
@@ -87,6 +82,7 @@ inline JSC::JSValue toJSNewlyCreated(JSC::ExecState* state, JSDOMGlobalObject* g
 
 template<> struct JSDOMWrapperConverterTraits<TestException> {
     using WrapperClass = JSTestException;
+    using ToWrappedReturnType = TestException*;
 };
 
 } // namespace WebCore

@@ -23,6 +23,7 @@
 #pragma once
 
 #include "CSSCalculationValue.h"
+#include "CSSFunctionValue.h"
 #include "CSSGradientValue.h"
 #include "CSSParserMode.h"
 #include "CSSParserValues.h"
@@ -31,9 +32,9 @@
 #include "CSSPropertySourceData.h"
 #include "CSSValueKeywords.h"
 #include "Color.h"
+#include "ColorSpace.h"
 #include "MediaQuery.h"
 #include "StyleRuleImport.h"
-#include "WebKitCSSFilterValue.h"
 #include <memory>
 #include <wtf/HashMap.h>
 #include <wtf/Vector.h>
@@ -134,9 +135,9 @@ public:
     static ParseResult parseValue(MutableStyleProperties&, CSSPropertyID, const String&, bool important, const CSSParserContext&, StyleSheetContents*);
     static ParseResult parseCustomPropertyValue(MutableStyleProperties&, const AtomicString& propertyName, const String&, bool important, const CSSParserContext&, StyleSheetContents* contextStyleSheet);
 
-    static bool parseColor(RGBA32& color, const String&, bool strict = false);
+    static Color parseColor(const String&, bool strict = false);
     static bool isValidSystemColorValue(CSSValueID);
-    static bool parseSystemColor(RGBA32& color, const String&, Document*);
+    static Color parseSystemColor(const String&, Document*);
     static RefPtr<CSSValueList> parseFontFaceValue(const AtomicString&);
     RefPtr<CSSPrimitiveValue> parseValidPrimitive(CSSValueID ident, ValueWithCalculation&);
 
@@ -255,9 +256,7 @@ public:
     bool parseItemPositionOverflowPosition(CSSPropertyID, bool important);
     RefPtr<CSSContentDistributionValue> parseContentDistributionOverflowPosition();
 
-#if ENABLE(CSS_SHAPES)
     RefPtr<CSSValue> parseShapeProperty(CSSPropertyID);
-#endif
 
     RefPtr<CSSValueList> parseBasicShapeAndOrBox(CSSPropertyID propId);
     RefPtr<CSSPrimitiveValue> parseBasicShape();
@@ -277,12 +276,13 @@ public:
 
     bool parseRGBParameters(CSSParserValue&, int* colorValues, bool parseAlpha);
     bool parseHSLParameters(CSSParserValue&, double* colorValues, bool parseAlpha);
+    Optional<std::pair<std::array<double, 4>, ColorSpace>> parseColorFunctionParameters(CSSParserValue&);
     RefPtr<CSSPrimitiveValue> parseColor(CSSParserValue* = nullptr);
-    bool parseColorFromValue(CSSParserValue&, RGBA32&);
+    Color parseColorFromValue(CSSParserValue&);
     void parseSelector(const String&, CSSSelectorList&);
 
     template<typename StringType>
-    static bool fastParseColor(RGBA32&, const StringType&, bool strict);
+    static Color fastParseColor(const StringType&, bool strict);
 
     bool parseLineHeight(bool important);
     bool parseFontSize(bool important);
@@ -334,7 +334,7 @@ public:
     bool parseFilterImage(CSSParserValueList&, RefPtr<CSSValue>&);
 
     bool parseFilter(CSSParserValueList&, RefPtr<CSSValueList>&);
-    RefPtr<WebKitCSSFilterValue> parseBuiltinFilterArguments(CSSParserValueList&, WebKitCSSFilterValue::FilterOperationType);
+    RefPtr<CSSFunctionValue> parseBuiltinFilterArguments(CSSValueID, CSSParserValueList&);
 
     RefPtr<CSSValue> parseClipPath();
 
@@ -496,7 +496,7 @@ public:
 
     void setCustomPropertyName(const AtomicString& propertyName) { m_customPropertyName = propertyName; }
 
-    RefPtr<CSSValue> parseVariableDependentValue(CSSPropertyID, const CSSVariableDependentValue&, const CustomPropertyValueMap& customProperties, TextDirection, WritingMode);
+    RefPtr<CSSValue> parseValueWithVariableReferences(CSSPropertyID, const CSSValue&, const CustomPropertyValueMap& customProperties, TextDirection, WritingMode);
 
 private:
     bool is8BitSource() { return m_is8BitSource; }
@@ -618,7 +618,7 @@ private:
     bool parseFontFaceSrcURI(CSSValueList&);
     bool parseFontFaceSrcLocal(CSSValueList&);
 
-    bool parseColor(const String&);
+    bool parseColorFromString(const String&);
 
 #if ENABLE(CSS_GRID_LAYOUT)
     bool parseIntegerOrCustomIdentFromGridPosition(RefPtr<CSSPrimitiveValue>& numericValue, RefPtr<CSSPrimitiveValue>& gridLineName);
@@ -710,7 +710,8 @@ private:
     bool validateUnit(ValueWithCalculation&, Units, CSSParserMode);
 
     bool parseBorderImageQuad(Units, RefPtr<CSSPrimitiveValue>&);
-    int colorIntFromValue(ValueWithCalculation&);
+    int parseColorInt(ValueWithCalculation&);
+    double parseColorDouble(ValueWithCalculation&);
     double parsedDouble(ValueWithCalculation&);
     
     friend class TransformOperationInfo;

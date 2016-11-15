@@ -42,11 +42,14 @@
 #include "IDBKeyData.h"
 #include "IDBObjectStore.h"
 #include "IDBResultData.h"
+#include "JSDOMConvert.h"
 #include "Logging.h"
 #include "ScopeGuard.h"
 #include "ScriptExecutionContext.h"
 #include "ThreadSafeDataBuffer.h"
 #include <wtf/NeverDestroyed.h>
+
+using namespace JSC;
 
 namespace WebCore {
 
@@ -60,12 +63,12 @@ Ref<IDBRequest> IDBRequest::create(ScriptExecutionContext& context, IDBCursor& c
     return adoptRef(*new IDBRequest(context, cursor, transaction));
 }
 
-Ref<IDBRequest> IDBRequest::createCount(ScriptExecutionContext& context, IDBIndex& index, IDBTransaction& transaction)
+Ref<IDBRequest> IDBRequest::create(ScriptExecutionContext& context, IDBIndex& index, IDBTransaction& transaction)
 {
     return adoptRef(*new IDBRequest(context, index, transaction));
 }
 
-Ref<IDBRequest> IDBRequest::createGet(ScriptExecutionContext& context, IDBIndex& index, IndexedDB::IndexRecordType requestedRecordType, IDBTransaction& transaction)
+Ref<IDBRequest> IDBRequest::createIndexGet(ScriptExecutionContext& context, IDBIndex& index, IndexedDB::IndexRecordType requestedRecordType, IDBTransaction& transaction)
 {
     return adoptRef(*new IDBRequest(context, index, requestedRecordType, transaction));
 }
@@ -225,7 +228,7 @@ bool IDBRequest::canSuspendForDocumentSuspension() const
 
 bool IDBRequest::hasPendingActivity() const
 {
-    ASSERT(currentThread() == originThreadID());
+    ASSERT(currentThread() == originThreadID() || mayBeGCThread());
     return m_hasPendingActivity;
 }
 
@@ -328,6 +331,42 @@ void IDBRequest::setResult(const IDBKeyData& keyData)
 
     clearResult();
     m_scriptResult = { context->vm(), idbKeyDataToScriptValue(*exec, keyData) };
+}
+
+void IDBRequest::setResult(const Vector<IDBKeyData>& keyDatas)
+{
+    ASSERT(currentThread() == originThreadID());
+
+    auto* context = scriptExecutionContext();
+    if (!context)
+        return;
+
+    auto* state = context->execState();
+    if (!state)
+        return;
+
+    clearResult();
+
+    Locker<JSLock> locker(context->vm().apiLock());
+    m_scriptResult = { context->vm(), toJS(state, jsCast<JSDOMGlobalObject*>(state->lexicalGlobalObject()), keyDatas) };
+}
+
+void IDBRequest::setResult(const Vector<IDBValue>& values)
+{
+    ASSERT(currentThread() == originThreadID());
+
+    auto* context = scriptExecutionContext();
+    if (!context)
+        return;
+
+    auto* exec = context->execState();
+    if (!exec)
+        return;
+
+    clearResult();
+
+    Locker<JSLock> locker(context->vm().apiLock());
+    m_scriptResult = { context->vm(), toJS(exec, jsCast<JSDOMGlobalObject*>(exec->lexicalGlobalObject()), values) };
 }
 
 void IDBRequest::setResult(uint64_t number)

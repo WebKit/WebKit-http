@@ -24,8 +24,7 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef RenderGrid_h
-#define RenderGrid_h
+#pragma once
 
 #if ENABLE(CSS_GRID_LAYOUT)
 
@@ -84,6 +83,7 @@ private:
     class GridSizingData;
     enum SizingOperation { TrackSizing, IntrinsicSizeComputation };
     void computeUsedBreadthOfGridTracks(GridTrackSizingDirection, GridSizingData&, LayoutUnit& baseSizesWithoutMaximization, LayoutUnit& growthLimitsWithoutMaximization) const;
+    void computeFlexSizedTracksGrowth(GridTrackSizingDirection, SizingOperation, Vector<GridTrack>&, const Vector<unsigned>& flexibleSizedTracksIndex, double flexFraction, Vector<LayoutUnit>& increments, LayoutUnit& totalGrowth) const;
     LayoutUnit computeUsedBreadthOfMinLength(const GridTrackSize&, LayoutUnit maxSize) const;
     LayoutUnit computeUsedBreadthOfMaxLength(const GridTrackSize&, LayoutUnit usedBreadth, LayoutUnit maxSize) const;
     void resolveContentBasedTrackSizingFunctions(GridTrackSizingDirection, GridSizingData&) const;
@@ -109,6 +109,7 @@ private:
     GridTrackSizingDirection autoPlacementMajorAxisDirection() const;
     GridTrackSizingDirection autoPlacementMinorAxisDirection() const;
 
+    bool canPerformSimplifiedLayout() const final;
     void prepareChildForPositionedLayout(RenderBox&);
     void layoutPositionedObject(RenderBox&, bool relayoutChildren, bool fixedPositionObjectsOnly) override;
     void offsetAndBreadthForPositionedChild(const RenderBox&, GridTrackSizingDirection, LayoutUnit& offset, LayoutUnit& breadth);
@@ -231,6 +232,4 @@ size_t inline RenderGrid::autoRepeatCountForDirection(GridTrackSizingDirection d
 
 SPECIALIZE_TYPE_TRAITS_RENDER_OBJECT(RenderGrid, isRenderGrid())
 
-#endif /* ENABLE(CSS_GRID_LAYOUT) */
-
-#endif // RenderGrid_h
+#endif // ENABLE(CSS_GRID_LAYOUT)

@@ -49,8 +49,10 @@ static inline bool isSimpleLengthPropertyID(CSSPropertyID propertyId, bool& acce
 {
     switch (propertyId) {
     case CSSPropertyFontSize:
+#if ENABLE(CSS_GRID_LAYOUT)
     case CSSPropertyGridColumnGap:
     case CSSPropertyGridRowGap:
+#endif
     case CSSPropertyHeight:
     case CSSPropertyWidth:
     case CSSPropertyMinHeight:
@@ -411,16 +413,21 @@ static inline bool mightBeRGB(const CharacterType* characters, unsigned length)
 }
 
 template <typename CharacterType>
-static bool fastParseColorInternal(RGBA32& rgb, const CharacterType* characters, unsigned length, bool quirksMode)
+static Color fastParseColorInternal(const CharacterType* characters, unsigned length, bool quirksMode)
 {
     CSSPrimitiveValue::UnitTypes expect = CSSPrimitiveValue::UnitTypes::CSS_UNKNOWN;
 
-    if (length >= 4 && characters[0] == '#')
-        return Color::parseHexColor(characters + 1, length - 1, rgb);
+    if (length >= 4 && characters[0] == '#') {
+        // FIXME: Why doesn't this check if the parse worked? Is the fallback black?
+        RGBA32 rgb;
+        Color::parseHexColor(characters + 1, length - 1, rgb);
+        return Color(rgb);
+    }
 
     if (quirksMode && (length == 3 || length == 6)) {
+        RGBA32 rgb;
         if (Color::parseHexColor(characters, length, rgb))
-            return true;
+            return Color(rgb);
     }
 
     // Try rgba() syntax.
@@ -433,17 +440,16 @@ static bool fastParseColorInternal(RGBA32& rgb, const CharacterType* characters,
         int alpha;
 
         if (!parseColorIntOrPercentage(current, end, ',', expect, red))
-            return false;
+            return Color();
         if (!parseColorIntOrPercentage(current, end, ',', expect, green))
-            return false;
+            return Color();
         if (!parseColorIntOrPercentage(current, end, ',', expect, blue))
-            return false;
+            return Color();
         if (!parseAlphaValue(current, end, ')', alpha))
-            return false;
+            return Color();
         if (current != end)
-            return false;
-        rgb = makeRGBA(red, green, blue, alpha);
-        return true;
+            return Color();
+        return Color(makeRGBA(red, green, blue, alpha));
     }
 
     // Try rgb() syntax.
@@ -454,18 +460,17 @@ static bool fastParseColorInternal(RGBA32& rgb, const CharacterType* characters,
         int green;
         int blue;
         if (!parseColorIntOrPercentage(current, end, ',', expect, red))
-            return false;
+            return Color();
         if (!parseColorIntOrPercentage(current, end, ',', expect, green))
-            return false;
+            return Color();
         if (!parseColorIntOrPercentage(current, end, ')', expect, blue))
-            return false;
+            return Color();
         if (current != end)
-            return false;
-        rgb = makeRGB(red, green, blue);
-        return true;
+            return Color();
+        return Color(makeRGB(red, green, blue));
     }
 
-    return false;
+    return Color();
 }
 
 RefPtr<CSSValue> CSSParserFastPaths::parseColor(const String& string, CSSParserMode parserMode)
@@ -478,16 +483,15 @@ RefPtr<CSSValue> CSSParserFastPaths::parseColor(const String& string, CSSParserM
         return CSSPrimitiveValue::createIdentifier(valueID);
     }
 
-    RGBA32 color;
     bool quirksMode = isQuirksModeBehavior(parserMode);
 
     // Fast path for hex colors and rgb()/rgba() colors
-    bool parseResult;
+    Color color;
     if (string.is8Bit())
-        parseResult = fastParseColorInternal(color, string.characters8(), string.length(), quirksMode);
+        color = fastParseColorInternal(string.characters8(), string.length(), quirksMode);
     else
-        parseResult = fastParseColorInternal(color, string.characters16(), string.length(), quirksMode);
-    if (!parseResult)
+        color = fastParseColorInternal(string.characters16(), string.length(), quirksMode);
+    if (!color.isValid())
         return nullptr;
     return CSSValuePool::singleton().createColorValue(color);
 }
@@ -564,8 +568,8 @@ bool CSSParserFastPaths::isValidKeywordPropertyAndValue(CSSPropertyID propertyId
         return valueID == CSSValueNormal || valueID == CSSValueItalic || valueID == CSSValueOblique;
     case CSSPropertyFontStretch: // normal | ultra-condensed | extra-condensed | condensed | semi-condensed | semi-expanded | expanded | extra-expanded | ultra-expanded
         return valueID == CSSValueNormal || (valueID >= CSSValueUltraCondensed && valueID <= CSSValueUltraExpanded);
-    case CSSPropertyImageRendering: // auto | optimizeContrast | pixelated
-        return valueID == CSSValueAuto || valueID == CSSValueWebkitOptimizeContrast || valueID == CSSValuePixelated;
+    case CSSPropertyImageRendering: // auto | optimizeContrast | pixelated | optimizeSpeed | crispEdges | optimizeQuality | webkit-crispEdges
+        return valueID == CSSValueAuto || valueID == CSSValueOptimizespeed || valueID == CSSValueOptimizequality || valueID == CSSValueWebkitCrispEdges || valueID == CSSValueWebkitOptimizeContrast || valueID == CSSValueCrispEdges || valueID == CSSValuePixelated;
 #if ENABLE(CSS_COMPOSITING)
     case CSSPropertyIsolation: // auto | isolate
         return valueID == CSSValueAuto || valueID == CSSValueIsolate;
@@ -594,9 +598,17 @@ bool CSSParserFastPaths::isValidKeywordPropertyAndValue(CSSPropertyID propertyId
         return valueID == CSSValueVisible || valueID == CSSValueHidden || valueID == CSSValueScroll || valueID == CSSValueAuto || valueID == CSSValueOverlay || valueID == CSSValueWebkitPagedX || valueID == CSSValueWebkitPagedY;
     case CSSPropertyBreakAfter:
     case CSSPropertyBreakBefore:
-        return valueID == CSSValueAuto || valueID == CSSValueAvoid || valueID == CSSValueAvoidPage || valueID == CSSValuePage || valueID == CSSValueLeft || valueID == CSSValueRight || valueID == CSSValueRecto || valueID == CSSValueVerso || valueID == CSSValueAvoidColumn || valueID == CSSValueColumn;
+        return valueID == CSSValueAuto || valueID == CSSValueAvoid || valueID == CSSValueAvoidPage || valueID == CSSValuePage || valueID == CSSValueLeft || valueID == CSSValueRight || valueID == CSSValueRecto || valueID == CSSValueVerso || valueID == CSSValueAvoidColumn || valueID == CSSValueColumn
+#if ENABLE(CSS_REGIONS)
+            || valueID == CSSValueRegion || valueID == CSSValueAvoidRegion
+#endif
+        ;
     case CSSPropertyBreakInside:
-        return valueID == CSSValueAuto || valueID == CSSValueAvoid || valueID == CSSValueAvoidPage || valueID == CSSValueAvoidColumn;
+        return valueID == CSSValueAuto || valueID == CSSValueAvoid || valueID == CSSValueAvoidPage || valueID == CSSValueAvoidColumn
+#if ENABLE(CSS_REGIONS)
+            || valueID == CSSValueAvoidRegion
+#endif
+        ;
     case CSSPropertyPointerEvents:
         // none | visiblePainted | visibleFill | visibleStroke | visible |
         // painted | fill | stroke | auto | all | bounding-box
@@ -650,14 +662,13 @@ bool CSSParserFastPaths::isValidKeywordPropertyAndValue(CSSPropertyID propertyId
     case CSSPropertyUnicodeBidi:
         return valueID == CSSValueNormal || valueID == CSSValueEmbed
             || valueID == CSSValueBidiOverride || valueID == CSSValueWebkitIsolate
-            || valueID == CSSValueWebkitIsolateOverride || valueID == CSSValueWebkitPlaintext
-            || valueID == CSSValueIsolate || valueID == CSSValueWebkitIsolateOverride || valueID == CSSValueWebkitPlaintext;
+            || valueID == CSSValueWebkitIsolateOverride || valueID == CSSValueWebkitPlaintext;
     case CSSPropertyVectorEffect:
         return valueID == CSSValueNone || valueID == CSSValueNonScalingStroke;
     case CSSPropertyVisibility: // visible | hidden | collapse
         return valueID == CSSValueVisible || valueID == CSSValueHidden || valueID == CSSValueCollapse;
     case CSSPropertyWebkitAppearance:
-        return (valueID >= CSSValueCheckbox && valueID <= CSSValueTextarea) || valueID == CSSValueNone;
+        return (valueID >= CSSValueCheckbox && valueID <= CSSValueCapsLockIndicator) || valueID == CSSValueNone;
     case CSSPropertyWebkitBackfaceVisibility:
         return valueID == CSSValueVisible || valueID == CSSValueHidden;
 #if ENABLE(CSS_COMPOSITING)
@@ -665,14 +676,16 @@ bool CSSParserFastPaths::isValidKeywordPropertyAndValue(CSSPropertyID propertyId
         return valueID == CSSValueNormal || valueID == CSSValueMultiply || valueID == CSSValueScreen || valueID == CSSValueOverlay
             || valueID == CSSValueDarken || valueID == CSSValueLighten || valueID == CSSValueColorDodge || valueID == CSSValueColorBurn
             || valueID == CSSValueHardLight || valueID == CSSValueSoftLight || valueID == CSSValueDifference || valueID == CSSValueExclusion
-            || valueID == CSSValueHue || valueID == CSSValueSaturation || valueID == CSSValueColor || valueID == CSSValueLuminosity;
+            || valueID == CSSValueHue || valueID == CSSValueSaturation || valueID == CSSValueColor || valueID == CSSValueLuminosity || valueID == CSSValuePlusDarker || valueID == CSSValuePlusLighter;
 #endif
     case CSSPropertyWebkitBoxAlign:
         return valueID == CSSValueStretch || valueID == CSSValueStart || valueID == CSSValueEnd || valueID == CSSValueCenter || valueID == CSSValueBaseline;
+#if ENABLE(CSS_BOX_DECORATION_BREAK)
     case CSSPropertyWebkitBoxDecorationBreak:
         return valueID == CSSValueClone || valueID == CSSValueSlice;
     case CSSPropertyWebkitBoxDirection:
         return valueID == CSSValueNormal || valueID == CSSValueReverse;
+#endif
     case CSSPropertyWebkitBoxLines:
         return valueID == CSSValueSingle || valueID == CSSValueMultiple;
     case CSSPropertyWebkitBoxOrient:
@@ -681,6 +694,10 @@ bool CSSParserFastPaths::isValidKeywordPropertyAndValue(CSSPropertyID propertyId
         return valueID == CSSValueStart || valueID == CSSValueEnd || valueID == CSSValueCenter || valueID == CSSValueJustify;
     case CSSPropertyColumnFill:
         return valueID == CSSValueAuto || valueID == CSSValueBalance;
+    case CSSPropertyWebkitColumnAxis:
+        return valueID == CSSValueHorizontal || valueID == CSSValueVertical || valueID == CSSValueAuto;
+    case CSSPropertyWebkitColumnProgression:
+        return valueID == CSSValueNormal || valueID == CSSValueReverse;
     case CSSPropertyAlignContent:
         // FIXME: Per CSS alignment, this property should accept an optional <overflow-position>. We should share this parsing code with 'justify-self'.
         return valueID == CSSValueFlexStart || valueID == CSSValueFlexEnd || valueID == CSSValueCenter || valueID == CSSValueSpaceBetween || valueID == CSSValueSpaceAround || valueID == CSSValueStretch;
@@ -703,8 +720,12 @@ bool CSSParserFastPaths::isValidKeywordPropertyAndValue(CSSPropertyID propertyId
         return valueID == CSSValueAuto || valueID == CSSValueNormal || valueID == CSSValueNone;
     case CSSPropertyWebkitFontSmoothing:
         return valueID == CSSValueAuto || valueID == CSSValueNone || valueID == CSSValueAntialiased || valueID == CSSValueSubpixelAntialiased;
+    case CSSPropertyWebkitLineAlign:
+        return valueID == CSSValueNone || valueID == CSSValueEdges;
     case CSSPropertyWebkitLineBreak: // auto | loose | normal | strict | after-white-space
         return valueID == CSSValueAuto || valueID == CSSValueLoose || valueID == CSSValueNormal || valueID == CSSValueStrict || valueID == CSSValueAfterWhiteSpace;
+    case CSSPropertyWebkitLineSnap:
+        return valueID == CSSValueNone || valueID == CSSValueBaseline || valueID == CSSValueContain;
     case CSSPropertyWebkitMarginAfterCollapse:
     case CSSPropertyWebkitMarginBeforeCollapse:
     case CSSPropertyWebkitMarginBottomCollapse:
@@ -715,14 +736,13 @@ bool CSSParserFastPaths::isValidKeywordPropertyAndValue(CSSPropertyID propertyId
     case CSSPropertyWebkitRtlOrdering:
         return valueID == CSSValueLogical || valueID == CSSValueVisual;
     case CSSPropertyWebkitRubyPosition:
-        return valueID == CSSValueBefore || valueID == CSSValueAfter;
+        return valueID == CSSValueBefore || valueID == CSSValueAfter || valueID == CSSValueInterCharacter;
     case CSSPropertyWebkitTextCombine:
         return valueID == CSSValueNone || valueID == CSSValueHorizontal;
-    case CSSPropertyWebkitTextEmphasisPosition:
-        return valueID == CSSValueOver || valueID == CSSValueUnder;
     case CSSPropertyWebkitTextSecurity: // disc | circle | square | none
         return valueID == CSSValueDisc || valueID == CSSValueCircle || valueID == CSSValueSquare || valueID == CSSValueNone;
     case CSSPropertyTransformStyle:
+    case CSSPropertyWebkitTransformStyle:
         return valueID == CSSValueFlat || valueID == CSSValuePreserve3d;
     case CSSPropertyWebkitUserDrag: // auto | none | element
         return valueID == CSSValueAuto || valueID == CSSValueNone || valueID == CSSValueElement;
@@ -730,17 +750,22 @@ bool CSSParserFastPaths::isValidKeywordPropertyAndValue(CSSPropertyID propertyId
         return valueID == CSSValueReadOnly || valueID == CSSValueReadWrite || valueID == CSSValueReadWritePlaintextOnly;
     case CSSPropertyWebkitUserSelect: // auto | none | text | all
         return valueID == CSSValueAuto || valueID == CSSValueNone || valueID == CSSValueText || valueID == CSSValueAll;
-    case CSSPropertyWebkitWritingMode:
-        return valueID >= CSSValueHorizontalTb && valueID <= CSSValueVerticalLr;
     case CSSPropertyWritingMode:
-        return valueID == CSSValueHorizontalTb
-            || valueID == CSSValueVerticalRl || valueID == CSSValueVerticalLr
+        // Note that horizontal-bt is not supported by the unprefixed version of
+        // the property, only by the -webkit- version.
+        return (valueID >= CSSValueHorizontalTb && valueID <= CSSValueHorizontalBt)
             || valueID == CSSValueLrTb || valueID == CSSValueRlTb || valueID == CSSValueTbRl
             || valueID == CSSValueLr || valueID == CSSValueRl || valueID == CSSValueTb;
     case CSSPropertyWhiteSpace: // normal | pre | nowrap
         return valueID == CSSValueNormal || valueID == CSSValuePre || valueID == CSSValuePreWrap || valueID == CSSValuePreLine || valueID == CSSValueNowrap;
     case CSSPropertyWordBreak: // normal | break-all | keep-all | break-word (this is a custom extension)
         return valueID == CSSValueNormal || valueID == CSSValueBreakAll || valueID == CSSValueKeepAll || valueID == CSSValueBreakWord;
+    case CSSPropertyWebkitBorderFit:
+        return valueID == CSSValueBorder || valueID == CSSValueLines;
+#if ENABLE(CSS_REGIONS)
+    case CSSPropertyWebkitRegionFragment:
+        return valueID == CSSValueAuto || valueID == CSSValueBreak;
+#endif
 #if ENABLE(CSS_SCROLL_SNAP)
     case CSSPropertyWebkitScrollSnapType: // none | mandatory | proximity
         return valueID == CSSValueNone || valueID == CSSValueMandatory || valueID == CSSValueProximity;
@@ -756,9 +781,30 @@ bool CSSParserFastPaths::isValidKeywordPropertyAndValue(CSSPropertyID propertyId
 #if ENABLE(APPLE_PAY)
     case CSSPropertyApplePayButtonStyle: // white | white-outline | black
         return valueID == CSSValueWhite || valueID == CSSValueWhiteOutline || valueID == CSSValueBlack;
-    case CSSPropertyApplePayButtonType: // plain | buy | set-up
-        return valueID == CSSValuePlain || valueID == CSSValueBuy || valueID == CSSValueSetUp;
+    case CSSPropertyApplePayButtonType: // plain | buy | set-up | other
+        return valueID == CSSValuePlain || valueID == CSSValueBuy || valueID == CSSValueSetUp || valueID == CSSValueOther;
 #endif
+    case CSSPropertyWebkitNbspMode: // normal | space
+        return valueID == CSSValueNormal || valueID == CSSValueSpace;
+    case CSSPropertyWebkitTextZoom:
+        return valueID == CSSValueNormal || valueID == CSSValueReset;
+#if PLATFORM(IOS)
+    // Apple specific property. These will never be standardized and is purely to
+    // support custom WebKit-based Apple applications.
+    case CSSPropertyWebkitTouchCallout:
+        return valueID == CSSValueDefault || valueID == CSSValueNone;
+#endif
+    case CSSPropertyWebkitMarqueeDirection:
+        return valueID == CSSValueForwards || valueID == CSSValueBackwards || valueID == CSSValueAhead || valueID == CSSValueReverse || valueID == CSSValueLeft || valueID == CSSValueRight || valueID == CSSValueDown
+            || valueID == CSSValueUp || valueID == CSSValueAuto;
+    case CSSPropertyWebkitMarqueeStyle:
+        return valueID == CSSValueNone || valueID == CSSValueSlide || valueID == CSSValueScroll || valueID == CSSValueAlternate;
+    case CSSPropertyFontVariantPosition: // normal | sub | super
+        return valueID == CSSValueNormal || valueID == CSSValueSub || valueID == CSSValueSuper;
+    case CSSPropertyFontVariantCaps: // normal | small-caps | all-small-caps | petite-caps | all-petite-caps | unicase | titling-caps
+        return valueID == CSSValueNormal || valueID == CSSValueSmallCaps || valueID == CSSValueAllSmallCaps || valueID == CSSValuePetiteCaps || valueID == CSSValueAllPetiteCaps || valueID == CSSValueUnicase || valueID == CSSValueTitlingCaps;
+    case CSSPropertyFontVariantAlternates: // We only support the normal and historical-forms values.
+        return valueID == CSSValueNormal || valueID == CSSValueHistoricalForms;
     default:
         ASSERT_NOT_REACHED();
         return false;
@@ -780,7 +826,7 @@ bool CSSParserFastPaths::isKeywordPropertyID(CSSPropertyID propertyId)
     case CSSPropertyCaptionSide:
     case CSSPropertyClear:
     case CSSPropertyColumnFill:
-    case CSSPropertyColumnProgression:
+    case CSSPropertyWebkitColumnProgression:
     case CSSPropertyColumnRuleStyle:
     case CSSPropertyDirection:
     case CSSPropertyDisplay:
@@ -835,9 +881,6 @@ bool CSSParserFastPaths::isKeywordPropertyID(CSSPropertyID propertyId)
     case CSSPropertyWebkitBoxOrient:
     case CSSPropertyWebkitBoxPack:
     case CSSPropertyWebkitColumnAxis:
-    case CSSPropertyWebkitColumnBreakAfter:
-    case CSSPropertyWebkitColumnBreakBefore:
-    case CSSPropertyWebkitColumnBreakInside:
     case CSSPropertyWebkitFontKerning:
     case CSSPropertyWebkitFontSmoothing:
     case CSSPropertyWebkitHyphens:
@@ -863,7 +906,6 @@ bool CSSParserFastPaths::isKeywordPropertyID(CSSPropertyID propertyId)
     case CSSPropertyWebkitUserDrag:
     case CSSPropertyWebkitUserModify:
     case CSSPropertyWebkitUserSelect:
-    case CSSPropertyWebkitWritingMode:
     case CSSPropertyWhiteSpace:
     case CSSPropertyWordBreak:
     case CSSPropertyWordWrap:
@@ -891,7 +933,6 @@ bool CSSParserFastPaths::isKeywordPropertyID(CSSPropertyID propertyId)
     // FIXME-NEWPARSER: Treat the following properties as keyword properties:
     // case CSSPropertyBackgroundRepeatX:
     // case CSSPropertyBackgroundRepeatY:
-    // case CSSPropertyWebkitTextEmphasisPosition:
 
     // FIXME-NEWPARSER: Add the following unprefixed properties:
     // case CSSPropertyBackfaceVisibility:
@@ -926,9 +967,6 @@ bool CSSParserFastPaths::isKeywordPropertyID(CSSPropertyID propertyId)
     case CSSPropertyWebkitOverflowScrolling:
 #endif
 #if ENABLE(CSS_REGIONS)
-    case CSSPropertyWebkitRegionBreakAfter:
-    case CSSPropertyWebkitRegionBreakBefore:
-    case CSSPropertyWebkitRegionBreakInside:
     case CSSPropertyWebkitRegionFragment:
 #endif
 #if ENABLE(CSS3_TEXT)

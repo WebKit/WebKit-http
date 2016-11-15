@@ -28,6 +28,7 @@
 
 #include <WebCore/BitmapImage.h>
 #include <WebCore/GraphicsContextCG.h>
+#include <WebCore/PlatformScreen.h>
 #include <wtf/RetainPtr.h>
 #include "CGUtilities.h"
 
@@ -37,21 +38,41 @@ namespace WebKit {
 
 static CGBitmapInfo bitmapInfo(ShareableBitmap::Flags flags)
 {
-    CGBitmapInfo info = kCGBitmapByteOrder32Host;
-    if (flags & ShareableBitmap::SupportsAlpha)
-        info |= kCGImageAlphaPremultipliedFirst;
-    else
-        info |= kCGImageAlphaNoneSkipFirst;
-
+    CGBitmapInfo info = 0;
+    if (flags & ShareableBitmap::SupportsExtendedColor) {
+        info |= kCGBitmapFloatComponents | kCGBitmapByteOrder16Host;
+        
+        if (flags & ShareableBitmap::SupportsAlpha)
+            info |= kCGImageAlphaPremultipliedLast;
+        else
+            info |= kCGImageAlphaNoneSkipLast;
+        
+    } else {
+        info |= kCGBitmapByteOrder32Host;
+        
+        if (flags & ShareableBitmap::SupportsAlpha)
+            info |= kCGImageAlphaPremultipliedFirst;
+        else
+            info |= kCGImageAlphaNoneSkipFirst;
+    }
+    
     return info;
+}
+    
+static CGColorSpaceRef colorSpace(ShareableBitmap::Flags flags)
+{
+    if (flags & ShareableBitmap::SupportsExtendedColor)
+        return extendedSRGBColorSpaceRef();
+    return sRGBColorSpaceRef();
 }
 
 std::unique_ptr<GraphicsContext> ShareableBitmap::createGraphicsContext()
 {
     ref(); // Balanced by deref in releaseBitmapContextData.
-    RetainPtr<CGContextRef> bitmapContext = adoptCF(CGBitmapContextCreateWithData(data(),
-        m_size.width(), m_size.height(), 8, m_size.width() * 4, sRGBColorSpaceRef(),
-        bitmapInfo(m_flags), releaseBitmapContextData, this));
+    
+    RetainPtr<CGContextRef> bitmapContext = adoptCF(CGBitmapContextCreateWithData(data(), m_size.width(), m_size.height(), m_bytesPerPixel * 8 / 4, m_size.width() * m_bytesPerPixel, colorSpace(m_flags), bitmapInfo(m_flags), releaseBitmapContextData, this));
+    
+    ASSERT(bitmapContext.get());
 
     // We want the origin to be in the top left corner so we flip the backing store context.
     CGContextTranslateCTM(bitmapContext.get(), 0, m_size.height());
@@ -87,8 +108,7 @@ RetainPtr<CGImageRef> ShareableBitmap::makeCGImage()
 RetainPtr<CGImageRef> ShareableBitmap::createCGImage(CGDataProviderRef dataProvider) const
 {
     ASSERT_ARG(dataProvider, dataProvider);
-
-    RetainPtr<CGImageRef> image = adoptCF(CGImageCreate(m_size.width(), m_size.height(), 8, 32, m_size.width() * 4, sRGBColorSpaceRef(), bitmapInfo(m_flags), dataProvider, 0, false, kCGRenderingIntentDefault));
+    RetainPtr<CGImageRef> image = adoptCF(CGImageCreate(m_size.width(), m_size.height(), m_bytesPerPixel * 8 / 4, m_bytesPerPixel * 8, m_size.width() * m_bytesPerPixel, colorSpace(m_flags), bitmapInfo(m_flags), dataProvider, 0, false, kCGRenderingIntentDefault));
     return image;
 }
 

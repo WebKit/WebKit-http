@@ -23,14 +23,13 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef GeolocationController_h
-#define GeolocationController_h
+#pragma once
 
 #if ENABLE(GEOLOCATION)
 
+#include "ActivityStateChangeObserver.h"
 #include "Geolocation.h"
 #include "Page.h"
-#include "ViewStateChangeObserver.h"
 #include <wtf/HashSet.h>
 #include <wtf/Noncopyable.h>
 #include <wtf/RefPtr.h>
@@ -40,9 +39,8 @@ namespace WebCore {
 class GeolocationClient;
 class GeolocationError;
 class GeolocationPosition;
-class Page;
 
-class GeolocationController : public Supplement<Page>, private ViewStateChangeObserver {
+class GeolocationController : public Supplement<Page>, private ActivityStateChangeObserver {
     WTF_MAKE_FAST_ALLOCATED;
     WTF_MAKE_NONCOPYABLE(GeolocationController);
 public:
@@ -69,7 +67,7 @@ private:
     Page& m_page;
     GeolocationClient& m_client;
 
-    void viewStateDidChange(ViewState::Flags oldViewState, ViewState::Flags newViewState) override;
+    void activityStateDidChange(ActivityState::Flags oldActivityState, ActivityState::Flags newActivityState) override;
 
     RefPtr<GeolocationPosition> m_lastPosition;
 
@@ -85,5 +83,3 @@ private:
 } // namespace WebCore
 
 #endif // ENABLE(GEOLOCATION)
-
-#endif // GeolocationController_h

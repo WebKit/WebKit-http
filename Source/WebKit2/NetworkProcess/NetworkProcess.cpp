@@ -39,6 +39,7 @@
 #include "NetworkProcessPlatformStrategies.h"
 #include "NetworkProcessProxyMessages.h"
 #include "NetworkResourceLoader.h"
+#include "NetworkSession.h"
 #include "RemoteNetworkingContext.h"
 #include "SessionTracker.h"
 #include "StatisticsData.h"
@@ -73,6 +74,10 @@
 #include "NetworkCacheCoders.h"
 #endif
 
+#if PLATFORM(COCOA)
+#include "NetworkSessionCocoa.h"
+#endif
+
 using namespace WebCore;
 
 namespace WebKit {
@@ -100,8 +105,8 @@ NetworkProcess::NetworkProcess()
     addSupplement<AuthenticationManager>();
     addSupplement<WebCookieManager>();
     addSupplement<CustomProtocolManager>();
-#if USE(NETWORK_SESSION)
-    NetworkSession::setCustomProtocolManager(supplement<CustomProtocolManager>());
+#if USE(NETWORK_SESSION) && PLATFORM(COCOA)
+    NetworkSessionCocoa::setCustomProtocolManager(supplement<CustomProtocolManager>());
 #endif
 }
 
@@ -204,6 +209,7 @@ void NetworkProcess::initializeNetworkProcess(NetworkProcessCreationParameters&&
     WTF::setCurrentThreadIsUserInitiated();
 
     m_suppressMemoryPressureHandler = parameters.shouldSuppressMemoryPressureHandler;
+    m_loadThrottleLatency = parameters.loadThrottleLatency;
     if (!m_suppressMemoryPressureHandler) {
         auto& memoryPressureHandler = MemoryPressureHandler::singleton();
 #if OS(LINUX)
@@ -330,15 +336,8 @@ static void fetchDiskCacheEntries(SessionID sessionID, OptionSet<WebsiteDataFetc
     }
 #endif
 
-    Vector<WebsiteData::Entry> entries;
-
-#if USE(CFURLCACHE)
-    for (auto& origin : NetworkProcess::cfURLCacheOrigins())
-        entries.append(WebsiteData::Entry { WTFMove(origin), WebsiteDataType::DiskCache, 0 });
-#endif
-
-    RunLoop::main().dispatch([completionHandler = WTFMove(completionHandler), entries = WTFMove(entries)] {
-        completionHandler(entries);
+    RunLoop::main().dispatch([completionHandler = WTFMove(completionHandler)] {
+        completionHandler({ });
     });
 }
 
@@ -432,10 +431,6 @@ static void clearDiskCacheEntries(const Vector<SecurityOriginData>& origins, Fun
     }
 #endif
 
-#if USE(CFURLCACHE)
-    NetworkProcess::clearCFURLCacheForOrigins(origins);
-#endif
-
     RunLoop::main().dispatch(WTFMove(completionHandler));
 }
 
@@ -458,9 +453,9 @@ void NetworkProcess::deleteWebsiteDataForOrigins(SessionID sessionID, OptionSet<
     completionHandler();
 }
 
-void NetworkProcess::downloadRequest(SessionID sessionID, DownloadID downloadID, const ResourceRequest& request)
+void NetworkProcess::downloadRequest(SessionID sessionID, DownloadID downloadID, const ResourceRequest& request, const String& suggestedFilename)
 {
-    downloadManager().startDownload(sessionID, downloadID, request);
+    downloadManager().startDownload(nullptr, sessionID, downloadID, request, suggestedFilename);
 }
 
 void NetworkProcess::resumeDownload(SessionID sessionID, DownloadID downloadID, const IPC::DataReference& resumeData, const String& path, const WebKit::SandboxExtension::Handle& sandboxExtensionHandle)
@@ -506,7 +501,7 @@ void NetworkProcess::pendingDownloadCanceled(DownloadID downloadID)
     downloadProxyConnection()->send(Messages::DownloadProxy::DidCancel({ }), downloadID.downloadID());
 }
 
-void NetworkProcess::findPendingDownloadLocation(NetworkDataTask& networkDataTask, ResponseCompletionHandler&& completionHandler, const ResourceRequest& updatedRequest, const ResourceResponse& response)
+void NetworkProcess::findPendingDownloadLocation(NetworkDataTask& networkDataTask, ResponseCompletionHandler&& completionHandler, const ResourceResponse& response)
 {
     uint64_t destinationID = networkDataTask.pendingDownloadID().downloadID();
     downloadProxyConnection()->send(Messages::DownloadProxy::DidReceiveResponse(response), destinationID);

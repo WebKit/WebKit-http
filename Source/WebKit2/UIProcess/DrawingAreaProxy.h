@@ -71,9 +71,9 @@ public:
     void setSize(const WebCore::IntSize&, const WebCore::IntSize&, const WebCore::IntSize& scrollOffset);
 
     // The timeout we use when waiting for a DidUpdateGeometry message.
-    static constexpr std::chrono::milliseconds didUpdateBackingStoreStateTimeout() { return std::chrono::milliseconds(500); }
+    static constexpr Seconds didUpdateBackingStoreStateTimeout() { return Seconds::fromMilliseconds(500); }
 
-    virtual void waitForPossibleGeometryUpdate(std::chrono::milliseconds = didUpdateBackingStoreStateTimeout()) { }
+    virtual void waitForPossibleGeometryUpdate(Seconds = didUpdateBackingStoreStateTimeout()) { }
 
     virtual void colorSpaceDidChange() { }
     virtual void minimumLayoutSizeDidChange() { }
@@ -89,7 +89,7 @@ public:
 
     virtual void updateDebugIndicator() { }
 
-    virtual void waitForDidUpdateViewState() { }
+    virtual void waitForDidUpdateActivityState() { }
     
     virtual void dispatchAfterEnsuringDrawing(std::function<void (CallbackBase::Error)>) { ASSERT_NOT_REACHED(); }
 

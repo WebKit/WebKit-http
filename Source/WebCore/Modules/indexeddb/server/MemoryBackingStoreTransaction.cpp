@@ -48,7 +48,7 @@ MemoryBackingStoreTransaction::MemoryBackingStoreTransaction(MemoryIDBBackingSto
     : m_backingStore(backingStore)
     , m_info(info)
 {
-    if (m_info.mode() == IndexedDB::TransactionMode::VersionChange) {
+    if (m_info.mode() == IDBTransactionMode::Versionchange) {
         IDBDatabaseInfo info;
         auto error = m_backingStore.getOrEstablishDatabaseInfo(info);
         if (error.isNull())
@@ -150,6 +150,26 @@ void MemoryBackingStoreTransaction::objectStoreCleared(MemoryObjectStore& object
     m_clearedOrderedKeys.add(&objectStore, WTFMove(orderedKeys));
 }
 
+void MemoryBackingStoreTransaction::objectStoreRenamed(MemoryObjectStore& objectStore, const String& oldName)
+{
+    ASSERT(m_objectStores.contains(&objectStore));
+    ASSERT(m_info.mode() == IDBTransactionMode::Versionchange);
+
+    // We only care about the first rename in a given transaction, because if the transaction is aborted we want
+    // to go back to the first 'oldName'
+    m_originalObjectStoreNames.add(&objectStore, oldName);
+}
+
+void MemoryBackingStoreTransaction::indexRenamed(MemoryIndex& index, const String& oldName)
+{
+    ASSERT(m_objectStores.contains(&index.objectStore()));
+    ASSERT(m_info.mode() == IDBTransactionMode::Versionchange);
+
+    // We only care about the first rename in a given transaction, because if the transaction is aborted we want
+    // to go back to the first 'oldName'
+    m_originalIndexNames.add(&index, oldName);
+}
+
 void MemoryBackingStoreTransaction::indexCleared(MemoryIndex& index, std::unique_ptr<IndexValueStore>&& valueStore)
 {
     auto addResult = m_clearedIndexValueStores.add(&index, nullptr);
@@ -193,6 +213,14 @@ void MemoryBackingStoreTransaction::abort()
 
     TemporaryChange<bool> change(m_isAborting, true);
 
+    for (auto iterator : m_originalIndexNames)
+        iterator.key->rename(iterator.value);
+    m_originalIndexNames.clear();
+
+    for (auto iterator : m_originalObjectStoreNames)
+        iterator.key->rename(iterator.value);
+    m_originalObjectStoreNames.clear();
+
     for (auto objectStore : m_versionChangeAddedObjectStores)
         m_backingStore.removeObjectStoreForVersionChangeAbort(*objectStore);
     m_versionChangeAddedObjectStores.clear();
@@ -205,7 +233,7 @@ void MemoryBackingStoreTransaction::abort()
     m_deletedObjectStores.clear();
 
     if (m_originalDatabaseInfo) {
-        ASSERT(m_info.mode() == IndexedDB::TransactionMode::VersionChange);
+        ASSERT(m_info.mode() == IDBTransactionMode::Versionchange);
         m_backingStore.setDatabaseInfo(*m_originalDatabaseInfo);
     }
 

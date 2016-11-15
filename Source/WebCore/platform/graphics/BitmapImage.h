@@ -29,6 +29,7 @@
 
 #include "Image.h"
 #include "Color.h"
+#include "ImageObserver.h"
 #include "ImageOrientation.h"
 #include "ImageSource.h"
 #include "IntSize.h"
@@ -80,11 +81,10 @@ public:
     IntSize sizeRespectingOrientation() const { return m_source.sizeRespectingOrientation(); }
     Color singlePixelSolidColor() const override { return m_source.singlePixelSolidColor(); }
 
-    void setAllowSubsampling(bool allowSubsampling) { m_source.setAllowSubsampling(allowSubsampling); }
-
+    bool frameIsBeingDecodedAtIndex(size_t index) const { return m_source.frameIsBeingDecodedAtIndex(index); }
     bool frameIsCompleteAtIndex(size_t index) const { return m_source.frameIsCompleteAtIndex(index); }
     bool frameHasAlphaAtIndex(size_t index) const { return m_source.frameHasAlphaAtIndex(index); }
-    bool frameHasInvalidNativeImageAtIndex(size_t index, SubsamplingLevel subsamplingLevel) const { return m_source.frameHasInvalidNativeImageAtIndex(index, subsamplingLevel); }
+    bool frameHasValidNativeImageAtIndex(size_t index, SubsamplingLevel subsamplingLevel) const { return m_source.frameHasValidNativeImageAtIndex(index, subsamplingLevel); }
     SubsamplingLevel frameSubsamplingLevelAtIndex(size_t index) const { return m_source.frameSubsamplingLevelAtIndex(index); }
 
     float frameDurationAtIndex(size_t index) const { return m_source.frameDurationAtIndex(index); }
@@ -93,6 +93,9 @@ public:
     size_t currentFrame() const { return m_currentFrame; }
     bool currentFrameKnownToBeOpaque() const override { return !frameHasAlphaAtIndex(currentFrame()); }
     ImageOrientation orientationForCurrentFrame() const override { return frameOrientationAtIndex(currentFrame()); }
+
+    bool isAsyncDecodingForcedForTesting() const { return m_frameDecodingDurationForTesting > 0; }
+    void setFrameDecodingDurationForTesting(float duration) { m_frameDecodingDurationForTesting = duration; }
 
     // Accessors for native image formats.
 #if USE(APPKIT)
@@ -117,21 +120,22 @@ public:
     Evas_Object* getEvasObject(Evas*) override;
 #endif
 
-    WEBCORE_EXPORT NativeImagePtr nativeImage() override;
-    NativeImagePtr nativeImageForCurrentFrame() override;
+    WEBCORE_EXPORT NativeImagePtr nativeImage(const GraphicsContext* = nullptr) override;
+    NativeImagePtr nativeImageForCurrentFrame(const GraphicsContext* = nullptr) override;
 #if USE(CG)
-    NativeImagePtr nativeImageOfSize(const IntSize&) override;
+    NativeImagePtr nativeImageOfSize(const IntSize&, const GraphicsContext* = nullptr) override;
     Vector<NativeImagePtr> framesNativeImages() override;
-#endif
-#if USE(DIRECT2D)
-    void setRenderTarget(GraphicsContext&);
 #endif
 
 protected:
     WEBCORE_EXPORT BitmapImage(NativeImagePtr&&, ImageObserver* = nullptr);
     WEBCORE_EXPORT BitmapImage(ImageObserver* = nullptr);
 
-    NativeImagePtr frameImageAtIndex(size_t, SubsamplingLevel = SubsamplingLevel::Default);
+    NativeImagePtr frameImageAtIndex(size_t, SubsamplingLevel = SubsamplingLevel::Default, const GraphicsContext* = nullptr);
+
+    bool allowSubsampling() const { return imageObserver() && imageObserver()->allowSubsampling(); }
+    bool allowAsyncImageDecoding() const { return imageObserver() && imageObserver()->allowAsyncImageDecoding(); }
+    bool showDebugBackground() const { return imageObserver() && imageObserver()->showDebugBackground(); }
 
     // Called to invalidate cached data. When |destroyAll| is true, we wipe out
     // the entire frame buffer cache and tell the image source to destroy
@@ -152,25 +156,21 @@ protected:
 #endif
 
     // Animation.
+    enum class StartAnimationResult { CannotStart, IncompleteData, TimerActive, DecodingActive, Started };
     bool isAnimated() const override { return m_source.frameCount() > 1; }
     bool shouldAnimate();
     bool canAnimate();
-    void startAnimation(CatchUpAnimation = CatchUp) override;
+    void startAnimation() override { internalStartAnimation(); }
+    StartAnimationResult internalStartAnimation();
     void advanceAnimation();
-
-    // Function that does the real work of advancing the animation. When
-    // skippingFrames is true, we're in the middle of a loop trying to skip over
-    // a bunch of animation frames, so we should not do things like decode each
-    // one or notify our observers.
-    // Returns whether the animation was advanced.
-    enum AnimationAdvancement { Normal, SkippingFramesToCatchUp };
-    bool internalAdvanceAnimation(AnimationAdvancement = Normal);
+    void internalAdvanceAnimation();
 
     // It may look unusual that there is no start animation call as public API. This is because
     // we start and stop animating lazily. Animation begins whenever someone draws the image. It will
     // automatically pause once all observers no longer want to render the image anywhere.
     void stopAnimation() override;
     void resetAnimation() override;
+    void newFrameNativeImageAvailableAtIndex(size_t) override;
 
     // Handle platform-specific data
     void invalidatePlatformData();
@@ -192,11 +192,19 @@ private:
     mutable ImageSource m_source;
 
     size_t m_currentFrame { 0 }; // The index of the current frame of animation.
+    SubsamplingLevel m_currentSubsamplingLevel { SubsamplingLevel::Default };
     std::unique_ptr<Timer> m_frameTimer;
     RepetitionCount m_repetitionsComplete { RepetitionCountNone }; // How many repetitions we've finished.
     double m_desiredFrameStartTime { 0 }; // The system time at which we hope to see the next call to startAnimation().
     bool m_animationFinished { false };
-    bool m_animationFinishedWhenCatchingUp { false };
+
+    float m_frameDecodingDurationForTesting { 0 };
+    double m_desiredFrameDecodeTimeForTesting { 0 };
+#if !LOG_DISABLED
+    size_t m_lateFrameCount { 0 };
+    size_t m_earlyFrameCount { 0 };
+    size_t m_cachedFrameCount { 0 };
+#endif
 
 #if USE(APPKIT)
     mutable RetainPtr<NSImage> m_nsImage; // A cached NSImage of all the frames. Only built lazily if someone actually queries for one.

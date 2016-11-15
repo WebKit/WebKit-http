@@ -22,7 +22,6 @@
 #include "config.h"
 #include "StyleRule.h"
 
-#include "CSSCharsetRule.h"
 #include "CSSFontFaceRule.h"
 #include "CSSImportRule.h"
 #include "CSSKeyframeRule.h"
@@ -96,8 +95,10 @@ void StyleRuleBase::destroy()
     case Keyframe:
         delete downcast<StyleKeyframe>(this);
         return;
-    case Unknown:
     case Charset:
+        delete downcast<StyleRuleCharset>(this);
+        return;
+    case Unknown:
 #if !ENABLE(CSS_REGIONS)
     case Region:
 #endif
@@ -371,6 +372,12 @@ StyleRuleRegion::StyleRuleRegion(Vector<std::unique_ptr<CSSParserSelector>>* sel
     m_selectorList.adoptSelectorVector(*selectors);
 }
 
+StyleRuleRegion::StyleRuleRegion(CSSSelectorList& selectors, Vector<RefPtr<StyleRuleBase>>& adoptRules)
+    : StyleRuleGroup(Region, adoptRules)
+    , m_selectorList(WTFMove(selectors))
+{
+}
+    
 StyleRuleRegion::StyleRuleRegion(const StyleRuleRegion& o)
     : StyleRuleGroup(o)
     , m_selectorList(o.m_selectorList)

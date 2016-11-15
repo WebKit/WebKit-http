@@ -365,6 +365,21 @@ RegisterID* ArrayNode::emitBytecode(BytecodeGenerator& generator, RegisterID* ds
     if (!firstPutElement && !m_elision)
         return generator.emitNewArray(generator.finalDestination(dst), m_element, length);
 
+    if (firstPutElement && firstPutElement->value()->isSpreadExpression()) {
+        bool hasElision = false;
+        for (ElementNode* node = m_element; node; node = node->next()) {
+            if (!!node->elision()) {
+                hasElision = true;
+                break;
+            }
+        }
+        if (!!m_elision)
+            hasElision = true;
+
+        if (!hasElision)
+            return generator.emitNewArrayWithSpread(generator.finalDestination(dst), m_element);
+    }
+
     RefPtr<RegisterID> array = generator.emitNewArray(generator.tempDestination(dst), m_element, length);
     ElementNode* n = firstPutElement;
     for (; n; n = n->next()) {
@@ -633,15 +648,17 @@ RegisterID* BracketAccessorNode::emitBytecode(BytecodeGenerator& generator, Regi
         RefPtr<RegisterID> finalDest = generator.finalDestination(dst);
         RefPtr<RegisterID> thisValue = generator.ensureThis();
         RefPtr<RegisterID> superBase = emitSuperBaseForCallee(generator);
+
         if (isNonIndexStringElement(*m_subscript)) {
             const Identifier& id = static_cast<StringNode*>(m_subscript)->value();
+            generator.emitExpressionInfo(divot(), divotStart(), divotEnd());
             generator.emitGetById(finalDest.get(), superBase.get(), thisValue.get(), id);
         } else  {
             RefPtr<RegisterID> subscript = generator.emitNode(m_subscript);
+            generator.emitExpressionInfo(divot(), divotStart(), divotEnd());
             generator.emitGetByVal(finalDest.get(), superBase.get(), thisValue.get(), subscript.get());
         }
 
-        generator.emitExpressionInfo(divot(), divotStart(), divotEnd());
         generator.emitProfileType(finalDest.get(), divotStart(), divotEnd());
         return finalDest.get();
     }
@@ -651,14 +668,14 @@ RegisterID* BracketAccessorNode::emitBytecode(BytecodeGenerator& generator, Regi
 
     if (isNonIndexStringElement(*m_subscript)) {
         RefPtr<RegisterID> base = generator.emitNode(m_base);
+        generator.emitExpressionInfo(divot(), divotStart(), divotEnd());
         ret = generator.emitGetById(finalDest.get(), base.get(), static_cast<StringNode*>(m_subscript)->value());
     } else {
         RefPtr<RegisterID> base = generator.emitNodeForLeftHandSide(m_base, m_subscriptHasAssignments, m_subscript->isPure(generator));
         RegisterID* property = generator.emitNode(m_subscript);
+        generator.emitExpressionInfo(divot(), divotStart(), divotEnd());
         ret = generator.emitGetByVal(finalDest.get(), base.get(), property);
     }
-
-    generator.emitExpressionInfo(divot(), divotStart(), divotEnd());
 
     generator.emitProfileType(finalDest.get(), divotStart(), divotEnd());
     return ret;
@@ -856,6 +873,23 @@ RegisterID* FunctionCallResolveNode::emitBytecode(BytecodeGenerator& generator, 
 RegisterID* BytecodeIntrinsicNode::emitBytecode(BytecodeGenerator& generator, RegisterID* dst)
 {
     return (this->*m_emitter)(generator, dst);
+}
+
+RegisterID* BytecodeIntrinsicNode::emit_intrinsic_argument(BytecodeGenerator& generator, RegisterID* dst)
+{
+    ArgumentListNode* node = m_args->m_listNode;
+    ASSERT(node->m_expr->isNumber());
+    double value = static_cast<NumberNode*>(node->m_expr)->value();
+    int32_t index = static_cast<int32_t>(value);
+    ASSERT(value == index);
+    ASSERT(index >= 0);
+    ASSERT(!node->m_next);
+
+    // The body functions of generator and async have different mechanism for arguments.
+    ASSERT(generator.parseMode() != SourceParseMode::GeneratorBodyMode);
+    ASSERT(!isAsyncFunctionBodyParseMode(generator.parseMode()));
+
+    return generator.emitGetArgument(generator.finalDestination(dst), index);
 }
 
 RegisterID* BytecodeIntrinsicNode::emit_intrinsic_argumentCount(BytecodeGenerator& generator, RegisterID* dst)
@@ -3400,18 +3434,7 @@ void FunctionNode::emitBytecode(BytecodeGenerator& generator, RegisterID*)
             emitPutHomeObject(generator, next.get(), homeObject.get());
         }
 
-        // FIXME: Currently, we just create an object and store generator related fields as its properties for ease.
-        // But to make it efficient, we will introduce JSGenerator class, add opcode new_generator and use its C++ fields instead of these private properties.
-        // https://bugs.webkit.org/show_bug.cgi?id=151545
-
-        generator.emitDirectPutById(generator.generatorRegister(), generator.propertyNames().builtinNames().generatorNextPrivateName(), next.get(), PropertyNode::KnownDirect);
-
-        generator.emitDirectPutById(generator.generatorRegister(), generator.propertyNames().builtinNames().generatorThisPrivateName(), generator.thisRegister(), PropertyNode::KnownDirect);
-
-        RegisterID* initialState = generator.emitLoad(nullptr, jsNumber(0));
-        generator.emitDirectPutById(generator.generatorRegister(), generator.propertyNames().builtinNames().generatorStatePrivateName(), initialState, PropertyNode::KnownDirect);
-
-        generator.emitDirectPutById(generator.generatorRegister(), generator.propertyNames().builtinNames().generatorFramePrivateName(), generator.emitLoad(nullptr, jsNull()), PropertyNode::KnownDirect);
+        generator.emitPutGeneratorFields(next.get());
 
         ASSERT(startOffset() >= lineStartOffset());
         generator.emitDebugHook(WillLeaveCallFrame, lastLine(), startOffset(), lineStartOffset());
@@ -3419,6 +3442,56 @@ void FunctionNode::emitBytecode(BytecodeGenerator& generator, RegisterID*)
         break;
     }
 
+    case SourceParseMode::AsyncFunctionMode:
+    case SourceParseMode::AsyncMethodMode:
+    case SourceParseMode::AsyncArrowFunctionMode: {
+        StatementNode* singleStatement = this->singleStatement();
+        ASSERT(singleStatement->isExprStatement());
+        ExprStatementNode* exprStatement = static_cast<ExprStatementNode*>(singleStatement);
+        ExpressionNode* expr = exprStatement->expr();
+        ASSERT(expr->isFuncExprNode());
+        FuncExprNode* funcExpr = static_cast<FuncExprNode*>(expr);
+
+        RefPtr<RegisterID> next = generator.newTemporary();
+        generator.emitNode(next.get(), funcExpr);
+
+        if (generator.superBinding() == SuperBinding::Needed || generator.parseMode() == SourceParseMode::AsyncArrowFunctionMode) {
+            // FIXME: Don't always load home object for async arrows
+            RefPtr<RegisterID> homeObject = emitHomeObjectForCallee(generator);
+            emitPutHomeObject(generator, next.get(), homeObject.get());
+        }
+
+        generator.emitPutGeneratorFields(next.get());
+
+        ASSERT(startOffset() >= lineStartOffset());
+        generator.emitDebugHook(WillLeaveCallFrame, lastLine(), startOffset(), lineStartOffset());
+
+        // load @asyncFunctionResume, and call.
+        RefPtr<RegisterID> startAsyncFunction = generator.newTemporary();
+        auto var = generator.variable(generator.propertyNames().builtinNames().asyncFunctionResumePrivateName());
+
+        RefPtr<RegisterID> scope = generator.newTemporary();
+        generator.moveToDestinationIfNeeded(scope.get(), generator.emitResolveScope(scope.get(), var));
+        generator.emitGetFromScope(startAsyncFunction.get(), scope.get(), var, ThrowIfNotFound);
+
+        // return @asyncFunctionResume.@call(this, @generator, @undefined, GeneratorResumeMode::NormalMode)
+        CallArguments args(generator, nullptr, 3);
+        unsigned argumentCount = 0;
+        generator.emitLoad(args.thisRegister(), jsUndefined());
+        generator.emitMove(args.argumentRegister(argumentCount++), generator.generatorRegister());
+        generator.emitLoad(args.argumentRegister(argumentCount++), jsUndefined());
+        generator.emitLoad(args.argumentRegister(argumentCount++), jsNumber(static_cast<int32_t>(JSGeneratorFunction::GeneratorResumeMode::NormalMode)));
+        // JSTextPosition(int _line, int _offset, int _lineStartOffset)
+        JSTextPosition divot(firstLine(), startOffset(), lineStartOffset());
+
+        RefPtr<RegisterID> result = generator.newTemporary();
+        generator.emitCallInTailPosition(result.get(), startAsyncFunction.get(), NoExpectedFunction, args, divot, divot, divot, DebuggableCall::No);
+        generator.emitReturn(result.get());
+        break;
+    }
+
+    case SourceParseMode::AsyncArrowFunctionBodyMode:
+    case SourceParseMode::AsyncFunctionBodyMode:
     case SourceParseMode::GeneratorBodyMode: {
         RefPtr<Label> generatorBodyLabel = generator.newLabel();
         {

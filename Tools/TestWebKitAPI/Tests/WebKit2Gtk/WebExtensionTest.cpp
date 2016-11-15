@@ -51,6 +51,9 @@ static const char introspectionXML[] =
     "  <method name='RemoveAVPluginsFromGSTRegistry'>"
     "  </method>"
     "  <signal name='DocumentLoaded'/>"
+    "  <signal name='FormControlsAssociated'>"
+    "   <arg type='s' name='formIds' direction='out'/>"
+    "  </signal>"
     "  <signal name='URIChanged'>"
     "   <arg type='s' name='uri' direction='out'/>"
     "  </signal>"
@@ -61,6 +64,7 @@ static const char introspectionXML[] =
 typedef enum {
     DocumentLoadedSignal,
     URIChangedSignal,
+    FormControlsAssociatedSignal,
 } DelayedSignalType;
 
 struct DelayedSignal {
@@ -69,14 +73,14 @@ struct DelayedSignal {
     {
     }
 
-    DelayedSignal(DelayedSignalType type, const char* uri)
+    DelayedSignal(DelayedSignalType type, const char* str)
         : type(type)
-        , uri(uri)
+        , str(str)
     {
     }
 
     DelayedSignalType type;
-    CString uri;
+    CString str;
 };
 
 Deque<DelayedSignal> delayedSignalsQueue;
@@ -154,6 +158,10 @@ static gboolean sendRequestCallback(WebKitWebPage*, WebKitURIRequest* request, W
         SoupMessageHeaders* headers = webkit_uri_request_get_http_headers(request);
         g_assert(headers);
         soup_message_headers_append(headers, "DNT", "1");
+    } else if (g_str_has_suffix(requestURI, "/normal-change-request")) {
+        GUniquePtr<char> prefix(g_strndup(requestURI, strlen(requestURI) - strlen("/normal-change-request")));
+        GUniquePtr<char> newURI(g_strdup_printf("%s/request-changed%s", prefix.get(), redirectResponse ? "-on-redirect" : ""));
+        webkit_uri_request_set_uri(request, newURI.get());
     } else if (g_str_has_suffix(requestURI, "/http-get-method")) {
         g_assert_cmpstr(webkit_uri_request_get_http_method(request), ==, "GET");
         g_assert(webkit_uri_request_get_http_method(request) == SOUP_METHOD_GET);
@@ -234,6 +242,36 @@ static void consoleMessageSentCallback(WebKitWebPage* webPage, WebKitConsoleMess
     webkit_dom_dom_window_webkit_message_handlers_post_message(window.get(), "console", messageString.get());
 }
 
+
+static void emitFormControlsAssociated(GDBusConnection* connection, const char* formIds)
+{
+    bool ok = g_dbus_connection_emit_signal(
+        connection,
+        nullptr,
+        "/org/webkit/gtk/WebExtensionTest",
+        "org.webkit.gtk.WebExtensionTest",
+        "FormControlsAssociated",
+        g_variant_new("(s)", formIds),
+        nullptr);
+    g_assert(ok);
+}
+
+static void formControlsAssociatedCallback(WebKitWebPage* webPage, GPtrArray* formElements, WebKitWebExtension* extension)
+{
+    GString* formIdsBuilder = g_string_new(nullptr);
+    for (int i = 0; i < formElements->len; ++i) {
+        g_assert(WEBKIT_DOM_IS_ELEMENT(g_ptr_array_index(formElements, i)));
+        auto domElement = WEBKIT_DOM_ELEMENT(g_ptr_array_index(formElements, i));
+        g_string_append(formIdsBuilder, webkit_dom_element_get_id(domElement));
+    }
+    GUniquePtr<char> formIds(g_string_free(formIdsBuilder, FALSE));
+    gpointer data = g_object_get_data(G_OBJECT(extension), "dbus-connection");
+    if (data)
+        emitFormControlsAssociated(G_DBUS_CONNECTION(data), formIds.get());
+    else
+        delayedSignalsQueue.append(DelayedSignal(FormControlsAssociatedSignal, formIds.get()));
+}
+
 static void pageCreatedCallback(WebKitWebExtension* extension, WebKitWebPage* webPage, gpointer)
 {
     g_signal_connect(webPage, "document-loaded", G_CALLBACK(documentLoadedCallback), extension);
@@ -241,6 +279,7 @@ static void pageCreatedCallback(WebKitWebExtension* extension, WebKitWebPage* we
     g_signal_connect(webPage, "send-request", G_CALLBACK(sendRequestCallback), nullptr);
     g_signal_connect(webPage, "context-menu", G_CALLBACK(contextMenuCallback), nullptr);
     g_signal_connect(webPage, "console-message-sent", G_CALLBACK(consoleMessageSentCallback), nullptr);
+    g_signal_connect(webPage, "form-controls-associated", G_CALLBACK(formControlsAssociatedCallback), extension);
 }
 
 static JSValueRef echoCallback(JSContextRef jsContext, JSObjectRef, JSObjectRef, size_t argumentCount, const JSValueRef arguments[], JSValueRef*)
@@ -357,7 +396,10 @@ static void busAcquiredCallback(GDBusConnection* connection, const char* name, g
             emitDocumentLoaded(connection);
             break;
         case URIChangedSignal:
-            emitURIChanged(connection, delayedSignal.uri.data());
+            emitURIChanged(connection, delayedSignal.str.data());
+            break;
+        case FormControlsAssociatedSignal:
+            emitFormControlsAssociated(connection, delayedSignal.str.data());
             break;
         }
     }

@@ -23,11 +23,13 @@
  * THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef TypeConversions_h
-#define TypeConversions_h
+#pragma once
 
+#include "Node.h"
 #include <wtf/FastMalloc.h>
 #include <wtf/RefCounted.h>
+#include <wtf/Variant.h>
+#include <wtf/Vector.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
@@ -35,6 +37,26 @@ namespace WebCore {
 class TypeConversions : public RefCounted<TypeConversions> {
 public:
     static Ref<TypeConversions> create() { return adoptRef(*new TypeConversions()); }
+
+    enum class UnionType {
+        Node,
+        Sequence,
+        Dictionary
+    };
+
+    struct OtherDictionary {
+        int longValue;
+        String stringValue;
+    };
+
+    using DictionaryUnion = Variant<RefPtr<Node>, Vector<String>, OtherDictionary>;
+
+    struct Dictionary {
+        int longValue;
+        String stringValue;
+        Vector<String> sequenceValue;
+        DictionaryUnion unionValue;
+    };
 
     long testLong() { return m_long; }
     void setTestLong(long value) { m_long = value; }
@@ -77,23 +99,52 @@ public:
     const String& testUSVString() const { return m_usvstring; }
     void setTestUSVString(const String& usvstring) { m_usvstring = usvstring; }
 
+    using TestUnion = Variant<String, int, bool, RefPtr<Node>, Vector<int>>;
+    const TestUnion& testUnion() const { return m_union; }
+    void setTestUnion(const TestUnion& value) { m_union = value; }
+
+    void setTypeConversionsDictionary(Dictionary&& dictionary)
+    {
+        m_typeConversionsDictionaryLongValue = dictionary.longValue;
+        m_typeConversionsDictionaryStringValue = WTFMove(dictionary.stringValue);
+        m_typeConversionsDictionarySequenceValue = WTFMove(dictionary.sequenceValue);
+        m_typeConversionsDictionaryUnionValue = WTFMove(dictionary.unionValue);
+    }
+
+    int typeConversionsDictionaryLongValue() { return m_typeConversionsDictionaryLongValue; }
+    String typeConversionsDictionaryStringValue() { return m_typeConversionsDictionaryStringValue; }
+    const Vector<String>& typeConversionsDictionarySequenceValue() { return m_typeConversionsDictionarySequenceValue; }
+    const DictionaryUnion& typeConversionsDictionaryUnionValue() { return m_typeConversionsDictionaryUnionValue; }
+    UnionType typeConversionsDictionaryUnionType()
+    {
+        return WTF::switchOn(m_typeConversionsDictionaryUnionValue,
+            [](const RefPtr<Node>&) -> UnionType { return UnionType::Node; },
+            [](const Vector<String>&) -> UnionType { return UnionType::Sequence; },
+            [](const OtherDictionary&) -> UnionType { return UnionType::Dictionary; }
+        );
+    }
+
 private:
     TypeConversions()
     {
     }
 
-    long m_long;
-    unsigned long m_unsignedLong;
-    long long m_longLong;
-    unsigned long long m_unsignedLongLong;
-    int8_t m_byte;
-    uint8_t m_octet;
-    int16_t m_short;
-    uint16_t m_UnsignedShort;
+    long m_long { 0 };
+    unsigned long m_unsignedLong { 0 };
+    long long m_longLong { 0 };
+    unsigned long long m_unsignedLongLong { 0 };
+    int8_t m_byte { 0 };
+    uint8_t m_octet { 0 };
+    int16_t m_short { 0 };
+    uint16_t m_UnsignedShort { 0 };
     String m_string;
     String m_usvstring;
+    TestUnion m_union;
+    
+    int m_typeConversionsDictionaryLongValue { 0 };
+    String m_typeConversionsDictionaryStringValue;
+    Vector<String> m_typeConversionsDictionarySequenceValue;
+    DictionaryUnion m_typeConversionsDictionaryUnionValue;
 };
 
 } // namespace WebCore
-
-#endif

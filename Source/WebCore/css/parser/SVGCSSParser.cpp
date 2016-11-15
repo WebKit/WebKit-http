@@ -31,6 +31,8 @@
 #include "RenderTheme.h"
 #include "SVGPaint.h"
 
+#include <wtf/TemporaryChange.h>
+
 namespace WebCore {
 
 static bool isValidSystemControlColorValue(CSSValueID id)
@@ -131,10 +133,10 @@ bool CSSParser::parseSVGValue(CSSPropertyID propId, bool important)
             else if (isValidSystemControlColorValue(id) || id == CSSValueMenu)
                 parsedValue = SVGPaint::createColor(RenderTheme::defaultTheme()->systemColor(id));
             else if (valueWithCalculation.value().unit == CSSPrimitiveValue::CSS_URI) {
-                RGBA32 c = Color::transparent;
                 if (m_valueList->next()) {
-                    if (parseColorFromValue(*m_valueList->current(), c))
-                        parsedValue = SVGPaint::createURIAndColor(valueWithCalculation.value().string, c);
+                    Color color = parseColorFromValue(*m_valueList->current());
+                    if (color.isValid())
+                        parsedValue = SVGPaint::createURIAndColor(valueWithCalculation.value().string, color);
                     else if (m_valueList->current()->id == CSSValueNone)
                         parsedValue = SVGPaint::createURIAndNone(valueWithCalculation.value().string);
                 }
@@ -211,7 +213,7 @@ bool CSSParser::parseSVGValue(CSSPropertyID propId, bool important)
     case CSSPropertyMarker:
     {
         ShorthandScope scope(this, propId);
-        m_implicitShorthand = true;
+        TemporaryChange<bool> change(m_implicitShorthand, true);
         if (!parseValue(CSSPropertyMarkerStart, important))
             return false;
         if (m_valueList->current()) {
@@ -221,7 +223,6 @@ bool CSSParser::parseSVGValue(CSSPropertyID propId, bool important)
         CSSValue* value = m_parsedProperties.last().value();
         addProperty(CSSPropertyMarkerMid, value, important);
         addProperty(CSSPropertyMarkerEnd, value, important);
-        m_implicitShorthand = false;
         return true;
     }
     case CSSPropertyCx:
@@ -286,18 +287,18 @@ RefPtr<CSSValueList> CSSParser::parseSVGStrokeDasharray()
 
 RefPtr<SVGPaint> CSSParser::parseSVGPaint()
 {
-    RGBA32 c = Color::transparent;
-    if (!parseColorFromValue(*m_valueList->current(), c))
+    Color color = parseColorFromValue(*m_valueList->current());
+    if (!color.isValid())
         return nullptr;
-    return SVGPaint::createColor(Color(c));
+    return SVGPaint::createColor(color);
 }
 
 RefPtr<SVGColor> CSSParser::parseSVGColor()
 {
-    RGBA32 c = Color::transparent;
-    if (!parseColorFromValue(*m_valueList->current(), c))
+    Color color = parseColorFromValue(*m_valueList->current());
+    if (!color.isValid())
         return nullptr;
-    return SVGColor::createFromColor(Color(c));
+    return SVGColor::createFromColor(color);
 }
 
 RefPtr<CSSValueList> CSSParser::parsePaintOrder()

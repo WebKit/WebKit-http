@@ -28,7 +28,6 @@
 
 #include "AXObjectCache.h"
 #include "Document.h"
-#include "ExceptionCodePlaceholder.h"
 #include "RenderElement.h"
 #include "Text.h"
 #include "htmlediting.h"
@@ -51,7 +50,7 @@ void AppendNodeCommand::doApply()
     if (!m_parent->hasEditableStyle() && m_parent->renderer())
         return;
 
-    m_parent->appendChild(m_node, IGNORE_EXCEPTION);
+    m_parent->appendChild(m_node);
 }
 
 void AppendNodeCommand::doUnapply()
@@ -59,7 +58,7 @@ void AppendNodeCommand::doUnapply()
     if (!m_parent->hasEditableStyle())
         return;
 
-    m_node->remove(IGNORE_EXCEPTION);
+    m_node->remove();
 }
 
 #ifndef NDEBUG

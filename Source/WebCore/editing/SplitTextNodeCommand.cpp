@@ -54,11 +54,14 @@ void SplitTextNodeCommand::doApply()
     if (!parent || !parent->hasEditableStyle())
         return;
 
-    String prefixText = m_text2->substringData(0, m_offset, IGNORE_EXCEPTION);
+    auto result = m_text2->substringData(0, m_offset);
+    if (result.hasException())
+        return;
+    auto prefixText = result.releaseReturnValue();
     if (prefixText.isEmpty())
         return;
 
-    m_text1 = Text::create(document(), prefixText);
+    m_text1 = Text::create(document(), WTFMove(prefixText));
     ASSERT(m_text1);
     document().markers().copyMarkers(m_text2.get(), 0, m_offset, m_text1.get(), 0);
 
@@ -74,10 +77,10 @@ void SplitTextNodeCommand::doUnapply()
 
     String prefixText = m_text1->data();
 
-    m_text2->insertData(0, prefixText, ASSERT_NO_EXCEPTION);
+    m_text2->insertData(0, prefixText);
 
     document().markers().copyMarkers(m_text1.get(), 0, prefixText.length(), m_text2.get(), 0);
-    m_text1->remove(ASSERT_NO_EXCEPTION);
+    m_text1->remove();
 }
 
 void SplitTextNodeCommand::doReapply()
@@ -94,19 +97,19 @@ void SplitTextNodeCommand::doReapply()
 
 void SplitTextNodeCommand::insertText1AndTrimText2()
 {
-    ExceptionCode ec = 0;
-    m_text2->parentNode()->insertBefore(*m_text1, m_text2.get(), ec);
-    if (ec)
+    if (m_text2->parentNode()->insertBefore(*m_text1, m_text2.get()).hasException())
         return;
-    m_text2->deleteData(0, m_offset, ec);
+    m_text2->deleteData(0, m_offset);
 }
 
 #ifndef NDEBUG
+
 void SplitTextNodeCommand::getNodesInCommand(HashSet<Node*>& nodes)
 {
     addNodeAndDescendants(m_text1.get(), nodes);
     addNodeAndDescendants(m_text2.get(), nodes);
 }
+
 #endif
     
 } // namespace WebCore

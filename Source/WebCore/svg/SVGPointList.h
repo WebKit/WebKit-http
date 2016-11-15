@@ -18,8 +18,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef SVGPointList_h
-#define SVGPointList_h
+#pragma once
 
 #include "SVGPoint.h"
 #include "SVGPropertyTraits.h"
@@ -27,19 +26,19 @@
 
 namespace WebCore {
 
+template<typename T> 
+class SVGPropertyTearOff;
+
 class SVGPointList final : public Vector<SVGPoint> {
 public:
-    SVGPointList() { }
-
     String valueAsString() const;
 };
 
-template<>
-struct SVGPropertyTraits<SVGPointList> {
+template<> struct SVGPropertyTraits<SVGPointList> {
     static SVGPointList initialValue() { return SVGPointList(); }
-    typedef SVGPoint ListItemType;
+
+    using ListItemType = SVGPoint;
+    using ListItemTearOff = SVGPropertyTearOff<SVGPoint>;
 };
 
 } // namespace WebCore
-
-#endif

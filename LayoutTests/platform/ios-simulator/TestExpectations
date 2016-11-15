@@ -84,7 +84,6 @@ fast/events/wheelevent-in-text-node.html [ Skip ]
 fast/events/continuous-platform-wheelevent-in-scrolling-div.html [ Skip ]
 
 # Not supported on iOS
-batterystatus
 fast/mediastream
 fast/speechsynthesis
 gamepad
@@ -185,9 +184,6 @@ fast/history/page-cache-removed-source-buffer.html [ Skip ]
 # X-Content-Type-Options (ENABLE_NOSNIFF) is not enabled.
 webkit.org/b/136452 http/tests/security/contentTypeOptions
 
-# webkit.org/b/61138, webkit.org/b/84893, webkit.org/b/133321
-http/tests/w3c/webperf
-
 # IndexedDB tests have numerous unexpected failures on iOS
 webkit.org/b/144475 storage/indexeddb
 
@@ -233,6 +229,7 @@ fast/dom/DeviceOrientation
 fast/canvas/canvas-toDataURL-webp.html
 
 # Drag-and-drop is not supported:
+editing/pasteboard/drag-link-with-data-transfer-adds-trusted-link-to-pasteboard.html
 fast/events/bogus-dropEffect-effectAllowed.html
 fast/events/clear-drag-state.html
 fast/events/clear-edit-drag-state.html
@@ -344,6 +341,8 @@ fast/text/all-small-caps-whitespace.html [ Skip ]
 webkit.org/b/155233 fast/events/max-tabindex-focus.html [ Skip ]
 fast/shadow-dom/shadow-host-removal-crash.html [ Skip ]
 fast/shadow-dom/input-element-in-shadow.html [ Skip ]
+fast/shadow-dom/activate-over-slotted-content.html [ Skip ]
+fast/shadow-dom/hover-over-slotted-content.html [ Skip ]
 fast/events/keyboardevent-key.html [ Skip ]
 fast/events/keyboardevent-code.html [ Skip ]
 
@@ -1204,11 +1203,19 @@ fast/events/focus-change-crash2.html [ Failure ]
 fast/events/frame-scroll-fake-mouse-move.html [ Failure ]
 fast/events/frame-tab-focus.html [ Failure ]
 fast/events/ime-composition-events-001.html [ Failure ]
+fast/events/ime-compositionend-on-selection-change.html [ Failure ]
 fast/events/inputText-never-fired-on-keydown-cancel.html [ Failure ]
+fast/events/input-events-drag-and-drop.html [ Failure ]
+fast/events/input-events-insert-by-drop.html [ Failure ]
 fast/events/input-events-fired-when-typing.html [ Failure ]
 fast/events/input-events-paste-data.html [ Failure ]
 fast/events/input-events-typing-data.html [ Failure ]
 fast/events/input-events-forecolor-data.html [ Failure ]
+fast/events/input-events-ime-recomposition.html [ Failure ]
+fast/events/input-events-ime-composition.html [ Failure ]
+fast/events/input-events-paste-rich-datatransfer.html [ Failure ]
+fast/events/input-events-spell-checking-datatransfer.html [ Failure ]
+fast/events/input-events-selection-forecolor-data.html [ Failure ]
 fast/events/before-input-events-prevent-default.html [ Failure ]
 fast/events/before-input-events-prevent-default-in-textfield.html [ Failure ]
 fast/events/before-input-events-different-start-end-elements.html [ Failure ]
@@ -1217,6 +1224,12 @@ fast/events/before-input-prevent-cut.html [ Failure ]
 fast/events/before-input-prevent-paste.html [ Failure ]
 fast/events/before-input-prevent-undo.html [ Failure ]
 fast/events/before-input-prevent-typing.html [ Failure ]
+fast/events/before-input-delete-text-target-ranges.html [ Failure ]
+fast/events/before-input-replace-text-target-ranges.html [ Failure ]
+fast/events/before-input-delete-empty-list-target-ranges.html [ Failure ]
+fast/events/before-input-events-prevent-recomposition.html [ Failure ]
+fast/events/before-input-events-prevent-insert-composition.html [ Failure ]
+fast/events/before-input-events-prevent-drag-and-drop.html [ Failure ]
 fast/events/key-events-in-input-button.html [ Failure ]
 fast/events/keydown-1.html [ Failure ]
 fast/events/keydown-leftright-keys.html [ Failure ]
@@ -1886,6 +1899,8 @@ fast/dom/rtl-scroll-to-leftmost-and-resize.html
 fast/dynamic/paused-event-dispatch.html
 fast/events/anchor-image-scrolled-x-y.html
 fast/events/autoscroll-should-not-stop-on-keypress.html [ Skip ]
+fast/events/before-input-prevent-insert-replacement.html
+fast/events/input-event-insert-replacement.html
 fast/events/input-image-scrolled-x-y.html
 fast/events/mouse-cursor-image-set.html
 fast/events/recorded-keydown-event.html
@@ -2520,7 +2535,8 @@ webkit.org/b/157592 fast/images/composited-animated-gif-outside-viewport.html [ 
 
 webkit.org/b/156561 perf/rel-list-remove.html [ Pass Timeout Failure ]
 
-webkit.org/b/159683 imported/w3c/web-platform-tests/fetch/api/request/request-cache.html [ Pass Failure ]
+webkit.org/b/163332 imported/w3c/web-platform-tests/fetch/api/request/request-cache-reload.html [ Pass Failure ]
+webkit.org/b/163332 imported/w3c/web-platform-tests/fetch/api/request/request-cache-only-if-cached.html [ Pass Failure ]
 
 webkit.org/b/158640 imported/blink/storage/indexeddb/blob-valid-after-deletion.html [ Pass Failure ]
 
@@ -2691,6 +2707,13 @@ webkit.org/b/162739 fast/images/gif-loop-count.html [ Pass ImageOnlyFailure ]
 
 webkit.org/b/163009 media/modern-media-controls/icon-button/icon-button-active-state.html [ Failure ]
 webkit.org/b/163357 media/modern-media-controls/volume-slider/volume-slider-value.html [ Skip ]
+webkit.org/b/163669 media/modern-media-controls/start-support/start-support-fullscreen.html [ Skip ]
+webkit.org/b/164088 media/modern-media-controls/scrubber-support/scrubber-support-click.html [ Skip ]
+webkit.org/b/164088 media/modern-media-controls/scrubber-support/scrubber-support-drag.html [ Skip ]
+webkit.org/b/164160 media/modern-media-controls/volume-support/volume-support-click.html [ Skip ]
+webkit.org/b/164160 media/modern-media-controls/volume-support/volume-support-drag.html [ Skip ]
+webkit.org/b/164250 media/modern-media-controls/volume-support/volume-support-media-api.html [ Skip ]
+webkit.org/b/164314 media/modern-media-controls/fullscreen-support/fullscreen-support-click.html [ Skip ]
 
 # This variation font test requires Skia which isn't available on iOS.
 webkit.org/b/163093 fast/text/variations/advances.html [ Failure ]
@@ -2709,3 +2732,27 @@ webkit.org/b/163307 [ Debug ] loader/stateobjects/pushstate-size-iframe.html [ S
 webkit.org/b/163307 [ Debug ] loader/stateobjects/pushstate-size.html [ Skip ]
 webkit.org/b/163307 [ Debug ] loader/stateobjects/replacestate-size-iframe.html [ Skip ]
 webkit.org/b/163307 [ Debug ] loader/stateobjects/replacestate-size.html [ Skip ]
+
+webkit.org/b/163755 imported/w3c/csswg-test/css-shapes-1 [ Skip ]
+
+# These font variation tests require a variation font which supports more than 2 axes.
+animations/font-variations/font-variation-settings-order.html [ Pass ImageOnlyFailure Failure ]
+animations/font-variations/font-variation-settings-unlike.html [ Pass ImageOnlyFailure Failure ]
+
+webkit.org/b/163632 animations/font-variations/font-variation-settings.html [ Skip ]
+webkit.org/b/163632 fast/text/variations/getComputedStyle.html [ Skip ]
+
+webkit.org/b/158836 imported/w3c/web-platform-tests/encrypted-media [ Skip ]
+
+# Only Mac has implemented DictionaryLookup
+fast/layers/prevent-hit-test-during-layout.html [ Skip ]
+
+# Internal APIs to test PiP and AirPlay are not available on iOS.
+media/modern-media-controls/airplay-support/airplay-support.html [ Skip ]
+media/modern-media-controls/pip-support [ Skip ]
+media/modern-media-controls/placard-support [ Skip ]
+
+# This test is Mac-specific since it checks that we have custom controls in fullscreen.
+media/modern-media-controls/media-controller/media-controller-fullscreen-change.html [ Skip ]
+
+webkit.org/b/164594 http/tests/cache/disk-cache/disk-cache-request-headers.html [ Pass Timeout ]

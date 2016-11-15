@@ -29,7 +29,6 @@
 #include "CDATASection.h"
 #include "CachedScript.h"
 #include "Comment.h"
-#include "CachedResourceLoader.h"
 #include "Document.h"
 #include "DocumentFragment.h"
 #include "DocumentType.h"
@@ -129,7 +128,7 @@ void XMLDocumentParser::append(RefPtr<StringImpl>&& inputSource)
 void XMLDocumentParser::handleError(XMLErrors::ErrorType type, const char* m, TextPosition position)
 {
     if (!m_xmlErrors)
-        m_xmlErrors = std::make_unique<XMLErrors>(document());
+        m_xmlErrors = std::make_unique<XMLErrors>(*document());
     m_xmlErrors->handleError(type, m, position);
     if (type != XMLErrors::warning)
         m_sawError = true;
@@ -200,7 +199,7 @@ void XMLDocumentParser::end()
         insertErrorMessageBlock();
     else {
         updateLeafTextNode();
-        document()->styleScope().didChangeContentsOrInterpretation();
+        document()->styleScope().didChangeStyleSheetEnvironment();
     }
 
     if (isParsing())

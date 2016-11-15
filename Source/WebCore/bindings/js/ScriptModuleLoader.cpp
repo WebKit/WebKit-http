@@ -27,7 +27,6 @@
 #include "ScriptModuleLoader.h"
 
 #include "Document.h"
-#include "ExceptionCode.h"
 #include "Frame.h"
 #include "JSDOMBinding.h"
 #include <runtime/JSInternalPromiseDeferred.h>
@@ -109,7 +108,7 @@ JSC::JSValue ScriptModuleLoader::evaluate(JSC::JSGlobalObject*, JSC::ExecState* 
     // FIXME: Currently, we only support JSModuleRecord.
     // Once the reflective part of the module loader is supported, we will handle arbitrary values.
     // https://whatwg.github.io/loader/#registry-prototype-provide
-    JSC::JSModuleRecord* moduleRecord = JSC::jsDynamicCast<JSC::JSModuleRecord*>(moduleRecordValue);
+    JSC::JSModuleRecord* moduleRecord = jsDynamicDowncast<JSC::JSModuleRecord*>(moduleRecordValue);
     if (!moduleRecord)
         return JSC::jsUndefined();
 

@@ -19,8 +19,7 @@
  *
  */
 
-#ifndef ElementRuleCollector_h
-#define ElementRuleCollector_h
+#pragma once
 
 #include "MediaQueryEvaluator.h"
 #include "SelectorChecker.h"
@@ -41,7 +40,7 @@ class SelectorFilter;
 struct MatchedRule {
     const RuleData* ruleData;
     unsigned specificity;   
-    unsigned treeContextOrdinal;
+    int treeContextOrdinal;
 };
 
 class ElementRuleCollector {
@@ -91,7 +90,7 @@ private:
     void sortMatchedRules();
     void sortAndTransferMatchedRules();
 
-    void addMatchedRule(const RuleData&, unsigned specificity, unsigned treeContextOrdinal, StyleResolver::RuleRange&);
+    void addMatchedRule(const RuleData&, unsigned specificity, int treeContextOrdinal, StyleResolver::RuleRange&);
 
     const Element& m_element;
     const RuleSet& m_authorStyle;
@@ -117,5 +116,3 @@ private:
 };
 
 } // namespace WebCore
-
-#endif // ElementRuleCollector_h

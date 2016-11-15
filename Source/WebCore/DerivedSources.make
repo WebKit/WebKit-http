@@ -30,6 +30,7 @@ VPATH = \
     $(WebCore) \
     $(WebCore)/Modules/airplay \
     $(WebCore)/Modules/applepay \
+    $(WebCore)/Modules/encryptedmedia \
     $(WebCore)/Modules/encryptedmedia/legacy \
     $(WebCore)/Modules/fetch \
     $(WebCore)/Modules/gamepad \
@@ -52,6 +53,7 @@ VPATH = \
     $(WebCore)/bindings/generic \
     $(WebCore)/bindings/js \
     $(WebCore)/crypto \
+    $(WebCore)/crypto/parameters \
     $(WebCore)/css \
     $(WebCore)/dom \
     $(WebCore)/editing \
@@ -82,6 +84,14 @@ JS_BINDING_IDLS = \
     $(WebCore)/Modules/applepay/ApplePayShippingContactSelectedEvent.idl \
     $(WebCore)/Modules/applepay/ApplePayShippingMethodSelectedEvent.idl \
     $(WebCore)/Modules/applepay/ApplePayValidateMerchantEvent.idl \
+    $(WebCore)/Modules/encryptedmedia/MediaKeyMessageEvent.idl \
+    $(WebCore)/Modules/encryptedmedia/MediaKeySession.idl \
+    $(WebCore)/Modules/encryptedmedia/MediaKeyStatusMap.idl \
+    $(WebCore)/Modules/encryptedmedia/MediaKeySystemAccess.idl \
+    $(WebCore)/Modules/encryptedmedia/MediaKeySystemConfiguration.idl \
+    $(WebCore)/Modules/encryptedmedia/MediaKeySystemMediaCapability.idl \
+    $(WebCore)/Modules/encryptedmedia/MediaKeys.idl \
+    $(WebCore)/Modules/encryptedmedia/NavigatorEME.idl \
     $(WebCore)/Modules/encryptedmedia/legacy/WebKitMediaKeyMessageEvent.idl \
     $(WebCore)/Modules/encryptedmedia/legacy/WebKitMediaKeyNeededEvent.idl \
     $(WebCore)/Modules/encryptedmedia/legacy/WebKitMediaKeySession.idl \
@@ -114,6 +124,7 @@ JS_BINDING_IDLS = \
     $(WebCore)/Modules/indexeddb/IDBOpenDBRequest.idl \
     $(WebCore)/Modules/indexeddb/IDBRequest.idl \
     $(WebCore)/Modules/indexeddb/IDBTransaction.idl \
+    $(WebCore)/Modules/indexeddb/IDBTransactionMode.idl \
     $(WebCore)/Modules/indexeddb/IDBVersionChangeEvent.idl \
     $(WebCore)/Modules/indexeddb/WorkerGlobalScopeIndexedDatabase.idl \
     $(WebCore)/Modules/indieui/UIRequestEvent.idl \
@@ -158,6 +169,7 @@ JS_BINDING_IDLS = \
     $(WebCore)/Modules/mediastream/RTCPeerConnection.idl \
     $(WebCore)/Modules/mediastream/RTCRtpReceiver.idl \
     $(WebCore)/Modules/mediastream/RTCRtpSender.idl \
+    $(WebCore)/Modules/mediastream/RTCRtpTransceiver.idl \
     $(WebCore)/Modules/mediastream/RTCSessionDescription.idl \
     $(WebCore)/Modules/mediastream/RTCStatsReport.idl \
     $(WebCore)/Modules/mediastream/RTCStatsResponse.idl \
@@ -183,6 +195,7 @@ JS_BINDING_IDLS = \
     $(WebCore)/Modules/speech/SpeechSynthesisVoice.idl \
     $(WebCore)/Modules/streams/ByteLengthQueuingStrategy.idl \
     $(WebCore)/Modules/streams/CountQueuingStrategy.idl \
+    $(WebCore)/Modules/streams/ReadableByteStreamController.idl \
     $(WebCore)/Modules/streams/ReadableStream.idl \
     $(WebCore)/Modules/streams/ReadableStreamDefaultController.idl \
     $(WebCore)/Modules/streams/ReadableStreamDefaultReader.idl \
@@ -236,11 +249,19 @@ JS_BINDING_IDLS = \
     $(WebCore)/animation/DocumentTimeline.idl \
     $(WebCore)/animation/KeyframeEffect.idl \
     $(WebCore)/animation/WebAnimation.idl \
+    $(WebCore)/crypto/CryptoAlgorithmParameters.idl \
     $(WebCore)/crypto/CryptoKey.idl \
     $(WebCore)/crypto/CryptoKeyPair.idl \
+    $(WebCore)/crypto/CryptoKeyUsage.idl \
+    $(WebCore)/crypto/JsonWebKey.idl \
+    $(WebCore)/crypto/parameters/AesKeyGenParams.idl \
+    $(WebCore)/crypto/parameters/HmacKeyParams.idl \
+    $(WebCore)/crypto/parameters/RsaHashedImportParams.idl \
+    $(WebCore)/crypto/parameters/RsaHashedKeyGenParams.idl \
+    $(WebCore)/crypto/parameters/RsaKeyGenParams.idl \
+    $(WebCore)/crypto/RsaOtherPrimesInfo.idl \
     $(WebCore)/crypto/SubtleCrypto.idl \
     $(WebCore)/crypto/WebKitSubtleCrypto.idl \
-    $(WebCore)/css/CSSCharsetRule.idl \
     $(WebCore)/css/CSSFontFaceLoadEvent.idl \
     $(WebCore)/css/CSSFontFaceRule.idl \
     $(WebCore)/css/CSSImportRule.idl \
@@ -270,7 +291,6 @@ JS_BINDING_IDLS = \
     $(WebCore)/css/StyleMedia.idl \
     $(WebCore)/css/StyleSheet.idl \
     $(WebCore)/css/StyleSheetList.idl \
-    $(WebCore)/css/WebKitCSSFilterValue.idl \
     $(WebCore)/css/WebKitCSSMatrix.idl \
     $(WebCore)/css/WebKitCSSRegionRule.idl \
     $(WebCore)/css/WebKitCSSTransformValue.idl \
@@ -294,6 +314,12 @@ JS_BINDING_IDLS = \
     $(WebCore)/dom/DOMError.idl \
     $(WebCore)/dom/DOMImplementation.idl \
     $(WebCore)/dom/DOMNamedFlowCollection.idl \
+    $(WebCore)/dom/DOMPoint.idl \
+    $(WebCore)/dom/DOMPointInit.idl \
+    $(WebCore)/dom/DOMPointReadOnly.idl \
+    $(WebCore)/dom/DOMRect.idl \
+    $(WebCore)/dom/DOMRectInit.idl \
+    $(WebCore)/dom/DOMRectReadOnly.idl \
     $(WebCore)/dom/DOMStringList.idl \
     $(WebCore)/dom/DOMStringMap.idl \
     $(WebCore)/dom/DataTransfer.idl \
@@ -343,7 +369,9 @@ JS_BINDING_IDLS = \
     $(WebCore)/dom/RequestAnimationFrameCallback.idl \
     $(WebCore)/dom/SecurityPolicyViolationEvent.idl \
     $(WebCore)/dom/ShadowRoot.idl \
+    $(WebCore)/dom/ShadowRootMode.idl \
     $(WebCore)/dom/Slotable.idl \
+    $(WebCore)/dom/StaticRange.idl \
     $(WebCore)/dom/StringCallback.idl \
     $(WebCore)/dom/Text.idl \
     $(WebCore)/dom/TextEvent.idl \
@@ -447,6 +475,7 @@ JS_BINDING_IDLS = \
     $(WebCore)/html/HTMLVideoElement.idl \
     $(WebCore)/html/ImageData.idl \
     $(WebCore)/html/MediaController.idl \
+    $(WebCore)/html/MediaEncryptedEvent.idl \
     $(WebCore)/html/MediaError.idl \
     $(WebCore)/html/RadioNodeList.idl \
     $(WebCore)/html/TextMetrics.idl \
@@ -526,6 +555,9 @@ JS_BINDING_IDLS = \
     $(WebCore)/page/EventSource.idl \
     $(WebCore)/page/GlobalCrypto.idl \
     $(WebCore)/page/History.idl \
+    $(WebCore)/page/IntersectionObserver.idl \
+    $(WebCore)/page/IntersectionObserverCallback.idl \
+    $(WebCore)/page/IntersectionObserverEntry.idl \
     $(WebCore)/page/Location.idl \
     $(WebCore)/page/Navigator.idl \
     $(WebCore)/page/NavigatorConcurrentHardware.idl \
@@ -729,6 +761,7 @@ JS_BINDING_IDLS = \
 
 PYTHON = python
 PERL = perl
+RUBY = ruby
 
 ifeq ($(OS),Windows_NT)
     DELETE = cmd //C del
@@ -796,6 +829,8 @@ ADDITIONAL_EVENT_TARGET_FACTORY =
 
 -include WebCoreDerivedSourcesAdditions.make
 
+-include ApplePayWebCoreDerivedSourcesAdditions.make
+
 JS_BINDING_IDLS += $(ADDITIONAL_BINDING_IDLS)
 
 all : $(ADDITIONAL_BINDING_IDLS:%.idl=JS%.h)
@@ -835,6 +870,7 @@ all : \
     CSSValueKeywords.cpp \
     CSSValueKeywords.h \
     ColorData.cpp \
+    DOMJITAbstractHeapRepository.h \
     EventInterfaces.h \
     EventTargetInterfaces.h \
     ExceptionCodeDescription.cpp \
@@ -899,6 +935,7 @@ endif
 WEBCORE_CSS_PROPERTY_NAMES := $(WebCore)/css/CSSPropertyNames.in
 WEBCORE_CSS_VALUE_KEYWORDS := $(WebCore)/css/CSSValueKeywords.in
 WEBCORE_CSS_VALUE_KEYWORDS := $(WEBCORE_CSS_VALUE_KEYWORDS) $(WebCore)/css/SVGCSSValueKeywords.in
+WEBCORE_CSS_VALUE_KEYWORDS_DEFINES := $(FEATURE_DEFINES) $(ADDITIONAL_CSS_VALUE_KEYWORDS_DEFINES)
 
 CSSPropertyNames.h CSSPropertyNames.cpp StyleBuilder.cpp StylePropertyShorthandFunctions.h StylePropertyShorthandFunctions.cpp : makeprop.intermediate
 .INTERMEDIATE : makeprop.intermediate
@@ -910,7 +947,7 @@ CSSValueKeywords.h CSSValueKeywords.cpp : makevalues.intermediate
 .INTERMEDIATE : makevalues.intermediate
 makevalues.intermediate : $(WEBCORE_CSS_VALUE_KEYWORDS) css/makevalues.pl bindings/scripts/preprocessor.pm $(PLATFORM_FEATURE_DEFINES)
 	$(PERL) -pe '' $(WEBCORE_CSS_VALUE_KEYWORDS) > CSSValueKeywords.in
-	$(PERL) "$(WebCore)/css/makevalues.pl" --defines "$(FEATURE_DEFINES)"
+	$(PERL) "$(WebCore)/css/makevalues.pl" --defines "$(WEBCORE_CSS_VALUE_KEYWORDS_DEFINES)"
 
 # --------
 
@@ -921,6 +958,15 @@ SelectorPseudoClassAndCompatibilityElementMap.cpp : $(WebCore)/css/makeSelectorP
 
 SelectorPseudoElementTypeMap.cpp : $(WebCore)/css/makeSelectorPseudoElementsMap.py $(WebCore)/css/SelectorPseudoElementTypeMap.in
 	$(PYTHON) "$(WebCore)/css/makeSelectorPseudoElementsMap.py" $(WebCore)/css/SelectorPseudoElementTypeMap.in gperf "$(FEATURE_DEFINES)"
+
+# --------
+
+# DOMJIT Abstract Heap
+
+all : DOMJITAbstractHeapRepository.h
+
+DOMJITAbstractHeapRepository.h : $(WebCore)/domjit/generate-abstract-heap.rb $(WebCore)/domjit/DOMJITAbstractHeapRepository.yaml
+	$(RUBY) "$(WebCore)/domjit/generate-abstract-heap.rb" $(WebCore)/domjit/DOMJITAbstractHeapRepository.yaml ./DOMJITAbstractHeapRepository.h
 
 # --------
 
@@ -989,6 +1035,23 @@ XPathGrammar.cpp : xml/XPathGrammar.y $(PROJECT_FILE)
 
 # --------
 
+# WebRTC scripts
+
+WEBCORE_SDP_PROCESSOR_SCRIPTS = 
+
+ifeq ($(OS),MACOS)
+    WEBCORE_SDP_PROCESSOR_SCRIPTS := $(WEBCORE_SDP_PROCESSOR_SCRIPTS) $(WebCore)/Modules/mediastream/sdp.js
+endif
+
+ifdef WEBCORE_SDP_PROCESSOR_SCRIPTS
+all : SDPProcessorScriptsData.h
+
+SDPProcessorScriptsData.h : Scripts/make-js-file-arrays.py $(WEBCORE_SDP_PROCESSOR_SCRIPTS)
+	PYTHONPATH=$(JavaScriptCore_SCRIPTS_DIR) $(PYTHON) $< $@ SDPProcessorScriptsData.cpp $(WEBCORE_SDP_PROCESSOR_SCRIPTS)
+endif
+
+# --------
+
 # user agent style sheets
 
 USER_AGENT_STYLE_SHEETS = $(WebCore)/css/html.css $(WebCore)/css/quirks.css $(WebCore)/css/plugIns.css
@@ -1016,6 +1079,10 @@ endif
 
 ifeq ($(OS), Windows_NT)
     USER_AGENT_STYLE_SHEETS := $(USER_AGENT_STYLE_SHEETS) $(WebCore)/css/themeWin.css $(WebCore)/css/themeWinQuirks.css
+endif
+
+ifeq ($(findstring ENABLE_METER_ELEMENT,$(FEATURE_DEFINES)), ENABLE_METER_ELEMENT)
+	USER_AGENT_STYLE_SHEETS := $(USER_AGENT_STYLE_SHEETS) $(WebCore)/html/shadow/meterElementShadow.css
 endif
 
 UserAgentStyleSheets.h : css/make-css-file-arrays.pl bindings/scripts/preprocessor.pm $(USER_AGENT_STYLE_SHEETS) $(PLATFORM_FEATURE_DEFINES)
@@ -1199,6 +1266,7 @@ IDL_INCLUDES = \
     $(WebCore)/Modules \
     $(WebCore)/animation \
     $(WebCore)/css \
+    $(WebCore)/crypto \
     $(WebCore)/dom \
     $(WebCore)/fileapi \
     $(WebCore)/html \
@@ -1293,6 +1361,8 @@ WebCore_BUILTINS_SOURCES = \
     $(WebCore)/Modules/mediastream/RTCPeerConnectionInternals.js \
     $(WebCore)/Modules/streams/ByteLengthQueuingStrategy.js \
     $(WebCore)/Modules/streams/CountQueuingStrategy.js \
+    $(WebCore)/Modules/streams/ReadableByteStreamController.js \
+    $(WebCore)/Modules/streams/ReadableByteStreamInternals.js \
     $(WebCore)/Modules/streams/ReadableStream.js \
     $(WebCore)/Modules/streams/ReadableStreamDefaultController.js \
     $(WebCore)/Modules/streams/ReadableStreamInternals.js \

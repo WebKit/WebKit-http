@@ -87,12 +87,12 @@ list(APPEND WebCore_SOURCES
     page/scrolling/AxisScrollSnapOffsets.cpp
 
     platform/KillRingNone.cpp
+    platform/StaticPasteboard.cpp
 
     platform/audio/efl/AudioBusEfl.cpp
 
-    platform/crypto/gnutls/CryptoDigestGnuTLS.cpp
+    platform/crypto/gcrypt/CryptoDigestGCrypt.cpp
 
-    platform/efl/BatteryProviderEfl.cpp
     platform/efl/CursorEfl.cpp
     platform/efl/DragDataEfl.cpp
     platform/efl/DragImageEfl.cpp
@@ -182,6 +182,7 @@ list(APPEND WebCore_SOURCES
     platform/graphics/surfaces/glx/X11Helper.cpp
 
     platform/graphics/x11/PlatformDisplayX11.cpp
+    platform/graphics/x11/XErrorTrapper.cpp
     platform/graphics/x11/XUniqueResource.cpp
 
     platform/image-decoders/cairo/ImageBackingStoreCairo.cpp
@@ -235,8 +236,8 @@ if (USE_GEOCLUE2)
          OUTPUT ${DERIVED_SOURCES_WEBCORE_DIR}/Geoclue2Interface.c ${DERIVED_SOURCES_WEBCORE_DIR}/Geoclue2Interface.h
          COMMAND gdbus-codegen --interface-prefix org.freedesktop.GeoClue2. --c-namespace Geoclue --generate-c-code ${DERIVED_SOURCES_WEBCORE_DIR}/Geoclue2Interface ${GEOCLUE_DBUS_INTERFACE}
     )
-    # Geoclue2Interface.c generates unused-parameter build warning, it causes build error when using geoclue2 library.
-    set_source_files_properties(${DERIVED_SOURCES_WEBCORE_DIR}/Geoclue2Interface.c PROPERTIES COMPILE_FLAGS -Wno-error)
+    set_source_files_properties(${DERIVED_SOURCES_WEBCORE_DIR}/Geoclue2Interface.c PROPERTIES COMPILE_FLAGS -Wno-unused-parameter)
+
 endif ()
 
 if (ENABLE_GAMEPAD_DEPRECATED)
@@ -275,8 +276,8 @@ list(APPEND WebCore_LIBRARIES
     ${GLIB_GIO_LIBRARIES}
     ${GLIB_GOBJECT_LIBRARIES}
     ${GLIB_LIBRARIES}
-    ${GNUTLS_LIBRARIES}
     ${HARFBUZZ_LIBRARIES}
+    ${LIBGCRYPT_LIBRARIES}
     ${LIBSOUP_LIBRARIES}
     ${LIBXML2_LIBRARIES}
     ${LIBXSLT_LIBRARIES}
@@ -301,7 +302,7 @@ list(APPEND WebCore_SYSTEM_INCLUDE_DIRECTORIES
     ${FREETYPE2_INCLUDE_DIRS}
     ${GEOCLUE_INCLUDE_DIRS}
     ${GIO_UNIX_INCLUDE_DIRS}
-    ${GNUTLS_INCLUDE_DIRS}
+    ${LIBGCRYPT_INCLUDE_DIRS}
     ${LIBXML2_INCLUDE_DIR}
     ${LIBXSLT_INCLUDE_DIR}
     ${SQLITE_INCLUDE_DIR}
@@ -422,9 +423,10 @@ if (ENABLE_SUBTLE_CRYPTO)
         crypto/algorithms/CryptoAlgorithmSHA384.cpp
         crypto/algorithms/CryptoAlgorithmSHA512.cpp
 
+        crypto/gcrypt/CryptoAlgorithmHMACGCrypt.cpp
+
         crypto/gnutls/CryptoAlgorithmAES_CBCGnuTLS.cpp
         crypto/gnutls/CryptoAlgorithmAES_KWGnuTLS.cpp
-        crypto/gnutls/CryptoAlgorithmHMACGnuTLS.cpp
         crypto/gnutls/CryptoAlgorithmRSAES_PKCS1_v1_5GnuTLS.cpp
         crypto/gnutls/CryptoAlgorithmRSASSA_PKCS1_v1_5GnuTLS.cpp
         crypto/gnutls/CryptoAlgorithmRSA_OAEPGnuTLS.cpp
@@ -436,6 +438,7 @@ if (ENABLE_SUBTLE_CRYPTO)
         crypto/keys/CryptoKeyDataOctetSequence.cpp
         crypto/keys/CryptoKeyDataRSAComponents.cpp
         crypto/keys/CryptoKeyHMAC.cpp
+        crypto/keys/CryptoKeyRSA.cpp
         crypto/keys/CryptoKeySerializationRaw.cpp
     )
 endif ()

@@ -198,6 +198,8 @@ CapabilityLevel capabilityLevel(OpcodeID opcodeID, CodeBlock* codeBlock, Instruc
     case op_new_array:
     case op_new_array_with_size:
     case op_new_array_buffer:
+    case op_new_array_with_spread:
+    case op_spread:
     case op_strcat:
     case op_to_primitive:
     case op_throw:
@@ -214,6 +216,7 @@ CapabilityLevel capabilityLevel(OpcodeID opcodeID, CodeBlock* codeBlock, Instruc
     case op_create_cloned_arguments:
     case op_get_from_arguments:
     case op_put_to_arguments:
+    case op_get_argument:
     case op_jneq_ptr:
     case op_typeof:
     case op_to_number:

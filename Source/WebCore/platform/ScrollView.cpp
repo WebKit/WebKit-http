@@ -118,7 +118,7 @@ bool ScrollView::setHasScrollbarInternal(RefPtr<Scrollbar>& scrollbar, Scrollbar
     return false;
 }
 
-PassRefPtr<Scrollbar> ScrollView::createScrollbar(ScrollbarOrientation orientation)
+Ref<Scrollbar> ScrollView::createScrollbar(ScrollbarOrientation orientation)
 {
     return Scrollbar::createNativeScrollbar(*this, orientation, RegularScrollbar);
 }
@@ -247,12 +247,12 @@ IntRect ScrollView::unobscuredContentRect(VisibleContentRectIncludesScrollbars s
 
 IntRect ScrollView::unobscuredContentRectInternal(VisibleContentRectIncludesScrollbars scrollbarInclusion) const
 {
-    FloatSize visibleContentSize = unscaledUnobscuredVisibleContentSize(scrollbarInclusion);
+    FloatSize visibleContentSize = sizeForUnobscuredContent(scrollbarInclusion);
     visibleContentSize.scale(1 / visibleContentScaleFactor());
     return IntRect(m_scrollPosition, expandedIntSize(visibleContentSize));
 }
 
-IntSize ScrollView::unscaledVisibleContentSizeIncludingObscuredArea(VisibleContentRectIncludesScrollbars scrollbarInclusion) const
+IntSize ScrollView::sizeForVisibleContent(VisibleContentRectIncludesScrollbars scrollbarInclusion) const
 {
     if (platformWidget())
         return platformVisibleContentSizeIncludingObscuredArea(scrollbarInclusion == IncludeScrollbars);
@@ -269,12 +269,12 @@ IntSize ScrollView::unscaledVisibleContentSizeIncludingObscuredArea(VisibleConte
     return IntSize(width() - scrollbarSpace.width(), height() - scrollbarSpace.height()).expandedTo(IntSize());
 }
     
-IntSize ScrollView::unscaledUnobscuredVisibleContentSize(VisibleContentRectIncludesScrollbars scrollbarInclusion) const
+IntSize ScrollView::sizeForUnobscuredContent(VisibleContentRectIncludesScrollbars scrollbarInclusion) const
 {
-    IntSize visibleContentSize = unscaledVisibleContentSizeIncludingObscuredArea(scrollbarInclusion);
-
     if (platformWidget())
         return platformVisibleContentSize(scrollbarInclusion == IncludeScrollbars);
+
+    IntSize visibleContentSize = sizeForVisibleContent(scrollbarInclusion);
 
 #if USE(COORDINATED_GRAPHICS)
     if (m_useFixedLayout && !m_fixedVisibleContentRect.isEmpty())
@@ -312,7 +312,7 @@ IntRect ScrollView::visibleContentRectInternal(VisibleContentRectIncludesScrollb
 
 IntSize ScrollView::layoutSize() const
 {
-    return m_fixedLayoutSize.isEmpty() || !m_useFixedLayout ? unscaledUnobscuredVisibleContentSize(ExcludeScrollbars) : m_fixedLayoutSize;
+    return m_fixedLayoutSize.isEmpty() || !m_useFixedLayout ? sizeForUnobscuredContent() : m_fixedLayoutSize;
 }
 
 IntSize ScrollView::fixedLayoutSize() const
@@ -418,7 +418,7 @@ void ScrollView::notifyPageThatContentAreaWillPaint() const
 
 void ScrollView::setScrollOffset(const ScrollOffset& offset)
 {
-    LOG_WITH_STREAM(Scrolling, stream << "ScrollView::setScrollOffset " << offset);
+    LOG_WITH_STREAM(Scrolling, stream << "\nScrollView::setScrollOffset " << offset);
 
     IntPoint constrainedOffset = offset;
     if (constrainsScrollingToContentEdge())

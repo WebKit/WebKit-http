@@ -22,8 +22,7 @@
  * Boston, MA 02110-1301, USA.
  */
 
-#ifndef RenderTable_h
-#define RenderTable_h
+#pragma once
 
 #include "CSSPropertyNames.h"
 #include "CollapsedBorderValue.h"
@@ -303,7 +302,7 @@ private:
     void invalidateCachedColumnOffsets();
 
     RenderBlock* firstLineBlock() const final;
-    void updateFirstLetter() final;
+    void updateFirstLetter(RenderTreeMutationIsAllowed = RenderTreeMutationIsAllowed::Yes) final;
     
     void updateLogicalWidth() final;
 
@@ -319,7 +318,9 @@ private:
 
     void recalcCollapsedBorders();
     void recalcSections() const;
-    void layoutCaption(RenderTableCaption*);
+    enum class BottomCaptionLayoutPhase { Yes, No };
+    void layoutCaptions(BottomCaptionLayoutPhase = BottomCaptionLayoutPhase::No);
+    void layoutCaption(RenderTableCaption&);
 
     void distributeExtraLogicalHeight(LayoutUnit extraLogicalHeight);
 
@@ -387,5 +388,3 @@ inline std::unique_ptr<RenderBox> RenderTable::createAnonymousBoxWithSameTypeAs(
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_RENDER_OBJECT(RenderTable, isTable())
-
-#endif // RenderTable_h

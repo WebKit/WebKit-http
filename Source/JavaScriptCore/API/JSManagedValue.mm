@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -213,7 +213,6 @@ private:
     m_owners = [[NSMapTable alloc] initWithKeyOptions:weakIDOptions valueOptions:integerOptions capacity:1];
 
     JSC::JSValue jsValue = toJS(exec, [value JSValueRef]);
-    dataLog("Creating managed value with value ", jsValue, "\n");
     if (jsValue.isObject())
         m_weakValue.setObject(JSC::jsCast<JSC::JSObject*>(jsValue.asCell()), self);
     else if (jsValue.isString())

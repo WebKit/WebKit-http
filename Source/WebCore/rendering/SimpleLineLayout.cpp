@@ -327,12 +327,10 @@ static AvoidanceReasonFlags canUseForWithReason(const RenderBlockFlow& flow, Inc
 
             for (auto& floatingObject : *flow.floatingObjectSet()) {
                 ASSERT(floatingObject);
-#if ENABLE(CSS_SHAPES)
                 // if a float has a shape, we cannot tell if content will need to be shifted until after we lay it out,
                 // since the amount of space is not uniform for the height of the float.
                 if (floatingObject->renderer().shapeOutsideInfo())
                     SET_REASON_AND_RETURN_IF_NEEDED(FlowHasUnsupportedFloat, reasons, includeReasons);
-#endif
                 float availableWidth = flow.availableLogicalWidthForLine(floatingObject->y(), DoNotIndentText);
                 if (availableWidth < minimumWidthNeeded)
                     SET_REASON_AND_RETURN_IF_NEEDED(FlowHasUnsupportedFloat, reasons, includeReasons);
@@ -860,10 +858,6 @@ std::unique_ptr<Layout> create(RenderBlockFlow& flow)
     Layout::RunVector runs;
 
     createTextRuns(runs, flow, lineCount);
-    for (auto& renderer : childrenOfType<RenderObject>(flow)) {
-        ASSERT(is<RenderText>(renderer) || is<RenderLineBreak>(renderer));
-        renderer.clearNeedsLayout();
-    }
     return Layout::create(runs, lineCount);
 }
 

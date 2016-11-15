@@ -56,18 +56,20 @@ public:
     explicit Scope(Document&);
     explicit Scope(ShadowRoot&);
 
+    ~Scope();
+
     const Vector<RefPtr<CSSStyleSheet>>& activeStyleSheets() const { return m_activeStyleSheets; }
 
-    const Vector<RefPtr<StyleSheet>>& styleSheetsForStyleSheetList() const { return m_styleSheetsForStyleSheetList; }
-    const Vector<RefPtr<CSSStyleSheet>> activeStyleSheetsForInspector() const;
+    const Vector<RefPtr<StyleSheet>>& styleSheetsForStyleSheetList();
+    const Vector<RefPtr<CSSStyleSheet>> activeStyleSheetsForInspector();
 
     void addStyleSheetCandidateNode(Node&, bool createdByParser);
     void removeStyleSheetCandidateNode(Node&);
 
     String preferredStylesheetSetName() const { return m_preferredStylesheetSetName; }
     String selectedStylesheetSetName() const { return m_selectedStylesheetSetName; }
-    void setPreferredStylesheetSetName(const String& name) { m_preferredStylesheetSetName = name; }
-    void setSelectedStylesheetSetName(const String& name) { m_selectedStylesheetSetName = name; }
+    void setPreferredStylesheetSetName(const String&);
+    void setSelectedStylesheetSetName(const String&);
 
     void addPendingSheet() { m_pendingStyleSheetCount++; }
     enum RemovePendingSheetNotificationType {
@@ -82,11 +84,15 @@ public:
 
     bool activeStyleSheetsContains(const CSSStyleSheet*) const;
 
-    void didChangeCandidatesForActiveSet();
-    void scheduleActiveSetUpdate();
-    WEBCORE_EXPORT void didChangeContentsOrInterpretation();
+    // This is called when some stylesheet becomes newly enabled or disabled.
+    void didChangeActiveStyleSheetCandidates();
+    // This is called when contents of a stylesheet is mutated.
+    void didChangeStyleSheetContents();
+    // This is called when the environment where we intrepret the stylesheets changes (for example switching to printing).
+    // The change is assumed to potentially affect all author and user stylesheets including shadow roots.
+    WEBCORE_EXPORT void didChangeStyleSheetEnvironment();
 
-    bool hasPendingUpdate() const { return !!m_pendingUpdateType; }
+    bool hasPendingUpdate() const { return m_pendingUpdate || m_hasDescendantWithPendingUpdate; }
     void flushPendingUpdate();
 
     StyleResolver& resolver();
@@ -96,8 +102,14 @@ public:
     static Scope& forNode(Node&);
 
 private:
+    bool shouldUseSharedUserAgentShadowTreeStyleResolver() const;
+
     enum class UpdateType { ActiveSet, ContentsOrInterpretation };
     void updateActiveStyleSheets(UpdateType);
+    void scheduleUpdate(UpdateType);
+
+    WEBCORE_EXPORT void flushPendingSelfUpdate();
+    WEBCORE_EXPORT void flushPendingDescendantUpdates();
 
     void collectActiveStyleSheets(Vector<RefPtr<StyleSheet>>&);
 
@@ -131,7 +143,8 @@ private:
     int m_pendingStyleSheetCount { 0 };
     bool m_didUpdateActiveStyleSheets { false };
 
-    Optional<UpdateType> m_pendingUpdateType;
+    Optional<UpdateType> m_pendingUpdate;
+    bool m_hasDescendantWithPendingUpdate { false };
 
     ListHashSet<Node*> m_styleSheetCandidateNodes;
 
@@ -140,6 +153,14 @@ private:
 
     bool m_usesStyleBasedEditability { false };
 };
+
+inline void Scope::flushPendingUpdate()
+{
+    if (m_hasDescendantWithPendingUpdate)
+        flushPendingDescendantUpdates();
+    if (m_pendingUpdate)
+        flushPendingSelfUpdate();
+}
 
 }
 }

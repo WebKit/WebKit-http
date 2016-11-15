@@ -32,7 +32,7 @@
 
 #include "WKView.h"
 #include "WKWebAutomation.h"
-#include <WebCore/ViewState.h>
+#include <WebCore/ActivityState.h>
 
 namespace WKWPE {
 class View;
@@ -44,16 +44,16 @@ namespace WebKit {
 WK_ADD_API_MAPPING(WKViewRef, WKWPE::View)
 WK_ADD_API_MAPPING(WKWebAutomationSessionRef, WKWPE::WebAutomation)
 
-inline WebCore::ViewState::Flags toViewStateFlags(WKViewState wkViewState)
+inline WebCore::ActivityState::Flags toViewStateFlags(WKViewState wkViewState)
 {
     unsigned viewStateFlags = 0;
 
     if (wkViewState & kWKViewStateIsInWindow)
-        viewStateFlags |= WebCore::ViewState::IsInWindow;
+        viewStateFlags |= WebCore::ActivityState::IsInWindow;
     if (wkViewState & kWKViewStateIsVisible)
-        viewStateFlags |= WebCore::ViewState::IsVisible;
+        viewStateFlags |= WebCore::ActivityState::IsVisible;
 
-    return static_cast<WebCore::ViewState::Flags>(viewStateFlags);
+    return static_cast<WebCore::ActivityState::Flags>(viewStateFlags);
 }
 
 }

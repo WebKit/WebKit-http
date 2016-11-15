@@ -27,7 +27,6 @@
 #include "InsertNodeBeforeCommand.h"
 
 #include "Document.h"
-#include "ExceptionCodePlaceholder.h"
 #include "RenderElement.h"
 #include "Text.h"
 #include "htmlediting.h"
@@ -55,7 +54,7 @@ void InsertNodeBeforeCommand::doApply()
         return;
     ASSERT(isEditableNode(*parent));
 
-    parent->insertBefore(*m_insertChild, m_refChild.get(), IGNORE_EXCEPTION);
+    parent->insertBefore(*m_insertChild, m_refChild.get());
 }
 
 void InsertNodeBeforeCommand::doUnapply()
@@ -63,7 +62,7 @@ void InsertNodeBeforeCommand::doUnapply()
     if (!isEditableNode(*m_insertChild))
         return;
 
-    m_insertChild->remove(IGNORE_EXCEPTION);
+    m_insertChild->remove();
 }
 
 #ifndef NDEBUG

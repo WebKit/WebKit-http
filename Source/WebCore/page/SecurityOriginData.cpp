@@ -30,6 +30,7 @@
 #include "Frame.h"
 #include "SecurityOrigin.h"
 #include <wtf/text/CString.h>
+#include <wtf/text/StringBuilder.h>
 
 using namespace WebCore;
 
@@ -49,7 +50,7 @@ SecurityOriginData SecurityOriginData::fromSecurityOrigin(const SecurityOrigin& 
 #if !LOG_DISABLED
 String SecurityOriginData::debugString() const
 {
-    return makeString(protocol, "://", host, ":", String::number(port));
+    return makeString(protocol, "://", host, ":", String::number(port.valueOr(0)));
 }
 #endif
 
@@ -72,6 +73,28 @@ SecurityOriginData SecurityOriginData::fromFrame(Frame* frame)
 Ref<SecurityOrigin> SecurityOriginData::securityOrigin() const
 {
     return SecurityOrigin::create(protocol.isolatedCopy(), host.isolatedCopy(), port);
+}
+
+static const char separatorCharacter = '_';
+
+String SecurityOriginData::databaseIdentifier() const
+{
+    // Historically, we've used the following (somewhat non-sensical) string
+    // for the databaseIdentifier of local files. We used to compute this
+    // string because of a bug in how we handled the scheme for file URLs.
+    // Now that we've fixed that bug, we still need to produce this string
+    // to avoid breaking existing persistent state.
+    if (equalIgnoringASCIICase(protocol, "file"))
+        return ASCIILiteral("file__0");
+    
+    StringBuilder stringBuilder;
+    stringBuilder.append(protocol);
+    stringBuilder.append(separatorCharacter);
+    stringBuilder.append(encodeForFileName(host));
+    stringBuilder.append(separatorCharacter);
+    stringBuilder.appendNumber(port.valueOr(0));
+    
+    return stringBuilder.toString();
 }
 
 SecurityOriginData SecurityOriginData::isolatedCopy() const

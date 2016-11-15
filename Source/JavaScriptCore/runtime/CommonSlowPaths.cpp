@@ -41,9 +41,11 @@
 #include "GetterSetter.h"
 #include "HostCallReturnValue.h"
 #include "Interpreter.h"
+#include "IteratorOperations.h"
 #include "JIT.h"
 #include "JSCInlines.h"
 #include "JSCJSValue.h"
+#include "JSFixedArray.h"
 #include "JSGlobalObjectFunctions.h"
 #include "JSLexicalEnvironment.h"
 #include "JSPropertyNameEnumerator.h"
@@ -645,16 +647,16 @@ SLOW_PATH_DECL(slow_path_del_by_val)
     
     uint32_t i;
     if (subscript.getUInt32(i))
-        couldDelete = baseObject->methodTable()->deletePropertyByIndex(baseObject, exec, i);
+        couldDelete = baseObject->methodTable(vm)->deletePropertyByIndex(baseObject, exec, i);
     else {
         CHECK_EXCEPTION();
         auto property = subscript.toPropertyKey(exec);
         CHECK_EXCEPTION();
-        couldDelete = baseObject->methodTable()->deleteProperty(baseObject, exec, property);
+        couldDelete = baseObject->methodTable(vm)->deleteProperty(baseObject, exec, property);
     }
     
     if (!couldDelete && exec->codeBlock()->isStrictMode())
-        THROW(createTypeError(exec, "Unable to delete property."));
+        THROW(createTypeError(exec, UnableToDeletePropertyError));
     
     RETURN(jsBoolean(couldDelete));
 }
@@ -865,7 +867,7 @@ SLOW_PATH_DECL(slow_path_create_rest)
     BEGIN();
     unsigned arraySize = OP_C(2).jsValue().asUInt32();
     JSGlobalObject* globalObject = exec->lexicalGlobalObject();
-    Structure* structure = globalObject->arrayStructureForIndexingTypeDuringAllocation(ArrayWithContiguous);
+    Structure* structure = globalObject->restParameterStructure();
     unsigned numParamsToSkip = pc[3].u.unsignedValue;
     JSValue* argumentsToCopyRegion = exec->addressOfArgumentsStart() + numParamsToSkip;
     RETURN(constructArray(exec, structure, argumentsToCopyRegion, arraySize));
@@ -988,6 +990,85 @@ SLOW_PATH_DECL(slow_path_throw_static_error)
     String errorMessage = asString(errorMessageValue)->value(exec);
     ErrorType errorType = static_cast<ErrorType>(pc[2].u.unsignedValue);
     THROW(createError(exec, errorType, errorMessage));
+}
+
+SLOW_PATH_DECL(slow_path_new_array_with_spread)
+{
+    BEGIN();
+    int numItems = pc[3].u.operand;
+    ASSERT(numItems >= 0);
+    const BitVector& bitVector = exec->codeBlock()->unlinkedCodeBlock()->bitVector(pc[4].u.unsignedValue);
+
+    JSValue* values = bitwise_cast<JSValue*>(&OP(2));
+
+    unsigned arraySize = 0;
+    for (int i = 0; i < numItems; i++) {
+        if (bitVector.get(i)) {
+            JSValue value = values[-i];
+            JSFixedArray* array = jsCast<JSFixedArray*>(value);
+            arraySize += array->size();
+        } else
+            arraySize += 1;
+    }
+
+    JSGlobalObject* globalObject = exec->lexicalGlobalObject();
+    Structure* structure = globalObject->arrayStructureForIndexingTypeDuringAllocation(ArrayWithContiguous);
+
+    JSArray* result = JSArray::tryCreateUninitialized(vm, structure, arraySize);
+    CHECK_EXCEPTION();
+
+    unsigned index = 0;
+    for (int i = 0; i < numItems; i++) {
+        JSValue value = values[-i];
+        if (bitVector.get(i)) {
+            // We are spreading.
+            JSFixedArray* array = jsCast<JSFixedArray*>(value);
+            for (unsigned i = 0; i < array->size(); i++) {
+                RELEASE_ASSERT(array->get(i));
+                result->initializeIndex(vm, index, array->get(i));
+                ++index;
+            }
+        } else {
+            // We are not spreading.
+            result->initializeIndex(vm, index, value);
+            ++index;
+        }
+    }
+
+    RETURN(result);
+}
+
+SLOW_PATH_DECL(slow_path_spread)
+{
+    BEGIN();
+
+    JSValue iterable = OP_C(2).jsValue();
+
+    JSGlobalObject* globalObject = exec->lexicalGlobalObject();
+
+    if (iterable.isCell() && isJSArray(iterable.asCell()) && globalObject->isArrayIteratorProtocolFastAndNonObservable()) {
+        // JSFixedArray::createFromArray does not consult the prototype chain,
+        // so we must be sure that not consulting the prototype chain would
+        // produce the same value during iteration.
+        JSArray* array = jsCast<JSArray*>(iterable);
+        RETURN(JSFixedArray::createFromArray(exec, vm, array));
+    }
+
+    JSArray* array;
+    {
+        JSFunction* iterationFunction = globalObject->iteratorProtocolFunction();
+        CallData callData;
+        CallType callType = JSC::getCallData(iterationFunction, callData);
+        ASSERT(callType != CallType::None);
+
+        MarkedArgumentBuffer arguments;
+        arguments.append(iterable);
+        JSValue arrayResult = call(exec, iterationFunction, callType, callData, jsNull(), arguments);
+        CHECK_EXCEPTION();
+        array = jsCast<JSArray*>(arrayResult);
+    }
+
+    RETURN(JSFixedArray::createFromArray(exec, vm, array));
 }
 
 } // namespace JSC

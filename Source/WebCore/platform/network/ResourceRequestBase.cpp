@@ -32,7 +32,7 @@
 
 namespace WebCore {
 
-#if !USE(SOUP) && !PLATFORM(COCOA)
+#if !USE(SOUP) && (!PLATFORM(COCOA) || USE(CFURLCONNECTION))
 double ResourceRequestBase::s_defaultTimeoutInterval = INT_MAX;
 #else
 // Will use NSURLRequest default timeout unless set to a non-zero value with setDefaultTimeoutInterval().
@@ -65,6 +65,7 @@ void ResourceRequestBase::setAsIsolatedCopy(const ResourceRequest& other)
     setHTTPMethod(other.httpMethod().isolatedCopy());
     setPriority(other.priority());
     setRequester(other.requester());
+    setInitiatorIdentifier(other.initiatorIdentifier().isolatedCopy());
 
     updateResourceRequest();
     m_httpHeaderFields = other.httpHeaderFields().isolatedCopy();

@@ -17,6 +17,14 @@
       ],
       "status" : "committer"
    },
+   "Aaron Chu" : {
+      "emails" : [
+         "aaron_chu@apple.com"
+      ],
+      "nicks" : [
+         "aaron_chu"
+      ]
+   },
    "Aaron Colwell" : {
       "emails" : [
          "acolwell@chromium.org"
@@ -149,6 +157,7 @@
       "status" : "committer"
    },
    "Adobe Bug Tracker" : {
+      "class" : "bot",
       "emails" : [
          "WebkitBugTracker@adobe.com"
       ]
@@ -1258,6 +1267,7 @@
       "status" : "committer"
    },
    "Commit Queue" : {
+      "class" : "bot",
       "emails" : [
          "commit-queue@webkit.org"
       ]
@@ -1532,11 +1542,11 @@
    },
    "Devin Rousso" : {
       "emails" : [
-         "dcrousso+webkit@gmail.com",
-         "drousso@apple.com"
+         "dcrousso+webkit@gmail.com"
       ],
+      "expertise" : "Web Inspector",
       "nicks" : [
-         "drousso"
+         "dcrousso"
       ],
       "status" : "committer"
    },
@@ -3980,6 +3990,16 @@
       ],
       "status" : "committer"
    },
+   "Miguel Gomez" : {
+      "emails" : [
+         "magomez@igalia.com"
+      ],
+      "expertise" : "The WebKitGTK+ port, Accelerated Compositing, HW acceleration",
+      "nicks" : [
+         "magomez"
+      ],
+      "status" : "committer"
+   },
    "Mihai Balan" : {
       "emails" : [
          "mibalan@adobe.com"
@@ -4513,6 +4533,7 @@
       "status" : "committer"
    },
    "Radar WebKit Bug Importer" : {
+      "class" : "bot",
       "emails" : [
          "webkit-bug-importer@group.apple.com"
       ]
@@ -4768,10 +4789,11 @@
          "sabouhallawa@apple.com",
          "said@apple.com"
       ],
+      "expertise" : "SVG/Graphics, Image Decoders",
       "nicks" : [
          "sabouhallawa"
       ],
-      "status" : "committer"
+      "status" : "reviewer"
    },
    "Sam Weinig" : {
       "emails" : [
@@ -5460,6 +5482,7 @@
       ]
    },
    "WebKit Review Bot" : {
+      "class" : "bot",
       "emails" : [
          "webkit.review.bot@gmail.com"
       ],
@@ -5468,6 +5491,7 @@
       ]
    },
    "WebKitGTK+ Bugs" : {
+      "class" : "bot",
       "emails" : [
          "bugs-noreply@webkitgtk.org"
       ]
@@ -5480,7 +5504,7 @@
       "nicks" : [
          "whsieh"
       ],
-      "status" : "committer"
+      "status" : "reviewer"
    },
    "William Siegrist" : {
       "emails" : [

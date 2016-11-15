@@ -41,6 +41,7 @@
 #include "JSCryptoKeySerializationJWK.h"
 #include "JSCryptoOperationData.h"
 #include "JSDOMPromise.h"
+#include "ScriptState.h"
 #include <runtime/Error.h>
 
 using namespace JSC;
@@ -74,7 +75,7 @@ static RefPtr<CryptoAlgorithm> createAlgorithmFromJSValue(ExecState& state, JSVa
 
     auto result = CryptoAlgorithmRegistry::singleton().create(algorithmIdentifier);
     if (!result)
-        setDOMException(&state, NOT_SUPPORTED_ERR);
+        setDOMException(&state, scope, NOT_SUPPORTED_ERR);
     return result;
 }
 
@@ -100,7 +101,7 @@ static bool cryptoKeyFormatFromJSValue(ExecState& state, JSValue value, CryptoKe
     return true;
 }
 
-static bool cryptoKeyUsagesFromJSValue(ExecState& state, JSValue value, CryptoKeyUsage& result)
+static bool cryptoKeyUsagesFromJSValue(ExecState& state, JSValue value, CryptoKeyUsageBitmap& result)
 {
     VM& vm = state.vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
@@ -161,7 +162,7 @@ JSValue JSWebKitSubtleCrypto::encrypt(ExecState& state)
 
     if (!key->allows(CryptoKeyUsageEncrypt)) {
         wrapped().document()->addConsoleMessage(MessageSource::JS, MessageLevel::Error, ASCIILiteral("Key usages do not include 'encrypt'"));
-        setDOMException(&state, NOT_SUPPORTED_ERR);
+        setDOMException(&state, scope, NOT_SUPPORTED_ERR);
         return jsUndefined();
     }
 
@@ -180,11 +181,10 @@ JSValue JSWebKitSubtleCrypto::encrypt(ExecState& state)
         wrapper->reject(nullptr);
     };
 
-    ExceptionCode ec = 0;
-    algorithm->encrypt(*parameters, *key, data, WTFMove(successCallback), WTFMove(failureCallback), ec);
-    if (ec) {
-        setDOMException(&state, ec);
-        return jsUndefined();
+    auto result = algorithm->encrypt(*parameters, *key, data, WTFMove(successCallback), WTFMove(failureCallback));
+    if (result.hasException()) {
+        propagateException(state, scope, result.releaseException());
+        return { };
     }
 
     return promise;
@@ -233,11 +233,10 @@ JSValue JSWebKitSubtleCrypto::decrypt(ExecState& state)
         wrapper->reject(nullptr);
     };
 
-    ExceptionCode ec = 0;
-    algorithm->decrypt(*parameters, *key, data, WTFMove(successCallback), WTFMove(failureCallback), ec);
-    if (ec) {
-        setDOMException(&state, ec);
-        return jsUndefined();
+    auto result = algorithm->decrypt(*parameters, *key, data, WTFMove(successCallback), WTFMove(failureCallback));
+    if (result.hasException()) {
+        propagateException(state, scope, result.releaseException());
+        return { };
     }
 
     return promise;
@@ -286,11 +285,10 @@ JSValue JSWebKitSubtleCrypto::sign(ExecState& state)
         wrapper->reject(nullptr);
     };
 
-    ExceptionCode ec = 0;
-    algorithm->sign(*parameters, *key, data, WTFMove(successCallback), WTFMove(failureCallback), ec);
-    if (ec) {
-        setDOMException(&state, ec);
-        return jsUndefined();
+    auto result = algorithm->sign(*parameters, *key, data, WTFMove(successCallback), WTFMove(failureCallback));
+    if (result.hasException()) {
+        propagateException(state, scope, result.releaseException());
+        return { };
     }
 
     return promise;
@@ -345,11 +343,10 @@ JSValue JSWebKitSubtleCrypto::verify(ExecState& state)
         wrapper->reject(nullptr);
     };
 
-    ExceptionCode ec = 0;
-    algorithm->verify(*parameters, *key, signature, data, WTFMove(successCallback), WTFMove(failureCallback), ec);
-    if (ec) {
-        setDOMException(&state, ec);
-        return jsUndefined();
+    auto result = algorithm->verify(*parameters, *key, signature, data, WTFMove(successCallback), WTFMove(failureCallback));
+    if (result.hasException()) {
+        propagateException(state, scope, result.releaseException());
+        return { };
     }
 
     return promise;
@@ -388,11 +385,10 @@ JSValue JSWebKitSubtleCrypto::digest(ExecState& state)
         wrapper->reject(nullptr);
     };
 
-    ExceptionCode ec = 0;
-    algorithm->digest(*parameters, data, WTFMove(successCallback), WTFMove(failureCallback), ec);
-    if (ec) {
-        setDOMException(&state, ec);
-        return jsUndefined();
+    auto result = algorithm->digest(*parameters, data, WTFMove(successCallback), WTFMove(failureCallback));
+    if (result.hasException()) {
+        propagateException(state, scope, result.releaseException());
+        return { };
     }
 
     return promise;
@@ -422,7 +418,7 @@ JSValue JSWebKitSubtleCrypto::generateKey(ExecState& state)
         RETURN_IF_EXCEPTION(scope, JSValue());
     }
 
-    CryptoKeyUsage keyUsages = 0;
+    CryptoKeyUsageBitmap keyUsages = 0;
     if (state.argumentCount() >= 3) {
         auto success = cryptoKeyUsagesFromJSValue(state, state.argument(2), keyUsages);
         ASSERT(scope.exception() || success);
@@ -444,17 +440,16 @@ JSValue JSWebKitSubtleCrypto::generateKey(ExecState& state)
         wrapper->reject(nullptr);
     };
 
-    ExceptionCode ec = 0;
-    algorithm->generateKey(*parameters, extractable, keyUsages, WTFMove(successCallback), WTFMove(failureCallback), ec);
-    if (ec) {
-        setDOMException(&state, ec);
-        return jsUndefined();
+    auto result = algorithm->generateKey(*parameters, extractable, keyUsages, WTFMove(successCallback), WTFMove(failureCallback), *scriptExecutionContextFromExecState(&state));
+    if (result.hasException()) {
+        propagateException(state, scope, result.releaseException());
+        return { };
     }
 
     return promise;
 }
 
-static void importKey(ExecState& state, CryptoKeyFormat keyFormat, CryptoOperationData data, RefPtr<CryptoAlgorithm> algorithm, RefPtr<CryptoAlgorithmParametersDeprecated> parameters, bool extractable, CryptoKeyUsage keyUsages, CryptoAlgorithm::KeyCallback callback, CryptoAlgorithm::VoidCallback failureCallback)
+static void importKey(ExecState& state, CryptoKeyFormat keyFormat, CryptoOperationData data, RefPtr<CryptoAlgorithm> algorithm, RefPtr<CryptoAlgorithmParametersDeprecated> parameters, bool extractable, CryptoKeyUsageBitmap keyUsages, CryptoAlgorithm::KeyCallback callback, CryptoAlgorithm::VoidCallback failureCallback)
 {
     VM& vm = state.vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
@@ -506,10 +501,7 @@ static void importKey(ExecState& state, CryptoKeyFormat keyFormat, CryptoOperati
     auto keyData = keySerialization->keyData();
     RETURN_IF_EXCEPTION(scope, void());
 
-    ExceptionCode ec = 0;
-    algorithm->importKey(*parameters, *keyData, extractable, keyUsages, WTFMove(callback), WTFMove(failureCallback), ec);
-    if (ec)
-        setDOMException(&state, ec);
+    propagateException(state, scope, algorithm->importKey(*parameters, *keyData, extractable, keyUsages, WTFMove(callback), WTFMove(failureCallback)));
 }
 
 JSValue JSWebKitSubtleCrypto::importKey(ExecState& state)
@@ -552,7 +544,7 @@ JSValue JSWebKitSubtleCrypto::importKey(ExecState& state)
         RETURN_IF_EXCEPTION(scope, JSValue());
     }
 
-    CryptoKeyUsage keyUsages = 0;
+    CryptoKeyUsageBitmap keyUsages = 0;
     if (state.argumentCount() >= 5) {
         auto success = cryptoKeyUsagesFromJSValue(state, state.argument(4), keyUsages);
         ASSERT(scope.exception() || success);
@@ -690,9 +682,8 @@ JSValue JSWebKitSubtleCrypto::wrapKey(ExecState& state)
         auto encryptFailureCallback = [wrapper]() mutable {
             wrapper->reject(nullptr);
         };
-        ExceptionCode ec = 0;
-        algorithm->encryptForWrapKey(*parameters, *wrappingKey, std::make_pair(exportedKeyData.data(), exportedKeyData.size()), WTFMove(encryptSuccessCallback), WTFMove(encryptFailureCallback), ec);
-        if (ec) {
+        auto result = algorithm->encryptForWrapKey(*parameters, *wrappingKey, std::make_pair(exportedKeyData.data(), exportedKeyData.size()), WTFMove(encryptSuccessCallback), WTFMove(encryptFailureCallback));
+        if (result.hasException()) {
             // FIXME: Report failure details to console, and possibly to calling script once there is a standardized way to pass errors to WebCrypto promise reject functions.
             wrapper->reject(nullptr);
         }
@@ -702,12 +693,7 @@ JSValue JSWebKitSubtleCrypto::wrapKey(ExecState& state)
         wrapper->reject(nullptr);
     };
 
-    ExceptionCode ec = 0;
     WebCore::exportKey(state, keyFormat, *key, WTFMove(exportSuccessCallback), WTFMove(exportFailureCallback));
-    if (ec) {
-        setDOMException(&state, ec);
-        return jsUndefined();
-    }
 
     return promise;
 }
@@ -771,7 +757,7 @@ JSValue JSWebKitSubtleCrypto::unwrapKey(ExecState& state)
         RETURN_IF_EXCEPTION(scope, JSValue());
     }
 
-    CryptoKeyUsage keyUsages = 0;
+    CryptoKeyUsageBitmap keyUsages = 0;
     if (state.argumentCount() >= 7) {
         auto success = cryptoKeyUsagesFromJSValue(state, state.argument(6), keyUsages);
         ASSERT(scope.exception() || success);
@@ -807,11 +793,10 @@ JSValue JSWebKitSubtleCrypto::unwrapKey(ExecState& state)
         wrapper->reject(nullptr);
     };
 
-    ExceptionCode ec = 0;
-    unwrapAlgorithm->decryptForUnwrapKey(*unwrapAlgorithmParameters, *unwrappingKey, wrappedKeyData, WTFMove(decryptSuccessCallback), WTFMove(decryptFailureCallback), ec);
-    if (ec) {
-        setDOMException(&state, ec);
-        return jsUndefined();
+    auto result = unwrapAlgorithm->decryptForUnwrapKey(*unwrapAlgorithmParameters, *unwrappingKey, wrappedKeyData, WTFMove(decryptSuccessCallback), WTFMove(decryptFailureCallback));
+    if (result.hasException()) {
+        propagateException(state, scope, result.releaseException());
+        return { };
     }
 
     return promise;
