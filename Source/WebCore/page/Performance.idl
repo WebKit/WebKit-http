@@ -36,7 +36,7 @@
 ] interface Performance : EventTarget {
     readonly attribute PerformanceNavigation navigation;
     readonly attribute PerformanceTiming timing;
-    readonly attribute MemoryInfo memory;
+    // readonly attribute MemoryInfo memory;
 
     [EnabledAtRuntime=ResourceTiming] PerformanceEntryList getEntries();
     [EnabledAtRuntime=ResourceTiming] PerformanceEntryList getEntriesByType(DOMString entryType);

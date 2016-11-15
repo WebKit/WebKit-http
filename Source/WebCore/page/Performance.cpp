@@ -217,11 +217,6 @@ double Performance::reduceTimeResolution(double seconds)
     return std::floor(seconds / resolutionSeconds) * resolutionSeconds;
 }
 
-RefPtr<MemoryInfo> Performance::memory() const
-{
-    return MemoryInfo::create(m_frame);
-}
-
 } // namespace WebCore
 
 #endif // ENABLE(WEB_TIMING)
