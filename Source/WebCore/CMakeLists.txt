@@ -185,7 +185,7 @@ set(WebCore_NON_SVG_IDL_FILES
     Modules/geolocation/PositionError.idl
     Modules/geolocation/PositionErrorCallback.idl
 
-    Modules/beacon/NavigatorBeacon.idl
+    # Modules/beacon/NavigatorBeacon.idl
 
     Modules/indexeddb/DOMWindowIndexedDatabase.idl
     Modules/indexeddb/IDBCursor.idl
@@ -815,7 +815,7 @@ set(WebCore_SOURCES
     Modules/geolocation/GeolocationController.cpp
     Modules/geolocation/NavigatorGeolocation.cpp
 
-    Modules/beacon/NavigatorBeacon.cpp
+    # Modules/beacon/NavigatorBeacon.cpp
 
     Modules/indexeddb/DOMWindowIndexedDatabase.cpp
     Modules/indexeddb/IDBCursor.cpp
