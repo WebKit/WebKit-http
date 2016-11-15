@@ -177,7 +177,6 @@ protected:
     bool m_changingRate;
     bool m_downloadFinished;
     bool m_errorOccured;
-    mutable bool m_isEndReached;
     mutable bool m_isStreaming;
     mutable gfloat m_durationAtEOS;
     bool m_paused;

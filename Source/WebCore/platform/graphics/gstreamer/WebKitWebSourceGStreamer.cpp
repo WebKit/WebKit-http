@@ -761,7 +761,7 @@ static gboolean webKitWebSrcSetUri(GstURIHandler* handler, const gchar* uri, GEr
 
     URL url(URL(), uri);
     ASSERT(url.protocol().substring(0, 7) == "webkit+");
-    url.setProtocol(url.protocol().substring(7));
+    url.setProtocol(url.protocol().substring(7).toString());
     if (!urlHasSupportedProtocol(url)) {
         g_set_error(error, GST_URI_ERROR, GST_URI_ERROR_BAD_URI, "Invalid URI '%s'", uri);
         return FALSE;

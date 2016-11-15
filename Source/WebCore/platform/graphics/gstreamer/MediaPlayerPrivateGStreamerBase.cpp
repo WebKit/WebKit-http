@@ -236,6 +236,7 @@ MediaPlayerPrivateGStreamerBase::MediaPlayerPrivateGStreamerBase(MediaPlayer* pl
     , m_fpsSink(0)
     , m_readyState(MediaPlayer::HaveNothing)
     , m_networkState(MediaPlayer::Empty)
+    , m_isEndReached(false)
 #if USE(GSTREAMER_GL) || USE(COORDINATED_GRAPHICS_THREADED)
     , m_drawTimer(RunLoop::main(), this, &MediaPlayerPrivateGStreamerBase::repaint)
 #endif
@@ -388,37 +389,6 @@ bool MediaPlayerPrivateGStreamerBase::handleSyncMessage(GstMessage* message)
             ASSERT_NOT_REACHED();
 #endif
             gst_buffer_unmap(data, &mapInfo);
-            return true;
-        }
-    }
-#endif // ENABLE(LEGACY_ENCRYPTED_MEDIA)
-
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
-    if (GST_MESSAGE_TYPE(message) == GST_MESSAGE_ELEMENT) {
-        const GstStructure* structure = gst_message_get_structure(message);
-        if (gst_structure_has_name(structure, "drm-key-needed")) {
-            GST_DEBUG("handling drm-key-needed message");
-
-            // Here we receive the DRM init data from the pipeline: we will emit
-            // the needkey event with that data and the browser might create a
-            // CDMSession from this event handler. If such a session was created
-            // We will emit the message event from the session to provide the
-            // DRM challenge to the browser and wait for an update. If on the
-            // contrary no session was created we won't wait and let the pipeline
-            // error out by itself.
-            GRefPtr<GstBuffer> data;
-            GUniqueOutPtr<gchar> keySystemId;
-            gboolean valid = gst_structure_get(structure, "data", GST_TYPE_BUFFER, &data.outPtr(),
-                "key-system-id", G_TYPE_STRING, &keySystemId.outPtr(), nullptr);
-            GstMapInfo mapInfo;
-            if (UNLIKELY(!valid || !gst_buffer_map(data.get(), &mapInfo, GST_MAP_READ)))
-                return false;
-
-            GST_DEBUG("scheduling keyNeeded event");
-            // FIXME: Provide a somehow valid sessionId.
-            RefPtr<Uint8Array> initData = Uint8Array::create(reinterpret_cast<const unsigned char *>(mapInfo.data), mapInfo.size);
-            needKey(initData);
-            gst_buffer_unmap(data.get(), &mapInfo);
             return true;
         }
     }

@@ -252,7 +252,7 @@ bool PlayreadySession::playreadyProcessKey(Uint8Array* key, RefPtr<Uint8Array>& 
                           NULL,
                           &m_oDecryptContext));
 
-    m_key = key->buffer();
+    m_key = key->possiblySharedBuffer();
     errorCode = 0;
     m_eKeyState = KEY_READY;
     GST_DEBUG("key processed, now ready for content decryption");

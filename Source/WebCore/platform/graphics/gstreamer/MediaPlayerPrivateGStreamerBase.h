@@ -152,7 +152,6 @@ public:
 #endif
 
     void setVideoSourceOrientation(const ImageOrientation&);
-    GstElement* pipeline() const { return m_pipeline.get(); }
 
     GstElement* pipeline() const { return m_pipeline.get(); }
 
@@ -223,6 +222,7 @@ protected:
     GRefPtr<GstElement> m_fpsSink;
     MediaPlayer::ReadyState m_readyState;
     mutable MediaPlayer::NetworkState m_networkState;
+    mutable bool m_isEndReached;
     IntSize m_size;
     IntPoint m_position;
     mutable GMutex m_sampleMutex;
@@ -231,6 +231,7 @@ protected:
     RunLoop::Timer<MediaPlayerPrivateGStreamerBase> m_drawTimer;
 #endif
     unsigned long m_repaintHandler;
+    unsigned long m_drainHandler;
     mutable FloatSize m_videoSize;
     bool m_usingFallbackVideoSink;
 #if USE(TEXTURE_MAPPER_GL) && !USE(COORDINATED_GRAPHICS_MULTIPROCESS)
@@ -265,10 +266,6 @@ private:
     CDMSession* m_cdmSession;
 #endif
     ImageOrientation m_videoSourceOrientation;
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
-    std::unique_ptr<CDMSession> createSession(const String&, CDMSessionClient*);
-    CDMSession* m_cdmSession;
-#endif
 #if USE(GSTREAMER_GL)
     std::unique_ptr<VideoTextureCopierGStreamer> m_videoTextureCopier;
 #endif

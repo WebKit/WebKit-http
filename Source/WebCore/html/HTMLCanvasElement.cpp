@@ -464,7 +464,7 @@ ExceptionOr<String> HTMLCanvasElement::toDataURL(const String& mimeType, Optiona
         return Exception { SECURITY_ERR };
 
     if (mimeType == "image/webp")
-        return ASCIILiteral("data:image/webp;base64,");
+        return String { ASCIILiteral { "data:image/webp;base64," } };
 
     if (m_size.isEmpty() || !buffer())
         return String { ASCIILiteral { "data:," } };

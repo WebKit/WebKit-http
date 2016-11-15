@@ -270,6 +270,7 @@ if (ENABLE_SUBTLE_CRYPTO)
         crypto/keys/CryptoKeyDataRSAComponents.cpp
         crypto/keys/CryptoKeyHMAC.cpp
         crypto/keys/CryptoKeySerializationRaw.cpp
+        crypto/keys/CryptoKeyRSA.cpp
     )
 endif ()
 

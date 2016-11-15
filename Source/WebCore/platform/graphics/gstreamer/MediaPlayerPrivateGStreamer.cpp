@@ -149,7 +149,6 @@ MediaPlayerPrivateGStreamer::MediaPlayerPrivateGStreamer(MediaPlayer* player)
     , m_changingRate(false)
     , m_downloadFinished(false)
     , m_errorOccured(false)
-    , m_isEndReached(false)
     , m_isStreaming(false)
     , m_durationAtEOS(0)
     , m_paused(true)
@@ -236,7 +235,6 @@ MediaPlayerPrivateGStreamer::~MediaPlayerPrivateGStreamer()
         gst_element_set_state(m_pipeline.get(), GST_STATE_NULL);
     }
 }
-#endif
 
 void MediaPlayerPrivateGStreamer::load(const String& urlString)
 {
@@ -2205,8 +2203,6 @@ void MediaPlayerPrivateGStreamer::createGSTPlayBin()
 #if !USE(WESTEROS_SINK) && !USE(FUSION_SINK)
     g_object_set(m_pipeline.get(), "audio-sink", createAudioSink(), nullptr);
 #endif
-    configurePlaySink();
-
     configurePlaySink();
 
     // On 1.4.2 and newer we use the audio-filter property instead.
