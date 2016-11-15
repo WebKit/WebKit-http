@@ -46,7 +46,7 @@ public:
     void sendMessageToTarget(const String& command, void (*commandCallback)(WKStringRef rspMsg));
     
     ConnectionType connectionType() const override { return ConnectionType::Remote; }
-    bool sendMessageToFrontend(const String& rspMsg);
+    void sendMessageToFrontend(const String& rspMsg) override;
     void setProcessPool(WebKit::WebProcessPool* processPool);
     void setSessionIdentifier(const String& sessionIdentifier);
 
