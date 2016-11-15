@@ -22,7 +22,7 @@
 #ifndef WebKitClearKeyDecryptorGStreamer_h
 #define WebKitClearKeyDecryptorGStreamer_h
 
-#if (ENABLE(ENCRYPTED_MEDIA) || ENABLE(LEGACY_ENCRYPTED_MEDIA)) && USE(GSTREAMER)
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA) && USE(GSTREAMER)
 
 #include "WebKitCommonEncryptionDecryptorGStreamer.h"
 
@@ -52,6 +52,6 @@ struct _WebKitMediaClearKeyDecryptClass {
 
 G_END_DECLS
 
-#endif // (ENABLE(ENCRYPTED_MEDIA) || ENABLE(LEGACY_ENCRYPTED_MEDIA)) && USE(GSTREAMER)
+#endif ENABLE(LEGACY_ENCRYPTED_MEDIA) && USE(GSTREAMER)
 
 #endif // WebKitClearKeyDecryptorGStreamer_h

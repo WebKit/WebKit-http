@@ -24,7 +24,7 @@
  */
 
 [
-    Conditional=ENCRYPTED_MEDIA|LEGACY_ENCRYPTED_MEDIA,
+    Conditional=LEGACY_ENCRYPTED_MEDIA,
     ImplementationLacksVTable,
 ] interface WebKitMediaKeyError {
     const unsigned short MEDIA_KEYERR_UNKNOWN = 1;
