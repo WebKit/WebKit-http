@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2007 Apple Inc.  All rights reserved.
+ * Copyright (C) 2012 Google Inc.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,36 +23,49 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#pragma once
+#include "config.h"
 
-#if ENABLE(VIDEO)
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)
 
-#include <wtf/RefCounted.h>
+#include "MediaKeyEvent.h"
+
+#include "EventNames.h"
 
 namespace WebCore {
 
-class MediaError : public RefCounted<MediaError> {
-public:
-    enum Code {
-        MEDIA_ERR_ABORTED = 1,
-        MEDIA_ERR_NETWORK,
-        MEDIA_ERR_DECODE,
-        MEDIA_ERR_SRC_NOT_SUPPORTED
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA)
-        , MEDIA_ERR_ENCRYPTED
-#endif
-    };
+MediaKeyEvent::MediaKeyEvent(const AtomicString& type, const String& keySystem, const String& sessionId, RefPtr<Uint8Array>&& initData, RefPtr<Uint8Array>&& message, const String& defaultURL, RefPtr<WebKitMediaKeyError>&& errorCode, uint32_t systemCode)
+    : Event(type, false, false)
+    , m_keySystem(keySystem)
+    , m_sessionId(sessionId)
+    , m_initData(initData)
+    , m_message(message)
+    , m_defaultURL(defaultURL)
+    , m_errorCode(errorCode)
+    , m_systemCode(systemCode)
+{
+}
 
-    static Ref<MediaError> create(Code code) { return adoptRef(*new MediaError(code)); }
+MediaKeyEvent::MediaKeyEvent(const AtomicString& type, const MediaKeyEventInit& initializer)
+    : Event(type, initializer, IsTrusted::No)
+    , m_keySystem(initializer.keySystem)
+    , m_sessionId(initializer.sessionId)
+    , m_initData(initializer.initData)
+    , m_message(initializer.message)
+    , m_defaultURL(initializer.defaultURL)
+    , m_errorCode(initializer.errorCode)
+    , m_systemCode(initializer.systemCode)
+{
+}
 
-    Code code() const { return m_code; }
+MediaKeyEvent::~MediaKeyEvent()
+{
+}
 
-private:
-    MediaError(Code code) : m_code(code) { }
-
-    Code m_code;
-};
+EventInterface MediaKeyEvent::eventInterface() const
+{
+    return MediaKeyEventInterfaceType;
+}
 
 } // namespace WebCore
 
-#endif // ENABLE(VIDEO)
+#endif

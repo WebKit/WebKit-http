@@ -174,7 +174,10 @@
 
     // Unique to Element
     [NotEnumerable] attribute EventHandler onbeforeload;
-    [NotEnumerable, Conditional=LEGACY_ENCRYPTED_MEDIA] attribute EventHandler onwebkitneedkey;
+    [NotEnumerable, Conditional=LEGACY_ENCRYPTED_MEDIA_V1] attribute EventHandler onwebkitkeyadded;
+    [NotEnumerable, Conditional=LEGACY_ENCRYPTED_MEDIA_V1] attribute EventHandler onwebkitkeyerror;
+    [NotEnumerable, Conditional=LEGACY_ENCRYPTED_MEDIA_V1] attribute EventHandler onwebkitkeymessage;
+    [NotEnumerable, Conditional=LEGACY_ENCRYPTED_MEDIA_V1|LEGACY_ENCRYPTED_MEDIA] attribute EventHandler onwebkitneedkey;
     [NotEnumerable, Conditional=VIDEO_PRESENTATION_MODE] attribute EventHandler onwebkitpresentationmodechanged;
     [NotEnumerable, Conditional=WIRELESS_PLAYBACK_TARGET] attribute EventHandler onwebkitcurrentplaybacktargetiswirelesschanged;
     [NotEnumerable, Conditional=WIRELESS_PLAYBACK_TARGET] attribute EventHandler onwebkitplaybacktargetavailabilitychanged;

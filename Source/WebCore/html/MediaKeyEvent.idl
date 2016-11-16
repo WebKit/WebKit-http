@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2007 Apple Inc.  All rights reserved.
+ * Copyright (C) 2012 Google Inc.  All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,36 +23,25 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
  */
 
-#pragma once
-
-#if ENABLE(VIDEO)
-
-#include <wtf/RefCounted.h>
-
-namespace WebCore {
-
-class MediaError : public RefCounted<MediaError> {
-public:
-    enum Code {
-        MEDIA_ERR_ABORTED = 1,
-        MEDIA_ERR_NETWORK,
-        MEDIA_ERR_DECODE,
-        MEDIA_ERR_SRC_NOT_SUPPORTED
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA)
-        , MEDIA_ERR_ENCRYPTED
-#endif
-    };
-
-    static Ref<MediaError> create(Code code) { return adoptRef(*new MediaError(code)); }
-
-    Code code() const { return m_code; }
-
-private:
-    MediaError(Code code) : m_code(code) { }
-
-    Code m_code;
+[
+    Conditional=LEGACY_ENCRYPTED_MEDIA_V1,
+    Constructor(DOMString type, optional MediaKeyEventInit eventInitDict),
+] interface MediaKeyEvent : Event {
+    readonly attribute DOMString keySystem;
+    readonly attribute DOMString sessionId;
+    readonly attribute Uint8Array initData;
+    readonly attribute Uint8Array message;
+    readonly attribute DOMString defaultURL;
+    readonly attribute WebKitMediaKeyError errorCode;
+    readonly attribute unsigned short systemCode;
 };
 
-} // namespace WebCore
-
-#endif // ENABLE(VIDEO)
+dictionary MediaKeyEventInit : EventInit {
+    DOMString keySystem = "";
+    DOMString sessionId = "";
+    Uint8Array? initData = null;
+    Uint8Array? message = null;
+    DOMString defaultURL = "";
+    WebKitMediaKeyError? errorCode = null;
+    unsigned short systemCode = 0;
+};

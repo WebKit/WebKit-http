@@ -130,15 +130,25 @@ public:
     bool supportsAcceleratedRendering() const override { return true; }
 #endif
 
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)
+    MediaPlayer::MediaKeyException addKey(const String&, const unsigned char*, unsigned, const unsigned char*, unsigned, const String&) override;
+    MediaPlayer::MediaKeyException generateKeyRequest(const String&, const unsigned char*, unsigned, const String&) override;
+    MediaPlayer::MediaKeyException cancelKeyRequest(const String&, const String&) override;
+    void needKey(const String&, const String&, const unsigned char*, unsigned);
+#endif
+
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
+    void needKey(RefPtr<Uint8Array>);
+    void setCDMSession(CDMSession*);
+    void keyAdded();
+#endif
+
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA)
 #if USE(PLAYREADY)
     PlayreadySession* prSession() const;
     virtual void emitSession();
 #endif
 
-    void needKey(RefPtr<Uint8Array>);
-    void setCDMSession(CDMSession*);
-    void keyAdded();
     virtual void dispatchDecryptionKey(GstBuffer*);
 #endif
 
@@ -259,6 +269,10 @@ private:
 
 #if USE(WESTEROS_SINK) || USE(FUSION_SINK)
     void updateVideoRectangle();
+#endif
+
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) && USE(PLAYREADY)
+    PlayreadySession* m_prSession;
 #endif
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)

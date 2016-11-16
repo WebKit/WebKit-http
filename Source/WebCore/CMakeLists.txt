@@ -3030,7 +3030,7 @@ set(WebCore_LIBRARIES
     JavaScriptCore${DEBUG_SUFFIX}
 )
 
-if (ENABLE_LEGACY_ENCRYPTED_MEDIA)
+if (ENABLE_LEGACY_ENCRYPTED_MEDIA_V1 OR ENABLE_LEGACY_ENCRYPTED_MEDIA)
     list(APPEND WebCore_SOURCES
         Modules/encryptedmedia/CDM.cpp
         Modules/encryptedmedia/CDMPrivateClearKey.cpp
@@ -3041,6 +3041,7 @@ if (ENABLE_LEGACY_ENCRYPTED_MEDIA)
         Modules/encryptedmedia/legacy/WebKitMediaKeyNeededEvent.cpp
         Modules/encryptedmedia/legacy/WebKitMediaKeySession.cpp
         Modules/encryptedmedia/legacy/WebKitMediaKeys.cpp
+        html/MediaKeyEvent.cpp
     )
     list(APPEND WebCoreTestSupport_SOURCES
         testing/MockCDM.cpp
@@ -3052,6 +3053,7 @@ if (ENABLE_LEGACY_ENCRYPTED_MEDIA)
         Modules/encryptedmedia/legacy/WebKitMediaKeys.idl
 
         html/WebKitMediaKeyError.idl
+        html/MediaKeyEvent.idl
     )
 endif ()
 
