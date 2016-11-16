@@ -108,7 +108,7 @@ AppendPipeline::AppendPipeline(Ref<MediaSourceClientGStreamerMSE> mediaSourceCli
     m_pipeline = adoptGRef(gst_pipeline_new(nullptr));
 
     m_bus = adoptGRef(gst_pipeline_get_bus(GST_PIPELINE(m_pipeline.get())));
-    gst_bus_add_signal_watch(m_bus.get());
+    gst_bus_add_signal_watch_full(m_bus.get(), G_PRIORITY_HIGH + 30);
     gst_bus_enable_sync_message_emission(m_bus.get());
 
     g_signal_connect(m_bus.get(), "sync-message::element", G_CALLBACK(appendPipelineElementMessageCallback), this);
