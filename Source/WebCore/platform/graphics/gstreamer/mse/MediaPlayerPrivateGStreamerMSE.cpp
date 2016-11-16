@@ -49,6 +49,10 @@
 #include <wtf/Condition.h>
 #include <wtf/NeverDestroyed.h>
 
+#if USE(PLAYREADY)
+#include "PlayreadySession.h"
+#endif
+
 static const char* dumpReadyState(WebCore::MediaPlayer::ReadyState readyState)
 {
     switch (readyState) {
@@ -781,6 +785,22 @@ void MediaPlayerPrivateGStreamerMSE::dispatchDecryptionKey(GstBuffer* buffer)
             iterator.value->setAppendState(AppendPipeline::AppendState::Ongoing);
         } else
             GST_TRACE("append pipeline %p not in key negotiation", iterator.value.get());
+    }
+}
+#endif
+
+#if USE(PLAYREADY)
+void MediaPlayerPrivateGStreamerMSE::emitSession()
+{
+    fprintf(stderr, "MediaPlayerPrivateGStreamerMSE::emitSession()\n");
+    PlayreadySession* session = prSession();
+    if (!session->ready())
+        return;
+
+    for (auto it : m_appendPipelinesMap) {
+        gst_element_send_event(it.value->pipeline(), gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM_OOB,
+            gst_structure_new("playready-session", "session", G_TYPE_POINTER, session, nullptr)));
+        it.value->setAppendState(AppendPipeline::AppendState::Ongoing);
     }
 }
 #endif
