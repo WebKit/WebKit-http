@@ -59,7 +59,11 @@ build_pass|!debug_and_release {
     # Append additional platform options defined in CMAKE_CONFIG
     for (config, CMAKE_CONFIG): cmake_args += "-D$$config"
 
-    cmake_cmd_base = "$$QMAKE_MKDIR $$cmake_build_dir && cd $$cmake_build_dir &&"
+    !exists($$cmake_build_dir) {
+        !system("$$QMAKE_MKDIR $$cmake_build_dir"): error("Failed to create cmake build directory")
+    }
+
+    cmake_cmd_base = "cd $$cmake_build_dir &&"
 
     log("$${EOL}Running $$cmake_env cmake $$ROOT_WEBKIT_DIR $$cmake_args $${EOL}$${EOL}")
     !system("$$cmake_cmd_base $$cmake_env cmake $$ROOT_WEBKIT_DIR $$cmake_args"): error("Running cmake failed")
