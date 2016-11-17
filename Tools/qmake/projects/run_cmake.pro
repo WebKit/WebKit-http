@@ -27,21 +27,21 @@ build_pass|!debug_and_release {
     !qtConfig(system-jpeg):exists($$QTBASE_DIR) {
         CMAKE_CONFIG += \
             QT_BUNDLED_JPEG=1 \
-            JPEG_INCLUDE_DIR=$$system_path($$QTBASE_DIR/src/3rdparty/libjpeg) \
-            JPEG_LIBRARIES=$$system_path($$ROOT_BUILD_DIR/lib/libqtjpeg.$$QMAKE_EXTENSION_STATICLIB)
+            JPEG_INCLUDE_DIR=$$QTBASE_DIR/src/3rdparty/libjpeg \
+            JPEG_LIBRARIES=$$ROOT_BUILD_DIR/lib/$${QMAKE_PREFIX_STATICLIB}qtjpeg.$$QMAKE_EXTENSION_STATICLIB
     }
 
     !qtConfig(system-png):qtConfig(png):exists($$QTBASE_DIR) {
         CMAKE_CONFIG += \
             QT_BUNDLED_PNG=1 \
-            PNG_INCLUDE_DIRS=$$system_path($$QTBASE_DIR/src/3rdparty/libpng) \
-            PNG_LIBRARIES=$$system_path($$ROOT_BUILD_DIR/lib/libqtpng.$$QMAKE_EXTENSION_STATICLIB)
+            PNG_INCLUDE_DIRS=$$QTBASE_DIR/src/3rdparty/libpng \
+            PNG_LIBRARIES=$$ROOT_BUILD_DIR/lib/$${QMAKE_PREFIX_STATICLIB}qtpng.$$QMAKE_EXTENSION_STATICLIB
     }
 
     !qtConfig(system-zlib):exists($$QTBASE_DIR) {
         CMAKE_CONFIG += \
             QT_BUNDLED_ZLIB=1 \
-            ZLIB_INCLUDE_DIRS=$$system_path($$QTBASE_DIR/src/3rdparty/zlib)
+            ZLIB_INCLUDE_DIRS=$$QTBASE_DIR/src/3rdparty/zlib
     }
 
     equals(QMAKE_HOST.os, Windows) {
