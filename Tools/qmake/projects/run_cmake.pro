@@ -20,6 +20,7 @@ build_pass|!debug_and_release {
         CMAKE_TOOLCHAIN_FILE=$$toolchain_file \
         CMAKE_PREFIX_PATH=\"$$[QT_INSTALL_PREFIX];$$ROOT_QT_BUILD_DIR/qtbase;$$ROOT_QT_BUILD_DIR/qtlocation;$$ROOT_QT_BUILD_DIR/qtsensors\" \
         CMAKE_INSTALL_PREFIX=\"$$[QT_INSTALL_PREFIX]\" \
+        ENABLE_TEST_SUPPORT=OFF \
         USE_LIBHYPHEN=OFF
 
     QT_FOR_CONFIG += gui-private
