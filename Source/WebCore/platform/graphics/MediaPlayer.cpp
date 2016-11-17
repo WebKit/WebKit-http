@@ -260,11 +260,6 @@ static void buildMediaEnginesVector()
         MediaPlayerPrivateGStreamerMSE::registerMediaEngine(addMediaEngine);
 #endif
 
-#if PLATFORM(WPE) && ENABLE(ENCRYPTED_MEDIA_V2)
-    printf ("This is file %s --function (%s)--%d \n",__FILE__,__func__, __LINE__);
-    CDM::registerCDMFactory([](CDM* cdm) { return std::make_unique<CDMPrivateEncKey>(cdm); },
-        CDMPrivateEncKey::supportsKeySystem, CDMPrivateEncKey::supportsKeySystemAndMimeType);
-#endif
 
     haveMediaEnginesVector() = true;
 }

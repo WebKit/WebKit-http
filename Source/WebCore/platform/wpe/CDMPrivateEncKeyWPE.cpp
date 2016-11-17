@@ -27,7 +27,7 @@
 
 
 #include "CDMPrivateEncKeyWPE.h"
-#if ENABLE(ENCRYPTED_MEDIA_V2)
+#if ENABLE(ENCRYPTED_MEDIA_V2) && USE(OCDM)
 
 #include "CDM.h"
 #include "CDMSession.h"
@@ -56,11 +56,6 @@ bool CDMPrivateEncKey::supportsKeySystemAndMimeType(const String& keySystem, con
                                                                    mimeType.utf8().data());
 }
 
-bool CDMPrivateEncKey::supportsMIMEType(const String& mimeType)
-{
-    printf ("This is file %s --function (%s)--%d \n: key system  = %s ,mimeType = %s \n",__FILE__,__func__, __LINE__, m_cdm->keySystem().utf8().data(), mimeType.utf8().data());
-    return CDMPrivateEncKey::getOpenCdmInstance()->IsTypeSupported(m_cdm->keySystem().utf8().data(), mimeType.utf8().data());
-}
 
 std::unique_ptr<CDMSession> CDMPrivateEncKey::createSession(CDMSessionClient* client)
 {
@@ -75,4 +70,4 @@ OpenCdm* CDMPrivateEncKey::getOpenCdmInstance()
 }
 
 }
-#endif // ENABLE(ENCRYPTED_MEDIA_V2)
+#endif // ENABLE(ENCRYPTED_MEDIA_V2) && USE(OCDM)

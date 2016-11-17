@@ -2,8 +2,7 @@
  * Copyright (C) 2007, 2009 Apple Inc.  All rights reserved.
  * Copyright (C) 2007 Collabora Ltd. All rights reserved.
  * Copyright (C) 2007 Alp Toker <alp@atoker.com>
- * Copyright (C) 2009, 2010, 2015, 2016 Igalia S.L
- * Copyright (C) 2015, 2016 Metrological Group B.V.
+ * Copyright (C) 2009, 2010 Igalia S.L
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -38,6 +37,9 @@
 #if USE(TEXTURE_MAPPER)
 #include "TextureMapperPlatformLayer.h"
 #include "TextureMapperPlatformLayerProxy.h"
+#if USE(TEXTURE_MAPPER_GL)
+#include "TextureMapperGL.h"
+#endif
 #endif
 
 typedef struct _GstStreamVolume GstStreamVolume;
@@ -48,12 +50,10 @@ typedef struct _GstGLDisplay GstGLDisplay;
 namespace WebCore {
 
 class BitmapTextureGL;
-class GLContext;
 class GraphicsContext;
 class GraphicsContext3D;
 class IntSize;
 class IntRect;
-class VideoTextureCopierGStreamer;
 
 #if USE(PLAYREADY)
 class PlayreadySession;
@@ -79,7 +79,6 @@ public:
 
 #if USE(GSTREAMER_GL)
     bool ensureGstGLContext();
-    static GstContext* requestGLContext(const gchar* contextType, MediaPlayerPrivateGStreamerBase*);
 #endif
 
     bool supportsMuting() const override { return true; }
@@ -130,35 +129,38 @@ public:
     bool supportsAcceleratedRendering() const override { return true; }
 #endif
 
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)
-    MediaPlayer::MediaKeyException addKey(const String&, const unsigned char*, unsigned, const unsigned char*, unsigned, const String&) override;
-    MediaPlayer::MediaKeyException generateKeyRequest(const String&, const unsigned char*, unsigned, const String&) override;
-    MediaPlayer::MediaKeyException cancelKeyRequest(const String&, const String&) override;
+#if ENABLE(ENCRYPTED_MEDIA)
+    MediaPlayer::MediaKeyException addKey(const String&, const unsigned char*, unsigned, const unsigned char*, unsigned, const String&);
+    MediaPlayer::MediaKeyException generateKeyRequest(const String&, const unsigned char*, unsigned, const String&);
+    MediaPlayer::MediaKeyException cancelKeyRequest(const String&, const String&);
     void needKey(const String&, const String&, const unsigned char*, unsigned);
 #endif
 
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
-    void needKey(RefPtr<Uint8Array>);
+#if ENABLE(ENCRYPTED_MEDIA_V2)
+    void needKey(RefPtr<Uint8Array> initData);
     void setCDMSession(CDMSession*);
     void keyAdded();
 #endif
 
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA)
+#if ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2)
     virtual void dispatchDecryptionKey(GstBuffer*);
     void handleProtectionEvent(GstEvent*);
     void receivedGenerateKeyRequest(const String&);
+#endif
 
 #if USE(PLAYREADY)
     PlayreadySession* prSession() const;
     virtual void emitSession();
 #endif
+
+#if USE(OCDM)
+    virtual void emitOCDMSession();
 #endif
 
     static bool supportsKeySystem(const String& keySystem, const String& mimeType);
-    static MediaPlayer::SupportsType extendedSupportsType(const MediaEngineSupportParameters&, MediaPlayer::SupportsType);
+    static MediaPlayer::SupportsType extendedSupportsType(const MediaEngineSupportParameters& parameters, MediaPlayer::SupportsType);
 
 #if USE(GSTREAMER_GL)
-    bool copyVideoTextureToPlatformTexture(GraphicsContext3D*, Platform3DObject, GC3Denum, GC3Dint, GC3Denum, GC3Denum, GC3Denum, bool, bool) override;
     NativeImagePtr nativeImageForCurrentTime() override;
     void clearCurrentBuffer();
 #endif
@@ -181,15 +183,7 @@ protected:
     static GstFlowReturn newPrerollCallback(GstElement*, MediaPlayerPrivateGStreamerBase*);
     GstElement* createGLAppSink();
     GstElement* createVideoSinkGL();
-    GstGLContext* gstGLContext() const { return m_glContext.get(); }
-    GstGLDisplay* gstGLDisplay() const { return m_glDisplay.get(); }
-#if USE(CAIRO) && ENABLE(ACCELERATED_2D_CANVAS)
-    GLContext* prepareContextForCairoPaint(GstVideoInfo&, IntSize&, IntSize&);
-    bool paintToCairoSurface(cairo_surface_t*, cairo_device_t*, GstVideoInfo&, const IntSize&, const IntSize&, bool);
 #endif
-#endif
-
-    GstElement* videoSink() const { return m_videoSink.get(); }
 
     void setStreamVolumeElement(GstStreamVolume*);
     virtual GstElement* createAudioSink() { return 0; }
@@ -236,11 +230,10 @@ protected:
     IntPoint m_position;
     mutable GMutex m_sampleMutex;
     GRefPtr<GstSample> m_sample;
-#if USE(GSTREAMER_GL) || USE(COORDINATED_GRAPHICS_THREADED)
+#if USE(GSTREAMER_GL)
     RunLoop::Timer<MediaPlayerPrivateGStreamerBase> m_drawTimer;
 #endif
     unsigned long m_repaintHandler;
-    unsigned long m_drainHandler;
     mutable FloatSize m_videoSize;
     bool m_usingFallbackVideoSink;
 #if USE(TEXTURE_MAPPER_GL) && !USE(COORDINATED_GRAPHICS_MULTIPROCESS)
@@ -275,28 +268,27 @@ private:
     Lock m_prSessionMutex;
 #endif
 
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
+#if ENABLE(ENCRYPTED_MEDIA_V2)
     std::unique_ptr<CDMSession> createSession(const String&, CDMSessionClient*);
     CDMSession* m_cdmSession;
 #endif
     ImageOrientation m_videoSourceOrientation;
-#if USE(GSTREAMER_GL)
-    std::unique_ptr<VideoTextureCopierGStreamer> m_videoTextureCopier;
+#if USE(TEXTURE_MAPPER_GL)
+    TextureMapperGL::Flags m_textureMapperRotationFlag;
 #endif
 
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA)
+#if ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2)
     Lock m_protectionMutex;
     Condition m_protectionCondition;
     String m_lastGenerateKeyRequestKeySystemUuid;
     HashSet<uint32_t> m_handledProtectionEvents;
 #endif
 
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)
+#if ENABLE(ENCRYPTED_MEDIA)
     HashMap<String, Vector<uint8_t>> m_initDatas;
     void trimInitData(String, const unsigned char*&, unsigned &);
 #endif
 };
-
 }
 
 #endif // USE(GSTREAMER)

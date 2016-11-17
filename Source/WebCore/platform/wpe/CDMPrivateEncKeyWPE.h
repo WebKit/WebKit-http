@@ -29,7 +29,7 @@
 #ifndef CDM_PRIVATE_ENC_KEY_WPE_H_
 #define CDM_PRIVATE_ENC_KEY_WPE_H_
 #include "config.h"
-#if ENABLE(ENCRYPTED_MEDIA_V2)
+#if ENABLE(ENCRYPTED_MEDIA_V2) && USE(OCDM)
 #include "CDMPrivate.h"
 #include "CDMSession.h"
 #include <open_cdm.h>
@@ -42,7 +42,7 @@ namespace WebCore {
 
 class CDM;
 class CDMSession;
-class CDMPrivateEncKey : public CDMPrivateInterface ,public RefCounted<CDMPrivateEncKey> {
+class CDMPrivateEncKey : public RefCounted<CDMPrivateEncKey> {
 public:
     explicit CDMPrivateEncKey(CDM* cdm)
          :m_cdm(cdm)
@@ -52,8 +52,7 @@ public:
     // CDMFactory support:
     static bool supportsKeySystem(const String&);
     static bool supportsKeySystemAndMimeType(const String& keySystem, const String& mimeType);
-    bool supportsMIMEType(const String& mimeType) override;
-    std::unique_ptr<CDMSession> createSession(CDMSessionClient*);
+    static std::unique_ptr<CDMSession> createSession(CDMSessionClient*);
     ~CDMPrivateEncKey(){};
     static OpenCdm* getOpenCdmInstance();
 
@@ -65,6 +64,6 @@ protected:
 };
 
 }//WebCore
-#endif //ENABLE(ENCRYPTED_MEDIA)
+#endif //ENABLE(ENCRYPTED_MEDIA_V2) && USE(OCDM)
 
 #endif //CDM_PRIVATE_ENC_KEY_H_

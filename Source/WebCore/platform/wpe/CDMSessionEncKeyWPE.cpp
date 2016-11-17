@@ -28,17 +28,11 @@
 
 #include "CDMSessionEncKeyWPE.h"
 
-#if ENABLE(ENCRYPTED_MEDIA_V2)
+#if ENABLE(ENCRYPTED_MEDIA_V2) && USE(OCDM)
 #include "CDM.h"
 #include "CDMSession.h"
 #include "MediaKeyError.h"
 
-#include <page/Base64Utilities.h> //TODO check and  remove unwanted headers
-#include <wtf/text/Base64.h>
-#include "TextEncoding.h"
-
-
-unsigned char message[3096] = "\0"; //TODO move to class member variable
 
 namespace WebCore {
 
@@ -69,18 +63,30 @@ RefPtr<Uint8Array> CDMSessionEncKey::generateKeyRequest(const String& mimeType, 
     string sessionId; //TODO check sessionId setting sequence and update
 
     m_openCdmSession->CreateSession(mimeType.utf8().data(), initial_value,
-                                            strlen((const char*)initial_value), sessionId); 
-    cout << endl << "session_id:CDMSessionEncKey:generateKeyRequest: "<< sessionId << endl;
-    ret = m_openCdmSession->GetKeyMessage(message, &m_msgLength, url, &m_destUrlLength);
+                                    strlen((const char*)initial_value), sessionId);
+    if (!sessionId.size()) {
+        printf("SessionId is empty \n");
+        return nullptr;
+    }
+    m_sessionId = String::fromUTF8(sessionId.c_str());
+
+    printf ("SessionID = %s\n", sessionId.c_str());
+    printf("m_sessionID = %s\n", m_sessionId.utf8().data());
+    cout << endl << "ses_id:CDMSessionEncKey:generateKeyRequest: "<< sessionId << endl;
+
+    ret = m_openCdmSession->GetKeyMessage(m_message,
+                                   &m_msgLength, url, &m_destUrlLength);
 
     printf("This is file %s --function (%s)--%d \n",__FILE__,__func__, __LINE__);
-    if ((ret != 0) || (m_msgLength == 0) || (m_destUrlLength == 0)) {
+    if ( (ret != 0) || (m_msgLength == 0) || (m_destUrlLength == 0) ) {
         printf("This is file %s --function (%s)--%d \n",__FILE__,__func__, __LINE__);
         errorCode = MediaKeyError::MEDIA_KEYERR_UNKNOWN;
         return nullptr;
     } else {
+
+
         destUrl = String::fromUTF8(url);
-        return (Uint8Array::create(message, m_msgLength));
+        return (Uint8Array::create((unsigned char*)m_message.c_str(), m_msgLength));
     }
 }
 
@@ -121,4 +127,4 @@ CDMSessionEncKey::~CDMSessionEncKey()
 }
 }
 
-#endif // ENABLE(ENCRYPTED_MEDIA_V2)
+#endif // ENABLE(ENCRYPTED_MEDIA_V2) && USE(OCDM)

@@ -31,7 +31,7 @@
 #define CDM_SESSION_ENC_KEY_H_
 
 #include "config.h"
-#if ENABLE(ENCRYPTED_MEDIA_V2)
+#if ENABLE(ENCRYPTED_MEDIA_V2) && USE(OCDM)
 #include "CDMPrivate.h"
 #include "CDMPrivateEncKeyWPE.h"
 #include "CDMSession.h"
@@ -60,13 +60,13 @@ private:
     CDMSessionClient* m_client;
     OpenCdm* m_openCdmSession;
     String m_sessionId;
-    Uint8Array* m_message;
+    std::string m_message;
     int m_msgLength;
     int m_destUrlLength;
 
 };
 
 }//WebCore
-#endif // ENABLE(ENCRYPTED_MEDIA)
+#endif // ENABLE(ENCRYPTED_MEDIA_V2) && USE(OCDM)
 
 #endif //DM_SESSION_ENC_KEY_H_
