@@ -20,7 +20,6 @@ build_pass|!debug_and_release {
         CMAKE_TOOLCHAIN_FILE=$$toolchain_file \
         CMAKE_PREFIX_PATH=\"$$[QT_INSTALL_PREFIX];$$ROOT_QT_BUILD_DIR/qtbase;$$ROOT_QT_BUILD_DIR/qtlocation;$$ROOT_QT_BUILD_DIR/qtsensors\" \
         CMAKE_INSTALL_PREFIX=\"$$[QT_INSTALL_PREFIX]\" \
-        KDE_INSTALL_LIBDIR=\"$$relative_path($$[QT_INSTALL_LIBS], $$[QT_INSTALL_PREFIX])\" \
         USE_LIBHYPHEN=OFF
 
     QT_FOR_CONFIG += gui-private
