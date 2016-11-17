@@ -27,6 +27,7 @@
 #include <QtCore/qshareddata.h>
 
 #include "qwebkitglobal.h"
+
 namespace WebCore {
 class ChromeClientQt;
 class Element;

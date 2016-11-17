@@ -440,6 +440,7 @@ Q_SIGNALS:
     void unsupportedContent(QNetworkReply *reply);
     void downloadRequested(const QNetworkRequest &request);
 
+    void focusedElementChanged(const QWebElement &element);
     void microFocusChanged();
     void contentsChanged();
     void databaseQuotaExceeded(QWebFrame* frame, QString databaseName);

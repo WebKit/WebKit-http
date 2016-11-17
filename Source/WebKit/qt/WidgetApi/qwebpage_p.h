@@ -143,6 +143,7 @@ public:
     void createAndSetCurrentContextMenu(const QList<MenuItemDescription>&, QBitArray*) override;
     bool handleScrollbarContextMenuEvent(QContextMenuEvent*, bool, ScrollDirection*, ScrollGranularity*) override;
     void recentlyAudibleChanged(bool) override;
+    void focusedElementChanged(const QWebElement&) override;
 
 
     void createMainFrame();

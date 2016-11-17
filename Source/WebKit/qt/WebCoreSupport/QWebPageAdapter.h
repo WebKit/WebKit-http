@@ -289,6 +289,7 @@ public:
     virtual bool handleScrollbarContextMenuEvent(QContextMenuEvent*, bool, ScrollDirection*, ScrollGranularity*) = 0;
 
     virtual void recentlyAudibleChanged(bool) = 0;
+    virtual void focusedElementChanged(const QWebElement&) = 0;
 
     void setVisibilityState(VisibilityState);
     VisibilityState visibilityState() const;

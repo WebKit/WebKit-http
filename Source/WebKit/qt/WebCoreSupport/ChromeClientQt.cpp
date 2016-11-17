@@ -209,8 +209,9 @@ void ChromeClientQt::takeFocus(FocusDirection)
 }
 
 
-void ChromeClientQt::focusedElementChanged(Element*)
+void ChromeClientQt::focusedElementChanged(Element* element)
 {
+    emit m_webPage->focusedElementChanged(QWebElement(element));
 }
 
 void ChromeClientQt::focusedFrameChanged(Frame*)
