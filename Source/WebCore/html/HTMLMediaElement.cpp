@@ -3608,6 +3608,7 @@ void HTMLMediaElement::removeAudioTrack(AudioTrack* track)
         return;
 
     m_audioTracks->remove(track);
+    track->clearClient();
 }
 
 void HTMLMediaElement::removeTextTrack(TextTrack* track, bool scheduleEvent)
@@ -3631,6 +3632,7 @@ void HTMLMediaElement::removeVideoTrack(VideoTrack* track)
         return;
 
     m_videoTracks->remove(track);
+    track->clearClient();
 }
 
 void HTMLMediaElement::forgetResourceSpecificTracks()
