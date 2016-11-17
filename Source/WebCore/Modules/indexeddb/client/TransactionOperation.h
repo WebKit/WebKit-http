@@ -129,9 +129,8 @@ public:
         RefPtr<TransactionOperation> protectedThis(this);
 
         ASSERT(performMethod);
-        auto performFunctionWrapper = std::bind(performMethod, m_transaction.ptr(), std::placeholders::_1, arguments...);
-        m_performFunction = [protectedThis, performFunctionWrapper] {
-            performFunctionWrapper(*protectedThis);
+        m_performFunction = [protectedThis, this, performMethod, arguments...] {
+            (&m_transaction.get()->*performMethod)(*this, arguments...);
         };
 
         if (completeMethod) {
@@ -148,9 +147,8 @@ public:
         RefPtr<TransactionOperation> protectedThis(this);
 
         ASSERT(performMethod);
-        auto performFunctionWrapper = std::bind(performMethod, m_transaction.ptr(), std::placeholders::_1, arguments...);
-        m_performFunction = [protectedThis, performFunctionWrapper] {
-            performFunctionWrapper(*protectedThis);
+        m_performFunction = [protectedThis, this, performMethod, arguments...] {
+            (&m_transaction.get()->*performMethod)(*this, arguments...);
         };
 
         if (completeMethod) {
