@@ -1,6 +1,10 @@
-add_subdirectory(DumpRenderTree)
-add_subdirectory(ImageDiff)
-if (ENABLE_TEST_SUPPORT)
+add_subdirectory(QtTestBrowser)
+
+if (ENABLE_API_TESTS)
     add_subdirectory(TestWebKitAPI)
-    add_subdirectory(QtTestBrowser)
+endif ()
+
+if (ENABLE_TEST_SUPPORT)
+    add_subdirectory(DumpRenderTree)
+    add_subdirectory(ImageDiff)
 endif ()
