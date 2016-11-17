@@ -70,7 +70,11 @@ bool FormDataIODevice::reset()
         m_currentFile->close();
 
     m_currentDelta = 0;
-    m_formElements = m_formData->elements();
+
+    if (m_formData)
+        m_formElements = m_formData->elements();
+    else
+        m_formElements.clear();
 
     prepareCurrentElement();
     return true;
