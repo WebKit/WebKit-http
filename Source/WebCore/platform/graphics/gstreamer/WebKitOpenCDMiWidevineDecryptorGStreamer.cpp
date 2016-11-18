@@ -1,8 +1,9 @@
 #include "config.h"
+#if ENABLE(ENCRYPTED_MEDIA_V2) && USE(GSTREAMER) && USE(OCDM)
 #include <string>
+#include <stdio.h>
 #include <gst/gst.h>
 #include <open_cdm.h>
-#include <stdio.h>
 #include <gst/base/gstbytereader.h>
 #include "WebKitOpenCDMiWidevineDecryptorGStreamer.h"
 
@@ -242,6 +243,7 @@ static gboolean openCDMiWidevineDecryptorDecrypt(WebKitMediaCommonEncryptionDecr
     
     return true;
 }
+#endif
 
 /*
 static gboolean

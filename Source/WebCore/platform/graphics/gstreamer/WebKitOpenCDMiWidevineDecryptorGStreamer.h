@@ -3,6 +3,8 @@
 
 #include <stdint.h>
 
+#if ENABLE(ENCRYPTED_MEDIA_V2) && USE(GSTREAMER) && USE(OCDM)
+
 #include "WebKitCommonEncryptionDecryptorGStreamer.h"
 
 G_BEGIN_DECLS
@@ -31,4 +33,5 @@ struct _OpenCDMiWideVineDecryptClass {
 
 G_END_DECLS
 
+#endif
 #endif
