@@ -76,7 +76,6 @@ namespace WebCore {
     macro(chargingtimechange) \
     macro(checking) \
     macro(click) \
-    macro(clipboard) \
     macro(close) \
     macro(complete) \
     macro(compositionend) \

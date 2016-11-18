@@ -30,7 +30,6 @@
 #include "WebKitWebAudioSourceGStreamer.h"
 #include <gst/audio/gstaudiobasesink.h>
 #include <gst/gst.h>
-#include <gst/audio/gstaudiobasesink.h>
 #include <wtf/glib/GUniquePtr.h>
 
 namespace WebCore {
