@@ -14,3 +14,6 @@ list(APPEND WPE_PLATFORM_SOURCES
     src/bcm-nexus/renderer-backend.cpp
     src/bcm-nexus/view-backend.cpp
 )
+
+SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${PC_EGL_CFLAGS_OTHER}")
+SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${PC_EGL_CFLAGS_OTHER}")
