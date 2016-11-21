@@ -1,0 +1,41 @@
+Determining if the pthread_create exist failed with the following output:
+Change Dir: /home/naveen/workspace/ML_03/buildroot-wpe/output/build/wpe-9d4c9c472778d89386fa3533f95f6b8e8c203894/build-Release/CMakeFiles/CMakeTmp
+
+Run Build Command:"/home/naveen/workspace/ML_03/buildroot-wpe/output/host/usr/bin/ninja" "cmTC_9bc7a"
+[1/2] Building C object CMakeFiles/cmTC_9bc7a.dir/CheckSymbolExists.c.o
+[2/2] Linking C executable cmTC_9bc7a
+FAILED: cmTC_9bc7a 
+: && /home/naveen/workspace/ML_03/buildroot-wpe/output/host/usr/bin/arm-buildroot-linux-gnueabihf-gcc  -D_LARGEFILE_SOURCE -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64 -Os  -std=c99   CMakeFiles/cmTC_9bc7a.dir/CheckSymbolExists.c.o  -o cmTC_9bc7a  -rdynamic && :
+CMakeFiles/cmTC_9bc7a.dir/CheckSymbolExists.c.o: In function `main':
+CheckSymbolExists.c:(.text.startup+0x8): undefined reference to `pthread_create'
+collect2: error: ld returned 1 exit status
+ninja: build stopped: subcommand failed.
+
+File /home/naveen/workspace/ML_03/buildroot-wpe/output/build/wpe-9d4c9c472778d89386fa3533f95f6b8e8c203894/build-Release/CMakeFiles/CMakeTmp/CheckSymbolExists.c:
+/* */
+#include <pthread.h>
+
+int main(int argc, char** argv)
+{
+  (void)argv;
+#ifndef pthread_create
+  return ((int*)(&pthread_create))[argc];
+#else
+  (void)argc;
+  return 0;
+#endif
+}
+
+Determining if the function pthread_create exists in the pthreads failed with the following output:
+Change Dir: /home/naveen/workspace/ML_03/buildroot-wpe/output/build/wpe-9d4c9c472778d89386fa3533f95f6b8e8c203894/build-Release/CMakeFiles/CMakeTmp
+
+Run Build Command:"/home/naveen/workspace/ML_03/buildroot-wpe/output/host/usr/bin/ninja" "cmTC_9ce83"
+[1/2] Building C object CMakeFiles/cmTC_9ce83.dir/CheckFunctionExists.c.o
+[2/2] Linking C executable cmTC_9ce83
+FAILED: cmTC_9ce83 
+: && /home/naveen/workspace/ML_03/buildroot-wpe/output/host/usr/bin/arm-buildroot-linux-gnueabihf-gcc  -D_LARGEFILE_SOURCE -D_LARGEFILE64_SOURCE -D_FILE_OFFSET_BITS=64 -Os  -std=c99 -DCHECK_FUNCTION_EXISTS=pthread_create   CMakeFiles/cmTC_9ce83.dir/CheckFunctionExists.c.o  -o cmTC_9ce83  -rdynamic -lpthreads && :
+/home/naveen/workspace/ML_03/buildroot-wpe/output/host/usr/lib/gcc/arm-buildroot-linux-gnueabihf/4.9.3/../../../../arm-buildroot-linux-gnueabihf/bin/ld: cannot find -lpthreads
+collect2: error: ld returned 1 exit status
+ninja: build stopped: subcommand failed.
+
+

@@ -1,0 +1,28 @@
+partial interface WorkerGlobalScope {
+    [Conditional=FETCH_API, EnabledAtRuntime=FetchAPI] attribute FetchHeadersConstructor Headers;
+    [Conditional=FETCH_API, EnabledAtRuntime=FetchAPI] attribute FetchRequestConstructor Request;
+    [Conditional=FETCH_API, EnabledAtRuntime=FetchAPI] attribute FetchResponseConstructor Response;
+    [Conditional=STREAMS_API] attribute ByteLengthQueuingStrategyConstructor ByteLengthQueuingStrategy;
+    [Conditional=STREAMS_API] attribute CountQueuingStrategyConstructor CountQueuingStrategy;
+    [Conditional=STREAMS_API] attribute ReadableStreamConstructor ReadableStream;
+    [Conditional=WEB_SOCKETS, EnabledAtRuntime] attribute WebSocketConstructor WebSocket;
+    attribute DOMCoreExceptionConstructor DOMException;
+    attribute ErrorEventConstructor ErrorEvent;
+    attribute EventConstructor Event;
+    attribute EventTargetConstructor EventTarget;
+    [Conditional=CHANNEL_MESSAGING] attribute MessageChannelConstructor MessageChannel;
+    attribute MessageEventConstructor MessageEvent;
+    attribute MessagePortConstructor MessagePort;
+    attribute ProgressEventConstructor ProgressEvent;
+    attribute BlobConstructor Blob;
+    attribute FileReaderConstructor FileReader;
+    attribute FileReaderSyncConstructor FileReaderSync;
+    attribute DOMURLConstructor URL;
+    attribute ImageDataConstructor ImageData;
+    attribute EventSourceConstructor EventSource;
+    attribute WorkerNavigatorConstructor WorkerNavigator;
+    attribute WorkerGlobalScopeConstructor WorkerGlobalScope;
+    attribute WorkerLocationConstructor WorkerLocation;
+    attribute XMLHttpRequestConstructor XMLHttpRequest;
+    attribute XMLHttpRequestEventTargetConstructor XMLHttpRequestEventTarget;
+};

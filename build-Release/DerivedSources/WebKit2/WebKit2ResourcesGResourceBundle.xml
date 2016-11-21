@@ -1,0 +1,6 @@
+<?xml version=1.0 encoding=UTF-8?>
+<gresources>
+    <gresource prefix="/org/webkitwpe/resources">
+        <file alias="audio/Composite">Composite.wav</file>
+    </gresource>
+</gresources>
