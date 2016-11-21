@@ -23,19 +23,23 @@ build_pass|!debug_and_release {
         ENABLE_TEST_SUPPORT=OFF \
         USE_LIBHYPHEN=OFF
 
+    static: CMAKE_CONFIG += USE_THIN_ARCHIVES=OFF
+
+    static_runtime: CMAKE_CONFIG += USE_STATIC_RUNTIME=ON
+
     QT_FOR_CONFIG += gui-private
     !qtConfig(system-jpeg):exists($$QTBASE_DIR) {
         CMAKE_CONFIG += \
             QT_BUNDLED_JPEG=1 \
             JPEG_INCLUDE_DIR=$$QTBASE_DIR/src/3rdparty/libjpeg \
-            JPEG_LIBRARIES=$$ROOT_BUILD_DIR/lib/$${QMAKE_PREFIX_STATICLIB}qtjpeg.$$QMAKE_EXTENSION_STATICLIB
+            JPEG_LIBRARIES=$$staticLibPath(qtjpeg)
     }
 
     !qtConfig(system-png):qtConfig(png):exists($$QTBASE_DIR) {
         CMAKE_CONFIG += \
             QT_BUNDLED_PNG=1 \
             PNG_INCLUDE_DIRS=$$QTBASE_DIR/src/3rdparty/libpng \
-            PNG_LIBRARIES=$$ROOT_BUILD_DIR/lib/$${QMAKE_PREFIX_STATICLIB}qtpng.$$QMAKE_EXTENSION_STATICLIB
+            PNG_LIBRARIES=$$staticLibPath(qtpng)
     }
 
     !qtConfig(system-zlib):exists($$QTBASE_DIR) {

@@ -3,6 +3,11 @@ EOL = $$escape_expand(\\n)
 WEBKIT_SUBDIR = $$relative_path($$_PRO_FILE_PWD_, $$ROOT_WEBKIT_DIR)
 QTBASE_DIR = $$ROOT_WEBKIT_DIR/../qtbase
 
+defineReplace(staticLibPath) {
+    lib_basename = $${QMAKE_PREFIX_STATICLIB}$${1}$$qtPlatformTargetSuffix()
+    return($$ROOT_BUILD_DIR/lib/$${lib_basename}.$$QMAKE_EXTENSION_STATICLIB)
+}
+
 defineTest(isQtMinimum) {
     !equals(QT_MAJOR_VERSION, $$1): return(false)
     count(ARGS, 1, greaterThan) {

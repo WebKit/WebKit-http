@@ -95,6 +95,7 @@ WEBKIT_OPTION_DEFINE(ENABLE_X11_TARGET "Whether to enable support for the X11 wi
 
 option(GENERATE_DOCUMENTATION "Generate HTML and QCH documentation" OFF)
 option(ENABLE_TEST_SUPPORT "Build tools for running layout tests and related library code" ON)
+option(USE_STATIC_RUNTIME "Use static runtime (MSVC only)" OFF)
 
 # Public options shared with other WebKit ports. There must be strong reason
 # to support changing the value of the option.
@@ -591,12 +592,14 @@ if (MSVC)
         string(REGEX REPLACE "/W3" "/W4" CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS}) # Warnings are important
     endif ()
 
-    foreach (flag_var
-        CMAKE_CXX_FLAGS CMAKE_CXX_FLAGS_DEBUG CMAKE_CXX_FLAGS_RELEASE
-        CMAKE_CXX_FLAGS_MINSIZEREL CMAKE_CXX_FLAGS_RELWITHDEBINFO)
-        # Use the multithreaded static runtime library instead of the default DLL runtime.
-        string(REGEX REPLACE "/MD" "/MT" ${flag_var} "${${flag_var}}")
-    endforeach ()
+    if (USE_STATIC_RUNTIME)
+        foreach (flag_var
+            CMAKE_CXX_FLAGS CMAKE_CXX_FLAGS_DEBUG CMAKE_CXX_FLAGS_RELEASE
+            CMAKE_CXX_FLAGS_MINSIZEREL CMAKE_CXX_FLAGS_RELWITHDEBINFO)
+            # Use the multithreaded static runtime library instead of the default DLL runtime.
+            string(REGEX REPLACE "/MD" "/MT" ${flag_var} "${${flag_var}}")
+        endforeach ()
+    endif ()
 
     set(ICU_LIBRARIES icuuc${CMAKE_DEBUG_POSTFIX} icuin${CMAKE_DEBUG_POSTFIX} icudt${CMAKE_DEBUG_POSTFIX})
 endif ()
