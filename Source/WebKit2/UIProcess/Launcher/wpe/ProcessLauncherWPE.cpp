@@ -87,7 +87,7 @@ void ProcessLauncher::launchProcess()
         nargs = 5;
     }
 
-#ifndef NDEBUG
+#if ENABLE(DEVELOPER_MODE)
     Vector<CString> prefixArgs;
     if (!m_launchOptions.processCmdPrefix.isNull()) {
         Vector<String> splitArgs;
@@ -100,7 +100,7 @@ void ProcessLauncher::launchProcess()
 
     char** argv = g_newa(char*, nargs);
     unsigned i = 0;
-#ifndef NDEBUG
+#if ENABLE(DEVELOPER_MODE)
     // If there's a prefix command, put it before the rest of the args.
     for (auto it = prefixArgs.begin(); it != prefixArgs.end(); it++)
         argv[i++] = const_cast<char*>(it->data());
