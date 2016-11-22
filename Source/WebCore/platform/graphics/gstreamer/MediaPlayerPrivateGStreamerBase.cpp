@@ -1246,8 +1246,9 @@ void MediaPlayerPrivateGStreamerBase::emitSession()
     if (!session->ready())
         return;
 
-    gst_element_send_event(m_pipeline.get(), gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM_OOB,
+    bool eventHandled = gst_element_send_event(m_pipeline.get(), gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM_OOB,
         gst_structure_new("playready-session", "session", G_TYPE_POINTER, session, nullptr)));
+    GST_TRACE("emitted PR session on pipeline, event handled %s", eventHandled ? "yes" : "no");
 }
 #endif
 
@@ -1266,7 +1267,7 @@ MediaPlayer::MediaKeyException MediaPlayerPrivateGStreamerBase::addKey(const Str
         bool result = m_prSession->playreadyProcessKey(key.get(), nextMessage, errorCode, systemCode);
 
         if (errorCode || !result) {
-            GST_DEBUG("Error processing key: errorCode: %u, result: %d", errorCode, result);
+            GST_ERROR("Error processing key: errorCode: %u, result: %d", errorCode, result);
             return MediaPlayer::InvalidPlayerState;
         }
 
@@ -1293,7 +1294,8 @@ MediaPlayer::MediaKeyException MediaPlayerPrivateGStreamerBase::addKey(const Str
 
 MediaPlayer::MediaKeyException MediaPlayerPrivateGStreamerBase::generateKeyRequest(const String& keySystem, const unsigned char* initDataPtr, unsigned initDataLength, const String& customData)
 {
-    GST_DEBUG("generating key request for system: %s", keySystem.utf8().data());
+    GST_DEBUG("generating key request for system: %s, init data size %u", keySystem.utf8().data(), initDataLength);
+    GST_MEMDUMP("init data", initDataPtr, initDataLength);
 #if USE(PLAYREADY)
     if (equalIgnoringASCIICase(keySystem, "com.microsoft.playready")
         || equalIgnoringASCIICase(keySystem, "com.youtube.playready")) {
@@ -1319,6 +1321,8 @@ MediaPlayer::MediaKeyException MediaPlayerPrivateGStreamerBase::generateKeyReque
             return MediaPlayer::NoError;
         }
         URL url(URL(), destinationURL);
+        GST_TRACE("playready generateKeyRequest result size %u", result->length());
+        GST_MEMDUMP("result", result->data(), result->length());
         m_player->keyMessage(keySystem, createCanonicalUUIDString(), result->data(), result->length(), url);
         return MediaPlayer::NoError;
     }

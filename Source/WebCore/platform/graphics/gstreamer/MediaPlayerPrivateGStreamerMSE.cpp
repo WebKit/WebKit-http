@@ -1164,6 +1164,7 @@ static void appendPipelineAppsinkEOS(GstElement*, AppendPipeline*);
 static void appendPipelineElementMessageCallback(GstBus*, GstMessage* message, AppendPipeline* ap)
 {
     ap->handleElementMessage(message);
+    GST_TRACE("received callback");
 }
 
 static void appendPipelineApplicationMessageCallback(GstBus*, GstMessage* message, AppendPipeline* appendPipeline)
