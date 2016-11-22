@@ -214,9 +214,4 @@ static gboolean webKitMediaPlayReadyDecryptorDecrypt(WebKitMediaCommonEncryption
     return true;
 }
 
-bool webkit_media_playready_decrypt_is_playready_key_system_id(const gchar* keySystemId)
-{
-    return g_strcmp0(keySystemId, PLAYREADY_PROTECTION_SYSTEM_UUID) == 0;
-}
-
 #endif

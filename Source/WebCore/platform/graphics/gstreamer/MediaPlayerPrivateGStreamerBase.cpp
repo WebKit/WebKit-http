@@ -366,19 +366,8 @@ bool MediaPlayerPrivateGStreamerBase::handleSyncMessage(GstMessage* message)
                 GstBuffer* data = nullptr;
                 gst_event_parse_protection(event.get(), &eventKeySystemId, &data, nullptr);
 
-#if USE(PLAYREADY)
-                if (webkit_media_playready_decrypt_is_playready_key_system_id(eventKeySystemId)) {
-                    PlayreadySession* session = prSession();
-                    if (session && session->keyRequested()) {
-                        GST_DEBUG("playready key requested already");
-                        if (session->ready()) {
-                            GST_DEBUG("playready key already negotiated");
-                            emitSession();
-                        }
-                        break;
-                    }
-                }
-#endif
+                // FIXME: We might need to rethink or add how to handle a situation where a PlayReady session is already
+                // in place.
 
                 // Here we receive the DRM init data from the pipeline: we will emit
                 // the needkey event with that data and the browser might create a
