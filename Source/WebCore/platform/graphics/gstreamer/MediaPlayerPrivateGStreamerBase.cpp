@@ -356,6 +356,10 @@ bool MediaPlayerPrivateGStreamerBase::handleSyncMessage(GstMessage* message)
             ASSERT(streamEncryptionEventsList && GST_VALUE_HOLDS_LIST(streamEncryptionEventsList));
             unsigned streamEncryptionEventsListSize = gst_value_list_get_size(streamEncryptionEventsList);
             GST_TRACE("found %u protection events", streamEncryptionEventsListSize);
+            const GValue* streamEncryptionAllowedSystemsValue = gst_structure_get_value(structure, "stream-encryption-systems");
+            ASSERT(streamEncryptionAllowedSystemsValue && G_VALUE_HOLDS(streamEncryptionAllowedSystemsValue, G_TYPE_STRV));
+            const char** streamEncryptionAllowedSystems = reinterpret_cast<const char**>(g_value_get_boxed(streamEncryptionAllowedSystemsValue));
+            ASSERT(streamEncryptionAllowedSystems);
             Ref<SharedBuffer> concatenatedInitDataChunks = SharedBuffer::create();
             unsigned concatenatedInitDataChunksNumber = 0;
             String eventKeySystemIdString;
@@ -387,6 +391,12 @@ bool MediaPlayerPrivateGStreamerBase::handleSyncMessage(GstMessage* message)
                 concatenatedInitDataChunks->append(reinterpret_cast<const char *>(mapInfo.data), mapInfo.size);
                 ++concatenatedInitDataChunksNumber;
                 eventKeySystemIdString = eventKeySystemId;
+                if (g_strv_contains(streamEncryptionAllowedSystems, eventKeySystemId)) {
+                    GST_TRACE("keeping init data for %s", eventKeySystemId);
+                    Vector<uint8_t> initDataVector;
+                    initDataVector.append(reinterpret_cast<uint8_t*>(mapInfo.data), mapInfo.size);
+                    m_initDatas.add(eventKeySystemIdString, WTFMove(initDataVector));
+                }
                 gst_buffer_unmap(data, &mapInfo);
             }
 
@@ -1341,6 +1351,31 @@ MediaPlayer::MediaKeyException MediaPlayerPrivateGStreamerBase::addKey(const Str
     return MediaPlayer::NoError;
 }
 
+void MediaPlayerPrivateGStreamerBase::trimInitData(String keySystemUuid, const unsigned char*& initDataPtr, unsigned &initDataLength)
+{
+    if (!m_initDatas.contains(keySystemUuid)) {
+        GST_TRACE("we don't have an initData for %s", keySystemUuid.utf8().data());
+        return;
+    }
+
+    Vector<uint8_t> storedInitData = m_initDatas.get(keySystemUuid);
+    m_initDatas.clear();
+    if (storedInitData.size() == initDataLength) {
+        GST_TRACE("stored init data for %s has the same size of %u, no need for trimming", keySystemUuid.utf8().data(), initDataLength);
+        return;
+    }
+
+    storedInitData.append('\0');
+    bool found = g_strrstr_len(reinterpret_cast<const char*>(initDataPtr), initDataLength, reinterpret_cast<const char*>(storedInitData.data()));
+    storedInitData.takeLast();
+    GST_TRACE("checked for stored init data for %s, found %s", keySystemUuid.utf8().data(), found ? "yes" : "no");
+    if (!found)
+        return;
+
+    initDataPtr = storedInitData.data();
+    initDataLength = storedInitData.size();
+}
+
 MediaPlayer::MediaKeyException MediaPlayerPrivateGStreamerBase::generateKeyRequest(const String& keySystem, const unsigned char* initDataPtr, unsigned initDataLength, const String& customData)
 {
     receivedGenerateKeyRequest(keySystem);
@@ -1356,6 +1391,9 @@ MediaPlayer::MediaKeyException MediaPlayerPrivateGStreamerBase::generateKeyReque
             return MediaPlayer::NoError;
         }
 
+        trimInitData(keySystemIdToUuid(keySystem).string(), initDataPtr, initDataLength);
+        GST_TRACE("current init data size %u", initDataLength);
+        GST_MEMDUMP ("init data", initDataPtr, initDataLength);
         unsigned short errorCode;
         uint32_t systemCode;
         RefPtr<Uint8Array> initData = Uint8Array::create(initDataPtr, initDataLength);
@@ -1381,6 +1419,9 @@ MediaPlayer::MediaKeyException MediaPlayerPrivateGStreamerBase::generateKeyReque
     if (!equalIgnoringASCIICase(keySystem, "org.w3.clearkey"))
         return MediaPlayer::KeySystemNotSupported;
 
+    trimInitData(keySystemIdToUuid(keySystem).string(), initDataPtr, initDataLength);
+    GST_TRACE("current init data size %u", initDataLength);
+    GST_MEMDUMP("init data", initDataPtr, initDataLength);
     m_player->keyMessage(keySystem, createCanonicalUUIDString(), initDataPtr, initDataLength, URL());
     return MediaPlayer::NoError;
 }
