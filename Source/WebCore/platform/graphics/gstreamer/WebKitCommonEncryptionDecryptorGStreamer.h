@@ -54,7 +54,6 @@ struct _WebKitMediaCommonEncryptionDecryptClass {
     GstBaseTransformClass parentClass;
 
     const char* protectionSystemId;
-    void (*requestDecryptionKey) (WebKitMediaCommonEncryptionDecrypt*, GstBuffer* initData);
     gboolean (*handleKeyResponse) (WebKitMediaCommonEncryptionDecrypt*, GstEvent* event);
     gboolean (*setupCipher) (WebKitMediaCommonEncryptionDecrypt*);
     gboolean (*decrypt) (WebKitMediaCommonEncryptionDecrypt*, GstBuffer* ivBuffer, GstBuffer* buffer, unsigned subSamplesCount, GstBuffer* subSamplesBuffer);

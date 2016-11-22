@@ -35,11 +35,13 @@
 #include "IntRect.h"
 #include "MediaPlayer.h"
 #include "NotImplemented.h"
+#include "SharedBuffer.h"
 #include "UUID.h"
 #include "VideoSinkGStreamer.h"
 #include "WebKitWebSourceGStreamer.h"
 #include <wtf/glib/GMutexLocker.h>
 #include <wtf/glib/GUniquePtr.h>
+#include <wtf/text/AtomicString.h>
 #include <wtf/text/CString.h>
 #include <wtf/MathExtras.h>
 
@@ -150,6 +152,11 @@ void registerWebKitGStreamerElements()
 #endif
 }
 
+#if ENABLE(ENCRYPTED_MEDIA)
+static AtomicString keySystemUuidToId(const AtomicString&);
+static AtomicString keySystemIdToUuid(const AtomicString&);
+#endif
+
 static int greatestCommonDivisor(int a, int b)
 {
     while (b) {
@@ -245,6 +252,7 @@ MediaPlayerPrivateGStreamerBase::MediaPlayerPrivateGStreamerBase(MediaPlayer* pl
 
 MediaPlayerPrivateGStreamerBase::~MediaPlayerPrivateGStreamerBase()
 {
+    m_protectionCondition.notifyOne();
     m_notifier.cancelPendingNotifications();
 
     if (m_videoSink) {
@@ -308,15 +316,15 @@ void MediaPlayerPrivateGStreamerBase::clearSamples()
 bool MediaPlayerPrivateGStreamerBase::handleSyncMessage(GstMessage* message)
 {
     UNUSED_PARAM(message);
-#if USE(GSTREAMER_GL)
     if (GST_MESSAGE_TYPE(message) == GST_MESSAGE_NEED_CONTEXT) {
         const gchar* contextType;
         gst_message_parse_context_type(message, &contextType);
 
-        if (!ensureGstGLContext())
-            return false;
-
+#if USE(GSTREAMER_GL)
         if (!g_strcmp0(contextType, GST_GL_DISPLAY_CONTEXT_TYPE)) {
+            if (!ensureGstGLContext())
+                return false;
+
             GRefPtr<GstContext> displayContext = adoptGRef(gst_context_new(GST_GL_DISPLAY_CONTEXT_TYPE, TRUE));
             gst_context_set_gl_display(displayContext.get(), m_glDisplay.get());
             gst_element_set_context(GST_ELEMENT(message->src), displayContext.get());
@@ -324,57 +332,109 @@ bool MediaPlayerPrivateGStreamerBase::handleSyncMessage(GstMessage* message)
         }
 
         if (!g_strcmp0(contextType, "gst.gl.app_context")) {
+            if (!ensureGstGLContext())
+                return false;
+
             GRefPtr<GstContext> appContext = adoptGRef(gst_context_new("gst.gl.app_context", TRUE));
             GstStructure* structure = gst_context_writable_structure(appContext.get());
             gst_structure_set(structure, "context", GST_GL_TYPE_CONTEXT, m_glContext.get(), nullptr);
             gst_element_set_context(GST_ELEMENT(message->src), appContext.get());
             return true;
         }
-    }
 #endif // USE(GSTREAMER_GL)
 
 #if ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2)
-    if (GST_MESSAGE_TYPE(message) == GST_MESSAGE_ELEMENT) {
-        const GstStructure* structure = gst_message_get_structure(message);
-        if (gst_structure_has_name(structure, "drm-key-needed")) {
-            GST_DEBUG("handling drm-key-needed message");
-#if USE(PLAYREADY)
-            PlayreadySession* session = prSession();
-            if (session && session->keyRequested()) {
-                GST_DEBUG("key requested already");
-                if (session->ready()) {
-                    GST_DEBUG("key already negotiated");
-                    emitSession();
-                }
+        if (!g_strcmp0(contextType, "drm-preferred-decryption-system-id")) {
+            if (isMainThread()) {
+                GST_ERROR("can't handle drm-preferred-decryption-system-id need context message in the main thread");
+                ASSERT_NOT_REACHED();
                 return false;
             }
+            GST_DEBUG("handling drm-preferred-decryption-system-id need context message");
+            const GstStructure* structure = gst_message_get_structure(message);
+            const GValue* streamEncryptionEventsList = gst_structure_get_value(structure, "stream-encryption-events");
+            ASSERT(streamEncryptionEventsList && GST_VALUE_HOLDS_LIST(streamEncryptionEventsList));
+            unsigned streamEncryptionEventsListSize = gst_value_list_get_size(streamEncryptionEventsList);
+            GST_TRACE("found %u protection events", streamEncryptionEventsListSize);
+            Ref<SharedBuffer> concatenatedInitDataChunks = SharedBuffer::create();
+            unsigned concatenatedInitDataChunksNumber = 0;
+            String eventKeySystemIdString;
+            for (unsigned i = 0; i < streamEncryptionEventsListSize; ++i) {
+                const GValue* value = gst_value_list_get_value(streamEncryptionEventsList, i);
+                GRefPtr<GstEvent> event = static_cast<GstEvent*>(g_value_get_boxed(value));
+                const gchar* eventKeySystemId = nullptr;
+                GstBuffer* data = nullptr;
+                gst_event_parse_protection(event.get(), &eventKeySystemId, &data, nullptr);
+
+#if USE(PLAYREADY)
+                if (webkit_media_playready_decrypt_is_playready_key_system_id(eventKeySystemId)) {
+                    PlayreadySession* session = prSession();
+                    if (session && session->keyRequested()) {
+                        GST_DEBUG("playready key requested already");
+                        if (session->ready()) {
+                            GST_DEBUG("playready key already negotiated");
+                            emitSession();
+                        }
+                        break;
+                    }
+                }
 #endif
-            // Here we receive the DRM init data from the pipeline: we will emit
-            // the needkey event with that data and the browser might create a
-            // CDMSession from this event handler. If such a session was created
-            // We will emit the message event from the session to provide the
-            // DRM challenge to the browser and wait for an update. If on the
-            // contrary no session was created we won't wait and let the pipeline
-            // error out by itself.
-            GstBuffer* data;
-            const char* keySystemId;
-            gboolean valid = gst_structure_get(structure, "data", GST_TYPE_BUFFER, &data,
-                                               "key-system-id", G_TYPE_STRING, &keySystemId, nullptr);
-            GstMapInfo mapInfo;
-            if (!valid || !gst_buffer_map(data, &mapInfo, GST_MAP_READ))
+
+                // Here we receive the DRM init data from the pipeline: we will emit
+                // the needkey event with that data and the browser might create a
+                // CDMSession from this event handler. If such a session was created
+                // We will emit the message event from the session to provide the
+                // DRM challenge to the browser and wait for an update. If on the
+                // contrary no session was created we won't wait and let the pipeline
+                // error out by itself.
+                GstMapInfo mapInfo;
+                if (!gst_buffer_map(data, &mapInfo, GST_MAP_READ)) {
+                    GST_WARNING("cannot map %s protection data", eventKeySystemId);
+                    break;
+                }
+
+                GST_TRACE("appending init data for %s of size %u", eventKeySystemId, mapInfo.size);
+                GST_MEMDUMP("init data", reinterpret_cast<const unsigned char *>(mapInfo.data), mapInfo.size);
+                concatenatedInitDataChunks->append(reinterpret_cast<const char *>(mapInfo.data), mapInfo.size);
+                ++concatenatedInitDataChunksNumber;
+                eventKeySystemIdString = eventKeySystemId;
+                gst_buffer_unmap(data, &mapInfo);
+            }
+
+            if (concatenatedInitDataChunksNumber == 0)
                 return false;
 
-            GST_DEBUG("scheduling keyNeeded event");
-            // FIXME: Provide a somehow valid sessionId.
+            if (concatenatedInitDataChunksNumber > 1)
+                eventKeySystemIdString = emptyString();
+
+            RunLoop::main().dispatch([this, eventKeySystemIdString, initData = WTFMove(concatenatedInitDataChunks)] {
+                GST_DEBUG("scheduling keyNeeded event for %s with concatenated init datas size of %u", eventKeySystemIdString.utf8().data(), initData->size());
+                GST_MEMDUMP("init datas", reinterpret_cast<const unsigned char *>(initData->data()), initData->size());
+
+                // FIXME: Provide a somehow valid sessionId.
 #if ENABLE(ENCRYPTED_MEDIA)
-            needKey(keySystemId, "sessionId", reinterpret_cast<const unsigned char *>(mapInfo.data), mapInfo.size);
+                needKey(keySystemUuidToId(eventKeySystemIdString).string(), "sessionId", reinterpret_cast<const unsigned char *>(initData->data()), initData->size());
 #elif ENABLE(ENCRYPTED_MEDIA_V2)
-            RefPtr<Uint8Array> initData = Uint8Array::create(reinterpret_cast<const unsigned char *>(mapInfo.data), mapInfo.size);
-            needKey(initData);
+                RefPtr<Uint8Array> initDataArray = Uint8Array::create(reinterpret_cast<const unsigned char *>(initData->data()), initData->size());
+                needKey(initDataArray);
 #else
-            ASSERT_NOT_REACHED();
+                ASSERT_NOT_REACHED();
 #endif
-            gst_buffer_unmap(data, &mapInfo);
+            });
+
+            GST_INFO("waiting for a key request to arrive");
+            LockHolder lock(m_protectionMutex);
+            m_protectionCondition.waitFor(m_protectionMutex, std::chrono::seconds(4), [this] { return !this->m_lastGenerateKeyRequestKeySystemUuid.isEmpty(); });
+            if (!m_lastGenerateKeyRequestKeySystemUuid.isEmpty()) {
+                GST_INFO("got a key request, continuing with %s on %s", m_lastGenerateKeyRequestKeySystemUuid.utf8().data(), GST_MESSAGE_SRC_NAME(message));
+
+                GRefPtr<GstContext> context = adoptGRef(gst_context_new("drm-preferred-decryption-system-id", FALSE));
+                GstStructure *contextStructure = gst_context_writable_structure(context.get());
+                gst_structure_set(contextStructure, "decryption-system-id", G_TYPE_STRING, m_lastGenerateKeyRequestKeySystemUuid.utf8().data(), nullptr);
+                gst_element_set_context(GST_ELEMENT(GST_MESSAGE_SRC(message)), context.get());
+            } else
+                GST_WARNING("did not get a proper key request");
+
             return true;
         }
     }
@@ -1258,8 +1318,8 @@ MediaPlayer::MediaKeyException MediaPlayerPrivateGStreamerBase::addKey(const Str
     GST_DEBUG("addKey system: %s, length: %u, session: %s", keySystem.utf8().data(), keyLength, sessionID.utf8().data());
 
 #if USE(PLAYREADY)
-    if (equalIgnoringASCIICase(keySystem, "com.microsoft.playready")
-        || equalIgnoringASCIICase(keySystem, "com.youtube.playready")) {
+    if (equalIgnoringASCIICase(keySystem, PLAYREADY_PROTECTION_SYSTEM_ID)
+        || equalIgnoringASCIICase(keySystem, PLAYREADY_YT_PROTECTION_SYSTEM_ID)) {
         RefPtr<Uint8Array> key = Uint8Array::create(keyData, keyLength);
         RefPtr<Uint8Array> nextMessage;
         unsigned short errorCode;
@@ -1294,11 +1354,12 @@ MediaPlayer::MediaKeyException MediaPlayerPrivateGStreamerBase::addKey(const Str
 
 MediaPlayer::MediaKeyException MediaPlayerPrivateGStreamerBase::generateKeyRequest(const String& keySystem, const unsigned char* initDataPtr, unsigned initDataLength, const String& customData)
 {
+    receivedGenerateKeyRequest(keySystem);
     GST_DEBUG("generating key request for system: %s, init data size %u", keySystem.utf8().data(), initDataLength);
     GST_MEMDUMP("init data", initDataPtr, initDataLength);
 #if USE(PLAYREADY)
-    if (equalIgnoringASCIICase(keySystem, "com.microsoft.playready")
-        || equalIgnoringASCIICase(keySystem, "com.youtube.playready")) {
+    if (equalIgnoringASCIICase(keySystem, PLAYREADY_PROTECTION_SYSTEM_ID)
+        || equalIgnoringASCIICase(keySystem, PLAYREADY_YT_PROTECTION_SYSTEM_ID)) {
         if (!m_prSession)
             m_prSession = new PlayreadySession();
         if (m_prSession->ready()) {
@@ -1375,8 +1436,8 @@ std::unique_ptr<CDMSession> MediaPlayerPrivateGStreamerBase::createSession(const
 
     GST_DEBUG("creating key session for %s", keySystem.utf8().data());
 #if USE(PLAYREADY)
-    if (equalIgnoringASCIICase(keySystem, "com.microsoft.playready")
-        || equalIgnoringASCIICase(keySystem, "com.youtube.playready"))
+    if (equalIgnoringASCIICase(keySystem, PLAYREADY_PROTECTION_SYSTEM_ID)
+        || equalIgnoringASCIICase(keySystem, PLAYREADY_YT_PROTECTION_SYSTEM_ID))
         return std::make_unique<CDMPRSessionGStreamer>(client);
 #endif
 
@@ -1392,6 +1453,42 @@ void MediaPlayerPrivateGStreamerBase::dispatchDecryptionKey(GstBuffer* buffer)
 }
 #endif
 
+#if ENABLE(ENCRYPTED_MEDIA)
+static AtomicString keySystemUuidToId(const AtomicString& uuid)
+{
+    if (equalIgnoringASCIICase(uuid, CLEAR_KEY_PROTECTION_SYSTEM_UUID))
+        return AtomicString(CLEAR_KEY_PROTECTION_SYSTEM_ID);
+
+#if USE(PLAYREADY)
+    if (equalIgnoringASCIICase(uuid, PLAYREADY_PROTECTION_SYSTEM_UUID))
+        return AtomicString(PLAYREADY_PROTECTION_SYSTEM_ID);
+#endif
+
+    return { };
+}
+
+static AtomicString keySystemIdToUuid(const AtomicString& id)
+{
+    if (equalIgnoringASCIICase(id, CLEAR_KEY_PROTECTION_SYSTEM_ID))
+        return AtomicString(CLEAR_KEY_PROTECTION_SYSTEM_UUID);
+
+#if USE(PLAYREADY)
+    if (equalIgnoringASCIICase(id, PLAYREADY_PROTECTION_SYSTEM_ID)
+        || equalIgnoringASCIICase(id, PLAYREADY_YT_PROTECTION_SYSTEM_ID))
+        return AtomicString(PLAYREADY_PROTECTION_SYSTEM_UUID);
+#endif
+
+    return { };
+}
+
+void MediaPlayerPrivateGStreamerBase::receivedGenerateKeyRequest(const String& keySystem)
+{
+    GST_DEBUG("received generate key request for %s", keySystem.utf8().data());
+    m_lastGenerateKeyRequestKeySystemUuid = keySystemIdToUuid(keySystem);
+    m_protectionCondition.notifyOne();
+}
+#endif
+
 bool MediaPlayerPrivateGStreamerBase::supportsKeySystem(const String& keySystem, const String& mimeType)
 {
     GST_DEBUG("Checking for KeySystem support with %s and type %s", keySystem.utf8().data(), mimeType.utf8().data());
@@ -1402,8 +1499,8 @@ bool MediaPlayerPrivateGStreamerBase::supportsKeySystem(const String& keySystem,
 #endif
 
 #if USE(PLAYREADY) && (ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2))
-    if (equalIgnoringASCIICase(keySystem, "com.microsoft.playready")
-        || equalIgnoringASCIICase(keySystem, "com.youtube.playready"))
+    if (equalIgnoringASCIICase(keySystem, PLAYREADY_PROTECTION_SYSTEM_ID)
+        || equalIgnoringASCIICase(keySystem, PLAYREADY_YT_PROTECTION_SYSTEM_ID))
         return true;
 #endif
 

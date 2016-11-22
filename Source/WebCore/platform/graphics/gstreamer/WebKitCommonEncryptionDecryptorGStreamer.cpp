@@ -31,8 +31,6 @@
 
 #define WEBKIT_MEDIA_CENC_DECRYPT_GET_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), WEBKIT_TYPE_MEDIA_CENC_DECRYPT, WebKitMediaCommonEncryptionDecryptPrivate))
 struct _WebKitMediaCommonEncryptionDecryptPrivate {
-    GstEvent* protectionEvent;
-
     bool keyReceived;
     Lock mutex;
     Condition condition;
@@ -295,37 +293,6 @@ static gboolean webkitMediaCommonEncryptionDecryptSinkEventHandler(GstBaseTransf
     gboolean result = FALSE;
 
     switch (GST_EVENT_TYPE(event)) {
-    case GST_EVENT_PROTECTION: {
-        const char* systemId;
-        const char* origin;
-        GstBuffer* initDataBuffer;
-
-        GST_DEBUG_OBJECT(self, "received protection event");
-        gst_event_parse_protection(event, &systemId, &initDataBuffer, &origin);
-        GST_DEBUG_OBJECT(self, "systemId: %s", systemId);
-
-        if (!g_str_equal(systemId, klass->protectionSystemId)) {
-            gst_event_unref(event);
-            result = TRUE;
-            break;
-        }
-
-        // Keep the event ref around so that the parsed event data
-        // remains valid until the drm-key-need message has been sent.
-        priv->protectionEvent = event;
-        RunLoop::main().dispatch([self, initDataBuffer] {
-            WebKitMediaCommonEncryptionDecryptClass* klass = WEBKIT_MEDIA_CENC_DECRYPT_GET_CLASS(self);
-            if (klass) {
-                klass->requestDecryptionKey(self, initDataBuffer);
-                if (self->priv->protectionEvent) {
-                    gst_event_unref(self->priv->protectionEvent);
-                    self->priv->protectionEvent = nullptr;
-                }
-            }});
-
-        result = TRUE;
-        break;
-    }
     case GST_EVENT_CUSTOM_DOWNSTREAM_OOB: {
         if (klass->handleKeyResponse(self, event)) {
             GST_DEBUG_OBJECT(self, "key received");

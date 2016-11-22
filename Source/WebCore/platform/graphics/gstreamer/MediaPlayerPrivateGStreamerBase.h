@@ -269,6 +269,13 @@ private:
 #if USE(TEXTURE_MAPPER_GL)
     TextureMapperGL::Flags m_textureMapperRotationFlag;
 #endif
+
+#if ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2)
+    Lock m_protectionMutex;
+    Condition m_protectionCondition;
+    String m_lastGenerateKeyRequestKeySystemUuid;
+    void receivedGenerateKeyRequest(const String&);
+#endif
 };
 }
 

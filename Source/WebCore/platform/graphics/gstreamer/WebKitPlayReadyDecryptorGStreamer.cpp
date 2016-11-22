@@ -32,20 +32,17 @@ struct _WebKitMediaPlayReadyDecryptPrivate {
 };
 
 static void webKitMediaPlayReadyDecryptorFinalize(GObject*);
-static void webKitMediaPlayReadyDecryptorRequestDecryptionKey(WebKitMediaCommonEncryptionDecrypt* self, GstBuffer*);
 static gboolean webKitMediaPlayReadyDecryptorHandleKeyResponse(WebKitMediaCommonEncryptionDecrypt* self, GstEvent*);
 static gboolean webKitMediaPlayReadyDecryptorDecrypt(WebKitMediaCommonEncryptionDecrypt*, GstBuffer* iv, GstBuffer* sample, unsigned subSamplesCount, GstBuffer* subSamples);
 
 GST_DEBUG_CATEGORY(webkit_media_playready_decrypt_debug_category);
 #define GST_CAT_DEFAULT webkit_media_playready_decrypt_debug_category
 
-#define PLAYREADY_PROTECTION_SYSTEM_ID "9a04f079-9840-4286-ab92-e65be0885f95"
-
 static GstStaticPadTemplate sinkTemplate = GST_STATIC_PAD_TEMPLATE("sink",
     GST_PAD_SINK,
     GST_PAD_ALWAYS,
-    GST_STATIC_CAPS("application/x-cenc, original-media-type=(string)video/x-h264, protection-system=(string)" PLAYREADY_PROTECTION_SYSTEM_ID "; "
-    "application/x-cenc, original-media-type=(string)audio/mpeg, protection-system=(string)" PLAYREADY_PROTECTION_SYSTEM_ID
+    GST_STATIC_CAPS("application/x-cenc, original-media-type=(string)video/x-h264, protection-system=(string)" PLAYREADY_PROTECTION_SYSTEM_UUID "; "
+    "application/x-cenc, original-media-type=(string)audio/mpeg, protection-system=(string)" PLAYREADY_PROTECTION_SYSTEM_UUID
         ));
 
 static GstStaticPadTemplate srcTemplate = GST_STATIC_PAD_TEMPLATE("src",
@@ -76,8 +73,7 @@ static void webkit_media_playready_decrypt_class_init(WebKitMediaPlayReadyDecryp
     GST_DEBUG_CATEGORY_INIT(webkit_media_playready_decrypt_debug_category,
         "webkitplayready", 0, "PlayReady decryptor");
 
-    cencClass->protectionSystemId = PLAYREADY_PROTECTION_SYSTEM_ID;
-    cencClass->requestDecryptionKey = GST_DEBUG_FUNCPTR(webKitMediaPlayReadyDecryptorRequestDecryptionKey);
+    cencClass->protectionSystemId = PLAYREADY_PROTECTION_SYSTEM_UUID;
     cencClass->handleKeyResponse = GST_DEBUG_FUNCPTR(webKitMediaPlayReadyDecryptorHandleKeyResponse);
     cencClass->decrypt = GST_DEBUG_FUNCPTR(webKitMediaPlayReadyDecryptorDecrypt);
 
@@ -96,14 +92,6 @@ static void webKitMediaPlayReadyDecryptorFinalize(GObject* object)
     priv->~WebKitMediaPlayReadyDecryptPrivate();
 
     GST_CALL_PARENT(G_OBJECT_CLASS, finalize, (object));
-}
-
-static void webKitMediaPlayReadyDecryptorRequestDecryptionKey(WebKitMediaCommonEncryptionDecrypt* self, GstBuffer* initDataBuffer)
-{
-    gst_element_post_message(GST_ELEMENT(self),
-        gst_message_new_element(GST_OBJECT(self),
-            gst_structure_new("drm-key-needed", "data", GST_TYPE_BUFFER, initDataBuffer,
-                "key-system-id", G_TYPE_STRING, "com.microsoft.playready", nullptr)));
 }
 
 static gboolean webKitMediaPlayReadyDecryptorHandleKeyResponse(WebKitMediaCommonEncryptionDecrypt* self, GstEvent* event)
@@ -224,6 +212,11 @@ static gboolean webKitMediaPlayReadyDecryptorDecrypt(WebKitMediaCommonEncryption
     gst_buffer_unmap(buffer, &map);
     gst_buffer_unmap(ivBuffer, &ivMap);
     return true;
+}
+
+bool webkit_media_playready_decrypt_is_playready_key_system_id(const gchar* keySystemId)
+{
+    return g_strcmp0(keySystemId, PLAYREADY_PROTECTION_SYSTEM_UUID) == 0;
 }
 
 #endif
