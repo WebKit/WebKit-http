@@ -26,7 +26,6 @@ set(QtWK1ApiTests_LIBRARIES
     ${Qt5Network_LIBRARIES}
     ${Qt5Test_LIBRARIES}
     ${Qt5Widgets_LIBRARIES}
-    WebCoreTestSupport
     WebKitWidgets
 )
 
@@ -36,9 +35,6 @@ set(QtWK1ApiTests_RUNTIME_OUTPUT_DIRECTORY
 )
 
 set(QtWK1ApiTests
-    keyeddecoderqt
-    keyedencoderqt
-
     qgraphicswebview
     qobjectbridge
     qwebelement
