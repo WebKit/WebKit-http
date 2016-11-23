@@ -72,6 +72,10 @@
 #include "NetworkCacheCoders.h"
 #endif
 
+#ifdef __GLIBC__
+#include <malloc.h>
+#endif
+
 using namespace WebCore;
 
 namespace WebKit {
@@ -665,6 +669,9 @@ void NetworkProcess::initializeSandbox(const ChildProcessInitializationParameter
 
 void NetworkProcess::platformLowMemoryHandler(Critical)
 {
+#ifdef __GLIBC__
+    malloc_trim(0);
+#endif
 }
 #endif
 
