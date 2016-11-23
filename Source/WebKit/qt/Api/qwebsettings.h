@@ -87,7 +87,8 @@ public:
         NotificationsEnabled,
         WebAudioEnabled,
         MediaSourceEnabled,
-        MediaEnabled
+        MediaEnabled,
+        WebSecurityEnabled
     };
     enum WebGraphic {
         MissingImageGraphic,
