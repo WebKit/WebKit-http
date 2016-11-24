@@ -26,6 +26,11 @@ set(test_main_SOURCES
     ${TESTWEBKITAPI_DIR}/wpe/main.cpp
 )
 
+set(bundle_harness_SOURCES
+    ${TESTWEBKITAPI_DIR}/wpe/InjectedBundleControllerWPE.cpp
+    ${TESTWEBKITAPI_DIR}/wpe/PlatformUtilitiesWPE.cpp
+)
+
 # TestWTF
 
 list(APPEND TestWTF_SOURCES
