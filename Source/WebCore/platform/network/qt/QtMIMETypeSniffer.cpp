@@ -68,3 +68,5 @@ void QtMIMETypeSniffer::trySniffing()
     m_isFinished = true;
     emit finished();
 }
+
+#include "moc_QtMIMETypeSniffer.cpp"

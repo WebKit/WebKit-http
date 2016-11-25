@@ -29,7 +29,9 @@ if (WIN32)
     list(REMOVE_ITEM JavaScriptCore_SOURCES
         inspector/JSGlobalObjectInspectorController.cpp
     )
+endif ()
 
+if (MSVC)
     file(MAKE_DIRECTORY ${DERIVED_SOURCES_DIR}/ForwardingHeaders/JavaScriptCore)
 
     set(JavaScriptCore_PRE_BUILD_COMMAND "${CMAKE_BINARY_DIR}/DerivedSources/JavaScriptCore/preBuild.cmd")

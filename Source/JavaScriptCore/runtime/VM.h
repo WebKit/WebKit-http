@@ -247,10 +247,10 @@ public:
     JS_EXPORT_PRIVATE ~VM();
 
     JS_EXPORT_PRIVATE Watchdog& ensureWatchdog();
-    JS_EXPORT_PRIVATE Watchdog* watchdog() { return m_watchdog.get(); }
+    Watchdog* watchdog() { return m_watchdog.get(); }
 
 #if ENABLE(SAMPLING_PROFILER)
-    JS_EXPORT_PRIVATE SamplingProfiler* samplingProfiler() { return m_samplingProfiler.get(); }
+    SamplingProfiler* samplingProfiler() { return m_samplingProfiler.get(); }
     JS_EXPORT_PRIVATE void ensureSamplingProfiler(RefPtr<Stopwatch>&&);
 #endif
 
@@ -597,7 +597,7 @@ public:
 
     JS_EXPORT_PRIVATE void queueMicrotask(JSGlobalObject*, PassRefPtr<Microtask>);
     JS_EXPORT_PRIVATE void drainMicrotasks();
-    JS_EXPORT_PRIVATE void setShouldRewriteConstAsVar(bool shouldRewrite) { m_shouldRewriteConstAsVar = shouldRewrite; }
+    void setShouldRewriteConstAsVar(bool shouldRewrite) { m_shouldRewriteConstAsVar = shouldRewrite; }
     ALWAYS_INLINE bool shouldRewriteConstAsVar() { return m_shouldRewriteConstAsVar; }
 
     inline bool shouldTriggerTermination(ExecState*);

@@ -39,6 +39,7 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/platform/graphics/win"
     "${WEBCORE_DIR}/platform/network/qt"
     "${WEBCORE_DIR}/platform/text/qt"
+    "${WEBCORE_DIR}/platform/win"
     "${WTF_DIR}"
 )
 
@@ -367,12 +368,18 @@ if (HAVE_FONTCONFIG)
 endif ()
 
 # From PlatformWin.cmake
-if (WIN32)
 
+if (WIN32)
     if (${JavaScriptCore_LIBRARY_TYPE} MATCHES STATIC)
         add_definitions(-DSTATICALLY_LINKED_WITH_WTF -DSTATICALLY_LINKED_WITH_JavaScriptCore)
     endif ()
 
+    list(APPEND WebCore_SOURCES
+        platform/win/SystemInfo.cpp
+    )
+endif ()
+
+if (MSVC)
     list(APPEND WebCore_INCLUDE_DIRECTORIES
         "${CMAKE_BINARY_DIR}/../include/private"
         "${CMAKE_BINARY_DIR}/../include/private/JavaScriptCore"
@@ -399,10 +406,6 @@ if (WIN32)
         "${DERIVED_SOURCES_DIR}/ForwardingHeaders/WTF"
         "${WEBCORE_DIR}/ForwardingHeaders"
         "${WEBCORE_DIR}/platform/win"
-    )
-
-    list(APPEND WebCore_SOURCES
-        platform/win/SystemInfo.cpp
     )
 
     file(MAKE_DIRECTORY ${DERIVED_SOURCES_DIR}/ForwardingHeaders/WebCore)
