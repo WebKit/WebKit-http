@@ -54,6 +54,8 @@ struct _WebKitMediaPlayReadyDecryptClass {
     WebKitMediaCommonEncryptionDecryptClass parentClass;
 };
 
+bool webkit_media_playready_decrypt_is_playready_key_system_id(const gchar* keySystemId);
+
 G_END_DECLS
 
 #endif
