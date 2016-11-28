@@ -30,7 +30,6 @@
 #include "ChildProcessMain.h"
 #include "WebProcess.h"
 #include <WebCore/PlatformDisplayWPE.h>
-#include <WebCore/SoupNetworkSession.h>
 #include <glib.h>
 #include <libsoup/soup.h>
 
@@ -50,7 +49,6 @@ public:
             WTF::sleep(30);
         }
 
-        SoupNetworkSession::defaultSession().setupHTTPProxyFromEnvironment();
         return true;
     }
 
