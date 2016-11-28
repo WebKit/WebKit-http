@@ -32,6 +32,7 @@ extern "C" {
 #endif
 
 #include <EGL/eglplatform.h>
+#include <stdint.h>
 
 struct wpe_renderer_backend_egl;
 struct wpe_renderer_backend_egl_target;
