@@ -119,6 +119,8 @@ CompositingRunLoop::CompositingRunLoop(std::function<void ()>&& updateFunction)
 
 #if PLATFORM(GTK)
     m_updateTimer.setPriority(G_PRIORITY_HIGH_IDLE);
+#elif PLATFORM(WPE)
+    m_updateTimer.setPriority(G_PRIORITY_HIGH + 30);
 #endif
 }
 
