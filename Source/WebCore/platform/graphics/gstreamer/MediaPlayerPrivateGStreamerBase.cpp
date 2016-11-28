@@ -352,23 +352,12 @@ bool MediaPlayerPrivateGStreamerBase::handleSyncMessage(GstMessage* message)
         const gchar* contextType;
         gst_message_parse_context_type(message, &contextType);
 
-        if (!ensureGstGLContext())
+        GRefPtr<GstContext> elementContext = adoptGRef(requestGLContext(contextType, this));
+        if (!elementContext)
             return false;
 
-        if (!g_strcmp0(contextType, GST_GL_DISPLAY_CONTEXT_TYPE)) {
-            GRefPtr<GstContext> displayContext = adoptGRef(gst_context_new(GST_GL_DISPLAY_CONTEXT_TYPE, TRUE));
-            gst_context_set_gl_display(displayContext.get(), m_glDisplay.get());
-            gst_element_set_context(GST_ELEMENT(message->src), displayContext.get());
-            return true;
-        }
-
-        if (!g_strcmp0(contextType, "gst.gl.app_context")) {
-            GRefPtr<GstContext> appContext = adoptGRef(gst_context_new("gst.gl.app_context", TRUE));
-            GstStructure* structure = gst_context_writable_structure(appContext.get());
-            gst_structure_set(structure, "context", GST_GL_TYPE_CONTEXT, m_glContext.get(), nullptr);
-            gst_element_set_context(GST_ELEMENT(message->src), appContext.get());
-            return true;
-        }
+        gst_element_set_context(GST_ELEMENT(message->src), elementContext.get());
+        return true;
     }
 #endif // USE(GSTREAMER_GL)
 
