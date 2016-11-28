@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Igalia S.L.
+ * Copyright (C) 2016 Igalia S.L.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -23,49 +23,21 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WKView_h
-#define WKView_h
+#include "config.h"
+#include "WPEViewClient.h"
 
-#include <WebKit/WKBase.h>
-#include <WebKit/WKGeometry.h>
+#include "WPEView.h"
+#include "WKAPICast.h"
+#include "WKBase.h"
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+using namespace WebKit;
 
-struct wpe_view_backend;
+namespace WKWPE {
 
-WK_EXPORT WKViewRef WKViewCreate(WKPageConfigurationRef);
-WK_EXPORT WKViewRef WKViewCreateWithViewBackend(struct wpe_view_backend*, WKPageConfigurationRef);
-
-WK_EXPORT WKPageRef WKViewGetPage(WKViewRef);
-
-enum {
-    kWKViewStateIsInWindow = 1 << 0,
-    kWKViewStateIsVisible = 1 << 1,
-};
-typedef uint32_t WKViewState;
-
-WK_EXPORT void WKViewSetViewState(WKViewRef, WKViewState);
-
-typedef void (*WKViewFrameDisplayed)(WKViewRef view, const void* clientInfo);
-
-typedef struct WKViewClientBase {
-    int version;
-    const void* clientInfo;
-} WKViewClientBase;
-
-typedef struct WKViewClientV0 {
-    WKViewClientBase base;
-
-    // version 0
-    WKViewFrameDisplayed frameDisplayed;
-} WKViewClientV0;
-
-WK_EXPORT void WKViewSetViewClient(WKViewRef, const WKViewClientBase*);
-
-#ifdef __cplusplus
+void ViewClient::frameDisplayed(View& view)
+{
+    if (m_client.frameDisplayed)
+        m_client.frameDisplayed(toAPI(&view), m_client.base.clientInfo);
 }
-#endif
 
-#endif // WKView_h
+} // namespace WKWPE

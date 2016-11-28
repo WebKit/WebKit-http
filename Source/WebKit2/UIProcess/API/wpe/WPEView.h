@@ -30,6 +30,7 @@
 #include "CompositingManagerProxy.h"
 #include "PageClientImpl.h"
 #include "WebPageProxy.h"
+#include "WPEViewClient.h"
 #include <WebCore/ActivityState.h>
 #include <memory>
 #include <wtf/RefPtr.h>
@@ -50,6 +51,10 @@ public:
         return new View(backend, configuration);
     }
 
+    // Client methods
+    void initializeClient(const WKViewClientBase*);
+    void frameDisplayed();
+
     WebKit::WebPageProxy& page() { return *m_pageProxy; }
 
     struct wpe_view_backend* backend() { return m_backend; }
@@ -64,6 +69,8 @@ private:
     virtual ~View();
 
     void setSize(const WebCore::IntSize& size);
+
+    ViewClient m_client;
 
     std::unique_ptr<WebKit::PageClientImpl> m_pageClient;
     RefPtr<WebKit::WebPageProxy> m_pageProxy;

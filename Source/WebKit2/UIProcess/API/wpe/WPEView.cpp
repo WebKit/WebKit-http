@@ -75,6 +75,12 @@ View::View(struct wpe_view_backend* backend, const API::PageConfiguration& baseC
             auto& view = *reinterpret_cast<View*>(data);
             view.setSize(WebCore::IntSize(width, height));
         },
+        // frame_displayed
+        [](void* data)
+        {
+            auto& view = *reinterpret_cast<View*>(data);
+            view.frameDisplayed();
+        }
     };
     wpe_view_backend_set_backend_client(m_backend, &s_backendClient, this);
 
@@ -114,6 +120,16 @@ View::View(struct wpe_view_backend* backend, const API::PageConfiguration& baseC
 View::~View()
 {
     wpe_view_backend_destroy(m_backend);
+}
+
+void View::initializeClient(const WKViewClientBase* client)
+{
+    m_client.initialize(client);
+}
+
+void View::frameDisplayed()
+{
+    m_client.frameDisplayed(*this);
 }
 
 void View::setSize(const WebCore::IntSize& size)
