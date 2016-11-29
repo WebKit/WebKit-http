@@ -29,9 +29,9 @@ static GstStaticPadTemplate sinkTemplate = GST_STATIC_PAD_TEMPLATE("sink",
     GST_STATIC_CAPS("application/x-cenc, original-media-type=(string)video/webm, protection-system=(string)" WIDEVINE_PROTECTION_SYSTEM_ID "; "
     "application/x-cenc, original-media-type=(string)video/mp4, protection-system=(string)" WIDEVINE_PROTECTION_SYSTEM_ID "; "
     "application/x-cenc, original-media-type=(string)audio/webm, protection-system=(string)" WIDEVINE_PROTECTION_SYSTEM_ID ";"
-    "application/x-cenc, original-media-type=(string)audio/mp4, protection-system=(string)" WIDEVINE_PROTECTION_SYSTEM_ID 
-    "application/x-cenc, original-media-type=(string)video/x-h264, protection-system=(string)" WIDEVINE_PROTECTION_SYSTEM_ID
-    "application/x-cenc, original-media-type=(string)audio/mpeg, protection-system=(string)" WIDEVINE_PROTECTION_SYSTEM_ID 
+    "application/x-cenc, original-media-type=(string)audio/mp4, protection-system=(string)" WIDEVINE_PROTECTION_SYSTEM_ID ";"
+    "application/x-cenc, original-media-type=(string)video/x-h264, protection-system=(string)" WIDEVINE_PROTECTION_SYSTEM_ID ";"
+    "application/x-cenc, original-media-type=(string)audio/mpeg, protection-system=(string)" WIDEVINE_PROTECTION_SYSTEM_ID ";"
      ));
 
 static GstStaticPadTemplate srcTemplate = GST_STATIC_PAD_TEMPLATE("src",
@@ -86,8 +86,11 @@ static void openCDMiWidevineDecryptorFinalize(GObject* object)
     printf("%s:%s:%d  \n",__FILE__,__func__,__LINE__);
     OpenCDMiWideVineDecrypt* self = OPENCDMI_WIDEVINE_DECRYPT(object);
     printf("%s:%s:%d  \n",__FILE__,__func__,__LINE__);
-    OpenCDMiWideVineDecryptPrivate* priv = self->priv;
+    OpenCDMiWideVineDecryptPrivate* priv = GST_OPENCDMI_WIDEVINE_DECRYPT_GET_PRIVATE(OPENCDMI_WIDEVINE_DECRYPT(self));
     printf("%s:%s:%d  priv = %x\n",__FILE__,__func__,__LINE__, priv);
+    priv->m_openCdm->releaseMem();
+    delete priv->m_openCdm;
+    priv->m_openCdm = nullptr;
 //    priv->~OpenCDMiWideVineDecryptPrivate();
     printf("%s:%s:%d  \n",__FILE__,__func__,__LINE__);
     GST_CALL_PARENT(G_OBJECT_CLASS, finalize, (object));

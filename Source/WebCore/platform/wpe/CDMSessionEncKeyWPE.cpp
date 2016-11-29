@@ -48,22 +48,25 @@ RefPtr<Uint8Array> CDMSessionEncKey::generateKeyRequest(const String& mimeType, 
 {
     UNUSED_PARAM(sysCode);
 
-    int ret = 0;
     int i;
-    unsigned char url[100] = "\0";
-    unsigned char initial_value[] = {"00000042"
-    "70737368"
-    "00000000"
-    "edef8ba979d64acea3c827dcd51d21ed"
-    "00000022"
-    "08011a0d7769646576696e655f746573"
-    "74220f73747265616d696e675f636c69"
-    "7031" }; //TODO remove this and use initData param
+    int ret = 0;
 
-    string sessionId; //TODO check sessionId setting sequence and update
+    string sessionId;
 
-    m_openCdmSession->CreateSession(mimeType.utf8().data(), initial_value,
-                                    strlen((const char*)initial_value), sessionId);
+    unsigned char tmpUrl[100] = "\0";
+    unsigned char initDataValue[initData->length()] = "\0";
+    printf("\n\nsize of initData : %d\n",initData->length());
+
+    memcpy(initDataValue, initData->data(), initData->length());
+
+    printf("printing initial_value ----------------->>>>>>\n");
+
+    for (int i = 0; i < initData->length(); i++)
+        printf("%02x ",initDataValue[i]);
+    printf("\n");
+
+    m_openCdmSession->CreateSession(mimeType.utf8().data(), initDataValue,
+                                   initData->length(), sessionId);
     if (!sessionId.size()) {
         printf("SessionId is empty \n");
         return nullptr;
@@ -75,7 +78,7 @@ RefPtr<Uint8Array> CDMSessionEncKey::generateKeyRequest(const String& mimeType, 
     cout << endl << "ses_id:CDMSessionEncKey:generateKeyRequest: "<< sessionId << endl;
 
     ret = m_openCdmSession->GetKeyMessage(m_message,
-                                   &m_msgLength, url, &m_destUrlLength);
+                                   &m_msgLength, tmpUrl, &m_destUrlLength);
 
     printf("This is file %s --function (%s)--%d \n",__FILE__,__func__, __LINE__);
     if ( (ret != 0) || (m_msgLength == 0) || (m_destUrlLength == 0) ) {
@@ -83,9 +86,7 @@ RefPtr<Uint8Array> CDMSessionEncKey::generateKeyRequest(const String& mimeType, 
         errorCode = MediaKeyError::MEDIA_KEYERR_UNKNOWN;
         return nullptr;
     } else {
-
-
-        destUrl = String::fromUTF8(url);
+        destUrl = String::fromUTF8(tmpUrl);
         return (Uint8Array::create((unsigned char*)m_message.c_str(), m_msgLength));
     }
 }
@@ -102,22 +103,34 @@ bool CDMSessionEncKey::update(Uint8Array* key, RefPtr<Uint8Array>& nextMessage, 
     UNUSED_PARAM(nextMessage);
     UNUSED_PARAM(errorCode);
     UNUSED_PARAM(sysytemCode);
-
+    int ret = 0;
+    std::string responseMsg;
     //TODO : remove debug prints
     char lic[3096];
-    String rawKeysString = String::fromUTF8(key->data(), key->length());
     printf("**********LIC UPDTE ***************************\n");
-    memcpy(lic,key->data(), key->length());
+    memcpy(lic, key->data(), key->length());
     printf("**********LIC UPDTE ***************************\n KEY LENGTH = %d ,KEYBYTELENGTH = %d",key->length(),key->byteLength());
     int i;
     printf("**********LIC FROM WEBKIT***************************\n");
-    for(i = 0; i< key->length();i++ )
+    for (i = 0; i < key->length(); i++ )
         printf(" %02X",lic[i]);
     printf("\n**********LIC FROM WEBKIT***************************\n");
     std::cout << key->data() << "\n";
 
-    m_openCdmSession->Update(key->data(), key->length());
+    printf("KeyUsable Changes --------------------->>>>>>>>>\n")
+ 
+    ret = m_openCdmSession->Update(key->data(), key->length(), responseMsg);
+    if (ret) {
+       printf("This is file %s --function (%s)--%d \n",__FILE__,__func__, __LINE__);
+       string rspMsg = "UpdateStatus:" + responseMsg;
+       RefPtr<Uint8Array> tmpMsg = Uint8Array::create((unsigned char*)rspMsg.c_str(), rspMsg.length());
+       nextMessage = tmpMsg;
+       errorCode = MediaKeyError::MEDIA_KEYERR_CLIENT;
+       printf("This is file %s --function (%s)--%d \n",__FILE__,__func__, __LINE__);
+       return false;
+    }
 
+    printf("This is file %s --function (%s)--%d \n",__FILE__,__func__, __LINE__);
     return true;
 }
 
