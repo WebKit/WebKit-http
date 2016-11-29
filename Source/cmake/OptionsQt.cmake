@@ -565,11 +565,15 @@ if (MSVC)
         /wd6246 /wd6255 /wd6387
     )
 
-    # Create pdb files for debugging purposes, also for Release builds
-    add_compile_options(/Zi /GS)
+    if (CMAKE_SIZEOF_VOID_P EQUAL 8)
+        # Create pdb files for debugging purposes, also for Release builds
+        set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} /Zi")
+        set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /Zi")
+        set(CMAKE_SHARED_LINKER_FLAGS_RELEASE "${CMAKE_SHARED_LINKER_FLAGS} /DEBUG")
+        set(CMAKE_EXE_LINKER_FLAGS_RELEASE "${CMAKE_EXE_LINKER_FLAGS} /DEBUG")
+    endif ()
 
-    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} /DEBUG")
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /DEBUG")
+    add_compile_options(/GS)
 
     # We do not use exceptions
     add_definitions(-D_HAS_EXCEPTIONS=0)
