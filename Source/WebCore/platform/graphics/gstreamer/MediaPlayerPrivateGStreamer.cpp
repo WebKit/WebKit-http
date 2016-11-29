@@ -1571,6 +1571,8 @@ void MediaPlayerPrivateGStreamer::updateStates()
                     m_buffering = false;
                     m_readyState = MediaPlayer::HaveEnoughData;
                     m_networkState = m_downloadFinished ? MediaPlayer::Idle : MediaPlayer::Loading;
+                    if (!m_fillTimer.isActive() && (state == GST_STATE_PAUSED))
+                        m_networkState = MediaPlayer::Idle;
                 } else {
                     GST_DEBUG("[Buffering] Stream still downloading.");
                     m_readyState = MediaPlayer::HaveCurrentData;
