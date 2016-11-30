@@ -366,6 +366,7 @@ bool MediaPlayerPrivateGStreamerBase::handleSyncMessage(GstMessage* message)
             for (unsigned i = 0; i < streamEncryptionEventsListSize; ++i) {
                 const GValue* value = gst_value_list_get_value(streamEncryptionEventsList, i);
                 GRefPtr<GstEvent> event = static_cast<GstEvent*>(g_value_get_boxed(value));
+                GST_TRACE("handling protection event %u", GST_EVENT_SEQNUM(event.get()));
                 const gchar* eventKeySystemId = nullptr;
                 GstBuffer* data = nullptr;
                 gst_event_parse_protection(event.get(), &eventKeySystemId, &data, nullptr);
@@ -373,7 +374,7 @@ bool MediaPlayerPrivateGStreamerBase::handleSyncMessage(GstMessage* message)
 #if USE(PLAYREADY)
                 if (webkit_media_playready_decrypt_is_playready_key_system_id(eventKeySystemId)) {
                     PlayreadySession* session = prSession();
-                    if (session && session->keyRequested()) {
+                    if (session && (session->keyRequested() || session->ready())) {
                         GST_DEBUG("playready key requested already");
                         if (session->ready()) {
                             GST_DEBUG("playready key already negotiated");
@@ -407,6 +408,7 @@ bool MediaPlayerPrivateGStreamerBase::handleSyncMessage(GstMessage* message)
                     Vector<uint8_t> initDataVector;
                     initDataVector.append(reinterpret_cast<uint8_t*>(mapInfo.data), mapInfo.size);
                     m_initDatas.add(eventKeySystemIdString, WTFMove(initDataVector));
+                    m_handledProtectionEvents.add(GST_EVENT_SEQNUM(event.get()));
                 }
                 gst_buffer_unmap(data, &mapInfo);
             }
@@ -1491,6 +1493,48 @@ void MediaPlayerPrivateGStreamerBase::dispatchDecryptionKey(GstBuffer* buffer)
 {
     gst_element_send_event(m_pipeline.get(), gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM_OOB,
         gst_structure_new("drm-cipher", "key", GST_TYPE_BUFFER, buffer, nullptr)));
+}
+
+void MediaPlayerPrivateGStreamerBase::handleProtectionEvent(GstEvent* event)
+{
+    if (m_handledProtectionEvents.contains(GST_EVENT_SEQNUM(event))) {
+        GST_TRACE("event %u already handled", GST_EVENT_SEQNUM(event));
+        m_handledProtectionEvents.remove(GST_EVENT_SEQNUM(event));
+        return;
+    }
+
+    const gchar* eventKeySystemId = nullptr;
+    GstBuffer* data = nullptr;
+    gst_event_parse_protection(event, &eventKeySystemId, &data, nullptr);
+
+#if USE(PLAYREADY)
+    if (webkit_media_playready_decrypt_is_playready_key_system_id(eventKeySystemId)) {
+        PlayreadySession* session = prSession();
+        if (session && (session->keyRequested() || session->ready())) {
+            if (session->ready())
+                emitSession();
+            return;
+        }
+    }
+#endif
+
+    GstMapInfo mapInfo;
+    if (!gst_buffer_map(data, &mapInfo, GST_MAP_READ)) {
+        GST_WARNING("cannot map %s protection data", eventKeySystemId);
+        return;
+    }
+
+    GST_DEBUG("scheduling keyNeeded event for %s with init data size of %u", eventKeySystemId, mapInfo.size);
+    GST_MEMDUMP("init datas", mapInfo.data, mapInfo.size);
+#if ENABLE(ENCRYPTED_MEDIA)
+    needKey(keySystemUuidToId(eventKeySystemId).string(), "sessionId", mapInfo.data, mapInfo.size);
+#elif ENABLE(ENCRYPTED_MEDIA_V2)
+    RefPtr<Uint8Array> initDataArray = Uint8Array::create(mapInfo.data, mapInfo.size);
+    needKey(initDataArray);
+#else
+    ASSERT_NOT_REACHED();
+#endif
+    gst_buffer_unmap(data, &mapInfo);
 }
 #endif
 

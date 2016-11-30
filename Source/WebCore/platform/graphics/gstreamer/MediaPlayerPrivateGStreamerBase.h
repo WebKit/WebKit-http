@@ -144,6 +144,7 @@ public:
 
 #if ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2)
     virtual void dispatchDecryptionKey(GstBuffer*);
+    void handleProtectionEvent(GstEvent*);
 #endif
 
 #if USE(PLAYREADY)
@@ -275,6 +276,7 @@ private:
     Condition m_protectionCondition;
     String m_lastGenerateKeyRequestKeySystemUuid;
     HashMap<String, Vector<uint8_t>> m_initDatas;
+    HashSet<uint32_t> m_handledProtectionEvents;
     void receivedGenerateKeyRequest(const String&);
     void trimInitData(String keySystemUuid, const unsigned char*& initDataPtr, unsigned &initDataLength);
 #endif
