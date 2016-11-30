@@ -1,3 +1,14 @@
+2016-11-30  Zalan Bujtas  <zalan@apple.com>
+
+        ASSERTION FAILED: layoutState->m_renderer == this in WebCore::RenderBlock::offsetFromLogicalTopOfFirstPage
+        https://bugs.webkit.org/show_bug.cgi?id=155364
+        <rdar://problem/27720461>
+
+        Reviewed by David Hyatt.
+
+        * fast/replaced/replaced-element-with-percentage-width-inside-flow-asserts-expected.txt: Added.
+        * fast/replaced/replaced-element-with-percentage-width-inside-flow-asserts.html: Added.
+
 2016-12-18  Brent Fulgham  <bfulgham@apple.com>
 
         Side effects while restting form elements
