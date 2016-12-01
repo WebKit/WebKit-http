@@ -373,14 +373,6 @@ static GstStateChangeReturn webKitMediaSrcChangeState(GstElement* element, GstSt
     return ret;
 }
 
-gint64 webKitMediaSrcGetSize(WebKitMediaSrc* webKitMediaSrc)
-{
-    gint64 duration = 0;
-    for (Stream* stream : webKitMediaSrc->priv->streams)
-        duration = std::max<gint64>(duration, gst_app_src_get_size(GST_APP_SRC(stream->appsrc)));
-    return duration;
-}
-
 static gboolean webKitMediaSrcQueryWithParent(GstPad* pad, GstObject* parent, GstQuery* query)
 {
     WebKitMediaSrc* source = WEBKIT_MEDIA_SRC(GST_ELEMENT(parent));
