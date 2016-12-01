@@ -56,6 +56,10 @@ build_pass|!debug_and_release {
             ZLIB_INCLUDE_DIRS=$$QTBASE_DIR/src/3rdparty/zlib
     }
 
+    exists($$ROOT_BUILD_DIR/conanbuildinfo.cmake):exists($$ROOT_BUILD_DIR/conanfile.txt) {
+        CMAKE_CONFIG += QT_CONAN_DIR=$$ROOT_BUILD_DIR
+    }
+
     equals(QMAKE_HOST.os, Windows) {
         if(equals(MAKEFILE_GENERATOR, MSVC.NET)|equals(MAKEFILE_GENERATOR, MSBUILD)) {
             cmake_generator = "NMake Makefiles JOM"
