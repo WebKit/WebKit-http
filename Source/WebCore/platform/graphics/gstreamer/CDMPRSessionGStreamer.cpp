@@ -34,7 +34,11 @@
 #include "MediaKeyError.h"
 #include "UUID.h"
 
+#include <gst/gst.h>
 #include <wtf/text/CString.h>
+
+GST_DEBUG_CATEGORY_EXTERN(webkit_media_playready_decrypt_debug_category);
+#define GST_CAT_DEFAULT webkit_media_playready_decrypt_debug_category
 
 namespace WebCore {
 
@@ -68,12 +72,13 @@ const String& CDMPRSessionGStreamer::sessionId() const
 
 RefPtr<Uint8Array> CDMPRSessionGStreamer::generateKeyRequest(const String& mimeType, Uint8Array* initData, String& destinationURL, unsigned short& errorCode, uint32_t& systemCode)
 {
-    UNUSED_PARAM(mimeType);
+    GST_DEBUG("got request for %s", mimeType.utf8().data());
     return playreadyGenerateKeyRequest(initData, String(), destinationURL, errorCode, systemCode);
 }
 
 bool CDMPRSessionGStreamer::update(Uint8Array* key, RefPtr<Uint8Array>& nextMessage, unsigned short& errorCode, uint32_t& systemCode)
 {
+    GST_DEBUG("processing key");
     return playreadyProcessKey(key, nextMessage, errorCode, systemCode);
 }
 
