@@ -32,6 +32,7 @@
 
 #include "CDM.h"
 #include "MediaKeyError.h"
+#include "MediaPlayerPrivateGStreamerBase.h"
 #include "UUID.h"
 
 #include <gst/gst.h>
@@ -42,10 +43,11 @@ GST_DEBUG_CATEGORY_EXTERN(webkit_media_playready_decrypt_debug_category);
 
 namespace WebCore {
 
-CDMPRSessionGStreamer::CDMPRSessionGStreamer(CDMSessionClient* client)
+CDMPRSessionGStreamer::CDMPRSessionGStreamer(CDMSessionClient* client, MediaPlayerPrivateGStreamerBase* playerPrivate)
     : PlayreadySession()
     , m_client(client)
     , m_sessionId(createCanonicalUUIDString())
+    , m_playerPrivate(playerPrivate)
 {
 }
 
@@ -73,6 +75,7 @@ const String& CDMPRSessionGStreamer::sessionId() const
 RefPtr<Uint8Array> CDMPRSessionGStreamer::generateKeyRequest(const String& mimeType, Uint8Array* initData, String& destinationURL, unsigned short& errorCode, uint32_t& systemCode)
 {
     GST_DEBUG("got request for %s", mimeType.utf8().data());
+    m_playerPrivate->receivedGenerateKeyRequest(PLAYREADY_PROTECTION_SYSTEM_ID);
     return playreadyGenerateKeyRequest(initData, String(), destinationURL, errorCode, systemCode);
 }
 

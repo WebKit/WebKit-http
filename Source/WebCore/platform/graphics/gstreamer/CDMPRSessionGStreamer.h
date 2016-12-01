@@ -32,8 +32,11 @@
 
 #include "CDMSession.h"
 #include "PlayreadySession.h"
+#include "WebKitPlayReadyDecryptorGStreamer.h"
 
 namespace WebCore {
+
+class MediaPlayerPrivateGStreamerBase;
 
 class CDMPRSessionGStreamer : public CDMSession, public PlayreadySession
     {
@@ -41,7 +44,7 @@ private:
     CDMPRSessionGStreamer(const CDMPRSessionGStreamer&);
 
 public:
-    CDMPRSessionGStreamer(CDMSessionClient*);
+    CDMPRSessionGStreamer(CDMSessionClient*, MediaPlayerPrivateGStreamerBase*);
     ~CDMPRSessionGStreamer() override;
 
     // CDMSession interface.
@@ -57,6 +60,7 @@ public:
 private:
     CDMSessionClient* m_client;
     String m_sessionId;
+    MediaPlayerPrivateGStreamerBase* m_playerPrivate;
 };
 
 }
