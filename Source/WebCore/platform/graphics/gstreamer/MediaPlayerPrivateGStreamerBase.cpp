@@ -407,10 +407,12 @@ bool MediaPlayerPrivateGStreamerBase::handleSyncMessage(GstMessage* message)
                 ++concatenatedInitDataChunksNumber;
                 eventKeySystemIdString = eventKeySystemId;
                 if (g_strv_contains(streamEncryptionAllowedSystems, eventKeySystemId)) {
-                    GST_TRACE("keeping init data for %s", eventKeySystemId);
+                    GST_TRACE("considering init data handled for %s", eventKeySystemId);
+#if ENABLE(ENCRYPTED_MEDIA)
                     Vector<uint8_t> initDataVector;
                     initDataVector.append(reinterpret_cast<uint8_t*>(mapInfo.data), mapInfo.size);
                     m_initDatas.add(eventKeySystemIdString, WTFMove(initDataVector));
+#endif
                     m_handledProtectionEvents.add(GST_EVENT_SEQNUM(event.get()));
                 }
                 gst_buffer_unmap(data, &mapInfo);
