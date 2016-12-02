@@ -42,8 +42,8 @@ namespace WebCore {
 class GLContextEGL final : public GLContext {
     WTF_MAKE_NONCOPYABLE(GLContextEGL);
 public:
-    static std::unique_ptr<GLContextEGL> createContext(GLNativeWindowType, PlatformDisplay&, std::unique_ptr<GLContext::Data>&& = nullptr);
-    static std::unique_ptr<GLContextEGL> createSharingContext(PlatformDisplay&, std::unique_ptr<GLContext::Data>&& = nullptr);
+    static std::unique_ptr<GLContextEGL> createContext(GLNativeWindowType, PlatformDisplay&);
+    static std::unique_ptr<GLContextEGL> createSharingContext(PlatformDisplay&);
 
     virtual ~GLContextEGL();
 

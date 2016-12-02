@@ -167,7 +167,7 @@ std::unique_ptr<GLContextEGL> GLContextEGL::createSurfacelessContext(PlatformDis
     return std::unique_ptr<GLContextEGL>(new GLContextEGL(platformDisplay, context, EGL_NO_SURFACE, Surfaceless));
 }
 
-std::unique_ptr<GLContextEGL> GLContextEGL::createContext(GLNativeWindowType window, PlatformDisplay& platformDisplay, std::unique_ptr<GLContext::Data>&& contextData)
+std::unique_ptr<GLContextEGL> GLContextEGL::createContext(GLNativeWindowType window, PlatformDisplay& platformDisplay)
 {
     if (platformDisplay.eglDisplay() == EGL_NO_DISPLAY)
         return nullptr;
@@ -192,12 +192,10 @@ std::unique_ptr<GLContextEGL> GLContextEGL::createContext(GLNativeWindowType win
     if (!context)
         context = createPbufferContext(platformDisplay, eglSharingContext);
 
-    if (context)
-        context->m_contextData = WTFMove(contextData);
     return context;
 }
 
-std::unique_ptr<GLContextEGL> GLContextEGL::createSharingContext(PlatformDisplay& platformDisplay, std::unique_ptr<GLContext::Data>&& contextData)
+std::unique_ptr<GLContextEGL> GLContextEGL::createSharingContext(PlatformDisplay& platformDisplay)
 {
     if (platformDisplay.eglDisplay() == EGL_NO_DISPLAY)
         return nullptr;
@@ -219,8 +217,6 @@ std::unique_ptr<GLContextEGL> GLContextEGL::createSharingContext(PlatformDisplay
     if (!context)
         context = createPbufferContext(platformDisplay);
 
-    if (context)
-        context->m_contextData = WTFMove(contextData);
     return context;
 }
 
