@@ -306,7 +306,7 @@ cairo_device_t* GLContextEGL::cairoDevice()
         return m_cairoDevice;
 
 #if ENABLE(ACCELERATED_2D_CANVAS)
-    m_cairoDevice = cairo_egl_device_create_for_egl_surface(m_display.eglDisplay(), m_context, m_surface);
+    m_cairoDevice = cairo_egl_device_create(m_display.eglDisplay(), m_context);
 #endif
 
     return m_cairoDevice;
