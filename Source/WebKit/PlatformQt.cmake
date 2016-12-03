@@ -626,7 +626,7 @@ if (WIN32)
     if (CMAKE_SIZEOF_VOID_P EQUAL 8)
         enable_language(ASM_MASM)
         list(APPEND WebKit_SOURCES
-            win/plugins/PaintHooks.asm
+            win/Plugins/PaintHooks.asm
         )
     endif ()
 
