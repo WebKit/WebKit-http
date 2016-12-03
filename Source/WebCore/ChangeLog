@@ -1,3 +1,97 @@
+2016-04-06  Per Arne Vollan  <peavo@outlook.com>
+
+        [WinCairo][MediaFoundation] Videos are always autoplaying.
+        https://bugs.webkit.org/show_bug.cgi?id=156284
+
+        Reviewed by Alex Christensen.
+
+        Videos are autoplaying because the MediaFoundation implementation always starts playback
+        after the load method has been called. When the load method has been called, we should
+        only start buffering data, not automatically start the playback. This has been fixed by
+        implementing the prepareToPlay method, and calling this instead of the play method.
+
+        * platform/graphics/win/MediaPlayerPrivateMediaFoundation.cpp:
+        (WebCore::MediaPlayerPrivateMediaFoundation::MediaPlayerPrivateMediaFoundation):
+        (WebCore::MediaPlayerPrivateMediaFoundation::load):
+        (WebCore::MediaPlayerPrivateMediaFoundation::prepareToPlay):
+        (WebCore::MediaPlayerPrivateMediaFoundation::play):
+        (WebCore::MediaPlayerPrivateMediaFoundation::networkState):
+        (WebCore::MediaPlayerPrivateMediaFoundation::startSession):
+        (WebCore::MediaPlayerPrivateMediaFoundation::endGetEvent):
+        (WebCore::MediaPlayerPrivateMediaFoundation::updateReadyState):
+        (WebCore::MediaPlayerPrivateMediaFoundation::onTopologySet):
+        (WebCore::MediaPlayerPrivateMediaFoundation::onBufferingStarted):
+        (WebCore::MediaPlayerPrivateMediaFoundation::onBufferingStopped):
+        (WebCore::MediaPlayerPrivateMediaFoundation::onSessionEnded):
+        (WebCore::MediaPlayerPrivateMediaFoundation::Direct3DPresenter::updateDestRect):
+        * platform/graphics/win/MediaPlayerPrivateMediaFoundation.h:
+
+2016-03-30  Per Arne Vollan  <peavo@outlook.com>
+
+        [WinCairo][MediaFoundation] Video size is not always set.
+        https://bugs.webkit.org/show_bug.cgi?id=156020
+
+        Reviewed by Darin Adler.
+
+        Getting the video display control object from the media session might fail the first time.
+        In case it fails, we should try again when setting the video size.
+
+        * platform/graphics/win/MediaPlayerPrivateMediaFoundation.cpp:
+        (WebCore::MediaPlayerPrivateMediaFoundation::setSize):
+        (WebCore::MediaPlayerPrivateMediaFoundation::getVideoDisplay):
+        (WebCore::MediaPlayerPrivateMediaFoundation::onTopologySet):
+        * platform/graphics/win/MediaPlayerPrivateMediaFoundation.h:
+
+2016-03-21  Per Arne Vollan  <peavo@outlook.com>
+
+        [WinCairo][MediaFoundation] Crash when media player is destroyed.
+        https://bugs.webkit.org/show_bug.cgi?id=155716
+
+        Reviewed by Alex Christensen.
+
+        Increase the reference count on the video presenter object in the ActivateObject method
+        to avoid referencing a deleted object when the media player is destroyed.
+
+        * platform/graphics/win/MediaPlayerPrivateMediaFoundation.cpp:
+        (WebCore::MediaPlayerPrivateMediaFoundation::CustomVideoPresenter::ActivateObject):
+
+2016-03-14  Per Arne Vollan  <peavo@outlook.com>
+
+        [WinCairo][MediaFoundation] Implement float versions of MediaPlayer methods.
+        https://bugs.webkit.org/show_bug.cgi?id=155357
+
+        Reviewed by Brent Fulgham.
+
+        It is better to implement the float versions of some of the MediaPlayer methods,
+        since the default implementation of the double versions is to call the float version.
+        Also added override keyword to overridden methods.
+
+        * platform/graphics/win/MediaPlayerPrivateMediaFoundation.cpp:
+        (WebCore::MediaPlayerPrivateMediaFoundation::seeking):
+        (WebCore::MediaPlayerPrivateMediaFoundation::seek):
+        (WebCore::MediaPlayerPrivateMediaFoundation::setRate):
+        (WebCore::MediaPlayerPrivateMediaFoundation::duration):
+        (WebCore::MediaPlayerPrivateMediaFoundation::currentTime):
+        (WebCore::MediaPlayerPrivateMediaFoundation::seekDouble): Deleted.
+        (WebCore::MediaPlayerPrivateMediaFoundation::setRateDouble): Deleted.
+        (WebCore::MediaPlayerPrivateMediaFoundation::durationDouble): Deleted.
+        * platform/graphics/win/MediaPlayerPrivateMediaFoundation.h:
+
+2016-02-23  Per Arne Vollan  <peavo@outlook.com>
+
+        [WinCairo][MediaFoundation] Implement methods to set volume.
+        https://bugs.webkit.org/show_bug.cgi?id=154580
+
+        Reviewed by Alex Christensen.
+
+        * platform/graphics/win/MediaPlayerPrivateMediaFoundation.cpp:
+        (WebCore::MediaPlayerPrivateMediaFoundation::paused):
+        (WebCore::MediaPlayerPrivateMediaFoundation::setVolume):
+        (WebCore::MediaPlayerPrivateMediaFoundation::supportsMuting):
+        (WebCore::MediaPlayerPrivateMediaFoundation::setMuted):
+        (WebCore::MediaPlayerPrivateMediaFoundation::networkState):
+        * platform/graphics/win/MediaPlayerPrivateMediaFoundation.h:
+
 2016-11-21  Konstantin Tokarev  <annulen@yandex.ru>
 
         Disable #line markers in bison output on Windows

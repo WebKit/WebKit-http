@@ -57,44 +57,51 @@ public:
     static MediaPlayer::SupportsType supportsType(const MediaEngineSupportParameters&);
     static bool isAvailable();
 
-    virtual void load(const String& url);
-    virtual void cancelLoad();
+    void load(const String& url) override;
+    void cancelLoad() override;
 
-    virtual void play();
-    virtual void pause();
+    void prepareToPlay() override;
 
-    virtual bool supportsFullscreen() const;
+    void play() override;
+    void pause() override;
 
-    virtual FloatSize naturalSize() const;
+    bool supportsFullscreen() const override;
 
-    virtual bool hasVideo() const;
-    virtual bool hasAudio() const;
+    FloatSize naturalSize() const override;
 
-    virtual void setVisible(bool);
+    bool hasVideo() const override;
+    bool hasAudio() const override;
 
-    virtual bool seeking() const;
-    virtual void seekDouble(double) override;
+    void setVisible(bool) override;
 
-    virtual void setRateDouble(double) override;
+    bool seeking() const override;
+    void seek(float) override;
 
-    virtual double durationDouble() const override;
+    void setRate(float) override;
 
-    virtual float currentTime() const override;
+    float duration() const override;
 
-    virtual bool paused() const;
+    float currentTime() const override;
 
-    virtual MediaPlayer::NetworkState networkState() const;
-    virtual MediaPlayer::ReadyState readyState() const;
+    bool paused() const override;
 
-    virtual float maxTimeSeekable() const override;
+    void setVolume(float) override;
 
-    virtual std::unique_ptr<PlatformTimeRanges> buffered() const;
+    bool supportsMuting() const override;
+    void setMuted(bool) override;
 
-    virtual bool didLoadingProgress() const;
+    MediaPlayer::NetworkState networkState() const override;
+    MediaPlayer::ReadyState readyState() const override;
 
-    virtual void setSize(const IntSize&);
+    float maxTimeSeekable() const override;
 
-    virtual void paint(GraphicsContext&, const FloatRect&) override;
+    std::unique_ptr<PlatformTimeRanges> buffered() const override;
+
+    bool didLoadingProgress() const override;
+
+    void setSize(const IntSize&) override;
+
+    void paint(GraphicsContext&, const FloatRect&) override;
 
 private:
     MediaPlayer* m_player;
@@ -104,7 +111,9 @@ private:
     bool m_paused;
     bool m_hasAudio;
     bool m_hasVideo;
+    bool m_preparingToPlay;
     HWND m_hwndVideo;
+    MediaPlayer::NetworkState m_networkState;
     MediaPlayer::ReadyState m_readyState;
     FloatRect m_lastPaintRect;
 
@@ -121,6 +130,7 @@ private:
     COMPtr<IMFVideoDisplayControl> m_videoDisplay;
 
     bool createSession();
+    bool startSession();
     bool endSession();
     bool startCreateMediaSource(const String& url);
     bool endCreatedMediaSource(IMFAsyncResult*);
@@ -130,8 +140,15 @@ private:
     bool createOutputNode(COMPtr<IMFStreamDescriptor> sourceSD, COMPtr<IMFTopologyNode>&);
     bool createSourceStreamNode(COMPtr<IMFStreamDescriptor> sourceSD, COMPtr<IMFTopologyNode>&);
 
+    void updateReadyState();
+
+    COMPtr<IMFVideoDisplayControl> videoDisplay();
+
     void onCreatedMediaSource();
     void onTopologySet();
+    void onBufferingStarted();
+    void onBufferingStopped();
+    void onSessionEnded();
 
     LPCWSTR registerVideoWindowClass();
     void createVideoWindow();

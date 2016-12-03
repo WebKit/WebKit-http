@@ -38,6 +38,11 @@
 #endif
 #include "SoftLinking.h"
 
+#if PLATFORM(QT)
+#include "QWebPageClient.h"
+#include <QWindow>
+#endif
+
 #if USE(MEDIA_FOUNDATION)
 
 #include <wtf/MainThread.h>
@@ -88,10 +93,12 @@ MediaPlayerPrivateMediaFoundation::MediaPlayerPrivateMediaFoundation(MediaPlayer
     : m_player(player)
     , m_visible(false)
     , m_loadingProgress(false)
-    , m_paused(false)
+    , m_paused(true)
     , m_hasAudio(false)
     , m_hasVideo(false)
+    , m_preparingToPlay(false)
     , m_hwndVideo(nullptr)
+    , m_networkState(MediaPlayer::Empty)
     , m_readyState(MediaPlayer::HaveNothing)
     , m_weakPtrFactory(this)
 {
@@ -167,6 +174,11 @@ MediaPlayer::SupportsType MediaPlayerPrivateMediaFoundation::supportsType(const 
 void MediaPlayerPrivateMediaFoundation::load(const String& url)
 {
     startCreateMediaSource(url);
+
+    m_networkState = MediaPlayer::Loading;
+    m_player->networkStateChanged();
+    m_readyState = MediaPlayer::HaveNothing;
+    m_player->readyStateChanged();
 }
 
 void MediaPlayerPrivateMediaFoundation::cancelLoad()
@@ -174,21 +186,20 @@ void MediaPlayerPrivateMediaFoundation::cancelLoad()
     notImplemented();
 }
 
+void MediaPlayerPrivateMediaFoundation::prepareToPlay()
+{
+    // We call startSession() to start buffering video data.
+    // When we have received enough data, we pause, so that we don't actually start the playback.
+    ASSERT(m_paused);
+    ASSERT(!m_preparingToPlay);
+    m_preparingToPlay = startSession();
+}
+
 void MediaPlayerPrivateMediaFoundation::play()
 {
-    if (!m_mediaSession)
-        return;
+    m_paused = !startSession();
 
-    PROPVARIANT varStart;
-    PropVariantInit(&varStart);
-    varStart.vt = VT_EMPTY;
-
-    HRESULT hr = m_mediaSession->Start(nullptr, &varStart);
-    ASSERT(SUCCEEDED(hr));
-
-    PropVariantClear(&varStart);
-
-    m_paused = !SUCCEEDED(hr);
+    m_preparingToPlay = false;
 }
 
 void MediaPlayerPrivateMediaFoundation::pause()
@@ -230,7 +241,7 @@ bool MediaPlayerPrivateMediaFoundation::seeking() const
     return false;
 }
 
-void MediaPlayerPrivateMediaFoundation::seekDouble(double time)
+void MediaPlayerPrivateMediaFoundation::seek(float time)
 {
     PROPVARIANT propVariant;
     PropVariantInit(&propVariant);
@@ -244,7 +255,7 @@ void MediaPlayerPrivateMediaFoundation::seekDouble(double time)
     m_player->timeChanged();
 }
 
-void MediaPlayerPrivateMediaFoundation::setRateDouble(double rate)
+void MediaPlayerPrivateMediaFoundation::setRate(float rate)
 {
     COMPtr<IMFRateControl> rateControl;
 
@@ -258,7 +269,7 @@ void MediaPlayerPrivateMediaFoundation::setRateDouble(double rate)
     rateControl->SetRate(reduceSamplesInStream, rate);
 }
 
-double MediaPlayerPrivateMediaFoundation::durationDouble() const
+float MediaPlayerPrivateMediaFoundation::duration() const
 {
     if (!m_mediaSource)
         return 0;
@@ -272,7 +283,7 @@ double MediaPlayerPrivateMediaFoundation::durationDouble() const
         duration = 0;
     descriptor->Release();
     
-    return static_cast<double>(duration) / tenMegahertz;
+    return static_cast<float>(duration) / tenMegahertz;
 }
 
 float MediaPlayerPrivateMediaFoundation::currentTime() const
@@ -288,10 +299,38 @@ bool MediaPlayerPrivateMediaFoundation::paused() const
     return m_paused;
 }
 
+void MediaPlayerPrivateMediaFoundation::setVolume(float volume)
+{
+    if (!MFGetServicePtr())
+        return;
+
+    COMPtr<IMFSimpleAudioVolume> audioVolume;
+    if (SUCCEEDED(MFGetServicePtr()(m_mediaSession.get(), MR_POLICY_VOLUME_SERVICE, __uuidof(IMFSimpleAudioVolume), (void **)&audioVolume))) {
+        HRESULT hr = audioVolume->SetMasterVolume(volume);
+        ASSERT(SUCCEEDED(hr));
+    }
+}
+
+bool MediaPlayerPrivateMediaFoundation::supportsMuting() const
+{
+    return true;
+}
+
+void MediaPlayerPrivateMediaFoundation::setMuted(bool muted)
+{
+    if (!MFGetServicePtr())
+        return;
+
+    COMPtr<IMFSimpleAudioVolume> audioVolume;
+    if (SUCCEEDED(MFGetServicePtr()(m_mediaSession.get(), MR_POLICY_VOLUME_SERVICE, __uuidof(IMFSimpleAudioVolume), (void **)&audioVolume))) {
+        HRESULT hr = audioVolume->SetMute(muted ? TRUE : FALSE);
+        ASSERT(SUCCEEDED(hr));
+    }
+}
+
 MediaPlayer::NetworkState MediaPlayerPrivateMediaFoundation::networkState() const
 { 
-    notImplemented();
-    return MediaPlayer::Empty;
+    return m_networkState;
 }
 
 MediaPlayer::ReadyState MediaPlayerPrivateMediaFoundation::readyState() const
@@ -321,7 +360,8 @@ void MediaPlayerPrivateMediaFoundation::setSize(const IntSize& size)
 {
     m_size = size;
 
-    if (!m_videoDisplay)
+    auto videoDisplay = this->videoDisplay();
+    if (!videoDisplay)
         return;
 
     IntPoint positionInWindow(m_lastPaintRect.location());
@@ -350,7 +390,7 @@ void MediaPlayerPrivateMediaFoundation::setSize(const IntSize& size)
         ::MoveWindow(m_hwndVideo, x, y, w, h, FALSE);
 
     RECT rc = { 0, 0, w, h };
-    m_videoDisplay->SetVideoPosition(nullptr, &rc);
+    videoDisplay->SetVideoPosition(nullptr, &rc);
 }
 
 void MediaPlayerPrivateMediaFoundation::paint(GraphicsContext& context, const FloatRect& rect)
@@ -381,6 +421,23 @@ bool MediaPlayerPrivateMediaFoundation::createSession()
     ASSERT(SUCCEEDED(hr));
 
     return true;
+}
+
+bool MediaPlayerPrivateMediaFoundation::startSession()
+{
+    if (!m_mediaSession)
+        return false;
+
+    PROPVARIANT varStart;
+    PropVariantInit(&varStart);
+    varStart.vt = VT_EMPTY;
+
+    HRESULT hr = m_mediaSession->Start(nullptr, &varStart);
+    ASSERT(SUCCEEDED(hr));
+
+    PropVariantClear(&varStart);
+
+    return SUCCEEDED(hr);
 }
 
 bool MediaPlayerPrivateMediaFoundation::endSession()
@@ -473,11 +530,44 @@ bool MediaPlayerPrivateMediaFoundation::endGetEvent(IMFAsyncResult* asyncResult)
         break;
     }
 
-    case MESessionClosed:
+    case MEBufferingStarted: {
+        auto weakPtr = m_weakPtrFactory.createWeakPtr();
+        callOnMainThread([weakPtr] {
+            if (!weakPtr)
+                return;
+            weakPtr->onBufferingStarted();
+        });
         break;
+    }
+
+    case MEBufferingStopped: {
+        auto weakPtr = m_weakPtrFactory.createWeakPtr();
+        callOnMainThread([weakPtr] {
+            if (!weakPtr)
+                return;
+            weakPtr->onBufferingStopped();
+        });
+        break;
+    }
+
+    case MESessionEnded: {
+        auto weakPtr = m_weakPtrFactory.createWeakPtr();
+        callOnMainThread([weakPtr] {
+            if (!weakPtr)
+                return;
+            weakPtr->onSessionEnded();
+        });
+        break;
+    }
 
     case MEMediaSample:
         break;
+
+    case MEError: {
+        HRESULT status = S_OK;
+        event->GetStatus(&status);
+        break;
+    }
     }
 
     if (mediaEventType != MESessionClosed) {
@@ -602,7 +692,16 @@ void MediaPlayerPrivateMediaFoundation::createVideoWindow()
     view = m_player->cachedResourceLoader()->document()->view();
     if (!view || !view->hostWindow())
         return;
-    hWndParent = view->hostWindow()->platformPageClient();
+
+    PlatformPageClient pageClient = view->hostWindow()->platformPageClient();
+#if PLATFORM(QT)
+    QWindow* ownerWindow = pageClient->ownerWindow();
+    if (!ownerWindow)
+        return;
+    hWndParent = (HWND)ownerWindow->winId();
+#else
+    hWndParent = pageClient;
+#endif
 
     m_hwndVideo = CreateWindowEx(WS_EX_NOACTIVATE | WS_EX_TRANSPARENT, registerVideoWindowClass(), 0, WS_CHILD | WS_CLIPSIBLINGS | WS_CLIPCHILDREN,
         0, 0, 0, 0, hWndParent, 0, 0, 0);
@@ -734,6 +833,62 @@ bool MediaPlayerPrivateMediaFoundation::createSourceStreamNode(COMPtr<IMFStreamD
     return true;
 }
 
+void MediaPlayerPrivateMediaFoundation::updateReadyState()
+{
+    if (!MFGetServicePtr())
+        return;
+
+    COMPtr<IPropertyStore> prop;
+
+    // Get the property store from the media session.
+    HRESULT hr = MFGetServicePtr()(m_mediaSession.get(), MFNETSOURCE_STATISTICS_SERVICE, IID_PPV_ARGS(&prop));
+
+    if (FAILED(hr))
+        return;
+
+    PROPERTYKEY key;
+    key.fmtid = MFNETSOURCE_STATISTICS;
+    key.pid = MFNETSOURCE_BUFFERPROGRESS_ID;
+
+    PROPVARIANT var;
+    hr = prop->GetValue(key, &var);
+
+    const LONG percentageOfPlaybackBufferFilled = var.lVal;
+
+    PropVariantClear(&var);
+
+    if (FAILED(hr))
+        return;
+
+    MediaPlayer::ReadyState oldReadyState = m_readyState;
+    if (percentageOfPlaybackBufferFilled >= 100) {
+        m_readyState = MediaPlayer::HaveEnoughData;
+        if (m_preparingToPlay) {
+            pause();
+            m_preparingToPlay = false;
+        }
+    } else if (percentageOfPlaybackBufferFilled > 0)
+        m_readyState = MediaPlayer::HaveFutureData;
+    else
+        m_readyState = MediaPlayer::HaveCurrentData;
+
+    if (m_readyState != oldReadyState)
+        m_player->readyStateChanged();
+}
+
+COMPtr<IMFVideoDisplayControl> MediaPlayerPrivateMediaFoundation::videoDisplay()
+{
+    if (m_videoDisplay)
+        return m_videoDisplay;
+
+    if (!MFGetServicePtr())
+        return nullptr;
+
+    MFGetServicePtr()(m_mediaSession.get(), MR_VIDEO_RENDER_SERVICE, IID_PPV_ARGS(&m_videoDisplay));
+
+    return m_videoDisplay;
+}
+
 void MediaPlayerPrivateMediaFoundation::onCreatedMediaSource()
 {
     if (!createTopologyFromSource())
@@ -746,21 +901,33 @@ void MediaPlayerPrivateMediaFoundation::onCreatedMediaSource()
 
 void MediaPlayerPrivateMediaFoundation::onTopologySet()
 {
-    if (!MFGetServicePtr())
-        return;
+    // This method is called on the main thread as a result of load() being called.
 
-    if (SUCCEEDED(MFGetServicePtr()(m_mediaSession.get(), MR_VIDEO_RENDER_SERVICE, IID_PPV_ARGS(&m_videoDisplay)))) {
-        ASSERT(m_videoDisplay);
+    if (auto videoDisplay = this->videoDisplay()) {
         RECT rc = { 0, 0, m_size.width(), m_size.height() };
-        m_videoDisplay->SetVideoPosition(nullptr, &rc);
+        videoDisplay->SetVideoPosition(nullptr, &rc);
     }
 
-    m_readyState = MediaPlayer::HaveFutureData;
+    // It is expected that we start buffering data from the network now.
+    prepareToPlay();
+}
 
-    ASSERT(m_player);
-    m_player->readyStateChanged();
+void MediaPlayerPrivateMediaFoundation::onBufferingStarted()
+{
+    updateReadyState();
+}
 
-    play();
+void MediaPlayerPrivateMediaFoundation::onBufferingStopped()
+{
+    updateReadyState();
+}
+
+void MediaPlayerPrivateMediaFoundation::onSessionEnded()
+{
+    m_networkState = MediaPlayer::Loaded;
+    m_player->networkStateChanged();
+
+    m_paused = true;
     m_player->playbackStateChanged();
 }
 
@@ -1138,6 +1305,7 @@ HRESULT MediaPlayerPrivateMediaFoundation::CustomVideoPresenter::ActivateObject(
 
     if (riid == IID_IMFVideoPresenter) {
         *ppv = static_cast<IMFVideoPresenter*>(this);
+        AddRef();
         return S_OK;
     }
     return E_FAIL;
@@ -2778,6 +2946,30 @@ void MediaPlayerPrivateMediaFoundation::Direct3DPresenter::paintCurrentFrame(Web
             ctxt->drawSurfaceToContext(image, destRect, srcRect, context);
             cairo_surface_destroy(image);
         }
+#elif PLATFORM(QT)
+        D3DFORMAT format = D3DFMT_UNKNOWN;
+        D3DSURFACE_DESC desc;
+        if (SUCCEEDED(m_memSurface->GetDesc(&desc)))
+            format = desc.Format;
+
+        QImage::Format imageFormat = QImage::Format_Invalid;
+
+        switch (format) {
+        case D3DFMT_A8R8G8B8:
+            imageFormat = QImage::Format_ARGB32_Premultiplied;
+            break;
+        case D3DFMT_X8R8G8B8:
+            imageFormat = QImage::Format_RGB32;
+            break;
+        }
+
+        ASSERT(imageFormat != QImage::Format_Invalid);
+
+        QImage image(static_cast<unsigned char*>(data), width, height, pitch, imageFormat);
+
+        FloatRect srcRect(0, 0, width, height);
+        QPainter* p = context.platformContext();
+        p->drawImage(destRect, image, srcRect);
 #else
 #error "Platform needs to implement drawing of Direct3D surface to graphics context!"
 #endif
@@ -2934,7 +3126,8 @@ HRESULT MediaPlayerPrivateMediaFoundation::Direct3DPresenter::updateDestRect()
         return S_FALSE;
 
     RECT rcView;
-    GetClientRect(m_hwnd, &rcView);
+    if (!GetClientRect(m_hwnd, &rcView))
+        return E_FAIL;
 
     // Clip to the client area of the window.
     if (m_destRect.right > rcView.right)
