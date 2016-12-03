@@ -2778,6 +2778,30 @@ void MediaPlayerPrivateMediaFoundation::Direct3DPresenter::paintCurrentFrame(Web
             ctxt->drawSurfaceToContext(image, destRect, srcRect, context);
             cairo_surface_destroy(image);
         }
+#elif PLATFORM(QT)
+        D3DFORMAT format = D3DFMT_UNKNOWN;
+        D3DSURFACE_DESC desc;
+        if (SUCCEEDED(m_memSurface->GetDesc(&desc)))
+            format = desc.Format;
+
+        QImage::Format imageFormat = QImage::Format_Invalid;
+
+        switch (format) {
+        case D3DFMT_A8R8G8B8:
+            imageFormat = QImage::Format_ARGB32_Premultiplied;
+            break;
+        case D3DFMT_X8R8G8B8:
+            imageFormat = QImage::Format_RGB32;
+            break;
+        }
+
+        ASSERT(imageFormat != QImage::Format_Invalid);
+
+        QImage image(static_cast<unsigned char*>(data), width, height, pitch, imageFormat);
+
+        FloatRect srcRect(0, 0, width, height);
+        QPainter* p = context.platformContext();
+        p->drawImage(destRect, image, srcRect);
 #else
 #error "Platform needs to implement drawing of Direct3D surface to graphics context!"
 #endif

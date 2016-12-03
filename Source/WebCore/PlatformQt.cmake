@@ -36,6 +36,7 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/platform/graphics/surfaces"
     "${WEBCORE_DIR}/platform/graphics/surfaces/qt"
     "${WEBCORE_DIR}/platform/graphics/qt"
+    "${WEBCORE_DIR}/platform/graphics/win"
     "${WEBCORE_DIR}/platform/network/qt"
     "${WEBCORE_DIR}/platform/text/qt"
     "${WTF_DIR}"
@@ -290,6 +291,12 @@ if (USE_GSTREAMER)
     include(platform/GStreamer.cmake)
     list(APPEND WebCore_SOURCES
         platform/graphics/gstreamer/ImageGStreamerQt.cpp
+    )
+endif ()
+
+if (USE_MEDIA_FOUNDATION)
+    list(APPEND WebCore_SOURCES
+        platform/graphics/win/MediaPlayerPrivateMediaFoundation.cpp
     )
 endif ()
 
