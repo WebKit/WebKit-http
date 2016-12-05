@@ -71,6 +71,7 @@ file Source/WebCore/English.lproj/mediaControlsLocalizedStrings.js
 # Windows-specific code
 file Source/WTF/wtf/win/GDIObject.h
 file Source/WebCore/platform/graphics/win/LocalWindowsContext.h
+file Source/WebCore/platform/graphics/win/MediaPlayerPrivateMediaFoundation.cpp
 file Source/WebCore/platform/graphics/win/TransformationMatrixWin.cpp
 file Source/WebCore/platform/win/BitmapInfo.cpp
 file Source/WebCore/platform/win/BitmapInfo.h
