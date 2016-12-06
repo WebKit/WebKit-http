@@ -215,6 +215,9 @@ SET_AND_EXPOSE_TO_BUILD(USE_TEXTURE_MAPPER TRUE)
 if (WIN32)
     # bmalloc is not ported to Windows yet
     set(USE_SYSTEM_MALLOC 1)
+endif ()
+
+if (MSVC)
     if (NOT WEBKIT_LIBRARIES_DIR)
         if (DEFINED ENV{WEBKIT_LIBRARIES})
             set(WEBKIT_LIBRARIES_DIR "$ENV{WEBKIT_LIBRARIES}")
@@ -416,6 +419,10 @@ if (COMPILER_IS_GCC_OR_CLANG AND UNIX)
     endif ()
 endif ()
 
+if (WIN32 AND COMPILER_IS_GCC_OR_CLANG)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fno-keep-inline-dllexport")
+endif ()
+
 if (ENABLE_MATHML)
     SET_AND_EXPOSE_TO_BUILD(ENABLE_OPENTYPE_MATH 1)
 endif ()
@@ -542,8 +549,12 @@ endif ()
 # set(JavaScriptCore_LIBRARY_TYPE STATIC)
 
 # From OptionsWin.cmake
+if (WIN32)
+    add_definitions(-DNOMINMAX -DUNICODE -D_UNICODE -D_WINDOWS)
+endif ()
+
 if (MSVC)
-    add_definitions(-DNOMINMAX -DUNICODE -D_UNICODE -D_WINDOWS -DWINVER=0x601)
+    add_definitions(-DWINVER=0x601)
 
     add_definitions(
         /wd4018 /wd4068 /wd4099 /wd4100 /wd4127 /wd4138 /wd4146 /wd4180 /wd4189
@@ -554,11 +565,15 @@ if (MSVC)
         /wd6246 /wd6255 /wd6387
     )
 
-    # Create pdb files for debugging purposes, also for Release builds
-    add_compile_options(/Zi /GS)
+    if (CMAKE_SIZEOF_VOID_P EQUAL 8)
+        # Create pdb files for debugging purposes, also for Release builds
+        set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} /Zi")
+        set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /Zi")
+        set(CMAKE_SHARED_LINKER_FLAGS_RELEASE "${CMAKE_SHARED_LINKER_FLAGS} /DEBUG")
+        set(CMAKE_EXE_LINKER_FLAGS_RELEASE "${CMAKE_EXE_LINKER_FLAGS} /DEBUG")
+    endif ()
 
-    set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} /DEBUG")
-    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} /DEBUG")
+    add_compile_options(/GS)
 
     # We do not use exceptions
     add_definitions(-D_HAS_EXCEPTIONS=0)
