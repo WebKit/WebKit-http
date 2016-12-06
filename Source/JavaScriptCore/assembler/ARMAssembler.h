@@ -213,6 +213,7 @@ namespace JSC {
             MOVW = 0x03000000,
             MOVT = 0x03400000,
             DMB_SY = 0xf57ff05f,
+            DMB_ISHST = 0xf57ff05a,
 #else
             // mcr     15, 0, r6, cr7, cr10, {5}
             ARM6_MEMFENCE = 0xee076fba,
@@ -724,6 +725,11 @@ namespace JSC {
         void dmbSY()
         {
             m_buffer.putInt(DMB_SY);
+        }
+
+        void dmbISHST()
+        {
+            m_buffer.putInt(DMB_ISHST);
         }
 #else
         void arm6MemFence()

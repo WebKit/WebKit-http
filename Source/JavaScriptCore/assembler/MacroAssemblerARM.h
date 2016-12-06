@@ -1467,6 +1467,15 @@ public:
 #endif
     }
 
+    void storeFence()
+    {
+#if WTF_ARM_ARCH_AT_LEAST(7)
+        m_assembler.dmbISHST();
+#else
+        m_assembler.arm6MemFence();
+#endif
+    }
+
     static FunctionPtr readCallTarget(CodeLocationCall call)
     {
         return FunctionPtr(reinterpret_cast<void(*)()>(ARMAssembler::readCallTarget(call.dataLocation())));
