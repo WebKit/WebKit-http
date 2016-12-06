@@ -48,22 +48,13 @@ RefPtr<Uint8Array> CDMSessionEncKey::generateKeyRequest(const String& mimeType, 
 {
     UNUSED_PARAM(sysCode);
 
-    int i;
     int ret = 0;
-
     string sessionId;
 
     unsigned char tmpUrl[100] = "\0";
     unsigned char initDataValue[initData->length()] = "\0";
-    printf("\n\nsize of initData : %d\n",initData->length());
 
     memcpy(initDataValue, initData->data(), initData->length());
-
-    printf("printing initial_value ----------------->>>>>>\n");
-
-    for (int i = 0; i < initData->length(); i++)
-        printf("%02x ",initDataValue[i]);
-    printf("\n");
 
     m_openCdmSession->CreateSession(mimeType.utf8().data(), initDataValue,
                                    initData->length(), sessionId);
@@ -73,70 +64,57 @@ RefPtr<Uint8Array> CDMSessionEncKey::generateKeyRequest(const String& mimeType, 
     }
     m_sessionId = String::fromUTF8(sessionId.c_str());
 
-    printf ("SessionID = %s\n", sessionId.c_str());
-    printf("m_sessionID = %s\n", m_sessionId.utf8().data());
-    cout << endl << "ses_id:CDMSessionEncKey:generateKeyRequest: "<< sessionId << endl;
-
     ret = m_openCdmSession->GetKeyMessage(m_message,
                                    &m_msgLength, tmpUrl, &m_destUrlLength);
 
-    printf("This is file %s --function (%s)--%d \n",__FILE__,__func__, __LINE__);
     if ( (ret != 0) || (m_msgLength == 0) || (m_destUrlLength == 0) ) {
-        printf("This is file %s --function (%s)--%d \n",__FILE__,__func__, __LINE__);
         errorCode = MediaKeyError::MEDIA_KEYERR_UNKNOWN;
         return nullptr;
     } else {
         destUrl = String::fromUTF8(tmpUrl);
         return (Uint8Array::create((unsigned char*)m_message.c_str(), m_msgLength));
-    }
+   }
 }
 
 void CDMSessionEncKey::releaseKeys()
 {
-    printf("This is file %s --function (%s)--%d \n",__FILE__,__func__, __LINE__);
     // no-op
 }
 
 bool CDMSessionEncKey::update(Uint8Array* key, RefPtr<Uint8Array>& nextMessage, unsigned short& errorCode, uint32_t& sysytemCode)
 {
-    printf("This is file %s --function (%s)--%d \n",__FILE__,__func__, __LINE__);
     UNUSED_PARAM(nextMessage);
     UNUSED_PARAM(errorCode);
     UNUSED_PARAM(sysytemCode);
+
     int ret = 0;
     std::string responseMsg;
-    //TODO : remove debug prints
-    char lic[3096];
-    printf("**********LIC UPDTE ***************************\n");
-    memcpy(lic, key->data(), key->length());
-    printf("**********LIC UPDTE ***************************\n KEY LENGTH = %d ,KEYBYTELENGTH = %d",key->length(),key->byteLength());
-    int i;
-    printf("**********LIC FROM WEBKIT***************************\n");
-    for (i = 0; i < key->length(); i++ )
-        printf(" %02X",lic[i]);
-    printf("\n**********LIC FROM WEBKIT***************************\n");
-    std::cout << key->data() << "\n";
 
-    printf("KeyUsable Changes --------------------->>>>>>>>>\n")
- 
+    {//TODO: remove after testing
+       char lic[3096];
+       memcpy(lic, key->data(), key->length());
+
+       int i;
+       for (i = 0; i < key->length(); i++ )
+          printf(" %02X",lic[i]);
+
+       std::cout << key->data() << "\n";
+    }
+
     ret = m_openCdmSession->Update(key->data(), key->length(), responseMsg);
     if (ret) {
-       printf("This is file %s --function (%s)--%d \n",__FILE__,__func__, __LINE__);
        string rspMsg = "UpdateStatus:" + responseMsg;
        RefPtr<Uint8Array> tmpMsg = Uint8Array::create((unsigned char*)rspMsg.c_str(), rspMsg.length());
        nextMessage = tmpMsg;
        errorCode = MediaKeyError::MEDIA_KEYERR_CLIENT;
-       printf("This is file %s --function (%s)--%d \n",__FILE__,__func__, __LINE__);
        return false;
     }
 
-    printf("This is file %s --function (%s)--%d \n",__FILE__,__func__, __LINE__);
     return true;
 }
 
 CDMSessionEncKey::~CDMSessionEncKey()
 {
-    printf ("This is file %s --function (%s)--%d \n",__FILE__,__func__, __LINE__);
 }
 }
 

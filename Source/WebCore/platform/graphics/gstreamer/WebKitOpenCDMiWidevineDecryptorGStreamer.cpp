@@ -1,3 +1,24 @@
+/* GStreamer Widevine decryptor
+ *
+ * Copyright (C) 2016 TATA ELXSI
+ * Copyright (C) 2016 Metrological
+ *
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Library General Public
+ * License as published by the Free Software Foundation; either
+ * version 2 of the License, or (at your option) any later version.
+ *
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Library General Public License for more details.
+ *
+ * You should have received a copy of the GNU Library General Public
+ * License along with this library; if not, write to the
+ * Free Software Foundation, Inc., 51 Franklin Street, Suite 500,
+ * Boston, MA 02110-1335, USA.
+ */
+
 #include "config.h"
 #if ENABLE(ENCRYPTED_MEDIA_V2) && USE(GSTREAMER) && USE(OCDM)
 #include <string>
@@ -44,7 +65,6 @@ G_DEFINE_TYPE(OpenCDMiWideVineDecrypt, opencdmi_widevine_decrypt, WEBKIT_TYPE_ME
 
 static void opencdmi_widevine_decrypt_class_init(OpenCDMiWideVineDecryptClass* klass)
 {
-    printf("%s:%s:%d  \n",__FILE__,__func__,__LINE__);
     WebKitMediaCommonEncryptionDecryptClass* cencClass = WEBKIT_MEDIA_CENC_DECRYPT_CLASS(klass);
     GstElementClass* elementClass = GST_ELEMENT_CLASS(klass);
     GObjectClass* gobjectClass = G_OBJECT_CLASS(klass);
@@ -70,36 +90,25 @@ static void opencdmi_widevine_decrypt_class_init(OpenCDMiWideVineDecryptClass* k
 
     g_type_class_add_private(klass, sizeof(OpenCDMiWideVineDecryptPrivate));
 
-//    printf("%s:%s:%d:cencClass->protectionSystemId =  \n",__FILE__,__func__,__LINE__,cencClass);
-
-    
-    printf("%s:%s:%d  \n",__FILE__,__func__,__LINE__);
 }
 
 static void opencdmi_widevine_decrypt_init(OpenCDMiWideVineDecrypt *decrypt)
 {
-    printf("%s:%s:%d  \n",__FILE__,__func__,__LINE__);
 }
 
 static void openCDMiWidevineDecryptorFinalize(GObject* object)
 {
-    printf("%s:%s:%d  \n",__FILE__,__func__,__LINE__);
     OpenCDMiWideVineDecrypt* self = OPENCDMI_WIDEVINE_DECRYPT(object);
-    printf("%s:%s:%d  \n",__FILE__,__func__,__LINE__);
     OpenCDMiWideVineDecryptPrivate* priv = GST_OPENCDMI_WIDEVINE_DECRYPT_GET_PRIVATE(OPENCDMI_WIDEVINE_DECRYPT(self));
-    printf("%s:%s:%d  priv = %x\n",__FILE__,__func__,__LINE__, priv);
     priv->m_openCdm->releaseMem();
     delete priv->m_openCdm;
     priv->m_openCdm = nullptr;
 //    priv->~OpenCDMiWideVineDecryptPrivate();
-    printf("%s:%s:%d  \n",__FILE__,__func__,__LINE__);
     GST_CALL_PARENT(G_OBJECT_CLASS, finalize, (object));
-    printf("%s:%s:%d  \n",__FILE__,__func__,__LINE__);
 }
 
 static void openCDMiWidevineDecryptorRequestDecryptionKey(WebKitMediaCommonEncryptionDecrypt* self, GstBuffer* initDataBuffer)
 {
-    printf("%s:%s:%d  \n",__FILE__,__func__,__LINE__);
     gst_element_post_message(GST_ELEMENT(self),
         gst_message_new_element(GST_OBJECT(self),
             gst_structure_new("drm-key-needed", "data", GST_TYPE_BUFFER, initDataBuffer,
@@ -108,10 +117,8 @@ static void openCDMiWidevineDecryptorRequestDecryptionKey(WebKitMediaCommonEncry
 
 static gboolean openCDMiWidevineDecryptorHandleKeyResponse(WebKitMediaCommonEncryptionDecrypt* self, GstEvent* event)
 {
-    printf("%s:%s:%d  \n",__FILE__,__func__,__LINE__);
     OpenCDMiWideVineDecryptPrivate* priv = GST_OPENCDMI_WIDEVINE_DECRYPT_GET_PRIVATE(OPENCDMI_WIDEVINE_DECRYPT(self));
 
-    printf("%s:%s:%d priv = %p  \n",__FILE__,__func__,__LINE__, priv);
     const GstStructure* structure = gst_event_get_structure(event);
     const char* label = "drm-session";
     if (!gst_structure_has_name(structure, label))
@@ -119,10 +126,8 @@ static gboolean openCDMiWidevineDecryptorHandleKeyResponse(WebKitMediaCommonEncr
 
     GST_INFO_OBJECT(self, "received %s", label);
 
-    printf("%s:%s:%d session = %s  \n",__FILE__,__func__,__LINE__, priv->m_session);
     gst_structure_get(structure, "session", G_TYPE_STRING, &priv->m_session, nullptr);
     if (priv->m_session && strlen(priv->m_session)) {
-        printf("%s:%s:%d session = %s  \n",__FILE__,__func__,__LINE__, priv->m_session);
         priv->m_openCdm = new OpenCdm(); 
         priv->m_openCdm->SelectSession(priv->m_session);
     }
@@ -132,7 +137,6 @@ static gboolean openCDMiWidevineDecryptorHandleKeyResponse(WebKitMediaCommonEncr
 
 static gboolean openCDMiWidevineDecryptorDecrypt(WebKitMediaCommonEncryptionDecrypt* self, GstBuffer* ivBuffer, GstBuffer* buffer, unsigned subSampleCount, GstBuffer* subSamplesBuffer)
 {
-    printf("%s:%s:%d  \n",__FILE__,__func__,__LINE__);
     OpenCDMiWideVineDecryptPrivate* priv = GST_OPENCDMI_WIDEVINE_DECRYPT_GET_PRIVATE(OPENCDMI_WIDEVINE_DECRYPT(self));
     GstMapInfo map, ivMap, subSamplesMap;
     unsigned position = 0;
@@ -148,24 +152,20 @@ static gboolean openCDMiWidevineDecryptorDecrypt(WebKitMediaCommonEncryptionDecr
     unsigned total = 0;
     //Call OpenCDM Decrypt function with args
     if (!gst_buffer_map(ivBuffer, &ivMap, GST_MAP_READ)) {
-        printf("%s:%s:%d  \n",__FILE__,__func__,__LINE__);
         GST_ERROR_OBJECT(self, "Failed to map IV");
         return false;
     }
 
     bufferMapped = gst_buffer_map(buffer, &map, static_cast<GstMapFlags>(GST_MAP_READWRITE));
     if (!bufferMapped) {
-        printf("%s:%s:%d  \n",__FILE__,__func__,__LINE__);
         gst_buffer_unmap(ivBuffer, &ivMap);
         GST_ERROR_OBJECT(self, "Failed to map buffer");
         return false;
     }
 
     if (subSamplesBuffer) {
-        printf("%s:%s:%d  \n",__FILE__,__func__,__LINE__);
         subsamplesBufferMapped = gst_buffer_map(subSamplesBuffer, &subSamplesMap, GST_MAP_READ);
         if (!subsamplesBufferMapped) {
-            printf("%s:%s:%d  \n",__FILE__,__func__,__LINE__);
             GST_ERROR_OBJECT(self, "Failed to map subsample buffer");
             gst_buffer_unmap(ivBuffer, &ivMap);
             gst_buffer_unmap(buffer, &map);
@@ -195,10 +195,8 @@ static gboolean openCDMiWidevineDecryptorDecrypt(WebKitMediaCommonEncryptionDecr
         gst_byte_reader_set_pos(reader, 0);
         // Decrypt cipher.
         ASSERT(priv->sessionMetaData);
-    printf("%s:%s:%d  \n",__FILE__,__func__,__LINE__);
         if ((errorCode = priv->m_openCdm->Decrypt(fEncryptedData, static_cast<uint32_t>(totalEncrypted), 
                                                   ivMap.data, static_cast<uint32_t>(ivMap.size)))) {
-         printf("%s:%s:%d  \n",__FILE__,__func__,__LINE__);
             GST_WARNING_OBJECT(self, "ERROR - packet decryption failed [%d]", errorCode);
             g_free(fEncryptedData);
             gst_byte_reader_free(reader);
@@ -223,20 +221,16 @@ static gboolean openCDMiWidevineDecryptorDecrypt(WebKitMediaCommonEncryptionDecr
         g_free(fEncryptedData);
         gst_buffer_unmap(subSamplesBuffer, &subSamplesMap);
     } else {
-    printf("%s:%s:%d  \n",__FILE__,__func__,__LINE__);
         // Decrypt cipher.
         ASSERT(priv->sessionMetaData);
-        printf("%s:%s:%d:%d  \n",__FILE__,__func__,__LINE__,ivMap.size);
         if ((errorCode =  priv->m_openCdm->Decrypt(map.data, static_cast<uint32_t>(map.size),
                                                    ivMap.data, static_cast<uint32_t>(ivMap.size)))) {
-            printf("%s:%s:%d  \n",__FILE__,__func__,__LINE__);
             GST_WARNING_OBJECT(self, "ERROR - packet decryption failed [%d]", errorCode);
             g_free(fEncryptedData);
             gst_buffer_unmap(buffer, &map);
             gst_buffer_unmap(ivBuffer, &ivMap);
             return false;
         }
-        printf("%s:%s:%d  \n",__FILE__,__func__,__LINE__);
     }
 
     if (reader)
@@ -247,23 +241,3 @@ static gboolean openCDMiWidevineDecryptorDecrypt(WebKitMediaCommonEncryptionDecr
     return true;
 }
 #endif
-
-/*
-static gboolean
-plugin_init (GstPlugin * plugin)
-{
-    printf("%s:%s:%d  \n",__FILE__,__func__,__LINE__);
-  if (!gst_element_register (plugin, "opencdmiwidevine",
-          GST_RANK_PRIMARY + 100, OPENCDMI_TYPE_WIDEVINE_DECRYPT)) {
-    return FALSE;
-  }
-  printf("%s:%s:%d  \n",__FILE__,__func__,__LINE__);
-  return TRUE;
-}
-*/
-/*GST_PLUGIN_DEFINE (GST_VERSION_MAJOR,
-    GST_VERSION_MINOR,
-    gstopencdmiwidevine,
-    "GStreamer OpenCDMi Plug-ins",
-    plugin_init,
-    PACKAGE_VERSION, "Proprietary", PACKAGE_NAME, "https://github.com/fraunhoferfokus/open-content-decryption-module-cdmi")*/

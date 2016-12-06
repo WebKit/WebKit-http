@@ -29,6 +29,7 @@
 #ifndef CDM_PRIVATE_ENC_KEY_WPE_H_
 #define CDM_PRIVATE_ENC_KEY_WPE_H_
 #include "config.h"
+
 #if ENABLE(ENCRYPTED_MEDIA_V2) && USE(OCDM)
 #include "CDMPrivate.h"
 #include "CDMSession.h"
@@ -49,7 +50,6 @@ public:
     { }
     explicit CDMPrivateEncKey() {};
 
-    // CDMFactory support:
     static bool supportsKeySystem(const String&);
     static bool supportsKeySystemAndMimeType(const String& keySystem, const String& mimeType);
     static std::unique_ptr<CDMSession> createSession(CDMSessionClient*);

@@ -42,7 +42,6 @@ unique_ptr<OpenCdm> CDMPrivateEncKey::m_openCdm(nullptr);
 bool CDMPrivateEncKey::supportsKeySystem(const String& keySystem)
 {
     m_openCdmKeySystem = keySystem;
-    printf ("This is file %s --function (%s)--%d \n: key system  = %s\n",__FILE__,__func__, __LINE__,keySystem.utf8().data());
     return CDMPrivateEncKey::getOpenCdmInstance()->IsTypeSupported(keySystem.utf8().data(),"");
 }
 
@@ -51,11 +50,9 @@ bool CDMPrivateEncKey::supportsKeySystemAndMimeType(const String& keySystem, con
     if (!supportsKeySystem(keySystem))
         return false;
 
-    printf ("This is file %s --function (%s)--%d \n",__FILE__,__func__, __LINE__);
     return CDMPrivateEncKey::getOpenCdmInstance()->IsTypeSupported(keySystem.utf8().data(),
                                                                    mimeType.utf8().data());
 }
-
 
 std::unique_ptr<CDMSession> CDMPrivateEncKey::createSession(CDMSessionClient* client)
 {
