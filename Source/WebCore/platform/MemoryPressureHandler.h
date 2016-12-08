@@ -85,10 +85,8 @@ public:
     WEBCORE_EXPORT bool shouldWaitForMemoryClearMessage();
     void respondToMemoryPressureIfNeeded();
 #elif OS(LINUX)
-#if 0 && ENABLE(QUIQUE)
     static void waitForMemoryPressureEvent(void*);
     static void pollMemoryPressure(void*);
-#endif
     void setMemoryPressureMonitorHandle(int fd);
 #endif
 
@@ -162,9 +160,8 @@ private:
         std::function<void ()> m_notifyHandler;
 #if USE(GLIB)
         GRefPtr<GSource> m_source;
-#else
-        ThreadIdentifier m_threadID;
 #endif
+        ThreadIdentifier m_threadID { 0 };
     };
 #endif
 

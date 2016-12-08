@@ -107,6 +107,11 @@ MemoryPressureHandler::EventFDPoller::EventFDPoller(int fd, std::function<void (
     , m_notifyHandler(WTFMove(notifyHandler))
 {
 #if USE(GLIB)
+    if (m_fd.value() == -1) {
+        m_threadID = createThread(pollMemoryPressure, this, "WebCore: MemoryPressureHandler");
+        return;
+    }
+
     m_source = adoptGRef(g_source_new(&eventFDSourceFunctions, sizeof(EventFDSource)));
     g_source_set_name(m_source.get(), "WebCore: MemoryPressureHandler");
     if (!g_unix_set_fd_nonblocking(m_fd.value(), TRUE, nullptr)) {
@@ -130,9 +135,11 @@ MemoryPressureHandler::EventFDPoller::~EventFDPoller()
 {
     m_fd = Nullopt;
 #if USE(GLIB)
-    g_source_destroy(m_source.get());
+    if (m_source)
+        g_source_destroy(m_source.get());
 #else
-    detachThread(m_threadID);
+    if (m_threadID)
+        detachThread(m_threadID);
 #endif
 }
 
@@ -187,7 +194,6 @@ static inline String nextToken(FILE* file)
     return String(buffer);
 }
 
-#if 0 && ENABLE(QUIQUE)
 size_t readToken(const char* filename, const char* key, size_t fileUnits)
 {
     size_t result = static_cast<size_t>(-1);
@@ -298,7 +304,6 @@ void MemoryPressureHandler::pollMemoryPressure(void*)
         MemoryPressureHandler::singleton().respondToMemoryPressure(critical ? Critical::Yes : Critical::No);
     });
 }
-#endif
 
 inline void MemoryPressureHandler::logErrorAndCloseFDs(const char* log)
 {
@@ -320,93 +325,44 @@ bool MemoryPressureHandler::tryEnsureEventFD()
     if (m_eventFD)
         return true;
 
-#if 0 && ENABLE(QUIQUE)
-    bool cgroupsPressureHandlerOk = false;
-
-    do {
-        m_eventFD = eventfd(0, EFD_CLOEXEC);
-        if (m_eventFD == -1) {
+    auto setupCgroups = [this]() -> bool {
+        int fd = eventfd(0, EFD_CLOEXEC);
+        if (fd == -1) {
             LOG(MemoryPressure, "eventfd() failed: %m");
-            break;
+            return false;
         }
+        m_eventFD = fd;
 
-        m_pressureLevelFD = open(s_cgroupMemoryPressureLevel, O_CLOEXEC | O_RDONLY);
-        if (m_pressureLevelFD == -1) {
+        fd = open(s_cgroupMemoryPressureLevel, O_CLOEXEC | O_RDONLY);
+        if (fd == -1) {
             logErrorAndCloseFDs("Failed to open memory.pressure_level");
-            break;
+            return false;
         }
+        m_pressureLevelFD = fd;
 
-        int fd = open(s_cgroupEventControl, O_CLOEXEC | O_WRONLY);
+        fd = open(s_cgroupEventControl, O_CLOEXEC | O_WRONLY);
         if (fd == -1) {
             logErrorAndCloseFDs("Failed to open cgroup.event_control");
-            break;
+            return false;
         }
 
         char line[128] = {0, };
-        if (snprintf(line, sizeof(line), "%d %d low", m_eventFD, m_pressureLevelFD) < 0
+        if (snprintf(line, sizeof(line), "%d %d low", m_eventFD.value(), m_pressureLevelFD.value()) < 0
             || write(fd, line, strlen(line) + 1) < 0) {
             logErrorAndCloseFDs("Failed to write cgroup.event_control");
             close(fd);
-            break;
-        }
-        close(fd);
-
-        m_threadID = createThread(waitForMemoryPressureEvent, this, "WebCore: MemoryPressureHandler");
-        if (!m_threadID) {
-            logErrorAndCloseFDs("Failed to create a thread for MemoryPressureHandler");
-            break;
+            return false;
         }
 
-        LOG(MemoryPressure, "Cgroups memory pressure handler installed.");
-        cgroupsPressureHandlerOk = true;
-    } while (false);
+        return true;
+    };
 
-    bool vmstatPressureHandlerOk = false;
+    if (setupCgroups())
+        return true;
 
     // If cgroups isn't available, try to use a simpler poll method based on meminfo.
-    if (!cgroupsPressureHandlerOk) {
-        defaultPollMaximumProcessMemory(s_pollMaximumProcessMemoryCriticalLimit, s_pollMaximumProcessMemoryNonCriticalLimit);
-        do {
-            m_threadID = createThread(pollMemoryPressure, this, "WebCore: MemoryPressureHandler");
-            if (!m_threadID) {
-                logErrorAndCloseFDs("Failed to create a thread for MemoryPressureHandler");
-                break;
-            }
-
-            LOG(MemoryPressure, "Vmstat memory pressure handler installed.");
-            vmstatPressureHandlerOk = true;
-        } while (false);
-#endif
-
-    // Try to use cgroups instead.
-    int fd = eventfd(0, EFD_CLOEXEC);
-    if (fd == -1) {
-        LOG(MemoryPressure, "eventfd() failed: %m");
-        return false;
-    }
-    m_eventFD = fd;
-
-    fd = open(s_cgroupMemoryPressureLevel, O_CLOEXEC | O_RDONLY);
-    if (fd == -1) {
-        logErrorAndCloseFDs("Failed to open memory.pressure_level");
-        return false;
-    }
-    m_pressureLevelFD = fd;
-
-    fd = open(s_cgroupEventControl, O_CLOEXEC | O_WRONLY);
-    if (fd == -1) {
-        logErrorAndCloseFDs("Failed to open cgroup.event_control");
-        return false;
-    }
-
-    char line[128] = {0, };
-    if (snprintf(line, sizeof(line), "%d %d low", m_eventFD.value(), m_pressureLevelFD.value()) < 0
-        || write(fd, line, strlen(line) + 1) < 0) {
-        logErrorAndCloseFDs("Failed to write cgroup.event_control");
-        close(fd);
-        return false;
-    }
-
+    defaultPollMaximumProcessMemory(s_pollMaximumProcessMemoryCriticalLimit, s_pollMaximumProcessMemoryNonCriticalLimit);
+    m_eventFD = -1;
     return true;
 }
 
