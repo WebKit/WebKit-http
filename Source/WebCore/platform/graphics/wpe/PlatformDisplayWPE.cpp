@@ -61,7 +61,7 @@ std::unique_ptr<PlatformDisplayWPE::EGLTarget> PlatformDisplayWPE::createEGLTarg
 
 std::unique_ptr<GLContextWPE> PlatformDisplayWPE::createOffscreenContext(PlatformDisplay& platformDisplay, bool isSharing)
 {
-    struct OffscreenContextData final : public GLContext::Data {
+    struct OffscreenContextData final : public GLContextWPE::Data {
     public:
         virtual ~OffscreenContextData()
         {

@@ -45,7 +45,7 @@ static const EGLenum gEGLAPIVersion = EGL_OPENGL_API;
 #endif
 
 
-std::unique_ptr<GLContextWPE> GLContextWPE::createContext(PlatformDisplay& platformDisplay, EGLNativeWindowType window, bool isSharing, std::unique_ptr<GLContext::Data>&& contextData)
+std::unique_ptr<GLContextWPE> GLContextWPE::createContext(PlatformDisplay& platformDisplay, EGLNativeWindowType window, bool isSharing, std::unique_ptr<GLContextWPE::Data>&& contextData)
 {
     if (platformDisplay.eglDisplay() == EGL_NO_DISPLAY)
         return nullptr;

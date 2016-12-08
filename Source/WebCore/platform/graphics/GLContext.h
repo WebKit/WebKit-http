@@ -75,11 +75,6 @@ public:
     virtual PlatformGraphicsContext3D platformContext() = 0;
 #endif
 
-    class Data {
-    public:
-        virtual ~Data() = default;
-    };
-
 #if PLATFORM(X11)
 private:
     static void addActiveContext(GLContext*);
@@ -91,7 +86,6 @@ protected:
     GLContext(PlatformDisplay&);
 
     PlatformDisplay& m_display;
-    std::unique_ptr<Data> m_contextData;
 };
 
 } // namespace WebCore
