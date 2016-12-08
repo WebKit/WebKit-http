@@ -66,6 +66,6 @@ if (TARGET WebKitGUID)
     add_dependencies(WebKit WebKitGUID)
 endif ()
 
-if (NOT MSVC AND WIN32 AND ${PORT} STREQUAL "Qt")
+if (NOT MSVC AND ${PORT} STREQUAL "Qt")
     ADD_PREFIX_HEADER(WebKit "${WEBKIT_DIR}/qt/WebKitPrefix.h")
 endif ()
