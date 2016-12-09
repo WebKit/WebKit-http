@@ -170,6 +170,8 @@ protected Q_SLOTS:
     void fileDownloadFinished();
 #endif
 
+    void clearMemoryCaches();
+
 public Q_SLOTS:
     LauncherWindow* newWindow();
     LauncherWindow* cloneWindow();

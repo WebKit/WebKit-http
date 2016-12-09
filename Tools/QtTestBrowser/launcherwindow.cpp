@@ -381,6 +381,9 @@ void LauncherWindow::createChrome()
     toolsMenu->addSeparator();
     toolsMenu->addAction("Load URLs from file", this, SLOT(loadURLListFromFile()));
 
+    toolsMenu->addSeparator();
+    toolsMenu->addAction("Clear memory caches", this, SLOT(clearMemoryCaches()));
+
     // GraphicsView sub menu.
     QAction* toggleAcceleratedCompositing = graphicsViewMenu->addAction("Toggle Accelerated Compositing", this, SLOT(toggleAcceleratedCompositing(bool)));
     toggleAcceleratedCompositing->setCheckable(true);
@@ -1109,6 +1112,12 @@ void LauncherWindow::fileDownloadFinished()
     }
 }
 #endif
+
+void LauncherWindow::clearMemoryCaches()
+{
+    QWebSettings::clearMemoryCaches();
+    qDebug() << "Memory caches were cleared";
+}
 
 void LauncherWindow::updateFPS(int fps)
 {
