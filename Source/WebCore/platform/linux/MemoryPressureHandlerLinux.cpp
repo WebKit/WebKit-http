@@ -322,6 +322,12 @@ inline void MemoryPressureHandler::logErrorAndCloseFDs(const char* log)
 
 bool MemoryPressureHandler::tryEnsureEventFD()
 {
+    // If the env var to use the poll method based on meminfo is set, this method overrides anything else.
+    if (m_eventFD != -1 && defaultPollMaximumProcessMemory(s_pollMaximumProcessMemoryCriticalLimit, s_pollMaximumProcessMemoryNonCriticalLimit)) {
+        m_eventFD = -1;
+        return true;
+    }
+
     if (m_eventFD)
         return true;
 
@@ -360,10 +366,7 @@ bool MemoryPressureHandler::tryEnsureEventFD()
     if (setupCgroups())
         return true;
 
-    // If cgroups isn't available, try to use a simpler poll method based on meminfo.
-    defaultPollMaximumProcessMemory(s_pollMaximumProcessMemoryCriticalLimit, s_pollMaximumProcessMemoryNonCriticalLimit);
-    m_eventFD = -1;
-    return true;
+    return false;
 }
 
 void MemoryPressureHandler::install()
