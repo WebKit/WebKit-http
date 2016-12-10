@@ -40,6 +40,10 @@ if (USE_GLIB)
     list(APPEND WTF_SYSTEM_INCLUDE_DIRECTORIES
         ${GLIB_INCLUDE_DIRS}
     )
+    list(APPEND WTF_LIBRARIES
+        ${GLIB_GOBJECT_LIBRARIES}
+        ${GLIB_LIBRARIES}
+    )
 endif ()
 
 if (WIN32)
