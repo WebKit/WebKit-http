@@ -139,7 +139,7 @@ messages -> WebPage LegacyReceiver {
     StopLoading()
 
 #if PLATFORM(QT)
-    ApplicationSchemeReply(WebKit::QtNetworkReplyData reply)
+    ApplicationSchemeReply(struct WebKit::QtNetworkReplyData reply)
     RegisterApplicationScheme(String scheme)
 #endif
 
