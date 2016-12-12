@@ -240,6 +240,10 @@ private:
     bool m_active { false };
     bool m_bufferFull { false };
     bool m_shouldGenerateTimestamps { false };
+
+    static size_t maxBufferSizeVideo;
+    static size_t maxBufferSizeAudio;
+    static size_t maxBufferSizeText;
 };
 
 } // namespace WebCore
