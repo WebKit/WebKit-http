@@ -1,3 +1,15 @@
+2016-12-11  Darin Adler  <darin@apple.com>
+
+        Use std::vsnprintf instead of vasprintf
+        https://bugs.webkit.org/show_bug.cgi?id=165740
+
+        Reviewed by Sam Weinig.
+
+        * wtf/Platform.h: Remove HAVE_VASPRINTF.
+        * wtf/StringExtras.h: Change the vsnprintf workaround to be used only
+        in older versions of Visual Studio, since the problem it works around
+        was resolved in Visual Studio 2015.
+
 2017-06-15  Konstantin Tokarev  <annulen@yandex.ru>
 
         Implement FALLTHROUGH macro for compilers other than Clang

@@ -626,12 +626,6 @@
 #define HAVE_PTHREAD_NP_H 1
 #endif
 
-#if !defined(HAVE_VASPRINTF)
-#if !COMPILER(MSVC) && !COMPILER(MINGW)
-#define HAVE_VASPRINTF 1
-#endif
-#endif
-
 #if !defined(HAVE_STRNSTR)
 #if OS(DARWIN) || (OS(FREEBSD) && !defined(__GLIBC__))
 #define HAVE_STRNSTR 1
