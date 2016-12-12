@@ -69,6 +69,9 @@ bool DrawingAreaWPE::forceRepaintAsync(uint64_t callbackID)
 void DrawingAreaWPE::setLayerTreeStateIsFrozen(bool frozen)
 {
     m_layerTreeStateIsFrozen = frozen;
+
+    if (m_layerTreeHost)
+        m_layerTreeHost->setLayerFlushSchedulingEnabled(!frozen);
 }
 
 void DrawingAreaWPE::setPaintingEnabled(bool)
