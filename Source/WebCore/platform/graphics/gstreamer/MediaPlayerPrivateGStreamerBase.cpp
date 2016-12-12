@@ -57,6 +57,9 @@
 #endif
 
 #if USE(EGL)
+#if !PLATFORM(WPE)
+#include "GLContextEGL.h"
+#endif
 #include <gst/gl/egl/gstgldisplay_egl.h>
 #endif
 
