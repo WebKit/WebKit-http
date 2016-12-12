@@ -266,6 +266,10 @@ private:
     bool m_bufferFull { false };
     bool m_shouldGenerateTimestamps { false };
     bool m_pendingInitializationSegmentForChangeType { false };
+
+    static size_t maxBufferSizeVideo;
+    static size_t maxBufferSizeAudio;
+    static size_t maxBufferSizeText;
 };
 
 } // namespace WebCore
