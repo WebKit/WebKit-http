@@ -8,6 +8,8 @@ option(USE_WPE_BACKEND_INTEL_CE "Whether to enable support for the Intel CE WPE 
 option(USE_WPE_BACKEND_WAYLAND_EGL "Whether to enable support for the wayland-egl WPE backend" OFF)
 option(USE_WPE_BACKEND_WESTEROS "Whether to enable support for the Westeros WPE backend" OFF)
 
+option(USE_PLATFORM_BROADCOM "Whether the playback is based on Broadcom plugins" OFF)
+
 # TODO
 option(USE_WPE_BACKEND_DRM "Whether to enable support for the DRM WPE backend" OFF)
 option(USE_WPE_BACKEND_DRM_TEGRA "Whether to enable support for the Tegra-specific quirks in the DRM WPE backend" OFF)
