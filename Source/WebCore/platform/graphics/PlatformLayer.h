@@ -31,11 +31,6 @@ OBJC_CLASS CALayer;
 typedef CALayer PlatformLayer;
 #elif PLATFORM(WIN) && USE(CA)
 typedef struct _CACFLayer PlatformLayer;
-#elif PLATFORM(QT)
-namespace WebCore {
-class TextureMapperPlatformLayer;
-typedef TextureMapperPlatformLayer PlatformLayer;
-};
 #elif USE(COORDINATED_GRAPHICS_THREADED)
 namespace WebCore {
 class TextureMapperPlatformLayerProxyProvider;
