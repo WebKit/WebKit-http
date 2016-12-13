@@ -25,8 +25,6 @@
 #include <cstring>
 #include <wtf/FastMalloc.h>
 
-#define WEBKIT_IS_VIDEO_SINK(obj) (G_TYPE_CHECK_INSTANCE_TYPE((obj), WEBKIT_TYPE_VIDEO_SINK))
-
 G_DEFINE_TYPE(GstAllocatorFastMalloc, gst_allocator_fast_malloc, GST_TYPE_ALLOCATOR);
 
 static GstMemory* gst_allocator_fast_malloc_alloc(GstAllocator* allocator, gsize size, GstAllocationParams* params)
