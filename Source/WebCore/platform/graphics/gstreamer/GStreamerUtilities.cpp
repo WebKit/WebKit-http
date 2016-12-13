@@ -24,6 +24,7 @@
 #include "GStreamerUtilities.h"
 
 #include "GRefPtrGStreamer.h"
+#include "GstAllocatorFastMalloc.h"
 #include "IntSize.h"
 
 #include <gst/audio/audio-info.h>
@@ -149,6 +150,8 @@ bool initializeGStreamer()
 {
     if (gst_is_initialized())
         return true;
+
+    gst_allocator_set_default(GST_ALLOCATOR(g_object_new(gst_allocator_fast_malloc_get_type(), nullptr)));
 
     GUniqueOutPtr<GError> error;
     // FIXME: We should probably pass the arguments from the command line.
