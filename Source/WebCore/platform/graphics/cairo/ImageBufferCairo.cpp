@@ -237,7 +237,11 @@ ImageBuffer::ImageBuffer(const FloatSize& size, float resolutionScale, ColorSpac
 #else
     ASSERT(m_data.m_renderingMode != Accelerated);
 #endif
-        m_data.m_surface = adoptRef(cairo_image_surface_create(CAIRO_FORMAT_ARGB32, m_size.width(), m_size.height()));
+    {
+        int stride = cairo_format_stride_for_width(CAIRO_FORMAT_ARGB32, m_size.width());
+        m_data.m_surfaceData = MallocPtr<unsigned char>::malloc(m_size.height() * stride);
+        m_data.m_surface = adoptRef(cairo_image_surface_create_for_data(m_data.m_surfaceData.get(), CAIRO_FORMAT_ARGB32, m_size.width(), m_size.height(), stride));
+    }
 
     if (cairo_surface_status(m_data.m_surface.get()) != CAIRO_STATUS_SUCCESS)
         return;  // create will notice we didn't set m_initialized and fail.
