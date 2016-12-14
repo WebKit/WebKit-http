@@ -100,7 +100,7 @@ static void openCDMiWidevineDecryptorFinalize(GObject* object)
 {
     OpenCDMiWideVineDecrypt* self = OPENCDMI_WIDEVINE_DECRYPT(object);
     OpenCDMiWideVineDecryptPrivate* priv = GST_OPENCDMI_WIDEVINE_DECRYPT_GET_PRIVATE(OPENCDMI_WIDEVINE_DECRYPT(self));
-    priv->m_openCdm->releaseMem();
+    priv->m_openCdm->ReleaseMem();
     delete priv->m_openCdm;
     priv->m_openCdm = nullptr;
 //    priv->~OpenCDMiWideVineDecryptPrivate();
