@@ -134,13 +134,10 @@ MemoryPressureHandler::EventFDPoller::EventFDPoller(int fd, std::function<void (
 MemoryPressureHandler::EventFDPoller::~EventFDPoller()
 {
     m_fd = Nullopt;
-#if USE(GLIB)
     if (m_source)
         g_source_destroy(m_source.get());
-#else
     if (m_threadID)
         detachThread(m_threadID);
-#endif
 }
 
 static inline bool isFatalReadError(int error)
