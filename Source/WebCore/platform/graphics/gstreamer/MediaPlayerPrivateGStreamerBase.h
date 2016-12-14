@@ -196,13 +196,10 @@ protected:
     void setPipeline(GstElement*);
     void clearSamples();
 
-    void triggerDrain();
-
     void triggerRepaint(GstSample*);
     void repaint();
 
 #if !USE(HOLE_PUNCH_GSTREAMER)
-    static void drainCallback(MediaPlayerPrivateGStreamerBase*);
     static void repaintCallback(MediaPlayerPrivateGStreamerBase*, GstSample*);
 #endif
 

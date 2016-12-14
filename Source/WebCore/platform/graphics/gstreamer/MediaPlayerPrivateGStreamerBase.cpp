@@ -821,24 +821,12 @@ void MediaPlayerPrivateGStreamerBase::triggerRepaint(GstSample* sample)
 #endif
 }
 
-void MediaPlayerPrivateGStreamerBase::triggerDrain()
-{
-    WTF::GMutexLocker<GMutex> lock(m_sampleMutex);
-    m_videoSize = FloatSize();
-    m_sample = nullptr;
-}
-
 #if !USE(HOLE_PUNCH_GSTREAMER)
 void MediaPlayerPrivateGStreamerBase::repaintCallback(MediaPlayerPrivateGStreamerBase* player, GstSample* sample)
 {
     player->triggerRepaint(sample);
 }
 #endif
-
-void MediaPlayerPrivateGStreamerBase::drainCallback(MediaPlayerPrivateGStreamerBase* player)
-{
-    player->triggerDrain();
-}
 
 #if USE(GSTREAMER_GL)
 GstFlowReturn MediaPlayerPrivateGStreamerBase::newSampleCallback(GstElement* sink, MediaPlayerPrivateGStreamerBase* player)
@@ -1259,7 +1247,6 @@ GstElement* MediaPlayerPrivateGStreamerBase::createVideoSink()
         m_usingFallbackVideoSink = true;
         m_videoSink = webkitVideoSinkNew();
         m_repaintHandler = g_signal_connect_swapped(m_videoSink.get(), "repaint-requested", G_CALLBACK(repaintCallback), this);
-        m_drainHandler = g_signal_connect_swapped(m_videoSink.get(), "drain", G_CALLBACK(drainCallback), this);
     }
 
     GstElement* videoSink = nullptr;

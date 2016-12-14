@@ -523,7 +523,7 @@ MediaTime MediaPlayerPrivateGStreamer::durationMediaTime() const
 
 #if !USE(FUSION_SINK)
     if (m_durationAtEOS)
-        return MediaTime::createWithFloat(m_durationAtEOS);
+        return MediaTime::createWithDouble(m_durationAtEOS);
 #endif
 
     // The duration query would fail on a not-prerolled pipeline.

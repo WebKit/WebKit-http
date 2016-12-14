@@ -178,7 +178,7 @@ protected:
     bool m_downloadFinished;
     bool m_errorOccured;
     mutable bool m_isStreaming;
-    mutable gfloat m_durationAtEOS;
+    mutable gdouble m_durationAtEOS;
     bool m_paused;
     float m_playbackRate;
     GstState m_requestedState;

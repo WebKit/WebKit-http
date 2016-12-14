@@ -216,6 +216,11 @@ public:
     static bool isQTKitEnabled() { return false; }
 #endif
 
+#if USE(GSTREAMER)
+    WEBCORE_EXPORT static void setGStreamerEnabled(bool flag);
+    static bool isGStreamerEnabled() { return gGStreamerEnabled; }
+#endif
+
     static const unsigned defaultMaximumHTMLParserDOMTreeDepth = 512;
     static const unsigned defaultMaximumRenderTreeDepth = 512;
 
@@ -372,6 +377,10 @@ private:
 
 #if PLATFORM(COCOA)
     WEBCORE_EXPORT static bool gQTKitEnabled;
+#endif
+
+#if USE(GSTREAMER)
+    WEBCORE_EXPORT static bool gGStreamerEnabled;
 #endif
 
     static bool gMockScrollbarsEnabled;
