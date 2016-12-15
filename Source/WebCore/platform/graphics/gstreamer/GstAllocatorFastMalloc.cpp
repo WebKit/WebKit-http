@@ -96,7 +96,7 @@ static GstMemoryFastMalloc* gst_allocator_fast_malloc_mem_copy(GstMemoryFastMall
     copy->data = reinterpret_cast<uint8_t*>(copy) + headerSize;
     std::memcpy(copy->data, mem->data + mem->base.offset + offset, allocationSize);
 
-    return nullptr;
+    return copy;
 }
 
 static GstMemoryFastMalloc* gst_allocator_fast_malloc_mem_share(GstMemoryFastMalloc* mem, gssize offset, gsize size)
