@@ -119,7 +119,7 @@
             md5sum="af1bf3dab9e69f3c36f389285e2a12a1"/>
   </autotools>
 
-  <autotools id="gstreamer" autogenargs="--disable-gtk-doc">
+  <autotools id="gstreamer" autogen-sh="configure" autogenargs="--disable-gtk-doc">
     <dependencies>
       <dep package="orc"/>
     </dependencies>
@@ -132,7 +132,7 @@
   </autotools>
 
   <autotools id="gst-plugins-base"
-             autogen-sh="autogen.sh"
+             autogen-sh="configure"
              autogenargs="--disable-examples --disable-gtk-doc">
     <dependencies>
       <dep package="gstreamer"/>
@@ -143,7 +143,7 @@
             md5sum="5421edfeb7479d5f5776e917ba30e24e"/>
   </autotools>
 
-  <autotools id="gst-plugins-good" autogenargs="--disable-examples --disable-soup --disable-gtk-doc">
+  <autotools id="gst-plugins-good" autogen-sh="configure" autogenargs="--disable-examples --disable-soup --disable-gtk-doc">
     <dependencies>
       <dep package="gst-plugins-base"/>
     </dependencies>
@@ -157,7 +157,7 @@
     </branch>
   </autotools>
 
-  <autotools id="gst-plugins-bad" autogenargs="--disable-examples --disable-gtk-doc --disable-introspection">
+  <autotools id="gst-plugins-bad" autogen-sh="configure" autogenargs="--disable-examples --disable-gtk-doc --disable-introspection">
     <dependencies>
       <dep package="gst-plugins-base"/>
     </dependencies>
@@ -167,7 +167,7 @@
             md5sum="e508da2a8a5c3d12264fe3415be2f451"/>
   </autotools>
 
-  <autotools id="gst-libav" autogenargs="--with-libav-extra-configure='--disable-yasm' --disable-gtk-doc">
+  <autotools id="gst-libav" autogen-sh="configure" autogenargs="--with-libav-extra-configure='--disable-yasm' --disable-gtk-doc">
     <dependencies>
       <dep package="gst-plugins-base"/>
     </dependencies>
