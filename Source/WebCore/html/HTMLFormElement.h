@@ -177,6 +177,8 @@ private:
     virtual bool matchesValidPseudoClass() const override;
     virtual bool matchesInvalidPseudoClass() const override;
 
+    void resetAssociatedFormControlElements();
+
     typedef HashMap<RefPtr<AtomicStringImpl>, FormNamedItem*> PastNamesMap;
 
     FormSubmission::Attributes m_attributes;
@@ -184,19 +186,19 @@ private:
 
     CheckedRadioButtons m_checkedRadioButtons;
 
-    unsigned m_associatedElementsBeforeIndex;
-    unsigned m_associatedElementsAfterIndex;
+    unsigned m_associatedElementsBeforeIndex { 0 };
+    unsigned m_associatedElementsAfterIndex { 0 };
     Vector<FormAssociatedElement*> m_associatedElements;
     Vector<HTMLImageElement*> m_imageElements;
     HashSet<const HTMLFormControlElement*> m_invalidAssociatedFormControls;
 
-    bool m_wasUserSubmitted;
-    bool m_isSubmittingOrPreparingForSubmission;
-    bool m_shouldSubmit;
+    bool m_wasUserSubmitted { false };
+    bool m_isSubmittingOrPreparingForSubmission { false };
+    bool m_shouldSubmit { false };
 
-    bool m_isInResetFunction;
+    bool m_isInResetFunction { false };
 
-    bool m_wasDemoted;
+    bool m_wasDemoted { false };
 
 #if ENABLE(REQUEST_AUTOCOMPLETE)
     void requestAutocompleteTimerFired();
