@@ -152,19 +152,6 @@ QWebElement::QWebElement(WebCore::Element* domElement)
 }
 
 /*!
-    \internal
-*/
-QWebElement::QWebElement(WebCore::Node* node)
-    : d(0)
-    , m_element(0)
-{
-    if (node && node->isHTMLElement()) {
-        m_element = static_cast<HTMLElement*>(node);
-        m_element->ref();
-    }
-}
-
-/*!
     Constructs a copy of \a other.
 */
 QWebElement::QWebElement(const QWebElement &other)
@@ -1419,23 +1406,6 @@ void QWebElement::replace(const QString &markup)
 
     appendOutside(markup);
     takeFromDocument();
-}
-
-/*!
-    \internal
-    Walk \a node's parents until a valid QWebElement is found.
-    For example, a WebCore::Text node is not a valid Html QWebElement, but its
-    enclosing p tag is.
-*/
-QWebElement QWebElement::enclosingElement(WebCore::Node* node)
-{
-    QWebElement element(node);
-
-    while (element.isNull() && node) {
-        node = node->parentNode();
-        element = QWebElement(node);
-    }
-    return element;
 }
 
 /*!

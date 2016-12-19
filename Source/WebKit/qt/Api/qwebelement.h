@@ -147,14 +147,11 @@ public:
 
 private:
     explicit QWebElement(WebCore::Element*);
-    explicit QWebElement(WebCore::Node*);
 
     void beginEnterFullScreen();
     void endEnterFullScreen();
     void beginExitFullScreen();
     void endExitFullScreen();
-
-    static QWebElement enclosingElement(WebCore::Node*);
 
     friend class WebCore::ChromeClientQt;
     friend class DumpRenderTreeSupportQt;
