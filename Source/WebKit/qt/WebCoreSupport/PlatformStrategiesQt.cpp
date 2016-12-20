@@ -152,17 +152,14 @@ void PlatformStrategiesQt::getPluginInfo(const WebCore::Page* page, Vector<WebCo
     PluginDatabase* db = PluginDatabase::installedPlugins();
     const Vector<PluginPackage*> &plugins = db->plugins();
 
-    for (int i = 0; i < plugins.size(); ++i) {
+    for (auto* package : plugins) {
         PluginInfo info;
-        PluginPackage* package = plugins[i];
-
         info.name = package->name();
         info.file = package->fileName();
         info.desc = package->description();
 
-        const MIMEToDescriptionsMap& mimeToDescriptions = package->mimeToDescriptions();
-        MIMEToDescriptionsMap::const_iterator end = mimeToDescriptions.end();
-        for (MIMEToDescriptionsMap::const_iterator it = mimeToDescriptions.begin(); it != end; ++it) {
+        const auto& mimeToDescriptions = package->mimeToDescriptions();
+        for (auto it = mimeToDescriptions.begin(); it != mimeToDescriptions.end(); ++it) {
             MimeClassInfo mime;
 
             mime.type = it->key;
