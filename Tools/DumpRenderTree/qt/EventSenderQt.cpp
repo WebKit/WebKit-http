@@ -291,7 +291,7 @@ void EventSender::keyDown(const QString& string, const QStringList& modifiers, u
         code = string.unicode()->unicode();
         //qDebug() << ">>>>>>>>> keyDown" << code << (char)code;
         // map special keycodes used by the tests to something that works for Qt/X11
-        if (code == '\r') {
+        if (code == '\r' || code == '\n') {
             code = Qt::Key_Return;
         } else if (code == '\t') {
             code = Qt::Key_Tab;
