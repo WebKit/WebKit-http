@@ -216,8 +216,15 @@ void ChromeClientQt::focusedFrameChanged(Frame*)
 {
 }
 
-Page* ChromeClientQt::createWindow(Frame*, const FrameLoadRequest& request, const WindowFeatures& features, const NavigationAction&)
+Page* ChromeClientQt::createWindow(Frame* frame, const FrameLoadRequest&, const WindowFeatures& features, const NavigationAction&)
 {
+#if ENABLE(FULLSCREEN_API)
+    if (frame->document() && frame->document()->webkitCurrentFullScreenElement())
+        frame->document()->webkitCancelFullScreen();
+#else
+    UNUSED_PARAM(frame);
+#endif
+
     QWebPageAdapter* newPage = m_webPage->createWindow(features.dialog);
     if (!newPage)
         return 0;
