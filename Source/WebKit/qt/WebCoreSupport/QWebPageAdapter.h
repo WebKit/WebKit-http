@@ -21,6 +21,7 @@
 #define QWebPageAdapter_h
 
 #include "QWebPageClient.h"
+#include "qwebelement.h"
 #include "qwebhistory.h"
 
 #include <qbasictimer.h>
@@ -55,7 +56,6 @@ struct ViewportArguments;
 
 class QtPluginWidgetAdapter;
 class QWebFrameAdapter;
-class QWebElement;
 class QWebHistoryItem;
 class QWebHitTestResultPrivate;
 class QWebPageClient;
@@ -385,6 +385,9 @@ public:
 
     bool isPlayingAudio() const;
 
+    const QWebElement& fullScreenElement() const;
+    void setFullScreenElement(const QWebElement&);
+
     QWebSettings *settings;
 
     WebCore::Page *page;
@@ -408,6 +411,10 @@ private:
     QNetworkAccessManager *networkManager;
     WebCore::DeviceOrientationClient* m_deviceOrientationClient;
     WebCore::DeviceMotionClient* m_deviceMotionClient;
+
+#if ENABLE(FULLSCREEN_API)
+    QWebElement m_fullScreenElement;
+#endif
 
 public:
     static bool drtRun;

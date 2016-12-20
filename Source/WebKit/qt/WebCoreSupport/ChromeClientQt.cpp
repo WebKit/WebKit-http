@@ -723,7 +723,10 @@ void ChromeClientQt::enterFullScreenForElement(Element* element)
 
 void ChromeClientQt::exitFullScreenForElement(Element* element)
 {
-    m_webPage->fullScreenRequested(element->document().url(), QWebElement(element), false);
+    if (element)
+        m_webPage->fullScreenRequested(element->document().url(), QWebElement(element), false);
+    else
+        m_webPage->fullScreenRequested(QUrl(), QWebElement(), false);
 }
 #endif
 

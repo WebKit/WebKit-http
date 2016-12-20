@@ -578,7 +578,7 @@ QWebSettings::QWebSettings()
     d->attributes.insert(QWebSettings::CaretBrowsingEnabled, false);
     d->attributes.insert(QWebSettings::NotificationsEnabled, true);
     d->attributes.insert(QWebSettings::WebSecurityEnabled, true);
-    d->attributes.insert(QWebSettings::FullScreenSupportEnabled, false);
+    d->attributes.insert(QWebSettings::FullScreenSupportEnabled, true);
     d->offlineStorageDefaultQuota = 5 * 1024 * 1024;
     d->defaultTextEncoding = QLatin1String("iso-8859-1");
     d->thirdPartyCookiePolicy = AlwaysAllowThirdPartyCookies;

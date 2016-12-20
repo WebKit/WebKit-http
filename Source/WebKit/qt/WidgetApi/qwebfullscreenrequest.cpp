@@ -30,8 +30,6 @@
 
 #include <QtCore/qpointer.h>
 
-QT_BEGIN_NAMESPACE
-
 class QWebFullScreenRequestPrivate {
 public:
     QWebFullScreenRequestPrivate(QWebPage* page, const QUrl& origin, const QWebElement& element, bool toggleOn)
@@ -53,6 +51,12 @@ public:
 QWebFullScreenRequest::QWebFullScreenRequest(QWebPage* page, const QUrl& origin, const QWebElement& element, bool toggleOn)
     : d(new QWebFullScreenRequestPrivate(page, origin, element, toggleOn))
 {
+    if (element.isNull())
+        d->element = page->d->fullScreenElement();
+}
+
+QWebFullScreenRequest::QWebFullScreenRequest()
+{
 }
 
 QWebFullScreenRequest::QWebFullScreenRequest(const QWebFullScreenRequest& other)
@@ -63,12 +67,13 @@ QWebFullScreenRequest::QWebFullScreenRequest(const QWebFullScreenRequest& other)
 QWebFullScreenRequest::~QWebFullScreenRequest()
 {
     if (d->accepted && d->page) {
-        if (d->toggleOn)
+        if (d->toggleOn) {
             d->element.endEnterFullScreen();
-        else
+        } else {
             d->element.endExitFullScreen();
+            d->page->d->setFullScreenElement(QWebElement());
+        }
     }
-    delete d;
 }
 
 void QWebFullScreenRequest::accept()
@@ -80,10 +85,12 @@ void QWebFullScreenRequest::accept()
 
     d->accepted = true;
 
-    if (d->toggleOn)
+    if (d->toggleOn) {
+        d->page->d->setFullScreenElement(d->element);
         d->element.beginEnterFullScreen();
-    else
+    } else {
         d->element.beginExitFullScreen();
+    }
 }
 
 void QWebFullScreenRequest::reject()
@@ -104,5 +111,3 @@ const QWebElement &QWebFullScreenRequest::element() const
 {
     return d->element;
 }
-
-QT_END_NAMESPACE

@@ -26,18 +26,19 @@
 #ifndef QWEBFULLSCREENREQUEST_H
 #define QWEBFULLSCREENREQUEST_H
 
+#include <QtCore/qscopedpointer.h>
 #include <QtCore/qurl.h>
 #include <QtWebKit/qwebelement.h>
 #include <QtWebKit/qwebkitglobal.h>
 
-QT_BEGIN_NAMESPACE
 class QWebFullScreenRequestPrivate;
 class QWebPage;
 
 class QWEBKITWIDGETS_EXPORT QWebFullScreenRequest {
 public:
+    QWebFullScreenRequest();
     QWebFullScreenRequest(const QWebFullScreenRequest&);
-    virtual ~QWebFullScreenRequest();
+    ~QWebFullScreenRequest();
 
     void accept();
     void reject();
@@ -48,9 +49,9 @@ public:
 private:
     QWebFullScreenRequest(QWebPage* page, const QUrl& origin, const QWebElement& element, bool toggleOn);
     friend class QWebPagePrivate;
-    QWebFullScreenRequestPrivate* d;
+    QScopedPointer<QWebFullScreenRequestPrivate> d;
 };
 
-QT_END_NAMESPACE
+Q_DECLARE_METATYPE(QWebFullScreenRequest)
 
 #endif
