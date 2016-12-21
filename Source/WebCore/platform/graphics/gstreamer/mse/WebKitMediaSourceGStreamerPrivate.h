@@ -97,7 +97,7 @@ struct _WebKitMediaSrcPrivate {
     Lock streamLock;
     Condition streamCondition;
 
-    Deque<Stream*> streams;
+    Vector<Stream*> streams;
     GUniquePtr<gchar> location;
     int numberOfAudioStreams;
     int numberOfVideoStreams;
