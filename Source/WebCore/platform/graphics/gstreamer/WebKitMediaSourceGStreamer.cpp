@@ -99,7 +99,7 @@ struct _WebKitMediaSrcPrivate {
     GMutex streamMutex;
     GCond streamCondition;
 
-    Deque<Stream*> streams;
+    Vector<Stream*> streams;
     gchar* location;
     int numberOfAudioStreams;
     int numberOfVideoStreams;
@@ -259,7 +259,7 @@ static void webKitMediaSrcFinalize(GObject* object)
 
     ASSERT(WTF::isMainThread());
 
-    Deque<Stream*> oldStreams;
+    Vector<Stream*> oldStreams;
     source->priv->streams.swap(oldStreams);
 
     for (Stream* stream : oldStreams)
@@ -777,6 +777,7 @@ static void enabledAppsrcEnoughData(GstAppSrc *appsrc, gpointer userData)
 
     WebKitMediaSrc* webKitMediaSrc = static_cast<WebKitMediaSrc*>(userData);
     ASSERT(WEBKIT_IS_MEDIA_SRC(webKitMediaSrc));
+
     Stream* stream = getStreamByAppsrc(webKitMediaSrc, GST_ELEMENT(appsrc));
 
     // This callback might have been scheduled from a child thread before the stream was removed.
@@ -896,7 +897,7 @@ MediaSourcePrivate::AddStatus PlaybackPipeline::addSourceBuffer(RefPtr<SourceBuf
         "min-percent", 20, nullptr);
 
     GST_OBJECT_LOCK(m_webKitMediaSrc.get());
-    priv->streams.prepend(stream);
+    priv->streams.append(stream);
     GST_OBJECT_UNLOCK(m_webKitMediaSrc.get());
 
     gst_bin_add(GST_BIN(m_webKitMediaSrc.get()), stream->appsrc);
@@ -912,18 +913,9 @@ void PlaybackPipeline::removeSourceBuffer(RefPtr<SourceBufferPrivateGStreamer> s
     GST_DEBUG_OBJECT(m_webKitMediaSrc.get(), "Element removed from MediaSource");
     GST_OBJECT_LOCK(m_webKitMediaSrc.get());
     WebKitMediaSrcPrivate* priv = m_webKitMediaSrc->priv;
-    Stream* stream = nullptr;
-    Deque<Stream*>::iterator streamPosition = priv->streams.begin();
-
-    while (streamPosition != priv->streams.end()) {
-        if ((*streamPosition)->sourceBuffer == sourceBufferPrivate.get()) {
-            stream = *streamPosition;
-            break;
-        }
-        ++streamPosition;
-    }
+    Stream* stream = getStreamBySourceBufferPrivate(m_webKitMediaSrc.get(), sourceBufferPrivate.get());
     if (stream)
-        priv->streams.remove(streamPosition);
+        priv->streams.removeFirst(stream);
     GST_OBJECT_UNLOCK(m_webKitMediaSrc.get());
 
     if (stream)
