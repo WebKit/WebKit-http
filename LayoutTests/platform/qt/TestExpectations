@@ -41,6 +41,7 @@
 # - Failing CSS Tests
 # - failing fast tests
 # - failing fonts tests
+# - failing fullscreen tests
 # - failing security tests
 # - failing tables tests
 # - Failed canvas tests from http://philip.html5.org/tests/canvas/suite/tests/
@@ -59,7 +60,6 @@ css2.1 [ Missing ]
 displaylists
 editing
 fonts
-fullscreen
 gamepad
 ietestcenter
 imported
@@ -220,6 +220,9 @@ fast/events/right-click-focus.html [ Crash Pass ]
 fast/html/keygen.html [ WontFix ]
 fast/text/line-initial-and-final-swashes.html [ WontFix ]
 
+# We don't support ALLOW_KEYBOARD_INPUT, and it's deprecated
+fullscreen/full-screen-keyboard-enabled.html [ WontFix ]
+
 # =========================================================================== #
 #       Disabled features.                                                    #
 # =========================================================================== #
@@ -357,7 +360,7 @@ webkit.org/b/89052 fast/css/image-orientation
 #webkit.org/b/112755 fast/css3-text/css3-text-indent [ ImageOnlyFailure ]
 fast/css3-text/css3-text-indent/text-indent-each-line-hanging.html [ ImageOnlyFailure ]
 
-# CURSOR_VISIBILITY is not enabled in qt
+# CURSOR_VISIBILITY is not enabled in qt, also #378
 webkit.org/b/107601 fullscreen/video-cursor-auto-hide.html # [ Failure ]
 
 # ENABLE(ATTACHMENT_ELEMENT) is disabled
@@ -1227,6 +1230,14 @@ fast/borders/border-mixed-alpha.html [ ImageOnlyFailure ]
   fast/regions/writing-mode/invalid-first-region-with-writing-mode-2.html [ ImageOnlyFailure ]
   fast/regions/writing-mode/invalid-first-region-with-writing-mode.html [ ImageOnlyFailure ]
 
+# ============================================================================= #
+# Failing fullscreen Tests
+# ============================================================================= #
+
+# FIXME when plugin tests are enabled
+fullscreen/full-screen-plugin.html [ Skip ]
+
+
 # Unsorted timeouts (FIXME)
 
   fast/events/5056619.html [ Skip ]
@@ -1313,10 +1324,8 @@ http/tests/inspector/dom/disconnect-dom-tree-after-main-frame-navigation.html [ 
 http/tests/contentdispositionattachmentsandbox/referer-header-stripped-with-meta-referer-never.html [ Skip ]
 http/tests/inspector/console/cross-domain-inspected-node-access.html [ Skip ]
 http/tests/fileapi/xhr-send-form-data-mimetype-normalization.html [ Skip ]
-http/tests/fullscreen/fullscreenelement-same-origin.html [ Skip ]
 http/tests/contentdispositionattachmentsandbox/referer-header-stripped-with-meta-referer-always.html [ Skip ]
 http/tests/contentdispositionattachmentsandbox/referer-header-stripped-with-meta-referer-default.html [ Skip ]
-http/tests/fullscreen/fullscreenelement-different-origin.html [ Skip ]
 http/tests/fileapi/xhr-send-form-data-filename-escaping.html [ Skip ]
 http/tests/contentdispositionattachmentsandbox/referer-header-stripped-with-meta-referer-origin.html [ Skip ]
 http/tests/local/blob/send-hybrid-blob.html [ Skip ]
@@ -2153,7 +2162,6 @@ js/date-constructor.html [ Failure ]
   fast/parser/pre-html5-parser-quirks.html [ Failure ]
   fast/parser/tabs-in-scripts.html [ Failure ]
   fast/regions/flows-dependency-dynamic-remove.html [ Failure ]
-  fast/regions/fullscreen/full-screen-video-in-region-crash.html [ Failure ]
   fast/regions/overflow/overflow-3dtransformed-region.html [ Failure ]
   fast/regions/selection/position-for-point-1-vert-lr.html [ Failure ]
   fast/regions/selection/position-for-point-1-vert-rl.html [ Failure ]
@@ -2354,7 +2362,6 @@ js/date-constructor.html [ Failure ]
   fast/overflow/infiniteRecursionGuard.html [ Missing ]
   fast/regions/auto-size/autoheight-regions-mark.html [ Missing ]
   fast/regions/flows-dependency-same-flow.html [ Missing ]
-  fast/regions/fullscreen/full-screen-video-from-region.html [ Missing ]
   fast/regions/iframe-html-collected.html [ Missing ]
   fast/regions/repaint/line-flow-with-floats-in-regions.html [ Missing ]
   fast/regions/repaint/overflow-flipped-writing-mode-block-in-regions.html [ Missing ]
