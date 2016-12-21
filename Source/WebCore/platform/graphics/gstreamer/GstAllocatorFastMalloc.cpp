@@ -55,9 +55,10 @@ static GstMemory* gst_allocator_fast_malloc_alloc(GstAllocator* allocator, gsize
     return GST_MEMORY_CAST(mem);
 }
 
-static void gst_allocator_fast_malloc_free(GstAllocator*, GstMemory* mem)
+static void gst_allocator_fast_malloc_free(GstAllocator* allocator, GstMemory* mem)
 {
     ASSERT(G_TYPE_CHECK_INSTANCE_TYPE(allocator, gst_allocator_fast_malloc_get_type()));
+    UNUSED_PARAM(allocator);
 
     fastFree(mem);
 }
