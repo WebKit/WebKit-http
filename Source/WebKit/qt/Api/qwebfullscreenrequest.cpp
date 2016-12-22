@@ -26,59 +26,69 @@
 #include "config.h"
 #include "qwebfullscreenrequest.h"
 
-#include "qwebpage_p.h"
+#include "QWebPageAdapter.h"
 
-#include <QtCore/qpointer.h>
+#include <QPointer>
+#include <WebCore/Element.h>
+
+using WebCore::Element;
 
 class QWebFullScreenRequestPrivate {
 public:
-    QWebFullScreenRequestPrivate(QWebPage* page, const QUrl& origin, const QWebElement& element, bool toggleOn)
-        : page(page)
-        , origin(origin)
-        , element(element)
-        , accepted(false)
+    QWebFullScreenRequestPrivate(QWebPageAdapter* page, const QWebElement& element, bool toggleOn)
+        : element(element)
         , toggleOn(toggleOn)
+        , accepted(false)
+        , m_handle(page->handle())
+        , m_page(page)
     {
     }
 
-    QPointer<QWebPage> page;
-    const QUrl origin;
-    QWebElement element;
-    bool accepted;
-    const bool toggleOn;
-};
+    QWebPageAdapter* page() const
+    {
+        return m_handle.isNull() ? nullptr : m_page;
+    }
 
-QWebFullScreenRequest::QWebFullScreenRequest(QWebPage* page, const QUrl& origin, const QWebElement& element, bool toggleOn)
-    : d(new QWebFullScreenRequestPrivate(page, origin, element, toggleOn))
-{
-    if (element.isNull())
-        d->element = page->d->fullScreenElement();
-}
+    QWebElement element;
+    const bool toggleOn;
+    bool accepted;
+
+private:
+    QPointer<QObject> m_handle;
+    QWebPageAdapter* m_page;
+};
 
 QWebFullScreenRequest::QWebFullScreenRequest()
 {
 }
 
+QWebFullScreenRequest::QWebFullScreenRequest(QWebPageAdapter* page, const QWebElement& element, bool toggleOn)
+    : d(new QWebFullScreenRequestPrivate(page, element, toggleOn))
+{
+    if (element.isNull())
+        d->element = page->fullScreenElement();
+}
+
 QWebFullScreenRequest::QWebFullScreenRequest(const QWebFullScreenRequest& other)
-    : d(new QWebFullScreenRequestPrivate(other.d->page, other.d->origin, other.d->element, other.d->toggleOn))
+    : d(new QWebFullScreenRequestPrivate(*other.d))
 {
 }
 
 QWebFullScreenRequest::~QWebFullScreenRequest()
 {
-    if (d->accepted && d->page) {
+    if (d->accepted && d->page()) {
         if (d->toggleOn) {
             d->element.endEnterFullScreen();
         } else {
             d->element.endExitFullScreen();
-            d->page->d->setFullScreenElement(QWebElement());
+            d->page()->setFullScreenElement(QWebElement());
         }
     }
 }
 
 void QWebFullScreenRequest::accept()
 {
-    if (!d->page) {
+    if (!d->page()) {
         qWarning("Cannot accept QWebFullScreenRequest: Originating page is already deleted");
         return;
     }
@@ -86,7 +96,7 @@ void QWebFullScreenRequest::accept()
     d->accepted = true;
 
     if (d->toggleOn) {
-        d->page->d->setFullScreenElement(d->element);
+        d->page()->setFullScreenElement(d->element);
         d->element.beginEnterFullScreen();
     } else {
         d->element.beginExitFullScreen();
@@ -102,12 +112,15 @@ bool QWebFullScreenRequest::toggleOn() const
     return d->toggleOn; 
 }
 
-const QUrl &QWebFullScreenRequest::origin() const
+QUrl QWebFullScreenRequest::origin() const
 {
-    return d->origin; 
+    if (!d->element.isNull())
+        return d->element.m_element->document().url();
+
+    return QUrl();
 }
 
-const QWebElement &QWebFullScreenRequest::element() const
+const QWebElement& QWebFullScreenRequest::element() const
 {
     return d->element;
 }

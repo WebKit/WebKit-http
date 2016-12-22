@@ -64,6 +64,7 @@
 #endif
 #include "ViewportArguments.h"
 #include "WindowFeatures.h"
+#include "qwebfullscreenrequest.h"
 #include "qwebkitplatformplugin.h"
 #include "qwebsecurityorigin.h"
 #include "qwebsecurityorigin_p.h"
@@ -718,15 +719,12 @@ bool ChromeClientQt::supportsFullScreenForElement(const Element*, bool withKeybo
 
 void ChromeClientQt::enterFullScreenForElement(Element* element)
 {
-    m_webPage->fullScreenRequested(element->document().url(), QWebElement(element), true);
+    m_webPage->fullScreenRequested(QWebFullScreenRequest::createEnterRequest(m_webPage, QWebElement(element)));
 }
 
 void ChromeClientQt::exitFullScreenForElement(Element* element)
 {
-    if (element)
-        m_webPage->fullScreenRequested(element->document().url(), QWebElement(element), false);
-    else
-        m_webPage->fullScreenRequested(QUrl(), QWebElement(), false);
+    m_webPage->fullScreenRequested(QWebFullScreenRequest::createExitRequest(m_webPage, QWebElement(element)));
 }
 #endif
 

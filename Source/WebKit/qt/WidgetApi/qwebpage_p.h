@@ -31,6 +31,7 @@
 #include <qgesture.h>
 #include <qgraphicssceneevent.h>
 #include <qgraphicswidget.h>
+#include <qmetaobject.h>
 #include <qnetworkproxy.h>
 
 
@@ -101,7 +102,7 @@ public:
     QColor colorSelectionRequested(const QColor& selectedColor) override;
     std::unique_ptr<QWebSelectMethod> createSelectPopup() override;
     QRect viewRectRelativeToWindow() override;
-    void fullScreenRequested(const QUrl& origin, const QWebElement& element, bool fullscreen) override;
+    void fullScreenRequested(QWebFullScreenRequest) override;
     void geolocationPermissionRequested(QWebFrameAdapter*) override;
     void geolocationPermissionRequestCancelled(QWebFrameAdapter*) override;
     void notificationsPermissionRequested(QWebFrameAdapter*) override;
@@ -206,6 +207,8 @@ public:
     QWebInspector* inspector;
     bool inspectorIsInternalOnly; // True if created through the Inspect context menu action
     Qt::DropAction m_lastDropAction;
+
+    QMetaMethod m_fullScreenRequested;
 };
 
 #endif

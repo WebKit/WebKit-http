@@ -156,7 +156,7 @@ WebPage::WebPage(QObject* parent, DumpRenderTree* drt)
     connect(this, SIGNAL(featurePermissionRequested(QWebFrame*, QWebPage::Feature)), this, SLOT(requestPermission(QWebFrame*, QWebPage::Feature)));
     connect(this, SIGNAL(featurePermissionRequestCanceled(QWebFrame*, QWebPage::Feature)), this, SLOT(cancelPermission(QWebFrame*, QWebPage::Feature)));
 
-    connect(this, &QWebPage::fullScreenRequested, this, &WebPage::requestFullScreen, Qt::QueuedConnection);
+    connect(this, &QWebPage::fullScreenRequested, this, &WebPage::requestFullScreen);
 }
 
 WebPage::~WebPage()

@@ -32,7 +32,7 @@
 #include <QtWebKit/qwebkitglobal.h>
 
 class QWebFullScreenRequestPrivate;
-class QWebPage;
+class QWebPageAdapter;
 
 class QWEBKIT_EXPORT QWebFullScreenRequest {
 public:
@@ -43,15 +43,27 @@ public:
     void accept();
     void reject();
     bool toggleOn() const;
-    const QUrl &origin() const;
+    QUrl origin() const;
     const QWebElement &element() const;
 
 private:
-    QWebFullScreenRequest(QWebPage* page, const QUrl& origin, const QWebElement& element, bool toggleOn);
-    friend class QWebPagePrivate;
+    friend class WebCore::ChromeClientQt;
+
+    static QWebFullScreenRequest createEnterRequest(QWebPageAdapter* page, const QWebElement& element)
+    {
+        return QWebFullScreenRequest(page, element, true);
+    }
+
+    static QWebFullScreenRequest createExitRequest(QWebPageAdapter* page, const QWebElement& element)
+    {
+        return QWebFullScreenRequest(page, element, false);
+    }
+
+    QWebFullScreenRequest(QWebPageAdapter* page, const QWebElement& element, bool toggleOn);
     QScopedPointer<QWebFullScreenRequestPrivate> d;
 };
 
+Q_DECLARE_TYPEINFO(QWebFullScreenRequest, Q_MOVABLE_TYPE);
 Q_DECLARE_METATYPE(QWebFullScreenRequest)
 
 #endif

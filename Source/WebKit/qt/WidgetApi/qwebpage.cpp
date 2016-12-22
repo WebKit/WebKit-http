@@ -214,6 +214,11 @@ QWebPagePrivate::QWebPagePrivate(QWebPage *qq)
         setSystemTrayIcon(new QSystemTrayIcon);
 #endif // QT_NO_SYSTEMTRAYICON
 #endif // ENABLE(NOTIFICATIONS) || ENABLE(LEGACY_NOTIFICATIONS)
+
+    qRegisterMetaType<QWebFullScreenRequest>();
+    int fullScreenRequestedIndex = q->metaObject()->indexOfMethod("fullScreenRequested(QWebFullScreenRequest)");
+    Q_ASSERT(fullScreenRequestedIndex != -1);
+    m_fullScreenRequested = q->metaObject()->method(fullScreenRequestedIndex);
 }
 
 void QWebPagePrivate::show()

@@ -56,6 +56,7 @@ struct ViewportArguments;
 
 class QtPluginWidgetAdapter;
 class QWebFrameAdapter;
+class QWebFullScreenRequest;
 class QWebHistoryItem;
 class QWebHitTestResultPrivate;
 class QWebPageClient;
@@ -207,7 +208,7 @@ public:
 #if USE(QT_MULTIMEDIA)
     virtual QWebFullScreenVideoHandler* createFullScreenVideoHandler() = 0;
 #endif
-    virtual void fullScreenRequested(const QUrl&, const QWebElement&, bool) = 0;
+    virtual void fullScreenRequested(QWebFullScreenRequest) = 0;
     virtual void geolocationPermissionRequested(QWebFrameAdapter*) = 0;
     virtual void geolocationPermissionRequestCancelled(QWebFrameAdapter*) = 0;
     virtual void notificationsPermissionRequested(QWebFrameAdapter*) = 0;

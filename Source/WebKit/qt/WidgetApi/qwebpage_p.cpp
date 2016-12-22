@@ -54,10 +54,9 @@ QWebPagePrivate::~QWebPagePrivate()
 
 QWebFramePrivate::~QWebFramePrivate() = default;
 
-void QWebPagePrivate::fullScreenRequested(const QUrl& origin, const QWebElement& element, bool fullscreen)
+void QWebPagePrivate::fullScreenRequested(QWebFullScreenRequest request)
 {
-    QWebFullScreenRequest request(q, origin, element, fullscreen);
-    emit q->fullScreenRequested(request);
+    m_fullScreenRequested.invoke(q, Qt::QueuedConnection, Q_ARG(QWebFullScreenRequest, request));
 }
 
 void QWebPagePrivate::recentlyAudibleChanged(bool recentlyAudible)
