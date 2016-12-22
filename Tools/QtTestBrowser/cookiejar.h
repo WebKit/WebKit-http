@@ -33,14 +33,14 @@
 #include <QNetworkCookieJar>
 #include <QTimer>
 
-class TestBrowserCookieJar : public QNetworkCookieJar {
+class TestBrowserCookieJar final : public QNetworkCookieJar {
     Q_OBJECT
 
 public:
     TestBrowserCookieJar(QObject* parent = 0);
     virtual ~TestBrowserCookieJar();
 
-    virtual bool setCookiesFromUrl(const QList<QNetworkCookie>&, const QUrl&);
+    bool setCookiesFromUrl(const QList<QNetworkCookie>&, const QUrl&) final;
 
     void setDiskStorageEnabled(bool);
 

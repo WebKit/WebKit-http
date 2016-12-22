@@ -109,18 +109,18 @@ void NetworkAccessManager::sslErrorsEncountered(QNetworkReply* reply, const QLis
 
 
 #if !defined(QT_NO_PRINTER) && HAVE(QTPRINTSUPPORT)
-class NullPrinter : public QPrinter {
+class NullPrinter final : public QPrinter {
 public:
     class NullPaintEngine : public QPaintEngine {
     public:
-        virtual bool begin(QPaintDevice*) { return true; }
-        virtual bool end() { return true; }
-        virtual QPaintEngine::Type type() const { return QPaintEngine::User; }
-        virtual void drawPixmap(const QRectF& r, const QPixmap& pm, const QRectF& sr) { }
-        virtual void updateState(const QPaintEngineState& state) { }
+        bool begin(QPaintDevice*) final { return true; }
+        bool end() final { return true; }
+        QPaintEngine::Type type() const final { return QPaintEngine::User; }
+        void drawPixmap(const QRectF& r, const QPixmap& pm, const QRectF& sr) final { }
+        void updateState(const QPaintEngineState& state) final { }
     };
 
-    virtual QPaintEngine* paintEngine() const { return const_cast<NullPaintEngine*>(&m_engine); }
+    QPaintEngine* paintEngine() const final { return const_cast<NullPaintEngine*>(&m_engine); }
 
     NullPaintEngine m_engine;
 };

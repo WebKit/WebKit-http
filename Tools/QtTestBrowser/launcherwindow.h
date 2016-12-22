@@ -91,7 +91,7 @@ public:
     bool startMaximized { false };
 };
 
-class LauncherWindow : public MainWindow {
+class LauncherWindow final : public MainWindow {
     Q_OBJECT
 
 public:
@@ -100,7 +100,7 @@ public:
 
     void sendTouchEvent();
 
-    bool eventFilter(QObject*, QEvent*);
+    bool eventFilter(QObject*, QEvent*) final;
 
 protected Q_SLOTS:
     void loadStarted();

@@ -36,7 +36,7 @@
 #include <QStyleOptionFrame>
 #include <QTimer>
 
-class LocationEdit : public QLineEdit {
+class LocationEdit final : public QLineEdit {
     Q_OBJECT
 
 public:
@@ -51,8 +51,8 @@ private Q_SLOTS:
     void reset();
 
 protected:
-    virtual void paintEvent(QPaintEvent*);
-    virtual void resizeEvent(QResizeEvent*);
+    void paintEvent(QPaintEvent*) final;
+    void resizeEvent(QResizeEvent*) final;
 
 private:
     void updateInternalGeometry();

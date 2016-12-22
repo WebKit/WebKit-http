@@ -32,7 +32,7 @@
 #include <QSet>
 #include <QTime>
 
-class FpsTimer : public QObject {
+class FpsTimer final : public QObject {
     Q_OBJECT
 
 public:
@@ -44,7 +44,7 @@ public Q_SLOTS:
     void stop();
 
 protected Q_SLOTS:
-    virtual void timerEvent(QTimerEvent*);
+    void timerEvent(QTimerEvent*) final;
 
 private:
     int m_timer;

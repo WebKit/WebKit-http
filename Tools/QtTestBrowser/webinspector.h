@@ -30,7 +30,7 @@
 
 #include "qwebinspector.h"
 
-class WebInspector : public QWebInspector {
+class WebInspector final : public QWebInspector {
     Q_OBJECT
 
 public:
@@ -40,12 +40,12 @@ Q_SIGNALS:
     void visibleChanged(bool nowVisible);
 
 protected:
-    void showEvent(QShowEvent* event)
+    void showEvent(QShowEvent* event) final
     {
         QWebInspector::showEvent(event);
         emit visibleChanged(true);
     }
-    void hideEvent(QHideEvent* event)
+    void hideEvent(QHideEvent* event) final
     {
         QWebInspector::hideEvent(event);
         emit visibleChanged(false);

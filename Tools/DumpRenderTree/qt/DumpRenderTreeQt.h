@@ -67,7 +67,7 @@ class GCController;
 class WebPage;
 class NetworkAccessManager;
 
-class DumpRenderTree : public QObject {
+class DumpRenderTree final : public QObject {
 Q_OBJECT
 
 public:
@@ -173,7 +173,7 @@ private:
     QString m_redirectErrorFileName;
 };
 
-class NetworkAccessManager : public QNetworkAccessManager {
+class NetworkAccessManager final : public QNetworkAccessManager {
     Q_OBJECT
 public:
     NetworkAccessManager(QObject* parent);
@@ -184,7 +184,7 @@ private Q_SLOTS:
 #endif
 };
 
-class WebPage : public QWebPage {
+class WebPage final : public QWebPage {
     Q_OBJECT
 public:
     WebPage(QObject* parent, DumpRenderTree*);
@@ -192,31 +192,31 @@ public:
     QWebInspector* webInspector();
     void closeWebInspector();
 
-    QWebPage *createWindow(QWebPage::WebWindowType);
+    QWebPage *createWindow(QWebPage::WebWindowType) final;
 
-    void javaScriptAlert(QWebFrame *frame, const QString& message);
-    void javaScriptConsoleMessage(const QString& message, int lineNumber, const QString& sourceID);
-    bool javaScriptConfirm(QWebFrame *frame, const QString& msg);
-    bool javaScriptPrompt(QWebFrame *frame, const QString& msg, const QString& defaultValue, QString* result);
+    void javaScriptAlert(QWebFrame*, const QString& message) final;
+    void javaScriptConsoleMessage(const QString& message, int lineNumber, const QString& sourceID) final;
+    bool javaScriptConfirm(QWebFrame*, const QString& msg) final;
+    bool javaScriptPrompt(QWebFrame*, const QString& msg, const QString& defaultValue, QString* result) final;
 
     void resetSettings();
 
-    virtual bool supportsExtension(QWebPage::Extension extension) const;
-    virtual bool extension(Extension extension, const ExtensionOption *option, ExtensionReturn *output);
+    bool supportsExtension(QWebPage::Extension) const final;
+    bool extension(Extension, const ExtensionOption*, ExtensionReturn*) final;
 
-    QObject* createPlugin(const QString&, const QUrl&, const QStringList&, const QStringList&);
+    QObject* createPlugin(const QString&, const QUrl&, const QStringList&, const QStringList&) final;
 
     void permissionSet(QWebPage::Feature feature);
 
-    virtual bool shouldInterruptJavaScript() { return false; }
+    bool shouldInterruptJavaScript() final { return false; }
 
 public Q_SLOTS:
-    void requestPermission(QWebFrame* frame, QWebPage::Feature feature);
-    void cancelPermission(QWebFrame* frame, QWebPage::Feature feature);
+    void requestPermission(QWebFrame*, QWebPage::Feature);
+    void cancelPermission(QWebFrame*, QWebPage::Feature);
     void requestFullScreen(QWebFullScreenRequest);
 
 protected:
-    bool acceptNavigationRequest(QWebFrame* frame, const QNetworkRequest& request, NavigationType type);
+    bool acceptNavigationRequest(QWebFrame*, const QNetworkRequest&, NavigationType) final;
     bool isTextOutputEnabled() { return m_drt->isTextOutputEnabled(); }
 
 private Q_SLOTS:
@@ -228,7 +228,7 @@ private:
     DumpRenderTree *m_drt;
 };
 
-class WebViewGraphicsBased : public QGraphicsView {
+class WebViewGraphicsBased final : public QGraphicsView {
     Q_OBJECT
 
 public:

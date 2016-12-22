@@ -34,7 +34,7 @@
 #include <qwebframe.h>
 #include <qwebpage.h>
 
-class LoadAlternateHTMLStringItem : public WorkQueueItem {
+class LoadAlternateHTMLStringItem final : public WorkQueueItem {
 public:
     LoadAlternateHTMLStringItem(const JSRetainPtr<JSStringRef>& content, const JSRetainPtr<JSStringRef>& baseURL,  const JSRetainPtr<JSStringRef>& failingURL)
         : m_content(content)
@@ -44,7 +44,7 @@ public:
     }
 
 private:
-    virtual bool invoke() const;
+    bool invoke() const final;
 
     JSRetainPtr<JSStringRef> m_content;
     JSRetainPtr<JSStringRef> m_baseURL;

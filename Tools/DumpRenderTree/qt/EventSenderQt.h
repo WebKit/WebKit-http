@@ -50,11 +50,11 @@
 #include <qwebframe.h>
 
 
-class EventSender : public QObject {
+class EventSender final : public QObject {
     Q_OBJECT
 public:
     EventSender(QWebPage* parent);
-    virtual bool eventFilter(QObject* watched, QEvent*);
+    bool eventFilter(QObject* watched, QEvent*) final;
     void resetClickCount() { m_clickCount = 0; }
 
 public Q_SLOTS:
@@ -93,7 +93,7 @@ public Q_SLOTS:
     void beginDragWithFiles(const QStringList& files);
 
 protected:
-    void timerEvent(QTimerEvent*);
+    void timerEvent(QTimerEvent*) final;
 
 private:
     bool isGraphicsBased() const { return qobject_cast<WebViewGraphicsBased*>(m_page->view()); }
