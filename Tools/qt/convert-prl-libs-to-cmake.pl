@@ -27,10 +27,28 @@
 
 use File::Basename;
 use File::Spec;
+use Getopt::Long qw(:config pass_through no_auto_abbrev);
+
+use v5.10;
+
 use strict;
 use warnings;
 
-my ($qt_lib, $component_name, $out_name) = @ARGV;
+my $qt_lib;
+my $component_name;
+my $out_name;
+my $compiler;
+
+processArgs();
+
+sub processArgs {
+    GetOptions (
+        "lib=s" => \$qt_lib,
+        "component=s" => \$component_name,
+        "out=s" => \$out_name,
+        "compiler=s" => \$compiler
+    )
+}
 
 my ($qt_lib_base, $qt_lib_dir) = fileparse($qt_lib, qr{\..*});
 my $prl_name = File::Spec->join($qt_lib_dir, "$qt_lib_base.prl");
@@ -83,13 +101,22 @@ close $out;
 sub squash_prl_libs {
     my @libs = @_;
     my @result;
-    for (my $i = 0; $i < $#libs; ++$i) {
+    for (my $i = 0; $i <= $#libs; ++$i) {
         my $lib = $libs[$i];
         if ($lib eq '-framework') {
             $lib = "$libs[$i] $libs[$i + 1]";
             ++$i;
         }
         $lib =~ s"\$\$\[QT_INSTALL_LIBS\]"$qt_lib_dir"g;
+
+        if (lc($compiler) eq 'msvc') {
+            # remove unnecessary lib prefix
+            $lib =~ s"-l""g;
+
+            # convert backslashes
+            $lib =~ s"\\\\""g;
+        }
+
         push @result, $lib;
     }
     return join ';', @result;
