@@ -34,7 +34,7 @@
 class QWebFullScreenRequestPrivate;
 class QWebPage;
 
-class QWEBKITWIDGETS_EXPORT QWebFullScreenRequest {
+class QWEBKIT_EXPORT QWebFullScreenRequest {
 public:
     QWebFullScreenRequest();
     QWebFullScreenRequest(const QWebFullScreenRequest&);

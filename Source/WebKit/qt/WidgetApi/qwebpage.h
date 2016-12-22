@@ -22,8 +22,8 @@
 #define QWEBPAGE_H
 
 #include <QtWebKit/qwebkitglobal.h>
+#include <QtWebKit/qwebfullscreenrequest.h>
 #include <QtWebKit/qwebsettings.h>
-#include <QtWebKitWidgets/qwebfullscreenrequest.h>
 
 #include <QtCore/qobject.h>
 #include <QtCore/qurl.h>

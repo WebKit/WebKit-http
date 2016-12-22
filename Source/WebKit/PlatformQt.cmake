@@ -167,6 +167,7 @@ list(APPEND WebKit_SOURCES
     qt/Api/qhttpheader.cpp
     qt/Api/qwebdatabase.cpp
     qt/Api/qwebelement.cpp
+    qt/Api/qwebfullscreenrequest.cpp
     qt/Api/qwebhistory.cpp
     qt/Api/qwebhistoryinterface.cpp
     qt/Api/qwebkitglobal.cpp
@@ -324,6 +325,7 @@ ecm_generate_headers(
     HEADER_NAMES
         QWebDatabase
         QWebElement,QWebElementCollection
+        QWebFullScreenRequest
         QWebHistory,QWebHistoryItem
         QWebHistoryInterface
         QWebKitPlatformPlugin,QWebHapticFeedbackPlayer,QWebFullScreenVideoHandler,QWebNotificationData,QWebNotificationPresenter,QWebSelectData,QWebSelectMethod,QWebSpellChecker,QWebTouchModifier
@@ -485,7 +487,6 @@ set(WebKitWidgets_INCLUDE_DIRECTORIES
 set(WebKitWidgets_SOURCES
     qt/WidgetApi/qgraphicswebview.cpp
     qt/WidgetApi/qwebframe.cpp
-    qt/WidgetApi/qwebfullscreenrequest.cpp
     qt/WidgetApi/qwebinspector.cpp
     qt/WidgetApi/qwebpage.cpp
     qt/WidgetApi/qwebpage_p.cpp
@@ -535,7 +536,6 @@ ecm_generate_headers(
     HEADER_NAMES
         QGraphicsWebView
         QWebFrame,QWebHitTestResult
-        QWebFullScreenRequest
         QWebInspector
         QWebPage
         QWebView
