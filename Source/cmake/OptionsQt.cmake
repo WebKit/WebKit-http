@@ -33,7 +33,11 @@ endif ()
 macro(CONVERT_PRL_LIBS_TO_CMAKE _qt_component)
     if (TARGET Qt5::${_qt_component})
         get_target_property(_lib_location Qt5::${_qt_component} LOCATION)
-        execute_process(COMMAND ${PERL_EXECUTABLE} ${TOOLS_DIR}/qt/convert-prl-libs-to-cmake.pl -lib "${_lib_location}" -component "${_qt_component}" -out "${STATIC_DEPENDENCIES_CMAKE_FILE}" -compiler ${CMAKE_CXX_COMPILER_ID}
+        execute_process(COMMAND ${PERL_EXECUTABLE} ${TOOLS_DIR}/qt/convert-prl-libs-to-cmake.pl
+            --lib ${_lib_location}
+            --out ${STATIC_DEPENDENCIES_CMAKE_FILE}
+            --component ${_qt_component}
+            --compiler ${CMAKE_CXX_COMPILER_ID}
         )
     endif ()
 endmacro()
