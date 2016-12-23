@@ -42,6 +42,7 @@
 #ifndef QT_NO_FILEDIALOG
 #include <QFileDialog>
 #endif
+#include <QMenuBar>
 
 MainWindow::MainWindow()
     : m_page(new WebPage(this))
@@ -116,6 +117,15 @@ void MainWindow::setPage(WebPage* page)
     m_page = page;
 
     buildUI();
+}
+
+void MainWindow::setToolBarsVisible(bool visible)
+{
+    if (menuBar())
+        menuBar()->setVisible(visible);
+
+    if (m_toolBar)
+        m_toolBar->setVisible(visible);
 }
 
 WebPage* MainWindow::page() const

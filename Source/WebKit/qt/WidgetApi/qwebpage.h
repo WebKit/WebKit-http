@@ -22,6 +22,7 @@
 #define QWEBPAGE_H
 
 #include <QtWebKit/qwebkitglobal.h>
+#include <QtWebKit/qwebfullscreenrequest.h>
 #include <QtWebKit/qwebsettings.h>
 
 #include <QtCore/qobject.h>
@@ -44,6 +45,7 @@ class QWebNetworkRequest;
 class QWebHistory;
 
 class QWebFrameData;
+class QWebFullScreenRequest;
 class QWebHistoryItem;
 class QWebHitTestResult;
 class QWebNetworkInterface;
@@ -450,6 +452,7 @@ Q_SIGNALS:
 
     void featurePermissionRequested(QWebFrame* frame, QWebPage::Feature feature);
     void featurePermissionRequestCanceled(QWebFrame* frame, QWebPage::Feature feature);
+    void fullScreenRequested(QWebFullScreenRequest fullScreenRequest);
 
     void consoleMessageReceived(MessageSource source, MessageLevel level, const QString& message, int lineNumber, const QString& sourceID);
 
@@ -479,6 +482,7 @@ private:
     QWebPagePrivate *d;
 
     friend class QWebFrame;
+    friend class QWebFullScreenRequest;
     friend class QWebPagePrivate;
     friend class QWebView;
     friend class QWebViewPrivate;

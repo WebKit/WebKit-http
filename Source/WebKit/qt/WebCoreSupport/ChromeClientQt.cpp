@@ -64,6 +64,7 @@
 #endif
 #include "ViewportArguments.h"
 #include "WindowFeatures.h"
+#include "qwebfullscreenrequest.h"
 #include "qwebkitplatformplugin.h"
 #include "qwebsecurityorigin.h"
 #include "qwebsecurityorigin_p.h"
@@ -216,8 +217,15 @@ void ChromeClientQt::focusedFrameChanged(Frame*)
 {
 }
 
-Page* ChromeClientQt::createWindow(Frame*, const FrameLoadRequest& request, const WindowFeatures& features, const NavigationAction&)
+Page* ChromeClientQt::createWindow(Frame* frame, const FrameLoadRequest&, const WindowFeatures& features, const NavigationAction&)
 {
+#if ENABLE(FULLSCREEN_API)
+    if (frame->document() && frame->document()->webkitCurrentFullScreenElement())
+        frame->document()->webkitCancelFullScreen();
+#else
+    UNUSED_PARAM(frame);
+#endif
+
     QWebPageAdapter* newPage = m_webPage->createWindow(features.dialog);
     if (!newPage)
         return 0;
@@ -700,6 +708,23 @@ void ChromeClientQt::enterVideoFullscreenForVideoElement(HTMLVideoElement& video
 void ChromeClientQt::exitVideoFullscreenForVideoElement(HTMLVideoElement& videoElement)
 {
     fullScreenVideo()->exitVideoFullscreen(&videoElement);
+}
+#endif
+
+#if ENABLE(FULLSCREEN_API)
+bool ChromeClientQt::supportsFullScreenForElement(const Element*, bool withKeyboard)
+{
+    return !withKeyboard;
+}
+
+void ChromeClientQt::enterFullScreenForElement(Element* element)
+{
+    m_webPage->fullScreenRequested(QWebFullScreenRequest::createEnterRequest(m_webPage, QWebElement(element)));
+}
+
+void ChromeClientQt::exitFullScreenForElement(Element* element)
+{
+    m_webPage->fullScreenRequested(QWebFullScreenRequest::createExitRequest(m_webPage, QWebElement(element)));
 }
 #endif
 

@@ -23,6 +23,7 @@
 #include "qwebpage_p.h"
 
 #include "qwebframe_p.h"
+#include "qwebfullscreenrequest.h"
 #include "qwebinspector.h"
 #include <QMenu>
 #include <QUndoStack>
@@ -52,6 +53,11 @@ QWebPagePrivate::~QWebPagePrivate()
 }
 
 QWebFramePrivate::~QWebFramePrivate() = default;
+
+void QWebPagePrivate::fullScreenRequested(QWebFullScreenRequest request)
+{
+    m_fullScreenRequested.invoke(q, Qt::QueuedConnection, Q_ARG(QWebFullScreenRequest, request));
+}
 
 void QWebPagePrivate::recentlyAudibleChanged(bool recentlyAudible)
 {

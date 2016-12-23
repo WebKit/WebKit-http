@@ -1368,6 +1368,22 @@ bool QWebPageAdapter::isPlayingAudio() const
     return page->mediaState() & MediaProducer::IsPlayingAudio;
 }
 
+const QWebElement& QWebPageAdapter::fullScreenElement() const
+{
+#if ENABLE(FULLSCREEN_API)
+    return m_fullScreenElement;
+#endif
+}
+
+void QWebPageAdapter::setFullScreenElement(const QWebElement& e)
+{
+#if ENABLE(FULLSCREEN_API)
+    m_fullScreenElement = e;
+#else
+    UNUSED_PARAM(e);
+#endif
+}
+
 bool QWebPageAdapter::handleKeyEvent(QKeyEvent *ev)
 {
     Frame& frame = page->focusController().focusedOrMainFrame();

@@ -155,6 +155,8 @@ WebPage::WebPage(QObject* parent, DumpRenderTree* drt)
 
     connect(this, SIGNAL(featurePermissionRequested(QWebFrame*, QWebPage::Feature)), this, SLOT(requestPermission(QWebFrame*, QWebPage::Feature)));
     connect(this, SIGNAL(featurePermissionRequestCanceled(QWebFrame*, QWebPage::Feature)), this, SLOT(cancelPermission(QWebFrame*, QWebPage::Feature)));
+
+    connect(this, &QWebPage::fullScreenRequested, this, &WebPage::requestFullScreen);
 }
 
 WebPage::~WebPage()
@@ -191,6 +193,7 @@ void WebPage::resetSettings()
     settings()->resetAttribute(QWebSettings::CSSRegionsEnabled);
     settings()->resetAttribute(QWebSettings::CSSGridLayoutEnabled);
     settings()->resetAttribute(QWebSettings::AcceleratedCompositingEnabled);
+    settings()->resetAttribute(QWebSettings::FullScreenSupportEnabled);
 
     m_drt->testRunner()->setCaretBrowsingEnabled(false);
     m_drt->testRunner()->setAuthorAndUserStylesEnabled(true);
@@ -271,6 +274,11 @@ void WebPage::permissionSet(QWebPage::Feature feature)
     default:
         break;
     }
+}
+
+void WebPage::requestFullScreen(QWebFullScreenRequest request)
+{
+    request.accept();
 }
 
 // FIXME (119591): Make this match other platforms better.

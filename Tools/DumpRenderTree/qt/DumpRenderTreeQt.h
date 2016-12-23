@@ -213,6 +213,7 @@ public:
 public Q_SLOTS:
     void requestPermission(QWebFrame* frame, QWebPage::Feature feature);
     void cancelPermission(QWebFrame* frame, QWebPage::Feature feature);
+    void requestFullScreen(QWebFullScreenRequest);
 
 protected:
     bool acceptNavigationRequest(QWebFrame* frame, const QNetworkRequest& request, NavigationType type);

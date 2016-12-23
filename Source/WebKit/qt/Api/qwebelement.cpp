@@ -1502,6 +1502,38 @@ void QWebElement::render(QPainter* painter, const QRect& clip)
     context.restore();
 }
 
+void QWebElement::beginEnterFullScreen()
+{
+#if ENABLE(FULLSCREEN_API)
+    if (m_element)
+        m_element->document().webkitWillEnterFullScreenForElement(m_element);
+#endif
+}
+
+void QWebElement::endEnterFullScreen()
+{
+#if ENABLE(FULLSCREEN_API)
+    if (m_element)
+        m_element->document().webkitDidEnterFullScreenForElement(m_element);
+#endif
+}
+
+void QWebElement::beginExitFullScreen()
+{
+#if ENABLE(FULLSCREEN_API)
+    if (m_element)
+        m_element->document().webkitWillExitFullScreenForElement(m_element);
+#endif
+}
+
+void QWebElement::endExitFullScreen()
+{
+#if ENABLE(FULLSCREEN_API)
+    if (m_element)
+        m_element->document().webkitDidExitFullScreenForElement(m_element);
+#endif
+}
+
 class QWebElementCollectionPrivate : public QSharedData
 {
 public:

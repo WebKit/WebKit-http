@@ -55,6 +55,8 @@ public:
     WebPage* page() const;
     void setPage(WebPage*);
 
+    void setToolBarsVisible(bool);
+
 protected Q_SLOTS:
     void setAddressUrl(const QString&);
     void setAddressUrl(const QUrl&);
