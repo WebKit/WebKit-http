@@ -26,11 +26,16 @@
 #ifndef QWEBFULLSCREENREQUEST_H
 #define QWEBFULLSCREENREQUEST_H
 
+#include <QtWebKit/qwebkitglobal.h>
+#include <QtCore/qmetatype.h>
 #include <QtCore/qscopedpointer.h>
 #include <QtCore/qurl.h>
-#include <QtWebKit/qwebelement.h>
-#include <QtWebKit/qwebkitglobal.h>
 
+namespace WebCore {
+class ChromeClientQt;
+}
+
+class QWebElement;
 class QWebFullScreenRequestPrivate;
 class QWebPageAdapter;
 

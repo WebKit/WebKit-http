@@ -26,12 +26,10 @@
 #include "config.h"
 #include "qwebfullscreenrequest.h"
 
+#include "Element.h"
 #include "QWebPageAdapter.h"
 
 #include <QPointer>
-#include <WebCore/Element.h>
-
-using WebCore::Element;
 
 class QWebFullScreenRequestPrivate {
 public:
