@@ -113,7 +113,8 @@ WEBKIT_OPTION_DEFINE(ENABLE_PRINT_SUPPORT "Enable support for printing web pages
 WEBKIT_OPTION_DEFINE(ENABLE_X11_TARGET "Whether to enable support for the X11 windowing target." PUBLIC ${ENABLE_X11_TARGET_DEFAULT})
 
 option(GENERATE_DOCUMENTATION "Generate HTML and QCH documentation" OFF)
-option(ENABLE_TEST_SUPPORT "Build tools for running layout tests and related library code" ON)
+cmake_dependent_option(ENABLE_TEST_SUPPORT "Build tools for running layout tests and related library code" ON
+                                           "DEVELOPER_MODE" OFF)
 option(USE_STATIC_RUNTIME "Use static runtime (MSVC only)" OFF)
 
 # Public options shared with other WebKit ports. There must be strong reason
