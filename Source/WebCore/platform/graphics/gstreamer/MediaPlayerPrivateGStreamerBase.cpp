@@ -255,7 +255,9 @@ MediaPlayerPrivateGStreamerBase::MediaPlayerPrivateGStreamerBase(MediaPlayer* pl
 
 MediaPlayerPrivateGStreamerBase::~MediaPlayerPrivateGStreamerBase()
 {
+#if ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2)
     m_protectionCondition.notifyOne();
+#endif
     m_notifier.cancelPendingNotifications();
 
     if (m_videoSink) {
@@ -454,8 +456,8 @@ bool MediaPlayerPrivateGStreamerBase::handleSyncMessage(GstMessage* message)
 
             return true;
         }
-    }
 #endif // ENABLE(ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA_V2)
+    }
 
     return false;
 }
