@@ -3738,7 +3738,8 @@ void HTMLMediaElement::addVideoTrack(Ref<VideoTrack>&& track)
 
 void HTMLMediaElement::removeAudioTrack(AudioTrack& track)
 {
-    m_audioTracks->remove(track);
+    if (m_audioTracks->contains(track))
+        m_audioTracks->remove(track);
 }
 
 void HTMLMediaElement::removeTextTrack(TextTrack& track, bool scheduleEvent)
@@ -3747,7 +3748,7 @@ void HTMLMediaElement::removeTextTrack(TextTrack& track, bool scheduleEvent)
     if (TextTrackCueList* cues = track.cues())
         textTrackRemoveCues(&track, cues);
     track.clearClient();
-    if (m_textTracks)
+    if (m_textTracks && m_textTracks->contains(track))
         m_textTracks->remove(track, scheduleEvent);
 
     closeCaptionTracksChanged();
@@ -3755,7 +3756,8 @@ void HTMLMediaElement::removeTextTrack(TextTrack& track, bool scheduleEvent)
 
 void HTMLMediaElement::removeVideoTrack(VideoTrack& track)
 {
-    m_videoTracks->remove(track);
+    if (m_videoTracks->contains(track))
+        m_videoTracks->remove(track);
 }
 
 void HTMLMediaElement::forgetResourceSpecificTracks()
