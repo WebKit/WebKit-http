@@ -258,7 +258,7 @@ inline void* Heap::allocateAuxiliary(JSCell* intendedOwner, size_t bytes)
 #endif
 #if ENABLE(JS_MEMORY_TRACKING)
     if (Options::showAllocationBacktraces())
-        HeapStatistics::showAllocBacktrace(this, bytes, *outPtr);
+        HeapStatistics::showAllocBacktrace(this, bytes, result);
 #endif
     return result;
 }
@@ -270,6 +270,10 @@ inline void* Heap::tryAllocateAuxiliary(JSCell* intendedOwner, size_t bytes)
     dataLogF("JSC GC allocating %lu bytes of auxiliary for %p: %p.\n", bytes, intendedOwner, result);
 #else
     UNUSED_PARAM(intendedOwner);
+#endif
+#if ENABLE(JS_MEMORY_TRACKING)
+    if (Options::showAllocationBacktraces())
+        HeapStatistics::showAllocBacktrace(this, bytes, result);
 #endif
     return result;
 }
@@ -284,7 +288,7 @@ inline void* Heap::tryAllocateAuxiliary(GCDeferralContext* deferralContext, JSCe
 #endif
 #if ENABLE(JS_MEMORY_TRACKING)
     if (Options::showAllocationBacktraces())
-        HeapStatistics::showAllocBacktrace(this, newSize, *ptr);
+        HeapStatistics::showAllocBacktrace(this, bytes, result);
 #endif
     return result;
 }
