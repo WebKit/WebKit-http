@@ -318,8 +318,7 @@ macro(WEBKIT_CREATE_FORWARDING_HEADER _target_directory _file)
 endmacro()
 
 macro(WEBKIT_CREATE_FORWARDING_HEADERS _framework)
-    # On Windows, we copy the entire contents of forwarding headers.
-    if (NOT MSVC)
+    if (NOT ${PORT} STREQUAL "Win")
         set(_processing_directories 0)
         set(_processing_files 0)
         set(_target_directory "${DERIVED_SOURCES_DIR}/ForwardingHeaders/${_framework}")
