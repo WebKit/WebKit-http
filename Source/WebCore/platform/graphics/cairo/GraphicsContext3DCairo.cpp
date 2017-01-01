@@ -40,6 +40,7 @@
 #include "PlatformContextCairo.h"
 #include "RefPtrCairo.h"
 #include <cairo.h>
+#include <wtf/NeverDestroyed.h>
 
 #if PLATFORM(WIN)
 #include <GLSLANG/ShaderLang.h>
@@ -55,6 +56,13 @@
 #endif
 
 namespace WebCore {
+
+static const int MaxActiveContexts = 16;
+static Vector<GraphicsContext3D*>& activeContexts()
+{
+    static NeverDestroyed<Vector<GraphicsContext3D*>> s_activeContexts;
+    return s_activeContexts;
+}
 
 RefPtr<GraphicsContext3D> GraphicsContext3D::create(GraphicsContext3D::Attributes attributes, HostWindow* hostWindow, GraphicsContext3D::RenderStyle renderStyle)
 {
@@ -73,7 +81,18 @@ RefPtr<GraphicsContext3D> GraphicsContext3D::create(GraphicsContext3D::Attribute
     if (!success)
         return 0;
 
-    return adoptRef(new GraphicsContext3D(attributes, hostWindow, renderStyle));
+    auto& contexts = activeContexts();
+    if (contexts.size() >= MaxActiveContexts)
+        contexts.at(0)->recycleContext();
+
+    // Calling recycleContext() above should have lead to the graphics context being
+    // destroyed and thus removed from the active contexts list.
+    if (contexts.size() >= MaxActiveContexts)
+        return nullptr;
+
+    auto context = adoptRef(new GraphicsContext3D(attributes, hostWindow, renderStyle));
+    contexts.append(context.get());
+    return context;
 }
 
 GraphicsContext3D::GraphicsContext3D(GraphicsContext3D::Attributes attributes, HostWindow*, GraphicsContext3D::RenderStyle renderStyle)
@@ -210,6 +229,9 @@ GraphicsContext3D::~GraphicsContext3D()
 #if USE(COORDINATED_GRAPHICS_THREADED)
     ::glDeleteTextures(1, &m_intermediateTexture);
 #endif
+
+    ASSERT(activeContexts().contains(this));
+    activeContexts().removeFirst(this);
 }
 
 GraphicsContext3D::ImageExtractor::~ImageExtractor()
