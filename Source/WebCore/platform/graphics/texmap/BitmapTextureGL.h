@@ -73,6 +73,8 @@ public:
 
     GC3Dint internalFormat() const { return m_internalFormat; }
 
+    void copyFromExternalTexture(Platform3DObject textureID);
+
 private:
 
     Platform3DObject m_id;
