@@ -26,19 +26,23 @@
 #include "config.h"
 #include "TextureMapperPlatformLayerBuffer.h"
 
+#include "NotImplemented.h"
+
 namespace WebCore {
 
 TextureMapperPlatformLayerBuffer::TextureMapperPlatformLayerBuffer(RefPtr<BitmapTexture>&& texture, TextureMapperGL::Flags flags)
     : m_texture(WTFMove(texture))
     , m_textureID(0)
+    , m_internalFormat(GraphicsContext3D::DONT_CARE)
     , m_extraFlags(flags)
     , m_hasManagedTexture(true)
 {
 }
 
-TextureMapperPlatformLayerBuffer::TextureMapperPlatformLayerBuffer(GLuint textureID, const IntSize& size, TextureMapperGL::Flags flags)
+TextureMapperPlatformLayerBuffer::TextureMapperPlatformLayerBuffer(GLuint textureID, const IntSize& size, TextureMapperGL::Flags flags, GC3Dint internalFormat)
     : m_textureID(textureID)
     , m_size(size)
+    , m_internalFormat(internalFormat)
     , m_extraFlags(flags)
     , m_hasManagedTexture(false)
 {
