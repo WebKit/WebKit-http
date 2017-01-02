@@ -82,6 +82,8 @@ void TextureMapperPlatformLayerProxy::invalidate()
     LockHolder locker(m_lock);
     m_compositor = nullptr;
     m_targetLayer = nullptr;
+    m_compositorThreadUpdateTimer = nullptr;
+    m_compositorThreadUpdateFunction = nullptr;
 }
 
 bool TextureMapperPlatformLayerProxy::isActive()
@@ -163,7 +165,7 @@ void TextureMapperPlatformLayerProxy::swapBuffer()
         m_usedBuffers.append(WTFMove(prevBuffer));
 }
 
-bool TextureMapperPlatformLayerProxy::scheduleUpdateOnCompositorThread(std::function<void()>&& updateFunction)
+bool TextureMapperPlatformLayerProxy::scheduleUpdateOnCompositorThread(Function<void()>&& updateFunction)
 {
     LockHolder locker(m_lock);
     if (!m_compositorThreadUpdateTimer)
@@ -176,7 +178,7 @@ bool TextureMapperPlatformLayerProxy::scheduleUpdateOnCompositorThread(std::func
 
 void TextureMapperPlatformLayerProxy::compositorThreadUpdateTimerFired()
 {
-    std::function<void()> updateFunction;
+    Function<void()> updateFunction;
     {
         LockHolder locker(m_lock);
         if (!m_compositorThreadUpdateFunction)
