@@ -49,6 +49,10 @@
 #include <WebCore/TextureMapperPlatformLayerProxy.h>
 #endif
 
+namespace WebCore {
+class TextureMapperGL;
+}
+
 namespace WebKit {
 
 class CoordinatedBackingStore;
@@ -150,6 +154,7 @@ private:
 
 #if USE(COORDINATED_GRAPHICS_THREADED)
     void onNewBufferAvailable() override;
+    WebCore::TextureMapperGL* texmapGL() override;
 #endif
 
     // Render queue can be accessed ony from main thread or updatePaintNode call stack!

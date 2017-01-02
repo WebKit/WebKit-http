@@ -44,6 +44,7 @@
 
 namespace WebCore {
 
+class TextureMapperGL;
 class TextureMapperLayer;
 class TextureMapperPlatformLayerProxy;
 class TextureMapperPlatformLayerBuffer;
@@ -60,6 +61,7 @@ public:
     class Compositor {
     public:
         virtual void onNewBufferAvailable() = 0;
+        virtual TextureMapperGL* texmapGL() = 0;
     };
 
     TextureMapperPlatformLayerProxy();
@@ -77,6 +79,7 @@ public:
     void invalidate();
 
     void swapBuffer();
+    void dropCurrentBufferWhilePreservingTexture();
 
     bool scheduleUpdateOnCompositorThread(Function<void()>&&);
 
