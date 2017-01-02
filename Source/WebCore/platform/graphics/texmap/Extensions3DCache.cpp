@@ -24,6 +24,8 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include "config.h"
+
 #include "Extensions3DCache.h"
 #include "GLContext.h"
 #include "GraphicsContext3D.h"
