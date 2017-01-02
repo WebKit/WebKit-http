@@ -295,11 +295,9 @@ void QWebHistory::clear()
     lst->setCapacity(0);
     lst->setCapacity(capacity);   //revert capacity
 
-    // FIXME: check me
-    WebCore::HistoryItem* currentPtr = current.leakRef();
-    if (currentPtr) {
-        lst->addItem(*currentPtr); //insert old current item
-        lst->goToItem(currentPtr); //and set it as current again
+    if (current) {
+        lst->addItem(*current); // insert old current item
+        lst->goToItem(current.get()); // and set it as current again
     }
 
     d->page()->updateNavigationActions();
@@ -583,7 +581,7 @@ QDataStream& operator>>(QDataStream& source, QWebHistory& history)
     if (version != HistoryStreamVersion) {
         // We do not try to decode previous history stream versions.
         // Make sure that our history is cleared and mark the rest of the stream as invalid.
-        ASSERT(history.count() == 1);
+        ASSERT(history.count() <= 1);
         source.setStatus(QDataStream::ReadCorruptData);
         return source;
     }
