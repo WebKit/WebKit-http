@@ -133,7 +133,7 @@ MediaSourcePrivate::AddStatus PlaybackPipeline::addSourceBuffer(RefPtr<SourceBuf
     g_object_set(G_OBJECT(stream->appsrc), "block", FALSE, "min-percent", 20, nullptr);
 
     GST_OBJECT_LOCK(m_webKitMediaSrc.get());
-    priv->streams.prepend(stream);
+    priv->streams.append(stream);
     GST_OBJECT_UNLOCK(m_webKitMediaSrc.get());
 
     gst_bin_add(GST_BIN(m_webKitMediaSrc.get()), stream->appsrc);
@@ -149,17 +149,9 @@ void PlaybackPipeline::removeSourceBuffer(RefPtr<SourceBufferPrivateGStreamer> s
     GST_DEBUG_OBJECT(m_webKitMediaSrc.get(), "Element removed from MediaSource");
     GST_OBJECT_LOCK(m_webKitMediaSrc.get());
     WebKitMediaSrcPrivate* priv = m_webKitMediaSrc->priv;
-    Stream* stream = nullptr;
-    Deque<Stream*>::iterator streamPosition = priv->streams.begin();
-
-    for (; streamPosition != priv->streams.end(); ++streamPosition) {
-        if ((*streamPosition)->sourceBuffer == sourceBufferPrivate.get()) {
-            stream = *streamPosition;
-            break;
-        }
-    }
+    Stream* stream = getStreamBySourceBufferPrivate(m_webKitMediaSrc.get(), sourceBufferPrivate.get());
     if (stream)
-        priv->streams.remove(streamPosition);
+        priv->streams.removeFirst(stream);
     GST_OBJECT_UNLOCK(m_webKitMediaSrc.get());
 
     if (stream)

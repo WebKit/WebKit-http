@@ -31,6 +31,7 @@
 #include "ipc-bcmnexus.h"
 #include <EGL/egl.h>
 #include <cstring>
+#include <stdio.h>
 #include <refsw/nexus_config.h>
 #include <refsw/nexus_platform.h>
 #include <refsw/nexus_display.h>
