@@ -47,6 +47,9 @@ TextureMapperPlatformLayerProxy::TextureMapperPlatformLayerProxy()
     , m_targetLayer(nullptr)
     , m_releaseUnusedBuffersTimer(RunLoop::current(), this, &TextureMapperPlatformLayerProxy::releaseUnusedBuffersTimerFired)
 {
+#if PLATFORM(WPE)
+    m_releaseUnusedBuffersTimer.setPriority(G_PRIORITY_HIGH + 30);
+#endif
 }
 
 TextureMapperPlatformLayerProxy::~TextureMapperPlatformLayerProxy()
