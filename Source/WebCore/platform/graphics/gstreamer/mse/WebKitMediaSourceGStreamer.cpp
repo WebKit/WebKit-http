@@ -151,6 +151,7 @@ static void enabledAppsrcEnoughData(GstAppSrc *appsrc, gpointer userData)
 
     WebKitMediaSrc* webKitMediaSrc = static_cast<WebKitMediaSrc*>(userData);
     ASSERT(WEBKIT_IS_MEDIA_SRC(webKitMediaSrc));
+
     Stream* stream = getStreamByAppsrc(webKitMediaSrc, GST_ELEMENT(appsrc));
 
     // This callback might have been scheduled from a child thread before the stream was removed.

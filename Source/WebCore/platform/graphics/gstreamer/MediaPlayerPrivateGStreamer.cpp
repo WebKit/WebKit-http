@@ -1088,6 +1088,14 @@ void MediaPlayerPrivateGStreamer::handleMessage(GstMessage* message)
         gst_message_parse_state_changed(message, &currentState, &newState, 0);
         GST_TRACE("State changed %s --> %s", gst_element_state_get_name(currentState), gst_element_state_get_name(newState));
 
+#if USE(FUSION_SINK)
+        if (g_strstr_len(GST_MESSAGE_SRC_NAME(message), 9, "h264parse")) {
+            // Force regular H264 SPS/PPS updates.
+            if (currentState == GST_STATE_NULL && newState == GST_STATE_READY)
+                g_object_set(GST_MESSAGE_SRC(message), "config-interval", 1, nullptr);
+        }
+#endif
+
         if (!messageSourceIsPlaybin || m_delayingLoad)
             break;
         updateStates();
@@ -1175,6 +1183,13 @@ void MediaPlayerPrivateGStreamer::handleMessage(GstMessage* message)
                 m_downloadFinished = true;
                 m_buffering = false;
                 updateStates();
+            } else if (gst_structure_has_name(structure, "drm-key-needed")) {
+                GST_DEBUG("drm-key-needed message from %s", GST_MESSAGE_SRC_NAME(message));
+                GRefPtr<GstEvent> event;
+                gst_structure_get(structure, "event", GST_TYPE_EVENT, &event.outPtr(), nullptr);
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA)
+                handleProtectionEvent(event.get());
+#endif
             }
         }
         break;
@@ -1565,6 +1580,8 @@ void MediaPlayerPrivateGStreamer::updateStates()
                     m_buffering = false;
                     m_readyState = MediaPlayer::HaveEnoughData;
                     m_networkState = m_downloadFinished ? MediaPlayer::Idle : MediaPlayer::Loading;
+                    if (!m_fillTimer.isActive() && (state == GST_STATE_PAUSED))
+                        m_networkState = MediaPlayer::Idle;
                 } else {
                     GST_DEBUG("[Buffering] Stream still downloading.");
                     m_readyState = MediaPlayer::HaveCurrentData;
@@ -1792,7 +1809,10 @@ void MediaPlayerPrivateGStreamer::didEnd()
     if (!m_player->client().mediaPlayerIsLooping()) {
         m_paused = true;
         m_durationAtEOS = durationMediaTime().toDouble();
-        changePipelineState(GST_STATE_READY);
+        // FIXME: there's a bug in playbin handling the context messages that causes replaying a video
+        // not to work if we leave the pipeline in READY state. We set it to NULL here to workaround
+        // that issue, but this should be change back to READY when it gets fixed upstream.
+        changePipelineState(GST_STATE_NULL);
         m_downloadFinished = false;
     }
 }
@@ -1831,7 +1851,7 @@ static HashSet<String, ASCIICaseInsensitiveHash>& mimeTypeSet()
         initializeGStreamerAndRegisterWebKitElements();
         HashSet<String, ASCIICaseInsensitiveHash> set;
 
-#if PLATFORM(BCM_NEXUS)
+#if PLATFORM(BCM_NEXUS) || PLATFORM(BROADCOM)
         GList* audioDecoderFactories = gst_element_factory_list_get_elements(GST_ELEMENT_FACTORY_TYPE_PARSER | GST_ELEMENT_FACTORY_TYPE_MEDIA_AUDIO, GST_RANK_MARGINAL);
         GList* videoDecoderFactories = gst_element_factory_list_get_elements(GST_ELEMENT_FACTORY_TYPE_PARSER | GST_ELEMENT_FACTORY_TYPE_MEDIA_VIDEO, GST_RANK_MARGINAL);
 #else

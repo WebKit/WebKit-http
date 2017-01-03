@@ -35,11 +35,6 @@
 
 namespace Westeros {
 
-static void compositorDestroyedCallback(WstCompositor*, void*)
-{
-    exit(1);
-}
-
 struct ViewBackend {
     ViewBackend(struct wpe_view_backend*);
     virtual ~ViewBackend();
@@ -93,7 +88,6 @@ void ViewBackend::initialize()
         WstCompositorSetIsNested(compositor, true);
         WstCompositorSetIsRepeater(compositor, true);
         WstCompositorSetNestedDisplayName(compositor, nestedTargetDisplay);
-        WstCompositorSetTerminatedCallback(compositor, &compositorDestroyedCallback, this);
         //Register for all the necessary callback before starting the compositor
         input_handler->initializeNestedInputHandler(compositor);
         output_handler->initializeNestedOutputHandler(compositor);

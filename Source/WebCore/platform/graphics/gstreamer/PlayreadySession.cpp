@@ -113,7 +113,7 @@ PlayreadySession::~PlayreadySession()
 // customized for platform/environment that hosts the CDM.
 // It is currently implemented as a place holder that
 // does nothing.
-DRM_RESULT DRM_CALL PlayreadySession::_PolicyCallback(const DRM_VOID *f_pvOutputLevelsData, DRM_POLICY_CALLBACK_TYPE f_dwCallbackType, const DRM_VOID *f_pv)
+DRM_RESULT DRM_CALL PlayreadySession::_PolicyCallback(const DRM_VOID *, DRM_POLICY_CALLBACK_TYPE, const DRM_VOID *)
 {
     return DRM_SUCCESS;
 }
@@ -129,7 +129,6 @@ RefPtr<Uint8Array> PlayreadySession::playreadyGenerateKeyRequest(Uint8Array* ini
     DRM_DWORD cbChallenge = 0;
     DRM_CHAR *pchSilentURL = NULL;
     DRM_DWORD cchSilentURL = 0;
-    DRM_ANSI_STRING dastrCustomData = EMPTY_DRM_STRING;
 
     GST_DEBUG("generating key request");
     GST_MEMDUMP("init data", initData->data(), initData->byteLength());
@@ -171,12 +170,15 @@ RefPtr<Uint8Array> PlayreadySession::playreadyGenerateKeyRequest(Uint8Array* ini
         if (cchSilentURL > 0) {
             ChkMem(pchSilentURL = (DRM_CHAR *)Oem_MemAlloc(cchSilentURL + 1));
             ZEROMEM(pchSilentURL, cchSilentURL + 1);
+            GST_TRACE("allocated silent url size %d", cchSilentURL);
         }
 
         // Allocate buffer that is sufficient to store the license acquisition
         // challenge.
-        if (cbChallenge > 0)
+        if (cbChallenge > 0) {
             ChkMem(pbChallenge = (DRM_BYTE *)Oem_MemAlloc(cbChallenge));
+            GST_TRACE("allocated challenge size %d", cbChallenge);
+        }
 
         dr = DRM_SUCCESS;
     } else {
@@ -198,6 +200,7 @@ RefPtr<Uint8Array> PlayreadySession::playreadyGenerateKeyRequest(Uint8Array* ini
                                            pbChallenge,
                                            &cbChallenge));
 
+    GST_TRACE("generated license request of size %d", cbChallenge);
     GST_MEMDUMP("generated license request :", pbChallenge, cbChallenge);
 
     result = Uint8Array::create(pbChallenge, cbChallenge);
@@ -223,7 +226,7 @@ ErrorExit:
 //
 // Expected synchronisation from caller. This method is not thread-safe!
 //
-bool PlayreadySession::playreadyProcessKey(Uint8Array* key, RefPtr<Uint8Array>& nextMessage, unsigned short& errorCode, uint32_t& systemCode)
+bool PlayreadySession::playreadyProcessKey(Uint8Array* key, RefPtr<Uint8Array>&, unsigned short& errorCode, uint32_t& systemCode)
 {
     DRM_RESULT dr = DRM_SUCCESS;
     DRM_LICENSE_RESPONSE oLicenseResponse = {eUnknownProtocol, 0};

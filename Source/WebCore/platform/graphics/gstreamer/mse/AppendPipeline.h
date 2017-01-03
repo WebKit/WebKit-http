@@ -47,7 +47,7 @@ public:
     AppendPipeline(Ref<MediaSourceClientGStreamerMSE>, Ref<SourceBufferPrivateGStreamer>, MediaPlayerPrivateGStreamerMSE&);
     virtual ~AppendPipeline();
 
-    void handleElementMessage(GstMessage*);
+    void handleNeedContextSyncMessage(GstMessage*);
     void handleApplicationMessage(GstMessage*);
 
     gint id();
@@ -56,6 +56,7 @@ public:
 
     GstFlowReturn handleNewAppsinkSample(GstElement*);
     GstFlowReturn pushNewBuffer(GstBuffer*);
+    void dispatchDecryptionKey(GstBuffer* buffer);
 
     // Takes ownership of caps.
     void parseDemuxerSrcPadCaps(GstCaps*);
@@ -91,6 +92,7 @@ private:
     void handleAppsrcNeedDataReceived();
     void removeAppsrcDataLeavingProbe();
     void setAppsrcDataLeavingProbe();
+    void dispatchPendingDecryptionKey();
 
 private:
     Ref<MediaSourceClientGStreamerMSE> m_mediaSourceClient;
@@ -108,7 +110,7 @@ private:
     GRefPtr<GstBus> m_bus;
     GRefPtr<GstElement> m_appsrc;
     GRefPtr<GstElement> m_demux;
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA)
     GRefPtr<GstElement> m_decryptor;
 #endif
     // The demuxer has one src stream only, so only one appsink is needed and linked to it.
@@ -146,6 +148,7 @@ private:
     RefPtr<WebCore::TrackPrivateBase> m_track;
 
     GRefPtr<GstBuffer> m_pendingBuffer;
+    GRefPtr<GstBuffer> m_pendingKey;
 };
 
 } // namespace WebCore.

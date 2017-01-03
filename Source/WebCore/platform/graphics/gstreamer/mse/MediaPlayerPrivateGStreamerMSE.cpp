@@ -250,7 +250,7 @@ bool MediaPlayerPrivateGStreamerMSE::doSeek()
     GstClockTime position = toGstClockTime(m_seekTime);
     MediaTime seekTime = MediaTime::createWithDouble(m_seekTime);
     double rate = m_player->rate();
-    GstSeekFlags seekType = static_cast<GstSeekFlags>(GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_ACCURATE);
+    GstSeekFlags seekType = static_cast<GstSeekFlags>(GST_SEEK_FLAG_FLUSH | hardwareDependantSeekFlags());
 
     // Always move to seeking state to report correct 'currentTime' while pending for actual seek to complete.
     m_seeking = true;
@@ -808,15 +808,8 @@ MediaPlayer::SupportsType MediaPlayerPrivateGStreamerMSE::supportsType(const Med
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA)
 void MediaPlayerPrivateGStreamerMSE::dispatchDecryptionKey(GstBuffer* buffer)
 {
-    for (auto iterator : m_appendPipelinesMap) {
-        if (iterator.value->appendState() == AppendPipeline::AppendState::KeyNegotiation) {
-            GST_TRACE("append pipeline %p in key negotiation, setting key", iterator.value.get());
-            gst_element_send_event(iterator.value->pipeline(), gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM_OOB,
-                gst_structure_new("drm-cipher", "key", GST_TYPE_BUFFER, buffer, nullptr)));
-            iterator.value->setAppendState(AppendPipeline::AppendState::Ongoing);
-        } else
-            GST_TRACE("append pipeline %p not in key negotiation", iterator.value.get());
-    }
+    for (auto it : m_appendPipelinesMap)
+        it.value->dispatchDecryptionKey(buffer);
 }
 #endif
 

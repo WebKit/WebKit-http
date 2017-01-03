@@ -50,6 +50,10 @@ struct Backend {
 
     NXPL_PlatformHandle nxplHandle;
 
+    NEXUS_GraphicsSettings graphicsSettings;
+    NEXUS_DisplayHandle display;
+    NEXUS_Error rc;
+
 #ifdef BACKEND_BCM_NEXUS_NXCLIENT
     NxClient_AllocResults allocResults;
 #endif
@@ -60,6 +64,15 @@ struct Backend {
 Backend::Backend()
 {
     NEXUS_DisplayHandle displayHandle(nullptr);
+
+    // disable splash
+    NEXUS_Display_GetGraphicsSettings(display, &graphicsSettings);
+    if (graphicsSettings.enabled) {
+        graphicsSettings.enabled = false;
+        rc = NEXUS_Display_SetGraphicsSettings(display, &graphicsSettings);
+        BDBG_ASSERT(!rc);
+    }
+
 #ifdef BACKEND_BCM_NEXUS_NXCLIENT
     NxClient_AllocSettings allocSettings;
     NxClient_JoinSettings joinSettings;

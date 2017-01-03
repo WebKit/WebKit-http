@@ -144,12 +144,14 @@ public:
 #endif
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA)
+    virtual void dispatchDecryptionKey(GstBuffer*);
+    void handleProtectionEvent(GstEvent*);
+    void receivedGenerateKeyRequest(const String&);
+
 #if USE(PLAYREADY)
     PlayreadySession* prSession() const;
     virtual void emitSession();
 #endif
-
-    virtual void dispatchDecryptionKey(GstBuffer*);
 #endif
 
     static bool supportsKeySystem(const String& keySystem, const String& mimeType);
@@ -279,6 +281,18 @@ private:
     ImageOrientation m_videoSourceOrientation;
 #if USE(GSTREAMER_GL)
     std::unique_ptr<VideoTextureCopierGStreamer> m_videoTextureCopier;
+#endif
+
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA)
+    Lock m_protectionMutex;
+    Condition m_protectionCondition;
+    String m_lastGenerateKeyRequestKeySystemUuid;
+    HashSet<uint32_t> m_handledProtectionEvents;
+#endif
+
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)
+    HashMap<String, Vector<uint8_t>> m_initDatas;
+    void trimInitData(String, const unsigned char*&, unsigned &);
 #endif
 };
 
