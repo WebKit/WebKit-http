@@ -3,27 +3,6 @@ include(ECMPackageConfigHelpers)
 include(ECMQueryQmake)
 
 set(ECM_MODULE_DIR ${CMAKE_MODULE_PATH})
-include(KDEInstallDirs)
-
-set(QT_CONAN_DIR "" CACHE PATH "Directory containing conanbuildinfo.cmake and conanfile.txt")
-if (QT_CONAN_DIR)
-    include("${QT_CONAN_DIR}/conanbuildinfo.cmake")
-    conan_basic_setup()
-
-    install(CODE "
-        set(_conan_imports_dest \${CMAKE_INSTALL_PREFIX})
-        if (DEFINED ENV{DESTDIR})
-            get_filename_component(_absolute_destdir \$ENV{DESTDIR} ABSOLUTE)
-            string(REGEX REPLACE \"^[A-z]:\" \"\" _conan_imports_dest \${CMAKE_INSTALL_PREFIX})
-            set(_conan_imports_dest \"\${_absolute_destdir}\${_conan_imports_dest}\")
-        endif ()
-
-        execute_process(
-            COMMAND conan imports -f \"${QT_CONAN_DIR}/conanfile.txt\" --dest \${_conan_imports_dest}
-            WORKING_DIRECTORY \"${QT_CONAN_DIR}\"
-        )
-    ")
-endif ()
 
 set(STATIC_DEPENDENCIES_CMAKE_FILE "${CMAKE_BINARY_DIR}/QtStaticDependencies.cmake")
 if (EXISTS ${STATIC_DEPENDENCIES_CMAKE_FILE})
@@ -652,3 +631,34 @@ endif ()
 set_package_properties(Ruby PROPERTIES TYPE REQUIRED)
 set_package_properties(Qt5PrintSupport PROPERTIES PURPOSE "Required for ENABLE_PRINT_SUPPORT=ON")
 feature_summary(WHAT ALL FATAL_ON_MISSING_REQUIRED_PACKAGES)
+
+query_qmake(qt_install_prefix_dir QT_INSTALL_PREFIX)
+if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+    set(CMAKE_INSTALL_PREFIX "${qt_install_prefix_dir}" CACHE PATH "Install path prefix, prepended onto install directories." FORCE)
+endif ()
+
+include(KDEInstallDirs)
+
+if (NOT qt_install_prefix_dir STREQUAL "${CMAKE_INSTALL_PREFIX}")
+    set(KDE_INSTALL_USE_QT_SYS_PATHS OFF)
+endif ()
+
+set(QT_CONAN_DIR "" CACHE PATH "Directory containing conanbuildinfo.cmake and conanfile.txt")
+if (QT_CONAN_DIR)
+    include("${QT_CONAN_DIR}/conanbuildinfo.cmake")
+    conan_basic_setup()
+
+    install(CODE "
+        set(_conan_imports_dest \${CMAKE_INSTALL_PREFIX})
+        if (DEFINED ENV{DESTDIR})
+            get_filename_component(_absolute_destdir \$ENV{DESTDIR} ABSOLUTE)
+            string(REGEX REPLACE \"^[A-z]:\" \"\" _conan_imports_dest \${CMAKE_INSTALL_PREFIX})
+            set(_conan_imports_dest \"\${_absolute_destdir}\${_conan_imports_dest}\")
+        endif ()
+
+        execute_process(
+            COMMAND conan imports -f \"${QT_CONAN_DIR}/conanfile.txt\" --dest \${_conan_imports_dest}
+            WORKING_DIRECTORY \"${QT_CONAN_DIR}\"
+        )
+    ")
+endif ()
