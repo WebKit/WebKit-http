@@ -398,6 +398,11 @@ QWebElement QWebFrameAdapter::documentElement() const
     return QWebElement(doc->documentElement());
 }
 
+QWebElement QWebFrameAdapter::ownerElement() const
+{
+    return QWebElement(frame->ownerElement());
+}
+
 QString QWebFrameAdapter::title() const
 {
     if (frame->document())

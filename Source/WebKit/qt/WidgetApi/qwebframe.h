@@ -197,6 +197,7 @@ public:
     QSize contentsSize() const;
 
     QWebElement documentElement() const;
+    QWebElement ownerElement() const;
     QWebElementCollection findAllElements(const QString &selectorQuery) const;
     QWebElement findFirstElement(const QString &selectorQuery) const;
 

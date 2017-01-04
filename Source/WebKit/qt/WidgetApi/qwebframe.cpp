@@ -760,6 +760,11 @@ QWebElement QWebFrame::documentElement() const
     return d->documentElement();
 }
 
+QWebElement QWebFrame::ownerElement() const
+{
+    return d->ownerElement();
+}
+
 /*!
     \since 4.6
     Returns a new list of elements matching the given CSS selector \a selectorQuery.
