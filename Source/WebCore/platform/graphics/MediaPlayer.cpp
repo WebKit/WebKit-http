@@ -63,7 +63,6 @@
 #endif // USE(GSTREAMER)
 
 #if PLATFORM(WPE) && ENABLE(ENCRYPTED_MEDIA_V2)
-#include <wpe/CDMPrivateEncKeyWPE.h>
 #include <Modules/encryptedmedia/CDM.h>
 #include <Modules/encryptedmedia/CDMPrivateClearKey.h>
 #endif
