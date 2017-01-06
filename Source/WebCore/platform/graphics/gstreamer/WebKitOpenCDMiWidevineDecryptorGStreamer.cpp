@@ -35,7 +35,6 @@ struct _OpenCDMiWideVineDecryptPrivate {
 };
 
 static void openCDMiWidevineDecryptorFinalize(GObject*);
-static void openCDMiWidevineDecryptorRequestDecryptionKey(WebKitMediaCommonEncryptionDecrypt* self, GstBuffer*);
 static gboolean openCDMiWidevineDecryptorHandleKeyResponse(WebKitMediaCommonEncryptionDecrypt* self, GstEvent*);
 static gboolean openCDMiWidevineDecryptorDecrypt(WebKitMediaCommonEncryptionDecrypt*, GstBuffer* iv, GstBuffer* sample, unsigned subSamplesCount, GstBuffer* subSamples);
 
@@ -84,7 +83,6 @@ static void opencdmi_widevine_decrypt_class_init(OpenCDMiWideVineDecryptClass* k
         "webkitwidevine", 0, "WideVine decryptor");
 
     cencClass->protectionSystemId = WIDEVINE_PROTECTION_SYSTEM_ID;
-    cencClass->requestDecryptionKey = GST_DEBUG_FUNCPTR(openCDMiWidevineDecryptorRequestDecryptionKey);
     cencClass->handleKeyResponse = GST_DEBUG_FUNCPTR(openCDMiWidevineDecryptorHandleKeyResponse);
     cencClass->decrypt = GST_DEBUG_FUNCPTR(openCDMiWidevineDecryptorDecrypt);
 
@@ -105,14 +103,6 @@ static void openCDMiWidevineDecryptorFinalize(GObject* object)
     priv->m_openCdm = nullptr;
 //    priv->~OpenCDMiWideVineDecryptPrivate();
     GST_CALL_PARENT(G_OBJECT_CLASS, finalize, (object));
-}
-
-static void openCDMiWidevineDecryptorRequestDecryptionKey(WebKitMediaCommonEncryptionDecrypt* self, GstBuffer* initDataBuffer)
-{
-    gst_element_post_message(GST_ELEMENT(self),
-        gst_message_new_element(GST_OBJECT(self),
-            gst_structure_new("drm-key-needed", "data", GST_TYPE_BUFFER, initDataBuffer,
-                "key-system-id", G_TYPE_STRING, "com.widevine.alpha", NULL)));
 }
 
 static gboolean openCDMiWidevineDecryptorHandleKeyResponse(WebKitMediaCommonEncryptionDecrypt* self, GstEvent* event)
