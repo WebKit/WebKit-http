@@ -607,6 +607,11 @@ ControlPart RenderThemeQStyle::initializeCommonQStyleOptions(QStyleFacadeOption 
     option.state &= ~(QStyleFacade::State_HasFocus | QStyleFacade::State_MouseOver);
     option.state |= QStyleFacade::State_Enabled;
 
+#ifdef Q_OS_MAC
+    // to render controls in correct positions we also should set the State_Active flag
+    option.state |= QStyleFacade::State_Active;
+#endif
+
     if (isReadOnlyControl(o))
         // Readonly is supported on textfields.
         option.state |= QStyleFacade::State_ReadOnly;
