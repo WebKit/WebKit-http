@@ -415,6 +415,14 @@ if (MSVC)
     )
 endif ()
 
+if (APPLE)
+    list(APPEND WebCore_SOURCES
+        platform/VNodeTracker.cpp
+
+        platform/cf/SharedBufferCF.cpp
+    )
+endif ()
+
 # From PlatformEfl.cmake
 add_custom_command(
     OUTPUT ${DERIVED_SOURCES_WEBCORE_DIR}/WebKitVersion.h

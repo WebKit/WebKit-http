@@ -136,7 +136,7 @@ RenderThemeQStyle::RenderThemeQStyle(Page* page)
 {
     int buttonPixelSize = 0;
     m_qStyle->getButtonMetrics(&m_buttonFontFamily, &buttonPixelSize);
-#ifdef Q_WS_MAC
+#ifdef Q_OS_MAC
     m_buttonFontPixelSize = buttonPixelSize;
 #endif
 }
@@ -294,7 +294,7 @@ void RenderThemeQStyle::adjustButtonStyle(StyleResolver& styleResolver, RenderSt
     // Ditch the border.
     style.resetBorder();
 
-#ifdef Q_WS_MAC
+#ifdef Q_OS_MAC
     if (style.appearance() == PushButtonPart) {
         // The Mac ports ignore the specified height for <input type="button"> elements
         // unless a border and/or background CSS property is also specified.
@@ -305,7 +305,7 @@ void RenderThemeQStyle::adjustButtonStyle(StyleResolver& styleResolver, RenderSt
     FontCascadeDescription fontDescription = style.fontDescription();
     fontDescription.setIsAbsoluteSize(true);
 
-#ifdef Q_WS_MAC // Use fixed font size and family on Mac (like Safari does)
+#ifdef Q_OS_MAC // Use fixed font size and family on Mac (like Safari does)
     fontDescription.setSpecifiedSize(m_buttonFontPixelSize);
     fontDescription.setComputedSize(m_buttonFontPixelSize);
 #else

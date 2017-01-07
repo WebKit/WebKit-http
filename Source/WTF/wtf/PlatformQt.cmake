@@ -53,6 +53,12 @@ if (WIN32)
 endif ()
 
 if (APPLE)
+    list(APPEND WTF_SOURCES
+        text/cf/AtomicStringImplCF.cpp
+        text/cf/StringCF.cpp
+        text/cf/StringImplCF.cpp
+        text/cf/StringViewCF.cpp
+    )
     list(APPEND WTF_LIBRARIES
         ${COREFOUNDATION_LIBRARY}
     )
