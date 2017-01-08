@@ -28,6 +28,7 @@
 #include <QPainter>
 #include <QPixmap>
 
+#include <wtf/OwnPtr.h>
 #include <wtf/RefPtr.h>
 
 namespace WebCore {
@@ -41,9 +42,8 @@ public:
     QImage toQImage() const;
 
     QPixmap m_pixmap;
-    std::unique_ptr<QPainter> m_painter;
+    OwnPtr<QPainter> m_painter;
     RefPtr<Image> m_image;
-    std::unique_ptr<GraphicsContext> m_context;
 };
 
 } // namespace WebCore
