@@ -56,18 +56,18 @@ typedef char GLchar;
 #define GL_DEPTH24_STENCIL8 0x88F0
 #endif
 
-class GraphicsContext3DPrivate final
+class GraphicsContext3DPrivate
         : public TextureMapperPlatformLayer
 {
 public:
     GraphicsContext3DPrivate(GraphicsContext3D*, HostWindow*, GraphicsContext3D::RenderStyle);
     ~GraphicsContext3DPrivate();
 
-    void paintToTextureMapper(TextureMapper&, const FloatRect& target, const TransformationMatrix&, float opacity) final;
+    void paintToTextureMapper(TextureMapper&, const FloatRect& target, const TransformationMatrix&, float opacity) override;
 #if USE(GRAPHICS_SURFACE)
-    IntSize platformLayerSize() const final;
-    uint32_t copyToGraphicsSurface() final;
-    GraphicsSurfaceToken graphicsSurfaceToken() const final;
+    IntSize platformLayerSize() const override;
+    uint32_t copyToGraphicsSurface() override;
+    GraphicsSurfaceToken graphicsSurfaceToken() const override;
 #endif
 
     QRectF boundingRect() const;
