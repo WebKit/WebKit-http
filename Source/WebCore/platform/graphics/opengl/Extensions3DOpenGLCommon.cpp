@@ -37,14 +37,15 @@
 #endif
 
 #if PLATFORM(QT)
-#include <private/qopenglextensions_p.h>
+#define FUNCTIONS m_context->m_functions
+#include "OpenGLShimsQt.h"
 #elif USE(OPENGL_ES_2)
 #include "OpenGLESShims.h"
 #include <GLES2/gl2.h>
 #include <GLES2/gl2ext.h>
 #elif PLATFORM(MAC)
 #include <OpenGL/gl.h>
-#elif PLATFORM(GTK) || PLATFORM(EFL) || PLATFORM(QT) || PLATFORM(WIN)
+#elif PLATFORM(GTK) || PLATFORM(EFL) || PLATFORM(WIN)
 #include "OpenGLShims.h"
 #endif
 
@@ -62,7 +63,7 @@ Extensions3DOpenGLCommon::Extensions3DOpenGLCommon(GraphicsContext3D* context)
     , m_maySupportMultisampling(true)
     , m_requiresBuiltInFunctionEmulation(false)
 {
-    m_vendor = String(reinterpret_cast<const char*>(m_context->m_functions->glGetString(GL_VENDOR)));
+    m_vendor = String(reinterpret_cast<const char*>(::glGetString(GL_VENDOR)));
 
     Vector<String> vendorComponents;
     m_vendor.lower().split(' ', vendorComponents);
