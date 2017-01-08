@@ -31,7 +31,6 @@
 
 #include "GraphicsContext.h"
 #include "ImageData.h"
-#include "IntRect.h"
 #include "MIMETypeRegistry.h"
 #include "StillImageQt.h"
 #include "TransparencyLayer.h"
@@ -61,23 +60,23 @@ ImageBufferData::ImageBufferData(const IntSize& size)
     QPainter* painter = new QPainter;
     m_painter = adoptPtr(painter);
 
-    if (!m_painter->begin(&m_pixmap))
+    if (!painter->begin(&m_pixmap))
         return;
 
     // Since ImageBuffer is used mainly for Canvas, explicitly initialize
     // its painter's pen and brush with the corresponding canvas defaults
     // NOTE: keep in sync with CanvasRenderingContext2D::State
-    QPen pen = m_painter->pen();
+    QPen pen = painter->pen();
     pen.setColor(Qt::black);
     pen.setWidth(1);
     pen.setCapStyle(Qt::FlatCap);
     pen.setJoinStyle(Qt::SvgMiterJoin);
     pen.setMiterLimit(10);
-    m_painter->setPen(pen);
-    QBrush brush = m_painter->brush();
+    painter->setPen(pen);
+    QBrush brush = painter->brush();
     brush.setColor(Qt::black);
-    m_painter->setBrush(brush);
-    m_painter->setCompositionMode(QPainter::CompositionMode_SourceOver);
+    painter->setBrush(brush);
+    painter->setCompositionMode(QPainter::CompositionMode_SourceOver);
     
     m_image = StillImage::createForRendering(&m_pixmap);
 }
@@ -97,8 +96,8 @@ QImage ImageBufferData::toQImage() const
     return image;
 }
 
-ImageBuffer::ImageBuffer(const FloatSize& size, float /* resolutionScale */, ColorSpace, RenderingMode, bool& success)
-    : m_data(IntSize(size))
+ImageBuffer::ImageBuffer(const IntSize& size, float /* resolutionScale */, ColorSpace, RenderingMode, bool& success)
+    : m_data(size)
     , m_size(size)
     , m_logicalSize(size)
 {
@@ -113,14 +112,14 @@ ImageBuffer::~ImageBuffer()
 {
 }
 
-GraphicsContext& ImageBuffer::context() const
+GraphicsContext* ImageBuffer::context() const
 {
     ASSERT(m_data.m_painter->isActive());
 
-    return *m_data.m_context;
+    return m_context.get();
 }
 
-RefPtr<Image> ImageBuffer::copyImage(BackingStoreCopy copyBehavior, ScaleBehavior) const
+PassRefPtr<Image> ImageBuffer::copyImage(BackingStoreCopy copyBehavior, ScaleBehavior) const
 {
     if (copyBehavior == CopyBackingStore)
         return StillImage::create(m_data.m_pixmap);
@@ -143,31 +142,29 @@ void ImageBuffer::drawConsuming(std::unique_ptr<ImageBuffer> imageBuffer, Graphi
     imageBuffer->draw(destContext, destRect, srcRect, op, blendMode, useLowQualityScale);
 }
 
-void ImageBuffer::draw(GraphicsContext& destContext, const FloatRect& destRect, const FloatRect& srcRect,
+void ImageBuffer::draw(GraphicsContext* destContext, ColorSpace styleColorSpace, const FloatRect& destRect, const FloatRect& srcRect,
     CompositeOperator op, BlendMode blendMode, bool useLowQualityScale)
 {
-    if (&destContext == &context()) {
+    if (destContext == context()) {
         // We're drawing into our own buffer.  In order for this to work, we need to copy the source buffer first.
         RefPtr<Image> copy = copyImage(CopyBackingStore);
-        destContext.drawImage(*copy, destRect, srcRect, ImagePaintingOptions(op, blendMode, ImageOrientationDescription(), useLowQualityScale));
+        destContext->drawImage(copy.get(), ColorSpaceDeviceRGB, destRect, srcRect, op, blendMode, ImageOrientationDescription(), useLowQualityScale);
     } else
-        destContext.drawImage(*m_data.m_image, destRect, srcRect, ImagePaintingOptions(op, blendMode, ImageOrientationDescription(), useLowQualityScale));
+        destContext->drawImage(m_data.m_image.get(), styleColorSpace, destRect, srcRect, op, blendMode, ImageOrientationDescription(), useLowQualityScale);
 }
 
-void ImageBuffer::drawPattern(GraphicsContext& destContext, const FloatRect& srcRect, const AffineTransform& patternTransform,
-                              const FloatPoint& phase, const FloatSize& spacing, CompositeOperator op, const FloatRect& destRect, BlendMode blendMode)
+void ImageBuffer::drawPattern(GraphicsContext* destContext, const FloatRect& srcRect, const AffineTransform& patternTransform,
+                              const FloatPoint& phase, ColorSpace styleColorSpace, CompositeOperator op, const FloatRect& destRect)
 {
-    if (&destContext == &context()) {
+    if (destContext == context()) {
         // We're drawing into our own buffer.  In order for this to work, we need to copy the source buffer first.
         RefPtr<Image> copy = copyImage(CopyBackingStore);
-        copy->drawPattern(destContext, srcRect, patternTransform, phase, spacing, op, destRect, blendMode);
+        copy->drawPattern(destContext, srcRect, patternTransform, phase, styleColorSpace, op, destRect);
     } else
-        m_data.m_image->drawPattern(destContext, srcRect, patternTransform, phase, spacing, op, destRect, blendMode);
+        m_data.m_image->drawPattern(destContext, srcRect, patternTransform, phase, styleColorSpace, op, destRect);
 }
 
-// Move ImageBuffer::clip() code into GraphicsContext
-#if 0
-void ImageBuffer::clip(GraphicsContext& context, const FloatRect& floatRect) const
+void ImageBuffer::clip(GraphicsContext* context, const FloatRect& floatRect) const
 {
     QPixmap* nativeImage = m_data.m_image->nativeImageForCurrentFrame();
     if (!nativeImage)
@@ -178,7 +175,6 @@ void ImageBuffer::clip(GraphicsContext& context, const FloatRect& floatRect) con
 
     context->pushTransparencyLayerInternal(rect, 1.0, alphaMask);
 }
-#endif
 
 void ImageBuffer::platformTransformColorSpace(const Vector<int>& lookUpTable)
 {
