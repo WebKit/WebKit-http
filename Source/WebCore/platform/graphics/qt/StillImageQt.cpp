@@ -64,9 +64,9 @@ bool StillImage::currentFrameKnownToBeOpaque()
     return !m_pixmap->hasAlpha();
 }
 
-FloatSize StillImage::size() const
+IntSize StillImage::size() const
 {
-    return FloatSize(m_pixmap->width(), m_pixmap->height());
+    return IntSize(m_pixmap->width(), m_pixmap->height());
 }
 
 PassNativeImagePtr StillImage::nativeImageForCurrentFrame()
@@ -74,8 +74,8 @@ PassNativeImagePtr StillImage::nativeImageForCurrentFrame()
     return const_cast<PassNativeImagePtr>(m_pixmap);
 }
 
-void StillImage::draw(GraphicsContext& ctxt, const FloatRect& dst,
-    const FloatRect& src, CompositeOperator op, BlendMode blendMode, ImageOrientationDescription)
+void StillImage::draw(GraphicsContext* ctxt, const FloatRect& dst,
+    const FloatRect& src, ColorSpace, CompositeOperator op, BlendMode blendMode)
 {
     if (m_pixmap->isNull())
         return;
@@ -83,12 +83,12 @@ void StillImage::draw(GraphicsContext& ctxt, const FloatRect& dst,
     FloatRect normalizedSrc = src.normalized();
     FloatRect normalizedDst = dst.normalized();
 
-    CompositeOperator previousOperator = ctxt.compositeOperation();
-    BlendMode previousBlendMode = ctxt.blendModeOperation();
-    ctxt.setCompositeOperation(op, blendMode);
+    CompositeOperator previousOperator = ctxt->compositeOperation();
+    BlendMode previousBlendMode = ctxt->blendModeOperation();
+    ctxt->setCompositeOperation(op, blendMode);
 
-    if (ctxt.hasShadow()) {
-        ShadowBlur shadow(ctxt.state());
+    if (ctxt->hasShadow()) {
+        ShadowBlur shadow(ctxt->state());
         GraphicsContext* shadowContext = shadow.beginShadowLayer(ctxt, normalizedDst);
         if (shadowContext) {
             QPainter* shadowPainter = shadowContext->platformContext();
@@ -97,8 +97,8 @@ void StillImage::draw(GraphicsContext& ctxt, const FloatRect& dst,
         }
     }
 
-    ctxt.platformContext()->drawPixmap(normalizedDst, *m_pixmap, normalizedSrc);
-    ctxt.setCompositeOperation(previousOperator, previousBlendMode);
+    ctxt->platformContext()->drawPixmap(normalizedDst, *m_pixmap, normalizedSrc);
+    ctxt->setCompositeOperation(previousOperator, previousBlendMode);
 }
 
 }
