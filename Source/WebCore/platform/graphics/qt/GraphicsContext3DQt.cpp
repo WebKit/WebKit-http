@@ -19,8 +19,6 @@
 #include "config.h"
 #include "GraphicsContext3D.h"
 
-#if ENABLE(GRAPHICS_CONTEXT_3D)
-
 #if USE(OPENGL_ES_2)
 #include "Extensions3DOpenGLES.h"
 #else
@@ -45,6 +43,8 @@
 #if USE(TEXTURE_MAPPER_GL)
 #include <texmap/TextureMapperGL.h>
 #endif
+
+#if USE(3D_GRAPHICS)
 
 namespace WebCore {
 
@@ -403,7 +403,7 @@ GraphicsContext3D::GraphicsContext3D(GraphicsContext3D::Attributes attrs, HostWi
     , m_multisampleFBO(0)
     , m_multisampleDepthStencilBuffer(0)
     , m_multisampleColorBuffer(0)
-    , m_private(std::make_unique<GraphicsContext3DPrivate>(this, hostWindow, renderStyle))
+    , m_private(adoptPtr(new GraphicsContext3DPrivate(this, hostWindow, renderStyle)))
 {
     validateAttributes();
 
@@ -572,4 +572,4 @@ void GraphicsContext3D::setErrorMessageCallback(std::unique_ptr<ErrorMessageCall
 
 }
 
-#endif // ENABLE(GRAPHICS_CONTEXT_3D)
+#endif // USE(3D_GRAPHICS)
