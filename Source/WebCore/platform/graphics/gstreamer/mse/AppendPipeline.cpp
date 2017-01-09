@@ -216,6 +216,7 @@ AppendPipeline::~AppendPipeline()
     m_demuxerSrcPadCaps = nullptr;
 };
 
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA)
 void AppendPipeline::dispatchPendingDecryptionKey()
 {
     ASSERT(m_decryptor);
@@ -240,6 +241,7 @@ void AppendPipeline::dispatchDecryptionKey(GstBuffer* buffer)
     } else
         GST_TRACE("append pipeline %p not in key negotiation", this);
 }
+#endif
 
 void AppendPipeline::clearPlayerPrivate()
 {
@@ -966,8 +968,10 @@ void AppendPipeline::connectDemuxerSrcPadToAppsinkFromAnyThread(GstPad* demuxerS
             gst_element_sync_state_with_parent(m_appsink.get());
             gst_element_sync_state_with_parent(m_decryptor.get());
 
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA)
             if (m_pendingKey)
                 dispatchPendingDecryptionKey();
+#endif
         } else {
 #endif
             gst_pad_link(demuxerSrcPad, appsinkSinkPad.get());

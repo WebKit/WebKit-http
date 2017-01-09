@@ -56,7 +56,9 @@ public:
 
     GstFlowReturn handleNewAppsinkSample(GstElement*);
     GstFlowReturn pushNewBuffer(GstBuffer*);
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA)
     void dispatchDecryptionKey(GstBuffer* buffer);
+#endif
 
     // Takes ownership of caps.
     void parseDemuxerSrcPadCaps(GstCaps*);
@@ -92,7 +94,9 @@ private:
     void handleAppsrcNeedDataReceived();
     void removeAppsrcDataLeavingProbe();
     void setAppsrcDataLeavingProbe();
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA)
     void dispatchPendingDecryptionKey();
+#endif
 
 private:
     Ref<MediaSourceClientGStreamerMSE> m_mediaSourceClient;
