@@ -90,13 +90,15 @@ public:
     struct wl_display* display() const { return m_display; }
     struct wl_compositor* compositor() const { return m_compositor; }
 
+    void initialize();
+
 private:
     static struct wl_registry_listener s_registryListener;
 
     struct wl_display* m_display;
     struct wl_registry* m_registry;
     struct wl_compositor* m_compositor;
-    GSource* m_eventSource;
+    GSource* m_eventSource { nullptr };
 };
 
 Backend::Backend()
@@ -108,20 +110,6 @@ Backend::Backend()
     m_registry = wl_display_get_registry(m_display);
     wl_registry_add_listener(m_registry, &s_registryListener, this);
     wl_display_roundtrip(m_display);
-
-    m_eventSource = g_source_new(&EventSource::sourceFuncs, sizeof(EventSource));
-    auto& source = *reinterpret_cast<EventSource*>(m_eventSource);
-    source.display = m_display;
-
-    source.pfd.fd = wl_display_get_fd(m_display);
-    source.pfd.events = G_IO_IN | G_IO_ERR | G_IO_HUP;
-    source.pfd.revents = 0;
-    g_source_add_poll(m_eventSource, &source.pfd);
-
-    g_source_set_name(m_eventSource, "[WPE] WaylandDisplay");
-    g_source_set_priority(m_eventSource, G_PRIORITY_HIGH + 30);
-    g_source_set_can_recurse(m_eventSource, TRUE);
-    g_source_attach(m_eventSource, g_main_context_get_thread_default());
 }
 
 Backend::~Backend()
@@ -135,6 +123,27 @@ Backend::~Backend()
         wl_registry_destroy(m_registry);
     if (m_display)
         wl_display_disconnect(m_display);
+}
+
+void Backend::initialize()
+{
+    if (m_eventSource != nullptr)
+        return;
+
+    m_eventSource = g_source_new(&EventSource::sourceFuncs, sizeof(EventSource));
+    auto& source = *reinterpret_cast<EventSource*>(m_eventSource);
+    source.display = m_display;
+
+    source.pfd.fd = wl_display_get_fd(m_display);
+    source.pfd.events = G_IO_IN | G_IO_ERR | G_IO_HUP;
+    source.pfd.revents = 0;
+    g_source_add_poll(m_eventSource, &source.pfd);
+
+    g_source_set_name(m_eventSource, "[WPE] WaylandDisplay");
+    g_source_set_priority(m_eventSource, G_PRIORITY_HIGH + 30);
+    g_source_set_can_recurse(m_eventSource, TRUE);
+
+    g_source_attach(m_eventSource, g_main_context_get_thread_default());
 }
 
 struct wl_registry_listener Backend::s_registryListener = {
@@ -192,6 +201,7 @@ EGLTarget::~EGLTarget()
 
 void EGLTarget::initialize(const Backend& backend, uint32_t width, uint32_t height)
 {
+    const_cast<Backend&>(backend).initialize();
     m_backend = &backend;
     m_surface = wl_compositor_create_surface(backend.compositor());
     if (m_surface)
