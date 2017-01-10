@@ -25,6 +25,8 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#define WL_EGL_PLATFORM 1
+
 #include <wpe/renderer-backend-egl.h>
 
 #include <cstring>
