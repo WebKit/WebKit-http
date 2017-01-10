@@ -62,11 +62,6 @@
 #endif
 #endif // USE(GSTREAMER)
 
-#if PLATFORM(WPE) && ENABLE(ENCRYPTED_MEDIA_V2)
-#include <Modules/encryptedmedia/CDM.h>
-#include <Modules/encryptedmedia/CDMPrivateClearKey.h>
-#endif
-
 #if USE(MEDIA_FOUNDATION)
 #include "MediaPlayerPrivateMediaFoundation.h"
 #define PlatformMediaEngineClassName MediaPlayerPrivateMediaFoundation
@@ -258,7 +253,6 @@ static void buildMediaEnginesVector()
     if (Settings::isGStreamerEnabled())
         MediaPlayerPrivateGStreamerMSE::registerMediaEngine(addMediaEngine);
 #endif
-
 
     haveMediaEnginesVector() = true;
 }
