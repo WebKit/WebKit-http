@@ -30,9 +30,11 @@
 #include "NetworkCache.h"
 #include "NetworkProcessCreationParameters.h"
 #include "ResourceCachesToClear.h"
+#include "SessionTracker.h"
 #include "WebCookieManager.h"
 #include <WebCore/CertificateInfo.h>
 #include <WebCore/FileSystem.h>
+#include <WebCore/NetworkStorageSession.h>
 #include <WebCore/NotImplemented.h>
 #include <WebCore/ResourceHandle.h>
 #include <WebCore/SoupNetworkSession.h>
@@ -50,9 +52,12 @@ void NetworkProcess::userPreferredLanguagesChanged(const Vector<String>& languag
     SoupNetworkSession::defaultSession().setAcceptLanguages(languages);
 }
 
-void NetworkProcess::setProxies(WebCore::SessionID, const Vector<WebCore::Proxy>& proxies)
+void NetworkProcess::setProxies(WebCore::SessionID sessionID, const Vector<WebCore::Proxy>& proxies)
 {
-    SoupNetworkSession::defaultSession().setProxies(proxies);
+    if (auto *storageSession = NetworkStorageSession::storageSession(sessionID))
+        storageSession->soupNetworkSession().setProxies(proxies);
+     else
+        SoupNetworkSession::defaultSession().setProxies(proxies);
 }
 
 void NetworkProcess::platformInitializeNetworkProcess(const NetworkProcessCreationParameters& parameters)

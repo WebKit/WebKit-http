@@ -55,7 +55,6 @@ void RemoteNetworkingContext::ensurePrivateBrowsingSession(SessionID sessionID)
         return;
 
     NetworkStorageSession::ensurePrivateBrowsingSession(sessionID, String::number(sessionID.sessionID()));
-    SessionTracker::setSession(sessionID, NetworkSession::create(sessionID));
 }
 
 NetworkStorageSession& RemoteNetworkingContext::storageSession() const

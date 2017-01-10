@@ -50,7 +50,6 @@ void WebFrameNetworkingContext::ensurePrivateBrowsingSession(SessionID sessionID
         return;
 
     NetworkStorageSession::ensurePrivateBrowsingSession(sessionID, String::number(sessionID.sessionID()));
-    SessionTracker::setSession(sessionID, NetworkSession::create(sessionID));
 }
 
 void WebFrameNetworkingContext::setCookieAcceptPolicyForAllContexts(HTTPCookieAcceptPolicy policy)
@@ -84,7 +83,7 @@ WebFrameNetworkingContext::WebFrameNetworkingContext(WebFrame* frame)
 NetworkStorageSession& WebFrameNetworkingContext::storageSession() const
 {
     if (frame() && frame()->page()->usesEphemeralSession())
-        return *NetworkStorageSession::storageSession(SessionID::legacyPrivateSessionID());
+        return *NetworkStorageSession::storageSession(frame()->page()->sessionID());
 
     return NetworkStorageSession::defaultStorageSession();
 }
