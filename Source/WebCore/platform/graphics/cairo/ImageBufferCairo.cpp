@@ -243,6 +243,7 @@ ImageBuffer::ImageBuffer(const FloatSize& size, float resolutionScale, ColorSpac
     {
         int stride = cairo_format_stride_for_width(CAIRO_FORMAT_ARGB32, m_size.width());
         m_data.m_surfaceData = MallocPtr<unsigned char>::malloc(m_size.height() * stride);
+        memset(m_data.m_surfaceData.get(), 0, m_size.height() * stride);
         m_data.m_surface = adoptRef(cairo_image_surface_create_for_data(m_data.m_surfaceData.get(), CAIRO_FORMAT_ARGB32, m_size.width(), m_size.height(), stride));
     }
 
