@@ -67,11 +67,15 @@
 #define GL_RGBA32F_ARB                      0x8814
 #define GL_RGB32F_ARB                       0x8815
 #else
-#if USE(OPENGL_ES_2)
+#if PLATFORM(QT)
+#define FUNCTIONS m_functions
+#include "OpenGLShimsQt.h"
+#define glIsEnabled(...) m_functions->glIsEnabled(__VA_ARGS__)
+#elif USE(OPENGL_ES_2)
 #include "OpenGLESShims.h"
 #elif PLATFORM(MAC)
 #include <OpenGL/gl.h>
-#elif PLATFORM(GTK) || PLATFORM(EFL) || PLATFORM(QT) || PLATFORM(WIN)
+#elif PLATFORM(GTK) || PLATFORM(EFL) || PLATFORM(WIN)
 #include "OpenGLShims.h"
 #endif
 #endif
@@ -1039,7 +1043,7 @@ GC3Dboolean GraphicsContext3D::isBuffer(Platform3DObject buffer)
 GC3Dboolean GraphicsContext3D::isEnabled(GC3Denum cap)
 {
     makeContextCurrent();
-    return ::glIsEnabled(cap);
+    return glIsEnabled(cap);
 }
 
 GC3Dboolean GraphicsContext3D::isFramebuffer(Platform3DObject framebuffer)

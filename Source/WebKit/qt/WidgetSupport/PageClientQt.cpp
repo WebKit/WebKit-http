@@ -33,6 +33,9 @@
 #ifdef QT_OPENGL_LIB
 #include <QGLWidget>
 #endif
+#if QT_VERSION >= QT_VERSION_CHECK(5, 4, 0)
+#include <QOpenGLWidget>
+#endif
 
 QWindow* QWebPageClient::ownerWindow() const
 {
@@ -183,18 +186,52 @@ void PageClientQGraphicsWidget::repaintViewport()
 
 bool PageClientQGraphicsWidget::makeOpenGLContextCurrentIfAvailable()
 {
-#if USE(TEXTURE_MAPPER_GL) && defined(QT_OPENGL_LIB)
+#if USE(TEXTURE_MAPPER_GL)
     QGraphicsView* graphicsView = firstGraphicsView();
     if (graphicsView && graphicsView->viewport()) {
-        QGLWidget* glWidget = qobject_cast<QGLWidget*>(graphicsView->viewport());
-        if (glWidget) {
+        QWidget *widget = graphicsView->viewport();
+#if defined(QT_OPENGL_LIB)
+        if (widget->inherits("QGLWidget")) {
+
+            QGLWidget* glWidget = static_cast<QGLWidget*>(widget);
             // The GL context belonging to the QGLWidget viewport must be current when TextureMapper is being created.
             glWidget->makeCurrent();
             return true;
         }
+#endif
+#if QT_VERSION >= QT_VERSION_CHECK(5, 4, 0)
+        if (widget->inherits("QOpenGLWidget")) {
+            QOpenGLWidget *qoglWidget = static_cast<QOpenGLWidget*>(widget);
+            qoglWidget->makeCurrent();
+            return true;
+        }
+#endif
     }
 #endif
     return false;
+}
+
+QOpenGLContext* PageClientQGraphicsWidget::openGLContextIfAvailable()
+{
+#if USE(ACCELERATED_COMPOSITING) && USE(TEXTURE_MAPPER_GL)
+    QGraphicsView* graphicsView = firstGraphicsView();
+    if (graphicsView && graphicsView->viewport()) {
+        QWidget *widget = graphicsView->viewport();
+#if defined(QT_OPENGL_LIB)
+        if (widget->inherits("QGLWidget")) {
+            QGLWidget* glWidget = static_cast<QGLWidget*>(widget);
+            return glWidget->context()->contextHandle();
+        }
+#endif
+#if QT_VERSION >= QT_VERSION_CHECK(5, 4, 0)
+        if (widget->inherits("QOpenGLWidget")) {
+            QOpenGLWidget *qoglWidget = static_cast<QOpenGLWidget*>(widget);
+            return qoglWidget->context();
+        }
+#endif
+    }
+#endif
+    return 0;
 }
 
 void PageClientQGraphicsWidget::setInputMethodEnabled(bool enable)

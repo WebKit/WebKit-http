@@ -23,27 +23,57 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifndef ImageBufferDataQt_h
+#define ImageBufferDataQt_h
+
 #include "Image.h"
 
+#include <QImage>
 #include <QPainter>
-#include <QPixmap>
+#include <QPaintDevice>
 
-#include <wtf/OwnPtr.h>
+#if ENABLE(ACCELERATED_2D_CANVAS)
+#include <QOpenGLContext>
+#endif
+
 #include <wtf/RefPtr.h>
 
 namespace WebCore {
 
 class IntSize;
 
-class ImageBufferData {
+struct ImageBufferDataPrivate {
+    virtual ~ImageBufferDataPrivate() { }
+    virtual QPaintDevice* paintDevice() = 0;
+    virtual QImage toQImage() const = 0;
+    virtual PassRefPtr<Image> image() const = 0;
+    virtual PassRefPtr<Image> copyImage() const = 0;
+    virtual bool isAccelerated() const = 0;
+    virtual PlatformLayer* platformLayer() = 0;
+    virtual void draw(GraphicsContext* destContext, ColorSpace styleColorSpace, const FloatRect& destRect,
+                      const FloatRect& srcRect, CompositeOperator op, BlendMode blendMode, bool useLowQualityScale,
+                      bool ownContext) = 0;
+    virtual void drawPattern(GraphicsContext* destContext, const FloatRect& srcRect, const AffineTransform& patternTransform,
+                             const FloatPoint& phase, ColorSpace styleColorSpace, CompositeOperator op,
+                             const FloatRect& destRect, bool ownContext) = 0;
+    virtual void clip(GraphicsContext* context, const FloatRect& floatRect) const = 0;
+    virtual void platformTransformColorSpace(const Vector<int>& lookUpTable) = 0;
+};
+
+class ImageBufferData
+{
 public:
     ImageBufferData(const IntSize&);
-
-    QImage toQImage() const;
-
-    QPixmap m_pixmap;
-    OwnPtr<QPainter> m_painter;
-    RefPtr<Image> m_image;
+#if ENABLE(ACCELERATED_2D_CANVAS)
+    ImageBufferData(const IntSize&, QOpenGLContext*);
+#endif
+    ~ImageBufferData();
+    QPainter* m_painter;
+    ImageBufferDataPrivate* m_impl;
+protected:
+    void initPainter();
 };
 
 } // namespace WebCore
+
+#endif

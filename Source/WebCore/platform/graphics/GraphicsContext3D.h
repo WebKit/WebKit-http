@@ -65,6 +65,7 @@ QT_BEGIN_NAMESPACE
 class QPainter;
 class QRect;
 class QOpenGLContext;
+class QOpenGLExtensions;
 class QSurface;
 QT_END_NAMESPACE
 #elif PLATFORM(GTK) || PLATFORM(EFL) || PLATFORM(WIN_CAIRO)
@@ -95,14 +96,9 @@ const Platform3DObject NullPlatform3DObject = 0;
 
 namespace WebCore {
 class Extensions3D;
-#if USE(OPENGL_ES_2)
+class Extensions3DOpenGLCommon;
 class Extensions3DOpenGLES;
-#else
 class Extensions3DOpenGL;
-#endif
-#if PLATFORM(QT)
-class Extensions3DQt;
-#endif
 class HostWindow;
 class Image;
 class ImageBuffer;
@@ -1421,13 +1417,9 @@ private:
 
     std::unique_ptr<ShaderNameHash> nameHashMapForShaders;
 
-#if (PLATFORM(QT) && defined(QT_OPENGL_ES_2)) || ((PLATFORM(GTK) || PLATFORM(EFL) || PLATFORM(WIN)) && USE(OPENGL_ES_2))
-    friend class Extensions3DOpenGLES;
-    std::unique_ptr<Extensions3DOpenGLES> m_extensions;
-#else
+    OwnPtr<Extensions3DOpenGLCommon> m_extensions;
     friend class Extensions3DOpenGL;
-    std::unique_ptr<Extensions3DOpenGL> m_extensions;
-#endif
+    friend class Extensions3DOpenGLES;
     friend class Extensions3DOpenGLCommon;
 
     Attributes m_attrs;
@@ -1469,6 +1461,10 @@ private:
 
     // Errors raised by synthesizeGLError().
     ListHashSet<GC3Denum> m_syntheticErrors;
+
+#if PLATFORM(QT)
+    QOpenGLExtensions* m_functions;
+#endif
 
     friend class GraphicsContext3DPrivate;
     std::unique_ptr<GraphicsContext3DPrivate> m_private;

@@ -168,6 +168,7 @@ public:
 #endif
 
     bool makeOpenGLContextCurrentIfAvailable() final;
+    QOpenGLContext* openGLContextIfAvailable() final;
 
     QRectF windowRect() const final;
 

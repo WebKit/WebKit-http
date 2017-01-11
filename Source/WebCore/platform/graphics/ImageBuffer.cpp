@@ -152,7 +152,7 @@ void ImageBuffer::convertToLuminanceMask()
     genericConvertToLuminanceMask();
 }
 
-#if !USE(CAIRO)
+#if !USE(CAIRO) && !PLATFORM(QT)
 PlatformLayer* ImageBuffer::platformLayer() const
 {
     return 0;
