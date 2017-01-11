@@ -73,18 +73,14 @@ typedef char GLchar;
 #endif
 
 class GraphicsContext3DPrivate
-#if USE(ACCELERATED_COMPOSITING)
         : public TextureMapperPlatformLayer
-#endif
         , public QOpenGLExtensions
 {
 public:
     GraphicsContext3DPrivate(GraphicsContext3D*, HostWindow*, GraphicsContext3D::RenderStyle);
     ~GraphicsContext3DPrivate();
 
-#if USE(ACCELERATED_COMPOSITING)
     virtual void paintToTextureMapper(TextureMapper*, const FloatRect& target, const TransformationMatrix&, float opacity);
-#endif
 #if USE(GRAPHICS_SURFACE)
     virtual IntSize platformLayerSize() const;
     virtual uint32_t copyToGraphicsSurface();
@@ -278,7 +274,6 @@ GraphicsContext3DPrivate::~GraphicsContext3DPrivate()
     m_platformContextWatcher = 0;
 }
 
-#if USE(ACCELERATED_COMPOSITING)
 void GraphicsContext3DPrivate::paintToTextureMapper(TextureMapper* textureMapper, const FloatRect& targetRect, const TransformationMatrix& matrix, float opacity)
 {
     m_context->markLayerComposited();
@@ -313,7 +308,6 @@ void GraphicsContext3DPrivate::paintToTextureMapper(TextureMapper* textureMapper
     painter->drawImage(targetRect, offscreenImage);
     painter->restore();
 }
-#endif // USE(ACCELERATED_COMPOSITING)
 
 #if USE(GRAPHICS_SURFACE)
 IntSize GraphicsContext3DPrivate::platformLayerSize() const
@@ -494,12 +488,10 @@ Platform3DObject GraphicsContext3D::platformTexture() const
     return m_texture;
 }
 
-#if USE(ACCELERATED_COMPOSITING)
 PlatformLayer* GraphicsContext3D::platformLayer() const
 {
     return m_private.get();
 }
-#endif
 
 bool GraphicsContext3D::makeContextCurrent()
 {

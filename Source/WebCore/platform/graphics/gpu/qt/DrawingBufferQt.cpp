@@ -31,7 +31,6 @@
 
 namespace WebCore {
 
-#if USE(ACCELERATED_COMPOSITING)
 PlatformLayer* DrawingBuffer::platformLayer()
 {
     return 0;
@@ -45,7 +44,6 @@ unsigned DrawingBuffer::frontColorBuffer() const
 void DrawingBuffer::paintCompositedResultsToCanvas(ImageBuffer*)
 {
 }
-#endif
 
 }
 

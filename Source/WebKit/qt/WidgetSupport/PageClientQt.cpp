@@ -213,7 +213,7 @@ bool PageClientQGraphicsWidget::makeOpenGLContextCurrentIfAvailable()
 
 QOpenGLContext* PageClientQGraphicsWidget::openGLContextIfAvailable()
 {
-#if USE(ACCELERATED_COMPOSITING) && USE(TEXTURE_MAPPER_GL)
+#if USE(TEXTURE_MAPPER_GL)
     QGraphicsView* graphicsView = firstGraphicsView();
     if (graphicsView && graphicsView->viewport()) {
         QWidget *widget = graphicsView->viewport();
