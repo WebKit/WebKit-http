@@ -1,7 +1,7 @@
 /* GStreamer Widevine decryptor
  *
- * Copyright (C) 2016 TATA ELXSI
- * Copyright (C) 2016 Metrological
+ * Copyright (C) 2016-2017 TATA ELXSI
+ * Copyright (C) 2016-2017 Metrological
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -20,7 +20,7 @@
  */
 
 #include "config.h"
-#if ENABLE(ENCRYPTED_MEDIA_V2) && USE(GSTREAMER) && USE(OCDM)
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA) && USE(GSTREAMER) && USE(OCDM)
 #include <string>
 #include <stdio.h>
 #include <gst/gst.h>

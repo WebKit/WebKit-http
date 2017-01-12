@@ -1,7 +1,7 @@
 
 /*
- * Copyright (C) 2016 TATA ELXSI
- * Copyright (C) 2016 Metrological
+ * Copyright (C) 2016-2017 TATA ELXSI
+ * Copyright (C) 2016-2017 Metrological
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -31,7 +31,8 @@
 #define CDM_SESSION_ENC_KEY_H_
 
 #include "config.h"
-#if ENABLE(ENCRYPTED_MEDIA_V2) && USE(OCDM)
+
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA) && USE(OCDM)
 #include "CDMPrivate.h"
 #include "CDMPrivateEncKeyWPE.h"
 #include "CDMSession.h"
@@ -67,6 +68,6 @@ private:
 };
 
 }//WebCore
-#endif // ENABLE(ENCRYPTED_MEDIA_V2) && USE(OCDM)
+#endif // ENABLE(LEGACY_ENCRYPTED_MEDIA) && USE(OCDM)
 
 #endif //DM_SESSION_ENC_KEY_H_
