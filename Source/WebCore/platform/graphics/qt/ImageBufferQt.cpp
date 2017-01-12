@@ -32,6 +32,7 @@
 
 #include "GraphicsContext.h"
 #include "ImageData.h"
+#include "IntRect.h"
 #include "MIMETypeRegistry.h"
 #include "StillImageQt.h"
 #include "TransparencyLayer.h"

@@ -33,6 +33,7 @@
 #include "GraphicsContext.h"
 #include "GraphicsSurface.h"
 #include "ImageData.h"
+#include "IntRect.h"
 #include "StillImageQt.h"
 
 #include <QImage>

@@ -28,6 +28,8 @@
 
 #include "Image.h"
 
+#include "PlatformLayer.h"
+
 #include <QImage>
 #include <QPainter>
 #include <QPaintDevice>
