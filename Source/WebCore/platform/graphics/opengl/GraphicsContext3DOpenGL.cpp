@@ -70,6 +70,11 @@
 #include "OpenGLShimsQt.h"
 #include <QOpenGLContext>
 
+#define scopedScissor(c, s)     scopedScissor(m_functions, c, s)
+#define scopedDither(c, s)      scopedDither(m_functions, c, s)
+#define scopedDepth(c, s)       scopedDepth(m_functions, c, s)
+#define scopedStencil(c, s)     scopedStencil(m_functions, c, s)
+
 #ifndef GL_BGRA
 #define GL_BGRA                         0x80E1
 #endif

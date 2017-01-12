@@ -70,8 +70,12 @@
 #if PLATFORM(QT)
 #define FUNCTIONS m_functions
 #include "OpenGLShimsQt.h"
+
 #define glGetError(...)  m_functions->glGetError(__VA_ARGS__)
 #define glIsEnabled(...) m_functions->glIsEnabled(__VA_ARGS__)
+
+#define scopedScissor(c, s) scopedScissor(m_functions, c, s)
+#define scopedDither(c, s)  scopedDither(m_functions, c, s)
 #elif USE(OPENGL_ES_2)
 #include "OpenGLESShims.h"
 #elif PLATFORM(MAC)

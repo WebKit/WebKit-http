@@ -31,6 +31,12 @@
 
 #include <wtf/Noncopyable.h>
 
+#if PLATFORM(QT)
+QT_BEGIN_NAMESPACE
+class QOpenGLExtensions;
+QT_END_NAMESPACE
+#endif
+
 namespace WebCore {
 
 // TemporaryOpenGLSetting<> is useful for temporarily disabling (or enabling) a particular OpenGL
@@ -43,13 +49,21 @@ namespace WebCore {
 class TemporaryOpenGLSetting {
     WTF_MAKE_NONCOPYABLE(TemporaryOpenGLSetting);
 public:
+#if PLATFORM(QT)
+    TemporaryOpenGLSetting(QOpenGLExtensions*, GC3Denum capability, GC3Denum scopedState);
+#else
     TemporaryOpenGLSetting(GC3Denum capability, GC3Denum scopedState);
+#endif
     ~TemporaryOpenGLSetting();
 
 private:
     const GC3Denum m_capability;
     const GC3Denum m_scopedState;
     GC3Denum m_originalState;
+
+#if PLATFORM(QT)
+    QOpenGLExtensions* m_functions { nullptr };
+#endif
 };
 
 }

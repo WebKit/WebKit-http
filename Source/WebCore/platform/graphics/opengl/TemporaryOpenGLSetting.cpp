@@ -39,16 +39,25 @@
 #elif PLATFORM(GTK) || PLATFORM(EFL) || PLATFORM(WIN)
 #include "OpenGLShims.h"
 #elif PLATFORM(QT)
-#include <qopengl.h>
+#define FUNCTIONS m_functions
+#include "OpenGLShimsQt.h"
+#define glIsEnabled(...) m_functions->glIsEnabled(__VA_ARGS__)
 #endif
 
 namespace WebCore {
 
+#if PLATFORM(QT)
+TemporaryOpenGLSetting::TemporaryOpenGLSetting(QOpenGLExtensions* functions, GC3Denum capability, GC3Denum scopedState)
+#else
 TemporaryOpenGLSetting::TemporaryOpenGLSetting(GLenum capability, GLenum scopedState)
+#endif
     : m_capability(capability)
     , m_scopedState(scopedState)
+#if PLATFORM(QT)
+    , m_functions(functions)
+#endif
 {
-    m_originalState = ::glIsEnabled(m_capability);
+    m_originalState = glIsEnabled(m_capability);
     if (m_originalState == m_scopedState)
         return;
 
