@@ -275,7 +275,7 @@ bool Extensions3DOpenGL::supportsExtension(const String& name)
     if (name == "GL_EXT_draw_buffers") {
 #if PLATFORM(IOS)
         return m_availableExtensions.contains(name);
-#elif PLATFORM(MAC) || PLATFORM(GTK)
+#elif PLATFORM(MAC) || PLATFORM(GTK) || (PLATFORM(QT) && QT_VERSION >= QT_VERSION_CHECK(5, 6, 0))
         return m_availableExtensions.contains("GL_ARB_draw_buffers");
 #else
         // FIXME: implement support for other platforms.
@@ -296,7 +296,7 @@ void Extensions3DOpenGL::drawBuffersEXT(GC3Dsizei n, const GC3Denum* bufs)
     //  FIXME: implement support for other platforms.
 #if PLATFORM(MAC)
     ::glDrawBuffersARB(n, bufs);
-#elif PLATFORM(GTK)
+#elif PLATFORM(GTK) || (PLATFORM(QT) && QT_VERSION >= QT_VERSION_CHECK(5, 6, 0))
     ::glDrawBuffers(n, bufs);
 #else
     UNUSED_PARAM(n);
@@ -307,7 +307,7 @@ void Extensions3DOpenGL::drawBuffersEXT(GC3Dsizei n, const GC3Denum* bufs)
 void Extensions3DOpenGL::drawArraysInstanced(GC3Denum mode, GC3Dint first, GC3Dsizei count, GC3Dsizei primcount)
 {
     m_context->makeContextCurrent();
-#if PLATFORM(GTK)
+#if PLATFORM(GTK) || (PLATFORM(QT) && QT_VERSION >= QT_VERSION_CHECK(5, 6, 0))
     ::glDrawArraysInstanced(mode, first, count, primcount);
 #elif PLATFORM(COCOA)
     ::glDrawArraysInstancedARB(mode, first, count, primcount);
@@ -322,7 +322,7 @@ void Extensions3DOpenGL::drawArraysInstanced(GC3Denum mode, GC3Dint first, GC3Ds
 void Extensions3DOpenGL::drawElementsInstanced(GC3Denum mode, GC3Dsizei count, GC3Denum type, long long offset, GC3Dsizei primcount)
 {
     m_context->makeContextCurrent();
-#if PLATFORM(GTK)
+#if PLATFORM(GTK) || (PLATFORM(QT) && QT_VERSION >= QT_VERSION_CHECK(5, 6, 0))
     ::glDrawElementsInstanced(mode, count, type, reinterpret_cast<GLvoid*>(static_cast<intptr_t>(offset)), primcount);
 #elif PLATFORM(COCOA)
     ::glDrawElementsInstancedARB(mode, count, type, reinterpret_cast<GLvoid*>(static_cast<intptr_t>(offset)), primcount);
@@ -338,7 +338,7 @@ void Extensions3DOpenGL::drawElementsInstanced(GC3Denum mode, GC3Dsizei count, G
 void Extensions3DOpenGL::vertexAttribDivisor(GC3Duint index, GC3Duint divisor)
 {
     m_context->makeContextCurrent();
-#if PLATFORM(GTK)
+#if PLATFORM(GTK) || (PLATFORM(QT) && QT_VERSION >= QT_VERSION_CHECK(5, 6, 0))
     ::glVertexAttribDivisor(index, divisor);
 #elif PLATFORM(COCOA)
     ::glVertexAttribDivisorARB(index, divisor);
