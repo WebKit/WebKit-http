@@ -517,6 +517,10 @@ void LauncherWindow::createChrome()
     toggleJavascriptCanOpenWindows->setCheckable(true);
     toggleJavascriptCanOpenWindows->setChecked(false);
 
+    QAction* togglePrivateBrowsing = settingsMenu->addAction("Enable Private Browsing", this, SLOT(togglePrivateBrowsing(bool)));
+    togglePrivateBrowsing->setCheckable(true);
+    togglePrivateBrowsing->setChecked(false);
+
     QAction* toggleUseDiskCookies = settingsMenu->addAction("Save Cookies on Disk", this, SLOT(setUseDiskCookies(bool)));
     toggleUseDiskCookies->setCheckable(true);
     toggleUseDiskCookies->setChecked(m_windowOptions.useDiskCookies);
@@ -956,6 +960,11 @@ void LauncherWindow::toggleInterruptingJavaScriptEnabled(bool enable)
 void LauncherWindow::toggleJavascriptCanOpenWindows(bool enable)
 {
     page()->settings()->setAttribute(QWebSettings::JavascriptCanOpenWindows, enable);
+}
+
+void LauncherWindow::togglePrivateBrowsing(bool enable)
+{
+    page()->settings()->setAttribute(QWebSettings::PrivateBrowsingEnabled, enable);
 }
 
 void LauncherWindow::setUseDiskCookies(bool enable)
