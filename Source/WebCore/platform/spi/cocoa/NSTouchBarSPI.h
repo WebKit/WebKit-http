@@ -24,15 +24,19 @@
  */
 
 #if PLATFORM(MAC) && HAVE(TOUCH_BAR)
+
 #if USE(APPLE_INTERNAL_SDK)
 
+#import <AppKit/NSCandidateListTouchBarItem_Private.h>
 #import <AppKit/NSFunctionBar_Private.h>
 #import <AppKit/NSTextTouchBarItemController_WebKitSPI.h>
 #import <AppKit/NSTouchBar_Private.h>
 
-#else
+#endif
 
 NS_ASSUME_NONNULL_BEGIN
+
+#if !USE(APPLE_INTERNAL_SDK)
 
 @interface NSTouchBar ()
 @property (readonly, copy, nullable) NSArray<NSTouchBarItem *> *items;
@@ -51,10 +55,17 @@ NS_ASSUME_NONNULL_BEGIN
 
 @end
 
-APPKIT_EXTERN NSNotificationName const NSTouchBarWillEnterCustomization;
-APPKIT_EXTERN NSNotificationName const NSTouchBarDidExitCustomization;
+@interface NSCandidateListTouchBarItem ()
+- (void)setCandidates:(NSArray *)candidates forSelectedRange:(NSRange)selectedRange inString:(nullable NSString *)string rect:(NSRect)rect view:(nullable NSView *)view completionHandler:(nullable void (^)(id acceptedCandidate))completionBlock;
+@end
+
+#endif // !USE(APPLE_INTERNAL_SDK)
+
+APPKIT_EXTERN NSNotificationName const NSTouchBarWillEnterCustomization API_AVAILABLE(macosx(10.12.2));
+APPKIT_EXTERN NSNotificationName const NSTouchBarDidEnterCustomization API_AVAILABLE(macosx(10.12.2));
+APPKIT_EXTERN NSNotificationName const NSTouchBarWillExitCustomization API_AVAILABLE(macosx(10.12.2));
+APPKIT_EXTERN NSNotificationName const NSTouchBarDidExitCustomization API_AVAILABLE(macosx(10.12.2));
 
 NS_ASSUME_NONNULL_END
 
-#endif // USE(APPLE_INTERNAL_SDK)
 #endif // PLATFORM(MAC) && HAVE(TOUCH_BAR)

@@ -52,8 +52,7 @@ void JSRopeString::RopeBuilder::expand()
 
 void JSString::destroy(JSCell* cell)
 {
-    JSString* thisObject = static_cast<JSString*>(cell);
-    thisObject->JSString::~JSString();
+    static_cast<JSString*>(cell)->JSString::~JSString();
 }
 
 void JSString::dumpToStream(const JSCell* cell, PrintStream& out)
@@ -84,7 +83,7 @@ bool JSString::equalSlowCase(ExecState* exec, JSString* other) const
 
 size_t JSString::estimatedSize(JSCell* cell)
 {
-    JSString* thisObject = jsCast<JSString*>(cell);
+    JSString* thisObject = asString(cell);
     if (thisObject->isRope())
         return Base::estimatedSize(cell);
     return Base::estimatedSize(cell) + thisObject->m_value.impl()->costDuringGC();
@@ -92,26 +91,23 @@ size_t JSString::estimatedSize(JSCell* cell)
 
 void JSString::visitChildren(JSCell* cell, SlotVisitor& visitor)
 {
-    JSString* thisObject = jsCast<JSString*>(cell);
+    JSString* thisObject = asString(cell);
     Base::visitChildren(thisObject, visitor);
     
     if (thisObject->isRope())
         static_cast<JSRopeString*>(thisObject)->visitFibers(visitor);
-    else {
-        StringImpl* impl = thisObject->m_value.impl();
-        ASSERT(impl);
+    if (StringImpl* impl = thisObject->m_value.impl())
         visitor.reportExtraMemoryVisited(impl->costDuringGC());
-    }
 }
 
 void JSRopeString::visitFibers(SlotVisitor& visitor)
 {
     if (isSubstring()) {
-        visitor.append(&substringBase());
+        visitor.append(substringBase());
         return;
     }
     for (size_t i = 0; i < s_maxInternalRopeLength && fiber(i); ++i)
-        visitor.append(&fiber(i));
+        visitor.append(fiber(i));
 }
 
 static const unsigned maxLengthForOnStackResolve = 2048;
@@ -424,7 +420,7 @@ JSValue JSString::toThis(JSCell* cell, ExecState* exec, ECMAMode ecmaMode)
 {
     if (ecmaMode == StrictMode)
         return cell;
-    return StringObject::create(exec->vm(), exec->lexicalGlobalObject(), jsCast<JSString*>(cell));
+    return StringObject::create(exec->vm(), exec->lexicalGlobalObject(), asString(cell));
 }
 
 bool JSString::getStringPropertyDescriptor(ExecState* exec, PropertyName propertyName, PropertyDescriptor& descriptor)
@@ -434,7 +430,7 @@ bool JSString::getStringPropertyDescriptor(ExecState* exec, PropertyName propert
         return true;
     }
     
-    Optional<uint32_t> index = parseIndex(propertyName);
+    std::optional<uint32_t> index = parseIndex(propertyName);
     if (index && index.value() < length()) {
         descriptor.setDescriptor(getIndex(exec, index.value()), DontDelete | ReadOnly);
         return true;

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2004, 2006, 2011, 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2004-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -33,10 +33,6 @@
 
 #if PLATFORM(COCOA) || USE(CFURLCONNECTION)
 #include <wtf/RetainPtr.h>
-#endif
-
-#if USE(QUICK_LOOK)
-#include "QuickLook.h"
 #endif
 
 #if USE(SOUP)
@@ -83,6 +79,7 @@ class Frame;
 class URL;
 class NetworkingContext;
 class ProtectionSpace;
+class QuickLookHandle;
 class ResourceError;
 class ResourceHandleClient;
 class ResourceHandleInternal;
@@ -102,6 +99,8 @@ public:
 #if PLATFORM(COCOA) || USE(CFURLCONNECTION)
     ResourceRequest willSendRequest(ResourceRequest&&, ResourceResponse&&);
 #endif
+
+    void didReceiveResponse(ResourceResponse&&);
 
     bool shouldUseCredentialStorage();
     void didReceiveAuthenticationChallenge(const AuthenticationChallenge&);
@@ -146,11 +145,6 @@ public:
     const ResourceRequest& currentRequest() const;
     static void setHostAllowsAnyHTTPSCertificate(const String&);
     static void setClientCertificate(const String& host, CFDataRef);
-#endif
-
-#if USE(QUICK_LOOK)
-    QuickLookHandle* quickLookHandle() { return m_quickLook.get(); }
-    void setQuickLookHandle(std::unique_ptr<QuickLookHandle> handle) { m_quickLook = WTFMove(handle); }
 #endif
 
 #if PLATFORM(WIN) && USE(CURL)
@@ -249,6 +243,8 @@ private:
 
     void platformSetDefersLoading(bool);
 
+    void platformContinueSynchronousDidReceiveResponse();
+
     void scheduleFailure(FailureType);
 
     bool start();
@@ -279,10 +275,6 @@ private:
 
     friend class ResourceHandleInternal;
     std::unique_ptr<ResourceHandleInternal> d;
-
-#if USE(QUICK_LOOK)
-    std::unique_ptr<QuickLookHandle> m_quickLook;
-#endif
 };
 
 }

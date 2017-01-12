@@ -20,10 +20,12 @@
  * Boston, MA 02110-1301, USA.
  */
 
-interface SVGPoint {
-    attribute unrestricted float x;
-    attribute unrestricted float y;
+[
+    SkipVTableValidation
+] interface SVGPoint {
+    [SetterMayThrowException] attribute unrestricted float x;
+    [SetterMayThrowException] attribute unrestricted float y;
 
-    SVGPoint matrixTransform(SVGMatrix matrix);
+    [MayThrowException, NewObject] SVGPoint matrixTransform(SVGMatrix matrix);
 };
 

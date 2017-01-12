@@ -26,7 +26,6 @@
 #include "EventNames.h"
 #include "EventPath.h"
 #include "EventTarget.h"
-#include "RuntimeApplicationChecks.h"
 #include "UserGestureIndicator.h"
 #include <wtf/CurrentTime.h>
 
@@ -90,23 +89,6 @@ void Event::initEvent(const AtomicString& eventTypeArg, bool canBubbleArg, bool 
     m_cancelable = cancelableArg;
 }
 
-ExceptionOr<void> Event::initEventForBindings(ScriptExecutionContext& scriptExecutionContext, const AtomicString& type, bool bubbles)
-{
-#if PLATFORM(IOS)
-    // FIXME: Temporary quirk for Baidu Nuomi App which calls initEvent() with too few parameters (rdar://problem/28707838).
-    if (IOSApplication::isBaiduNuomi()) {
-        scriptExecutionContext.addConsoleMessage(MessageSource::JS, MessageLevel::Warning, ASCIILiteral("Calling Event.prototype.initEvent() with less than 3 parameters is deprecated."));
-        initEvent(type, bubbles, false);
-        return { };
-    }
-#else
-    UNUSED_PARAM(scriptExecutionContext);
-    UNUSED_PARAM(type);
-    UNUSED_PARAM(bubbles);
-#endif
-    return Exception { TypeError, ASCIILiteral("Not enough arguments") };
-}
-
 bool Event::composed() const
 {
     if (m_composed)
@@ -168,11 +150,6 @@ bool Event::isTouchEvent() const
     return false;
 }
 
-bool Event::isDragEvent() const
-{
-    return false;
-}
-
 bool Event::isClipboardEvent() const
 {
     return false;
@@ -201,11 +178,6 @@ bool Event::isTextEvent() const
 bool Event::isWheelEvent() const
 {
     return false;
-}
-
-Ref<Event> Event::cloneFor(HTMLIFrameElement*) const
-{
-    return Event::create(type(), bubbles(), cancelable());
 }
 
 void Event::setTarget(RefPtr<EventTarget>&& target)

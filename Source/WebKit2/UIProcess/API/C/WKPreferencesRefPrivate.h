@@ -50,8 +50,7 @@ enum WKEditableLinkBehavior {
 typedef enum WKEditableLinkBehavior WKEditableLinkBehavior;
 
 enum WKJavaScriptRuntimeFlags {
-    kWKJavaScriptRuntimeFlagsSharedArrayBufferEnabled = 1 << 0,
-    kWKJavaScriptRuntimeFlagsAllEnabled = kWKJavaScriptRuntimeFlagsSharedArrayBufferEnabled
+    kWKJavaScriptRuntimeFlagsAllEnabled = 0
 };
 typedef unsigned WKJavaScriptRuntimeFlagSet;
 
@@ -205,6 +204,10 @@ WK_EXPORT void WKPreferencesSetMediaControlsScaleWithPageZoom(WKPreferencesRef p
 WK_EXPORT bool WKPreferencesGetMediaControlsScaleWithPageZoom(WKPreferencesRef preferencesRef);
 
 // Defaults to false.
+WK_EXPORT void WKPreferencesSetModernMediaControlsEnabled(WKPreferencesRef preferencesRef, bool flag);
+WK_EXPORT bool WKPreferencesGetModernMediaControlsEnabled(WKPreferencesRef preferencesRef);
+
+// Defaults to false.
 WK_EXPORT void WKPreferencesSetShowsToolTipOverTruncatedText(WKPreferencesRef preferencesRef, bool flag);
 WK_EXPORT bool WKPreferencesGetShowsToolTipOverTruncatedText(WKPreferencesRef preferencesRef);
 
@@ -333,8 +336,8 @@ WK_EXPORT void WKPreferencesSetNewBlockInsideInlineModelEnabled(WKPreferencesRef
 WK_EXPORT bool WKPreferencesGetNewBlockInsideInlineModelEnabled(WKPreferencesRef);
 
 // Defaults to false.
-WK_EXPORT void WKPreferencesSetNewCSSParserEnabled(WKPreferencesRef, bool);
-WK_EXPORT bool WKPreferencesGetNewCSSParserEnabled(WKPreferencesRef);
+WK_EXPORT void WKPreferencesSetDeferredCSSParserEnabled(WKPreferencesRef, bool);
+WK_EXPORT bool WKPreferencesGetDeferredCSSParserEnabled(WKPreferencesRef);
 
 // Defaults to false.
 WK_EXPORT void WKPreferencesSetSubpixelCSSOMElementMetricsEnabled(WKPreferencesRef, bool);
@@ -437,6 +440,18 @@ WK_EXPORT bool WKPreferencesGetSelectionPaintingWithoutSelectionGapsEnabled(WKPr
 // Defaults to false.
 WK_EXPORT void WKPreferencesSetAllowsPictureInPictureMediaPlayback(WKPreferencesRef, bool flag);
 WK_EXPORT bool WKPreferencesGetAllowsPictureInPictureMediaPlayback(WKPreferencesRef);
+
+// Defaults to false
+WK_EXPORT void WKPreferencesSetIntersectionObserverEnabled(WKPreferencesRef, bool flag);
+WK_EXPORT bool WKPreferencesGetIntersectionObserverEnabled(WKPreferencesRef);
+
+// Defaults to true
+WK_EXPORT void WKPreferencesSetSubtleCryptoEnabled(WKPreferencesRef, bool flag);
+WK_EXPORT bool WKPreferencesGetSubtleCryptoEnabled(WKPreferencesRef);
+
+// Defaults to false
+WK_EXPORT void WKPreferencesSetShouldSuppressKeyboardInputDuringProvisionalNavigation(WKPreferencesRef, bool flag);
+WK_EXPORT bool WKPreferencesGetShouldSuppressKeyboardInputDuringProvisionalNavigation(WKPreferencesRef);
 
 #ifdef __cplusplus
 }

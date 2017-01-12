@@ -59,7 +59,7 @@ static EncodedJSValue JSC_HOST_CALL constructMap(ExecState* exec)
     VM& vm = exec->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
 
-    JSGlobalObject* globalObject = asInternalFunction(exec->callee())->globalObject();
+    JSGlobalObject* globalObject = asInternalFunction(exec->jsCallee())->globalObject();
     Structure* mapStructure = InternalFunction::createSubclassStructure(exec, exec->newTarget(), globalObject->mapStructure());
     RETURN_IF_EXCEPTION(scope, encodedJSValue());
     JSMap* map = JSMap::create(exec, vm, mapStructure);
@@ -76,6 +76,7 @@ static EncodedJSValue JSC_HOST_CALL constructMap(ExecState* exec)
     if (adderFunctionCallType == CallType::None)
         return JSValue::encode(throwTypeError(exec, scope));
 
+    scope.release();
     forEachInIterable(exec, iterable, [&](VM& vm, ExecState* exec, JSValue nextItem) {
         auto scope = DECLARE_THROW_SCOPE(vm);
         if (!nextItem.isObject()) {
@@ -92,6 +93,7 @@ static EncodedJSValue JSC_HOST_CALL constructMap(ExecState* exec)
         MarkedArgumentBuffer arguments;
         arguments.append(key);
         arguments.append(value);
+        scope.release();
         call(exec, adderFunction, adderFunctionCallType, adderFunctionCallData, map, arguments);
     });
 

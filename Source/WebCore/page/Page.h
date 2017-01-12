@@ -108,7 +108,9 @@ class PlugInClient;
 class PluginData;
 class PluginInfoProvider;
 class PluginViewBase;
+#if ENABLE(POINTER_LOCK)
 class PointerLockController;
+#endif
 class ProgressTracker;
 class ProgressTrackerClient;
 class Range;
@@ -130,7 +132,15 @@ class VisitedLinkStore;
 
 typedef uint64_t LinkHash;
 
-enum FindDirection { FindDirectionForward, FindDirectionBackward };
+enum FindDirection {
+    FindDirectionForward,
+    FindDirectionBackward
+};
+
+enum class EventThrottlingBehavior {
+    Responsive,
+    Unresponsive
+};
 
 class Page : public Supplementable<Page> {
     WTF_MAKE_NONCOPYABLE(Page);
@@ -205,7 +215,9 @@ public:
 #if ENABLE(POINTER_LOCK)
     PointerLockController& pointerLockController() const { return *m_pointerLockController; }
 #endif
+
     ValidationMessageClient* validationMessageClient() const { return m_validationMessageClient.get(); }
+    void updateValidationBubbleStateIfNeeded();
 
     WEBCORE_EXPORT ScrollingCoordinator* scrollingCoordinator();
 
@@ -317,7 +329,9 @@ public:
 
     WEBCORE_EXPORT void setHorizontalScrollElasticity(ScrollElasticity);
     ScrollElasticity horizontalScrollElasticity() const { return static_cast<ScrollElasticity>(m_horizontalScrollElasticity); }
-    
+
+    WEBCORE_EXPORT void accessibilitySettingsDidChange();
+
     // Page and FrameView both store a Pagination value. Page::pagination() is set only by API,
     // and FrameView::pagination() is set only by CSS. Page::pagination() will affect all
     // FrameViews in the page cache, but FrameView::pagination() only affects the current
@@ -531,6 +545,9 @@ public:
     bool isResourceCachingDisabled() const { return m_resourceCachingDisabled; }
     void setResourceCachingDisabled(bool disabled) { m_resourceCachingDisabled = disabled; }
 
+    std::optional<EventThrottlingBehavior> eventThrottlingBehaviorOverride() const { return m_eventThrottlingBehaviorOverride; }
+    void setEventThrottlingBehaviorOverride(std::optional<EventThrottlingBehavior> throttling) { m_eventThrottlingBehaviorOverride = throttling; }
+
 private:
     WEBCORE_EXPORT void initGroup();
 
@@ -549,7 +566,7 @@ private:
 
     unsigned findMatchesForText(const String&, FindOptions, unsigned maxMatchCount, ShouldHighlightMatches, ShouldMarkMatches);
 
-    Optional<std::pair<MediaCanStartListener&, Document&>> takeAnyMediaCanStartListener();
+    std::optional<std::pair<MediaCanStartListener&, Document&>> takeAnyMediaCanStartListener();
 
     Vector<Ref<PluginViewBase>> pluginViews();
 
@@ -722,6 +739,9 @@ private:
     bool m_controlledByAutomation { false };
     bool m_resourceCachingDisabled { false };
     UserInterfaceLayoutDirection m_userInterfaceLayoutDirection { UserInterfaceLayoutDirection::LTR };
+    
+    // For testing.
+    std::optional<EventThrottlingBehavior> m_eventThrottlingBehaviorOverride;
 };
 
 inline PageGroup& Page::group()

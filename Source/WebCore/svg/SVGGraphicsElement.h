@@ -29,13 +29,19 @@ namespace WebCore {
 
 class AffineTransform;
 class Path;
+class SVGRect;
+class SVGMatrix;
 
 class SVGGraphicsElement : public SVGElement, public SVGTransformable, public SVGTests {
 public:
     virtual ~SVGGraphicsElement();
 
+    Ref<SVGMatrix> getCTMForBindings();
     AffineTransform getCTM(StyleUpdateStrategy = AllowStyleUpdate) override;
+
+    Ref<SVGMatrix> getScreenCTMForBindings();
     AffineTransform getScreenCTM(StyleUpdateStrategy = AllowStyleUpdate) override;
+
     SVGElement* nearestViewportElement() const override;
     SVGElement* farthestViewportElement() const override;
 
@@ -43,6 +49,7 @@ public:
     AffineTransform animatedLocalTransform() const override;
     AffineTransform* supplementalTransform() override;
 
+    Ref<SVGRect> getBBoxForBindings();
     FloatRect getBBox(StyleUpdateStrategy = AllowStyleUpdate) override;
 
     bool shouldIsolateBlending() const { return m_shouldIsolateBlending; }
@@ -53,6 +60,11 @@ public:
     RenderPtr<RenderElement> createElementRenderer(RenderStyle&&, const RenderTreePosition&) override;
 
     size_t approximateMemoryCost() const override { return sizeof(*this); }
+
+    // SVGTests
+    Ref<SVGStringList> requiredFeatures();
+    Ref<SVGStringList> requiredExtensions();
+    Ref<SVGStringList> systemLanguage();
 
 protected:
     SVGGraphicsElement(const QualifiedName&, Document&);
@@ -72,9 +84,9 @@ private:
     static bool isSupportedAttribute(const QualifiedName&);
 
     // SVGTests
-    void synchronizeRequiredFeatures() override { SVGTests::synchronizeRequiredFeatures(this); }
-    void synchronizeRequiredExtensions() override { SVGTests::synchronizeRequiredExtensions(this); }
-    void synchronizeSystemLanguage() override { SVGTests::synchronizeSystemLanguage(this); }
+    void synchronizeRequiredFeatures() final { SVGTests::synchronizeRequiredFeatures(*this); }
+    void synchronizeRequiredExtensions() final { SVGTests::synchronizeRequiredExtensions(*this); }
+    void synchronizeSystemLanguage() final { SVGTests::synchronizeSystemLanguage(*this); }
 
     // Used by <animateMotion>
     std::unique_ptr<AffineTransform> m_supplementalTransform;

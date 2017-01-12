@@ -45,8 +45,8 @@ void HashMapBucket<Data>::visitChildren(JSCell* cell, SlotVisitor& visitor)
     ASSERT_GC_OBJECT_INHERITS(thisObject, info());
     Base::visitChildren(thisObject, visitor);
 
-    visitor.append(&thisObject->m_next);
-    visitor.append(&thisObject->m_prev);
+    visitor.append(thisObject->m_next);
+    visitor.append(thisObject->m_prev);
 
     static_assert(sizeof(Data) % sizeof(WriteBarrier<Unknown>) == 0, "We assume that these are filled with WriteBarrier<Unknown> members only.");
     visitor.appendValues(bitwise_cast<WriteBarrier<Unknown>*>(&thisObject->m_data), sizeof(Data) / sizeof(WriteBarrier<Unknown>));
@@ -67,11 +67,11 @@ void HashMapImpl<HashMapBucket>::visitChildren(JSCell* cell, SlotVisitor& visito
     ASSERT_GC_OBJECT_INHERITS(thisObject, info());
     Base::visitChildren(thisObject, visitor);
 
-    visitor.append(&thisObject->m_head);
-    visitor.append(&thisObject->m_tail);
+    visitor.append(thisObject->m_head);
+    visitor.append(thisObject->m_tail);
     
-    if (thisObject->m_buffer)
-        visitor.markAuxiliary(thisObject->m_buffer.get());
+    if (HashMapBufferType* buffer = thisObject->m_buffer.get())
+        visitor.markAuxiliary(buffer);
 }
 
 const ClassInfo* getHashMapBucketKeyClassInfo()

@@ -504,10 +504,12 @@ public:
         [NSNumber numberWithBool:NO],   WebKitShowRepaintCounterPreferenceKey,
         [NSNumber numberWithBool:YES],  WebKitWebGLEnabledPreferenceKey,
         [NSNumber numberWithBool:NO],  WebKitForceSoftwareWebGLRenderingPreferenceKey,
+        [NSNumber numberWithBool:YES],   WebKitPreferLowPowerWebGLRenderingPreferenceKey,
         [NSNumber numberWithBool:NO],   WebKitAccelerated2dCanvasEnabledPreferenceKey,
         [NSNumber numberWithBool:NO],  WebKitSubpixelCSSOMElementMetricsEnabledPreferenceKey,
         [NSNumber numberWithBool:NO],  WebKitResourceLoadStatisticsEnabledPreferenceKey,
-        [NSNumber numberWithBool:YES],  WebKitAsyncImageDecodingEnabledPreferenceKey,
+        [NSNumber numberWithBool:YES],  WebKitLargeImageAsyncDecodingEnabledPreferenceKey,
+        [NSNumber numberWithBool:YES],  WebKitAnimatedImageAsyncDecodingEnabledPreferenceKey,
 #if PLATFORM(IOS)
         [NSNumber numberWithBool:YES],  WebKitFrameFlatteningEnabledPreferenceKey,
 #else
@@ -626,8 +628,26 @@ public:
 #if ENABLE(WEB_ANIMATIONS)
         [NSNumber numberWithBool:NO], WebKitWebAnimationsEnabledPreferenceKey,
 #endif
+
+#if PLATFORM(IOS)
         [NSNumber numberWithBool:NO], WebKitVisualViewportEnabledPreferenceKey,
+#else
+        [NSNumber numberWithBool:YES], WebKitVisualViewportEnabledPreferenceKey,
+#endif
+
         [NSNumber numberWithBool:YES], WebKitNeedsStorageAccessFromFileURLsQuirkKey,
+#if ENABLE(SUBTLE_CRYPTO)
+        [NSNumber numberWithBool:YES], WebKitSubtleCryptoEnabledPreferenceKey,
+#endif
+
+#if ENABLE(MEDIA_STREAM)
+        [NSNumber numberWithBool:NO], WebKitMediaStreamEnabledPreferenceKey,
+#endif
+
+#if ENABLE(WEB_RTC)
+        [NSNumber numberWithBool:NO], WebKitPeerConnectionEnabledPreferenceKey,
+#endif
+
         nil];
 
 #if !PLATFORM(IOS)
@@ -1801,6 +1821,9 @@ static NSString *classIBCreatorID = nil;
 
 + (void)_switchNetworkLoaderToNewTestingSession
 {
+#if PLATFORM(IOS)
+    WebThreadLock();
+#endif
     NetworkStorageSession::switchToNewTestingSession();
 }
 
@@ -1886,14 +1909,24 @@ static NSString *classIBCreatorID = nil;
     [self _setBoolValue:enabled forKey:WebKitResourceLoadStatisticsEnabledPreferenceKey];
 }
 
-- (BOOL)asyncImageDecodingEnabled
+- (BOOL)largeImageAsyncDecodingEnabled
 {
-    return [self _boolValueForKey:WebKitAsyncImageDecodingEnabledPreferenceKey];
+    return [self _boolValueForKey:WebKitLargeImageAsyncDecodingEnabledPreferenceKey];
 }
 
-- (void)setAsyncImageDecodingEnabled:(BOOL)enabled
+- (void)setLargeImageAsyncDecodingEnabled:(BOOL)enabled
 {
-    [self _setBoolValue:enabled forKey:WebKitAsyncImageDecodingEnabledPreferenceKey];
+    [self _setBoolValue:enabled forKey:WebKitLargeImageAsyncDecodingEnabledPreferenceKey];
+}
+
+- (BOOL)animatedImageAsyncDecodingEnabled
+{
+    return [self _boolValueForKey:WebKitAnimatedImageAsyncDecodingEnabledPreferenceKey];
+}
+
+- (void)setAnimatedImageAsyncDecodingEnabled:(BOOL)enabled
+{
+    [self _setBoolValue:enabled forKey:WebKitAnimatedImageAsyncDecodingEnabledPreferenceKey];
 }
 
 - (BOOL)canvasUsesAcceleratedDrawing
@@ -1994,6 +2027,16 @@ static NSString *classIBCreatorID = nil;
 - (void)setForceSoftwareWebGLRendering:(BOOL)forced
 {
     [self _setBoolValue:forced forKey:WebKitForceSoftwareWebGLRenderingPreferenceKey];
+}
+
+- (BOOL)preferLowPowerWebGLRendering
+{
+    return [self _boolValueForKey:WebKitPreferLowPowerWebGLRenderingPreferenceKey];
+}
+
+- (void)setPreferLowPowerWebGLRendering:(BOOL)preferLowPower
+{
+    [self _setBoolValue:preferLowPower forKey:WebKitPreferLowPowerWebGLRenderingPreferenceKey];
 }
 
 - (BOOL)accelerated2dCanvasEnabled
@@ -2658,6 +2701,36 @@ static NSString *classIBCreatorID = nil;
     [self _setStringValue:directory forKey:WebKitMediaKeysStorageDirectoryKey];
 }
 
+- (BOOL)subtleCryptoEnabled
+{
+    return [self _boolValueForKey:WebKitSubtleCryptoEnabledPreferenceKey];
+}
+
+- (void)setSubtleCryptoEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitSubtleCryptoEnabledPreferenceKey];
+}
+
+- (BOOL)mediaStreamEnabled
+{
+    return [self _boolValueForKey:WebKitMediaStreamEnabledPreferenceKey];
+}
+
+- (void)setMediaStreamEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitMediaStreamEnabledPreferenceKey];
+}
+
+- (BOOL)peerConnectionEnabled
+{
+    return [self _boolValueForKey:WebKitPeerConnectionEnabledPreferenceKey];
+}
+
+- (void)setPeerConnectionEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitPeerConnectionEnabledPreferenceKey];
+}
+
 - (void)setMetaRefreshEnabled:(BOOL)enabled
 {
     [self setHTTPEquivEnabled:enabled];
@@ -2826,6 +2899,16 @@ static NSString *classIBCreatorID = nil;
 - (void)setModernMediaControlsEnabled:(BOOL)flag
 {
     [self _setBoolValue:flag forKey:WebKitModernMediaControlsEnabledPreferenceKey];
+}
+
+- (BOOL)intersectionObserverEnabled
+{
+    return [self _boolValueForKey:WebKitIntersectionObserverEnabledPreferenceKey];
+}
+
+- (void)setIntersectionObserverEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitIntersectionObserverEnabledPreferenceKey];
 }
 
 @end

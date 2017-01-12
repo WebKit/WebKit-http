@@ -95,18 +95,29 @@ public:
     bool isString() const;
     bool isSymbol() const;
     bool isObject() const;
+    bool isAnyWasmCallee() const;
     bool isGetterSetter() const;
     bool isCustomGetterSetter() const;
     bool isProxy() const;
     bool inherits(const ClassInfo*) const;
     bool isAPIValueWrapper() const;
-
+    
+    // Each cell has a built-in lock. Currently it's simply available for use if you need it. It's
+    // a full-blown WTF::Lock. Note that this lock is currently used in JSArray and that lock's
+    // ordering with the Structure lock is that the Structure lock must be acquired first.
+    void lock();
+    bool tryLock();
+    void unlock();
+    bool isLocked() const;
+    
     JSType type() const;
+    IndexingType indexingTypeAndMisc() const;
     IndexingType indexingType() const;
     StructureID structureID() const { return m_structureID; }
     Structure* structure() const;
     Structure* structure(VM&) const;
     void setStructure(VM&, Structure*);
+    void setStructureIDDirectly(StructureID id) { m_structureID = id; }
     void clearStructure() { m_structureID = 0; }
 
     TypeInfo::InlineTypeFlags inlineTypeFlags() const { return m_flags; }
@@ -134,7 +145,7 @@ public:
     bool toBoolean(ExecState*) const;
     TriState pureToBoolean() const;
     JS_EXPORT_PRIVATE double toNumber(ExecState*) const;
-    JS_EXPORT_PRIVATE JSObject* toObject(ExecState*, JSGlobalObject*) const;
+    JSObject* toObject(ExecState*, JSGlobalObject*) const;
 
     void dump(PrintStream&) const;
     JS_EXPORT_PRIVATE static void dumpToStream(const JSCell*, PrintStream&);
@@ -167,6 +178,16 @@ public:
     CellState cellState() const { return m_cellState; }
     
     void setCellState(CellState data) const { const_cast<JSCell*>(this)->m_cellState = data; }
+    
+    bool atomicCompareExchangeCellStateWeakRelaxed(CellState oldState, CellState newState)
+    {
+        return WTF::atomicCompareExchangeWeakRelaxed(&m_cellState, oldState, newState);
+    }
+
+    CellState atomicCompareExchangeCellStateStrong(CellState oldState, CellState newState)
+    {
+        return WTF::atomicCompareExchangeStrong(&m_cellState, oldState, newState);
+    }
 
     static ptrdiff_t structureIDOffset()
     {
@@ -183,9 +204,12 @@ public:
         return OBJECT_OFFSETOF(JSCell, m_type);
     }
 
-    static ptrdiff_t indexingTypeOffset()
+    // DO NOT store to this field. Always use a CAS loop, since some bits are flipped using CAS
+    // from other threads due to the internal lock. One exception: you don't need the CAS if the
+    // object has not escaped yet.
+    static ptrdiff_t indexingTypeAndMiscOffset()
     {
-        return OBJECT_OFFSETOF(JSCell, m_indexingType);
+        return OBJECT_OFFSETOF(JSCell, m_indexingTypeAndMisc);
     }
 
     static ptrdiff_t cellStateOffset()
@@ -227,8 +251,10 @@ protected:
 private:
     friend class LLIntOffsetsExtractor;
 
+    JS_EXPORT_PRIVATE JSObject* toObjectSlow(ExecState*, JSGlobalObject*) const;
+
     StructureID m_structureID;
-    IndexingType m_indexingType;
+    IndexingType m_indexingTypeAndMisc; // DO NOT store to this field. Always CAS.
     JSType m_type;
     TypeInfo::InlineTypeFlags m_flags;
     CellState m_cellState;

@@ -25,17 +25,22 @@
 
 #pragma once
 
+#include "CachedResourceHandle.h"
 #include <runtime/ConsoleTypes.h>
+#include <runtime/JSScriptFetcher.h>
 #include <wtf/HashCountedSet.h>
 #include <wtf/RefCounted.h>
 #include <wtf/text/WTFString.h>
 
 namespace WebCore {
 
+class CachedScript;
+class Document;
 class LoadableScriptClient;
 class ScriptElement;
+class URL;
 
-class LoadableScript : public RefCounted<LoadableScript> {
+class LoadableScript : public JSC::ScriptFetcher {
 public:
     enum class ErrorType {
         CachedScript,
@@ -51,13 +56,13 @@ public:
 
     struct Error {
         ErrorType type;
-        Optional<ConsoleMessage> consoleMessage;
+        std::optional<ConsoleMessage> consoleMessage;
     };
 
     virtual ~LoadableScript() { }
 
     virtual bool isLoaded() const = 0;
-    virtual Optional<Error> wasErrored() const = 0;
+    virtual std::optional<Error> error() const = 0;
     virtual bool wasCanceled() const = 0;
 
     virtual void execute(ScriptElement&) = 0;
@@ -66,12 +71,29 @@ public:
     void removeClient(LoadableScriptClient&);
 
     virtual bool isClassicScript() const { return false; }
-    virtual bool isModuleGraph() const { return false; }
+    virtual bool isModuleScript() const { return false; }
+
+    CachedResourceHandle<CachedScript> requestScriptWithCache(Document&, const URL& sourceURL) const;
 
 protected:
+    LoadableScript(const String& nonce, const String& crossOriginMode, const String& charset, const AtomicString& initiatorName, bool isInUserAgentShadowTree)
+        : m_nonce(nonce)
+        , m_crossOriginMode(crossOriginMode)
+        , m_charset(charset)
+        , m_initiatorName(initiatorName)
+        , m_isInUserAgentShadowTree(isInUserAgentShadowTree)
+    {
+    }
+
     void notifyClientFinished();
 
 private:
+    String m_nonce;
+    String m_crossOriginMode;
+    String m_charset;
+    AtomicString m_initiatorName;
+    bool m_isInUserAgentShadowTree { false };
+
     HashCountedSet<LoadableScriptClient*> m_clients;
 };
 

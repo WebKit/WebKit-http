@@ -77,7 +77,7 @@ public:
     RefPtr<WebCore::TrackPrivateBase> track() { return m_track; }
     WebCore::MediaSourceStreamTypeGStreamer streamType() { return m_streamType; }
 
-    void disconnectDemuxerSrcPadFromAppsinkFromAnyThread();
+    void disconnectDemuxerSrcPadFromAppsinkFromAnyThread(GstPad*);
     void connectDemuxerSrcPadToAppsinkFromAnyThread(GstPad*);
     void connectDemuxerSrcPadToAppsink(GstPad*);
 
@@ -108,7 +108,7 @@ private:
     GRefPtr<GstBus> m_bus;
     GRefPtr<GstElement> m_appsrc;
     GRefPtr<GstElement> m_demux;
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA)
     GRefPtr<GstElement> m_decryptor;
 #endif
     // The demuxer has one src stream only, so only one appsink is needed and linked to it.

@@ -289,13 +289,16 @@ def parse_args(args):
         optparse.make_option("--profiler", action="store",
             help="Output per-test profile information, using the specified profiler."),
         optparse.make_option("--no-timeout", action="store_true", default=False, help="Disable test timeouts"),
-        optparse.make_option("--wayland",  action="store_true", default=False,
-            help="Run the layout tests inside a (virtualized) weston compositor (GTK only)."),
+        optparse.make_option('--display-server', choices=['xvfb', 'xorg', 'weston', 'wayland'], default='xvfb',
+            help='"xvfb": Use a virtualized X11 server. "xorg": Use the current X11 session. '
+                 '"weston": Use a virtualized Weston server. "wayland": Use the current wayland session.'),
     ]))
 
     option_group_definitions.append(("iOS Simulator Options", [
         optparse.make_option('--runtime', help='iOS Simulator runtime identifier (default: latest runtime)'),
         optparse.make_option('--device-type', help='iOS Simulator device type identifier (default: i386 -> iPhone 5, x86_64 -> iPhone 5s)'),
+        optparse.make_option('--dedicated-simulators', action="store_true", default=False,
+            help="If set, dedicated iOS simulators will always be created.  If not set, the script will attempt to use any currently running simulator."),
     ]))
 
     option_group_definitions.append(("Miscellaneous Options", [

@@ -35,6 +35,7 @@
 #include "CachedRawResource.h"
 #include "CachedResource.h"
 #include "CachedResourceLoader.h"
+#include "CachedResourceRequestInitiators.h"
 #include "Document.h"
 #include "DocumentLoader.h"
 #include "DocumentThreadableLoader.h"
@@ -125,12 +126,6 @@ public:
     void didFail(const ResourceError& error) override
     {
         m_callback->sendFailure(error.isAccessControl() ? ASCIILiteral("Loading resource for inspector failed access control check") : ASCIILiteral("Loading resource for inspector failed"));
-        dispose();
-    }
-
-    void didFailLoaderCreation()
-    {
-        m_callback->sendFailure(ASCIILiteral("Could not create a loader"));
         dispose();
     }
 
@@ -450,14 +445,18 @@ void InspectorNetworkAgent::didReceiveScriptResponse(unsigned long identifier)
     m_resourcesData->setResourceType(IdentifiersFactory::requestId(identifier), InspectorPageAgent::ScriptResource);
 }
 
-void InspectorNetworkAgent::didFinishXHRLoading(ThreadableLoaderClient*, unsigned long identifier, const String& decodedText)
+void InspectorNetworkAgent::didReceiveThreadableLoaderResponse(unsigned long identifier, DocumentThreadableLoader& documentThreadableLoader)
 {
-    m_resourcesData->setResourceContent(IdentifiersFactory::requestId(identifier), decodedText);
+    String initiator = documentThreadableLoader.options().initiator;
+    if (initiator == cachedResourceRequestInitiators().fetch)
+        m_resourcesData->setResourceType(IdentifiersFactory::requestId(identifier), InspectorPageAgent::FetchResource);
+    else if (initiator == cachedResourceRequestInitiators().xmlhttprequest)
+        m_resourcesData->setResourceType(IdentifiersFactory::requestId(identifier), InspectorPageAgent::XHRResource);
 }
 
-void InspectorNetworkAgent::didReceiveXHRResponse(unsigned long identifier)
+void InspectorNetworkAgent::didFinishXHRLoading(unsigned long identifier, const String& decodedText)
 {
-    m_resourcesData->setResourceType(IdentifiersFactory::requestId(identifier), InspectorPageAgent::XHRResource);
+    m_resourcesData->setResourceContent(IdentifiersFactory::requestId(identifier), decodedText);
 }
 
 void InspectorNetworkAgent::willLoadXHRSynchronously()
@@ -678,14 +677,11 @@ void InspectorNetworkAgent::loadResource(ErrorString& errorString, const String&
     options.credentials = FetchOptions::Credentials::SameOrigin;
     options.contentSecurityPolicyEnforcement = ContentSecurityPolicyEnforcement::DoNotEnforce;
 
-    // InspectorThreadableLoaderClient deletes itself when the load completes.
+    // InspectorThreadableLoaderClient deletes itself when the load completes or fails.
     InspectorThreadableLoaderClient* inspectorThreadableLoaderClient = new InspectorThreadableLoaderClient(callback.copyRef());
-
     auto loader = DocumentThreadableLoader::create(*document, *inspectorThreadableLoaderClient, WTFMove(request), options);
-    if (!loader) {
-        inspectorThreadableLoaderClient->didFailLoaderCreation();
+    if (!loader)
         return;
-    }
 
     // If the load already completed, inspectorThreadableLoaderClient will have been deleted and we will have already called the callback.
     if (!callback->isActive())

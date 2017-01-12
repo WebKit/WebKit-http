@@ -44,7 +44,8 @@
 #import "WebLayer.h"
 #import "WebSystemBackdropLayer.h"
 #import "WebTiledBackingLayer.h"
-#import <AVFoundation/AVFoundation.h>
+#import <AVFoundation/AVPlayer.h>
+#import <AVFoundation/AVPlayerLayer.h>
 #import <QuartzCore/QuartzCore.h>
 #import <objc/runtime.h>
 #import <wtf/BlockObjCExceptions.h>
@@ -62,7 +63,7 @@
 
 SOFT_LINK_FRAMEWORK_OPTIONAL(AVFoundation)
 
-SOFT_LINK_CLASS(AVFoundation, AVPlayerLayer)
+SOFT_LINK_CLASS_OPTIONAL(AVFoundation, AVPlayerLayer)
 
 using namespace WebCore;
 

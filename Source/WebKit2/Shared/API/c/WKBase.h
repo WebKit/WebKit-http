@@ -34,10 +34,6 @@
 #include <WebKit/WKBaseGtk.h>
 #endif
 
-#if defined(USE_SOUP)
-#include <WebKit/WKBaseSoup.h>
-#endif
-
 #if defined(BUILDING_EFL__)
 #include <WebKit/WKBaseEfl.h>
 #endif
@@ -147,6 +143,7 @@ typedef const struct OpaqueWKUserScript* WKUserScriptRef;
 typedef const struct OpaqueWKVibration* WKVibrationRef;
 typedef const struct OpaqueWKViewportAttributes* WKViewportAttributesRef;
 typedef const struct OpaqueWKWebsiteDataStore* WKWebsiteDataStoreRef;
+typedef const struct OpaqueWKWebsitePolicies* WKWebsitePoliciesRef;
 typedef const struct OpaqueWKWindowFeatures* WKWindowFeaturesRef;
 
 /* WebKit2 Bundle types */

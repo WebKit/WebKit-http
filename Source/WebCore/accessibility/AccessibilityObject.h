@@ -613,7 +613,7 @@ public:
     virtual AccessibilityObjectInclusion defaultObjectInclusion() const;
     bool accessibilityIsIgnoredByDefault() const;
     
-    int blockquoteLevel() const;
+    unsigned blockquoteLevel() const;
     virtual int headingLevel() const { return 0; }
     virtual int tableLevel() const { return 0; }
     virtual AccessibilityButtonState checkboxOrRadioValue() const;
@@ -686,6 +686,8 @@ public:
     static AccessibilityObject* firstAccessibleObjectFromNode(const Node*);
     void findMatchingObjects(AccessibilitySearchCriteria*, AccessibilityChildrenVector&);
     virtual bool isDescendantOfBarrenParent() const { return false; }
+
+    bool isDescendantOfRole(AccessibilityRole) const;
     
     // Text selection
     RefPtr<Range> rangeOfStringClosestToRangeInDirection(Range*, AccessibilitySearchDirection, Vector<String>&) const;
@@ -818,6 +820,7 @@ public:
 #endif
     virtual bool isDetachedFromParent() { return false; }
 
+    virtual bool canHaveSelectedChildren() const { return false; }
     virtual void selectedChildren(AccessibilityChildrenVector&) { }
     virtual void visibleChildren(AccessibilityChildrenVector&) { }
     virtual void tabChildren(AccessibilityChildrenVector&) { }
@@ -921,7 +924,7 @@ public:
     virtual const String ariaLiveRegionStatus() const { return String(); }
     virtual const AtomicString& ariaLiveRegionRelevant() const { return nullAtom; }
     virtual bool ariaLiveRegionAtomic() const { return false; }
-    virtual bool ariaLiveRegionBusy() const { return false; }
+    virtual bool isBusy() const { return false; }
     static const String defaultLiveRegionStatusForRole(AccessibilityRole);
     static bool liveRegionStatusIsEnabled(const AtomicString&);
     static bool contentEditableAttributeIsEnabled(Element*);

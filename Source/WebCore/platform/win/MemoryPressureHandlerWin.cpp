@@ -73,7 +73,8 @@ void CheckMemoryTimer::fired()
 
     // On Windows, 32-bit processes have 2GB of memory available, where some is used by the system.
     // Debugging has shown that allocations might fail and cause crashes when memory usage is > ~1GB.
-    const int maxMemoryUsageBytes = 1024 * 1024 * 1024;
+    // We should start releasing memory before we reach 1GB.
+    const int maxMemoryUsageBytes = 0.9 * 1024 * 1024 * 1024;
 
     if (counters.PrivateUsage > maxMemoryUsageBytes)
         handleMemoryLow();
@@ -123,9 +124,9 @@ void MemoryPressureHandler::respondToMemoryPressure(Critical critical, Synchrono
     releaseMemory(critical, synchronous);
 }
 
-size_t MemoryPressureHandler::ReliefLogger::platformMemoryUsage()
+std::optional<MemoryPressureHandler::ReliefLogger::MemoryUsage> MemoryPressureHandler::ReliefLogger::platformMemoryUsage()
 {
-    return 0;
+    return std::nullopt;
 }
 
 } // namespace WebCore

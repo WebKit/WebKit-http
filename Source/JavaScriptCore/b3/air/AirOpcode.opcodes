@@ -251,7 +251,13 @@ arm64: MultiplyNeg64 U:G:64, U:G:64, ZD:G:64
 arm64: Div32 U:G:32, U:G:32, ZD:G:32
     Tmp, Tmp, Tmp
 
+arm64: UDiv32 U:G:32, U:G:32, ZD:G:32
+    Tmp, Tmp, Tmp
+
 arm64: Div64 U:G:64, U:G:64, D:G:64
+    Tmp, Tmp, Tmp
+
+arm64: UDiv64 U:G:64, U:G:64, D:G:64
     Tmp, Tmp, Tmp
 
 MulDouble U:F:64, U:F:64, D:F:64
@@ -297,7 +303,13 @@ x86_64: X86ConvertToQuadWord64 U:G:64, D:G:64
 x86: X86Div32 UZD:G:32, UZD:G:32, U:G:32
     Tmp*, Tmp*, Tmp
 
+x86: X86UDiv32 UZD:G:32, UZD:G:32, U:G:32
+    Tmp*, Tmp*, Tmp
+
 x86_64: X86Div64 UZD:G:64, UZD:G:64, U:G:64
+    Tmp*, Tmp*, Tmp
+
+x86_64: X86UDiv64 UZD:G:64, UZD:G:64, U:G:64
     Tmp*, Tmp*, Tmp
 
 Lea32 UA:G:32, D:G:32
@@ -341,6 +353,18 @@ AndFloat U:F:32, U:F:32, D:F:32
 x86: AndFloat U:F:32, UD:F:32
     Tmp, Tmp
 
+OrDouble U:F:64, U:F:64, D:F:64
+    Tmp, Tmp, Tmp
+
+x86: OrDouble U:F:64, UD:F:64
+    Tmp, Tmp
+
+OrFloat U:F:32, U:F:32, D:F:32
+    Tmp, Tmp, Tmp
+
+x86: OrFloat U:F:32, UD:F:32
+    Tmp, Tmp
+
 x86: XorDouble U:F:64, U:F:64, D:F:64
     Tmp, Tmp, Tmp
 
@@ -361,7 +385,7 @@ x86:Lshift32 U:G:32, UZD:G:32
     Tmp*, Tmp
     Imm, Tmp
 
-arm64: Lshift64 U:G:64, U:G:64, ZD:G:64
+arm64: Lshift64 U:G:64, U:G:64, D:G:64
     Tmp, Tmp, Tmp
     Tmp, Imm, Tmp
 
@@ -377,7 +401,7 @@ x86: Rshift32 U:G:32, UZD:G:32
     Tmp*, Tmp
     Imm, Tmp
 
-arm64: Rshift64 U:G:64, U:G:64, ZD:G:64
+arm64: Rshift64 U:G:64, U:G:64, D:G:64
     Tmp, Tmp, Tmp
     Tmp, Imm, Tmp
 
@@ -393,11 +417,35 @@ x86: Urshift32 U:G:32, UZD:G:32
     Tmp*, Tmp
     Imm, Tmp
 
-arm64: Urshift64 U:G:64, U:G:64, ZD:G:64
+arm64: Urshift64 U:G:64, U:G:64, D:G:64
     Tmp, Tmp, Tmp
     Tmp, Imm, Tmp
 
 x86_64: Urshift64 U:G:64, UD:G:64
+    Tmp*, Tmp
+    Imm, Tmp
+
+x86_64: RotateRight32 U:G:32, UZD:G:32
+    Tmp*, Tmp
+    Imm, Tmp
+
+arm64: RotateRight32 U:G:32, U:G:32, ZD:G:32
+    Tmp, Tmp, Tmp
+    Tmp, Imm, Tmp
+
+x86_64: RotateRight64 U:G:64, UD:G:64
+    Tmp*, Tmp
+    Imm, Tmp
+
+arm64: RotateRight64 U:G:64, U:G:64, D:G:64
+    Tmp, Tmp, Tmp
+    Tmp, Imm, Tmp
+
+x86_64: RotateLeft32 U:G:32, UZD:G:32
+    Tmp*, Tmp
+    Imm, Tmp
+
+x86_64: RotateLeft64 U:G:64, UD:G:64
     Tmp*, Tmp
     Imm, Tmp
 

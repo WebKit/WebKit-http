@@ -2,7 +2,7 @@
  * Copyright (C) 1999 Lars Knoll (knoll@kde.org)
  *           (C) 1999 Antti Koivisto (koivisto@kde.org)
  *           (C) 2001 Dirk Mueller (mueller@kde.org)
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2010, 2011, 2012, 2013, 2016 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -29,6 +29,7 @@
 #include "Chrome.h"
 #include "ChromeClient.h"
 #include "ClassCollection.h"
+#include "CommonVM.h"
 #include "ContainerNodeAlgorithms.h"
 #include "Editor.h"
 #include "EventNames.h"
@@ -139,12 +140,12 @@ void ContainerNode::takeAllChildrenFrom(ContainerNode* oldParent)
         destroyRenderTreeIfNeeded(child);
 
         // FIXME: We need a no mutation event version of adoptNode.
-        RefPtr<Node> adoptedChild = document().adoptNode(child).releaseReturnValue();
-        parserAppendChild(*adoptedChild);
+        auto adoptedChild = document().adoptNode(child).releaseReturnValue();
+        parserAppendChild(adoptedChild);
         // FIXME: Together with adoptNode above, the tree scope might get updated recursively twice
         // (if the document changed or oldParent was in a shadow tree, AND *this is in a shadow tree).
         // Can we do better?
-        treeScope().adoptIfNeeded(adoptedChild.get());
+        treeScope().adoptIfNeeded(adoptedChild);
     }
 }
 
@@ -280,7 +281,7 @@ ExceptionOr<void> ContainerNode::insertBefore(Node& newChild, Node* refChild)
         if (child->parentNode())
             break;
 
-        treeScope().adoptIfNeeded(child.ptr());
+        treeScope().adoptIfNeeded(child);
 
         insertBeforeCommon(next, child);
 
@@ -444,7 +445,7 @@ ExceptionOr<void> ContainerNode::replaceChild(Node& newChild, Node& oldChild)
         if (child->parentNode())
             break;
 
-        treeScope().adoptIfNeeded(child.ptr());
+        treeScope().adoptIfNeeded(child);
 
         {
             NoEventDispatchAssertion assertNoEventDispatch;
@@ -558,20 +559,28 @@ void ContainerNode::removeBetween(Node* previousChild, Node* nextChild, Node& ol
 
     destroyRenderTreeIfNeeded(oldChild);
 
-    if (nextChild)
+    if (nextChild) {
         nextChild->setPreviousSibling(previousChild);
-    if (previousChild)
-        previousChild->setNextSibling(nextChild);
-    if (m_firstChild == &oldChild)
-        m_firstChild = nextChild;
-    if (m_lastChild == &oldChild)
+        oldChild.setNextSibling(nullptr);
+    } else {
+        ASSERT(m_lastChild == &oldChild);
         m_lastChild = previousChild;
+    }
+    if (previousChild) {
+        previousChild->setNextSibling(nextChild);
+        oldChild.setPreviousSibling(nullptr);
+    } else {
+        ASSERT(m_firstChild == &oldChild);
+        m_firstChild = nextChild;
+    }
 
-    oldChild.setPreviousSibling(nullptr);
-    oldChild.setNextSibling(nullptr);
+    ASSERT(m_firstChild != &oldChild);
+    ASSERT(m_lastChild != &oldChild);
+    ASSERT(!oldChild.previousSibling());
+    ASSERT(!oldChild.nextSibling());
     oldChild.setParentNode(nullptr);
 
-    document().adoptIfNeeded(&oldChild);
+    document().adoptIfNeeded(oldChild);
 }
 
 void ContainerNode::parserRemoveChild(Node& oldChild)
@@ -671,7 +680,7 @@ ExceptionOr<void> ContainerNode::appendChildWithoutPreInsertionValidityCheck(Nod
         if (child->parentNode())
             break;
 
-        treeScope().adoptIfNeeded(child.ptr());
+        treeScope().adoptIfNeeded(child);
 
         // Append child to the end of the list
         {
@@ -697,9 +706,8 @@ void ContainerNode::parserAppendChild(Node& newChild)
 
     {
         NoEventDispatchAssertion assertNoEventDispatch;
-        // FIXME: This method should take a PassRefPtr.
         appendChildCommon(newChild);
-        treeScope().adoptIfNeeded(&newChild);
+        treeScope().adoptIfNeeded(newChild);
     }
 
     newChild.updateAncestorConnectedSubframeCountForInsertion();

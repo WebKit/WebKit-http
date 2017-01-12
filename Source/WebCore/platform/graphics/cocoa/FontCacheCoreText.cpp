@@ -363,9 +363,77 @@ static FeaturesMap computeFeatureSettingsFromVariants(const FontVariantSettings&
     return result;
 }
 
+#if ENABLE(VARIATION_FONTS)
+struct VariationDefaults {
+    float defaultValue;
+    float minimumValue;
+    float maximumValue;
+};
+
+typedef HashMap<FontTag, VariationDefaults, FourCharacterTagHash, FourCharacterTagHashTraits> VariationDefaultsMap;
+
+static VariationDefaultsMap defaultVariationValues(CTFontRef font)
+{
+    VariationDefaultsMap result;
+    auto axes = adoptCF(CTFontCopyVariationAxes(font));
+    if (!axes)
+        return result;
+    auto size = CFArrayGetCount(axes.get());
+    for (CFIndex i = 0; i < size; ++i) {
+        CFDictionaryRef axis = static_cast<CFDictionaryRef>(CFArrayGetValueAtIndex(axes.get(), i));
+        CFNumberRef axisIdentifier = static_cast<CFNumberRef>(CFDictionaryGetValue(axis, kCTFontVariationAxisIdentifierKey));
+        CFNumberRef defaultValue = static_cast<CFNumberRef>(CFDictionaryGetValue(axis, kCTFontVariationAxisDefaultValueKey));
+        CFNumberRef minimumValue = static_cast<CFNumberRef>(CFDictionaryGetValue(axis, kCTFontVariationAxisMinimumValueKey));
+        CFNumberRef maximumValue = static_cast<CFNumberRef>(CFDictionaryGetValue(axis, kCTFontVariationAxisMaximumValueKey));
+        uint32_t rawAxisIdentifier = 0;
+        Boolean success = CFNumberGetValue(axisIdentifier, kCFNumberSInt32Type, &rawAxisIdentifier);
+        ASSERT_UNUSED(success, success);
+        float rawDefaultValue = 0;
+        float rawMinimumValue = 0;
+        float rawMaximumValue = 0;
+        CFNumberGetValue(defaultValue, kCFNumberFloatType, &rawDefaultValue);
+        CFNumberGetValue(minimumValue, kCFNumberFloatType, &rawMinimumValue);
+        CFNumberGetValue(maximumValue, kCFNumberFloatType, &rawMaximumValue);
+
+        // FIXME: Remove when <rdar://problem/28893836> is fixed
+#define WORKAROUND_CORETEXT_VARIATIONS_EXTENTS_BUG (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED < 101300) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED < 110000)
+#if WORKAROUND_CORETEXT_VARIATIONS_EXTENTS_BUG
+        float epsilon = 0.001;
+        rawMinimumValue += epsilon;
+        rawMaximumValue -= epsilon;
+#endif
+#undef WORKAROUND_CORETEXT_VARIATIONS_EXTENTS_BUG
+
+        if (rawMinimumValue > rawMaximumValue)
+            std::swap(rawMinimumValue, rawMaximumValue);
+
+        auto b1 = rawAxisIdentifier >> 24;
+        auto b2 = (rawAxisIdentifier & 0xFF0000) >> 16;
+        auto b3 = (rawAxisIdentifier & 0xFF00) >> 8;
+        auto b4 = rawAxisIdentifier & 0xFF;
+        FontTag resultKey = {{ static_cast<char>(b1), static_cast<char>(b2), static_cast<char>(b3), static_cast<char>(b4) }};
+        VariationDefaults resultValues = { rawDefaultValue, rawMinimumValue, rawMaximumValue };
+        result.set(resultKey, resultValues);
+    }
+    return result;
+}
+#endif
+
 RetainPtr<CTFontRef> preparePlatformFont(CTFontRef originalFont, TextRenderingMode textRenderingMode, const FontFeatureSettings* fontFaceFeatures, const FontVariantSettings* fontFaceVariantSettings, const FontFeatureSettings& features, const FontVariantSettings& variantSettings, const FontVariationSettings& variations)
 {
-    if (!originalFont || (!features.size() && variations.isEmpty() && (textRenderingMode == AutoTextRendering) && variantSettings.isAllNormal()
+    bool alwaysAddVariations = false;
+
+    // FIXME: Remove when <rdar://problem/29859207> is fixed
+#define WORKAROUND_CORETEXT_VARIATIONS_UNSPECIFIED_VALUE_BUG (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED < 101300) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED < 110000)
+#if ENABLE(VARIATION_FONTS)
+    auto defaultValues = defaultVariationValues(originalFont);
+#if WORKAROUND_CORETEXT_VARIATIONS_UNSPECIFIED_VALUE_BUG
+    bool isSystemFont = CTFontDescriptorIsSystemUIFont(adoptCF(CTFontCopyFontDescriptor(originalFont)).get());
+    alwaysAddVariations = !isSystemFont && !defaultValues.isEmpty();
+#endif
+#endif
+
+    if (!originalFont || (!features.size() && (!alwaysAddVariations && variations.isEmpty()) && (textRenderingMode == AutoTextRendering) && variantSettings.isAllNormal()
         && (!fontFaceFeatures || !fontFaceFeatures->size()) && (!fontFaceVariantSettings || fontFaceVariantSettings->isAllNormal())))
         return originalFont;
 
@@ -403,9 +471,38 @@ RetainPtr<CTFontRef> preparePlatformFont(CTFontRef originalFont, TextRenderingMo
 
 #if ENABLE(VARIATION_FONTS)
     VariationsMap variationsToBeApplied;
-    for (auto& newVariation : variations)
-        variationsToBeApplied.set(newVariation.tag(), newVariation.value());
+
+    auto applyVariationValue = [&](const FontTag& tag, float value, bool isDefaultValue) {
+        // FIXME: Remove when <rdar://problem/28707822> is fixed
+#define WORKAROUND_CORETEXT_VARIATIONS_DEFAULT_VALUE_BUG (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED < 101300) || (PLATFORM(IOS) && __IPHONE_OS_VERSION_MIN_REQUIRED < 110000)
+#if WORKAROUND_CORETEXT_VARIATIONS_DEFAULT_VALUE_BUG
+        if (isDefaultValue)
+            value += 0.0001;
+#else
+        UNUSED_PARAM(isDefaultValue);
 #endif
+#undef WORKAROUND_CORETEXT_VARIATIONS_DEFAULT_VALUE_BUG
+        variationsToBeApplied.set(tag, value);
+    };
+
+    for (auto& newVariation : variations) {
+        auto iterator = defaultValues.find(newVariation.tag());
+        if (iterator == defaultValues.end())
+            continue;
+        float valueToApply = clampTo(newVariation.value(), iterator->value.minimumValue, iterator->value.maximumValue);
+        bool isDefaultValue = valueToApply == iterator->value.defaultValue;
+        applyVariationValue(newVariation.tag(), valueToApply, isDefaultValue);
+    }
+
+#if WORKAROUND_CORETEXT_VARIATIONS_UNSPECIFIED_VALUE_BUG
+    for (auto& defaultValue : defaultValues) {
+        if (!variationsToBeApplied.contains(defaultValue.key))
+            applyVariationValue(defaultValue.key, defaultValue.value.defaultValue, true);
+    }
+#endif
+#undef WORKAROUND_CORETEXT_VARIATIONS_UNSPECIFIED_VALUE_BUG
+
+#endif // ENABLE(VARIATION_FONTS)
 
     RetainPtr<CFMutableDictionaryRef> attributes = adoptCF(CFDictionaryCreateMutable(kCFAllocatorDefault, 2, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks));
     if (!featuresToBeApplied.isEmpty()) {

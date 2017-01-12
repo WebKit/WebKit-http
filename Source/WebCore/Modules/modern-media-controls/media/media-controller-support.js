@@ -36,9 +36,9 @@ class MediaControllerSupport
         if (!this.control)
             return;
 
-        this.control.uiDelegate = this;
-
         this.syncControl();
+
+        this.control.uiDelegate = this;
     }
 
     // Public
@@ -66,7 +66,7 @@ class MediaControllerSupport
         return [];
     }
 
-    buttonWasClicked(control)
+    buttonWasPressed(control)
     {
         // Implemented by subclasses.
     }

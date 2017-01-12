@@ -40,7 +40,6 @@
 #include "CustomElementReactionQueue.h"
 #include "CustomElementRegistry.h"
 #include "DOMTokenList.h"
-#include "Dictionary.h"
 #include "DocumentAnimation.h"
 #include "DocumentSharedObjectPool.h"
 #include "ElementIterator.h"
@@ -318,7 +317,7 @@ bool Element::dispatchWheelEvent(const PlatformWheelEvent& event)
     if (!event.deltaX() && !event.deltaY())
         wheelEvent->stopPropagation();
 
-    return EventDispatcher::dispatchEvent(this, wheelEvent) && !wheelEvent->defaultHandled();
+    return EventDispatcher::dispatchEvent(*this, wheelEvent) && !wheelEvent->defaultHandled();
 }
 
 bool Element::dispatchKeyEvent(const PlatformKeyboardEvent& platformEvent)
@@ -328,7 +327,7 @@ bool Element::dispatchKeyEvent(const PlatformKeyboardEvent& platformEvent)
         if (frame->eventHandler().accessibilityPreventsEventPropogation(event))
             event->stopPropagation();
     }
-    return EventDispatcher::dispatchEvent(this, event) && !event->defaultHandled();
+    return EventDispatcher::dispatchEvent(*this, event) && !event->defaultHandled();
 }
 
 void Element::dispatchSimulatedClick(Event* underlyingEvent, SimulatedClickMouseEventOptions eventOptions, SimulatedClickVisualOptions visualOptions)
@@ -649,12 +648,13 @@ void Element::scrollIntoView(bool alignToTop)
     if (!renderer())
         return;
 
-    LayoutRect bounds = renderer()->anchorRect();
+    bool insideFixed;
+    LayoutRect absoluteBounds = renderer()->absoluteAnchorRect(&insideFixed);
     // Align to the top / bottom and to the closest edge.
     if (alignToTop)
-        renderer()->scrollRectToVisible(SelectionRevealMode::Reveal, bounds, ScrollAlignment::alignToEdgeIfNeeded, ScrollAlignment::alignTopAlways);
+        renderer()->scrollRectToVisible(SelectionRevealMode::Reveal, absoluteBounds, insideFixed, ScrollAlignment::alignToEdgeIfNeeded, ScrollAlignment::alignTopAlways);
     else
-        renderer()->scrollRectToVisible(SelectionRevealMode::Reveal, bounds, ScrollAlignment::alignToEdgeIfNeeded, ScrollAlignment::alignBottomAlways);
+        renderer()->scrollRectToVisible(SelectionRevealMode::Reveal, absoluteBounds, insideFixed, ScrollAlignment::alignToEdgeIfNeeded, ScrollAlignment::alignBottomAlways);
 }
 
 void Element::scrollIntoViewIfNeeded(bool centerIfNeeded)
@@ -664,11 +664,12 @@ void Element::scrollIntoViewIfNeeded(bool centerIfNeeded)
     if (!renderer())
         return;
 
-    LayoutRect bounds = renderer()->anchorRect();
+    bool insideFixed;
+    LayoutRect absoluteBounds = renderer()->absoluteAnchorRect(&insideFixed);
     if (centerIfNeeded)
-        renderer()->scrollRectToVisible(SelectionRevealMode::Reveal, bounds, ScrollAlignment::alignCenterIfNeeded, ScrollAlignment::alignCenterIfNeeded);
+        renderer()->scrollRectToVisible(SelectionRevealMode::Reveal, absoluteBounds, insideFixed, ScrollAlignment::alignCenterIfNeeded, ScrollAlignment::alignCenterIfNeeded);
     else
-        renderer()->scrollRectToVisible(SelectionRevealMode::Reveal, bounds, ScrollAlignment::alignToEdgeIfNeeded, ScrollAlignment::alignToEdgeIfNeeded);
+        renderer()->scrollRectToVisible(SelectionRevealMode::Reveal, absoluteBounds, insideFixed, ScrollAlignment::alignToEdgeIfNeeded, ScrollAlignment::alignToEdgeIfNeeded);
 }
 
 void Element::scrollIntoViewIfNotVisible(bool centerIfNotVisible)
@@ -678,16 +679,17 @@ void Element::scrollIntoViewIfNotVisible(bool centerIfNotVisible)
     if (!renderer())
         return;
     
-    LayoutRect bounds = renderer()->anchorRect();
+    bool insideFixed;
+    LayoutRect absoluteBounds = renderer()->absoluteAnchorRect(&insideFixed);
     if (centerIfNotVisible)
-        renderer()->scrollRectToVisible(SelectionRevealMode::Reveal, bounds, ScrollAlignment::alignCenterIfNotVisible, ScrollAlignment::alignCenterIfNotVisible);
+        renderer()->scrollRectToVisible(SelectionRevealMode::Reveal, absoluteBounds, insideFixed, ScrollAlignment::alignCenterIfNotVisible, ScrollAlignment::alignCenterIfNotVisible);
     else
-        renderer()->scrollRectToVisible(SelectionRevealMode::Reveal, bounds, ScrollAlignment::alignToEdgeIfNotVisible, ScrollAlignment::alignToEdgeIfNotVisible);
+        renderer()->scrollRectToVisible(SelectionRevealMode::Reveal, absoluteBounds, insideFixed, ScrollAlignment::alignToEdgeIfNotVisible, ScrollAlignment::alignToEdgeIfNotVisible);
 }
 
 void Element::scrollBy(const ScrollToOptions& options)
 {
-    return scrollBy(options.left.valueOr(0), options.top.valueOr(0));
+    return scrollBy(options.left.value_or(0), options.top.value_or(0));
 }
 
 static inline double normalizeNonFiniteValue(double f)
@@ -1499,19 +1501,11 @@ bool Element::isJavaScriptURLAttribute(const Attribute& attribute) const
 
 void Element::stripScriptingAttributes(Vector<Attribute>& attributeVector) const
 {
-    size_t destination = 0;
-    for (size_t source = 0; source < attributeVector.size(); ++source) {
-        if (isEventHandlerAttribute(attributeVector[source])
-            || isJavaScriptURLAttribute(attributeVector[source])
-            || isHTMLContentAttribute(attributeVector[source]))
-            continue;
-
-        if (source != destination)
-            attributeVector[destination] = attributeVector[source];
-
-        ++destination;
-    }
-    attributeVector.shrink(destination);
+    attributeVector.removeAllMatching([this](auto& attribute) -> bool {
+        return isEventHandlerAttribute(attribute)
+            || this->isJavaScriptURLAttribute(attribute)
+            || this->isHTMLContentAttribute(attribute);
+    });
 }
 
 void Element::parserSetAttributes(const Vector<Attribute>& attributeVector)
@@ -1539,11 +1533,11 @@ void Element::parserDidSetAttributes()
 {
 }
 
-void Element::didMoveToNewDocument(Document* oldDocument)
+void Element::didMoveToNewDocument(Document& oldDocument)
 {
     Node::didMoveToNewDocument(oldDocument);
 
-    if (oldDocument->inQuirksMode() != document().inQuirksMode()) {
+    if (oldDocument.inQuirksMode() != document().inQuirksMode()) {
         // ElementData::m_classNames or ElementData::m_idForStyleResolution need to be updated with the right case.
         if (hasID())
             attributeChanged(idAttr, nullAtom, getIdAttribute());
@@ -1552,7 +1546,7 @@ void Element::didMoveToNewDocument(Document* oldDocument)
     }
 
     if (UNLIKELY(isDefinedCustomElement()))
-        CustomElementReactionQueue::enqueueAdoptedCallbackIfNeeded(*this, *oldDocument, document());
+        CustomElementReactionQueue::enqueueAdoptedCallbackIfNeeded(*this, oldDocument, document());
 }
 
 bool Element::hasAttributes() const
@@ -1678,7 +1672,7 @@ void Element::removedFrom(ContainerNode& insertionPoint)
 #endif
 #if ENABLE(POINTER_LOCK)
     if (document().page())
-        document().page()->pointerLockController().elementRemoved(this);
+        document().page()->pointerLockController().elementRemoved(*this);
 #endif
 
     setSavedLayerScrollPosition(ScrollPosition());
@@ -1754,7 +1748,7 @@ void Element::addShadowRoot(Ref<ShadowRoot>&& newShadowRoot)
     ensureElementRareData().setShadowRoot(WTFMove(newShadowRoot));
 
     shadowRoot.setHost(this);
-    shadowRoot.setParentTreeScope(&treeScope());
+    shadowRoot.setParentTreeScope(treeScope());
 
     NodeVector postInsertionNotificationTargets;
     notifyChildNodeInserted(*this, shadowRoot, postInsertionNotificationTargets);
@@ -1776,14 +1770,14 @@ void Element::removeShadowRoot()
         return;
 
     InspectorInstrumentation::willPopShadowRoot(*this, *oldRoot);
-    document().removeFocusedNodeOfSubtree(oldRoot.get());
+    document().removeFocusedNodeOfSubtree(*oldRoot);
 
     ASSERT(!oldRoot->renderer());
 
     elementRareData()->clearShadowRoot();
 
     oldRoot->setHost(nullptr);
-    oldRoot->setParentTreeScope(&document());
+    oldRoot->setParentTreeScope(document());
 }
 
 static bool canAttachAuthorShadowRoot(const Element& element)
@@ -2155,7 +2149,7 @@ ExceptionOr<RefPtr<Attr>> Element::setAttributeNode(Attr& attrNode)
     }
     if (attrNode.ownerElement() != this) {
         attrNode.attachToElement(*this);
-        treeScope().adoptIfNeeded(&attrNode);
+        treeScope().adoptIfNeeded(attrNode);
         ensureAttrNodeListForElement(*this).append(&attrNode);
     }
     return WTFMove(oldAttrNode);
@@ -2186,7 +2180,7 @@ ExceptionOr<RefPtr<Attr>> Element::setAttributeNodeNS(Attr& attrNode)
     setAttributeInternal(index, attrNode.qualifiedName(), attrNode.value(), NotInSynchronizationOfLazyAttribute);
 
     attrNode.attachToElement(*this);
-    treeScope().adoptIfNeeded(&attrNode);
+    treeScope().adoptIfNeeded(attrNode);
     ensureAttrNodeListForElement(*this).append(&attrNode);
 
     return WTFMove(oldAttrNode);
@@ -2434,14 +2428,17 @@ void Element::updateFocusAppearance(SelectionRestorationMode, SelectionRevealMod
             frame->selection().setSelection(newSelection, FrameSelection::defaultSetSelectionOptions(), Element::defaultFocusTextStateChangeIntent());
             frame->selection().revealSelection(revealMode);
         }
-    } else if (renderer() && !renderer()->isWidget())
-        renderer()->scrollRectToVisible(revealMode, renderer()->anchorRect());
+    } else if (renderer() && !renderer()->isWidget()) {
+        bool insideFixed;
+        LayoutRect absoluteBounds = renderer()->absoluteAnchorRect(&insideFixed);
+        renderer()->scrollRectToVisible(revealMode, absoluteBounds, insideFixed);
+    }
 }
 
 void Element::blur()
 {
     cancelFocusAppearanceUpdate();
-    if (treeScope().focusedElement() == this) {
+    if (treeScope().focusedElementInScope() == this) {
         if (Frame* frame = document().frame())
             frame->page()->focusController().setFocusedElement(0, frame);
         else
@@ -2468,7 +2465,7 @@ void Element::dispatchFocusEvent(RefPtr<Element>&& oldFocusedElement, FocusDirec
     if (document().page())
         document().page()->chrome().client().elementDidFocus(this);
 
-    EventDispatcher::dispatchEvent(this, FocusEvent::create(eventNames().focusEvent, false, false, document().defaultView(), 0, WTFMove(oldFocusedElement)));
+    EventDispatcher::dispatchEvent(*this, FocusEvent::create(eventNames().focusEvent, false, false, document().defaultView(), 0, WTFMove(oldFocusedElement)));
 }
 
 void Element::dispatchBlurEvent(RefPtr<Element>&& newFocusedElement)
@@ -2476,7 +2473,7 @@ void Element::dispatchBlurEvent(RefPtr<Element>&& newFocusedElement)
     if (document().page())
         document().page()->chrome().client().elementDidBlur(this);
 
-    EventDispatcher::dispatchEvent(this, FocusEvent::create(eventNames().blurEvent, false, false, document().defaultView(), 0, WTFMove(newFocusedElement)));
+    EventDispatcher::dispatchEvent(*this, FocusEvent::create(eventNames().blurEvent, false, false, document().defaultView(), 0, WTFMove(newFocusedElement)));
 }
 
 bool Element::dispatchMouseForceWillBegin()
@@ -3008,7 +3005,7 @@ URL Element::getNonEmptyURLAttribute(const QualifiedName& name) const
 
 int Element::getIntegralAttribute(const QualifiedName& attributeName) const
 {
-    return parseHTMLInteger(getAttribute(attributeName)).valueOr(0);
+    return parseHTMLInteger(getAttribute(attributeName)).value_or(0);
 }
 
 void Element::setIntegralAttribute(const QualifiedName& attributeName, int value)
@@ -3018,27 +3015,13 @@ void Element::setIntegralAttribute(const QualifiedName& attributeName, int value
 
 unsigned Element::getUnsignedIntegralAttribute(const QualifiedName& attributeName) const
 {
-    return parseHTMLNonNegativeInteger(getAttribute(attributeName)).valueOr(0);
+    return parseHTMLNonNegativeInteger(getAttribute(attributeName)).value_or(0);
 }
 
 void Element::setUnsignedIntegralAttribute(const QualifiedName& attributeName, unsigned value)
 {
     setAttribute(attributeName, AtomicString::number(limitToOnlyHTMLNonNegative(value)));
 }
-
-#if ENABLE(INDIE_UI)
-
-void Element::setUIActions(const AtomicString& actions)
-{
-    setAttribute(uiactionsAttr, actions);
-}
-
-const AtomicString& Element::UIActions() const
-{
-    return getAttribute(uiactionsAttr);
-}
-
-#endif
 
 bool Element::childShouldCreateRenderer(const Node& child) const
 {
@@ -3054,12 +3037,7 @@ bool Element::childShouldCreateRenderer(const Node& child) const
 #if ENABLE(FULLSCREEN_API)
 void Element::webkitRequestFullscreen()
 {
-    document().requestFullScreenForElement(this, ALLOW_KEYBOARD_INPUT, Document::EnforceIFrameAllowFullScreenRequirement);
-}
-
-void Element::webkitRequestFullScreen(unsigned short flags)
-{
-    document().requestFullScreenForElement(this, (flags | LEGACY_MOZILLA_REQUEST), Document::EnforceIFrameAllowFullScreenRequirement);
+    document().requestFullScreenForElement(this, Document::EnforceIFrameAllowFullScreenRequirement);
 }
 
 bool Element::containsFullScreenElement() const
@@ -3244,6 +3222,9 @@ void Element::updateNameForDocument(HTMLDocument& document, const AtomicString& 
 {
     ASSERT(oldName != newName);
 
+    if (isInShadowTree())
+        return;
+
     if (WindowNameCollection::elementMatchesIfNameAttributeMatch(*this)) {
         const AtomicString& id = WindowNameCollection::elementMatchesIfIdAttributeMatch(*this) ? getIdAttribute() : nullAtom;
         if (!oldName.isEmpty() && oldName != id)
@@ -3294,6 +3275,9 @@ void Element::updateIdForDocument(HTMLDocument& document, const AtomicString& ol
     ASSERT(inDocument());
     ASSERT(oldId != newId);
 
+    if (isInShadowTree())
+        return;
+
     if (WindowNameCollection::elementMatchesIfIdAttributeMatch(*this)) {
         const AtomicString& name = condition == UpdateHTMLDocumentNamedItemMapsOnlyIfDiffersFromNameAttribute && WindowNameCollection::elementMatchesIfNameAttributeMatch(*this) ? getNameAttribute() : nullAtom;
         if (!oldId.isEmpty() && oldId != name)
@@ -3338,7 +3322,7 @@ void Element::willModifyAttribute(const QualifiedName& name, const AtomicString&
             updateLabel(treeScope(), oldValue, newValue);
     }
 
-    if (std::unique_ptr<MutationObserverInterestGroup> recipients = MutationObserverInterestGroup::createForAttributesMutation(*this, name))
+    if (auto recipients = MutationObserverInterestGroup::createForAttributesMutation(*this, name))
         recipients->enqueueMutationRecord(MutationRecord::createAttributes(*this, name, oldValue));
 
     InspectorInstrumentation::willModifyDOMAttr(document(), *this, oldValue, newValue);
@@ -3397,7 +3381,7 @@ Ref<Attr> Element::ensureAttr(const QualifiedName& name)
     RefPtr<Attr> attrNode = findAttrNodeInList(attrNodeList, name);
     if (!attrNode) {
         attrNode = Attr::create(*this, name);
-        treeScope().adoptIfNeeded(attrNode.get());
+        treeScope().adoptIfNeeded(*attrNode);
         attrNodeList.append(attrNode);
     }
     return attrNode.releaseNonNull();
@@ -3471,10 +3455,9 @@ void Element::clearHoverAndActiveStatusBeforeDetachingRenderer()
     document().userActionElements().didDetach(this);
 }
 
-bool Element::willRecalcStyle(Style::Change)
+void Element::willRecalcStyle(Style::Change)
 {
     ASSERT(hasCustomStyleResolveCallbacks());
-    return true;
 }
 
 void Element::didRecalcStyle(Style::Change)
@@ -3507,10 +3490,10 @@ void Element::didDetachRenderers()
     ASSERT(hasCustomStyleResolveCallbacks());
 }
 
-Optional<ElementStyle> Element::resolveCustomStyle(const RenderStyle&, const RenderStyle*)
+std::optional<ElementStyle> Element::resolveCustomStyle(const RenderStyle&, const RenderStyle*)
 {
     ASSERT(hasCustomStyleResolveCallbacks());
-    return Nullopt;
+    return std::nullopt;
 }
 
 void Element::cloneAttributesFromElement(const Element& other)

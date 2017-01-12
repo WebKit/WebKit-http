@@ -29,11 +29,18 @@
  */
 
 [
+    Conditional=MEDIA_STREAM,
     NoInterfaceObject,
-    Conditional=MEDIA_STREAM
 ] interface MediaDevices {
     MediaTrackSupportedConstraints getSupportedConstraints();
 
-    [Custom, MayThrowException, PrivateIdentifier, PublicIdentifier] Promise<MediaStream> getUserMedia(Dictionary options);
+    [MayThrowException, PrivateIdentifier, PublicIdentifier] Promise<MediaStream> getUserMedia(optional MediaStreamConstraints constraints);
     Promise<sequence<MediaDeviceInfo>> enumerateDevices();
+};
+
+[
+    Conditional=MEDIA_STREAM,
+] dictionary MediaStreamConstraints {
+    (boolean or MediaTrackConstraints) video = false;
+    (boolean or MediaTrackConstraints) audio = false;
 };

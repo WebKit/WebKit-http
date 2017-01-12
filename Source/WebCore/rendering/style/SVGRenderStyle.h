@@ -28,7 +28,6 @@
 #include "GraphicsTypes.h"
 #include "Path.h"
 #include "RenderStyleConstants.h"
-#include "SVGPaint.h"
 #include "SVGRenderStyleDefs.h"
 
 namespace WebCore {
@@ -71,14 +70,14 @@ public:
     static EGlyphOrientation initialGlyphOrientationHorizontal() { return GO_0DEG; }
     static EGlyphOrientation initialGlyphOrientationVertical() { return GO_AUTO; }
     static float initialFillOpacity() { return 1; }
-    static SVGPaint::SVGPaintType initialFillPaintType() { return SVGPaint::SVG_PAINTTYPE_RGBCOLOR; }
+    static SVGPaintType initialFillPaintType() { return SVG_PAINTTYPE_RGBCOLOR; }
     static Color initialFillPaintColor() { return Color::black; }
     static String initialFillPaintUri() { return String(); }
     static float initialStrokeOpacity() { return 1; }
-    static SVGPaint::SVGPaintType initialStrokePaintType() { return SVGPaint::SVG_PAINTTYPE_NONE; }
+    static SVGPaintType initialStrokePaintType() { return SVG_PAINTTYPE_NONE; }
     static Color initialStrokePaintColor() { return Color(); }
     static String initialStrokePaintUri() { return String(); }
-    static Vector<SVGLength> initialStrokeDashArray() { return Vector<SVGLength>(); }
+    static Vector<SVGLengthValue> initialStrokeDashArray() { return { }; }
     static float initialStrokeMiterLimit() { return 4; }
     static float initialStopOpacity() { return 1; }
     static Color initialStopColor() { return Color(0, 0, 0); }
@@ -94,16 +93,16 @@ public:
     static EMaskType initialMaskType() { return MT_LUMINANCE; }
     static PaintOrder initialPaintOrder() { return PaintOrderNormal; }
 
-    static SVGLength initialBaselineShiftValue()
+    static SVGLengthValue initialBaselineShiftValue()
     {
-        SVGLength length;
+        SVGLengthValue length;
         length.newValueSpecifiedUnits(LengthTypeNumber, 0);
         return length;
     }
 
-    static SVGLength initialKerning()
+    static SVGLengthValue initialKerning()
     {
-        SVGLength length;
+        SVGLengthValue length;
         length.newValueSpecifiedUnits(LengthTypeNumber, 0);
         return length;
     }
@@ -169,7 +168,7 @@ public:
             fill.access()->opacity = obj;
     }
 
-    void setFillPaint(SVGPaint::SVGPaintType type, const Color& color, const String& uri, bool applyToRegularStyle = true, bool applyToVisitedLinkStyle = false)
+    void setFillPaint(SVGPaintType type, const Color& color, const String& uri, bool applyToRegularStyle = true, bool applyToVisitedLinkStyle = false)
     {
         if (applyToRegularStyle) {
             if (!(fill->paintType == type))
@@ -195,7 +194,7 @@ public:
             stroke.access()->opacity = obj;
     }
 
-    void setStrokePaint(SVGPaint::SVGPaintType type, const Color& color, const String& uri, bool applyToRegularStyle = true, bool applyToVisitedLinkStyle = false)
+    void setStrokePaint(SVGPaintType type, const Color& color, const String& uri, bool applyToRegularStyle = true, bool applyToVisitedLinkStyle = false)
     {
         if (applyToRegularStyle) {
             if (!(stroke->paintType == type))
@@ -215,7 +214,7 @@ public:
         }
     }
 
-    void setStrokeDashArray(const Vector<SVGLength>& obj)
+    void setStrokeDashArray(const Vector<SVGLengthValue>& obj)
     {
         if (!(stroke->dashArray == obj))
             stroke.access()->dashArray = obj;
@@ -239,7 +238,7 @@ public:
             stroke.access()->dashOffset = obj;
     }
 
-    void setKerning(const SVGLength& obj)
+    void setKerning(const SVGLengthValue& obj)
     {
         if (!(text->kerning == obj))
             text.access()->kerning = obj;
@@ -275,7 +274,7 @@ public:
             misc.access()->lightingColor = obj;
     }
 
-    void setBaselineShiftValue(const SVGLength& obj)
+    void setBaselineShiftValue(const SVGLengthValue& obj)
     {
         if (!(misc->baselineShiftValue == obj))
             misc.access()->baselineShiftValue = obj;
@@ -333,24 +332,24 @@ public:
     EGlyphOrientation glyphOrientationHorizontal() const { return (EGlyphOrientation) svg_inherited_flags._glyphOrientationHorizontal; }
     EGlyphOrientation glyphOrientationVertical() const { return (EGlyphOrientation) svg_inherited_flags._glyphOrientationVertical; }
     float fillOpacity() const { return fill->opacity; }
-    const SVGPaint::SVGPaintType& fillPaintType() const { return fill->paintType; }
+    const SVGPaintType& fillPaintType() const { return fill->paintType; }
     const Color& fillPaintColor() const { return fill->paintColor; }
     const String& fillPaintUri() const { return fill->paintUri; }    
     float strokeOpacity() const { return stroke->opacity; }
-    const SVGPaint::SVGPaintType& strokePaintType() const { return stroke->paintType; }
+    const SVGPaintType& strokePaintType() const { return stroke->paintType; }
     const Color& strokePaintColor() const { return stroke->paintColor; }
     const String& strokePaintUri() const { return stroke->paintUri; }
-    Vector<SVGLength> strokeDashArray() const { return stroke->dashArray; }
+    Vector<SVGLengthValue> strokeDashArray() const { return stroke->dashArray; }
     float strokeMiterLimit() const { return stroke->miterLimit; }
     const Length& strokeWidth() const { return stroke->width; }
     const Length& strokeDashOffset() const { return stroke->dashOffset; }
-    SVGLength kerning() const { return text->kerning; }
+    SVGLengthValue kerning() const { return text->kerning; }
     float stopOpacity() const { return stops->opacity; }
     const Color& stopColor() const { return stops->color; }
     float floodOpacity() const { return misc->floodOpacity; }
     const Color& floodColor() const { return misc->floodColor; }
     const Color& lightingColor() const { return misc->lightingColor; }
-    SVGLength baselineShiftValue() const { return misc->baselineShiftValue; }
+    SVGLengthValue baselineShiftValue() const { return misc->baselineShiftValue; }
     ShadowData* shadow() const { return shadowSVG->shadow.get(); }
     const Length& cx() const { return layout->cx; }
     const Length& cy() const { return layout->cy; }
@@ -368,10 +367,10 @@ public:
     PaintOrder paintOrder() const { return (PaintOrder) svg_inherited_flags.paintOrder; }
     Vector<PaintType, 3> paintTypesForPaintOrder() const;
 
-    const SVGPaint::SVGPaintType& visitedLinkFillPaintType() const { return fill->visitedLinkPaintType; }
+    const SVGPaintType& visitedLinkFillPaintType() const { return fill->visitedLinkPaintType; }
     const Color& visitedLinkFillPaintColor() const { return fill->visitedLinkPaintColor; }
     const String& visitedLinkFillPaintUri() const { return fill->visitedLinkPaintUri; }
-    const SVGPaint::SVGPaintType& visitedLinkStrokePaintType() const { return stroke->visitedLinkPaintType; }
+    const SVGPaintType& visitedLinkStrokePaintType() const { return stroke->visitedLinkPaintType; }
     const Color& visitedLinkStrokePaintColor() const { return stroke->visitedLinkPaintColor; }
     const String& visitedLinkStrokePaintUri() const { return stroke->visitedLinkPaintUri; }
 
@@ -379,9 +378,9 @@ public:
     bool hasClipper() const { return !clipperResource().isEmpty(); }
     bool hasMasker() const { return !maskerResource().isEmpty(); }
     bool hasMarkers() const { return !markerStartResource().isEmpty() || !markerMidResource().isEmpty() || !markerEndResource().isEmpty(); }
-    bool hasStroke() const { return strokePaintType() != SVGPaint::SVG_PAINTTYPE_NONE; }
+    bool hasStroke() const { return strokePaintType() != SVG_PAINTTYPE_NONE; }
     bool hasVisibleStroke() const { return hasStroke() && !strokeWidth().isZero(); }
-    bool hasFill() const { return fillPaintType() != SVGPaint::SVG_PAINTTYPE_NONE; }
+    bool hasFill() const { return fillPaintType() != SVG_PAINTTYPE_NONE; }
     bool isolatesBlending() const { return hasMasker() || shadow(); }
 
 protected:

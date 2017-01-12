@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2007-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2007-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,12 +27,11 @@
 
 #if ENABLE(VIDEO)
 
-#include "HTMLElement.h"
 #include "ActiveDOMObject.h"
 #include "GenericEventQueue.h"
 #include "GenericTaskQueue.h"
+#include "HTMLElement.h"
 #include "HTMLMediaElementEnums.h"
-#include "JSDOMPromise.h"
 #include "MediaCanStartListener.h"
 #include "MediaControllerInterface.h"
 #include "MediaElementSession.h"
@@ -59,6 +58,7 @@ class AudioSourceProvider;
 class AudioTrackList;
 class AudioTrackPrivate;
 class DOMError;
+class DeferredPromise;
 class DisplaySleepDisabler;
 class Event;
 class HTMLSourceElement;
@@ -69,9 +69,7 @@ class MediaControls;
 class MediaControlsHost;
 class MediaElementAudioSourceNode;
 class MediaError;
-#if ENABLE(ENCRYPTED_MEDIA)
 class MediaKeys;
-#endif
 class MediaPlayer;
 class MediaSession;
 class MediaSource;
@@ -81,11 +79,12 @@ class ScriptExecutionContext;
 class SourceBuffer;
 class TextTrackList;
 class TimeRanges;
-class URL;
 class VideoPlaybackQuality;
 class VideoTrackList;
 class VideoTrackPrivate;
 class WebKitMediaKeys;
+
+template<typename> class DOMPromise;
 
 #if ENABLE(VIDEO_TRACK)
 using CueIntervalTree = PODIntervalTree<MediaTime, TextTrackCue*>;
@@ -329,20 +328,20 @@ public:
     void updateTextTrackDisplay();
 
     // AudioTrackClient
-    void audioTrackEnabledChanged(AudioTrack*) override;
+    void audioTrackEnabledChanged(AudioTrack&) final;
 
     void textTrackReadyStateChanged(TextTrack*);
 
     // TextTrackClient
-    void textTrackKindChanged(TextTrack*) override;
-    void textTrackModeChanged(TextTrack*) override;
-    void textTrackAddCues(TextTrack*, const TextTrackCueList*) override;
-    void textTrackRemoveCues(TextTrack*, const TextTrackCueList*) override;
-    void textTrackAddCue(TextTrack*, TextTrackCue&) override;
-    void textTrackRemoveCue(TextTrack*, TextTrackCue&) override;
+    void textTrackKindChanged(TextTrack&) override;
+    void textTrackModeChanged(TextTrack&) override;
+    void textTrackAddCues(TextTrack&, const TextTrackCueList&) override;
+    void textTrackRemoveCues(TextTrack&, const TextTrackCueList&) override;
+    void textTrackAddCue(TextTrack&, TextTrackCue&) override;
+    void textTrackRemoveCue(TextTrack&, TextTrackCue&) override;
 
     // VideoTrackClient
-    void videoTrackSelectedChanged(VideoTrack*) override;
+    void videoTrackSelectedChanged(VideoTrack&) final;
 
     bool requiresTextTrackRepresentation() const;
     void setTextTrackRepresentation(TextTrackRepresentation*);
@@ -420,7 +419,7 @@ public:
     void setMediaGroup(const String&);
 
     MediaController* controller() const;
-    void setController(PassRefPtr<MediaController>);
+    void setController(RefPtr<MediaController>&&);
 
     void enteredOrExitedFullscreen() { configureMediaControls(); }
 
@@ -495,7 +494,7 @@ protected:
     void willDetachRenderers() override;
     void didDetachRenderers() override;
 
-    void didMoveToNewDocument(Document* oldDocument) override;
+    void didMoveToNewDocument(Document& oldDocument) override;
 
     enum DisplayMode { Unknown, None, Poster, PosterWaitingForVideo, Video };
     DisplayMode displayMode() const { return m_displayMode; }
@@ -1023,6 +1022,7 @@ private:
 
 #if ENABLE(MEDIA_STREAM)
     RefPtr<MediaStream> m_mediaStreamSrcObject;
+    bool m_settingMediaStreamSrcObject { false };
 #endif
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)

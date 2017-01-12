@@ -143,7 +143,7 @@ void InspectorTimelineAgent::setInstruments(ErrorString& errorString, const Insp
             return;
         }
 
-        Optional<Protocol::Timeline::Instrument> instrumentType = Protocol::InspectorHelpers::parseEnumValueFromString<Protocol::Timeline::Instrument>(enumValueString);
+        std::optional<Protocol::Timeline::Instrument> instrumentType = Protocol::InspectorHelpers::parseEnumValueFromString<Protocol::Timeline::Instrument>(enumValueString);
         if (!instrumentType) {
             errorString = makeString("Unexpected enum value: ", enumValueString);
             return;
@@ -291,7 +291,7 @@ void InspectorTimelineAgent::stopFromConsole(JSC::ExecState*, const String& titl
     if (WebConsoleAgent* consoleAgent = m_instrumentingAgents.webConsoleAgent()) {
         // FIXME: Send an enum to the frontend for localization?
         String warning = title.isEmpty() ? ASCIILiteral("No profiles exist") : makeString("Profile \"", title, "\" does not exist");
-        consoleAgent->addMessageToConsole(std::make_unique<ConsoleMessage>(MessageSource::ConsoleAPI, MessageType::ProfileEnd, MessageLevel::Warning, warning));    
+        consoleAgent->addMessageToConsole(std::make_unique<ConsoleMessage>(MessageSource::ConsoleAPI, MessageType::ProfileEnd, MessageLevel::Warning, warning));
     }
 }
 

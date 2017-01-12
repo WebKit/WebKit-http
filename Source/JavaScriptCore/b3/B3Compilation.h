@@ -40,25 +40,16 @@ namespace B3 {
 class OpaqueByproducts;
 class Procedure;
 
-// This is a fool-proof API for compiling a Procedure to code and then running that code. You compile
-// a Procedure using this API by doing:
-//
-// std::unique_ptr<Compilation> compilation = std::make_unique<Compilation>(vm, proc);
-//
-// Then you keep the Compilation object alive for as long as you want to be able to run the code. If
-// this API feels too high-level, you can use B3::generate() directly.
+// This class is a way to keep the result of a B3 compilation alive
+// and runnable.
 
 class Compilation {
     WTF_MAKE_NONCOPYABLE(Compilation);
     WTF_MAKE_FAST_ALLOCATED;
 
 public:
-    JS_EXPORT_PRIVATE Compilation(VM&, Procedure&, unsigned optLevel = 1);
-
-    // This constructor allows you to manually create a Compilation. It's currently only used by test
-    // code. Probably best to keep it that way.
     JS_EXPORT_PRIVATE Compilation(MacroAssemblerCodeRef, std::unique_ptr<OpaqueByproducts>);
-    
+    JS_EXPORT_PRIVATE Compilation(Compilation&&);
     JS_EXPORT_PRIVATE ~Compilation();
 
     MacroAssemblerCodePtr code() const { return m_codeRef.code(); }

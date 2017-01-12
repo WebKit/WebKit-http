@@ -85,7 +85,7 @@ private:
     void computeIntrinsicLogicalWidths(LayoutUnit& minLogicalWidth, LayoutUnit& maxLogicalWidth) const override;
     void computePreferredLogicalWidths() override;
     int baselinePosition(FontBaseline, bool firstLine, LineDirectionMode, LinePositionMode = PositionOnContainingLine) const override;
-    void computeLogicalHeight(LayoutUnit logicalHeight, LayoutUnit logicalTop, LogicalExtentComputedValues&) const override;
+    LogicalExtentComputedValues computeLogicalHeight(LayoutUnit logicalHeight, LayoutUnit logicalTop) const override;
 
     void layout() override;
 
@@ -175,8 +175,8 @@ private:
     int m_optionsWidth;
     int m_indexOffset;
 
-    Optional<int> m_indexOfFirstVisibleItemInsidePaddingTopArea;
-    Optional<int> m_indexOfFirstVisibleItemInsidePaddingBottomArea;
+    std::optional<int> m_indexOfFirstVisibleItemInsidePaddingTopArea;
+    std::optional<int> m_indexOfFirstVisibleItemInsidePaddingBottomArea;
 
     RefPtr<Scrollbar> m_vBar;
 };

@@ -70,18 +70,21 @@ JSValue constructArrayWithSizeQuirk(ExecState* exec, ArrayAllocationProfile* pro
 {
     VM& vm = exec->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
-    if (!length.isNumber())
+    if (!length.isNumber()) {
+        scope.release();
         return constructArrayNegativeIndexed(exec, profile, globalObject, &length, 1, newTarget);
+    }
     
     uint32_t n = length.toUInt32(exec);
     if (n != length.toNumber(exec))
         return throwException(exec, scope, createRangeError(exec, ASCIILiteral("Array size is not a small enough positive integer.")));
+    scope.release();
     return constructEmptyArray(exec, profile, globalObject, n, newTarget);
 }
 
 static inline JSValue constructArrayWithSizeQuirk(ExecState* exec, const ArgList& args, JSValue newTarget)
 {
-    JSGlobalObject* globalObject = asInternalFunction(exec->callee())->globalObject();
+    JSGlobalObject* globalObject = asInternalFunction(exec->jsCallee())->globalObject();
 
     // a single numeric argument denotes the array size (!)
     if (args.size() == 1)

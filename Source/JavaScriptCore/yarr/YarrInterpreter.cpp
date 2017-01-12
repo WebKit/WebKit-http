@@ -1588,7 +1588,7 @@ public:
         m_currentAlternativeIndex = 0;
     }
 
-    std::unique_ptr<BytecodePattern> compile(BumpPointerAllocator* allocator, ConcurrentJITLock* lock)
+    std::unique_ptr<BytecodePattern> compile(BumpPointerAllocator* allocator, ConcurrentJSLock* lock)
     {
         regexBegin(m_pattern.m_numSubpatterns, m_pattern.m_body->m_callFrameSize, m_pattern.m_body->m_alternatives[0]->onceThrough());
         emitDisjunction(m_pattern.m_body);
@@ -1943,9 +1943,7 @@ public:
                 currentCountAlreadyChecked += countToCheck;
             }
 
-            for (unsigned i = 0; i < alternative->m_terms.size(); ++i) {
-                PatternTerm& term = alternative->m_terms[i];
-
+            for (auto& term : alternative->m_terms) {
                 switch (term.type) {
                 case PatternTerm::TypeAssertionBOL:
                     assertionBOL(currentCountAlreadyChecked - term.inputPosition);
@@ -2042,7 +2040,7 @@ private:
     Vector<std::unique_ptr<ByteDisjunction>> m_allParenthesesInfo;
 };
 
-std::unique_ptr<BytecodePattern> byteCompile(YarrPattern& pattern, BumpPointerAllocator* allocator, ConcurrentJITLock* lock)
+std::unique_ptr<BytecodePattern> byteCompile(YarrPattern& pattern, BumpPointerAllocator* allocator, ConcurrentJSLock* lock)
 {
     return ByteCompiler(pattern).compile(allocator, lock);
 }

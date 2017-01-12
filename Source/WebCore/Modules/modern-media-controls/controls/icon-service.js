@@ -30,6 +30,7 @@ const Icons = {
     EnterPiP        : "pip-in",
     ExitFullscreen  : "exit-fullscreen",
     Forward         : "forward",
+    InvalidPlacard  : "invalid-placard",
     Pause           : "pause",
     PiPPlacard      : "pip-placard",
     Play            : "play",
@@ -43,7 +44,7 @@ const Icons = {
     VolumeMuted     : "volume-mute"
 };
 
-const IconsWithFullscreenVariants = [Icons.Airplay, Icons.Tracks, Icons.Pause, Icons.Play];
+const IconsWithFullscreenVariants = [Icons.Airplay, Icons.Tracks, Icons.Pause, Icons.EnterPiP, Icons.Play];
 
 const iconService = new class IconService {
 

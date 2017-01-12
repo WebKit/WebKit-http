@@ -1,7 +1,3 @@
-// This test requires ENABLE_ES2017_ASYNCFUNCTION_SYNTAX to be enabled at build time.
-//@ skip
-
-
 function shouldBe(expected, actual, msg) {
     if (msg === void 0)
         msg = "";
@@ -42,7 +38,6 @@ class ChildClass extends BaseClass {
     }
 }
 
-// FIXME: super bindings in async arrow functions are broken
 shouldBeAsync("BaseClassValue", new ChildClass().asyncSuperProp());
 shouldBeAsync("BaseClassValue", new ChildClass().asyncSuperProp2());
 

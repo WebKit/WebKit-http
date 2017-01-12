@@ -66,6 +66,15 @@ class IconButton extends Button
             this._image.addEventListener("load", this);
     }
 
+    get on()
+    {
+        return this.element.classList.contains("on");
+    }
+
+    set on(flag) {
+        this.element.classList.toggle("on", flag);
+    }
+
     // Protected
 
     handleEvent(event)
@@ -98,8 +107,6 @@ class IconButton extends Button
         this.height = this._image.height / window.devicePixelRatio;
 
         this.needsLayout = true;
-        if (this.layoutDelegate)
-            this.layoutDelegate.needsLayout = true;
     }
 
 }

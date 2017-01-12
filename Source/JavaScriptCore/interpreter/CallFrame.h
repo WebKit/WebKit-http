@@ -87,7 +87,8 @@ namespace JSC  {
         static const int headerSizeInRegisters = CallFrameSlot::argumentCount + 1;
 
         JSValue calleeAsValue() const { return this[CallFrameSlot::callee].jsValue(); }
-        JSObject* callee() const { return this[CallFrameSlot::callee].object(); }
+        JSObject* jsCallee() const { return this[CallFrameSlot::callee].object(); }
+        JSCell* callee() const { return this[CallFrameSlot::callee].unboxedCell(); }
         SUPPRESS_ASAN JSValue unsafeCallee() const { return this[CallFrameSlot::callee].asanUnsafeJSValue(); }
         CodeBlock* codeBlock() const { return this[CallFrameSlot::codeBlock].Register::codeBlock(); }
         CodeBlock** addressOfCodeBlock() const { return bitwise_cast<CodeBlock**>(this + CallFrameSlot::codeBlock); }
@@ -135,6 +136,8 @@ namespace JSC  {
 
         CallFrame* unsafeCallerFrame(VMEntryFrame*&);
         JS_EXPORT_PRIVATE CallFrame* callerFrame(VMEntryFrame*&);
+
+        JS_EXPORT_PRIVATE SourceOrigin callerSourceOrigin();
 
         static ptrdiff_t callerFrameOffset() { return OBJECT_OFFSETOF(CallerFrameAndPC, callerFrame); }
 

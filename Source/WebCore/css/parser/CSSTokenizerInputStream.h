@@ -30,15 +30,16 @@
 #pragma once
 
 #include <wtf/text/StringView.h>
-#include <wtf/text/WTFString.h>
 
 namespace WebCore {
+
+constexpr LChar kEndOfFileMarker = 0;
 
 class CSSTokenizerInputStream {
     WTF_MAKE_NONCOPYABLE(CSSTokenizerInputStream);
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    explicit CSSTokenizerInputStream(String input);
+    explicit CSSTokenizerInputStream(const String& input);
 
     // Gets the char in the stream replacing NUL characters with a unicode
     // replacement character. Will return (NUL) kEndOfFileMarker when at the
@@ -100,7 +101,7 @@ public:
 private:
     size_t m_offset;
     const size_t m_stringLength;
-    const RefPtr<StringImpl> m_string;
+    RefPtr<StringImpl> m_string;
 };
 
 } // namespace WebCore

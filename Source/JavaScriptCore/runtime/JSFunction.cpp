@@ -52,7 +52,7 @@ EncodedJSValue JSC_HOST_CALL callHostFunctionAsConstructor(ExecState* exec)
 {
     VM& vm = exec->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
-    return throwVMError(exec, scope, createNotAConstructorError(exec, exec->callee()));
+    return throwVMError(exec, scope, createNotAConstructorError(exec, exec->jsCallee()));
 }
 
 const ClassInfo JSFunction::s_info = { "Function", &Base::s_info, 0, CREATE_METHOD_TABLE(JSFunction) };
@@ -73,16 +73,6 @@ JSFunction* JSFunction::create(VM& vm, FunctionExecutable* executable, JSScope* 
     executable->singletonFunction()->notifyWrite(vm, result, "Allocating a function");
     return result;
 }
-
-#if ENABLE(WEBASSEMBLY)
-JSFunction* JSFunction::create(VM& vm, WebAssemblyExecutable* executable, JSScope* scope)
-{
-    JSFunction* function = new (NotNull, allocateCell<JSFunction>(vm.heap)) JSFunction(vm, executable, scope);
-    ASSERT(function->structure(vm)->globalObject());
-    function->finishCreation(vm);
-    return function;
-}
-#endif
 
 JSFunction* JSFunction::create(VM& vm, JSGlobalObject* globalObject, int length, const String& name, NativeFunction nativeFunction, Intrinsic intrinsic, NativeFunction nativeConstructor, const DOMJIT::Signature* signature)
 {
@@ -217,9 +207,8 @@ void JSFunction::visitChildren(JSCell* cell, SlotVisitor& visitor)
     ASSERT_GC_OBJECT_INHERITS(thisObject, info());
     Base::visitChildren(thisObject, visitor);
 
-    visitor.append(&thisObject->m_executable);
-    if (thisObject->m_rareData)
-        visitor.append(&thisObject->m_rareData);
+    visitor.append(thisObject->m_executable);
+    visitor.append(thisObject->m_rareData);
 }
 
 CallType JSFunction::getCallData(JSCell* cell, CallData& callData)
@@ -246,7 +235,7 @@ public:
 
     StackVisitor::Status operator()(StackVisitor& visitor) const
     {
-        JSObject* callee = visitor->callee();
+        JSCell* callee = visitor->callee();
         if (callee != m_targetCallee)
             return StackVisitor::Continue;
 
@@ -288,7 +277,7 @@ public:
 
     StackVisitor::Status operator()(StackVisitor& visitor) const
     {
-        JSObject* callee = visitor->callee();
+        JSCell* callee = visitor->callee();
 
         if (callee && callee->inherits(JSBoundFunction::info()))
             return StackVisitor::Continue;
@@ -425,13 +414,16 @@ bool JSFunction::put(JSCell* cell, ExecState* exec, PropertyName propertyName, J
 
     JSFunction* thisObject = jsCast<JSFunction*>(cell);
 
-    if (UNLIKELY(isThisValueAltered(slot, thisObject)))
+    if (UNLIKELY(isThisValueAltered(slot, thisObject))) {
+        scope.release();
         return ordinarySetSlow(exec, thisObject, propertyName, value, slot.thisValue(), slot.isStrictMode());
+    }
 
     if (thisObject->isHostOrBuiltinFunction()) {
         LazyPropertyType propType = thisObject->reifyBoundNameIfNeeded(vm, exec, propertyName);
         if (propType == LazyPropertyType::IsLazyProperty)
             slot.disableCaching();
+        scope.release();
         return Base::put(thisObject, exec, propertyName, value, slot);
     }
 
@@ -454,6 +446,7 @@ bool JSFunction::put(JSCell* cell, ExecState* exec, PropertyName propertyName, J
             // FIXME: Investigate if the `hasProperty()` call is even needed, as in the `!hasCallerAndArgumentsProperties()` case,
             // these properties are not lazy and should not need to be reified. (https://bugs.webkit.org/show_bug.cgi?id=163579)
             bool okay = thisObject->hasProperty(exec, propertyName);
+            RETURN_IF_EXCEPTION(scope, false);
             ASSERT_UNUSED(okay, okay);
             scope.release();
             return Base::put(thisObject, exec, propertyName, value, slot);
@@ -497,6 +490,7 @@ bool JSFunction::defineOwnProperty(JSObject* object, ExecState* exec, PropertyNa
     JSFunction* thisObject = jsCast<JSFunction*>(object);
     if (thisObject->isHostOrBuiltinFunction()) {
         thisObject->reifyBoundNameIfNeeded(vm, exec, propertyName);
+        scope.release();
         return Base::defineOwnProperty(object, exec, propertyName, descriptor, throwException);
     }
 
@@ -507,6 +501,7 @@ bool JSFunction::defineOwnProperty(JSObject* object, ExecState* exec, PropertyNa
         thisObject->methodTable(vm)->getOwnPropertySlot(thisObject, exec, propertyName, slot);
         if (thisObject->m_rareData)
             thisObject->m_rareData->clear("Store to prototype property of a function");
+        scope.release();
         return Base::defineOwnProperty(object, exec, propertyName, descriptor, throwException);
     }
 
@@ -515,11 +510,13 @@ bool JSFunction::defineOwnProperty(JSObject* object, ExecState* exec, PropertyNa
         if (!thisObject->jsExecutable()->hasCallerAndArgumentsProperties()) {
             if (thisObject->jsExecutable()->isClass()) {
                 thisObject->reifyLazyPropertyIfNeeded(vm, exec, propertyName);
+                scope.release();
                 return Base::defineOwnProperty(object, exec, propertyName, descriptor, throwException);
             }
             PropertySlot slot(thisObject, PropertySlot::InternalMethodType::VMInquiry);
             if (!Base::getOwnPropertySlot(thisObject, exec, propertyName, slot))
                 thisObject->putDirectAccessor(exec, propertyName, thisObject->globalObject(vm)->throwTypeErrorArgumentsCalleeAndCallerGetterSetter(), DontDelete | DontEnum | Accessor);
+            scope.release();
             return Base::defineOwnProperty(object, exec, propertyName, descriptor, throwException);
         }
         valueCheck = !descriptor.value() || sameValue(exec, descriptor.value(), retrieveArguments(exec, thisObject));
@@ -527,16 +524,19 @@ bool JSFunction::defineOwnProperty(JSObject* object, ExecState* exec, PropertyNa
         if (!thisObject->jsExecutable()->hasCallerAndArgumentsProperties()) {
             if (thisObject->jsExecutable()->isClass()) {
                 thisObject->reifyLazyPropertyIfNeeded(vm, exec, propertyName);
+                scope.release();
                 return Base::defineOwnProperty(object, exec, propertyName, descriptor, throwException);
             }
             PropertySlot slot(thisObject, PropertySlot::InternalMethodType::VMInquiry);
             if (!Base::getOwnPropertySlot(thisObject, exec, propertyName, slot))
                 thisObject->putDirectAccessor(exec, propertyName, thisObject->globalObject(vm)->throwTypeErrorArgumentsCalleeAndCallerGetterSetter(), DontDelete | DontEnum | Accessor);
+            scope.release();
             return Base::defineOwnProperty(object, exec, propertyName, descriptor, throwException);
         }
         valueCheck = !descriptor.value() || sameValue(exec, descriptor.value(), retrieveCallerFunction(exec, thisObject));
     } else {
         thisObject->reifyLazyPropertyIfNeeded(vm, exec, propertyName);
+        scope.release();
         return Base::defineOwnProperty(object, exec, propertyName, descriptor, throwException);
     }
      

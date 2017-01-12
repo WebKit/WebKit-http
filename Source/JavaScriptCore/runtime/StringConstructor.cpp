@@ -114,12 +114,13 @@ static EncodedJSValue JSC_HOST_CALL stringFromCodePoint(ExecState* exec)
         }
     }
 
+    scope.release();
     return JSValue::encode(jsString(exec, builder.toString()));
 }
 
 static EncodedJSValue JSC_HOST_CALL constructWithStringConstructor(ExecState* exec)
 {
-    JSGlobalObject* globalObject = asInternalFunction(exec->callee())->globalObject();
+    JSGlobalObject* globalObject = asInternalFunction(exec->jsCallee())->globalObject();
     VM& vm = globalObject->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
 
@@ -128,7 +129,9 @@ static EncodedJSValue JSC_HOST_CALL constructWithStringConstructor(ExecState* ex
 
     if (!exec->argumentCount())
         return JSValue::encode(StringObject::create(vm, structure));
-    return JSValue::encode(StringObject::create(vm, structure, exec->uncheckedArgument(0).toString(exec)));
+    JSString* str = exec->uncheckedArgument(0).toString(exec);
+    RETURN_IF_EXCEPTION(scope, encodedJSValue());
+    return JSValue::encode(StringObject::create(vm, structure, str));
 }
 
 ConstructType StringConstructor::getConstructData(JSCell*, ConstructData& constructData)

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -610,18 +610,6 @@ CompilationKey Plan::key()
     return CompilationKey(codeBlock->alternative(), mode);
 }
 
-void Plan::rememberCodeBlocks()
-{
-    // Compilation writes lots of values to a CodeBlock without performing
-    // an explicit barrier. So, we need to be pessimistic and assume that
-    // all our CodeBlocks must be visited during GC.
-
-    Heap::heap(codeBlock)->writeBarrier(codeBlock);
-    Heap::heap(codeBlock)->writeBarrier(codeBlock->alternative());
-    if (profiledDFGCodeBlock)
-        Heap::heap(profiledDFGCodeBlock)->writeBarrier(profiledDFGCodeBlock);
-}
-
 void Plan::checkLivenessAndVisitChildren(SlotVisitor& visitor)
 {
     if (!isKnownToBeLiveDuringGC())
@@ -629,16 +617,16 @@ void Plan::checkLivenessAndVisitChildren(SlotVisitor& visitor)
 
     cleanMustHandleValuesIfNecessary();
     for (unsigned i = mustHandleValues.size(); i--;)
-        visitor.appendUnbarrieredValue(&mustHandleValues[i]);
+        visitor.appendUnbarriered(mustHandleValues[i]);
 
-    visitor.appendUnbarrieredReadOnlyPointer(codeBlock);
-    visitor.appendUnbarrieredReadOnlyPointer(codeBlock->alternative());
-    visitor.appendUnbarrieredReadOnlyPointer(profiledDFGCodeBlock);
+    visitor.appendUnbarriered(codeBlock);
+    visitor.appendUnbarriered(codeBlock->alternative());
+    visitor.appendUnbarriered(profiledDFGCodeBlock);
 
     if (inlineCallFrames) {
         for (auto* inlineCallFrame : *inlineCallFrames) {
             ASSERT(inlineCallFrame->baselineCodeBlock.get());
-            visitor.appendUnbarrieredReadOnlyPointer(inlineCallFrame->baselineCodeBlock.get());
+            visitor.appendUnbarriered(inlineCallFrame->baselineCodeBlock.get());
         }
     }
 

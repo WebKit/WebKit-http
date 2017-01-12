@@ -49,7 +49,7 @@ class VisiblePosition;
 class Range : public RefCounted<Range> {
 public:
     WEBCORE_EXPORT static Ref<Range> create(Document&);
-    WEBCORE_EXPORT static Ref<Range> create(Document&, PassRefPtr<Node> startContainer, int startOffset, PassRefPtr<Node> endContainer, int endOffset);
+    WEBCORE_EXPORT static Ref<Range> create(Document&, RefPtr<Node>&& startContainer, int startOffset, RefPtr<Node>&& endContainer, int endOffset);
     WEBCORE_EXPORT static Ref<Range> create(Document&, const Position&, const Position&);
     WEBCORE_EXPORT static Ref<Range> create(Document&, const VisiblePosition&, const VisiblePosition&);
     WEBCORE_EXPORT ~Range();
@@ -155,7 +155,7 @@ public:
 
 private:
     explicit Range(Document&);
-    Range(Document&, PassRefPtr<Node> startContainer, int startOffset, PassRefPtr<Node> endContainer, int endOffset);
+    Range(Document&, Node* startContainer, int startOffset, Node* endContainer, int endOffset);
 
     void setDocument(Document&);
     ExceptionOr<Node*> checkNodeWOffset(Node&, unsigned offset) const;
@@ -183,6 +183,6 @@ inline bool documentOrderComparator(const Node* a, const Node* b)
 } // namespace
 
 #if ENABLE(TREE_DEBUGGING)
-// Outside the WebCore namespace for ease of invocation from gdb.
+// Outside the WebCore namespace for ease of invocation from the debugger.
 void showTree(const WebCore::Range*);
 #endif

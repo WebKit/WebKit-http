@@ -161,7 +161,7 @@ static inline PassRefPtr<ShapeValue> blendFunc(const AnimationBase*, ShapeValue*
     if (!fromShape.canBlend(toShape))
         return to;
 
-    return ShapeValue::createShapeValue(toShape.blend(fromShape, progress), to->cssBox());
+    return ShapeValue::create(toShape.blend(fromShape, progress), to->cssBox());
 }
 
 static inline PassRefPtr<FilterOperation> blendFunc(const AnimationBase* animation, FilterOperation* fromOp, FilterOperation* toOp, double progress, bool blendToPassthrough = false)
@@ -253,12 +253,12 @@ static inline LengthBox blendFunc(const AnimationBase* anim, const LengthBox& fr
     return result;
 }
 
-static inline SVGLength blendFunc(const AnimationBase*, const SVGLength& from, const SVGLength& to, double progress)
+static inline SVGLengthValue blendFunc(const AnimationBase*, const SVGLengthValue& from, const SVGLengthValue& to, double progress)
 {
     return to.blend(from, narrowPrecisionToFloat(progress));
 }
 
-static inline Vector<SVGLength> blendFunc(const AnimationBase*, const Vector<SVGLength>& from, const Vector<SVGLength>& to, double progress)
+static inline Vector<SVGLengthValue> blendFunc(const AnimationBase*, const Vector<SVGLengthValue>& from, const Vector<SVGLengthValue>& to, double progress)
 {
     size_t fromLength = from.size();
     size_t toLength = to.size();
@@ -273,7 +273,7 @@ static inline Vector<SVGLength> blendFunc(const AnimationBase*, const Vector<SVG
         else
             resultLength = fromLength * toLength;
     }
-    Vector<SVGLength> result(resultLength);
+    Vector<SVGLengthValue> result(resultLength);
     for (size_t i = 0; i < resultLength; ++i)
         result[i] = to[i % toLength].blend(from[i % fromLength], narrowPrecisionToFloat(progress));
     return result;
@@ -365,8 +365,7 @@ static inline NinePieceImage blendFunc(const AnimationBase* anim, const NinePiec
     if (from.image()->imageSize(anim->renderer(), 1.0) != to.image()->imageSize(anim->renderer(), 1.0))
         return to;
 
-    RefPtr<StyleImage> newContentImage = blendFunc(anim, from.image(), to.image(), progress);
-
+    auto newContentImage = blendFunc(anim, from.image(), to.image(), progress);
     return NinePieceImage(newContentImage, from.imageSlices(), from.fill(), from.borderSlices(), from.outset(), from.horizontalRule(), from.verticalRule());
 }
 
@@ -461,7 +460,7 @@ public:
     {
     }
 
-    virtual void blend(const AnimationBase* anim, RenderStyle* dst, const RenderStyle* a, const RenderStyle* b, double progress) const
+    void blend(const AnimationBase* anim, RenderStyle* dst, const RenderStyle* a, const RenderStyle* b, double progress) const override
     {
         (dst->*m_setter)(blendFunc(anim, (a->*PropertyWrapperGetter<T>::m_getter)(), (b->*PropertyWrapperGetter<T>::m_getter)(), progress));
     }
@@ -480,7 +479,7 @@ public:
     {
     }
 
-    virtual void blend(const AnimationBase* anim, RenderStyle* dst, const RenderStyle* a, const RenderStyle* b, double progress) const
+    void blend(const AnimationBase* anim, RenderStyle* dst, const RenderStyle* a, const RenderStyle* b, double progress) const override
     {
         (dst->*m_setter)(blendFunc(anim, (a->*PropertyWrapperGetter<T*>::m_getter)(), (b->*PropertyWrapperGetter<T*>::m_getter)(), progress));
     }
@@ -499,7 +498,7 @@ public:
     {
     }
 
-    virtual void blend(const AnimationBase* anim, RenderStyle* dst, const RenderStyle* a, const RenderStyle* b, double progress) const
+    void blend(const AnimationBase* anim, RenderStyle* dst, const RenderStyle* a, const RenderStyle* b, double progress) const override
     {
         (dst->*m_setter)(blendFunc(anim, (a->*PropertyWrapperGetter<const T&>::m_getter)(), (b->*PropertyWrapperGetter<const T&>::m_getter)(), progress));
     }
@@ -998,7 +997,7 @@ public:
     {
     }
 
-    virtual void blend(const AnimationBase* anim, FillLayer* dst, const FillLayer* a, const FillLayer* b, double progress) const
+    void blend(const AnimationBase* anim, FillLayer* dst, const FillLayer* a, const FillLayer* b, double progress) const override
     {
         (dst->*m_setter)(blendFunc(anim, (a->*FillLayerPropertyWrapperGetter<const T&>::m_getter)(), (b->*FillLayerPropertyWrapperGetter<const T&>::m_getter)(), progress));
     }
@@ -1017,7 +1016,7 @@ public:
     {
     }
 
-    virtual void blend(const AnimationBase* anim, FillLayer* dst, const FillLayer* a, const FillLayer* b, double progress) const
+    void blend(const AnimationBase* anim, FillLayer* dst, const FillLayer* a, const FillLayer* b, double progress) const override
     {
         (dst->*m_setter)(blendFunc(anim, (a->*FillLayerPropertyWrapperGetter<T*>::m_getter)(), (b->*FillLayerPropertyWrapperGetter<T*>::m_getter)(), progress));
     }
@@ -1212,7 +1211,7 @@ public:
 class PropertyWrapperSVGPaint : public AnimationPropertyWrapperBase {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    PropertyWrapperSVGPaint(CSSPropertyID prop, const SVGPaint::SVGPaintType& (RenderStyle::*paintTypeGetter)() const, Color (RenderStyle::*getter)() const, void (RenderStyle::*setter)(const Color&))
+    PropertyWrapperSVGPaint(CSSPropertyID prop, const SVGPaintType& (RenderStyle::*paintTypeGetter)() const, Color (RenderStyle::*getter)() const, void (RenderStyle::*setter)(const Color&))
         : AnimationPropertyWrapperBase(prop)
         , m_paintTypeGetter(paintTypeGetter)
         , m_getter(getter)
@@ -1233,7 +1232,7 @@ public:
         // We only support animations between SVGPaints that are pure Color values.
         // For everything else we must return true for this method, otherwise
         // we will try to animate between values forever.
-        if ((a->*m_paintTypeGetter)() == SVGPaint::SVG_PAINTTYPE_RGBCOLOR) {
+        if ((a->*m_paintTypeGetter)() == SVG_PAINTTYPE_RGBCOLOR) {
             Color fromColor = (a->*m_getter)();
             Color toColor = (b->*m_getter)();
 
@@ -1252,8 +1251,8 @@ public:
 
     void blend(const AnimationBase* anim, RenderStyle* dst, const RenderStyle* a, const RenderStyle* b, double progress) const override
     {
-        if ((a->*m_paintTypeGetter)() != SVGPaint::SVG_PAINTTYPE_RGBCOLOR
-            || (b->*m_paintTypeGetter)() != SVGPaint::SVG_PAINTTYPE_RGBCOLOR)
+        if ((a->*m_paintTypeGetter)() != SVG_PAINTTYPE_RGBCOLOR
+            || (b->*m_paintTypeGetter)() != SVG_PAINTTYPE_RGBCOLOR)
             return;
 
         Color fromColor = (a->*m_getter)();
@@ -1278,7 +1277,7 @@ public:
 #endif
 
 private:
-    const SVGPaint::SVGPaintType& (RenderStyle::*m_paintTypeGetter)() const;
+    const SVGPaintType& (RenderStyle::*m_paintTypeGetter)() const;
     Color (RenderStyle::*m_getter)() const;
     void (RenderStyle::*m_setter)(const Color&);
 };
@@ -1451,7 +1450,7 @@ CSSPropertyAnimationWrapperMap::CSSPropertyAnimationWrapperMap()
 
         new PropertyWrapperSVGPaint(CSSPropertyStroke, &RenderStyle::strokePaintType, &RenderStyle::strokePaintColor, &RenderStyle::setStrokePaintColor),
         new PropertyWrapper<float>(CSSPropertyStrokeOpacity, &RenderStyle::strokeOpacity, &RenderStyle::setStrokeOpacity),
-        new PropertyWrapper< Vector<SVGLength>>(CSSPropertyStrokeDasharray, &RenderStyle::strokeDashArray, &RenderStyle::setStrokeDashArray),
+        new PropertyWrapper<Vector<SVGLengthValue>>(CSSPropertyStrokeDasharray, &RenderStyle::strokeDashArray, &RenderStyle::setStrokeDashArray),
         new PropertyWrapper<float>(CSSPropertyStrokeMiterlimit, &RenderStyle::strokeMiterLimit, &RenderStyle::setStrokeMiterLimit),
 
         new LengthPropertyWrapper<Length>(CSSPropertyCx, &RenderStyle::cx, &RenderStyle::setCx),
@@ -1472,8 +1471,8 @@ CSSPropertyAnimationWrapperMap::CSSPropertyAnimationWrapperMap()
 
         new PropertyWrapperMaybeInvalidColor(CSSPropertyLightingColor, &RenderStyle::lightingColor, &RenderStyle::setLightingColor),
 
-        new PropertyWrapper<SVGLength>(CSSPropertyBaselineShift, &RenderStyle::baselineShiftValue, &RenderStyle::setBaselineShiftValue),
-        new PropertyWrapper<SVGLength>(CSSPropertyKerning, &RenderStyle::kerning, &RenderStyle::setKerning),
+        new PropertyWrapper<SVGLengthValue>(CSSPropertyBaselineShift, &RenderStyle::baselineShiftValue, &RenderStyle::setBaselineShiftValue),
+        new PropertyWrapper<SVGLengthValue>(CSSPropertyKerning, &RenderStyle::kerning, &RenderStyle::setKerning),
 #if ENABLE(VARIATION_FONTS)
         new PropertyWrapperFontVariationSettings(CSSPropertyFontVariationSettings, &RenderStyle::fontVariationSettings, &RenderStyle::setFontVariationSettings),
 #endif

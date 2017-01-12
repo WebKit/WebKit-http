@@ -324,6 +324,13 @@ the public iOS SDK. We will also need to update the FeatureDefines.xcconfig file
 
 /* --------- Gtk port (Unix, Windows, Mac) --------- */
 #if PLATFORM(GTK)
+#if !defined(ENABLE_KEYBOARD_KEY_ATTRIBUTE)
+#define ENABLE_KEYBOARD_KEY_ATTRIBUTE 1
+#endif
+
+#if !defined(ENABLE_KEYBOARD_CODE_ATTRIBUTE)
+#define ENABLE_KEYBOARD_CODE_ATTRIBUTE 1
+#endif
 #endif /* PLATFORM(GTK) */
 
 /* ENABLE macro defaults for WebCore */
@@ -355,14 +362,6 @@ the public iOS SDK. We will also need to update the FeatureDefines.xcconfig file
 
 #if !defined(ENABLE_CHANNEL_MESSAGING)
 #define ENABLE_CHANNEL_MESSAGING 1
-#endif
-
-#if !defined(ENABLE_ES6_MODULES)
-#define ENABLE_ES6_MODULES 0
-#endif
-
-#if !defined(ENABLE_ES2017_ASYNCFUNCTION_SYNTAX)
-#define ENABLE_ES2017_ASYNCFUNCTION_SYNTAX 0
 #endif
 
 #if !defined(ENABLE_CONTENT_EXTENSIONS)
@@ -638,7 +637,7 @@ the public iOS SDK. We will also need to update the FeatureDefines.xcconfig file
 #endif
 
 #if !defined(ENABLE_POINTER_LOCK)
-#define ENABLE_POINTER_LOCK 0
+#define ENABLE_POINTER_LOCK 1
 #endif
 
 #if !defined(ENABLE_PROXIMITY_EVENTS)

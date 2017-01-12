@@ -32,15 +32,31 @@
 #include "WasmFormat.h"
 #include "WasmOps.h"
 #include "WasmSections.h"
+#include <type_traits>
+#include <wtf/Expected.h>
 #include <wtf/LEBDecoder.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/text/WTFString.h>
 
 namespace JSC { namespace Wasm {
 
+namespace FailureHelper {
+// FIXME We should move this to makeString. It's in its own namespace to enable C++ Argument Dependent Lookup à la std::swap: user code can deblare its own "boxFailure" and the fail() helper will find it.
+static inline auto makeString(const char *failure) { return ASCIILiteral(failure); }
+template <typename Int, typename = typename std::enable_if<std::is_integral<Int>::value>::type>
+static inline auto makeString(Int failure) { return String::number(failure); }
+}
+
+template<typename SuccessType>
 class Parser {
+public:
+    typedef String ErrorType;
+    typedef UnexpectedType<ErrorType> UnexpectedResult;
+    typedef Expected<void, ErrorType> PartialResult;
+    typedef Expected<SuccessType, ErrorType> Result;
+
 protected:
-    Parser(const uint8_t*, size_t);
+    Parser(VM*, const uint8_t*, size_t);
 
     bool WARN_UNUSED_RETURN consumeCharacter(char);
     bool WARN_UNUSED_RETURN consumeString(const char*);
@@ -49,30 +65,57 @@ protected:
     bool WARN_UNUSED_RETURN parseVarUInt1(uint8_t&);
     bool WARN_UNUSED_RETURN parseInt7(int8_t&);
     bool WARN_UNUSED_RETURN parseUInt7(uint8_t&);
+    bool WARN_UNUSED_RETURN parseUInt8(uint8_t&);
     bool WARN_UNUSED_RETURN parseUInt32(uint32_t&);
+    bool WARN_UNUSED_RETURN parseUInt64(uint64_t&);
     bool WARN_UNUSED_RETURN parseVarUInt32(uint32_t&);
     bool WARN_UNUSED_RETURN parseVarUInt64(uint64_t&);
 
+    bool WARN_UNUSED_RETURN parseVarInt32(int32_t&);
+    bool WARN_UNUSED_RETURN parseVarInt64(int64_t&);
+
+    bool WARN_UNUSED_RETURN parseResultType(Type&);
     bool WARN_UNUSED_RETURN parseValueType(Type&);
-    bool WARN_UNUSED_RETURN parseExternalKind(External::Kind&);
+    bool WARN_UNUSED_RETURN parseExternalKind(ExternalKind&);
 
     const uint8_t* source() const { return m_source; }
     size_t length() const { return m_sourceLength; }
 
+    VM* m_vm;
     size_t m_offset = 0;
+
+    template <typename ...Args>
+    NEVER_INLINE UnexpectedResult WARN_UNUSED_RETURN fail(Args... args) const
+    {
+        using namespace FailureHelper; // See ADL comment in namespace above.
+        return UnexpectedResult(makeString(ASCIILiteral("WebAssembly.Module doesn't parse at byte "), String::number(m_offset), ASCIILiteral(" / "), String::number(m_sourceLength), ASCIILiteral(": "), makeString(args)...));
+    }
+#define WASM_PARSER_FAIL_IF(condition, ...) do { \
+    if (UNLIKELY(condition))                     \
+        return fail(__VA_ARGS__);                \
+    } while (0)
+
+#define WASM_FAIL_IF_HELPER_FAILS(helper) do {   \
+        auto helperResult = helper;              \
+        if (UNLIKELY(!helperResult))             \
+            return helperResult.getUnexpected(); \
+    } while (0)
 
 private:
     const uint8_t* m_source;
     size_t m_sourceLength;
 };
 
-ALWAYS_INLINE Parser::Parser(const uint8_t* sourceBuffer, size_t sourceLength)
-    : m_source(sourceBuffer)
+template<typename SuccessType>
+ALWAYS_INLINE Parser<SuccessType>::Parser(VM* vm, const uint8_t* sourceBuffer, size_t sourceLength)
+    : m_vm(vm)
+    , m_source(sourceBuffer)
     , m_sourceLength(sourceLength)
 {
 }
 
-ALWAYS_INLINE bool Parser::consumeCharacter(char c)
+template<typename SuccessType>
+ALWAYS_INLINE bool Parser<SuccessType>::consumeCharacter(char c)
 {
     if (m_offset >= length())
         return false;
@@ -83,7 +126,8 @@ ALWAYS_INLINE bool Parser::consumeCharacter(char c)
     return false;
 }
 
-ALWAYS_INLINE bool Parser::consumeString(const char* str)
+template<typename SuccessType>
+ALWAYS_INLINE bool Parser<SuccessType>::consumeString(const char* str)
 {
     unsigned start = m_offset;
     if (m_offset >= length())
@@ -97,10 +141,11 @@ ALWAYS_INLINE bool Parser::consumeString(const char* str)
     return true;
 }
 
-ALWAYS_INLINE bool Parser::consumeUTF8String(String& result, size_t stringLength)
+template<typename SuccessType>
+ALWAYS_INLINE bool Parser<SuccessType>::consumeUTF8String(String& result, size_t stringLength)
 {
     if (stringLength == 0) {
-        result = String();
+        result = emptyString();
         return true;
     }
     if (length() < stringLength || m_offset > length() - stringLength)
@@ -112,17 +157,32 @@ ALWAYS_INLINE bool Parser::consumeUTF8String(String& result, size_t stringLength
     return true;
 }
 
-ALWAYS_INLINE bool Parser::parseVarUInt32(uint32_t& result)
+template<typename SuccessType>
+ALWAYS_INLINE bool Parser<SuccessType>::parseVarUInt32(uint32_t& result)
 {
     return WTF::LEBDecoder::decodeUInt32(m_source, m_sourceLength, m_offset, result);
 }
 
-ALWAYS_INLINE bool Parser::parseVarUInt64(uint64_t& result)
+template<typename SuccessType>
+ALWAYS_INLINE bool Parser<SuccessType>::parseVarUInt64(uint64_t& result)
 {
     return WTF::LEBDecoder::decodeUInt64(m_source, m_sourceLength, m_offset, result);
 }
 
-ALWAYS_INLINE bool Parser::parseUInt32(uint32_t& result)
+template<typename SuccessType>
+ALWAYS_INLINE bool Parser<SuccessType>::parseVarInt32(int32_t& result)
+{
+    return WTF::LEBDecoder::decodeInt32(m_source, m_sourceLength, m_offset, result);
+}
+
+template<typename SuccessType>
+ALWAYS_INLINE bool Parser<SuccessType>::parseVarInt64(int64_t& result)
+{
+    return WTF::LEBDecoder::decodeInt64(m_source, m_sourceLength, m_offset, result);
+}
+
+template<typename SuccessType>
+ALWAYS_INLINE bool Parser<SuccessType>::parseUInt32(uint32_t& result)
 {
     if (length() < 4 || m_offset > length() - 4)
         return false;
@@ -131,7 +191,27 @@ ALWAYS_INLINE bool Parser::parseUInt32(uint32_t& result)
     return true;
 }
 
-ALWAYS_INLINE bool Parser::parseInt7(int8_t& result)
+template<typename SuccessType>
+ALWAYS_INLINE bool Parser<SuccessType>::parseUInt64(uint64_t& result)
+{
+    if (length() < 8 || m_offset > length() - 8)
+        return false;
+    result = *reinterpret_cast<const uint64_t*>(source() + m_offset);
+    m_offset += 8;
+    return true;
+}
+
+template<typename SuccessType>
+ALWAYS_INLINE bool Parser<SuccessType>::parseUInt8(uint8_t& result)
+{
+    if (m_offset >= length())
+        return false;
+    result = source()[m_offset++];
+    return true;
+}
+
+template<typename SuccessType>
+ALWAYS_INLINE bool Parser<SuccessType>::parseInt7(int8_t& result)
 {
     if (m_offset >= length())
         return false;
@@ -140,7 +220,8 @@ ALWAYS_INLINE bool Parser::parseInt7(int8_t& result)
     return (v & 0x80) == 0;
 }
 
-ALWAYS_INLINE bool Parser::parseUInt7(uint8_t& result)
+template<typename SuccessType>
+ALWAYS_INLINE bool Parser<SuccessType>::parseUInt7(uint8_t& result)
 {
     if (m_offset >= length())
         return false;
@@ -148,34 +229,45 @@ ALWAYS_INLINE bool Parser::parseUInt7(uint8_t& result)
     return result < 0x80;
 }
 
-ALWAYS_INLINE bool Parser::parseVarUInt1(uint8_t& result)
+template<typename SuccessType>
+ALWAYS_INLINE bool Parser<SuccessType>::parseVarUInt1(uint8_t& result)
 {
     uint32_t temp;
     if (!parseVarUInt32(temp))
         return false;
+    if (temp > 1)
+        return false;
     result = static_cast<uint8_t>(temp);
-    return temp <= 1;
+    return true;
 }
 
-ALWAYS_INLINE bool Parser::parseValueType(Type& result)
+template<typename SuccessType>
+ALWAYS_INLINE bool Parser<SuccessType>::parseResultType(Type& result)
 {
-    uint8_t value;
-    if (!parseUInt7(value))
+    int8_t value;
+    if (!parseInt7(value))
         return false;
-    if (value >= static_cast<uint8_t>(Type::LastValueType))
+    if (!isValidType(value))
         return false;
     result = static_cast<Type>(value);
     return true;
 }
-    
-ALWAYS_INLINE bool Parser::parseExternalKind(External::Kind& result)
+
+template<typename SuccessType>
+ALWAYS_INLINE bool Parser<SuccessType>::parseValueType(Type& result)
+{
+    return parseResultType(result) && isValueType(result);
+}
+
+template<typename SuccessType>
+ALWAYS_INLINE bool Parser<SuccessType>::parseExternalKind(ExternalKind& result)
 {
     uint8_t value;
     if (!parseUInt7(value))
         return false;
-    if (!External::isValid(value))
+    if (!isValidExternalKind(value))
         return false;
-    result = static_cast<External::Kind>(value);
+    result = static_cast<ExternalKind>(value);
     return true;
 }
 

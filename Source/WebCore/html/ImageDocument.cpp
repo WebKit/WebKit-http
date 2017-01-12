@@ -35,6 +35,7 @@
 #include "FrameLoaderClient.h"
 #include "FrameView.h"
 #include "HTMLBodyElement.h"
+#include "HTMLHeadElement.h"
 #include "HTMLHtmlElement.h"
 #include "HTMLImageElement.h"
 #include "HTMLNames.h"
@@ -101,7 +102,7 @@ private:
     }
 
     virtual ~ImageDocumentElement();
-    void didMoveToNewDocument(Document* oldDocument) override;
+    void didMoveToNewDocument(Document& oldDocument) override;
 
     ImageDocument* m_imageDocument;
 };
@@ -214,6 +215,10 @@ void ImageDocument::createDocumentStructure()
     rootElement->insertedByParser();
 
     frame()->injectUserScripts(InjectAtDocumentStart);
+
+    // We need a <head> so that the call to setTitle() later on actually has an <head> to append to <title> to.
+    auto head = HTMLHeadElement::create(*this);
+    rootElement->appendChild(head);
 
     auto body = HTMLBodyElement::create(*this);
     body->setAttribute(styleAttr, "margin: 0px");
@@ -421,7 +426,7 @@ ImageDocumentElement::~ImageDocumentElement()
         m_imageDocument->disconnectImageElement();
 }
 
-void ImageDocumentElement::didMoveToNewDocument(Document* oldDocument)
+void ImageDocumentElement::didMoveToNewDocument(Document& oldDocument)
 {
     if (m_imageDocument) {
         m_imageDocument->disconnectImageElement();

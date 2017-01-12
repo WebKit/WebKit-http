@@ -476,10 +476,10 @@ ExceptionOr<void> XMLHttpRequest::open(const String& method, const String& url, 
     return open(method, urlWithCredentials, async);
 }
 
-Optional<ExceptionOr<void>> XMLHttpRequest::prepareToSend()
+std::optional<ExceptionOr<void>> XMLHttpRequest::prepareToSend()
 {
-    // A return value other than Nullopt means we should not try to send, and we should return that value to the caller.
-    // Nullopt means we are ready to send and should continue with the send algorithm.
+    // A return value other than std::nullopt means we should not try to send, and we should return that value to the caller.
+    // std::nullopt means we are ready to send and should continue with the send algorithm.
 
     if (!scriptExecutionContext())
         return ExceptionOr<void> { };
@@ -501,7 +501,7 @@ Optional<ExceptionOr<void>> XMLHttpRequest::prepareToSend()
     }
 
     m_error = false;
-    return Nullopt;
+    return std::nullopt;
 }
 
 ExceptionOr<void> XMLHttpRequest::send(Document& document)
@@ -669,6 +669,7 @@ ExceptionOr<void> XMLHttpRequest::createRequest()
     options.contentSecurityPolicyEnforcement = scriptExecutionContext()->shouldBypassMainWorldContentSecurityPolicy() ? ContentSecurityPolicyEnforcement::DoNotEnforce : ContentSecurityPolicyEnforcement::EnforceConnectSrcDirective;
     options.initiator = cachedResourceRequestInitiators().xmlhttprequest;
     options.sameOriginDataURLFlag = SameOriginDataURLFlag::Set;
+    options.filteringPolicy = ResponseFilteringPolicy::Enable;
 
     if (m_timeoutMilliseconds) {
         if (!m_async)
@@ -980,10 +981,10 @@ void XMLHttpRequest::didFinishLoading(unsigned long identifier, double)
 
     m_responseBuilder.shrinkToFit();
 
-    Optional<String> decodedText;
+    std::optional<String> decodedText;
     if (!m_binaryResponseBuilder)
         decodedText = m_responseBuilder.toStringPreserveCapacity();
-    InspectorInstrumentation::didFinishXHRLoading(scriptExecutionContext(), this, identifier, decodedText, m_url, m_lastSendURL, m_lastSendLineNumber, m_lastSendColumnNumber);
+    InspectorInstrumentation::didFinishXHRLoading(scriptExecutionContext(), identifier, decodedText, m_url, m_lastSendURL, m_lastSendLineNumber, m_lastSendColumnNumber);
 
     bool hadLoader = m_loader;
     m_loader = nullptr;
@@ -1015,10 +1016,8 @@ void XMLHttpRequest::didSendData(unsigned long long bytesSent, unsigned long lon
     }
 }
 
-void XMLHttpRequest::didReceiveResponse(unsigned long identifier, const ResourceResponse& response)
+void XMLHttpRequest::didReceiveResponse(unsigned long, const ResourceResponse& response)
 {
-    InspectorInstrumentation::didReceiveXHRResponse(scriptExecutionContext(), identifier);
-
     m_response = response;
     if (!m_mimeTypeOverride.isEmpty())
         m_response.setHTTPHeaderField(HTTPHeaderName::ContentType, m_mimeTypeOverride);

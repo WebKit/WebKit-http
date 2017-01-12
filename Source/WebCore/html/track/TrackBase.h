@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011 Apple Inc.  All rights reserved.
+ * Copyright (C) 2011-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,9 +27,7 @@
 
 #if ENABLE(VIDEO_TRACK)
 
-#include "EventTarget.h"
-#include <wtf/RefCounted.h>
-#include <wtf/TypeCasts.h>
+#include <wtf/text/AtomicString.h>
 
 namespace WebCore {
 
@@ -54,8 +52,9 @@ public:
     AtomicString label() const { return m_label; }
     void setLabel(const AtomicString& label) { m_label = label; }
 
+    AtomicString validBCP47Language() const;
     AtomicString language() const { return m_language; }
-    virtual void setLanguage(const AtomicString& language) { m_language = language; }
+    virtual void setLanguage(const AtomicString&);
 
     virtual void clearClient() = 0;
 
@@ -83,6 +82,7 @@ private:
     AtomicString m_id;
     AtomicString m_label;
     AtomicString m_language;
+    AtomicString m_validBCP47Language;
 };
 
 class MediaTrackBase : public TrackBase {
@@ -97,7 +97,6 @@ protected:
 
 private:
     virtual bool isValidKind(const AtomicString&) const = 0;
-    virtual const AtomicString& defaultKindKeyword() const = 0;
 
     AtomicString m_kind;
 };

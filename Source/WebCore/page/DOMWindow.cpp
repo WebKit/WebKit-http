@@ -35,6 +35,7 @@
 #include "CSSRuleList.h"
 #include "Chrome.h"
 #include "ChromeClient.h"
+#include "ComposedTreeIterator.h"
 #include "ContentExtensionActions.h"
 #include "ContentExtensionRule.h"
 #include "Crypto.h"
@@ -87,9 +88,12 @@
 #include "Screen.h"
 #include "ScriptController.h"
 #include "SecurityOrigin.h"
+#include "SecurityOriginData.h"
 #include "SecurityPolicy.h"
+#include "SelectorQuery.h"
 #include "SerializedScriptValue.h"
 #include "Settings.h"
+#include "StaticNodeList.h"
 #include "Storage.h"
 #include "StorageArea.h"
 #include "StorageNamespace.h"
@@ -112,6 +116,7 @@
 #include <wtf/MathExtras.h>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/Ref.h>
+#include <wtf/Variant.h>
 #include <wtf/text/WTFString.h>
 
 #if ENABLE(USER_MESSAGE_HANDLERS)
@@ -130,6 +135,10 @@
 
 #if ENABLE(GAMEPAD)
 #include "GamepadManager.h"
+#endif
+
+#if ENABLE(POINTER_LOCK)
+#include "PointerLockController.h"
 #endif
 
 #if PLATFORM(IOS)
@@ -631,6 +640,33 @@ CustomElementRegistry& DOMWindow::ensureCustomElementRegistry()
     return *m_customElementRegistry;
 }
 
+ExceptionOr<Ref<NodeList>> DOMWindow::collectMatchingElementsInFlatTree(Node& scope, const String& selectors)
+{
+    if (!m_frame)
+        return Exception { NOT_SUPPORTED_ERR };
+
+    Document* document = m_frame->document();
+    if (!document)
+        return Exception { NOT_SUPPORTED_ERR };
+
+    auto queryOrException = document->selectorQueryForString(selectors);
+    if (queryOrException.hasException())
+        return queryOrException.releaseException();
+
+    if (!is<ContainerNode>(scope))
+        return Ref<NodeList> { StaticElementList::create() };
+
+    SelectorQuery& query = queryOrException.releaseReturnValue();
+
+    Vector<Ref<Element>> result;
+    for (auto& node : composedTreeDescendants(downcast<ContainerNode>(scope))) {
+        if (is<Element>(node) && query.matches(downcast<Element>(node)))
+            result.append(downcast<Element>(node));
+    }
+
+    return Ref<NodeList> { StaticElementList::create(WTFMove(result)) };
+}
+
 #if ENABLE(ORIENTATION_EVENTS)
 
 int DOMWindow::orientation() const
@@ -839,7 +875,7 @@ ExceptionOr<Storage*> DOMWindow::sessionStorage() const
     if (!page)
         return nullptr;
 
-    auto storageArea = page->sessionStorage()->storageArea(document->securityOrigin());
+    auto storageArea = page->sessionStorage()->storageArea(SecurityOriginData::fromSecurityOrigin(*document->securityOrigin()));
     if (!storageArea->canAccessStorage(m_frame))
         return Exception { SECURITY_ERR };
 
@@ -888,12 +924,12 @@ ExceptionOr<Storage*> DOMWindow::localStorage() const
     return m_localStorage.get();
 }
 
-ExceptionOr<void> DOMWindow::postMessage(Ref<SerializedScriptValue>&& message, Vector<RefPtr<MessagePort>>&& ports, const String& targetOrigin, DOMWindow& source)
+ExceptionOr<void> DOMWindow::postMessage(JSC::ExecState& state, DOMWindow& callerWindow, JSC::JSValue messageValue, const String& targetOrigin, Vector<JSC::Strong<JSC::JSObject>>&& transfer)
 {
     if (!isCurrentlyDisplayedInFrame())
         return { };
 
-    Document* sourceDocument = source.document();
+    Document* sourceDocument = callerWindow.document();
 
     // Compute the target origin.  We need to do this synchronously in order
     // to generate the SYNTAX_ERR exception correctly.
@@ -909,6 +945,11 @@ ExceptionOr<void> DOMWindow::postMessage(Ref<SerializedScriptValue>&& message, V
         if (target->isUnique())
             return Exception { SYNTAX_ERR };
     }
+
+    Vector<RefPtr<MessagePort>> ports;
+    auto message = SerializedScriptValue::create(state, messageValue, WTFMove(transfer), ports);
+    if (message.hasException())
+        return message.releaseException();
 
     auto channels = MessagePort::disentanglePorts(WTFMove(ports));
     if (channels.hasException())
@@ -926,7 +967,7 @@ ExceptionOr<void> DOMWindow::postMessage(Ref<SerializedScriptValue>&& message, V
         stackTrace = createScriptCallStack(JSMainThreadExecState::currentState(), ScriptCallStack::maxCallStackSizeToCapture);
 
     // Schedule the message.
-    auto* timer = new PostMessageTimer(*this, WTFMove(message), sourceOrigin, source, channels.releaseReturnValue(), WTFMove(target), WTFMove(stackTrace));
+    auto* timer = new PostMessageTimer(*this, message.releaseReturnValue(), sourceOrigin, callerWindow, channels.releaseReturnValue(), WTFMove(target), WTFMove(stackTrace));
     timer->startOneShot(0);
 
     return { };
@@ -1104,6 +1145,9 @@ void DOMWindow::alert(const String& message)
     }
 
     m_frame->document()->updateStyleIfNeeded();
+#if ENABLE(POINTER_LOCK)
+    page->pointerLockController().requestPointerUnlock();
+#endif
 
     page->chrome().runJavaScriptAlert(m_frame, message);
 }
@@ -1123,6 +1167,9 @@ bool DOMWindow::confirm(const String& message)
     }
 
     m_frame->document()->updateStyleIfNeeded();
+#if ENABLE(POINTER_LOCK)
+    page->pointerLockController().requestPointerUnlock();
+#endif
 
     return page->chrome().runJavaScriptConfirm(m_frame, message);
 }
@@ -1142,6 +1189,9 @@ String DOMWindow::prompt(const String& message, const String& defaultValue)
     }
 
     m_frame->document()->updateStyleIfNeeded();
+#if ENABLE(POINTER_LOCK)
+    page->pointerLockController().requestPointerUnlock();
+#endif
 
     String returnValue;
     if (page->chrome().runJavaScriptPrompt(m_frame, message, defaultValue, returnValue))
@@ -1157,7 +1207,7 @@ bool DOMWindow::find(const String& string, bool caseSensitive, bool backwards, b
 
     // FIXME (13016): Support wholeWord, searchInFrames and showDialog.    
     FindOptions options = (backwards ? Backwards : 0) | (caseSensitive ? 0 : CaseInsensitive) | (wrap ? WrapAround : 0);
-    return m_frame->editor().findString(string, options);
+    return m_frame->editor().findString(string, options | DoNotTraverseFlatTree);
 }
 
 bool DOMWindow::offscreenBuffering() const
@@ -1491,7 +1541,7 @@ double DOMWindow::devicePixelRatio() const
 
 void DOMWindow::scrollBy(const ScrollToOptions& options) const
 {
-    return scrollBy(options.left.valueOr(0), options.top.valueOr(0));
+    return scrollBy(options.left.value_or(0), options.top.value_or(0));
 }
 
 void DOMWindow::scrollBy(double x, double y) const
@@ -1662,26 +1712,30 @@ void DOMWindow::clearInterval(int timeoutId)
 
 #if ENABLE(REQUEST_ANIMATION_FRAME)
 
-int DOMWindow::requestAnimationFrame(PassRefPtr<RequestAnimationFrameCallback> callback)
+int DOMWindow::requestAnimationFrame(Ref<RequestAnimationFrameCallback>&& callback)
 {
     callback->m_useLegacyTimeBase = false;
-    if (Document* d = document())
-        return d->requestAnimationFrame(callback);
-    return 0;
+    auto* document = this->document();
+    if (!document)
+        return 0;
+    return document->requestAnimationFrame(WTFMove(callback));
 }
 
-int DOMWindow::webkitRequestAnimationFrame(PassRefPtr<RequestAnimationFrameCallback> callback)
+int DOMWindow::webkitRequestAnimationFrame(Ref<RequestAnimationFrameCallback>&& callback)
 {
     callback->m_useLegacyTimeBase = true;
-    if (Document* d = document())
-        return d->requestAnimationFrame(callback);
-    return 0;
+    auto* document = this->document();
+    if (!document)
+        return 0;
+    return document->requestAnimationFrame(WTFMove(callback));
 }
 
 void DOMWindow::cancelAnimationFrame(int id)
 {
-    if (Document* d = document())
-        d->cancelAnimationFrame(id);
+    auto* document = this->document();
+    if (!document)
+        return;
+    document->cancelAnimationFrame(id);
 }
 
 #endif
@@ -2195,9 +2249,9 @@ RefPtr<DOMWindow> DOMWindow::open(const String& urlString, const AtomicString& f
 #endif
 
     if (!firstWindow.allowPopUp()) {
-        // Because FrameTree::find() returns true for empty strings, we must check for empty frame names.
+        // Because FrameTree::findFrameForNavigation() returns true for empty strings, we must check for empty frame names.
         // Otherwise, illegitimate window.open() calls with no name will pass right through the popup blocker.
-        if (frameName.isEmpty() || !m_frame->tree().find(frameName))
+        if (frameName.isEmpty() || !m_frame->loader().findFrameForNavigation(frameName, activeDocument))
             return nullptr;
     }
 

@@ -93,13 +93,15 @@ public:
     void stopProducingData();
     bool isProducingData() const;
 
-    PlatformLayer* platformLayer() const;
     RefPtr<Image> currentFrameImage();
     void paintCurrentFrameInContext(GraphicsContext&, const FloatRect&);
 
     bool hasVideo() const;
     bool hasAudio() const;
     bool muted() const;
+
+    bool hasLocalVideoSource() const;
+    bool hasLocalAudioSource() const;
 
     FloatSize intrinsicSize() const;
 

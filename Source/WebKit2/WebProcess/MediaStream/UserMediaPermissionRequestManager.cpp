@@ -29,6 +29,7 @@
 #include <WebCore/Document.h>
 #include <WebCore/Frame.h>
 #include <WebCore/FrameLoader.h>
+#include <WebCore/MediaConstraintsImpl.h>
 #include <WebCore/SecurityOrigin.h>
 #include <WebCore/SecurityOriginData.h>
 
@@ -52,7 +53,7 @@ UserMediaPermissionRequestManager::UserMediaPermissionRequestManager(WebPage& pa
 UserMediaPermissionRequestManager::~UserMediaPermissionRequestManager()
 {
     for (auto& sandboxExtension : m_userMediaDeviceSandboxExtensions)
-        sandboxExtension->revoke();
+        sandboxExtension.value->revoke();
 }
 
 void UserMediaPermissionRequestManager::startUserMediaRequest(UserMediaRequest& request)
@@ -123,7 +124,11 @@ void UserMediaPermissionRequestManager::mediaCanStart(Document& document)
 
 void UserMediaPermissionRequestManager::removeMediaRequestFromMaps(UserMediaRequest& request)
 {
-    auto pendingRequests = m_blockedRequests.take(request.document());
+    Document* document = request.document();
+    if (!document)
+        return;
+
+    auto pendingRequests = m_blockedRequests.take(document);
     for (auto& pendingRequest : pendingRequests) {
         if (&request != pendingRequest.get())
             continue;
@@ -198,15 +203,21 @@ void UserMediaPermissionRequestManager::didCompleteMediaDeviceEnumeration(uint64
     request->setDeviceInfo(deviceList, mediaDeviceIdentifierHashSalt, hasPersistentAccess);
 }
 
-void UserMediaPermissionRequestManager::grantUserMediaDevicesSandboxExtension(const SandboxExtension::HandleArray& sandboxExtensionHandles)
+void UserMediaPermissionRequestManager::grantUserMediaDeviceSandboxExtensions(const MediaDeviceSandboxExtensions& extensions)
 {
-    ASSERT(m_userMediaDeviceSandboxExtensions.size() <= 2);
+    for (size_t i = 0; i < extensions.size(); i++) {
+        auto& extension = extensions[i];
+        extension.second->consume();
+        m_userMediaDeviceSandboxExtensions.add(extension.first, extension.second.copyRef());
+    }
+}
 
-    for (size_t i = 0; i < sandboxExtensionHandles.size(); i++) {
-        if (auto extension = SandboxExtension::create(sandboxExtensionHandles[i])) {
-            extension->consume();
-            m_userMediaDeviceSandboxExtensions.append(extension.release());
-        }
+void UserMediaPermissionRequestManager::revokeUserMediaDeviceSandboxExtensions(const Vector<String>& extensionIDs)
+{
+    for (const auto& extensionID : extensionIDs) {
+        auto extension = m_userMediaDeviceSandboxExtensions.take(extensionID);
+        if (extension)
+            extension->revoke();
     }
 }
 

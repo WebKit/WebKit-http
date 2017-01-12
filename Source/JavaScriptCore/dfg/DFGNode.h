@@ -459,7 +459,6 @@ public:
             
         case PhantomDirectArguments:
         case PhantomClonedArguments:
-        case PhantomCreateRest:
             // These pretend to be the empty value constant for the benefit of the DFG backend, which
             // otherwise wouldn't take kindly to a node that doesn't compute a value.
             return true;
@@ -473,7 +472,7 @@ public:
     {
         ASSERT(hasConstant());
         
-        if (op() == PhantomDirectArguments || op() == PhantomClonedArguments || op() == PhantomCreateRest) {
+        if (op() == PhantomDirectArguments || op() == PhantomClonedArguments) {
             // These pretend to be the empty value constant for the benefit of the DFG backend, which
             // otherwise wouldn't take kindly to a node that doesn't compute a value.
             return FrozenValue::emptySingleton();
@@ -587,7 +586,7 @@ public:
 
     void convertToPhantomNewFunction()
     {
-        ASSERT(m_op == NewFunction || m_op == NewGeneratorFunction);
+        ASSERT(m_op == NewFunction || m_op == NewGeneratorFunction || m_op == NewAsyncFunction);
         m_op = PhantomNewFunction;
         m_flags |= NodeMustGenerate;
         m_opInfo = OpInfoWrapper();
@@ -599,6 +598,16 @@ public:
     {
         ASSERT(m_op == NewGeneratorFunction);
         m_op = PhantomNewGeneratorFunction;
+        m_flags |= NodeMustGenerate;
+        m_opInfo = OpInfoWrapper();
+        m_opInfo2 = OpInfoWrapper();
+        children = AdjacencyList();
+    }
+
+    void convertToPhantomNewAsyncFunction()
+    {
+        ASSERT(m_op == NewAsyncFunction);
+        m_op = PhantomNewAsyncFunction;
         m_flags |= NodeMustGenerate;
         m_opInfo = OpInfoWrapper();
         m_opInfo2 = OpInfoWrapper();
@@ -1063,7 +1072,7 @@ public:
 
     BitVector* bitVector()
     {
-        ASSERT(op() == NewArrayWithSpread);
+        ASSERT(op() == NewArrayWithSpread || op() == PhantomNewArrayWithSpread);
         return m_opInfo.as<BitVector*>();
     }
 
@@ -1498,6 +1507,7 @@ public:
         case OverridesHasInstance:
         case NewFunction:
         case NewGeneratorFunction:
+        case NewAsyncFunction:
         case CreateActivation:
         case MaterializeCreateActivation:
         case NewRegexp:
@@ -1733,6 +1743,7 @@ public:
         switch (op()) {
         case NewFunction:
         case NewGeneratorFunction:
+        case NewAsyncFunction:
             return true;
         default:
             return false;
@@ -1744,6 +1755,7 @@ public:
         switch (op()) {
         case PhantomNewFunction:
         case PhantomNewGeneratorFunction:
+        case PhantomNewAsyncFunction:
             return true;
         default:
             return false;
@@ -1756,9 +1768,12 @@ public:
         case PhantomNewObject:
         case PhantomDirectArguments:
         case PhantomCreateRest:
+        case PhantomSpread:
+        case PhantomNewArrayWithSpread:
         case PhantomClonedArguments:
         case PhantomNewFunction:
         case PhantomNewGeneratorFunction:
+        case PhantomNewAsyncFunction:
         case PhantomCreateActivation:
             return true;
         default:

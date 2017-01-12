@@ -31,7 +31,6 @@ list(APPEND DatabaseProcess_SOURCES
 list(APPEND WebKit2_SOURCES
     DatabaseProcess/wpe/DatabaseProcessMainWPE.cpp
 
-    NetworkProcess/CustomProtocols/soup/CustomProtocolManagerImpl.cpp
     NetworkProcess/CustomProtocols/soup/CustomProtocolManagerSoup.cpp
 
     NetworkProcess/Downloads/wpe/DownloadSoupErrorsWPE.cpp
@@ -94,7 +93,6 @@ list(APPEND WebKit2_SOURCES
     UIProcess/API/C/cairo/WKIconDatabaseCairo.cpp
 
     UIProcess/API/C/soup/WKCookieManagerSoup.cpp
-    UIProcess/API/C/soup/WKSoupCustomProtocolRequestManager.cpp
 
     UIProcess/API/C/wpe/WKView.cpp
 
@@ -118,8 +116,6 @@ list(APPEND WebKit2_SOURCES
     UIProcess/Launcher/wpe/ProcessLauncherWPE.cpp
 
     UIProcess/Network/CustomProtocols/soup/CustomProtocolManagerProxySoup.cpp
-    UIProcess/Network/CustomProtocols/soup/WebSoupCustomProtocolRequestManagerClient.cpp
-    UIProcess/Network/CustomProtocols/soup/WebSoupCustomProtocolRequestManager.cpp
 
     UIProcess/Plugins/unix/PluginInfoStoreUnix.cpp
     UIProcess/Plugins/unix/PluginProcessProxyUnix.cpp
@@ -336,9 +332,14 @@ list(APPEND WPEWebInspectorResources_LIBRARIES
     ${GLIB_GIO_LIBRARIES}
 )
 
+list(APPEND WPEWebInspectorResources_INCLUDE_DIRECTORIES
+    ${GLIB_INCLUDE_DIRS}
+)
+
 add_library(WPEWebInspectorResources SHARED ${WPEWebInspectorResources_DERIVED_SOURCES})
 add_dependencies(WPEWebInspectorResources WebKit2)
 target_link_libraries(WPEWebInspectorResources ${WPEWebInspectorResources_LIBRARIES})
+target_include_directories(WPEWebInspectorResources PUBLIC ${WPEWebInspectorResources_INCLUDE_DIRECTORIES})
 install(TARGETS WPEWebInspectorResources DESTINATION "${LIB_INSTALL_DIR}")
 
 set(WPE_INSTALLED_WEBKIT_HEADERS

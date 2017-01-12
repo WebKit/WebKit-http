@@ -23,11 +23,54 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+:host(audio) {
+    width: 200px;
+    height: 50px;
+}
+
 /* We need to use relative positioning due to webkit.org/b/163603 */
-.media-controls {
+.media-controls-container {
     position: relative;
+}
+
+.media-controls-container,
+.media-controls-container > * {
+    left: 0;
+    top: 0;
+    width: 100%;
+}
+
+.media-controls-container,
+.media-controls-container * {
+    -webkit-text-zoom: reset;
+    -webkit-text-size-adjust: auto;
+}
+
+.media-controls-container > * {
+    position: absolute;
+}
+
+.media-controls {
+    height: 100%;
+    font-family: -apple-system;
+    -webkit-user-select: none;
+    cursor: default;
+}
+
+:host(:-webkit-animating-full-screen-transition) .media-controls {
+    display: none;
 }
 
 .media-controls > .controls-bar {
     position: absolute;
+}
+
+.media-controls.fade-in {
+    animation-name: fade-in;
+    animation-duration: 350ms;
+}
+
+@keyframes fade-in {
+    from { opacity: 0 }
+    to   { opacity: 1 }
 }

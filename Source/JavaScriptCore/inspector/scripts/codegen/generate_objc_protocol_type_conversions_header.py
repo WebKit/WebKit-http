@@ -30,7 +30,7 @@ import string
 from string import Template
 
 from generator import Generator
-from models import EnumType
+from models import EnumType, Frameworks
 from objc_generator import ObjCGenerator
 from objc_generator_templates import ObjCGeneratorTemplates as ObjCTemplates
 
@@ -44,19 +44,19 @@ def add_newline(lines):
 
 
 class ObjCProtocolTypeConversionsHeaderGenerator(ObjCGenerator):
-    def __init__(self, model, input_filepath):
-        ObjCGenerator.__init__(self, model, input_filepath)
+    def __init__(self, *args, **kwargs):
+        ObjCGenerator.__init__(self, *args, **kwargs)
 
     def output_filename(self):
         return '%sTypeConversions.h' % self.protocol_name()
 
     def domains_to_generate(self):
-        return filter(ObjCGenerator.should_generate_domain_types_filter(self.model()), Generator.domains_to_generate(self))
+        return filter(self.should_generate_types_for_domain, Generator.domains_to_generate(self))
 
     def generate_output(self):
         headers = [
             '"%s.h"' % self.protocol_name(),
-            '"%sArrayConversions.h"' % ObjCGenerator.OBJC_STATIC_PREFIX,
+            Generator.string_for_file_include('%sArrayConversions.h' % ObjCGenerator.OBJC_STATIC_PREFIX, Frameworks.WebInspector, self.model().framework),
         ]
         headers.sort()
 
@@ -77,7 +77,7 @@ class ObjCProtocolTypeConversionsHeaderGenerator(ObjCGenerator):
         lines = []
 
         # Type enums and member enums.
-        for declaration in domain.type_declarations:
+        for declaration in self.type_declarations_for_domain(domain):
             if isinstance(declaration.type, EnumType):
                 add_newline(lines)
                 lines.append(self._generate_anonymous_enum_conversion_for_declaration(domain, declaration))
@@ -88,7 +88,7 @@ class ObjCProtocolTypeConversionsHeaderGenerator(ObjCGenerator):
                         lines.append(self._generate_anonymous_enum_conversion_for_member(domain, declaration, member))
 
         # Anonymous command enums.
-        for command in domain.commands:
+        for command in self.commands_for_domain(domain):
             for parameter in command.call_parameters:
                 if (isinstance(parameter.type, EnumType) and parameter.type.is_anonymous):
                     add_newline(lines)
@@ -99,7 +99,7 @@ class ObjCProtocolTypeConversionsHeaderGenerator(ObjCGenerator):
                     lines.append(self._generate_anonymous_enum_conversion_for_parameter(domain, command.command_name, parameter))
 
         # Anonymous event enums.
-        for event in domain.events:
+        for event in self.events_for_domain(domain):
             for parameter in event.event_parameters:
                 if (isinstance(parameter.type, EnumType) and parameter.type.is_anonymous):
                     add_newline(lines)

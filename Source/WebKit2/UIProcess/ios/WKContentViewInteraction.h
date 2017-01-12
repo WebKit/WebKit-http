@@ -159,6 +159,8 @@ struct WKAutoCorrectionData {
 
     WebKit::WKSelectionDrawingInfo _lastSelectionDrawingInfo;
 
+    std::optional<WebKit::InteractionInformationRequest> _outstandingPositionInformationRequest;
+
     BOOL _isEditable;
     BOOL _showingTextStyleOptions;
     BOOL _hasValidPositionInformation;
@@ -176,6 +178,7 @@ struct WKAutoCorrectionData {
     BOOL _showDebugTapHighlightsForFastClicking;
 
     BOOL _resigningFirstResponder;
+    BOOL _needsDeferredEndScrollingSelectionUpdate;
 }
 
 @end
@@ -184,6 +187,7 @@ struct WKAutoCorrectionData {
 
 @property (nonatomic, readonly) CGPoint lastInteractionLocation;
 @property (nonatomic, readonly) BOOL isEditable;
+@property (nonatomic, readonly) BOOL shouldHideSelectionWhenScrolling;
 @property (nonatomic, readonly) const WebKit::InteractionInformationAtPosition& positionInformation;
 @property (nonatomic, readonly) const WebKit::WKAutoCorrectionData& autocorrectionData;
 @property (nonatomic, readonly) const WebKit::AssistedNodeInformation& assistedNodeInformation;
@@ -226,6 +230,7 @@ struct WKAutoCorrectionData {
 - (void)_becomeFirstResponderWithSelectionMovingForward:(BOOL)selectingForward completionHandler:(void (^)(BOOL didBecomeFirstResponder))completionHandler;
 - (void)_setDoubleTapGesturesEnabled:(BOOL)enabled;
 - (NSArray *)_dataDetectionResults;
+- (NSArray<NSValue *> *)_uiTextSelectionRects;
 @end
 
 @interface WKContentView (WKTesting)

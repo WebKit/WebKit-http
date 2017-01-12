@@ -29,16 +29,19 @@
 #if ENABLE(WEBASSEMBLY)
 
 #include "JSCInlines.h"
+#include "JSWebAssemblyCallee.h"
 #include "WasmFormat.h"
 #include "WasmMemory.h"
 #include <wtf/StdLibExtras.h>
 
 namespace JSC {
 
-JSWebAssemblyModule* JSWebAssemblyModule::create(VM& vm, Structure* structure, std::unique_ptr<Wasm::ModuleInformation>& moduleInformation, Wasm::CompiledFunctions& compiledFunctions)
+const ClassInfo JSWebAssemblyModule::s_info = { "WebAssembly.Module", &Base::s_info, nullptr, CREATE_METHOD_TABLE(JSWebAssemblyModule) };
+
+JSWebAssemblyModule* JSWebAssemblyModule::create(VM& vm, Structure* structure, std::unique_ptr<Wasm::ModuleInformation>&& moduleInformation, Bag<CallLinkInfo>&& callLinkInfos, Vector<Wasm::WasmExitStubs>&& wasmExitStubs, SymbolTable* exportSymbolTable, unsigned calleeCount)
 {
-    auto* instance = new (NotNull, allocateCell<JSWebAssemblyModule>(vm.heap)) JSWebAssemblyModule(vm, structure, moduleInformation, compiledFunctions);
-    instance->finishCreation(vm);
+    auto* instance = new (NotNull, allocateCell<JSWebAssemblyModule>(vm.heap, allocationSize(calleeCount))) JSWebAssemblyModule(vm, structure, std::forward<std::unique_ptr<Wasm::ModuleInformation>>(moduleInformation), std::forward<Bag<CallLinkInfo>>(callLinkInfos), std::forward<Vector<Wasm::WasmExitStubs>>(wasmExitStubs), calleeCount);
+    instance->finishCreation(vm, exportSymbolTable);
     return instance;
 }
 
@@ -47,17 +50,21 @@ Structure* JSWebAssemblyModule::createStructure(VM& vm, JSGlobalObject* globalOb
     return Structure::create(vm, globalObject, prototype, TypeInfo(ObjectType, StructureFlags), info());
 }
 
-JSWebAssemblyModule::JSWebAssemblyModule(VM& vm, Structure* structure, std::unique_ptr<Wasm::ModuleInformation>& moduleInformation, Wasm::CompiledFunctions& compiledFunctions)
+JSWebAssemblyModule::JSWebAssemblyModule(VM& vm, Structure* structure, std::unique_ptr<Wasm::ModuleInformation>&& moduleInformation, Bag<CallLinkInfo>&& callLinkInfos, Vector<Wasm::WasmExitStubs>&& wasmExitStubs, unsigned calleeCount)
     : Base(vm, structure)
     , m_moduleInformation(WTFMove(moduleInformation))
-    , m_compiledFunctions(WTFMove(compiledFunctions))
+    , m_callLinkInfos(WTFMove(callLinkInfos))
+    , m_wasmExitStubs(WTFMove(wasmExitStubs))
+    , m_calleeCount(calleeCount)
 {
+    memset(callees(), 0, m_calleeCount * sizeof(WriteBarrier<JSWebAssemblyCallee>) * 2);
 }
 
-void JSWebAssemblyModule::finishCreation(VM& vm)
+void JSWebAssemblyModule::finishCreation(VM& vm, SymbolTable* exportSymbolTable)
 {
     Base::finishCreation(vm);
     ASSERT(inherits(info()));
+    m_exportSymbolTable.set(vm, this, exportSymbolTable);
 }
 
 void JSWebAssemblyModule::destroy(JSCell* cell)
@@ -67,13 +74,24 @@ void JSWebAssemblyModule::destroy(JSCell* cell)
 
 void JSWebAssemblyModule::visitChildren(JSCell* cell, SlotVisitor& visitor)
 {
-    auto* thisObject = jsCast<JSWebAssemblyModule*>(cell);
+    JSWebAssemblyModule* thisObject = jsCast<JSWebAssemblyModule*>(cell);
     ASSERT_GC_OBJECT_INHERITS(thisObject, info());
 
     Base::visitChildren(thisObject, visitor);
+    visitor.append(thisObject->m_exportSymbolTable);
+    for (unsigned i = 0; i < thisObject->m_calleeCount * 2; i++)
+        visitor.append(thisObject->callees()[i]);
+
+    visitor.addUnconditionalFinalizer(&thisObject->m_unconditionalFinalizer);
 }
 
-const ClassInfo JSWebAssemblyModule::s_info = { "WebAssembly.Module", &Base::s_info, 0, CREATE_METHOD_TABLE(JSWebAssemblyModule) };
+void JSWebAssemblyModule::UnconditionalFinalizer::finalizeUnconditionally()
+{
+    JSWebAssemblyModule* thisObject = bitwise_cast<JSWebAssemblyModule*>(
+        bitwise_cast<char*>(this) - OBJECT_OFFSETOF(JSWebAssemblyModule, m_unconditionalFinalizer));
+    for (auto iter = thisObject->m_callLinkInfos.begin(); !!iter; ++iter)
+        (*iter)->visitWeak(*thisObject->vm());
+}
 
 } // namespace JSC
 

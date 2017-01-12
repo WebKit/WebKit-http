@@ -20,6 +20,7 @@
 #include "config.h"
 #include "WebKitWebContext.h"
 
+#include "APICustomProtocolManagerClient.h"
 #include "APIDownloadClient.h"
 #include "APIPageConfiguration.h"
 #include "APIProcessPoolConfiguration.h"
@@ -30,6 +31,7 @@
 #include "WebCookieManagerProxy.h"
 #include "WebGeolocationManagerProxy.h"
 #include "WebKitCookieManagerPrivate.h"
+#include "WebKitCustomProtocolManagerClient.h"
 #include "WebKitDownloadClient.h"
 #include "WebKitDownloadPrivate.h"
 #include "WebKitFaviconDatabasePrivate.h"
@@ -38,8 +40,8 @@
 #include "WebKitNotificationProvider.h"
 #include "WebKitPluginPrivate.h"
 #include "WebKitPrivate.h"
-#include "WebKitRequestManagerClient.h"
 #include "WebKitSecurityManagerPrivate.h"
+#include "WebKitSecurityOriginPrivate.h"
 #include "WebKitSettingsPrivate.h"
 #include "WebKitURISchemeRequestPrivate.h"
 #include "WebKitUserContentManagerPrivate.h"
@@ -109,18 +111,13 @@ enum {
 enum {
     DOWNLOAD_STARTED,
     INITIALIZE_WEB_EXTENSIONS,
+    INITIALIZE_NOTIFICATION_PERMISSIONS,
 
     LAST_SIGNAL
 };
 
 class WebKitURISchemeHandler: public RefCounted<WebKitURISchemeHandler> {
 public:
-    WebKitURISchemeHandler()
-        : m_callback(0)
-        , m_userData(0)
-        , m_destroyNotify(0)
-    {
-    }
     WebKitURISchemeHandler(WebKitURISchemeRequestCallback callback, void* userData, GDestroyNotify destroyNotify)
         : m_callback(callback)
         , m_userData(userData)
@@ -147,9 +144,9 @@ public:
     }
 
 private:
-    WebKitURISchemeRequestCallback m_callback;
-    void* m_userData;
-    GDestroyNotify m_destroyNotify;
+    WebKitURISchemeRequestCallback m_callback { nullptr };
+    void* m_userData { nullptr };
+    GDestroyNotify m_destroyNotify { nullptr };
 };
 
 typedef HashMap<String, RefPtr<WebKitURISchemeHandler> > URISchemeHandlerMap;
@@ -162,7 +159,6 @@ struct _WebKitWebContextPrivate {
     GRefPtr<WebKitCookieManager> cookieManager;
     GRefPtr<WebKitFaviconDatabase> faviconDatabase;
     GRefPtr<WebKitSecurityManager> securityManager;
-    RefPtr<WebSoupCustomProtocolRequestManager> requestManager;
     URISchemeHandlerMap uriSchemeHandlers;
     URISchemeRequestMap uriSchemeRequests;
 #if ENABLE(GEOLOCATION)
@@ -275,8 +271,6 @@ static void webkitWebContextConstructed(GObject* object)
     if (!priv->websiteDataManager)
         priv->websiteDataManager = adoptGRef(webkitWebsiteDataManagerCreate(websiteDataStoreConfigurationForWebProcessPoolConfiguration(configuration)));
 
-    priv->requestManager = priv->processPool->supplement<WebSoupCustomProtocolRequestManager>();
-
     priv->tlsErrorsPolicy = WEBKIT_TLS_ERRORS_POLICY_FAIL;
     priv->processPool->setIgnoreTLSErrors(false);
 
@@ -287,13 +281,13 @@ static void webkitWebContextConstructed(GObject* object)
 
     attachInjectedBundleClientToContext(webContext);
     attachDownloadClientToContext(webContext);
-    attachRequestManagerClientToContext(webContext);
+    attachCustomProtocolManagerClientToContext(webContext);
 
 #if ENABLE(GEOLOCATION)
     priv->geolocationProvider = WebKitGeolocationProvider::create(priv->processPool->supplement<WebGeolocationManagerProxy>());
 #endif
 #if ENABLE(NOTIFICATIONS)
-    priv->notificationProvider = WebKitNotificationProvider::create(priv->processPool->supplement<WebNotificationManagerProxy>());
+    priv->notificationProvider = WebKitNotificationProvider::create(priv->processPool->supplement<WebNotificationManagerProxy>(), webContext);
 #endif
 }
 
@@ -304,6 +298,7 @@ static void webkitWebContextDispose(GObject* object)
         priv->clientsDetached = true;
         priv->processPool->initializeInjectedBundleClient(nullptr);
         priv->processPool->setDownloadClient(nullptr);
+        priv->processPool->setCustomProtocolManagerClient(nullptr);
     }
 
     G_OBJECT_CLASS(webkit_web_context_parent_class)->dispose(object);
@@ -390,6 +385,30 @@ static void webkit_web_context_class_init(WebKitWebContextClass* webContextClass
             G_TYPE_FROM_CLASS(gObjectClass),
             G_SIGNAL_RUN_LAST,
             G_STRUCT_OFFSET(WebKitWebContextClass, initialize_web_extensions),
+            nullptr, nullptr,
+            g_cclosure_marshal_VOID__VOID,
+            G_TYPE_NONE, 0);
+
+    /**
+     * WebKitWebContext::initialize-notification-permissions:
+     * @context: the #WebKitWebContext
+     *
+     * This signal is emitted when a #WebKitWebContext needs to set
+     * initial notification permissions for a web process. It is emitted
+     * when a new web process is about to be launched, and signals the
+     * most appropriate moment to use
+     * webkit_web_context_initialize_notification_permissions(). If no
+     * notification permissions have changed since the last time this
+     * signal was emitted, then there is no need to call
+     * webkit_web_context_initialize_notification_permissions() again.
+     *
+     * Since: 2.16
+     */
+    signals[INITIALIZE_NOTIFICATION_PERMISSIONS] =
+        g_signal_new("initialize-notification-permissions",
+            G_TYPE_FROM_CLASS(gObjectClass),
+            G_SIGNAL_RUN_LAST,
+            G_STRUCT_OFFSET(WebKitWebContextClass, initialize_notification_permissions),
             nullptr, nullptr,
             g_cclosure_marshal_VOID__VOID,
             G_TYPE_NONE, 0);
@@ -579,10 +598,11 @@ static DownloadsMap& downloadsMap()
  */
 WebKitDownload* webkit_web_context_download_uri(WebKitWebContext* context, const gchar* uri)
 {
-    g_return_val_if_fail(WEBKIT_IS_WEB_CONTEXT(context), 0);
-    g_return_val_if_fail(uri, 0);
+    g_return_val_if_fail(WEBKIT_IS_WEB_CONTEXT(context), nullptr);
+    g_return_val_if_fail(uri, nullptr);
 
-    return webkitWebContextStartDownload(context, uri, 0);
+    GRefPtr<WebKitDownload> download = webkitWebContextStartDownload(context, uri, nullptr);
+    return download.leakRef();
 }
 
 /**
@@ -848,8 +868,9 @@ void webkit_web_context_register_uri_scheme(WebKitWebContext* context, const cha
     g_return_if_fail(callback);
 
     RefPtr<WebKitURISchemeHandler> handler = adoptRef(new WebKitURISchemeHandler(callback, userData, destroyNotify));
-    context->priv->uriSchemeHandlers.set(String::fromUTF8(scheme), handler.get());
-    context->priv->requestManager->registerSchemeForCustomProtocol(String::fromUTF8(scheme));
+    auto addResult = context->priv->uriSchemeHandlers.set(String::fromUTF8(scheme), handler.get());
+    if (addResult.isNewEntry)
+        context->priv->processPool->registerSchemeForCustomProtocol(String::fromUTF8(scheme));
 }
 
 /**
@@ -1223,6 +1244,54 @@ guint webkit_web_context_get_web_process_count_limit(WebKitWebContext* context)
     return context->priv->processCountLimit;
 }
 
+static void addOriginToMap(WebKitSecurityOrigin* origin, HashMap<String, RefPtr<API::Object>>* map, bool allowed)
+{
+    String string = webkitSecurityOriginGetSecurityOrigin(origin).toString();
+    if (string != "null")
+        map->set(string, API::Boolean::create(allowed));
+}
+
+/**
+ * webkit_web_context_initialize_notification_permissions:
+ * @context: the #WebKitWebContext
+ * @allowed_origins: (element-type WebKitSecurityOrigin): a #GList of security origins
+ * @disallowed_origins: (element-type WebKitSecurityOrigin): a #GList of security origins
+ *
+ * Sets initial desktop notification permissions for the @context.
+ * @allowed_origins and @disallowed_origins must each be #GList of
+ * #WebKitSecurityOrigin objects representing origins that will,
+ * respectively, either always or never have permission to show desktop
+ * notifications. No #WebKitNotificationPermissionRequest will ever be
+ * generated for any of the security origins represented in
+ * @allowed_origins or @disallowed_origins. This function is necessary
+ * because some webpages proactively check whether they have permission
+ * to display notifications without ever creating a permission request.
+ *
+ * This function only affects web processes that have not already been
+ * created. The best time to call it is when handling
+ * #WebKitWebContext::initialize-notification-permissions so as to
+ * ensure that new web processes receive the most recent set of
+ * permissions.
+ *
+ * Since: 2.16
+ */
+void webkit_web_context_initialize_notification_permissions(WebKitWebContext* context, GList* allowedOrigins, GList* disallowedOrigins)
+{
+    HashMap<String, RefPtr<API::Object>> map;
+    g_list_foreach(allowedOrigins, [](gpointer data, gpointer userData) {
+        addOriginToMap(static_cast<WebKitSecurityOrigin*>(data), static_cast<HashMap<String, RefPtr<API::Object>>*>(userData), true);
+    }, &map);
+    g_list_foreach(disallowedOrigins, [](gpointer data, gpointer userData) {
+        addOriginToMap(static_cast<WebKitSecurityOrigin*>(data), static_cast<HashMap<String, RefPtr<API::Object>>*>(userData), false);
+    }, &map);
+    context->priv->notificationProvider->setNotificationPermissions(WTFMove(map));
+}
+
+void webkitWebContextInitializeNotificationPermissions(WebKitWebContext* context)
+{
+    g_signal_emit(context, signals[INITIALIZE_NOTIFICATION_PERMISSIONS], 0);
+}
+
 WebKitDownload* webkitWebContextGetOrCreateDownload(DownloadProxy* downloadProxy)
 {
     GRefPtr<WebKitDownload> download = downloadsMap().get(downloadProxy);
@@ -1237,10 +1306,7 @@ WebKitDownload* webkitWebContextGetOrCreateDownload(DownloadProxy* downloadProxy
 WebKitDownload* webkitWebContextStartDownload(WebKitWebContext* context, const char* uri, WebPageProxy* initiatingPage)
 {
     WebCore::ResourceRequest request(String::fromUTF8(uri));
-    DownloadProxy* downloadProxy = context->priv->processPool->download(initiatingPage, request);
-    WebKitDownload* download = webkitDownloadCreateForRequest(downloadProxy, request);
-    downloadsMap().set(downloadProxy, download);
-    return download;
+    return webkitWebContextGetOrCreateDownload(context->priv->processPool->download(initiatingPage, request));
 }
 
 void webkitWebContextRemoveDownload(DownloadProxy* downloadProxy)
@@ -1268,14 +1334,9 @@ WebProcessPool* webkitWebContextGetProcessPool(WebKitWebContext* context)
     return context->priv->processPool.get();
 }
 
-WebSoupCustomProtocolRequestManager* webkitWebContextGetRequestManager(WebKitWebContext* context)
+void webkitWebContextStartLoadingCustomProtocol(WebKitWebContext* context, uint64_t customProtocolID, const WebCore::ResourceRequest& resourceRequest, CustomProtocolManagerProxy& manager)
 {
-    return context->priv->requestManager.get();
-}
-
-void webkitWebContextStartLoadingCustomProtocol(WebKitWebContext* context, uint64_t customProtocolID, API::URLRequest* urlRequest)
-{
-    GRefPtr<WebKitURISchemeRequest> request = adoptGRef(webkitURISchemeRequestCreate(customProtocolID, context, urlRequest));
+    GRefPtr<WebKitURISchemeRequest> request = adoptGRef(webkitURISchemeRequestCreate(customProtocolID, context, resourceRequest, manager));
     String scheme(String::fromUTF8(webkit_uri_scheme_request_get_scheme(request.get())));
     RefPtr<WebKitURISchemeHandler> handler = context->priv->uriSchemeHandlers.get(scheme);
     ASSERT(handler.get());
@@ -1292,6 +1353,16 @@ void webkitWebContextStopLoadingCustomProtocol(WebKitWebContext* context, uint64
     if (!request.get())
         return;
     webkitURISchemeRequestCancel(request.get());
+}
+
+void webkitWebContextInvalidateCustomProtocolRequests(WebKitWebContext* context, CustomProtocolManagerProxy& manager)
+{
+    Vector<GRefPtr<WebKitURISchemeRequest>> requests;
+    copyValuesToVector(context->priv->uriSchemeRequests, requests);
+    for (auto& request : requests) {
+        if (webkitURISchemeRequestGetManager(request.get()) == &manager)
+            webkitURISchemeRequestInvalidate(request.get());
+    }
 }
 
 void webkitWebContextDidFinishLoadingCustomProtocol(WebKitWebContext* context, uint64_t customProtocolID)

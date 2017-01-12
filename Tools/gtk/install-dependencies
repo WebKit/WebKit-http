@@ -147,6 +147,7 @@ function installDependenciesWithApt {
         apache2 \
         curl \
         dbus-x11 \
+        gdb \
         libapache2-mod-bw \
         $(aptIfElse libapache2-mod-php7.0 libapache2-mod-php5) \
         libgpg-error-dev \
@@ -205,7 +206,8 @@ function installDependenciesWithApt {
         x11proto-xf86dri-dev \
         xfonts-utils \
         xtrans-dev \
-        xutils-dev"
+        xutils-dev \
+        yasm"
 
     # These are dependencies necessary for using webkit-patch
     packages="$packages \
@@ -290,6 +292,7 @@ function installDependenciesWithPacman {
     packages="$packages \
         apache \
         curl \
+        gdb \
         hunspell \
         hunspell-en \
         php-apache \
@@ -343,7 +346,8 @@ function installDependenciesWithPacman {
         xorg-font-utils \
         xorg-util-macros \
         xtrans \
-        xorg-utils"
+        xorg-utils \
+        yasm"
 
     # These are dependencies necessary for using webkit-patch
     packages="$packages \
@@ -411,6 +415,7 @@ function installDependenciesWithDnf {
     packages="$packages \
         curl \
         dbus-x11 \
+        gdb \
         hunspell-en \
         httpd \
         libgpg-error-devel \
@@ -459,7 +464,8 @@ function installDependenciesWithDnf {
         xorg-x11-font-utils \
         xorg-x11-proto-devel \
         xorg-x11-util-macros \
-        xorg-x11-xtrans-devel"
+        xorg-x11-xtrans-devel \
+        yasm"
 
     # These are dependencies necessary for using webkit-patch
     packages="$packages

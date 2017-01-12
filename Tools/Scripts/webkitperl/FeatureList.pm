@@ -51,7 +51,6 @@ BEGIN {
 my (
     $accelerated2DCanvasSupport,
     $allInOneBuild,
-    $asyncfunctionSyntax,
     $attachmentElementSupport,
     $canvasPathSupport,
     $canvasProxySupport,
@@ -177,10 +176,6 @@ my @features = (
     { option => "allinone-build", desc => "Toggle all-in-one build",
       define => "ENABLE_ALLINONE_BUILD", default => isWindows(), value => \$allInOneBuild },
 
-    { option => "asyncfunction-syntax", desc => "Toggle ES2017 async functions support",
-      define => "ENABLE_ES2017_ASYNCFUNCTION_SYNTAX", default => 0, value => \$asyncfunctionSyntax,
-      javascript => 1 },
-
     { option => "attachment-element", desc => "Toggle Attachment Element support",
       define => "ENABLE_ATTACHMENT_ELEMENT", default => 0, value => \$attachmentElementSupport },
 
@@ -203,7 +198,7 @@ my @features = (
       define => "ENABLE_CSS_COMPOSITING", default => isAppleWebKit(), value => \$cssCompositingSupport },
 
     { option => "css-device-adaptation", desc => "Toggle CSS Device Adaptation support",
-      define => "ENABLE_CSS_DEVICE_ADAPTATION", default => isEfl(), value => \$cssDeviceAdaptation },
+      define => "ENABLE_CSS_DEVICE_ADAPTATION", default => 0, value => \$cssDeviceAdaptation },
 
     { option => "css-grid-layout", desc => "Toggle CSS Grid Layout support",
       define => "ENABLE_CSS_GRID_LAYOUT", default => 1, value => \$cssGridLayoutSupport },
@@ -339,7 +334,7 @@ my @features = (
       define => "ENABLE_MEDIA_CAPTURE", default => isEfl(), value => \$mediaCaptureSupport },
 
     { option => "media-source", desc => "Toggle Media Source support",
-      define => "ENABLE_MEDIA_SOURCE", default => 0, value => \$mediaSourceSupport },
+      define => "ENABLE_MEDIA_SOURCE", default => isGtk(), value => \$mediaSourceSupport },
 
     { option => "media-statistics", desc => "Toggle Media Statistics support",
       define => "ENABLE_MEDIA_STATISTICS", default => 0, value => \$mediaStatisticsSupport },
@@ -352,10 +347,6 @@ my @features = (
 
     { option => "mhtml", desc => "Toggle MHTML support",
       define => "ENABLE_MHTML", default => (isGtk() || isEfl()), value => \$mhtmlSupport },
-
-    { option => "modules", desc => "Toggle ES6 modules support",
-      define => "ENABLE_ES6_MODULES", default => 0, value => \$modulesSupport,
-      javascript => 1 },
 
     { option => "mouse-cursor-scale", desc => "Toggle Scaled mouse cursor support",
       define => "ENABLE_MOUSE_CURSOR_SCALE", default => isEfl(), value => \$mouseCursorScaleSupport },

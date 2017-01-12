@@ -51,7 +51,7 @@ public:
     static bool hasConstantScope(ResolveType);
     static JSScope* constantScopeForCodeBlock(ResolveType, CodeBlock*);
 
-    static void collectVariablesUnderTDZ(JSScope*, VariableEnvironment& result);
+    static void collectClosureVariablesUnderTDZ(JSScope*, VariableEnvironment& result);
 
     static void visitChildren(JSCell*, SlotVisitor&);
 
@@ -146,7 +146,7 @@ inline JSScope* Register::scope() const
 
 inline JSGlobalObject* ExecState::lexicalGlobalObject() const
 {
-    return callee()->globalObject();
+    return jsCallee()->globalObject();
 }
 
 inline size_t JSScope::offsetOfNext()

@@ -37,7 +37,7 @@ const ClassInfo JSCustomGetterSetterFunction::s_info = { "Function", &Base::s_in
 
 EncodedJSValue JSC_HOST_CALL JSCustomGetterSetterFunction::customGetterSetterFunctionCall(ExecState* exec)
 {
-    JSCustomGetterSetterFunction* customGetterSetterFunction = jsCast<JSCustomGetterSetterFunction*>(exec->callee());
+    JSCustomGetterSetterFunction* customGetterSetterFunction = jsCast<JSCustomGetterSetterFunction*>(exec->jsCallee());
     CustomGetterSetter* customGetterSetter = customGetterSetterFunction->customGetterSetter();
 
     if (customGetterSetterFunction->isSetter()) {
@@ -82,7 +82,7 @@ void JSCustomGetterSetterFunction::visitChildren(JSCell* cell, SlotVisitor& visi
     ASSERT_GC_OBJECT_INHERITS(thisObject, info());
     Base::visitChildren(thisObject, visitor);
 
-    visitor.append(&thisObject->m_getterSetter);
+    visitor.append(thisObject->m_getterSetter);
 }
 
 void JSCustomGetterSetterFunction::finishCreation(VM& vm, NativeExecutable* executable, CustomGetterSetter* getterSetter, const String& name)

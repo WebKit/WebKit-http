@@ -90,7 +90,7 @@
 #import <WebCore/WindowsKeyboardCodes.h>
 #import <WebCore/htmlediting.h>
 #import <WebKitSystemInterface.h>
-#import <wtf/TemporaryChange.h>
+#import <wtf/SetForScope.h>
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
 #include <WebCore/MediaPlaybackTargetMac.h>
@@ -362,7 +362,7 @@ void WebPage::attributedSubstringForCharacterRangeAsync(const EditingRange& edit
         return;
     }
 
-    result.string = editingAttributedStringFromRange(*range);
+    result.string = editingAttributedStringFromRange(*range, IncludeImagesInAttributedString::No);
     NSAttributedString* attributedString = result.string.get();
     
     // WebCore::editingAttributedStringFromRange() insists on inserting a trailing
@@ -786,7 +786,7 @@ void WebPage::setTopOverhangImage(PassRefPtr<WebImage> image)
     layer->setSize(image->size());
     layer->setPosition(FloatPoint(0, -image->size().height()));
 
-    RetainPtr<CGImageRef> cgImage = image->bitmap()->makeCGImageCopy();
+    RetainPtr<CGImageRef> cgImage = image->bitmap().makeCGImageCopy();
     layer->platformLayer().contents = (id)cgImage.get();
 }
 
@@ -802,7 +802,7 @@ void WebPage::setBottomOverhangImage(PassRefPtr<WebImage> image)
 
     layer->setSize(image->size());
     
-    RetainPtr<CGImageRef> cgImage = image->bitmap()->makeCGImageCopy();
+    RetainPtr<CGImageRef> cgImage = image->bitmap().makeCGImageCopy();
     layer->platformLayer().contents = (id)cgImage.get();
 }
 

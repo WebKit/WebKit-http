@@ -59,6 +59,7 @@ webkit_web_context_set_disk_cache_directory
 webkit_web_context_allow_tls_certificate_for_host
 webkit_web_context_get_process_model
 webkit_web_context_set_process_model
+webkit_web_context_initialize_notification_permissions
 
 <SUBSECTION URI Scheme>
 WebKitURISchemeRequestCallback
@@ -670,6 +671,7 @@ WebKitNotification
 webkit_notification_get_id
 webkit_notification_get_title
 webkit_notification_get_body
+webkit_notification_get_tag
 webkit_notification_close
 webkit_notification_clicked
 
@@ -1207,6 +1209,26 @@ WEBKIT_SECURITY_MANAGER_GET_CLASS
 <SUBSECTION Private>
 WebKitSecurityManagerPrivate
 webkit_security_manager_get_type
+</SECTION>
+
+<SECTION>
+<FILE>WebKitSecurityOrigin</FILE>
+WebKitSecurityOrigin
+webkit_security_origin_new
+webkit_security_origin_new_for_uri
+webkit_security_origin_ref
+webkit_security_origin_unref
+webkit_security_origin_get_protocol
+webkit_security_origin_get_host
+webkit_security_origin_get_port
+webkit_security_origin_is_opaque
+webkit_security_origin_to_string
+
+<SUBSECTION Standard>
+WEBKIT_TYPE_SECURITY_ORIGIN
+
+<SUBSECTION Private>
+webkit_security_origin_get_type
 </SECTION>
 
 <SECTION>

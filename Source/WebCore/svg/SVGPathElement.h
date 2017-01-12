@@ -26,7 +26,7 @@
 #include "SVGGraphicsElement.h"
 #include "SVGNames.h"
 #include "SVGPathByteStream.h"
-#include "SVGPathSegList.h"
+#include "SVGPathSegListValues.h"
 
 namespace WebCore {
 
@@ -49,7 +49,8 @@ class SVGPathSegCurvetoCubicSmoothAbs;
 class SVGPathSegCurvetoCubicSmoothRel;
 class SVGPathSegCurvetoQuadraticSmoothAbs;
 class SVGPathSegCurvetoQuadraticSmoothRel;
-class SVGPathSegListPropertyTearOff;
+class SVGPathSegList;
+class SVGPoint;
 
 class SVGPathElement final : public SVGGraphicsElement,
                              public SVGExternalResourcesRequired {
@@ -57,7 +58,7 @@ public:
     static Ref<SVGPathElement> create(const QualifiedName&, Document&);
     
     float getTotalLength() const;
-    SVGPoint getPointAtLength(float distance) const;
+    Ref<SVGPoint> getPointAtLength(float distance) const;
     unsigned getPathSegAtLength(float distance) const;
 
     Ref<SVGPathSegClosePath> createSVGPathSegClosePath(SVGPathSegRole = PathSegUndefinedRole);
@@ -81,10 +82,10 @@ public:
     Ref<SVGPathSegCurvetoQuadraticSmoothRel> createSVGPathSegCurvetoQuadraticSmoothRel(float x, float y, SVGPathSegRole = PathSegUndefinedRole);
 
     // Used in the bindings only.
-    RefPtr<SVGPathSegListPropertyTearOff> pathSegList();
-    RefPtr<SVGPathSegListPropertyTearOff> animatedPathSegList();
-    RefPtr<SVGPathSegListPropertyTearOff> normalizedPathSegList();
-    RefPtr<SVGPathSegListPropertyTearOff> animatedNormalizedPathSegList();
+    Ref<SVGPathSegList> pathSegList();
+    Ref<SVGPathSegList> animatedPathSegList();
+    RefPtr<SVGPathSegList> normalizedPathSegList();
+    RefPtr<SVGPathSegList> animatedNormalizedPathSegList();
 
     const SVGPathByteStream& pathByteStream() const;
 
@@ -130,7 +131,7 @@ private:
 
 private:
     SVGPathByteStream m_pathByteStream;
-    mutable SVGSynchronizableAnimatedProperty<SVGPathSegList> m_pathSegList;
+    mutable SVGSynchronizableAnimatedProperty<SVGPathSegListValues> m_pathSegList;
     WeakPtrFactory<SVGPathElement> m_weakPtrFactory;
     bool m_isAnimValObserved;
 };

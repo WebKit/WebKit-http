@@ -30,6 +30,7 @@
 #include "CSSFontFeatureValue.h"
 #include "CSSParser.h"
 #include "CSSUnicodeRangeValue.h"
+#include "CSSValueList.h"
 #include "CSSValuePool.h"
 #include "Document.h"
 #include "FontVariantBuilder.h"
@@ -56,7 +57,7 @@ ExceptionOr<Ref<FontFace>> FontFace::create(JSC::ExecState& state, Document& doc
         return setFamilyResult.releaseException();
 
     if (source.isString()) {
-        auto value = FontFace::parseString(source.getString(&state), CSSPropertySrc);
+        auto value = FontFace::parseString(asString(source)->value(&state), CSSPropertySrc);
         if (!is<CSSValueList>(value.get()))
             return Exception { SYNTAX_ERR };
         CSSFontFace::appendSources(result->backing(), downcast<CSSValueList>(*value), &document, false);
@@ -126,10 +127,8 @@ WeakPtr<FontFace> FontFace::createWeakPtr() const
 
 RefPtr<CSSValue> FontFace::parseString(const String& string, CSSPropertyID propertyID)
 {
-    auto style = MutableStyleProperties::create();
-    if (CSSParser::parseValue(style, propertyID, string, true, HTMLStandardMode, nullptr) == CSSParser::ParseResult::Error)
-        return nullptr;
-    return style->getPropertyCSSValue(propertyID);
+    // FIXME: Should use the Document to get the right parsing mode.
+    return CSSParser::parseFontFaceDescriptor(propertyID, string, HTMLStandardMode);
 }
 
 ExceptionOr<void> FontFace::setFamily(const String& family)
@@ -196,7 +195,7 @@ ExceptionOr<void> FontFace::setVariant(const String& variant)
         return Exception { SYNTAX_ERR };
 
     auto style = MutableStyleProperties::create();
-    auto result = CSSParser::parseValue(style, CSSPropertyFontVariant, variant, true, HTMLStandardMode, nullptr);
+    auto result = CSSParser::parseValue(style, CSSPropertyFontVariant, variant, true, HTMLStandardMode);
     if (result == CSSParser::ParseResult::Error)
         return Exception { SYNTAX_ERR };
 
@@ -356,7 +355,6 @@ auto FontFace::status() const -> LoadStatus
 
 void FontFace::adopt(CSSFontFace& newFace)
 {
-    m_promise = Nullopt;
     m_backing->removeClient(*this);
     m_backing = newFace;
     m_backing->addClient(*this);
@@ -375,12 +373,12 @@ void FontFace::fontStateChanged(CSSFontFace& face, CSSFontFace::Status, CSSFontF
         break;
     case CSSFontFace::Status::Success:
         if (m_promise)
-            std::exchange(m_promise, Nullopt)->resolve(*this);
+            std::exchange(m_promise, std::nullopt)->resolve(*this);
         deref();
         return;
     case CSSFontFace::Status::Failure:
         if (m_promise)
-            std::exchange(m_promise, Nullopt)->reject(NETWORK_ERR);
+            std::exchange(m_promise, std::nullopt)->reject(NETWORK_ERR);
         deref();
         return;
     case CSSFontFace::Status::Pending:

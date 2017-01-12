@@ -36,6 +36,7 @@
 #include "EventNames.h"
 #include "JSRTCSessionDescription.h"
 #include "MediaEndpointSessionConfiguration.h"
+#include "MediaEndpointSessionDescription.h"
 #include "MediaStream.h"
 #include "MediaStreamEvent.h"
 #include "MediaStreamTrack.h"
@@ -56,6 +57,9 @@ namespace WebCore {
 
 using namespace PeerConnection;
 using namespace PeerConnectionStates;
+
+using MediaDescriptionVector = Vector<PeerMediaDescription>;
+using RtpTransceiverVector = Vector<RefPtr<RTCRtpTransceiver>>;
 
 // We use base64 to generate the random strings so we need a size that avoids padding to get ice-chars.
 static const size_t cnameSize = 18;
@@ -81,7 +85,7 @@ static String randomString(size_t size)
 MediaEndpointPeerConnection::MediaEndpointPeerConnection(RTCPeerConnection& peerConnection)
     : PeerConnectionBackend(peerConnection)
     , m_mediaEndpoint(MediaEndpoint::create(*this))
-    , m_sdpProcessor(std::unique_ptr<SDPProcessor>(new SDPProcessor(m_peerConnection.scriptExecutionContext())))
+    , m_sdpProcessor(std::make_unique<SDPProcessor>(m_peerConnection.scriptExecutionContext()))
     , m_cname(randomString(cnameSize))
     , m_iceUfrag(randomString(iceUfragSize))
     , m_icePassword(randomString(icePasswordSize))
@@ -409,10 +413,7 @@ void MediaEndpointPeerConnection::setLocalDescriptionTask(RefPtr<RTCSessionDescr
         break;
     }
 
-    if (newSignalingState != m_peerConnection.internalSignalingState()) {
-        m_peerConnection.setSignalingState(newSignalingState);
-        m_peerConnection.fireEvent(Event::create(eventNames().signalingstatechangeEvent, false, false));
-    }
+    updateSignalingState(newSignalingState);
 
     if (m_peerConnection.internalIceGatheringState() == IceGatheringState::New && mediaDescriptions.size())
         m_peerConnection.updateIceGatheringState(IceGatheringState::Gathering);
@@ -578,11 +579,7 @@ void MediaEndpointPeerConnection::setRemoteDescriptionTask(RefPtr<RTCSessionDesc
         break;
     }
 
-    if (newSignalingState != m_peerConnection.internalSignalingState()) {
-        m_peerConnection.setSignalingState(newSignalingState);
-        m_peerConnection.fireEvent(Event::create(eventNames().signalingstatechangeEvent, false, false));
-    }
-
+    updateSignalingState(newSignalingState);
     setRemoteDescriptionSucceeded();
 }
 
@@ -601,21 +598,9 @@ RefPtr<RTCSessionDescription> MediaEndpointPeerConnection::pendingRemoteDescript
     return createRTCSessionDescription(m_pendingRemoteDescription.get());
 }
 
-void MediaEndpointPeerConnection::setConfiguration(RTCConfiguration& configuration)
+void MediaEndpointPeerConnection::setConfiguration(MediaEndpointConfiguration&& configuration)
 {
-    Vector<MediaEndpointConfiguration::IceServerInfo> iceServers;
-    if (configuration.iceServers().size()) {
-        iceServers.reserveInitialCapacity(configuration.iceServers().size());
-        for (auto& server : configuration.iceServers()) {
-            Vector<URL> urls;
-            urls.reserveInitialCapacity(server->urls().size());
-            for (auto& url : server->urls())
-                urls.uncheckedAppend(URL(URL(), url));
-            iceServers.uncheckedAppend(MediaEndpointConfiguration::IceServerInfo { WTFMove(urls), server->credential(), server->username() });
-        }
-    }
-
-    m_mediaEndpoint->setConfiguration({ WTFMove(iceServers), configuration.iceTransportPolicy(), configuration.bundlePolicy() });
+    m_mediaEndpoint->setConfiguration(WTFMove(configuration));
 }
 
 void MediaEndpointPeerConnection::doAddIceCandidate(RTCIceCandidate& rtcCandidate)
@@ -710,7 +695,7 @@ std::unique_ptr<RTCDataChannelHandler> MediaEndpointPeerConnection::createDataCh
     return m_mediaEndpoint->createDataChannelHandler(label, options);
 }
 
-void MediaEndpointPeerConnection::replaceTrack(RTCRtpSender& sender, RefPtr<MediaStreamTrack>&& withTrack, PeerConnection::VoidPromise&& promise)
+void MediaEndpointPeerConnection::replaceTrack(RTCRtpSender& sender, RefPtr<MediaStreamTrack>&& withTrack, DOMPromise<void>&& promise)
 {
     RTCRtpTransceiver* transceiver = matchTransceiver(m_peerConnection.getTransceivers(), [&sender] (RTCRtpTransceiver& current) {
         return &current.sender() == &sender;
@@ -730,7 +715,7 @@ void MediaEndpointPeerConnection::replaceTrack(RTCRtpSender& sender, RefPtr<Medi
     });
 }
 
-void MediaEndpointPeerConnection::replaceTrackTask(RTCRtpSender& sender, const String& mid, RefPtr<MediaStreamTrack>&& withTrack, PeerConnection::VoidPromise& promise)
+void MediaEndpointPeerConnection::replaceTrackTask(RTCRtpSender& sender, const String& mid, RefPtr<MediaStreamTrack>&& withTrack, DOMPromise<void>& promise)
 {
     if (m_peerConnection.internalSignalingState() == SignalingState::Closed)
         return;

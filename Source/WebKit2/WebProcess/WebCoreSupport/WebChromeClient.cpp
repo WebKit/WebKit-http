@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2017 Apple Inc. All rights reserved.
  * Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies).
  *
  * Redistribution and use in source and binary forms, with or without
@@ -680,11 +680,12 @@ void WebChromeClient::exceededDatabaseQuota(Frame* frame, const String& database
     if (!origin)
         return;
 
+    auto originData = SecurityOriginData::fromSecurityOrigin(*origin);
     auto& tracker = DatabaseTracker::singleton();
-    auto currentQuota = tracker.quota(*origin);
-    auto currentOriginUsage = tracker.usage(*origin);
+    auto currentQuota = tracker.quota(originData);
+    auto currentOriginUsage = tracker.usage(originData);
     uint64_t newQuota = 0;
-    RefPtr<API::SecurityOrigin> securityOrigin = API::SecurityOrigin::create(WebCore::SecurityOrigin::createFromDatabaseIdentifier(WebCore::SecurityOriginData::fromSecurityOrigin(*origin).databaseIdentifier()));
+    RefPtr<API::SecurityOrigin> securityOrigin = API::SecurityOrigin::create(WebCore::SecurityOriginData::fromDatabaseIdentifier(WebCore::SecurityOriginData::fromSecurityOrigin(*origin).databaseIdentifier())->securityOrigin());
     newQuota = m_page->injectedBundleUIClient().didExceedDatabaseQuota(m_page, securityOrigin.get(), databaseName, details.displayName(), currentQuota, currentOriginUsage, details.currentUsage(), details.expectedUsage());
 
     if (!newQuota) {
@@ -693,7 +694,7 @@ void WebChromeClient::exceededDatabaseQuota(Frame* frame, const String& database
             Messages::WebPageProxy::ExceededDatabaseQuota::Reply(newQuota), m_page->pageID(), Seconds::infinity(), IPC::SendSyncOption::InformPlatformProcessWillSuspend);
     }
 
-    tracker.setQuota(*origin, newQuota);
+    tracker.setQuota(originData, newQuota);
 }
 
 void WebChromeClient::reachedMaxAppCacheSize(int64_t)
@@ -760,9 +761,9 @@ void WebChromeClient::runOpenPanel(Frame* frame, PassRefPtr<FileChooser> prpFile
     m_page->send(Messages::WebPageProxy::RunOpenPanel(webFrame->frameID(), SecurityOriginData::fromFrame(frame), fileChooser->settings()));
 }
 
-void WebChromeClient::loadIconForFiles(const Vector<String>& filenames, FileIconLoader* loader)
+void WebChromeClient::loadIconForFiles(const Vector<String>& filenames, FileIconLoader& loader)
 {
-    loader->notifyFinished(Icon::createIconForFiles(filenames));
+    loader.iconLoaded(Icon::createIconForFiles(filenames));
 }
 
 #if !PLATFORM(IOS)
@@ -969,7 +970,7 @@ void WebChromeClient::recommendedScrollbarStyleDidChange(ScrollbarStyle newStyle
     m_page->send(Messages::WebPageProxy::RecommendedScrollbarStyleDidChange(static_cast<int32_t>(newStyle)));
 }
 
-WTF::Optional<ScrollbarOverlayStyle> WebChromeClient::preferredScrollbarOverlayStyle()
+std::optional<ScrollbarOverlayStyle> WebChromeClient::preferredScrollbarOverlayStyle()
 {
     return m_page->scrollbarOverlayStyle(); 
 }

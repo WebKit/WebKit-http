@@ -56,6 +56,7 @@ list(APPEND test_webcore_LIBRARIES
     ${GDK3_LIBRARIES}
     ${GTK3_LIBRARIES}
 )
+ADD_WHOLE_ARCHIVE_TO_LIBRARIES(test_webcore_LIBRARIES)
 
 list(APPEND TestWebKitAPI_LIBRARIES
     ${GDK3_LIBRARIES}
@@ -75,6 +76,7 @@ add_executable(TestWebKit2
     ${TESTWEBKITAPI_DIR}/Tests/WebKit2/DOMWindowExtensionBasic.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebKit2/DOMWindowExtensionNoCache.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebKit2/DownloadDecideDestinationCrash.cpp
+    ${TESTWEBKITAPI_DIR}/Tests/WebKit2/EnumerateMediaDevices.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebKit2/EvaluateJavaScript.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebKit2/FailedLoad.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebKit2/Find.cpp
@@ -128,11 +130,15 @@ set_target_properties(TestWebKit2 PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${TESTWEBK
 add_executable(TestWebCore
     ${test_main_SOURCES}
     ${TESTWEBKITAPI_DIR}/TestsController.cpp
+    ${TESTWEBKITAPI_DIR}/Tests/WebCore/CSSParser.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebCore/FileSystem.cpp
+    ${TESTWEBKITAPI_DIR}/Tests/WebCore/GridPosition.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebCore/HTMLParserIdioms.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebCore/LayoutUnit.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebCore/PublicSuffix.cpp
+    ${TESTWEBKITAPI_DIR}/Tests/WebCore/SecurityOrigin.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebCore/SharedBuffer.cpp
+    ${TESTWEBKITAPI_DIR}/Tests/WebCore/SharedBufferTest.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebCore/URL.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebCore/URLParser.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebCore/UserAgentQuirks.cpp

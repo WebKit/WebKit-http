@@ -33,12 +33,17 @@ namespace WebCore {
 class PreloadRequest {
     WTF_MAKE_FAST_ALLOCATED;
 public:
-    PreloadRequest(const String& initiator, const String& resourceURL, const URL& baseURL, CachedResource::Type resourceType, const String& mediaAttribute)
+    enum class ModuleScript {
+        Yes,
+        No,
+    };
+    PreloadRequest(const String& initiator, const String& resourceURL, const URL& baseURL, CachedResource::Type resourceType, const String& mediaAttribute, ModuleScript moduleScript)
         : m_initiator(initiator)
         , m_resourceURL(resourceURL)
         , m_baseURL(baseURL.isolatedCopy())
         , m_resourceType(resourceType)
         , m_mediaAttribute(mediaAttribute)
+        , m_moduleScript(moduleScript)
     {
     }
 
@@ -48,6 +53,7 @@ public:
     const String& media() const { return m_mediaAttribute; }
     void setCharset(const String& charset) { m_charset = charset.isolatedCopy(); }
     void setCrossOriginMode(const String& mode) { m_crossOriginMode = mode; }
+    void setNonce(const String& nonce) { m_nonceAttribute = nonce; }
     CachedResource::Type resourceType() const { return m_resourceType; }
 
 private:
@@ -60,6 +66,8 @@ private:
     CachedResource::Type m_resourceType;
     String m_mediaAttribute;
     String m_crossOriginMode;
+    String m_nonceAttribute;
+    ModuleScript m_moduleScript;
 };
 
 typedef Vector<std::unique_ptr<PreloadRequest>> PreloadRequestStream;

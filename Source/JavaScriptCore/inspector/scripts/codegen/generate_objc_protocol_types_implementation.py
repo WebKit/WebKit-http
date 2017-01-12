@@ -44,14 +44,14 @@ def add_newline(lines):
 
 
 class ObjCProtocolTypesImplementationGenerator(ObjCGenerator):
-    def __init__(self, model, input_filepath):
-        ObjCGenerator.__init__(self, model, input_filepath)
+    def __init__(self, *args, **kwargs):
+        ObjCGenerator.__init__(self, *args, **kwargs)
 
     def output_filename(self):
         return '%sTypes.mm' % self.protocol_name()
 
     def domains_to_generate(self):
-        return filter(ObjCGenerator.should_generate_domain_types_filter(self.model()), Generator.domains_to_generate(self))
+        return filter(self.should_generate_types_for_domain, Generator.domains_to_generate(self))
 
     def generate_output(self):
         secondary_headers = [
@@ -81,7 +81,7 @@ class ObjCProtocolTypesImplementationGenerator(ObjCGenerator):
 
     def generate_type_implementations(self, domain):
         lines = []
-        for declaration in domain.type_declarations:
+        for declaration in self.type_declarations_for_domain(domain):
             if (isinstance(declaration.type, ObjectType)):
                 add_newline(lines)
                 lines.append(self.generate_type_implementation(domain, declaration))
@@ -147,7 +147,7 @@ class ObjCProtocolTypesImplementationGenerator(ObjCGenerator):
             pairs.append('%s:(%s)%s' % (var_name, objc_type, var_name))
         pairs[0] = ucfirst(pairs[0])
         lines = []
-        lines.append('- (instancetype)initWith%s;' % ' '.join(pairs))
+        lines.append('- (instancetype)initWith%s' % ' '.join(pairs))
         lines.append('{')
         lines.append('    if (!(self = [super init]))')
         lines.append('        return nil;')

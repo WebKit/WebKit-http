@@ -29,6 +29,7 @@
 
 #import "QuickTimePluginReplacement.h"
 
+#import "CommonVM.h"
 #import "Event.h"
 #import "HTMLPlugInElement.h"
 #import "HTMLVideoElement.h"
@@ -44,11 +45,11 @@
 #import "ScriptSourceCode.h"
 #import "Settings.h"
 #import "UserAgentScripts.h"
-#import <objc/runtime.h>
-#import <AVFoundation/AVFoundation.h>
+#import <AVFoundation/AVMetadataItem.h>
 #import <Foundation/NSString.h>
-#import <JavaScriptCore/JavaScriptCore.h>
 #import <JavaScriptCore/APICast.h>
+#import <JavaScriptCore/JavaScriptCore.h>
+#import <objc/runtime.h>
 #import <wtf/text/Base64.h>
 
 #import "CoreMediaSoftLink.h"
@@ -148,7 +149,7 @@ RenderPtr<RenderElement> QuickTimePluginReplacement::createElementRenderer(HTMLP
 
 DOMWrapperWorld& QuickTimePluginReplacement::isolatedWorld()
 {
-    static DOMWrapperWorld& isolatedWorld = DOMWrapperWorld::create(JSDOMWindow::commonVM()).leakRef();
+    static DOMWrapperWorld& isolatedWorld = DOMWrapperWorld::create(commonVM()).leakRef();
     return isolatedWorld;
 }
 

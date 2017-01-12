@@ -109,6 +109,7 @@ private:
     BOOL _allowsInlineMediaPlayback;
     BOOL _inlineMediaPlaybackRequiresPlaysInlineAttribute;
     BOOL _allowsInlineMediaPlaybackAfterFullscreen;
+    unsigned _contentUpdateFrequency;
 #endif
 
     BOOL _invisibleAutoplayNotPermitted;
@@ -124,6 +125,7 @@ private:
 #endif
     BOOL _initialCapitalizationEnabled;
     BOOL _waitsForPaintAfterViewDidMoveToWindow;
+    BOOL _controlledByAutomation;
 
 #if ENABLE(APPLE_PAY)
     BOOL _applePayEnabled;
@@ -147,6 +149,7 @@ private:
     else
         _mediaTypesRequiringUserActionForPlayback = WKAudiovisualMediaTypeAll;
     _ignoresViewportScaleLimits = NO;
+    _contentUpdateFrequency = 60;
 #else
     _mediaTypesRequiringUserActionForPlayback = WKAudiovisualMediaTypeNone;
     _mediaDataLoadsAutomatically = YES;
@@ -289,6 +292,7 @@ private:
     configuration->_mainContentUserGestureOverrideEnabled = self->_mainContentUserGestureOverrideEnabled;
     configuration->_initialCapitalizationEnabled = self->_initialCapitalizationEnabled;
     configuration->_waitsForPaintAfterViewDidMoveToWindow = self->_waitsForPaintAfterViewDidMoveToWindow;
+    configuration->_controlledByAutomation = self->_controlledByAutomation;
 
 #if PLATFORM(IOS)
     configuration->_allowsInlineMediaPlayback = self->_allowsInlineMediaPlayback;
@@ -298,6 +302,7 @@ private:
     configuration->_alwaysRunsAtForegroundPriority = _alwaysRunsAtForegroundPriority;
     configuration->_selectionGranularity = self->_selectionGranularity;
     configuration->_ignoresViewportScaleLimits = self->_ignoresViewportScaleLimits;
+    configuration->_contentUpdateFrequency = self->_contentUpdateFrequency;
 #endif
 #if PLATFORM(MAC)
     configuration->_userInterfaceDirectionPolicy = self->_userInterfaceDirectionPolicy;
@@ -583,6 +588,16 @@ static NSString *defaultApplicationNameForUserAgent()
 {
     _allowsInlineMediaPlaybackAfterFullscreen = allows;
 }
+
+- (NSUInteger)_contentUpdateFrequency
+{
+    return _contentUpdateFrequency;
+}
+
+- (void)_setContentUpdateFrequency:(NSUInteger)contentUpdateFrequency
+{
+    _contentUpdateFrequency = contentUpdateFrequency;
+}
 #endif // PLATFORM(IOS)
 
 - (BOOL)_invisibleAutoplayNotPermitted
@@ -669,6 +684,16 @@ static NSString *defaultApplicationNameForUserAgent()
 - (void)_setWaitsForPaintAfterViewDidMoveToWindow:(BOOL)shouldSynchronize
 {
     _waitsForPaintAfterViewDidMoveToWindow = shouldSynchronize;
+}
+
+- (BOOL)_isControlledByAutomation
+{
+    return _controlledByAutomation;
+}
+
+- (void)_setControlledByAutomation:(BOOL)controlledByAutomation
+{
+    _controlledByAutomation = controlledByAutomation;
 }
 
 #if PLATFORM(MAC)

@@ -190,6 +190,17 @@ RegisterID* SuperNode::emitBytecode(BytecodeGenerator& generator, RegisterID* ds
     return generator.moveToDestinationIfNeeded(generator.finalDestination(dst), result);
 }
 
+// ------------------------------ ImportNode -------------------------------------
+
+RegisterID* ImportNode::emitBytecode(BytecodeGenerator& generator, RegisterID* dst)
+{
+    RefPtr<RegisterID> importModule = generator.emitGetGlobalPrivate(generator.newTemporary(), generator.propertyNames().builtinNames().importModulePrivateName());
+    CallArguments arguments(generator, nullptr, 1);
+    generator.emitLoad(arguments.thisRegister(), jsUndefined());
+    generator.emitNode(arguments.argumentRegister(0), m_expr);
+    return generator.emitCall(generator.finalDestination(dst, importModule.get()), importModule.get(), NoExpectedFunction, arguments, divot(), divotStart(), divotEnd(), DebuggableCall::No);
+}
+
 // ------------------------------ NewTargetNode ----------------------------------
 
 RegisterID* NewTargetNode::emitBytecode(BytecodeGenerator& generator, RegisterID* dst)
@@ -620,7 +631,7 @@ void PropertyListNode::emitPutConstantProperty(BytecodeGenerator& generator, Reg
         return;
     }
     if (const auto* identifier = node.name()) {
-        Optional<uint32_t> optionalIndex = parseIndex(*identifier);
+        std::optional<uint32_t> optionalIndex = parseIndex(*identifier);
         if (!optionalIndex) {
             generator.emitDirectPutById(newObj, *identifier, value.get(), node.putType());
             return;
@@ -2998,8 +3009,12 @@ void ContinueNode::emitBytecode(BytecodeGenerator& generator, RegisterID*)
     LabelScopePtr scope = generator.continueTarget(m_ident);
     ASSERT(scope);
 
-    generator.emitPopScopes(generator.scopeRegister(), scope->scopeDepth());
-    generator.emitJump(scope->continueTarget());
+    bool hasFinally = generator.emitJumpViaFinallyIfNeeded(scope->scopeDepth(), scope->continueTarget());
+    if (!hasFinally) {
+        int lexicalScopeIndex = generator.labelScopeDepthToLexicalScopeIndex(scope->scopeDepth());
+        generator.restoreScopeRegister(lexicalScopeIndex);
+        generator.emitJump(scope->continueTarget());
+    }
 
     generator.emitProfileControlFlow(endOffset());
 }
@@ -3025,8 +3040,12 @@ void BreakNode::emitBytecode(BytecodeGenerator& generator, RegisterID*)
     LabelScopePtr scope = generator.breakTarget(m_ident);
     ASSERT(scope);
 
-    generator.emitPopScopes(generator.scopeRegister(), scope->scopeDepth());
-    generator.emitJump(scope->breakTarget());
+    bool hasFinally = generator.emitJumpViaFinallyIfNeeded(scope->scopeDepth(), scope->breakTarget());
+    if (!hasFinally) {
+        int lexicalScopeIndex = generator.labelScopeDepthToLexicalScopeIndex(scope->scopeDepth());
+        generator.restoreScopeRegister(lexicalScopeIndex);
+        generator.emitJump(scope->breakTarget());
+    }
 
     generator.emitProfileControlFlow(endOffset());
 }
@@ -3043,14 +3062,14 @@ void ReturnNode::emitBytecode(BytecodeGenerator& generator, RegisterID* dst)
     RefPtr<RegisterID> returnRegister = m_value ? generator.emitNodeInTailPosition(dst, m_value) : generator.emitLoad(dst, jsUndefined());
 
     generator.emitProfileType(returnRegister.get(), ProfileTypeBytecodeFunctionReturnStatement, divotStart(), divotEnd());
-    if (generator.isInFinallyBlock()) {
-        returnRegister = generator.emitMove(generator.newTemporary(), returnRegister.get());
-        generator.emitPopScopes(generator.scopeRegister(), 0);
+
+    bool hasFinally = generator.emitReturnViaFinallyIfNeeded(returnRegister.get());
+    if (!hasFinally) {
+        generator.emitWillLeaveCallFrameDebugHook();
+        generator.emitReturn(returnRegister.get());
     }
 
-    generator.emitWillLeaveCallFrameDebugHook();
-    generator.emitReturn(returnRegister.get());
-    generator.emitProfileControlFlow(endOffset()); 
+    generator.emitProfileControlFlow(endOffset());
     // Emitting an unreachable return here is needed in case this op_profile_control_flow is the 
     // last opcode in a CodeBlock because a CodeBlock's instructions must end with a terminal opcode.
     if (generator.vm()->controlFlowProfiler())
@@ -3279,32 +3298,56 @@ void TryNode::emitBytecode(BytecodeGenerator& generator, RegisterID* dst)
     // optimizer knows they may be jumped to from anywhere.
 
     ASSERT(m_catchBlock || m_finallyBlock);
+    BytecodeGenerator::CompletionRecordScope completionRecordScope(generator, m_finallyBlock);
+
+    RefPtr<Label> catchLabel;
+    RefPtr<Label> catchEndLabel;
+    RefPtr<Label> finallyViaThrowLabel;
+    RefPtr<Label> finallyLabel;
+    RefPtr<Label> finallyEndLabel;
 
     RefPtr<Label> tryStartLabel = generator.newLabel();
     generator.emitLabel(tryStartLabel.get());
-    
-    if (m_finallyBlock)
-        generator.pushFinallyContext(m_finallyBlock);
-    TryData* tryData = generator.pushTry(tryStartLabel.get());
+
+    if (m_finallyBlock) {
+        finallyViaThrowLabel = generator.newLabel();
+        finallyLabel = generator.newLabel();
+        finallyEndLabel = generator.newLabel();
+
+        generator.pushFinallyControlFlowScope(finallyLabel.get());
+    }
+    if (m_catchBlock) {
+        catchLabel = generator.newLabel();
+        catchEndLabel = generator.newLabel();
+    }
+
+    Label* tryHandlerLabel = m_catchBlock ? catchLabel.get() : finallyViaThrowLabel.get();
+    HandlerType tryHandlerType = m_catchBlock ? HandlerType::Catch : HandlerType::Finally;
+    TryData* tryData = generator.pushTry(tryStartLabel.get(), tryHandlerLabel, tryHandlerType);
 
     generator.emitNode(dst, m_tryBlock);
 
-    if (m_catchBlock) {
-        RefPtr<Label> catchEndLabel = generator.newLabel();
-        
-        // Normal path: jump over the catch block.
+    if (m_finallyBlock)
+        generator.emitJump(finallyLabel.get());
+    else
         generator.emitJump(catchEndLabel.get());
 
+    RefPtr<Label> endTryLabel = generator.emitLabel(generator.newLabel().get());
+    generator.popTry(tryData, endTryLabel.get());
+
+    if (m_catchBlock) {
         // Uncaught exception path: the catch block.
-        RefPtr<Label> here = generator.emitLabel(generator.newLabel().get());
-        RefPtr<RegisterID> exceptionRegister = generator.newTemporary();
+        generator.emitLabel(catchLabel.get());
         RefPtr<RegisterID> thrownValueRegister = generator.newTemporary();
-        generator.popTryAndEmitCatch(tryData, exceptionRegister.get(), thrownValueRegister.get(), here.get(), HandlerType::Catch);
-        
+        RegisterID* unused = generator.newTemporary();
+        generator.emitCatch(unused, thrownValueRegister.get());
+        generator.restoreScopeRegister();
+
+        TryData* tryData = nullptr;
         if (m_finallyBlock) {
             // If the catch block throws an exception and we have a finally block, then the finally
             // block should "catch" that exception.
-            tryData = generator.pushTry(here.get());
+            tryData = generator.pushTry(catchLabel.get(), finallyViaThrowLabel.get(), HandlerType::Finally);
         }
 
         generator.emitPushCatchScope(m_lexicalVariables);
@@ -3316,37 +3359,41 @@ void TryNode::emitBytecode(BytecodeGenerator& generator, RegisterID* dst)
             generator.emitNodeInTailPosition(dst, m_catchBlock);
         generator.emitLoad(thrownValueRegister.get(), jsUndefined());
         generator.emitPopCatchScope(m_lexicalVariables);
+
+        if (m_finallyBlock) {
+            generator.emitSetCompletionType(CompletionType::Normal);
+            generator.emitJump(finallyLabel.get());
+            generator.popTry(tryData, finallyViaThrowLabel.get());
+        }
+
         generator.emitLabel(catchEndLabel.get());
+        generator.emitProfileControlFlow(m_catchBlock->endOffset() + 1);
     }
 
     if (m_finallyBlock) {
-        RefPtr<Label> preFinallyLabel = generator.emitLabel(generator.newLabel().get());
-        
-        generator.popFinallyContext();
+        FinallyContext finallyContext = generator.popFinallyControlFlowScope();
 
-        RefPtr<Label> finallyEndLabel = generator.newLabel();
+        // Entry to the finally block for CompletionType::Throw.
+        generator.emitLabel(finallyViaThrowLabel.get());
+        RegisterID* unused = generator.newTemporary();
+        generator.emitCatch(generator.completionValueRegister(), unused);
+        generator.emitSetCompletionType(CompletionType::Throw);
+
+        // Entry to the finally block for CompletionTypes other than Throw.
+        generator.emitLabel(finallyLabel.get());
+        generator.restoreScopeRegister();
+
+        RefPtr<RegisterID> savedCompletionTypeRegister = generator.newTemporary();
+        generator.emitMove(savedCompletionTypeRegister.get(), generator.completionTypeRegister());
 
         int finallyStartOffset = m_catchBlock ? m_catchBlock->endOffset() + 1 : m_tryBlock->endOffset() + 1;
-
-        // Normal path: run the finally code, and jump to the end.
         generator.emitProfileControlFlow(finallyStartOffset);
         generator.emitNodeInTailPosition(dst, m_finallyBlock);
-        generator.emitProfileControlFlow(m_finallyBlock->endOffset() + 1);
-        generator.emitJump(finallyEndLabel.get());
 
-        // Uncaught exception path: invoke the finally block, then re-throw the exception.
-        RefPtr<RegisterID> exceptionRegister = generator.newTemporary();
-        RefPtr<RegisterID> thrownValueRegister = generator.newTemporary();
-        generator.popTryAndEmitCatch(tryData, exceptionRegister.get(), thrownValueRegister.get(), preFinallyLabel.get(), HandlerType::Finally);
-        generator.emitProfileControlFlow(finallyStartOffset);
-        generator.emitNodeInTailPosition(dst, m_finallyBlock);
-        generator.emitThrow(exceptionRegister.get());
-
+        generator.emitFinallyCompletion(finallyContext, savedCompletionTypeRegister.get(), finallyEndLabel.get());
         generator.emitLabel(finallyEndLabel.get());
         generator.emitProfileControlFlow(m_finallyBlock->endOffset() + 1);
-    } else
-        generator.emitProfileControlFlow(m_catchBlock->endOffset() + 1);
-
+    }
 }
 
 // ------------------------------ ScopeNode -----------------------------
@@ -3455,8 +3502,7 @@ void FunctionNode::emitBytecode(BytecodeGenerator& generator, RegisterID*)
         RefPtr<RegisterID> next = generator.newTemporary();
         generator.emitNode(next.get(), funcExpr);
 
-        if (generator.superBinding() == SuperBinding::Needed || generator.parseMode() == SourceParseMode::AsyncArrowFunctionMode) {
-            // FIXME: Don't always load home object for async arrows
+        if (generator.superBinding() == SuperBinding::Needed || (generator.parseMode() == SourceParseMode::AsyncArrowFunctionMode && generator.isSuperUsedInInnerArrowFunction())) {
             RefPtr<RegisterID> homeObject = emitHomeObjectForCallee(generator);
             emitPutHomeObject(generator, next.get(), homeObject.get());
         }
@@ -3466,26 +3512,24 @@ void FunctionNode::emitBytecode(BytecodeGenerator& generator, RegisterID*)
         ASSERT(startOffset() >= lineStartOffset());
         generator.emitDebugHook(WillLeaveCallFrame, lastLine(), startOffset(), lineStartOffset());
 
-        // load @asyncFunctionResume, and call.
-        RefPtr<RegisterID> startAsyncFunction = generator.newTemporary();
+        // load and call @asyncFunctionResume
         auto var = generator.variable(generator.propertyNames().builtinNames().asyncFunctionResumePrivateName());
-
         RefPtr<RegisterID> scope = generator.newTemporary();
         generator.moveToDestinationIfNeeded(scope.get(), generator.emitResolveScope(scope.get(), var));
-        generator.emitGetFromScope(startAsyncFunction.get(), scope.get(), var, ThrowIfNotFound);
+        RefPtr<RegisterID> asyncFunctionResume = generator.emitGetFromScope(generator.newTemporary(), scope.get(), var, ThrowIfNotFound);
 
-        // return @asyncFunctionResume.@call(this, @generator, @undefined, GeneratorResumeMode::NormalMode)
-        CallArguments args(generator, nullptr, 3);
+        CallArguments args(generator, nullptr, 4);
         unsigned argumentCount = 0;
         generator.emitLoad(args.thisRegister(), jsUndefined());
         generator.emitMove(args.argumentRegister(argumentCount++), generator.generatorRegister());
+        generator.emitMove(args.argumentRegister(argumentCount++), generator.promiseCapabilityRegister());
         generator.emitLoad(args.argumentRegister(argumentCount++), jsUndefined());
         generator.emitLoad(args.argumentRegister(argumentCount++), jsNumber(static_cast<int32_t>(JSGeneratorFunction::GeneratorResumeMode::NormalMode)));
         // JSTextPosition(int _line, int _offset, int _lineStartOffset)
         JSTextPosition divot(firstLine(), startOffset(), lineStartOffset());
 
         RefPtr<RegisterID> result = generator.newTemporary();
-        generator.emitCallInTailPosition(result.get(), startAsyncFunction.get(), NoExpectedFunction, args, divot, divot, divot, DebuggableCall::No);
+        generator.emitCallInTailPosition(result.get(), asyncFunctionResume.get(), NoExpectedFunction, args, divot, divot, divot, DebuggableCall::No);
         generator.emitReturn(result.get());
         break;
     }
@@ -3964,12 +4008,11 @@ void ObjectPatternNode::toString(StringBuilder& builder) const
 void ObjectPatternNode::bindValue(BytecodeGenerator& generator, RegisterID* rhs) const
 {
     generator.emitRequireObjectCoercible(rhs, ASCIILiteral("Right side of assignment cannot be destructured"));
-    for (size_t i = 0; i < m_targetPatterns.size(); i++) {
-        auto& target = m_targetPatterns[i];
+    for (const auto& target : m_targetPatterns) {
         RefPtr<RegisterID> temp = generator.newTemporary();
         if (!target.propertyExpression) {
             // Should not emit get_by_id for indexed ones.
-            Optional<uint32_t> optionalIndex = parseIndex(target.propertyName);
+            std::optional<uint32_t> optionalIndex = parseIndex(target.propertyName);
             if (!optionalIndex)
                 generator.emitGetById(temp.get(), rhs, target.propertyName);
             else {

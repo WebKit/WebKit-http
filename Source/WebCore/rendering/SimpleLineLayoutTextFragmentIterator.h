@@ -28,7 +28,6 @@
 #include "BreakLines.h"
 #include "RenderLineBreak.h"
 #include "SimpleLineLayoutFlowContents.h"
-#include <wtf/text/TextBreakIterator.h>
 
 namespace WebCore {
 
@@ -104,6 +103,8 @@ public:
         bool wrapLines;
         bool breakAnyWordOnOverflow;
         bool breakFirstWordOnOverflow;
+        bool breakNBSP;
+        bool keepAllWordsForCJK;
         float spaceWidth;
         float wordSpacing;
         unsigned tabWidth;
@@ -117,9 +118,9 @@ private:
     unsigned skipToNextPosition(PositionType, unsigned startPosition, float& width, float xPosition, bool& overlappingFragment);
     bool isSoftLineBreak(unsigned position) const;
     bool isHardLineBreak(const FlowContents::Iterator& segment) const;
-    template <typename CharacterType> unsigned nextBreakablePosition(const FlowContents::Segment&, unsigned startPosition);
+    unsigned nextBreakablePosition(const FlowContents::Segment&, unsigned startPosition);
     template <typename CharacterType> unsigned nextNonWhitespacePosition(const FlowContents::Segment&, unsigned startPosition);
-    template <typename CharacterType> float runWidth(const FlowContents::Segment&, unsigned startPosition, unsigned endPosition, float xPosition) const;
+    float runWidth(const FlowContents::Segment&, unsigned startPosition, unsigned endPosition, float xPosition) const;
 
     FlowContents m_flowContents;
     FlowContents::Iterator m_currentSegment;

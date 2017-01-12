@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006, 2007, 2008, 2009, 2010 Apple Inc. All rights reserved.
+ * Copyright (C) 2006-2017 Apple Inc. All rights reserved.
  * Copyright (C) 2008, 2010 Nokia Corporation and/or its subsidiary(-ies)
  *
  * Redistribution and use in source and binary forms, with or without
@@ -77,7 +77,6 @@
 #import <WebCore/NotImplemented.h>
 #import <WebCore/Page.h>
 #import <WebCore/PlatformScreen.h>
-#import <WebCore/PointerLockController.h>
 #import <WebCore/ResourceRequest.h>
 #import <WebCore/SerializedCryptoKeyWrap.h>
 #import <WebCore/Widget.h>
@@ -93,6 +92,10 @@
 
 #if PLATFORM(IOS) && ENABLE(GEOLOCATION)
 #import <WebCore/Geolocation.h>
+#endif
+
+#if ENABLE(POINTER_LOCK)
+#import <WebCore/PointerLockController.h>
 #endif
 
 #if PLATFORM(IOS)
@@ -730,8 +733,8 @@ bool WebChromeClient::requestPointerLock()
 void WebChromeClient::requestPointerUnlock()
 {
 #if PLATFORM(MAC)
-    CGDisplayShowCursor(CGMainDisplayID());
     CGAssociateMouseAndMouseCursorPosition(true);
+    CGDisplayShowCursor(CGMainDisplayID());
     if ([m_webView page])
         [m_webView page]->pointerLockController().didLosePointerLock();
 #endif
@@ -754,9 +757,9 @@ void WebChromeClient::runOpenPanel(Frame*, PassRefPtr<FileChooser> chooser)
     END_BLOCK_OBJC_EXCEPTIONS;
 }
 
-void WebChromeClient::loadIconForFiles(const Vector<String>& filenames, FileIconLoader* iconLoader)
+void WebChromeClient::loadIconForFiles(const Vector<String>& filenames, FileIconLoader& iconLoader)
 {
-    iconLoader->notifyFinished(Icon::createIconForFiles(filenames));
+    iconLoader.iconLoaded(Icon::createIconForFiles(filenames));
 }
 
 #if !PLATFORM(IOS)

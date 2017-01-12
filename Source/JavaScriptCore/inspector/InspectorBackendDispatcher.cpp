@@ -29,7 +29,7 @@
 
 #include "InspectorFrontendRouter.h"
 #include "InspectorValues.h"
-#include <wtf/TemporaryChange.h>
+#include <wtf/SetForScope.h>
 #include <wtf/text/CString.h>
 #include <wtf/text/WTFString.h>
 
@@ -114,7 +114,7 @@ void BackendDispatcher::dispatch(const String& message)
     {
         // In case this is a re-entrant call from a nested run loop, we don't want to lose
         // the outer request's id just because the inner request is bogus.
-        TemporaryChange<Optional<long>> scopedRequestId(m_currentRequestId, Nullopt);
+        SetForScope<std::optional<long>> scopedRequestId(m_currentRequestId, std::nullopt);
 
         RefPtr<InspectorValue> parsedMessage;
         if (!InspectorValue::parseJSON(message, parsedMessage)) {
@@ -145,7 +145,7 @@ void BackendDispatcher::dispatch(const String& message)
 
     {
         // We could be called re-entrantly from a nested run loop, so restore the previous id.
-        TemporaryChange<Optional<long>> scopedRequestId(m_currentRequestId, requestId);
+        SetForScope<std::optional<long>> scopedRequestId(m_currentRequestId, requestId);
 
         RefPtr<InspectorValue> methodValue;
         if (!messageObject->getValue(ASCIILiteral("method"), methodValue)) {
@@ -246,7 +246,7 @@ void BackendDispatcher::sendPendingErrors()
     m_frontendRouter->sendResponse(message->toJSONString());
 
     m_protocolErrors.clear();
-    m_currentRequestId = Nullopt;
+    m_currentRequestId = std::nullopt;
 }
     
 void BackendDispatcher::reportProtocolError(CommonErrorCode errorCode, const String& errorMessage)
@@ -254,7 +254,7 @@ void BackendDispatcher::reportProtocolError(CommonErrorCode errorCode, const Str
     reportProtocolError(m_currentRequestId, errorCode, errorMessage);
 }
 
-void BackendDispatcher::reportProtocolError(Optional<long> relatedRequestId, CommonErrorCode errorCode, const String& errorMessage)
+void BackendDispatcher::reportProtocolError(std::optional<long> relatedRequestId, CommonErrorCode errorCode, const String& errorMessage)
 {
     ASSERT_ARG(errorCode, errorCode >= 0);
 
@@ -264,6 +264,16 @@ void BackendDispatcher::reportProtocolError(Optional<long> relatedRequestId, Com
 
     m_protocolErrors.append(std::tuple<CommonErrorCode, String>(errorCode, errorMessage));
 }
+
+#if PLATFORM(MAC)
+void BackendDispatcher::reportProtocolError(WTF::DeprecatedOptional<long> relatedRequestId, CommonErrorCode errorCode, const String& errorMessage)
+{
+    if (relatedRequestId)
+        reportProtocolError(relatedRequestId.value(), errorCode, errorMessage);
+    else
+        reportProtocolError(std::nullopt, errorCode, errorMessage);
+}
+#endif
 
 template<typename T>
 T BackendDispatcher::getPropertyValue(InspectorObject* object, const String& name, bool* out_optionalValueFound, T defaultValue, std::function<bool(InspectorValue&, T&)> asMethod, const char* typeName)

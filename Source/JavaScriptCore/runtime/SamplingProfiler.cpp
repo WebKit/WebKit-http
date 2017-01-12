@@ -31,14 +31,12 @@
 #include "CallFrame.h"
 #include "CodeBlock.h"
 #include "CodeBlockSet.h"
-#include "HeapInlines.h"
 #include "HeapIterationScope.h"
 #include "HeapUtil.h"
 #include "InlineCallFrame.h"
 #include "Interpreter.h"
-#include "JSCJSValueInlines.h"
+#include "JSCInlines.h"
 #include "JSFunction.h"
-#include "JSObjectInlines.h"
 #include "LLIntPCRanges.h"
 #include "MarkedBlock.h"
 #include "MarkedBlockSet.h"
@@ -46,8 +44,6 @@
 #include "NativeExecutable.h"
 #include "PCToCodeOriginMap.h"
 #include "SlotVisitor.h"
-#include "SlotVisitorInlines.h"
-#include "StructureInlines.h"
 #include "VM.h"
 #include <wtf/HashSet.h>
 #include <wtf/RandomNumber.h>
@@ -475,7 +471,7 @@ void SamplingProfiler::processUnverifiedStackTraces()
                     storeCalleeIntoTopFrame(unprocessedStackTrace.frames[0].unverifiedCallee);
                     startIndex = 1;
                 }
-            } else if (Optional<CodeOrigin> codeOrigin = topCodeBlock->findPC(unprocessedStackTrace.topPC)) {
+            } else if (std::optional<CodeOrigin> codeOrigin = topCodeBlock->findPC(unprocessedStackTrace.topPC)) {
                 codeOrigin->walkUpInlineStack([&] (const CodeOrigin& codeOrigin) {
                     appendCodeBlock(codeOrigin.inlineCallFrame ? codeOrigin.inlineCallFrame->baselineCodeBlock.get() : topCodeBlock, codeOrigin.bytecodeIndex);
                 });
@@ -523,7 +519,7 @@ void SamplingProfiler::visit(SlotVisitor& slotVisitor)
 {
     RELEASE_ASSERT(m_lock.isLocked());
     for (JSCell* cell : m_liveCellPointers)
-        slotVisitor.appendUnbarrieredReadOnlyPointer(cell);
+        slotVisitor.appendUnbarriered(cell);
 }
 
 void SamplingProfiler::shutdown()
@@ -737,6 +733,7 @@ Vector<SamplingProfiler::StackTrace> SamplingProfiler::releaseStackTraces(const 
 
 String SamplingProfiler::stackTracesAsJSON()
 {
+    DeferGC deferGC(m_vm.heap);
     LockHolder locker(m_lock);
 
     {

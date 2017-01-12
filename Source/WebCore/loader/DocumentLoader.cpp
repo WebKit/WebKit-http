@@ -41,6 +41,7 @@
 #include "Document.h"
 #include "DocumentParser.h"
 #include "DocumentWriter.h"
+#include "ElementChildIterator.h"
 #include "Event.h"
 #include "EventNames.h"
 #include "ExtensionStyleSheets.h"
@@ -53,7 +54,10 @@
 #include "HTTPHeaderNames.h"
 #include "HistoryItem.h"
 #include "IconController.h"
+#include "IconLoader.h"
 #include "InspectorInstrumentation.h"
+#include "LinkIconCollector.h"
+#include "LinkIconType.h"
 #include "Logging.h"
 #include "MainFrame.h"
 #include "MemoryCache.h"
@@ -561,6 +565,10 @@ void DocumentLoader::willSendRequest(ResourceRequest& newRequest, const Resource
         newRequest.setCachePolicy(ReloadIgnoringCacheData);
 
     if (&topFrame != m_frame) {
+        if (!m_frame->loader().mixedContentChecker().canDisplayInsecureContent(m_frame->document()->securityOrigin(), MixedContentChecker::ContentType::Active, newRequest.url(), MixedContentChecker::AlwaysDisplayInNonStrictMode::Yes)) {
+            cancelMainResourceLoad(frameLoader()->cancelledError(newRequest));
+            return;
+        }
         if (!frameLoader()->mixedContentChecker().canDisplayInsecureContent(topFrame.document()->securityOrigin(), MixedContentChecker::ContentType::Active, newRequest.url())) {
             cancelMainResourceLoad(frameLoader()->cancelledError(newRequest));
             return;
@@ -631,7 +639,7 @@ void DocumentLoader::continueAfterNavigationPolicy(const ResourceRequest&, bool 
 
 void DocumentLoader::stopLoadingAfterXFrameOptionsOrContentSecurityPolicyDenied(unsigned long identifier, const ResourceResponse& response)
 {
-    InspectorInstrumentation::continueAfterXFrameOptionsDenied(m_frame, *this, identifier, response);
+    InspectorInstrumentation::continueAfterXFrameOptionsDenied(*m_frame, identifier, *this, response);
     m_frame->document()->enforceSandboxFlags(SandboxOrigin);
     if (HTMLFrameOwnerElement* ownerElement = m_frame->ownerElement())
         ownerElement->dispatchEvent(Event::create(eventNames().loadEvent, false, false));
@@ -731,17 +739,6 @@ void DocumentLoader::responseReceived(const ResourceResponse& response)
     }
 #endif
 
-    if (m_response.isHttpVersion0_9()) {
-        // Non-HTTP responses are interpreted as HTTP/0.9 which may allow exfiltration of data
-        // from non-HTTP services. Therefore cancel if the request was to a non-default port.
-        if (url.port() && !isDefaultPortForProtocol(url.port().value(), url.protocol())) {
-            String message = "Stopped document load from '" + url.string() + "' because it is using HTTP/0.9 on a non-default port.";
-            m_frame->document()->addConsoleMessage(MessageSource::Security, MessageLevel::Error, message, identifier);
-            stopLoading();
-            return;
-        }
-    }
-
     frameLoader()->policyChecker().checkContentPolicy(m_response, [this](PolicyAction policy) {
         continueAfterContentPolicy(policy);
     });
@@ -801,7 +798,7 @@ void DocumentLoader::continueAfterContentPolicy(PolicyAction policy)
         }
 
         if (ResourceLoader* mainResourceLoader = this->mainResourceLoader())
-            InspectorInstrumentation::continueWithPolicyDownload(m_frame, *this, mainResourceLoader->identifier(), m_response);
+            InspectorInstrumentation::continueWithPolicyDownload(*m_frame, mainResourceLoader->identifier(), *this, m_response);
 
         // When starting the request, we didn't know that it would result in download and not navigation. Now we know that main document URL didn't change.
         // Download may use this knowledge for purposes unrelated to cookies, notably for setting file quarantine data.
@@ -824,7 +821,7 @@ void DocumentLoader::continueAfterContentPolicy(PolicyAction policy)
     }
     case PolicyIgnore:
         if (ResourceLoader* mainResourceLoader = this->mainResourceLoader())
-            InspectorInstrumentation::continueWithPolicyIgnore(m_frame, *this, mainResourceLoader->identifier(), m_response);
+            InspectorInstrumentation::continueWithPolicyIgnore(*m_frame, mainResourceLoader->identifier(), *this, m_response);
         stopLoadingForPolicyChange();
         return;
     }
@@ -1709,6 +1706,46 @@ void DocumentLoader::getIconDataForIconURL(const String& urlString)
     iconDatabase().iconDataForIconURL(urlString, m_iconDataCallback);
 }
 
+void DocumentLoader::startIconLoading()
+{
+    ASSERT(m_frame->loader().client().useIconLoadingClient());
+
+    static uint64_t nextIconCallbackID = 1;
+
+    auto* document = this->document();
+    if (!document)
+        return;
+
+    Vector<LinkIcon> icons = LinkIconCollector { *document }.iconsOfTypes({ LinkIconType::Favicon, LinkIconType::TouchIcon, LinkIconType::TouchPrecomposedIcon });
+
+    if (icons.isEmpty())
+        icons.append({ m_frame->document()->completeURL(ASCIILiteral("/favicon.ico")), LinkIconType::Favicon, String(), std::nullopt });
+
+    for (auto& icon : icons) {
+        auto result = m_iconsPendingLoadDecision.add(nextIconCallbackID++, icon);
+        m_frame->loader().client().getLoadDecisionForIcon(icon, result.iterator->key);
+    }
+}
+
+void DocumentLoader::didGetLoadDecisionForIcon(bool decision, uint64_t loadIdentifier, uint64_t newCallbackID)
+{
+    auto icon = m_iconsPendingLoadDecision.take(loadIdentifier);
+    if (!decision || icon.url.isEmpty() || !m_frame)
+        return;
+
+    auto iconLoader = std::make_unique<IconLoader>(*this, icon.url);
+    iconLoader->startLoading();
+    m_iconLoaders.set(WTFMove(iconLoader), newCallbackID);
+}
+
+void DocumentLoader::finishedLoadingIcon(IconLoader& loader, SharedBuffer* buffer)
+{
+    auto loadIdentifier = m_iconLoaders.take(&loader);
+    ASSERT(loadIdentifier);
+
+    m_frame->loader().client().finishedLoadingIcon(loadIdentifier, buffer);
+}
+
 void DocumentLoader::dispatchOnloadEvents()
 {
     m_wasOnloadDispatched = true;
@@ -1763,5 +1800,12 @@ bool DocumentLoader::isAlwaysOnLoggingAllowed() const
 {
     return m_frame ? m_frame->isAlwaysOnLoggingAllowed() : true;
 }
+
+#if USE(QUICK_LOOK)
+void DocumentLoader::setQuickLookHandle(std::unique_ptr<QuickLookHandle> quickLookHandle)
+{
+    m_quickLookHandle = WTFMove(quickLookHandle);
+}
+#endif
 
 } // namespace WebCore

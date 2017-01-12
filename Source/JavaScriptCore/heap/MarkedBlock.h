@@ -40,6 +40,7 @@ class Heap;
 class JSCell;
 class MarkedAllocator;
 class MarkedSpace;
+class SlotVisitor;
 
 typedef uintptr_t Bits;
 typedef uint32_t HeapVersion;
@@ -132,7 +133,7 @@ public:
         
         void shrink();
             
-        unsigned visitWeakSet(HeapRootVisitor&);
+        unsigned visitWeakSet(SlotVisitor&);
         void reapWeakSet();
             
         // While allocating from a free list, MarkedBlock temporarily has bogus
@@ -187,33 +188,37 @@ public:
         void didAddToAllocator(MarkedAllocator*, size_t index);
         void didRemoveFromAllocator();
         
+        void dumpState(PrintStream&);
+        
     private:
         Handle(Heap&, void*);
         
-        template<DestructionMode>
+        enum SweepDestructionMode { BlockHasNoDestructors, BlockHasDestructors, BlockHasDestructorsAndCollectorIsRunning };
+        
+        template<SweepDestructionMode>
         FreeList sweepHelperSelectScribbleMode(SweepMode = SweepOnly);
             
         enum ScribbleMode { DontScribble, Scribble };
             
-        template<DestructionMode, ScribbleMode>
+        template<SweepDestructionMode, ScribbleMode>
         FreeList sweepHelperSelectEmptyMode(SweepMode = SweepOnly);
             
         enum EmptyMode { IsEmpty, NotEmpty };
         
-        template<EmptyMode, DestructionMode, ScribbleMode>
+        template<EmptyMode, SweepDestructionMode, ScribbleMode>
         FreeList sweepHelperSelectHasNewlyAllocated(SweepMode = SweepOnly);
         
         enum NewlyAllocatedMode { HasNewlyAllocated, DoesNotHaveNewlyAllocated };
         
-        template<EmptyMode, DestructionMode, ScribbleMode, NewlyAllocatedMode>
+        template<EmptyMode, SweepDestructionMode, ScribbleMode, NewlyAllocatedMode>
         FreeList sweepHelperSelectSweepMode(SweepMode = SweepOnly);
         
-        template<EmptyMode, SweepMode, DestructionMode, ScribbleMode, NewlyAllocatedMode>
+        template<EmptyMode, SweepMode, SweepDestructionMode, ScribbleMode, NewlyAllocatedMode>
         FreeList sweepHelperSelectMarksMode();
         
         enum MarksMode { MarksStale, MarksNotStale };
         
-        template<EmptyMode, SweepMode, DestructionMode, ScribbleMode, NewlyAllocatedMode, MarksMode>
+        template<EmptyMode, SweepMode, SweepDestructionMode, ScribbleMode, NewlyAllocatedMode, MarksMode>
         FreeList specializedSweep();
             
         template<typename Func>
@@ -269,6 +274,11 @@ public:
     
     bool hasAnyMarked() const;
     void noteMarked();
+#if ASSERT_DISABLED
+    void assertValidCell(VM&, HeapCell*) const { }
+#else
+    void assertValidCell(VM&, HeapCell*) const;
+#endif
         
     WeakSet& weakSet();
 
@@ -290,6 +300,9 @@ public:
     void updateNeedsDestruction();
     
     void resetMarks();
+    
+    bool isMarkedRaw(const void* p);
+    HeapVersion markingVersion() const { return m_markingVersion; }
     
 private:
     static const size_t atomAlignmentMask = atomSize - 1;
@@ -419,9 +432,9 @@ inline void MarkedBlock::Handle::shrink()
     m_weakSet.shrink();
 }
 
-inline unsigned MarkedBlock::Handle::visitWeakSet(HeapRootVisitor& heapRootVisitor)
+inline unsigned MarkedBlock::Handle::visitWeakSet(SlotVisitor& visitor)
 {
-    return m_weakSet.visit(heapRootVisitor);
+    return m_weakSet.visit(visitor);
 }
 
 inline void MarkedBlock::Handle::reapWeakSet()
@@ -511,9 +524,14 @@ inline void MarkedBlock::Handle::assertMarksNotStale()
     block().assertMarksNotStale();
 }
 
+inline bool MarkedBlock::isMarkedRaw(const void* p)
+{
+    return m_marks.get(atomNumber(p));
+}
+
 inline bool MarkedBlock::isMarked(HeapVersion markingVersion, const void* p)
 {
-    return areMarksStale(markingVersion) ? false : m_marks.get(atomNumber(p));
+    return areMarksStale(markingVersion) ? false : isMarkedRaw(p);
 }
 
 inline bool MarkedBlock::isMarkedConcurrently(HeapVersion markingVersion, const void* p)

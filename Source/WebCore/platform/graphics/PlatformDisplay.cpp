@@ -92,8 +92,22 @@ std::unique_ptr<PlatformDisplay> PlatformDisplay::createPlatformDisplay()
     return std::make_unique<PlatformDisplayWin>();
 #endif
 
+#if PLATFORM(WAYLAND)
+    if (auto platformDisplay = PlatformDisplayWayland::create())
+        return platformDisplay;
+#endif
+
 #if PLATFORM(X11)
-    return std::make_unique<PlatformDisplayX11>();
+    if (auto platformDisplay = PlatformDisplayX11::create())
+        return platformDisplay;
+#endif
+
+    // If at this point we still don't have a display, just create a fake display with no native.
+#if PLATFORM(WAYLAND)
+    return std::make_unique<PlatformDisplayWayland>(nullptr);
+#endif
+#if PLATFORM(X11)
+    return std::make_unique<PlatformDisplayX11>(nullptr);
 #endif
 
 #if PLATFORM(WPE)
@@ -107,7 +121,14 @@ std::unique_ptr<PlatformDisplay> PlatformDisplay::createPlatformDisplay()
 PlatformDisplay& PlatformDisplay::sharedDisplay()
 {
     static std::once_flag onceFlag;
+#if COMPILER(CLANG)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wexit-time-destructors"
+#endif
     static std::unique_ptr<PlatformDisplay> display;
+#if COMPILER(CLANG)
+#pragma clang diagnostic pop
+#endif
     std::call_once(onceFlag, []{
         display = createPlatformDisplay();
     });
@@ -126,9 +147,10 @@ void PlatformDisplay::setSharedDisplayForCompositing(PlatformDisplay& display)
     s_sharedDisplayForCompositing = &display;
 }
 
-PlatformDisplay::PlatformDisplay()
+PlatformDisplay::PlatformDisplay(NativeDisplayOwned displayOwned)
+    : m_nativeDisplayOwned(displayOwned)
 #if USE(EGL)
-    : m_eglDisplay(EGL_NO_DISPLAY)
+    , m_eglDisplay(EGL_NO_DISPLAY)
 #endif
 {
 }

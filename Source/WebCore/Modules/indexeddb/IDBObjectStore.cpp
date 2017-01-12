@@ -48,6 +48,7 @@
 #include "ScriptExecutionContext.h"
 #include "ScriptState.h"
 #include "SerializedScriptValue.h"
+#include <heap/HeapInlines.h>
 #include <wtf/Locker.h>
 
 using namespace JSC;
@@ -116,7 +117,7 @@ ExceptionOr<void> IDBObjectStore::setName(const String& name)
     return { };
 }
 
-const Optional<IDBKeyPath>& IDBObjectStore::keyPath() const
+const std::optional<IDBKeyPath>& IDBObjectStore::keyPath() const
 {
     ASSERT(currentThread() == m_transaction.database().originThreadID());
     return m_info.keyPath();
@@ -149,7 +150,7 @@ bool IDBObjectStore::autoIncrement() const
     return m_info.autoIncrement();
 }
 
-ExceptionOr<Ref<IDBRequest>> IDBObjectStore::openCursor(ExecState& execState, RefPtr<IDBKeyRange> range, const String& directionString)
+ExceptionOr<Ref<IDBRequest>> IDBObjectStore::openCursor(ExecState& execState, RefPtr<IDBKeyRange> range, IDBCursorDirection direction)
 {
     LOG(IndexedDB, "IDBObjectStore::openCursor");
     ASSERT(currentThread() == m_transaction.database().originThreadID());
@@ -160,15 +161,11 @@ ExceptionOr<Ref<IDBRequest>> IDBObjectStore::openCursor(ExecState& execState, Re
     if (!m_transaction.isActive())
         return Exception { IDBDatabaseException::TransactionInactiveError, ASCIILiteral("Failed to execute 'openCursor' on 'IDBObjectStore': The transaction is inactive or finished.") };
 
-    auto direction = IDBCursor::stringToDirection(directionString);
-    if (!direction)
-        return Exception { TypeError };
-
-    auto info = IDBCursorInfo::objectStoreCursor(m_transaction, m_info.identifier(), range.get(), direction.value(), IndexedDB::CursorType::KeyAndValue);
+    auto info = IDBCursorInfo::objectStoreCursor(m_transaction, m_info.identifier(), range.get(), direction, IndexedDB::CursorType::KeyAndValue);
     return m_transaction.requestOpenCursor(execState, *this, info);
 }
 
-ExceptionOr<Ref<IDBRequest>> IDBObjectStore::openCursor(ExecState& execState, JSValue key, const String& direction)
+ExceptionOr<Ref<IDBRequest>> IDBObjectStore::openCursor(ExecState& execState, JSValue key, IDBCursorDirection direction)
 {
     auto onlyResult = IDBKeyRange::only(execState, key);
     if (onlyResult.hasException())
@@ -177,7 +174,7 @@ ExceptionOr<Ref<IDBRequest>> IDBObjectStore::openCursor(ExecState& execState, JS
     return openCursor(execState, onlyResult.releaseReturnValue(), direction);
 }
 
-ExceptionOr<Ref<IDBRequest>> IDBObjectStore::openKeyCursor(ExecState& execState, RefPtr<IDBKeyRange> range, const String& directionString)
+ExceptionOr<Ref<IDBRequest>> IDBObjectStore::openKeyCursor(ExecState& execState, RefPtr<IDBKeyRange> range, IDBCursorDirection direction)
 {
     LOG(IndexedDB, "IDBObjectStore::openCursor");
     ASSERT(currentThread() == m_transaction.database().originThreadID());
@@ -188,15 +185,11 @@ ExceptionOr<Ref<IDBRequest>> IDBObjectStore::openKeyCursor(ExecState& execState,
     if (!m_transaction.isActive())
         return Exception { IDBDatabaseException::TransactionInactiveError, ASCIILiteral("Failed to execute 'openKeyCursor' on 'IDBObjectStore': The transaction is inactive or finished.") };
 
-    auto direction = IDBCursor::stringToDirection(directionString);
-    if (!direction)
-        return Exception { TypeError };
-
-    auto info = IDBCursorInfo::objectStoreCursor(m_transaction, m_info.identifier(), range.get(), direction.value(), IndexedDB::CursorType::KeyOnly);
+    auto info = IDBCursorInfo::objectStoreCursor(m_transaction, m_info.identifier(), range.get(), direction, IndexedDB::CursorType::KeyOnly);
     return m_transaction.requestOpenCursor(execState, *this, info);
 }
 
-ExceptionOr<Ref<IDBRequest>> IDBObjectStore::openKeyCursor(ExecState& execState, JSValue key, const String& direction)
+ExceptionOr<Ref<IDBRequest>> IDBObjectStore::openKeyCursor(ExecState& execState, JSValue key, IDBCursorDirection direction)
 {
     auto onlyResult = IDBKeyRange::only(execState, key);
     if (onlyResult.hasException())
@@ -220,7 +213,7 @@ ExceptionOr<Ref<IDBRequest>> IDBObjectStore::get(ExecState& execState, JSValue k
     if (!idbKey->isValid())
         return Exception { IDBDatabaseException::DataError, ASCIILiteral("Failed to execute 'get' on 'IDBObjectStore': The parameter is not a valid key.") };
 
-    return m_transaction.requestGetRecord(execState, *this, { idbKey.ptr() });
+    return m_transaction.requestGetRecord(execState, *this, { idbKey.ptr(), IDBGetRecordDataType::KeyAndValue });
 }
 
 ExceptionOr<Ref<IDBRequest>> IDBObjectStore::get(ExecState& execState, IDBKeyRange* keyRange)
@@ -238,7 +231,43 @@ ExceptionOr<Ref<IDBRequest>> IDBObjectStore::get(ExecState& execState, IDBKeyRan
     if (!keyRangeData.isValid())
         return Exception { IDBDatabaseException::DataError };
 
-    return m_transaction.requestGetRecord(execState, *this, { keyRangeData });
+    return m_transaction.requestGetRecord(execState, *this, { keyRangeData, IDBGetRecordDataType::KeyAndValue });
+}
+
+ExceptionOr<Ref<IDBRequest>> IDBObjectStore::getKey(ExecState& execState, JSValue key)
+{
+    LOG(IndexedDB, "IDBObjectStore::getKey");
+    ASSERT(currentThread() == m_transaction.database().originThreadID());
+
+    if (m_deleted)
+        return Exception { IDBDatabaseException::InvalidStateError, ASCIILiteral("Failed to execute 'getKey' on 'IDBObjectStore': The object store has been deleted.") };
+
+    if (!m_transaction.isActive())
+        return Exception { IDBDatabaseException::TransactionInactiveError, ASCIILiteral("Failed to execute 'getKey' on 'IDBObjectStore': The transaction is inactive or finished.") };
+
+    auto idbKey = scriptValueToIDBKey(execState, key);
+    if (!idbKey->isValid())
+        return Exception { IDBDatabaseException::DataError, ASCIILiteral("Failed to execute 'getKey' on 'IDBObjectStore': The parameter is not a valid key.") };
+
+    return m_transaction.requestGetRecord(execState, *this, { idbKey.ptr(), IDBGetRecordDataType::KeyOnly });
+}
+
+ExceptionOr<Ref<IDBRequest>> IDBObjectStore::getKey(ExecState& execState, IDBKeyRange* keyRange)
+{
+    LOG(IndexedDB, "IDBObjectStore::getKey");
+    ASSERT(currentThread() == m_transaction.database().originThreadID());
+
+    if (m_deleted)
+        return Exception { IDBDatabaseException::InvalidStateError, ASCIILiteral("Failed to execute 'getKey' on 'IDBObjectStore': The object store has been deleted.") };
+
+    if (!m_transaction.isActive())
+        return Exception { IDBDatabaseException::TransactionInactiveError, ASCIILiteral("Failed to execute 'getKey' on 'IDBObjectStore': The transaction is inactive or finished.") };
+
+    IDBKeyRangeData keyRangeData(keyRange);
+    if (!keyRangeData.isValid())
+        return Exception { IDBDatabaseException::DataError, ASCIILiteral("Failed to execute 'getKey' on 'IDBObjectStore': The parameter is not a valid key range.") };
+
+    return m_transaction.requestGetRecord(execState, *this, { keyRangeData, IDBGetRecordDataType::KeyOnly });
 }
 
 ExceptionOr<Ref<IDBRequest>> IDBObjectStore::add(ExecState& execState, JSValue value, JSValue key)
@@ -541,7 +570,7 @@ ExceptionOr<Ref<IDBRequest>> IDBObjectStore::doCount(ExecState& execState, const
     return m_transaction.requestCount(execState, *this, range);
 }
 
-ExceptionOr<Ref<IDBRequest>> IDBObjectStore::getAll(ExecState& execState, RefPtr<IDBKeyRange> range, Optional<uint32_t> count)
+ExceptionOr<Ref<IDBRequest>> IDBObjectStore::getAll(ExecState& execState, RefPtr<IDBKeyRange> range, std::optional<uint32_t> count)
 {
     LOG(IndexedDB, "IDBObjectStore::getAll");
     ASSERT(currentThread() == m_transaction.database().originThreadID());
@@ -555,7 +584,7 @@ ExceptionOr<Ref<IDBRequest>> IDBObjectStore::getAll(ExecState& execState, RefPtr
     return m_transaction.requestGetAllObjectStoreRecords(execState, *this, range.get(), IndexedDB::GetAllType::Values, count);
 }
 
-ExceptionOr<Ref<IDBRequest>> IDBObjectStore::getAll(ExecState& execState, JSValue key, Optional<uint32_t> count)
+ExceptionOr<Ref<IDBRequest>> IDBObjectStore::getAll(ExecState& execState, JSValue key, std::optional<uint32_t> count)
 {
     auto onlyResult = IDBKeyRange::only(execState, key);
     if (onlyResult.hasException())
@@ -564,7 +593,7 @@ ExceptionOr<Ref<IDBRequest>> IDBObjectStore::getAll(ExecState& execState, JSValu
     return getAll(execState, onlyResult.releaseReturnValue(), count);
 }
 
-ExceptionOr<Ref<IDBRequest>> IDBObjectStore::getAllKeys(ExecState& execState, RefPtr<IDBKeyRange> range, Optional<uint32_t> count)
+ExceptionOr<Ref<IDBRequest>> IDBObjectStore::getAllKeys(ExecState& execState, RefPtr<IDBKeyRange> range, std::optional<uint32_t> count)
 {
     LOG(IndexedDB, "IDBObjectStore::getAllKeys");
     ASSERT(currentThread() == m_transaction.database().originThreadID());
@@ -578,7 +607,7 @@ ExceptionOr<Ref<IDBRequest>> IDBObjectStore::getAllKeys(ExecState& execState, Re
     return m_transaction.requestGetAllObjectStoreRecords(execState, *this, range.get(), IndexedDB::GetAllType::Keys, count);
 }
 
-ExceptionOr<Ref<IDBRequest>> IDBObjectStore::getAllKeys(ExecState& execState, JSValue key, Optional<uint32_t> count)
+ExceptionOr<Ref<IDBRequest>> IDBObjectStore::getAllKeys(ExecState& execState, JSValue key, std::optional<uint32_t> count)
 {
     auto onlyResult = IDBKeyRange::only(execState, key);
     if (onlyResult.hasException())

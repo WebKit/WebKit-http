@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006, 2007, 2009, 2011 Apple Inc. All rights reserved.
+ * Copyright (C) 2006-2017 Apple Inc. All rights reserved.
  * Copyright (C) 2008, 2010 Nokia Corporation and/or its subsidiary(-ies)
  * Copyright (C) 2012, Samsung Electronics. All rights reserved.
  *
@@ -50,8 +50,7 @@
 #include "WindowFeatures.h"
 #include <runtime/VM.h>
 #include <wtf/PassRefPtr.h>
-#include <wtf/RefPtr.h>
-#include <wtf/TemporaryChange.h>
+#include <wtf/SetForScope.h>
 #include <wtf/Vector.h>
 
 #if ENABLE(INPUT_TYPE_COLOR)
@@ -222,7 +221,7 @@ void Chrome::runModal() const
 
     // JavaScript that runs within the nested event loop must not be run in the context of the
     // script that called showModalDialog. Null out entryScope to break the connection.
-    TemporaryChange<JSC::VMEntryScope*> entryScopeNullifier { m_page.mainFrame().document()->vm().entryScope, nullptr };
+    SetForScope<JSC::VMEntryScope*> entryScopeNullifier { m_page.mainFrame().document()->vm().entryScope, nullptr };
 
     TimerBase::fireTimersInNestedEventLoop();
     m_client.runModal();
@@ -284,10 +283,7 @@ bool Chrome::runBeforeUnloadConfirmPanel(const String& message, Frame* frame)
     // otherwise cause the load to continue while we're in the middle of executing JavaScript.
     PageGroupLoadDeferrer deferrer(m_page, true);
 
-    InspectorInstrumentationCookie cookie = InspectorInstrumentation::willRunJavaScriptDialog(m_page, message);
-    bool ok = m_client.runBeforeUnloadConfirmPanel(message, frame);
-    InspectorInstrumentation::didRunJavaScriptDialog(cookie);
-    return ok;
+    return m_client.runBeforeUnloadConfirmPanel(message, frame);
 }
 
 void Chrome::closeWindowSoon()
@@ -305,9 +301,7 @@ void Chrome::runJavaScriptAlert(Frame* frame, const String& message)
     notifyPopupOpeningObservers();
     String displayMessage = frame->displayStringModifiedByEncoding(message);
 
-    InspectorInstrumentationCookie cookie = InspectorInstrumentation::willRunJavaScriptDialog(m_page, displayMessage);
     m_client.runJavaScriptAlert(frame, displayMessage);
-    InspectorInstrumentation::didRunJavaScriptDialog(cookie);
 }
 
 bool Chrome::runJavaScriptConfirm(Frame* frame, const String& message)
@@ -320,10 +314,7 @@ bool Chrome::runJavaScriptConfirm(Frame* frame, const String& message)
     notifyPopupOpeningObservers();
     String displayMessage = frame->displayStringModifiedByEncoding(message);
 
-    InspectorInstrumentationCookie cookie = InspectorInstrumentation::willRunJavaScriptDialog(m_page, displayMessage);
-    bool ok = m_client.runJavaScriptConfirm(frame, displayMessage);
-    InspectorInstrumentation::didRunJavaScriptDialog(cookie);
-    return ok;
+    return m_client.runJavaScriptConfirm(frame, displayMessage);
 }
 
 bool Chrome::runJavaScriptPrompt(Frame* frame, const String& prompt, const String& defaultValue, String& result)
@@ -336,10 +327,7 @@ bool Chrome::runJavaScriptPrompt(Frame* frame, const String& prompt, const Strin
     notifyPopupOpeningObservers();
     String displayPrompt = frame->displayStringModifiedByEncoding(prompt);
 
-    InspectorInstrumentationCookie cookie = InspectorInstrumentation::willRunJavaScriptDialog(m_page, displayPrompt);
     bool ok = m_client.runJavaScriptPrompt(frame, displayPrompt, frame->displayStringModifiedByEncoding(defaultValue), result);
-    InspectorInstrumentation::didRunJavaScriptDialog(cookie);
-
     if (ok)
         result = frame->displayStringModifiedByEncoding(result);
 
@@ -450,7 +438,7 @@ void Chrome::runOpenPanel(Frame* frame, PassRefPtr<FileChooser> fileChooser)
     m_client.runOpenPanel(frame, fileChooser);
 }
 
-void Chrome::loadIconForFiles(const Vector<String>& filenames, FileIconLoader* loader)
+void Chrome::loadIconForFiles(const Vector<String>& filenames, FileIconLoader& loader)
 {
     m_client.loadIconForFiles(filenames, loader);
 }

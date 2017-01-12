@@ -65,8 +65,8 @@ public:
     enum class LoadStatus { Unloaded, Loading, Loaded, Error };
     LoadStatus status() const;
 
-    typedef DOMPromise<FontFace&> Promise;
-    Optional<Promise>& promise() { return m_promise; }
+    using Promise = DOMPromise<IDLInterface<FontFace>>;
+    std::optional<Promise>& promise() { return m_promise; }
     void registerLoaded(Promise&&);
 
     void adopt(CSSFontFace&);
@@ -90,7 +90,7 @@ private:
 
     WeakPtrFactory<FontFace> m_weakPtrFactory;
     Ref<CSSFontFace> m_backing;
-    Optional<Promise> m_promise;
+    std::optional<Promise> m_promise;
 };
 
 }

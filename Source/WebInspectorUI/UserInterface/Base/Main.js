@@ -108,6 +108,7 @@ WebInspector.loaded = function()
 
     // Create the singleton managers next, before the user interface elements, so the user interface can register
     // as event listeners on these managers.
+    this.targetManager = new WebInspector.TargetManager;
     this.branchManager = new WebInspector.BranchManager;
     this.frameResourceManager = new WebInspector.FrameResourceManager;
     this.storageManager = new WebInspector.StorageManager;
@@ -126,7 +127,6 @@ WebInspector.loaded = function()
     this.layerTreeManager = new WebInspector.LayerTreeManager;
     this.dashboardManager = new WebInspector.DashboardManager;
     this.probeManager = new WebInspector.ProbeManager;
-    this.targetManager = new WebInspector.TargetManager;
     this.workerManager = new WebInspector.WorkerManager;
     this.replayManager = new WebInspector.ReplayManager;
 
@@ -167,10 +167,12 @@ WebInspector.loaded = function()
 
     // COMPATIBILITY (iOS 8): Page.enableTypeProfiler did not exist.
     this.showJavaScriptTypeInformationSetting = new WebInspector.Setting("show-javascript-type-information", false);
+    this.showJavaScriptTypeInformationSetting.addEventListener(WebInspector.Setting.Event.Changed, this._showJavaScriptTypeInformationSettingChanged, this);
     if (this.showJavaScriptTypeInformationSetting.value && window.RuntimeAgent && RuntimeAgent.enableTypeProfiler)
         RuntimeAgent.enableTypeProfiler();
 
     this.enableControlFlowProfilerSetting = new WebInspector.Setting("enable-control-flow-profiler", false);
+    this.enableControlFlowProfilerSetting.addEventListener(WebInspector.Setting.Event.Changed, this._enableControlFlowProfilerSettingChanged, this);
     if (this.enableControlFlowProfilerSetting.value && window.RuntimeAgent && RuntimeAgent.enableControlFlowProfiler)
         RuntimeAgent.enableControlFlowProfiler();
 
@@ -178,6 +180,10 @@ WebInspector.loaded = function()
     this.showPaintRectsSetting = new WebInspector.Setting("show-paint-rects", false);
     if (this.showPaintRectsSetting.value && window.PageAgent && PageAgent.setShowPaintRects)
         PageAgent.setShowPaintRects(true);
+
+    this.showPrintStylesSetting = new WebInspector.Setting("show-print-styles", false);
+    if (this.showPrintStylesSetting.value && window.PageAgent)
+        PageAgent.setEmulatedMedia("print");
 
     this._zoomFactorSetting = new WebInspector.Setting("zoom-factor", 1);
     this._setZoomFactor(this._zoomFactorSetting.value);
@@ -264,7 +270,9 @@ WebInspector.contentLoaded = function()
     this._contentElement.setAttribute("role", "main");
     this._contentElement.setAttribute("aria-label", WebInspector.UIString("Content"));
 
-    this.splitContentBrowser = new WebInspector.ContentBrowser(document.getElementById("split-content-browser"), this, true, true);
+    const disableBackForward = true;
+    const disableFindBanner = false;
+    this.splitContentBrowser = new WebInspector.ContentBrowser(document.getElementById("split-content-browser"), this, disableBackForward, disableFindBanner);
     this.splitContentBrowser.navigationBar.element.addEventListener("mousedown", this._consoleResizerMouseDown.bind(this));
 
     this.quickConsole = new WebInspector.QuickConsole(document.getElementById("quick-console"));
@@ -684,7 +692,8 @@ WebInspector.contentBrowserTreeElementForRepresentedObject = function(contentBro
 WebInspector.updateWindowTitle = function()
 {
     var mainFrame = this.frameResourceManager.mainFrame;
-    console.assert(mainFrame);
+    if (!mainFrame)
+        return;
 
     var urlComponents = mainFrame.mainResource.urlComponents;
 
@@ -1978,11 +1987,11 @@ WebInspector._beforecopy = function(event)
 
 WebInspector._find = function(event)
 {
-    var contentBrowser = this._focusedOrVisibleContentBrowser();
-    if (!contentBrowser || typeof contentBrowser.handleFindEvent !== "function")
+    let contentBrowser = this._focusedOrVisibleContentBrowser();
+    if (!contentBrowser)
         return;
 
-    contentBrowser.handleFindEvent(event);
+    contentBrowser.showFindBanner();
 };
 
 WebInspector._save = function(event)
@@ -2083,6 +2092,28 @@ WebInspector._showTabAtIndex = function(i, event)
 {
     if (i <= WebInspector.tabBar.tabBarItems.length)
         WebInspector.tabBar.selectedTabBarItem = i - 1;
+};
+
+WebInspector._showJavaScriptTypeInformationSettingChanged = function(event)
+{
+    if (this.showJavaScriptTypeInformationSetting.value) {
+        for (let target of WebInspector.targets)
+            target.RuntimeAgent.enableTypeProfiler();
+    } else {
+        for (let target of WebInspector.targets)
+            target.RuntimeAgent.disableTypeProfiler();
+    }
+};
+
+WebInspector._enableControlFlowProfilerSettingChanged = function(event)
+{
+    if (this.enableControlFlowProfilerSetting.value) {
+        for (let target of WebInspector.targets)
+            target.RuntimeAgent.enableControlFlowProfiler();
+    } else {
+        for (let target of WebInspector.targets)
+            target.RuntimeAgent.disableControlFlowProfiler();
+    }
 };
 
 WebInspector.elementDragStart = function(element, dividerDrag, elementDragEnd, event, cursor, eventTarget)

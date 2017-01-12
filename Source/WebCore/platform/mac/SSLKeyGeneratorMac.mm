@@ -124,6 +124,8 @@ static bool signPublicKeyAndChallenge(CSSM_CSP_HANDLE cspHandle, const CSSM_DATA
 
 static String signedPublicKeyAndChallengeString(unsigned keySize, const CString& challenge, const String& keyDescription)
 {
+    ASSERT(keySize >= 2048);
+
     SignedPublicKeyAndChallenge signedPublicKeyAndChallenge { };
 
     RetainPtr<SecAccessRef> access;
@@ -175,7 +177,8 @@ static String signedPublicKeyAndChallengeString(unsigned keySize, const CString&
 
     ASSERT(challenge.data());
 
-    signedPublicKeyAndChallenge.publicKeyAndChallenge.challenge.Length = challenge.length();
+    // Length needs to account for the null terminator.
+    signedPublicKeyAndChallenge.publicKeyAndChallenge.challenge.Length = challenge.length() + 1;
     signedPublicKeyAndChallenge.publicKeyAndChallenge.challenge.Data = (uint8_t*)challenge.data();
 
     CSSM_DATA encodedPublicKeyAndChallenge { 0, nullptr };
@@ -215,23 +218,15 @@ void getSupportedKeySizes(Vector<String>& supportedKeySizes)
 {
     ASSERT(supportedKeySizes.isEmpty());
     supportedKeySizes.append(keygenMenuItem2048());
-    supportedKeySizes.append(keygenMenuItem1024());
-    supportedKeySizes.append(keygenMenuItem512());
 }
 
 String signedPublicKeyAndChallengeString(unsigned keySizeIndex, const String& challengeString, const URL& url)
-{   
+{
     // This switch statement must always be synced with the UI strings returned by getSupportedKeySizes.
     UInt32 keySize;
     switch (keySizeIndex) {
     case 0:
         keySize = 2048;
-        break;
-    case 1:
-        keySize = 1024;
-        break;
-    case 2:
-        keySize = 512;
         break;
     default:
         ASSERT_NOT_REACHED();

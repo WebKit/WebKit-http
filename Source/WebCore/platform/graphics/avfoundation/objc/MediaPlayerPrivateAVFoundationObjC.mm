@@ -88,7 +88,16 @@
 #include "TextTrack.h"
 #endif
 
-#import <AVFoundation/AVFoundation.h>
+#import <AVFoundation/AVAssetImageGenerator.h>
+#import <AVFoundation/AVAssetTrack.h>
+#import <AVFoundation/AVMediaSelectionGroup.h>
+#import <AVFoundation/AVMetadataItem.h>
+#import <AVFoundation/AVPlayer.h>
+#import <AVFoundation/AVPlayerItem.h>
+#import <AVFoundation/AVPlayerItemOutput.h>
+#import <AVFoundation/AVPlayerItemTrack.h>
+#import <AVFoundation/AVPlayerLayer.h>
+#import <AVFoundation/AVTime.h>
 
 #if PLATFORM(IOS) || (PLATFORM(MAC) && ENABLE(VIDEO_PRESENTATION_MODE))
 #import "VideoFullscreenLayerManager.h"
@@ -2355,7 +2364,7 @@ void MediaPlayerPrivateAVFoundationObjC::paintWithVideoOutput(GraphicsContext& c
     GraphicsContextStateSaver stateSaver(context);
     FloatRect imageRect(0, 0, CGImageGetWidth(m_lastImage.get()), CGImageGetHeight(m_lastImage.get()));
     AffineTransform videoTransform = [firstEnabledVideoTrack preferredTransform];
-    FloatRect transformedOutputRect = videoTransform.inverse().valueOr(AffineTransform()).mapRect(outputRect);
+    FloatRect transformedOutputRect = videoTransform.inverse().value_or(AffineTransform()).mapRect(outputRect);
 
     context.concatCTM(videoTransform);
     context.drawNativeImage(m_lastImage.get(), imageRect.size(), transformedOutputRect, imageRect);
@@ -2706,7 +2715,10 @@ void MediaPlayerPrivateAVFoundationObjC::setCurrentTextTrack(InbandTextTrackPriv
 
     if (track) {
         if (track->textTrackCategory() == InbandTextTrackPrivateAVF::LegacyClosedCaption)
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
             [m_avPlayer.get() setClosedCaptionDisplayEnabled:YES];
+#pragma clang diagnostic pop
 #if HAVE(AVFOUNDATION_MEDIA_SELECTION_GROUP)
 #if ENABLE(AVF_CAPTIONS)
         else if (track->textTrackCategory() == InbandTextTrackPrivateAVF::OutOfBand)
@@ -2719,7 +2731,10 @@ void MediaPlayerPrivateAVFoundationObjC::setCurrentTextTrack(InbandTextTrackPriv
 #if HAVE(AVFOUNDATION_MEDIA_SELECTION_GROUP)
         [m_avPlayerItem.get() selectMediaOption:0 inMediaSelectionGroup:safeMediaSelectionGroupForLegibleMedia()];
 #endif
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
         [m_avPlayer.get() setClosedCaptionDisplayEnabled:NO];
+#pragma clang diagnostic pop
     }
 
 }
@@ -2735,7 +2750,10 @@ String MediaPlayerPrivateAVFoundationObjC::languageOfPrimaryAudioTrack() const
 #if HAVE(AVFOUNDATION_MEDIA_SELECTION_GROUP)
     // If AVFoundation has an audible group, return the language of the currently selected audible option.
     AVMediaSelectionGroupType *audibleGroup = [m_avAsset.get() mediaSelectionGroupForMediaCharacteristic:AVMediaCharacteristicAudible];
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
     AVMediaSelectionOptionType *currentlySelectedAudibleOption = [m_avPlayerItem.get() selectedMediaOptionInMediaSelectionGroup:audibleGroup];
+#pragma clang diagnostic pop
     if (currentlySelectedAudibleOption) {
         m_languageOfPrimaryAudioTrack = [[currentlySelectedAudibleOption locale] localeIdentifier];
         LOG(Media, "MediaPlayerPrivateAVFoundationObjC::languageOfPrimaryAudioTrack(%p) - returning language of selected audible option: %s", this, m_languageOfPrimaryAudioTrack.utf8().data());

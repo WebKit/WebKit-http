@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2010 Google Inc. All rights reserved.
- * Copyright (C) 2011, 2014-2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2017 Apple Inc. All rights reserved.
  * Copyright (C) 2012 Samsung Electronics. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -192,7 +192,6 @@ public:
     // Helpers for event handlers.
 
     virtual bool shouldSubmitImplicitly(Event&);
-    virtual PassRefPtr<HTMLFormElement> formForSubmission() const;
     virtual bool hasCustomFocusLogic() const;
     virtual bool isKeyboardFocusable(KeyboardEvent&) const;
     virtual bool isMouseFocusable() const;
@@ -239,7 +238,7 @@ public:
     virtual void maxResultsAttributeChanged();
     virtual bool shouldRespectAlignAttribute();
     virtual FileList* files();
-    virtual void setFiles(PassRefPtr<FileList>);
+    virtual void setFiles(RefPtr<FileList>&&);
     virtual Icon* icon() const;
     virtual bool shouldSendChangeEventAfterCheckedChanged();
     virtual bool canSetValue(const String&);
@@ -295,7 +294,7 @@ public:
 
 #if ENABLE(DATALIST_ELEMENT)
     virtual void listAttributeTargetChanged();
-    virtual Optional<Decimal> findClosestTickMarkValue(const Decimal&);
+    virtual std::optional<Decimal> findClosestTickMarkValue(const Decimal&);
 #endif
 
 #if ENABLE(DRAG_SUPPORT)
@@ -322,3 +321,8 @@ private:
 };
 
 } // namespace WebCore
+
+#define SPECIALIZE_TYPE_TRAITS_INPUT_TYPE(ToValueTypeName, predicate) \
+SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::ToValueTypeName) \
+static bool isType(const WebCore::InputType& input) { return input.predicate; } \
+SPECIALIZE_TYPE_TRAITS_END()

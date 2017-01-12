@@ -267,6 +267,7 @@ private:
         OP2_MOVAPS_VpdWpd   = 0x28,
         OP2_CVTSI2SD_VsdEd  = 0x2A,
         OP2_CVTTSD2SI_GdWsd = 0x2C,
+        OP2_CVTTSS2SI_GdWsd = 0x2C,
         OP2_UCOMISD_VsdWsd  = 0x2E,
         OP2_3BYTE_ESCAPE_3A = 0x3A,
         OP2_CMOVCC          = 0x40,
@@ -280,6 +281,7 @@ private:
         OP2_SQRTSD_VsdWsd   = 0x51,
         OP2_ANDPS_VpdWpd    = 0x54,
         OP2_ANDNPD_VpdWpd   = 0x55,
+        OP2_ORPS_VpdWpd     = 0x56,
         OP2_XORPD_VpdWpd    = 0x57,
         OP2_MOVD_VdEd       = 0x6E,
         OP2_MOVD_EdVd       = 0x7E,
@@ -288,6 +290,8 @@ private:
         OP2_3BYTE_ESCAPE_AE = 0xAE,
         OP2_IMUL_GvEv       = 0xAF,
         OP2_MOVZX_GvEb      = 0xB6,
+        OP2_BSF             = 0xBC,
+        OP2_TZCNT           = 0xBC,
         OP2_BSR             = 0xBD,
         OP2_LZCNT           = 0xBD,
         OP2_MOVSX_GvEb      = 0xBE,
@@ -967,16 +971,6 @@ public:
     {
         m_formatter.oneByteOp64(OP_XOR_EvGv, src, base, offset);
     }
-    
-    void rorq_i8r(int imm, RegisterID dst)
-    {
-        if (imm == 1)
-            m_formatter.oneByteOp64(OP_GROUP2_Ev1, GROUP2_OP_ROR, dst);
-        else {
-            m_formatter.oneByteOp64(OP_GROUP2_EvIb, GROUP2_OP_ROR, dst);
-            m_formatter.immediate8(imm);
-        }
-    }
 
 #endif
 
@@ -1028,14 +1022,48 @@ public:
     }
 #endif
 
-    void sarl_i8r(int imm, RegisterID dst)
+    void tzcnt_rr(RegisterID src, RegisterID dst)
+    {
+        m_formatter.prefix(PRE_SSE_F3);
+        m_formatter.twoByteOp(OP2_TZCNT, dst, src);
+    }
+
+#if CPU(X86_64)
+    void tzcntq_rr(RegisterID src, RegisterID dst)
+    {
+        m_formatter.prefix(PRE_SSE_F3);
+        m_formatter.twoByteOp64(OP2_TZCNT, dst, src);
+    }
+#endif
+
+    void bsf_rr(RegisterID src, RegisterID dst)
+    {
+        m_formatter.twoByteOp(OP2_BSF, dst, src);
+    }
+
+#if CPU(X86_64)
+    void bsfq_rr(RegisterID src, RegisterID dst)
+    {
+        m_formatter.twoByteOp64(OP2_BSF, dst, src);
+    }
+#endif
+
+private:
+    template<GroupOpcodeID op>
+    void shiftInstruction32(int imm, RegisterID dst)
     {
         if (imm == 1)
-            m_formatter.oneByteOp(OP_GROUP2_Ev1, GROUP2_OP_SAR, dst);
+            m_formatter.oneByteOp(OP_GROUP2_Ev1, op, dst);
         else {
-            m_formatter.oneByteOp(OP_GROUP2_EvIb, GROUP2_OP_SAR, dst);
+            m_formatter.oneByteOp(OP_GROUP2_EvIb, op, dst);
             m_formatter.immediate8(imm);
         }
+    }
+public:
+
+    void sarl_i8r(int imm, RegisterID dst)
+    {
+        shiftInstruction32<GROUP2_OP_SAR>(imm, dst);
     }
 
     void sarl_CLr(RegisterID dst)
@@ -1045,12 +1073,7 @@ public:
     
     void shrl_i8r(int imm, RegisterID dst)
     {
-        if (imm == 1)
-            m_formatter.oneByteOp(OP_GROUP2_Ev1, GROUP2_OP_SHR, dst);
-        else {
-            m_formatter.oneByteOp(OP_GROUP2_EvIb, GROUP2_OP_SHR, dst);
-            m_formatter.immediate8(imm);
-        }
+        shiftInstruction32<GROUP2_OP_SHR>(imm, dst);
     }
     
     void shrl_CLr(RegisterID dst)
@@ -1060,12 +1083,7 @@ public:
 
     void shll_i8r(int imm, RegisterID dst)
     {
-        if (imm == 1)
-            m_formatter.oneByteOp(OP_GROUP2_Ev1, GROUP2_OP_SHL, dst);
-        else {
-            m_formatter.oneByteOp(OP_GROUP2_EvIb, GROUP2_OP_SHL, dst);
-            m_formatter.immediate8(imm);
-        }
+        shiftInstruction32<GROUP2_OP_SHL>(imm, dst);
     }
 
     void shll_CLr(RegisterID dst)
@@ -1073,7 +1091,39 @@ public:
         m_formatter.oneByteOp(OP_GROUP2_EvCL, GROUP2_OP_SHL, dst);
     }
 
+    void rorl_i8r(int imm, RegisterID dst)
+    {
+        shiftInstruction32<GROUP2_OP_ROR>(imm, dst);
+    }
+
+    void rorl_CLr(RegisterID dst)
+    {
+        m_formatter.oneByteOp(OP_GROUP2_EvCL, GROUP2_OP_ROR, dst);
+    }
+
+    void roll_i8r(int imm, RegisterID dst)
+    {
+        shiftInstruction32<GROUP2_OP_ROL>(imm, dst);
+    }
+
+    void roll_CLr(RegisterID dst)
+    {
+        m_formatter.oneByteOp(OP_GROUP2_EvCL, GROUP2_OP_ROL, dst);
+    }
+
 #if CPU(X86_64)
+private:
+    template<GroupOpcodeID op>
+    void shiftInstruction64(int imm, RegisterID dst)
+    {
+        if (imm == 1)
+            m_formatter.oneByteOp64(OP_GROUP2_Ev1, op, dst);
+        else {
+            m_formatter.oneByteOp64(OP_GROUP2_EvIb, op, dst);
+            m_formatter.immediate8(imm);
+        }
+    }
+public:
     void sarq_CLr(RegisterID dst)
     {
         m_formatter.oneByteOp64(OP_GROUP2_EvCL, GROUP2_OP_SAR, dst);
@@ -1081,22 +1131,12 @@ public:
 
     void sarq_i8r(int imm, RegisterID dst)
     {
-        if (imm == 1)
-            m_formatter.oneByteOp64(OP_GROUP2_Ev1, GROUP2_OP_SAR, dst);
-        else {
-            m_formatter.oneByteOp64(OP_GROUP2_EvIb, GROUP2_OP_SAR, dst);
-            m_formatter.immediate8(imm);
-        }
+        shiftInstruction64<GROUP2_OP_SAR>(imm, dst);
     }
 
     void shrq_i8r(int imm, RegisterID dst)
     {
-        if (imm == 1)
-            m_formatter.oneByteOp64(OP_GROUP2_Ev1, GROUP2_OP_SHR, dst);
-        else {
-            m_formatter.oneByteOp64(OP_GROUP2_EvIb, GROUP2_OP_SHR, dst);
-            m_formatter.immediate8(imm);
-        }
+        shiftInstruction64<GROUP2_OP_SHR>(imm, dst);
     }
 
     void shrq_CLr(RegisterID dst)
@@ -1106,17 +1146,32 @@ public:
 
     void shlq_i8r(int imm, RegisterID dst)
     {
-        if (imm == 1)
-            m_formatter.oneByteOp64(OP_GROUP2_Ev1, GROUP2_OP_SHL, dst);
-        else {
-            m_formatter.oneByteOp64(OP_GROUP2_EvIb, GROUP2_OP_SHL, dst);
-            m_formatter.immediate8(imm);
-        }
+        shiftInstruction64<GROUP2_OP_SHL>(imm, dst);
     }
 
     void shlq_CLr(RegisterID dst)
     {
         m_formatter.oneByteOp64(OP_GROUP2_EvCL, GROUP2_OP_SHL, dst);
+    }
+
+    void rorq_i8r(int imm, RegisterID dst)
+    {
+        shiftInstruction64<GROUP2_OP_ROR>(imm, dst);
+    }
+
+    void rorq_CLr(RegisterID dst)
+    {
+        m_formatter.oneByteOp64(OP_GROUP2_EvCL, GROUP2_OP_ROR, dst);
+    }
+
+    void rolq_i8r(int imm, RegisterID dst)
+    {
+        shiftInstruction64<GROUP2_OP_ROL>(imm, dst);
+    }
+
+    void rolq_CLr(RegisterID dst)
+    {
+        m_formatter.oneByteOp64(OP_GROUP2_EvCL, GROUP2_OP_ROL, dst);
     }
 #endif // CPU(X86_64)
 
@@ -1154,6 +1209,11 @@ public:
     }
 
 #if CPU(X86_64)
+    void divq_r(RegisterID dst)
+    {
+        m_formatter.oneByteOp64(OP_GROUP3_Ev, GROUP3_OP_DIV, dst);
+    }
+
     void idivq_r(RegisterID dst)
     {
         m_formatter.oneByteOp64(OP_GROUP3_Ev, GROUP3_OP_IDIV, dst);
@@ -2235,6 +2295,20 @@ public:
         m_formatter.twoByteOp(OP2_CVTTSD2SI_GdWsd, dst, (RegisterID)src);
     }
 
+    void cvttss2si_rr(XMMRegisterID src, RegisterID dst)
+    {
+        m_formatter.prefix(PRE_SSE_F3);
+        m_formatter.twoByteOp(OP2_CVTTSS2SI_GdWsd, dst, (RegisterID)src);
+    }
+
+#if CPU(X86_64)
+    void cvttss2siq_rr(XMMRegisterID src, RegisterID dst)
+    {
+        m_formatter.prefix(PRE_SSE_F3);
+        m_formatter.twoByteOp64(OP2_CVTTSS2SI_GdWsd, dst, (RegisterID)src);
+    }
+#endif
+
     void cvtsd2ss_rr(XMMRegisterID src, XMMRegisterID dst)
     {
         m_formatter.prefix(PRE_SSE_F2);
@@ -2585,6 +2659,11 @@ public:
     void andps_rr(XMMRegisterID src, XMMRegisterID dst)
     {
         m_formatter.twoByteOp(OP2_ANDPS_VpdWpd, (RegisterID)dst, (RegisterID)src);
+    }
+
+    void orps_rr(XMMRegisterID src, XMMRegisterID dst)
+    {
+        m_formatter.twoByteOp(OP2_ORPS_VpdWpd, (RegisterID)dst, (RegisterID)src);
     }
 
     void xorps_rr(XMMRegisterID src, XMMRegisterID dst)

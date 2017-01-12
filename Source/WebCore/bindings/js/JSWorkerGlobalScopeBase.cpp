@@ -47,7 +47,19 @@ namespace WebCore {
 
 const ClassInfo JSWorkerGlobalScopeBase::s_info = { "WorkerGlobalScope", &JSDOMGlobalObject::s_info, 0, CREATE_METHOD_TABLE(JSWorkerGlobalScopeBase) };
 
-const GlobalObjectMethodTable JSWorkerGlobalScopeBase::s_globalObjectMethodTable = { &supportsRichSourceInfo, &shouldInterruptScript, &javaScriptRuntimeFlags, &queueTaskToEventLoop, &shouldInterruptScriptBeforeTimeout, nullptr, nullptr, nullptr, nullptr, nullptr, &defaultLanguage };
+const GlobalObjectMethodTable JSWorkerGlobalScopeBase::s_globalObjectMethodTable = {
+    &supportsRichSourceInfo,
+    &shouldInterruptScript,
+    &javaScriptRuntimeFlags,
+    &queueTaskToEventLoop,
+    &shouldInterruptScriptBeforeTimeout,
+    nullptr,
+    nullptr,
+    nullptr,
+    nullptr,
+    nullptr,
+    &defaultLanguage
+};
 
 JSWorkerGlobalScopeBase::JSWorkerGlobalScopeBase(JSC::VM& vm, JSC::Structure* structure, RefPtr<WorkerGlobalScope>&& impl)
     : JSDOMGlobalObject(vm, structure, normalWorld(vm), &s_globalObjectMethodTable)
@@ -68,7 +80,7 @@ void JSWorkerGlobalScopeBase::visitChildren(JSCell* cell, SlotVisitor& visitor)
     JSWorkerGlobalScopeBase* thisObject = jsCast<JSWorkerGlobalScopeBase*>(cell);
     ASSERT_GC_OBJECT_INHERITS(thisObject, info());
     Base::visitChildren(thisObject, visitor);
-    visitor.append(&thisObject->m_proxy);
+    visitor.append(thisObject->m_proxy);
 }
 
 void JSWorkerGlobalScopeBase::destroy(JSCell* cell)

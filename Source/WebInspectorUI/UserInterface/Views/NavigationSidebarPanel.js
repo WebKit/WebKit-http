@@ -213,6 +213,11 @@ WebInspector.NavigationSidebarPanel = class NavigationSidebarPanel extends WebIn
             let contentView = this.contentBrowser.contentViewForRepresentedObject(treeElement.representedObject);
             if (contentView && contentView.parentContainer && contentView.parentContainer !== this.contentBrowser.contentViewContainer)
                 return false;
+
+            // contentView.parentContainer may be null. Check for selected tab, too.
+            let selectedTabContentView = WebInspector.tabBrowser.selectedTabContentView;
+            if (selectedTabContentView && selectedTabContentView.contentBrowser !== this.contentBrowser)
+                return false;
         }
 
         let contentView = this.contentBrowser.showContentViewForRepresentedObject(treeElement.representedObject);
@@ -707,6 +712,8 @@ WebInspector.NavigationSidebarPanel = class NavigationSidebarPanel extends WebIn
             || treeElement instanceof WebInspector.DatabaseHostTreeElement
             || treeElement instanceof WebInspector.IndexedDatabaseHostTreeElement
             || treeElement instanceof WebInspector.ApplicationCacheManifestTreeElement
+            || treeElement instanceof WebInspector.ThreadTreeElement
+            || treeElement instanceof WebInspector.IdleTreeElement
             || typeof treeElement.representedObject === "string"
             || treeElement.representedObject instanceof String;
     }

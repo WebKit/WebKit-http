@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -38,9 +38,11 @@ class ObjectAllocationProfile {
 public:
     static ptrdiff_t offsetOfAllocator() { return OBJECT_OFFSETOF(ObjectAllocationProfile, m_allocator); }
     static ptrdiff_t offsetOfStructure() { return OBJECT_OFFSETOF(ObjectAllocationProfile, m_structure); }
+    static ptrdiff_t offsetOfInlineCapacity() { return OBJECT_OFFSETOF(ObjectAllocationProfile, m_inlineCapacity); }
 
     ObjectAllocationProfile()
         : m_allocator(0)
+        , m_inlineCapacity(0)
     {
     }
 
@@ -50,6 +52,7 @@ public:
     {
         ASSERT(!m_allocator);
         ASSERT(!m_structure);
+        ASSERT(!m_inlineCapacity);
 
         unsigned inlineCapacity = 0;
         if (inferredInlineCapacity < JSFinalObject::defaultInlineCapacity()) {
@@ -96,6 +99,7 @@ public:
 
         m_allocator = allocator;
         m_structure.set(vm, owner, structure);
+        m_inlineCapacity = inlineCapacity;
     }
 
     Structure* structure()
@@ -105,18 +109,19 @@ public:
         WTF::loadLoadFence();
         return structure;
     }
-    unsigned inlineCapacity() { return structure()->inlineCapacity(); }
+    unsigned inlineCapacity() { return m_inlineCapacity; }
 
     void clear()
     {
         m_allocator = 0;
         m_structure.clear();
+        m_inlineCapacity = 0;
         ASSERT(isNull());
     }
 
     void visitAggregate(SlotVisitor& visitor)
     {
-        visitor.append(&m_structure);
+        visitor.append(m_structure);
     }
 
 private:
@@ -145,6 +150,7 @@ private:
 
     MarkedAllocator* m_allocator; // Precomputed to make things easier for generated code.
     WriteBarrier<Structure> m_structure;
+    unsigned m_inlineCapacity;
 };
 
 } // namespace JSC

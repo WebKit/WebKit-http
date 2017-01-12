@@ -34,6 +34,7 @@
 #include "ExtensionStyleSheets.h"
 #include "HTMLIFrameElement.h"
 #include "HTMLLinkElement.h"
+#include "HTMLSlotElement.h"
 #include "HTMLStyleElement.h"
 #include "InspectorInstrumentation.h"
 #include "Page.h"
@@ -96,6 +97,8 @@ StyleResolver& Scope::resolver()
         m_resolver = std::make_unique<StyleResolver>(m_document);
         m_resolver->appendAuthorStyleSheets(m_activeStyleSheets);
     }
+    ASSERT(!m_shadowRoot || &m_document == &m_shadowRoot->document());
+    ASSERT(&m_resolver->document() == &m_document);
     return *m_resolver;
 }
 
@@ -124,6 +127,35 @@ Scope& Scope::forNode(Node& node)
     return node.document().styleScope();
 }
 
+Scope* Scope::forOrdinal(Element& element, ScopeOrdinal ordinal)
+{
+    switch (ordinal) {
+    case ScopeOrdinal::Element:
+        return &forNode(element);
+    case ScopeOrdinal::ContainingHost: {
+        auto* containingShadowRoot = element.containingShadowRoot();
+        if (!containingShadowRoot)
+            return nullptr;
+        return &forNode(*containingShadowRoot->host());
+    }
+    case ScopeOrdinal::Shadow: {
+        auto* shadowRoot = element.shadowRoot();
+        if (!shadowRoot)
+            return nullptr;
+        return &shadowRoot->styleScope();
+    }
+    default: {
+        ASSERT(ordinal >= ScopeOrdinal::FirstSlot);
+        auto slotIndex = ScopeOrdinal::FirstSlot;
+        for (auto* slot = element.assignedSlot(); slot; slot = slot->assignedSlot(), ++slotIndex) {
+            if (slotIndex == ordinal)
+                return &forNode(*slot);
+        }
+        return nullptr;
+    }
+    }
+}
+
 void Scope::setPreferredStylesheetSetName(const String& name)
 {
     if (m_preferredStylesheetSetName == name)
@@ -147,12 +179,6 @@ void Scope::removePendingSheet(RemovePendingSheetNotificationType notification)
     ASSERT(m_pendingStyleSheetCount > 0);
 
     m_pendingStyleSheetCount--;
-    
-#ifdef INSTRUMENT_LAYOUT_SCHEDULING
-    if (!ownerElement())
-        printf("Stylesheet loaded at time %d. %d stylesheets still remain.\n", elapsedTime(), m_pendingStylesheets);
-#endif
-
     if (m_pendingStyleSheetCount)
         return;
 

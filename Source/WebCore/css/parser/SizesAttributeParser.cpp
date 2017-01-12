@@ -40,7 +40,7 @@
 
 namespace WebCore {
 
-float SizesAttributeParser::computeLength(double value, CSSPrimitiveValue::UnitTypes type, const Document& document)
+float SizesAttributeParser::computeLength(double value, CSSPrimitiveValue::UnitType type, const Document& document)
 {
     auto* renderer = document.renderView();
     if (!renderer)
@@ -70,7 +70,7 @@ SizesAttributeParser::SizesAttributeParser(const String& attribute, const Docume
     , m_length(0)
     , m_lengthWasSet(false)
 {
-    m_isValid = parse(CSSTokenizer::Scope(attribute).tokenRange());
+    m_isValid = parse(CSSTokenizer(attribute).tokenRange());
 }
 
 float SizesAttributeParser::length()

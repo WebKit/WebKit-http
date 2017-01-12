@@ -44,6 +44,7 @@ class TestInvocation;
 class OriginSettings;
 class PlatformWebView;
 class EventSenderProxy;
+struct TestCommand;
 struct TestOptions;
 
 // FIXME: Rename this TestRunner?
@@ -101,9 +102,12 @@ public:
     void getUserMediaInfoForOrigin(WKFrameRef, WKStringRef originKey, bool&, WKRetainPtr<WKStringRef>&);
     WKStringRef getUserMediaSaltForOrigin(WKFrameRef, WKStringRef originKey);
     void setUserMediaPermission(bool);
-    void setUserMediaPermissionForOrigin(bool, WKStringRef userMediaDocumentOriginString, WKStringRef topLevelDocumentOriginString);
+    void setUserMediaPersistentPermissionForOrigin(bool, WKStringRef userMediaDocumentOriginString, WKStringRef topLevelDocumentOriginString);
     void handleUserMediaPermissionRequest(WKFrameRef, WKSecurityOriginRef, WKSecurityOriginRef, WKUserMediaPermissionRequestRef);
     void handleCheckOfUserMediaPermissionForOrigin(WKFrameRef, WKSecurityOriginRef, WKSecurityOriginRef, const WKUserMediaPermissionCheckRef&);
+    OriginSettings& settingsForOrigin(const String&);
+    unsigned userMediaPermissionRequestCountForOrigin(WKStringRef userMediaDocumentOriginString, WKStringRef topLevelDocumentOriginString);
+    void resetUserMediaPermissionRequestCountForOrigin(WKStringRef userMediaDocumentOriginString, WKStringRef topLevelDocumentOriginString);
 
     // Policy delegate.
     void setCustomPolicyDelegate(bool enabled, bool permissive);
@@ -174,7 +178,7 @@ private:
     void initializeTestPluginDirectory();
 
     void ensureViewSupportsOptionsForTest(const TestInvocation&);
-    TestOptions testOptionsForTest(const std::string& pathOrURL) const;
+    TestOptions testOptionsForTest(const TestCommand&) const;
     void updatePlatformSpecificTestOptionsForTest(TestOptions&, const std::string& pathOrURL) const;
 
     void updateWebViewSizeForTest(const TestInvocation&);
@@ -316,7 +320,7 @@ private:
     bool m_isGeolocationPermissionSet { false };
     bool m_isGeolocationPermissionAllowed { false };
 
-    HashMap<String, RefPtr<OriginSettings>> m_cahcedUserMediaPermissions;
+    HashMap<String, RefPtr<OriginSettings>> m_cachedUserMediaPermissions;
 
     typedef Vector<std::pair<String, WKRetainPtr<WKUserMediaPermissionRequestRef>>> PermissionRequestList;
     PermissionRequestList m_userMediaPermissionRequests;
@@ -348,6 +352,15 @@ private:
     std::unique_ptr<EventSenderProxy> m_eventSenderProxy;
 
     WorkQueueManager m_workQueueManager;
+};
+
+struct TestCommand {
+    std::string pathOrURL;
+    std::string absolutePath;
+    bool shouldDumpPixels { false };
+    std::string expectedPixelHash;
+    int timeout { 0 };
+    bool dumpJSConsoleLogInStdErr { false };
 };
 
 } // namespace WTR

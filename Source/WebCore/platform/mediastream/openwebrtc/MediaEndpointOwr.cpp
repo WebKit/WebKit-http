@@ -37,8 +37,10 @@
 #include "MediaPayload.h"
 #include "NotImplemented.h"
 #include "OpenWebRTCUtilities.h"
+#include "PeerConnectionStates.h"
 #include "RTCDataChannelHandler.h"
-#include "RealtimeMediaSourceOwr.h"
+#include "RealtimeAudioSourceOwr.h"
+#include "RealtimeVideoSourceOwr.h"
 #include <owr/owr.h>
 #include <owr/owr_audio_payload.h>
 #include <owr/owr_crypto_utils.h>
@@ -58,7 +60,7 @@ static const Vector<String> candidateTypes = { "host", "srflx", "prflx", "relay"
 static const Vector<String> candidateTcpTypes = { "", "active", "passive", "so" };
 static const Vector<String> codecTypes = { "NONE", "PCMU", "PCMA", "OPUS", "H264", "VP8" };
 
-static const char* helperServerRegEx = "(turn|stun):([\\w\\.\\-]+|\\[[\\w\\:]+\\])(:\\d+)?(\\?.+)?";
+static const char* helperServerRegEx = "(turns|turn|stun):([\\w\\.\\-]+|\\[[\\w\\:]+\\])(:\\d+)?(\\?.+)?";
 
 static const unsigned short helperServerDefaultPort = 3478;
 static const unsigned short candidateDefaultPort = 9;
@@ -239,6 +241,7 @@ MediaEndpoint::UpdateResult MediaEndpointOwr::updateReceiveConfiguration(MediaEn
         owr_transport_agent_add_session(m_transportAgent, session);
     }
 
+    owr_transport_agent_start(m_transportAgent);
     m_numberOfReceivePreparedSessions = m_transceivers.size();
 
     return UpdateResult::Success;
@@ -314,6 +317,14 @@ MediaEndpoint::UpdateResult MediaEndpointOwr::updateSendConfiguration(MediaEndpo
         owr_media_session_set_send_payload(OWR_MEDIA_SESSION(session), sendPayload);
         owr_media_session_set_send_source(OWR_MEDIA_SESSION(session), source->mediaSource());
 
+        // FIXME: Support for group-ssrc SDP line is missing.
+        const Vector<unsigned> receiveSsrcs = mdesc.ssrcs;
+        if (receiveSsrcs.size()) {
+            g_object_set(session, "receive-ssrc", receiveSsrcs[0], nullptr);
+            if (receiveSsrcs.size() == 2)
+                g_object_set(session, "receive-rtx-ssrc", receiveSsrcs[1], nullptr);
+        }
+
         m_numberOfSendPreparedSessions = i + 1;
     }
 
@@ -340,15 +351,21 @@ Ref<RealtimeMediaSource> MediaEndpointOwr::createMutedRemoteSource(const String&
 {
     String name;
     String id("not used");
+    RefPtr<RealtimeMediaSourceOwr> source;
 
     switch (type) {
-    case RealtimeMediaSource::Audio: name = "remote audio"; break;
-    case RealtimeMediaSource::Video: name = "remote video"; break;
+    case RealtimeMediaSource::Audio:
+        name = "remote audio";
+        source = adoptRef(new RealtimeAudioSourceOwr(nullptr, id, type, name));
+        break;
+    case RealtimeMediaSource::Video:
+        name = "remote video";
+        source = adoptRef(new RealtimeVideoSourceOwr(nullptr, id, type, name));
+        break;
     case RealtimeMediaSource::None:
         ASSERT_NOT_REACHED();
     }
 
-    RefPtr<RealtimeMediaSourceOwr> source = adoptRef(new RealtimeMediaSourceOwr(nullptr, id, type, name));
     m_mutedRemoteSources.set(mid, source);
 
     return *source;
@@ -559,7 +576,24 @@ void MediaEndpointOwr::ensureTransportAgentAndTransceivers(bool isInitiator, con
     ASSERT(m_dtlsCertificate);
 
     if (!m_transportAgent) {
-        m_transportAgent = owr_transport_agent_new(false);
+        // FIXME: Handle SDP BUNDLE line from the remote source instead of falling back to balanced.
+        OwrBundlePolicyType bundlePolicy = OWR_BUNDLE_POLICY_TYPE_BALANCED;
+
+        switch (m_configuration->bundlePolicy) {
+        case PeerConnectionStates::BundlePolicy::Balanced:
+            bundlePolicy = OWR_BUNDLE_POLICY_TYPE_BALANCED;
+            break;
+        case PeerConnectionStates::BundlePolicy::MaxCompat:
+            bundlePolicy = OWR_BUNDLE_POLICY_TYPE_MAX_COMPAT;
+            break;
+        case PeerConnectionStates::BundlePolicy::MaxBundle:
+            bundlePolicy = OWR_BUNDLE_POLICY_TYPE_MAX_BUNDLE;
+            break;
+        default:
+            ASSERT_NOT_REACHED();
+        };
+
+        m_transportAgent = owr_transport_agent_new(false, bundlePolicy);
 
         ASSERT(m_configuration);
         for (auto& server : m_configuration->iceServers) {
@@ -579,6 +613,10 @@ void MediaEndpointOwr::ensureTransportAgentAndTransceivers(bool isInitiator, con
                         : OWR_HELPER_SERVER_TYPE_TURN_UDP;
 
                     owr_transport_agent_add_helper_server(m_transportAgent, serverType,
+                        url.host.ascii().data(), port,
+                        server.username.ascii().data(), server.credential.ascii().data());
+                } else if (url.protocol == "turns") {
+                    owr_transport_agent_add_helper_server(m_transportAgent, OWR_HELPER_SERVER_TYPE_TURN_TLS,
                         url.host.ascii().data(), port,
                         server.username.ascii().data(), server.credential.ascii().data());
                 } else

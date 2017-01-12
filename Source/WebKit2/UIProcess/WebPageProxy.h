@@ -60,6 +60,7 @@
 #include "WebPageProxyMessages.h"
 #include "WebPopupMenuProxy.h"
 #include "WebProcessLifetimeTracker.h"
+#include "WebsitePolicies.h"
 #include <WebCore/ActivityState.h>
 #include <WebCore/Color.h>
 #include <WebCore/DragActions.h>
@@ -129,6 +130,7 @@ class FindMatchesClient;
 class FormClient;
 class FullscreenClient;
 class HistoryClient;
+class IconLoadingClient;
 class LoaderClient;
 class Navigation;
 class NavigationClient;
@@ -209,6 +211,7 @@ struct ColorSpaceData;
 struct EditingRange;
 struct EditorState;
 class GamepadData;
+struct InteractionInformationRequest;
 struct LoadParameters;
 struct PlatformPopupMenuData;
 struct PrintInfo;
@@ -366,6 +369,9 @@ public:
     API::UIClient& uiClient() { return *m_uiClient; }
     void setUIClient(std::unique_ptr<API::UIClient>);
 
+    API::IconLoadingClient& iconLoadingClient() { return *m_iconLoadingClient; }
+    void setIconLoadingClient(std::unique_ptr<API::IconLoadingClient>);
+
     void initializeWebPage();
 
     void close();
@@ -461,12 +467,17 @@ public:
     double displayedContentScale() const { return m_lastVisibleContentRectUpdate.scale(); }
     const WebCore::FloatRect& exposedContentRect() const { return m_lastVisibleContentRectUpdate.exposedContentRect(); }
     const WebCore::FloatRect& unobscuredContentRect() const { return m_lastVisibleContentRectUpdate.unobscuredContentRect(); }
+    bool inStableState() const { return m_lastVisibleContentRectUpdate.inStableState(); }
+    const WebCore::FloatRect& unobscuredContentRectRespectingInputViewBounds() const { return m_lastVisibleContentRectUpdate.unobscuredContentRectRespectingInputViewBounds(); }
+    // When visual viewports are enabled, this is the layout viewport rect.
+    const WebCore::FloatRect& customFixedPositionRect() const { return m_lastVisibleContentRectUpdate.customFixedPositionRect(); }
 
     void updateVisibleContentRects(const VisibleContentRectUpdateInfo&);
     void resendLastVisibleContentRects();
 
     enum class UnobscuredRectConstraint { ConstrainedToDocumentRect, Unconstrained };
-    WebCore::FloatRect computeCustomFixedPositionRect(const WebCore::FloatRect& unobscuredContentRect, double displayedContentScale, UnobscuredRectConstraint = UnobscuredRectConstraint::Unconstrained) const;
+    WebCore::FloatRect computeCustomFixedPositionRect(const WebCore::FloatRect& unobscuredContentRect, const WebCore::FloatRect& unobscuredContentRectRespectingInputViewBounds, const WebCore::FloatRect& currentCustomFixedPositionRect, double displayedContentScale, UnobscuredRectConstraint = UnobscuredRectConstraint::Unconstrained, bool visualViewportEnabled = false) const;
+
     void overflowScrollViewWillStartPanGesture();
     void overflowScrollViewDidScroll();
     void overflowScrollWillStartScroll();
@@ -504,8 +515,8 @@ public:
     void replaceDictatedText(const String& oldText, const String& newText);
     void replaceSelectedText(const String& oldText, const String& newText);
     void didReceivePositionInformation(const InteractionInformationAtPosition&);
-    void getPositionInformation(const WebCore::IntPoint&, InteractionInformationAtPosition&);
-    void requestPositionInformation(const WebCore::IntPoint&);
+    void getPositionInformation(const InteractionInformationRequest&, InteractionInformationAtPosition&);
+    void requestPositionInformation(const InteractionInformationRequest&);
     void startInteractionWithElementAtPosition(const WebCore::IntPoint&);
     void stopInteraction();
     void performActionOnElement(uint32_t action);
@@ -535,6 +546,8 @@ public:
 #endif
     void didCommitLayerTree(const WebKit::RemoteLayerTreeTransaction&);
     void layerTreeCommitComplete();
+
+    bool updateLayoutViewportParameters(const WebKit::RemoteLayerTreeTransaction&);
 
 #if USE(COORDINATED_GRAPHICS_MULTIPROCESS)
     void didRenderFrame(const WebCore::IntSize& contentsSize, const WebCore::IntRect& coveredRect);
@@ -675,6 +688,7 @@ public:
     void setIntrinsicDeviceScaleFactor(float);
     void setCustomDeviceScaleFactor(float);
     void windowScreenDidChange(WebCore::PlatformDisplayID);
+    void accessibilitySettingsDidChange();
 
     void setUseFixedLayout(bool);
     void setFixedLayoutSize(const WebCore::IntSize&);
@@ -792,7 +806,7 @@ public:
     void performDictionaryLookupOfCurrentSelection();
 #endif
 
-    void receivedPolicyDecision(WebCore::PolicyAction, WebFrameProxy*, uint64_t listenerID, API::Navigation* navigationID);
+    void receivedPolicyDecision(WebCore::PolicyAction, WebFrameProxy&, uint64_t listenerID, API::Navigation* navigationID, const WebsitePolicies&);
 
     void backForwardRemovedItem(uint64_t itemID);
 
@@ -1009,8 +1023,8 @@ public:
     void setScrollPinningBehavior(WebCore::ScrollPinningBehavior);
     WebCore::ScrollPinningBehavior scrollPinningBehavior() const { return m_scrollPinningBehavior; }
 
-    void setOverlayScrollbarStyle(WTF::Optional<WebCore::ScrollbarOverlayStyle>);
-    WTF::Optional<WebCore::ScrollbarOverlayStyle> overlayScrollbarStyle() const { return m_scrollbarOverlayStyle; }
+    void setOverlayScrollbarStyle(std::optional<WebCore::ScrollbarOverlayStyle>);
+    std::optional<WebCore::ScrollbarOverlayStyle> overlayScrollbarStyle() const { return m_scrollbarOverlayStyle; }
 
     bool shouldRecordNavigationSnapshots() const { return m_shouldRecordNavigationSnapshots; }
     void setShouldRecordNavigationSnapshots(bool shouldRecordSnapshots) { m_shouldRecordNavigationSnapshots = shouldRecordSnapshots; }
@@ -1039,6 +1053,8 @@ public:
 
     bool isPlayingAudio() const { return !!(m_mediaState & WebCore::MediaProducer::IsPlayingAudio); }
     void isPlayingMediaDidChange(WebCore::MediaProducer::MediaStateFlags, uint64_t);
+    bool hasActiveAudioStream() const { return m_mediaState & WebCore::MediaProducer::HasActiveAudioCaptureDevice; }
+    bool hasActiveVideoStream() const { return m_mediaState & WebCore::MediaProducer::HasActiveVideoCaptureDevice; }
     WebCore::MediaProducer::MediaStateFlags mediaStateFlags() const { return m_mediaState; }
 
 #if PLATFORM(MAC)
@@ -1073,6 +1089,9 @@ public:
 
     void handleAcceptedCandidate(WebCore::TextCheckingResult);
     void didHandleAcceptedCandidate();
+
+    void setHeaderBannerHeightForTesting(int);
+    void setFooterBannerHeightForTesting(int);
 #endif
 
 #if PLATFORM(EFL) && HAVE(ACCESSIBILITY) && defined(HAVE_ECORE_X)
@@ -1132,6 +1151,9 @@ public:
 
     void didRestoreScrollPosition();
 
+    void getLoadDecisionForIcon(const WebCore::LinkIcon&, uint64_t callbackID);
+    void finishedLoadingIcon(uint64_t callbackIdentifier, const IPC::DataReference&);
+
     void setFocus(bool focused);
     void setWindowFrame(const WebCore::FloatRect&);
     void getWindowFrame(WebCore::FloatRect&);
@@ -1157,6 +1179,10 @@ public:
     WeakPtr<WebPageProxy> createWeakPtr() const { return m_weakPtrFactory.createWeakPtr(); }
 
     void isLoadingChanged() { activityStateDidChange(WebCore::ActivityState::IsLoading); }
+
+    void clearUserMediaState();
+
+    void setShouldSkipWaitingForPaintAfterNextViewDidMoveToWindow(bool shouldSkip) { m_shouldSkipWaitingForPaintAfterNextViewDidMoveToWindow = shouldSkip; }
 
 private:
     WebPageProxy(PageClient&, WebProcessProxy&, uint64_t pageID, Ref<API::PageConfiguration>&&);
@@ -1205,7 +1231,7 @@ private:
     void didReceiveServerRedirectForProvisionalLoadForFrame(uint64_t frameID, uint64_t navigationID, const String&, const UserData&);
     void didChangeProvisionalURLForFrame(uint64_t frameID, uint64_t navigationID, const String& url);
     void didFailProvisionalLoadForFrame(uint64_t frameID, const WebCore::SecurityOriginData& frameSecurityOrigin, uint64_t navigationID, const String& provisionalURL, const WebCore::ResourceError&, const UserData&);
-    void didCommitLoadForFrame(uint64_t frameID, uint64_t navigationID, const String& mimeType, bool frameHasCustomContentProvider, uint32_t frameLoadType, const WebCore::CertificateInfo&, bool containsPluginDocument, Optional<WebCore::HasInsecureContent> forcedHasInsecureContent, const UserData&);
+    void didCommitLoadForFrame(uint64_t frameID, uint64_t navigationID, const String& mimeType, bool frameHasCustomContentProvider, uint32_t frameLoadType, const WebCore::CertificateInfo&, bool containsPluginDocument, std::optional<WebCore::HasInsecureContent> forcedHasInsecureContent, const UserData&);
     void didFinishDocumentLoadForFrame(uint64_t frameID, uint64_t navigationID, const UserData&);
     void didFinishLoadForFrame(uint64_t frameID, uint64_t navigationID, const UserData&);
     void didFailLoadForFrame(uint64_t frameID, uint64_t navigationID, const WebCore::ResourceError&, const UserData&);
@@ -1227,7 +1253,7 @@ private:
 
     void didDestroyNavigation(uint64_t navigationID);
 
-    void decidePolicyForNavigationAction(uint64_t frameID, const WebCore::SecurityOriginData& frameSecurityOrigin, uint64_t navigationID, const NavigationActionData&, uint64_t originatingFrameID, const WebCore::SecurityOriginData& originatingFrameSecurityOrigin, const WebCore::ResourceRequest& originalRequest, const WebCore::ResourceRequest&, uint64_t listenerID, const UserData&, bool& receivedPolicyAction, uint64_t& newNavigationID, uint64_t& policyAction, DownloadID&);
+    void decidePolicyForNavigationAction(uint64_t frameID, const WebCore::SecurityOriginData& frameSecurityOrigin, uint64_t navigationID, const NavigationActionData&, uint64_t originatingFrameID, const WebCore::SecurityOriginData& originatingFrameSecurityOrigin, const WebCore::ResourceRequest& originalRequest, const WebCore::ResourceRequest&, uint64_t listenerID, const UserData&, bool& receivedPolicyAction, uint64_t& newNavigationID, uint64_t& policyAction, DownloadID&, WebsitePolicies&);
     void decidePolicyForNewWindowAction(uint64_t frameID, const WebCore::SecurityOriginData& frameSecurityOrigin, const NavigationActionData&, const WebCore::ResourceRequest&, const String& frameName, uint64_t listenerID, const UserData&);
     void decidePolicyForResponse(uint64_t frameID, const WebCore::SecurityOriginData& frameSecurityOrigin, const WebCore::ResourceResponse&, const WebCore::ResourceRequest&, bool canShowMIMEType, uint64_t listenerID, const UserData&);
     void decidePolicyForResponseSync(uint64_t frameID, const WebCore::SecurityOriginData& frameSecurityOrigin, const WebCore::ResourceResponse&, const WebCore::ResourceRequest&, bool canShowMIMEType, uint64_t listenerID, const UserData&, bool& receivedPolicyAction, uint64_t& policyAction, DownloadID&);
@@ -1280,6 +1306,9 @@ private:
     void reachedApplicationCacheOriginQuota(const String& originIdentifier, uint64_t currentQuota, uint64_t totalBytesNeeded, PassRefPtr<Messages::WebPageProxy::ReachedApplicationCacheOriginQuota::DelayedReply>);
     void requestGeolocationPermissionForFrame(uint64_t geolocationID, uint64_t frameID, String originIdentifier);
 
+#if ENABLE(MEDIA_STREAM)
+    UserMediaPermissionRequestManagerProxy& userMediaPermissionRequestManager();
+#endif
     void requestUserMediaPermissionForFrame(uint64_t userMediaID, uint64_t frameID, String userMediaDocumentOriginIdentifier, String topLevelDocumentOriginIdentifier, const WebCore::MediaConstraintsData& audioConstraints, const WebCore::MediaConstraintsData& videoConstraints);
     void enumerateMediaDevicesForFrame(uint64_t userMediaID, uint64_t frameID, String userMediaDocumentOriginIdentifier, String topLevelDocumentOriginIdentifier);
 
@@ -1579,6 +1608,7 @@ private:
     std::unique_ptr<API::PolicyClient> m_policyClient;
     std::unique_ptr<API::NavigationClient> m_navigationClient;
     std::unique_ptr<API::HistoryClient> m_historyClient;
+    std::unique_ptr<API::IconLoadingClient> m_iconLoadingClient;
     std::unique_ptr<API::FormClient> m_formClient;
     std::unique_ptr<API::UIClient> m_uiClient;
     std::unique_ptr<API::FindClient> m_findClient;
@@ -1631,15 +1661,15 @@ private:
 #endif
 #if PLATFORM(IOS)
     VisibleContentRectUpdateInfo m_lastVisibleContentRectUpdate;
-    bool m_hasReceivedLayerTreeTransactionAfterDidCommitLoad;
-    uint64_t m_firstLayerTreeTransactionIdAfterDidCommitLoad;
-    int32_t m_deviceOrientation;
-    bool m_dynamicViewportSizeUpdateWaitingForTarget;
-    bool m_dynamicViewportSizeUpdateWaitingForLayerTreeCommit;
-    uint64_t m_dynamicViewportSizeUpdateLayerTreeTransactionID;
-    uint64_t m_layerTreeTransactionIdAtLastTouchStart;
+    bool m_hasReceivedLayerTreeTransactionAfterDidCommitLoad { true };
+    uint64_t m_firstLayerTreeTransactionIdAfterDidCommitLoad { 0 };
+    int32_t m_deviceOrientation { 0 };
+    bool m_dynamicViewportSizeUpdateWaitingForTarget { false };
+    bool m_dynamicViewportSizeUpdateWaitingForLayerTreeCommit { false };
+    uint64_t m_dynamicViewportSizeUpdateLayerTreeTransactionID { 0 };
+    uint64_t m_layerTreeTransactionIdAtLastTouchStart { 0 };
     uint64_t m_currentDynamicViewportSizeUpdateID { 0 };
-    bool m_hasNetworkRequestsOnSuspended;
+    bool m_hasNetworkRequestsOnSuspended { false };
     bool m_isKeyboardAnimatingIn { false };
     bool m_isScrollingOrZooming { false };
 #endif
@@ -1672,7 +1702,9 @@ private:
     GeolocationPermissionRequestManagerProxy m_geolocationPermissionRequestManager;
     NotificationPermissionRequestManagerProxy m_notificationPermissionRequestManager;
 
-    UserMediaPermissionRequestManagerProxy m_userMediaPermissionRequestManager;
+#if ENABLE(MEDIA_STREAM)
+    std::unique_ptr<UserMediaPermissionRequestManagerProxy> m_userMediaPermissionRequestManager;
+#endif
 
     WebCore::ActivityState::Flags m_activityState;
     bool m_viewWasEverInWindow;
@@ -1687,6 +1719,7 @@ private:
     bool m_maintainsInactiveSelection;
 
     bool m_waitsForPaintAfterViewDidMoveToWindow;
+    bool m_shouldSkipWaitingForPaintAfterNextViewDidMoveToWindow { false };
 
     String m_toolTip;
 
@@ -1747,8 +1780,8 @@ private:
     bool m_syncNavigationActionPolicyActionIsValid;
     WebCore::PolicyAction m_syncNavigationActionPolicyAction;
     DownloadID m_syncNavigationActionPolicyDownloadID;
+    WebsitePolicies m_syncNavigationActionPolicyWebsitePolicies;
     bool m_shouldSuppressAppLinksInNextNavigationPolicyDecision { false };
-    bool m_pageSuppressed { false };
 
     Deque<NativeWebKeyboardEvent> m_keyEventQueue;
     Deque<NativeWebWheelEvent> m_wheelEventQueue;
@@ -1876,6 +1909,11 @@ private:
     bool m_autoSizingShouldExpandToViewHeight;
     WebCore::IntSize m_minimumLayoutSize;
 
+    // Visual viewports
+    WebCore::LayoutSize m_baseLayoutViewportSize;
+    WebCore::LayoutPoint m_minStableLayoutViewportOrigin;
+    WebCore::LayoutPoint m_maxStableLayoutViewportOrigin;
+
     float m_mediaVolume;
     WebCore::MediaProducer::MutedStateFlags m_mutedState { WebCore::MediaProducer::NoneMuted };
     bool m_mayStartMediaWhenInWindow;
@@ -1897,7 +1935,7 @@ private:
     HiddenPageThrottlingAutoIncreasesCounter::Token m_hiddenPageDOMTimerThrottlingAutoIncreasesCount;
         
     WebCore::ScrollPinningBehavior m_scrollPinningBehavior;
-    WTF::Optional<WebCore::ScrollbarOverlayStyle> m_scrollbarOverlayStyle;
+    std::optional<WebCore::ScrollbarOverlayStyle> m_scrollbarOverlayStyle;
 
     uint64_t m_navigationID;
 
@@ -1926,6 +1964,11 @@ private:
     bool m_hasDeferredStartAssistingNode { false };
     std::unique_ptr<NodeAssistanceArguments> m_deferredNodeAssistanceArguments;
     bool m_forceAlwaysUserScalable { false };
+#endif
+
+#if ENABLE(POINTER_LOCK)
+    bool m_isPointerLockPending { false };
+    bool m_isPointerLocked { false };
 #endif
 
 #if ENABLE(DOWNLOAD_ATTRIBUTE)

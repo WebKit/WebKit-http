@@ -2774,13 +2774,6 @@
             ]
         },
         {
-            "name": "setTouchEmulationEnabled",
-            "parameters": [
-                { "name": "enabled", "type": "boolean", "description": "Whether the touch event emulation should be enabled." }
-            ],
-            "description": "Toggles mouse event-based touch event emulation."
-        },
-        {
             "name": "setEmulatedMedia",
             "parameters": [
                 { "name": "media", "type": "string", "description": "Media type to emulate. Empty string disables the override." }
@@ -2823,14 +2816,6 @@
             ],
             "returns": [
                 { "name": "dataURL", "type": "string", "description": "Base64-encoded image data (PNG)." }
-            ]
-        },
-        {
-            "name": "handleJavaScriptDialog",
-            "description": "Accepts or dismisses a JavaScript initiated dialog (alert, confirm, prompt, or onbeforeunload).",
-            "parameters": [
-                { "name": "accept", "type": "boolean", "description": "Whether to accept or dismiss the dialog." },
-                { "name": "promptText", "type": "string", "optional": true, "description": "The text to enter into the dialog prompt before accepting. Used only if this is a prompt dialog." }
             ]
         },
         {

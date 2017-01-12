@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2009 Apple Inc. All rights reserved.
+ * Copyright (C) 2009-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -24,10 +24,9 @@
  */
 
 #include "config.h"
+#include "WebGLFramebuffer.h"
 
 #if ENABLE(WEBGL)
-
-#include "WebGLFramebuffer.h"
 
 #include "Extensions3D.h"
 #include "WebGLContextGroup.h"
@@ -269,16 +268,16 @@ WebGLFramebuffer::WebGLAttachment::~WebGLAttachment()
 {
 }
 
-Ref<WebGLFramebuffer> WebGLFramebuffer::create(WebGLRenderingContextBase* ctx)
+Ref<WebGLFramebuffer> WebGLFramebuffer::create(WebGLRenderingContextBase& ctx)
 {
     return adoptRef(*new WebGLFramebuffer(ctx));
 }
 
-WebGLFramebuffer::WebGLFramebuffer(WebGLRenderingContextBase* ctx)
+WebGLFramebuffer::WebGLFramebuffer(WebGLRenderingContextBase& ctx)
     : WebGLContextObject(ctx)
     , m_hasEverBeenBound(false)
 {
-    setObject(ctx->graphicsContext3D()->createFramebuffer());
+    setObject(ctx.graphicsContext3D()->createFramebuffer());
 }
 
 WebGLFramebuffer::~WebGLFramebuffer()
@@ -479,13 +478,11 @@ GC3Denum WebGLFramebuffer::checkStatus(const char** reason) const
     return GraphicsContext3D::FRAMEBUFFER_COMPLETE;
 }
 
-bool WebGLFramebuffer::onAccess(GraphicsContext3D* context3d, bool needToInitializeAttachments, const char** reason)
+bool WebGLFramebuffer::onAccess(GraphicsContext3D* context3d, const char** reason)
 {
     if (checkStatus(reason) != GraphicsContext3D::FRAMEBUFFER_COMPLETE)
         return false;
-    if (needToInitializeAttachments)
-        return initializeAttachments(context3d, reason);
-    return true;
+    return initializeAttachments(context3d, reason);
 }
 
 bool WebGLFramebuffer::hasStencilBuffer() const
@@ -608,6 +605,9 @@ void WebGLFramebuffer::drawBuffers(const Vector<GC3Denum>& bufs)
 void WebGLFramebuffer::drawBuffersIfNecessary(bool force)
 {
 #if ENABLE(WEBGL2)
+    // FIXME: The logic here seems wrong. If we don't have WebGL 2 enabled at all, then
+    // we skip the m_webglDrawBuffers check. But if we do have WebGL 2 enabled, then we
+    // perform this check, for WebGL 1 contexts only.
     if (!context()->m_webglDrawBuffers && !context()->isWebGL2())
         return;
 #endif
@@ -627,7 +627,7 @@ void WebGLFramebuffer::drawBuffersIfNecessary(bool force)
         }
     }
     if (reset) {
-        context()->graphicsContext3D()->getExtensions()->drawBuffersEXT(
+        context()->graphicsContext3D()->getExtensions().drawBuffersEXT(
             m_filteredDrawBuffers.size(), m_filteredDrawBuffers.data());
     }
 }

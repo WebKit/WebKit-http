@@ -263,30 +263,39 @@ bool JSGenericTypedArrayView<Adaptor>::set(
     
     switch (ci->typedArrayStorageType) {
     case TypeInt8:
+        scope.release();
         return setWithSpecificType<Int8Adaptor>(
             exec, offset, jsCast<JSInt8Array*>(object), objectOffset, length, type);
     case TypeInt16:
+        scope.release();
         return setWithSpecificType<Int16Adaptor>(
             exec, offset, jsCast<JSInt16Array*>(object), objectOffset, length, type);
     case TypeInt32:
+        scope.release();
         return setWithSpecificType<Int32Adaptor>(
             exec, offset, jsCast<JSInt32Array*>(object), objectOffset, length, type);
     case TypeUint8:
+        scope.release();
         return setWithSpecificType<Uint8Adaptor>(
             exec, offset, jsCast<JSUint8Array*>(object), objectOffset, length, type);
     case TypeUint8Clamped:
+        scope.release();
         return setWithSpecificType<Uint8ClampedAdaptor>(
             exec, offset, jsCast<JSUint8ClampedArray*>(object), objectOffset, length, type);
     case TypeUint16:
+        scope.release();
         return setWithSpecificType<Uint16Adaptor>(
             exec, offset, jsCast<JSUint16Array*>(object), objectOffset, length, type);
     case TypeUint32:
+        scope.release();
         return setWithSpecificType<Uint32Adaptor>(
             exec, offset, jsCast<JSUint32Array*>(object), objectOffset, length, type);
     case TypeFloat32:
+        scope.release();
         return setWithSpecificType<Float32Adaptor>(
             exec, offset, jsCast<JSFloat32Array*>(object), objectOffset, length, type);
     case TypeFloat64:
+        scope.release();
         return setWithSpecificType<Float64Adaptor>(
             exec, offset, jsCast<JSFloat64Array*>(object), objectOffset, length, type);
     case NotTypedArray:
@@ -345,7 +354,7 @@ bool JSGenericTypedArrayView<Adaptor>::getOwnPropertySlot(
 {
     JSGenericTypedArrayView* thisObject = jsCast<JSGenericTypedArrayView*>(object);
 
-    if (Optional<uint32_t> index = parseIndex(propertyName)) {
+    if (std::optional<uint32_t> index = parseIndex(propertyName)) {
         if (thisObject->isNeutered()) {
             slot.setCustom(thisObject, None, throwNeuteredTypedArrayTypeError);
             return true;
@@ -371,7 +380,7 @@ bool JSGenericTypedArrayView<Adaptor>::put(
     // https://tc39.github.io/ecma262/#sec-integer-indexed-exotic-objects-set-p-v-receiver
     // Ignore the receiver even if the receiver is altered to non base value.
     // 9.4.5.5-2-b-i Return ? IntegerIndexedElementSet(O, numericIndex, V).
-    if (Optional<uint32_t> index = parseIndex(propertyName))
+    if (std::optional<uint32_t> index = parseIndex(propertyName))
         return putByIndex(thisObject, exec, index.value(), value, slot.isStrictMode());
     
     return Base::put(thisObject, exec, propertyName, value, slot);
@@ -398,11 +407,13 @@ bool JSGenericTypedArrayView<Adaptor>::defineOwnProperty(
 
         if (descriptor.value()) {
             PutPropertySlot unused(JSValue(thisObject), shouldThrow);
+            scope.release();
             return thisObject->put(thisObject, exec, propertyName, descriptor.value(), unused);
         }
         return true;
     }
     
+    scope.release();
     return Base::defineOwnProperty(thisObject, exec, propertyName, descriptor, shouldThrow);
 }
 
@@ -501,8 +512,8 @@ void JSGenericTypedArrayView<Adaptor>::visitChildren(JSCell* cell, SlotVisitor& 
     
     switch (thisObject->m_mode) {
     case FastTypedArray: {
-        if (thisObject->m_vector)
-            visitor.markAuxiliary(thisObject->m_vector.get());
+        if (void* vector = thisObject->m_vector.get())
+            visitor.markAuxiliary(vector);
         break;
     }
         
@@ -571,6 +582,7 @@ ArrayBuffer* JSGenericTypedArrayView<Adaptor>::slowDownAndWasteMemory(JSArrayBuf
 
     thisObject->butterfly()->indexingHeader()->setArrayBuffer(buffer.get());
     thisObject->m_vector.setWithoutBarrier(buffer->data());
+    WTF::storeStoreFence();
     thisObject->m_mode = WastefulTypedArray;
     heap->addReference(thisObject, buffer.get());
     

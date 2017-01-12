@@ -23,6 +23,7 @@
 #include "JSDOMBinding.h"
 
 #include "CachedScript.h"
+#include "CommonVM.h"
 #include "DOMConstructorWithDocument.h"
 #include "ExceptionCode.h"
 #include "ExceptionCodeDescription.h"
@@ -61,7 +62,7 @@ STATIC_ASSERT_IS_TRIVIALLY_DESTRUCTIBLE(DOMConstructorWithDocument);
 
 void addImpureProperty(const AtomicString& propertyName)
 {
-    JSDOMWindow::commonVM().addImpureProperty(propertyName);
+    commonVM().addImpureProperty(propertyName);
 }
 
 JSValue jsOwnedStringOrNull(ExecState* exec, const String& s)
@@ -90,6 +91,36 @@ JSValue jsStringOrUndefined(ExecState* exec, const URL& url)
     return jsStringWithCache(exec, url.string());
 }
 
+static inline String stringToByteString(ExecState& state, JSC::ThrowScope& scope, String&& string)
+{
+    if (!string.containsOnlyLatin1()) {
+        throwTypeError(&state, scope);
+        return { };
+    }
+
+    return string;
+}
+
+String identifierToByteString(ExecState& state, const Identifier& identifier)
+{
+    VM& vm = state.vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
+    String string = identifier.string();
+    return stringToByteString(state, scope, WTFMove(string));
+}
+
+String valueToByteString(ExecState& state, JSValue value)
+{
+    VM& vm = state.vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
+    String string = value.toWTFString(&state);
+    RETURN_IF_EXCEPTION(scope, { });
+
+    return stringToByteString(state, scope, WTFMove(string));
+}
+
 static inline bool hasUnpairedSurrogate(StringView string)
 {
     // Fast path for 8-bit strings; they can't have any surrogates.
@@ -102,14 +133,8 @@ static inline bool hasUnpairedSurrogate(StringView string)
     return false;
 }
 
-String valueToUSVString(ExecState* exec, JSValue value)
+static inline String stringToUSVString(String&& string)
 {
-    VM& vm = exec->vm();
-    auto scope = DECLARE_THROW_SCOPE(vm);
-
-    String string = value.toWTFString(exec);
-    RETURN_IF_EXCEPTION(scope, { });
-
     // Fast path for the case where there are no unpaired surrogates.
     if (!hasUnpairedSurrogate(string))
         return string;
@@ -126,6 +151,23 @@ String valueToUSVString(ExecState* exec, JSValue value)
             result.append(codePoint);
     }
     return result.toString();
+}
+
+String identifierToUSVString(ExecState&, const Identifier& identifier)
+{
+    String string = identifier.string();
+    return stringToUSVString(WTFMove(string));
+}
+
+String valueToUSVString(ExecState& state, JSValue value)
+{
+    VM& vm = state.vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
+    String string = value.toWTFString(&state);
+    RETURN_IF_EXCEPTION(scope, { });
+
+    return stringToUSVString(WTFMove(string));
 }
 
 JSValue jsDate(ExecState* exec, double value)
@@ -154,6 +196,26 @@ void reportException(ExecState* exec, JSValue exceptionValue, CachedScript* cach
     }
 
     reportException(exec, exception, cachedScript);
+}
+
+String retrieveErrorMessage(ExecState& state, VM& vm, JSValue exception, CatchScope& catchScope)
+{
+    if (auto* exceptionBase = toExceptionBase(exception))
+        return exceptionBase->toString();
+
+    // FIXME: <http://webkit.org/b/115087> Web Inspector: WebCore::reportException should not evaluate JavaScript handling exceptions
+    // If this is a custom exception object, call toString on it to try and get a nice string representation for the exception.
+    String errorMessage;
+    if (auto* error = jsDynamicDowncast<ErrorInstance*>(exception))
+        errorMessage = error->sanitizedToString(&state);
+    else
+        errorMessage = exception.toWTFString(&state);
+
+    // We need to clear any new exception that may be thrown in the toString() call above.
+    // reportException() is not supposed to be making new exceptions.
+    catchScope.clearException();
+    vm.clearLastException();
+    return errorMessage;
 }
 
 void reportException(ExecState* exec, JSC::Exception* exception, CachedScript* cachedScript, ExceptionDetails* exceptionDetails)
@@ -186,24 +248,7 @@ void reportException(ExecState* exec, JSC::Exception* exception, CachedScript* c
         exceptionSourceURL = callFrame->sourceURL();
     }
 
-    String errorMessage;
-    JSValue exceptionValue = exception->value();
-    if (ExceptionBase* exceptionBase = toExceptionBase(exceptionValue))
-        errorMessage = exceptionBase->toString();
-    else {
-        // FIXME: <http://webkit.org/b/115087> Web Inspector: WebCore::reportException should not evaluate JavaScript handling exceptions
-        // If this is a custom exception object, call toString on it to try and get a nice string representation for the exception.
-        if (ErrorInstance* error = jsDynamicDowncast<ErrorInstance*>(exceptionValue))
-            errorMessage = error->sanitizedToString(exec);
-        else
-            errorMessage = exceptionValue.toString(exec)->value(exec);
-
-        // We need to clear any new exception that may be thrown in the toString() call above.
-        // reportException() is not supposed to be making new exceptions.
-        scope.clearException();
-        vm.clearLastException();
-    }
-
+    String errorMessage = retrieveErrorMessage(*exec, vm, exception->value(), scope);
     ScriptExecutionContext* scriptExecutionContext = globalObject->scriptExecutionContext();
     scriptExecutionContext->reportException(errorMessage, lineNumber, columnNumber, exceptionSourceURL, exception, callStack->size() ? callStack : nullptr, cachedScript);
 
@@ -226,7 +271,7 @@ void reportCurrentException(ExecState* exec)
 
 static JSValue createDOMException(ExecState* exec, ExceptionCode ec, const String* message = nullptr)
 {
-    if (!ec)
+    if (!ec || ec == ExistingExceptionError)
         return jsUndefined();
 
     // FIXME: Handle other WebIDL exception types.
@@ -242,9 +287,12 @@ static JSValue createDOMException(ExecState* exec, ExceptionCode ec, const Strin
         return createRangeError(exec, *message);
     }
 
-    // FIXME: All callers to setDOMException need to pass in the right global object
-    // for now, we're going to assume the lexicalGlobalObject. Which is wrong in cases like this:
-    // frames[0].document.createElement(null, null); // throws an exception which should have the subframes prototypes.
+    if (ec == StackOverflowError)
+        return createStackOverflowError(exec);
+
+    // FIXME: All callers to createDOMException need to pass in the correct global object.
+    // For now, we're going to assume the lexicalGlobalObject. Which is wrong in cases like this:
+    // frames[0].document.createElement(null, null); // throws an exception which should have the subframe's prototypes.
     JSDOMGlobalObject* globalObject = deprecatedGlobalObjectForPrototype(exec);
 
     ExceptionCodeDescription description(ec);
@@ -294,39 +342,10 @@ JSValue createDOMException(ExecState& state, Exception&& exception)
     return createDOMException(&state, exception.code(), exception.releaseMessage());
 }
 
-ALWAYS_INLINE static void throwDOMException(ExecState* exec, ThrowScope& throwScope, ExceptionCode ec)
-{
-    ASSERT(ec && !throwScope.exception());
-    throwException(exec, throwScope, createDOMException(exec, ec));
-}
-
 void propagateExceptionSlowPath(JSC::ExecState& state, JSC::ThrowScope& throwScope, Exception&& exception)
 {
     ASSERT(!throwScope.exception());
     throwException(&state, throwScope, createDOMException(state, WTFMove(exception)));
-}
-
-void propagateException(JSC::ExecState& state, Exception&& exception)
-{
-    auto throwScope = DECLARE_THROW_SCOPE(state.vm());
-    if (!throwScope.exception())
-        propagateExceptionSlowPath(state, throwScope, WTFMove(exception));
-}
-
-void setDOMExceptionSlow(ExecState* exec, ThrowScope& throwScope, ExceptionCode ec)
-{
-    throwDOMException(exec, throwScope, ec);
-}
-
-void setDOMException(ExecState* exec, ExceptionCode ec)
-{
-    VM& vm = exec->vm();
-    auto scope = DECLARE_THROW_SCOPE(vm);
-
-    if (!ec || scope.exception())
-        return;
-
-    throwDOMException(exec, scope, ec);
 }
 
 bool hasIteratorMethod(JSC::ExecState& state, JSC::JSValue value)
@@ -371,13 +390,14 @@ void printErrorMessageForFrame(Frame* frame, const String& message)
 
 Structure* getCachedDOMStructure(JSDOMGlobalObject& globalObject, const ClassInfo* classInfo)
 {
-    JSDOMStructureMap& structures = globalObject.structures();
+    JSDOMStructureMap& structures = globalObject.structures(NoLockingNecessary);
     return structures.get(classInfo).get();
 }
 
 Structure* cacheDOMStructure(JSDOMGlobalObject& globalObject, Structure* structure, const ClassInfo* classInfo)
 {
-    JSDOMStructureMap& structures = globalObject.structures();
+    auto locker = lockDuringMarking(globalObject.vm().heap, globalObject.gcLock());
+    JSDOMStructureMap& structures = globalObject.structures(locker);
     ASSERT(!structures.contains(classInfo));
     return structures.set(classInfo, WriteBarrier<Structure>(globalObject.vm(), &globalObject, structure)).iterator->value.get();
 }
@@ -710,7 +730,11 @@ public:
             m_globalObject = codeBlock->globalObject();
         else {
             ASSERT(visitor->callee());
-            m_globalObject = visitor->callee()->globalObject();
+            // FIXME: Callee is not an object if the caller is Web Assembly.
+            // Figure out what to do here. We can probably get the global object
+            // from the top-most Wasm Instance. https://bugs.webkit.org/show_bug.cgi?id=165721
+            if (visitor->callee()->isObject())
+                m_globalObject = jsCast<JSObject*>(visitor->callee())->globalObject();
         }
         return StackVisitor::Done;
     }
@@ -816,6 +840,12 @@ void reportDeprecatedSetterError(JSC::ExecState& state, const char* interfaceNam
 {
     auto& context = *jsCast<JSDOMGlobalObject*>(state.lexicalGlobalObject())->scriptExecutionContext();
     context.addConsoleMessage(MessageSource::JS, MessageLevel::Error, makeString("Deprecated attempt to set property '", attributeName, "' on a non-", interfaceName, " object."));
+}
+
+void throwNotSupportedError(JSC::ExecState& state, JSC::ThrowScope& scope)
+{
+    ASSERT(!scope.exception());
+    throwException(&state, scope, createDOMException(&state, NOT_SUPPORTED_ERR));
 }
 
 void throwNotSupportedError(JSC::ExecState& state, JSC::ThrowScope& scope, const char* message)
@@ -960,7 +990,7 @@ void DOMConstructorJSBuiltinObject::visitChildren(JSC::JSCell* cell, JSC::SlotVi
     auto* thisObject = jsCast<DOMConstructorJSBuiltinObject*>(cell);
     ASSERT_GC_OBJECT_INHERITS(thisObject, info());
     Base::visitChildren(thisObject, visitor);
-    visitor.append(&thisObject->m_initializeFunction);
+    visitor.append(thisObject->m_initializeFunction);
 }
 
 static EncodedJSValue JSC_HOST_CALL callThrowTypeError(ExecState* exec)
@@ -975,6 +1005,30 @@ CallType DOMConstructorObject::getCallData(JSCell*, CallData& callData)
 {
     callData.native.function = callThrowTypeError;
     return CallType::Host;
+}
+
+void throwDOMSyntaxError(JSC::ExecState& state, JSC::ThrowScope& scope)
+{
+    ASSERT(!scope.exception());
+    throwException(&state, scope, createDOMException(&state, SYNTAX_ERR));
+}
+
+void throwDataCloneError(JSC::ExecState& state, JSC::ThrowScope& scope)
+{
+    ASSERT(!scope.exception());
+    throwException(&state, scope, createDOMException(&state, DATA_CLONE_ERR));
+}
+
+void throwIndexSizeError(JSC::ExecState& state, JSC::ThrowScope& scope)
+{
+    ASSERT(!scope.exception());
+    throwException(&state, scope, createDOMException(&state, INDEX_SIZE_ERR));
+}
+
+void throwTypeMismatchError(JSC::ExecState& state, JSC::ThrowScope& scope)
+{
+    ASSERT(!scope.exception());
+    throwException(&state, scope, createDOMException(&state, TYPE_MISMATCH_ERR));
 }
 
 } // namespace WebCore

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006-2007, 2009, 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2006-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -45,8 +45,8 @@
 #include "RuntimeEnabledFeatures.h"
 #include <wtf/Ref.h>
 #include <wtf/RefCountedLeakCounter.h>
+#include <wtf/SetForScope.h>
 #include <wtf/StdLibExtras.h>
-#include <wtf/TemporaryChange.h>
 #include <wtf/text/CString.h>
 
 #if PLATFORM(IOS)
@@ -55,6 +55,10 @@
 
 #if ENABLE(CONTENT_EXTENSIONS)
 #include "ResourceLoadInfo.h"
+#endif
+
+#if USE(QUICK_LOOK)
+#include "QuickLook.h"
 #endif
 
 namespace WebCore {
@@ -78,7 +82,7 @@ SubresourceLoader::SubresourceLoader(Frame& frame, CachedResource& resource, con
     , m_resource(&resource)
     , m_loadingMultipartContent(false)
     , m_state(Uninitialized)
-    , m_requestCountTracker(InPlace, frame.document()->cachedResourceLoader(), resource)
+    , m_requestCountTracker(std::in_place, frame.document()->cachedResourceLoader(), resource)
 {
 #ifndef NDEBUG
     subresourceLoaderCounter.increment();
@@ -247,10 +251,30 @@ void SubresourceLoader::didSendData(unsigned long long bytesSent, unsigned long 
     m_resource->didSendData(bytesSent, totalBytesToBeSent);
 }
 
+#if USE(QUICK_LOOK)
+bool SubresourceLoader::shouldCreateQuickLookHandleForResponse(const ResourceResponse& response) const
+{
+    if (m_resource->type() != CachedResource::MainResource)
+        return false;
+
+    if (m_documentLoader->quickLookHandle())
+        return false;
+
+    return QuickLookHandle::shouldCreateForMIMEType(response.mimeType());
+}
+#endif
+
 void SubresourceLoader::didReceiveResponse(const ResourceResponse& response)
 {
     ASSERT(!response.isNull());
     ASSERT(m_state == Initialized);
+
+#if USE(QUICK_LOOK)
+    if (shouldCreateQuickLookHandleForResponse(response)) {
+        m_documentLoader->setQuickLookHandle(QuickLookHandle::create(*this, response));
+        return;
+    }
+#endif
 
     // We want redirect responses to be processed through willSendRequestInternal. The only exception is redirection with no Location headers.
     ASSERT(response.httpStatusCode() < 300 || response.httpStatusCode() >= 400 || response.httpStatusCode() == 304 || !response.httpHeaderField(HTTPHeaderName::Location));
@@ -302,7 +326,7 @@ void SubresourceLoader::didReceiveResponse(const ResourceResponse& response)
         m_loadingMultipartContent = true;
 
         // We don't count multiParts in a CachedResourceLoader's request count
-        m_requestCountTracker = Nullopt;
+        m_requestCountTracker = std::nullopt;
         if (!m_resource->isImage()) {
             cancel();
             return;
@@ -325,11 +349,25 @@ void SubresourceLoader::didReceiveResponse(const ResourceResponse& response)
 
 void SubresourceLoader::didReceiveData(const char* data, unsigned length, long long encodedDataLength, DataPayloadType dataPayloadType)
 {
+#if USE(QUICK_LOOK)
+    if (auto quickLookHandle = m_documentLoader->quickLookHandle()) {
+        if (quickLookHandle->didReceiveData(data, length))
+            return;
+    }
+#endif
+
     didReceiveDataOrBuffer(data, length, nullptr, encodedDataLength, dataPayloadType);
 }
 
 void SubresourceLoader::didReceiveBuffer(Ref<SharedBuffer>&& buffer, long long encodedDataLength, DataPayloadType dataPayloadType)
 {
+#if USE(QUICK_LOOK)
+    if (auto quickLookHandle = m_documentLoader->quickLookHandle()) {
+        if (quickLookHandle->didReceiveBuffer(buffer.get()))
+            return;
+    }
+#endif
+
     didReceiveDataOrBuffer(nullptr, 0, WTFMove(buffer), encodedDataLength, dataPayloadType);
 }
 
@@ -468,6 +506,13 @@ bool SubresourceLoader::checkRedirectionCrossOriginAccessControl(const ResourceR
 
 void SubresourceLoader::didFinishLoading(double finishTime)
 {
+#if USE(QUICK_LOOK)
+    if (auto quickLookHandle = m_documentLoader->quickLookHandle()) {
+        if (quickLookHandle->didFinishLoading())
+            return;
+    }
+#endif
+
     if (m_state != Initialized)
         return;
     ASSERT(!reachedTerminalState());
@@ -510,6 +555,11 @@ void SubresourceLoader::didFinishLoading(double finishTime)
 
 void SubresourceLoader::didFail(const ResourceError& error)
 {
+#if USE(QUICK_LOOK)
+    if (auto quickLookHandle = m_documentLoader->quickLookHandle())
+        quickLookHandle->didFail();
+#endif
+
     if (m_state != Initialized)
         return;
     ASSERT(!reachedTerminalState());
@@ -572,7 +622,7 @@ void SubresourceLoader::notifyDone()
     if (reachedTerminalState())
         return;
 
-    m_requestCountTracker = Nullopt;
+    m_requestCountTracker = std::nullopt;
 #if PLATFORM(IOS)
     m_documentLoader->cachedResourceLoader().loadDone(m_resource, m_state != CancelledWhileInitializing);
 #else

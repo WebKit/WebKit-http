@@ -48,7 +48,7 @@ static String& applicationBundleIdentifierOverride()
     return identifier;
 }
 
-static String applicationBundleIdentifier()
+String applicationBundleIdentifier()
 {
     // The override only gets set in WebKit2's WebProcess and NetworkProcess. If unset, we use the main bundle identifier.
     const auto& identifier = applicationBundleIdentifierOverride();
@@ -251,12 +251,6 @@ bool IOSApplication::isTheSecretSocietyHiddenMystery()
 {
     static bool isTheSecretSocietyHiddenMystery = applicationBundleIsEqualTo("com.g5e.secretsociety");
     return isTheSecretSocietyHiddenMystery;
-}
-
-bool IOSApplication::isBaiduNuomi()
-{
-    static bool isBaiduNuomi = applicationBundleIsEqualTo("com.renren-inc.nuomi");
-    return isBaiduNuomi;
 }
 
 #endif

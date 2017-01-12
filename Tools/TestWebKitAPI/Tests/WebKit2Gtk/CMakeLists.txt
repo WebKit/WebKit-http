@@ -12,10 +12,8 @@ add_definitions(
 )
 
 include_directories(
-    ${CMAKE_BINARY_DIR}
     ${CMAKE_SOURCE_DIR}/Source
     ${CMAKE_SOURCE_DIR}/Source/WTF
-    ${DERIVED_SOURCES_DIR}
     ${DERIVED_SOURCES_WEBKIT2GTK_DIR}
     ${FORWARDING_HEADERS_DIR}
     ${FORWARDING_HEADERS_WEBKIT2GTK_DIR}
@@ -120,6 +118,7 @@ ADD_WK2_TEST(TestSSL TestSSL.cpp)
 ADD_WK2_TEST(TestUIClient TestUIClient.cpp)
 ADD_WK2_TEST(TestWebExtensions TestWebExtensions.cpp)
 ADD_WK2_TEST(TestWebKitPolicyClient TestWebKitPolicyClient.cpp)
+ADD_WK2_TEST(TestWebKitSecurityOrigin TestWebKitSecurityOrigin.cpp)
 ADD_WK2_TEST(TestWebKitSettings TestWebKitSettings.cpp)
 ADD_WK2_TEST(TestWebKitVersion TestWebKitVersion.cpp)
 ADD_WK2_TEST(TestWebViewEditor TestWebViewEditor.cpp)

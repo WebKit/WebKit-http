@@ -33,6 +33,7 @@
 #include "RangeInputType.h"
 
 #include "AXObjectCache.h"
+#include "ElementChildIterator.h"
 #include "EventNames.h"
 #include "HTMLInputElement.h"
 #include "HTMLParserIdioms.h"
@@ -267,7 +268,15 @@ HTMLElement* RangeInputType::sliderTrackElement() const
     ASSERT(element().userAgentShadowRoot()->firstChild()->isHTMLElement());
     ASSERT(element().userAgentShadowRoot()->firstChild()->firstChild()); // track
 
-    return downcast<HTMLElement>(element().userAgentShadowRoot()->firstChild()->firstChild());
+    ShadowRoot* root = element().userAgentShadowRoot();
+    if (!root)
+        return nullptr;
+    
+    auto* container = childrenOfType<SliderContainerElement>(*root).first();
+    if (!container)
+        return nullptr;
+
+    return childrenOfType<HTMLElement>(*container).first();
 }
 
 SliderThumbElement& RangeInputType::typedSliderThumbElement() const
@@ -381,11 +390,11 @@ void RangeInputType::updateTickMarkValues()
     std::sort(m_tickMarkValues.begin(), m_tickMarkValues.end());
 }
 
-Optional<Decimal> RangeInputType::findClosestTickMarkValue(const Decimal& value)
+std::optional<Decimal> RangeInputType::findClosestTickMarkValue(const Decimal& value)
 {
     updateTickMarkValues();
     if (!m_tickMarkValues.size())
-        return Nullopt;
+        return std::nullopt;
 
     size_t left = 0;
     size_t right = m_tickMarkValues.size();
@@ -408,8 +417,8 @@ Optional<Decimal> RangeInputType::findClosestTickMarkValue(const Decimal& value)
             right = middle;
     }
 
-    Optional<Decimal> closestLeft = middle ? makeOptional(m_tickMarkValues[middle - 1]) : Nullopt;
-    Optional<Decimal> closestRight = middle != m_tickMarkValues.size() ? makeOptional(m_tickMarkValues[middle]) : Nullopt;
+    std::optional<Decimal> closestLeft = middle ? std::make_optional(m_tickMarkValues[middle - 1]) : std::nullopt;
+    std::optional<Decimal> closestRight = middle != m_tickMarkValues.size() ? std::make_optional(m_tickMarkValues[middle]) : std::nullopt;
 
     if (!closestLeft)
         return closestRight;

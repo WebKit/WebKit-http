@@ -143,17 +143,16 @@
     // Mozilla version
     readonly attribute boolean webkitIsFullScreen;
     readonly attribute boolean webkitFullScreenKeyboardInputAllowed;
-    readonly attribute Element webkitCurrentFullScreenElement;
+    [ImplementedAs=webkitCurrentFullScreenElementForBindings] readonly attribute Element webkitCurrentFullScreenElement;
     void webkitCancelFullScreen();
 
     // W3C version
     readonly attribute boolean webkitFullscreenEnabled;
-    readonly attribute Element? webkitFullscreenElement;
+    [ImplementedAs=webkitFullscreenElementForBindings] readonly attribute Element? webkitFullscreenElement;
     void webkitExitFullscreen();
 #endif
 
     [Conditional=POINTER_LOCK] void exitPointerLock();
-    [Conditional=POINTER_LOCK] readonly attribute Element? pointerLockElement;
 
     [Conditional=CSS_REGIONS] DOMNamedFlowCollection webkitGetNamedFlows();
 
@@ -171,8 +170,9 @@
 #endif
 
     // Page visibility API.
-    readonly attribute DOMString visibilityState;
+    readonly attribute VisibilityState visibilityState;
     readonly attribute boolean hidden;
+    attribute EventHandler onvisibilitychange;
 
     // currentscript API: http://www.whatwg.org/specs/web-apps/current-work/multipage/dom.html#dom-document-currentscript
     readonly attribute HTMLScriptElement? currentScript;
@@ -204,6 +204,12 @@
     [NotEnumerable, Conditional=CSP_NEXT] attribute EventHandler onsecuritypolicyviolation;
     [NotEnumerable, Conditional=POINTER_LOCK] attribute EventHandler onpointerlockchange;
     [NotEnumerable, Conditional=POINTER_LOCK] attribute EventHandler onpointerlockerror;
+};
+
+enum VisibilityState {
+    "hidden",
+    "visible",
+    "prerender"
 };
 
 Document implements ParentNode;

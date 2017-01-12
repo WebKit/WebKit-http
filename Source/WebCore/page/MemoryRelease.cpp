@@ -38,6 +38,7 @@
 #include "MemoryCache.h"
 #include "Page.h"
 #include "PageCache.h"
+#include "RenderTheme.h"
 #include "ScrollingThread.h"
 #include "StyleScope.h"
 #include "StyledElement.h"
@@ -48,85 +49,55 @@ namespace WebCore {
 
 static void releaseNoncriticalMemory()
 {
-    {
-        MemoryPressureHandler::ReliefLogger log("Purge inactive FontData");
-        FontCache::singleton().purgeInactiveFontData();
-    }
+    RenderTheme::defaultTheme()->purgeCaches();
 
-    {
-        MemoryPressureHandler::ReliefLogger log("Clear WidthCaches");
-        clearWidthCaches();
-    }
+    FontCache::singleton().purgeInactiveFontData();
 
-    {
-        MemoryPressureHandler::ReliefLogger log("Discard Selector Query Cache");
-        for (auto* document : Document::allDocuments())
-            document->clearSelectorQueryCache();
-    }
+    clearWidthCaches();
 
-    {
-        MemoryPressureHandler::ReliefLogger log("Prune MemoryCache dead resources");
-        MemoryCache::singleton().pruneDeadResourcesToSize(0);
-    }
+    for (auto* document : Document::allDocuments())
+        document->clearSelectorQueryCache();
 
-    {
-        MemoryPressureHandler::ReliefLogger log("Prune presentation attribute cache");
-        StyledElement::clearPresentationAttributeCache();
-    }
+    MemoryCache::singleton().pruneDeadResourcesToSize(0);
 
-    {
-        MemoryPressureHandler::ReliefLogger log("Clear inline stylesheet cache");
-        InlineStyleSheetOwner::clearCache();
-    }
+    StyledElement::clearPresentationAttributeCache();
+
+    InlineStyleSheetOwner::clearCache();
 }
 
 static void releaseCriticalMemory(Synchronous synchronous)
 {
-    {
-        MemoryPressureHandler::ReliefLogger log("Empty the PageCache");
-        // Right now, the only reason we call release critical memory while not under memory pressure is if the process is about to be suspended.
-        PruningReason pruningReason = MemoryPressureHandler::singleton().isUnderMemoryPressure() ? PruningReason::MemoryPressure : PruningReason::ProcessSuspended;
-        PageCache::singleton().pruneToSizeNow(0, pruningReason);
-    }
+    // Right now, the only reason we call release critical memory while not under memory pressure is if the process is about to be suspended.
+    PruningReason pruningReason = MemoryPressureHandler::singleton().isUnderMemoryPressure() ? PruningReason::MemoryPressure : PruningReason::ProcessSuspended;
+    PageCache::singleton().pruneToSizeNow(0, pruningReason);
 
-    {
-        MemoryPressureHandler::ReliefLogger log("Prune MemoryCache live resources");
-        MemoryCache::singleton().pruneLiveResourcesToSize(0, /*shouldDestroyDecodedDataForAllLiveResources*/ true);
-    }
+    MemoryCache::singleton().pruneLiveResourcesToSize(0, /*shouldDestroyDecodedDataForAllLiveResources*/ true);
 
-    {
-        MemoryPressureHandler::ReliefLogger log("Drain CSSValuePool");
-        CSSValuePool::singleton().drain();
-    }
+    CSSValuePool::singleton().drain();
 
-    {
-        MemoryPressureHandler::ReliefLogger log("Discard StyleResolvers");
-        Vector<RefPtr<Document>> documents;
-        copyToVector(Document::allDocuments(), documents);
-        for (auto& document : documents)
-            document->styleScope().clearResolver();
-    }
+    Vector<RefPtr<Document>> documents;
+    copyToVector(Document::allDocuments(), documents);
+    for (auto& document : documents)
+        document->styleScope().clearResolver();
 
-    {
-        MemoryPressureHandler::ReliefLogger log("Discard all JIT-compiled code");
-        GCController::singleton().deleteAllCode();
-    }
+    GCController::singleton().deleteAllCode(JSC::DeleteAllCodeIfNotCollecting);
 
 #if ENABLE(VIDEO)
-    {
-        MemoryPressureHandler::ReliefLogger log("Dropping buffered data from paused media elements");
-        for (auto* mediaElement : HTMLMediaElement::allMediaElements()) {
-            if (mediaElement->paused())
-                mediaElement->purgeBufferedDataIfPossible();
-        }
+    for (auto* mediaElement : HTMLMediaElement::allMediaElements()) {
+        if (mediaElement->paused())
+            mediaElement->purgeBufferedDataIfPossible();
     }
 #endif
 
     if (synchronous == Synchronous::Yes) {
-        MemoryPressureHandler::ReliefLogger log("Collecting JavaScript garbage");
         GCController::singleton().garbageCollectNow();
-    } else
+    } else {
+#if PLATFORM(IOS)
         GCController::singleton().garbageCollectNowIfNotDoneRecently();
+#else
+        GCController::singleton().garbageCollectSoon();
+#endif
+    }
 
     // We reduce tiling coverage while under memory pressure, so make sure to drop excess tiles ASAP.
     Page::forEachPage([](Page& page) {
@@ -143,17 +114,14 @@ void releaseMemory(Critical critical, Synchronous synchronous)
 
     platformReleaseMemory(critical);
 
-    {
-        MemoryPressureHandler::ReliefLogger log("Release free FastMalloc memory");
-        // FastMalloc has lock-free thread specific caches that can only be cleared from the thread itself.
-        WorkerThread::releaseFastMallocFreeMemoryInAllThreads();
+    // FastMalloc has lock-free thread specific caches that can only be cleared from the thread itself.
+    WorkerThread::releaseFastMallocFreeMemoryInAllThreads();
 #if ENABLE(ASYNC_SCROLLING) && !PLATFORM(IOS)
-        ScrollingThread::dispatch([]() {
-            WTF::releaseFastMallocFreeMemory();
-        });
-#endif
+    ScrollingThread::dispatch([]() {
         WTF::releaseFastMallocFreeMemory();
-    }
+    });
+#endif
+    WTF::releaseFastMallocFreeMemory();
 
 #if ENABLE(RESOURCE_USAGE)
     Page::forEachPage([&](Page& page) {

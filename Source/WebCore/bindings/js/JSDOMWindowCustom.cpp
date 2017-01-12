@@ -31,13 +31,12 @@
 #include "JSHTMLCollection.h"
 #include "JSHTMLOptionElement.h"
 #include "JSIDBFactory.h"
-#include "JSImageConstructor.h"
-#include "JSMessagePortCustom.h"
 #include "JSWorker.h"
 #include "Location.h"
 #include "RuntimeEnabledFeatures.h"
 #include "ScheduledAction.h"
 #include "Settings.h"
+#include <runtime/JSCInlines.h>
 
 #if ENABLE(USER_MESSAGE_HANDLERS)
 #include "JSWebKitNamespace.h"
@@ -134,7 +133,7 @@ static bool jsDOMWindowGetOwnPropertySlotRestrictedAccess(JSDOMWindow* thisObjec
         // FIXME comment on prototype search below.)
         throwSecurityError(*exec, scope, errorMessage);
         slot.setUndefined();
-        return true;
+        return false;
     }
 
     // Check for child frames by name before built-in properties to match Mozilla. This does
@@ -148,7 +147,7 @@ static bool jsDOMWindowGetOwnPropertySlotRestrictedAccess(JSDOMWindow* thisObjec
 
     throwSecurityError(*exec, scope, errorMessage);
     slot.setUndefined();
-    return true;
+    return false;
 }
 
 // Property access sequence is:
@@ -159,7 +158,7 @@ bool JSDOMWindow::getOwnPropertySlot(JSObject* object, ExecState* state, Propert
 {
     // (1) First, indexed properties.
     // Hand off all indexed access to getOwnPropertySlotByIndex, which supports the indexed getter.
-    if (Optional<unsigned> index = parseIndex(propertyName))
+    if (std::optional<unsigned> index = parseIndex(propertyName))
         return getOwnPropertySlotByIndex(object, state, index.value(), slot);
 
     auto* thisObject = jsCast<JSDOMWindow*>(object);
@@ -388,7 +387,7 @@ void JSDOMWindow::setLocation(ExecState& state, JSValue value)
     }
 #endif
 
-    String locationString = value.toString(&state)->value(&state);
+    String locationString = value.toWTFString(&state);
     RETURN_IF_EXCEPTION(scope, void());
 
     if (Location* location = wrapped().location())
@@ -401,11 +400,6 @@ JSValue JSDOMWindow::event(ExecState& state) const
     if (!event)
         return jsUndefined();
     return toJS(&state, const_cast<JSDOMWindow*>(this), event);
-}
-
-JSValue JSDOMWindow::image(ExecState& state) const
-{
-    return createImageConstructor(state.vm(), *this);
 }
 
 // Custom functions
@@ -487,50 +481,6 @@ JSValue JSDOMWindow::showModalDialog(ExecState& state)
     });
 
     return handler.returnValue();
-}
-
-static JSValue handlePostMessage(DOMWindow& impl, ExecState& state)
-{
-    VM& vm = state.vm();
-    auto scope = DECLARE_THROW_SCOPE(vm);
-
-    if (UNLIKELY(state.argumentCount() < 2))
-        return throwException(&state, scope, createNotEnoughArgumentsError(&state));
-
-    Vector<RefPtr<MessagePort>> messagePorts;
-    Vector<RefPtr<JSC::ArrayBuffer>> arrayBuffers;
-
-    // This function has variable arguments and can be:
-    // Per current spec:
-    //   postMessage(message, targetOrigin)
-    //   postMessage(message, targetOrigin, {sequence of transferrables})
-    // Legacy non-standard implementations in webkit allowed:
-    //   postMessage(message, {sequence of transferrables}, targetOrigin);
-    int targetOriginArgIndex = 1;
-    if (state.argumentCount() > 2) {
-        int transferablesArgIndex = 2;
-        if (state.uncheckedArgument(2).isString()) {
-            targetOriginArgIndex = 2;
-            transferablesArgIndex = 1;
-        }
-        extractTransferables(state, state.argument(transferablesArgIndex), messagePorts, arrayBuffers);
-    }
-    RETURN_IF_EXCEPTION(scope, JSValue());
-
-    auto message = SerializedScriptValue::create(state, state.uncheckedArgument(0), messagePorts, WTFMove(arrayBuffers));
-    RETURN_IF_EXCEPTION(scope, JSValue());
-
-    String targetOrigin = convert<IDLNullable<IDLUSVString>>(state, state.uncheckedArgument(targetOriginArgIndex));
-    RETURN_IF_EXCEPTION(scope, JSValue());
-
-    propagateException(state, scope, impl.postMessage(message.releaseNonNull(), WTFMove(messagePorts), targetOrigin, callerDOMWindow(&state)));
-
-    return jsUndefined();
-}
-
-JSValue JSDOMWindow::postMessage(ExecState& state)
-{
-    return handlePostMessage(wrapped(), state);
 }
 
 JSValue JSDOMWindow::setTimeout(ExecState& state)

@@ -70,14 +70,14 @@ static inline EncodedJSValue constructJSTestOverloadedConstructors1(ExecState* s
     VM& vm = state->vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);
     UNUSED_PARAM(throwScope);
-    auto* castedThis = jsCast<JSTestOverloadedConstructorsConstructor*>(state->callee());
+    auto* castedThis = jsCast<JSTestOverloadedConstructorsConstructor*>(state->jsCallee());
     ASSERT(castedThis);
     if (UNLIKELY(state->argumentCount() < 1))
         return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
     auto arrayBuffer = convert<IDLInterface<ArrayBuffer>>(*state, state->uncheckedArgument(0), [](JSC::ExecState& state, JSC::ThrowScope& scope) { throwArgumentTypeError(state, scope, 0, "arrayBuffer", "TestOverloadedConstructors", nullptr, "ArrayBuffer"); });
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
     auto object = TestOverloadedConstructors::create(*arrayBuffer);
-    return JSValue::encode(toJSNewlyCreated(state, castedThis->globalObject(), WTFMove(object)));
+    return JSValue::encode(toJSNewlyCreated<IDLInterface<TestOverloadedConstructors>>(*state, *castedThis->globalObject(), WTFMove(object)));
 }
 
 static inline EncodedJSValue constructJSTestOverloadedConstructors2(ExecState* state)
@@ -85,14 +85,14 @@ static inline EncodedJSValue constructJSTestOverloadedConstructors2(ExecState* s
     VM& vm = state->vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);
     UNUSED_PARAM(throwScope);
-    auto* castedThis = jsCast<JSTestOverloadedConstructorsConstructor*>(state->callee());
+    auto* castedThis = jsCast<JSTestOverloadedConstructorsConstructor*>(state->jsCallee());
     ASSERT(castedThis);
     if (UNLIKELY(state->argumentCount() < 1))
         return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
     auto arrayBufferView = convert<IDLInterface<ArrayBufferView>>(*state, state->uncheckedArgument(0), [](JSC::ExecState& state, JSC::ThrowScope& scope) { throwArgumentTypeError(state, scope, 0, "arrayBufferView", "TestOverloadedConstructors", nullptr, "ArrayBufferView"); });
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
-    auto object = TestOverloadedConstructors::create(*arrayBufferView);
-    return JSValue::encode(toJSNewlyCreated(state, castedThis->globalObject(), WTFMove(object)));
+    auto object = TestOverloadedConstructors::create(arrayBufferView.releaseNonNull());
+    return JSValue::encode(toJSNewlyCreated<IDLInterface<TestOverloadedConstructors>>(*state, *castedThis->globalObject(), WTFMove(object)));
 }
 
 static inline EncodedJSValue constructJSTestOverloadedConstructors3(ExecState* state)
@@ -100,14 +100,14 @@ static inline EncodedJSValue constructJSTestOverloadedConstructors3(ExecState* s
     VM& vm = state->vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);
     UNUSED_PARAM(throwScope);
-    auto* castedThis = jsCast<JSTestOverloadedConstructorsConstructor*>(state->callee());
+    auto* castedThis = jsCast<JSTestOverloadedConstructorsConstructor*>(state->jsCallee());
     ASSERT(castedThis);
     if (UNLIKELY(state->argumentCount() < 1))
         return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
     auto blob = convert<IDLInterface<Blob>>(*state, state->uncheckedArgument(0), [](JSC::ExecState& state, JSC::ThrowScope& scope) { throwArgumentTypeError(state, scope, 0, "blob", "TestOverloadedConstructors", nullptr, "Blob"); });
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
     auto object = TestOverloadedConstructors::create(*blob);
-    return JSValue::encode(toJSNewlyCreated(state, castedThis->globalObject(), WTFMove(object)));
+    return JSValue::encode(toJSNewlyCreated<IDLInterface<TestOverloadedConstructors>>(*state, *castedThis->globalObject(), WTFMove(object)));
 }
 
 static inline EncodedJSValue constructJSTestOverloadedConstructors4(ExecState* state)
@@ -115,14 +115,14 @@ static inline EncodedJSValue constructJSTestOverloadedConstructors4(ExecState* s
     VM& vm = state->vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);
     UNUSED_PARAM(throwScope);
-    auto* castedThis = jsCast<JSTestOverloadedConstructorsConstructor*>(state->callee());
+    auto* castedThis = jsCast<JSTestOverloadedConstructorsConstructor*>(state->jsCallee());
     ASSERT(castedThis);
     if (UNLIKELY(state->argumentCount() < 1))
         return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
     auto string = convert<IDLDOMString>(*state, state->uncheckedArgument(0), StringConversionConfiguration::Normal);
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
     auto object = TestOverloadedConstructors::create(WTFMove(string));
-    return JSValue::encode(toJSNewlyCreated(state, castedThis->globalObject(), WTFMove(object)));
+    return JSValue::encode(toJSNewlyCreated<IDLInterface<TestOverloadedConstructors>>(*state, *castedThis->globalObject(), WTFMove(object)));
 }
 
 static inline EncodedJSValue constructJSTestOverloadedConstructors5(ExecState* state)
@@ -130,12 +130,12 @@ static inline EncodedJSValue constructJSTestOverloadedConstructors5(ExecState* s
     VM& vm = state->vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);
     UNUSED_PARAM(throwScope);
-    auto* castedThis = jsCast<JSTestOverloadedConstructorsConstructor*>(state->callee());
+    auto* castedThis = jsCast<JSTestOverloadedConstructorsConstructor*>(state->jsCallee());
     ASSERT(castedThis);
     auto longArgs = convertVariadicArguments<IDLLong>(*state, 0);
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
     auto object = TestOverloadedConstructors::create(WTFMove(longArgs));
-    return JSValue::encode(toJSNewlyCreated(state, castedThis->globalObject(), WTFMove(object)));
+    return JSValue::encode(toJSNewlyCreated<IDLInterface<TestOverloadedConstructors>>(*state, *castedThis->globalObject(), WTFMove(object)));
 }
 
 template<> EncodedJSValue JSC_HOST_CALL JSTestOverloadedConstructorsConstructor::construct(ExecState* state)

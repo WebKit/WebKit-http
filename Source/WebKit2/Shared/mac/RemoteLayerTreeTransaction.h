@@ -204,6 +204,15 @@ public:
 
     WebCore::IntPoint scrollOrigin() const { return m_scrollOrigin; }
     void setScrollOrigin(const WebCore::IntPoint& origin) { m_scrollOrigin = origin; };
+
+    WebCore::LayoutSize baseLayoutViewportSize() const { return m_baseLayoutViewportSize; }
+    void setBaseLayoutViewportSize(const WebCore::LayoutSize& size) { m_baseLayoutViewportSize = size; };
+    
+    WebCore::LayoutPoint minStableLayoutViewportOrigin() const { return m_minStableLayoutViewportOrigin; }
+    void setMinStableLayoutViewportOrigin(const WebCore::LayoutPoint& point) { m_minStableLayoutViewportOrigin = point; };
+    
+    WebCore::LayoutPoint maxStableLayoutViewportOrigin() const { return m_maxStableLayoutViewportOrigin; }
+    void setMaxStableLayoutViewportOrigin(const WebCore::LayoutPoint& point) { m_maxStableLayoutViewportOrigin = point; };
     
     WebCore::Color pageExtendedBackgroundColor() const { return m_pageExtendedBackgroundColor; }
     void setPageExtendedBackgroundColor(WebCore::Color color) { m_pageExtendedBackgroundColor = color; }
@@ -240,6 +249,9 @@ public:
     bool viewportMetaTagCameFromImageDocument() const { return m_viewportMetaTagCameFromImageDocument; }
     void setViewportMetaTagCameFromImageDocument(bool cameFromImageDocument) { m_viewportMetaTagCameFromImageDocument = cameFromImageDocument; }
 
+    bool isInStableState() const { return m_isInStableState; }
+    void setIsInStableState(bool isInStableState) { m_isInStableState = isInStableState; }
+
     bool allowsUserScaling() const { return m_allowsUserScaling; }
     void setAllowsUserScaling(bool allowsUserScaling) { m_allowsUserScaling = allowsUserScaling; }
 
@@ -267,6 +279,9 @@ private:
 
     WebCore::IntSize m_contentsSize;
     WebCore::IntPoint m_scrollOrigin;
+    WebCore::LayoutSize m_baseLayoutViewportSize;
+    WebCore::LayoutPoint m_minStableLayoutViewportOrigin;
+    WebCore::LayoutPoint m_maxStableLayoutViewportOrigin;
 #if PLATFORM(MAC)
     WebCore::IntPoint m_scrollPosition;
 #endif
@@ -283,6 +298,7 @@ private:
     bool m_allowsUserScaling { false };
     bool m_viewportMetaTagWidthWasExplicit { false };
     bool m_viewportMetaTagCameFromImageDocument { false };
+    bool m_isInStableState { false };
 };
 
 } // namespace WebKit

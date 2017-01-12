@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015, 2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -88,12 +88,18 @@ public:
 #if PLATFORM(IOS)
     bool alwaysRunsAtForegroundPriority() { return m_alwaysRunsAtForegroundPriority; }
     void setAlwaysRunsAtForegroundPriority(bool alwaysRunsAtForegroundPriority) { m_alwaysRunsAtForegroundPriority = alwaysRunsAtForegroundPriority; } 
+    
+    uint32_t contentUpdateFrequency() const { return m_contentUpdateFrequency; }
+    void setContentUpdateFrequency(uint32_t updateFrequency) { m_contentUpdateFrequency = updateFrequency; }
 #endif
     bool initialCapitalizationEnabled() { return m_initialCapitalizationEnabled; }
     void setInitialCapitalizationEnabled(bool initialCapitalizationEnabled) { m_initialCapitalizationEnabled = initialCapitalizationEnabled; }
 
     bool waitsForPaintAfterViewDidMoveToWindow() const { return m_waitsForPaintAfterViewDidMoveToWindow; }
     void setWaitsForPaintAfterViewDidMoveToWindow(bool shouldSynchronize) { m_waitsForPaintAfterViewDidMoveToWindow = shouldSynchronize; }
+
+    bool isControlledByAutomation() const { return m_controlledByAutomation; }
+    void setControlledByAutomation(bool controlledByAutomation) { m_controlledByAutomation = controlledByAutomation; }
 
 private:
 
@@ -113,9 +119,11 @@ private:
     bool m_treatsSHA1SignedCertificatesAsInsecure = true;
 #if PLATFORM(IOS)
     bool m_alwaysRunsAtForegroundPriority = false;
+    uint32_t m_contentUpdateFrequency { 0 };
 #endif
     bool m_initialCapitalizationEnabled = true;
     bool m_waitsForPaintAfterViewDidMoveToWindow = true;
+    bool m_controlledByAutomation = false;
 };
 
 } // namespace API

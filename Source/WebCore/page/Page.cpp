@@ -83,6 +83,7 @@
 #include "ScrollingCoordinator.h"
 #include "Settings.h"
 #include "SharedBuffer.h"
+#include "SocketProvider.h"
 #include "StorageArea.h"
 #include "StorageNamespace.h"
 #include "StorageNamespaceProvider.h"
@@ -133,6 +134,12 @@ void Page::forEachPage(std::function<void(Page&)> function)
         return;
     for (Page* page : *allPages)
         function(*page);
+}
+
+void Page::updateValidationBubbleStateIfNeeded()
+{
+    if (auto* client = validationMessageClient())
+        client->updateValidationBubbleStateIfNeeded();
 }
 
 static void networkStateChanged(bool isOnLine)
@@ -553,7 +560,7 @@ bool Page::showAllPlugins() const
     return false;
 }
 
-inline Optional<std::pair<MediaCanStartListener&, Document&>>  Page::takeAnyMediaCanStartListener()
+inline std::optional<std::pair<MediaCanStartListener&, Document&>>  Page::takeAnyMediaCanStartListener()
 {
     for (Frame* frame = &mainFrame(); frame; frame = frame->tree().traverseNext()) {
         if (!frame->document())
@@ -561,7 +568,7 @@ inline Optional<std::pair<MediaCanStartListener&, Document&>>  Page::takeAnyMedi
         if (MediaCanStartListener* listener = frame->document()->takeAnyMediaCanStartListener())
             return { { *listener, *frame->document() } };
     }
-    return Nullopt;
+    return std::nullopt;
 }
 
 void Page::setCanStartMedia(bool canStartMedia)
@@ -768,10 +775,8 @@ void Page::setInLowQualityImageInterpolationMode(bool mode)
 
 DiagnosticLoggingClient& Page::diagnosticLoggingClient() const
 {
-    static NeverDestroyed<EmptyDiagnosticLoggingClient> dummyClient;
     if (!settings().diagnosticLoggingEnabled() || !m_diagnosticLoggingClient)
-        return dummyClient;
-
+        return emptyDiagnosticLoggingClient();
     return *m_diagnosticLoggingClient;
 }
 
@@ -1534,10 +1539,10 @@ void Page::setIsPrerender()
 PageVisibilityState Page::visibilityState() const
 {
     if (isVisible())
-        return PageVisibilityStateVisible;
+        return PageVisibilityState::Visible;
     if (m_isPrerender)
-        return PageVisibilityStatePrerender;
-    return PageVisibilityStateHidden;
+        return PageVisibilityState::Prerender;
+    return PageVisibilityState::Hidden;
 }
 
 #if ENABLE(RUBBER_BANDING)
@@ -1993,8 +1998,14 @@ void Page::setShouldPlayToPlaybackTarget(uint64_t clientId, bool shouldPlay)
 
 WheelEventTestTrigger& Page::ensureTestTrigger()
 {
-    if (!m_testTrigger)
+    if (!m_testTrigger) {
         m_testTrigger = adoptRef(new WheelEventTestTrigger());
+        // We need to update the scrolling coordinator so that the mainframe scrolling node can expect wheel event test triggers.
+        if (auto* frameView = mainFrame().view()) {
+            if (m_scrollingCoordinator)
+                m_scrollingCoordinator->updateExpectsWheelEventTestTriggerWithFrameView(*frameView);
+        }
+    }
 
     return *m_testTrigger;
 }
@@ -2056,6 +2067,26 @@ void Page::setCaptionUserPreferencesStyleSheet(const String& styleSheet)
     m_captionUserPreferencesStyleSheet = styleSheet;
     
     invalidateInjectedStyleSheetCacheInAllFrames();
+}
+
+void Page::accessibilitySettingsDidChange()
+{
+    bool neededRecalc = false;
+
+    for (Frame* frame = &mainFrame(); frame; frame = frame->tree().traverseNext()) {
+        if (Document* document = frame->document()) {
+            auto* styleResolver = document->styleScope().resolverIfExists();
+            if (styleResolver && styleResolver->hasMediaQueriesAffectedByAccessibilitySettingsChange()) {
+                document->styleScope().didChangeStyleSheetEnvironment();
+                neededRecalc = true;
+                // FIXME: This instrumentation event is not strictly accurate since cached media query results do not persist across StyleResolver rebuilds.
+                InspectorInstrumentation::mediaQueryResultChanged(*document);
+            }
+        }
+    }
+
+    if (neededRecalc)
+        LOG(Layout, "hasMediaQueriesAffectedByAccessibilitySettingsChange, enqueueing style recalc");
 }
 
 } // namespace WebCore

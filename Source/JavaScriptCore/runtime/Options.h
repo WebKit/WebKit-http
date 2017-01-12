@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -184,7 +184,24 @@ typedef const char* optionString;
     v(bool, verboseSanitizeStack, false, Normal, nullptr) \
     v(bool, useGenerationalGC, true, Normal, nullptr) \
     v(bool, useConcurrentBarriers, true, Normal, nullptr) \
+    v(bool, useConcurrentGC, true, Normal, nullptr) \
+    v(bool, collectContinuously, false, Normal, nullptr) \
+    v(double, collectContinuouslyPeriodMS, 1, Normal, nullptr) \
     v(bool, forceFencedBarrier, false, Normal, nullptr) \
+    v(bool, verboseVisitRace, false, Normal, nullptr) \
+    v(bool, optimizeParallelSlotVisitorsForStoppedMutator, false, Normal, nullptr) \
+    v(unsigned, largeHeapSize, 32 * 1024 * 1024, Normal, nullptr) \
+    v(unsigned, smallHeapSize, 1 * 1024 * 1024, Normal, nullptr) \
+    v(double, smallHeapRAMFraction, 0.25, Normal, nullptr) \
+    v(double, smallHeapGrowthFactor, 2, Normal, nullptr) \
+    v(double, mediumHeapRAMFraction, 0.5, Normal, nullptr) \
+    v(double, mediumHeapGrowthFactor, 1.5, Normal, nullptr) \
+    v(double, largeHeapGrowthFactor, 1.24, Normal, nullptr) \
+    v(bool, useCollectorTimeslicing, true, Normal, nullptr) \
+    v(double, minimumMutatorUtilization, 0, Normal, nullptr) \
+    v(double, maximumMutatorUtilization, 0.7, Normal, nullptr) \
+    v(double, concurrentGCMaxHeadroom, 1.5, Normal, nullptr) \
+    v(double, concurrentGCPeriodMS, 2, Normal, nullptr) \
     v(bool, scribbleFreeCells, false, Normal, nullptr) \
     v(double, sizeClassProgression, 1.4, Normal, nullptr) \
     v(unsigned, largeAllocationCutoff, 100000, Normal, nullptr) \
@@ -212,6 +229,7 @@ typedef const char* optionString;
     v(bool, usePolymorphicCallInliningForNonStubStatus, false, Normal, nullptr) \
     v(unsigned, maxPolymorphicCallVariantListSize, 15, Normal, nullptr) \
     v(unsigned, maxPolymorphicCallVariantListSizeForTopTier, 5, Normal, nullptr) \
+    v(unsigned, maxPolymorphicCallVariantListSizeForWebAssemblyToJS, 5, Normal, nullptr) \
     v(unsigned, maxPolymorphicCallVariantsForInlining, 5, Normal, nullptr) \
     v(unsigned, frequentCallThreshold, 2, Normal, nullptr) \
     v(double, minimumCallToKnownRate, 0.51, Normal, nullptr) \
@@ -305,13 +323,11 @@ typedef const char* optionString;
     v(unsigned, maximumDirectCallStackSize, 200, Normal, nullptr) \
     \
     v(unsigned, minimumNumberOfScansBetweenRebalance, 100, Normal, nullptr) \
-    v(unsigned, numberOfGCMarkers, computeNumberOfGCMarkers(7), Normal, nullptr) \
+    v(unsigned, numberOfGCMarkers, computeNumberOfGCMarkers(8), Normal, nullptr) \
     v(unsigned, opaqueRootMergeThreshold, 1000, Normal, nullptr) \
     v(double, minHeapUtilization, 0.8, Normal, nullptr) \
     v(double, minMarkedBlockUtilization, 0.9, Normal, nullptr) \
     v(unsigned, slowPathAllocsBetweenGCs, 0, Normal, "force a GC on every Nth slow path alloc, where N is specified by this option") \
-    v(bool, deferGCShouldCollectWithProbability, false, Normal, "If true, we perform a collection based on flipping a coin according the probability in the 'deferGCProbability' option when DeferGC is destructed.") \
-    v(double, deferGCProbability, 1.0, Normal, "Should be a number between 0 and 1. 1 means DeferGC always GCs when it's destructed and GCing is safe. 0.7 means we force GC 70% the time on DeferGC destruction.") \
     \
     v(double, percentCPUPerMBForFullTimer, 0.0003125, Normal, nullptr) \
     v(double, percentCPUPerMBForEdenTimer, 0.0025, Normal, nullptr) \
@@ -396,7 +412,8 @@ typedef const char* optionString;
     v(bool, useSourceProviderCache, true, Normal, "If false, the parser will not use the source provider cache. It's good to verify everything works when this is false. Because the cache is so successful, it can mask bugs.") \
     v(bool, useCodeCache, true, Normal, "If false, the unlinked byte code cache will not be used.") \
     \
-    v(bool, useWebAssembly, false, Normal, "Expose the WebAssembly global object.") \
+    v(bool, useWebAssembly, true, Normal, "Expose the WebAssembly global object.") \
+    v(bool, simulateWebAssemblyLowMemory, false, Normal, "If true, the Memory object won't mmap the full 'maximum' range and instead will allocate the minimum required amount.") \
 
 enum OptionEquivalence {
     SameOption,
@@ -488,6 +505,8 @@ public:
     JS_EXPORT_PRIVATE static void dumpAllOptionsInALine(StringBuilder&);
 
     JS_EXPORT_PRIVATE static void ensureOptionsAreCoherent();
+
+    JS_EXPORT_PRIVATE static void enableRestrictedOptions(bool enableOrNot);
 
     // Declare accessors for each option:
 #define FOR_EACH_OPTION(type_, name_, defaultValue_, availability_, description_) \

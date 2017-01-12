@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2006 Lars Knoll <lars@trolltech.com>
- * Copyright (C) 2007, 2011, 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2007-2016 Apple Inc. All rights reserved.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -19,75 +19,48 @@
  *
  */
 
-#ifndef TextBreakIterator_h
-#define TextBreakIterator_h
+#pragma once
 
-#include <wtf/text/AtomicString.h>
 #include <wtf/text/StringView.h>
 
 namespace WTF {
 
-class TextBreakIterator;
-
 // Note: The returned iterator is good only until you get another iterator, with the exception of acquireLineBreakIterator.
 
-enum LineBreakIteratorMode {
-    LineBreakIteratorModeUAX14,
-    LineBreakIteratorModeUAX14Loose,
-    LineBreakIteratorModeUAX14Normal,
-    LineBreakIteratorModeUAX14Strict,
-};
+enum class LineBreakIteratorMode { Default, Loose, Normal, Strict };
 
 // This is similar to character break iterator in most cases, but is subject to
 // platform UI conventions. One notable example where this can be different
 // from character break iterator is Thai prepend characters, see bug 24342.
 // Use this for insertion point and selection manipulations.
-WTF_EXPORT_PRIVATE TextBreakIterator* cursorMovementIterator(StringView);
+WTF_EXPORT_PRIVATE UBreakIterator* cursorMovementIterator(StringView);
 
-WTF_EXPORT_PRIVATE TextBreakIterator* wordBreakIterator(StringView);
-WTF_EXPORT_PRIVATE TextBreakIterator* sentenceBreakIterator(StringView);
+WTF_EXPORT_PRIVATE UBreakIterator* wordBreakIterator(StringView);
+WTF_EXPORT_PRIVATE UBreakIterator* sentenceBreakIterator(StringView);
 
-WTF_EXPORT_PRIVATE TextBreakIterator* acquireLineBreakIterator(StringView, const AtomicString& locale, const UChar* priorContext, unsigned priorContextLength, LineBreakIteratorMode, bool isCJK);
-WTF_EXPORT_PRIVATE void releaseLineBreakIterator(TextBreakIterator*);
-TextBreakIterator* openLineBreakIterator(const AtomicString& locale, LineBreakIteratorMode, bool isCJK);
-void closeLineBreakIterator(TextBreakIterator*&);
+WTF_EXPORT_PRIVATE UBreakIterator* acquireLineBreakIterator(StringView, const AtomicString& locale, const UChar* priorContext, unsigned priorContextLength, LineBreakIteratorMode, bool isCJK);
+WTF_EXPORT_PRIVATE void releaseLineBreakIterator(UBreakIterator*);
+UBreakIterator* openLineBreakIterator(const AtomicString& locale, LineBreakIteratorMode, bool isCJK);
+void closeLineBreakIterator(UBreakIterator*&);
 
-WTF_EXPORT_PRIVATE int textBreakFirst(TextBreakIterator*);
-WTF_EXPORT_PRIVATE int textBreakLast(TextBreakIterator*);
-WTF_EXPORT_PRIVATE int textBreakNext(TextBreakIterator*);
-WTF_EXPORT_PRIVATE int textBreakPrevious(TextBreakIterator*);
-WTF_EXPORT_PRIVATE int textBreakCurrent(TextBreakIterator*);
-WTF_EXPORT_PRIVATE int textBreakPreceding(TextBreakIterator*, int);
-WTF_EXPORT_PRIVATE int textBreakFollowing(TextBreakIterator*, int);
-WTF_EXPORT_PRIVATE bool isTextBreak(TextBreakIterator*, int);
-WTF_EXPORT_PRIVATE bool isWordTextBreak(TextBreakIterator*);
-
-const int TextBreakDone = -1;
+WTF_EXPORT_PRIVATE bool isWordTextBreak(UBreakIterator*);
 
 WTF_EXPORT_PRIVATE bool isCJKLocale(const AtomicString&);
 
 class LazyLineBreakIterator {
 public:
     LazyLineBreakIterator()
-        : m_iterator(nullptr)
-        , m_cachedPriorContext(nullptr)
-        , m_mode(LineBreakIteratorModeUAX14)
-        , m_cachedPriorContextLength(0)
-        , m_isCJK(false)
     {
         resetPriorContext();
     }
 
-    LazyLineBreakIterator(StringView stringView, const AtomicString& locale = AtomicString(), LineBreakIteratorMode mode = LineBreakIteratorModeUAX14)
+    explicit LazyLineBreakIterator(StringView stringView, const AtomicString& locale = AtomicString(), LineBreakIteratorMode mode = LineBreakIteratorMode::Default)
         : m_stringView(stringView)
         , m_locale(locale)
-        , m_iterator(nullptr)
-        , m_cachedPriorContext(nullptr)
         , m_mode(mode)
-        , m_cachedPriorContextLength(0)
+        , m_isCJK(isCJKLocale(locale))
     {
         resetPriorContext();
-        m_isCJK = isCJKLocale(locale);
     }
 
     ~LazyLineBreakIterator()
@@ -97,37 +70,37 @@ public:
     }
 
     StringView stringView() const { return m_stringView; }
-    bool isLooseCJKMode() const { return m_isCJK && m_mode == LineBreakIteratorModeUAX14Loose; }
+    bool isLooseCJKMode() const { return m_isCJK && m_mode == LineBreakIteratorMode::Loose; }
 
     UChar lastCharacter() const
     {
-        COMPILE_ASSERT(WTF_ARRAY_LENGTH(m_priorContext) == 2, TextBreakIterator_unexpected_prior_context_length);
+        static_assert(WTF_ARRAY_LENGTH(m_priorContext) == 2, "UBreakIterator unexpected prior context length");
         return m_priorContext[1];
     }
 
     UChar secondToLastCharacter() const
     {
-        COMPILE_ASSERT(WTF_ARRAY_LENGTH(m_priorContext) == 2, TextBreakIterator_unexpected_prior_context_length);
+        static_assert(WTF_ARRAY_LENGTH(m_priorContext) == 2, "UBreakIterator unexpected prior context length");
         return m_priorContext[0];
     }
 
     void setPriorContext(UChar last, UChar secondToLast)
     {
-        COMPILE_ASSERT(WTF_ARRAY_LENGTH(m_priorContext) == 2, TextBreakIterator_unexpected_prior_context_length);
+        static_assert(WTF_ARRAY_LENGTH(m_priorContext) == 2, "UBreakIterator unexpected prior context length");
         m_priorContext[0] = secondToLast;
         m_priorContext[1] = last;
     }
 
     void updatePriorContext(UChar last)
     {
-        COMPILE_ASSERT(WTF_ARRAY_LENGTH(m_priorContext) == 2, TextBreakIterator_unexpected_prior_context_length);
+        static_assert(WTF_ARRAY_LENGTH(m_priorContext) == 2, "UBreakIterator unexpected prior context length");
         m_priorContext[0] = m_priorContext[1];
         m_priorContext[1] = last;
     }
 
     void resetPriorContext()
     {
-        COMPILE_ASSERT(WTF_ARRAY_LENGTH(m_priorContext) == 2, TextBreakIterator_unexpected_prior_context_length);
+        static_assert(WTF_ARRAY_LENGTH(m_priorContext) == 2, "UBreakIterator unexpected prior context length");
         m_priorContext[0] = 0;
         m_priorContext[1] = 0;
     }
@@ -135,7 +108,7 @@ public:
     unsigned priorContextLength() const
     {
         unsigned priorContextLength = 0;
-        COMPILE_ASSERT(WTF_ARRAY_LENGTH(m_priorContext) == 2, TextBreakIterator_unexpected_prior_context_length);
+        static_assert(WTF_ARRAY_LENGTH(m_priorContext) == 2, "UBreakIterator unexpected prior context length");
         if (m_priorContext[1]) {
             ++priorContextLength;
             if (m_priorContext[0])
@@ -147,7 +120,7 @@ public:
     // Obtain text break iterator, possibly previously cached, where this iterator is (or has been)
     // initialized to use the previously stored string as the primary breaking context and using
     // previously stored prior context if non-empty.
-    TextBreakIterator* get(unsigned priorContextLength)
+    UBreakIterator* get(unsigned priorContextLength)
     {
         ASSERT(priorContextLength <= priorContextCapacity);
         const UChar* priorContext = priorContextLength ? &m_priorContext[priorContextCapacity - priorContextLength] : 0;
@@ -176,15 +149,15 @@ public:
     }
 
 private:
-    static const unsigned priorContextCapacity = 2;
+    static constexpr unsigned priorContextCapacity = 2;
     StringView m_stringView;
     AtomicString m_locale;
-    TextBreakIterator* m_iterator;
-    const UChar* m_cachedPriorContext;
-    LineBreakIteratorMode m_mode;
-    unsigned m_cachedPriorContextLength;
+    UBreakIterator* m_iterator { nullptr };
+    const UChar* m_cachedPriorContext { nullptr };
+    LineBreakIteratorMode m_mode { LineBreakIteratorMode::Default };
+    unsigned m_cachedPriorContextLength { 0 };
     UChar m_priorContext[priorContextCapacity];
-    bool m_isCJK;
+    bool m_isCJK { false };
 };
 
 // Iterates over "extended grapheme clusters", as defined in UAX #29.
@@ -200,27 +173,24 @@ public:
 
     NonSharedCharacterBreakIterator(NonSharedCharacterBreakIterator&&);
 
-    operator TextBreakIterator*() const { return m_iterator; }
+    operator UBreakIterator*() const { return m_iterator; }
 
 private:
-    TextBreakIterator* m_iterator;
+    UBreakIterator* m_iterator;
 };
 
 // Counts the number of grapheme clusters. A surrogate pair or a sequence
 // of a non-combining character and following combining characters is
 // counted as 1 grapheme cluster.
 WTF_EXPORT_PRIVATE unsigned numGraphemeClusters(StringView);
+
 // Returns the number of characters which will be less than or equal to
 // the specified grapheme cluster length.
-WTF_EXPORT_PRIVATE unsigned numCharactersInGraphemeClusters(const StringView&, unsigned);
+WTF_EXPORT_PRIVATE unsigned numCharactersInGraphemeClusters(StringView, unsigned);
 
 }
 
-using WTF::LineBreakIteratorMode;
-using WTF::LineBreakIteratorModeUAX14;
 using WTF::LazyLineBreakIterator;
+using WTF::LineBreakIteratorMode;
 using WTF::NonSharedCharacterBreakIterator;
-using WTF::TextBreakDone;
-using WTF::TextBreakIterator;
-
-#endif
+using WTF::isWordTextBreak;

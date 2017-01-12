@@ -95,7 +95,7 @@ Ref<CSSPrimitiveValue> CSSValuePool::createColorValue(const Color& color)
     return *entry.iterator->value;
 }
 
-Ref<CSSPrimitiveValue> CSSValuePool::createValue(double value, CSSPrimitiveValue::UnitTypes type)
+Ref<CSSPrimitiveValue> CSSValuePool::createValue(double value, CSSPrimitiveValue::UnitType type)
 {
     ASSERT(std::isfinite(value));
 
@@ -132,7 +132,7 @@ Ref<CSSPrimitiveValue> CSSValuePool::createFontFamilyValue(const String& familyN
     return *value;
 }
 
-PassRefPtr<CSSValueList> CSSValuePool::createFontFaceValue(const AtomicString& string)
+RefPtr<CSSValueList> CSSValuePool::createFontFaceValue(const AtomicString& string)
 {
     // Remove one entry at random if the cache grows too large.
     const int maximumFontFaceCacheSize = 128;
@@ -140,8 +140,13 @@ PassRefPtr<CSSValueList> CSSValuePool::createFontFaceValue(const AtomicString& s
         m_fontFaceValueCache.remove(m_fontFaceValueCache.begin());
 
     RefPtr<CSSValueList>& value = m_fontFaceValueCache.add(string, nullptr).iterator->value;
-    if (!value)
-        value = CSSParser::parseFontFaceValue(string);
+    if (value)
+        return value;
+    
+    RefPtr<CSSValue> result = CSSParser::parseSingleValue(CSSPropertyFontFamily, string);
+    if (!result || !result->isValueList())
+        return value;
+    value = static_pointer_cast<CSSValueList>(result);
     return value;
 }
 

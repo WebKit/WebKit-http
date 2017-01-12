@@ -203,6 +203,22 @@
         "category": "html"
     },
     {
+        "name": "Encoding",
+        "status": {
+            "status": "Done",
+            "enabled-by-default": true
+        },
+        "url": "https://encoding.spec.whatwg.org",
+        "webkit-url": "https://bugs.webkit.org/show_bug.cgi?id=163771",
+        "keywords": ["encoding", "TextEncoder", "TextDecoder", "request", "response", "header"],
+        "category": "webapps",
+        "description": "TextEncoder and TextDecoder APIs for converting text from different character sets.",
+        "contact": {
+            "name": "Alex Christensen",
+            "twitter": "@alexfchr",
+            "email": "achristensen@webkit.org"
+        }
+    },    {
         "name": "Fetch API",
         "status": {
             "status": "In Development"
@@ -279,6 +295,17 @@
         "webkit-url": "https://bugs.webkit.org/show_bug.cgi?id=159475",
         "keywords": ["intersection", "intersection observer"],
         "description": "An API that can be used to understand the visibility and position of DOM elements relative to a containing element or to the top-level viewport."
+    },
+    {
+        "name": "Pointer Lock",
+        "status": {
+            "status": "In Development",
+            "enabled-by-default": false
+        },
+        "url": "https://www.w3.org/TR/pointerlock/",
+        "webkit-url": "https://bugs.webkit.org/show_bug.cgi?id=164652",
+        "keywords": ["pointer", "pointer lock"],
+        "description": "Provides scripted access to raw mouse movement data while locking the target of mouse events to a single element and removing the cursor from view."
     },
     {
         "name": "Preload",
@@ -371,6 +398,23 @@
         "url": "https://www.w3.org/TR/web-animations-1/",
         "keywords": ["web animations"],
         "description": "An API to synchronize with the timing for presentation changes of a web page.",
+        "contact": {
+            "name": "Jonathan Davis",
+            "email": "web-evangelist@apple.com",
+            "twitter": "@jonathandavis"
+        }
+    },
+    {
+        "name": "Web App Manifest",
+        "status": {
+            "status": "Under Consideration",
+            "enabled-by-default": false
+        },
+        "url": "https://www.w3.org/TR/appmanifest/",
+        "webkit-url": "https://webkit.org/b/158205",
+        "keywords": ["web app","manifest", "webapp"],
+        "category": "webapps",
+        "description": "A JSON-format manifest file for developers to place metadata associated with a web application.",
         "contact": {
             "name": "Jonathan Davis",
             "email": "web-evangelist@apple.com",
@@ -864,6 +908,22 @@
         }
     },
     {
+        "name": "Strict Mixed Content Checking",
+        "status": {
+            "status": "Done",
+            "enabled-by-default": true
+        },
+        "url": "https://w3c.github.io/webappsec-mixed-content/#strict-checking",
+        "webkit-url": "https://bugs.webkit.org/show_bug.cgi?id=165438",
+        "keywords": ["csp", "content security policy", "blockable", "optionally-blockable", "block-all-mixed-content", "HTTPS"],
+        "category": "webapps",
+        "description": "Allows developers to opt into blocking display and running of all insecure content on an HTTPS page.",
+        "contact": {
+            "name": "Daniel Bates",
+            "email": "dbates@webkit.org"
+        }
+    },
+    {
         "name": "Subresource Integrity",
         "status": {
             "status": "Under Consideration"
@@ -887,6 +947,18 @@
         "documentation-url": "https://developer.mozilla.org/en-US/docs/Web/HTML/Element/template",
         "specification": "Web Components",
         "description": "Declares HTML fragments that can be cloned and inserted into the document by a script."
+    },
+    {
+        "name": "Upgrade Insecure Requests",
+        "status": {
+            "status": "Done",
+            "enabled-by-default": true
+        },
+        "url": "https://w3c.github.io/webappsec-upgrade-insecure-requests/",
+        "webkit-url": "https://bugs.webkit.org/show_bug.cgi?id=143653",
+        "keywords": ["csp", "content security policy", "upgrade-insecure-requests", "HTTPS"],
+        "category": "webapps",
+        "description": "Allows developers to opt into automatic upgrading of insecure requests to secure requests."
     },
     {
         "name": "Variation Fonts",

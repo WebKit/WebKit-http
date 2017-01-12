@@ -24,6 +24,7 @@
 #include "CSSCursorImageValue.h"
 #include "Document.h"
 #include "SVGNames.h"
+#include "SVGStringList.h"
 #include "XLinkNames.h"
 #include <wtf/NeverDestroyed.h>
 
@@ -81,9 +82,9 @@ void SVGCursorElement::parseAttribute(const QualifiedName& name, const AtomicStr
     SVGParsingError parseError = NoError;
 
     if (name == SVGNames::xAttr)
-        setXBaseValue(SVGLength::construct(LengthModeWidth, value, parseError));
+        setXBaseValue(SVGLengthValue::construct(LengthModeWidth, value, parseError));
     else if (name == SVGNames::yAttr)
-        setYBaseValue(SVGLength::construct(LengthModeHeight, value, parseError));
+        setYBaseValue(SVGLengthValue::construct(LengthModeHeight, value, parseError));
 
     reportAttributeParsingError(parseError, name, value);
 
@@ -120,6 +121,21 @@ void SVGCursorElement::addSubresourceAttributeURLs(ListHashSet<URL>& urls) const
     SVGElement::addSubresourceAttributeURLs(urls);
 
     addSubresourceURL(urls, document().completeURL(href()));
+}
+
+Ref<SVGStringList> SVGCursorElement::requiredFeatures()
+{
+    return SVGTests::requiredFeatures(*this);
+}
+
+Ref<SVGStringList> SVGCursorElement::requiredExtensions()
+{ 
+    return SVGTests::requiredExtensions(*this);
+}
+
+Ref<SVGStringList> SVGCursorElement::systemLanguage()
+{
+    return SVGTests::systemLanguage(*this);
 }
 
 }

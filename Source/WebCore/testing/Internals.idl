@@ -70,6 +70,17 @@ enum UserInterfaceLayoutDirection {
     "RTL"
 };
 
+enum BaseWritingDirection {
+    "Natural",
+    "Ltr",
+    "Rtl"
+};
+
+enum EventThrottlingBehavior {
+    "responsive",
+    "unresponsive"
+};
+
 [
     ExportMacro=WEBCORE_TESTSUPPORT_EXPORT,
     NoInterfaceObject,
@@ -102,6 +113,11 @@ enum UserInterfaceLayoutDirection {
 
     Node ensureUserAgentShadowRoot(Element host);
     Node shadowRoot(Element host);
+
+    // CSS Deferred Parsing Testing.
+    long deferredStyleRulesCount(StyleSheet sheet);
+    long deferredGroupRulesCount(StyleSheet sheet);
+    long deferredKeyframesRulesCount(StyleSheet sheet);
 
     [MayThrowException] DOMString shadowRootType(Node root);
     DOMString shadowPseudoId(Element element);
@@ -137,7 +153,7 @@ enum UserInterfaceLayoutDirection {
     [MayThrowException] DOMString inspectorHighlightObject();
 
     [MayThrowException] unsigned long markerCountForNode(Node node, DOMString markerType);
-    [MayThrowException] Range markerRangeForNode(Node node, DOMString markerType, unsigned long index);
+    [MayThrowException] Range? markerRangeForNode(Node node, DOMString markerType, unsigned long index);
     [MayThrowException] DOMString markerDescriptionForNode(Node node, DOMString markerType, unsigned long index);
     [MayThrowException] DOMString dumpMarkerRects(DOMString markerType);
     void addTextMatchMarker(Range range, boolean isActive);
@@ -162,8 +178,10 @@ enum UserInterfaceLayoutDirection {
     void setEditingValue(HTMLInputElement inputElement, DOMString value);
     void setAutofilled(HTMLInputElement inputElement, boolean enabled);
     void setShowAutoFillButton(HTMLInputElement inputElement, AutoFillButtonType autoFillButtonType);
-    unsigned long countMatchesForText(DOMString text, unsigned long findOptions, DOMString markMatches);
-    unsigned long countFindMatches(DOMString text, unsigned long findOptions);
+
+    [MayThrowException] Range? rangeOfString(DOMString text, Range? referenceRange, sequence<DOMString> findOptions);
+    [MayThrowException] unsigned long countMatchesForText(DOMString text, sequence<DOMString> findOptions, DOMString markMatches);
+    [MayThrowException] unsigned long countFindMatches(DOMString text, sequence<DOMString> findOptions);
 
     [MayThrowException] DOMString autofillFieldName(Element formControlElement);
 
@@ -171,12 +189,12 @@ enum UserInterfaceLayoutDirection {
 
     [MayThrowException] void scrollElementToRect(Element element, long x, long y, long w, long h);
 
-    Range rangeFromLocationAndLength(Element scope, long rangeLocation, long rangeLength);
+    Range? rangeFromLocationAndLength(Element scope, long rangeLocation, long rangeLength);
     unsigned long locationFromRange(Element scope, Range range);
     unsigned long lengthFromRange(Element scope, Range range);
     DOMString rangeAsText(Range range);
     Range subrange(Range range, long rangeLocation, long rangeLength);
-    [MayThrowException] Range rangeForDictionaryLookupAtLocation(long x, long y);
+    [MayThrowException] Range? rangeForDictionaryLookupAtLocation(long x, long y);
 
     [MayThrowException] void setDelegatesScrolling(boolean enabled);
 
@@ -192,7 +210,7 @@ enum UserInterfaceLayoutDirection {
     [MayThrowException] unsigned long wheelEventHandlerCount();
     [MayThrowException] unsigned long touchEventHandlerCount();
 
-    [MayThrowException] NodeList nodesFromRect(Document document, long x, long y,
+    [MayThrowException] NodeList? nodesFromRect(Document document, long x, long y,
         unsigned long topPadding, unsigned long rightPadding, unsigned long bottomPadding, unsigned long leftPadding,
         boolean ignoreClipping, boolean allowShadowContent, boolean allowChildFrameContent);
 
@@ -222,6 +240,7 @@ enum UserInterfaceLayoutDirection {
 
     unsigned long imageFrameIndex(HTMLImageElement element);
     void setImageFrameDecodingDuration(HTMLImageElement element, unrestricted float duration);
+    void resetImageAnimation(HTMLImageElement element);
 
     readonly attribute InternalSettings settings;
     readonly attribute unsigned long workerThreadCount;
@@ -236,7 +255,7 @@ enum UserInterfaceLayoutDirection {
 
     [MayThrowException] DOMString scrollingStateTreeAsText();
     [MayThrowException] DOMString mainThreadScrollingReasons(); // FIXME: rename to synchronousScrollingReasons().
-    [MayThrowException] ClientRectList nonFastScrollableRects();
+    [MayThrowException] ClientRectList? nonFastScrollableRects();
 
     [MayThrowException] DOMString repaintRectsAsText();
 
@@ -266,7 +285,7 @@ enum UserInterfaceLayoutDirection {
 
     unsigned long numberOfLiveNodes();
     unsigned long numberOfLiveDocuments();
-    DOMWindow openDummyInspectorFrontend(DOMString url);
+    DOMWindow? openDummyInspectorFrontend(DOMString url);
     void closeDummyInspectorFrontend();
     [MayThrowException] void setInspectorIsUnderTest(boolean isUnderTest);
 
@@ -327,6 +346,9 @@ enum UserInterfaceLayoutDirection {
     boolean isRequestAnimationFrameThrottled();
     boolean areTimersThrottled();
 
+    // Override the behavior of WebPage::eventThrottlingDelay(), which only affects iOS.
+    attribute EventThrottlingBehavior? eventThrottlingBehaviorOverride;
+
     [MayThrowException] void startTrackingStyleRecalcs();
     [MayThrowException] unsigned long styleRecalcCount();
     readonly attribute unsigned long lastStyleUpdateSize;
@@ -349,7 +371,7 @@ enum UserInterfaceLayoutDirection {
     DOMString toolTipFromElement(Element element);
 
     SerializedScriptValue deserializeBuffer(ArrayBuffer buffer);
-    ArrayBuffer serializeObject(SerializedScriptValue obj);
+    ArrayBuffer serializeObject(SerializedScriptValue object);
 
     boolean isFromCurrentWorld(any obj);
 
@@ -364,6 +386,7 @@ enum UserInterfaceLayoutDirection {
     [Conditional=VIDEO, MayThrowException] boolean mediaElementHasCharacteristic(HTMLMediaElement element, DOMString characteristic);
 
     [Conditional=LEGACY_ENCRYPTED_MEDIA] void initializeMockCDM();
+    [Conditional=ENCRYPTED_MEDIA] MockCDMFactory registerMockCDM();
 
     [Conditional=SPEECH_SYNTHESIS] void enableMockSpeechSynthesizer();
 
@@ -404,6 +427,7 @@ enum UserInterfaceLayoutDirection {
     [Conditional=VIDEO] void applicationDidEnterForeground();
     [Conditional=VIDEO] void applicationWillEnterBackground();
     [Conditional=VIDEO, MayThrowException] void setMediaSessionRestrictions(DOMString mediaType, DOMString restrictions);
+    [Conditional=VIDEO, MayThrowException] DOMString mediaSessionRestrictions(DOMString mediaType);
     [Conditional=VIDEO] void setMediaElementRestrictions(HTMLMediaElement element, DOMString restrictions);
     [Conditional=WEB_AUDIO] void setAudioContextRestrictions(AudioContext context, DOMString restrictions);
     [Conditional=VIDEO, MayThrowException] void postRemoteControlCommand(DOMString command, optional unrestricted float argument = 0);
@@ -424,7 +448,7 @@ enum UserInterfaceLayoutDirection {
 
     void setPageDefersLoading(boolean defersLoading);
 
-    File createFile(DOMString url);
+    File? createFile(DOMString url);
     void queueMicroTask(long testNumber);
     boolean testPreloaderSettingViewport();
 
@@ -432,6 +456,7 @@ enum UserInterfaceLayoutDirection {
 
 #if defined(ENABLE_CSS_SCROLL_SNAP) && ENABLE_CSS_SCROLL_SNAP
     [MayThrowException] DOMString scrollSnapOffsets(Element element);
+    void setPlatformMomentumScrollingPredictionEnabled(boolean enabled);
 #endif
 
     [MayThrowException] DOMString pathStringWithShrinkWrappedRects(sequence<double> rectComponents, double radius);
@@ -466,11 +491,17 @@ enum UserInterfaceLayoutDirection {
     
     boolean isProcessingUserGesture();
 
-    GCObservation observeGC(any observed);
+    GCObservation? observeGC(any observed);
 
     void setUserInterfaceLayoutDirection(UserInterfaceLayoutDirection userInterfaceLayoutDirection);
+    void setBaseWritingDirection(BaseWritingDirection direction);
 
     boolean userPrefersReducedMotion();
     
     void reportBacktrace();
+
+    [Conditional=POINTER_LOCK] boolean pageHasPendingPointerLock();
+    [Conditional=POINTER_LOCK] boolean pageHasPointerLock();
+
+    sequence<DOMString> accessKeyModifiers();
 };

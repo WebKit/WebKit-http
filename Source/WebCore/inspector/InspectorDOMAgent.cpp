@@ -90,6 +90,7 @@
 #include "StyleSheetList.h"
 #include "Text.h"
 #include "TextNodeTraversal.h"
+#include "Timer.h"
 #include "XPathResult.h"
 #include "htmlediting.h"
 #include "markup.h"
@@ -327,10 +328,7 @@ void InspectorDOMAgent::unbind(Node* node, NodeToIdMap* nodesMap)
 
     if (node->isFrameOwnerElement()) {
         const HTMLFrameOwnerElement* frameOwner = static_cast<const HTMLFrameOwnerElement*>(node);
-        Document* contentDocument = frameOwner->contentDocument();
-        if (m_domListener)
-            m_domListener->didRemoveDocument(contentDocument);
-        if (contentDocument)
+        if (Document* contentDocument = frameOwner->contentDocument())
             unbind(contentDocument, nodesMap);
     }
 
@@ -346,7 +344,7 @@ void InspectorDOMAgent::unbind(Node* node, NodeToIdMap* nodesMap)
 
     nodesMap->remove(node);
     if (m_domListener)
-        m_domListener->didRemoveDOMNode(node);
+        m_domListener->didRemoveDOMNode(*node, id);
 
     bool childrenRequested = m_childrenRequested.contains(id);
     if (childrenRequested) {
@@ -1260,7 +1258,6 @@ void InspectorDOMAgent::requestNode(ErrorString&, const String& objectId, int* n
         *nodeId = 0;
 }
 
-// static
 String InspectorDOMAgent::documentURLString(Document* document)
 {
     if (!document || document->url().isNull())
@@ -1626,7 +1623,7 @@ RefPtr<Inspector::Protocol::DOM::AccessibilityProperties> InspectorDOMAgent::bui
             // An AX object is "busy" if it or any ancestor has aria-busy="true" set.
             AccessibilityObject* current = axObject;
             while (!busy && current) {
-                busy = current->ariaLiveRegionBusy();
+                busy = current->isBusy();
                 current = current->parentObject();
             }
 
@@ -1676,7 +1673,7 @@ RefPtr<Inspector::Protocol::DOM::AccessibilityProperties> InspectorDOMAgent::bui
                 break;
             }
 
-            disabled = !axObject->isEnabled(); 
+            disabled = !axObject->isEnabled();
             exists = true;
             
             supportsExpanded = axObject->supportsExpanded();
@@ -2021,7 +2018,7 @@ void InspectorDOMAgent::didModifyDOMAttr(Element& element, const AtomicString& n
         return;
 
     if (m_domListener)
-        m_domListener->didModifyDOMAttr(&element);
+        m_domListener->didModifyDOMAttr(element);
 
     m_frontendDispatcher->attributeModified(id, name, value);
 }
@@ -2034,7 +2031,7 @@ void InspectorDOMAgent::didRemoveDOMAttr(Element& element, const AtomicString& n
         return;
 
     if (m_domListener)
-        m_domListener->didModifyDOMAttr(&element);
+        m_domListener->didModifyDOMAttr(element);
 
     m_frontendDispatcher->attributeRemoved(id, name);
 }
@@ -2049,7 +2046,7 @@ void InspectorDOMAgent::styleAttributeInvalidated(const Vector<Element*>& elemen
             continue;
 
         if (m_domListener)
-            m_domListener->didModifyDOMAttr(element);
+            m_domListener->didModifyDOMAttr(*element);
         nodeIds->addItem(id);
     }
     m_frontendDispatcher->inlineStyleInvalidated(WTFMove(nodeIds));

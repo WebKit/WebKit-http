@@ -589,6 +589,7 @@ static UIWebSelectionMode toUIWebSelectionMode(WKSelectionGranularity granularit
     _potentialTapInProgress = NO;
     _isDoubleTapPending = NO;
     _showDebugTapHighlightsForFastClicking = [[NSUserDefaults standardUserDefaults] boolForKey:@"WebKitShowFastClickDebugTapHighlights"];
+    _needsDeferredEndScrollingSelectionUpdate = NO;
 }
 
 - (void)cleanupInteraction
@@ -599,6 +600,7 @@ static UIWebSelectionMode toUIWebSelectionMode(WKSelectionGranularity granularit
     _smartMagnificationController = nil;
     _didAccessoryTabInitiateFocus = NO;
     _isExpectingFastSingleTapCommit = NO;
+    _needsDeferredEndScrollingSelectionUpdate = NO;
     [_formInputSession invalidate];
     _formInputSession = nil;
     [_highlightView removeFromSuperview];
@@ -763,6 +765,15 @@ static UIWebSelectionMode toUIWebSelectionMode(WKSelectionGranularity granularit
 - (CGPoint)lastInteractionLocation
 {
     return _lastInteractionLocation;
+}
+
+- (BOOL)shouldHideSelectionWhenScrolling
+{
+    if (_isEditable)
+        return _assistedNodeInformation.insideFixedPosition;
+
+    auto& editorState = _page->editorState();
+    return !editorState.isMissingPostLayoutData && editorState.postLayoutData().insideFixedPosition;
 }
 
 - (BOOL)isEditable
@@ -1100,6 +1111,7 @@ static NSValue *nsSizeForTapHighlightBorderRadius(WebCore::IntSize borderRadius,
     // Zooming above the page's default scale factor should only happen when the user performs it.
     [self _zoomToFocusRect:_assistedNodeInformation.elementRect
              selectionRect: _didAccessoryTabInitiateFocus ? IntRect() : _assistedNodeInformation.selectionRect
+               insideFixed:_assistedNodeInformation.insideFixedPosition
                   fontSize:_assistedNodeInformation.nodeFontSize
               minimumScale:_assistedNodeInformation.minimumScaleFactor
               maximumScale:_assistedNodeInformation.maximumScaleFactorIgnoringAlwaysScalable
@@ -1192,7 +1204,7 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
     if (![uiDelegate respondsToSelector:@selector(_webView:showCustomSheetForElement:)])
         return;
 
-    auto element = adoptNS([[_WKActivatedElementInfo alloc] _initWithType:_WKActivatedElementTypeAttachment URL:[NSURL _web_URLWithWTFString:_positionInformation.url] location:_positionInformation.point title:_positionInformation.title ID:_positionInformation.idAttribute rect:_positionInformation.bounds image:nil]);
+    auto element = adoptNS([[_WKActivatedElementInfo alloc] _initWithType:_WKActivatedElementTypeAttachment URL:[NSURL _web_URLWithWTFString:_positionInformation.url] location:_positionInformation.request.point title:_positionInformation.title ID:_positionInformation.idAttribute rect:_positionInformation.bounds image:nil]);
     [uiDelegate _webView:_webView showCustomSheetForElement:element.get()];
 }
 
@@ -1227,12 +1239,30 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
     return nil;
 }
 
-- (void)ensurePositionInformationIsUpToDate:(CGPoint)point
+- (void)ensurePositionInformationIsUpToDate:(WebKit::InteractionInformationRequest)request
 {
-    if (!_hasValidPositionInformation || roundedIntPoint(point) != _positionInformation.point) {
-        _page->getPositionInformation(roundedIntPoint(point), _positionInformation);
-        _hasValidPositionInformation = YES;
+    if (_hasValidPositionInformation && _positionInformation.request.isValidForRequest(request))
+        return;
+
+    if (_outstandingPositionInformationRequest && _outstandingPositionInformationRequest->isValidForRequest(request)) {
+        if (auto* connection = _page->process().connection()) {
+            connection->waitForAndDispatchImmediately<Messages::WebPageProxy::DidReceivePositionInformation>(_page->pageID(), Seconds::infinity());
+            return;
+        }
     }
+
+    _page->getPositionInformation(request, _positionInformation);
+    _hasValidPositionInformation = YES;
+}
+
+- (void)requestAsynchronousPositionInformationUpdate:(WebKit::InteractionInformationRequest)request
+{
+    if (_hasValidPositionInformation && _positionInformation.request.isValidForRequest(request))
+        return;
+
+    _outstandingPositionInformationRequest = request;
+
+    _page->requestPositionInformation(request);
 }
 
 #if ENABLE(DATA_DETECTION)
@@ -1241,6 +1271,21 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
     return _page->dataDetectionResults();
 }
 #endif
+
+- (NSArray<NSValue *> *)_uiTextSelectionRects
+{
+    NSMutableArray *textSelectionRects = [NSMutableArray array];
+
+    if (_textSelectionAssistant) {
+        for (WKTextSelectionRect *selectionRect in [_textSelectionAssistant valueForKeyPath:@"selectionView.selection.selectionRects"])
+            [textSelectionRects addObject:[NSValue valueWithCGRect:selectionRect.webRect.rect]];
+    } else if (_webSelectionAssistant) {
+        for (WebSelectionRect *selectionRect in [_webSelectionAssistant valueForKeyPath:@"selectionView.selectionRects"])
+            [textSelectionRects addObject:[NSValue valueWithCGRect:selectionRect.rect]];
+    }
+
+    return textSelectionRects;
+}
 
 - (BOOL)gestureRecognizerShouldBegin:(UIGestureRecognizer *)gestureRecognizer
 {
@@ -1255,7 +1300,8 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
         if (_textSelectionAssistant) {
             // Request information about the position with sync message.
             // If the assisted node is the same, prevent the gesture.
-            _page->getPositionInformation(roundedIntPoint(point), _positionInformation);
+            InteractionInformationRequest request(roundedIntPoint(point));
+            _page->getPositionInformation(request, _positionInformation);
             _hasValidPositionInformation = YES;
             if (_positionInformation.nodeAtPositionIsAssistedNode)
                 return NO;
@@ -1274,7 +1320,17 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
             // We still have no idea about what is at the location.
             // Send and async message to find out.
             _hasValidPositionInformation = NO;
-            _page->requestPositionInformation(roundedIntPoint(point));
+            InteractionInformationRequest request(roundedIntPoint(point));
+
+            // If 3D Touch is enabled, asynchronously collect snapshots in the hopes that
+            // they'll arrive before we have to synchronously request them in
+            // _interactionShouldBeginFromPreviewItemController.
+            if (self.traitCollection.forceTouchCapability == UIForceTouchCapabilityAvailable) {
+                request.includeSnapshot = true;
+                request.includeLinkIndicator = true;
+            }
+
+            [self requestAsynchronousPositionInformationUpdate:request];
             return YES;
         }
     }
@@ -1283,7 +1339,8 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
         // Use the information retrieved with one of the previous calls
         // to gestureRecognizerShouldBegin.
         // Force a sync call if not ready yet.
-        [self ensurePositionInformationIsUpToDate:point];
+        InteractionInformationRequest request(roundedIntPoint(point));
+        [self ensurePositionInformationIsUpToDate:request];
 
         if (_textSelectionAssistant) {
             // Prevent the gesture if it is the same node.
@@ -1323,19 +1380,22 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
     if (_inspectorNodeSearchEnabled)
         return NO;
 
-    [self ensurePositionInformationIsUpToDate:point];
+    InteractionInformationRequest request(roundedIntPoint(point));
+    [self ensurePositionInformationIsUpToDate:request];
     return _positionInformation.isSelectable;
 }
 
 - (BOOL)pointIsNearMarkedText:(CGPoint)point
 {
-    [self ensurePositionInformationIsUpToDate:point];
+    InteractionInformationRequest request(roundedIntPoint(point));
+    [self ensurePositionInformationIsUpToDate:request];
     return _positionInformation.isNearMarkedText;
 }
 
 - (BOOL)pointIsInAssistedNode:(CGPoint)point
 {
-    [self ensurePositionInformationIsUpToDate:point];
+    InteractionInformationRequest request(roundedIntPoint(point));
+    [self ensurePositionInformationIsUpToDate:request];
     return _positionInformation.nodeAtPositionIsAssistedNode;
 }
 
@@ -1465,7 +1525,7 @@ static void cancelPotentialTapIfNecessary(WKContentView* contentView)
 {
     // FIXME: we should also take into account whether or not the UI delegate
     // has handled this notification.
-    if (_hasValidPositionInformation && point == _positionInformation.point && _positionInformation.isDataDetectorLink) {
+    if (_hasValidPositionInformation && point == _positionInformation.request.point && _positionInformation.isDataDetectorLink) {
         [self _showDataDetectorsSheet];
         return;
     }
@@ -1581,7 +1641,12 @@ static void cancelPotentialTapIfNecessary(WKContentView* contentView)
 
 - (void)_positionInformationDidChange:(const InteractionInformationAtPosition&)info
 {
-    _positionInformation = info;
+    _outstandingPositionInformationRequest = std::nullopt;
+
+    InteractionInformationAtPosition newInfo = info;
+    newInfo.mergeCompatibleOptionalInformation(_positionInformation);
+
+    _positionInformation = newInfo;
     _hasValidPositionInformation = YES;
     if (_actionSheetAssistant)
         [_actionSheetAssistant updateSheetPosition];
@@ -1603,8 +1668,10 @@ static void cancelPotentialTapIfNecessary(WKContentView* contentView)
 
 - (void)_didEndScrollingOrZooming
 {
-    [_webSelectionAssistant didEndScrollingOrZoomingPage];
-    [_textSelectionAssistant didEndScrollingOverflow];
+    if (!_needsDeferredEndScrollingSelectionUpdate) {
+        [_webSelectionAssistant didEndScrollingOrZoomingPage];
+        [_textSelectionAssistant didEndScrollingOverflow];
+    }
     _page->setIsScrollingOrZooming(false);
 }
 
@@ -2681,6 +2748,11 @@ static void selectionChangedWithTouch(WKContentView *view, const WebCore::IntPoi
 // Keyboard interaction
 // UITextInput protocol implementation
 
+- (BOOL)_allowAnimatedUpdateSelectionRectViews
+{
+    return NO;
+}
+
 - (void)beginSelectionChange
 {
     [self.inputDelegate selectionWillChange:self];
@@ -3188,16 +3260,16 @@ static NSString *contentTypeFromFieldName(WebCore::AutofillFieldName fieldName)
     _uiEventBeingResent = nil;
 }
 
-- (Optional<FloatPoint>)_scrollOffsetForEvent:(WebIOSEvent *)event
+- (std::optional<FloatPoint>)_scrollOffsetForEvent:(WebIOSEvent *)event
 {
     static const unsigned kWebSpaceKey = 0x20;
 
     if (_page->editorState().isContentEditable)
-        return Nullopt;
+        return std::nullopt;
 
     NSString *charactersIgnoringModifiers = event.charactersIgnoringModifiers;
     if (!charactersIgnoringModifiers.length)
-        return Nullopt;
+        return std::nullopt;
 
     enum ScrollingIncrement { Document, Page, Line };
     enum ScrollingDirection { Up, Down, Left, Right };
@@ -3249,7 +3321,7 @@ static NSString *contentTypeFromFieldName(WebCore::AutofillFieldName fieldName)
     if ([charactersIgnoringModifiers characterAtIndex:0] == kWebSpaceKey)
         return computeOffset(Page, (event.modifierFlags & WebEventFlagMaskShift) ? Up : Down);
 
-    return Nullopt;
+    return std::nullopt;
 }
 
 - (BOOL)_interpretKeyEvent:(WebIOSEvent *)event isCharEvent:(BOOL)isCharEvent
@@ -3266,7 +3338,7 @@ static NSString *contentTypeFromFieldName(WebCore::AutofillFieldName fieldName)
     if (!contentEditable && event.isTabKey)
         return NO;
 
-    if (Optional<FloatPoint> scrollOffset = [self _scrollOffsetForEvent:event]) {
+    if (std::optional<FloatPoint> scrollOffset = [self _scrollOffsetForEvent:event]) {
         [_webView _scrollByContentOffset:*scrollOffset];
         return YES;
     }
@@ -3696,25 +3768,37 @@ static bool isAssistableInputType(InputType type)
         return;
 
     WKSelectionDrawingInfo selectionDrawingInfo(_page->editorState());
-    if (!force && selectionDrawingInfo == _lastSelectionDrawingInfo)
-        return;
+    if (force || selectionDrawingInfo != _lastSelectionDrawingInfo) {
+        LOG_WITH_STREAM(Selection, stream << "_updateChangedSelection " << selectionDrawingInfo);
 
-    LOG_WITH_STREAM(Selection, stream << "_updateChangedSelection " << selectionDrawingInfo);
+        _lastSelectionDrawingInfo = selectionDrawingInfo;
 
-    _lastSelectionDrawingInfo = selectionDrawingInfo;
+        // FIXME: We need to figure out what to do if the selection is changed by Javascript.
+        if (_textSelectionAssistant) {
+            _markedText = (_page->editorState().hasComposition) ? _page->editorState().markedText : String();
+            if (!_showingTextStyleOptions)
+                [_textSelectionAssistant selectionChanged];
+        } else if (!_page->editorState().isContentEditable)
+            [_webSelectionAssistant selectionChanged];
 
-    // FIXME: We need to figure out what to do if the selection is changed by Javascript.
-    if (_textSelectionAssistant) {
-        _markedText = (_page->editorState().hasComposition) ? _page->editorState().markedText : String();
-        if (!_showingTextStyleOptions)
-            [_textSelectionAssistant selectionChanged];
-    } else if (!_page->editorState().isContentEditable)
-        [_webSelectionAssistant selectionChanged];
-    _selectionNeedsUpdate = NO;
-    if (_shouldRestoreSelection) {
-        [_webSelectionAssistant didEndScrollingOverflow];
+        _selectionNeedsUpdate = NO;
+        if (_shouldRestoreSelection) {
+            [_webSelectionAssistant didEndScrollingOverflow];
+            [_textSelectionAssistant didEndScrollingOverflow];
+            _shouldRestoreSelection = NO;
+        }
+    }
+
+    auto& state = _page->editorState();
+    if (!state.isMissingPostLayoutData && state.postLayoutData().isStableStateUpdate && _needsDeferredEndScrollingSelectionUpdate && _page->inStableState()) {
+        [[self selectionInteractionAssistant] showSelectionCommands];
+        [_webSelectionAssistant didEndScrollingOrZoomingPage];
+        [[_webSelectionAssistant selectionView] setHidden:NO];
+
+        [_textSelectionAssistant activateSelection];
         [_textSelectionAssistant didEndScrollingOverflow];
-        _shouldRestoreSelection = NO;
+
+        _needsDeferredEndScrollingSelectionUpdate = NO;
     }
 }
 
@@ -3760,13 +3844,21 @@ static bool isAssistableInputType(InputType type)
 
 - (const WebKit::InteractionInformationAtPosition&)positionInformationForActionSheetAssistant:(WKActionSheetAssistant *)assistant
 {
+    // FIXME: This should be more asynchronous, since we control the presentation of the action sheet.
+    InteractionInformationRequest request(_positionInformation.request.point);
+    request.includeSnapshot = true;
+    [self ensurePositionInformationIsUpToDate:request];
+
     return _positionInformation;
 }
 
 - (void)updatePositionInformationForActionSheetAssistant:(WKActionSheetAssistant *)assistant
 {
     _hasValidPositionInformation = NO;
-    _page->requestPositionInformation(_positionInformation.point);
+    InteractionInformationRequest request(_positionInformation.request.point);
+    request.includeSnapshot = true;
+
+    [self requestAsynchronousPositionInformationUpdate:request];
 }
 
 - (void)actionSheetAssistant:(WKActionSheetAssistant *)assistant performAction:(WebKit::SheetAction)action
@@ -3816,7 +3908,7 @@ static bool isAssistableInputType(InputType type)
 
 - (void)actionSheetAssistant:(WKActionSheetAssistant *)assistant willStartInteractionWithElement:(_WKActivatedElementInfo *)element
 {
-    _page->startInteractionWithElementAtPosition(_positionInformation.point);
+    _page->startInteractionWithElementAtPosition(_positionInformation.request.point);
 }
 
 - (void)actionSheetAssistantDidStopInteraction:(WKActionSheetAssistant *)assistant
@@ -3894,10 +3986,13 @@ static bool isAssistableInputType(InputType type)
     if (!_highlightLongPressCanClick)
         return NO;
 
-    [self ensurePositionInformationIsUpToDate:position];
+    InteractionInformationRequest request(roundedIntPoint(position));
+    request.includeSnapshot = true;
+    request.includeLinkIndicator = true;
+    [self ensurePositionInformationIsUpToDate:request];
     if (!_positionInformation.isLink && !_positionInformation.isImage && !_positionInformation.isAttachment)
         return NO;
-    
+
     String absoluteLinkURL = _positionInformation.url;
     if (_positionInformation.isLink) {
         NSURL *targetURL = [NSURL _web_URLWithWTFString:_positionInformation.url];
@@ -3986,7 +4081,7 @@ static bool isAssistableInputType(InputType type)
     } else if (canShowAttachmentPreview) {
 #if __IPHONE_OS_VERSION_MIN_REQUIRED >= 100000
         *type = UIPreviewItemTypeAttachment;
-        auto element = adoptNS([[_WKActivatedElementInfo alloc] _initWithType:_WKActivatedElementTypeAttachment URL:[NSURL _web_URLWithWTFString:_positionInformation.url] location:_positionInformation.point title:_positionInformation.title ID:_positionInformation.idAttribute rect:_positionInformation.bounds image:nil]);
+        auto element = adoptNS([[_WKActivatedElementInfo alloc] _initWithType:_WKActivatedElementTypeAttachment URL:[NSURL _web_URLWithWTFString:_positionInformation.url] location:_positionInformation.request.point title:_positionInformation.title ID:_positionInformation.idAttribute rect:_positionInformation.bounds image:nil]);
         NSUInteger index = [uiDelegate _webView:_webView indexIntoAttachmentListForElement:element.get()];
         if (index != NSNotFound) {
             BOOL sourceIsManaged = NO;
@@ -4042,11 +4137,11 @@ static NSString *previewIdentifierForElementAction(_WKElementAction *action)
 
     if ([_previewItemController type] == UIPreviewItemTypeLink) {
         _highlightLongPressCanClick = NO;
-        _page->startInteractionWithElementAtPosition(_positionInformation.point);
+        _page->startInteractionWithElementAtPosition(_positionInformation.request.point);
 
         // Treat animated images like a link preview
         if (isValidURLForImagePreview && _positionInformation.isAnimatedImage) {
-            RetainPtr<_WKActivatedElementInfo> animatedImageElementInfo = adoptNS([[_WKActivatedElementInfo alloc] _initWithType:_WKActivatedElementTypeImage URL:targetURL location:_positionInformation.point title:_positionInformation.title ID:_positionInformation.idAttribute rect:_positionInformation.bounds image:_positionInformation.image.get()]);
+            RetainPtr<_WKActivatedElementInfo> animatedImageElementInfo = adoptNS([[_WKActivatedElementInfo alloc] _initWithType:_WKActivatedElementTypeImage URL:targetURL location:_positionInformation.request.point title:_positionInformation.title ID:_positionInformation.idAttribute rect:_positionInformation.bounds image:_positionInformation.image.get()]);
 
             if ([uiDelegate respondsToSelector:@selector(_webView:previewViewControllerForAnimatedImageAtURL:defaultActions:elementInfo:imageSize:)]) {
                 RetainPtr<NSArray> actions = [_actionSheetAssistant defaultActionsForImageSheet:animatedImageElementInfo.get()];
@@ -4054,7 +4149,7 @@ static NSString *previewIdentifierForElementAction(_WKElementAction *action)
             }
         }
 
-        RetainPtr<_WKActivatedElementInfo> elementInfo = adoptNS([[_WKActivatedElementInfo alloc] _initWithType:_WKActivatedElementTypeLink URL:targetURL location:_positionInformation.point title:_positionInformation.title ID:_positionInformation.idAttribute rect:_positionInformation.bounds image:_positionInformation.image.get()]);
+        RetainPtr<_WKActivatedElementInfo> elementInfo = adoptNS([[_WKActivatedElementInfo alloc] _initWithType:_WKActivatedElementTypeLink URL:targetURL location:_positionInformation.request.point title:_positionInformation.title ID:_positionInformation.idAttribute rect:_positionInformation.bounds image:_positionInformation.image.get()]);
 
         auto actions = [_actionSheetAssistant defaultActionsForLinkSheet:elementInfo.get()];
         if ([uiDelegate respondsToSelector:@selector(webView:previewingViewControllerForElement:defaultActions:)]) {
@@ -4082,8 +4177,8 @@ static NSString *previewIdentifierForElementAction(_WKElementAction *action)
         if (!isValidURLForImagePreview)
             return nil;
 
-        RetainPtr<_WKActivatedElementInfo> elementInfo = adoptNS([[_WKActivatedElementInfo alloc] _initWithType:_WKActivatedElementTypeImage URL:targetURL location:_positionInformation.point title:_positionInformation.title ID:_positionInformation.idAttribute rect:_positionInformation.bounds image:_positionInformation.image.get()]);
-        _page->startInteractionWithElementAtPosition(_positionInformation.point);
+        RetainPtr<_WKActivatedElementInfo> elementInfo = adoptNS([[_WKActivatedElementInfo alloc] _initWithType:_WKActivatedElementTypeImage URL:targetURL location:_positionInformation.request.point title:_positionInformation.title ID:_positionInformation.idAttribute rect:_positionInformation.bounds image:_positionInformation.image.get()]);
+        _page->startInteractionWithElementAtPosition(_positionInformation.request.point);
 
         if ([uiDelegate respondsToSelector:@selector(_webView:willPreviewImageWithURL:)])
             [uiDelegate _webView:_webView willPreviewImageWithURL:targetURL];

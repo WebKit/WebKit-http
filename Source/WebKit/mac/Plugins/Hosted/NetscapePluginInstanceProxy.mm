@@ -889,9 +889,9 @@ bool NetscapePluginInstanceProxy::evaluate(uint32_t objectID, const String& scri
     Strong<JSGlobalObject> globalObject(vm, frame->script().globalObject(pluginWorld()));
     ExecState* exec = globalObject->globalExec();
 
-    UserGestureIndicator gestureIndicator(allowPopups ? Optional<ProcessingUserGestureState>(ProcessingUserGesture) : Nullopt);
+    UserGestureIndicator gestureIndicator(allowPopups ? std::optional<ProcessingUserGestureState>(ProcessingUserGesture) : std::nullopt);
     
-    JSValue result = JSC::evaluate(exec, makeSource(script));
+    JSValue result = JSC::evaluate(exec, JSC::makeSource(script, { }));
     
     marshalValue(exec, result, resultData, resultLength);
     scope.clearException();
@@ -1320,7 +1320,7 @@ void NetscapePluginInstanceProxy::addValueToArray(NSMutableArray *array, ExecSta
 
     if (value.isString()) {
         [array addObject:[NSNumber numberWithInt:StringValueType]];
-        [array addObject:value.toWTFString(exec)];
+        [array addObject:asString(value)->value(exec)];
     } else if (value.isNumber()) {
         [array addObject:[NSNumber numberWithInt:DoubleValueType]];
         [array addObject:[NSNumber numberWithDouble:value.toNumber(exec)]];

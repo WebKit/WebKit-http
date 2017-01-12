@@ -1021,6 +1021,10 @@ crypto/webkitSubtle/rsa-indexeddb-private.html
 crypto/webkitSubtle/rsa-indexeddb.html
 fast/history/page-cache-indexed-closed-db.html
 fast/history/page-cache-indexed-opened-db.html
+crypto/subtle/rsa-indexeddb-non-exportable-private.html
+crypto/subtle/rsa-indexeddb-non-exportable.html
+crypto/subtle/rsa-indexeddb-private.html
+crypto/subtle/rsa-indexeddb.html
 
 # ShouldOpenExternalURLs not yet supported in WK1
 loader/navigation-policy [ Skip ]
@@ -1881,3 +1885,7 @@ imported/blink/imported/csswg-test/css-writing-modes-3/bidi-unset-007.html [ Pas
 imported/blink/imported/csswg-test/css-writing-modes-3/block-embed-001.html [ Pass ImageOnlyFailure ]
 imported/w3c/web-platform-tests/fetch/api/redirect/redirect-count.html [ Crash Pass ]
 imported/mozilla/svg/text/clipPath-content.svg [ Pass ImageOnlyFailure ]
+
+# Hover test does not apply
+fast/css/deferred-parsing/hover-test.html [ Skip ]
+

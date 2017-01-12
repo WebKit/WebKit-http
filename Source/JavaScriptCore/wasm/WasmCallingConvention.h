@@ -76,15 +76,49 @@ private:
         case B3::Float:
         case B3::Double:
             return marshallArgumentImpl(m_fprArgs, type, fpArgumentCount, stackOffset);
-        case Void:
+        case B3::Void:
             break;
         }
         RELEASE_ASSERT_NOT_REACHED();
     }
 
 public:
+    void setupFrameInPrologue(CodeLocationDataLabelPtr* calleeMoveLocation, B3::Procedure& proc, B3::Origin origin, B3::BasicBlock* block) const
+    {
+        static_assert(CallFrameSlot::callee * sizeof(Register) < headerSize, "We rely on this here for now.");
+        static_assert(CallFrameSlot::codeBlock * sizeof(Register) < headerSize, "We rely on this here for now.");
+
+        B3::PatchpointValue* getCalleePatchpoint = block->appendNew<B3::PatchpointValue>(proc, B3::Int64, origin);
+        getCalleePatchpoint->resultConstraint = B3::ValueRep::SomeRegister;
+        getCalleePatchpoint->effects = B3::Effects::none();
+        getCalleePatchpoint->setGenerator(
+            [=] (CCallHelpers& jit, const B3::StackmapGenerationParams& params) {
+                GPRReg result = params[0].gpr();
+                MacroAssembler::DataLabelPtr moveLocation = jit.moveWithPatch(MacroAssembler::TrustedImmPtr(nullptr), result);
+                jit.addLinkTask([calleeMoveLocation, moveLocation] (LinkBuffer& linkBuffer) {
+                    *calleeMoveLocation = linkBuffer.locationOf(moveLocation);
+                });
+            });
+
+        B3::Value* framePointer = block->appendNew<B3::Value>(proc, B3::FramePointer, origin);
+        B3::Value* offsetOfCallee = block->appendNew<B3::Const64Value>(proc, origin, CallFrameSlot::callee * sizeof(Register));
+        block->appendNew<B3::MemoryValue>(proc, B3::Store, origin,
+            getCalleePatchpoint,
+            block->appendNew<B3::Value>(proc, B3::Add, origin, framePointer, offsetOfCallee));
+
+        // FIXME: We shouldn't have to store zero into the CodeBlock* spot in the call frame,
+        // but there are places that interpret non-null CodeBlock slot to mean a valid CodeBlock.
+        // When doing unwinding, we'll need to verify that the entire runtime is OK with a non-null
+        // CodeBlock not implying that the CodeBlock is valid.
+        // https://bugs.webkit.org/show_bug.cgi?id=165321
+        B3::Value* offsetOfCodeBlock = block->appendNew<B3::Const64Value>(proc, origin, CallFrameSlot::codeBlock * sizeof(Register));
+        block->appendNew<B3::MemoryValue>(proc, B3::Store, origin,
+            block->appendNew<B3::Const64Value>(proc, origin, 0),
+            block->appendNew<B3::Value>(proc, B3::Add, origin, framePointer, offsetOfCodeBlock));
+    }
+
     template<typename Functor>
-    void loadArguments(const Vector<Type>& argumentTypes, B3::Procedure& proc, B3::BasicBlock* block, B3::Origin origin, const Functor& functor) const
+    void loadArguments(const Signature* signature, B3::Procedure& proc, B3::BasicBlock* block, B3::Origin origin, const Functor& functor) const
     {
         B3::Value* framePointer = block->appendNew<B3::Value>(proc, B3::FramePointer, origin);
 
@@ -92,8 +126,8 @@ public:
         size_t fpArgumentCount = 0;
         size_t stackOffset = headerSize;
 
-        for (size_t i = 0; i < argumentTypes.size(); ++i) {
-            B3::Type type = toB3Type(argumentTypes[i]);
+        for (size_t i = 0; i < signature->argumentCount(); ++i) {
+            B3::Type type = toB3Type(signature->argument(i));
             B3::Value* argument;
             B3::ValueRep rep = marshallArgument(type, gpArgumentCount, fpArgumentCount, stackOffset);
             if (rep.isReg()) {
@@ -129,8 +163,8 @@ public:
         B3::PatchpointValue* patchpoint = block->appendNew<B3::PatchpointValue>(proc, returnType, origin);
         patchpoint->clobberEarly(RegisterSet::macroScratchRegisters());
         patchpoint->clobberLate(RegisterSet::volatileRegistersForJSCall());
-        patchpoint->appendVector(constrainedArguments);
         patchpointFunctor(patchpoint);
+        patchpoint->appendVector(constrainedArguments);
 
         switch (returnType) {
         case B3::Void:

@@ -38,7 +38,7 @@ namespace WebCore {
 
 RefPtr<MediaQuerySet> MediaQueryParser::parseMediaQuerySet(const String& queryString)
 {
-    return parseMediaQuerySet(CSSTokenizer::Scope(queryString).tokenRange());
+    return parseMediaQuerySet(CSSTokenizer(queryString).tokenRange());
 }
 
 RefPtr<MediaQuerySet> MediaQueryParser::parseMediaQuerySet(CSSParserTokenRange range)
@@ -121,9 +121,7 @@ void MediaQueryParser::readMediaType(CSSParserTokenType type, const CSSParserTok
             && isRestrictorOrLogicalOperator(token)) {
             m_state = SkipUntilComma;
         } else {
-            StringView stringView = token.value();
-            convertToASCIILowercaseInPlace(stringView);
-            m_mediaQueryData.setMediaType(stringView.toString());
+            m_mediaQueryData.setMediaType(token.value().toString());
             m_state = ReadAnd;
         }
     } else if (type == EOFToken && (!m_querySet->queryVector().size() || m_state != ReadRestrictor))
@@ -186,7 +184,7 @@ void MediaQueryParser::readFeatureColon(CSSParserTokenType type, const CSSParser
 
 void MediaQueryParser::readFeatureValue(CSSParserTokenType type, const CSSParserToken& token)
 {
-    if (type == DimensionToken && token.unitType() == CSSPrimitiveValue::UnitTypes::CSS_UNKNOWN)
+    if (type == DimensionToken && token.unitType() == CSSPrimitiveValue::UnitType::CSS_UNKNOWN)
         m_state = SkipUntilComma;
     else {
         if (m_mediaQueryData.tryAddParserToken(type, token))
@@ -199,7 +197,7 @@ void MediaQueryParser::readFeatureValue(CSSParserTokenType type, const CSSParser
 void MediaQueryParser::readFeatureEnd(CSSParserTokenType type, const CSSParserToken& token)
 {
     if (type == RightParenthesisToken || type == EOFToken) {
-        if (m_mediaQueryData.addExpression())
+        if (type != EOFToken && m_mediaQueryData.addExpression())
             m_state = ReadAnd;
         else
             m_state = SkipUntilComma;

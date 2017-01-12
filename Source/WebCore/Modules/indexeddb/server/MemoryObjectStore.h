@@ -85,10 +85,11 @@ public:
 
     ThreadSafeDataBuffer valueForKey(const IDBKeyData&) const;
     ThreadSafeDataBuffer valueForKeyRange(const IDBKeyRangeData&) const;
+    IDBKeyData lowestKeyWithRecordInRange(const IDBKeyRangeData&) const;
     IDBGetResult indexValueForKeyRange(uint64_t indexIdentifier, IndexedDB::IndexRecordType, const IDBKeyRangeData&) const;
     uint64_t countForKeyRange(uint64_t indexIdentifier, const IDBKeyRangeData&) const;
 
-    void getAllRecords(const IDBKeyRangeData&, Optional<uint32_t> count, IndexedDB::GetAllType, IDBGetAllResult&) const;
+    void getAllRecords(const IDBKeyRangeData&, std::optional<uint32_t> count, IndexedDB::GetAllType, IDBGetAllResult&) const;
 
     const IDBObjectStoreInfo& info() const { return m_info; }
 
@@ -106,7 +107,6 @@ public:
 private:
     MemoryObjectStore(const IDBObjectStoreInfo&);
 
-    IDBKeyData lowestKeyWithRecordInRange(const IDBKeyRangeData&) const;
     std::set<IDBKeyData>::iterator lowestIteratorInRange(const IDBKeyRangeData&, bool reverse) const;
 
     IDBError populateIndexWithExistingRecords(MemoryIndex&);

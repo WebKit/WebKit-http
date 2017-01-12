@@ -71,7 +71,7 @@ public:
     explicit GuardedBuiltinBuiltinsWrapper(JSC::VM* vm)
         : m_vm(*vm)
         WEBCORE_FOREACH_GUARDEDBUILTIN_BUILTIN_FUNCTION_NAME(INITIALIZE_BUILTIN_NAMES)
-#define INITIALIZE_BUILTIN_SOURCE_MEMBERS(name, functionName, length) , m_##name##Source(JSC::makeSource(StringImpl::createFromLiteral(s_##name, length)))
+#define INITIALIZE_BUILTIN_SOURCE_MEMBERS(name, functionName, length) , m_##name##Source(JSC::makeSource(StringImpl::createFromLiteral(s_##name, length), { }))
         WEBCORE_FOREACH_GUARDEDBUILTIN_BUILTIN_CODE(INITIALIZE_BUILTIN_SOURCE_MEMBERS)
 #undef INITIALIZE_BUILTIN_SOURCE_MEMBERS
     {
@@ -184,7 +184,7 @@ const char* s_guardedBuiltinIsReadableStreamLockedCode =
 JSC::FunctionExecutable* codeName##Generator(JSC::VM& vm) \
 {\
     JSVMClientData* clientData = static_cast<JSVMClientData*>(vm.clientData); \
-    return clientData->builtinFunctions().guardedBuiltinBuiltins().codeName##Executable()->link(vm, clientData->builtinFunctions().guardedBuiltinBuiltins().codeName##Source(), Nullopt, s_##codeName##Intrinsic); \
+    return clientData->builtinFunctions().guardedBuiltinBuiltins().codeName##Executable()->link(vm, clientData->builtinFunctions().guardedBuiltinBuiltins().codeName##Source(), std::nullopt, s_##codeName##Intrinsic); \
 }
 WEBCORE_FOREACH_GUARDEDBUILTIN_BUILTIN_CODE(DEFINE_BUILTIN_GENERATOR)
 #undef DEFINE_BUILTIN_GENERATOR

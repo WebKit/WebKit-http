@@ -26,6 +26,7 @@
 #include "config.h"
 #include "JSWorkerGlobalScope.h"
 
+#include "JSDOMConvert.h"
 #include "ScheduledAction.h"
 #include "WorkerGlobalScope.h"
 
@@ -41,25 +42,6 @@ void JSWorkerGlobalScope::visitAdditionalChildren(SlotVisitor& visitor)
         visitor.addOpaqueRoot(navigator);
     ScriptExecutionContext& context = wrapped();
     visitor.addOpaqueRoot(&context);
-}
-
-JSValue JSWorkerGlobalScope::importScripts(ExecState& state)
-{
-    VM& vm = state.vm();
-    auto scope = DECLARE_THROW_SCOPE(vm);
-
-    if (!state.argumentCount())
-        return jsUndefined();
-
-    Vector<String> urls;
-    urls.reserveInitialCapacity(state.argumentCount());
-    for (unsigned i = 0; i < state.argumentCount(); ++i) {
-        urls.uncheckedAppend(valueToUSVString(&state, state.uncheckedArgument(i)));
-        RETURN_IF_EXCEPTION(scope, JSValue());
-    }
-
-    propagateException(state, scope, wrapped().importScripts(urls));
-    return jsUndefined();
 }
 
 JSValue JSWorkerGlobalScope::setTimeout(ExecState& state)

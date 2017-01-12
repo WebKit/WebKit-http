@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 #
-# Copyright (c) 2014, 2015 Apple Inc. All rights reserved.
+# Copyright (c) 2014-2016 Apple Inc. All rights reserved.
 # Copyright (C) 2015 Canon Inc. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
@@ -85,7 +85,7 @@ ${macroPrefix}_FOREACH_${objectMacro}_BUILTIN_CODE(DECLARE_BUILTIN_GENERATOR)
 #define DEFINE_BUILTIN_GENERATOR(codeName, functionName, argumentCount) \\
 JSC::FunctionExecutable* codeName##Generator(JSC::VM& vm) \\
 {\\
-    return vm.builtinExecutables()->codeName##Executable()->link(vm, vm.builtinExecutables()->codeName##Source(), Nullopt, s_##codeName##Intrinsic); \
+    return vm.builtinExecutables()->codeName##Executable()->link(vm, vm.builtinExecutables()->codeName##Source(), std::nullopt, s_##codeName##Intrinsic); \
 }
 ${macroPrefix}_FOREACH_BUILTIN_CODE(DEFINE_BUILTIN_GENERATOR)
 #undef DEFINE_BUILTIN_GENERATOR
@@ -96,7 +96,7 @@ ${macroPrefix}_FOREACH_BUILTIN_CODE(DEFINE_BUILTIN_GENERATOR)
 #define DEFINE_BUILTIN_GENERATOR(codeName, functionName, argumentCount) \\
 JSC::FunctionExecutable* codeName##Generator(JSC::VM& vm) \\
 {\\
-    return vm.builtinExecutables()->codeName##Executable()->link(vm, vm.builtinExecutables()->codeName##Source(), Nullopt, s_##codeName##Intrinsic); \
+    return vm.builtinExecutables()->codeName##Executable()->link(vm, vm.builtinExecutables()->codeName##Source(), std::nullopt, s_##codeName##Intrinsic); \
 }
 ${macroPrefix}_FOREACH_${objectMacro}_BUILTIN_CODE(DEFINE_BUILTIN_GENERATOR)
 #undef DEFINE_BUILTIN_GENERATOR
@@ -108,7 +108,7 @@ ${macroPrefix}_FOREACH_${objectMacro}_BUILTIN_CODE(DEFINE_BUILTIN_GENERATOR)
 JSC::FunctionExecutable* codeName##Generator(JSC::VM& vm) \\
 {\\
     JSVMClientData* clientData = static_cast<JSVMClientData*>(vm.clientData); \\
-    return clientData->builtinFunctions().${objectNameLC}Builtins().codeName##Executable()->link(vm, clientData->builtinFunctions().${objectNameLC}Builtins().codeName##Source(), Nullopt, s_##codeName##Intrinsic); \\
+    return clientData->builtinFunctions().${objectNameLC}Builtins().codeName##Executable()->link(vm, clientData->builtinFunctions().${objectNameLC}Builtins().codeName##Source(), std::nullopt, s_##codeName##Intrinsic); \\
 }
 ${macroPrefix}_FOREACH_BUILTIN_CODE(DEFINE_BUILTIN_GENERATOR)
 #undef DEFINE_BUILTIN_GENERATOR
@@ -120,7 +120,7 @@ ${macroPrefix}_FOREACH_BUILTIN_CODE(DEFINE_BUILTIN_GENERATOR)
 JSC::FunctionExecutable* codeName##Generator(JSC::VM& vm) \\
 {\\
     JSVMClientData* clientData = static_cast<JSVMClientData*>(vm.clientData); \\
-    return clientData->builtinFunctions().${objectNameLC}Builtins().codeName##Executable()->link(vm, clientData->builtinFunctions().${objectNameLC}Builtins().codeName##Source(), Nullopt, s_##codeName##Intrinsic); \\
+    return clientData->builtinFunctions().${objectNameLC}Builtins().codeName##Executable()->link(vm, clientData->builtinFunctions().${objectNameLC}Builtins().codeName##Source(), std::nullopt, s_##codeName##Intrinsic); \\
 }
 ${macroPrefix}_FOREACH_${objectMacro}_BUILTIN_CODE(DEFINE_BUILTIN_GENERATOR)
 #undef DEFINE_BUILTIN_GENERATOR
@@ -132,7 +132,7 @@ public:
     explicit ${objectName}BuiltinsWrapper(JSC::VM* vm)
         : m_vm(*vm)
         ${macroPrefix}_FOREACH_${objectMacro}_BUILTIN_FUNCTION_NAME(INITIALIZE_BUILTIN_NAMES)
-#define INITIALIZE_BUILTIN_SOURCE_MEMBERS(name, functionName, length) , m_##name##Source(JSC::makeSource(StringImpl::createFromLiteral(s_##name, length)))
+#define INITIALIZE_BUILTIN_SOURCE_MEMBERS(name, functionName, length) , m_##name##Source(JSC::makeSource(StringImpl::createFromLiteral(s_##name, length), { }))
         ${macroPrefix}_FOREACH_${objectMacro}_BUILTIN_CODE(INITIALIZE_BUILTIN_SOURCE_MEMBERS)
 #undef INITIALIZE_BUILTIN_SOURCE_MEMBERS
     {
@@ -205,7 +205,7 @@ inline void ${objectName}BuiltinFunctions::init(JSC::JSGlobalObject& globalObjec
 
 inline void ${objectName}BuiltinFunctions::visit(JSC::SlotVisitor& visitor)
 {
-#define VISIT_FUNCTION(name) visitor.append(&m_##name##Function);
+#define VISIT_FUNCTION(name) visitor.append(m_##name##Function);
     ${macroPrefix}_FOREACH_${objectMacro}_BUILTIN_FUNCTION_NAME(VISIT_FUNCTION)
 #undef VISIT_FUNCTION
 }

@@ -30,26 +30,32 @@
 #if ENABLE(WEBASSEMBLY)
 
 #include "WasmMemory.h"
+#include <wtf/FastMalloc.h>
 
 namespace JSC { namespace Wasm {
 
-const char* toString(Type type)
+Segment* Segment::create(I32InitExpr offset, uint32_t sizeInBytes)
 {
-    switch (type) {
-    case Void:
-        return "void";
-    case I32:
-        return "i32";
-    case I64:
-        return "i64";
-    case F32:
-        return "f32";
-    case F64:
-        return "f64";
-    }
+    auto allocated = tryFastCalloc(sizeof(Segment) + sizeInBytes, 1);
+    Segment* segment;
+    if (!allocated.getValue(segment))
+        return nullptr;
+    segment->offset = offset;
+    segment->sizeInBytes = sizeInBytes;
+    return segment;
 }
 
-ModuleInformation::~ModuleInformation() { }
+void Segment::destroy(Segment *segment)
+{
+    fastFree(segment);
+}
+
+Segment::Ptr Segment::adoptPtr(Segment* segment)
+{
+    return Ptr(segment, &Segment::destroy);
+}
+
+JS_EXPORT_PRIVATE ModuleInformation::~ModuleInformation() { }
 
 } } // namespace JSC::Wasm
 

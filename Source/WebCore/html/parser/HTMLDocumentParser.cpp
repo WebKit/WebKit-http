@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2010 Google, Inc. All Rights Reserved.
- * Copyright (C) 2015 Apple Inc. All Rights Reserved.
+ * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -27,7 +27,6 @@
 #include "config.h"
 #include "HTMLDocumentParser.h"
 
-#include "CachedScript.h"
 #include "DocumentFragment.h"
 #include "Frame.h"
 #include "HTMLDocument.h"
@@ -37,6 +36,7 @@
 #include "HTMLTreeBuilder.h"
 #include "HTMLUnknownElement.h"
 #include "JSCustomElementInterface.h"
+#include "ScriptElement.h"
 
 namespace WebCore {
 
@@ -206,7 +206,7 @@ void HTMLDocumentParser::runScriptsForPausedTreeBuilder()
         ASSERT(!m_treeBuilder->hasParserBlockingScriptWork());
         // We will not have a scriptRunner when parsing a DocumentFragment.
         if (m_scriptRunner)
-            m_scriptRunner->execute(WTFMove(scriptElement), scriptStartPosition);
+            m_scriptRunner->execute(scriptElement.releaseNonNull(), scriptStartPosition);
     }
 }
 
@@ -317,7 +317,7 @@ void HTMLDocumentParser::constructTreeFromHTMLToken(HTMLTokenizer::TokenPtr& raw
         rawToken.clear();
     }
 
-    m_treeBuilder->constructTree(token);
+    m_treeBuilder->constructTree(WTFMove(token));
 }
 
 bool HTMLDocumentParser::hasInsertionPoint()
@@ -329,7 +329,7 @@ bool HTMLDocumentParser::hasInsertionPoint()
     return m_input.hasInsertionPoint() || (wasCreatedByScript() && !m_input.haveSeenEndOfFile());
 }
 
-void HTMLDocumentParser::insert(const SegmentedString& source)
+void HTMLDocumentParser::insert(SegmentedString&& source)
 {
     if (isStopped())
         return;
@@ -338,9 +338,8 @@ void HTMLDocumentParser::insert(const SegmentedString& source)
     // but we need to ensure it isn't deleted yet.
     Ref<HTMLDocumentParser> protectedThis(*this);
 
-    SegmentedString excludedLineNumberSource(source);
-    excludedLineNumberSource.setExcludeLineNumbers();
-    m_input.insertAtCurrentInsertionPoint(excludedLineNumberSource);
+    source.setExcludeLineNumbers();
+    m_input.insertAtCurrentInsertionPoint(WTFMove(source));
     pumpTokenizerIfPossible(ForceSynchronous);
 
     if (isWaitingForScripts()) {
@@ -364,7 +363,7 @@ void HTMLDocumentParser::append(RefPtr<StringImpl>&& inputSource)
     // but we need to ensure it isn't deleted yet.
     Ref<HTMLDocumentParser> protectedThis(*this);
 
-    String source(WTFMove(inputSource));
+    String source { WTFMove(inputSource) };
 
     if (m_preloadScanner) {
         if (m_input.current().isEmpty() && !isWaitingForScripts()) {
@@ -502,7 +501,7 @@ void HTMLDocumentParser::watchForLoad(PendingScript& pendingScript)
     // setClient would call notifyFinished if the load were complete.
     // Callers do not expect to be re-entered from this call, so they should
     // not an already-loaded PendingScript.
-    pendingScript.setClient(this);
+    pendingScript.setClient(*this);
 }
 
 void HTMLDocumentParser::stopWatchingForLoad(PendingScript& pendingScript)
@@ -522,6 +521,10 @@ void HTMLDocumentParser::notifyFinished(PendingScript& pendingScript)
     // pumpTokenizer can cause this parser to be detached from the Document,
     // but we need to ensure it isn't deleted yet.
     Ref<HTMLDocumentParser> protectedThis(*this);
+
+    // After Document parser is stopped or detached, the parser-inserted deferred script execution should be ignored.
+    if (isStopped())
+        return;
 
     ASSERT(m_scriptRunner);
     ASSERT(!isExecutingScript());

@@ -91,7 +91,7 @@ void IntlCollator::visitChildren(JSCell* cell, SlotVisitor& visitor)
 
     Base::visitChildren(thisObject, visitor);
 
-    visitor.append(&thisObject->m_boundCompare);
+    visitor.append(thisObject->m_boundCompare);
 }
 
 static Vector<String> sortLocaleData(const String& locale, size_t keyIndex)
@@ -246,7 +246,7 @@ void IntlCollator::initializeCollator(ExecState& state, JSValue locales, JSValue
 
     // 17. Let relevantExtensionKeys be the value of %Collator%.[[relevantExtensionKeys]].
     // 18. Let r be ResolveLocale(%Collator%.[[availableLocales]], requestedLocales, opt, relevantExtensionKeys, localeData).
-    auto& availableLocales = state.callee()->globalObject()->intlCollatorAvailableLocales();
+    auto& availableLocales = state.jsCallee()->globalObject()->intlCollatorAvailableLocales();
     auto result = resolveLocale(state, availableLocales, requestedLocales, opt, relevantExtensionKeys, WTF_ARRAY_LENGTH(relevantExtensionKeys), localeData);
 
     // 19. Set collator.[[locale]] to the value of r.[[locale]].

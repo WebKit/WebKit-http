@@ -25,6 +25,7 @@
 
 import * as assert from 'assert.js';
 import * as BuildWebAssembly from 'Builder_WebAssemblyBinary.js';
+import * as LLB from 'LowLevelBinary.js';
 import * as WASM from 'WASM.js';
 
 const _toJavaScriptName = name => {
@@ -35,8 +36,9 @@ const _toJavaScriptName = name => {
 
 const _isValidValue = (value, type) => {
     switch (type) {
-    case "i32": return ((value & 0xFFFFFFFF) >>> 0) === value;
-    case "i64": throw new Error(`Unimplemented: value check for ${type}`); // FIXME https://bugs.webkit.org/show_bug.cgi?id=163420 64-bit values
+    // We allow both signed and unsigned numbers.
+    case "i32": return Math.round(value) === value && LLB.varint32Min <= value && value <= LLB.varuint32Max;
+    case "i64": return true; // FIXME https://bugs.webkit.org/show_bug.cgi?id=163420 64-bit values
     case "f32": return typeof(value) === "number" && isFinite(value);
     case "f64": return typeof(value) === "number" && isFinite(value);
     default: throw new Error(`Implementation problem: unknown type ${type}`);
@@ -51,9 +53,19 @@ const _normalizeFunctionSignature = (params, ret) => {
     if (typeof(ret) === "undefined")
         ret = "void";
     assert.isNotArray(ret, `Multiple return values not supported by WebAssembly yet`);
-    assert.falsy(ret !== "void" && !WASM.isValidValueType(ret), `Type return ${ret} must be valid value type`);
+    assert.truthy(WASM.isValidBlockType(ret), `Type return ${ret} must be valid block type`);
     return [params, ret];
 };
+
+const _errorHandlingProxyFor = builder => builder["__isProxy"] ? builder : new Proxy(builder, {
+    get: (target, property, receiver) => {
+        if (property === "__isProxy")
+            return true;
+        if (target[property] === undefined)
+            throw new Error(`WebAssembly builder received unknown property '${property}'`);
+        return target[property];
+    }
+});
 
 const _maybeRegisterType = (builder, type) => {
     const typeSection = builder._getSection("Type");
@@ -98,7 +110,25 @@ const _importFunctionContinuation = (builder, section, nextBuilder) => {
         section.data.push({ field: field, type: type, kind: "Function", module: module });
         // Imports also count in the function index space. Map them as objects to avoid clashing with Code functions' names.
         builder._registerFunctionToIndexSpace({ module: module, field: field });
-        return nextBuilder;
+        return _errorHandlingProxyFor(nextBuilder);
+    };
+};
+
+const _importMemoryContinuation = (builder, section, nextBuilder) => {
+    return (module, field, {initial, maximum}) => {
+        assert.isString(module, `Import Memory module should be a string, got "${module}"`);
+        assert.isString(field, `Import Memory field should be a string, got "${field}"`);
+        section.data.push({module, field, kind: "Memory", memoryDescription: {initial, maximum}});
+        return _errorHandlingProxyFor(nextBuilder);
+    };
+};
+
+const _importTableContinuation = (builder, section, nextBuilder) => {
+    return (module, field, {initial, maximum, element}) => {
+        assert.isString(module, `Import Table module should be a string, got "${module}"`);
+        assert.isString(field, `Import Table field should be a string, got "${field}"`);
+        section.data.push({module, field, kind: "Table", tableDescription: {initial, maximum, element}});
+        return _errorHandlingProxyFor(nextBuilder);
     };
 };
 
@@ -110,6 +140,7 @@ const _exportFunctionContinuation = (builder, section, nextBuilder) => {
             // Exports can leave the type unspecified, letting the Code builder patch them up later.
             type = _maybeRegisterType(builder, type);
         }
+
         // We can't check much about "index" here because the Code section succeeds the Export section. More work is done at Code().End() time.
         switch (typeof(index)) {
         case "string": break; // Assume it's a function name which will be revealed in the Code section.
@@ -125,6 +156,7 @@ const _exportFunctionContinuation = (builder, section, nextBuilder) => {
             break;
         default: throw new Error(`Export section's index must be a string or a number, got ${index}`);
         }
+
         const correspondingImport = builder._getFunctionFromIndexSpace(index);
         const importSection = builder._getSection("Import");
         if (typeof(index) === "object") {
@@ -150,13 +182,64 @@ const _exportFunctionContinuation = (builder, section, nextBuilder) => {
                 assert.eq(type, exportedImport.type, `Re-exporting import "${exportedImport.field}" as "${field}" has mismatching type`);
         }
         section.data.push({ field: field, type: type, kind: "Function", index: index });
-        return nextBuilder;
+        return _errorHandlingProxyFor(nextBuilder);
+    };
+};
+
+const _normalizeMutability = (mutability) => {
+    if (mutability === "mutable")
+        return 1;
+    else if (mutability === "immutable")
+        return 0;
+    else
+        throw new Error(`mutability should be either "mutable" or "immutable", but got ${global.mutablity}`);
+};
+
+const _exportGlobalContinuation = (builder, section, nextBuilder) => {
+    return (field, index) => {
+        assert.isNumber(index, `Global exports only support number indices right now`);
+        section.data.push({ field, kind: "Global", index });
+        return _errorHandlingProxyFor(nextBuilder);
+    }
+};
+
+const _exportMemoryContinuation = (builder, section, nextBuilder) => {
+    return (field, index) => {
+        assert.isNumber(index, `Memory exports only support number indices`);
+        section.data.push({field, kind: "Memory", index});
+        return _errorHandlingProxyFor(nextBuilder);
+    }
+};
+
+const _exportTableContinuation = (builder, section, nextBuilder) => {
+    return (field, index) => {
+        assert.isNumber(index, `Table exports only support number indices`);
+        section.data.push({field, kind: "Table", index});
+        return _errorHandlingProxyFor(nextBuilder);
+    }
+};
+
+const _importGlobalContinuation = (builder, section, nextBuilder) => {
+    return () => {
+        const globalBuilder = {
+            End: () => nextBuilder
+        };
+        for (let op of WASM.description.value_type) {
+            globalBuilder[_toJavaScriptName(op)] = (module, field, mutability) => {
+                assert.isString(module, `Import global module should be a string, got "${module}"`);
+                assert.isString(field, `Import global field should be a string, got "${field}"`);
+                assert.isString(mutability, `Import global mutability should be a string, got "${mutability}"`);
+                section.data.push({ globalDescription: { type: op, mutability: _normalizeMutability(mutability) }, module, field, kind: "Global" });
+                return _errorHandlingProxyFor(globalBuilder);
+            };
+        }
+        return _errorHandlingProxyFor(globalBuilder);
     };
 };
 
 const _checkStackArgs = (op, param) => {
     for (let expect of param) {
-        if (WASM.isValidValueType(expect)) {
+        if (WASM.isValidType(expect)) {
             // FIXME implement stack checks for arguments. https://bugs.webkit.org/show_bug.cgi?id=163421
         } else {
             // Handle our own meta-types.
@@ -177,11 +260,12 @@ const _checkStackArgs = (op, param) => {
 
 const _checkStackReturn = (op, ret) => {
     for (let expect of ret) {
-        if (WASM.isValidValueType(expect)) {
+        if (WASM.isValidType(expect)) {
             // FIXME implement stack checks for return. https://bugs.webkit.org/show_bug.cgi?id=163421
         } else {
             // Handle our own meta-types.
             switch (expect) {
+            case "any": break;
             case "bool": break; // FIXME implement bool. https://bugs.webkit.org/show_bug.cgi?id=163421
             case "call": break; // FIXME implement call stack return check based on function signature. https://bugs.webkit.org/show_bug.cgi?id=163421
             case "control": break; // FIXME implement control. https://bugs.webkit.org/show_bug.cgi?id=163421
@@ -190,35 +274,42 @@ const _checkStackReturn = (op, ret) => {
             case "prev": break; // FIXME implement prev, checking for whetever the parameter type was. https://bugs.webkit.org/show_bug.cgi?id=163421
             case "size": break; // FIXME implement size. https://bugs.webkit.org/show_bug.cgi?id=163421
             default: throw new Error(`Implementation problem: unhandled meta-type "${expect}" on "${op}"`);
-                                            }
+            }
         }
     }
 };
 
 const _checkImms = (op, imms, expectedImms, ret) => {
-    assert.eq(imms.length, expectedImms.length, `"${op}" expects ${expectedImms.length} immediates, got ${imms.length}`);
+    const minExpectedImms = expectedImms.filter(i => i.type.slice(-1) !== '*').length;
+    if (minExpectedImms !== expectedImms.length)
+        assert.ge(imms.length, minExpectedImms, `"${op}" expects at least ${minExpectedImms} immediate${minExpectedImms !== 1 ? 's' : ''}, got ${imms.length}`);
+    else
+         assert.eq(imms.length, minExpectedImms, `"${op}" expects exactly ${minExpectedImms} immediate${minExpectedImms !== 1 ? 's' : ''}, got ${imms.length}`);
     for (let idx = 0; idx !== expectedImms.length; ++idx) {
         const got = imms[idx];
         const expect = expectedImms[idx];
         switch (expect.name) {
         case "function_index":
-            assert.truthy(_isValidValue(got, "i32"), `Invalid value on ${op}: got "${got}", expected i32`);
+            assert.truthy(_isValidValue(got, "i32") && got >= 0, `Invalid value on ${op}: got "${got}", expected non-negative i32`);
             // FIXME check function indices. https://bugs.webkit.org/show_bug.cgi?id=163421
             break;
-        case "local_index": throw new Error(`Unimplemented: "${expect.name}" on "${op}"`);
-        case "global_index": throw new Error(`Unimplemented: "${expect.name}" on "${op}"`);
-        case "type_index": throw new Error(`Unimplemented: "${expect.name}" on "${op}"`);
+        case "local_index": break; // improve checking https://bugs.webkit.org/show_bug.cgi?id=163421
+        case "global_index": break; // improve checking https://bugs.webkit.org/show_bug.cgi?id=163421
+        case "type_index": break; // improve checking https://bugs.webkit.org/show_bug.cgi?id=163421
         case "value":
             assert.truthy(_isValidValue(got, ret[0]), `Invalid value on ${op}: got "${got}", expected ${ret[0]}`);
             break;
-        case "flags": throw new Error(`Unimplemented: "${expect.name}" on "${op}"`);
-        case "offset": throw new Error(`Unimplemented: "${expect.name}" on "${op}"`);
+        case "flags": break; // improve checking https://bugs.webkit.org/show_bug.cgi?id=163421
+        case "offset": break; // improve checking https://bugs.webkit.org/show_bug.cgi?id=163421
             // Control:
-        case "default_target": throw new Error(`Unimplemented: "${expect.name}" on "${op}"`);
-        case "relative_depth": throw new Error(`Unimplemented: "${expect.name}" on "${op}"`);
-        case "sig": throw new Error(`Unimplemented: "${expect.name}" on "${op}"`);
-        case "target_count": throw new Error(`Unimplemented: "${expect.name}" on "${op}"`);
-        case "target_table": throw new Error(`Unimplemented: "${expect.name}" on "${op}"`);
+        case "default_target": break; // improve checking https://bugs.webkit.org/show_bug.cgi?id=163421
+        case "relative_depth": break; // improve checking https://bugs.webkit.org/show_bug.cgi?id=163421
+        case "sig":
+            assert.truthy(WASM.isValidBlockType(imms[idx]), `Invalid block type on ${op}: "${imms[idx]}"`);
+            break;
+        case "target_count": break; // improve checking https://bugs.webkit.org/show_bug.cgi?id=163421
+        case "target_table": break; // improve checking https://bugs.webkit.org/show_bug.cgi?id=163421
+        case "reserved": break; // improve checking https://bugs.webkit.org/show_bug.cgi?id=163421
         default: throw new Error(`Implementation problem: unhandled immediate "${expect.name}" on "${op}"`);
         }
     }
@@ -243,11 +334,11 @@ const _createFunctionBuilder = (func, builder, previousBuilder) => {
             default:
                 nextBuilder = functionBuilder;
                 break;
-                case "End":
+            case "End":
                 nextBuilder = previousBuilder;
-                    break;
+                break;
             case "Block":
-                case "Loop":
+            case "Loop":
             case "If":
                 nextBuilder = _createFunctionBuilder(func, builder, functionBuilder);
                 break;
@@ -263,11 +354,12 @@ const _createFunctionBuilder = (func, builder, previousBuilder) => {
             const stackArgs = []; // FIXME https://bugs.webkit.org/show_bug.cgi?id=162706
             func.code.push({ name: op, value: value, arguments: stackArgs, immediates: imms });
             if (hasContinuation)
-                return continuation(nextBuilder).End();
-            return nextBuilder;
+                return _errorHandlingProxyFor(continuation(nextBuilder).End());
+            return _errorHandlingProxyFor(nextBuilder);
         };
-    }
-    return functionBuilder;
+    };
+
+    return _errorHandlingProxyFor(functionBuilder);
 }
 
 const _createFunction = (section, builder, previousBuilder) => {
@@ -281,12 +373,31 @@ const _createFunction = (section, builder, previousBuilder) => {
 
         if (typeof(signature) === "undefined")
             signature = { params: [] };
-        assert.hasObjectProperty(signature, "params", `Expect function signature to be an object with a "params" field, got "${signature}"`);
-        const [params, ret] = _normalizeFunctionSignature(signature.params, signature.ret);
-        signature = { params: params, ret: ret };
+
+        let type;
+        let params;
+        if (typeof signature === "object") {
+            assert.hasObjectProperty(signature, "params", `Expect function signature to be an object with a "params" field, got "${signature}"`);
+            let ret;
+            ([params, ret] = _normalizeFunctionSignature(signature.params, signature.ret));
+            signature = {params, ret};
+            type = _maybeRegisterType(builder, signature);
+        } else {
+            assert.truthy(typeof signature === "number");
+            const typeSection = builder._getSection("Type");
+            assert.truthy(!!typeSection);
+            // FIXME: we should allow indices that exceed this to be able to
+            // test JSCs validator is correct. https://bugs.webkit.org/show_bug.cgi?id=165786
+            assert.truthy(signature < typeSection.data.length);
+            type = signature;
+            signature = typeSection.data[signature];
+            assert.hasObjectProperty(signature, "params", `Expect function signature to be an object with a "params" field, got "${signature}"`);
+            params = signature.params;
+        }
+
         const func = {
             name: functionName,
-            type: _maybeRegisterType(builder, signature),
+            type,
             signature: signature,
             locals: params.concat(locals), // Parameters are the first locals.
             parameterCount: params.length,
@@ -349,23 +460,83 @@ export default class Builder {
                         Func: (params, ret) => {
                             [params, ret] = _normalizeFunctionSignature(params, ret);
                             s.data.push({ params: params, ret: ret });
-                            return typeBuilder;
+                            return _errorHandlingProxyFor(typeBuilder);
                         },
                     };
-                    return typeBuilder;
+                    return _errorHandlingProxyFor(typeBuilder);
                 };
                 break;
+
             case "Import":
                 this[section] = function() {
                     const s = this._addSection(section);
                     const importBuilder = {
                         End: () => this,
-                        Table: () => { throw new Error(`Unimplemented: import table`); },
-                        Memory: () => { throw new Error(`Unimplemented: import memory`); },
-                        Global: () => { throw new Error(`Unimplemented: import global`); },
                     };
+                    importBuilder.Global = _importGlobalContinuation(this, s, importBuilder);
                     importBuilder.Function = _importFunctionContinuation(this, s, importBuilder);
-                    return importBuilder;
+                    importBuilder.Memory = _importMemoryContinuation(this, s, importBuilder);
+                    importBuilder.Table = _importTableContinuation(this, s, importBuilder);
+                    return _errorHandlingProxyFor(importBuilder);
+                };
+                break;
+
+            case "Function":
+                this[section] = function() {
+                    const s = this._addSection(section);
+                    const functionBuilder = {
+                        End: () => this
+                        // FIXME: add ability to add this with whatever.
+                    };
+                    return _errorHandlingProxyFor(functionBuilder);
+                };
+                break;
+
+            case "Table":
+                this[section] = function() {
+                    const s = this._addSection(section);
+                    const tableBuilder = {
+                        End: () => this,
+                        Table: ({initial, maximum, element}) => {
+                            s.data.push({tableDescription: {initial, maximum, element}});
+                            return _errorHandlingProxyFor(tableBuilder);
+                        }
+                    };
+                    return _errorHandlingProxyFor(tableBuilder);
+                };
+                break;
+
+            case "Memory":
+                this[section] = function() {
+                    const s = this._addSection(section);
+                    const memoryBuilder = {
+                        End: () => this,
+                        InitialMaxPages: (initial, max) => {
+                            s.data.push({ initial, max });
+                            return _errorHandlingProxyFor(memoryBuilder);
+                        }
+                    };
+                    return _errorHandlingProxyFor(memoryBuilder);
+                };
+                break;
+
+            case "Global":
+                this[section] = function() {
+                    const s = this._addSection(section);
+                    const globalBuilder = {
+                        End: () => this,
+                        GetGlobal: (type, initValue, mutability) => {
+                            s.data.push({ type, op: "get_global", mutability: _normalizeMutability(mutability), initValue });
+                            return _errorHandlingProxyFor(globalBuilder);
+                        }
+                    };
+                    for (let op of WASM.description.value_type) {
+                        globalBuilder[_toJavaScriptName(op)] = (initValue, mutability) => {
+                            s.data.push({ type: op, op: op + ".const", mutability: _normalizeMutability(mutability), initValue });
+                            return _errorHandlingProxyFor(globalBuilder);
+                        };
+                    }
+                    return _errorHandlingProxyFor(globalBuilder);
                 };
                 break;
 
@@ -374,38 +545,41 @@ export default class Builder {
                     const s = this._addSection(section);
                     const exportBuilder = {
                         End: () => this,
-                        Table: () => { throw new Error(`Unimplemented: export table`); },
-                        Memory: () => { throw new Error(`Unimplemented: export memory`); },
-                        Global: () => { throw new Error(`Unimplemented: export global`); },
                     };
+                    exportBuilder.Global = _exportGlobalContinuation(this, s, exportBuilder);
                     exportBuilder.Function = _exportFunctionContinuation(this, s, exportBuilder);
-                    return exportBuilder;
+                    exportBuilder.Memory = _exportMemoryContinuation(this, s, exportBuilder);
+                    exportBuilder.Table = _exportTableContinuation(this, s, exportBuilder);
+                    return _errorHandlingProxyFor(exportBuilder);
                 };
                 break;
 
-            case "Memory":
-                this[section] = function() {
+            case "Start":
+                this[section] = function(functionIndexOrName) {
                     const s = this._addSection(section);
-                    const exportBuilder = {
+                    const startBuilder = {
                         End: () => this,
-                        InitialMaxPages: (initial, max) => {
-                            s.data.push({ initial, max });
-                            return exportBuilder;
-                        }
                     };
-                    return exportBuilder;
-                }
+                    if (typeof(functionIndexOrName) !== "number" && typeof(functionIndexOrName) !== "string")
+                        throw new Error(`Start section's function index  must either be a number or a string`);
+                    s.data.push(functionIndexOrName);
+                    return _errorHandlingProxyFor(startBuilder);
+                };
                 break;
 
-            case "Function":
+            case "Element":
                 this[section] = function() {
                     const s = this._addSection(section);
-                    const exportBuilder = {
-                        End: () => this
-                        // FIXME: add ability to add this with whatever.
-                    }
-                    return exportBuilder;
-                }
+                    const elementBuilder = {
+                        End: () => this,
+                        Element: ({tableIndex = 0, offset, functionIndices}) => {
+                            s.data.push({tableIndex, offset, functionIndices});
+                            return _errorHandlingProxyFor(elementBuilder);
+                        }
+                    };
+
+                    return _errorHandlingProxyFor(elementBuilder);
+                };
                 break;
 
             case "Code":
@@ -414,13 +588,16 @@ export default class Builder {
                     const builder = this;
                     const codeBuilder =  {
                         End: () => {
-                            // We now have enough information to remap the export section's "type" and "index" according to the Code section we're currently ending.
+                            // We now have enough information to remap the export section's "type" and "index" according to the Code section we are currently ending.
                             const typeSection = builder._getSection("Type");
                             const importSection = builder._getSection("Import");
                             const exportSection = builder._getSection("Export");
+                            const startSection = builder._getSection("Start");
                             const codeSection = s;
                             if (exportSection) {
                                 for (const e of exportSection.data) {
+                                    if (e.kind !== "Function" || typeof(e.type) !== "undefined")
+                                        continue;
                                     switch (typeof(e.index)) {
                                     default: throw new Error(`Unexpected export index "${e.index}"`);
                                     case "string": {
@@ -438,26 +615,84 @@ export default class Builder {
                                     }
                                     if (typeof(e.type) === "undefined") {
                                         // This must be a function export from the Code section (re-exports were handled earlier).
-                                        const functionIndexSpaceOffset = importSection ? importSection.data.length : 0;
+                                        let functionIndexSpaceOffset = 0;
+                                        if (importSection) {
+                                            for (const {kind} of importSection.data) {
+                                                if (kind === "Function")
+                                                    ++functionIndexSpaceOffset;
+                                            }
+                                        }
                                         const functionIndex = e.index - functionIndexSpaceOffset;
                                         e.type = codeSection.data[functionIndex].type;
                                     }
                                 }
                             }
-                            return builder;
+                            if (startSection) {
+                                const start = startSection.data[0];
+                                let mapped = builder._getFunctionFromIndexSpace(start);
+                                if (!builder._checked) {
+                                    if (typeof(mapped) === "undefined")
+                                        mapped = start; // In unchecked mode, simply use what was provided if it's nonsensical.
+                                    assert.isA(start, "number"); // It can't be too nonsensical, otherwise we can't create a binary.
+                                    startSection.data[0] = start;
+                                } else {
+                                    if (typeof(mapped) === "undefined")
+                                        throw new Error(`Start section refers to non-existant function '${start}'`);
+                                    if (typeof(start) === "string" || typeof(start) === "object")
+                                        startSection.data[0] = mapped;
+                                    // FIXME in checked mode, test that the type is acceptable for start function. We probably want _registerFunctionToIndexSpace to also register types per index. https://bugs.webkit.org/show_bug.cgi?id=165658
+                                }
+                            }
+                            return _errorHandlingProxyFor(builder);
                         },
 
                     };
                     codeBuilder.Function = _createFunction(s, builder, codeBuilder);
-                    return codeBuilder;
+                    return _errorHandlingProxyFor(codeBuilder);
+                };
+                break;
+
+            case "Data":
+                this[section] = function() {
+                    const s = this._addSection(section);
+                    const dataBuilder = {
+                        End: () => this,
+                        Segment: data => {
+                            assert.isArray(data);
+                            for (const datum of data) {
+                                assert.isNumber(datum);
+                                assert.ge(datum, 0);
+                                assert.le(datum, 0xff);
+                            }
+                            s.data.push({ data: data, index: 0, offset: 0 });
+                            let thisSegment = s.data[s.data.length - 1];
+                            const segmentBuilder = {
+                                End: () => dataBuilder,
+                                Index: index => {
+                                    assert.eq(index, 0); // Linear memory index must be zero in MVP.
+                                    thisSegment.index = index;
+                                    return _errorHandlingProxyFor(segmentBuilder);
+                                },
+                                Offset: offset => {
+                                    // FIXME allow complex init_expr here. https://bugs.webkit.org/show_bug.cgi?id=165700
+                                    assert.isNumber(offset);
+                                    thisSegment.offset = offset;
+                                    return _errorHandlingProxyFor(segmentBuilder);
+                                },
+                            };
+                            return _errorHandlingProxyFor(segmentBuilder);
+                        },
+                    };
+                    return _errorHandlingProxyFor(dataBuilder);
                 };
                 break;
 
             default:
-                this[section] = () => { throw new Error(`Unimplemented: section type "${section}"`); };
+                this[section] = () => { throw new Error(`Unknown section type "${section}"`); };
                 break;
             }
         }
+
         this.Unknown = function(name) {
             const s = this._addSection(name);
             const builder = this;
@@ -466,10 +701,10 @@ export default class Builder {
                 Byte: b => {
                     assert.eq(b & 0xFF, b, `Unknown section expected byte, got: "${b}"`);
                     s.data.push(b);
-                    return unknownBuilder;
+                    return _errorHandlingProxyFor(unknownBuilder);
                 }
             };
-            return unknownBuilder;
+            return _errorHandlingProxyFor(unknownBuilder);
         };
     }
     _addSection(nameOrNumber, extraObject) {
@@ -478,7 +713,8 @@ export default class Builder {
         if (this._checked) {
             // Check uniqueness.
             for (const s of this._sections)
-                assert.falsy(s.name === name && s.id === number, `Cannot have two sections with the same name "${name}" and ID ${number}`);
+                if (number !== _unknownSectionId)
+                    assert.falsy(s.name === name && s.id === number, `Cannot have two sections with the same name "${name}" and ID ${number}`);
             // Check ordering.
             if ((number !== _unknownSectionId) && (this._sections.length !== 0)) {
                 for (let i = this._sections.length - 1; i >= 0; --i) {
@@ -517,7 +753,13 @@ export default class Builder {
             preamble: this._preamble,
             section: this._sections
         };
-        return JSON.stringify(obj);
+        // JSON.stringify serializes -0.0 as 0.0.
+        const replacer = (key, value) => {
+            if (value === 0.0 && 1.0 / value === -Infinity)
+                return "NEGATIVE_ZERO";
+            return value;
+        };
+        return JSON.stringify(obj, replacer);
     }
     AsmJS() {
         "use asm"; // For speed.

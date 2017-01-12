@@ -222,7 +222,7 @@ template<> EncodedJSValue JSC_HOST_CALL JSTestInterfaceConstructor::construct(Ex
     VM& vm = state->vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);
     UNUSED_PARAM(throwScope);
-    auto* castedThis = jsCast<JSTestInterfaceConstructor*>(state->callee());
+    auto* castedThis = jsCast<JSTestInterfaceConstructor*>(state->jsCallee());
     ASSERT(castedThis);
     if (UNLIKELY(state->argumentCount() < 1))
         return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
@@ -234,7 +234,7 @@ template<> EncodedJSValue JSC_HOST_CALL JSTestInterfaceConstructor::construct(Ex
     if (UNLIKELY(!context))
         return throwConstructorScriptExecutionContextUnavailableError(*state, throwScope, "TestInterface");
     auto object = TestInterface::create(*context, WTFMove(str1), WTFMove(str2));
-    return JSValue::encode(toJSNewlyCreated(*state, *castedThis->globalObject(), throwScope, WTFMove(object)));
+    return JSValue::encode(toJSNewlyCreated<IDLInterface<TestInterface>>(*state, *castedThis->globalObject(), throwScope, WTFMove(object)));
 }
 
 template<> JSValue JSTestInterfaceConstructor::prototypeForStructure(JSC::VM& vm, const JSDOMGlobalObject& globalObject)

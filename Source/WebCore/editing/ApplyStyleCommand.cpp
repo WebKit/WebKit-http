@@ -356,7 +356,7 @@ void ApplyStyleCommand::applyRelativeFontStyleChange(EditingStyle* style)
     Node* beyondEnd;
     ASSERT(start.deprecatedNode());
     ASSERT(end.deprecatedNode());
-    if (start.deprecatedNode()->isDescendantOf(end.deprecatedNode()))
+    if (start.deprecatedNode()->isDescendantOf(*end.deprecatedNode()))
         beyondEnd = NodeTraversal::nextSkippingChildren(*end.deprecatedNode());
     else
         beyondEnd = NodeTraversal::next(*end.deprecatedNode());
@@ -785,7 +785,7 @@ void ApplyStyleCommand::applyInlineStyleToNodeRange(EditingStyle* style, PassRef
             // This is a plaintext-only region. Only proceed if it's fully selected.
             // pastEndNode is the node after the last fully selected node, so if it's inside node then
             // node isn't fully selected.
-            if (pastEndNode && pastEndNode->isDescendantOf(node.get()))
+            if (pastEndNode && pastEndNode->isDescendantOf(*node))
                 break;
             // Add to this element's inline style and skip over its contents.
             HTMLElement& element = downcast<HTMLElement>(*node);
@@ -1536,9 +1536,9 @@ void ApplyStyleCommand::joinChildTextNodes(Node* node, const Position& start, co
     
         Text& nextText = downcast<Text>(*next);
         if (start.anchorType() == Position::PositionIsOffsetInAnchor && next == start.containerNode())
-            newStart = Position(childText, childText->length() + start.offsetInContainerNode());
+            newStart = Position(childText.get(), childText->length() + start.offsetInContainerNode());
         if (end.anchorType() == Position::PositionIsOffsetInAnchor && next == end.containerNode())
-            newEnd = Position(childText, childText->length() + end.offsetInContainerNode());
+            newEnd = Position(childText.get(), childText->length() + end.offsetInContainerNode());
         String textToMove = nextText.data();
         insertTextIntoNode(childText, childText->length(), textToMove);
         removeNode(next);

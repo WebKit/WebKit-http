@@ -63,7 +63,6 @@ CachedFrameBase::CachedFrameBase(Frame& frame)
     , m_view(frame.view())
     , m_url(frame.document()->url())
     , m_isMainFrame(!frame.tree().parent())
-    , m_isComposited(frame.view()->hasCompositedContent())
 {
 }
 
@@ -97,9 +96,6 @@ void CachedFrameBase::restore()
     // cached page.
     frame.script().updatePlatformScriptObjects();
 
-    if (m_isComposited)
-        frame.view()->restoreBackingStores();
-
     frame.loader().client().didRestoreFromPageCache();
 
     // Reconstruct the FrameTree. And open the child CachedFrames in their respective FrameLoaders.
@@ -129,11 +125,7 @@ void CachedFrameBase::restore()
     if (historyItem && historyItem->stateObject())
         m_document->enqueuePopstateEvent(historyItem->stateObject());
 
-#if ENABLE(TOUCH_EVENTS) && !PLATFORM(IOS)
-    if (m_document->hasTouchEventHandlers())
-        m_document->page()->chrome().client().needTouchEvents(true);
-#endif
-
+    frame.view()->didRestoreFromPageCache();
 }
 
 CachedFrame::CachedFrame(Frame& frame)
@@ -163,9 +155,6 @@ CachedFrame::CachedFrame(Frame& frame)
     m_document->domWindow()->suspendForDocumentSuspension();
 
     frame.loader().client().savePlatformDataToCachedFrame(this);
-
-    if (m_isComposited && PageCache::singleton().shouldClearBackingStores())
-        frame.view()->clearBackingStores();
 
     // documentWillSuspendForPageCache() can set up a layout timer on the FrameView, so clear timers after that.
     frame.clearTimers();

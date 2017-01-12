@@ -828,7 +828,13 @@ float AccessibilityNodeObject::valueForRange() const
     if (!isRangeControl())
         return 0.0f;
 
-    return getAttribute(aria_valuenowAttr).toFloat();
+    // In ARIA 1.1, the implicit value for aria-valuenow on a spin button is 0.
+    // For other roles, it is half way between aria-valuemin and aria-valuemax.
+    auto value = getAttribute(aria_valuenowAttr);
+    if (!value.isEmpty())
+        return value.toFloat();
+
+    return isSpinButton() ? 0 : (minValueForRange() + maxValueForRange()) / 2;
 }
 
 float AccessibilityNodeObject::maxValueForRange() const
@@ -842,7 +848,13 @@ float AccessibilityNodeObject::maxValueForRange() const
     if (!isRangeControl())
         return 0.0f;
 
-    return getAttribute(aria_valuemaxAttr).toFloat();
+    auto value = getAttribute(aria_valuemaxAttr);
+    if (!value.isEmpty())
+        return value.toFloat();
+
+    // In ARIA 1.1, the implicit value for aria-valuemax on a spin button
+    // is that there is no maximum value. For other roles, it is 100.
+    return isSpinButton() ? std::numeric_limits<float>::max() : 100.0f;
 }
 
 float AccessibilityNodeObject::minValueForRange() const
@@ -856,7 +868,13 @@ float AccessibilityNodeObject::minValueForRange() const
     if (!isRangeControl())
         return 0.0f;
 
-    return getAttribute(aria_valueminAttr).toFloat();
+    auto value = getAttribute(aria_valueminAttr);
+    if (!value.isEmpty())
+        return value.toFloat();
+
+    // In ARIA 1.1, the implicit value for aria-valuemin on a spin button
+    // is that there is no minimum value. For other roles, it is 0.
+    return isSpinButton() ? -std::numeric_limits<float>::max() : 0.0f;
 }
 
 float AccessibilityNodeObject::stepValueForRange() const
@@ -915,12 +933,13 @@ AccessibilityObject* AccessibilityNodeObject::selectedTabItem()
     if (!isTabList())
         return nullptr;
 
+    // FIXME: Is this valid? ARIA tab items support aria-selected; not aria-checked.
     // Find the child tab item that is selected (ie. the intValue == 1).
     AccessibilityObject::AccessibilityChildrenVector tabs;
     tabChildren(tabs);
 
     for (const auto& child : children()) {
-        if (child->isTabItem() && child->isChecked())
+        if (child->isTabItem() && (child->isChecked() || child->isSelected()))
             return child.get();
     }
     return nullptr;
@@ -2158,6 +2177,9 @@ bool AccessibilityNodeObject::canSetSelectedAttribute() const
     case TreeGridRole:
     case TreeItemRole:
     case TreeRole:
+    case MenuItemCheckboxRole:
+    case MenuItemRadioRole:
+    case MenuItemRole:
         return isEnabled();
     default:
         return false;

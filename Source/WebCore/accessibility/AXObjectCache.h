@@ -43,6 +43,7 @@ class Document;
 class HTMLAreaElement;
 class Node;
 class Page;
+class RenderBlock;
 class RenderObject;
 class ScrollView;
 class VisiblePosition;
@@ -301,6 +302,7 @@ public:
     void postTextStateChangeNotification(Node*, const AXTextStateChangeIntent&, const VisibleSelection&);
     void postTextStateChangeNotification(const Position&, const AXTextStateChangeIntent&, const VisibleSelection&);
     void postLiveRegionChangeNotification(AccessibilityObject*);
+    void focusAriaModalNode();
 
     enum AXLoadingEvent {
         AXLoadingStarted,
@@ -323,6 +325,8 @@ public:
 #if PLATFORM(MAC)
     static void setShouldRepostNotificationsForTests(bool value);
 #endif
+    void recomputeDeferredIsIgnored(RenderBlock& renderer);
+    void performDeferredIsIgnoredChange();
 
 protected:
     void postPlatformNotification(AccessibilityObject*, AXNotification);
@@ -379,6 +383,8 @@ private:
     void notificationPostTimerFired();
 
     void liveRegionChangedNotificationPostTimerFired();
+    
+    void focusAriaModalNodeTimerFired();
 
     void postTextStateChangeNotification(AccessibilityObject*, const AXTextStateChangeIntent&, const VisibleSelection&);
 
@@ -416,11 +422,13 @@ private:
     Timer m_liveRegionChangedPostTimer;
     ListHashSet<RefPtr<AccessibilityObject>> m_liveRegionObjectsSet;
     
+    Timer m_focusAriaModalNodeTimer;
     Node* m_currentAriaModalNode;
     ListHashSet<Node*> m_ariaModalNodesSet;
 
     AXTextStateChangeIntent m_textSelectionIntent;
     bool m_isSynchronizingSelection { false };
+    ListHashSet<RenderBlock*> m_deferredIsIgnoredChangeList;
 };
 
 class AXAttributeCacheEnabler
@@ -441,8 +449,10 @@ bool isNodeAriaVisible(Node*);
     
 #if !HAVE(ACCESSIBILITY)
 inline AccessibilityObjectInclusion AXComputedObjectAttributeCache::getIgnored(AXID) const { return DefaultBehavior; }
+inline AccessibilityReplacedText::AccessibilityReplacedText(const VisibleSelection&) { }
+inline void AccessibilityReplacedText::postTextStateChangeNotification(AXObjectCache*, AXTextEditType, const String&, const VisibleSelection&) { }
 inline void AXComputedObjectAttributeCache::setIgnored(AXID, AccessibilityObjectInclusion) { }
-inline AXObjectCache::AXObjectCache(Document& document) : m_document(document), m_notificationPostTimer(nullptr), m_passwordNotificationPostTimer(nullptr), m_liveRegionChangedPostTimer(nullptr) { }
+inline AXObjectCache::AXObjectCache(Document& document) : m_document(document), m_notificationPostTimer(nullptr), m_passwordNotificationPostTimer(nullptr), m_liveRegionChangedPostTimer(nullptr), m_focusAriaModalNodeTimer(nullptr) { }
 inline AXObjectCache::~AXObjectCache() { }
 inline AccessibilityObject* AXObjectCache::focusedUIElementForPage(const Page*) { return nullptr; }
 inline AccessibilityObject* AXObjectCache::get(RenderObject*) { return nullptr; }
@@ -489,6 +499,7 @@ inline void AXObjectCache::postNotification(RenderObject*, AXNotification, PostT
 inline void AXObjectCache::postNotification(Node*, AXNotification, PostTarget, PostType) { }
 inline void AXObjectCache::postPlatformNotification(AccessibilityObject*, AXNotification) { }
 inline void AXObjectCache::postLiveRegionChangeNotification(AccessibilityObject*) { }
+inline void AXObjectCache::focusAriaModalNode() { }
 inline RefPtr<Range> AXObjectCache::rangeForNodeContents(Node*) { return nullptr; }
 inline void AXObjectCache::remove(AXID) { }
 inline void AXObjectCache::remove(RenderObject*) { }
@@ -514,11 +525,11 @@ inline AXTextChange AXObjectCache::textChangeForEditType(AXTextEditType) { retur
 inline void AXObjectCache::nodeTextChangePlatformNotification(AccessibilityObject*, AXTextChange, unsigned, const String&) { }
 #endif
 
+inline void AXObjectCache::recomputeDeferredIsIgnored(RenderBlock&) { }
+inline void AXObjectCache::performDeferredIsIgnoredChange() { }
+
 inline AXAttributeCacheEnabler::AXAttributeCacheEnabler(AXObjectCache*) { }
 inline AXAttributeCacheEnabler::~AXAttributeCacheEnabler() { }
-
-inline AccessibilityReplacedText::AccessibilityReplacedText(const VisibleSelection&) { }
-inline void AccessibilityReplacedText::postTextStateChangeNotification(AXObjectCache*, AXTextEditType, const String&, const VisibleSelection&) { }
 
 #endif
 

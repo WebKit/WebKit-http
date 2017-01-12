@@ -23,7 +23,7 @@
 #include "PropertySetCSSStyleDeclaration.h"
 
 #include "CSSCustomPropertyValue.h"
-#include "CSSParser.h"
+#include "CSSPropertyParser.h"
 #include "CSSRule.h"
 #include "CSSStyleSheet.h"
 #include "CustomElementReactionQueue.h"
@@ -167,7 +167,7 @@ ExceptionOr<void> PropertySetCSSStyleDeclaration::setCssText(const String& text)
     if (!willMutate())
         return { };
 
-    bool changed = m_propertySet->parseDeclaration(text, cssParserContext(), contextStyleSheet());
+    bool changed = m_propertySet->parseDeclaration(text, cssParserContext());
 
     didMutate(changed ? PropertyChanged : NoChanges);
 
@@ -175,19 +175,19 @@ ExceptionOr<void> PropertySetCSSStyleDeclaration::setCssText(const String& text)
     return { };
 }
 
-RefPtr<CSSValue> PropertySetCSSStyleDeclaration::getPropertyCSSValue(const String& propertyName)
+RefPtr<DeprecatedCSSOMValue> PropertySetCSSStyleDeclaration::getPropertyCSSValue(const String& propertyName)
 {
     if (isCustomPropertyName(propertyName)) {
         RefPtr<CSSValue> value = m_propertySet->getCustomPropertyCSSValue(propertyName);
         if (!value)
             return nullptr;
-        return cloneAndCacheForCSSOM(value.get());
+        return wrapForDeprecatedCSSOM(value.get());
     }
     
     CSSPropertyID propertyID = cssPropertyID(propertyName);
     if (!propertyID)
         return nullptr;
-    return cloneAndCacheForCSSOM(getPropertyCSSValueInternal(propertyID).get());
+    return wrapForDeprecatedCSSOM(getPropertyCSSValueInternal(propertyID).get());
 }
 
 String PropertySetCSSStyleDeclaration::getPropertyValue(const String& propertyName)
@@ -247,9 +247,9 @@ ExceptionOr<void> PropertySetCSSStyleDeclaration::setProperty(const String& prop
 
     bool changed;
     if (propertyID == CSSPropertyCustom)
-        changed = m_propertySet->setCustomProperty(propertyName, value, important, cssParserContext(), contextStyleSheet());
+        changed = m_propertySet->setCustomProperty(propertyName, value, important, cssParserContext());
     else
-        changed = m_propertySet->setProperty(propertyID, value, important, cssParserContext(), contextStyleSheet());
+        changed = m_propertySet->setProperty(propertyID, value, important, cssParserContext());
 
     didMutate(changed ? PropertyChanged : NoChanges);
 
@@ -304,7 +304,7 @@ ExceptionOr<bool> PropertySetCSSStyleDeclaration::setPropertyInternal(CSSPropert
     if (!willMutate())
         return false;
 
-    bool changed = m_propertySet->setProperty(propertyID, value, important, cssParserContext(), contextStyleSheet());
+    bool changed = m_propertySet->setProperty(propertyID, value, important, cssParserContext());
 
     didMutate(changed ? PropertyChanged : NoChanges);
 
@@ -313,19 +313,19 @@ ExceptionOr<bool> PropertySetCSSStyleDeclaration::setPropertyInternal(CSSPropert
     return changed;
 }
 
-CSSValue* PropertySetCSSStyleDeclaration::cloneAndCacheForCSSOM(CSSValue* internalValue)
+DeprecatedCSSOMValue* PropertySetCSSStyleDeclaration::wrapForDeprecatedCSSOM(CSSValue* internalValue)
 {
     if (!internalValue)
         return 0;
 
     // The map is here to maintain the object identity of the CSSValues over multiple invocations.
     // FIXME: It is likely that the identity is not important for web compatibility and this code should be removed.
-    if (!m_cssomCSSValueClones)
-        m_cssomCSSValueClones = std::make_unique<HashMap<CSSValue*, RefPtr<CSSValue>>>();
+    if (!m_cssomValueWrappers)
+        m_cssomValueWrappers = std::make_unique<HashMap<CSSValue*, RefPtr<DeprecatedCSSOMValue>>>();
     
-    RefPtr<CSSValue>& clonedValue = m_cssomCSSValueClones->add(internalValue, RefPtr<CSSValue>()).iterator->value;
+    RefPtr<DeprecatedCSSOMValue>& clonedValue = m_cssomValueWrappers->add(internalValue, RefPtr<DeprecatedCSSOMValue>()).iterator->value;
     if (!clonedValue)
-        clonedValue = internalValue->cloneForCSSOM();
+        clonedValue = internalValue->createDeprecatedCSSOMWrapper();
     return clonedValue.get();
 }
 
@@ -384,7 +384,7 @@ void StyleRuleCSSStyleDeclaration::didMutate(MutationType type)
     ASSERT(m_parentRule->parentStyleSheet());
 
     if (type == PropertyChanged)
-        m_cssomCSSValueClones = nullptr;
+        m_cssomValueWrappers = nullptr;
 
     // Style sheet mutation needs to be signaled even if the change failed. willMutate*/didMutate* must pair.
     m_parentRule->parentStyleSheet()->didMutateRuleFromCSSStyleDeclaration();
@@ -416,7 +416,7 @@ void InlineCSSStyleDeclaration::didMutate(MutationType type)
     if (type == NoChanges)
         return;
 
-    m_cssomCSSValueClones = nullptr;
+    m_cssomValueWrappers = nullptr;
 
     if (!m_parentElement)
         return;

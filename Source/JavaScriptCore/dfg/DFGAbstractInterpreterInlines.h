@@ -435,7 +435,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         
     case DoubleRep: {
         JSValue child = forNode(node->child1()).value();
-        if (Optional<double> number = child.toNumberFromPrimitive()) {
+        if (std::optional<double> number = child.toNumberFromPrimitive()) {
             setConstant(node, jsDoubleNumber(*number));
             break;
         }
@@ -549,7 +549,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
 
     case ArithClz32: {
         JSValue operand = forNode(node->child1()).value();
-        if (Optional<double> number = operand.toNumberFromPrimitive()) {
+        if (std::optional<double> number = operand.toNumberFromPrimitive()) {
             uint32_t value = toUInt32(*number);
             setConstant(node, jsNumber(clz32(value)));
             break;
@@ -855,7 +855,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
         JSValue child = forNode(node->child1()).value();
         switch (node->child1().useKind()) {
         case Int32Use:
-            if (Optional<double> number = child.toNumberFromPrimitive()) {
+            if (std::optional<double> number = child.toNumberFromPrimitive()) {
                 JSValue result = jsNumber(fabs(*number));
                 if (result.isInt32()) {
                     setConstant(node, result);
@@ -865,7 +865,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
             forNode(node).setType(SpecInt32Only);
             break;
         case DoubleRepUse:
-            if (Optional<double> number = child.toNumberFromPrimitive()) {
+            if (std::optional<double> number = child.toNumberFromPrimitive()) {
                 setConstant(node, jsDoubleNumber(fabs(*number)));
                 break;
             }
@@ -907,7 +907,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
     case ArithCeil:
     case ArithTrunc: {
         JSValue operand = forNode(node->child1()).value();
-        if (Optional<double> number = operand.toNumberFromPrimitive()) {
+        if (std::optional<double> number = operand.toNumberFromPrimitive()) {
             double roundedValue = 0;
             if (node->op() == ArithRound)
                 roundedValue = jsRound(*number);
@@ -995,7 +995,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
 
     case MapHash: {
         if (JSValue key = forNode(node->child1()).value()) {
-            if (Optional<uint32_t> hash = concurrentJSMapHash(key)) {
+            if (std::optional<uint32_t> hash = concurrentJSMapHash(key)) {
                 // Although C++ code uses uint32_t for the hash, the closest type in DFG IR is Int32
                 // and that's what MapHash returns. So, we have to cast to int32_t to avoid large
                 // unsigned values becoming doubles. This casting between signed and unsigned
@@ -1213,7 +1213,7 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
                 break;
             }
             
-            if (!(child.m_type & (SpecFunction | SpecObjectOther))) {
+            if (!(child.m_type & (SpecFunction | SpecObjectOther | SpecProxyObject))) {
                 setConstant(node, jsBoolean(false));
                 constantWasSet = true;
                 break;
@@ -1970,10 +1970,13 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
     case PhantomNewObject:
     case PhantomNewFunction:
     case PhantomNewGeneratorFunction:
+    case PhantomNewAsyncFunction:
     case PhantomCreateActivation:
     case PhantomDirectArguments:
     case PhantomClonedArguments:
     case PhantomCreateRest:
+    case PhantomSpread:
+    case PhantomNewArrayWithSpread:
     case BottomValue:
         m_state.setDidClobber(true); // Prevent constant folding.
         // This claims to return bottom.
@@ -2012,6 +2015,11 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
     case NewGeneratorFunction:
         forNode(node).set(
             m_graph, m_codeBlock->globalObjectFor(node->origin.semantic)->generatorFunctionStructure());
+        break;
+
+    case NewAsyncFunction:
+        forNode(node).set(
+            m_graph, m_codeBlock->globalObjectFor(node->origin.semantic)->asyncFunctionStructure());
         break;
 
     case NewFunction:
@@ -2301,6 +2309,9 @@ bool AbstractInterpreter<AbstractStateType>::executeEffects(unsigned clobberLimi
     case GetButterfly:
     case AllocatePropertyStorage:
     case ReallocatePropertyStorage:
+    case NukeStructureAndSetButterfly:
+        // FIXME: We don't model the fact that the structureID is nuked, simply because currently
+        // nobody would currently benefit from having that information. But it's a bug nonetheless.
         forNode(node).clear(); // The result is not a JS value.
         break;
     case CheckDOM: {
@@ -3159,7 +3170,7 @@ template<typename AbstractStateType>
 void AbstractInterpreter<AbstractStateType>::executeDoubleUnaryOpEffects(Node* node, double(*equivalentFunction)(double))
 {
     JSValue child = forNode(node->child1()).value();
-    if (Optional<double> number = child.toNumberFromPrimitive()) {
+    if (std::optional<double> number = child.toNumberFromPrimitive()) {
         setConstant(node, jsDoubleNumber(equivalentFunction(*number)));
         return;
     }

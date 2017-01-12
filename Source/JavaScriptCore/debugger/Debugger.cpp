@@ -98,7 +98,7 @@ private:
     Debugger& m_debugger;
 };
 
-// This is very similar to TemporaryChange<bool>, but that cannot be used
+// This is very similar to SetForScope<bool>, but that cannot be used
 // as the m_isPaused field uses only one bit.
 class TemporaryPausedState {
 public:
@@ -295,10 +295,8 @@ void Debugger::toggleBreakpoint(CodeBlock* codeBlock, Breakpoint& breakpoint, Br
 void Debugger::applyBreakpoints(CodeBlock* codeBlock)
 {
     BreakpointIDToBreakpointMap& breakpoints = m_breakpointIDToBreakpoint;
-    for (auto it = breakpoints.begin(); it != breakpoints.end(); ++it) {
-        Breakpoint& breakpoint = *it->value;
-        toggleBreakpoint(codeBlock, breakpoint, BreakpointEnabled);
-    }
+    for (auto* breakpoint : breakpoints.values())
+        toggleBreakpoint(codeBlock, *breakpoint, BreakpointEnabled);
 }
 
 class Debugger::ToggleBreakpointFunctor {
@@ -333,7 +331,7 @@ void Debugger::toggleBreakpoint(Breakpoint& breakpoint, Debugger::BreakpointStat
 
 void Debugger::recompileAllJSFunctions()
 {
-    m_vm.deleteAllCode();
+    m_vm.deleteAllCode(PreventCollectionAndDeleteAllCode);
 }
 
 DebuggerParseData& Debugger::debuggerParseData(SourceID sourceID, SourceProvider* provider)
@@ -360,7 +358,7 @@ void Debugger::resolveBreakpoint(Breakpoint& breakpoint, SourceProvider* sourceP
     unsigned column = breakpoint.column ? breakpoint.column : Breakpoint::unspecifiedColumn;
 
     DebuggerParseData& parseData = debuggerParseData(breakpoint.sourceID, sourceProvider);
-    Optional<JSTextPosition> resolvedPosition = parseData.pausePositions.breakpointLocationForLineColumn((int)line, (int)column);
+    std::optional<JSTextPosition> resolvedPosition = parseData.pausePositions.breakpointLocationForLineColumn((int)line, (int)column);
     if (!resolvedPosition)
         return;
 
@@ -614,10 +612,11 @@ void Debugger::breakProgram()
 
 void Debugger::continueProgram()
 {
+    clearNextPauseState();
+
     if (!m_isPaused)
         return;
 
-    m_pauseAtNextOpportunity = false;
     notifyDoneProcessingDebuggerEvents();
 }
 

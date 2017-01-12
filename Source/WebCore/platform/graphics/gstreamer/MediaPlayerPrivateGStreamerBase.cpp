@@ -94,12 +94,14 @@
 #include <cairo-gl.h>
 #endif
 
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA)
+#include "WebKitClearKeyDecryptorGStreamer.h"
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
 #include "UUID.h"
-#include "WebKitClearKeyDecryptorGStreamer.h"
 #include <runtime/JSCInlines.h>
 #include <runtime/TypedArrayInlines.h>
 #include <runtime/Uint8Array.h>
+#endif
 #endif
 
 GST_DEBUG_CATEGORY(webkit_media_player_debug);
@@ -111,7 +113,7 @@ namespace WebCore {
 
 void registerWebKitGStreamerElements()
 {
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA)
     if (!webkitGstCheckVersion(1, 6, 1))
         return;
 
@@ -262,7 +264,7 @@ bool MediaPlayerPrivateGStreamerBase::handleSyncMessage(GstMessage* message)
     UNUSED_PARAM(message);
 #endif // USE(GSTREAMER_GL)
 
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA)
     if (GST_MESSAGE_TYPE(message) == GST_MESSAGE_ELEMENT) {
         const GstStructure* structure = gst_message_get_structure(message);
         if (gst_structure_has_name(structure, "drm-key-needed")) {
@@ -283,10 +285,13 @@ bool MediaPlayerPrivateGStreamerBase::handleSyncMessage(GstMessage* message)
             if (UNLIKELY(!valid || !gst_buffer_map(data.get(), &mapInfo, GST_MAP_READ)))
                 return false;
 
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
             GST_DEBUG("scheduling keyNeeded event");
             // FIXME: Provide a somehow valid sessionId.
             RefPtr<Uint8Array> initData = Uint8Array::create(reinterpret_cast<const unsigned char *>(mapInfo.data), mapInfo.size);
             needKey(initData);
+#endif
+
             gst_buffer_unmap(data.get(), &mapInfo);
             return true;
         }
@@ -311,7 +316,11 @@ GstContext* MediaPlayerPrivateGStreamerBase::requestGLContext(const gchar* conte
     if (!g_strcmp0(contextType, "gst.gl.app_context")) {
         GstContext* appContext = gst_context_new("gst.gl.app_context", TRUE);
         GstStructure* structure = gst_context_writable_structure(appContext);
+#if GST_CHECK_VERSION(1, 11, 0)
+        gst_structure_set(structure, "context", GST_TYPE_GL_CONTEXT, player->gstGLContext(), nullptr);
+#else
         gst_structure_set(structure, "context", GST_GL_TYPE_CONTEXT, player->gstGLContext(), nullptr);
+#endif
         return appContext;
     }
 
@@ -607,7 +616,7 @@ void MediaPlayerPrivateGStreamerBase::pushTextureToCompositor()
     std::unique_ptr<TextureMapperPlatformLayerBuffer> buffer = m_platformLayerProxy->getAvailableBuffer(size, GraphicsContext3D::DONT_CARE);
     if (UNLIKELY(!buffer)) {
         if (UNLIKELY(!m_context3D))
-            m_context3D = GraphicsContext3D::create(GraphicsContext3D::Attributes(), nullptr, GraphicsContext3D::RenderToCurrentGLContext);
+            m_context3D = GraphicsContext3D::create(GraphicsContext3DAttributes(), nullptr, GraphicsContext3D::RenderToCurrentGLContext);
 
         RefPtr<BitmapTexture> texture = adoptRef(new BitmapTextureGL(m_context3D.copyRef()));
         texture->reset(size, GST_VIDEO_INFO_HAS_ALPHA(&videoInfo) ? BitmapTexture::SupportsAlpha : BitmapTexture::NoFlag);
@@ -690,21 +699,9 @@ void MediaPlayerPrivateGStreamerBase::triggerRepaint(GstSample* sample)
 #endif
 }
 
-void MediaPlayerPrivateGStreamerBase::triggerDrain()
-{
-    WTF::GMutexLocker<GMutex> lock(m_sampleMutex);
-    m_videoSize = FloatSize();
-    m_sample = nullptr;
-}
-
 void MediaPlayerPrivateGStreamerBase::repaintCallback(MediaPlayerPrivateGStreamerBase* player, GstSample* sample)
 {
     player->triggerRepaint(sample);
-}
-
-void MediaPlayerPrivateGStreamerBase::drainCallback(MediaPlayerPrivateGStreamerBase* player)
-{
-    player->triggerDrain();
 }
 
 #if USE(GSTREAMER_GL)
@@ -1095,7 +1092,6 @@ GstElement* MediaPlayerPrivateGStreamerBase::createVideoSink()
         m_usingFallbackVideoSink = true;
         m_videoSink = webkitVideoSinkNew();
         g_signal_connect_swapped(m_videoSink.get(), "repaint-requested", G_CALLBACK(repaintCallback), this);
-        g_signal_connect_swapped(m_videoSink.get(), "drain", G_CALLBACK(drainCallback), this);
     }
 
     GstElement* videoSink = nullptr;

@@ -26,6 +26,7 @@
 #include "config.h"
 #include "InjectedBundleRangeHandle.h"
 
+#include "InjectedBundleNodeHandle.h"
 #include "ShareableBitmap.h"
 #include "WebImage.h"
 #include <JavaScriptCore/APICast.h>
@@ -96,6 +97,11 @@ Range* InjectedBundleRangeHandle::coreRange() const
     return m_range.get();
 }
 
+Ref<InjectedBundleNodeHandle> InjectedBundleRangeHandle::document()
+{
+    return InjectedBundleNodeHandle::getOrCreate(m_range->ownerDocument());
+}
+
 WebCore::IntRect InjectedBundleRangeHandle::boundingRectInWindowCoordinates() const
 {
     FloatRect boundingRect = m_range->absoluteBoundingRect();
@@ -151,7 +157,7 @@ PassRefPtr<WebImage> InjectedBundleRangeHandle::renderedImage(SnapshotOptions op
 
     frame->selection().setSelection(oldSelection);
 
-    return WebImage::create(backingStore);
+    return WebImage::create(backingStore.releaseNonNull());
 }
 
 } // namespace WebKit

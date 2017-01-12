@@ -59,7 +59,7 @@ static EncodedJSValue JSC_HOST_CALL constructSet(ExecState* exec)
     VM& vm = exec->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
 
-    JSGlobalObject* globalObject = asInternalFunction(exec->callee())->globalObject();
+    JSGlobalObject* globalObject = asInternalFunction(exec->jsCallee())->globalObject();
     Structure* setStructure = InternalFunction::createSubclassStructure(exec, exec->newTarget(), globalObject->setStructure());
     RETURN_IF_EXCEPTION(scope, encodedJSValue());
     JSSet* set = JSSet::create(exec, vm, setStructure);
@@ -68,14 +68,15 @@ static EncodedJSValue JSC_HOST_CALL constructSet(ExecState* exec)
     if (iterable.isUndefinedOrNull())
         return JSValue::encode(set);
 
-    JSValue adderFunction = set->get(exec, exec->propertyNames().add);
+    JSValue adderFunction = set->get(exec, vm.propertyNames->add);
     RETURN_IF_EXCEPTION(scope, encodedJSValue());
 
     CallData adderFunctionCallData;
     CallType adderFunctionCallType = getCallData(adderFunction, adderFunctionCallData);
-    if (adderFunctionCallType == CallType::None)
+    if (UNLIKELY(adderFunctionCallType == CallType::None))
         return JSValue::encode(throwTypeError(exec, scope));
 
+    scope.release();
     forEachInIterable(exec, iterable, [&](VM&, ExecState* exec, JSValue nextValue) {
         MarkedArgumentBuffer arguments;
         arguments.append(nextValue);

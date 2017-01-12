@@ -28,6 +28,7 @@
 #import <UIKit/UIApplication_Private.h>
 #import <UIKit/UIInterface_Private.h>
 #import <UIKit/UIScreen_Private.h>
+#import <UIKit/UIViewController_Private.h>
 
 #else
 
@@ -55,6 +56,10 @@
 
 @property (nonatomic, readonly) CGRect _referenceBounds;
 
+@end
+
+@interface UIViewController ()
++ (UIViewController *)viewControllerForView:(UIView *)view;
 @end
 
 #endif

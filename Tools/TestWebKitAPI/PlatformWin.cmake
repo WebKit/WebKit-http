@@ -50,13 +50,16 @@ set(TestWebCoreLib_SOURCES
     ${TESTWEBKITAPI_DIR}/Tests/WebCore/FloatRect.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebCore/FloatPoint.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebCore/FloatSize.cpp
+    ${TESTWEBKITAPI_DIR}/Tests/WebCore/GridPosition.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebCore/HTMLParserIdioms.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebCore/IntRect.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebCore/IntPoint.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebCore/IntSize.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebCore/LayoutUnit.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebCore/ParsedContentRange.cpp
+    ${TESTWEBKITAPI_DIR}/Tests/WebCore/SecurityOrigin.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebCore/SharedBuffer.cpp
+    ${TESTWEBKITAPI_DIR}/Tests/WebCore/SharedBufferTest.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebCore/TimeRanges.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebCore/TransformationMatrix.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebCore/URL.cpp

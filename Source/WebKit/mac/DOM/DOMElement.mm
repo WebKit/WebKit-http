@@ -442,23 +442,13 @@ DOMElement *kit(Element* value)
 - (void)webkitRequestFullScreen:(unsigned short)flags
 {
     JSMainThreadNullState state;
-    unwrap(*self).webkitRequestFullScreen(flags);
+    unwrap(*self).webkitRequestFullscreen();
 }
 
 - (void)webkitRequestFullscreen
 {
     JSMainThreadNullState state;
     unwrap(*self).webkitRequestFullscreen();
-}
-
-#endif
-
-#if ENABLE(POINTER_LOCK)
-
-- (void)requestPointerLock
-{
-    JSMainThreadNullState state;
-    unwrap(*self).requestPointerLock();
 }
 
 #endif

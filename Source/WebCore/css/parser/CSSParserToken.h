@@ -117,8 +117,8 @@ public:
     StringView value() const
     {
         if (m_valueIs8Bit)
-            return StringView(reinterpret_cast<const LChar*>(m_valueDataCharRaw), m_valueLength);
-        return StringView(reinterpret_cast<const UChar*>(m_valueDataCharRaw), m_valueLength);
+            return StringView(static_cast<const LChar*>(m_valueDataCharRaw), m_valueLength);
+        return StringView(static_cast<const UChar*>(m_valueDataCharRaw), m_valueLength);
     }
 
     UChar delimiter() const;
@@ -127,7 +127,7 @@ public:
     double numericValue() const;
     HashTokenType getHashTokenType() const { ASSERT(m_type == HashToken); return m_hashTokenType; }
     BlockType getBlockType() const { return static_cast<BlockType>(m_blockType); }
-    CSSPrimitiveValue::UnitTypes unitType() const { return static_cast<CSSPrimitiveValue::UnitTypes>(m_unit); }
+    CSSPrimitiveValue::UnitType unitType() const { return static_cast<CSSPrimitiveValue::UnitType>(m_unit); }
     UChar32 unicodeRangeStart() const { ASSERT(m_type == UnicodeRangeToken); return m_unicodeRange.start; }
     UChar32 unicodeRangeEnd() const { ASSERT(m_type == UnicodeRangeToken); return m_unicodeRange.end; }
     CSSValueID id() const;
@@ -146,13 +146,13 @@ private:
     {
         m_valueLength = string.length();
         m_valueIs8Bit = string.is8Bit();
-        m_valueDataCharRaw = m_valueIs8Bit ? static_cast<const void*>(string.characters8()) : static_cast<const void*>(string.characters16());
+        m_valueDataCharRaw = m_valueIs8Bit ? const_cast<void*>(static_cast<const void*>(string.characters8())) : const_cast<void*>(static_cast<const void*>(string.characters16()));
     }
     unsigned m_type : 6; // CSSParserTokenType
     unsigned m_blockType : 2; // BlockType
     unsigned m_numericValueType : 1; // NumericValueType
     unsigned m_numericSign : 2; // NumericSign
-    unsigned m_unit : 7; // CSSPrimitiveValue::UnitTypes
+    unsigned m_unit : 7; // CSSPrimitiveValue::UnitType
 
     bool valueDataCharRawEqual(const CSSParserToken& other) const;
 
@@ -160,7 +160,7 @@ private:
     // tightly with the rest of this object for a smaller object size.
     bool m_valueIs8Bit : 1;
     unsigned m_valueLength;
-    const void* m_valueDataCharRaw; // Either LChar* or UChar*.
+    void* m_valueDataCharRaw; // Either LChar* or UChar*.
 
     union {
         UChar m_delimiter;

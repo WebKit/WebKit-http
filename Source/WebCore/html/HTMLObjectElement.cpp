@@ -2,7 +2,7 @@
  * Copyright (C) 1999 Lars Knoll (knoll@kde.org)
  *           (C) 1999 Antti Koivisto (koivisto@kde.org)
  *           (C) 2000 Stefan Schimanski (1Stein@gmx.de)
- * Copyright (C) 2004, 2005, 2006, 2007, 2008, 2009, 2011 Apple Inc. All rights reserved.
+ * Copyright (C) 2004-2017 Apple Inc. All rights reserved.
  * Copyright (C) 2008 Nokia Corporation and/or its subsidiary(-ies)
  *
  * This library is free software; you can redistribute it and/or
@@ -445,7 +445,7 @@ void HTMLObjectElement::updateDocNamedItem()
             isNamedItem = false;
         child = child->nextSibling();
     }
-    if (isNamedItem != wasNamedItem && inDocument() && is<HTMLDocument>(document())) {
+    if (isNamedItem != wasNamedItem && inDocument() && !isInShadowTree() && is<HTMLDocument>(document())) {
         HTMLDocument& document = downcast<HTMLDocument>(this->document());
 
         const AtomicString& id = getIdAttribute();
@@ -498,7 +498,7 @@ void HTMLObjectElement::addSubresourceAttributeURLs(ListHashSet<URL>& urls) cons
         addSubresourceURL(urls, document().completeURL(useMap));
 }
 
-void HTMLObjectElement::didMoveToNewDocument(Document* oldDocument)
+void HTMLObjectElement::didMoveToNewDocument(Document& oldDocument)
 {
     FormAssociatedElement::didMoveToNewDocument(oldDocument);
     HTMLPlugInImageElement::didMoveToNewDocument(oldDocument);
@@ -517,11 +517,6 @@ bool HTMLObjectElement::appendFormData(FormDataList& encoding, bool)
         return false;
     encoding.appendData(name(), value);
     return true;
-}
-
-HTMLFormElement* HTMLObjectElement::virtualForm() const
-{
-    return FormAssociatedElement::form();
 }
 
 bool HTMLObjectElement::canContainRangeEndPoint() const

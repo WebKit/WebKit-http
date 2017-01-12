@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WebPreferencesDefinitions_h
-#define WebPreferencesDefinitions_h
+#pragma once
 
 #if PLATFORM(GTK)
 #define DEFAULT_WEBKIT_TABSTOLINKS_ENABLED true
@@ -52,6 +51,12 @@
 #define DEFAULT_HIDDEN_PAGE_DOM_TIMER_THROTTLING_ENABLED false
 #define DEFAULT_HIDDEN_PAGE_CSS_ANIMATION_SUSPENSION_ENABLED false
 #define DEFAULT_PDFPLUGIN_ENABLED false
+#endif
+
+#if PLATFORM(COCOA)
+#define DEFAULT_HTML_INTERACTIVE_FORM_VALIDATION_ENABLED true
+#else
+#define DEFAULT_HTML_INTERACTIVE_FORM_VALIDATION_ENABLED false
 #endif
 
 #if PLATFORM(IOS)
@@ -146,6 +151,7 @@
     macro(AllowFileAccessFromFileURLs, allowFileAccessFromFileURLs, Bool, bool, false, "", "") \
     macro(AVFoundationEnabled, isAVFoundationEnabled, Bool, bool, true, "", "") \
     macro(AVFoundationNSURLSessionEnabled, isAVFoundationNSURLSessionEnabled, Bool, bool, true, "", "") \
+    macro(GStreamerEnabled, isGStreamerEnabled, Bool, bool, true, "", "") \
     macro(RequiresUserGestureForMediaPlayback, requiresUserGestureForMediaPlayback, Bool, bool, false, "", "") \
     macro(RequiresUserGestureForVideoPlayback, requiresUserGestureForVideoPlayback, Bool, bool, false, "", "") \
     macro(RequiresUserGestureForAudioPlayback, requiresUserGestureForAudioPlayback, Bool, bool, DEFAULT_REQUIRES_USER_GESTURE_FOR_AUDIO_PLAYBACK, "", "") \
@@ -209,6 +215,7 @@
     macro(SubpixelCSSOMElementMetricsEnabled, subpixelCSSOMElementMetricsEnabled, Bool, bool, false, "", "") \
     macro(UseGiantTiles, useGiantTiles, Bool, bool, false, "", "") \
     macro(MediaStreamEnabled, mediaStreamEnabled, Bool, bool, false, "", "") \
+    macro(PeerConnectionEnabled, peerConnectionEnabled, Bool, bool, false, "", "") \
     macro(UseLegacyTextAlignPositionedElementBehavior, useLegacyTextAlignPositionedElementBehavior, Bool, bool, false, "", "") \
     macro(SpatialNavigationEnabled, spatialNavigationEnabled, Bool, bool, false, "", "") \
     macro(MediaSourceEnabled, mediaSourceEnabled, Bool, bool, true, "", "") \
@@ -223,7 +230,7 @@
     macro(EnableInheritURIQueryComponent, enableInheritURIQueryComponent, Bool, bool, false, "", "") \
     macro(ServiceControlsEnabled, serviceControlsEnabled, Bool, bool, false, "", "") \
     macro(NewBlockInsideInlineModelEnabled, newBlockInsideInlineModelEnabled, Bool, bool, false, "", "") \
-    macro(NewCSSParserEnabled, newCSSParserEnabled, Bool, bool, false, "", "") \
+    macro(DeferredCSSParserEnabled, deferredCSSParserEnabled, Bool, bool, false, "", "") \
     macro(HTTPEquivEnabled, httpEquivEnabled, Bool, bool, true, "", "") \
     macro(MockCaptureDevicesEnabled, mockCaptureDevicesEnabled, Bool, bool, false, "", "") \
     macro(MediaCaptureRequiresSecureConnection, mediaCaptureRequiresSecureConnection, Bool, bool, true, "", "") \
@@ -234,10 +241,15 @@
     macro(SelectionPaintingWithoutSelectionGapsEnabled, selectionPaintingWithoutSelectionGapsEnabled, Bool, bool, DEFAULT_SELECTION_PAINTING_WITHOUT_SELECTION_GAPS_ENABLED, "", "") \
     macro(ApplePayEnabled, applePayEnabled, Bool, bool, false, "", "") \
     macro(ApplePayCapabilityDisclosureAllowed, applePayCapabilityDisclosureAllowed, Bool, bool, true, "", "") \
-    macro(VisualViewportEnabled, visualViewportEnabled, Bool, bool, false, "", "") \
+    macro(VisualViewportEnabled, visualViewportEnabled, Bool, bool, true, "", "") \
     macro(NeedsStorageAccessFromFileURLsQuirk, needsStorageAccessFromFileURLsQuirk, Bool, bool, true, "", "") \
-    macro(AsyncImageDecodingEnabled, asyncImageDecodingEnabled, Bool, bool, true, "", "") \
+    macro(LargeImageAsyncDecodingEnabled, largeImageAsyncDecodingEnabled, Bool, bool, true, "", "") \
+    macro(AnimatedImageAsyncDecodingEnabled, animatedImageAsyncDecodingEnabled, Bool, bool, true, "", "") \
     macro(CustomElementsEnabled, customElementsEnabled, Bool, bool, true, "", "") \
+    macro(EncryptedMediaAPIEnabled, encryptedMediaAPIEnabled, Bool, bool, false, "", "") \
+    macro(IntersectionObserverEnabled, intersectionObserverEnabled, Bool, bool, false, "Intersection Observer", "Enable Intersection Observer support") \
+    macro(InteractiveFormValidationEnabled, interactiveFormValidationEnabled, Bool, bool, DEFAULT_HTML_INTERACTIVE_FORM_VALIDATION_ENABLED, "HTML Interactive Form Validation", "HTML interactive form validation") \
+    macro(ShouldSuppressKeyboardInputDuringProvisionalNavigation, shouldSuppressKeyboardInputDuringProvisionalNavigation, Bool, bool, false, "", "") \
     \
 
 #define FOR_EACH_WEBKIT_DOUBLE_PREFERENCE(macro) \
@@ -305,11 +317,10 @@
 #define FOR_EACH_WEBKIT_EXPERIMENTAL_FEATURE_PREFERENCE(macro) \
     macro(CSSGridLayoutEnabled, cssGridLayoutEnabled, Bool, bool, DEFAULT_EXPERIMENTAL_FEATURES_ENABLED, "CSS Grid", "CSS Grid Layout Module support") \
     macro(SpringTimingFunctionEnabled, springTimingFunctionEnabled, Bool, bool, DEFAULT_EXPERIMENTAL_FEATURES_ENABLED, "CSS Spring Animations", "CSS Spring Animation prototype") \
-    macro(InteractiveFormValidationEnabled, interactiveFormValidationEnabled, Bool, bool, false, "HTML Interactive Form Validation", "HTML interactive form validation prototype") \
     macro(GamepadsEnabled, gamepadsEnabled, Bool, bool, DEFAULT_EXPERIMENTAL_FEATURES_ENABLED, "Gamepads", "Web Gamepad API support") \
     macro(ModernMediaControlsEnabled, modernMediaControlsEnabled, Bool, bool, false, "Modern Media Controls", "Use modern media controls look") \
-    macro(VariationFontsEnabled, variationFontsEnabled, Bool, bool, DEFAULT_EXPERIMENTAL_FEATURES_ENABLED, "Variation Fonts", "Enable variation fonts") \
     macro(InputEventsEnabled, inputEventsEnabled, Bool, bool, DEFAULT_EXPERIMENTAL_FEATURES_ENABLED, "Input Events", "Enable InputEvents support") \
+    macro(SubtleCryptoEnabled, subtleCryptoEnabled, Bool, bool, DEFAULT_EXPERIMENTAL_FEATURES_ENABLED, "SubtleCrypto", "Enable SubtleCrypto support") \
     macro(WebGL2Enabled, webGL2Enabled, Bool, bool, DEFAULT_EXPERIMENTAL_FEATURES_ENABLED, "WebGL 2.0", "WebGL 2 prototype") \
     \
 
@@ -371,5 +382,3 @@
     FOR_EACH_WEBKIT_STRING_PREFERENCE_NOT_IN_WEBCORE(macro) \
     \
 
-
-#endif // WebPreferencesDefinitions_h

@@ -65,7 +65,7 @@ void LargeAllocation::shrink()
     m_weakSet.shrink();
 }
 
-void LargeAllocation::visitWeakSet(HeapRootVisitor& visitor)
+void LargeAllocation::visitWeakSet(SlotVisitor& visitor)
 {
     m_weakSet.visit(visitor);
 }
@@ -107,6 +107,15 @@ void LargeAllocation::dump(PrintStream& out) const
 {
     out.print(RawPointer(this), ":(cell at ", RawPointer(cell()), " with size ", m_cellSize, " and attributes ", m_attributes, ")");
 }
+
+#if !ASSERT_DISABLED
+void LargeAllocation::assertValidCell(VM& vm, HeapCell* cell) const
+{
+    ASSERT(&vm == this->vm());
+    ASSERT(cell == this->cell());
+    ASSERT(m_hasValidCell);
+}
+#endif
 
 } // namespace JSC
 

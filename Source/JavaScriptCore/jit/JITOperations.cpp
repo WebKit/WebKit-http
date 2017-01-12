@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -70,7 +70,6 @@
 #include "TestRunnerUtils.h"
 #include "TypeProfilerLog.h"
 #include "VMInlines.h"
-#include "WebAssemblyCodeBlock.h"
 #include <wtf/InlineASM.h>
 
 namespace JSC {
@@ -571,7 +570,7 @@ static void directPutByVal(CallFrame* callFrame, JSObject* baseObject, JSValue s
     auto property = subscript.toPropertyKey(callFrame);
     RETURN_IF_EXCEPTION(scope, void());
 
-    if (Optional<uint32_t> index = parseIndex(property)) {
+    if (std::optional<uint32_t> index = parseIndex(property)) {
         byValInfo->tookSlowPath = true;
         baseObject->putDirectIndex(callFrame, index.value(), value, 0, isStrictMode ? PutDirectIndexShouldThrow : PutDirectIndexShouldNotThrow);
         return;
@@ -610,7 +609,7 @@ static OptimizationResult tryPutByValOptimize(ExecState* exec, JSValue baseValue
             JITArrayMode arrayMode = jitArrayModeForStructure(structure);
             if (jitArrayModePermitsPut(arrayMode) && arrayMode != byValInfo->arrayMode) {
                 CodeBlock* codeBlock = exec->codeBlock();
-                ConcurrentJITLocker locker(codeBlock->m_lock);
+                ConcurrentJSLocker locker(codeBlock->m_lock);
                 byValInfo->arrayProfile->computeUpdatedPrediction(locker, codeBlock, structure);
 
                 JIT::compilePutByVal(&vm, exec->codeBlock(), byValInfo, returnAddress, arrayMode);
@@ -638,7 +637,7 @@ static OptimizationResult tryPutByValOptimize(ExecState* exec, JSValue baseValue
                 }
             } else {
                 CodeBlock* codeBlock = exec->codeBlock();
-                ConcurrentJITLocker locker(codeBlock->m_lock);
+                ConcurrentJSLocker locker(codeBlock->m_lock);
                 byValInfo->seen = true;
                 byValInfo->cachedId = propertyName;
                 if (subscript.isSymbol())
@@ -694,7 +693,7 @@ static OptimizationResult tryDirectPutByValOptimize(ExecState* exec, JSObject* o
             JITArrayMode arrayMode = jitArrayModeForStructure(structure);
             if (jitArrayModePermitsPut(arrayMode) && arrayMode != byValInfo->arrayMode) {
                 CodeBlock* codeBlock = exec->codeBlock();
-                ConcurrentJITLocker locker(codeBlock->m_lock);
+                ConcurrentJSLocker locker(codeBlock->m_lock);
                 byValInfo->arrayProfile->computeUpdatedPrediction(locker, codeBlock, structure);
 
                 JIT::compileDirectPutByVal(&vm, exec->codeBlock(), byValInfo, returnAddress, arrayMode);
@@ -720,7 +719,7 @@ static OptimizationResult tryDirectPutByValOptimize(ExecState* exec, JSObject* o
                 }
             } else {
                 CodeBlock* codeBlock = exec->codeBlock();
-                ConcurrentJITLocker locker(codeBlock->m_lock);
+                ConcurrentJSLocker locker(codeBlock->m_lock);
                 byValInfo->seen = true;
                 byValInfo->cachedId = propertyName;
                 if (subscript.isSymbol())
@@ -895,18 +894,6 @@ SlowPathReturnType JIT_OPERATION operationLinkCall(ExecState* execCallee, CallLi
     CodeBlock* codeBlock = 0;
     if (executable->isHostFunction()) {
         codePtr = executable->entrypointFor(kind, MustCheckArity);
-#if ENABLE(WEBASSEMBLY)
-    } else if (executable->isWebAssemblyExecutable()) {
-        WebAssemblyExecutable* webAssemblyExecutable = static_cast<WebAssemblyExecutable*>(executable);
-        codeBlock = webAssemblyExecutable->codeBlockForCall();
-        ASSERT(codeBlock);
-        ArityCheckMode arity;
-        if (execCallee->argumentCountIncludingThis() < static_cast<size_t>(codeBlock->numParameters()))
-            arity = MustCheckArity;
-        else
-            arity = ArityCheckNotRequired;
-        codePtr = webAssemblyExecutable->entrypointFor(kind, arity);
-#endif
     } else {
         FunctionExecutable* functionExecutable = static_cast<FunctionExecutable*>(executable);
 
@@ -1015,37 +1002,22 @@ inline SlowPathReturnType virtualForWithFunction(
     JSScope* scope = function->scopeUnchecked();
     ExecutableBase* executable = function->executable();
     if (UNLIKELY(!executable->hasJITCodeFor(kind))) {
-        bool isWebAssemblyExecutable = false;
-#if ENABLE(WEBASSEMBLY)
-        isWebAssemblyExecutable = executable->isWebAssemblyExecutable();
-#endif
-        if (!isWebAssemblyExecutable) {
-            FunctionExecutable* functionExecutable = static_cast<FunctionExecutable*>(executable);
+        FunctionExecutable* functionExecutable = static_cast<FunctionExecutable*>(executable);
 
-            if (!isCall(kind) && functionExecutable->constructAbility() == ConstructAbility::CannotConstruct) {
-                throwException(exec, throwScope, createNotAConstructorError(exec, function));
-                return encodeResult(
-                    vm->getCTIStub(throwExceptionFromCallSlowPathGenerator).code().executableAddress(),
-                    reinterpret_cast<void*>(KeepTheFrame));
-            }
+        if (!isCall(kind) && functionExecutable->constructAbility() == ConstructAbility::CannotConstruct) {
+            throwException(exec, throwScope, createNotAConstructorError(exec, function));
+            return encodeResult(
+                vm->getCTIStub(throwExceptionFromCallSlowPathGenerator).code().executableAddress(),
+                reinterpret_cast<void*>(KeepTheFrame));
+        }
 
-            CodeBlock** codeBlockSlot = execCallee->addressOfCodeBlock();
-            JSObject* error = functionExecutable->prepareForExecution<FunctionExecutable>(*vm, function, scope, kind, *codeBlockSlot);
-            if (error) {
-                throwException(exec, throwScope, error);
-                return encodeResult(
-                    vm->getCTIStub(throwExceptionFromCallSlowPathGenerator).code().executableAddress(),
-                    reinterpret_cast<void*>(KeepTheFrame));
-            }
-        } else {
-#if ENABLE(WEBASSEMBLY)
-            if (!isCall(kind)) {
-                throwException(exec, throwScope, createNotAConstructorError(exec, function));
-                return encodeResult(
-                    vm->getCTIStub(throwExceptionFromCallSlowPathGenerator).code().executableAddress(),
-                    reinterpret_cast<void*>(KeepTheFrame));
-            }
-#endif
+        CodeBlock** codeBlockSlot = execCallee->addressOfCodeBlock();
+        JSObject* error = functionExecutable->prepareForExecution<FunctionExecutable>(*vm, function, scope, kind, *codeBlockSlot);
+        if (error) {
+            throwException(exec, throwScope, error);
+            return encodeResult(
+                vm->getCTIStub(throwExceptionFromCallSlowPathGenerator).code().executableAddress(),
+                reinterpret_cast<void*>(KeepTheFrame));
         }
     }
     return encodeResult(executable->entrypointFor(
@@ -1648,13 +1620,13 @@ static bool canAccessArgumentIndexQuickly(JSObject& object, uint32_t index)
     switch (object.structure()->typeInfo().type()) {
     case DirectArgumentsType: {
         DirectArguments* directArguments = jsCast<DirectArguments*>(&object);
-        if (directArguments->canAccessArgumentIndexQuicklyInDFG(index))
+        if (directArguments->isMappedArgumentInDFG(index))
             return true;
         break;
     }
     case ScopedArgumentsType: {
         ScopedArguments* scopedArguments = jsCast<ScopedArguments*>(&object);
-        if (scopedArguments->canAccessArgumentIndexQuicklyInDFG(index))
+        if (scopedArguments->isMappedArgumentInDFG(index))
             return true;
         break;
     }
@@ -1743,7 +1715,7 @@ static OptimizationResult tryGetByValOptimize(ExecState* exec, JSValue baseValue
                 // If we reached this case, we got an interesting array mode we did not expect when we compiled.
                 // Let's update the profile to do better next time.
                 CodeBlock* codeBlock = exec->codeBlock();
-                ConcurrentJITLocker locker(codeBlock->m_lock);
+                ConcurrentJSLocker locker(codeBlock->m_lock);
                 byValInfo->arrayProfile->computeUpdatedPrediction(locker, codeBlock, structure);
 
                 JIT::compileGetByVal(&vm, exec->codeBlock(), byValInfo, returnAddress, arrayMode);
@@ -1771,7 +1743,7 @@ static OptimizationResult tryGetByValOptimize(ExecState* exec, JSValue baseValue
                 }
             } else {
                 CodeBlock* codeBlock = exec->codeBlock();
-                ConcurrentJITLocker locker(codeBlock->m_lock);
+                ConcurrentJSLocker locker(codeBlock->m_lock);
                 byValInfo->seen = true;
                 byValInfo->cachedId = propertyName;
                 if (subscript.isSymbol())
@@ -2201,8 +2173,8 @@ char* JIT_OPERATION operationReallocateButterflyToHavePropertyStorageWithInitial
     NativeCallFrameTracer tracer(&vm, exec);
 
     ASSERT(!object->structure()->outOfLineCapacity());
-    Butterfly* result = object->growOutOfLineStorage(vm, 0, initialOutOfLineCapacity);
-    object->setButterflyWithoutChangingStructure(vm, result);
+    Butterfly* result = object->allocateMoreOutOfLineStorage(vm, 0, initialOutOfLineCapacity);
+    object->nukeStructureAndSetButterfly(vm, object->structureID(), result);
     return reinterpret_cast<char*>(result);
 }
 
@@ -2211,16 +2183,9 @@ char* JIT_OPERATION operationReallocateButterflyToGrowPropertyStorage(ExecState*
     VM& vm = exec->vm();
     NativeCallFrameTracer tracer(&vm, exec);
 
-    Butterfly* result = object->growOutOfLineStorage(vm, object->structure()->outOfLineCapacity(), newSize);
-    object->setButterflyWithoutChangingStructure(vm, result);
+    Butterfly* result = object->allocateMoreOutOfLineStorage(vm, object->structure()->outOfLineCapacity(), newSize);
+    object->nukeStructureAndSetButterfly(vm, object->structureID(), result);
     return reinterpret_cast<char*>(result);
-}
-
-void JIT_OPERATION operationFlushWriteBarrierBuffer(ExecState* exec, JSCell* cell)
-{
-    VM* vm = &exec->vm();
-    NativeCallFrameTracer tracer(vm, exec);
-    vm->heap.flushWriteBarrierBuffer(cell);
 }
 
 void JIT_OPERATION operationOSRWriteBarrier(ExecState* exec, JSCell* cell)
@@ -2267,9 +2232,11 @@ void JIT_OPERATION operationExceptionFuzz(ExecState* exec)
 {
     VM* vm = &exec->vm();
     NativeCallFrameTracer tracer(vm, exec);
+    auto scope = DECLARE_THROW_SCOPE(*vm);
+    UNUSED_PARAM(scope);
 #if COMPILER(GCC_OR_CLANG)
     void* returnPC = __builtin_return_address(0);
-    doExceptionFuzzing(exec, "JITOperations", returnPC);
+    doExceptionFuzzing(exec, scope, "JITOperations", returnPC);
 #endif // COMPILER(GCC_OR_CLANG)
 }
 
@@ -2836,24 +2803,6 @@ SYMBOL_STRING(getHostCallReturnValue) ":" "\n"
     LOAD_FUNCTION_TO_T9(getHostCallReturnValueWithExecState)
     "addi $a0, $sp, -8" "\n"
     "b " LOCAL_REFERENCE(getHostCallReturnValueWithExecState) "\n"
-);
-
-#elif COMPILER(GCC_OR_CLANG) && CPU(SH4)
-
-#define SH4_SCRATCH_REGISTER "r11"
-
-asm (
-".text" "\n"
-".globl " SYMBOL_STRING(getHostCallReturnValue) "\n"
-HIDE_SYMBOL(getHostCallReturnValue) "\n"
-SYMBOL_STRING(getHostCallReturnValue) ":" "\n"
-    "mov r15, r4" "\n"
-    "add -8, r4" "\n"
-    "mov.l 2f, " SH4_SCRATCH_REGISTER "\n"
-    "braf " SH4_SCRATCH_REGISTER "\n"
-    "nop" "\n"
-    "1: .balign 4" "\n"
-    "2: .long " LOCAL_REFERENCE(getHostCallReturnValueWithExecState) "-1b\n"
 );
 
 #elif COMPILER(MSVC) && CPU(X86)

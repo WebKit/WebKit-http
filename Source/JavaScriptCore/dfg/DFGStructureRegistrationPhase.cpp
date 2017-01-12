@@ -71,9 +71,7 @@ public:
             if (!block)
                 continue;
         
-            for (unsigned nodeIndex = 0; nodeIndex < block->size(); ++nodeIndex) {
-                Node* node = block->at(nodeIndex);
-            
+            for (auto* node : *block) {
                 switch (node->op()) {
                 case CheckStructure:
                     assertAreRegistered(node->structureSet());
@@ -176,6 +174,9 @@ public:
                     break;
                 case NewGeneratorFunction:
                     registerStructure(m_graph.globalObjectFor(node->origin.semantic)->generatorFunctionStructure());
+                    break;
+                case NewAsyncFunction:
+                    registerStructure(m_graph.globalObjectFor(node->origin.semantic)->asyncFunctionStructure());
                     break;
 
                 default:

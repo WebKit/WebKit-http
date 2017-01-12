@@ -1,0 +1,5 @@
+PASS successfullyParsed is true
+
+TEST COMPLETE
+PASS finalCaretRect.top - initialCaretRect.top is 500
+

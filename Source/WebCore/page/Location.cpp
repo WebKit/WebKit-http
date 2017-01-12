@@ -86,8 +86,7 @@ String Location::host() const
 
     // Note: this is the IE spec. The NS spec swaps the two, it says
     // "The hostname property is the concatenation of the host and port properties, separated by a colon."
-    const URL& url = this->url();
-    return url.port() ? url.host() + ":" + String::number(url.port().value()) : url.host();
+    return url().hostAndPort();
 }
 
 String Location::hostname() const
@@ -132,13 +131,13 @@ String Location::origin() const
     return SecurityOrigin::create(url())->toString();
 }
 
-Vector<String> Location::ancestorOrigins() const
+Ref<DOMStringList> Location::ancestorOrigins() const
 {
-    Vector<String> origins;
+    auto origins = DOMStringList::create();
     if (!m_frame)
         return origins;
     for (Frame* frame = m_frame->tree().parent(); frame; frame = frame->tree().parent())
-        origins.append(frame->document()->securityOrigin()->toString());
+        origins->append(frame->document()->securityOrigin()->toString());
     return origins;
 }
 

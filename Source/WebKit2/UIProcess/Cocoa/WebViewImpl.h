@@ -43,6 +43,7 @@
 OBJC_CLASS NSImmediateActionGestureRecognizer;
 OBJC_CLASS NSTextInputContext;
 OBJC_CLASS NSView;
+OBJC_CLASS WKAccessibilitySettingsObserver;
 OBJC_CLASS WKBrowsingContextController;
 OBJC_CLASS WKEditorUndoTargetObjC;
 OBJC_CLASS WKFullScreenWindowController;
@@ -169,7 +170,7 @@ public:
     bool automaticallyAdjustsContentInsets() const { return m_automaticallyAdjustsContentInsets; }
     void updateContentInsetsIfAutomatic();
     void setTopContentInset(CGFloat);
-    CGFloat topContentInset() const { return m_topContentInset; }
+    CGFloat topContentInset() const;
 
     void prepareContentInRect(CGRect);
     void updateViewExposedRect();
@@ -208,6 +209,8 @@ public:
     bool shouldDelayWindowOrderingForEvent(NSEvent *);
     bool windowResizeMouseLocationIsInVisibleScrollerThumb(CGPoint);
 
+    void accessibilitySettingsDidChange();
+
     // -[NSView mouseDownCanMoveWindow] returns YES when the NSView is transparent,
     // but we don't want a drag in the NSView to move the window, even if it's transparent.
     static bool mouseDownCanMoveWindow() { return false; }
@@ -227,8 +230,8 @@ public:
     NSColor *underlayColor() const;
     NSColor *pageExtendedBackgroundColor() const;
 
-    void setOverlayScrollbarStyle(WTF::Optional<WebCore::ScrollbarOverlayStyle> scrollbarStyle);
-    WTF::Optional<WebCore::ScrollbarOverlayStyle> overlayScrollbarStyle() const;
+    void setOverlayScrollbarStyle(std::optional<WebCore::ScrollbarOverlayStyle> scrollbarStyle);
+    std::optional<WebCore::ScrollbarOverlayStyle> overlayScrollbarStyle() const;
 
     void beginDeferringViewInWindowChanges();
     // FIXME: Merge these two?
@@ -490,7 +493,6 @@ public:
 
     void forceRequestCandidatesForTesting();
     bool shouldRequestCandidates() const;
-    void showCandidates(NSArray *candidates, NSString *, NSRect rectOfTypedString, NSRange selectedRange, NSView *, void (^completionHandler)(NSTextCheckingResult *acceptedCandidate));
 
     bool windowIsFrontWindowUnderMouse(NSEvent *);
 
@@ -538,10 +540,11 @@ private:
     RetainPtr<NSTouchBar> m_currentTouchBar;
     RetainPtr<NSTouchBar> m_richTextTouchBar;
     RetainPtr<NSTouchBar> m_plainTextTouchBar;
+    RetainPtr<NSTouchBar> m_passwordTextTouchBar;
     RetainPtr<WKTextTouchBarItemController> m_textTouchBarItemController;
     RetainPtr<NSCandidateListTouchBarItem> m_richTextCandidateListTouchBarItem;
     RetainPtr<NSCandidateListTouchBarItem> m_plainTextCandidateListTouchBarItem;
-    RetainPtr<NSArray> m_emptyCandidatesArray;
+    RetainPtr<NSCandidateListTouchBarItem> m_passwordTextCandidateListTouchBarItem;
     RetainPtr<WebPlaybackControlsManager> m_playbackControlsManager;
     RetainPtr<NSCustomTouchBarItem> m_exitFullScreenButton;
 
@@ -579,6 +582,7 @@ private:
 
     bool mightBeginDragWhileInactive();
     bool mightBeginScrollWhileInactive();
+    void createSandboxExtensionsIfNeeded(const Vector<String>& files, SandboxExtension::Handle&, SandboxExtension::HandleArray& handles);
 
 #if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200
     void handleRequestedCandidates(NSInteger sequenceNumber, NSArray<NSTextCheckingResult *> *candidates);
@@ -602,7 +606,7 @@ private:
     bool m_windowOcclusionDetectionEnabled { true };
 
     bool m_automaticallyAdjustsContentInsets { false };
-    CGFloat m_topContentInset { 0 };
+    CGFloat m_pendingTopContentInset { 0 };
     bool m_didScheduleSetTopContentInset { false };
 
     CGSize m_resizeScrollOffset { 0, 0 };
@@ -631,6 +635,7 @@ private:
 #endif
 
     RetainPtr<WKWindowVisibilityObserver> m_windowVisibilityObserver;
+    RetainPtr<WKAccessibilitySettingsObserver> m_accessibilitySettingsObserver;
 
     bool m_shouldDeferViewInWindowChanges { false };
     bool m_viewInWindowChangeWasDeferred { false };
@@ -682,7 +687,7 @@ private:
     String m_promisedFilename;
     String m_promisedURL;
 
-    WTF::Optional<NSInteger> m_spellCheckerDocumentTag;
+    std::optional<NSInteger> m_spellCheckerDocumentTag;
 
     CGFloat m_totalHeightOfBanners { 0 };
 

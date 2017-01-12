@@ -75,17 +75,6 @@ class YarrGenerator : private MacroAssembler {
 
     static const RegisterID returnRegister = MIPSRegisters::v0;
     static const RegisterID returnRegister2 = MIPSRegisters::v1;
-#elif CPU(SH4)
-    static const RegisterID input = SH4Registers::r4;
-    static const RegisterID index = SH4Registers::r5;
-    static const RegisterID length = SH4Registers::r6;
-    static const RegisterID output = SH4Registers::r7;
-
-    static const RegisterID regT0 = SH4Registers::r0;
-    static const RegisterID regT1 = SH4Registers::r1;
-
-    static const RegisterID returnRegister = SH4Registers::r0;
-    static const RegisterID returnRegister2 = SH4Registers::r1;
 #elif CPU(X86)
     static const RegisterID input = X86Registers::eax;
     static const RegisterID index = X86Registers::edx;
@@ -2610,9 +2599,6 @@ class YarrGenerator : private MacroAssembler {
         push(ARMRegisters::r4);
         push(ARMRegisters::r5);
         push(ARMRegisters::r6);
-#elif CPU(SH4)
-        push(SH4Registers::r11);
-        push(SH4Registers::r13);
 #elif CPU(MIPS)
         m_assembler.addiu(stackPointerRegister, stackPointerRegister, -8);
         m_assembler.sw(returnAddressRegister, stackPointerRegister, 4);
@@ -2649,9 +2635,6 @@ class YarrGenerator : private MacroAssembler {
         pop(ARMRegisters::r6);
         pop(ARMRegisters::r5);
         pop(ARMRegisters::r4);
-#elif CPU(SH4)
-        pop(SH4Registers::r13);
-        pop(SH4Registers::r11);
 #elif CPU(MIPS)
         move(framePointerRegister, stackPointerRegister);
         m_assembler.lw(cmpTempRegister, stackPointerRegister, -4);

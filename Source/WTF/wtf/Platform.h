@@ -162,12 +162,18 @@
     || defined(_X86_)    \
     || defined(__THW_INTEL)
 #define WTF_CPU_X86 1
+
+#if defined(__SSE2__) || (defined(_M_IX86_FP) && _M_IX86_FP >= 2)
+#define WTF_CPU_X86_SSE2 1
+#endif
+
 #endif
 
 /* CPU(X86_64) - AMD64 / Intel64 / x86_64 64-bit */
 #if   defined(__x86_64__) \
     || defined(_M_X64)
 #define WTF_CPU_X86_64 1
+#define WTF_CPU_X86_SSE2 1
 #endif
 
 /* CPU(ARM64) - Apple */
@@ -553,6 +559,12 @@
 #define USE_PLUGIN_HOST_PROCESS 1
 #endif
 
+#if __MAC_OS_X_VERSION_MIN_REQUIRED >= 101100
+#define HAVE_NSSCROLLING_FILTERS 1
+#else
+#define HAVE_NSSCROLLING_FILTERS 0
+#endif
+
 /* OS X defines a series of platform macros for debugging. */
 /* Some of them are really annoying because they use common names (e.g. check()). */
 /* Disable those macros so that we are not limited in how we name methods and functions. */
@@ -628,12 +640,6 @@
 #if OS(UNIX)
 #define USE_PTHREADS 1
 #endif /* OS(UNIX) */
-
-#if !defined(HAVE_VASPRINTF)
-#if !COMPILER(MSVC) && !COMPILER(MINGW)
-#define HAVE_VASPRINTF 1
-#endif
-#endif
 
 #if OS(DARWIN)
 #define HAVE_DISPATCH_H 1
@@ -740,18 +746,18 @@
 #if (CPU(ARM_THUMB2) || CPU(ARM64)) && (PLATFORM(IOS) || PLATFORM(GTK) || PLATFORM(EFL) || PLATFORM(WPE))
 #define ENABLE_DFG_JIT 1
 #endif
-/* Enable the DFG JIT on ARM, MIPS and SH4. */
-#if CPU(ARM_TRADITIONAL) || CPU(MIPS) || CPU(SH4)
+/* Enable the DFG JIT on ARM and MIPS. */
+#if CPU(ARM_TRADITIONAL) || CPU(MIPS)
 #define ENABLE_DFG_JIT 1
 #endif
 #endif
 
-/* Concurrent JIT only works on 64-bit platforms because it requires that
+/* Concurrent JS only works on 64-bit platforms because it requires that
    values get stored to atomically. This is trivially true on 64-bit platforms,
    but not true at all on 32-bit platforms where values are composed of two
    separate sub-values. */
 #if ENABLE(DFG_JIT) && USE(JSVALUE64)
-#define ENABLE_CONCURRENT_JIT 1
+#define ENABLE_CONCURRENT_JS 1
 #endif
 
 /* This controls whether B3 is built. B3 is needed for FTL JIT and WebAssembly */

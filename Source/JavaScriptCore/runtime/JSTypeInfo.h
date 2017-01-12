@@ -48,17 +48,19 @@ static const unsigned OverridesGetPropertyNames = 1 << 9;
 static const unsigned ProhibitsPropertyCaching = 1 << 10;
 static const unsigned GetOwnPropertySlotIsImpure = 1 << 11;
 static const unsigned NewImpurePropertyFiresWatchpoints = 1 << 12;
+static const unsigned IsImmutablePrototypeExoticObject = 1 << 13;
 static const unsigned GetOwnPropertySlotIsImpureForPropertyAbsence = 1 << 14;
 static const unsigned InterceptsGetOwnPropertySlotByIndexEvenWhenLengthIsNotZero = 1 << 15;
 
 class TypeInfo {
 public:
     typedef uint8_t InlineTypeFlags;
-    typedef uint8_t OutOfLineTypeFlags;
+    typedef uint16_t OutOfLineTypeFlags;
 
     TypeInfo(JSType type, unsigned flags = 0)
         : TypeInfo(type, flags & 0xff, flags >> 8)
     {
+        ASSERT(!(flags >> 24));
     }
 
     TypeInfo(JSType type, InlineTypeFlags inlineTypeFlags, OutOfLineTypeFlags outOfLineTypeFlags)
@@ -89,6 +91,7 @@ public:
     bool getOwnPropertySlotIsImpure() const { return isSetOnFlags2(GetOwnPropertySlotIsImpure); }
     bool getOwnPropertySlotIsImpureForPropertyAbsence() const { return isSetOnFlags2(GetOwnPropertySlotIsImpureForPropertyAbsence); }
     bool newImpurePropertyFiresWatchpoints() const { return isSetOnFlags2(NewImpurePropertyFiresWatchpoints); }
+    bool isImmutablePrototypeExoticObject() const { return isSetOnFlags2(IsImmutablePrototypeExoticObject); }
     bool interceptsGetOwnPropertySlotByIndexEvenWhenLengthIsNotZero() const { return isSetOnFlags2(InterceptsGetOwnPropertySlotByIndexEvenWhenLengthIsNotZero); }
 
     static ptrdiff_t flagsOffset()
@@ -110,9 +113,9 @@ private:
     bool isSetOnFlags1(unsigned flag) const { ASSERT(flag <= (1 << 7)); return m_flags & flag; }
     bool isSetOnFlags2(unsigned flag) const { ASSERT(flag >= (1 << 8)); return m_flags2 & (flag >> 8); }
 
-    unsigned char m_type;
-    unsigned char m_flags;
-    unsigned char m_flags2;
+    uint8_t m_type;
+    uint8_t m_flags;
+    uint16_t m_flags2;
 };
 
 } // namespace JSC

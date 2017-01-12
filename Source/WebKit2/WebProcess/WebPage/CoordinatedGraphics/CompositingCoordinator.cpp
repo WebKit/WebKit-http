@@ -36,7 +36,7 @@
 #include <WebCore/InspectorController.h>
 #include <WebCore/MainFrame.h>
 #include <WebCore/Page.h>
-#include <wtf/TemporaryChange.h>
+#include <wtf/SetForScope.h>
 
 using namespace WebCore;
 
@@ -99,16 +99,15 @@ void CompositingCoordinator::sizeDidChange(const IntSize& newSize)
 
 bool CompositingCoordinator::flushPendingLayerChanges()
 {
-    TemporaryChange<bool> protector(m_isFlushingLayerChanges, true);
+    SetForScope<bool> protector(m_isFlushingLayerChanges, true);
 
     initializeRootCompositingLayerIfNeeded();
 
-    bool viewportIsStable = m_page->mainFrame().view()->viewportIsStable();
-    m_rootLayer->flushCompositingStateForThisLayerOnly(viewportIsStable);
+    m_rootLayer->flushCompositingStateForThisLayerOnly();
     m_client.didFlushRootLayer(m_visibleContentsRect);
 
     if (m_overlayCompositingLayer)
-        m_overlayCompositingLayer->flushCompositingState(FloatRect(FloatPoint(), m_rootLayer->size()), viewportIsStable);
+        m_overlayCompositingLayer->flushCompositingState(FloatRect(FloatPoint(), m_rootLayer->size()));
 
     bool didSync = m_page->mainFrame().view()->flushCompositingStateIncludingSubframes();
 
@@ -373,7 +372,7 @@ void CompositingCoordinator::renderNextFrame()
 
 void CompositingCoordinator::purgeBackingStores()
 {
-    TemporaryChange<bool> purgingToggle(m_isPurging, true);
+    SetForScope<bool> purgingToggle(m_isPurging, true);
 
     for (auto& registeredLayer : m_registeredLayers.values())
         registeredLayer->purgeBackingStores();

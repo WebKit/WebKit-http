@@ -245,6 +245,8 @@ static PKAddressField toPKAddressField(const WebCore::PaymentRequest::ContactFie
 {
     PKAddressField result = 0;
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
     if (contactFields.postalAddress)
         result |= PKAddressFieldPostalAddress;
     if (contactFields.phone)
@@ -253,6 +255,7 @@ static PKAddressField toPKAddressField(const WebCore::PaymentRequest::ContactFie
         result |= PKAddressFieldEmail;
     if (contactFields.name)
         result |= PKAddressFieldName;
+#pragma clang diagnostic pop
 
     return result;
 }
@@ -275,7 +278,7 @@ static RetainPtr<NSDecimalNumber> toDecimalNumber(int64_t value)
 
 static RetainPtr<PKPaymentSummaryItem> toPKPaymentSummaryItem(const WebCore::PaymentRequest::LineItem& lineItem)
 {
-    return [getPKPaymentSummaryItemClass() summaryItemWithLabel:lineItem.label amount:toDecimalNumber(lineItem.amount.valueOr(0)).get() type:toPKPaymentSummaryItemType(lineItem.type)];
+    return [getPKPaymentSummaryItemClass() summaryItemWithLabel:lineItem.label amount:toDecimalNumber(lineItem.amount.value_or(0)).get() type:toPKPaymentSummaryItemType(lineItem.type)];
 }
 
 static PKMerchantCapability toPKMerchantCapabilities(const WebCore::PaymentRequest::MerchantCapabilities& merchantCapabilities)
@@ -377,10 +380,13 @@ RetainPtr<PKPaymentRequest> toPKPaymentRequest(WebPageProxy& webPageProxy, const
 
     [result setCountryCode:paymentRequest.countryCode()];
     [result setCurrencyCode:paymentRequest.currencyCode()];
-    [result setRequiredBillingAddressFields:toPKAddressField(paymentRequest.requiredBillingContactFields())];
     [result setBillingContact:paymentRequest.billingContact().pkContact()];
-    [result setRequiredShippingAddressFields:toPKAddressField(paymentRequest.requiredShippingContactFields())];
     [result setShippingContact:paymentRequest.shippingContact().pkContact()];
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+    [result setRequiredBillingAddressFields:toPKAddressField(paymentRequest.requiredBillingContactFields())];
+    [result setRequiredShippingAddressFields:toPKAddressField(paymentRequest.requiredShippingContactFields())];
+#pragma clang diagnostic pop
 
     [result setSupportedNetworks:toSupportedNetworks(paymentRequest.supportedNetworks()).get()];
     [result setMerchantCapabilities:toPKMerchantCapabilities(paymentRequest.merchantCapabilities())];
@@ -468,7 +474,7 @@ void WebPaymentCoordinatorProxy::platformCompleteMerchantValidation(const WebCor
     m_paymentAuthorizationViewControllerDelegate->_sessionBlock = nullptr;
 }
 
-void WebPaymentCoordinatorProxy::platformCompleteShippingMethodSelection(WebCore::PaymentAuthorizationStatus status, const Optional<WebCore::PaymentRequest::TotalAndLineItems>& newTotalAndLineItems)
+void WebPaymentCoordinatorProxy::platformCompleteShippingMethodSelection(WebCore::PaymentAuthorizationStatus status, const std::optional<WebCore::PaymentRequest::TotalAndLineItems>& newTotalAndLineItems)
 {
     ASSERT(m_paymentAuthorizationViewController);
     ASSERT(m_paymentAuthorizationViewControllerDelegate);
@@ -490,7 +496,7 @@ void WebPaymentCoordinatorProxy::platformCompleteShippingMethodSelection(WebCore
     m_paymentAuthorizationViewControllerDelegate->_didSelectShippingMethodCompletion = nullptr;
 }
 
-void WebPaymentCoordinatorProxy::platformCompleteShippingContactSelection(WebCore::PaymentAuthorizationStatus status, const Vector<WebCore::PaymentRequest::ShippingMethod>& newShippingMethods, const Optional<WebCore::PaymentRequest::TotalAndLineItems>& newTotalAndLineItems)
+void WebPaymentCoordinatorProxy::platformCompleteShippingContactSelection(WebCore::PaymentAuthorizationStatus status, const Vector<WebCore::PaymentRequest::ShippingMethod>& newShippingMethods, const std::optional<WebCore::PaymentRequest::TotalAndLineItems>& newTotalAndLineItems)
 {
     ASSERT(m_paymentAuthorizationViewController);
     ASSERT(m_paymentAuthorizationViewControllerDelegate);
@@ -518,7 +524,7 @@ void WebPaymentCoordinatorProxy::platformCompleteShippingContactSelection(WebCor
     m_paymentAuthorizationViewControllerDelegate->_didSelectShippingContactCompletion = nullptr;
 }
 
-void WebPaymentCoordinatorProxy::platformCompletePaymentMethodSelection(const Optional<WebCore::PaymentRequest::TotalAndLineItems>& newTotalAndLineItems)
+void WebPaymentCoordinatorProxy::platformCompletePaymentMethodSelection(const std::optional<WebCore::PaymentRequest::TotalAndLineItems>& newTotalAndLineItems)
 {
     ASSERT(m_paymentAuthorizationViewController);
     ASSERT(m_paymentAuthorizationViewControllerDelegate);

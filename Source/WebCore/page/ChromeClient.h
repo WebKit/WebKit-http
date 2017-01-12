@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2006, 2007, 2008, 2009, 2010, 2011, 2012 Apple, Inc. All rights reserved.
+ * Copyright (C) 2006-2017 Apple, Inc. All rights reserved.
  * Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies).
  * Copyright (C) 2012 Samsung Electronics. All rights reserved.
  *
@@ -41,6 +41,7 @@
 #include "WebCoreKeyboardUIMode.h"
 #include <runtime/ConsoleTypes.h>
 #include <wtf/Forward.h>
+#include <wtf/Seconds.h>
 #include <wtf/Vector.h>
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
@@ -72,7 +73,6 @@ class FileIconLoader;
 class FloatRect;
 class Frame;
 class Geolocation;
-class GraphicsContext3D;
 class GraphicsLayer;
 class GraphicsLayerFactory;
 class HTMLInputElement;
@@ -232,7 +232,7 @@ public:
     virtual void didPreventDefaultForEvent() = 0;
 #endif
 
-    virtual std::chrono::milliseconds eventThrottlingDelay() { return 0ms; };
+    virtual Seconds eventThrottlingDelay() { return 0_s; };
 
 #if PLATFORM(IOS)
     virtual void didReceiveMobileDocType(bool) = 0;
@@ -275,7 +275,7 @@ public:
 
     virtual void runOpenPanel(Frame*, PassRefPtr<FileChooser>) = 0;
     // Asynchronous request to load an icon for specified filenames.
-    virtual void loadIconForFiles(const Vector<String>&, FileIconLoader*) = 0;
+    virtual void loadIconForFiles(const Vector<String>&, FileIconLoader&) = 0;
         
     virtual void elementDidFocus(const Node*) { };
     virtual void elementDidBlur(const Node*) { };
@@ -373,10 +373,6 @@ public:
     virtual void AXFinishFrameLoad() = 0;
 #endif
 
-#if ENABLE(TOUCH_EVENTS)
-    virtual void needTouchEvents(bool) = 0;
-#endif
-
     virtual bool selectItemWritingDirectionIsNatural() = 0;
     virtual bool selectItemAlignmentFollowsMenuWritingDirection() = 0;
     // Checks if there is an opened popup, called by RenderMenuList::showPopup().
@@ -389,7 +385,7 @@ public:
     virtual void notifyScrollerThumbIsVisibleInRect(const IntRect&) { }
     virtual void recommendedScrollbarStyleDidChange(ScrollbarStyle) { }
 
-    virtual WTF::Optional<ScrollbarOverlayStyle> preferredScrollbarOverlayStyle() { return ScrollbarOverlayStyleDefault; }
+    virtual std::optional<ScrollbarOverlayStyle> preferredScrollbarOverlayStyle() { return ScrollbarOverlayStyleDefault; }
 
     virtual void wheelEventHandlersChanged(bool hasHandlers) = 0;
         

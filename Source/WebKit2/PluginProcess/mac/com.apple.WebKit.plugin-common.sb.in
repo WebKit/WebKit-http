@@ -73,38 +73,54 @@
                        (home-library-preferences-regex (string-append #"/ByHost/" (regex-quote domain) #"\..*\.plist$")))))
             domains))
 
+;; Remove when <rdar://problem/29646094> is fixed.
+(define (HEX-pattern-match-generator pattern-descriptor)
+    (letrec ((pattern-string ""))
+        (for-each  (lambda (repeat-count)
+            (if (zero? repeat-count)
+                (set! pattern-string (string-append  pattern-string "-"))
+                (let appender ((count repeat-count))
+                    (if (> count 0)
+                        (begin
+                            (set! pattern-string (string-append  pattern-string "[0-9A-F]"))
+                            (appender (- count 1)))))))
+            pattern-descriptor)
+    pattern-string))
+
+;; return a regex pattern matching string for 8-4-4-4-12 UUIDs:
+(define (uuid-HEX-pattern-match-string)
+    (HEX-pattern-match-generator '(8 0 4 0 4 0 4 0 12)))
+
+;; global to hold the computed UUID matching pattern.
+(define *uuid-pattern* "")
+
+(define (uuid-regex-string)
+    (if (zero? (string-length *uuid-pattern*))
+        (set! *uuid-pattern* (uuid-HEX-pattern-match-string)))
+    *uuid-pattern*)
+
+(define (allow-read-write-directory-and-issue-read-write-extensions path)
+    (if path
+        (begin
+            (allow file-read* file-write* (subpath path))
+            (allow file-issue-extension (require-all (extension-class "com.apple.app-sandbox.read") (subpath path)))
+            (allow file-issue-extension (require-all (extension-class "com.apple.app-sandbox.read-write") (subpath path))))))
+
 ;; WebKit2 sandbox launcher needs to define an _OS_VERSION parameter
 ;; This parameter is the major OS Version number.
 (if (not (defined? 'os-version))
     (define os-version (param "_OS_VERSION")))
 
-;; Graphics
-(if (defined? 'system-graphics)
-    (system-graphics)
-    (begin
-        (shared-preferences-read
-            "com.apple.opengl"
-            "com.nvidia.OpenGL")
-        (allow mach-lookup (global-name "com.apple.cvmsServ"))
-        (allow iokit-open
-            (iokit-connection "IOAccelerator")
-            (iokit-user-client-class "IOAccelerationUserClient")
-            (iokit-user-client-class "IOSurfaceRootUserClient")
-            (iokit-user-client-class "IOSurfaceSendRight")
-            (iokit-user-client-class "IOFramebufferSharedUserClient")
-            (iokit-user-client-class "AppleSNBFBUserClient")
-            (iokit-user-client-class "AGPMClient")
-            (iokit-user-client-class "AppleGraphicsControlClient")
-            (iokit-user-client-class "AppleGraphicsPolicyClient"))))
+(system-graphics)
 
 ;; Read-only preferences
 (shared-preferences-read
     ".GlobalPreferences"
+    "com.apple.ATS"
     "com.apple.Bluetooth"
     "com.apple.CoreGraphics"
-    "com.apple.QuickTime"
     "com.apple.HIToolbox"
-    "com.apple.ATS"
+    "com.apple.QuickTime"
     "com.apple.driver.AppleBluetoothMultitouch.mouse"
     "com.apple.driver.AppleBluetoothMultitouch.trackpad"
     "com.apple.driver.AppleHIDMouse"
@@ -179,14 +195,26 @@
 
     (subpath "/Library/ColorSync")
 
-    (home-literal "/Library/Preferences/com.apple.lookup.shared.plist")
+    (home-literal "/Library/Preferences/com.apple.lookup.shared.plist"))
 
-    ;; FIXME: This should be removed when <rdar://problem/10479685> is fixed.
+#if __MAC_OS_X_VERSION_MIN_REQUIRED < 101240
+;; FIXME: This should be removed when <rdar://problem/10479685> is fixed.
+;; Restrict AppSandboxed processes from creating /Library/Keychains, but allow access to the contents of /Library/Keychains:
+(allow file-read-data file-read-metadata file-write-data
     (subpath "/Library/Keychains"))
+
+;; Do permit creating per-user keychains
+(allow file-read* file-write*
+    (home-library-subpath "/Keychains"))
+
+;; Except deny access to new-style iOS Keychain folders which are UUIDs.
+(deny file-read* file-write*
+    (regex (string-append "/Library/Keychains/" (uuid-regex-string) "(/|$)"))
+    (home-library-regex (string-append "/Keychains/" (uuid-regex-string) "(/|$)")))
+#endif
 
 ;; Security framework
 (allow mach-lookup (global-name "com.apple.ocspd"))
-(allow file-read* file-write* (home-library-subpath "/Keychains"))
 (allow file-read*
        (subpath "/private/var/db/mds")
        (literal "/private/var/db/DetachedSignatures"))
@@ -194,9 +222,6 @@
        (ipc-posix-name "com.apple.AppleDatabaseChanged"))
 
 ;; Read-write preferences and data
-(allow file*
-    ;; FIXME: This should be removed when <rdar://problem/10479685> is fixed.
-    (home-library-subpath "/Keychains"))
 (allow system-fsctl (fsctl-command (_IO "h" 47)))
 
 ;; IOKit user clients
@@ -242,29 +267,18 @@
 ;; Configuration directories
 (allow file-read* (subpath (param "PLUGIN_PATH")))
 (allow file-read* (subpath (param "WEBKIT2_FRAMEWORK_DIR")))
-(allow file* (subpath (param "DARWIN_USER_TEMP_DIR")))
-(allow file* (subpath (param "DARWIN_USER_CACHE_DIR")))
-(allow file* (subpath (param "NSURL_CACHE_DIR")))
+(if (positive? (string-length (param "DARWIN_USER_CACHE_DIR")))
+    (allow-read-write-directory-and-issue-read-write-extensions (param "DARWIN_USER_CACHE_DIR")))
+(if (positive? (string-length (param "DARWIN_USER_TEMP_DIR")))
+    (allow-read-write-directory-and-issue-read-write-extensions (param "DARWIN_USER_TEMP_DIR")))
+(if (positive? (string-length (param "NSURL_CACHE_DIR")))
+    (allow-read-write-directory-and-issue-read-write-extensions (param "NSURL_CACHE_DIR")))
 
 ;; Allow the OpenGL Profiler to attach.
 (if (defined? 'mach-register)
     (allow mach-register (global-name-regex #"^_oglprof_attach_<[0-9]+>$")))
 
-;; Networking
-(if (defined? 'system-network)
-    (system-network)
-    (begin
-      (allow file-read* (literal "/Library/Preferences/com.apple.networkd.plist"))
-      (allow mach-lookup
-             (global-name "com.apple.SystemConfiguration.SCNetworkReachability")
-             (global-name "com.apple.networkd"))
-      (allow network-outbound
-             (control-name "com.apple.netsrc")
-             (control-name "com.apple.network.statistics"))
-      (allow system-socket
-             (require-all (socket-domain AF_SYSTEM)
-                          (socket-protocol 2)) ; SYSPROTO_CONTROL
-             (socket-domain AF_ROUTE))))
+(system-network)
 
 (allow network-outbound
     ;; Local mDNSResponder for DNS, arbitrary outbound TCP and UDP
@@ -314,7 +328,12 @@
     (shared-preferences-read "org.cups.PrintingPrefs"))
 
 ;; Text Services Manager
+#if PLATFORM(IOS) || (PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED >= 101200)
+(with-filter (iokit-registry-entry-class "IOHIDEventDriver")
+    (allow iokit-set-properties (iokit-property "CapsLockDelayOverride")))
+#else
 (allow iokit-set-properties (iokit-property "CapsLockDelayOverride"))
+#endif
 
 ;; Image Capture
 (define (webkit-imagecapture)
@@ -341,6 +360,22 @@
 ;; Microphone
 (define (webkit-microphone)
     (allow device-microphone))
+
+(allow ipc-posix-shm*
+    (ipc-posix-name-regex #"^AudioIO")
+    (ipc-posix-name-regex #"^CFPBS:")
+    (ipc-posix-name "com.apple.ColorSync.Gen.lock")
+    (ipc-posix-name "com.apple.ColorSync.Disp.lock")
+    (ipc-posix-name "com.apple.ColorSync.Gray2.2")
+    (ipc-posix-name "com.apple.ColorSync.sRGB")
+    (ipc-posix-name "com.apple.ColorSync.GenGray")
+    (ipc-posix-name "com.apple.ColorSync.GenRGB")
+    (ipc-posix-name-regex #"^com\.apple\.cs\.")
+    (ipc-posix-name-regex #"^ls\."))
+(allow ipc-posix-shm-read*
+    (ipc-posix-name-regex #"^/tmp/com\.apple\.csseed\.")
+    (ipc-posix-name "FNetwork.defaultStorageSession")
+    (ipc-posix-name "apple.shm.notification_center"))
 
 ;; Silently block access to some resources
 (deny file-read* file-write* (with no-log)

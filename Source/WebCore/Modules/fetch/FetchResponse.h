@@ -41,7 +41,6 @@ class JSValue;
 
 namespace WebCore {
 
-class Dictionary;
 class FetchRequest;
 class ReadableStreamSource;
 
@@ -49,11 +48,11 @@ class FetchResponse final : public FetchBodyOwner {
 public:
     using Type = ResourceResponse::Type;
 
-    static Ref<FetchResponse> create(ScriptExecutionContext& context) { return adoptRef(*new FetchResponse(context, Nullopt, FetchHeaders::create(FetchHeaders::Guard::Response), ResourceResponse())); }
+    static Ref<FetchResponse> create(ScriptExecutionContext& context) { return adoptRef(*new FetchResponse(context, std::nullopt, FetchHeaders::create(FetchHeaders::Guard::Response), ResourceResponse())); }
     static Ref<FetchResponse> error(ScriptExecutionContext&);
     static ExceptionOr<Ref<FetchResponse>> redirect(ScriptExecutionContext&, const String& url, int status);
 
-    using FetchPromise = DOMPromise<FetchResponse>;
+    using FetchPromise = DOMPromise<IDLInterface<FetchResponse>>;
     static void fetch(ScriptExecutionContext&, FetchRequest&, FetchPromise&&);
 
     void consume(unsigned, Ref<DeferredPromise>&&);
@@ -86,7 +85,7 @@ public:
     bool isLoading() const { return !!m_bodyLoader; }
 
 private:
-    FetchResponse(ScriptExecutionContext&, Optional<FetchBody>&&, Ref<FetchHeaders>&&, ResourceResponse&&);
+    FetchResponse(ScriptExecutionContext&, std::optional<FetchBody>&&, Ref<FetchHeaders>&&, ResourceResponse&&);
 
     static void startFetching(ScriptExecutionContext&, const FetchRequest&, FetchPromise&&);
 
@@ -117,12 +116,12 @@ private:
         void didReceiveData(const char*, size_t) final;
 
         FetchResponse& m_response;
-        Optional<FetchPromise> m_promise;
+        std::optional<FetchPromise> m_promise;
         std::unique_ptr<FetchLoader> m_loader;
     };
 
     ResourceResponse m_response;
-    Optional<BodyLoader> m_bodyLoader;
+    std::optional<BodyLoader> m_bodyLoader;
     mutable String m_responseURL;
 
     FetchBodyConsumer m_consumer { FetchBodyConsumer::Type::ArrayBuffer  };

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013, 2014, 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -25,8 +25,6 @@
 
 #pragma once
 
-#if ENABLE(DFG_JIT)
-
 #include "DFGPlan.h"
 #include "DFGThreadData.h"
 #include <wtf/AutomaticThread.h>
@@ -41,6 +39,8 @@ namespace JSC {
 class SlotVisitor;
 
 namespace DFG {
+
+#if ENABLE(DFG_JIT)
 
 class Worklist : public RefCounted<Worklist> {
 public:
@@ -57,7 +57,8 @@ public:
     // worklist->completeAllReadyPlansForVM(vm);
     void completeAllPlansForVM(VM&);
 
-    void rememberCodeBlocks(VM&);
+    template<typename Func>
+    void iterateCodeBlocksForGC(VM&, const Func&);
 
     void waitUntilAllPlansForVMAreReady(VM&);
     State completeAllReadyPlansForVM(VM&, CompilationKey = CompilationKey());
@@ -163,9 +164,13 @@ inline Worklist& existingWorklistForIndex(unsigned index)
     return *result;
 }
 
+#endif // ENABLE(DFG_JIT)
+
 void completeAllPlansForVM(VM&);
-void rememberCodeBlocks(VM&);
+void markCodeBlocks(VM&, SlotVisitor&);
+
+template<typename Func>
+void iterateCodeBlocksForGC(VM&, const Func&);
 
 } } // namespace JSC::DFG
 
-#endif // ENABLE(DFG_JIT)

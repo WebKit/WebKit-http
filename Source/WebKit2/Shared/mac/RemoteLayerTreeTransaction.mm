@@ -527,6 +527,11 @@ void RemoteLayerTreeTransaction::encode(IPC::Encoder& encoder) const
 
     encoder << m_contentsSize;
     encoder << m_scrollOrigin;
+
+    encoder << m_baseLayoutViewportSize;
+    encoder << m_minStableLayoutViewportOrigin;
+    encoder << m_maxStableLayoutViewportOrigin;
+
 #if PLATFORM(MAC)
     encoder << m_scrollPosition;
 #endif
@@ -547,6 +552,8 @@ void RemoteLayerTreeTransaction::encode(IPC::Encoder& encoder) const
 
     encoder << m_viewportMetaTagWidthWasExplicit;
     encoder << m_viewportMetaTagCameFromImageDocument;
+
+    encoder << m_isInStableState;
 
     encoder << m_callbackIDs;
 }
@@ -602,6 +609,15 @@ bool RemoteLayerTreeTransaction::decode(IPC::Decoder& decoder, RemoteLayerTreeTr
     if (!decoder.decode(result.m_scrollOrigin))
         return false;
 
+    if (!decoder.decode(result.m_baseLayoutViewportSize))
+        return false;
+
+    if (!decoder.decode(result.m_minStableLayoutViewportOrigin))
+        return false;
+
+    if (!decoder.decode(result.m_maxStableLayoutViewportOrigin))
+        return false;
+    
 #if PLATFORM(MAC)
     if (!decoder.decode(result.m_scrollPosition))
         return false;
@@ -644,6 +660,9 @@ bool RemoteLayerTreeTransaction::decode(IPC::Decoder& decoder, RemoteLayerTreeTr
         return false;
 
     if (!decoder.decode(result.m_viewportMetaTagCameFromImageDocument))
+        return false;
+
+    if (!decoder.decode(result.m_isInStableState))
         return false;
 
     if (!decoder.decode(result.m_callbackIDs))
@@ -844,6 +863,12 @@ CString RemoteLayerTreeTransaction::description() const
     if (m_scrollOrigin != IntPoint::zero())
         ts.dumpProperty("scrollOrigin", m_scrollOrigin);
 
+    ts.dumpProperty("baseLayoutViewportSize", FloatSize(m_baseLayoutViewportSize));
+
+    if (m_minStableLayoutViewportOrigin != LayoutPoint::zero())
+        ts.dumpProperty("minStableLayoutViewportOrigin", FloatPoint(m_minStableLayoutViewportOrigin));
+    ts.dumpProperty("maxStableLayoutViewportOrigin", FloatPoint(m_maxStableLayoutViewportOrigin));
+
     if (m_pageScaleFactor != 1)
         ts.dumpProperty("pageScaleFactor", m_pageScaleFactor);
 
@@ -853,6 +878,7 @@ CString RemoteLayerTreeTransaction::description() const
     ts.dumpProperty("viewportMetaTagWidth", m_viewportMetaTagWidth);
     ts.dumpProperty("viewportMetaTagWidthWasExplicit", m_viewportMetaTagWidthWasExplicit);
     ts.dumpProperty("viewportMetaTagCameFromImageDocument", m_viewportMetaTagCameFromImageDocument);
+    ts.dumpProperty("isInStableState", m_isInStableState);
     ts.dumpProperty("renderTreeSize", m_renderTreeSize);
 
     ts << "root-layer " << m_rootLayerID << ")";

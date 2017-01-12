@@ -29,7 +29,6 @@
 #include "APIFrameHandle.h"
 #include "APIPageGroupHandle.h"
 #include "APIPageHandle.h"
-#include "CustomProtocolManagerProxyMessages.h"
 #include "DataReference.h"
 #include "DownloadProxyMap.h"
 #include "Logging.h"
@@ -98,7 +97,6 @@ WebProcessProxy::WebProcessProxy(WebProcessPool& processPool)
     : m_responsivenessTimer(*this)
     , m_processPool(processPool)
     , m_mayHaveUniversalFileReadSandboxExtension(false)
-    , m_customProtocolManagerProxy(this, processPool)
     , m_numberOfTimesSuddenTerminationWasDisabled(0)
     , m_throttler(*this)
     , m_isResponsive(NoOrMaybe::Maybe)
@@ -902,7 +900,7 @@ void WebProcessProxy::sendProcessWillSuspendImminently()
         return;
 
     bool handled = false;
-    sendSync(Messages::WebProcess::ProcessWillSuspendImminently(), Messages::WebProcess::ProcessWillSuspendImminently::Reply(handled), 0, Seconds(1));
+    sendSync(Messages::WebProcess::ProcessWillSuspendImminently(), Messages::WebProcess::ProcessWillSuspendImminently::Reply(handled), 0, 1_s);
 }
 
 void WebProcessProxy::sendPrepareToSuspend()

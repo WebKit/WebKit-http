@@ -1,3 +1,667 @@
+2017-01-11  Chris Dumez  <cdumez@apple.com>
+
+        Iterating over URLSearchParams does not work
+        https://bugs.webkit.org/show_bug.cgi?id=166921
+        <rdar://problem/29970907>
+
+        Reviewed by Alex Christensen.
+
+        Rebaseline W3C test now that more checks are passing.
+
+        * web-platform-tests/url/urlsearchparams-foreach-expected.txt:
+
+2017-01-10  Chris Dumez  <cdumez@apple.com>
+
+        Make Event.initEvent()'s first parameter mandatory
+        https://bugs.webkit.org/show_bug.cgi?id=166894
+
+        Reviewed by Alex Christensen.
+
+        Rebaseline existing W3C test now that we're closing to the specification.
+
+        * web-platform-tests/dom/interfaces-expected.txt:
+
+2017-01-06  Chris Dumez  <cdumez@apple.com>
+
+        Unreviewed, rebaseline W3C test after r210468.
+
+        The test now fails differently due the the behavior change in r210468.
+        The test fails because we do not support History.scrollRestoration.
+
+        * web-platform-tests/html/browsers/browsing-the-web/history-traversal/persisted-user-state-restoration/scroll-restoration-fragment-scrolling-cross-origin-expected.txt:
+
+2017-01-04  John Wilander  <wilander@apple.com>
+
+        Validate the BCP47-ness of the language string passed to TrackBase::setLanguage()
+        https://bugs.webkit.org/show_bug.cgi?id=123926
+
+        Reviewed by Jer Noble.
+
+        * web-platform-tests/html/dom/reflection-embedded-expected.txt:
+            Expected text change since we now have console warnings for
+            invalid language tags.
+        * web-platform-tests/html/semantics/embedded-content/media-elements/interfaces/HTMLElement/HTMLTrackElement/srclang-expected.txt:
+            Expected text change since we now have console warnings for
+            invalid language tags.
+        * web-platform-tests/html/semantics/embedded-content/media-elements/interfaces/TextTrack/language-expected.txt:
+            Expected text change since we now have console warnings for
+            invalid language tags.
+
+2017-01-03  Chris Dumez  <cdumez@apple.com>
+
+        Make setting Event's cancelBubble to false a no-op
+        https://bugs.webkit.org/show_bug.cgi?id=166018
+
+        Reviewed by Ryosuke Niwa.
+
+        Merge https://github.com/w3c/web-platform-tests/pull/4304 to extend / fix
+        test coverage.
+
+        * web-platform-tests/dom/events/Event-cancelBubble-expected.txt: Added.
+        * web-platform-tests/dom/events/Event-cancelBubble.html: Added.
+        * web-platform-tests/dom/events/Event-dispatch-bubble-canceled-expected.txt: Added.
+        * web-platform-tests/dom/events/Event-dispatch-bubble-canceled.html: Added.
+        * web-platform-tests/dom/events/Event-dispatch-multiple-cancelBubble-expected.txt: Added.
+        * web-platform-tests/dom/events/Event-dispatch-multiple-cancelBubble.html: Added.
+        * web-platform-tests/dom/events/Event-initEvent.html:
+        * web-platform-tests/dom/events/Event-propagation-expected.txt:
+        * web-platform-tests/dom/events/Event-propagation.html:
+        * web-platform-tests/dom/events/w3c-import.log:
+
+2016-12-20  Alex Christensen  <achristensen@webkit.org>
+
+        Remove initEvent quirk
+        https://bugs.webkit.org/show_bug.cgi?id=166284
+
+        Reviewed by Dan Bernstein.
+
+        * web-platform-tests/dom/interfaces-expected.txt:
+        We regress conformance, but a change has been proposed to the spec. Hopefully this will be a temporary regression.
+
+2016-12-20  Nael Ouedraogo  <nael.ouedraogo@crf.canon.fr>
+
+        WebRTC: RTCPeerConnection constructor argument should be optional
+        https://bugs.webkit.org/show_bug.cgi?id=164057
+
+        Reviewed by Youenn Fablet.
+
+        Update expectation of RTCPeerConnection constructor tests.
+
+        * web-platform-tests/webrtc/rtcpeerconnection/rtcpeerconnection-constructor-expected.txt:
+
+2016-12-16  Youenn Fablet  <youenn@apple.com>
+
+        [Fetch API] Improve resource loading console logging
+        https://bugs.webkit.org/show_bug.cgi?id=160546
+
+        Reviewed by Alex Christensen.
+
+        Rebasing since error logging is happening for fetch API.
+
+        * web-platform-tests/fetch/api/basic/mode-same-origin-expected.txt:
+        * web-platform-tests/fetch/api/basic/scheme-about-expected.txt:
+        * web-platform-tests/fetch/api/basic/scheme-blob-expected.txt:
+        * web-platform-tests/fetch/api/basic/scheme-others-expected.txt:
+        * web-platform-tests/fetch/api/cors/cors-basic-expected.txt:
+        * web-platform-tests/fetch/api/cors/cors-cookies-expected.txt:
+        * web-platform-tests/fetch/api/cors/cors-multiple-origins-expected.txt:
+        * web-platform-tests/fetch/api/cors/cors-origin-expected.txt:
+        * web-platform-tests/fetch/api/cors/cors-preflight.html:
+        * web-platform-tests/fetch/api/cors/cors-redirect-credentials-expected.txt:
+        * web-platform-tests/fetch/api/redirect/redirect-location-expected.txt:
+        * web-platform-tests/fetch/api/redirect/redirect-schemes-expected.txt:
+        * web-platform-tests/fetch/api/redirect/redirect-to-dataurl-expected.txt:
+
+2016-12-15  Chris Dumez  <cdumez@apple.com>
+
+        Move charCode / keyCode / which attributes from UIEvent to KeyboardEvent
+        https://bugs.webkit.org/show_bug.cgi?id=165904
+
+        Reviewed by Sam Weinig.
+
+        Rebaseline W3C test now that one more check is passing.
+
+        * web-platform-tests/dom/events/Event-subclasses-constructors-expected.txt:
+
+2016-12-15  Youenn Fablet  <youenn@apple.com>
+
+        Sync web-platform-tests up to revision a4c2b37
+        https://bugs.webkit.org/show_bug.cgi?id=165041
+
+        Reviewed by Alex Christensen.
+
+        * resources/ImportExpectations:
+        * resources/TestRepositories:
+        * resources/resource-files.json:
+        * web-platform-tests/IndexedDB/historical-expected.txt: Added.
+        * web-platform-tests/IndexedDB/historical.html: Added.
+        * web-platform-tests/IndexedDB/interfaces-expected.txt:
+        * web-platform-tests/IndexedDB/interfaces.html:
+        * web-platform-tests/IndexedDB/interfaces.idl:
+        * web-platform-tests/IndexedDB/interfaces.worker-expected.txt:
+        * web-platform-tests/IndexedDB/interfaces.worker.js:
+        (async_test):
+        (request.onload): Deleted.
+        * web-platform-tests/IndexedDB/name-scopes-expected.txt: Added.
+        * web-platform-tests/IndexedDB/name-scopes.html: Added.
+        * web-platform-tests/IndexedDB/support-promises.js:
+        (const.databaseName):
+        (const.requestWatcher):
+        (const.migrateDatabase):
+        (const.migrateNamedDatabase):
+        (const.createDatabase):
+        (const.createNamedDatabase):
+        (const.openDatabase):
+        (const.openNamedDatabase):
+        (const.createBooksStore):
+        (const.checkStoreIndexes):
+        (const.checkStoreGenerator):
+        (const.checkStoreContents):
+        (const.checkAuthorIndexContents):
+        (const.checkTitleIndexContents):
+        * web-platform-tests/IndexedDB/w3c-import.log:
+        * web-platform-tests/README.md:
+        * web-platform-tests/XMLHttpRequest/event-readystatechange-loaded-expected.txt:
+        * web-platform-tests/XMLHttpRequest/event-readystatechange-loaded.htm:
+        * web-platform-tests/check_stability.py:
+        (TravisFold):
+        (TravisFold.__init__):
+        (TravisFold.__enter__):
+        (TravisFold.__exit__):
+        (markdown_adjust):
+        (table):
+        (write_inconsistent):
+        (write_results):
+        (main):
+        * web-platform-tests/common/dummy.xhtml: Added.
+        * web-platform-tests/common/dummy.xml: Added.
+        * web-platform-tests/common/w3c-import.log:
+        * web-platform-tests/config.default.json:
+        * web-platform-tests/dom/events/EventTarget-dispatchEvent-expected.txt:
+        * web-platform-tests/dom/events/ProgressEvent-expected.txt:
+        * web-platform-tests/dom/events/ProgressEvent.html:
+        * web-platform-tests/dom/nodes/DOMImplementation-createDocument-expected.txt:
+        * web-platform-tests/dom/nodes/DOMImplementation-createDocument.html:
+        * web-platform-tests/dom/nodes/Document-createElement-expected.txt:
+        * web-platform-tests/dom/nodes/Document-createElement.html:
+        * web-platform-tests/dom/nodes/Document-createElementNS-expected.txt:
+        * web-platform-tests/dom/nodes/Document-createElementNS.html:
+        * web-platform-tests/dom/nodes/Document-createElementNS.js:
+        * web-platform-tests/dom/nodes/Document-createEvent-expected.txt:
+        * web-platform-tests/dom/nodes/Document-createEvent.html:
+        * web-platform-tests/dom/nodes/Document-createEvent.js:
+        * web-platform-tests/dom/nodes/Element-closest-expected.txt:
+        * web-platform-tests/dom/nodes/Element-closest.html:
+        * web-platform-tests/domparsing/OWNERS:
+        * web-platform-tests/domparsing/createContextualFragment-expected.txt:
+        * web-platform-tests/domparsing/createContextualFragment.html:
+        * web-platform-tests/encrypted-media/clearkey-mp4-playback-temporary-encrypted-clear-sources.html:
+        * web-platform-tests/encrypted-media/content/video_512x288_h264-360k_multikey_key1_dashinit.mp4: Added.
+        * web-platform-tests/encrypted-media/drm-mp4-playback-temporary-encrypted-clear-sources.html:
+        * web-platform-tests/encrypted-media/scripts/playback-persistent-license-events.js:
+        (runTest):
+        * web-platform-tests/encrypted-media/scripts/playback-persistent-usage-record-events.js:
+        (runTest):
+        * web-platform-tests/encrypted-media/scripts/playback-temporary-events.js:
+        (runTest):
+        * web-platform-tests/encrypted-media/scripts/playback-temporary-multikey-sequential.js:
+        (runTest):
+        * web-platform-tests/encrypted-media/scripts/unique-origin.js:
+        (runTest.):
+        * web-platform-tests/fetch/api/basic/mode-same-origin-expected.txt:
+        * web-platform-tests/fetch/api/basic/mode-same-origin-worker-expected.txt:
+        * web-platform-tests/fetch/api/cors/cors-redirect-credentials-expected.txt:
+        * web-platform-tests/fetch/api/cors/cors-redirect-credentials-worker-expected.txt:
+        * web-platform-tests/fetch/api/headers/headers-idl.html:
+        * web-platform-tests/fetch/api/headers/headers-normalize-expected.txt:
+        * web-platform-tests/fetch/api/headers/headers-normalize.html:
+        * web-platform-tests/fetch/api/redirect/redirect-count.js:
+        (redirectCount):
+        * web-platform-tests/fetch/api/request/request-error-expected.txt:
+        * web-platform-tests/fetch/api/request/request-error.html:
+        * web-platform-tests/fetch/api/request/request-idl.html:
+        * web-platform-tests/fetch/api/resources/redirect.py:
+        (main):
+        * web-platform-tests/fetch/api/response/response-consume-expected.txt:
+        * web-platform-tests/fetch/api/response/response-consume.html:
+        * web-platform-tests/fetch/api/response/response-idl.html:
+        * web-platform-tests/fonts/math/mathvariant-bold-fraktur.woff: Added.
+        * web-platform-tests/fonts/math/mathvariant-bold-italic.woff: Added.
+        * web-platform-tests/fonts/math/mathvariant-bold-sans-serif.woff: Added.
+        * web-platform-tests/fonts/math/mathvariant-bold-script.woff: Added.
+        * web-platform-tests/fonts/math/mathvariant-bold.woff: Added.
+        * web-platform-tests/fonts/math/mathvariant-double-struck.woff: Added.
+        * web-platform-tests/fonts/math/mathvariant-fraktur.woff: Added.
+        * web-platform-tests/fonts/math/mathvariant-initial.woff: Added.
+        * web-platform-tests/fonts/math/mathvariant-italic.woff: Added.
+        * web-platform-tests/fonts/math/mathvariant-looped.woff: Added.
+        * web-platform-tests/fonts/math/mathvariant-monospace.woff: Added.
+        * web-platform-tests/fonts/math/mathvariant-sans-serif-bold-italic.woff: Added.
+        * web-platform-tests/fonts/math/mathvariant-sans-serif-italic.woff: Added.
+        * web-platform-tests/fonts/math/mathvariant-sans-serif.woff: Added.
+        * web-platform-tests/fonts/math/mathvariant-script.woff: Added.
+        * web-platform-tests/fonts/math/mathvariant-stretched.woff: Added.
+        * web-platform-tests/fonts/math/mathvariant-tailed.woff: Added.
+        * web-platform-tests/fonts/math/w3c-import.log:
+        * web-platform-tests/html/browsers/browsing-the-web/navigating-across-documents/014.html:
+        * web-platform-tests/html/browsers/browsing-the-web/navigating-across-documents/javascript-url-return-value-handling.html:
+        * web-platform-tests/html/browsers/browsing-the-web/navigating-across-documents/source/navigate-child-function-src.html:
+        * web-platform-tests/html/browsers/browsing-the-web/navigating-across-documents/source/navigate-child-function.html:
+        * web-platform-tests/html/browsers/history/the-history-interface/history_go_to_uri-1.html: Added.
+        * web-platform-tests/html/browsers/history/the-history-interface/history_go_to_uri-expected.txt: Added.
+        * web-platform-tests/html/browsers/history/the-history-interface/history_go_to_uri.html: Added.
+        * web-platform-tests/html/browsers/history/the-history-interface/w3c-import.log:
+        * web-platform-tests/html/browsers/history/the-location-interface/location_reload-iframe.html:
+        * web-platform-tests/html/browsers/history/the-location-interface/location_reload.html:
+        * web-platform-tests/html/browsers/the-window-object/support/noopener-target.html: Added.
+        * web-platform-tests/html/browsers/the-window-object/support/w3c-import.log: Copied from LayoutTests/imported/w3c/web-platform-tests/html/semantics/forms/resetting-a-form/w3c-import.log.
+        * web-platform-tests/html/browsers/the-window-object/w3c-import.log:
+        * web-platform-tests/html/browsers/the-window-object/window-open-noopener-expected.txt: Added.
+        * web-platform-tests/html/browsers/the-window-object/window-open-noopener.html: Added.
+        * web-platform-tests/html/browsers/windows/nested-browsing-contexts/w3c-import.log:
+        * web-platform-tests/html/browsers/windows/support-open-cross-origin.sub.html: Added.
+        * web-platform-tests/html/browsers/windows/targeting-multiple-cross-origin-manual.sub.html: Added.
+        * web-platform-tests/html/browsers/windows/w3c-import.log:
+        * web-platform-tests/html/dom/interfaces.html:
+        * web-platform-tests/html/dom/new-harness.js:
+        (ReflectionHarness.test):
+        (ReflectionHarness.run): Deleted.
+        (ReflectionHarness.testException): Deleted.
+        * web-platform-tests/html/dom/original-harness.js:
+        (ReflectionHarness.test):
+        (ReflectionHarness.assertEquals):
+        (ReflectionHarness.assertThrows):
+        (ReflectionHarness.testWrapper): Deleted.
+        (ReflectionHarness.run): Deleted.
+        (ReflectionHarness.testException): Deleted.
+        * web-platform-tests/html/dom/reflection.js:
+        (ReflectionTests.reflects):
+        (ReflectionTests.doReflects): Deleted.
+        * web-platform-tests/html/semantics/document-metadata/the-link-element/all: Added.
+        * web-platform-tests/html/semantics/document-metadata/the-link-element/all.headers: Added.
+        * web-platform-tests/html/semantics/document-metadata/the-link-element/resources/empty-href.css: Added.
+        (body):
+        * web-platform-tests/html/semantics/document-metadata/the-link-element/resources/w3c-import.log:
+        * web-platform-tests/html/semantics/document-metadata/the-link-element/stylesheet-empty-href-expected.html: Added.
+        * web-platform-tests/html/semantics/document-metadata/the-link-element/stylesheet-empty-href.html: Added.
+        * web-platform-tests/html/semantics/document-metadata/the-link-element/stylesheet-media-expected.html: Added.
+        * web-platform-tests/html/semantics/document-metadata/the-link-element/stylesheet-media.html: Added.
+        * web-platform-tests/html/semantics/document-metadata/the-link-element/w3c-import.log:
+        * web-platform-tests/html/semantics/embedded-content/the-embed-element/historical-expected.txt: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-embed-element/historical.html: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-embed-element/w3c-import.log:
+        * web-platform-tests/html/semantics/embedded-content/the-object-element/historical-expected.txt: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-object-element/historical.html: Added.
+        * web-platform-tests/html/semantics/embedded-content/the-object-element/w3c-import.log:
+        * web-platform-tests/html/semantics/forms/resetting-a-form/reset-event-expected.txt: Added.
+        * web-platform-tests/html/semantics/forms/resetting-a-form/reset-event.html: Added.
+        * web-platform-tests/html/semantics/forms/resetting-a-form/reset-form-expected.txt:
+        * web-platform-tests/html/semantics/forms/resetting-a-form/reset-form.html:
+        * web-platform-tests/html/semantics/forms/resetting-a-form/w3c-import.log:
+        * web-platform-tests/html/semantics/forms/the-fieldset-element/HTMLFieldSetElement-expected.txt:
+        * web-platform-tests/html/semantics/forms/the-fieldset-element/HTMLFieldSetElement.html:
+        * web-platform-tests/html/semantics/forms/the-form-element/form-action-url-expected.txt: Added.
+        * web-platform-tests/html/semantics/forms/the-form-element/form-action-url.html: Added.
+        * web-platform-tests/html/semantics/forms/the-form-element/resources/form-action-url-iframe.html: Added.
+        * web-platform-tests/html/semantics/forms/the-form-element/resources/target/form-action-url-target.html: Added.
+        * web-platform-tests/html/semantics/forms/the-form-element/resources/target/w3c-import.log: Copied from LayoutTests/imported/w3c/web-platform-tests/html/semantics/forms/resetting-a-form/w3c-import.log.
+        * web-platform-tests/html/semantics/forms/the-form-element/resources/w3c-import.log: Copied from LayoutTests/imported/w3c/web-platform-tests/html/semantics/forms/resetting-a-form/w3c-import.log.
+        * web-platform-tests/html/semantics/forms/the-form-element/w3c-import.log:
+        * web-platform-tests/html/semantics/forms/the-input-element/radio.html:
+        * web-platform-tests/html/semantics/forms/the-select-element/common-HTMLOptionsCollection-add-expected.txt: Added.
+        * web-platform-tests/html/semantics/forms/the-select-element/common-HTMLOptionsCollection-add.html: Added.
+        * web-platform-tests/html/semantics/forms/the-select-element/common-HTMLOptionsCollection-expected.txt:
+        * web-platform-tests/html/semantics/forms/the-select-element/common-HTMLOptionsCollection.html:
+        * web-platform-tests/html/semantics/forms/the-select-element/selected-index-expected.txt: Added.
+        * web-platform-tests/html/semantics/forms/the-select-element/selected-index.html: Added.
+        * web-platform-tests/html/semantics/forms/the-select-element/w3c-import.log:
+        * web-platform-tests/html/semantics/grouping-content/the-li-element/grouping-li-reftest-001-expected.html:
+        * web-platform-tests/html/semantics/grouping-content/the-li-element/grouping-li-reftest-001.html:
+        * web-platform-tests/html/semantics/grouping-content/the-li-element/grouping-li-reftest-002-expected.html:
+        * web-platform-tests/html/semantics/grouping-content/the-li-element/grouping-li-reftest-002.html:
+        * web-platform-tests/html/semantics/grouping-content/the-li-element/grouping-li-reftest-display-list-item-expected.html: Added.
+        * web-platform-tests/html/semantics/grouping-content/the-li-element/grouping-li-reftest-display-list-item.html: Added.
+        * web-platform-tests/html/semantics/grouping-content/the-li-element/grouping-li-reftest-list-owner-mixed-expected.html: Added.
+        * web-platform-tests/html/semantics/grouping-content/the-li-element/grouping-li-reftest-list-owner-mixed.html: Added.
+        * web-platform-tests/html/semantics/grouping-content/the-li-element/grouping-li-reftest-list-owner-not-dir-expected.html: Added.
+        * web-platform-tests/html/semantics/grouping-content/the-li-element/grouping-li-reftest-list-owner-not-dir.html: Added.
+        * web-platform-tests/html/semantics/grouping-content/the-li-element/grouping-li-reftest-list-owner-ol-expected.html: Added.
+        * web-platform-tests/html/semantics/grouping-content/the-li-element/grouping-li-reftest-list-owner-ol.html: Added.
+        * web-platform-tests/html/semantics/grouping-content/the-li-element/grouping-li-reftest-list-owner-parent-expected.html: Added.
+        * web-platform-tests/html/semantics/grouping-content/the-li-element/grouping-li-reftest-list-owner-parent.html: Added.
+        * web-platform-tests/html/semantics/grouping-content/the-li-element/grouping-li-reftest-list-owner-ul-expected.html: Added.
+        * web-platform-tests/html/semantics/grouping-content/the-li-element/grouping-li-reftest-list-owner-ul.html: Added.
+        * web-platform-tests/html/semantics/grouping-content/the-li-element/grouping-li-reftest-not-being-rendered-expected.html: Added.
+        * web-platform-tests/html/semantics/grouping-content/the-li-element/grouping-li-reftest-not-being-rendered.html: Added.
+        * web-platform-tests/html/semantics/grouping-content/the-li-element/w3c-import.log:
+        * web-platform-tests/html/semantics/grouping-content/the-ol-element/grouping-ol-rev-reftest-001-expected.html:
+        * web-platform-tests/html/semantics/grouping-content/the-ol-element/grouping-ol-rev-reftest-001.html:
+        * web-platform-tests/html/semantics/grouping-content/the-ol-element/grouping-ol-start-reftest-001-expected.html:
+        * web-platform-tests/html/semantics/grouping-content/the-ol-element/grouping-ol-start-reftest-001.html:
+        * web-platform-tests/html/semantics/grouping-content/the-ol-element/grouping-ol-start-reftest-002-expected.html:
+        * web-platform-tests/html/semantics/grouping-content/the-ol-element/grouping-ol-start-reftest-002.html:
+        * web-platform-tests/html/semantics/grouping-content/the-ol-element/grouping-ol-type-reftest-001-expected.html:
+        * web-platform-tests/html/semantics/grouping-content/the-ol-element/grouping-ol-type-reftest-001.html:
+        * web-platform-tests/html/semantics/grouping-content/the-ol-element/grouping-ol-type-reftest-002-expected.html:
+        * web-platform-tests/html/semantics/grouping-content/the-ol-element/grouping-ol-type-reftest-002.html:
+        * web-platform-tests/html/semantics/grouping-content/the-ol-element/grouping-ol-type-reftest-003-expected.html:
+        * web-platform-tests/html/semantics/grouping-content/the-ol-element/grouping-ol-type-reftest-003.html:
+        * web-platform-tests/html/semantics/grouping-content/the-ol-element/reversed-1e-expected.html: Added.
+        * web-platform-tests/html/semantics/grouping-content/the-ol-element/reversed-1e.html: Added.
+        * web-platform-tests/html/semantics/grouping-content/the-ol-element/w3c-import.log:
+        * web-platform-tests/html/semantics/scripting-1/the-template-element/template-element/node-document-changes.html:
+        * web-platform-tests/html/webappapis/scripting/events/messageevent-constructor.https-expected.txt: Added.
+        * web-platform-tests/html/webappapis/scripting/events/messageevent-constructor.https.html: Added.
+        * web-platform-tests/html/webappapis/scripting/events/uncompiled_event_handler_with_scripting_disabled-expected.txt: Added.
+        * web-platform-tests/html/webappapis/scripting/events/uncompiled_event_handler_with_scripting_disabled.html: Added.
+        * web-platform-tests/html/webappapis/scripting/events/w3c-import.log:
+        * web-platform-tests/lint.whitelist:
+        * web-platform-tests/media-source/OWNERS:
+        * web-platform-tests/serve.py:
+        * web-platform-tests/shadow-dom/OWNERS:
+        * web-platform-tests/streams/readable-streams/count-queuing-strategy-integration.js:
+        (promise_test):
+        * web-platform-tests/url/a-element-expected.txt:
+        * web-platform-tests/url/a-element-origin-expected.txt: Added.
+        * web-platform-tests/url/a-element-origin-xhtml-expected.txt: Added.
+        * web-platform-tests/url/a-element-origin-xhtml.xhtml: Added.
+        * web-platform-tests/url/a-element-origin.html: Added.
+        * web-platform-tests/url/a-element-origin.js: Added.
+        (setup.async_test.string_appeared_here.setup.step):
+        (setBase):
+        (bURL):
+        (runURLTests):
+        * web-platform-tests/url/a-element-xhtml-expected.txt:
+        * web-platform-tests/url/historical-expected.txt:
+        * web-platform-tests/url/historical.html:
+        * web-platform-tests/url/historical.worker-expected.txt:
+        * web-platform-tests/url/historical.worker.js:
+        (test):
+        * web-platform-tests/url/interfaces-expected.txt:
+        * web-platform-tests/url/interfaces.html:
+        * web-platform-tests/url/setters_tests.json:
+        * web-platform-tests/url/url-constructor-expected.txt:
+        * web-platform-tests/url/url-origin-expected.txt: Added.
+        * web-platform-tests/url/url-origin.html: Added.
+        * web-platform-tests/url/urlsearchparams-foreach-expected.txt: Added.
+        * web-platform-tests/url/urlsearchparams-foreach.html: Added.
+        * web-platform-tests/url/urltestdata.json:
+        * web-platform-tests/url/w3c-import.log:
+        * web-platform-tests/webrtc/rtcpeerconnection/rtcpeerconnection-constructor-expected.txt:
+        * web-platform-tests/webrtc/rtcpeerconnection/rtcpeerconnection-constructor.html:
+        * web-platform-tests/webrtc/simplecall-expected.txt:
+        * web-platform-tests/webrtc/simplecall.html:
+
+2016-12-14  Chris Dumez  <cdumez@apple.com>
+
+        Remove Unicode case-insensitive matching for usemap=""
+        https://bugs.webkit.org/show_bug.cgi?id=163894
+
+        Reviewed by Antti Koivisto.
+
+        Rebaseline W3C test now that more checks are passing.
+
+        * web-platform-tests/html/semantics/embedded-content/the-img-element/usemap-casing-expected.txt:
+
+2016-12-14  Youenn Fablet  <youenn@apple.com>
+
+        Test infrastructure should allow to filter out text output before doing a comparison with the baseline
+        https://bugs.webkit.org/show_bug.cgi?id=161310
+
+        Reviewed by Ryosuke Niwa.
+
+        * web-platform-tests/fetch/api/cors/cors-preflight.html: Adding a console log line to ensure the DumpJSConsoleLogInStdErr modifier works.
+
+2016-12-12  Darin Adler  <darin@apple.com>
+
+        Remove bindings generation support for legacy WebCore::Dictionary
+        https://bugs.webkit.org/show_bug.cgi?id=165762
+
+        Reviewed by Sam Weinig.
+
+        * web-platform-tests/webrtc/datachannel-emptystring-expected.txt:
+        * web-platform-tests/webrtc/no-media-call-expected.txt:
+        * web-platform-tests/webrtc/promises-call-expected.txt:
+        * web-platform-tests/webrtc/rtcpeerconnection/rtcpeerconnection-constructor-expected.txt:
+        * web-platform-tests/webrtc/rtcpeerconnection/rtcpeerconnection-idl-expected.txt:
+        Updated to expect error messages with "dictionary" with a lowercase D.
+
+2016-12-10  Jiewen Tan  <jiewen_tan@apple.com>
+
+        [WebCrypto] RSA algorithms should allow importing keys without usages
+        https://bugs.webkit.org/show_bug.cgi?id=165680
+        <rdar://problem/29601354>
+
+        Reviewed by Brent Fulgham.
+
+        * WebCryptoAPI/encrypt_decrypt/test_rsa_oaep-expected.txt:
+
+2016-12-09  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Ignore LayoutTests/imported/w3c/web-platform-tests/config.json
+        https://bugs.webkit.org/show_bug.cgi?id=165685
+
+        Reviewed by Ryosuke Niwa.
+
+        * web-platform-tests/.gitignore:
+        Ignore generated user-specific config.json file.
+
+2016-12-06  Jiewen Tan  <jiewen_tan@apple.com>
+
+        [Part 2 of 2] Add support for PKCS8 format while doing SubtleCrypto.importKey/exportKey
+        https://bugs.webkit.org/show_bug.cgi?id=129978
+        <rdar://problem/21799829>
+
+        Reviewed by Brent Fulgham.
+
+        * WebCryptoAPI/encrypt_decrypt/test_rsa_oaep-expected.txt:
+
+2016-12-08  Jiewen Tan  <jiewen_tan@apple.com>
+
+        [WebCrypto] Remove NoInterfaceObject attribute from SubtleCrypto Interface
+        https://bugs.webkit.org/show_bug.cgi?id=165629
+        <rdar://problem/29586203>
+
+        Reviewed by Chris Dumez.
+
+        * WebCryptoAPI/idlharness-expected.txt:
+
+2016-12-08  Chris Dumez  <cdumez@apple.com>
+
+        Support running the layout tests offline
+        https://bugs.webkit.org/show_bug.cgi?id=165534
+
+        Reviewed by Ryosuke Niwa.
+
+        Commit W3C web-platform-tests modules so that it is now possible to run
+        layout tests offline.
+
+        * resources/web-platform-tests-modules.json:
+        * resources/web-platform-tests-modules/darobin/webidl2.js/archive/bd216bcd5596d60734450adc938155deab1e1a80.tar.gz: Added.
+        * resources/web-platform-tests-modules/dontcallmedom/widlproc/archive/4ef8dde69c0ba3d0167bccfa2775eea7f0d6c7fe.tar.gz: Added.
+        * resources/web-platform-tests-modules/html5lib/html5lib-python/archive/7cce65bbaa78411f98b8b37eeefc9db03c580097.tar.gz: Added.
+        * resources/web-platform-tests-modules/html5lib/html5lib-tests/archive/a9badff0cd2fe337170769d42ca2df5e96d30f97.tar.gz: Added.
+        * resources/web-platform-tests-modules/jgraham/six/archive/3b6173c833d217ab0186c355804f5925cbcfca47.tar.gz: Added.
+        * resources/web-platform-tests-modules/pytest-dev/pytest/archive/168daaa71f4cc5f846064ebebab41b9cf625a89a.tar.gz: Added.
+        * resources/web-platform-tests-modules/w3c/pywebsocket/archive/8c285d9015121e8c1c40be852439fc03b4a18112.tar.gz: Added.
+        * resources/web-platform-tests-modules/w3c/testharness.js/archive/873f9680aff66553f84d38f21a038c4534cc2789.tar.gz: Added.
+        * resources/web-platform-tests-modules/w3c/wdclient/archive/de9b46ec049f0b2a6fe261e27804970535ba8658.tar.gz: Added.
+        * resources/web-platform-tests-modules/w3c/wpt-tools/archive/cf9748586c2bca14998eda5956be6cf4d6d221d9.tar.gz: Added.
+        * resources/web-platform-tests-modules/w3c/wptserve/archive/071c51e26a57300979ad53313970d7247979f6d3.tar.gz: Added.
+
+2016-12-05  Jiewen Tan  <jiewen_tan@apple.com>
+
+        [Part 1 of 2] Add support for SPKI format while doing SubtleCrypto.importKey/exportKey
+        https://bugs.webkit.org/show_bug.cgi?id=129978
+        <rdar://problem/21799829>
+
+        Reviewed by Brent Fulgham.
+
+        * WebCryptoAPI/encrypt_decrypt/test_rsa_oaep-expected.txt:
+
+2016-12-01  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Update SubtleCrypto::unwrapKey to match the latest spec
+        https://bugs.webkit.org/show_bug.cgi?id=164747
+        <rdar://problem/29258198>
+
+        Reviewed by Brent Fulgham.
+
+        * WebCryptoAPI/idlharness-expected.txt:
+
+2016-12-01  Jiewen Tan  <jiewen_tan@apple.com>
+
+        SubtleCrypto::deriveBits always return NOT_SUPPORTED_ERR for now
+        https://bugs.webkit.org/show_bug.cgi?id=164745
+        <rdar://problem/29258118>
+
+        Reviewed by Darin Adler.
+
+        * WebCryptoAPI/idlharness-expected.txt:
+
+2016-11-30  Sam Weinig  <sam@webkit.org>
+
+        [WebIDL] Remove custom bindings for File and Blob constructors
+        https://bugs.webkit.org/show_bug.cgi?id=165218
+
+        Reviewed by Darin Adler.
+
+        * web-platform-tests/fetch/api/basic/request-headers-expected.txt:
+        * web-platform-tests/fetch/api/basic/request-headers-worker-expected.txt:
+        Update results (still failing) to account for stricter rules about dictionary default values.
+
+2016-11-30  Jiewen Tan  <jiewen_tan@apple.com>
+
+        SubtleCrypto::deriveKey always return NOT_SUPPORTED_ERR for now
+        https://bugs.webkit.org/show_bug.cgi?id=164744
+        <rdar://problem/29258083>
+
+        Reviewed by Darin Adler.
+
+        * WebCryptoAPI/idlharness-expected.txt:
+
+2016-11-26  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Update SubtleCrypto::digest to match the latest spec
+        https://bugs.webkit.org/show_bug.cgi?id=164742
+        <rdar://problem/29258037>
+
+        Reviewed by Darin Adler.
+
+        * WebCryptoAPI/digest/test_digest-expected.txt:
+        * WebCryptoAPI/idlharness-expected.txt:
+
+2016-11-30  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Update SubtleCrypto::wrapKey to match the latest spec
+        https://bugs.webkit.org/show_bug.cgi?id=164746
+        <rdar://problem/29258160>
+
+        Reviewed by Brent Fulgham.
+
+        * WebCryptoAPI/idlharness-expected.txt:
+
+2016-11-30  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Update SubtleCrypto::verify to match the latest spec
+        https://bugs.webkit.org/show_bug.cgi?id=164741
+        <rdar://problem/29257935>
+
+        Reviewed by Brent Fulgham.
+
+        * WebCryptoAPI/idlharness-expected.txt:
+
+2016-11-22  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Update SubtleCrypto::sign to match the latest spec
+        https://bugs.webkit.org/show_bug.cgi?id=164740
+        <rdar://problem/29257864>
+
+        Reviewed by Brent Fulgham.
+
+        * WebCryptoAPI/idlharness-expected.txt:
+
+2016-11-18  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Update SubtleCrypto::decrypt to match the latest spec
+        https://bugs.webkit.org/show_bug.cgi?id=164739
+        <rdar://problem/29257848>
+
+        Reviewed by Brent Fulgham.
+
+        * WebCryptoAPI/encrypt_decrypt/test_aes_cbc-expected.txt:
+        * WebCryptoAPI/idlharness-expected.txt:
+
+2016-11-18  Alex Christensen  <achristensen@webkit.org>
+
+        TextDecoder constructor should not accept replacement encodings
+        https://bugs.webkit.org/show_bug.cgi?id=164903
+
+        Reviewed by Chris Dumez.
+
+        * web-platform-tests/encoding/api-replacement-encodings-expected.txt:
+
+2016-11-17  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Update SubtleCrypto::encrypt to match the latest spec
+        https://bugs.webkit.org/show_bug.cgi?id=164738
+        <rdar://problem/29257812>
+
+        Reviewed by Brent Fulgham.
+
+        * WebCryptoAPI/encrypt_decrypt/test_aes_cbc-expected.txt:
+        * WebCryptoAPI/encrypt_decrypt/test_aes_ctr-expected.txt:
+        * WebCryptoAPI/encrypt_decrypt/test_aes_gcm-expected.txt:
+        * WebCryptoAPI/encrypt_decrypt/test_rsa_oaep-expected.txt:
+        * WebCryptoAPI/idlharness-expected.txt:
+
+2016-11-17  Alex Christensen  <achristensen@webkit.org>
+
+        Implement TextDecoder and TextEncoder
+        https://bugs.webkit.org/show_bug.cgi?id=163771
+
+        Reviewed by Sam Weinig.
+
+        * web-platform-tests/encoding/api-basics-expected.txt:
+        * web-platform-tests/encoding/api-invalid-label-expected.txt:
+        * web-platform-tests/encoding/api-replacement-encodings-expected.txt:
+        * web-platform-tests/encoding/api-surrogates-utf8-expected.txt:
+        * web-platform-tests/encoding/idlharness-expected.txt:
+        * web-platform-tests/encoding/iso-2022-jp-decoder-expected.txt:
+        * web-platform-tests/encoding/single-byte-decoder-expected.txt:
+        * web-platform-tests/encoding/textdecoder-byte-order-marks-expected.txt:
+        * web-platform-tests/encoding/textdecoder-fatal-expected.txt:
+        * web-platform-tests/encoding/textdecoder-fatal-single-byte-expected.txt:
+        * web-platform-tests/encoding/textdecoder-fatal-streaming-expected.txt:
+        * web-platform-tests/encoding/textdecoder-ignorebom-expected.txt:
+        * web-platform-tests/encoding/textdecoder-labels-expected.txt:
+        * web-platform-tests/encoding/textdecoder-streaming-expected.txt:
+        * web-platform-tests/encoding/textdecoder-utf16-surrogates-expected.txt:
+        * web-platform-tests/encoding/textencoder-constructor-non-utf-expected.txt:
+        * web-platform-tests/encoding/textencoder-utf16-surrogates-expected.txt:
+
+2016-11-16  Ryosuke Niwa  <rniwa@webkit.org>
+
+        slotchange event should bubble and dispatched once
+        https://bugs.webkit.org/show_bug.cgi?id=164770
+
+        Reviewed by Antti Koivisto.
+
+        Rebaselined the test. Some test cases fail as they do on Chrome because it's testing an outdated version of the spec.
+        Will fix the test upstream later.
+
+        * web-platform-tests/shadow-dom/slotchange-event-expected.txt:
+
+2016-11-14  Jiewen Tan  <jiewen_tan@apple.com>
+
+        Update SubtleCrypto::exportKey to match the latest spec
+        https://bugs.webkit.org/show_bug.cgi?id=164722
+        <rdar://problem/29251740>
+
+        Reviewed by Brent Fulgham.
+
+        * WebCryptoAPI/idlharness-expected.txt:
+
 2016-11-14  Youenn Fablet  <youenn@apple.com>
 
         Support WPT templated tests

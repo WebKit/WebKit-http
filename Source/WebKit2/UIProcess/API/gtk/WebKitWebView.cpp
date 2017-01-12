@@ -2971,7 +2971,7 @@ static void webkitWebViewRunJavaScriptCallback(API::SerializedScriptValue* wkSer
  * @user_data: (closure): the data to pass to callback function
  *
  * Asynchronously run @script in the context of the current page in @web_view. If
- * WebKitWebSettings:enable-javascript is FALSE, this method will do nothing.
+ * WebKitSettings:enable-javascript is FALSE, this method will do nothing.
  *
  * When the operation is finished, @callback will be called. You can then call
  * webkit_web_view_run_javascript_finish() to get the result of the operation.
@@ -3351,13 +3351,11 @@ gboolean webkit_web_view_save_to_file_finish(WebKitWebView* webView, GAsyncResul
  */
 WebKitDownload* webkit_web_view_download_uri(WebKitWebView* webView, const char* uri)
 {
-    g_return_val_if_fail(WEBKIT_IS_WEB_VIEW(webView), 0);
-    g_return_val_if_fail(uri, 0);
+    g_return_val_if_fail(WEBKIT_IS_WEB_VIEW(webView), nullptr);
+    g_return_val_if_fail(uri, nullptr);
 
-    WebKitDownload* download = webkitWebContextStartDownload(webView->priv->context.get(), uri, getPage(webView));
-    webkitDownloadSetWebView(download, webView);
-
-    return download;
+    GRefPtr<WebKitDownload> download = webkitWebContextStartDownload(webView->priv->context.get(), uri, getPage(webView));
+    return download.leakRef();
 }
 
 /**
@@ -3416,10 +3414,7 @@ void webKitWebViewDidReceiveSnapshot(WebKitWebView* webView, uint64_t callbackID
         return;
     }
 
-    if (RefPtr<ShareableBitmap> image = webImage->bitmap())
-        g_task_return_pointer(task.get(), image->createCairoSurface().leakRef(), reinterpret_cast<GDestroyNotify>(cairo_surface_destroy));
-    else
-        g_task_return_pointer(task.get(), 0, 0);
+    g_task_return_pointer(task.get(), webImage->bitmap().createCairoSurface().leakRef(), reinterpret_cast<GDestroyNotify>(cairo_surface_destroy));
 }
 
 static inline unsigned webKitSnapshotOptionsToSnapshotOptions(WebKitSnapshotOptions options)

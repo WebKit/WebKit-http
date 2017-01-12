@@ -71,7 +71,10 @@
 #include "JSMap.h"
 #include "JSPromiseDeferred.h"
 #include "JSPropertyNameEnumerator.h"
+#include "JSScriptFetcher.h"
+#include "JSSourceCode.h"
 #include "JSTemplateRegistryKey.h"
+#include "JSWebAssembly.h"
 #include "JSWithScope.h"
 #include "LLIntData.h"
 #include "Lexer.h"
@@ -102,7 +105,6 @@
 #include "Watchdog.h"
 #include "WeakGCMapInlines.h"
 #include "WeakMapData.h"
-#include "WebAssemblyCodeBlock.h"
 #include <wtf/CurrentTime.h>
 #include <wtf/ProcessID.h>
 #include <wtf/SimpleStats.h>
@@ -168,6 +170,7 @@ VM::VM(VMType vmType, HeapType heapType)
     , clientData(0)
     , topVMEntryFrame(nullptr)
     , topCallFrame(CallFrame::noCaller())
+    , topJSWebAssemblyInstance(nullptr)
     , m_atomicStringTable(vmType == Default ? wtfThreadData().atomicStringTable() : new AtomicStringTable)
     , propertyNames(nullptr)
     , emptyList(new MarkedArgumentBuffer)
@@ -228,13 +231,17 @@ VM::VM(VMType vmType, HeapType heapType)
     programExecutableStructure.set(*this, ProgramExecutable::createStructure(*this, 0, jsNull()));
     functionExecutableStructure.set(*this, FunctionExecutable::createStructure(*this, 0, jsNull()));
 #if ENABLE(WEBASSEMBLY)
-    webAssemblyExecutableStructure.set(*this, WebAssemblyExecutable::createStructure(*this, 0, jsNull()));
+    webAssemblyCalleeStructure.set(*this, JSWebAssemblyCallee::createStructure(*this, 0, jsNull()));
+    webAssemblyToJSCalleeStructure.set(*this, WebAssemblyToJSCallee::createStructure(*this, 0, jsNull()));
+    webAssemblyToJSCallee.set(*this, WebAssemblyToJSCallee::create(*this, webAssemblyToJSCalleeStructure.get()));
 #endif
     moduleProgramExecutableStructure.set(*this, ModuleProgramExecutable::createStructure(*this, 0, jsNull()));
     regExpStructure.set(*this, RegExp::createStructure(*this, 0, jsNull()));
     symbolStructure.set(*this, Symbol::createStructure(*this, 0, jsNull()));
     symbolTableStructure.set(*this, SymbolTable::createStructure(*this, 0, jsNull()));
     fixedArrayStructure.set(*this, JSFixedArray::createStructure(*this, 0, jsNull()));
+    sourceCodeStructure.set(*this, JSSourceCode::createStructure(*this, 0, jsNull()));
+    scriptFetcherStructure.set(*this, JSScriptFetcher::createStructure(*this, 0, jsNull()));
     structureChainStructure.set(*this, StructureChain::createStructure(*this, 0, jsNull()));
     sparseArrayValueMapStructure.set(*this, SparseArrayValueMap::createStructure(*this, 0, jsNull()));
     templateRegistryKeyStructure.set(*this, JSTemplateRegistryKey::createStructure(*this, 0, jsNull()));
@@ -257,9 +264,6 @@ VM::VM(VMType vmType, HeapType heapType)
     moduleProgramCodeBlockStructure.set(*this, ModuleProgramCodeBlock::createStructure(*this, 0, jsNull()));
     evalCodeBlockStructure.set(*this, EvalCodeBlock::createStructure(*this, 0, jsNull()));
     functionCodeBlockStructure.set(*this, FunctionCodeBlock::createStructure(*this, 0, jsNull()));
-#if ENABLE(WEBASSEMBLY)
-    webAssemblyCodeBlockStructure.set(*this, WebAssemblyCodeBlock::createStructure(*this, 0, jsNull()));
-#endif
     hashMapBucketSetStructure.set(*this, HashMapBucket<HashMapBucketDataKey>::createStructure(*this, 0, jsNull()));
     hashMapBucketMapStructure.set(*this, HashMapBucket<HashMapBucketDataKeyValue>::createStructure(*this, 0, jsNull()));
     hashMapImplSetStructure.set(*this, HashMapImpl<HashMapBucket<HashMapBucketDataKey>>::createStructure(*this, 0, jsNull()));
@@ -454,7 +458,7 @@ Watchdog& VM::ensureWatchdog()
         // And if we've previously compiled any functions, we need to revert
         // them because they don't have the needed polling checks for the watchdog
         // yet.
-        deleteAllCode();
+        deleteAllCode(PreventCollectionAndDeleteAllCode);
     }
     return *m_watchdog;
 }
@@ -561,20 +565,20 @@ void VM::whenIdle(std::function<void()> callback)
     entryScope->addDidPopListener(callback);
 }
 
-void VM::deleteAllLinkedCode()
+void VM::deleteAllLinkedCode(DeleteAllCodeEffort effort)
 {
-    whenIdle([this]() {
-        heap.deleteAllCodeBlocks();
+    whenIdle([=] () {
+        heap.deleteAllCodeBlocks(effort);
     });
 }
 
-void VM::deleteAllCode()
+void VM::deleteAllCode(DeleteAllCodeEffort effort)
 {
-    whenIdle([this]() {
+    whenIdle([=] () {
         m_codeCache->clear();
         m_regExpCache->deleteAllCode();
-        heap.deleteAllCodeBlocks();
-        heap.deleteAllUnlinkedCodeBlocks();
+        heap.deleteAllCodeBlocks(effort);
+        heap.deleteAllUnlinkedCodeBlocks(effort);
         heap.reportAbandonedObjectGraph();
     });
 }
@@ -595,7 +599,12 @@ void VM::clearSourceProviderCaches()
 void VM::throwException(ExecState* exec, Exception* exception)
 {
     if (Options::breakOnThrow()) {
-        dataLog("In call frame ", RawPointer(exec), " for code block ", *exec->codeBlock(), "\n");
+        CodeBlock* codeBlock = exec->codeBlock();
+        dataLog("Throwing exception in call frame ", RawPointer(exec), " for code block ");
+        if (codeBlock)
+            dataLog(*codeBlock, "\n");
+        else
+            dataLog("<nullptr>\n");
         CRASH();
     }
 
@@ -699,8 +708,7 @@ inline void VM::updateStackLimits()
 #if ENABLE(DFG_JIT)
 void VM::gatherConservativeRoots(ConservativeRoots& conservativeRoots)
 {
-    for (size_t i = 0; i < scratchBuffers.size(); i++) {
-        ScratchBuffer* scratchBuffer = scratchBuffers[i];
+    for (auto* scratchBuffer : scratchBuffers) {
         if (scratchBuffer->activeLength()) {
             void* bufferStart = scratchBuffer->dataBuffer();
             conservativeRoots.add(bufferStart, static_cast<void*>(static_cast<char*>(bufferStart) + scratchBuffer->activeLength()));

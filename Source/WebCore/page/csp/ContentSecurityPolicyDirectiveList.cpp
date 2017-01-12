@@ -307,19 +307,18 @@ void ContentSecurityPolicyDirectiveList::parse(const String& policy, ContentSecu
         String name, value;
         if (parseDirective(directiveBegin, position, name, value)) {
             ASSERT(!name.isEmpty());
-            switch (policyFrom) {
-            case ContentSecurityPolicy::PolicyFrom::HTTPEquivMeta:
+            if (policyFrom == ContentSecurityPolicy::PolicyFrom::Inherited) {
+                if (equalIgnoringASCIICase(name, ContentSecurityPolicyDirectiveNames::upgradeInsecureRequests))
+                    continue;
+            } else if (policyFrom == ContentSecurityPolicy::PolicyFrom::HTTPEquivMeta) {
                 if (equalIgnoringASCIICase(name, ContentSecurityPolicyDirectiveNames::sandbox)
                     || equalIgnoringASCIICase(name, ContentSecurityPolicyDirectiveNames::reportURI)
                     || equalIgnoringASCIICase(name, ContentSecurityPolicyDirectiveNames::frameAncestors)) {
                     m_policy.reportInvalidDirectiveInHTTPEquivMeta(name);
-                    break;
+                    continue;
                 }
-                FALLTHROUGH;
-            default:
-                addDirective(name, value);
-                break;
             }
+            addDirective(name, value);
         }
 
         ASSERT(position == end || *position == ';');
@@ -446,6 +445,15 @@ void ContentSecurityPolicyDirectiveList::setUpgradeInsecureRequests(const String
     m_policy.setUpgradeInsecureRequests(true);
 }
 
+void ContentSecurityPolicyDirectiveList::setBlockAllMixedContentEnabled(const String& name)
+{
+    if (m_hasBlockAllMixedContentDirective) {
+        m_policy.reportDuplicateDirective(name);
+        return;
+    }
+    m_hasBlockAllMixedContentDirective = true;
+}
+
 void ContentSecurityPolicyDirectiveList::addDirective(const String& name, const String& value)
 {
     ASSERT(!name.isEmpty());
@@ -494,6 +502,8 @@ void ContentSecurityPolicyDirectiveList::addDirective(const String& name, const 
         parseReportURI(name, value);
     else if (equalIgnoringASCIICase(name, ContentSecurityPolicyDirectiveNames::upgradeInsecureRequests))
         setUpgradeInsecureRequests(name);
+    else if (equalIgnoringASCIICase(name, ContentSecurityPolicyDirectiveNames::blockAllMixedContent))
+        setBlockAllMixedContentEnabled(name);
     else
         m_policy.reportUnsupportedDirective(name);
 }

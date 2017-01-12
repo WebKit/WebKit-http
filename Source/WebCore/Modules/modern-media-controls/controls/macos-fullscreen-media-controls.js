@@ -41,7 +41,6 @@ class MacOSFullscreenMediaControls extends MacOSMediaControls
 
         // Set up fullscreen-specific buttons.
         this.rewindButton = new RewindButton(this);
-        this.aspectRatioButton = new AspectRatioButton(this);
         this.forwardButton = new ForwardButton(this);
         this.fullscreenButton.isFullscreen = true;
 
@@ -55,7 +54,7 @@ class MacOSFullscreenMediaControls extends MacOSMediaControls
         });
 
         this._rightContainer = new ButtonsContainer({
-            buttons: [this.airplayButton, this.aspectRatioButton, this.pipButton, this.tracksButton, this.fullscreenButton],
+            buttons: [this.airplayButton, this.pipButton, this.tracksButton, this.fullscreenButton],
             cssClassName: "right",
             padding: 12
         });
@@ -63,6 +62,17 @@ class MacOSFullscreenMediaControls extends MacOSMediaControls
         this.controlsBar.children = [this.volumeSlider, this._centerContainer, this._rightContainer, this.timeControl];
 
         this.element.addEventListener("mousedown", this);
+    }
+
+    // Public
+
+    showTracksPanel()
+    {
+        super.showTracksPanel();
+
+        const tracksButtonBounds = this.tracksButton.element.getBoundingClientRect();
+        this.tracksPanel.rightX = window.innerWidth - tracksButtonBounds.right;
+        this.tracksPanel.bottomY = window.innerHeight - tracksButtonBounds.top + 1;
     }
 
     // Protected
@@ -81,8 +91,6 @@ class MacOSFullscreenMediaControls extends MacOSMediaControls
             break;
         }
     }
-
-    // Public
 
     layout()
     {
@@ -104,6 +112,8 @@ class MacOSFullscreenMediaControls extends MacOSMediaControls
         this.timeControl.width = FullscreenTimeControlWidth;
     }
 
+    // Private
+
     _handleMousedown(event)
     {
         if (event.target !== this.controlsBar.element)
@@ -113,8 +123,8 @@ class MacOSFullscreenMediaControls extends MacOSMediaControls
 
         this._lastDragPoint = this._pointForEvent(event);
 
-        window.addEventListener("mousemove", this, true);
-        window.addEventListener("mouseup", this, true);
+        this.element.addEventListener("mousemove", this, true);
+        this.element.addEventListener("mouseup", this, true);
     }
 
     _handleMousemove(event)
@@ -122,8 +132,11 @@ class MacOSFullscreenMediaControls extends MacOSMediaControls
         event.preventDefault();
 
         const currentDragPoint = this._pointForEvent(event);
-        this.x += currentDragPoint.x - this._lastDragPoint.x;
-        this.y += currentDragPoint.y - this._lastDragPoint.y;
+
+        this.controlsBar.translation = new DOMPoint(
+            this.controlsBar.translation.x + currentDragPoint.x - this._lastDragPoint.x,
+            this.controlsBar.translation.y + currentDragPoint.y - this._lastDragPoint.y
+        );
         
         this._lastDragPoint = currentDragPoint;
     }
@@ -132,8 +145,10 @@ class MacOSFullscreenMediaControls extends MacOSMediaControls
     {
         event.preventDefault();
 
-        window.removeEventListener("mousemove", this, true);
-        window.removeEventListener("mouseup", this, true);
+        delete this._lastDragPoint;
+
+        this.element.removeEventListener("mousemove", this, true);
+        this.element.removeEventListener("mouseup", this, true);
     }
 
     _pointForEvent(event)

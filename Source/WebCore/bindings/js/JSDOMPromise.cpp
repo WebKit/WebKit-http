@@ -43,8 +43,9 @@ DeferredPromise::DeferredPromise(JSDOMGlobalObject& globalObject, JSPromiseDefer
     , m_deferred(&promiseDeferred)
     , m_globalObject(&globalObject)
 {
+    auto locker = lockDuringMarking(globalObject.vm().heap, globalObject.gcLock());
     globalObject.vm().heap.writeBarrier(&globalObject, &promiseDeferred);
-    globalObject.deferredPromises().add(this);
+    globalObject.deferredPromises(locker).add(this);
 }
 
 DeferredPromise::~DeferredPromise()
@@ -55,8 +56,10 @@ DeferredPromise::~DeferredPromise()
 void DeferredPromise::clear()
 {
     ASSERT(!m_deferred || m_globalObject);
-    if (m_deferred && m_globalObject)
-        m_globalObject->deferredPromises().remove(this);
+    if (m_deferred && m_globalObject) {
+        auto locker = lockDuringMarking(m_globalObject->vm().heap, m_globalObject->gcLock());
+        m_globalObject->deferredPromises(locker).remove(this);
+    }
     m_deferred.clear();
 }
 
@@ -89,6 +92,30 @@ void DeferredPromise::callFunction(ExecState& exec, JSValue function, JSValue re
     clear();
 }
 
+void DeferredPromise::reject()
+{
+    if (isSuspended())
+        return;
+
+    ASSERT(m_deferred);
+    ASSERT(m_globalObject);
+    auto& state = *m_globalObject->globalExec();
+    JSC::JSLockHolder locker(&state);
+    reject(state, JSC::jsUndefined());
+}
+
+void DeferredPromise::reject(std::nullptr_t)
+{
+    if (isSuspended())
+        return;
+
+    ASSERT(m_deferred);
+    ASSERT(m_globalObject);
+    auto& state = *m_globalObject->globalExec();
+    JSC::JSLockHolder locker(&state);
+    reject(state, JSC::jsNull());
+}
+
 void DeferredPromise::reject(Exception&& exception)
 {
     if (isSuspended())
@@ -113,6 +140,18 @@ void DeferredPromise::reject(ExceptionCode ec, const String& message)
     reject(*state, createDOMException(state, ec, message));
 }
 
+void DeferredPromise::reject(const JSC::PrivateName& privateName)
+{
+    if (isSuspended())
+        return;
+
+    ASSERT(m_deferred);
+    ASSERT(m_globalObject);
+    JSC::ExecState* state = m_globalObject->globalExec();
+    JSC::JSLockHolder locker(state);
+    reject(*state, toJS(state, m_globalObject.get(), privateName));
+}
+
 void rejectPromiseWithExceptionIfAny(JSC::ExecState& state, JSDOMGlobalObject& globalObject, JSPromiseDeferred& promiseDeferred)
 {
     VM& vm = state.vm();
@@ -124,7 +163,7 @@ void rejectPromiseWithExceptionIfAny(JSC::ExecState& state, JSDOMGlobalObject& g
     JSValue error = scope.exception()->value();
     scope.clearException();
 
-    DeferredPromise::create(globalObject, promiseDeferred)->reject(error);
+    DeferredPromise::create(globalObject, promiseDeferred)->reject<IDLAny>(error);
 }
 
 Ref<DeferredPromise> createDeferredPromise(JSC::ExecState& state, JSDOMWindow& domWindow)
@@ -166,16 +205,16 @@ void fulfillPromiseWithJSON(Ref<DeferredPromise>&& promise, const String& data)
     if (!value)
         promise->reject(SYNTAX_ERR);
     else
-        promise->resolve(value);
+        promise->resolve<IDLAny>(value);
 }
 
 void fulfillPromiseWithArrayBuffer(Ref<DeferredPromise>&& promise, ArrayBuffer* arrayBuffer)
 {
     if (!arrayBuffer) {
-        promise->reject<JSValue>(createOutOfMemoryError(promise->globalObject()->globalExec()));
+        promise->reject<IDLAny>(createOutOfMemoryError(promise->globalObject()->globalExec()));
         return;
     }
-    promise->resolve(arrayBuffer);
+    promise->resolve<IDLInterface<ArrayBuffer>>(*arrayBuffer);
 }
 
 void fulfillPromiseWithArrayBuffer(Ref<DeferredPromise>&& promise, const void* data, size_t length)

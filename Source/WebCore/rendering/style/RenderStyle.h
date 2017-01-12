@@ -43,7 +43,6 @@
 #include "Pagination.h"
 #include "RenderStyleConstants.h"
 #include "RoundedRect.h"
-#include "SVGPaint.h"
 #include "SVGRenderStyle.h"
 #include "ShadowData.h"
 #include "ShapeValue.h"
@@ -114,7 +113,12 @@ class StyleInheritedData;
 class StyleResolver;
 class TransformationMatrix;
 
-struct ScrollSnapPoints;
+#if ENABLE(CSS_SCROLL_SNAP)
+class StyleScrollSnapPort;
+class StyleScrollSnapArea;
+struct ScrollSnapType;
+struct ScrollSnapAlign;
+#endif
 
 typedef Vector<std::unique_ptr<RenderStyle>, 4> PseudoStyleCache;
 
@@ -510,12 +514,7 @@ public:
     StyleSelfAlignmentData resolvedJustifyItems(ItemPosition normalValueBehaviour) const;
     StyleSelfAlignmentData resolvedJustifySelf(const RenderStyle& parentStyle, ItemPosition normalValueBehaviour) const;
 
-    enum IsAtShadowBoundary {
-        AtShadowBoundary,
-        NotAtShadowBoundary,
-    };
-
-    void inheritFrom(const RenderStyle* inheritParent, IsAtShadowBoundary = NotAtShadowBoundary);
+    void inheritFrom(const RenderStyle& inheritParent);
     void copyNonInheritedFrom(const RenderStyle*);
 
     PseudoId styleType() const { return noninherited_flags.styleType(); }
@@ -1131,11 +1130,23 @@ public:
 #endif
 
 #if ENABLE(CSS_SCROLL_SNAP)
-    ScrollSnapType scrollSnapType() const { return static_cast<ScrollSnapType>(rareNonInheritedData->m_scrollSnapType); }
-    const ScrollSnapPoints* scrollSnapPointsX() const;
-    const ScrollSnapPoints* scrollSnapPointsY() const;
-    const LengthSize& scrollSnapDestination() const;
-    WEBCORE_EXPORT const Vector<LengthSize>& scrollSnapCoordinates() const;
+    // Scroll snap port style.
+    const StyleScrollSnapPort& scrollSnapPort() const;
+    const ScrollSnapType& scrollSnapType() const;
+    const LengthBox& scrollPadding() const;
+    const Length& scrollPaddingTop() const;
+    const Length& scrollPaddingBottom() const;
+    const Length& scrollPaddingLeft() const;
+    const Length& scrollPaddingRight() const;
+
+    // Scroll snap area style.
+    const StyleScrollSnapArea& scrollSnapArea() const;
+    const ScrollSnapAlign& scrollSnapAlign() const;
+    const LengthBox& scrollSnapMargin() const;
+    const Length& scrollSnapMarginTop() const;
+    const Length& scrollSnapMarginBottom() const;
+    const Length& scrollSnapMarginLeft() const;
+    const Length& scrollSnapMarginRight() const;
 #endif
 
 #if ENABLE(TOUCH_EVENTS)
@@ -1701,11 +1712,19 @@ public:
 #endif
 
 #if ENABLE(CSS_SCROLL_SNAP)
-    void setScrollSnapType(ScrollSnapType type) { SET_VAR(rareNonInheritedData, m_scrollSnapType, static_cast<unsigned>(type)); }
-    void setScrollSnapPointsX(std::unique_ptr<ScrollSnapPoints>);
-    void setScrollSnapPointsY(std::unique_ptr<ScrollSnapPoints>);
-    void setScrollSnapDestination(LengthSize);
-    void setScrollSnapCoordinates(Vector<LengthSize>);
+    // Scroll snap port style.
+    void setScrollSnapType(const ScrollSnapType&);
+    void setScrollPaddingTop(const Length&);
+    void setScrollPaddingBottom(const Length&);
+    void setScrollPaddingLeft(const Length&);
+    void setScrollPaddingRight(const Length&);
+
+    // Scroll snap area style.
+    void setScrollSnapAlign(const ScrollSnapAlign&);
+    void setScrollSnapMarginTop(const Length&);
+    void setScrollSnapMarginBottom(const Length&);
+    void setScrollSnapMarginLeft(const Length&);
+    void setScrollSnapMarginRight(const Length&);
 #endif
 
 #if ENABLE(TOUCH_EVENTS)
@@ -1738,21 +1757,21 @@ public:
     const SVGRenderStyle& svgStyle() const { return *m_svgStyle; }
     SVGRenderStyle& accessSVGStyle() { return *m_svgStyle.access(); }
 
-    const SVGPaint::SVGPaintType& fillPaintType() const { return svgStyle().fillPaintType(); }
+    const SVGPaintType& fillPaintType() const { return svgStyle().fillPaintType(); }
     Color fillPaintColor() const { return svgStyle().fillPaintColor(); }
-    void setFillPaintColor(const Color& c) { accessSVGStyle().setFillPaint(SVGPaint::SVG_PAINTTYPE_RGBCOLOR, c, ""); }
+    void setFillPaintColor(const Color& c) { accessSVGStyle().setFillPaint(SVG_PAINTTYPE_RGBCOLOR, c, ""); }
     float fillOpacity() const { return svgStyle().fillOpacity(); }
     void setFillOpacity(float f) { accessSVGStyle().setFillOpacity(f); }
 
-    const SVGPaint::SVGPaintType& strokePaintType() const { return svgStyle().strokePaintType(); }
+    const SVGPaintType& strokePaintType() const { return svgStyle().strokePaintType(); }
     Color strokePaintColor() const { return svgStyle().strokePaintColor(); }
-    void setStrokePaintColor(const Color& c) { accessSVGStyle().setStrokePaint(SVGPaint::SVG_PAINTTYPE_RGBCOLOR, c, ""); }
+    void setStrokePaintColor(const Color& c) { accessSVGStyle().setStrokePaint(SVG_PAINTTYPE_RGBCOLOR, c, ""); }
     float strokeOpacity() const { return svgStyle().strokeOpacity(); }
     void setStrokeOpacity(float f) { accessSVGStyle().setStrokeOpacity(f); }
     const Length& strokeWidth() const { return svgStyle().strokeWidth(); }
     void setStrokeWidth(Length w) { accessSVGStyle().setStrokeWidth(w); }
-    Vector<SVGLength> strokeDashArray() const { return svgStyle().strokeDashArray(); }
-    void setStrokeDashArray(Vector<SVGLength> array) { accessSVGStyle().setStrokeDashArray(array); }
+    Vector<SVGLengthValue> strokeDashArray() const { return svgStyle().strokeDashArray(); }
+    void setStrokeDashArray(Vector<SVGLengthValue> array) { accessSVGStyle().setStrokeDashArray(array); }
     const Length& strokeDashOffset() const { return svgStyle().strokeDashOffset(); }
     void setStrokeDashOffset(Length d) { accessSVGStyle().setStrokeDashOffset(d); }
     float strokeMiterLimit() const { return svgStyle().strokeMiterLimit(); }
@@ -1783,10 +1802,10 @@ public:
     void setFloodColor(const Color& c) { accessSVGStyle().setFloodColor(c); }
     void setLightingColor(const Color& c) { accessSVGStyle().setLightingColor(c); }
 
-    SVGLength baselineShiftValue() const { return svgStyle().baselineShiftValue(); }
-    void setBaselineShiftValue(SVGLength s) { accessSVGStyle().setBaselineShiftValue(s); }
-    SVGLength kerning() const { return svgStyle().kerning(); }
-    void setKerning(SVGLength k) { accessSVGStyle().setKerning(k); }
+    SVGLengthValue baselineShiftValue() const { return svgStyle().baselineShiftValue(); }
+    void setBaselineShiftValue(SVGLengthValue s) { accessSVGStyle().setBaselineShiftValue(s); }
+    SVGLengthValue kerning() const { return svgStyle().kerning(); }
+    void setKerning(SVGLengthValue k) { accessSVGStyle().setKerning(k); }
 
     void setShapeOutside(RefPtr<ShapeValue>&& value)
     {
@@ -2073,11 +2092,10 @@ public:
 #endif
 
 #if ENABLE(CSS_SCROLL_SNAP)
-    static ScrollSnapType initialScrollSnapType() { return ScrollSnapType::None; }
-    static ScrollSnapPoints* initialScrollSnapPointsX() { return nullptr; }
-    static ScrollSnapPoints* initialScrollSnapPointsY() { return nullptr; }
-    static LengthSize initialScrollSnapDestination();
-    static Vector<LengthSize> initialScrollSnapCoordinates();
+    static ScrollSnapType initialScrollSnapType();
+    static ScrollSnapAlign initialScrollSnapAlign();
+    static Length initialScrollSnapMargin() { return Length(Fixed); }
+    static Length initialScrollPadding() { return Length(Fixed); }
 #endif
 
 #if ENABLE(CSS_TRAILING_WORD)

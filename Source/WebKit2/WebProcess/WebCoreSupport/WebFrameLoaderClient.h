@@ -46,6 +46,8 @@ public:
 
     bool frameHasCustomContentProvider() const { return m_frameHasCustomContentProvider; }
 
+    void setUseIconLoadingClient(bool useIconLoadingClient) { m_useIconLoadingClient = useIconLoadingClient; }
+
 private:
     void frameLoaderDestroyed() override;
 
@@ -96,7 +98,7 @@ private:
     void dispatchDidReceiveIcon() override;
     void dispatchDidStartProvisionalLoad() override;
     void dispatchDidReceiveTitle(const WebCore::StringWithDirection&) override;
-    void dispatchDidCommitLoad(Optional<WebCore::HasInsecureContent>) override;
+    void dispatchDidCommitLoad(std::optional<WebCore::HasInsecureContent>) override;
     void dispatchDidFailProvisionalLoad(const WebCore::ResourceError&) override;
     void dispatchDidFailLoad(const WebCore::ResourceError&) override;
     void dispatchDidFinishDocumentLoad() override;
@@ -255,6 +257,10 @@ private:
 
     void didRestoreScrollPosition() override;
 
+    bool useIconLoadingClient() override;
+    void getLoadDecisionForIcon(const WebCore::LinkIcon&, uint64_t callbackID) override;
+    void finishedLoadingIcon(uint64_t loadIdentifier, WebCore::SharedBuffer*) override;
+
     bool shouldPaintBrokenImage(const WebCore::URL&) const override;
 
     WebFrame* m_frame;
@@ -263,6 +269,7 @@ private:
     bool m_didCompletePageTransition;
     bool m_frameHasCustomContentProvider;
     bool m_frameCameFromPageCache;
+    bool m_useIconLoadingClient { false };
 };
 
 // As long as EmptyFrameLoaderClient exists in WebCore, this can return 0.

@@ -44,6 +44,7 @@ NSString* const HIDEventTouchesKey = @"touches";
 NSString* const HIDEventPhaseKey = @"phase";
 NSString* const HIDEventInterpolateKey = @"interpolate";
 NSString* const HIDEventTimestepKey = @"timestep";
+NSString* const HIDEventCoordinateSpaceKey = @"coordinateSpace";
 NSString* const HIDEventStartEventKey = @"startEvent";
 NSString* const HIDEventEndEventKey = @"endEvent";
 NSString* const HIDEventTouchIDKey = @"id";
@@ -57,6 +58,9 @@ NSString* const HIDEventMinorRadiusKey = @"minorRadius";
 NSString* const HIDEventInputTypeHand = @"hand";
 NSString* const HIDEventInputTypeFinger = @"finger";
 NSString* const HIDEventInputTypeStylus = @"stylus";
+
+NSString* const HIDEventCoordinateSpaceTypeGlobal = @"global";
+NSString* const HIDEventCoordinateSpaceTypeContent = @"content";
 
 NSString* const HIDEventInterpolationTypeLinear = @"linear";
 NSString* const HIDEventInterpolationTypeSimpleCurve = @"simpleCurve";
@@ -763,6 +767,11 @@ static InterpolationType interpolationFromString(NSString *string)
         completionBlock();
         Block_release(completionBlock);
     }
+}
+
+- (BOOL)checkForOutstandingCallbacks
+{
+    return !([_eventCallbacks count] > 0);
 }
 
 static inline bool shouldWrapWithShiftKeyEventForCharacter(NSString *key)

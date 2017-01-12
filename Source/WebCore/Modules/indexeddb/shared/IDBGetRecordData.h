@@ -31,10 +31,20 @@
 
 namespace WebCore {
 
+enum class IDBGetRecordDataType {
+    KeyOnly,
+    KeyAndValue,
+};
+
 struct IDBGetRecordData {
     IDBKeyRangeData keyRangeData;
+    IDBGetRecordDataType type;
 
     IDBGetRecordData isolatedCopy() const;
+
+#if !LOG_DISABLED
+    String loggingString() const;
+#endif
 
     template<class Encoder> void encode(Encoder&) const;
     template<class Decoder> static bool decode(Decoder&, IDBGetRecordData&);
@@ -44,12 +54,16 @@ template<class Encoder>
 void IDBGetRecordData::encode(Encoder& encoder) const
 {
     encoder << keyRangeData;
+    encoder.encodeEnum(type);
 }
 
 template<class Decoder>
 bool IDBGetRecordData::decode(Decoder& decoder, IDBGetRecordData& getRecordData)
 {
     if (!decoder.decode(getRecordData.keyRangeData))
+        return false;
+
+    if (!decoder.decodeEnum(getRecordData.type))
         return false;
 
     return true;

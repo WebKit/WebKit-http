@@ -25,6 +25,10 @@
 
 #pragma once
 
+#include "CachedModuleScriptLoader.h"
+#include "CachedModuleScriptLoaderClient.h"
+#include "URL.h"
+#include "URLHash.h"
 #include <runtime/JSCJSValue.h>
 #include <wtf/Noncopyable.h>
 
@@ -40,20 +44,26 @@ class JSModuleLoader;
 namespace WebCore {
 
 class Document;
+class JSDOMGlobalObject;
 
-class ScriptModuleLoader {
+class ScriptModuleLoader final : private CachedModuleScriptLoaderClient {
     WTF_MAKE_NONCOPYABLE(ScriptModuleLoader); WTF_MAKE_FAST_ALLOCATED;
 public:
     explicit ScriptModuleLoader(Document&);
+    ~ScriptModuleLoader();
 
     Document& document() { return m_document; }
 
-    JSC::JSInternalPromise* resolve(JSC::JSGlobalObject*, JSC::ExecState*, JSC::JSModuleLoader*, JSC::JSValue moduleName, JSC::JSValue importerModuleKey, JSC::JSValue initiator);
-    JSC::JSInternalPromise* fetch(JSC::JSGlobalObject*, JSC::ExecState*, JSC::JSModuleLoader*, JSC::JSValue moduleKey, JSC::JSValue initiator);
-    JSC::JSValue evaluate(JSC::JSGlobalObject*, JSC::ExecState*, JSC::JSModuleLoader*, JSC::JSValue moduleKey, JSC::JSValue moduleRecord, JSC::JSValue initiator);
+    JSC::JSInternalPromise* resolve(JSC::JSGlobalObject*, JSC::ExecState*, JSC::JSModuleLoader*, JSC::JSValue moduleName, JSC::JSValue importerModuleKey, JSC::JSValue scriptFetcher);
+    JSC::JSInternalPromise* fetch(JSC::JSGlobalObject*, JSC::ExecState*, JSC::JSModuleLoader*, JSC::JSValue moduleKey, JSC::JSValue scriptFetcher);
+    JSC::JSValue evaluate(JSC::JSGlobalObject*, JSC::ExecState*, JSC::JSModuleLoader*, JSC::JSValue moduleKey, JSC::JSValue moduleRecord, JSC::JSValue scriptFetcher);
 
 private:
+    void notifyFinished(CachedModuleScriptLoader&, RefPtr<DeferredPromise>) final;
+
     Document& m_document;
+    HashMap<URL, URL> m_requestURLToResponseURLMap;
+    HashSet<Ref<CachedModuleScriptLoader>> m_loaders;
 };
 
 } // namespace WebCore

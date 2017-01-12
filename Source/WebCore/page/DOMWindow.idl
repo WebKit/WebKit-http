@@ -36,6 +36,8 @@
     ExportMacro=WEBCORE_EXPORT,
     ImplicitThis,
     InterfaceName=Window,
+    IsImmutablePrototypeExoticObject,
+    IsImmutablePrototypeExoticObjectOnPrototype,
     JSCustomDefineOwnProperty,
     JSCustomMarkFunction,
     JSCustomToNativeObject,
@@ -152,7 +154,7 @@
     // 0 when straight up; -90 when rotated 90 degrees clockwise; 90 counter clockwise.
     [Conditional=ORIENTATION_EVENTS] readonly attribute long orientation;
 
-    [DoNotCheckSecurity, Custom, MayThrowException, ForwardDeclareInHeader] void postMessage(SerializedScriptValue message, USVString targetOrigin, optional Array messagePorts);
+    [CallWith=ScriptState&CallerWindow, DoNotCheckSecurity, ForwardDeclareInHeader, MayThrowException] void postMessage(any message, USVString targetOrigin, optional sequence<object> transfer = []);
 
     [Conditional=WEB_TIMING, Replaceable] readonly attribute Performance performance;
 
@@ -165,13 +167,15 @@
     void captureEvents(); // Not implemented. Also not in modern standards. Empty function may help compatibility with legacy content.
     void releaseEvents(); // Not implemented. Also not in modern standards. Empty function may help compatibility with legacy content.
 
-    [CustomGetter, CustomConstructor] attribute HTMLImageElementNamedConstructor Image;
     attribute XMLDocumentConstructor SVGDocument;
 
     attribute DOMURLConstructor webkitURL; // FIXME: Deprecate this.
     attribute MutationObserverConstructor WebKitMutationObserver; // FIXME: Remove once we prove it is not needed for compatibility with legacy content.
 
     [EnabledAtRuntime=CustomElements, ImplementedAs=ensureCustomElementRegistry] readonly attribute CustomElementRegistry customElements;
+
+    [MayThrowException, EnabledForWorld=shadowRootIsAlwaysOpen]
+    NodeList collectMatchingElementsInFlatTree(Node scope, DOMString selectors);
 
     // Event handlers unique to Element and DOMWindow.
     // FIXME: Should these be exposed on Document as well (and therefore moved to GlobalEventHandlers.idl)?

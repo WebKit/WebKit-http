@@ -39,10 +39,10 @@
 #include "CSSFontVariationValue.h"
 #include "CSSFunctionValue.h"
 #include "CSSLineBoxContainValue.h"
-#include "CSSParser.h"
 #include "CSSPrimitiveValue.h"
 #include "CSSPrimitiveValueMappings.h"
 #include "CSSPropertyNames.h"
+#include "CSSPropertyParser.h"
 #include "CSSReflectValue.h"
 #include "CSSSelector.h"
 #include "CSSShadowValue.h"
@@ -53,6 +53,7 @@
 #include "ContentData.h"
 #include "CounterContent.h"
 #include "CursorList.h"
+#include "DeprecatedCSSOMValue.h"
 #include "Document.h"
 #include "ExceptionCode.h"
 #include "FontTaggedSettings.h"
@@ -74,8 +75,8 @@
 #include "StylePropertyShorthandFunctions.h"
 #include "StyleResolver.h"
 #include "StyleScope.h"
+#include "StyleScrollSnapPoints.h"
 #include "Text.h"
-#include "WebKitCSSTransformValue.h"
 #include "WebKitFontFamilyNames.h"
 #include "WillChangeData.h"
 #include <wtf/NeverDestroyed.h>
@@ -89,11 +90,6 @@
 
 #if ENABLE(DASHBOARD_SUPPORT)
 #include "DashboardRegion.h"
-#endif
-
-#if ENABLE(CSS_SCROLL_SNAP)
-#include "LengthRepeat.h"
-#include "StyleScrollSnapPoints.h"
 #endif
 
 #if ENABLE(CSS_ANIMATIONS_LEVEL_2)
@@ -151,6 +147,8 @@ static const CSSPropertyID computedProperties[] = {
     CSSPropertyClear,
     CSSPropertyClip,
     CSSPropertyColor,
+    CSSPropertyCounterIncrement,
+    CSSPropertyCounterReset,
     CSSPropertyContent,
     CSSPropertyCursor,
     CSSPropertyDirection,
@@ -163,6 +161,7 @@ static const CSSPropertyID computedProperties[] = {
     CSSPropertyFontSynthesis,
     CSSPropertyFontVariant,
     CSSPropertyFontWeight,
+    CSSPropertyHangingPunctuation,
     CSSPropertyHeight,
 #if ENABLE(CSS_IMAGE_ORIENTATION)
     CSSPropertyImageOrientation,
@@ -185,6 +184,8 @@ static const CSSPropertyID computedProperties[] = {
     CSSPropertyMaxWidth,
     CSSPropertyMinHeight,
     CSSPropertyMinWidth,
+    CSSPropertyObjectFit,
+    CSSPropertyObjectPosition,
     CSSPropertyOpacity,
     CSSPropertyOrphans,
     CSSPropertyOutlineColor,
@@ -238,15 +239,23 @@ static const CSSPropertyID computedProperties[] = {
     CSSPropertyWhiteSpace,
     CSSPropertyWidows,
     CSSPropertyWidth,
+    CSSPropertyWillChange,
     CSSPropertyWordBreak,
     CSSPropertyWordSpacing,
     CSSPropertyWordWrap,
 #if ENABLE(CSS_SCROLL_SNAP)
-    CSSPropertyWebkitScrollSnapType,
-    CSSPropertyWebkitScrollSnapPointsX,
-    CSSPropertyWebkitScrollSnapPointsY,
-    CSSPropertyWebkitScrollSnapDestination,
-    CSSPropertyWebkitScrollSnapCoordinate,
+    CSSPropertyScrollSnapMargin,
+    CSSPropertyScrollSnapMarginLeft,
+    CSSPropertyScrollSnapMarginTop,
+    CSSPropertyScrollSnapMarginRight,
+    CSSPropertyScrollSnapMarginBottom,
+    CSSPropertyScrollPadding,
+    CSSPropertyScrollPaddingLeft,
+    CSSPropertyScrollPaddingTop,
+    CSSPropertyScrollPaddingRight,
+    CSSPropertyScrollPaddingBottom,
+    CSSPropertyScrollSnapType,
+    CSSPropertyScrollSnapAlign,
 #endif
     CSSPropertyZIndex,
     CSSPropertyZoom,
@@ -305,9 +314,10 @@ static const CSSPropertyID computedProperties[] = {
     CSSPropertyAlignSelf,
     CSSPropertyFilter,
     CSSPropertyFlexBasis,
+    CSSPropertyFlexDirection,
+    CSSPropertyFlexFlow,
     CSSPropertyFlexGrow,
     CSSPropertyFlexShrink,
-    CSSPropertyFlexDirection,
     CSSPropertyFlexWrap,
     CSSPropertyJustifyContent,
 #if ENABLE(CSS_GRID_LAYOUT)
@@ -325,6 +335,9 @@ static const CSSPropertyID computedProperties[] = {
     CSSPropertyFontVariantNumeric,
     CSSPropertyFontVariantAlternates,
     CSSPropertyFontVariantEastAsian,
+#if ENABLE(VARIATION_FONTS)
+    CSSPropertyFontVariationSettings,
+#endif
 #if ENABLE(CSS_GRID_LAYOUT)
     CSSPropertyGridAutoColumns,
     CSSPropertyGridAutoFlow,
@@ -414,14 +427,17 @@ static const CSSPropertyID computedProperties[] = {
     CSSPropertyWebkitRegionBreakInside,
     CSSPropertyWebkitRegionFragment,
 #endif
-    CSSPropertyShapeMargin,
     CSSPropertyShapeImageThreshold,
+    CSSPropertyShapeMargin,
+    CSSPropertyShapeOutside,
+    CSSPropertyShapeRendering,
     CSSPropertyBufferedRendering,
     CSSPropertyClipPath,
     CSSPropertyClipRule,
     CSSPropertyCx,
     CSSPropertyCy,
     CSSPropertyMask,
+    CSSPropertyMaskType,
     CSSPropertyFilter,
     CSSPropertyFloodColor,
     CSSPropertyFloodOpacity,
@@ -437,12 +453,10 @@ static const CSSPropertyID computedProperties[] = {
     CSSPropertyMarkerEnd,
     CSSPropertyMarkerMid,
     CSSPropertyMarkerStart,
-    CSSPropertyMaskType,
     CSSPropertyPaintOrder,
     CSSPropertyR,
     CSSPropertyRx,
     CSSPropertyRy,
-    CSSPropertyShapeRendering,
     CSSPropertyStroke,
     CSSPropertyStrokeDasharray,
     CSSPropertyStrokeDashoffset,
@@ -677,12 +691,12 @@ static Ref<CSSValue> valueForReflection(const StyleReflection* reflection, const
 static Ref<CSSValueList> createPositionListForLayer(CSSPropertyID propertyID, const FillLayer* layer, const RenderStyle& style)
 {
     auto positionList = CSSValueList::createSpaceSeparated();
-    if (layer->isBackgroundOriginSet()) {
+    if (layer->isBackgroundXOriginSet()) {
         ASSERT_UNUSED(propertyID, propertyID == CSSPropertyBackgroundPosition || propertyID == CSSPropertyWebkitMaskPosition);
         positionList.get().append(CSSValuePool::singleton().createValue(layer->backgroundXOrigin()));
     }
     positionList.get().append(zoomAdjustedPixelValueForLength(layer->xPosition(), style));
-    if (layer->isBackgroundOriginSet()) {
+    if (layer->isBackgroundYOriginSet()) {
         ASSERT(propertyID == CSSPropertyBackgroundPosition || propertyID == CSSPropertyWebkitMaskPosition);
         positionList.get().append(CSSValuePool::singleton().createValue(layer->backgroundYOrigin()));
     }
@@ -818,12 +832,12 @@ static LayoutRect sizingBox(RenderObject& renderer)
     return box.style().boxSizing() == BORDER_BOX ? box.borderBoxRect() : box.computedCSSContentBoxRect();
 }
 
-static Ref<WebKitCSSTransformValue> matrixTransformValue(const TransformationMatrix& transform, const RenderStyle& style)
+static Ref<CSSFunctionValue> matrixTransformValue(const TransformationMatrix& transform, const RenderStyle& style)
 {
-    RefPtr<WebKitCSSTransformValue> transformValue;
+    RefPtr<CSSFunctionValue> transformValue;
     auto& cssValuePool = CSSValuePool::singleton();
     if (transform.isAffine()) {
-        transformValue = WebKitCSSTransformValue::create(WebKitCSSTransformValue::MatrixTransformOperation);
+        transformValue = CSSFunctionValue::create(CSSValueMatrix);
 
         transformValue->append(cssValuePool.createValue(transform.a(), CSSPrimitiveValue::CSS_NUMBER));
         transformValue->append(cssValuePool.createValue(transform.b(), CSSPrimitiveValue::CSS_NUMBER));
@@ -832,7 +846,7 @@ static Ref<WebKitCSSTransformValue> matrixTransformValue(const TransformationMat
         transformValue->append(zoomAdjustedNumberValue(transform.e(), style));
         transformValue->append(zoomAdjustedNumberValue(transform.f(), style));
     } else {
-        transformValue = WebKitCSSTransformValue::create(WebKitCSSTransformValue::Matrix3DTransformOperation);
+        transformValue = CSSFunctionValue::create(CSSValueMatrix3d);
 
         transformValue->append(cssValuePool.createValue(transform.m11(), CSSPrimitiveValue::CSS_NUMBER));
         transformValue->append(cssValuePool.createValue(transform.m12(), CSSPrimitiveValue::CSS_NUMBER));
@@ -1006,19 +1020,19 @@ static Ref<CSSValue> specifiedValueForGridTrackSize(const GridTrackSize& trackSi
     case LengthTrackSizing:
         return specifiedValueForGridTrackBreadth(trackSize.minTrackBreadth(), style);
     case FitContentTrackSizing: {
-        auto fitContentTrackSize = CSSValueList::createCommaSeparated();
+        auto fitContentTrackSize = CSSFunctionValue::create(CSSValueFitContent);
         fitContentTrackSize->append(zoomAdjustedPixelValueForLength(trackSize.fitContentTrackBreadth().length(), style));
-        return CSSFunctionValue::create("fit-content(", WTFMove(fitContentTrackSize));
+        return WTFMove(fitContentTrackSize);
     }
     default:
         ASSERT(trackSize.type() == MinMaxTrackSizing);
         if (trackSize.minTrackBreadth().isAuto() && trackSize.maxTrackBreadth().isFlex())
             return CSSValuePool::singleton().createValue(trackSize.maxTrackBreadth().flex(), CSSPrimitiveValue::CSS_FR);
 
-        auto minMaxTrackBreadths = CSSValueList::createCommaSeparated();
+        auto minMaxTrackBreadths = CSSFunctionValue::create(CSSValueMinmax);
         minMaxTrackBreadths->append(specifiedValueForGridTrackBreadth(trackSize.minTrackBreadth(), style));
         minMaxTrackBreadths->append(specifiedValueForGridTrackBreadth(trackSize.maxTrackBreadth(), style));
-        return CSSFunctionValue::create("minmax(", WTFMove(minMaxTrackBreadths));
+        return WTFMove(minMaxTrackBreadths);
     }
 }
 
@@ -1205,45 +1219,27 @@ static Ref<CSSValueList> getTransitionPropertyValue(const AnimationList* animLis
 }
 
 #if ENABLE(CSS_SCROLL_SNAP)
-static Ref<CSSValueList> scrollSnapDestination(const RenderStyle& style, const LengthSize& destination)
+
+static Ref<CSSValueList> valueForScrollSnapType(const ScrollSnapType& type)
 {
-    auto list = CSSValueList::createSpaceSeparated();
-    list.get().append(zoomAdjustedPixelValueForLength(destination.width(), style));
-    list.get().append(zoomAdjustedPixelValueForLength(destination.height(), style));
-    return list;
-}
-
-static Ref<CSSValue> scrollSnapPoints(const RenderStyle& style, const ScrollSnapPoints* points)
-{
-    if (!points)
-        return CSSValuePool::singleton().createIdentifierValue(CSSValueNone);
-
-    if (points->usesElements)
-        return CSSValuePool::singleton().createIdentifierValue(CSSValueElements);
-    auto list = CSSValueList::createSpaceSeparated();
-    for (auto& point : points->offsets)
-        list.get().append(zoomAdjustedPixelValueForLength(point, style));
-    if (points->hasRepeat)
-        list.get().append(CSSValuePool::singleton().createValue(LengthRepeat::create(zoomAdjustedPixelValueForLength(points->repeatOffset, style))));
-    return WTFMove(list);
-}
-
-static Ref<CSSValue> scrollSnapCoordinates(const RenderStyle& style, const Vector<LengthSize>& coordinates)
-{
-    if (coordinates.isEmpty())
-        return CSSValuePool::singleton().createIdentifierValue(CSSValueNone);
-
-    auto list = CSSValueList::createCommaSeparated();
-
-    for (auto& coordinate : coordinates) {
-        auto pair = CSSValueList::createSpaceSeparated();
-        pair.get().append(zoomAdjustedPixelValueForLength(coordinate.width(), style));
-        pair.get().append(zoomAdjustedPixelValueForLength(coordinate.height(), style));
-        list.get().append(WTFMove(pair));
+    auto value = CSSValueList::createSpaceSeparated();
+    if (type.strictness == ScrollSnapStrictness::None)
+        value->append(CSSValuePool::singleton().createValue(CSSValueNone));
+    else {
+        value->append(CSSPrimitiveValue::create(type.axis));
+        value->append(CSSPrimitiveValue::create(type.strictness));
     }
-
-    return WTFMove(list);
+    return value;
 }
+
+static Ref<CSSValueList> valueForScrollSnapAlignment(const ScrollSnapAlign& alignment)
+{
+    auto value = CSSValueList::createSpaceSeparated();
+    value->append(CSSPrimitiveValue::create(alignment.x));
+    value->append(CSSPrimitiveValue::create(alignment.y));
+    return value;
+}
+
 #endif
 
 static Ref<CSSValue> getWillChangePropertyValue(const WillChangeData* willChangeData)
@@ -1862,11 +1858,11 @@ static Ref<CSSValueList> contentToCSSValue(const RenderStyle* style)
     return list;
 }
 
-static RefPtr<CSSValue> counterToCSSValue(const RenderStyle* style, CSSPropertyID propertyID)
+static Ref<CSSValue> counterToCSSValue(const RenderStyle* style, CSSPropertyID propertyID)
 {
     const CounterDirectiveMap* map = style->counterDirectives();
     if (!map)
-        return nullptr;
+        return CSSValuePool::singleton().createIdentifierValue(CSSValueNone);
 
     auto& cssValuePool = CSSValuePool::singleton();
     auto list = CSSValueList::createSpaceSeparated();
@@ -2145,6 +2141,8 @@ static Ref<CSSValue> fontSynthesisFromStyle(const RenderStyle& style)
         list.get().append(CSSValuePool::singleton().createIdentifierValue(CSSValueStyle));
     if (style.fontDescription().fontSynthesis() & FontSynthesisWeight)
         list.get().append(CSSValuePool::singleton().createIdentifierValue(CSSValueWeight));
+    if (style.fontDescription().fontSynthesis() & FontSynthesisSmallCaps)
+        list.get().append(CSSValuePool::singleton().createIdentifierValue(CSSValueSmallCaps));
     return Ref<CSSValue>(list.get());
 }
 
@@ -2435,11 +2433,11 @@ static Ref<CSSValue> shapePropertyValue(const RenderStyle& style, const ShapeVal
 
     ASSERT(shapeValue->type() == ShapeValue::Type::Shape);
 
-    RefPtr<CSSValueList> list = CSSValueList::createSpaceSeparated();
+    auto list = CSSValueList::createSpaceSeparated();
     list->append(valueForBasicShape(style, *shapeValue->shape()));
     if (shapeValue->cssBox() != BoxMissing)
         list->append(CSSValuePool::singleton().createValue(shapeValue->cssBox()));
-    return list.releaseNonNull();
+    return WTFMove(list);
 }
 
 static Ref<CSSValueList> valueForItemPositionWithOverflowAlignment(const StyleSelfAlignmentData& data)
@@ -2924,16 +2922,13 @@ RefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propertyID,
         }
 #if ENABLE(VARIATION_FONTS)
         case CSSPropertyFontVariationSettings: {
-            if (styledElement->document().settings() && styledElement->document().settings()->variationFontsEnabled()) {
-                const FontVariationSettings& variationSettings = style->fontDescription().variationSettings();
-                if (variationSettings.isEmpty())
-                    return cssValuePool.createIdentifierValue(CSSValueNormal);
-                RefPtr<CSSValueList> list = CSSValueList::createCommaSeparated();
-                for (auto& feature : variationSettings)
-                    list->append(CSSFontVariationValue::create(feature.tag(), feature.value()));
-                return list;
-            }
-            break;
+            const FontVariationSettings& variationSettings = style->fontDescription().variationSettings();
+            if (variationSettings.isEmpty())
+                return cssValuePool.createIdentifierValue(CSSValueNormal);
+            RefPtr<CSSValueList> list = CSSValueList::createCommaSeparated();
+            for (auto& feature : variationSettings)
+                list->append(CSSFontVariationValue::create(feature.tag(), feature.value()));
+            return list;
         }
 #endif
 #if ENABLE(CSS_GRID_LAYOUT)
@@ -3796,16 +3791,30 @@ RefPtr<CSSValue> ComputedStyleExtractor::propertyValue(CSSPropertyID propertyID,
             return getCSSPropertyValuesForSidesShorthand(paddingShorthand());
 
 #if ENABLE(CSS_SCROLL_SNAP)
-        case CSSPropertyWebkitScrollSnapType:
-            return cssValuePool.createValue(style->scrollSnapType());
-        case CSSPropertyWebkitScrollSnapDestination:
-            return scrollSnapDestination(*style, style->scrollSnapDestination());
-        case CSSPropertyWebkitScrollSnapPointsX:
-            return scrollSnapPoints(*style, style->scrollSnapPointsX());
-        case CSSPropertyWebkitScrollSnapPointsY:
-            return scrollSnapPoints(*style, style->scrollSnapPointsY());
-        case CSSPropertyWebkitScrollSnapCoordinate:
-            return scrollSnapCoordinates(*style, style->scrollSnapCoordinates());
+        case CSSPropertyScrollSnapMargin:
+            return getCSSPropertyValuesForSidesShorthand(scrollSnapMarginShorthand());
+        case CSSPropertyScrollSnapMarginBottom:
+            return zoomAdjustedPixelValueForLength(style->scrollSnapMarginBottom(), *style);
+        case CSSPropertyScrollSnapMarginTop:
+            return zoomAdjustedPixelValueForLength(style->scrollSnapMarginTop(), *style);
+        case CSSPropertyScrollSnapMarginRight:
+            return zoomAdjustedPixelValueForLength(style->scrollSnapMarginRight(), *style);
+        case CSSPropertyScrollSnapMarginLeft:
+            return zoomAdjustedPixelValueForLength(style->scrollSnapMarginLeft(), *style);
+        case CSSPropertyScrollPadding:
+            return getCSSPropertyValuesForSidesShorthand(scrollPaddingShorthand());
+        case CSSPropertyScrollPaddingBottom:
+            return zoomAdjustedPixelValueForLength(style->scrollPaddingBottom(), *style);
+        case CSSPropertyScrollPaddingTop:
+            return zoomAdjustedPixelValueForLength(style->scrollPaddingTop(), *style);
+        case CSSPropertyScrollPaddingRight:
+            return zoomAdjustedPixelValueForLength(style->scrollPaddingRight(), *style);
+        case CSSPropertyScrollPaddingLeft:
+            return zoomAdjustedPixelValueForLength(style->scrollPaddingLeft(), *style);
+        case CSSPropertyScrollSnapType:
+            return valueForScrollSnapType(style->scrollSnapType());
+        case CSSPropertyScrollSnapAlign:
+            return valueForScrollSnapAlignment(style->scrollSnapAlign());
 #endif
 
 #if ENABLE(CSS_TRAILING_WORD)
@@ -4117,16 +4126,22 @@ CSSRule* CSSComputedStyleDeclaration::parentRule() const
     return nullptr;
 }
 
-RefPtr<CSSValue> CSSComputedStyleDeclaration::getPropertyCSSValue(const String& propertyName)
+RefPtr<DeprecatedCSSOMValue> CSSComputedStyleDeclaration::getPropertyCSSValue(const String& propertyName)
 {
-    if (isCustomPropertyName(propertyName))
-        return ComputedStyleExtractor(m_element.ptr(), m_allowVisitedStyle, m_pseudoElementSpecifier).customPropertyValue(propertyName);
+    if (isCustomPropertyName(propertyName)) {
+        auto value = ComputedStyleExtractor(m_element.ptr(), m_allowVisitedStyle, m_pseudoElementSpecifier).customPropertyValue(propertyName);
+        if (!value)
+            return nullptr;
+        return value->createDeprecatedCSSOMWrapper();
+    }
 
     CSSPropertyID propertyID = cssPropertyID(propertyName);
     if (!propertyID)
         return nullptr;
     RefPtr<CSSValue> value = getPropertyCSSValue(propertyID);
-    return value ? value->cloneForCSSOM() : nullptr;
+    if (!value)
+        return nullptr;
+    return value->createDeprecatedCSSOMWrapper();
 }
 
 String CSSComputedStyleDeclaration::getPropertyValue(const String &propertyName)

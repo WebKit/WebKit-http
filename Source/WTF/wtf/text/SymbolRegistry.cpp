@@ -31,7 +31,7 @@ namespace WTF {
 SymbolRegistry::~SymbolRegistry()
 {
     for (auto& key : m_table)
-        key.impl()->symbolRegistry() = nullptr;
+        static_cast<SymbolImpl&>(*key.impl()).symbolRegistry() = nullptr;
 }
 
 Ref<SymbolImpl> SymbolRegistry::symbolForKey(const String& rep)
@@ -40,7 +40,7 @@ Ref<SymbolImpl> SymbolRegistry::symbolForKey(const String& rep)
     if (!addResult.isNewEntry)
         return *static_cast<SymbolImpl*>(addResult.iterator->impl());
 
-    auto symbol = StringImpl::createSymbol(*rep.impl());
+    auto symbol = SymbolImpl::create(*rep.impl());
     symbol->symbolRegistry() = this;
     *addResult.iterator = SymbolRegistryKey(&symbol.get());
     return symbol;
@@ -49,7 +49,7 @@ Ref<SymbolImpl> SymbolRegistry::symbolForKey(const String& rep)
 String SymbolRegistry::keyForSymbol(SymbolImpl& uid)
 {
     ASSERT(uid.symbolRegistry() == this);
-    return uid.extractFoldedStringInSymbol();
+    return uid.extractFoldedString();
 }
 
 void SymbolRegistry::remove(SymbolImpl& uid)

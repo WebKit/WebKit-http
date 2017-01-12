@@ -39,7 +39,7 @@ class HTMLImageElement : public HTMLElement, public FormNamedItem {
 public:
     static Ref<HTMLImageElement> create(Document&);
     static Ref<HTMLImageElement> create(const QualifiedName&, Document&, HTMLFormElement*);
-    static Ref<HTMLImageElement> createForJSConstructor(Document&, Optional<unsigned> width, Optional<unsigned> height);
+    static Ref<HTMLImageElement> createForJSConstructor(Document&, std::optional<unsigned> width, std::optional<unsigned> height);
 
     virtual ~HTMLImageElement();
 
@@ -60,7 +60,7 @@ public:
 
     void setLoadManually(bool loadManually) { m_imageLoader.setLoadManually(loadManually); }
 
-    bool matchesCaseFoldedUsemap(const AtomicStringImpl&) const;
+    bool matchesUsemap(const AtomicStringImpl&) const;
 
     WEBCORE_EXPORT const AtomicString& alt() const;
 
@@ -97,7 +97,7 @@ public:
 protected:
     HTMLImageElement(const QualifiedName&, Document&, HTMLFormElement* = 0);
 
-    void didMoveToNewDocument(Document* oldDocument) override;
+    void didMoveToNewDocument(Document& oldDocument) override;
 
 private:
     void parseAttribute(const QualifiedName&, const AtomicString&) override;
@@ -137,7 +137,7 @@ private:
     CompositeOperator m_compositeOperator;
     AtomicString m_bestFitImageURL;
     AtomicString m_currentSrc;
-    AtomicString m_caseFoldedUsemap;
+    AtomicString m_parsedUsemap;
     float m_imageDevicePixelRatio;
     bool m_experimentalImageMenuEnabled;
     bool m_hadNameBeforeAttributeChanged { false }; // FIXME: We only need this because parseAttribute() can't see the old value.

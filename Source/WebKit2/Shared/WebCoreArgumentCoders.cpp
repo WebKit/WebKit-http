@@ -37,6 +37,7 @@
 #include <WebCore/DatabaseDetails.h>
 #include <WebCore/DictationAlternative.h>
 #include <WebCore/DictionaryPopupInfo.h>
+#include <WebCore/DragData.h>
 #include <WebCore/Editor.h>
 #include <WebCore/EventTrackingRegions.h>
 #include <WebCore/FileChooser.h>
@@ -69,6 +70,8 @@
 #include <WebCore/UserStyleSheet.h>
 #include <WebCore/ViewportArguments.h>
 #include <WebCore/WindowFeatures.h>
+#include <wtf/MonotonicTime.h>
+#include <wtf/Seconds.h>
 #include <wtf/text/CString.h>
 #include <wtf/text/StringHash.h>
 
@@ -105,6 +108,36 @@ using namespace WebCore;
 using namespace WebKit;
 
 namespace IPC {
+
+void ArgumentCoder<MonotonicTime>::encode(Encoder& encoder, const MonotonicTime& time)
+{
+    encoder << time.secondsSinceEpoch().value();
+}
+
+bool ArgumentCoder<MonotonicTime>::decode(Decoder& decoder, MonotonicTime& time)
+{
+    double value;
+    if (!decoder.decode(value))
+        return false;
+
+    time = MonotonicTime::fromRawSeconds(value);
+    return true;
+}
+
+void ArgumentCoder<Seconds>::encode(Encoder& encoder, const Seconds& seconds)
+{
+    encoder << seconds.value();
+}
+
+bool ArgumentCoder<Seconds>::decode(Decoder& decoder, Seconds& seconds)
+{
+    double value;
+    if (!decoder.decode(value))
+        return false;
+
+    seconds = Seconds(value);
+    return true;
+}
 
 void ArgumentCoder<AffineTransform>::encode(Encoder& encoder, const AffineTransform& affineTransform)
 {
@@ -435,6 +468,29 @@ bool ArgumentCoder<IntSize>::decode(Decoder& decoder, IntSize& intSize)
 {
     return SimpleArgumentCoder<IntSize>::decode(decoder, intSize);
 }
+
+
+void ArgumentCoder<LayoutSize>::encode(Encoder& encoder, const LayoutSize& layoutSize)
+{
+    SimpleArgumentCoder<LayoutSize>::encode(encoder, layoutSize);
+}
+
+bool ArgumentCoder<LayoutSize>::decode(Decoder& decoder, LayoutSize& layoutSize)
+{
+    return SimpleArgumentCoder<LayoutSize>::decode(decoder, layoutSize);
+}
+
+
+void ArgumentCoder<LayoutPoint>::encode(Encoder& encoder, const LayoutPoint& layoutPoint)
+{
+    SimpleArgumentCoder<LayoutPoint>::encode(encoder, layoutPoint);
+}
+
+bool ArgumentCoder<LayoutPoint>::decode(Decoder& decoder, LayoutPoint& layoutPoint)
+{
+    return SimpleArgumentCoder<LayoutPoint>::decode(decoder, layoutPoint);
+}
+
 
 static void pathEncodeApplierFunction(Encoder& encoder, const PathElement& element)
 {
@@ -1163,6 +1219,52 @@ bool ArgumentCoder<Color>::decode(Decoder& decoder, Color& color)
     return true;
 }
 
+#if ENABLE(DRAG_SUPPORT)
+void ArgumentCoder<DragData>::encode(Encoder& encoder, const DragData& dragData)
+{
+    encoder << dragData.clientPosition();
+    encoder << dragData.globalPosition();
+    encoder.encodeEnum(dragData.draggingSourceOperationMask());
+    encoder.encodeEnum(dragData.flags());
+#if PLATFORM(MAC)
+    encoder << dragData.pasteboardName();
+    encoder << dragData.fileNames();
+#endif
+}
+
+bool ArgumentCoder<DragData>::decode(Decoder& decoder, DragData& dragData)
+{
+    IntPoint clientPosition;
+    if (!decoder.decode(clientPosition))
+        return false;
+
+    IntPoint globalPosition;
+    if (!decoder.decode(globalPosition))
+        return false;
+
+    DragOperation draggingSourceOperationMask;
+    if (!decoder.decodeEnum(draggingSourceOperationMask))
+        return false;
+
+    DragApplicationFlags applicationFlags;
+    if (!decoder.decodeEnum(applicationFlags))
+        return false;
+
+    String pasteboardName;
+#if PLATFORM(MAC)
+    if (!decoder.decode(pasteboardName))
+        return false;
+#endif
+    Vector<String> fileNames;
+    if (!decoder.decode(fileNames))
+        return false;
+
+    dragData = DragData(pasteboardName, clientPosition, globalPosition, draggingSourceOperationMask, applicationFlags);
+    dragData.setFileNames(fileNames);
+
+    return true;
+}
+#endif
 
 void ArgumentCoder<CompositionUnderline>::encode(Encoder& encoder, const CompositionUnderline& underline)
 {
@@ -2388,6 +2490,31 @@ bool ArgumentCoder<IDBKeyPath>::decode(Decoder& decoder, IDBKeyPath& keyPath)
     }
     return true;
 }
+#endif
+
+#if ENABLE(CSS_SCROLL_SNAP)
+
+void ArgumentCoder<ScrollOffsetRange<float>>::encode(Encoder& encoder, const ScrollOffsetRange<float>& range)
+{
+    encoder << range.start;
+    encoder << range.end;
+}
+
+bool ArgumentCoder<ScrollOffsetRange<float>>::decode(Decoder& decoder, ScrollOffsetRange<float>& range)
+{
+    float start;
+    if (!decoder.decode(start))
+        return false;
+
+    float end;
+    if (!decoder.decode(end))
+        return false;
+
+    range.start = start;
+    range.end = end;
+    return true;
+}
+
 #endif
 
 } // namespace IPC

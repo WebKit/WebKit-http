@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2014 Apple Inc. All rights reserved.
+ * Copyright (C) 2014-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -325,14 +325,24 @@ static _WKStorageBlockingPolicy toAPI(WebCore::SecurityOrigin::StorageBlockingPo
     _preferences->setVisualViewportEnabled(_visualViewportEnabled);
 }
 
-- (BOOL)_asyncImageDecodingEnabled
+- (BOOL)_largeImageAsyncDecodingEnabled
 {
-    return _preferences->asyncImageDecodingEnabled();
+    return _preferences->largeImageAsyncDecodingEnabled();
 }
 
-- (void)_setAsyncImageDecodingEnabled:(BOOL)_asyncImageDecodingEnabled
+- (void)_setLargeImageAsyncDecodingEnabled:(BOOL)_largeImageAsyncDecodingEnabled
 {
-    _preferences->setAsyncImageDecodingEnabled(_asyncImageDecodingEnabled);
+    _preferences->setLargeImageAsyncDecodingEnabled(_largeImageAsyncDecodingEnabled);
+}
+
+- (BOOL)_animatedImageAsyncDecodingEnabled
+{
+    return _preferences->animatedImageAsyncDecodingEnabled();
+}
+
+- (void)_setAnimatedImageAsyncDecodingEnabled:(BOOL)_animatedImageAsyncDecodingEnabled
+{
+    _preferences->setAnimatedImageAsyncDecodingEnabled(_animatedImageAsyncDecodingEnabled);
 }
 
 - (BOOL)_textAutosizingEnabled
@@ -495,6 +505,26 @@ static _WKStorageBlockingPolicy toAPI(WebCore::SecurityOrigin::StorageBlockingPo
 #if ENABLE(APPLE_PAY)
     _preferences->setApplePayCapabilityDisclosureAllowed(applePayCapabilityDisclosureAllowed);
 #endif
+}
+
+- (BOOL)_shouldSuppressKeyboardInputDuringProvisionalNavigation
+{
+    return _preferences->shouldSuppressKeyboardInputDuringProvisionalNavigation();
+}
+
+- (void)_setShouldSuppressKeyboardInputDuringProvisionalNavigation:(BOOL)shouldSuppress
+{
+    _preferences->setShouldSuppressKeyboardInputDuringProvisionalNavigation(shouldSuppress);
+}
+
+- (BOOL)_loadsImagesAutomatically
+{
+    return _preferences->loadsImagesAutomatically();
+}
+
+- (void)_setLoadsImagesAutomatically:(BOOL)loadsImagesAutomatically
+{
+    _preferences->setLoadsImagesAutomatically(loadsImagesAutomatically);
 }
 
 @end

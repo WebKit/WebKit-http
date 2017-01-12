@@ -32,6 +32,7 @@
 namespace WebCore {
 
 WEBCORE_EXPORT void setApplicationBundleIdentifier(const String&);
+String applicationBundleIdentifier();
 
 #if PLATFORM(MAC)
 
@@ -75,7 +76,6 @@ WEBCORE_EXPORT bool isTheEconomistOnIphone();
 WEBCORE_EXPORT bool isWebProcess();
 bool isIBooks();
 WEBCORE_EXPORT bool isTheSecretSocietyHiddenMystery();
-bool isBaiduNuomi();
 
 } // IOSApplication
 

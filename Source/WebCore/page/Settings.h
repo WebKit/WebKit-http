@@ -98,8 +98,10 @@ public:
 
     void pageDestroyed() { m_page = nullptr; }
 
-    enum class ForcedPrefersReducedMotionValue { System, On, Off };
-    static const Settings::ForcedPrefersReducedMotionValue defaultForcedPrefersReducedMotionValue = ForcedPrefersReducedMotionValue::System;
+    enum class ForcedAccessibilityValue { System, On, Off };
+    static const Settings::ForcedAccessibilityValue defaultForcedColorsAreInvertedAccessibilityValue = ForcedAccessibilityValue::System;
+    static const Settings::ForcedAccessibilityValue defaultForcedDisplayIsMonochromeAccessibilityValue = ForcedAccessibilityValue::System;
+    static const Settings::ForcedAccessibilityValue defaultForcedPrefersReducedMotionAccessibilityValue = ForcedAccessibilityValue::System;
 
     WEBCORE_EXPORT void setStandardFontFamily(const AtomicString&, UScriptCode = USCRIPT_COMMON);
     WEBCORE_EXPORT const AtomicString& standardFontFamily(UScriptCode = USCRIPT_COMMON) const;
@@ -170,8 +172,8 @@ public:
     WEBCORE_EXPORT void setMinimumDOMTimerInterval(std::chrono::milliseconds); // Initialized to DOMTimer::defaultMinimumInterval().
     std::chrono::milliseconds minimumDOMTimerInterval() const { return m_minimumDOMTimerInterval; }
 
-    WEBCORE_EXPORT void setLayoutInterval(std::chrono::milliseconds);
-    std::chrono::milliseconds layoutInterval() const { return m_layoutInterval; }
+    WEBCORE_EXPORT void setLayoutInterval(Seconds);
+    Seconds layoutInterval() const { return m_layoutInterval; }
 
     bool hiddenPageDOMTimerThrottlingEnabled() const { return m_hiddenPageDOMTimerThrottlingEnabled; }
     WEBCORE_EXPORT void setHiddenPageDOMTimerThrottlingEnabled(bool);
@@ -214,6 +216,11 @@ public:
     static bool isQTKitEnabled() { return gQTKitEnabled; }
 #else
     static bool isQTKitEnabled() { return false; }
+#endif
+
+#if USE(GSTREAMER)
+    WEBCORE_EXPORT static void setGStreamerEnabled(bool flag);
+    static bool isGStreamerEnabled() { return gGStreamerEnabled; }
 #endif
 
     static const unsigned defaultMaximumHTMLParserDOMTreeDepth = 512;
@@ -323,7 +330,7 @@ private:
     URL m_userStyleSheetLocation;
     const std::unique_ptr<FontGenericFamilies> m_fontGenericFamilies;
     SecurityOrigin::StorageBlockingPolicy m_storageBlockingPolicy;
-    std::chrono::milliseconds m_layoutInterval;
+    Seconds m_layoutInterval;
     std::chrono::milliseconds m_minimumDOMTimerInterval;
 
     SETTINGS_MEMBER_VARIABLES
@@ -372,6 +379,10 @@ private:
 
 #if PLATFORM(COCOA)
     WEBCORE_EXPORT static bool gQTKitEnabled;
+#endif
+
+#if USE(GSTREAMER)
+    WEBCORE_EXPORT static bool gGStreamerEnabled;
 #endif
 
     static bool gMockScrollbarsEnabled;

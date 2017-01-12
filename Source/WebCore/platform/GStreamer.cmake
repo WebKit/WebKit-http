@@ -16,6 +16,7 @@ if (ENABLE_MEDIA_STREAM)
 
         platform/mediastream/openwebrtc/MediaEndpointOwr.cpp
         platform/mediastream/openwebrtc/OpenWebRTCUtilities.cpp
+        platform/mediastream/openwebrtc/RealtimeMediaSourceOwr.cpp
         platform/mediastream/openwebrtc/RealtimeMediaSourceCenterOwr.cpp
     )
 endif ()
@@ -131,7 +132,7 @@ if (ENABLE_WEB_AUDIO)
     )
 endif ()
 
-if (ENABLE_LEGACY_ENCRYPTED_MEDIA)
+if (ENABLE_LEGACY_ENCRYPTED_MEDIA OR ENABLE_ENCRYPTED_MEDIA)
     list(APPEND WebCore_INCLUDE_DIRECTORIES
         ${LIBGCRYPT_INCLUDE_DIRS}
     )

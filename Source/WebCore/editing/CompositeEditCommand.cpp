@@ -760,7 +760,7 @@ Position CompositeEditCommand::replaceSelectedTextInNode(const String& text)
     RefPtr<Text> textNode = start.containerText();
     replaceTextInNode(textNode, start.offsetInContainerNode(), end.offsetInContainerNode() - start.offsetInContainerNode(), text);
 
-    return Position(WTFMove(textNode), start.offsetInContainerNode() + text.length());
+    return Position(textNode.get(), start.offsetInContainerNode() + text.length());
 }
 
 static Vector<RenderedDocumentMarker> copyMarkers(const Vector<RenderedDocumentMarker*>& markerPointers)
@@ -933,8 +933,8 @@ void CompositeEditCommand::rebalanceWhitespaceOnTextSubstring(PassRefPtr<Text> p
     if (!length)
         return;
 
-    VisiblePosition visibleUpstreamPos(Position(textNode, upstream));
-    VisiblePosition visibleDownstreamPos(Position(textNode, downstream));
+    VisiblePosition visibleUpstreamPos(Position(textNode.get(), upstream));
+    VisiblePosition visibleDownstreamPos(Position(textNode.get(), downstream));
     
     String string = text.substring(upstream, length);
     String rebalancedString = stringWithRebalancedWhitespace(string,
@@ -1301,7 +1301,7 @@ void CompositeEditCommand::cloneParagraphUnderNewElement(const Position& start, 
             auto clonedNode = node->cloneNode(true);
             insertNodeAfter(clonedNode.ptr(), lastNode);
             lastNode = WTFMove(clonedNode);
-            if (node == end.deprecatedNode() || end.deprecatedNode()->isDescendantOf(node.get()))
+            if (node == end.deprecatedNode() || end.deprecatedNode()->isDescendantOf(*node))
                 break;
         }
     }
@@ -1535,11 +1535,11 @@ void CompositeEditCommand::moveParagraphs(const VisiblePosition& startOfParagrap
     }
 }
 
-Optional<VisibleSelection> CompositeEditCommand::shouldBreakOutOfEmptyListItem() const
+std::optional<VisibleSelection> CompositeEditCommand::shouldBreakOutOfEmptyListItem() const
 {
     auto emptyListItem = enclosingEmptyListItem(endingSelection().visibleStart());
     if (!emptyListItem)
-        return Nullopt;
+        return std::nullopt;
 
     auto listNode = emptyListItem->parentNode();
     // FIXME: Can't we do something better when the immediate parent wasn't a list node?
@@ -1547,7 +1547,7 @@ Optional<VisibleSelection> CompositeEditCommand::shouldBreakOutOfEmptyListItem()
         || (!listNode->hasTagName(ulTag) && !listNode->hasTagName(olTag))
         || !listNode->hasEditableStyle()
         || listNode == emptyListItem->rootEditableElement())
-        return Nullopt;
+        return std::nullopt;
 
     return VisibleSelection(endingSelection().start().previous(BackwardDeletion), endingSelection().end());
 }

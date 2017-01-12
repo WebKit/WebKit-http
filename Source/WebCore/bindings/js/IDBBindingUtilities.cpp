@@ -56,7 +56,7 @@ namespace WebCore {
 static bool get(ExecState& exec, JSValue object, const String& keyPathElement, JSValue& result)
 {
     if (object.isString() && keyPathElement == "length") {
-        result = jsNumber(object.toString(&exec)->length());
+        result = jsNumber(asString(object)->length());
         return true;
     }
     if (!object.isObject())
@@ -101,8 +101,10 @@ JSValue toJS(ExecState& state, JSGlobalObject& globalObject, IDBKey* key)
         unsigned size = inArray.size();
         auto outArray = constructEmptyArray(&state, 0, &globalObject, size);
         RETURN_IF_EXCEPTION(scope, JSValue());
-        for (size_t i = 0; i < size; ++i)
+        for (size_t i = 0; i < size; ++i) {
             outArray->putDirectIndex(&state, i, toJS(state, globalObject, inArray.at(i).get()));
+            RETURN_IF_EXCEPTION(scope, JSValue());
+        }
         return outArray;
     }
     case KeyType::Binary: {
@@ -146,7 +148,7 @@ static RefPtr<IDBKey> createIDBKeyFromValue(ExecState& exec, JSValue value, Vect
         return IDBKey::createNumber(value.toNumber(&exec));
 
     if (value.isString())
-        return IDBKey::createString(value.toString(&exec)->value(&exec));
+        return IDBKey::createString(asString(value)->value(&exec));
 
     if (value.inherits(DateInstance::info()) && !std::isnan(valueToDate(&exec, value)))
         return IDBKey::createDate(valueToDate(&exec, value));
@@ -412,7 +414,7 @@ void generateIndexKeyForValue(ExecState& exec, const IDBIndexInfo& info, JSValue
     outKey = IndexKey(WTFMove(keyDatas));
 }
 
-JSValue toJS(ExecState& state, JSDOMGlobalObject& globalObject, const Optional<IDBKeyPath>& keyPath)
+JSValue toJS(ExecState& state, JSDOMGlobalObject& globalObject, const std::optional<IDBKeyPath>& keyPath)
 {
     if (!keyPath)
         return jsNull();

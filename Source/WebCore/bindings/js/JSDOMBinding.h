@@ -1,6 +1,6 @@
 /*
  *  Copyright (C) 1999-2001 Harri Porten (porten@kde.org)
- *  Copyright (C) 2003, 2004, 2005, 2006, 2008, 2009, 2013 Apple Inc. All rights reserved.
+ *  Copyright (C) 2003-2006, 2008-2009, 2013, 2016 Apple Inc. All rights reserved.
  *  Copyright (C) 2007 Samuel Weinig <sam@webkit.org>
  *  Copyright (C) 2009 Google, Inc. All rights reserved.
  *  Copyright (C) 2012 Ericsson AB. All rights reserved.
@@ -116,14 +116,20 @@ DOMWindow& firstDOMWindow(JSC::ExecState*);
 WEBCORE_EXPORT JSC::EncodedJSValue reportDeprecatedGetterError(JSC::ExecState&, const char* interfaceName, const char* attributeName);
 WEBCORE_EXPORT void reportDeprecatedSetterError(JSC::ExecState&, const char* interfaceName, const char* attributeName);
 
-void throwNotSupportedError(JSC::ExecState&, JSC::ThrowScope&, const char* message);
-void throwInvalidStateError(JSC::ExecState&, JSC::ThrowScope&, const char* message);
-void throwArrayElementTypeError(JSC::ExecState&, JSC::ThrowScope&);
 void throwAttributeTypeError(JSC::ExecState&, JSC::ThrowScope&, const char* interfaceName, const char* attributeName, const char* expectedType);
-WEBCORE_EXPORT void throwSequenceTypeError(JSC::ExecState&, JSC::ThrowScope&);
 WEBCORE_EXPORT bool throwSetterTypeError(JSC::ExecState&, JSC::ThrowScope&, const char* interfaceName, const char* attributeName);
+
+void throwArrayElementTypeError(JSC::ExecState&, JSC::ThrowScope&);
+void throwDataCloneError(JSC::ExecState&, JSC::ThrowScope&);
+void throwDOMSyntaxError(JSC::ExecState&, JSC::ThrowScope&); // Not the same as a JavaScript syntax error.
+void throwIndexSizeError(JSC::ExecState&, JSC::ThrowScope&);
+void throwInvalidStateError(JSC::ExecState&, JSC::ThrowScope&, const char* message);
 WEBCORE_EXPORT void throwNonFiniteTypeError(JSC::ExecState&, JSC::ThrowScope&);
+void throwNotSupportedError(JSC::ExecState&, JSC::ThrowScope&);
+void throwNotSupportedError(JSC::ExecState&, JSC::ThrowScope&, const char* message);
 void throwSecurityError(JSC::ExecState&, JSC::ThrowScope&, const String& message);
+WEBCORE_EXPORT void throwSequenceTypeError(JSC::ExecState&, JSC::ThrowScope&);
+void throwTypeMismatchError(JSC::ExecState&, JSC::ThrowScope&);
 
 WEBCORE_EXPORT JSC::EncodedJSValue throwArgumentMustBeEnumError(JSC::ExecState&, JSC::ThrowScope&, unsigned argumentIndex, const char* argumentName, const char* functionInterfaceName, const char* functionName, const char* expectedValues);
 JSC::EncodedJSValue throwArgumentMustBeFunctionError(JSC::ExecState&, JSC::ThrowScope&, unsigned argumentIndex, const char* argumentName, const char* functionInterfaceName, const char* functionName);
@@ -182,6 +188,7 @@ void addImpureProperty(const AtomicString&);
 
 const JSC::HashTable& getHashTableForGlobalData(JSC::VM&, const JSC::HashTable& staticTable);
 
+String retrieveErrorMessage(JSC::ExecState&, JSC::VM&, JSC::JSValue exception, JSC::CatchScope&);
 WEBCORE_EXPORT void reportException(JSC::ExecState*, JSC::JSValue exception, CachedScript* = nullptr);
 WEBCORE_EXPORT void reportException(JSC::ExecState*, JSC::Exception*, CachedScript* = nullptr, ExceptionDetails* = nullptr);
 void reportCurrentException(JSC::ExecState*);
@@ -191,15 +198,7 @@ JSC::JSValue createDOMException(JSC::ExecState*, ExceptionCode, const String&);
 
 // Convert a DOM implementation exception into a JavaScript exception in the execution state.
 void propagateException(JSC::ExecState&, JSC::ThrowScope&, Exception&&);
-void setDOMException(JSC::ExecState*, JSC::ThrowScope&, ExceptionCode);
-
-// Slower versions of the above for use when the caller doesn't have a ThrowScope.
-void propagateException(JSC::ExecState&, Exception&&);
-WEBCORE_EXPORT void setDOMException(JSC::ExecState*, ExceptionCode);
-
-// Implementation details of the above.
 WEBCORE_EXPORT void propagateExceptionSlowPath(JSC::ExecState&, JSC::ThrowScope&, Exception&&);
-WEBCORE_EXPORT void setDOMExceptionSlow(JSC::ExecState*, JSC::ThrowScope&, ExceptionCode);
 
 JSC::JSValue jsString(JSC::ExecState*, const URL&); // empty if the URL is null
 
@@ -214,7 +213,10 @@ String propertyNameToString(JSC::PropertyName);
 
 AtomicString propertyNameToAtomicString(JSC::PropertyName);
 
-WEBCORE_EXPORT String valueToUSVString(JSC::ExecState*, JSC::JSValue);
+WEBCORE_EXPORT String identifierToByteString(JSC::ExecState&, const JSC::Identifier&);
+WEBCORE_EXPORT String valueToByteString(JSC::ExecState&, JSC::JSValue);
+WEBCORE_EXPORT String identifierToUSVString(JSC::ExecState&, const JSC::Identifier&);
+WEBCORE_EXPORT String valueToUSVString(JSC::ExecState&, JSC::JSValue);
 
 int32_t finiteInt32Value(JSC::JSValue, JSC::ExecState*, bool& okay);
 
@@ -333,10 +335,8 @@ struct BindingCaller {
         ASSERT(state);
         auto throwScope = DECLARE_THROW_SCOPE(state->vm());
         auto* thisObject = castForOperation(*state);
-        if (shouldThrow != CastedThisErrorBehavior::Assert && UNLIKELY(!thisObject)) {
-            ASSERT(JSClass::info());
+        if (shouldThrow != CastedThisErrorBehavior::Assert && UNLIKELY(!thisObject))
             return rejectPromiseWithThisTypeError(promise.get(), JSClass::info()->className, operationName);
-        }
         ASSERT(thisObject);
         ASSERT_GC_OBJECT_INHERITS(thisObject, JSClass::info());
         // FIXME: We should refactor the binding generated code to use references for state and thisObject.
@@ -350,7 +350,6 @@ struct BindingCaller {
         auto throwScope = DECLARE_THROW_SCOPE(state->vm());
         auto* thisObject = castForOperation(*state);
         if (shouldThrow != CastedThisErrorBehavior::Assert && UNLIKELY(!thisObject)) {
-            ASSERT(JSClass::info());
             if (shouldThrow == CastedThisErrorBehavior::Throw)
                 return throwThisTypeError(*state, throwScope, JSClass::info()->className, operationName);
             // For custom promise-returning operations
@@ -368,10 +367,8 @@ struct BindingCaller {
         ASSERT(state);
         auto throwScope = DECLARE_THROW_SCOPE(state->vm());
         auto* thisObject = castForAttribute(*state, thisValue);
-        if (UNLIKELY(!thisObject)) {
-            ASSERT(JSClass::info());
+        if (UNLIKELY(!thisObject))
             return (shouldThrow == CastedThisErrorBehavior::Throw) ? throwSetterTypeError(*state, throwScope, JSClass::info()->className, attributeName) : false;
-        }
         return setter(*state, *thisObject, JSC::JSValue::decode(encodedValue), throwScope);
     }
 
@@ -382,7 +379,6 @@ struct BindingCaller {
         auto throwScope = DECLARE_THROW_SCOPE(state->vm());
         auto* thisObject = castForAttribute(*state, thisValue);
         if (UNLIKELY(!thisObject)) {
-            ASSERT(JSClass::info());
             if (shouldThrow == CastedThisErrorBehavior::Throw)
                 return throwGetterTypeError(*state, throwScope, JSClass::info()->className, attributeName);
             if (shouldThrow == CastedThisErrorBehavior::RejectPromise)
@@ -654,8 +650,10 @@ template<typename T> inline JSC::JSValue toJS(JSC::ExecState* exec, JSDOMGlobalO
 
     JSC::JSArray* array = constructEmptyArray(exec, nullptr, vector.size());
     RETURN_IF_EXCEPTION(scope, JSC::JSValue());
-    for (size_t i = 0; i < vector.size(); ++i)
+    for (size_t i = 0; i < vector.size(); ++i) {
         array->putDirectIndex(exec, i, toJS(exec, globalObject, vector[i]));
+        RETURN_IF_EXCEPTION(scope, JSC::JSValue());
+    }
     return array;
 }
 
@@ -666,8 +664,10 @@ template<typename T> inline JSC::JSValue toJS(JSC::ExecState* exec, JSDOMGlobalO
 
     JSC::JSArray* array = constructEmptyArray(exec, nullptr, vector.size());
     RETURN_IF_EXCEPTION(scope, JSC::JSValue());
-    for (size_t i = 0; i < vector.size(); ++i)
+    for (size_t i = 0; i < vector.size(); ++i) {
         array->putDirectIndex(exec, i, toJS(exec, globalObject, vector[i].get()));
+        RETURN_IF_EXCEPTION(scope, JSC::JSValue());
+    }
     return array;
 }
 
@@ -772,13 +772,6 @@ ALWAYS_INLINE void propagateException(JSC::ExecState& state, JSC::ThrowScope& th
     if (throwScope.exception())
         return;
     propagateExceptionSlowPath(state, throwScope, WTFMove(exception));
-}
-
-ALWAYS_INLINE void setDOMException(JSC::ExecState* exec, JSC::ThrowScope& throwScope, ExceptionCode ec)
-{
-    if (LIKELY(!ec || throwScope.exception()))
-        return;
-    setDOMExceptionSlow(exec, throwScope, ec);
 }
 
 inline void propagateException(JSC::ExecState& state, JSC::ThrowScope& throwScope, ExceptionOr<void>&& value)

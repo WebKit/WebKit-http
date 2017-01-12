@@ -68,13 +68,13 @@ template<> TestEventConstructor::Init convertDictionary<TestEventConstructor::In
         result.attr2 = convert<IDLDOMString>(state, attr2Value);
         RETURN_IF_EXCEPTION(throwScope, { });
     } else
-        result.attr2 = "";
+        result.attr2 = emptyString();
     JSValue attr3Value = isNullOrUndefined ? jsUndefined() : object->get(&state, Identifier::fromString(&state, "attr3"));
     if (!attr3Value.isUndefined()) {
         result.attr3 = convert<IDLDOMString>(state, attr3Value);
         RETURN_IF_EXCEPTION(throwScope, { });
     } else
-        result.attr3 = "";
+        result.attr3 = emptyString();
     return result;
 }
 
@@ -120,7 +120,7 @@ template<> EncodedJSValue JSC_HOST_CALL JSTestEventConstructorConstructor::const
     VM& vm = state->vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);
     UNUSED_PARAM(throwScope);
-    auto* castedThis = jsCast<JSTestEventConstructorConstructor*>(state->callee());
+    auto* castedThis = jsCast<JSTestEventConstructorConstructor*>(state->jsCallee());
     ASSERT(castedThis);
     if (UNLIKELY(state->argumentCount() < 1))
         return throwVMError(state, throwScope, createNotEnoughArgumentsError(state));
@@ -129,7 +129,7 @@ template<> EncodedJSValue JSC_HOST_CALL JSTestEventConstructorConstructor::const
     auto eventInitDict = convert<IDLDictionary<TestEventConstructor::Init>>(*state, state->argument(1));
     RETURN_IF_EXCEPTION(throwScope, encodedJSValue());
     auto object = TestEventConstructor::create(WTFMove(type), WTFMove(eventInitDict));
-    return JSValue::encode(toJSNewlyCreated(state, castedThis->globalObject(), WTFMove(object)));
+    return JSValue::encode(toJSNewlyCreated<IDLInterface<TestEventConstructor>>(*state, *castedThis->globalObject(), WTFMove(object)));
 }
 
 template<> JSValue JSTestEventConstructorConstructor::prototypeForStructure(JSC::VM& vm, const JSDOMGlobalObject& globalObject)

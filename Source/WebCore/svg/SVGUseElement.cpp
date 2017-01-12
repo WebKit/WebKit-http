@@ -87,13 +87,13 @@ void SVGUseElement::parseAttribute(const QualifiedName& name, const AtomicString
     SVGParsingError parseError = NoError;
 
     if (name == SVGNames::xAttr)
-        setXBaseValue(SVGLength::construct(LengthModeWidth, value, parseError));
+        setXBaseValue(SVGLengthValue::construct(LengthModeWidth, value, parseError));
     else if (name == SVGNames::yAttr)
-        setYBaseValue(SVGLength::construct(LengthModeHeight, value, parseError));
+        setYBaseValue(SVGLengthValue::construct(LengthModeHeight, value, parseError));
     else if (name == SVGNames::widthAttr)
-        setWidthBaseValue(SVGLength::construct(LengthModeWidth, value, parseError, ForbidNegativeLengths));
+        setWidthBaseValue(SVGLengthValue::construct(LengthModeWidth, value, parseError, ForbidNegativeLengths));
     else if (name == SVGNames::heightAttr)
-        setHeightBaseValue(SVGLength::construct(LengthModeHeight, value, parseError, ForbidNegativeLengths));
+        setHeightBaseValue(SVGLengthValue::construct(LengthModeHeight, value, parseError, ForbidNegativeLengths));
 
     reportAttributeParsingError(parseError, name, value);
 
@@ -179,12 +179,12 @@ void SVGUseElement::svgAttributeChanged(const QualifiedName& attrName)
     SVGGraphicsElement::svgAttributeChanged(attrName);
 }
 
-bool SVGUseElement::willRecalcStyle(Style::Change change)
+void SVGUseElement::willRecalcStyle(Style::Change change)
 {
     // FIXME: Shadow tree should be updated before style recalc.
     if (m_shadowTreeNeedsUpdate)
         updateShadowTree();
-    return SVGGraphicsElement::willRecalcStyle(change);
+    SVGGraphicsElement::willRecalcStyle(change);
 }
 
 static HashSet<AtomicString> createAllowedElementSet()
@@ -261,7 +261,7 @@ SVGElement* SVGUseElement::targetClone() const
     auto* root = userAgentShadowRoot();
     if (!root)
         return nullptr;
-    return downcast<SVGElement>(root->firstChild());
+    return childrenOfType<SVGElement>(*root).first();
 }
 
 RenderPtr<RenderElement> SVGUseElement::createElementRenderer(RenderStyle&& style, const RenderTreePosition&)

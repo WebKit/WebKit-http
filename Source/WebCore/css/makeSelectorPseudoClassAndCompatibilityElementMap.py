@@ -91,7 +91,7 @@ output_file.write("""
 #include "config.h"
 #include "SelectorPseudoTypeMap.h"
 
-#include "CSSParserValues.h"
+#include "CSSParserSelector.h"
 
 #if defined(__clang__)
 #pragma clang diagnostic push
@@ -185,19 +185,6 @@ static inline const SelectorPseudoClassOrCompatibilityPseudoElementEntry* parseP
 """ % longest_keyword)
 
 output_file.write("""
-PseudoClassOrCompatibilityPseudoElement parsePseudoClassAndCompatibilityElementString(const CSSParserString& pseudoTypeString)
-{
-    const SelectorPseudoClassOrCompatibilityPseudoElementEntry* entry;
-    if (pseudoTypeString.is8Bit())
-        entry = parsePseudoClassAndCompatibilityElementString(pseudoTypeString.characters8(), pseudoTypeString.length());
-    else
-        entry = parsePseudoClassAndCompatibilityElementString(pseudoTypeString.characters16(), pseudoTypeString.length());
-
-    if (entry)
-        return entry->pseudoTypes;
-    return { CSSSelector::PseudoClassUnknown, CSSSelector::PseudoElementUnknown };
-}
-
 PseudoClassOrCompatibilityPseudoElement parsePseudoClassAndCompatibilityElementString(const StringView& pseudoTypeString)
 {
     const SelectorPseudoClassOrCompatibilityPseudoElementEntry* entry;

@@ -190,8 +190,11 @@ public:
             case Sub:
             case Mul:
             case Div:
+            case UDiv:
             case Mod:
+            case UMod:
             case BitAnd:
+            case BitOr:
             case BitXor:
                 VALIDATE(!value->kind().traps(), ("At ", *value));
                 switch (value->opcode()) {
@@ -217,16 +220,11 @@ public:
                 VALIDATE(value->type() == value->child(0)->type(), ("At ", *value));
                 VALIDATE(value->type() != Void, ("At ", *value));
                 break;
-            case BitOr:
-                VALIDATE(!value->kind().hasExtraBits(), ("At ", *value));
-                VALIDATE(value->numChildren() == 2, ("At ", *value));
-                VALIDATE(value->type() == value->child(0)->type(), ("At ", *value));
-                VALIDATE(value->type() == value->child(1)->type(), ("At ", *value));
-                VALIDATE(isInt(value->type()), ("At ", *value));
-                break;
             case Shl:
             case SShr:
             case ZShr:
+            case RotR:
+                case RotL:
                 VALIDATE(!value->kind().hasExtraBits(), ("At ", *value));
                 VALIDATE(value->numChildren() == 2, ("At ", *value));
                 VALIDATE(value->type() == value->child(0)->type(), ("At ", *value));

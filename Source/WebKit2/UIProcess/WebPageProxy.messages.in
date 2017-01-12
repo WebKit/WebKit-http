@@ -111,7 +111,7 @@ messages -> WebPageProxy {
 
     # Policy messages
     DecidePolicyForResponseSync(uint64_t frameID, struct WebCore::SecurityOriginData frameSecurityOrigin, WebCore::ResourceResponse response, WebCore::ResourceRequest request, bool canShowMIMEType, uint64_t listenerID, WebKit::UserData userData) -> (bool receivedPolicyAction, uint64_t policyAction, WebKit::DownloadID downloadID)
-    DecidePolicyForNavigationAction(uint64_t frameID, struct WebCore::SecurityOriginData frameSecurityOrigin, uint64_t navigationID, struct WebKit::NavigationActionData navigationActionData, uint64_t originatingFrameID, struct WebCore::SecurityOriginData originatingFrameSecurityOrigin, WebCore::ResourceRequest originalRequest, WebCore::ResourceRequest request, uint64_t listenerID, WebKit::UserData userData) -> (bool receivedPolicyAction, uint64_t newNavigationID, uint64_t policyAction, WebKit::DownloadID downloadID)
+    DecidePolicyForNavigationAction(uint64_t frameID, struct WebCore::SecurityOriginData frameSecurityOrigin, uint64_t navigationID, struct WebKit::NavigationActionData navigationActionData, uint64_t originatingFrameID, struct WebCore::SecurityOriginData originatingFrameSecurityOrigin, WebCore::ResourceRequest originalRequest, WebCore::ResourceRequest request, uint64_t listenerID, WebKit::UserData userData) -> (bool receivedPolicyAction, uint64_t newNavigationID, uint64_t policyAction, WebKit::DownloadID downloadID, struct WebKit::WebsitePolicies websitePolicies)
     DecidePolicyForNewWindowAction(uint64_t frameID, struct WebCore::SecurityOriginData frameSecurityOrigin, struct WebKit::NavigationActionData navigationActionData, WebCore::ResourceRequest request, String frameName, uint64_t listenerID, WebKit::UserData userData)
     UnableToImplementPolicy(uint64_t frameID, WebCore::ResourceError error, WebKit::UserData userData)
 
@@ -131,7 +131,7 @@ messages -> WebPageProxy {
     DidReceiveServerRedirectForProvisionalLoadForFrame(uint64_t frameID, uint64_t navigationID, String url, WebKit::UserData userData)
     DidChangeProvisionalURLForFrame(uint64_t frameID, uint64_t navigationID, String url)
     DidFailProvisionalLoadForFrame(uint64_t frameID, struct WebCore::SecurityOriginData frameSecurityOrigin, uint64_t navigationID, String provisionalURL, WebCore::ResourceError error, WebKit::UserData userData)
-    DidCommitLoadForFrame(uint64_t frameID, uint64_t navigationID, String mimeType, bool hasCustomContentProvider, uint32_t loadType, WebCore::CertificateInfo certificateInfo, bool containsPluginDocument, Optional<WebCore::HasInsecureContent> forcedHasInsecureContent, WebKit::UserData userData)
+    DidCommitLoadForFrame(uint64_t frameID, uint64_t navigationID, String mimeType, bool hasCustomContentProvider, uint32_t loadType, WebCore::CertificateInfo certificateInfo, bool containsPluginDocument, std::optional<WebCore::HasInsecureContent> forcedHasInsecureContent, WebKit::UserData userData)
     DidFailLoadForFrame(uint64_t frameID, uint64_t navigationID, WebCore::ResourceError error, WebKit::UserData userData)
     DidFinishDocumentLoadForFrame(uint64_t frameID, uint64_t navigationID, WebKit::UserData userData)
     DidFinishLoadForFrame(uint64_t frameID, uint64_t navigationID, WebKit::UserData userData)
@@ -358,7 +358,7 @@ messages -> WebPageProxy {
     ShowCorrectionPanel(int32_t panelType, WebCore::FloatRect boundingBoxOfReplacedString, String replacedString, String replacementString, Vector<String> alternativeReplacementStrings)
     DismissCorrectionPanel(int32_t reason)
     DismissCorrectionPanelSoon(int32_t reason) -> (String result)
-    RecordAutocorrectionResponse(int32_t responseType, String replacedString, String replacementString);
+    RecordAutocorrectionResponse(int32_t response, String replacedString, String replacementString);
 
     SetEditableElementIsFocused(bool editableElementIsFocused)
 #endif
@@ -477,6 +477,9 @@ messages -> WebPageProxy {
 #endif
 
     DidRestoreScrollPosition()
+
+    GetLoadDecisionForIcon(struct WebCore::LinkIcon icon, uint64_t callbackID)
+    FinishedLoadingIcon(uint64_t callbackIdentifier, IPC::DataReference data);
 
 #if PLATFORM(MAC)
     DidHandleAcceptedCandidate()

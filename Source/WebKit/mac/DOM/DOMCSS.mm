@@ -28,7 +28,7 @@
 
 #import <WebCore/CSSRule.h>
 #import <WebCore/CSSStyleSheet.h>
-#import <WebCore/CSSValue.h>
+#import <WebCore/DeprecatedCSSOMValue.h>
 #import "DOMCSSCharsetRule.h"
 #import "DOMCSSFontFaceRule.h"
 #import "DOMCSSImportRule.h"
@@ -76,19 +76,16 @@ Class kitClass(WebCore::CSSRule* impl)
         case DOM_PAGE_RULE:
             return [DOMCSSPageRule class];
         case DOM_KEYFRAMES_RULE:
-            return [DOMCSSRule class];
+        case DOM_NAMESPACE_RULE:
         case DOM_KEYFRAME_RULE:
-            return [DOMCSSRule class];
         case DOM_SUPPORTS_RULE:
-            return [DOMCSSRule class];
 #if ENABLE(CSS_DEVICE_ADAPTATION)
         case DOM_WEBKIT_VIEWPORT_RULE:
-            return [DOMCSSRule class];
 #endif
 #if ENABLE(CSS_REGIONS)
         case DOM_WEBKIT_REGION_RULE:
-            return [DOMCSSRule class];
 #endif
+            return [DOMCSSRule class];
     }
     ASSERT_NOT_REACHED();
     return nil;
@@ -97,20 +94,16 @@ Class kitClass(WebCore::CSSRule* impl)
 //------------------------------------------------------------------------------------------
 // DOMCSSValue
 
-Class kitClass(WebCore::CSSValue* impl)
+Class kitClass(WebCore::DeprecatedCSSOMValue* impl)
 {
     switch (impl->cssValueType()) {
-        case WebCore::CSSValue::CSS_PRIMITIVE_VALUE:
-            return [DOMCSSPrimitiveValue class];
-        case WebCore::CSSValue::CSS_VALUE_LIST:
-            return [DOMCSSValueList class];
-        case WebCore::CSSValue::CSS_INHERIT:
-        case WebCore::CSSValue::CSS_INITIAL:
-        case WebCore::CSSValue::CSS_UNSET:
-        case WebCore::CSSValue::CSS_REVERT:
-            return [DOMCSSValue class];
-        case WebCore::CSSValue::CSS_CUSTOM:
-            return [DOMCSSValue class];
+    case WebCore::DeprecatedCSSOMValue::CSS_PRIMITIVE_VALUE:
+        return [DOMCSSPrimitiveValue class];
+    case WebCore::DeprecatedCSSOMValue::CSS_VALUE_LIST:
+        return [DOMCSSValueList class];
+    case WebCore::DeprecatedCSSOMValue::CSS_INHERIT:
+    case WebCore::DeprecatedCSSOMValue::CSS_CUSTOM:
+        return [DOMCSSValue class];
     }
     ASSERT_NOT_REACHED();
     return nil;

@@ -63,7 +63,7 @@ protected:
     virtual LayoutUnit preferredContentLogicalWidth(float charWidth) const = 0;
     virtual LayoutUnit computeControlLogicalHeight(LayoutUnit lineHeight, LayoutUnit nonContentHeight) const = 0;
 
-    void computeLogicalHeight(LayoutUnit logicalHeight, LayoutUnit logicalTop, LogicalExtentComputedValues&) const override;
+    LogicalExtentComputedValues computeLogicalHeight(LayoutUnit logicalHeight, LayoutUnit logicalTop) const override;
     RenderObject* layoutSpecialExcludedChild(bool relayoutChildren) override;
 
 private:
@@ -80,8 +80,6 @@ private:
     void addFocusRingRects(Vector<LayoutRect>&, const LayoutPoint& additionalOffset, const RenderLayerModelObject* paintContainer = 0) override;
 
     bool canBeProgramaticallyScrolled() const override { return true; }
-
-    bool requiresForcedStyleRecalcPropagation() const override { return true; }
 };
 
 // Renderer for our inner container, for <search> and others.
@@ -99,8 +97,8 @@ public:
     {
         return RenderBlock::baselinePosition(baseline, firstLine, direction, position);
     }
-    Optional<int> firstLineBaseline() const override { return RenderBlock::firstLineBaseline(); }
-    Optional<int> inlineBlockBaseline(LineDirectionMode direction) const override { return RenderBlock::inlineBlockBaseline(direction); }
+    std::optional<int> firstLineBaseline() const override { return RenderBlock::firstLineBaseline(); }
+    std::optional<int> inlineBlockBaseline(LineDirectionMode direction) const override { return RenderBlock::inlineBlockBaseline(direction); }
 
 private:
     bool isFlexibleBoxImpl() const override { return true; }

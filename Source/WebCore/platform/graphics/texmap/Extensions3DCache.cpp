@@ -52,7 +52,7 @@ Extensions3DCache::Extensions3DCache()
         PlatformDisplay::sharedDisplayForCompositing().sharingGLContext()->makeContextCurrent();
 
     RefPtr<GraphicsContext3D> context3D = GraphicsContext3D::createForCurrentGLContext();
-    m_GL_EXT_unpack_subimage = context3D->getExtensions()->supports("GL_EXT_unpack_subimage");
+    m_GL_EXT_unpack_subimage = context3D->getExtensions().supports("GL_EXT_unpack_subimage");
     context3D.release();
 
     if (previousActiveContext)

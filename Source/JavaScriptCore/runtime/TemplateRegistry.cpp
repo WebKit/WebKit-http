@@ -27,9 +27,12 @@
 #include "config.h"
 #include "TemplateRegistry.h"
 
+#include "BuiltinNames.h"
 #include "JSCInlines.h"
 #include "JSGlobalObject.h"
+#include "JSTemplateRegistryKey.h"
 #include "ObjectConstructor.h"
+#include "TemplateRegistryKey.h"
 #include "WeakGCMapInlines.h"
 
 namespace JSC {
@@ -39,9 +42,10 @@ TemplateRegistry::TemplateRegistry(VM& vm)
 {
 }
 
-JSArray* TemplateRegistry::getTemplateObject(ExecState* exec, const TemplateRegistryKey& templateKey)
+JSArray* TemplateRegistry::getTemplateObject(ExecState* exec, JSTemplateRegistryKey* templateKeyObject)
 {
-    JSArray* cached = m_templateMap.get(templateKey);
+    auto& templateKey = templateKeyObject->templateRegistryKey();
+    JSArray* cached = m_templateMap.get(&templateKey);
     if (cached)
         return cached;
 
@@ -55,18 +59,24 @@ JSArray* TemplateRegistry::getTemplateObject(ExecState* exec, const TemplateRegi
 
     for (unsigned index = 0; index < count; ++index) {
         templateObject->putDirectIndex(exec, index, jsString(exec, templateKey.cookedStrings()[index]), ReadOnly | DontDelete, PutDirectIndexLikePutDirect);
+        RETURN_IF_EXCEPTION(scope, nullptr);
         rawObject->putDirectIndex(exec, index, jsString(exec, templateKey.rawStrings()[index]), ReadOnly | DontDelete, PutDirectIndexLikePutDirect);
+        RETURN_IF_EXCEPTION(scope, nullptr);
     }
 
     objectConstructorFreeze(exec, rawObject);
     ASSERT(!scope.exception());
 
-    templateObject->putDirect(vm, exec->propertyNames().raw, rawObject, ReadOnly | DontEnum | DontDelete);
+    templateObject->putDirect(vm, vm.propertyNames->raw, rawObject, ReadOnly | DontEnum | DontDelete);
+
+    // Template JSArray hold the reference to JSTemplateRegistryKey to make TemplateRegistryKey pointer live until this JSArray is collected.
+    // TemplateRegistryKey pointer is used for TemplateRegistry's key.
+    templateObject->putDirect(vm, vm.propertyNames->builtinNames().templateRegistryKeyPrivateName(), templateKeyObject, ReadOnly | DontEnum | DontDelete);
 
     objectConstructorFreeze(exec, templateObject);
     ASSERT(!scope.exception());
 
-    m_templateMap.set(templateKey, templateObject);
+    m_templateMap.set(&templateKey, templateObject);
 
     return templateObject;
 }

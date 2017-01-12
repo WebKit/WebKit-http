@@ -64,10 +64,6 @@
 #include "StyleResolver.h"
 #include "TiledBacking.h"
 
-#if ENABLE(WEBGL) || ENABLE(ACCELERATED_2D_CANVAS)
-#include "GraphicsContext3D.h"
-#endif
-
 #if PLATFORM(IOS)
 #include "RuntimeApplicationChecks.h"
 #endif
@@ -95,16 +91,6 @@ CanvasCompositingStrategy canvasCompositingStrategy(const RenderObject& renderer
 #endif
 }
 
-// Get the scrolling coordinator in a way that works inside RenderLayerBacking's destructor.
-static ScrollingCoordinator* scrollingCoordinatorFromLayer(RenderLayer& layer)
-{
-    Page* page = layer.renderer().frame().page();
-    if (!page)
-        return 0;
-
-    return page->scrollingCoordinator();
-}
-
 RenderLayerBacking::RenderLayerBacking(RenderLayer& layer)
     : m_owningLayer(layer)
     , m_viewportConstrainedNodeID(0)
@@ -119,24 +105,22 @@ RenderLayerBacking::RenderLayerBacking(RenderLayer& layer)
 #endif
     , m_backgroundLayerPaintsFixedRootBackground(false)
 {
-    Page* page = renderer().frame().page();
-
-    if (layer.isRootLayer() && page) {
+    if (layer.isRootLayer()) {
         m_isMainFrameRenderViewLayer = renderer().frame().isMainFrame();
-        m_usingTiledCacheLayer = page->chrome().client().shouldUseTiledBackingForFrameView(renderer().frame().view());
+        m_usingTiledCacheLayer = renderer().page().chrome().client().shouldUseTiledBackingForFrameView(renderer().frame().view());
     }
     
     createPrimaryGraphicsLayer();
 
-    if (m_usingTiledCacheLayer && page) {
+    if (m_usingTiledCacheLayer) {
         TiledBacking* tiledBacking = this->tiledBacking();
 
-        tiledBacking->setIsInWindow(page->isInWindow());
+        tiledBacking->setIsInWindow(renderer().page().isInWindow());
 
         if (m_isMainFrameRenderViewLayer)
             tiledBacking->setUnparentsOffscreenTiles(true);
 
-        tiledBacking->setScrollingPerformanceLoggingEnabled(page->settings().scrollingPerformanceLoggingEnabled());
+        tiledBacking->setScrollingPerformanceLoggingEnabled(renderer().page().settings().scrollingPerformanceLoggingEnabled());
         adjustTiledBackingCoverage();
     }
 }
@@ -163,17 +147,12 @@ void RenderLayerBacking::willDestroyLayer(const GraphicsLayer* layer)
 
 std::unique_ptr<GraphicsLayer> RenderLayerBacking::createGraphicsLayer(const String& name, GraphicsLayer::Type layerType)
 {
-    GraphicsLayerFactory* graphicsLayerFactory = 0;
-    if (Page* page = renderer().frame().page())
-        graphicsLayerFactory = page->chrome().client().graphicsLayerFactory();
+    auto* graphicsLayerFactory = renderer().page().chrome().client().graphicsLayerFactory();
 
     std::unique_ptr<GraphicsLayer> graphicsLayer = GraphicsLayer::create(graphicsLayerFactory, *this, layerType);
 
-#if ENABLE(TREE_DEBUGGING)
     graphicsLayer->setName(name);
-#else
-    UNUSED_PARAM(name);
-#endif
+
 #if PLATFORM(COCOA) && USE(CA)
     graphicsLayer->setAcceleratesDrawing(compositor().acceleratedDrawingEnabled());
     graphicsLayer->setUsesDisplayListDrawing(compositor().displayListDrawingEnabled());
@@ -299,15 +278,16 @@ void RenderLayerBacking::updateDebugIndicators(bool showBorder, bool showRepaint
 
 void RenderLayerBacking::createPrimaryGraphicsLayer()
 {
-    String layerName;
-#if ENABLE(TREE_DEBUGGING)
-    layerName = m_owningLayer.name();
-#endif
-    
+    String layerName = m_owningLayer.name();
+    const unsigned maxLayerNameLength = 100;
+    if (layerName.length() > maxLayerNameLength) {
+        layerName.truncate(maxLayerNameLength);
+        layerName.append("...");
+    }
     m_graphicsLayer = createGraphicsLayer(layerName, m_usingTiledCacheLayer ? GraphicsLayer::Type::PageTiledBacking : GraphicsLayer::Type::Normal);
 
     if (m_usingTiledCacheLayer) {
-        m_childContainmentLayer = createGraphicsLayer("TiledBacking Flattening Layer");
+        m_childContainmentLayer = createGraphicsLayer("TiledBacking containment");
         m_graphicsLayer->addChild(m_childContainmentLayer.get());
     }
 
@@ -790,9 +770,9 @@ private:
         return m_fromAncestorGraphicsLayer.value();
     }
 
-    Optional<LayoutSize> m_fromAncestorGraphicsLayer;
-    Optional<LayoutSize> m_fromParentGraphicsLayer;
-    Optional<LayoutSize> m_fromPrimaryGraphicsLayer;
+    std::optional<LayoutSize> m_fromAncestorGraphicsLayer;
+    std::optional<LayoutSize> m_fromParentGraphicsLayer;
+    std::optional<LayoutSize> m_fromPrimaryGraphicsLayer;
     
     const RenderLayer& m_renderLayer;
     // Location is relative to the renderer.
@@ -1328,7 +1308,7 @@ bool RenderLayerBacking::updateAncestorClippingLayer(bool needsAncestorClip)
 
     if (needsAncestorClip) {
         if (!m_ancestorClippingLayer) {
-            m_ancestorClippingLayer = createGraphicsLayer("Ancestor clipping Layer");
+            m_ancestorClippingLayer = createGraphicsLayer("ancestor clipping");
             m_ancestorClippingLayer->setMasksToBounds(true);
             layersChanged = true;
         }
@@ -1349,7 +1329,7 @@ bool RenderLayerBacking::updateDescendantClippingLayer(bool needsDescendantClip)
 
     if (needsDescendantClip) {
         if (!m_childContainmentLayer && !m_usingTiledCacheLayer) {
-            m_childContainmentLayer = createGraphicsLayer("Child clipping Layer");
+            m_childContainmentLayer = createGraphicsLayer("child clipping");
             m_childContainmentLayer->setMasksToBounds(true);
             layersChanged = true;
         }
@@ -1427,7 +1407,7 @@ bool RenderLayerBacking::updateOverflowControlsLayers(bool needsHorizontalScroll
         scrollCornerLayerChanged = true;
     }
 
-    if (ScrollingCoordinator* scrollingCoordinator = scrollingCoordinatorFromLayer(m_owningLayer)) {
+    if (auto* scrollingCoordinator = m_owningLayer.page().scrollingCoordinator()) {
         if (horizontalScrollbarLayerChanged)
             scrollingCoordinator->scrollableAreaScrollbarLayerDidChange(m_owningLayer, HorizontalScrollbar);
         if (verticalScrollbarLayerChanged)
@@ -1499,10 +1479,7 @@ bool RenderLayerBacking::updateForegroundLayer(bool needsForegroundLayer)
     bool layerChanged = false;
     if (needsForegroundLayer) {
         if (!m_foregroundLayer) {
-            String layerName;
-#if ENABLE(TREE_DEBUGGING)
-            layerName = m_owningLayer.name() + " (foreground)";
-#endif
+            String layerName = m_owningLayer.name() + " (foreground)";
             m_foregroundLayer = createGraphicsLayer(layerName);
             m_foregroundLayer->setDrawsContent(true);
             m_foregroundLayer->setPaintingPhase(GraphicsLayerPaintForeground);
@@ -1528,10 +1505,7 @@ bool RenderLayerBacking::updateBackgroundLayer(bool needsBackgroundLayer)
     bool layerChanged = false;
     if (needsBackgroundLayer) {
         if (!m_backgroundLayer) {
-            String layerName;
-#if ENABLE(TREE_DEBUGGING)
-            layerName = m_owningLayer.name() + " (background)";
-#endif
+            String layerName = m_owningLayer.name() + " (background)";
             m_backgroundLayer = createGraphicsLayer(layerName);
             m_backgroundLayer->setDrawsContent(true);
             m_backgroundLayer->setAnchorPoint(FloatPoint3D());
@@ -1540,10 +1514,7 @@ bool RenderLayerBacking::updateBackgroundLayer(bool needsBackgroundLayer)
         }
         
         if (!m_contentsContainmentLayer) {
-            String layerName;
-#if ENABLE(TREE_DEBUGGING)
-            layerName = m_owningLayer.name() + " (contents containment)";
-#endif
+            String layerName = m_owningLayer.name() + " (contents containment)";
             m_contentsContainmentLayer = createGraphicsLayer(layerName);
             m_contentsContainmentLayer->setAppliesPageScale(true);
             m_graphicsLayer->setAppliesPageScale(false);
@@ -1598,7 +1569,7 @@ void RenderLayerBacking::updateMaskingLayer(bool hasMask, bool hasClipPath)
         }
 
         if (!m_maskLayer) {
-            m_maskLayer = createGraphicsLayer("Mask", requiredLayerType);
+            m_maskLayer = createGraphicsLayer("mask", requiredLayerType);
             m_maskLayer->setDrawsContent(paintsContent);
             m_maskLayer->setPaintingPhase(maskPhases);
             layerChanged = true;
@@ -1630,7 +1601,7 @@ void RenderLayerBacking::updateChildClippingStrategy(bool needsDescendantsClippi
             }
 
             if (!m_childClippingMaskLayer) {
-                m_childClippingMaskLayer = createGraphicsLayer("Child Clipping Mask Layer");
+                m_childClippingMaskLayer = createGraphicsLayer("child clipping mask");
                 m_childClippingMaskLayer->setDrawsContent(true);
                 m_childClippingMaskLayer->setPaintingPhase(GraphicsLayerPaintChildClippingMask);
                 clippingLayer()->setMaskLayer(m_childClippingMaskLayer.get());
@@ -1654,12 +1625,12 @@ bool RenderLayerBacking::updateScrollingLayers(bool needsScrollingLayers)
 
     if (!m_scrollingLayer) {
         // Outer layer which corresponds with the scroll view.
-        m_scrollingLayer = createGraphicsLayer("Scrolling container", GraphicsLayer::Type::Scrolling);
+        m_scrollingLayer = createGraphicsLayer("scrolling container", GraphicsLayer::Type::Scrolling);
         m_scrollingLayer->setDrawsContent(false);
         m_scrollingLayer->setMasksToBounds(true);
 
         // Inner layer which renders the content that scrolls.
-        m_scrollingContentsLayer = createGraphicsLayer("Scrolled Contents");
+        m_scrollingContentsLayer = createGraphicsLayer("scrolled Contents");
         m_scrollingContentsLayer->setDrawsContent(true);
 
         GraphicsLayerPaintingPhase paintPhase = GraphicsLayerPaintOverflowContents | GraphicsLayerPaintCompositedScroll;
@@ -1690,7 +1661,7 @@ void RenderLayerBacking::detachFromScrollingCoordinator(LayerScrollCoordinationR
     if (!m_scrollingNodeID && !m_viewportConstrainedNodeID)
         return;
 
-    ScrollingCoordinator* scrollingCoordinator = scrollingCoordinatorFromLayer(m_owningLayer);
+    auto* scrollingCoordinator = m_owningLayer.page().scrollingCoordinator();
     if (!scrollingCoordinator)
         return;
 
@@ -1803,13 +1774,19 @@ static inline bool hasPerspectiveOrPreserves3D(const RenderStyle& style)
 
 Color RenderLayerBacking::rendererBackgroundColor() const
 {
-    const auto& backgroundRenderer = renderer().isDocumentElementRenderer() ? renderer().rendererForRootBackground() : renderer();
-    return backgroundRenderer.style().visitedDependentColor(CSSPropertyBackgroundColor);
+    RenderElement* backgroundRenderer = nullptr;
+    if (renderer().isDocumentElementRenderer())
+        backgroundRenderer = renderer().view().rendererForRootBackground();
+    
+    if (!backgroundRenderer)
+        backgroundRenderer = &renderer();
+
+    return backgroundRenderer->style().visitedDependentColor(CSSPropertyBackgroundColor);
 }
 
 void RenderLayerBacking::updateDirectlyCompositedBackgroundColor(bool isSimpleContainer, bool& didUpdateContentsRect)
 {
-    if (!isSimpleContainer) {
+    if (!isSimpleContainer || (is<RenderBox>(renderer()) && !downcast<RenderBox>(renderer()).paintsOwnBackground())) {
         m_graphicsLayer->setContentsToSolidColor(Color());
         return;
     }
@@ -2418,8 +2395,7 @@ void RenderLayerBacking::paintIntoLayer(const GraphicsLayer* graphicsLayer, Grap
 void RenderLayerBacking::paintContents(const GraphicsLayer* graphicsLayer, GraphicsContext& context, GraphicsLayerPaintingPhase paintingPhase, const FloatRect& clip)
 {
 #ifndef NDEBUG
-    if (Page* page = renderer().frame().page())
-        page->setIsPainting(true);
+    renderer().page().setIsPainting(true);
 #endif
 
     // The dirtyRect is in the coords of the painting root.
@@ -2457,8 +2433,7 @@ void RenderLayerBacking::paintContents(const GraphicsLayer* graphicsLayer, Graph
         context.restore();
     }
 #ifndef NDEBUG
-    if (Page* page = renderer().frame().page())
-        page->setIsPainting(false);
+    renderer().page().setIsPainting(false);
 #endif
 }
 
@@ -2547,27 +2522,23 @@ bool RenderLayerBacking::shouldAggressivelyRetainTiles(const GraphicsLayer*) con
     if (!m_isMainFrameRenderViewLayer)
         return false;
 
-    if (Page* page = renderer().frame().page())
-        return page->settings().aggressiveTileRetentionEnabled();
-    return false;
+    return renderer().frame().settings().aggressiveTileRetentionEnabled();
 }
 
 bool RenderLayerBacking::shouldTemporarilyRetainTileCohorts(const GraphicsLayer*) const
 {
-    if (Page* page = renderer().frame().page())
-        return page->settings().temporaryTileCohortRetentionEnabled();
-    return true;
+    return renderer().frame().settings().temporaryTileCohortRetentionEnabled();
 }
 
 bool RenderLayerBacking::useGiantTiles() const
 {
-    return renderer().frame().page()->settings().useGiantTiles();
+    return renderer().frame().settings().useGiantTiles();
 }
 
 #ifndef NDEBUG
 void RenderLayerBacking::verifyNotPainting()
 {
-    ASSERT(!renderer().frame().page() || !renderer().frame().page()->isPainting());
+    ASSERT(!renderer().page().isPainting());
 }
 #endif
 
@@ -2619,7 +2590,7 @@ bool RenderLayerBacking::startAnimation(double timeOffset, const Animation* anim
 #endif
     }
 
-    if (renderer().frame().page() && !renderer().frame().page()->settings().acceleratedCompositedAnimationsEnabled())
+    if (!renderer().frame().settings().acceleratedCompositedAnimationsEnabled())
         return false;
 
     bool didAnimate = false;

@@ -407,7 +407,7 @@ private:
     {
         ASSERT(node->op() == GetLocal);
         ASSERT(node->origin.semantic.bytecodeIndex == m_currentIndex);
-        ConcurrentJITLocker locker(m_inlineStackTop->m_profiledBlock->m_lock);
+        ConcurrentJSLocker locker(m_inlineStackTop->m_profiledBlock->m_lock);
         LazyOperandValueProfileKey key(m_currentIndex, node->local());
         SpeculatedType prediction = m_inlineStackTop->m_lazyOperands.prediction(locker, key);
         node->variableAccessData()->predict(prediction);
@@ -852,7 +852,7 @@ private:
     {
         SpeculatedType prediction;
         {
-            ConcurrentJITLocker locker(m_inlineStackTop->m_profiledBlock->m_lock);
+            ConcurrentJSLocker locker(m_inlineStackTop->m_profiledBlock->m_lock);
             prediction = m_inlineStackTop->m_profiledBlock->valueProfilePredictionForBytecodeOffset(locker, bytecodeIndex);
         }
 
@@ -891,7 +891,7 @@ private:
 
             bytecodeIndex = codeOrigin->bytecodeIndex;
             CodeBlock* profiledBlock = stack->m_profiledBlock;
-            ConcurrentJITLocker locker(profiledBlock->m_lock);
+            ConcurrentJSLocker locker(profiledBlock->m_lock);
             return profiledBlock->valueProfilePredictionForBytecodeOffset(locker, bytecodeIndex);
         }
 
@@ -928,7 +928,7 @@ private:
     
     ArrayMode getArrayMode(ArrayProfile* profile, Array::Action action)
     {
-        ConcurrentJITLocker locker(m_inlineStackTop->m_profiledBlock->m_lock);
+        ConcurrentJSLocker locker(m_inlineStackTop->m_profiledBlock->m_lock);
         profile->computeUpdatedPrediction(locker, m_inlineStackTop->m_profiledBlock);
         bool makeSafe = profile->outOfBounds(locker);
         return ArrayMode::fromObserved(locker, profile, action, makeSafe);
@@ -1883,7 +1883,7 @@ bool ByteCodeParser::handleInlining(
                         // arguments received inside the callee. But that probably won't matter for most
                         // calls.
                         if (codeBlock && argument < static_cast<unsigned>(codeBlock->numParameters())) {
-                            ConcurrentJITLocker locker(codeBlock->m_lock);
+                            ConcurrentJSLocker locker(codeBlock->m_lock);
                             if (ValueProfile* profile = codeBlock->valueProfileForArgument(argument))
                                 variable->predict(profile->computeUpdatedPrediction(locker));
                         }
@@ -3594,12 +3594,22 @@ void ByteCodeParser::handlePutById(
         data->inferredType = variant.requiredType();
         m_graph.registerInferredType(data->inferredType);
         
+        // NOTE: We could GC at this point because someone could insert an operation that GCs.
+        // That's fine because:
+        // - Things already in the structure will get scanned because we haven't messed with
+        //   the object yet.
+        // - The value we are fixing to put is going to be kept live by OSR exit handling. So
+        //   if the GC does a conservative scan here it will see the new value.
+        
         addToGraph(
             PutByOffset,
             OpInfo(data),
             propertyStorage,
             base,
             value);
+        
+        if (variant.reallocatesStorage())
+            addToGraph(NukeStructureAndSetButterfly, base, propertyStorage);
 
         // FIXME: PutStructure goes last until we fix either
         // https://bugs.webkit.org/show_bug.cgi?id=142921 or
@@ -4261,7 +4271,7 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             GetByIdStatus getByIdStatus;
             unsigned identifierNumber = 0;
             {
-                ConcurrentJITLocker locker(m_inlineStackTop->m_profiledBlock->m_lock);
+                ConcurrentJSLocker locker(m_inlineStackTop->m_profiledBlock->m_lock);
                 ByValInfo* byValInfo = m_inlineStackTop->m_byValInfos.get(CodeOrigin(currentCodeOrigin().bytecodeIndex));
                 // FIXME: When the bytecode is not compiled in the baseline JIT, byValInfo becomes null.
                 // At that time, there is no information.
@@ -4319,7 +4329,7 @@ bool ByteCodeParser::parseBlock(unsigned limit)
                 unsigned identifierNumber = std::numeric_limits<unsigned>::max();
                 PutByIdStatus putByIdStatus;
                 {
-                    ConcurrentJITLocker locker(m_inlineStackTop->m_profiledBlock->m_lock);
+                    ConcurrentJSLocker locker(m_inlineStackTop->m_profiledBlock->m_lock);
                     ByValInfo* byValInfo = m_inlineStackTop->m_byValInfos.get(CodeOrigin(currentCodeOrigin().bytecodeIndex));
                     // FIXME: When the bytecode is not compiled in the baseline JIT, byValInfo becomes null.
                     // At that time, there is no information.
@@ -4945,7 +4955,7 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             WatchpointSet* watchpoints = 0;
             uintptr_t operand;
             {
-                ConcurrentJITLocker locker(m_inlineStackTop->m_profiledBlock->m_lock);
+                ConcurrentJSLocker locker(m_inlineStackTop->m_profiledBlock->m_lock);
                 if (resolveType == GlobalVar || resolveType == GlobalVarWithVarInjectionChecks || resolveType == GlobalLexicalVar || resolveType == GlobalLexicalVarWithVarInjectionChecks)
                     watchpoints = currentInstruction[5].u.watchpointSet;
                 else if (resolveType != UnresolvedProperty && resolveType != UnresolvedPropertyWithVarInjectionChecks)
@@ -4991,7 +5001,7 @@ bool ByteCodeParser::parseBlock(unsigned limit)
                 ScopeOffset offset;
                 JSSegmentedVariableObject* scopeObject = jsCast<JSSegmentedVariableObject*>(JSScope::constantScopeForCodeBlock(resolveType, m_inlineStackTop->m_codeBlock));
                 {
-                    ConcurrentJITLocker locker(scopeObject->symbolTable()->m_lock);
+                    ConcurrentJSLocker locker(scopeObject->symbolTable()->m_lock);
                     SymbolTableEntry entry = scopeObject->symbolTable()->get(locker, uid);
                     watchpointSet = entry.watchpointSet();
                     offset = entry.scopeOffset();
@@ -5114,7 +5124,7 @@ bool ByteCodeParser::parseBlock(unsigned limit)
             WatchpointSet* watchpoints = nullptr;
             uintptr_t operand;
             {
-                ConcurrentJITLocker locker(m_inlineStackTop->m_profiledBlock->m_lock);
+                ConcurrentJSLocker locker(m_inlineStackTop->m_profiledBlock->m_lock);
                 if (resolveType == GlobalVar || resolveType == GlobalVarWithVarInjectionChecks || resolveType == LocalClosureVar || resolveType == GlobalLexicalVar || resolveType == GlobalLexicalVarWithVarInjectionChecks)
                     watchpoints = currentInstruction[5].u.watchpointSet;
                 else if (resolveType != UnresolvedProperty && resolveType != UnresolvedPropertyWithVarInjectionChecks)
@@ -5325,23 +5335,29 @@ bool ByteCodeParser::parseBlock(unsigned limit)
         }
             
         case op_new_func:
-        case op_new_generator_func: {
+        case op_new_generator_func:
+        case op_new_async_func: {
             FunctionExecutable* decl = m_inlineStackTop->m_profiledBlock->functionDecl(currentInstruction[3].u.operand);
             FrozenValue* frozen = m_graph.freezeStrong(decl);
-            NodeType op = (opcodeID == op_new_generator_func) ? NewGeneratorFunction : NewFunction;
+            NodeType op = (opcodeID == op_new_generator_func) ? NewGeneratorFunction :
+                (opcodeID == op_new_async_func) ? NewAsyncFunction : NewFunction;
             set(VirtualRegister(currentInstruction[1].u.operand), addToGraph(op, OpInfo(frozen), get(VirtualRegister(currentInstruction[2].u.operand))));
             static_assert(OPCODE_LENGTH(op_new_func) == OPCODE_LENGTH(op_new_generator_func), "The length of op_new_func should eqaual to one of op_new_generator_func");
+            static_assert(OPCODE_LENGTH(op_new_func) == OPCODE_LENGTH(op_new_async_func), "The length of op_new_func should eqaual to one of op_new_async_func");
             NEXT_OPCODE(op_new_func);
         }
 
         case op_new_func_exp:
-        case op_new_generator_func_exp: {
+        case op_new_generator_func_exp:
+        case op_new_async_func_exp: {
             FunctionExecutable* expr = m_inlineStackTop->m_profiledBlock->functionExpr(currentInstruction[3].u.operand);
             FrozenValue* frozen = m_graph.freezeStrong(expr);
-            NodeType op = (opcodeID == op_new_generator_func_exp) ? NewGeneratorFunction : NewFunction;
+            NodeType op = (opcodeID == op_new_generator_func_exp) ? NewGeneratorFunction :
+                (opcodeID == op_new_async_func_exp) ? NewAsyncFunction : NewFunction;
             set(VirtualRegister(currentInstruction[1].u.operand), addToGraph(op, OpInfo(frozen), get(VirtualRegister(currentInstruction[2].u.operand))));
-            
+    
             static_assert(OPCODE_LENGTH(op_new_func_exp) == OPCODE_LENGTH(op_new_generator_func_exp), "The length of op_new_func_exp should eqaual to one of op_new_generator_func_exp");
+            static_assert(OPCODE_LENGTH(op_new_func_exp) == OPCODE_LENGTH(op_new_async_func_exp), "The length of op_new_func_exp should eqaual to one of op_new_async_func_exp");
             NEXT_OPCODE(op_new_func_exp);
         }
 
@@ -5546,7 +5562,7 @@ ByteCodeParser::InlineStackEntry::InlineStackEntry(
     , m_caller(byteCodeParser->m_inlineStackTop)
 {
     {
-        ConcurrentJITLocker locker(m_profiledBlock->m_lock);
+        ConcurrentJSLocker locker(m_profiledBlock->m_lock);
         m_lazyOperands.initialize(locker, m_profiledBlock->lazyOperandValueProfiles());
         m_exitProfile.initialize(locker, profiledBlock->exitProfile());
         

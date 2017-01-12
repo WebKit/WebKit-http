@@ -26,7 +26,8 @@
 #include "config.h"
 #include "SVGElement.h"
 
-#include "CSSParser.h"
+#include "CSSPropertyParser.h"
+#include "DeprecatedCSSOMValue.h"
 #include "Document.h"
 #include "ElementIterator.h"
 #include "Event.h"
@@ -299,15 +300,14 @@ int SVGElement::tabIndex() const
     return -1;
 }
 
-bool SVGElement::willRecalcStyle(Style::Change change)
+void SVGElement::willRecalcStyle(Style::Change change)
 {
     if (!m_svgRareData || styleResolutionShouldRecompositeLayer())
-        return true;
+        return;
     // If the style changes because of a regular property change (not induced by SMIL animations themselves)
     // reset the "computed style without SMIL style properties", so the base value change gets reflected.
     if (change > Style::NoChange || needsStyleRecalc())
         m_svgRareData->setNeedsOverrideComputedStyleUpdate();
-    return true;
 }
 
 SVGElementRareData& SVGElement::ensureSVGRareData()
@@ -462,7 +462,7 @@ void SVGElement::parseAttribute(const QualifiedName& name, const AtomicString& v
     if (name == HTMLNames::tabindexAttr) {
         if (value.isEmpty())
             clearTabIndexExplicitlyIfNeeded();
-        else if (Optional<int> tabIndex = parseHTMLInteger(value))
+        else if (std::optional<int> tabIndex = parseHTMLInteger(value))
             setTabIndexExplicitly(tabIndex.value());
         return;
     }
@@ -537,7 +537,7 @@ bool SVGElement::removeEventListener(const AtomicString& eventType, EventListene
     if (containingShadowRoot())
         return Node::removeEventListener(eventType, listener, options);
 
-    // EventTarget::removeEventListener creates a PassRefPtr around the given EventListener
+    // EventTarget::removeEventListener creates a Ref around the given EventListener
     // object when creating a temporary RegisteredEventListener object used to look up the
     // event listener in a cache. If we want to be able to call removeEventListener() multiple
     // times on different nodes, we have to delay its immediate destruction, which would happen
@@ -727,7 +727,7 @@ void SVGElement::synchronizeSystemLanguage(SVGElement* contextElement)
     contextElement->synchronizeSystemLanguage();
 }
 
-Optional<ElementStyle> SVGElement::resolveCustomStyle(const RenderStyle& parentStyle, const RenderStyle*)
+std::optional<ElementStyle> SVGElement::resolveCustomStyle(const RenderStyle& parentStyle, const RenderStyle*)
 {
     // If the element is in a <use> tree we get the style from the definition tree.
     if (auto* styleElement = this->correspondingElement())
@@ -1024,7 +1024,7 @@ void SVGElement::childrenChanged(const ChildChange& change)
     invalidateInstances();
 }
 
-RefPtr<CSSValue> SVGElement::getPresentationAttribute(const String& name)
+RefPtr<DeprecatedCSSOMValue> SVGElement::getPresentationAttribute(const String& name)
 {
     if (!hasAttributesWithoutUpdate())
         return 0;
@@ -1037,8 +1037,10 @@ RefPtr<CSSValue> SVGElement::getPresentationAttribute(const String& name)
     RefPtr<MutableStyleProperties> style = MutableStyleProperties::create(SVGAttributeMode);
     CSSPropertyID propertyID = cssPropertyIdForSVGAttributeName(attribute->name());
     style->setProperty(propertyID, attribute->value());
-    RefPtr<CSSValue> cssValue = style->getPropertyCSSValue(propertyID);
-    return cssValue ? cssValue->cloneForCSSOM() : nullptr;
+    auto cssValue = style->getPropertyCSSValue(propertyID);
+    if (!cssValue)
+        return nullptr;
+    return cssValue->createDeprecatedCSSOMWrapper();
 }
 
 bool SVGElement::instanceUpdatesBlocked() const

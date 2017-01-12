@@ -101,6 +101,7 @@ void StringStats::printStats()
 }
 #endif
 
+StringImpl::StaticStringImpl StringImpl::s_atomicEmptyString("", StringImpl::StringAtomic);
 
 StringImpl::~StringImpl()
 {
@@ -113,8 +114,12 @@ StringImpl::~StringImpl()
     if (isAtomic() && length() && !isSymbol())
         AtomicStringImpl::remove(static_cast<AtomicStringImpl*>(this));
 
-    if (isSymbol() && symbolRegistry())
-        symbolRegistry()->remove(static_cast<SymbolImpl&>(*this));
+    if (isSymbol()) {
+        auto& symbol = static_cast<SymbolImpl&>(*this);
+        auto* symbolRegistry = symbol.symbolRegistry();
+        if (symbolRegistry)
+            symbolRegistry->remove(symbol);
+    }
 
     BufferOwnership ownership = bufferOwnership();
 
@@ -290,26 +295,6 @@ Ref<StringImpl> StringImpl::create(const LChar* string)
     return create(string, length);
 }
 
-Ref<SymbolImpl> StringImpl::createSymbol(StringImpl& rep)
-{
-    auto* ownerRep = (rep.bufferOwnership() == BufferSubstring) ? rep.substringBuffer() : &rep;
-
-    // We allocate a buffer that contains
-    // 1. the StringImpl struct
-    // 2. the pointer to the owner string
-    // 3. the pointer to the symbol registry
-    // 4. the placeholder for symbol aware hash value (allocated size is pointer size, but only 4 bytes are used)
-    auto* stringImpl = static_cast<StringImpl*>(fastMalloc(allocationSize<StringImpl*>(3)));
-    if (rep.is8Bit())
-        return adoptRef(static_cast<SymbolImpl&>(*new (NotNull, stringImpl) StringImpl(CreateSymbol, rep.m_data8, rep.length(), *ownerRep)));
-    return adoptRef(static_cast<SymbolImpl&>(*new (NotNull, stringImpl) StringImpl(CreateSymbol, rep.m_data16, rep.length(), *ownerRep)));
-}
-
-Ref<SymbolImpl> StringImpl::createNullSymbol()
-{
-    return createSymbol(*null());
-}
-
 bool StringImpl::containsOnlyWhitespace()
 {
     // FIXME: The definition of whitespace here includes a number of characters
@@ -466,14 +451,7 @@ Ref<StringImpl> StringImpl::convertToUppercaseWithoutLocale()
         for (int i = 0; i < length; ++i) {
             LChar c = m_data8[i];
             ored |= c;
-#if CPU(X86) && defined(_MSC_VER) && _MSC_VER >=1700
-            // Workaround for an MSVC 2012 x86 optimizer bug. Remove once the bug is fixed.
-            // See https://connect.microsoft.com/VisualStudio/feedback/details/780362/optimization-bug-of-range-comparison
-            // for more details.
-            data8[i] = c >= 'a' && c <= 'z' ? c & ~0x20 : c;
-#else
             data8[i] = toASCIIUpper(c);
-#endif
         }
         if (!(ored & ~0x7F))
             return newImpl;

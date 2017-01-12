@@ -37,8 +37,15 @@
 #include "CryptoKeyPair.h"
 #include "CryptoKeyRSA.h"
 #include "ExceptionCode.h"
+#include <wtf/Variant.h>
 
 namespace WebCore {
+
+static const char* const ALG1 = "RS1";
+static const char* const ALG224 = "RS224";
+static const char* const ALG256 = "RS256";
+static const char* const ALG384 = "RS384";
+static const char* const ALG512 = "RS512";
 
 Ref<CryptoAlgorithm> CryptoAlgorithmRSASSA_PKCS1_v1_5::create()
 {
@@ -62,19 +69,37 @@ bool CryptoAlgorithmRSASSA_PKCS1_v1_5::keyAlgorithmMatches(const CryptoAlgorithm
     return true;
 }
 
-void CryptoAlgorithmRSASSA_PKCS1_v1_5::generateKey(const std::unique_ptr<CryptoAlgorithmParameters>&& parameters, bool extractable, CryptoKeyUsageBitmap usages, KeyOrKeyPairCallback&& callback, ExceptionCallback&& exceptionCallback, ScriptExecutionContext& context)
+void CryptoAlgorithmRSASSA_PKCS1_v1_5::sign(Ref<CryptoKey>&& key, Vector<uint8_t>&& data, VectorCallback&& callback, ExceptionCallback&& exceptionCallback, ScriptExecutionContext& context, WorkQueue& workQueue)
 {
-    const auto& rsaParameters = downcast<CryptoAlgorithmRsaHashedKeyGenParams>(*parameters);
+    if (key->type() != CryptoKeyType::Private) {
+        exceptionCallback(INVALID_ACCESS_ERR);
+        return;
+    }
+    platformSign(WTFMove(key), WTFMove(data), WTFMove(callback), WTFMove(exceptionCallback), context, workQueue);
+}
+
+void CryptoAlgorithmRSASSA_PKCS1_v1_5::verify(Ref<CryptoKey>&& key, Vector<uint8_t>&& signature, Vector<uint8_t>&& data, BoolCallback&& callback, ExceptionCallback&& exceptionCallback, ScriptExecutionContext& context, WorkQueue& workQueue)
+{
+    if (key->type() != CryptoKeyType::Public) {
+        exceptionCallback(INVALID_ACCESS_ERR);
+        return;
+    }
+    platformVerify(WTFMove(key), WTFMove(signature), WTFMove(data), WTFMove(callback), WTFMove(exceptionCallback), context, workQueue);
+}
+
+void CryptoAlgorithmRSASSA_PKCS1_v1_5::generateKey(const CryptoAlgorithmParameters& parameters, bool extractable, CryptoKeyUsageBitmap usages, KeyOrKeyPairCallback&& callback, ExceptionCallback&& exceptionCallback, ScriptExecutionContext& context)
+{
+    const auto& rsaParameters = downcast<CryptoAlgorithmRsaHashedKeyGenParams>(parameters);
 
     if (usages & (CryptoKeyUsageDecrypt | CryptoKeyUsageEncrypt | CryptoKeyUsageDeriveKey | CryptoKeyUsageDeriveBits | CryptoKeyUsageWrapKey | CryptoKeyUsageUnwrapKey)) {
         exceptionCallback(SYNTAX_ERR);
         return;
     }
 
-    auto keyPairCallback = [capturedCallback = WTFMove(callback)](CryptoKeyPair& pair) {
-        pair.publicKey()->setUsagesBitmap(pair.publicKey()->usagesBitmap() & CryptoKeyUsageVerify);
-        pair.privateKey()->setUsagesBitmap(pair.privateKey()->usagesBitmap() & CryptoKeyUsageSign);
-        capturedCallback(nullptr, &pair);
+    auto keyPairCallback = [capturedCallback = WTFMove(callback)](CryptoKeyPair&& pair) {
+        pair.publicKey->setUsagesBitmap(pair.publicKey->usagesBitmap() & CryptoKeyUsageVerify);
+        pair.privateKey->setUsagesBitmap(pair.privateKey->usagesBitmap() & CryptoKeyUsageSign);
+        capturedCallback(WTFMove(pair));
     };
     auto failureCallback = [capturedCallback = WTFMove(exceptionCallback)]() {
         capturedCallback(OperationError);
@@ -84,6 +109,7 @@ void CryptoAlgorithmRSASSA_PKCS1_v1_5::generateKey(const std::unique_ptr<CryptoA
 
 void CryptoAlgorithmRSASSA_PKCS1_v1_5::importKey(SubtleCrypto::KeyFormat format, KeyData&& data, const std::unique_ptr<CryptoAlgorithmParameters>&& parameters, bool extractable, CryptoKeyUsageBitmap usages, KeyCallback&& callback, ExceptionCallback&& exceptionCallback)
 {
+    ASSERT(parameters);
     const auto& rsaParameters = downcast<CryptoAlgorithmRsaHashedImportParams>(*parameters);
 
     RefPtr<CryptoKeyRSA> result;
@@ -91,7 +117,7 @@ void CryptoAlgorithmRSASSA_PKCS1_v1_5::importKey(SubtleCrypto::KeyFormat format,
     case SubtleCrypto::KeyFormat::Jwk: {
         JsonWebKey key = WTFMove(WTF::get<JsonWebKey>(data));
 
-        if ((key.d && (usages ^ CryptoKeyUsageSign)) || (!key.d && (usages ^ CryptoKeyUsageVerify))) {
+        if (usages && ((key.d && (usages ^ CryptoKeyUsageSign)) || (!key.d && (usages ^ CryptoKeyUsageVerify)))) {
             exceptionCallback(SYNTAX_ERR);
             return;
         }
@@ -103,19 +129,19 @@ void CryptoAlgorithmRSASSA_PKCS1_v1_5::importKey(SubtleCrypto::KeyFormat format,
         bool isMatched = false;
         switch (rsaParameters.hashIdentifier) {
         case CryptoAlgorithmIdentifier::SHA_1:
-            isMatched = !key.alg || key.alg.value() == "RS1";
+            isMatched = !key.alg || key.alg.value() == ALG1;
             break;
         case CryptoAlgorithmIdentifier::SHA_224:
-            isMatched = !key.alg || key.alg.value() == "RS224";
+            isMatched = !key.alg || key.alg.value() == ALG224;
             break;
         case CryptoAlgorithmIdentifier::SHA_256:
-            isMatched = !key.alg || key.alg.value() == "RS256";
+            isMatched = !key.alg || key.alg.value() == ALG256;
             break;
         case CryptoAlgorithmIdentifier::SHA_384:
-            isMatched = !key.alg || key.alg.value() == "RS384";
+            isMatched = !key.alg || key.alg.value() == ALG384;
             break;
         case CryptoAlgorithmIdentifier::SHA_512:
-            isMatched = !key.alg || key.alg.value() == "RS512";
+            isMatched = !key.alg || key.alg.value() == ALG512;
             break;
         default:
             break;
@@ -128,6 +154,24 @@ void CryptoAlgorithmRSASSA_PKCS1_v1_5::importKey(SubtleCrypto::KeyFormat format,
         result = CryptoKeyRSA::importJwk(rsaParameters.identifier, rsaParameters.hashIdentifier, WTFMove(key), extractable, usages);
         break;
     }
+    case SubtleCrypto::KeyFormat::Spki: {
+        if (usages && (usages ^ CryptoKeyUsageVerify)) {
+            exceptionCallback(SYNTAX_ERR);
+            return;
+        }
+        // FIXME: <webkit.org/b/165436>
+        result = CryptoKeyRSA::importSpki(rsaParameters.identifier, rsaParameters.hashIdentifier, WTFMove(WTF::get<Vector<uint8_t>>(data)), extractable, usages);
+        break;
+    }
+    case SubtleCrypto::KeyFormat::Pkcs8: {
+        if (usages && (usages ^ CryptoKeyUsageSign)) {
+            exceptionCallback(SYNTAX_ERR);
+            return;
+        }
+        // FIXME: <webkit.org/b/165436>
+        result = CryptoKeyRSA::importPkcs8(parameters->identifier, rsaParameters.hashIdentifier, WTFMove(WTF::get<Vector<uint8_t>>(data)), extractable, usages);
+        break;
+    }
     default:
         exceptionCallback(NOT_SUPPORTED_ERR);
         return;
@@ -138,6 +182,67 @@ void CryptoAlgorithmRSASSA_PKCS1_v1_5::importKey(SubtleCrypto::KeyFormat format,
     }
 
     callback(*result);
+}
+
+void CryptoAlgorithmRSASSA_PKCS1_v1_5::exportKey(SubtleCrypto::KeyFormat format, Ref<CryptoKey>&& key, KeyDataCallback&& callback, ExceptionCallback&& exceptionCallback)
+{
+    const auto& rsaKey = downcast<CryptoKeyRSA>(key.get());
+
+    if (!rsaKey.keySizeInBits()) {
+        exceptionCallback(OperationError);
+        return;
+    }
+
+    KeyData result;
+    switch (format) {
+    case SubtleCrypto::KeyFormat::Jwk: {
+        JsonWebKey jwk = rsaKey.exportJwk();
+        switch (rsaKey.hashAlgorithmIdentifier()) {
+        case CryptoAlgorithmIdentifier::SHA_1:
+            jwk.alg = String(ALG1);
+            break;
+        case CryptoAlgorithmIdentifier::SHA_224:
+            jwk.alg = String(ALG224);
+            break;
+        case CryptoAlgorithmIdentifier::SHA_256:
+            jwk.alg = String(ALG256);
+            break;
+        case CryptoAlgorithmIdentifier::SHA_384:
+            jwk.alg = String(ALG384);
+            break;
+        case CryptoAlgorithmIdentifier::SHA_512:
+            jwk.alg = String(ALG512);
+            break;
+        default:
+            ASSERT_NOT_REACHED();
+        }
+        result = WTFMove(jwk);
+        break;
+    }
+    case SubtleCrypto::KeyFormat::Spki: {
+        auto spki = rsaKey.exportSpki();
+        if (spki.hasException()) {
+            exceptionCallback(spki.releaseException().code());
+            return;
+        }
+        result = spki.releaseReturnValue();
+        break;
+    }
+    case SubtleCrypto::KeyFormat::Pkcs8: {
+        auto pkcs8 = rsaKey.exportPkcs8();
+        if (pkcs8.hasException()) {
+            exceptionCallback(pkcs8.releaseException().code());
+            return;
+        }
+        result = pkcs8.releaseReturnValue();
+        break;
+    }
+    default:
+        exceptionCallback(NOT_SUPPORTED_ERR);
+        return;
+    }
+
+    callback(format, WTFMove(result));
 }
 
 ExceptionOr<void> CryptoAlgorithmRSASSA_PKCS1_v1_5::sign(const CryptoAlgorithmParametersDeprecated& parameters, const CryptoKey& key, const CryptoOperationData& data, VectorCallback&& callback, VoidCallback&& failureCallback)
@@ -159,8 +264,8 @@ ExceptionOr<void> CryptoAlgorithmRSASSA_PKCS1_v1_5::verify(const CryptoAlgorithm
 ExceptionOr<void> CryptoAlgorithmRSASSA_PKCS1_v1_5::generateKey(const CryptoAlgorithmParametersDeprecated& parameters, bool extractable, CryptoKeyUsageBitmap usages, KeyOrKeyPairCallback&& callback, VoidCallback&& failureCallback, ScriptExecutionContext& context)
 {
     auto& rsaParameters = downcast<CryptoAlgorithmRsaKeyGenParamsDeprecated>(parameters);
-    auto keyPairCallback = [capturedCallback = WTFMove(callback)](CryptoKeyPair& pair) {
-        capturedCallback(nullptr, &pair);
+    auto keyPairCallback = [capturedCallback = WTFMove(callback)](CryptoKeyPair&& pair) {
+        capturedCallback(WTFMove(pair));
     };
     CryptoKeyRSA::generatePair(CryptoAlgorithmIdentifier::RSASSA_PKCS1_v1_5, rsaParameters.hash, rsaParameters.hasHash, rsaParameters.modulusLength, rsaParameters.publicExponent, extractable, usages, WTFMove(keyPairCallback), WTFMove(failureCallback), &context);
     return { };

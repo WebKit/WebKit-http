@@ -22,6 +22,7 @@
 
 #include "CSSStyleDeclaration.h"
 #include "RenderStyleConstants.h"
+#include "SVGRenderStyleDefs.h"
 #include <wtf/RefPtr.h>
 #include <wtf/text/WTFString.h>
 
@@ -69,8 +70,7 @@ private:
     Element* styledElement();
 
     RefPtr<CSSValue> svgPropertyValue(CSSPropertyID, EUpdateLayout);
-    RefPtr<SVGPaint> adjustSVGPaintForCurrentColor(RefPtr<SVGPaint>&&, const RenderStyle*) const;
-
+    RefPtr<CSSValue> adjustSVGPaintForCurrentColor(SVGPaintType, const String& url, const Color&, const Color& currentColor) const;
     static Ref<CSSValue> valueForShadow(const ShadowData*, CSSPropertyID, const RenderStyle&, AdjustPixelValuesForComputedStyle = AdjustPixelValues);
     RefPtr<CSSPrimitiveValue> currentColorOrValidColor(const RenderStyle*, const Color&) const;
 
@@ -104,7 +104,7 @@ private:
     CSSRule* parentRule() const final;
     unsigned length() const final;
     String item(unsigned index) const final;
-    RefPtr<CSSValue> getPropertyCSSValue(const String& propertyName) final;
+    RefPtr<DeprecatedCSSOMValue> getPropertyCSSValue(const String& propertyName) final;
     String getPropertyValue(const String& propertyName) final;
     String getPropertyPriority(const String& propertyName) final;
     String getPropertyShorthand(const String& propertyName) final;

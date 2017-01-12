@@ -478,6 +478,8 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         write(HeapObjectCount);
         return;
 
+    case PhantomSpread:
+    case PhantomNewArrayWithSpread:
     case PhantomCreateRest:
         // Even though it's phantom, it still has the property that one can't be replaced with another.
         read(HeapObjectCount);
@@ -889,6 +891,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         return;
 
     case PutStructure:
+        read(JSObject_butterfly);
         write(JSCell_structureID);
         write(JSCell_typeInfoType);
         write(JSCell_typeInfoFlags);
@@ -896,14 +899,15 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
         return;
         
     case AllocatePropertyStorage:
-        write(JSObject_butterfly);
-        def(HeapLocation(ButterflyLoc, JSObject_butterfly, node->child1()), LazyNode(node));
+    case ReallocatePropertyStorage:
+        read(HeapObjectCount);
+        write(HeapObjectCount);
         return;
         
-    case ReallocatePropertyStorage:
-        read(JSObject_butterfly);
+    case NukeStructureAndSetButterfly:
         write(JSObject_butterfly);
-        def(HeapLocation(ButterflyLoc, JSObject_butterfly, node->child1()), LazyNode(node));
+        write(JSCell_structureID);
+        def(HeapLocation(ButterflyLoc, JSObject_butterfly, node->child1()), LazyNode(node->child2().node()));
         return;
         
     case GetButterfly:
@@ -1129,6 +1133,13 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     case NewArrayWithSpread: {
         // This also reads from JSFixedArray's data store, but we don't have any way of describing that yet.
         read(HeapObjectCount);
+        for (unsigned i = 0; i < node->numChildren(); i++) {
+            Node* child = graph.varArgChild(node, i).node();
+            if (child->op() == PhantomSpread) {
+                read(Stack);
+                break;
+            }
+        }
         write(HeapObjectCount);
         return;
     }
@@ -1273,6 +1284,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
     case MaterializeNewObject:
     case PhantomNewFunction:
     case PhantomNewGeneratorFunction:
+    case PhantomNewAsyncFunction:
     case PhantomCreateActivation:
     case MaterializeCreateActivation:
         read(HeapObjectCount);
@@ -1281,6 +1293,7 @@ void clobberize(Graph& graph, Node* node, const ReadFunctor& read, const WriteFu
 
     case NewFunction:
     case NewGeneratorFunction:
+    case NewAsyncFunction:
         if (node->castOperand<FunctionExecutable*>()->singletonFunction()->isStillValid())
             write(Watchpoint_fire);
         read(HeapObjectCount);

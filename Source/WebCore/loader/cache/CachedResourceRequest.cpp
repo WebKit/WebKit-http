@@ -39,7 +39,7 @@
 
 namespace WebCore {
 
-CachedResourceRequest::CachedResourceRequest(ResourceRequest&& resourceRequest, const ResourceLoaderOptions& options, Optional<ResourceLoadPriority> priority, String&& charset)
+CachedResourceRequest::CachedResourceRequest(ResourceRequest&& resourceRequest, const ResourceLoaderOptions& options, std::optional<ResourceLoadPriority> priority, String&& charset)
     : m_resourceRequest(WTFMove(resourceRequest))
     , m_charset(WTFMove(charset))
     , m_options(options)
@@ -91,10 +91,14 @@ void CachedResourceRequest::setAsPotentiallyCrossOrigin(const String& mode, Docu
 
     if (mode.isNull())
         return;
-    m_options.mode = FetchOptions::Mode::Cors;
-    m_options.credentials = equalLettersIgnoringASCIICase(mode, "use-credentials") ? FetchOptions::Credentials::Include : FetchOptions::Credentials::SameOrigin;
-    m_options.allowCredentials = equalLettersIgnoringASCIICase(mode, "use-credentials") ? AllowStoredCredentials : DoNotAllowStoredCredentials;
 
+    m_options.mode = FetchOptions::Mode::Cors;
+
+    FetchOptions::Credentials credentials = equalLettersIgnoringASCIICase(mode, "omit")
+        ? FetchOptions::Credentials::Omit : equalLettersIgnoringASCIICase(mode, "use-credentials")
+        ? FetchOptions::Credentials::Include : FetchOptions::Credentials::SameOrigin;
+    m_options.credentials = credentials;
+    m_options.allowCredentials = credentials == FetchOptions::Credentials::Include ? AllowStoredCredentials : DoNotAllowStoredCredentials;
     WebCore::updateRequestForAccessControl(m_resourceRequest, *document.securityOrigin(), m_options.allowCredentials);
 }
 

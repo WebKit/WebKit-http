@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010, 2011, 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2017 Apple Inc. All rights reserved.
  * Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies).
  *
  * Redistribution and use in source and binary forms, with or without
@@ -174,7 +174,7 @@ private:
     void webAppOrientationsUpdated() override;
     void showPlaybackTargetPicker(bool hasVideo) override;
 
-    std::chrono::milliseconds eventThrottlingDelay() override;
+    Seconds eventThrottlingDelay() override;
 #endif
 
 #if ENABLE(ORIENTATION_EVENTS)
@@ -182,7 +182,7 @@ private:
 #endif
 
     void runOpenPanel(WebCore::Frame*, PassRefPtr<WebCore::FileChooser>) override;
-    void loadIconForFiles(const Vector<String>&, WebCore::FileIconLoader*) override;
+    void loadIconForFiles(const Vector<String>&, WebCore::FileIconLoader&) override;
 
 #if !PLATFORM(IOS)
     void setCursor(const WebCore::Cursor&) override;
@@ -236,10 +236,6 @@ private:
     PassRefPtr<WebCore::ScrollingCoordinator> createScrollingCoordinator(WebCore::Page*) const override;
 #endif
 
-#if ENABLE(TOUCH_EVENTS)
-    void needTouchEvents(bool) override { }
-#endif
-
 #if PLATFORM(IOS)
     void elementDidRefocus(const WebCore::Node*) override;
 #endif
@@ -280,7 +276,7 @@ private:
     void notifyScrollerThumbIsVisibleInRect(const WebCore::IntRect&) override;
     void recommendedScrollbarStyleDidChange(WebCore::ScrollbarStyle newStyle) override;
 
-    WTF::Optional<WebCore::ScrollbarOverlayStyle> preferredScrollbarOverlayStyle() override;
+    std::optional<WebCore::ScrollbarOverlayStyle> preferredScrollbarOverlayStyle() override;
 
     WebCore::Color underlayColor() const override;
 

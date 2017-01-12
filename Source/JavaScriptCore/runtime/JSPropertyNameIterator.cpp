@@ -47,7 +47,7 @@ JSPropertyNameIterator::JSPropertyNameIterator(VM& vm, Structure* structure, JSO
 
 JSPropertyNameIterator* JSPropertyNameIterator::clone(ExecState* exec)
 {
-    auto iterator = JSPropertyNameIterator::create(exec, exec->callee()->globalObject()->propertyNameIteratorStructure(), m_iteratedObject.get(), m_propertyNameEnumerator.get());
+    auto iterator = JSPropertyNameIterator::create(exec, exec->jsCallee()->globalObject()->propertyNameIteratorStructure(), m_iteratedObject.get(), m_propertyNameEnumerator.get());
     iterator->m_enumerationPhase = m_enumerationPhase;
     iterator->m_cursor = m_cursor;
     return iterator;
@@ -82,8 +82,8 @@ void JSPropertyNameIterator::visitChildren(JSCell* cell, SlotVisitor& visitor)
     JSPropertyNameIterator* thisObject = jsCast<JSPropertyNameIterator*>(cell);
     ASSERT_GC_OBJECT_INHERITS(thisObject, info());
     Base::visitChildren(thisObject, visitor);
-    visitor.append(&thisObject->m_iteratedObject);
-    visitor.append(&thisObject->m_propertyNameEnumerator);
+    visitor.append(thisObject->m_iteratedObject);
+    visitor.append(thisObject->m_propertyNameEnumerator);
 }
 
 bool JSPropertyNameIterator::next(ExecState* exec, JSValue& output)

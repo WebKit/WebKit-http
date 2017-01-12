@@ -108,6 +108,7 @@ webGLEnabled initial=false
 webGLErrorsToConsoleEnabled initial=true
 openGLMultisamplingEnabled initial=true
 forceSoftwareWebGLRendering initial=false
+preferLowPowerWebGLRendering initial=true
 accelerated2dCanvasEnabled initial=false
 antialiased2dCanvasEnabled initial=true
 loadDeferringEnabled initial=true
@@ -115,7 +116,6 @@ webAudioEnabled initial=false
 paginateDuringLayoutEnabled initial=false
 fullScreenEnabled initial=false, conditional=FULLSCREEN_API
 asynchronousSpellCheckingEnabled initial=false
-mediaStreamEnabled initial=false
 
 # This feature requires an implementation of ValidationMessageClient.
 interactiveFormValidationEnabled initial=false
@@ -250,7 +250,7 @@ attachmentElementEnabled initial=true, conditional=ATTACHMENT_ELEMENT
 
 newBlockInsideInlineModelEnabled initial=false, setNeedsStyleRecalcInAllFrames=1
 
-newCSSParserEnabled initial=false
+deferredCSSParserEnabled initial=false
 
 httpEquivEnabled initial=true
 
@@ -275,17 +275,19 @@ springTimingFunctionEnabled initial=false
 
 treatIPAddressAsDomain initial=false
 
-variationFontsEnabled initial=true, setNeedsStyleRecalcInAllFrames=1, conditional=VARIATION_FONTS
-
 # Runtime-enabled features
 visualViewportEnabled initial=false, setNeedsStyleRecalcInAllFrames=1
-intersectionObserverEnabled initial=false
 
 inputEventsEnabled initial=true
 
 quickTimePluginReplacementEnabled initial=defaultQuickTimePluginReplacementEnabled
 youTubeFlashPluginReplacementEnabled initial=defaultYouTubeFlashPluginReplacementEnabled
 
-forcedPrefersReducedMotionValue type=ForcedPrefersReducedMotionValue, initial=defaultForcedPrefersReducedMotionValue
+forcedColorsAreInvertedAccessibilityValue type=ForcedAccessibilityValue, initial=defaultForcedColorsAreInvertedAccessibilityValue
+forcedDisplayIsMonochromeAccessibilityValue type=ForcedAccessibilityValue, initial=defaultForcedDisplayIsMonochromeAccessibilityValue
+forcedPrefersReducedMotionAccessibilityValue type=ForcedAccessibilityValue, initial=defaultForcedPrefersReducedMotionAccessibilityValue
 
-asyncImageDecodingEnabled initial=true
+largeImageAsyncDecodingEnabled initial=true
+animatedImageAsyncDecodingEnabled initial=true
+
+shouldSuppressKeyboardInputDuringProvisionalNavigation initial=false

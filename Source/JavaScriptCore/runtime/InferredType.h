@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2016 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -25,11 +25,12 @@
 
 #pragma once
 
-#include "ConcurrentJITLock.h"
+#include "ConcurrentJSLock.h"
 #include "JSCell.h"
 #include "PropertyName.h"
 #include "PutByIdFlags.h"
 #include "Watchpoint.h"
+#include <wtf/ThreadSafeRefCounted.h>
 
 namespace JSC {
 
@@ -173,24 +174,24 @@ public:
         Structure* m_structure;
     };
 
-    ConcurrentJITLock& lock() const { return m_lock; }
+    ConcurrentJSLock& lock() const { return m_lock; }
 
     Descriptor descriptorMainThread() const
     {
         return Descriptor(m_kind, m_structure ? m_structure->structure() : nullptr);
     }
     
-    Descriptor descriptor(const ConcurrentJITLocker&) const
+    Descriptor descriptor(const ConcurrentJSLocker&) const
     {
         return descriptorMainThread();
     }
     Descriptor descriptor() const
     {
-        ConcurrentJITLocker locker(m_lock);
+        ConcurrentJSLocker locker(m_lock);
         return descriptor(locker);
     }
     
-    Kind kind(const ConcurrentJITLocker& locker) const { return descriptor(locker).kind(); }
+    Kind kind(const ConcurrentJSLocker& locker) const { return descriptor(locker).kind(); }
 
     bool isTop() const { return m_kind == Top; }
     bool isRelevant() const { return m_kind != Top; }
@@ -214,10 +215,10 @@ public:
 
     // Returns true if it currently makes sense to watch this InferredType for this descriptor. Note that
     // this will always return false for Top.
-    bool canWatch(const ConcurrentJITLocker&, const Descriptor&);
+    bool canWatch(const ConcurrentJSLocker&, const Descriptor&);
     bool canWatch(const Descriptor&);
     
-    void addWatchpoint(const ConcurrentJITLocker&, Watchpoint*);
+    void addWatchpoint(const ConcurrentJSLocker&, Watchpoint*);
     void addWatchpoint(Watchpoint*);
 
     void dump(PrintStream&) const;
@@ -231,11 +232,11 @@ private:
 
     // Helper for willStoreValueSlow() and makeTopSlow(). This returns true if we should fire the
     // watchpoint set.
-    bool set(const ConcurrentJITLocker&, VM&, Descriptor);
+    bool set(const ConcurrentJSLocker&, VM&, Descriptor);
     
     void removeStructure();
 
-    mutable ConcurrentJITLock m_lock;
+    mutable ConcurrentJSLock m_lock;
     
     Kind m_kind { Bottom };
 
@@ -253,8 +254,7 @@ private:
         void finalizeUnconditionally() override;
     };
 
-    class InferredStructure {
-        WTF_MAKE_FAST_ALLOCATED;
+    class InferredStructure : public ThreadSafeRefCounted<InferredStructure> {
     public:
         InferredStructure(VM&, InferredType* parent, Structure*);
 
@@ -272,7 +272,7 @@ private:
         InferredStructureFinalizer m_finalizer;
     };
 
-    std::unique_ptr<InferredStructure> m_structure;
+    RefPtr<InferredStructure> m_structure;
 
     // NOTE: If this is being watched, we transform to Top because that implies that it wouldn't be
     // profitable to watch it again. Also, this set is initialized clear, and is never exposed to the DFG

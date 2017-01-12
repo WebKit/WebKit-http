@@ -37,16 +37,21 @@
 - (void)scrollViewWillBeginZooming:(UIScrollView *)scrollView withView:(UIView *)view;
 - (void)scrollViewDidEndZooming:(UIScrollView *)scrollView withView:(UIView *)view atScale:(CGFloat)scale;
 - (void)_didFinishScrolling;
+- (void)_updateVisibleContentRects;
 
 @end
 #endif
 
 #if WK_API_ENABLED
 
-@interface TestRunnerWKWebView ()
+@interface TestRunnerWKWebView () {
+    RetainPtr<NSNumber *> m_stableStateOverride;
+}
+
 @property (nonatomic, copy) void (^zoomToScaleCompletionHandler)(void);
 @property (nonatomic, copy) void (^showKeyboardCompletionHandler)(void);
 @property (nonatomic) BOOL isShowingKeyboard;
+
 @end
 
 @implementation TestRunnerWKWebView
@@ -170,6 +175,18 @@
     if (self.didEndScrollingCallback)
         self.didEndScrollingCallback();
 }
+
+- (NSNumber *)_stableStateOverride
+{
+    return m_stableStateOverride.get();
+}
+
+- (void)_setStableStateOverride:(NSNumber *)overrideBoolean
+{
+    m_stableStateOverride = overrideBoolean;
+    [self _updateVisibleContentRects];
+}
+
 #endif
 
 @end

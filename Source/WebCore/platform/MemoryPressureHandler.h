@@ -33,6 +33,7 @@
 #include <wtf/FastMalloc.h>
 #include <wtf/Forward.h>
 #include <wtf/NeverDestroyed.h>
+#include <wtf/Optional.h>
 
 #if PLATFORM(IOS)
 #include <wtf/Lock.h>
@@ -69,7 +70,6 @@ public:
 
     void setLowMemoryHandler(LowMemoryHandler&& handler)
     {
-        ASSERT(!m_installed);
         m_lowMemoryHandler = WTFMove(handler);
     }
 
@@ -91,25 +91,44 @@ public:
     public:
         explicit ReliefLogger(const char *log)
             : m_logString(log)
-            , m_initialMemory(s_loggingEnabled ? platformMemoryUsage() : 0)
+            , m_initialMemory(loggingEnabled() ? platformMemoryUsage() : MemoryUsage { })
         {
         }
 
         ~ReliefLogger()
         {
-            logMemoryUsageChange();
+            if (loggingEnabled())
+                logMemoryUsageChange();
         }
+
 
         const char* logString() const { return m_logString; }
         static void setLoggingEnabled(bool enabled) { s_loggingEnabled = enabled; }
-        static bool loggingEnabled() { return s_loggingEnabled; }
+        static bool loggingEnabled()
+        {
+#if RELEASE_LOG_DISABLED
+            return s_loggingEnabled;
+#else
+            return true;
+#endif
+        }
 
     private:
-        size_t platformMemoryUsage();
+        struct MemoryUsage {
+            MemoryUsage() = default;
+            MemoryUsage(size_t resident, size_t physical)
+                : resident(resident)
+                , physical(physical)
+            {
+            }
+            size_t resident { 0 };
+            size_t physical { 0 };
+        };
+        std::optional<MemoryUsage> platformMemoryUsage();
         void logMemoryUsageChange();
 
         const char* m_logString;
-        size_t m_initialMemory;
+        std::optional<MemoryUsage> m_initialMemory;
 
         WEBCORE_EXPORT static bool s_loggingEnabled;
     };
@@ -140,7 +159,7 @@ private:
     private:
         void readAndNotify() const;
 
-        Optional<int> m_fd;
+        std::optional<int> m_fd;
         std::function<void ()> m_notifyHandler;
 #if USE(GLIB)
         GRefPtr<GSource> m_source;
@@ -165,8 +184,8 @@ private:
     CFRunLoopObserverRef m_observer { nullptr };
     Lock m_observerMutex;
 #elif OS(LINUX)
-    Optional<int> m_eventFD;
-    Optional<int> m_pressureLevelFD;
+    std::optional<int> m_eventFD;
+    std::optional<int> m_pressureLevelFD;
     std::unique_ptr<EventFDPoller> m_eventFDPoller;
     RunLoop::Timer<MemoryPressureHandler> m_holdOffTimer;
     void holdOffTimerFired();

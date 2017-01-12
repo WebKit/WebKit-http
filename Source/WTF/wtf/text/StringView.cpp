@@ -28,6 +28,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "StringView.h"
 
 #include <mutex>
+#include <unicode/ubrk.h>
 #include <wtf/HashMap.h>
 #include <wtf/Lock.h>
 #include <wtf/NeverDestroyed.h>
@@ -95,7 +96,7 @@ size_t StringView::find(StringView matchString, unsigned start) const
 
 class StringView::GraphemeClusters::Iterator::Impl {
 public:
-    Impl(const StringView& stringView, Optional<NonSharedCharacterBreakIterator>&& iterator, unsigned index)
+    Impl(const StringView& stringView, std::optional<NonSharedCharacterBreakIterator>&& iterator, unsigned index)
         : m_stringView(stringView)
         , m_iterator(WTFMove(iterator))
         , m_index(index)
@@ -131,12 +132,12 @@ public:
             return 0;
         if (m_index == m_stringView.length())
             return m_index;
-        return textBreakFollowing(m_iterator.value(), m_index);
+        return ubrk_following(m_iterator.value(), m_index);
     }
 
 private:
     const StringView& m_stringView;
-    Optional<NonSharedCharacterBreakIterator> m_iterator;
+    std::optional<NonSharedCharacterBreakIterator> m_iterator;
     unsigned m_index;
     unsigned m_indexEnd;
 };
@@ -157,7 +158,7 @@ Vector<StringView> StringView::split(UChar separator)
 }
 
 StringView::GraphemeClusters::Iterator::Iterator(const StringView& stringView, unsigned index)
-    : m_impl(std::make_unique<Impl>(stringView, stringView.isNull() ? Nullopt : Optional<NonSharedCharacterBreakIterator>(NonSharedCharacterBreakIterator(stringView)), index))
+    : m_impl(std::make_unique<Impl>(stringView, stringView.isNull() ? std::nullopt : std::optional<NonSharedCharacterBreakIterator>(NonSharedCharacterBreakIterator(stringView)), index))
 {
 }
 

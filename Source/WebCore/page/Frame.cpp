@@ -268,6 +268,11 @@ void Frame::setDocument(RefPtr<Document>&& newDocument)
 {
     ASSERT(!newDocument || newDocument->frame() == this);
 
+    if (m_documentIsBeingReplaced)
+        return;
+
+    m_documentIsBeingReplaced = true;
+    
     if (m_doc && m_doc->pageCacheState() != Document::InPageCache)
         m_doc->prepareForDestruction();
 
@@ -281,6 +286,8 @@ void Frame::setDocument(RefPtr<Document>&& newDocument)
         newDocument->didBecomeCurrentDocumentInFrame();
 
     InspectorInstrumentation::frameDocumentUpdated(*this);
+
+    m_documentIsBeingReplaced = false;
 }
 
 #if ENABLE(ORIENTATION_EVENTS)
@@ -643,15 +650,17 @@ void Frame::setPrinting(bool printing, const FloatSize& pageSize, const FloatSiz
     ResourceCacheValidationSuppressor validationSuppressor(m_doc->cachedResourceLoader());
 
     m_doc->setPrinting(printing);
-    view()->adjustMediaTypeForPrinting(printing);
+    if (auto* frameView = view()) {
+        frameView->adjustMediaTypeForPrinting(printing);
 
-    m_doc->styleScope().didChangeStyleSheetEnvironment();
-    if (shouldUsePrintingLayout()) {
-        view()->forceLayoutForPagination(pageSize, originalPageSize, maximumShrinkRatio, shouldAdjustViewSize);
-    } else {
-        view()->forceLayout();
-        if (shouldAdjustViewSize == AdjustViewSize)
-            view()->adjustViewSize();
+        m_doc->styleScope().didChangeStyleSheetEnvironment();
+        if (shouldUsePrintingLayout())
+            frameView->forceLayoutForPagination(pageSize, originalPageSize, maximumShrinkRatio, shouldAdjustViewSize);
+        else {
+            frameView->forceLayout();
+            if (shouldAdjustViewSize == AdjustViewSize)
+                frameView->adjustViewSize();
+        }
     }
 
     // Subframes of the one we're printing don't lay out to the page size.
@@ -778,6 +787,17 @@ void Frame::willDetachPage()
 
     script().clearScriptObjects();
     script().updatePlatformScriptObjects();
+
+    // We promise that the Frame is always connected to a Page while the render tree is live.
+    //
+    // The render tree can be torn down in a few different ways, but the two important ones are:
+    //
+    // - When calling Frame::setView() with a null FrameView*. This is always done before calling
+    //   Frame::willDetachPage (this function.) Hence the assertion below.
+    //
+    // - When adding a document to the page cache, the tree is torn down before instantiating
+    //   the CachedPage+CachedFrame object tree.
+    ASSERT(!document() || !document()->renderView());
 }
 
 void Frame::disconnectOwnerElement()
@@ -813,7 +833,7 @@ VisiblePosition Frame::visiblePositionForPoint(const IntPoint& framePoint) const
 Document* Frame::documentAtPoint(const IntPoint& point)
 {
     if (!view())
-        return 0;
+        return nullptr;
 
     IntPoint pt = view()->windowToContents(point);
     HitTestResult result = HitTestResult(pt);

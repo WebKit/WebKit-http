@@ -130,10 +130,15 @@ const Vector<size_t>& sizeClasses()
                 add(betterSizeClass);
             }
 
+            // Manually inject size classes for objects we know will be allocated in high volume.
             add(sizeof(UnlinkedFunctionExecutable));
             add(sizeof(UnlinkedFunctionCodeBlock));
             add(sizeof(FunctionExecutable));
             add(sizeof(FunctionCodeBlock));
+            add(sizeof(JSString));
+            add(sizeof(JSFunction));
+            add(sizeof(PropertyTable));
+            add(sizeof(Structure));
 
             {
                 // Sort and deduplicate.
@@ -359,10 +364,10 @@ void MarkedSpace::prepareForAllocation()
     m_allocatorForEmptyAllocation = m_firstAllocator;
 }
 
-void MarkedSpace::visitWeakSets(HeapRootVisitor& heapRootVisitor)
+void MarkedSpace::visitWeakSets(SlotVisitor& visitor)
 {
     auto visit = [&] (WeakSet* weakSet) {
-        weakSet->visit(heapRootVisitor);
+        weakSet->visit(visitor);
     };
     
     m_newActiveWeakSets.forEach(visit);
@@ -393,16 +398,13 @@ void MarkedSpace::stopAllocating()
         });
 }
 
-void MarkedSpace::prepareForMarking()
+void MarkedSpace::prepareForConservativeScan()
 {
-    if (m_heap->collectionScope() == CollectionScope::Eden)
-        m_largeAllocationsOffsetForThisCollection = m_largeAllocationsNurseryOffset;
-    else
-        m_largeAllocationsOffsetForThisCollection = 0;
     m_largeAllocationsForThisCollectionBegin = m_largeAllocations.begin() + m_largeAllocationsOffsetForThisCollection;
     m_largeAllocationsForThisCollectionSize = m_largeAllocations.size() - m_largeAllocationsOffsetForThisCollection;
     m_largeAllocationsForThisCollectionEnd = m_largeAllocations.end();
     RELEASE_ASSERT(m_largeAllocationsForThisCollectionEnd == m_largeAllocationsForThisCollectionBegin + m_largeAllocationsForThisCollectionSize);
+    
     std::sort(
         m_largeAllocationsForThisCollectionBegin, m_largeAllocationsForThisCollectionEnd,
         [&] (LargeAllocation* a, LargeAllocation* b) {
@@ -410,9 +412,16 @@ void MarkedSpace::prepareForMarking()
         });
 }
 
+void MarkedSpace::prepareForMarking()
+{
+    if (m_heap->collectionScope() == CollectionScope::Eden)
+        m_largeAllocationsOffsetForThisCollection = m_largeAllocationsNurseryOffset;
+    else
+        m_largeAllocationsOffsetForThisCollection = 0;
+}
+
 void MarkedSpace::resumeAllocating()
 {
-    ASSERT(isIterating());
     forEachAllocator(
         [&] (MarkedAllocator& allocator) -> IterationStatus {
             allocator.resumeAllocating();

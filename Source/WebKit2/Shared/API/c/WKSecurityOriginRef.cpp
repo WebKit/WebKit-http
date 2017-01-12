@@ -44,7 +44,10 @@ WKSecurityOriginRef WKSecurityOriginCreateFromString(WKStringRef string)
 
 WKSecurityOriginRef WKSecurityOriginCreateFromDatabaseIdentifier(WKStringRef identifier)
 {
-    return toAPI(API::SecurityOrigin::create(WebCore::SecurityOrigin::createFromDatabaseIdentifier((toImpl(identifier)->string()))).leakRef());
+    auto origin = WebCore::SecurityOriginData::fromDatabaseIdentifier(toImpl(identifier)->string());
+    if (!origin)
+        return nullptr;
+    return toAPI(API::SecurityOrigin::create(origin.value().securityOrigin()).leakRef());
 }
 
 WKSecurityOriginRef WKSecurityOriginCreate(WKStringRef protocol, WKStringRef host, int port)
@@ -75,7 +78,7 @@ WKStringRef WKSecurityOriginCopyHost(WKSecurityOriginRef securityOrigin)
 
 unsigned short WKSecurityOriginGetPort(WKSecurityOriginRef securityOrigin)
 {
-    return toImpl(securityOrigin)->securityOrigin().port().valueOr(0);
+    return toImpl(securityOrigin)->securityOrigin().port().value_or(0);
 }
 
 // For backwards ABI compatibility.

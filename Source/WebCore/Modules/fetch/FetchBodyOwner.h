@@ -33,15 +33,16 @@
 #include "ActiveDOMObject.h"
 #include "FetchBody.h"
 #include "FetchHeaders.h"
-#include "FetchLoader.h"
 #include "FetchLoaderClient.h"
 #include "FetchResponseSource.h"
 
 namespace WebCore {
 
+class FetchLoader;
+
 class FetchBodyOwner : public RefCounted<FetchBodyOwner>, public ActiveDOMObject {
 public:
-    FetchBodyOwner(ScriptExecutionContext&, Optional<FetchBody>&&, Ref<FetchHeaders>&&);
+    FetchBodyOwner(ScriptExecutionContext&, std::optional<FetchBody>&&, Ref<FetchHeaders>&&);
 
     // Exposed Body API
     bool isDisturbed() const { return m_isDisturbed; };
@@ -94,7 +95,7 @@ private:
     };
 
 protected:
-    Optional<FetchBody> m_body;
+    std::optional<FetchBody> m_body;
     String m_contentType;
     bool m_isDisturbed { false };
 #if ENABLE(READABLE_STREAM_API)
@@ -103,7 +104,7 @@ protected:
     Ref<FetchHeaders> m_headers;
 
 private:
-    Optional<BlobLoader> m_blobLoader;
+    std::optional<BlobLoader> m_blobLoader;
 };
 
 } // namespace WebCore

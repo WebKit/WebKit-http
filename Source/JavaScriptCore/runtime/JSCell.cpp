@@ -24,11 +24,13 @@
 #include "JSCell.h"
 
 #include "ArrayBufferView.h"
+#include "JSCInlines.h"
 #include "JSFunction.h"
 #include "JSString.h"
 #include "JSObject.h"
+#include "JSWebAssemblyCallee.h"
 #include "NumberObject.h"
-#include "JSCInlines.h"
+#include "WebAssemblyToJSCallee.h"
 #include <wtf/MathExtras.h>
 
 namespace JSC {
@@ -161,7 +163,7 @@ bool JSCell::getPrimitiveNumber(ExecState* exec, double& number, JSValue& value)
 }
 
 double JSCell::toNumber(ExecState* exec) const
-{ 
+{
     if (isString())
         return static_cast<const JSString*>(this)->toNumber(exec);
     if (isSymbol())
@@ -169,14 +171,13 @@ double JSCell::toNumber(ExecState* exec) const
     return static_cast<const JSObject*>(this)->toNumber(exec);
 }
 
-JSObject* JSCell::toObject(ExecState* exec, JSGlobalObject* globalObject) const
+JSObject* JSCell::toObjectSlow(ExecState* exec, JSGlobalObject* globalObject) const
 {
+    ASSERT(!isObject());
     if (isString())
         return static_cast<const JSString*>(this)->toObject(exec, globalObject);
-    if (isSymbol())
-        return static_cast<const Symbol*>(this)->toObject(exec, globalObject);
-    ASSERT(isObject());
-    return jsCast<JSObject*>(const_cast<JSCell*>(this));
+    ASSERT(isSymbol());
+    return static_cast<const Symbol*>(this)->toObject(exec, globalObject);
 }
 
 void slowValidateCell(JSCell* cell)
@@ -292,6 +293,16 @@ bool JSCell::setPrototype(JSObject*, ExecState*, JSValue, bool)
 JSValue JSCell::getPrototype(JSObject*, ExecState*)
 {
     RELEASE_ASSERT_NOT_REACHED();
+}
+
+bool JSCell::isAnyWasmCallee() const
+{
+#if ENABLE(WEBASSEMBLY)
+    return inherits(JSWebAssemblyCallee::info()) || inherits(WebAssemblyToJSCallee::info());
+#else
+    return false;
+#endif
+
 }
 
 } // namespace JSC

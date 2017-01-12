@@ -38,6 +38,11 @@
 #include <WebCore/AuthenticationChallenge.h>
 #endif
 
+#if ENABLE(NETWORK_CAPTURE)
+#include "NetworkCaptureRecorder.h"
+#include "NetworkCaptureReplayer.h"
+#endif
+
 namespace WebKit {
 
 class NetworkLoad final :
@@ -95,6 +100,14 @@ public:
 #endif
 
 private:
+#if USE(NETWORK_SESSION)
+#if ENABLE(NETWORK_CAPTURE)
+    void initializeForRecord(NetworkSession&);
+    void initializeForReplay(NetworkSession&);
+#endif
+    void initialize(NetworkSession&);
+#endif
+
     NetworkLoadClient::ShouldContinueDidReceiveResponse sharedDidReceiveResponse(WebCore::ResourceResponse&&);
     void sharedWillSendRedirectedRequest(WebCore::ResourceRequest&&, WebCore::ResourceResponse&&);
 
@@ -135,7 +148,7 @@ private:
     const NetworkLoadParameters m_parameters;
 #if USE(NETWORK_SESSION)
     RefPtr<NetworkDataTask> m_task;
-    Optional<WebCore::AuthenticationChallenge> m_challenge;
+    std::optional<WebCore::AuthenticationChallenge> m_challenge;
 #if USE(PROTECTION_SPACE_AUTH_CALLBACK)
     ChallengeCompletionHandler m_challengeCompletionHandler;
 #endif
@@ -151,6 +164,11 @@ private:
 #endif
 
     WebCore::ResourceRequest m_currentRequest; // Updated on redirects.
+
+#if ENABLE(NETWORK_CAPTURE)
+    std::unique_ptr<NetworkCapture::Recorder> m_recorder;
+    std::unique_ptr<NetworkCapture::Replayer> m_replayer;
+#endif
 };
 
 } // namespace WebKit

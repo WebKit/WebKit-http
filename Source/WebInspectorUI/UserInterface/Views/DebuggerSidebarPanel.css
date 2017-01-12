@@ -34,6 +34,23 @@
     right: 0;
 }
 
+.sidebar > .panel.navigation.debugger > .navigation-bar .debugger-breakpoints {
+    fill: none;
+    stroke: var(--glyph-color);
+}
+.sidebar > .panel.navigation.debugger > .navigation-bar .debugger-breakpoints.activated {
+    fill: var(--glyph-color-active);
+    stroke: var(--glyph-color-active);
+}
+
+.sidebar > .panel.navigation.debugger > .navigation-bar .debugger-pause-resume {
+    fill: none;
+    stroke: var(--glyph-color);
+}
+.sidebar > .panel.navigation.debugger > .navigation-bar .debugger-pause-resume.activated {
+    stroke: var(--glyph-color-active);
+}
+
 .sidebar > .panel.navigation.debugger .warning-banner {
     text-align: center;
     font-size: 11px;
@@ -43,6 +60,14 @@
 
     border-bottom: 1px solid var(--border-color);
     background-color: hsl(50, 100%, 94%);
+}
+
+.sidebar > .panel.navigation.debugger .tree-outline.single-thread > .item.thread {
+    display: none;
+}
+
+.sidebar > .panel.navigation.debugger .tree-outline.single-thread {
+    margin-left: -10px;
 }
 
 .sidebar > .panel.navigation.debugger .warning-banner > a {

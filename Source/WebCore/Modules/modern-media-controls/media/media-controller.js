@@ -32,18 +32,32 @@ class MediaController
         this.media = media;
         this.host = host;
 
+        this.container = shadowRoot.appendChild(document.createElement("div"));
+        this.container.className = "media-controls-container";
+
+        if (host) {
+            host.controlsDependOnPageScaleFactor = this.layoutTraits & LayoutTraits.iOS;
+            this.container.appendChild(host.textTrackContainer);
+        }
+
         this._updateControlsIfNeeded();
 
-        media.addEventListener("resize", this);
+        shadowRoot.addEventListener("resize", this);
 
-        media.addEventListener("webkitfullscreenchange", this);
+        if (media.webkitSupportsPresentationMode)
+            media.addEventListener("webkitpresentationmodechanged", this);
+        else
+            media.addEventListener("webkitfullscreenchange", this);
     }
 
     get layoutTraits()
     {
         let traits = window.navigator.platform === "MacIntel" ? LayoutTraits.macOS : LayoutTraits.iOS;
-        if (this.media.webkitDisplayingFullscreen)
-            traits = traits | LayoutTraits.Fullscreen;
+        if (this.media.webkitSupportsPresentationMode) {
+            if (this.media.webkitPresentationMode === "fullscreen")
+                return traits | LayoutTraits.Fullscreen;
+        } else if (this.media.webkitDisplayingFullscreen)
+            return traits | LayoutTraits.Fullscreen;
         return traits;
     }
 
@@ -51,20 +65,24 @@ class MediaController
 
     set pageScaleFactor(pageScaleFactor)
     {
-        // FIXME: To be implemented.
+        this.controls.scaleFactor = pageScaleFactor;
+        this._updateControlsSize();
     }
 
     set usesLTRUserInterfaceLayoutDirection(flag)
     {
-        // FIXME: To be implemented.
+        this.controls.usesLTRUserInterfaceLayoutDirection = flag;
     }
 
     handleEvent(event)
     {
-        if (event.type === "resize" && event.currentTarget === this.media)
+        if (event.type === "resize" && event.currentTarget === this.shadowRoot)
             this._updateControlsSize();
-        else if (event.type === "webkitfullscreenchange" && event.currentTarget === this.media)
+        else if (event.currentTarget === this.media) {
             this._updateControlsIfNeeded();
+            if (event.type === "webkitpresentationmodechanged")
+                this._returnMediaLayerToInlineIfNeeded();
+        }
     }
 
     // Private
@@ -85,27 +103,40 @@ class MediaController
 
         this.controls = new ControlsClass;
 
-        if (previousControls)
-            this.shadowRoot.replaceChild(this.controls.element, previousControls.element);
-        else
-            this.shadowRoot.appendChild(this.controls.element);        
+        if (this.shadowRoot.host && this.shadowRoot.host.dataset.autoHideDelay)
+            this.controls.controlsBar.autoHideDelay = this.shadowRoot.host.dataset.autoHideDelay;
+
+        if (previousControls) {
+            this.controls.fadeIn();
+            this.container.replaceChild(this.controls.element, previousControls.element);
+            this.controls.usesLTRUserInterfaceLayoutDirection = previousControls.usesLTRUserInterfaceLayoutDirection;
+        } else
+            this.container.appendChild(this.controls.element);        
 
         this._updateControlsSize();
 
-        this._supportingObjects = [AirplaySupport, ElapsedTimeSupport, FullscreenSupport, MuteSupport, PiPSupport, PlacardSupport, PlaybackSupport, RemainingTimeSupport, ScrubbingSupport, SkipBackSupport, StartSupport, StatusSupport, TracksSupport, VolumeSupport].map(SupportClass => {
+        this._supportingObjects = [AirplaySupport, ControlsVisibilitySupport, ElapsedTimeSupport, FullscreenSupport, MuteSupport, PiPSupport, PlacardSupport, PlaybackSupport, RemainingTimeSupport, ScrubbingSupport, SeekBackwardSupport, SeekForwardSupport, SkipBackSupport, StartSupport, StatusSupport, TracksSupport, VolumeSupport].map(SupportClass => {
             return new SupportClass(this);
         }, this);
     }
 
     _updateControlsSize()
     {
-        this.controls.width = this.media.offsetWidth;
-        this.controls.height = this.media.offsetHeight;
+        this.controls.width = Math.round(this.media.offsetWidth * this.controls.scaleFactor);
+        this.controls.height = Math.round(this.media.offsetHeight * this.controls.scaleFactor);
+    }
+
+    _returnMediaLayerToInlineIfNeeded()
+    {
+        if (this.host)
+            window.requestAnimationFrame(() => this.host.setPreparedToReturnVideoLayerToInline(this.media.webkitPresentationMode !== PiPMode));
     }
 
     _controlsClass()
     {
         const layoutTraits = this.layoutTraits;
+        if (layoutTraits & LayoutTraits.iOS)
+            return IOSInlineMediaControls;
         if (layoutTraits & LayoutTraits.Fullscreen)
             return MacOSFullscreenMediaControls;
         return MacOSInlineMediaControls;

@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2010 Google, Inc. All Rights Reserved.
- * Copyright (C) 2011, 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -35,9 +35,10 @@ namespace WebCore {
 
 class JSCustomElementInterface;
 class HTMLDocumentParser;
+class ScriptElement;
 
 struct CustomElementConstructionData {
-    CustomElementConstructionData(Ref<JSCustomElementInterface>&&, const AtomicString& name, const Vector<Attribute>&);
+    CustomElementConstructionData(Ref<JSCustomElementInterface>&&, const AtomicString& name, Vector<Attribute>&&);
     ~CustomElementConstructionData();
 
     Ref<JSCustomElementInterface> elementInterface;
@@ -56,13 +57,13 @@ public:
 
     bool isParsingFragment() const;
 
-    void constructTree(AtomicHTMLToken&);
+    void constructTree(AtomicHTMLToken&&);
 
     bool isParsingTemplateContents() const;
     bool hasParserBlockingScriptWork() const;
 
     // Must be called to take the parser-blocking script before calling the parser again.
-    RefPtr<Element> takeScriptToProcess(TextPosition& scriptStartPosition);
+    RefPtr<ScriptElement> takeScriptToProcess(TextPosition& scriptStartPosition);
 
     std::unique_ptr<CustomElementConstructionData> takeCustomElementConstructionData() { return WTFMove(m_customElementToConstruct); }
     void didCreateCustomOrCallbackElement(Ref<Element>&&, CustomElementConstructionData&);
@@ -108,32 +109,32 @@ private:
     void linkifyPhoneNumbers(const String&);
 #endif
 
-    void processToken(AtomicHTMLToken&);
+    void processToken(AtomicHTMLToken&&);
 
-    void processDoctypeToken(AtomicHTMLToken&);
-    void processStartTag(AtomicHTMLToken&);
-    void processEndTag(AtomicHTMLToken&);
-    void processComment(AtomicHTMLToken&);
-    void processCharacter(AtomicHTMLToken&);
-    void processEndOfFile(AtomicHTMLToken&);
+    void processDoctypeToken(AtomicHTMLToken&&);
+    void processStartTag(AtomicHTMLToken&&);
+    void processEndTag(AtomicHTMLToken&&);
+    void processComment(AtomicHTMLToken&&);
+    void processCharacter(AtomicHTMLToken&&);
+    void processEndOfFile(AtomicHTMLToken&&);
 
-    bool processStartTagForInHead(AtomicHTMLToken&);
-    void processStartTagForInBody(AtomicHTMLToken&);
-    void processStartTagForInTable(AtomicHTMLToken&);
-    void processEndTagForInBody(AtomicHTMLToken&);
-    void processEndTagForInTable(AtomicHTMLToken&);
-    void processEndTagForInTableBody(AtomicHTMLToken&);
-    void processEndTagForInRow(AtomicHTMLToken&);
-    void processEndTagForInCell(AtomicHTMLToken&);
+    bool processStartTagForInHead(AtomicHTMLToken&&);
+    void processStartTagForInBody(AtomicHTMLToken&&);
+    void processStartTagForInTable(AtomicHTMLToken&&);
+    void processEndTagForInBody(AtomicHTMLToken&&);
+    void processEndTagForInTable(AtomicHTMLToken&&);
+    void processEndTagForInTableBody(AtomicHTMLToken&&);
+    void processEndTagForInRow(AtomicHTMLToken&&);
+    void processEndTagForInCell(AtomicHTMLToken&&);
 
-    void processHtmlStartTagForInBody(AtomicHTMLToken&);
-    bool processBodyEndTagForInBody(AtomicHTMLToken&);
+    void processHtmlStartTagForInBody(AtomicHTMLToken&&);
+    bool processBodyEndTagForInBody(AtomicHTMLToken&&);
     bool processTableEndTagForInTable();
     bool processCaptionEndTagForInCaption();
     bool processColgroupEndTagForInColumnGroup();
     bool processTrEndTagForInRow();
 
-    void processAnyOtherEndTagForInBody(AtomicHTMLToken&);
+    void processAnyOtherEndTagForInBody(AtomicHTMLToken&&);
 
     void processCharacterBuffer(ExternalCharacterTokenBuffer&);
     inline void processCharacterBufferForInBody(ExternalCharacterTokenBuffer&);
@@ -144,9 +145,9 @@ private:
     void processFakeCharacters(const String&);
     void processFakePEndTagIfPInButtonScope();
 
-    void processGenericRCDATAStartTag(AtomicHTMLToken&);
-    void processGenericRawTextStartTag(AtomicHTMLToken&);
-    void processScriptStartTag(AtomicHTMLToken&);
+    void processGenericRCDATAStartTag(AtomicHTMLToken&&);
+    void processGenericRawTextStartTag(AtomicHTMLToken&&);
+    void processScriptStartTag(AtomicHTMLToken&&);
 
     // Default processing for the different insertion modes.
     void defaultForInitial();
@@ -157,8 +158,8 @@ private:
     void defaultForAfterHead();
     void defaultForInTableText();
 
-    bool shouldProcessTokenInForeignContent(AtomicHTMLToken&);
-    void processTokenInForeignContent(AtomicHTMLToken&);
+    bool shouldProcessTokenInForeignContent(const AtomicHTMLToken&);
+    void processTokenInForeignContent(AtomicHTMLToken&&);
     
     HTMLStackItem& adjustedCurrentStackItem() const;
 
@@ -166,17 +167,17 @@ private:
 
     void closeTheCell();
 
-    template <bool shouldClose(const HTMLStackItem&)> void processCloseWhenNestedTag(AtomicHTMLToken&);
+    template <bool shouldClose(const HTMLStackItem&)> void processCloseWhenNestedTag(AtomicHTMLToken&&);
 
-    void parseError(AtomicHTMLToken&);
+    void parseError(const AtomicHTMLToken&);
 
     void resetInsertionModeAppropriately();
 
-    void insertGenericHTMLElement(AtomicHTMLToken&);
+    void insertGenericHTMLElement(AtomicHTMLToken&&);
 
-    void processTemplateStartTag(AtomicHTMLToken&);
-    bool processTemplateEndTag(AtomicHTMLToken&);
-    bool processEndOfFileForInTemplateContents(AtomicHTMLToken&);
+    void processTemplateStartTag(AtomicHTMLToken&&);
+    bool processTemplateEndTag(AtomicHTMLToken&&);
+    bool processEndOfFileForInTemplateContents(AtomicHTMLToken&&);
 
     class FragmentParsingContext {
     public:
@@ -206,7 +207,7 @@ private:
     // https://html.spec.whatwg.org/multipage/syntax.html#concept-pending-table-char-tokens
     StringBuilder m_pendingTableCharacters;
 
-    RefPtr<Element> m_scriptToProcess; // <script> tag which needs processing before resuming the parser.
+    RefPtr<ScriptElement> m_scriptToProcess; // <script> tag which needs processing before resuming the parser.
     TextPosition m_scriptToProcessStartPosition; // Starting line number of the script tag needing processing.
 
     std::unique_ptr<CustomElementConstructionData> m_customElementToConstruct;

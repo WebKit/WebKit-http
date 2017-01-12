@@ -23,7 +23,7 @@
 #include "config.h"
 #include "WebKitCommonEncryptionDecryptorGStreamer.h"
 
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA) && USE(GSTREAMER)
+#if (ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA)) && USE(GSTREAMER)
 
 #include "GRefPtrGStreamer.h"
 #include <wtf/Condition.h>
@@ -197,7 +197,7 @@ static GstFlowReturn webkitMediaCommonEncryptionDecryptTransformInPlace(GstBaseT
             GST_ERROR_OBJECT(self, "can't process key requests in less than PAUSED state");
             return GST_FLOW_NOT_SUPPORTED;
         }
-        priv->condition.waitFor(priv->mutex, std::chrono::seconds(5), [priv] {
+        priv->condition.waitFor(priv->mutex, Seconds(5), [priv] {
             return priv->keyReceived;
         });
         if (!priv->keyReceived) {
@@ -370,5 +370,4 @@ static void webKitMediaCommonEncryptionDecryptDefaultReleaseCipher(WebKitMediaCo
 {
 }
 
-
-#endif // ENABLE(LEGACY_ENCRYPTED_MEDIA) && USE(GSTREAMER)
+#endif // (ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA)) && USE(GSTREAMER)

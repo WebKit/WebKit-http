@@ -534,43 +534,6 @@ public:
     }
 #endif
 
-#if CPU(SH4)
-    static size_t prologueStackPointerDelta()
-    {
-        // Prologue saves the framePointerRegister and link register
-        return 2 * sizeof(void*);
-    }
-
-    void emitFunctionPrologue()
-    {
-        push(linkRegister);
-        push(framePointerRegister);
-        move(stackPointerRegister, framePointerRegister);
-    }
-
-    void emitFunctionEpilogue()
-    {
-        move(framePointerRegister, stackPointerRegister);
-        pop(framePointerRegister);
-        pop(linkRegister);
-    }
-
-    ALWAYS_INLINE void preserveReturnAddressAfterCall(RegisterID reg)
-    {
-        m_assembler.stspr(reg);
-    }
-
-    ALWAYS_INLINE void restoreReturnAddressBeforeReturn(RegisterID reg)
-    {
-        m_assembler.ldspr(reg);
-    }
-
-    ALWAYS_INLINE void restoreReturnAddressBeforeReturn(Address address)
-    {
-        loadPtrLinkReg(address);
-    }
-#endif
-
     void emitGetFromCallFrameHeaderPtr(int entry, GPRReg to, GPRReg from = GPRInfo::callFrameRegister)
     {
         loadPtr(Address(from, entry * sizeof(Register)), to);
@@ -1023,7 +986,7 @@ public:
         move(TrustedImmPtr(scratchBuffer->activeLengthPtr()), GPRInfo::regT0);
         storePtr(TrustedImmPtr(scratchSize), GPRInfo::regT0);
 
-#if CPU(X86_64) || CPU(ARM) || CPU(ARM64) || CPU(MIPS) || CPU(SH4)
+#if CPU(X86_64) || CPU(ARM) || CPU(ARM64) || CPU(MIPS)
         move(TrustedImmPtr(buffer), GPRInfo::argumentGPR2);
         move(TrustedImmPtr(argument), GPRInfo::argumentGPR1);
         move(GPRInfo::callFrameRegister, GPRInfo::argumentGPR0);
@@ -1318,8 +1281,8 @@ public:
         store64(scratch, MacroAssembler::Address(dest, JSCell::structureIDOffset()));
 #else
         // Store all the info flags using a single 32-bit wide load and store.
-        load32(MacroAssembler::Address(structure, Structure::indexingTypeOffset()), scratch);
-        store32(scratch, MacroAssembler::Address(dest, JSCell::indexingTypeOffset()));
+        load32(MacroAssembler::Address(structure, Structure::indexingTypeIncludingHistoryOffset()), scratch);
+        store32(scratch, MacroAssembler::Address(dest, JSCell::indexingTypeAndMiscOffset()));
 
         // Store the StructureID
         storePtr(structure, MacroAssembler::Address(dest, JSCell::structureIDOffset()));
@@ -1356,14 +1319,59 @@ public:
     {
         if (!Options::useConcurrentBarriers())
             return;
-        Jump ok = jumpIfBarrierStoreLoadFenceNotNeeded();
+        Jump ok = jumpIfMutatorFenceNotNeeded();
         memoryFence();
         ok.link(this);
     }
     
-    Jump jumpIfBarrierStoreLoadFenceNotNeeded()
+    void mutatorFence()
     {
-        return branchTest8(Zero, AbsoluteAddress(vm()->heap.addressOfBarrierShouldBeFenced()));
+        if (isX86())
+            return;
+        Jump ok = jumpIfMutatorFenceNotNeeded();
+        storeFence();
+        ok.link(this);
+    }
+    
+    void storeButterfly(GPRReg butterfly, GPRReg object)
+    {
+        if (isX86()) {
+            storePtr(butterfly, Address(object, JSObject::butterflyOffset()));
+            return;
+        }
+        
+        Jump ok = jumpIfMutatorFenceNotNeeded();
+        storeFence();
+        storePtr(butterfly, Address(object, JSObject::butterflyOffset()));
+        storeFence();
+        Jump done = jump();
+        ok.link(this);
+        storePtr(butterfly, Address(object, JSObject::butterflyOffset()));
+        done.link(this);
+    }
+    
+    void nukeStructureAndStoreButterfly(GPRReg butterfly, GPRReg object)
+    {
+        if (isX86()) {
+            or32(TrustedImm32(bitwise_cast<int32_t>(nukedStructureIDBit())), Address(object, JSCell::structureIDOffset()));
+            storePtr(butterfly, Address(object, JSObject::butterflyOffset()));
+            return;
+        }
+        
+        Jump ok = jumpIfMutatorFenceNotNeeded();
+        or32(TrustedImm32(bitwise_cast<int32_t>(nukedStructureIDBit())), Address(object, JSCell::structureIDOffset()));
+        storeFence();
+        storePtr(butterfly, Address(object, JSObject::butterflyOffset()));
+        storeFence();
+        Jump done = jump();
+        ok.link(this);
+        storePtr(butterfly, Address(object, JSObject::butterflyOffset()));
+        done.link(this);
+    }
+    
+    Jump jumpIfMutatorFenceNotNeeded()
+    {
+        return branchTest8(Zero, AbsoluteAddress(vm()->heap.addressOfMutatorShouldBeFenced()));
     }
     
     // Emits the branch structure for typeof. The code emitted by this doesn't fall through. The
@@ -1589,7 +1597,29 @@ public:
         emitAllocateJSObject<ClassType>(resultGPR, TrustedImmPtr(structure), TrustedImmPtr(0), scratchGPR1, scratchGPR2, slowPath);
         storePtr(TrustedImmPtr(structure->classInfo()), Address(resultGPR, JSDestructibleObject::classInfoOffset()));
     }
+    
+    void emitInitializeInlineStorage(GPRReg baseGPR, unsigned inlineCapacity)
+    {
+        for (unsigned i = 0; i < inlineCapacity; ++i)
+            storeTrustedValue(JSValue(), Address(baseGPR, JSObject::offsetOfInlineStorage() + i * sizeof(EncodedJSValue)));
+    }
 
+    void emitInitializeInlineStorage(GPRReg baseGPR, GPRReg inlineCapacity)
+    {
+        Jump empty = branchTest32(Zero, inlineCapacity);
+        Label loop = label();
+        sub32(TrustedImm32(1), inlineCapacity);
+        storeTrustedValue(JSValue(), BaseIndex(baseGPR, inlineCapacity, TimesEight, JSObject::offsetOfInlineStorage()));
+        branchTest32(NonZero, inlineCapacity).linkTo(loop, this);
+        empty.link(this);
+    }
+
+    void emitInitializeOutOfLineStorage(GPRReg butterflyGPR, unsigned outOfLineCapacity)
+    {
+        for (unsigned i = 0; i < outOfLineCapacity; ++i)
+            storeTrustedValue(JSValue(), Address(butterflyGPR, -sizeof(IndexingHeader) - (i + 1) * sizeof(EncodedJSValue)));
+    }
+    
 #if USE(JSVALUE64)
     void wangsInt64Hash(GPRReg inputAndResult, GPRReg scratch);
 #endif

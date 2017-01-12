@@ -42,8 +42,6 @@
 
 namespace WebCore {
 
-const int MaxAllowedPort = std::numeric_limits<uint16_t>::max();
-
 static bool schemeRequiresHost(const URL& url)
 {
     // We expect URLs with these schemes to have authority components. If the
@@ -110,7 +108,7 @@ SecurityOrigin::SecurityOrigin(const URL& url)
     m_domain = m_host;
 
     if (m_port && isDefaultPortForProtocol(m_port.value(), m_protocol))
-        m_port = Nullopt;
+        m_port = std::nullopt;
 
     // By default, only local SecurityOrigins can load local resources.
     m_canLoadLocalResources = isLocal();
@@ -344,7 +342,10 @@ bool SecurityOrigin::canAccessStorage(const SecurityOrigin* topOrigin, ShouldAll
     if (shouldAllowFromThirdParty == AlwaysAllowFromThirdParty)
         return true;
 
-    if ((m_storageBlockingPolicy == BlockThirdPartyStorage || topOrigin->m_storageBlockingPolicy == BlockThirdPartyStorage) && topOrigin->isThirdParty(this))
+    if (m_universalAccess)
+        return true;
+
+    if ((m_storageBlockingPolicy == BlockThirdPartyStorage || topOrigin->m_storageBlockingPolicy == BlockThirdPartyStorage) && !topOrigin->isSameOriginAs(this))
         return false;
 
     return true;
@@ -359,18 +360,15 @@ SecurityOrigin::Policy SecurityOrigin::canShowNotifications() const
     return Ask;
 }
 
-bool SecurityOrigin::isThirdParty(const SecurityOrigin* child) const
+bool SecurityOrigin::isSameOriginAs(const SecurityOrigin* other) const
 {
-    if (child->m_universalAccess)
-        return false;
-
-    if (this == child)
-        return false;
-
-    if (isUnique() || child->isUnique())
+    if (this == other)
         return true;
 
-    return !isSameSchemeHostPort(child);
+    if (isUnique() || other->isUnique())
+        return false;
+
+    return isSameSchemeHostPort(other);
 }
 
 void SecurityOrigin::grantLoadLocalResources()
@@ -488,57 +486,12 @@ Ref<SecurityOrigin> SecurityOrigin::createFromString(const String& originString)
     return SecurityOrigin::create(URL(URL(), originString));
 }
 
-static const char separatorCharacter = '_';
-
-RefPtr<SecurityOrigin> SecurityOrigin::maybeCreateFromDatabaseIdentifier(const String& databaseIdentifier)
-{
-    // Make sure there's a first separator
-    size_t separator1 = databaseIdentifier.find(separatorCharacter);
-    if (separator1 == notFound)
-        return nullptr;
-
-    // Make sure there's a second separator
-    size_t separator2 = databaseIdentifier.reverseFind(separatorCharacter);
-    if (separator2 == notFound)
-        return nullptr;
-
-    // Ensure there were at least 2 separator characters. Some hostnames on intranets have
-    // underscores in them, so we'll assume that any additional underscores are part of the host.
-    if (separator1 == separator2)
-        return nullptr;
-
-    // Make sure the port section is a valid port number or doesn't exist
-    bool portOkay;
-    int port = databaseIdentifier.right(databaseIdentifier.length() - separator2 - 1).toInt(&portOkay);
-    bool portAbsent = (separator2 == databaseIdentifier.length() - 1);
-    if (!(portOkay || portAbsent))
-        return nullptr;
-
-    if (port < 0 || port > MaxAllowedPort)
-        return nullptr;
-
-    // Split out the 3 sections of data
-    String protocol = databaseIdentifier.substring(0, separator1);
-    String host = databaseIdentifier.substring(separator1 + 1, separator2 - separator1 - 1);
-    
-    host = decodeURLEscapeSequences(host);
-    auto origin = create(URL(URL(), protocol + "://" + host + "/"));
-    origin->m_port = port;
-    return WTFMove(origin);
-}
-
-Ref<SecurityOrigin> SecurityOrigin::createFromDatabaseIdentifier(const String& databaseIdentifier)
-{
-    if (RefPtr<SecurityOrigin> origin = maybeCreateFromDatabaseIdentifier(databaseIdentifier))
-        return origin.releaseNonNull();
-    return create(URL());
-}
-
-Ref<SecurityOrigin> SecurityOrigin::create(const String& protocol, const String& host, Optional<uint16_t> port)
+Ref<SecurityOrigin> SecurityOrigin::create(const String& protocol, const String& host, std::optional<uint16_t> port)
 {
     String decodedHost = decodeURLEscapeSequences(host);
     auto origin = create(URL(URL(), protocol + "://" + host + "/"));
-    origin->m_port = port;
+    if (port && !isDefaultPortForProtocol(*port, protocol))
+        origin->m_port = port;
     return origin;
 }
 

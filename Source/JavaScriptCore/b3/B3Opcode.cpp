@@ -32,7 +32,7 @@
 
 namespace JSC { namespace B3 {
 
-Optional<Opcode> invertedCompare(Opcode opcode, Type type)
+std::optional<Opcode> invertedCompare(Opcode opcode, Type type)
 {
     switch (opcode) {
     case Equal:
@@ -42,19 +42,19 @@ Optional<Opcode> invertedCompare(Opcode opcode, Type type)
     case LessThan:
         if (isInt(type))
             return GreaterEqual;
-        return Nullopt;
+        return std::nullopt;
     case GreaterThan:
         if (isInt(type))
             return LessEqual;
-        return Nullopt;
+        return std::nullopt;
     case LessEqual:
         if (isInt(type))
             return GreaterThan;
-        return Nullopt;
+        return std::nullopt;
     case GreaterEqual:
         if (isInt(type))
             return LessThan;
-        return Nullopt;
+        return std::nullopt;
     case Above:
         return BelowEqual;
     case Below:
@@ -64,7 +64,7 @@ Optional<Opcode> invertedCompare(Opcode opcode, Type type)
     case BelowEqual:
         return Above;
     default:
-        return Nullopt;
+        return std::nullopt;
     }
 }
 
@@ -122,8 +122,14 @@ void printInternal(PrintStream& out, Opcode opcode)
     case Div:
         out.print("Div");
         return;
+    case UDiv:
+        out.print("UDiv");
+        return;
     case Mod:
         out.print("Mod");
+        return;
+    case UMod:
+        out.print("UMod");
         return;
     case Neg:
         out.print("Neg");
@@ -145,6 +151,12 @@ void printInternal(PrintStream& out, Opcode opcode)
         return;
     case ZShr:
         out.print("ZShr");
+        return;
+    case RotR:
+        out.print("RotR");
+        return;
+    case RotL:
+        out.print("RotL");
         return;
     case Clz:
         out.print("Clz");

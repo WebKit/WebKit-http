@@ -90,14 +90,14 @@ InternalSettings::Backup::Backup(Settings& settings)
 #if ENABLE(INDEXED_DATABASE_IN_WORKERS)
     , m_indexedDBWorkersEnabled(RuntimeEnabledFeatures::sharedFeatures().indexedDBWorkersEnabled())
 #endif
-#if ENABLE(VARIATION_FONTS)
-    , m_variationFontsEnabled(settings.variationFontsEnabled())
-#endif
+    , m_deferredCSSParserEnabled(settings.deferredCSSParserEnabled())
     , m_inputEventsEnabled(settings.inputEventsEnabled())
     , m_userInterfaceDirectionPolicy(settings.userInterfaceDirectionPolicy())
     , m_systemLayoutDirection(settings.systemLayoutDirection())
     , m_pdfImageCachingPolicy(settings.pdfImageCachingPolicy())
-    , m_forcedPrefersReducedMotionValue(settings.forcedPrefersReducedMotionValue())
+    , m_forcedColorsAreInvertedAccessibilityValue(settings.forcedColorsAreInvertedAccessibilityValue())
+    , m_forcedDisplayIsMonochromeAccessibilityValue(settings.forcedDisplayIsMonochromeAccessibilityValue())
+    , m_forcedPrefersReducedMotionAccessibilityValue(settings.forcedPrefersReducedMotionAccessibilityValue())
 {
 }
 
@@ -170,14 +170,14 @@ void InternalSettings::Backup::restoreTo(Settings& settings)
 #if ENABLE(INDEXED_DATABASE_IN_WORKERS)
     RuntimeEnabledFeatures::sharedFeatures().setIndexedDBWorkersEnabled(m_indexedDBWorkersEnabled);
 #endif
-#if ENABLE(VARIATION_FONTS)
-    settings.setVariationFontsEnabled(m_variationFontsEnabled);
-#endif
+    settings.setDeferredCSSParserEnabled(m_deferredCSSParserEnabled);
     settings.setInputEventsEnabled(m_inputEventsEnabled);
     settings.setUserInterfaceDirectionPolicy(m_userInterfaceDirectionPolicy);
     settings.setSystemLayoutDirection(m_systemLayoutDirection);
     settings.setPdfImageCachingPolicy(m_pdfImageCachingPolicy);
-    settings.setForcedPrefersReducedMotionValue(m_forcedPrefersReducedMotionValue);
+    settings.setForcedColorsAreInvertedAccessibilityValue(m_forcedColorsAreInvertedAccessibilityValue);
+    settings.setForcedDisplayIsMonochromeAccessibilityValue(m_forcedDisplayIsMonochromeAccessibilityValue);
+    settings.setForcedPrefersReducedMotionAccessibilityValue(m_forcedPrefersReducedMotionAccessibilityValue);
     Settings::setAllowsAnySSLCertificate(false);
 }
 
@@ -728,59 +728,79 @@ void InternalSettings::setAllowsAnySSLCertificate(bool allowsAnyCertificate)
     Settings::setAllowsAnySSLCertificate(allowsAnyCertificate);
 }
 
-ExceptionOr<bool> InternalSettings::variationFontsEnabled()
+ExceptionOr<bool> InternalSettings::deferredCSSParserEnabled()
 {
     if (!m_page)
         return Exception { INVALID_ACCESS_ERR };
-#if ENABLE(VARIATION_FONTS)
-    return settings().variationFontsEnabled();
-#else
-    return false;
-#endif
+    return settings().deferredCSSParserEnabled();
 }
 
-ExceptionOr<void> InternalSettings::setVariationFontsEnabled(bool enabled)
+ExceptionOr<void> InternalSettings::setDeferredCSSParserEnabled(bool enabled)
 {
     if (!m_page)
         return Exception { INVALID_ACCESS_ERR };
-#if ENABLE(VARIATION_FONTS)
-    settings().setVariationFontsEnabled(enabled);
-#else
-    UNUSED_PARAM(enabled);
-#endif
+    settings().setDeferredCSSParserEnabled(enabled);
     return { };
 }
 
-InternalSettings::ForcedPrefersReducedMotionValue InternalSettings::forcedPrefersReducedMotionValue() const
-{
-    switch (settings().forcedPrefersReducedMotionValue()) {
-    case Settings::ForcedPrefersReducedMotionValue::System:
-        return InternalSettings::ForcedPrefersReducedMotionValue::System;
-    case Settings::ForcedPrefersReducedMotionValue::On:
-        return InternalSettings::ForcedPrefersReducedMotionValue::On;
-    case Settings::ForcedPrefersReducedMotionValue::Off:
-        return InternalSettings::ForcedPrefersReducedMotionValue::Off;
-    }
-
-    ASSERT_NOT_REACHED();
-    return InternalSettings::ForcedPrefersReducedMotionValue::Off;
-}
-
-void InternalSettings::setForcedPrefersReducedMotionValue(InternalSettings::ForcedPrefersReducedMotionValue value)
+static InternalSettings::ForcedAccessibilityValue settingsToInternalSettingsValue(Settings::ForcedAccessibilityValue value)
 {
     switch (value) {
-    case InternalSettings::ForcedPrefersReducedMotionValue::System:
-        settings().setForcedPrefersReducedMotionValue(Settings::ForcedPrefersReducedMotionValue::System);
-        return;
-    case InternalSettings::ForcedPrefersReducedMotionValue::On:
-        settings().setForcedPrefersReducedMotionValue(Settings::ForcedPrefersReducedMotionValue::On);
-        return;
-    case InternalSettings::ForcedPrefersReducedMotionValue::Off:
-        settings().setForcedPrefersReducedMotionValue(Settings::ForcedPrefersReducedMotionValue::Off);
-        return;
+    case Settings::ForcedAccessibilityValue::System:
+        return InternalSettings::ForcedAccessibilityValue::System;
+    case Settings::ForcedAccessibilityValue::On:
+        return InternalSettings::ForcedAccessibilityValue::On;
+    case Settings::ForcedAccessibilityValue::Off:
+        return InternalSettings::ForcedAccessibilityValue::Off;
     }
 
     ASSERT_NOT_REACHED();
+    return InternalSettings::ForcedAccessibilityValue::Off;
+}
+
+static Settings::ForcedAccessibilityValue internalSettingsToSettingsValue(InternalSettings::ForcedAccessibilityValue value)
+{
+    switch (value) {
+    case InternalSettings::ForcedAccessibilityValue::System:
+        return Settings::ForcedAccessibilityValue::System;
+    case InternalSettings::ForcedAccessibilityValue::On:
+        return Settings::ForcedAccessibilityValue::On;
+    case InternalSettings::ForcedAccessibilityValue::Off:
+        return Settings::ForcedAccessibilityValue::Off;
+    }
+
+    ASSERT_NOT_REACHED();
+    return Settings::ForcedAccessibilityValue::Off;
+}
+
+InternalSettings::ForcedAccessibilityValue InternalSettings::forcedColorsAreInvertedAccessibilityValue() const
+{
+    return settingsToInternalSettingsValue(settings().forcedColorsAreInvertedAccessibilityValue());
+}
+
+void InternalSettings::setForcedColorsAreInvertedAccessibilityValue(InternalSettings::ForcedAccessibilityValue value)
+{
+    settings().setForcedColorsAreInvertedAccessibilityValue(internalSettingsToSettingsValue(value));
+}
+
+InternalSettings::ForcedAccessibilityValue InternalSettings::forcedDisplayIsMonochromeAccessibilityValue() const
+{
+    return settingsToInternalSettingsValue(settings().forcedDisplayIsMonochromeAccessibilityValue());
+}
+
+void InternalSettings::setForcedDisplayIsMonochromeAccessibilityValue(InternalSettings::ForcedAccessibilityValue value)
+{
+    settings().setForcedDisplayIsMonochromeAccessibilityValue(internalSettingsToSettingsValue(value));
+}
+
+InternalSettings::ForcedAccessibilityValue InternalSettings::forcedPrefersReducedMotionAccessibilityValue() const
+{
+    return settingsToInternalSettingsValue(settings().forcedPrefersReducedMotionAccessibilityValue());
+}
+
+void InternalSettings::setForcedPrefersReducedMotionAccessibilityValue(InternalSettings::ForcedAccessibilityValue value)
+{
+    settings().setForcedPrefersReducedMotionAccessibilityValue(internalSettingsToSettingsValue(value));
 }
 
 // If you add to this class, make sure that you update the Backup class for test reproducability!

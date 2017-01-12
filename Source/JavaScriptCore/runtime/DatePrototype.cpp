@@ -151,13 +151,13 @@ static JSCell* formatLocaleDate(ExecState* exec, DateInstance*, double timeInMil
     bool useCustomFormat = false;
     String customFormatString;
 
-    String arg0String = exec->argument(0).toString(exec)->value(exec);
+    String arg0String = exec->argument(0).toWTFString(exec);
     if (arg0String == "custom" && !exec->argument(1).isUndefined()) {
         useCustomFormat = true;
-        customFormatString = exec->argument(1).toString(exec)->value(exec);
+        customFormatString = exec->argument(1).toWTFString(exec);
     } else if (format == LocaleDateAndTime && !exec->argument(1).isUndefined()) {
         dateStyle = styleFromArgString(arg0String, dateStyle);
-        timeStyle = styleFromArgString(exec->argument(1).toString(exec)->value(exec), timeStyle);
+        timeStyle = styleFromArgString(exec->argument(1).toWTFString(exec), timeStyle);
     } else if (format != LocaleTime && !exec->argument(0).isUndefined())
         dateStyle = styleFromArgString(arg0String, dateStyle);
     else if (format != LocaleDate && !exec->argument(0).isUndefined())
@@ -620,6 +620,7 @@ EncodedJSValue JSC_HOST_CALL dateProtoFuncToPrimitiveSymbol(ExecState* exec)
     if (type == NoPreference)
         type = PreferString;
 
+    scope.release();
     return JSValue::encode(thisObject->ordinaryToPrimitive(exec, type));
 }
 

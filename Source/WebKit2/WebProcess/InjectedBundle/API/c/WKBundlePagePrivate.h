@@ -111,6 +111,16 @@ WK_EXPORT void WKBundlePageSetApplicationCacheOriginQuota(WKBundlePageRef page, 
 WK_EXPORT void WKBundlePageResetApplicationCacheOriginQuota(WKBundlePageRef page, WKStringRef origin);
 WK_EXPORT WKArrayRef WKBundlePageCopyOriginsWithApplicationCache(WKBundlePageRef page);
 
+enum {
+    kWKEventThrottlingBehaviorResponsive = 0,
+    kWKEventThrottlingBehaviorUnresponsive
+};
+
+typedef uint32_t WKEventThrottlingBehavior;
+
+// Passing null in the second parameter clears the override.
+WK_EXPORT void WKBundlePageSetEventThrottlingBehaviorOverride(WKBundlePageRef, WKEventThrottlingBehavior*);
+
 #if TARGET_OS_IPHONE
 WK_EXPORT void WKBundlePageSetUseTestingViewportConfiguration(WKBundlePageRef, bool);
 #endif

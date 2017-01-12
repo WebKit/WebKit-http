@@ -378,7 +378,7 @@ public:
     String selectedTextForDataTransfer() const;
     WEBCORE_EXPORT bool findString(const String&, FindOptions);
 
-    RefPtr<Range> rangeOfString(const String&, Range*, FindOptions);
+    WEBCORE_EXPORT RefPtr<Range> rangeOfString(const String&, Range*, FindOptions);
 
     const VisibleSelection& mark() const; // Mark, to be used as emacs uses it.
     void setMark(const VisibleSelection&);
@@ -416,7 +416,7 @@ public:
 
     EditorParagraphSeparator defaultParagraphSeparator() const { return m_defaultParagraphSeparator; }
     void setDefaultParagraphSeparator(EditorParagraphSeparator separator) { m_defaultParagraphSeparator = separator; }
-    Vector<String> dictationAlternativesForMarker(const DocumentMarker*);
+    Vector<String> dictationAlternativesForMarker(const DocumentMarker&);
     void applyDictationAlternativelternative(const String& alternativeString);
 
 #if USE(APPKIT)
@@ -493,7 +493,7 @@ private:
 
     void revealSelectionAfterEditingOperation(const ScrollAlignment& = ScrollAlignment::alignCenterIfNeeded, RevealExtentOption = DoNotRevealExtent);
     void markMisspellingsOrBadGrammar(const VisibleSelection&, bool checkSpelling, RefPtr<Range>& firstMisspellingRange);
-    TextCheckingTypeMask resolveTextCheckingTypeMask(TextCheckingTypeMask);
+    TextCheckingTypeMask resolveTextCheckingTypeMask(const Node& rootEditableElement, TextCheckingTypeMask);
 
     WEBCORE_EXPORT String selectedText(TextIteratorBehavior) const;
 

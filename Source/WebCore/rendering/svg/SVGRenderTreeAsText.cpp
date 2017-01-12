@@ -54,7 +54,6 @@
 #include "SVGNames.h"
 #include "SVGPathElement.h"
 #include "SVGPathUtilities.h"
-#include "SVGPointList.h"
 #include "SVGPolyElement.h"
 #include "SVGRectElement.h"
 #include "SVGRootInlineBox.h"
@@ -191,12 +190,11 @@ static void writeStyle(TextStream& ts, const RenderElement& renderer)
             SVGLengthContext lengthContext(&shape.graphicsElement());
             double dashOffset = lengthContext.valueForLength(svgStyle.strokeDashOffset());
             double strokeWidth = lengthContext.valueForLength(svgStyle.strokeWidth());
-            const Vector<SVGLength>& dashes = svgStyle.strokeDashArray();
+            const auto& dashes = svgStyle.strokeDashArray();
 
             DashArray dashArray;
-            const Vector<SVGLength>::const_iterator end = dashes.end();
-            for (Vector<SVGLength>::const_iterator it = dashes.begin(); it != end; ++it)
-                dashArray.append((*it).value(lengthContext));
+            for (auto& length : dashes)
+                dashArray.append(length.value(lengthContext));
 
             writeIfNotDefault(ts, "opacity", svgStyle.strokeOpacity(), 1.0f);
             writeIfNotDefault(ts, "stroke width", strokeWidth, 1.0);

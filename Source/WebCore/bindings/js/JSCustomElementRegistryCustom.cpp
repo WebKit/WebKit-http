@@ -101,7 +101,7 @@ JSValue JSCustomElementRegistry::define(ExecState& state)
         throwNotSupportedError(state, scope, ASCIILiteral("Cannot define a custom element while defining another custom element"));
         return jsUndefined();
     }
-    TemporaryChange<bool> change(registry.elementDefinitionIsRunning(), true);
+    SetForScope<bool> change(registry.elementDefinitionIsRunning(), true);
 
     if (registry.findInterface(localName)) {
         throwNotSupportedError(state, scope, ASCIILiteral("Cannot define multiple custom elements with the same tag name"));
@@ -171,7 +171,7 @@ static JSValue whenDefinedPromise(ExecState& state, JSDOMGlobalObject& globalObj
     }
 
     if (registry.findInterface(localName)) {
-        DeferredPromise::create(globalObject, promiseDeferred)->resolve(nullptr);
+        DeferredPromise::create(globalObject, promiseDeferred)->resolve();
         return promiseDeferred.promise();
     }
 

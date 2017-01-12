@@ -26,6 +26,7 @@
 #import "config.h"
 #import "RemoteLayerTreeDrawingAreaProxy.h"
 
+#import "APIPageConfiguration.h"
 #import "Logging.h"
 #import "RemoteLayerTreeDrawingAreaProxyMessages.h"
 #import "DrawingAreaMessages.h"
@@ -68,6 +69,7 @@ using namespace WebCore;
         _displayLink = [CADisplayLink displayLinkWithTarget:self selector:@selector(displayLinkFired:)];
         [_displayLink addToRunLoop:[NSRunLoop mainRunLoop] forMode:NSRunLoopCommonModes];
         _displayLink.paused = YES;
+        _displayLink.preferredFramesPerSecond = drawingAreaProxy->contentUpdateFrequency();
     }
     return self;
 }
@@ -134,6 +136,16 @@ RemoteLayerTreeDrawingAreaProxy::~RemoteLayerTreeDrawingAreaProxy()
 #endif
 }
 
+uint32_t RemoteLayerTreeDrawingAreaProxy::contentUpdateFrequency() const
+{
+#if PLATFORM(IOS)
+    return m_webPageProxy.configuration().contentUpdateFrequency();
+#else
+    return 0;
+#endif
+}
+
+    
 void RemoteLayerTreeDrawingAreaProxy::sizeDidChange()
 {
     if (!m_webPageProxy.isValid())
@@ -202,7 +214,7 @@ void RemoteLayerTreeDrawingAreaProxy::commitLayerTree(const RemoteLayerTreeTrans
 #if PLATFORM(IOS)
     if (m_webPageProxy.scrollingCoordinatorProxy()->hasFixedOrSticky()) {
         // If we got a new layer for a fixed or sticky node, its position from the WebProcess is probably stale. We need to re-run the "viewport" changed logic to udpate it with our UI-side state.
-        FloatRect customFixedPositionRect = m_webPageProxy.computeCustomFixedPositionRect(m_webPageProxy.unobscuredContentRect(), m_webPageProxy.displayedContentScale());
+        FloatRect customFixedPositionRect = m_webPageProxy.computeCustomFixedPositionRect(m_webPageProxy.unobscuredContentRect(), m_webPageProxy.unobscuredContentRectRespectingInputViewBounds(), m_webPageProxy.customFixedPositionRect(), m_webPageProxy.displayedContentScale(), WebPageProxy::UnobscuredRectConstraint::Unconstrained, m_webPageProxy.scrollingCoordinatorProxy()->visualViewportEnabled());
         m_webPageProxy.scrollingCoordinatorProxy()->viewportChangedViaDelegatedScrolling(m_webPageProxy.scrollingCoordinatorProxy()->rootScrollingNodeID(), customFixedPositionRect, m_webPageProxy.displayedContentScale());
     }
 #endif
@@ -257,7 +269,7 @@ void RemoteLayerTreeDrawingAreaProxy::acceleratedAnimationDidEnd(uint64_t layerI
 static const float indicatorInset = 10;
 
 #if PLATFORM(MAC)
-void RemoteLayerTreeDrawingAreaProxy::setViewExposedRect(Optional<WebCore::FloatRect> viewExposedRect)
+void RemoteLayerTreeDrawingAreaProxy::setViewExposedRect(std::optional<WebCore::FloatRect> viewExposedRect)
 {
     DrawingAreaProxy::setViewExposedRect(viewExposedRect);
     updateDebugIndicatorPosition();
@@ -460,6 +472,11 @@ void RemoteLayerTreeDrawingAreaProxy::hideContentUntilPendingUpdate()
 void RemoteLayerTreeDrawingAreaProxy::hideContentUntilAnyUpdate()
 {
     m_remoteLayerTreeHost.detachRootLayer();
+}
+
+void RemoteLayerTreeDrawingAreaProxy::prepareForAppSuspension()
+{
+    m_remoteLayerTreeHost.mapAllIOSurfaceBackingStore();
 }
 
 bool RemoteLayerTreeDrawingAreaProxy::hasVisibleContent() const

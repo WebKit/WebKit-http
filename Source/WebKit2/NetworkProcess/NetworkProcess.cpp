@@ -74,6 +74,10 @@
 #include "NetworkCacheCoders.h"
 #endif
 
+#if ENABLE(NETWORK_CAPTURE)
+#include "NetworkCaptureManager.h"
+#endif
+
 #if PLATFORM(COCOA)
 #include "NetworkSessionCocoa.h"
 #endif
@@ -222,6 +226,12 @@ void NetworkProcess::initializeNetworkProcess(NetworkProcessCreationParameters&&
         memoryPressureHandler.install();
     }
 
+#if ENABLE(NETWORK_CAPTURE)
+    NetworkCapture::Manager::singleton().initialize(
+        parameters.recordReplayMode,
+        parameters.recordReplayCacheLocation);
+#endif
+
     m_diskCacheIsDisabledForTesting = parameters.shouldUseTestingNetworkSession;
 
     m_diskCacheSizeOverride = parameters.diskCacheSizeOverride;
@@ -311,7 +321,7 @@ static void fetchDiskCacheEntries(SessionID sessionID, OptionSet<WebsiteDataFetc
 {
 #if ENABLE(NETWORK_CACHE)
     if (NetworkCache::singleton().isEnabled()) {
-        HashMap<RefPtr<SecurityOrigin>, uint64_t> originsAndSizes;
+        HashMap<SecurityOriginData, uint64_t> originsAndSizes;
         NetworkCache::singleton().traverse([fetchOptions, completionHandler = WTFMove(completionHandler), originsAndSizes = WTFMove(originsAndSizes)](auto* traversalEntry) mutable {
             if (!traversalEntry) {
                 Vector<WebsiteData::Entry> entries;
@@ -326,7 +336,8 @@ static void fetchDiskCacheEntries(SessionID sessionID, OptionSet<WebsiteDataFetc
                 return;
             }
 
-            auto result = originsAndSizes.add(SecurityOrigin::create(traversalEntry->entry.response().url()), 0);
+            auto url = traversalEntry->entry.response().url();
+            auto result = originsAndSizes.add({url.protocol().toString(), url.host(), url.port()}, 0);
 
             if (fetchOptions.contains(WebsiteDataFetchOption::ComputeSizes))
                 result.iterator->value += traversalEntry->entry.sourceStorageRecord().header.size() + traversalEntry->recordInfo.bodySize;
@@ -595,6 +606,10 @@ void NetworkProcess::logDiagnosticMessageWithValue(uint64_t webPageID, const Str
 
 void NetworkProcess::terminate()
 {
+#if ENABLE(NETWORK_CAPTURE)
+    NetworkCapture::Manager::singleton().terminate();
+#endif
+
     platformTerminate();
     ChildProcess::terminate();
 }

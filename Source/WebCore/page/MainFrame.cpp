@@ -27,10 +27,10 @@
 #include "MainFrame.h"
 
 #include "Element.h"
-#include "EmptyClients.h"
 #include "PageConfiguration.h"
 #include "PageOverlayController.h"
 #include "PaymentCoordinator.h"
+#include "PerformanceLogging.h"
 #include "ScrollLatchingState.h"
 #include "WheelEventDeltaFilter.h"
 #include <wtf/NeverDestroyed.h>
@@ -52,6 +52,7 @@ inline MainFrame::MainFrame(Page& page, PageConfiguration& configuration)
 #if ENABLE(APPLE_PAY)
     , m_paymentCoordinator(std::make_unique<PaymentCoordinator>(*configuration.paymentCoordinatorClient))
 #endif
+    , m_performanceLogging(std::make_unique<PerformanceLogging>(*this))
 {
 }
 

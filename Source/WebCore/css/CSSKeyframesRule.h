@@ -34,34 +34,44 @@
 namespace WebCore {
 
 class CSSRuleList;
-class StyleKeyframe;
+class StyleRuleKeyframe;
 class CSSKeyframeRule;
 
 class StyleRuleKeyframes final : public StyleRuleBase {
 public:
-    static Ref<StyleRuleKeyframes> create() { return adoptRef(*new StyleRuleKeyframes()); }
+    static Ref<StyleRuleKeyframes> create(const AtomicString& name) { return adoptRef(*new StyleRuleKeyframes(name)); }
+    static Ref<StyleRuleKeyframes> create(const AtomicString& name, std::unique_ptr<DeferredStyleGroupRuleList>&& deferredRules) { return adoptRef(*new StyleRuleKeyframes(name, WTFMove(deferredRules))); }
     
     ~StyleRuleKeyframes();
     
-    const Vector<Ref<StyleKeyframe>>& keyframes() const { return m_keyframes; }
-    
-    void parserAppendKeyframe(RefPtr<StyleKeyframe>&&);
-    void wrapperAppendKeyframe(Ref<StyleKeyframe>&&);
+    const Vector<Ref<StyleRuleKeyframe>>& keyframes() const;
+    const Vector<Ref<StyleRuleKeyframe>>* keyframesWithoutDeferredParsing() const
+    {
+        return !m_deferredRules ? &m_keyframes : nullptr;
+    }
+
+    void parserAppendKeyframe(RefPtr<StyleRuleKeyframe>&&);
+    void wrapperAppendKeyframe(Ref<StyleRuleKeyframe>&&);
     void wrapperRemoveKeyframe(unsigned);
 
     const AtomicString& name() const { return m_name; }
     void setName(const AtomicString& name) { m_name = name; }
-    
+
     size_t findKeyframeIndex(const String& key) const;
 
     Ref<StyleRuleKeyframes> copy() const { return adoptRef(*new StyleRuleKeyframes(*this)); }
 
 private:
-    StyleRuleKeyframes();
+    StyleRuleKeyframes(const AtomicString&);
+    StyleRuleKeyframes(const AtomicString&, std::unique_ptr<DeferredStyleGroupRuleList>&&);
     StyleRuleKeyframes(const StyleRuleKeyframes&);
 
-    Vector<Ref<StyleKeyframe>> m_keyframes;
+    void parseDeferredRulesIfNeeded() const;
+    
+    mutable Vector<Ref<StyleRuleKeyframe>> m_keyframes;
     AtomicString m_name;
+    
+    mutable std::unique_ptr<DeferredStyleGroupRuleList> m_deferredRules;
 };
 
 class CSSKeyframesRule final : public CSSRule {

@@ -34,8 +34,15 @@ namespace WebCore {
 
 IDBGetRecordData IDBGetRecordData::isolatedCopy() const
 {
-    return { keyRangeData.isolatedCopy() };
+    return { keyRangeData.isolatedCopy(), type };
 }
+
+#if !LOG_DISABLED
+String IDBGetRecordData::loggingString() const
+{
+    return String::format("<GetRecord: %s %s>", type == IDBGetRecordDataType::KeyOnly ? "KeyOnly" : "Key+Value", keyRangeData.loggingString().utf8().data());
+}
+#endif
 
 } // namespace WebCore
 

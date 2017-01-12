@@ -131,9 +131,6 @@ public:
 
     WEBCORE_EXPORT bool renderedCharactersExceed(unsigned threshold);
 
-    void setViewportIsStable(bool stable) { m_viewportIsStable = stable; }
-    bool viewportIsStable() const { return m_viewportIsStable; }
-
 #if PLATFORM(IOS)
     bool useCustomFixedPositionLayoutRect() const;
     IntRect customFixedPositionLayoutRect() const { return m_customFixedPositionLayoutRect; }
@@ -143,7 +140,7 @@ public:
     IntSize customSizeForResizeEvent() const { return m_customSizeForResizeEvent; }
     WEBCORE_EXPORT void setCustomSizeForResizeEvent(IntSize);
 
-    WEBCORE_EXPORT void setScrollVelocity(double horizontalVelocity, double verticalVelocity, double scaleChangeRate, double timestamp);
+    WEBCORE_EXPORT void setScrollVelocity(double horizontalVelocity, double verticalVelocity, double scaleChangeRate, MonotonicTime timestamp);
 #else
     bool useCustomFixedPositionLayoutRect() const { return false; }
 #endif
@@ -157,7 +154,6 @@ public:
     void updateCompositingLayersAfterLayout();
 
     void clearBackingStores();
-    void restoreBackingStores();
 
     // Called when changes to the GraphicsLayer hierarchy have to be synchronized with
     // content rendered via the normal painting path.
@@ -252,19 +248,27 @@ public:
 
     IntPoint unscaledScrollOrigin() const;
 
+    WEBCORE_EXPORT LayoutPoint minStableLayoutViewportOrigin() const;
+    WEBCORE_EXPORT LayoutPoint maxStableLayoutViewportOrigin() const;
+
     enum class TriggerLayoutOrNot {
         No,
         Yes
     };
-    void setLayoutViewportOrigin(LayoutPoint, TriggerLayoutOrNot = TriggerLayoutOrNot::Yes);
-    LayoutPoint layoutViewportOrigin() const { return m_layoutViewportOrigin; }
+    // This origin can be overridden by setLayoutViewportOverrideRect.
+    void setBaseLayoutViewportOrigin(LayoutPoint, TriggerLayoutOrNot = TriggerLayoutOrNot::Yes);
+    // This size can be overridden by setLayoutViewportOverrideRect.
+    WEBCORE_EXPORT LayoutSize baseLayoutViewportSize() const;
     
-    LayoutPoint minStableLayoutViewportOrigin() const;
-    LayoutPoint maxStableLayoutViewportOrigin() const;
+    // If set, overrides the default "m_layoutViewportOrigin, size of initial containing block" rect.
+    // Used with delegated scrolling (i.e. iOS).
+    WEBCORE_EXPORT void setLayoutViewportOverrideRect(std::optional<LayoutRect>);
 
     // These are in document coordinates, unaffected by zooming.
     WEBCORE_EXPORT LayoutRect layoutViewportRect() const;
     WEBCORE_EXPORT LayoutRect visualViewportRect() const;
+    
+    static LayoutRect visibleDocumentRect(const FloatRect& visibleContentRect, float headerHeight, float footerHeight, const FloatSize& totalContentsSize, float pageScaleFactor);
 
     // This is different than visibleContentRect() in that it ignores negative (or overly positive)
     // offsets from rubber-banding, and it takes zooming into account. 
@@ -304,7 +308,7 @@ public:
     // Static function can be called from another thread.
     static LayoutPoint scrollPositionForFixedPosition(const LayoutRect& visibleContentRect, const LayoutSize& totalContentsSize, const LayoutPoint& scrollPosition, const LayoutPoint& scrollOrigin, float frameScaleFactor, bool fixedElementsLayoutRelativeToFrame, ScrollBehaviorForFixedElements, int headerHeight, int footerHeight);
 
-    static LayoutPoint computeLayoutViewportOrigin(const LayoutRect& visualViewport, const LayoutPoint& stableLayoutViewportOriginMin, const LayoutPoint& stableLayoutViewportOriginMax, const LayoutRect& layoutViewport);
+    WEBCORE_EXPORT static LayoutPoint computeLayoutViewportOrigin(const LayoutRect& visualViewport, const LayoutPoint& stableLayoutViewportOriginMin, const LayoutPoint& stableLayoutViewportOriginMax, const LayoutRect& layoutViewport);
 
     // These layers are positioned differently when there is a topContentInset, a header, or a footer. These value need to be computed
     // on both the main thread and the scrolling thread.
@@ -566,8 +570,8 @@ public:
     // of the view is actually exposed on screen (taking into account
     // clipping by other UI elements), whereas visibleContentRect is
     // internal to WebCore and doesn't respect those things.
-    WEBCORE_EXPORT void setViewExposedRect(Optional<FloatRect>);
-    Optional<FloatRect> viewExposedRect() const { return m_viewExposedRect; }
+    WEBCORE_EXPORT void setViewExposedRect(std::optional<FloatRect>);
+    std::optional<FloatRect> viewExposedRect() const { return m_viewExposedRect; }
 
 #if ENABLE(CSS_SCROLL_SNAP)
     void updateSnapOffsets() override;
@@ -582,6 +586,8 @@ public:
     void show() override;
 
     bool shouldPlaceBlockDirectionScrollbarOnLeft() const final;
+
+    void didRestoreFromPageCache();
 
 protected:
     bool scrollContentsFastPath(const IntSize& scrollDelta, const IntRect& rectToScroll, const IntRect& clipRect) override;
@@ -783,9 +789,10 @@ private:
 
     bool m_shouldUpdateWhileOffscreen;
 
-    Optional<FloatRect> m_viewExposedRect;
+    std::optional<FloatRect> m_viewExposedRect;
     
     LayoutPoint m_layoutViewportOrigin;
+    std::optional<LayoutRect> m_layoutViewportOverrideRect;
 
     unsigned m_deferSetNeedsLayoutCount;
     bool m_setNeedsLayoutWasDeferred;
@@ -799,8 +806,6 @@ private:
     unsigned m_visuallyNonEmptyPixelCount;
     bool m_isVisuallyNonEmpty;
     bool m_firstVisuallyNonEmptyLayoutCallbackPending;
-
-    bool m_viewportIsStable { true };
 
     bool m_needsDeferredScrollbarsUpdate { false };
 

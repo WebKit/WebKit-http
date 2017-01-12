@@ -33,7 +33,9 @@
 #include "FTLJITCode.h"
 #include "FTLLazySlowPath.h"
 #include "InlineCallFrame.h"
+#include "JSAsyncFunction.h"
 #include "JSCInlines.h"
+#include "JSFixedArray.h"
 #include "JSGeneratorFunction.h"
 #include "JSLexicalEnvironment.h"
 
@@ -81,9 +83,12 @@ extern "C" void JIT_OPERATION operationPopulateObjectInOSR(
 
     case PhantomNewFunction:
     case PhantomNewGeneratorFunction:
+    case PhantomNewAsyncFunction:
     case PhantomDirectArguments:
     case PhantomClonedArguments:
     case PhantomCreateRest:
+    case PhantomSpread:
+    case PhantomNewArrayWithSpread:
         // Those are completely handled by operationMaterializeObjectInOSR
         break;
 
@@ -151,7 +156,8 @@ extern "C" JSCell* JIT_OPERATION operationMaterializeObjectInOSR(
     }
 
     case PhantomNewFunction:
-    case PhantomNewGeneratorFunction: {
+    case PhantomNewGeneratorFunction:
+    case PhantomNewAsyncFunction: {
         // Figure out what the executable and activation are
         FunctionExecutable* executable = nullptr;
         JSScope* activation = nullptr;
@@ -166,8 +172,10 @@ extern "C" JSCell* JIT_OPERATION operationMaterializeObjectInOSR(
 
         if (materialization->type() == PhantomNewFunction)
             return JSFunction::createWithInvalidatedReallocationWatchpoint(vm, executable, activation);
-        ASSERT(materialization->type() == PhantomNewGeneratorFunction);
-        return JSGeneratorFunction::createWithInvalidatedReallocationWatchpoint(vm, executable, activation);
+        else if (materialization->type() == PhantomNewGeneratorFunction)
+            return JSGeneratorFunction::createWithInvalidatedReallocationWatchpoint(vm, executable, activation);    
+        ASSERT(materialization->type() == PhantomNewAsyncFunction);
+        return JSAsyncFunction::createWithInvalidatedReallocationWatchpoint(vm, executable, activation);
     }
 
     case PhantomCreateActivation: {
@@ -209,7 +217,7 @@ extern "C" JSCell* JIT_OPERATION operationMaterializeObjectInOSR(
 
         if (validationEnabled()) {
             // Validate to make sure every slot in the scope has one value.
-            ConcurrentJITLocker locker(table->m_lock);
+            ConcurrentJSLocker locker(table->m_lock);
             for (auto iter = table->begin(locker), end = table->end(locker); iter != end; ++iter) {
                 bool found = false;
                 for (unsigned i = materialization->properties().size(); i--;) {
@@ -388,14 +396,102 @@ extern "C" JSCell* JIT_OPERATION operationMaterializeObjectInOSR(
                 ASSERT(found);
             }
 #endif
-
             return array;
         }
+
         default:
             RELEASE_ASSERT_NOT_REACHED();
             return nullptr;
         }
     }
+
+    case PhantomSpread: {
+        JSArray* array = nullptr;
+        for (unsigned i = materialization->properties().size(); i--;) {
+            const ExitPropertyValue& property = materialization->properties()[i];
+            if (property.location().kind() == SpreadPLoc) {
+                array = jsCast<JSArray*>(JSValue::decode(values[i]));
+                break;
+            }
+        }
+        RELEASE_ASSERT(array);
+
+        // Note: it is sound for JSFixedArray::createFromArray to call getDirectIndex here
+        // because we're guaranteed we won't be calling any getters. The reason for this is
+        // that we only support PhantomSpread over CreateRest, which is an array we create.
+        // Any attempts to put a getter on any indices on the rest array will escape the array.
+        JSFixedArray* fixedArray = JSFixedArray::createFromArray(exec, vm, array);
+        return fixedArray;
+    }
+
+    case PhantomNewArrayWithSpread: {
+        CodeBlock* codeBlock = baselineCodeBlockForOriginAndBaselineCodeBlock(
+            materialization->origin(), exec->codeBlock());
+        JSGlobalObject* globalObject = codeBlock->globalObject();
+        Structure* structure = globalObject->arrayStructureForIndexingTypeDuringAllocation(ArrayWithContiguous);
+
+        unsigned arraySize = 0;
+        unsigned numProperties = 0;
+        for (unsigned i = materialization->properties().size(); i--;) {
+            const ExitPropertyValue& property = materialization->properties()[i];
+            if (property.location().kind() == NewArrayWithSpreadArgumentPLoc) {
+                ++numProperties;
+                JSValue value = JSValue::decode(values[i]);
+                if (JSFixedArray* fixedArray = jsDynamicCast<JSFixedArray*>(value))
+                    arraySize += fixedArray->size();
+                else
+                    arraySize += 1;
+            }
+        }
+
+        JSArray* result = JSArray::tryCreateUninitialized(vm, structure, arraySize);
+        RELEASE_ASSERT(result);
+
+#if !ASSERT_DISABLED
+        // Ensure we see indices for everything in the range: [0, numProperties)
+        for (unsigned i = 0; i < numProperties; ++i) {
+            bool found = false;
+            for (unsigned j = 0; j < materialization->properties().size(); ++j) {
+                const ExitPropertyValue& property = materialization->properties()[j];
+                if (property.location().kind() == NewArrayWithSpreadArgumentPLoc && property.location().info() == i) {
+                    found = true;
+                    break;
+                }
+            }
+            ASSERT(found);
+        }
+#endif
+
+        Vector<JSValue, 8> arguments;
+        arguments.grow(numProperties);
+
+        for (unsigned i = materialization->properties().size(); i--;) {
+            const ExitPropertyValue& property = materialization->properties()[i];
+            if (property.location().kind() == NewArrayWithSpreadArgumentPLoc) {
+                JSValue value = JSValue::decode(values[i]);
+                RELEASE_ASSERT(property.location().info() < numProperties);
+                arguments[property.location().info()] = value;
+            }
+        }
+
+        unsigned arrayIndex = 0;
+        for (JSValue value : arguments) {
+            if (JSFixedArray* fixedArray = jsDynamicCast<JSFixedArray*>(value)) {
+                for (unsigned i = 0; i < fixedArray->size(); i++) {
+                    ASSERT(fixedArray->get(i));
+                    result->initializeIndex(vm, arrayIndex, fixedArray->get(i));
+                    ++arrayIndex;
+                }
+            } else {
+                // We are not spreading.
+                result->initializeIndex(vm, arrayIndex, value);
+                ++arrayIndex;
+            }
+        }
+
+        return result;
+    }
+
         
     default:
         RELEASE_ASSERT_NOT_REACHED();

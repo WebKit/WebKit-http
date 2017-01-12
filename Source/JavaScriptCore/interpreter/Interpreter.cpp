@@ -37,9 +37,9 @@
 #include "Heap.h"
 #include "Debugger.h"
 #include "DebuggerCallFrame.h"
+#include "DirectEvalCodeCache.h"
 #include "ErrorInstance.h"
 #include "EvalCodeBlock.h"
-#include "EvalCodeCache.h"
 #include "Exception.h"
 #include "ExceptionHelpers.h"
 #include "FunctionCodeBlock.h"
@@ -63,6 +63,7 @@
 #include "Register.h"
 #include "ScopedArguments.h"
 #include "StackAlignment.h"
+#include "StackFrame.h"
 #include "StackVisitor.h"
 #include "StrictEvalActivation.h"
 #include "StrongInlines.h"
@@ -131,7 +132,7 @@ JSValue eval(CallFrame* callFrame)
     else
         evalContextType = EvalContextType::None;
 
-    EvalExecutable* eval = callerCodeBlock->evalCodeCache().tryGet(programSource, callerCallSiteIndex);
+    DirectEvalExecutable* eval = callerCodeBlock->directEvalCodeCache().tryGet(programSource, callerCallSiteIndex);
     if (!eval) {
         if (!callerCodeBlock->isStrictMode()) {
             if (programSource.is8Bit()) {
@@ -148,10 +149,13 @@ JSValue eval(CallFrame* callFrame)
         // If the literal parser bailed, it should not have thrown exceptions.
         ASSERT(!scope.exception());
 
-        eval = callerCodeBlock->evalCodeCache().getSlow(callFrame, callerCodeBlock, programSource, callerCallSiteIndex, callerCodeBlock->isStrictMode(), derivedContextType, evalContextType, isArrowFunctionContext, callerScopeChain);
-
+        VariableEnvironment variablesUnderTDZ;
+        JSScope::collectClosureVariablesUnderTDZ(callerScopeChain, variablesUnderTDZ);
+        eval = DirectEvalExecutable::create(callFrame, makeSource(programSource, callerCodeBlock->source()->sourceOrigin()), callerCodeBlock->isStrictMode(), derivedContextType, isArrowFunctionContext, evalContextType, &variablesUnderTDZ);
         if (!eval)
             return jsUndefined();
+
+        callerCodeBlock->directEvalCodeCache().set(callFrame, callerCodeBlock, programSource, callerCallSiteIndex, eval);
     }
 
     JSValue thisValue = callerFrame->thisValue();
@@ -390,7 +394,7 @@ void Interpreter::dumpRegisters(CallFrame* callFrame)
     --it;
     dataLogF("[CallerFrame]              | %10p | %p \n", it, callFrame->callerFrame());
     --it;
-    dataLogF("[Callee]                   | %10p | %p \n", it, callFrame->callee());
+    dataLogF("[Callee]                   | %10p | %p \n", it, callFrame->jsCallee());
     --it;
     // FIXME: Remove the next decrement when the ScopeChain slot is removed from the call header
     --it;
@@ -444,16 +448,6 @@ bool Interpreter::isOpcode(Opcode opcode)
 #endif
 }
 
-static inline bool isWebAssemblyExecutable(ExecutableBase* executable)
-{
-#if !ENABLE(WEBASSEMBLY)
-    UNUSED_PARAM(executable);
-    return false;
-#else
-    return executable->isWebAssemblyExecutable();
-#endif
-}
-
 class GetStackTraceFunctor {
 public:
     GetStackTraceFunctor(VM& vm, Vector<StackFrame>& results, size_t framesToSkip, size_t capacity)
@@ -473,22 +467,14 @@ public:
         }
 
         if (m_remainingCapacityForFrameCapture) {
-            if (visitor->isJSFrame()
-                && !isWebAssemblyExecutable(visitor->codeBlock()->ownerExecutable())
+            if (!visitor->isWasmFrame()
+                && !!visitor->codeBlock()
                 && !visitor->codeBlock()->unlinkedCodeBlock()->isBuiltinFunction()) {
-                StackFrame s = {
-                    Strong<JSObject>(m_vm, visitor->callee()),
-                    Strong<CodeBlock>(m_vm, visitor->codeBlock()),
-                    visitor->bytecodeOffset()
-                };
-                m_results.append(s);
+                m_results.append(
+                    StackFrame(m_vm, visitor->callee(), visitor->codeBlock(), visitor->bytecodeOffset()));
             } else {
-                StackFrame s = {
-                    Strong<JSObject>(m_vm, visitor->callee()),
-                    Strong<CodeBlock>(),
-                    0 // unused value because codeBlock is null.
-                };
-                m_results.append(s);
+                m_results.append(
+                    StackFrame(m_vm,  visitor->callee()));
             }
     
             m_remainingCapacityForFrameCapture--;
@@ -590,7 +576,7 @@ ALWAYS_INLINE static void notifyDebuggerOfUnwinding(CallFrame* callFrame)
     auto catchScope = DECLARE_CATCH_SCOPE(vm);
     if (Debugger* debugger = callFrame->vmEntryGlobalObject()->debugger()) {
         SuspendExceptionScope scope(&vm);
-        if (jsDynamicCast<JSFunction*>(callFrame->callee()))
+        if (jsDynamicCast<JSFunction*>(callFrame->jsCallee()))
             debugger->unwindEvent(callFrame);
         else
             debugger->didExecuteProgram(callFrame);
@@ -616,23 +602,20 @@ public:
 
         m_handler = nullptr;
         if (!m_isTermination) {
-            if (m_codeBlock && !isWebAssemblyExecutable(m_codeBlock->ownerExecutable()))
+            if (m_codeBlock) {
                 m_handler = findExceptionHandler(visitor, m_codeBlock, RequiredHandler::AnyHandler);
+                if (m_handler)
+                    return StackVisitor::Done;
+            }
         }
-
-        if (m_handler)
-            return StackVisitor::Done;
 
         notifyDebuggerOfUnwinding(m_callFrame);
 
-        bool shouldStopUnwinding = visitor->callerIsVMEntryFrame();
-        if (shouldStopUnwinding) {
-            copyCalleeSavesToVMEntryFrameCalleeSavesBuffer(visitor);
-
-            return StackVisitor::Done;
-        }
-
         copyCalleeSavesToVMEntryFrameCalleeSavesBuffer(visitor);
+
+        bool shouldStopUnwinding = visitor->callerIsVMEntryFrame();
+        if (shouldStopUnwinding)
+            return StackVisitor::Done;
 
         return StackVisitor::Continue;
     }
@@ -641,15 +624,7 @@ private:
     void copyCalleeSavesToVMEntryFrameCalleeSavesBuffer(StackVisitor& visitor) const
     {
 #if ENABLE(JIT) && NUMBER_OF_CALLEE_SAVES_REGISTERS > 0
-
-        if (!visitor->isJSFrame())
-            return;
-
-#if ENABLE(DFG_JIT)
-        if (visitor->inlineCallFrame())
-            return;
-#endif
-        RegisterAtOffsetList* currentCalleeSaves = m_codeBlock ? m_codeBlock->calleeSaveRegisters() : nullptr;
+        RegisterAtOffsetList* currentCalleeSaves = visitor->calleeSaveRegisters();
 
         if (!currentCalleeSaves)
             return;

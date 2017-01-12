@@ -32,7 +32,6 @@
 #include "AudioSourceProvider.h"
 #include "GraphicsContext.h"
 #include "IntRect.h"
-#include "MediaSourceSettings.h"
 #include "UUID.h"
 
 namespace WebCore {
@@ -45,15 +44,6 @@ Ref<MediaStreamTrackPrivate> MediaStreamTrackPrivate::create(Ref<RealtimeMediaSo
 Ref<MediaStreamTrackPrivate> MediaStreamTrackPrivate::create(Ref<RealtimeMediaSource>&& source, String&& id)
 {
     return adoptRef(*new MediaStreamTrackPrivate(WTFMove(source), WTFMove(id)));
-}
-
-MediaStreamTrackPrivate::MediaStreamTrackPrivate(const MediaStreamTrackPrivate& other)
-    : m_source(other.m_source.copyRef())
-    , m_id(createCanonicalUUIDString())
-    , m_isEnabled(other.enabled())
-    , m_isEnded(other.ended())
-{
-    m_source->addObserver(this);
 }
 
 MediaStreamTrackPrivate::MediaStreamTrackPrivate(Ref<RealtimeMediaSource>&& source, String&& id)
@@ -110,6 +100,9 @@ void MediaStreamTrackPrivate::setEnabled(bool enabled)
     // Always update the enabled state regardless of the track being ended.
     m_isEnabled = enabled;
 
+    if (m_preview)
+        m_preview->setEnabled(enabled);
+
     for (auto& observer : m_observers)
         observer->trackEnabledChanged(*this);
 }
@@ -124,6 +117,7 @@ void MediaStreamTrackPrivate::endTrack()
     // trackEnded method once.
     m_isEnded = true;
 
+    m_preview = nullptr;
     m_source->requestStop(this);
 
     for (auto& observer : m_observers)
@@ -132,17 +126,16 @@ void MediaStreamTrackPrivate::endTrack()
 
 Ref<MediaStreamTrackPrivate> MediaStreamTrackPrivate::clone()
 {
-    return adoptRef(*new MediaStreamTrackPrivate(*this));
+    auto clonedMediaStreamTrackPrivate = create(m_source.copyRef());
+    clonedMediaStreamTrackPrivate->m_isEnabled = this->m_isEnabled;
+    clonedMediaStreamTrackPrivate->m_isEnded = this->m_isEnded;
+
+    return clonedMediaStreamTrackPrivate;
 }
 
 RealtimeMediaSource::Type MediaStreamTrackPrivate::type() const
 {
     return m_source->type();
-}
-
-RefPtr<MediaConstraints> MediaStreamTrackPrivate::constraints() const
-{
-    return m_constraints;
 }
 
 const RealtimeMediaSourceSettings& MediaStreamTrackPrivate::settings() const
@@ -168,6 +161,15 @@ void MediaStreamTrackPrivate::paintCurrentFrameInContext(GraphicsContext& contex
         IntRect paintRect(IntPoint(0, 0), IntSize(rect.width(), rect.height()));
         context.fillRect(paintRect, Color::black);
     }
+}
+
+RealtimeMediaSourcePreview* MediaStreamTrackPrivate::preview()
+{
+    if (m_preview)
+        return m_preview.get();
+
+    m_preview = m_source->preview();
+    return m_preview.get();
 }
 
 void MediaStreamTrackPrivate::applyConstraints(const MediaConstraints& constraints, RealtimeMediaSource::SuccessHandler successHandler, RealtimeMediaSource::FailureHandler failureHandler)

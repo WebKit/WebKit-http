@@ -81,8 +81,6 @@ private:
 
     void styleDidChange(StyleDifference, const RenderStyle* oldStyle) override;
 
-    bool requiresForcedStyleRecalcPropagation() const override { return true; }
-
     // PopupMenuClient methods
     void valueChanged(unsigned listIndex, bool fireOnChange = true) override;
     void selectionChanged(unsigned, bool) override { }
@@ -122,8 +120,8 @@ private:
     {
         return RenderBlock::baselinePosition(baseline, firstLine, direction, position);
     }
-    Optional<int> firstLineBaseline() const override { return RenderBlock::firstLineBaseline(); }
-    Optional<int> inlineBlockBaseline(LineDirectionMode direction) const override { return RenderBlock::inlineBlockBaseline(direction); }
+    std::optional<int> firstLineBaseline() const override { return RenderBlock::firstLineBaseline(); }
+    std::optional<int> inlineBlockBaseline(LineDirectionMode direction) const override { return RenderBlock::inlineBlockBaseline(direction); }
 
     void getItemBackgroundColor(unsigned listIndex, Color&, bool& itemHasCustomBackgroundColor) const;
 

@@ -51,7 +51,8 @@ namespace JSC { namespace FTL {
     macro(DirectArguments_callee, DirectArguments::offsetOfCallee()) \
     macro(DirectArguments_length, DirectArguments::offsetOfLength()) \
     macro(DirectArguments_minCapacity, DirectArguments::offsetOfMinCapacity()) \
-    macro(DirectArguments_overrides, DirectArguments::offsetOfOverrides()) \
+    macro(DirectArguments_mappedArguments, DirectArguments::offsetOfMappedArguments()) \
+    macro(DirectArguments_modifiedArgumentsDescriptor, DirectArguments::offsetOfModifiedArgumentsDescriptor()) \
     macro(GetterSetter_getter, GetterSetter::offsetOfGetter()) \
     macro(GetterSetter_setter, GetterSetter::offsetOfSetter()) \
     macro(JSArrayBufferView_length, JSArrayBufferView::offsetOfLength()) \
@@ -59,11 +60,11 @@ namespace JSC { namespace FTL {
     macro(JSArrayBufferView_vector, JSArrayBufferView::offsetOfVector()) \
     macro(JSCell_cellState, JSCell::cellStateOffset()) \
     macro(JSCell_header, 0) \
-    macro(JSCell_indexingType, JSCell::indexingTypeOffset()) \
+    macro(JSCell_indexingTypeAndMisc, JSCell::indexingTypeAndMiscOffset()) \
     macro(JSCell_structureID, JSCell::structureIDOffset()) \
     macro(JSCell_typeInfoFlags, JSCell::typeInfoFlagsOffset()) \
     macro(JSCell_typeInfoType, JSCell::typeInfoTypeOffset()) \
-    macro(JSCell_usefulBytes, JSCell::indexingTypeOffset()) \
+    macro(JSCell_usefulBytes, JSCell::indexingTypeAndMiscOffset()) \
     macro(JSFunction_executable, JSFunction::offsetOfExecutable()) \
     macro(JSFunction_scope, JSFunction::offsetOfScopeChain()) \
     macro(JSFunction_rareData, JSFunction::offsetOfRareData()) \

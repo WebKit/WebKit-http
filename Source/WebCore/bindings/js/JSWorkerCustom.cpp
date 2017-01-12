@@ -31,7 +31,6 @@
 #include "JSDOMBinding.h"
 #include "JSDOMGlobalObject.h"
 #include "JSDOMWindowCustom.h"
-#include "JSMessagePortCustom.h"
 #include "Worker.h"
 #include <runtime/Error.h>
 
@@ -39,19 +38,14 @@ using namespace JSC;
 
 namespace WebCore {
 
-JSC::JSValue JSWorker::postMessage(JSC::ExecState& state)
-{
-    return handlePostMessage(state, wrapped());
-}
-
 EncodedJSValue JSC_HOST_CALL constructJSWorker(ExecState& state)
 {
     VM& vm = state.vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
 
-    ASSERT(jsCast<DOMConstructorObject*>(state.callee()));
-    ASSERT(jsCast<DOMConstructorObject*>(state.callee())->globalObject());
-    auto& globalObject = *jsCast<DOMConstructorObject*>(state.callee())->globalObject();
+    ASSERT(jsCast<DOMConstructorObject*>(state.jsCallee()));
+    ASSERT(jsCast<DOMConstructorObject*>(state.jsCallee())->globalObject());
+    auto& globalObject = *jsCast<DOMConstructorObject*>(state.jsCallee())->globalObject();
 
     if (!state.argumentCount())
         return throwVMError(&state, scope, createNotEnoughArgumentsError(&state));

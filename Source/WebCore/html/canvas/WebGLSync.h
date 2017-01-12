@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2015-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -33,15 +33,12 @@ class WebGLSync final : public WebGLSharedObject {
 public:
     virtual ~WebGLSync();
 
-    static Ref<WebGLSync> create(WebGLRenderingContextBase*);
+    static Ref<WebGLSync> create(WebGLRenderingContextBase&);
 
 protected:
-    WebGLSync(WebGLRenderingContextBase*);
+    WebGLSync(WebGLRenderingContextBase&);
 
     void deleteObjectImpl(GraphicsContext3D*, Platform3DObject) override;
-
-private:
-    bool isSync() const override { return true; }
 };
 
 } // namespace WebCore

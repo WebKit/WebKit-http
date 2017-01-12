@@ -51,8 +51,8 @@
 #import <WebCore/LocalizedStrings.h>
 #import <WebCore/MemoryRelease.h>
 #import <WebCore/NSAccessibilitySPI.h>
+#import <WebCore/PerformanceLogging.h>
 #import <WebCore/RuntimeApplicationChecks.h>
-#import <WebCore/VNodeTracker.h>
 #import <WebCore/WebCoreNSURLExtras.h>
 #import <WebCore/pthreadSPI.h>
 #import <WebKitSystemInterface.h>
@@ -123,15 +123,6 @@ void WebProcess::platformInitializeWebProcess(WebProcessCreationParameters&& par
     WebCore::registerMemoryReleaseNotifyCallbacks();
     MemoryPressureHandler::ReliefLogger::setLoggingEnabled(parameters.shouldEnableMemoryPressureReliefLogging);
 
-#if PLATFORM(IOS)
-    // Track the number of vnodes we are using on iOS and make sure we only use a
-    // reasonable amount because limits are fairly low on iOS devices and we can
-    // get killed when reaching the limit.
-    VNodeTracker::singleton().setPressureHandler([] (Critical critical) {
-        MemoryPressureHandler::singleton().releaseMemory(critical);
-    });
-#endif
-
     setEnhancedAccessibility(parameters.accessibilityEnhancedUserInterfaceEnabled);
 
 #if USE(APPKIT)
@@ -193,6 +184,24 @@ void WebProcess::registerWithStateDumper()
             // Create a dictionary to contain the collected state. This
             // dictionary will be serialized and passed back to os_state.
             auto stateDict = adoptNS([[NSMutableDictionary alloc] init]);
+
+            {
+                auto memoryUsageStats = adoptNS([[NSMutableDictionary alloc] init]);
+                for (auto& it : PerformanceLogging::memoryUsageStatistics(ShouldIncludeExpensiveComputations::Yes)) {
+                    auto keyString = adoptNS([[NSString alloc] initWithUTF8String:it.key]);
+                    [memoryUsageStats setObject:@(it.value) forKey:keyString.get()];
+                }
+                [stateDict setObject:memoryUsageStats.get() forKey:@"Memory Usage Stats"];
+            }
+
+            {
+                auto jsObjectCounts = adoptNS([[NSMutableDictionary alloc] init]);
+                for (auto& it : PerformanceLogging::javaScriptObjectCounts()) {
+                    auto keyString = adoptNS([[NSString alloc] initWithUTF8String:it.key]);
+                    [jsObjectCounts setObject:@(it.value) forKey:keyString.get()];
+                }
+                [stateDict setObject:jsObjectCounts.get() forKey:@"JavaScript Object Counts"];
+            }
 
             auto pageLoadTimes = adoptNS([[NSMutableArray alloc] init]);
             for (auto& page : m_pageMap.values()) {

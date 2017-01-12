@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012, 2013, 2015 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -25,6 +25,7 @@
 
 #pragma once
 
+#include "CPU.h"
 #include "CallFrame.h"
 #include "DeferGC.h"
 #include "Handle.h"
@@ -40,23 +41,26 @@
 namespace JSC {
 
 inline JSCell::JSCell(CreatingEarlyCellTag)
-    : m_cellState(CellState::NewWhite)
+    : m_cellState(CellState::DefinitelyWhite)
 {
     ASSERT(!isCompilationThread());
 }
 
 inline JSCell::JSCell(VM&, Structure* structure)
     : m_structureID(structure->id())
-    , m_indexingType(structure->indexingType())
+    , m_indexingTypeAndMisc(structure->indexingTypeIncludingHistory())
     , m_type(structure->typeInfo().type())
     , m_flags(structure->typeInfo().inlineTypeFlags())
-    , m_cellState(CellState::NewWhite)
+    , m_cellState(CellState::DefinitelyWhite)
 {
     ASSERT(!isCompilationThread());
 }
 
 inline void JSCell::finishCreation(VM& vm)
 {
+    // This object is ready to be escaped so the concurrent GC may see it at any time. We have
+    // to make sure that none of our stores sink below here.
+    vm.heap.mutatorFence();
 #if ENABLE(GC_VALIDATION)
     ASSERT(vm.isInitializingObject());
     vm.setInitializingObjectClass(0);
@@ -74,7 +78,7 @@ inline void JSCell::finishCreation(VM& vm, Structure* structure, CreatingEarlyCe
     if (structure) {
 #endif
         m_structureID = structure->id();
-        m_indexingType = structure->indexingType();
+        m_indexingTypeAndMisc = structure->indexingTypeIncludingHistory();
         m_type = structure->typeInfo().type();
         m_flags = structure->typeInfo().inlineTypeFlags();
 #if ENABLE(GC_VALIDATION)
@@ -91,25 +95,29 @@ inline JSType JSCell::type() const
     return m_type;
 }
 
+inline IndexingType JSCell::indexingTypeAndMisc() const
+{
+    return m_indexingTypeAndMisc;
+}
+
 inline IndexingType JSCell::indexingType() const
 {
-    return m_indexingType;
+    return indexingTypeAndMisc() & AllArrayTypes;
 }
 
-inline Structure* JSCell::structure() const
+ALWAYS_INLINE Structure* JSCell::structure() const
 {
-    return Heap::heap(this)->structureIDTable().get(m_structureID);
+    return structure(*vm());
 }
 
-inline Structure* JSCell::structure(VM& vm) const
+ALWAYS_INLINE Structure* JSCell::structure(VM& vm) const
 {
-    return vm.heap.structureIDTable().get(m_structureID);
+    return vm.getStructure(m_structureID);
 }
 
 inline void JSCell::visitChildren(JSCell* cell, SlotVisitor& visitor)
 {
-    Structure* structure = cell->structure(visitor.vm());
-    visitor.appendUnbarrieredPointer(&structure);
+    visitor.appendUnbarriered(cell->structure(visitor.vm()));
 }
 
 ALWAYS_INLINE VM& ExecState::vm() const
@@ -118,7 +126,7 @@ ALWAYS_INLINE VM& ExecState::vm() const
     ASSERT(callee()->vm());
     ASSERT(!callee()->isLargeAllocation());
     // This is an important optimization since we access this so often.
-    return *calleeAsValue().asCell()->markedBlock().vm();
+    return *callee()->markedBlock().vm();
 }
 
 template<typename T>
@@ -195,17 +203,26 @@ inline bool JSCell::isAPIValueWrapper() const
     return m_type == APIValueWrapperType;
 }
 
-inline void JSCell::setStructure(VM& vm, Structure* structure)
+ALWAYS_INLINE void JSCell::setStructure(VM& vm, Structure* structure)
 {
     ASSERT(structure->classInfo() == this->structure()->classInfo());
     ASSERT(!this->structure()
         || this->structure()->transitionWatchpointSetHasBeenInvalidated()
         || Heap::heap(this)->structureIDTable().get(structure->id()) == structure);
-    vm.heap.writeBarrier(this, structure);
     m_structureID = structure->id();
     m_flags = structure->typeInfo().inlineTypeFlags();
     m_type = structure->typeInfo().type();
-    m_indexingType = structure->indexingType();
+    IndexingType newIndexingType = structure->indexingTypeIncludingHistory();
+    if (m_indexingTypeAndMisc != newIndexingType) {
+        ASSERT(!(newIndexingType & ~AllArrayTypesAndHistory));
+        for (;;) {
+            IndexingType oldValue = m_indexingTypeAndMisc;
+            IndexingType newValue = (oldValue & ~AllArrayTypesAndHistory) | structure->indexingTypeIncludingHistory();
+            if (WTF::atomicCompareExchangeWeakRelaxed(&m_indexingTypeAndMisc, oldValue, newValue))
+                break;
+        }
+    }
+    vm.heap.writeBarrier(this, structure);
 }
 
 inline const MethodTable* JSCell::methodTable() const
@@ -284,11 +301,45 @@ inline void JSCell::callDestructor(VM& vm)
     if (isZapped())
         return;
     ASSERT(structureID());
-    if (inlineTypeFlags() & StructureIsImmortal)
-        structure(vm)->classInfo()->methodTable.destroy(this);
-    else
+    if (inlineTypeFlags() & StructureIsImmortal) {
+        Structure* structure = this->structure(vm);
+        const ClassInfo* classInfo = structure->classInfo();
+        MethodTable::DestroyFunctionPtr destroy = classInfo->methodTable.destroy;
+        destroy(this);
+    } else
         jsCast<JSDestructibleObject*>(this)->classInfo()->methodTable.destroy(this);
     zap();
+}
+
+inline void JSCell::lock()
+{
+    Atomic<IndexingType>* lock = bitwise_cast<Atomic<IndexingType>*>(&m_indexingTypeAndMisc);
+    IndexingTypeLockAlgorithm::lock(*lock);
+}
+
+inline bool JSCell::tryLock()
+{
+    Atomic<IndexingType>* lock = bitwise_cast<Atomic<IndexingType>*>(&m_indexingTypeAndMisc);
+    return IndexingTypeLockAlgorithm::tryLock(*lock);
+}
+
+inline void JSCell::unlock()
+{
+    Atomic<IndexingType>* lock = bitwise_cast<Atomic<IndexingType>*>(&m_indexingTypeAndMisc);
+    IndexingTypeLockAlgorithm::unlock(*lock);
+}
+
+inline bool JSCell::isLocked() const
+{
+    Atomic<IndexingType>* lock = bitwise_cast<Atomic<IndexingType>*>(&m_indexingTypeAndMisc);
+    return IndexingTypeLockAlgorithm::isLocked(*lock);
+}
+
+inline JSObject* JSCell::toObject(ExecState* exec, JSGlobalObject* globalObject) const
+{
+    if (isObject())
+        return jsCast<JSObject*>(const_cast<JSCell*>(this));
+    return toObjectSlow(exec, globalObject);
 }
 
 } // namespace JSC

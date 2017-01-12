@@ -31,12 +31,10 @@
 
 #if ENABLE(FETCH_API)
 
-#include "DOMRequestState.h"
-#include "Dictionary.h"
+#include "Document.h"
 #include "FetchBodyOwner.h"
 #include "FetchHeaders.h"
 #include "FetchResponseSource.h"
-#include "FormData.h"
 #include "HTTPHeaderValues.h"
 #include "HTTPParsers.h"
 #include "JSBlob.h"
@@ -48,7 +46,7 @@
 
 namespace WebCore {
 
-Optional<FetchBody> FetchBody::extract(ScriptExecutionContext& context, JSC::ExecState& state, JSC::JSValue value, String& contentType)
+std::optional<FetchBody> FetchBody::extract(ScriptExecutionContext& context, JSC::ExecState& state, JSC::JSValue value, String& contentType)
 {
     if (value.inherits(JSBlob::info())) {
         auto& blob = *JSBlob::toWrapped(value);
@@ -64,7 +62,7 @@ Optional<FetchBody> FetchBody::extract(ScriptExecutionContext& context, JSC::Exe
     }
     if (value.isString()) {
         contentType = HTTPHeaderValues::textPlainContentType();
-        return FetchBody(value.toWTFString(&state));
+        return FetchBody(String { asString(value)->value(&state) });
     }
     if (value.inherits(JSURLSearchParams::info())) {
         contentType = HTTPHeaderValues::formURLEncodedContentType();
@@ -80,7 +78,7 @@ Optional<FetchBody> FetchBody::extract(ScriptExecutionContext& context, JSC::Exe
     if (value.inherits(JSC::JSArrayBufferView::info()))
         return FetchBody(toUnsharedArrayBufferView(value).releaseConstNonNull());
 
-    return Nullopt;
+    return std::nullopt;
 }
 
 void FetchBody::arrayBuffer(FetchBodyOwner& owner, Ref<DeferredPromise>&& promise)
@@ -109,7 +107,7 @@ void FetchBody::json(FetchBodyOwner& owner, Ref<DeferredPromise>&& promise)
 void FetchBody::text(FetchBodyOwner& owner, Ref<DeferredPromise>&& promise)
 {
     if (isText()) {
-        promise->resolve(textBody());
+        promise->resolve<IDLDOMString>(textBody());
         return;
     }
     m_consumer.setType(FetchBodyConsumer::Type::Text);
@@ -146,7 +144,7 @@ void FetchBody::consume(FetchBodyOwner& owner, Ref<DeferredPromise>&& promise)
     }
     if (isFormData()) {
         // FIXME: Support consuming FormData.
-        promise->reject(0);
+        promise->reject();
         return;
     }
     m_consumer.resolve(WTFMove(promise));
@@ -214,7 +212,7 @@ void FetchBody::consumeBlob(FetchBodyOwner& owner, Ref<DeferredPromise>&& promis
 void FetchBody::loadingFailed()
 {
     if (m_consumePromise) {
-        m_consumePromise->reject(0);
+        m_consumePromise->reject();
         m_consumePromise = nullptr;
     }
 }

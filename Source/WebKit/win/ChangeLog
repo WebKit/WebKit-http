@@ -1,3 +1,206 @@
+2017-01-06  Darin Adler  <darin@apple.com>
+
+        Remove PassRefPtr use from "inspector", "platform/sql", and "platform/text"
+        https://bugs.webkit.org/show_bug.cgi?id=166797
+
+        Reviewed by Alex Christensen.
+
+        * WebCoreSupport/WebEditorClient.h: Update argument to take a reference
+        instead of a PassRefPtr.
+
+2017-01-05  Andreas Kling  <akling@apple.com>
+
+        Remove ChromeClient::needTouchEvents().
+        <https://webkit.org/b/166723>
+
+        Rubber-stamped by Antti Koivisto.
+
+        * WebCoreSupport/WebChromeClient.h:
+
+2017-01-04  Darin Adler  <darin@apple.com>
+
+        Remove PassRefPtr use from the "html" directory, other improvements
+        https://bugs.webkit.org/show_bug.cgi?id=166635
+
+        Reviewed by Alex Christensen.
+
+        * WebCoreSupport/WebChromeClient.cpp:
+        (WebChromeClient::loadIconForFiles): Take a reference instead of a pointer.
+        * WebCoreSupport/WebChromeClient.h: Updated for the above.
+
+2016-12-30  Darin Adler  <darin@apple.com>
+
+        Remove PassRefPtr use from the "dom" directory, related cleanup
+        https://bugs.webkit.org/show_bug.cgi?id=166569
+
+        Reviewed by Alex Christensen.
+
+        * WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebFrameLoaderClient::dispatchDidReceiveTitle): Updated since StringWithDirection::title
+        is now a data member, not a function member.
+        (WebFrameLoaderClient::updateGlobalHistory): Ditto.
+        (WebFrameLoaderClient::setTitle): Ditto.
+        * WebDataSource.cpp:
+        (WebDataSource::pageTitle): Ditto.
+
+2016-12-25  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Propagate the source origin as much as possible
+        https://bugs.webkit.org/show_bug.cgi?id=166348
+
+        Reviewed by Darin Adler.
+
+        * Plugins/PluginPackage.cpp:
+        (WebCore::NPN_Evaluate):
+        (WebCore::makeSource): Deleted.
+
+2016-12-22  Andy Estes  <aestes@apple.com>
+
+        Make WebCore::EditorInsertAction an enum class
+        https://bugs.webkit.org/show_bug.cgi?id=166424
+
+        Reviewed by Brent Fulgham.
+
+        * WebCoreSupport/WebEditorClient.cpp:
+        (kit):
+        (WebEditorClient::shouldInsertNode):
+        (WebEditorClient::shouldInsertText):
+
+2016-12-19  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [ES6] Enable ES6 Modules
+        https://bugs.webkit.org/show_bug.cgi?id=165849
+
+        Reviewed by Geoffrey Garen.
+
+        * Interfaces/IWebPreferencesPrivate.idl:
+        * WebPreferenceKeysPrivate.h:
+        * WebPreferences.cpp:
+        (WebPreferences::setES6ModulesEnabled): Deleted.
+        (WebPreferences::es6ModulesEnabled): Deleted.
+        * WebPreferences.h:
+        * WebView.cpp:
+        (WebView::notifyPreferencesChanged):
+
+2016-12-10  Filip Pizlo  <fpizlo@apple.com>
+
+        The DOM should have an advancing wavefront opaque root barrier
+        https://bugs.webkit.org/show_bug.cgi?id=165712
+
+        Reviewed by Yusuke Suzuki.
+        
+        Propagate the JSDOMWindowBase::commonVM() -> commonVM() change.
+
+        * Plugins/PluginView.cpp:
+        (WebCore::PluginView::start):
+        (WebCore::PluginView::stop):
+        (WebCore::PluginView::performRequest):
+        (WebCore::PluginView::npObject):
+        (WebCore::PluginView::privateBrowsingStateChanged):
+        * Plugins/PluginViewWin.cpp:
+        (WebCore::PluginView::dispatchNPEvent):
+        (WebCore::PluginView::handleKeyboardEvent):
+        (WebCore::PluginView::handleMouseEvent):
+        (WebCore::PluginView::setNPWindowRect):
+        * WebCoreStatistics.cpp:
+        (WebCoreStatistics::javaScriptObjectsCount):
+        (WebCoreStatistics::javaScriptGlobalObjectsCount):
+        (WebCoreStatistics::javaScriptProtectedObjectsCount):
+        (WebCoreStatistics::javaScriptProtectedGlobalObjectsCount):
+        (WebCoreStatistics::javaScriptProtectedObjectTypeCounts):
+        (WebCoreStatistics::javaScriptObjectTypeCounts):
+        (WebCoreStatistics::shouldPrintExceptions):
+        (WebCoreStatistics::setShouldPrintExceptions):
+        (WebCoreStatistics::memoryStatistics):
+        * WebJavaScriptCollector.cpp:
+        (WebJavaScriptCollector::objectCount):
+
+2016-12-09  Geoffrey Garen  <ggaren@apple.com>
+
+        TextPosition and OrdinalNumber should be more like idiomatic numbers
+        https://bugs.webkit.org/show_bug.cgi?id=165678
+
+        Reviewed by Filip Pizlo.
+
+        Adopt default constructor.
+
+        * Plugins/PluginPackage.cpp:
+        (WebCore::makeSource):
+
+2016-12-08  Filip Pizlo  <fpizlo@apple.com>
+
+        Enable SharedArrayBuffer, remove the flag
+        https://bugs.webkit.org/show_bug.cgi?id=165614
+
+        Rubber stamped by Geoffrey Garen.
+
+        * Interfaces/IWebPreferencesPrivate.idl:
+
+2016-11-26  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [WTF] Import std::optional reference implementation as WTF::Optional
+        https://bugs.webkit.org/show_bug.cgi?id=164199
+
+        Reviewed by Saam Barati and Sam Weinig.
+
+        Use WTF::Optional::value_or.
+
+        * Plugins/PluginView.cpp:
+        (WebCore::PluginView::performRequest):
+        * WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebFrameLoaderClient::dispatchDidCommitLoad):
+        * WebCoreSupport/WebFrameLoaderClient.h:
+        * WebSecurityOrigin.cpp:
+        (WebSecurityOrigin::port):
+
+2016-11-19  Simon Fraser  <simon.fraser@apple.com>
+
+        [iOS WK2] When zoomed in and panning on pages with fixed bars, parts of the bars are sometimes missing
+        https://bugs.webkit.org/show_bug.cgi?id=164855
+
+        Reviewed by Sam Weinig.
+        
+        Remove the "inStableState" parameter from flushCompositingState() etc.
+
+        * WebCoreSupport/AcceleratedCompositingContext.cpp:
+        (AcceleratedCompositingContext::flushPendingLayerChanges):
+        * WebView.cpp:
+        (WebView::flushPendingGraphicsLayerChanges):
+
+2016-11-16  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [ES6][WebCore] Change ES6_MODULES compile time flag to runtime flag
+        https://bugs.webkit.org/show_bug.cgi?id=164827
+
+        Reviewed by Ryosuke Niwa.
+
+        * Interfaces/IWebPreferencesPrivate.idl:
+        * WebPreferenceKeysPrivate.h:
+        * WebPreferences.cpp:
+        (WebPreferences::setES6ModulesEnabled):
+        (WebPreferences::es6ModulesEnabled):
+        * WebPreferences.h:
+        * WebView.cpp:
+        (WebView::notifyPreferencesChanged):
+
+2016-11-14  Alex Christensen  <achristensen@webkit.org>
+
+        Move SecurityOrigin::createFromDatabaseIdentifier to SecurityOriginData
+        https://bugs.webkit.org/show_bug.cgi?id=164720
+
+        Reviewed by Brady Eidson.
+
+        * WebDatabaseManager.cpp:
+        (DidModifyOriginData::dispatchToMainThread):
+        (DidModifyOriginData::DidModifyOriginData):
+        (WebDatabaseManager::dispatchDidModifyOrigin):
+        (WebDatabaseManager::dispatchDidModifyDatabase):
+        * WebDatabaseManager.h:
+        * WebSecurityOrigin.cpp:
+        (WebSecurityOrigin::usage):
+        (WebSecurityOrigin::quota):
+        (WebSecurityOrigin::setQuota):
+
 2016-11-13  Darin Adler  <darin@apple.com>
 
         Fix exception handling in SQL database code, streamline and update code

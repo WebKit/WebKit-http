@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2007 Alp Toker <alp@atoker.com>
- * Copyright (C) 2007 Apple Inc.
+ * Copyright (C) 2007, 2016 Apple Inc.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -274,8 +274,8 @@ void PrintContext::outputLinkedDestinations(GraphicsContext& graphicsContext, Do
         if (!renderer)
             continue;
 
-        FloatPoint point = renderer->anchorRect().minXMinYCorner();
-        point.expandedTo(FloatPoint());
+        FloatPoint point = renderer->absoluteAnchorRect().minXMinYCorner();
+        point = point.expandedTo(FloatPoint());
 
         if (!pageRect.contains(roundedIntPoint(point)))
             continue;

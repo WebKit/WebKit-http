@@ -76,13 +76,18 @@ Value* ValueKey::materialize(Procedure& proc, Origin origin) const
     case Add:
     case Sub:
     case Mul:
+    case Div:
+    case UDiv:
     case Mod:
+    case UMod:
     case BitAnd:
     case BitOr:
     case BitXor:
     case Shl:
     case SShr:
     case ZShr:
+    case RotR:
+    case RotL:
     case Equal:
     case NotEqual:
     case LessThan:
@@ -91,7 +96,6 @@ Value* ValueKey::materialize(Procedure& proc, Origin origin) const
     case Below:
     case AboveEqual:
     case BelowEqual:
-    case Div:
         return proc.add<Value>(kind(), type(), origin, child(proc, 0), child(proc, 1));
     case Select:
         return proc.add<Value>(kind(), type(), origin, child(proc, 0), child(proc, 1), child(proc, 2));

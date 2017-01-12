@@ -57,7 +57,11 @@
 #include "RenderNamedFlowFragment.h"
 #include "RenderNamedFlowThread.h" 
 #include "RenderRuby.h"
+#include "RenderSVGBlock.h"
+#include "RenderSVGInline.h"
+#include "RenderSVGModelObject.h"
 #include "RenderSVGResourceContainer.h"
+#include "RenderSVGRoot.h"
 #include "RenderScrollbarPart.h"
 #include "RenderTableRow.h"
 #include "RenderTheme.h"
@@ -138,8 +142,7 @@ RenderObject::~RenderObject()
 
 RenderTheme& RenderObject::theme() const
 {
-    ASSERT(document().page());
-    return document().page()->theme();
+    return page().theme();
 }
 
 bool RenderObject::isDescendantOf(const RenderObject* ancestor) const
@@ -185,7 +188,11 @@ RenderObject::FlowThreadState RenderObject::computedFlowThreadState(const Render
     auto inheritedFlowState = RenderObject::NotInsideFlowThread;
     if (is<RenderText>(renderer))
         inheritedFlowState = renderer.parent()->flowThreadState();
-    else if (auto* containingBlock = renderer.containingBlock())
+    else if (is<RenderSVGBlock>(renderer) || is<RenderSVGInline>(renderer) || is<RenderSVGModelObject>(renderer)) {
+        // containingBlock() skips svg boundary (SVG root is a RenderReplaced).
+        if (auto* svgRoot = SVGRenderSupport::findTreeRootObject(downcast<RenderElement>(renderer)))
+            inheritedFlowState = svgRoot->flowThreadState();
+    } else if (auto* containingBlock = renderer.containingBlock())
         inheritedFlowState = containingBlock->flowThreadState();
     else {
         // Splitting lines or doing continuation, so just keep the current state.
@@ -396,7 +403,7 @@ RenderLayer* RenderObject::enclosingLayer() const
     return nullptr;
 }
 
-bool RenderObject::scrollRectToVisible(SelectionRevealMode revealMode, const LayoutRect& rect, const ScrollAlignment& alignX, const ScrollAlignment& alignY)
+bool RenderObject::scrollRectToVisible(SelectionRevealMode revealMode, const LayoutRect& absoluteRect, bool insideFixed, const ScrollAlignment& alignX, const ScrollAlignment& alignY)
 {
     if (revealMode == SelectionRevealMode::DoNotReveal)
         return false;
@@ -405,7 +412,7 @@ bool RenderObject::scrollRectToVisible(SelectionRevealMode revealMode, const Lay
     if (!enclosingLayer)
         return false;
 
-    enclosingLayer->scrollRectToVisible(revealMode, rect, alignX, alignY);
+    enclosingLayer->scrollRectToVisible(revealMode, absoluteRect, insideFixed, alignX, alignY);
     return true;
 }
 
@@ -1978,24 +1985,22 @@ void RenderObject::setVisibleInViewportState(VisibleInViewportState visible)
         ensureRareData().setVisibleInViewportState(visible);
 }
 
-RenderObject::RareDataHash& RenderObject::rareDataMap()
+RenderObject::RareDataMap& RenderObject::rareDataMap()
 {
-    static NeverDestroyed<RareDataHash> map;
+    static NeverDestroyed<RareDataMap> map;
     return map;
 }
 
-RenderObject::RenderObjectRareData RenderObject::rareData() const
+const RenderObject::RenderObjectRareData& RenderObject::rareData() const
 {
-    if (!hasRareData())
-        return RenderObjectRareData();
-
-    return rareDataMap().get(this);
+    ASSERT(hasRareData());
+    return *rareDataMap().get(this);
 }
 
 RenderObject::RenderObjectRareData& RenderObject::ensureRareData()
 {
     setHasRareData(true);
-    return rareDataMap().add(this, RenderObjectRareData()).iterator->value;
+    return *rareDataMap().ensure(this, [] { return std::make_unique<RenderObjectRareData>(); }).iterator->value;
 }
 
 void RenderObject::removeRareData()
@@ -2009,7 +2014,7 @@ void RenderObject::removeRareData()
 void printRenderTreeForLiveDocuments()
 {
     for (const auto* document : Document::allDocuments()) {
-        if (!document->renderView() || document->pageCacheState() != Document::NotInPageCache)
+        if (!document->renderView())
             continue;
         if (document->frame() && document->frame()->isMainFrame())
             fprintf(stderr, "----------------------main frame--------------------------\n");
@@ -2021,7 +2026,7 @@ void printRenderTreeForLiveDocuments()
 void printLayerTreeForLiveDocuments()
 {
     for (const auto* document : Document::allDocuments()) {
-        if (!document->renderView() || document->pageCacheState() != Document::NotInPageCache)
+        if (!document->renderView())
             continue;
         if (document->frame() && document->frame()->isMainFrame())
             fprintf(stderr, "----------------------main frame--------------------------\n");

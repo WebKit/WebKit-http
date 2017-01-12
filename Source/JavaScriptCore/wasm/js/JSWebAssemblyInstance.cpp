@@ -28,15 +28,21 @@
 
 #if ENABLE(WEBASSEMBLY)
 
+#include "AbstractModuleRecord.h"
 #include "JSCInlines.h"
+#include "JSModuleEnvironment.h"
 #include "JSModuleNamespaceObject.h"
+#include "JSWebAssemblyMemory.h"
+#include "JSWebAssemblyModule.h"
+#include <wtf/StdLibExtras.h>
 
 namespace JSC {
 
-JSWebAssemblyInstance* JSWebAssemblyInstance::create(VM& vm, Structure* structure, JSModuleNamespaceObject* moduleNamespaceObject)
+JSWebAssemblyInstance* JSWebAssemblyInstance::create(VM& vm, Structure* structure, JSWebAssemblyModule* module, JSModuleNamespaceObject* moduleNamespaceObject)
 {
-    auto* instance = new (NotNull, allocateCell<JSWebAssemblyInstance>(vm.heap)) JSWebAssemblyInstance(vm, structure);
-    instance->finishCreation(vm, moduleNamespaceObject);
+    // FIXME: These objects could be pretty big we should try to throw OOM here.
+    auto* instance = new (NotNull, allocateCell<JSWebAssemblyInstance>(vm.heap, allocationSize(module->moduleInformation().importFunctionSignatureIndices.size()))) JSWebAssemblyInstance(vm, structure, module->moduleInformation().importFunctionSignatureIndices.size());
+    instance->finishCreation(vm, module, moduleNamespaceObject);
     return instance;
 }
 
@@ -45,17 +51,25 @@ Structure* JSWebAssemblyInstance::createStructure(VM& vm, JSGlobalObject* global
     return Structure::create(vm, globalObject, prototype, TypeInfo(ObjectType, StructureFlags), info());
 }
 
-JSWebAssemblyInstance::JSWebAssemblyInstance(VM& vm, Structure* structure)
+JSWebAssemblyInstance::JSWebAssemblyInstance(VM& vm, Structure* structure, unsigned numImportFunctions)
     : Base(vm, structure)
+    , m_numImportFunctions(numImportFunctions)
 {
+    memset(importFunctions(), 0, m_numImportFunctions * sizeof(WriteBarrier<JSCell>));
 }
 
-void JSWebAssemblyInstance::finishCreation(VM& vm, JSModuleNamespaceObject* moduleNamespaceObject)
+void JSWebAssemblyInstance::finishCreation(VM& vm, JSWebAssemblyModule* module, JSModuleNamespaceObject* moduleNamespaceObject)
 {
     Base::finishCreation(vm);
-    m_moduleNamespaceObject.set(vm, this, moduleNamespaceObject);
-    putDirectWithoutTransition(vm, Identifier::fromString(&vm, "exports"), m_moduleNamespaceObject.get(), None);
     ASSERT(inherits(info()));
+
+    const size_t extraMemorySize = module->moduleInformation().globals.size() * sizeof(Register);
+    m_globals = MallocPtr<uint64_t>::malloc(extraMemorySize);
+    heap()->reportExtraMemoryAllocated(extraMemorySize);
+
+    m_module.set(vm, this, module);
+    m_moduleNamespaceObject.set(vm, this, moduleNamespaceObject);
+    putDirect(vm, Identifier::fromString(&vm, "exports"), moduleNamespaceObject, None);
 }
 
 void JSWebAssemblyInstance::destroy(JSCell* cell)
@@ -69,7 +83,13 @@ void JSWebAssemblyInstance::visitChildren(JSCell* cell, SlotVisitor& visitor)
     ASSERT_GC_OBJECT_INHERITS(thisObject, info());
 
     Base::visitChildren(thisObject, visitor);
-    visitor.append(&thisObject->m_moduleNamespaceObject);
+    visitor.append(thisObject->m_module);
+    visitor.append(thisObject->m_moduleNamespaceObject);
+    visitor.append(thisObject->m_memory);
+    visitor.append(thisObject->m_table);
+    visitor.reportExtraMemoryVisited(thisObject->module()->moduleInformation().globals.size());
+    for (unsigned i = 0; i < thisObject->m_numImportFunctions; ++i)
+        visitor.append(*thisObject->importFunction(i));
 }
 
 const ClassInfo JSWebAssemblyInstance::s_info = { "WebAssembly.Instance", &Base::s_info, 0, CREATE_METHOD_TABLE(JSWebAssemblyInstance) };

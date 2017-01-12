@@ -177,7 +177,7 @@ void NetworkResourceLoader::retrieveCacheEntry(const ResourceRequest& request)
     ASSERT(canUseCache(request));
 
     RefPtr<NetworkResourceLoader> loader(this);
-    NetworkCache::singleton().retrieve(request, { m_parameters.webPageID, m_parameters.webFrameID }, [loader, request](auto entry) {
+    NetworkCache::singleton().retrieve(request, { m_parameters.webPageID, m_parameters.webFrameID }, [loader = WTFMove(loader), request](auto entry) {
         if (loader->hasOneRef()) {
             // The loader has been aborted and is only held alive by this lambda.
             return;
@@ -283,7 +283,7 @@ void NetworkResourceLoader::cleanup()
 void NetworkResourceLoader::convertToDownload(DownloadID downloadID, const ResourceRequest& request, const ResourceResponse& response)
 {
     ASSERT(m_networkLoad);
-    NetworkProcess::singleton().downloadManager().convertNetworkLoadToDownload(downloadID, WTFMove(m_networkLoad), WTFMove(m_fileReferences), request, response);
+    NetworkProcess::singleton().downloadManager().convertNetworkLoadToDownload(downloadID, std::exchange(m_networkLoad, nullptr), WTFMove(m_fileReferences), request, response);
 }
 
 void NetworkResourceLoader::abort()

@@ -25,55 +25,32 @@
 
 #pragma once
 
-#include "CSSValue.h"
 #include "CSSValueKeywords.h"
+#include "CSSValueList.h"
 
 namespace WebCore {
 
-class CSSValueList;
-struct CSSParserFunction;
-struct CSSParserValue;
-
-// FIXME-NEWPARSER: This can just *be* a CSSValueList subclass.
-class CSSFunctionValue final : public CSSValue {
+class CSSFunctionValue final : public CSSValueList {
 public:
-    static Ref<CSSFunctionValue> create(CSSParserFunction* function)
+    static Ref<CSSFunctionValue> create(CSSValueID name)
     {
-        return adoptRef(*new CSSFunctionValue(function));
-    }
-
-    static Ref<CSSFunctionValue> create(const String& name, Ref<CSSValueList>&& args)
-    {
-        return adoptRef(*new CSSFunctionValue(name, WTFMove(args)));
-    }
-
-    static Ref<CSSFunctionValue> create(CSSValueID keyword)
-    {
-        return adoptRef(*new CSSFunctionValue(keyword));
+        return adoptRef(*new CSSFunctionValue(name));
     }
     
     String customCSSText() const;
 
-    bool equals(const CSSFunctionValue&) const;
-    
     CSSValueID name() const { return m_name; }
 
-    CSSValueList* arguments() const { return m_args.get(); }
-
-    bool buildParserValueSubstitutingVariables(CSSParserValue*, const CustomPropertyValueMap& customProperties) const;
-
-    void append(Ref<CSSValue>&&);
+    bool equals(const CSSFunctionValue& other) const { return m_name == other.m_name && CSSValueList::equals(other); }
 
 private:
-    explicit CSSFunctionValue(CSSParserFunction*);
-    CSSFunctionValue(const String&, Ref<CSSValueList>&&);
-    CSSFunctionValue(CSSValueID);
+    CSSFunctionValue(CSSValueID name)
+        : CSSValueList(FunctionClass, CommaSeparator)
+        , m_name(name)
+    {
+    }
 
     CSSValueID m_name { CSSValueInvalid };
-
-    // FIXME-NEWPARSER: Remove these.
-    String m_nameDeprecated;
-    RefPtr<CSSValueList> m_args;
 };
 
 } // namespace WebCore

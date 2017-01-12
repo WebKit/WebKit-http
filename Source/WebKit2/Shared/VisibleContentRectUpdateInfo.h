@@ -23,14 +23,19 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef VisibleContentRectUpdateInfo_h
-#define VisibleContentRectUpdateInfo_h
+#pragma once
 
 #include <WebCore/FloatRect.h>
+#include <wtf/MonotonicTime.h>
+#include <wtf/text/WTFString.h>
 
 namespace IPC {
 class Decoder;
 class Encoder;
+}
+
+namespace WebCore {
+class TextStream;
 }
 
 namespace WebKit {
@@ -40,12 +45,13 @@ public:
     VisibleContentRectUpdateInfo() = default;
 
     VisibleContentRectUpdateInfo(const WebCore::FloatRect& exposedContentRect, const WebCore::FloatRect& unobscuredContentRect,
-        const WebCore::FloatRect& unobscuredRectInScrollViewCoordinates, const WebCore::FloatRect& customFixedPositionRect,
-        const WebCore::FloatSize& obscuredInset, double scale, bool inStableState, bool isChangingObscuredInsetsInteractively, bool allowShrinkToFit, bool enclosedInScrollableAncestorView,
-        double timestamp, double horizontalVelocity, double verticalVelocity, double scaleChangeRate, uint64_t lastLayerTreeTransactionId)
+        const WebCore::FloatRect& unobscuredRectInScrollViewCoordinates, const WebCore::FloatRect& unobscuredContentRectRespectingInputViewBounds, const WebCore::FloatRect& customFixedPositionRect,
+        const WebCore::FloatSize& obscuredInset, double scale, bool inStableState, bool isFirstUpdateForNewViewSize, bool isChangingObscuredInsetsInteractively, bool allowShrinkToFit, bool enclosedInScrollableAncestorView,
+        MonotonicTime timestamp, double horizontalVelocity, double verticalVelocity, double scaleChangeRate, uint64_t lastLayerTreeTransactionId)
         : m_exposedContentRect(exposedContentRect)
         , m_unobscuredContentRect(unobscuredContentRect)
         , m_unobscuredRectInScrollViewCoordinates(unobscuredRectInScrollViewCoordinates)
+        , m_unobscuredContentRectRespectingInputViewBounds(unobscuredContentRectRespectingInputViewBounds)
         , m_customFixedPositionRect(customFixedPositionRect)
         , m_obscuredInset(obscuredInset)
         , m_lastLayerTreeTransactionID(lastLayerTreeTransactionId)
@@ -55,6 +61,7 @@ public:
         , m_verticalVelocity(verticalVelocity)
         , m_scaleChangeRate(scaleChangeRate)
         , m_inStableState(inStableState)
+        , m_isFirstUpdateForNewViewSize(isFirstUpdateForNewViewSize)
         , m_isChangingObscuredInsetsInteractively(isChangingObscuredInsetsInteractively)
         , m_allowShrinkToFit(allowShrinkToFit)
         , m_enclosedInScrollableAncestorView(enclosedInScrollableAncestorView)
@@ -64,16 +71,18 @@ public:
     const WebCore::FloatRect& exposedContentRect() const { return m_exposedContentRect; }
     const WebCore::FloatRect& unobscuredContentRect() const { return m_unobscuredContentRect; }
     const WebCore::FloatRect& unobscuredRectInScrollViewCoordinates() const { return m_unobscuredRectInScrollViewCoordinates; }
+    const WebCore::FloatRect& unobscuredContentRectRespectingInputViewBounds() const { return m_unobscuredContentRectRespectingInputViewBounds; }
     const WebCore::FloatRect& customFixedPositionRect() const { return m_customFixedPositionRect; }
     const WebCore::FloatSize obscuredInset() const { return m_obscuredInset; }
 
     double scale() const { return m_scale; }
     bool inStableState() const { return m_inStableState; }
+    bool isFirstUpdateForNewViewSize() const { return m_isFirstUpdateForNewViewSize; }
     bool isChangingObscuredInsetsInteractively() const { return m_isChangingObscuredInsetsInteractively; }
     bool allowShrinkToFit() const { return m_allowShrinkToFit; }
     bool enclosedInScrollableAncestorView() const { return m_enclosedInScrollableAncestorView; }
 
-    double timestamp() const { return m_timestamp; }
+    MonotonicTime timestamp() const { return m_timestamp; }
     double horizontalVelocity() const { return m_horizontalVelocity; }
     double verticalVelocity() const { return m_verticalVelocity; }
     double scaleChangeRate() const { return m_scaleChangeRate; }
@@ -83,19 +92,23 @@ public:
     void encode(IPC::Encoder&) const;
     static bool decode(IPC::Decoder&, VisibleContentRectUpdateInfo&);
 
+    String dump() const;
+
 private:
     WebCore::FloatRect m_exposedContentRect;
     WebCore::FloatRect m_unobscuredContentRect;
     WebCore::FloatRect m_unobscuredRectInScrollViewCoordinates;
-    WebCore::FloatRect m_customFixedPositionRect;
+    WebCore::FloatRect m_unobscuredContentRectRespectingInputViewBounds;
+    WebCore::FloatRect m_customFixedPositionRect; // When visual viewports are enabled, this is the layout viewport.
     WebCore::FloatSize m_obscuredInset;
     uint64_t m_lastLayerTreeTransactionID { 0 };
     double m_scale { -1 };
-    double m_timestamp { 0 };
+    MonotonicTime m_timestamp;
     double m_horizontalVelocity { 0 };
     double m_verticalVelocity { 0 };
     double m_scaleChangeRate { 0 };
     bool m_inStableState { false };
+    bool m_isFirstUpdateForNewViewSize { false };
     bool m_isChangingObscuredInsetsInteractively { false };
     bool m_allowShrinkToFit { false };
     bool m_enclosedInScrollableAncestorView { false };
@@ -113,10 +126,11 @@ inline bool operator==(const VisibleContentRectUpdateInfo& a, const VisibleConte
         && a.verticalVelocity() == b.verticalVelocity()
         && a.scaleChangeRate() == b.scaleChangeRate()
         && a.inStableState() == b.inStableState()
+        && a.isFirstUpdateForNewViewSize() == b.isFirstUpdateForNewViewSize()
         && a.allowShrinkToFit() == b.allowShrinkToFit()
         && a.enclosedInScrollableAncestorView() == b.enclosedInScrollableAncestorView();
 }
 
-} // namespace WebKit
+WebCore::TextStream& operator<<(WebCore::TextStream&, const VisibleContentRectUpdateInfo&);
 
-#endif // VisibleContentRectUpdateInfo_h
+} // namespace WebKit

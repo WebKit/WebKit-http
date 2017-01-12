@@ -40,11 +40,15 @@ enum class GetAllType;
 struct IDBGetAllRecordsData {
     IDBKeyRangeData keyRangeData;
     IndexedDB::GetAllType getAllType;
-    Optional<uint32_t> count;
+    std::optional<uint32_t> count;
     uint64_t objectStoreIdentifier;
     uint64_t indexIdentifier;
 
     IDBGetAllRecordsData isolatedCopy() const;
+
+#if !LOG_DISABLED
+    String loggingString() const;
+#endif
 
     template<class Encoder> void encode(Encoder&) const;
     template<class Decoder> static bool decode(Decoder&, IDBGetAllRecordsData&);

@@ -30,7 +30,7 @@
 #include "HTMLParserIdioms.h"
 #include "SpaceSplitString.h"
 #include <wtf/HashSet.h>
-#include <wtf/TemporaryChange.h>
+#include <wtf/SetForScope.h>
 #include <wtf/text/AtomicStringHash.h>
 #include <wtf/text/StringBuilder.h>
 
@@ -133,7 +133,7 @@ ExceptionOr<void> DOMTokenList::remove(const AtomicString& token)
     return removeInternal(&token.string(), 1);
 }
 
-ExceptionOr<bool> DOMTokenList::toggle(const AtomicString& token, Optional<bool> force)
+ExceptionOr<bool> DOMTokenList::toggle(const AtomicString& token, std::optional<bool> force)
 {
     auto result = validateToken(token);
     if (result.hasException())
@@ -142,7 +142,7 @@ ExceptionOr<bool> DOMTokenList::toggle(const AtomicString& token, Optional<bool>
     auto& tokens = this->tokens();
 
     if (tokens.contains(token)) {
-        if (!force.valueOr(false)) {
+        if (!force.value_or(false)) {
             tokens.removeFirst(token);
             updateAssociatedAttributeFromTokens();
             return false;
@@ -252,7 +252,7 @@ void DOMTokenList::updateAssociatedAttributeFromTokens()
     }
     AtomicString serializedValue = builder.toAtomicString();
 
-    TemporaryChange<bool> inAttributeUpdate(m_inUpdateAssociatedAttributeFromTokens, true);
+    SetForScope<bool> inAttributeUpdate(m_inUpdateAssociatedAttributeFromTokens, true);
     m_element.setAttribute(m_attributeName, serializedValue);
 }
 

@@ -78,6 +78,8 @@ enum class WaitForOption {
     } \
 while (0)
 
+class MachMessage;
+
 class Connection : public ThreadSafeRefCounted<Connection> {
 public:
     class Client : public MessageReceiver {
@@ -165,7 +167,7 @@ public:
     void postConnectionDidCloseOnConnectionWorkQueue();
 
     template<typename T> bool send(T&& message, uint64_t destinationID, OptionSet<SendOption> sendOptions = { });
-    template<typename T> void sendWithReply(T&& message, uint64_t destinationID, FunctionDispatcher& replyDispatcher, Function<void (Optional<typename CodingType<typename T::Reply>::Type>)>&& replyHandler);
+    template<typename T> void sendWithReply(T&& message, uint64_t destinationID, FunctionDispatcher& replyDispatcher, Function<void (std::optional<typename CodingType<typename T::Reply>::Type>)>&& replyHandler);
     template<typename T> bool sendSync(T&& message, typename T::Reply&& reply, uint64_t destinationID, Seconds timeout = Seconds::infinity(), OptionSet<SendSyncOption> sendSyncOptions = { });
     template<typename T> bool waitForAndDispatchImmediately(uint64_t destinationID, Seconds timeout, OptionSet<WaitForOption> waitForOptions = { });
 
@@ -239,7 +241,11 @@ private:
     void didReceiveSyncReply(OptionSet<SendSyncOption>);
 
     Seconds timeoutRespectingIgnoreTimeoutsForTesting(Seconds) const;
-    
+
+#if PLATFORM(COCOA)
+    bool sendMessage(std::unique_ptr<MachMessage>);
+#endif
+
     Client& m_client;
     bool m_isServer;
     std::atomic<bool> m_isValid { true };
@@ -312,14 +318,15 @@ private:
 #elif OS(DARWIN)
     // Called on the connection queue.
     void receiveSourceEventHandler();
-    void initializeDeadNameSource();
+    void initializeSendSource();
 
     mach_port_t m_sendPort;
-    dispatch_source_t m_deadNameSource;
+    dispatch_source_t m_sendSource;
 
     mach_port_t m_receivePort;
-    dispatch_source_t m_receivePortDataAvailableSource;
+    dispatch_source_t m_receiveSource;
 
+    std::unique_ptr<MachMessage> m_pendingOutgoingMachMessage;
 #if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED <= 101000
     void exceptionSourceEventHandler();
 
@@ -345,7 +352,7 @@ bool Connection::send(T&& message, uint64_t destinationID, OptionSet<SendOption>
 }
 
 template<typename T>
-void Connection::sendWithReply(T&& message, uint64_t destinationID, FunctionDispatcher& replyDispatcher, Function<void (Optional<typename CodingType<typename T::Reply>::Type>)>&& replyHandler)
+void Connection::sendWithReply(T&& message, uint64_t destinationID, FunctionDispatcher& replyDispatcher, Function<void (std::optional<typename CodingType<typename T::Reply>::Type>)>&& replyHandler)
 {
     uint64_t requestID = 0;
     std::unique_ptr<Encoder> encoder = createSyncMessageEncoder(T::receiverName(), T::name(), destinationID, requestID);
@@ -361,7 +368,7 @@ void Connection::sendWithReply(T&& message, uint64_t destinationID, FunctionDisp
             }
         }
 
-        replyHandler(Nullopt);
+        replyHandler(std::nullopt);
     });
 }
 

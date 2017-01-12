@@ -112,6 +112,7 @@ using namespace HTMLNames;
 // Post value change notifications for password fields or elements contained in password fields at a 40hz interval to thwart analysis of typing cadence
 static double AccessibilityPasswordValueChangeNotificationInterval = 0.025;
 static double AccessibilityLiveRegionChangedNotificationInterval = 0.020;
+static double AccessibilityFocusAriaModalNodeNotificationInterval = 0.050;
 
 AccessibilityObjectInclusion AXComputedObjectAttributeCache::getIgnored(AXID id) const
 {
@@ -187,6 +188,7 @@ AXObjectCache::AXObjectCache(Document& document)
     , m_notificationPostTimer(*this, &AXObjectCache::notificationPostTimerFired)
     , m_passwordNotificationPostTimer(*this, &AXObjectCache::passwordNotificationPostTimerFired)
     , m_liveRegionChangedPostTimer(*this, &AXObjectCache::liveRegionChangedNotificationPostTimerFired)
+    , m_focusAriaModalNodeTimer(*this, &AXObjectCache::focusAriaModalNodeTimerFired)
     , m_currentAriaModalNode(nullptr)
 {
     findAriaModalNodes();
@@ -196,6 +198,7 @@ AXObjectCache::~AXObjectCache()
 {
     m_notificationPostTimer.stop();
     m_liveRegionChangedPostTimer.stop();
+    m_focusAriaModalNodeTimer.stop();
 
     for (const auto& object : m_objects.values()) {
         detachWrapper(object.get(), CacheDestroyed);
@@ -708,6 +711,8 @@ void AXObjectCache::remove(RenderObject* renderer)
     AXID axID = m_renderObjectMapping.get(renderer);
     remove(axID);
     m_renderObjectMapping.remove(renderer);
+    if (is<RenderBlock>(*renderer))
+        m_deferredIsIgnoredChangeList.remove(downcast<RenderBlock>(renderer));
 }
 
 void AXObjectCache::remove(Node* node)
@@ -1348,6 +1353,44 @@ void AXObjectCache::liveRegionChangedNotificationPostTimerFired()
     m_liveRegionObjectsSet.clear();
 }
 
+static AccessibilityObject* firstFocusableChild(AccessibilityObject* obj)
+{
+    if (!obj)
+        return nullptr;
+    
+    for (auto* child = obj->firstChild(); child; child = child->nextSibling()) {
+        if (child->canSetFocusAttribute())
+            return child;
+        if (AccessibilityObject* focusable = firstFocusableChild(child))
+            return focusable;
+    }
+    return nullptr;
+}
+
+void AXObjectCache::focusAriaModalNode()
+{
+    if (m_focusAriaModalNodeTimer.isActive())
+        m_focusAriaModalNodeTimer.stop();
+    
+    m_focusAriaModalNodeTimer.startOneShot(AccessibilityFocusAriaModalNodeNotificationInterval);
+}
+
+void AXObjectCache::focusAriaModalNodeTimerFired()
+{
+    if (!m_currentAriaModalNode)
+        return;
+    
+    // Don't set focus if we are already focusing onto some element within
+    // the dialog.
+    if (m_currentAriaModalNode->contains(document().focusedElement()))
+        return;
+    
+    if (AccessibilityObject* currentAriaModalNodeObject = getOrCreate(m_currentAriaModalNode)) {
+        if (AccessibilityObject* focusable = firstFocusableChild(currentAriaModalNodeObject))
+            focusable->setFocused(true);
+    }
+}
+
 void AXObjectCache::handleScrollbarUpdate(ScrollView* view)
 {
     if (!view)
@@ -1437,6 +1480,9 @@ void AXObjectCache::handleAriaModalChange(Node* node)
         m_ariaModalNodesSet.remove(node);
         updateCurrentAriaModalNode();
     }
+    if (m_currentAriaModalNode)
+        focusAriaModalNode();
+    
     startCachingComputedObjectAttributesUntilTreeMutates();
 }
 
@@ -2618,6 +2664,18 @@ bool AXObjectCache::nodeIsTextControl(const Node* node)
     return axObject && axObject->isTextControl();
 }
     
+void AXObjectCache::performDeferredIsIgnoredChange()
+{
+    for (auto* renderer : m_deferredIsIgnoredChangeList)
+        recomputeIsIgnored(renderer);
+    m_deferredIsIgnoredChangeList.clear();
+}
+
+void AXObjectCache::recomputeDeferredIsIgnored(RenderBlock& renderer)
+{
+    m_deferredIsIgnoredChangeList.add(&renderer);
+}
+
 bool isNodeAriaVisible(Node* node)
 {
     if (!node)

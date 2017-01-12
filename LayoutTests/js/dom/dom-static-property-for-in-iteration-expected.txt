@@ -126,7 +126,6 @@ PASS a["innerHTML"] is nerget
 PASS a["outerHTML"] is <a id="foo" href="bar">nerget</a>
 PASS a["className"] is 
 PASS a["classList"] is 
-PASS a["uiactions"] is 
 PASS a["webkitRegionOverset"] is undefined
 PASS a["shadowRoot"] is null
 PASS a["slot"] is 
@@ -137,7 +136,6 @@ PASS a["firstElementChild"] is null
 PASS a["lastElementChild"] is null
 PASS a["childElementCount"] is 0
 PASS a["assignedSlot"] is null
-PASS a["ALLOW_KEYBOARD_INPUT"] is 1
 PASS a["nodeName"] is A
 PASS a["nodeValue"] is null
 PASS a["nodeType"] is 1

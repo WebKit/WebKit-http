@@ -27,7 +27,6 @@
 #include "CSSCustomPropertyValue.h"
 #include "CSSParser.h"
 #include "CSSPropertyNames.h"
-#include "CSSVariableDependentValue.h"
 #include "CursorList.h"
 #include "FloatRoundedRect.h"
 #include "FontCascade.h"
@@ -113,7 +112,7 @@ std::unique_ptr<RenderStyle> RenderStyle::clonePtr(const RenderStyle& style)
 RenderStyle RenderStyle::createAnonymousStyleWithDisplay(const RenderStyle& parentStyle, EDisplay display)
 {
     auto newStyle = create();
-    newStyle.inheritFrom(&parentStyle);
+    newStyle.inheritFrom(parentStyle);
     newStyle.inheritUnicodeBidiFrom(&parentStyle);
     newStyle.setDisplay(display);
     return newStyle;
@@ -124,7 +123,7 @@ RenderStyle RenderStyle::createStyleInheritingFromPseudoStyle(const RenderStyle&
     ASSERT(pseudoStyle.styleType() == BEFORE || pseudoStyle.styleType() == AFTER);
 
     auto style = create();
-    style.inheritFrom(&pseudoStyle);
+    style.inheritFrom(pseudoStyle);
     return style;
 }
 
@@ -268,20 +267,14 @@ ContentDistributionType RenderStyle::resolvedAlignContentDistribution(const Styl
     return resolvedContentAlignmentDistribution(alignContent(), normalValueBehavior);
 }
 
-void RenderStyle::inheritFrom(const RenderStyle* inheritParent, IsAtShadowBoundary isAtShadowBoundary)
+void RenderStyle::inheritFrom(const RenderStyle& inheritParent)
 {
-    if (isAtShadowBoundary == AtShadowBoundary) {
-        // Even if surrounding content is user-editable, shadow DOM should act as a single unit, and not necessarily be editable
-        EUserModify currentUserModify = userModify();
-        rareInheritedData = inheritParent->rareInheritedData;
-        setUserModify(currentUserModify);
-    } else
-        rareInheritedData = inheritParent->rareInheritedData;
-    inherited = inheritParent->inherited;
-    inherited_flags = inheritParent->inherited_flags;
+    rareInheritedData = inheritParent.rareInheritedData;
+    inherited = inheritParent.inherited;
+    inherited_flags = inheritParent.inherited_flags;
 
-    if (m_svgStyle != inheritParent->m_svgStyle)
-        m_svgStyle.access()->inheritFrom(inheritParent->m_svgStyle.get());
+    if (m_svgStyle != inheritParent.m_svgStyle)
+        m_svgStyle.access()->inheritFrom(inheritParent.m_svgStyle.get());
 }
 
 void RenderStyle::copyNonInheritedFrom(const RenderStyle* other)
@@ -759,7 +752,22 @@ bool RenderStyle::changeRequiresLayout(const RenderStyle& other, unsigned& chang
                 return true;
         }
     }
-    
+
+    bool hasFirstLineStyle = hasPseudoStyle(FIRST_LINE);
+    if (hasFirstLineStyle != other.hasPseudoStyle(FIRST_LINE))
+        return true;
+    if (hasFirstLineStyle) {
+        auto* firstLineStyle = getCachedPseudoStyle(FIRST_LINE);
+        if (!firstLineStyle)
+            return true;
+        auto* otherFirstLineStyle = other.getCachedPseudoStyle(FIRST_LINE);
+        if (!otherFirstLineStyle)
+            return true;
+        // FIXME: Not all first line style changes actually need layout.
+        if (*firstLineStyle != *otherFirstLineStyle)
+            return true;
+    }
+
     return false;
 }
 
@@ -1004,11 +1012,11 @@ void RenderStyle::setContent(RefPtr<StyleImage>&& image, bool add)
         return;
         
     if (add) {
-        appendContent(std::make_unique<ImageContentData>(image));
+        appendContent(std::make_unique<ImageContentData>(image.releaseNonNull()));
         return;
     }
 
-    rareNonInheritedData.access()->m_content = std::make_unique<ImageContentData>(WTFMove(image));
+    rareNonInheritedData.access()->m_content = std::make_unique<ImageContentData>(image.releaseNonNull());
     if (!rareNonInheritedData.access()->m_altText.isNull())
         rareNonInheritedData.access()->m_content->setAltText(rareNonInheritedData.access()->m_altText);
 }
@@ -1950,64 +1958,135 @@ void RenderStyle::setColumnStylesFromPaginationMode(const Pagination::Mode& pagi
 }
 
 #if ENABLE(CSS_SCROLL_SNAP)
-LengthSize RenderStyle::initialScrollSnapDestination()
+ScrollSnapType RenderStyle::initialScrollSnapType()
 {
-    return defaultScrollSnapDestination();
+    return { };
 }
 
-Vector<LengthSize> RenderStyle::initialScrollSnapCoordinates()
+ScrollSnapAlign RenderStyle::initialScrollSnapAlign()
 {
-    return Vector<LengthSize>();
+    return { };
 }
 
-const ScrollSnapPoints* RenderStyle::scrollSnapPointsX() const
+const StyleScrollSnapArea& RenderStyle::scrollSnapArea() const
 {
-    return rareNonInheritedData->m_scrollSnapPoints->xPoints.get();
+    return *rareNonInheritedData->m_scrollSnapArea;
 }
 
-const ScrollSnapPoints* RenderStyle::scrollSnapPointsY() const
+const StyleScrollSnapPort& RenderStyle::scrollSnapPort() const
 {
-    return rareNonInheritedData->m_scrollSnapPoints->yPoints.get();
+    return *rareNonInheritedData->m_scrollSnapPort;
 }
 
-const LengthSize& RenderStyle::scrollSnapDestination() const
+const ScrollSnapType& RenderStyle::scrollSnapType() const
 {
-    return rareNonInheritedData->m_scrollSnapPoints->destination;
+    return rareNonInheritedData->m_scrollSnapPort->type;
 }
 
-const Vector<LengthSize>& RenderStyle::scrollSnapCoordinates() const
+const LengthBox& RenderStyle::scrollPadding() const
 {
-    return rareNonInheritedData->m_scrollSnapPoints->coordinates;
+    return rareNonInheritedData->m_scrollSnapPort->scrollPadding;
 }
 
-void RenderStyle::setScrollSnapPointsX(std::unique_ptr<ScrollSnapPoints> points)
+const Length& RenderStyle::scrollPaddingTop() const
 {
-    if (rareNonInheritedData->m_scrollSnapPoints->xPoints.get() == points.get())
-        return;
-    rareNonInheritedData.access()->m_scrollSnapPoints.access()->xPoints = WTFMove(points);
+    return scrollPadding().top();
 }
 
-void RenderStyle::setScrollSnapPointsY(std::unique_ptr<ScrollSnapPoints> points)
+const Length& RenderStyle::scrollPaddingBottom() const
 {
-    if (rareNonInheritedData->m_scrollSnapPoints->yPoints.get() == points.get())
-        return;
-    rareNonInheritedData.access()->m_scrollSnapPoints.access()->yPoints = WTFMove(points);
+    return scrollPadding().bottom();
 }
 
-void RenderStyle::setScrollSnapDestination(LengthSize destination)
+const Length& RenderStyle::scrollPaddingLeft() const
 {
-    if (rareNonInheritedData->m_scrollSnapPoints->destination == destination)
-        return;
-    rareNonInheritedData.access()->m_scrollSnapPoints.access()->destination = WTFMove(destination);
+    return scrollPadding().left();
 }
 
-void RenderStyle::setScrollSnapCoordinates(Vector<LengthSize> coordinates)
+const Length& RenderStyle::scrollPaddingRight() const
 {
-    if (rareNonInheritedData->m_scrollSnapPoints->coordinates == coordinates)
-        return;
-    rareNonInheritedData.access()->m_scrollSnapPoints.access()->coordinates = WTFMove(coordinates);
+    return scrollPadding().right();
 }
 
+const ScrollSnapAlign& RenderStyle::scrollSnapAlign() const
+{
+    return rareNonInheritedData->m_scrollSnapArea->alignment;
+}
+
+const LengthBox& RenderStyle::scrollSnapMargin() const
+{
+    return rareNonInheritedData->m_scrollSnapArea->scrollSnapMargin;
+}
+
+const Length& RenderStyle::scrollSnapMarginTop() const
+{
+    return scrollSnapMargin().top();
+}
+
+const Length& RenderStyle::scrollSnapMarginBottom() const
+{
+    return scrollSnapMargin().bottom();
+}
+
+const Length& RenderStyle::scrollSnapMarginLeft() const
+{
+    return scrollSnapMargin().left();
+}
+
+const Length& RenderStyle::scrollSnapMarginRight() const
+{
+    return scrollSnapMargin().right();
+}
+
+void RenderStyle::setScrollSnapType(const ScrollSnapType& type)
+{
+    rareNonInheritedData.access()->m_scrollSnapPort.access()->type = type;
+}
+
+void RenderStyle::setScrollPaddingTop(const Length& length)
+{
+    rareNonInheritedData.access()->m_scrollSnapPort.access()->scrollPadding.setTop(length);
+}
+
+void RenderStyle::setScrollPaddingBottom(const Length& length)
+{
+    rareNonInheritedData.access()->m_scrollSnapPort.access()->scrollPadding.setBottom(length);
+}
+
+void RenderStyle::setScrollPaddingLeft(const Length& length)
+{
+    rareNonInheritedData.access()->m_scrollSnapPort.access()->scrollPadding.setLeft(length);
+}
+
+void RenderStyle::setScrollPaddingRight(const Length& length)
+{
+    rareNonInheritedData.access()->m_scrollSnapPort.access()->scrollPadding.setRight(length);
+}
+
+void RenderStyle::setScrollSnapAlign(const ScrollSnapAlign& alignment)
+{
+    rareNonInheritedData.access()->m_scrollSnapArea.access()->alignment = alignment;
+}
+
+void RenderStyle::setScrollSnapMarginTop(const Length& length)
+{
+    rareNonInheritedData.access()->m_scrollSnapArea.access()->scrollSnapMargin.setTop(length);
+}
+
+void RenderStyle::setScrollSnapMarginBottom(const Length& length)
+{
+    rareNonInheritedData.access()->m_scrollSnapArea.access()->scrollSnapMargin.setBottom(length);
+}
+
+void RenderStyle::setScrollSnapMarginLeft(const Length& length)
+{
+    rareNonInheritedData.access()->m_scrollSnapArea.access()->scrollSnapMargin.setLeft(length);
+}
+
+void RenderStyle::setScrollSnapMarginRight(const Length& length)
+{
+    rareNonInheritedData.access()->m_scrollSnapArea.access()->scrollSnapMargin.setRight(length);
+}
 #endif
 
 bool RenderStyle::hasReferenceFilterOnly() const

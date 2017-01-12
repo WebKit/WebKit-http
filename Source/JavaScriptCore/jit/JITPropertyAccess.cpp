@@ -1008,7 +1008,6 @@ void JIT::emit_op_put_to_scope(Instruction* currentInstruction)
         switch (resolveType) {
         case GlobalProperty:
         case GlobalPropertyWithVarInjectionChecks: {
-            emitWriteBarrier(m_codeBlock->globalObject(), value, ShouldFilterValue);
             emitLoadWithStructureCheck(scope, structureSlot); // Structure check covers var injection.
             emitGetVirtualRegister(value, regT2);
             
@@ -1016,6 +1015,7 @@ void JIT::emit_op_put_to_scope(Instruction* currentInstruction)
             loadPtr(operandSlot, regT1);
             negPtr(regT1);
             storePtr(regT2, BaseIndex(regT0, regT1, TimesEight, (firstOutOfLineOffset - 2) * sizeof(EncodedJSValue)));
+            emitWriteBarrier(m_codeBlock->globalObject(), value, ShouldFilterValue);
             break;
         }
         case GlobalVar:
@@ -1024,7 +1024,6 @@ void JIT::emit_op_put_to_scope(Instruction* currentInstruction)
         case GlobalLexicalVarWithVarInjectionChecks: {
             JSScope* constantScope = JSScope::constantScopeForCodeBlock(resolveType, m_codeBlock);
             RELEASE_ASSERT(constantScope);
-            emitWriteBarrier(constantScope, value, ShouldFilterValue);
             emitVarInjectionCheck(needsVarInjectionChecks(resolveType));
             if (!isInitialization(getPutInfo.initializationMode()) && (resolveType == GlobalLexicalVar || resolveType == GlobalLexicalVarWithVarInjectionChecks)) {
                 // We need to do a TDZ check here because we can't always prove we need to emit TDZ checks statically.
@@ -1038,14 +1037,15 @@ void JIT::emit_op_put_to_scope(Instruction* currentInstruction)
                 emitPutGlobalVariableIndirect(bitwise_cast<JSValue**>(operandSlot), value, bitwise_cast<WatchpointSet**>(&currentInstruction[5]));
             else
                 emitPutGlobalVariable(bitwise_cast<JSValue*>(*operandSlot), value, currentInstruction[5].u.watchpointSet);
+            emitWriteBarrier(constantScope, value, ShouldFilterValue);
             break;
         }
         case LocalClosureVar:
         case ClosureVar:
         case ClosureVarWithVarInjectionChecks:
-            emitWriteBarrier(scope, value, ShouldFilterValue);
             emitVarInjectionCheck(needsVarInjectionChecks(resolveType));
             emitPutClosureVar(scope, *operandSlot, value, currentInstruction[5].u.watchpointSet);
+            emitWriteBarrier(scope, value, ShouldFilterValue);
             break;
         case ModuleVar:
         case Dynamic:
@@ -1157,11 +1157,11 @@ void JIT::emit_op_put_to_arguments(Instruction* currentInstruction)
     int index = currentInstruction[2].u.operand;
     int value = currentInstruction[3].u.operand;
     
-    emitWriteBarrier(arguments, value, ShouldFilterValue);
-    
     emitGetVirtualRegister(arguments, regT0);
     emitGetVirtualRegister(value, regT1);
     store64(regT1, Address(regT0, DirectArguments::storageOffset() + index * sizeof(WriteBarrier<Unknown>)));
+
+    emitWriteBarrier(arguments, value, ShouldFilterValue);
 }
 
 #endif // USE(JSVALUE64)
@@ -1324,7 +1324,7 @@ void JIT::privateCompileGetByValWithCachedId(ByValInfo* byValInfo, ReturnAddress
 
     JITGetByIdGenerator gen = emitGetByValWithCachedId(byValInfo, currentInstruction, propertyName, fastDoneCase, slowDoneCase, slowCases);
 
-    ConcurrentJITLocker locker(m_codeBlock->m_lock);
+    ConcurrentJSLocker locker(m_codeBlock->m_lock);
     LinkBuffer patchBuffer(*m_vm, *this, m_codeBlock);
     patchBuffer.link(slowCases, CodeLocationLabel(MacroAssemblerCodePtr::createFromExecutableAddress(returnAddress.value())).labelAtOffset(byValInfo->returnAddressToSlowPath));
     patchBuffer.link(fastDoneCase, byValInfo->badTypeJump.labelAtOffset(byValInfo->badTypeJumpToDone));
@@ -1415,7 +1415,7 @@ void JIT::privateCompilePutByValWithCachedId(ByValInfo* byValInfo, ReturnAddress
 
     JITPutByIdGenerator gen = emitPutByValWithCachedId(byValInfo, currentInstruction, putKind, propertyName, doneCases, slowCases);
 
-    ConcurrentJITLocker locker(m_codeBlock->m_lock);
+    ConcurrentJSLocker locker(m_codeBlock->m_lock);
     LinkBuffer patchBuffer(*m_vm, *this, m_codeBlock);
     patchBuffer.link(slowCases, CodeLocationLabel(MacroAssemblerCodePtr::createFromExecutableAddress(returnAddress.value())).labelAtOffset(byValInfo->returnAddressToSlowPath));
     patchBuffer.link(doneCases, byValInfo->badTypeJump.labelAtOffset(byValInfo->badTypeJumpToDone));
@@ -1458,7 +1458,7 @@ JIT::JumpList JIT::emitDirectArgumentsGetByVal(Instruction*, PatchableJump& badT
     badType = patchableBranch32(NotEqual, scratch, TrustedImm32(DirectArgumentsType));
     
     slowCases.append(branch32(AboveOrEqual, property, Address(base, DirectArguments::offsetOfLength())));
-    slowCases.append(branchTestPtr(NonZero, Address(base, DirectArguments::offsetOfOverrides())));
+    slowCases.append(branchTestPtr(NonZero, Address(base, DirectArguments::offsetOfMappedArguments())));
     
     zeroExtend32ToPtr(property, scratch);
     loadValue(BaseIndex(base, scratch, TimesEight, DirectArguments::storageOffset()), result);

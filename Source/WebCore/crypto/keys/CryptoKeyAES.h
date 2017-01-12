@@ -68,12 +68,13 @@ public:
 
     static RefPtr<CryptoKeyAES> generate(CryptoAlgorithmIdentifier, size_t lengthBits, bool extractable, CryptoKeyUsageBitmap);
     static RefPtr<CryptoKeyAES> importRaw(CryptoAlgorithmIdentifier, Vector<uint8_t>&& keyData, bool extractable, CryptoKeyUsageBitmap);
-    using CheckAlgCallback = WTF::Function<bool(size_t, const Optional<String>&)>;
+    using CheckAlgCallback = WTF::Function<bool(size_t, const std::optional<String>&)>;
     static RefPtr<CryptoKeyAES> importJwk(CryptoAlgorithmIdentifier, JsonWebKey&&, bool extractable, CryptoKeyUsageBitmap, CheckAlgCallback&&);
 
     CryptoKeyClass keyClass() const final { return CryptoKeyClass::AES; }
 
     const Vector<uint8_t>& key() const { return m_key; }
+    JsonWebKey exportJwk() const;
 
 private:
     CryptoKeyAES(CryptoAlgorithmIdentifier, const Vector<uint8_t>& key, bool extractable, CryptoKeyUsageBitmap);
