@@ -152,11 +152,13 @@ void ImageBuffer::convertToLuminanceMask()
     genericConvertToLuminanceMask();
 }
 
-#if !USE(CAIRO) && !PLATFORM(QT)
+#if !USE(CAIRO)
+#if !PLATFORM(QT)
 PlatformLayer* ImageBuffer::platformLayer() const
 {
     return 0;
 }
+#endif
 
 bool ImageBuffer::copyToPlatformTexture(GraphicsContext3D&, GC3Denum, Platform3DObject, GC3Denum, bool, bool)
 {
