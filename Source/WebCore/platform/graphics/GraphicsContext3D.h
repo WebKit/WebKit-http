@@ -1417,7 +1417,7 @@ private:
 
     std::unique_ptr<ShaderNameHash> nameHashMapForShaders;
 
-    OwnPtr<Extensions3DOpenGLCommon> m_extensions;
+    std::unique_ptr<Extensions3DOpenGLCommon> m_extensions;
     friend class Extensions3DOpenGL;
     friend class Extensions3DOpenGLES;
     friend class Extensions3DOpenGLCommon;

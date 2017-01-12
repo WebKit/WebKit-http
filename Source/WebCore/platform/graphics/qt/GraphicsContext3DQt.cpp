@@ -420,7 +420,7 @@ GraphicsContext3D::GraphicsContext3D(GraphicsContext3D::Attributes attrs, HostWi
     , m_multisampleDepthStencilBuffer(0)
     , m_multisampleColorBuffer(0)
     , m_functions(0)
-    , m_private(adoptPtr(new GraphicsContext3DPrivate(this, hostWindow, renderStyle)))
+    , m_private(std::make_unique<GraphicsContext3DPrivate>(this, hostWindow, renderStyle))
 {
     if (!m_private->m_surface || !m_private->m_platformContext) {
         LOG_ERROR("GraphicsContext3D: GL context creation failed.");

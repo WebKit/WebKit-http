@@ -87,7 +87,7 @@ public:
 
     static std::unique_ptr<ImageBuffer> createCompatibleBuffer(const FloatSize&, float resolutionScale, ColorSpace, const GraphicsContext&, bool hasAlpha);
 #if PLATFORM(QT) && ENABLE(ACCELERATED_2D_CANVAS)
-    static PassOwnPtr<ImageBuffer> createCompatibleBuffer(const IntSize&, float resolutionScale, ColorSpace, QOpenGLContext*);
+    static std::unique_ptr<ImageBuffer> createCompatibleBuffer(const IntSize&, float resolutionScale, ColorSpace, QOpenGLContext*);
 #endif
 
     WEBCORE_EXPORT ~ImageBuffer();

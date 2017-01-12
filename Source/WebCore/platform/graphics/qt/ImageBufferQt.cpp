@@ -59,7 +59,7 @@ ImageBuffer::ImageBuffer(const IntSize& size, float /* resolutionScale */, Color
     if (!success)
         return;
 
-    m_context = adoptPtr(new GraphicsContext(m_data.m_painter));
+    m_context = std::make_unique<GraphicsContext>(m_data.m_painter);
 }
 #endif
 
@@ -72,7 +72,7 @@ ImageBuffer::ImageBuffer(const IntSize& size, float /* resolutionScale */, Color
     if (!success)
         return;
 
-    m_context = adoptPtr(new GraphicsContext(m_data.m_painter));
+    m_context = std::make_unique<GraphicsContext>(m_data.m_painter);
 }
 
 ImageBuffer::~ImageBuffer()
@@ -80,13 +80,13 @@ ImageBuffer::~ImageBuffer()
 }
 
 #if ENABLE(ACCELERATED_2D_CANVAS)
-PassOwnPtr<ImageBuffer> ImageBuffer::createCompatibleBuffer(const IntSize& size, float resolutionScale, ColorSpace colorSpace, QOpenGLContext* context)
+std::unique_ptr<ImageBuffer> ImageBuffer::createCompatibleBuffer(const IntSize& size, float resolutionScale, ColorSpace colorSpace, QOpenGLContext* context)
 {
     bool success = false;
-    OwnPtr<ImageBuffer> buf = adoptPtr(new ImageBuffer(size, resolutionScale, colorSpace, context, success));
+    std::unique_ptr<ImageBuffer> buf(new ImageBuffer(size, resolutionScale, colorSpace, context, success));
     if (!success)
         return nullptr;
-    return buf.release();
+    return buf;
 }
 #endif
 
