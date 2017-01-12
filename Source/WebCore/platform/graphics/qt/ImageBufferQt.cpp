@@ -97,7 +97,7 @@ GraphicsContext& ImageBuffer::context() const
     return *m_data.m_context;
 }
 
-PassRefPtr<Image> ImageBuffer::copyImage(BackingStoreCopy copyBehavior, ScaleBehavior) const
+RefPtr<Image> ImageBuffer::copyImage(BackingStoreCopy copyBehavior, ScaleBehavior) const
 {
     if (copyBehavior == CopyBackingStore)
         return m_data.m_impl->copyImage();
