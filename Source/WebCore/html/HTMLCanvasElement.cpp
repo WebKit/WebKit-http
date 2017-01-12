@@ -680,7 +680,7 @@ void HTMLCanvasElement::createImageBuffer() const
     } else
 #endif
     {
-        setImageBuffer(ImageBuffer::create(size(), renderingMode);
+        setImageBuffer(ImageBuffer::create(size(), renderingMode));
     }
     if (!m_imageBuffer)
         return;
