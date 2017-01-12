@@ -132,8 +132,8 @@ struct ImageBufferDataPrivateAccelerated : public TextureMapperPlatformLayer, pu
 
     QPaintDevice* paintDevice() override { return m_paintDevice; }
     QImage toQImage() const override;
-    PassRefPtr<Image> image() const override;
-    PassRefPtr<Image> copyImage() const override;
+    RefPtr<Image> image() const override;
+    RefPtr<Image> copyImage() const override;
     bool isAccelerated() const override { return true; }
     PlatformLayer* platformLayer() override { return this; }
 
@@ -182,12 +182,12 @@ QImage ImageBufferDataPrivateAccelerated::toQImage() const
     return m_paintDevice->toImage();
 }
 
-PassRefPtr<Image> ImageBufferDataPrivateAccelerated::image() const
+RefPtr<Image> ImageBufferDataPrivateAccelerated::image() const
 {
     return copyImage();
 }
 
-PassRefPtr<Image> ImageBufferDataPrivateAccelerated::copyImage() const
+RefPtr<Image> ImageBufferDataPrivateAccelerated::copyImage() const
 {
     return StillImage::create(QPixmap::fromImage(toQImage()));
 }
@@ -352,8 +352,8 @@ struct ImageBufferDataPrivateUnaccelerated : public ImageBufferDataPrivate {
     ImageBufferDataPrivateUnaccelerated(const IntSize& size);
     QPaintDevice* paintDevice() override { return m_pixmap.isNull() ? 0 : &m_pixmap; }
     QImage toQImage() const override;
-    PassRefPtr<Image> image() const override;
-    PassRefPtr<Image> copyImage() const override;
+    RefPtr<Image> image() const override;
+    RefPtr<Image> copyImage() const override;
     bool isAccelerated() const override { return false; }
     PlatformLayer* platformLayer() override { return 0; }
     void draw(GraphicsContext& destContext, const FloatRect& destRect,
@@ -391,12 +391,12 @@ QImage ImageBufferDataPrivateUnaccelerated::toQImage() const
     return image;
 }
 
-PassRefPtr<Image> ImageBufferDataPrivateUnaccelerated::image() const
+RefPtr<Image> ImageBufferDataPrivateUnaccelerated::image() const
 {
     return StillImage::createForRendering(&m_pixmap);
 }
 
-PassRefPtr<Image> ImageBufferDataPrivateUnaccelerated::copyImage() const
+RefPtr<Image> ImageBufferDataPrivateUnaccelerated::copyImage() const
 {
     return StillImage::create(m_pixmap);
 }
