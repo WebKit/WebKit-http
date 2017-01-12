@@ -940,11 +940,6 @@
 #define USE_TEXTURE_MAPPER_GL 1
 #endif
 
-/* Compositing on the UI-process in WebKit2 */
-#if USE(3D_GRAPHICS) && PLATFORM(QT)
-#define USE_COORDINATED_GRAPHICS 1
-#endif
-
 #if PLATFORM(COCOA)
 #define USE_PROTECTION_SPACE_AUTH_CALLBACK 1
 #endif
