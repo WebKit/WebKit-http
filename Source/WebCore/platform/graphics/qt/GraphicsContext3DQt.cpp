@@ -279,7 +279,8 @@ void GraphicsContext3DPrivate::paintToTextureMapper(TextureMapper& textureMapper
     m_context->markLayerComposited();
     blitMultisampleFramebufferAndRestoreContext();
 
-    if (textureMapper.accelerationMode() == TextureMapper::OpenGLMode) {
+    // QTFIXME: Restore SoftwareMode
+    if (true /*textureMapper.accelerationMode() == TextureMapper::OpenGLMode*/) {
         TextureMapperGL& texmapGL = static_cast<TextureMapperGL&>(textureMapper);
         TextureMapperGL::Flags flags = TextureMapperGL::ShouldFlipTexture | (m_context->m_attrs.alpha ? TextureMapperGL::ShouldBlend : 0);
         IntSize textureSize(m_context->m_currentWidth, m_context->m_currentHeight);

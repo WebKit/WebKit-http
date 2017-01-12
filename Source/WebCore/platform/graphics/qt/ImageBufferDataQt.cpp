@@ -295,7 +295,8 @@ void ImageBufferDataPrivateAccelerated::platformTransformColorSpace(const Vector
 void ImageBufferDataPrivateAccelerated::paintToTextureMapper(TextureMapper& textureMapper, const FloatRect& targetRect, const TransformationMatrix& matrix, float opacity)
 {
     bool canRenderDirectly = false;
-    if (textureMapper->accelerationMode() == TextureMapper::OpenGLMode) {
+    // QTFIXME: Restore SoftwareMode
+    if (true /*textureMapper->accelerationMode() == TextureMapper::OpenGLMode*/) {
         if (QOpenGLContext::areSharing(m_context->context(),
                                        static_cast<TextureMapperGL&>(textureMapper).graphicsContext3D()->platformGraphicsContext3D()))
             canRenderDirectly = true;
