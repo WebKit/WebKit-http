@@ -61,7 +61,6 @@ ALWAYS_INLINE static void doNothing() {}
 #define glFrontFace(...)                       LOOKUP_GL_FUNCTION(glFrontFace, __VA_ARGS__)
 #define glGenTextures(...)                     LOOKUP_GL_FUNCTION(glGenTextures, __VA_ARGS__)
 #define glGetBooleanv(...)                     LOOKUP_GL_FUNCTION(glGetBooleanv, __VA_ARGS__)
-#define glGetError(...)                        LOOKUP_GL_FUNCTION(glGetError, __VA_ARGS__)
 #define glGetFloatv(...)                       LOOKUP_GL_FUNCTION(glGetFloatv, __VA_ARGS__)
 #define glGetIntegerv(...)                     LOOKUP_GL_FUNCTION(glGetIntegerv, __VA_ARGS__)
 #define glGetString(...)                       LOOKUP_GL_FUNCTION(glGetString, __VA_ARGS__)

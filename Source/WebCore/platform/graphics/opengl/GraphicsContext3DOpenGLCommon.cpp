@@ -70,6 +70,7 @@
 #if PLATFORM(QT)
 #define FUNCTIONS m_functions
 #include "OpenGLShimsQt.h"
+#define glGetError(...)  m_functions->glGetError(__VA_ARGS__)
 #define glIsEnabled(...) m_functions->glIsEnabled(__VA_ARGS__)
 #elif USE(OPENGL_ES_2)
 #include "OpenGLESShims.h"
@@ -1016,7 +1017,7 @@ GC3Denum GraphicsContext3D::getError()
     }
 
     makeContextCurrent();
-    return ::glGetError();
+    return glGetError();
 }
 
 String GraphicsContext3D::getString(GC3Denum name)
