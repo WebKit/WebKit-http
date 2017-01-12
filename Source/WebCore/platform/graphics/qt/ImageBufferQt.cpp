@@ -60,7 +60,7 @@ ImageBuffer::ImageBuffer(const IntSize& size, float /* resolutionScale */, Color
     if (!success)
         return;
 
-    m_context = std::make_unique<GraphicsContext>(m_data.m_painter);
+    m_data.m_context = std::make_unique<GraphicsContext>(m_data.m_painter);
 }
 #endif
 
@@ -73,7 +73,7 @@ ImageBuffer::ImageBuffer(const FloatSize& size, float /* resolutionScale */, Col
     if (!success)
         return;
 
-    m_context = std::make_unique<GraphicsContext>(m_data.m_painter);
+    m_data.m_context = std::make_unique<GraphicsContext>(m_data.m_painter);
 }
 
 ImageBuffer::~ImageBuffer()

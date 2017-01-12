@@ -71,6 +71,7 @@ public:
 #endif
     ~ImageBufferData();
     QPainter* m_painter;
+    std::unique_ptr<GraphicsContext> m_context;
     ImageBufferDataPrivate* m_impl;
 protected:
     void initPainter();
