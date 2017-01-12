@@ -170,8 +170,8 @@ ImageBufferDataPrivateAccelerated::ImageBufferDataPrivateAccelerated(const IntSi
 
 ImageBufferDataPrivateAccelerated::~ImageBufferDataPrivateAccelerated()
 {
-    if (TextureMapperPlatformLayer::Client* client = TextureMapperPlatformLayer::client())
-        client->platformLayerWasDestroyed();
+    if (client())
+        client()->platformLayerWillBeDestroyed();
     delete m_paintDevice;
     delete m_context;
 }
