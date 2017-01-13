@@ -216,7 +216,8 @@ void LauncherWindow::applyPrefs()
 {
     QWebSettings* settings = page()->settings();
 #ifndef QT_NO_OPENGL
-    settings->setAttribute(QWebSettings::AcceleratedCompositingEnabled, m_windowOptions.useCompositing && m_windowOptions.useQGLWidgetViewport);
+    settings->setAttribute(QWebSettings::AcceleratedCompositingEnabled, m_windowOptions.useCompositing
+        && (m_windowOptions.useQGLWidgetViewport || m_windowOptions.useQOpenGLWidgetViewport));
 #endif
     settings->setAttribute(QWebSettings::TiledBackingStoreEnabled, m_windowOptions.useTiledBackingStore);
     settings->setAttribute(QWebSettings::FrameFlatteningEnabled, m_windowOptions.useFrameFlattening);
