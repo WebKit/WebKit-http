@@ -58,7 +58,7 @@ struct ImageBufferDataPrivate {
     virtual void drawPattern(GraphicsContext& destContext, const FloatRect& srcRect, const AffineTransform& patternTransform,
                              const FloatPoint& phase, const FloatSize& spacing, CompositeOperator op,
                              const FloatRect& destRect, BlendMode, bool ownContext) = 0;
-    virtual void clip(GraphicsContext& context, const FloatRect& floatRect) const = 0;
+    virtual void clip(GraphicsContext& context, const IntRect& floatRect) const = 0;
     virtual void platformTransformColorSpace(const Vector<int>& lookUpTable) = 0;
 };
 

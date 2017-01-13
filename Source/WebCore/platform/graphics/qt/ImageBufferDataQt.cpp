@@ -144,7 +144,7 @@ struct ImageBufferDataPrivateAccelerated : public TextureMapperPlatformLayer, pu
     void drawPattern(GraphicsContext& destContext, const FloatRect& srcRect, const AffineTransform& patternTransform,
                              const FloatPoint& phase, const FloatSize& spacing, CompositeOperator op,
                              const FloatRect& destRect, BlendMode, bool ownContext) override;
-    void clip(GraphicsContext& context, const FloatRect& floatRect) const override;
+    void clip(GraphicsContext& context, const IntRect& floatRect) const override;
     void platformTransformColorSpace(const Vector<int>& lookUpTable) override;
 
     // TextureMapperPlatformLayer:
@@ -255,10 +255,9 @@ void ImageBufferDataPrivateAccelerated::drawPattern(GraphicsContext& destContext
     image->drawPattern(destContext, srcRect, patternTransform, phase, spacing, op, destRect, blendMode);
 }
 
-void ImageBufferDataPrivateAccelerated::clip(GraphicsContext& context, const FloatRect& floatRect) const
+void ImageBufferDataPrivateAccelerated::clip(GraphicsContext& context, const IntRect& rect) const
 {
     QPixmap alphaMask = QPixmap::fromImage(toQImage());
-    IntRect rect = enclosingIntRect(floatRect);
     context.pushTransparencyLayerInternal(rect, 1.0, alphaMask);
 }
 
@@ -362,7 +361,7 @@ struct ImageBufferDataPrivateUnaccelerated : public ImageBufferDataPrivate {
     void drawPattern(GraphicsContext& destContext, const FloatRect& srcRect, const AffineTransform& patternTransform,
                      const FloatPoint& phase, const FloatSize& spacing, CompositeOperator op,
                      const FloatRect& destRect, BlendMode, bool ownContext) override;
-    void clip(GraphicsContext& context, const FloatRect& floatRect) const override;
+    void clip(GraphicsContext& context, const IntRect& floatRect) const override;
     void platformTransformColorSpace(const Vector<int>& lookUpTable) override;
 
     QPixmap m_pixmap;
@@ -425,16 +424,13 @@ void ImageBufferDataPrivateUnaccelerated::drawPattern(GraphicsContext& destConte
         m_image->drawPattern(destContext, srcRect, patternTransform, phase, spacing, op, destRect, blendMode);
 }
 
-void ImageBufferDataPrivateUnaccelerated::clip(GraphicsContext& context, const FloatRect& floatRect) const
+void ImageBufferDataPrivateUnaccelerated::clip(GraphicsContext& context, const IntRect& rect) const
 {
     QPixmap* nativeImage = m_image->nativeImageForCurrentFrame();
-
     if (!nativeImage)
         return;
 
-    IntRect rect = enclosingIntRect(floatRect);
     QPixmap alphaMask = *nativeImage;
-
     context.pushTransparencyLayerInternal(rect, 1.0, alphaMask);
 }
 

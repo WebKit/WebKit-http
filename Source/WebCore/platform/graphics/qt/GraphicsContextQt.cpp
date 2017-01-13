@@ -49,6 +49,7 @@
 #include "FloatConversion.h"
 #include "Font.h"
 #include "ImageBuffer.h"
+#include "ImageBufferDataQt.h"
 #include "NotImplemented.h"
 #include "Path.h"
 #include "Pattern.h"
@@ -959,15 +960,8 @@ void GraphicsContext::clipToImageBuffer(ImageBuffer& buffer, const FloatRect& de
     if (paintingDisabled())
         return;
 
-    RefPtr<Image> image = buffer.copyImage(DontCopyBackingStore);
-    QPixmap* nativeImage = image->nativeImageForCurrentFrame();
-    if (!nativeImage)
-        return;
-
     IntRect rect = enclosingIntRect(destRect);
-    QPixmap alphaMask = *nativeImage;
-
-    pushTransparencyLayerInternal(rect, 1.0, alphaMask);
+    buffer.m_data.m_impl->clip(*this, rect);
 }
 
 void drawFocusRingForPath(QPainter* p, const QPainterPath& path, const Color& color, bool antiAliasing)

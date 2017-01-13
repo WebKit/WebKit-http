@@ -133,11 +133,6 @@ void ImageBuffer::drawPattern(GraphicsContext& destContext, const FloatRect& src
     m_data.m_impl->drawPattern(destContext, srcRect, patternTransform, phase, spacing, op, destRect, blendMode, &destContext == &context());
 }
 
-void ImageBuffer::clip(GraphicsContext& context, const FloatRect& floatRect) const
-{
-    m_data.m_impl->clip(context, floatRect);
-}
-
 void ImageBuffer::platformTransformColorSpace(const Vector<int>& lookUpTable)
 {
     m_data.m_impl->platformTransformColorSpace(lookUpTable);
