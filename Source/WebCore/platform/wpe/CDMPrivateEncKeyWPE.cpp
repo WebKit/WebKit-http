@@ -31,7 +31,7 @@
 
 #include "CDM.h"
 #include "CDMSession.h"
-#include "MediaKeyError.h"
+#include "WebKitMediaKeyError.h"
 #include "CDMSessionEncKeyWPE.h"
 
 namespace WebCore {

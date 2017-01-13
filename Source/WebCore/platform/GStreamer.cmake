@@ -167,7 +167,7 @@ if (ENABLE_LEGACY_ENCRYPTED_MEDIA_V1 OR ENABLE_LEGACY_ENCRYPTED_MEDIA)
         )
     endif ()
 
-    if (ENABLE_LEGACY_ENCRYPTED_MEDIA) AND (ENABLE_OCDM)
+    if (ENABLE_LEGACY_ENCRYPTED_MEDIA AND ENABLE_OCDM)
         list(APPEND WebCore_SOURCES
             platform/graphics/gstreamer/WebKitOpenCDMiWidevineDecryptorGStreamer.cpp
         )

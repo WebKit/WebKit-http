@@ -1621,7 +1621,7 @@ std::unique_ptr<CDMSession> MediaPlayerPrivateGStreamerBase::createSession(const
     if (!supportsKeySystem(keySystem, emptyString()))
         return nullptr;
 
-    GST_ DEBUG("creating key session for %s", keySystem.utf8().data());
+    GST_DEBUG("creating key session for %s", keySystem.utf8().data());
 #if USE(PLAYREADY)
     if (equalIgnoringASCIICase(keySystem, PLAYREADY_PROTECTION_SYSTEM_ID)
         || equalIgnoringASCIICase(keySystem, PLAYREADY_YT_PROTECTION_SYSTEM_ID))
@@ -1753,7 +1753,7 @@ bool MediaPlayerPrivateGStreamerBase::supportsKeySystem(const String& keySystem,
 
 MediaPlayer::SupportsType MediaPlayerPrivateGStreamerBase::extendedSupportsType(const MediaEngineSupportParameters& parameters, MediaPlayer::SupportsType result)
 {
-#if ENABL E(LEGACY_ENCRYPTED_MEDIA_V1)
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)
     // From: <http://dvcs.w3.org/hg/html-media/raw-file/eme-v0.1b/encrypted-media/encrypted-media.html#dom-canplaytype>
     // In addition to the steps in the current specification, this method must run the following steps:
 

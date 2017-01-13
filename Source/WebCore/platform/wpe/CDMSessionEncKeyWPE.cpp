@@ -31,7 +31,7 @@
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA) && USE(OCDM)
 #include "CDM.h"
 #include "CDMSession.h"
-#include "MediaKeyError.h"
+#include "WebKitMediaKeyError.h"
 
 
 namespace WebCore {
@@ -68,7 +68,7 @@ RefPtr<Uint8Array> CDMSessionEncKey::generateKeyRequest(const String& mimeType, 
                                    &m_msgLength, tmpUrl, &m_destUrlLength);
 
     if ( (ret != 0) || (m_msgLength == 0) || (m_destUrlLength == 0) ) {
-        errorCode = MediaKeyError::MEDIA_KEYERR_UNKNOWN;
+        errorCode = WebKitMediaKeyError::MEDIA_KEYERR_UNKNOWN;
         return nullptr;
     } else {
         destUrl = String::fromUTF8(tmpUrl);
@@ -106,7 +106,7 @@ bool CDMSessionEncKey::update(Uint8Array* key, RefPtr<Uint8Array>& nextMessage, 
        string rspMsg = "UpdateStatus:" + responseMsg;
        RefPtr<Uint8Array> tmpMsg = Uint8Array::create((unsigned char*)rspMsg.c_str(), rspMsg.length());
        nextMessage = tmpMsg;
-       errorCode = MediaKeyError::MEDIA_KEYERR_CLIENT;
+       errorCode = WebKitMediaKeyError::MEDIA_KEYERR_CLIENT;
        return false;
     }
 
