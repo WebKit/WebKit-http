@@ -50,6 +50,7 @@ struct ImageBufferDataPrivate {
     virtual QImage toQImage() const = 0;
     virtual RefPtr<Image> image() const = 0;
     virtual RefPtr<Image> copyImage() const = 0;
+    virtual RefPtr<Image> takeImage() = 0;
     virtual bool isAccelerated() const = 0;
     virtual PlatformLayer* platformLayer() = 0;
     virtual void draw(GraphicsContext& destContext, const FloatRect& destRect,

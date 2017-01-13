@@ -106,9 +106,9 @@ RefPtr<Image> ImageBuffer::copyImage(BackingStoreCopy copyBehavior, ScaleBehavio
     return m_data.m_impl->image();
 }
 
-RefPtr<Image> ImageBuffer::sinkIntoImage(std::unique_ptr<ImageBuffer> imageBuffer, ScaleBehavior scaleBehavior)
+RefPtr<Image> ImageBuffer::sinkIntoImage(std::unique_ptr<ImageBuffer> imageBuffer, ScaleBehavior)
 {
-    return StillImage::create(WTFMove(imageBuffer->m_data.m_pixmap));
+    return imageBuffer->m_data.m_impl->takeImage();
 }
 
 BackingStoreCopy ImageBuffer::fastCopyImageMode()

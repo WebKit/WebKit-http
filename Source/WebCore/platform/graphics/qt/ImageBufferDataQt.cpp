@@ -134,6 +134,7 @@ struct ImageBufferDataPrivateAccelerated : public TextureMapperPlatformLayer, pu
     QImage toQImage() const override;
     RefPtr<Image> image() const override;
     RefPtr<Image> copyImage() const override;
+    RefPtr<Image> takeImage() override;
     bool isAccelerated() const override { return true; }
     PlatformLayer* platformLayer() override { return this; }
 
@@ -188,6 +189,11 @@ RefPtr<Image> ImageBufferDataPrivateAccelerated::image() const
 }
 
 RefPtr<Image> ImageBufferDataPrivateAccelerated::copyImage() const
+{
+    return StillImage::create(QPixmap::fromImage(toQImage()));
+}
+
+RefPtr<Image> ImageBufferDataPrivateAccelerated::takeImage()
 {
     return StillImage::create(QPixmap::fromImage(toQImage()));
 }
@@ -353,6 +359,7 @@ struct ImageBufferDataPrivateUnaccelerated : public ImageBufferDataPrivate {
     QImage toQImage() const override;
     RefPtr<Image> image() const override;
     RefPtr<Image> copyImage() const override;
+    RefPtr<Image> takeImage() override;
     bool isAccelerated() const override { return false; }
     PlatformLayer* platformLayer() override { return 0; }
     void draw(GraphicsContext& destContext, const FloatRect& destRect,
@@ -398,6 +405,11 @@ RefPtr<Image> ImageBufferDataPrivateUnaccelerated::image() const
 RefPtr<Image> ImageBufferDataPrivateUnaccelerated::copyImage() const
 {
     return StillImage::create(m_pixmap);
+}
+
+RefPtr<Image> ImageBufferDataPrivateUnaccelerated::takeImage()
+{
+    return StillImage::create(WTFMove(m_pixmap));
 }
 
 void ImageBufferDataPrivateUnaccelerated::draw(GraphicsContext& destContext, const FloatRect& destRect,
