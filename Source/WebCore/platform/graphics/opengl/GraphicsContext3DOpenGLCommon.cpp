@@ -1391,6 +1391,7 @@ void GraphicsContext3D::viewport(GC3Dint x, GC3Dint y, GC3Dsizei width, GC3Dsize
     ::glViewport(x, y, width, height);
 }
 
+#if !PLATFORM(QT) || ENABLE(WEBGL2)
 Platform3DObject GraphicsContext3D::createVertexArray()
 {
     makeContextCurrent();
@@ -1441,6 +1442,7 @@ void GraphicsContext3D::bindVertexArray(Platform3DObject array)
     UNUSED_PARAM(array);
 #endif
 }
+#endif
 
 void GraphicsContext3D::getBooleanv(GC3Denum pname, GC3Dboolean* value)
 {
