@@ -33,6 +33,7 @@
 #include "WebCookieManager.h"
 #include <WebCore/CertificateInfo.h>
 #include <WebCore/FileSystem.h>
+#include <WebCore/NetworkStorageSession.h>
 #include <WebCore/NotImplemented.h>
 #include <WebCore/ResourceHandle.h>
 #include <WebCore/SoupNetworkSession.h>
@@ -47,12 +48,12 @@ namespace WebKit {
 
 void NetworkProcess::userPreferredLanguagesChanged(const Vector<String>& languages)
 {
-    SoupNetworkSession::defaultSession().setAcceptLanguages(languages);
+    NetworkStorageSession::defaultStorageSession().soupNetworkSession().setAcceptLanguages(languages);
 }
 
 void NetworkProcess::setProxies(WebCore::SessionID, const Vector<WebCore::Proxy>& proxies)
 {
-    SoupNetworkSession::defaultSession().setProxies(proxies);
+    NetworkStorageSession::defaultStorageSession().soupNetworkSession().setProxies(proxies);
 }
 
 void NetworkProcess::platformInitializeNetworkProcess(const NetworkProcessCreationParameters& parameters)
@@ -61,7 +62,7 @@ void NetworkProcess::platformInitializeNetworkProcess(const NetworkProcessCreati
     m_diskCacheDirectory = parameters.diskCacheDirectory;
 
 #if ENABLE(NETWORK_CACHE)
-    SoupNetworkSession::defaultSession().clearSoupCache(WebCore::directoryName(m_diskCacheDirectory));
+    SoupNetworkSession::clearCache(WebCore::directoryName(m_diskCacheDirectory));
 
     NetworkCache::Cache::Parameters cacheParameters {
         parameters.shouldEnableNetworkCacheEfficacyLogging
@@ -73,10 +74,10 @@ void NetworkProcess::platformInitializeNetworkProcess(const NetworkProcessCreati
 #else
     // We used to use the given cache directory for the soup cache, but now we use a subdirectory to avoid
     // conflicts with other cache files in the same directory. Remove the old cache files if they still exist.
-    SoupNetworkSession::defaultSession().clearCache(WebCore::directoryName(m_diskCacheDirectory));
+    SoupNetworkSession::clearCache(WebCore::directoryName(m_diskCacheDirectory));
 
     GRefPtr<SoupCache> soupCache = adoptGRef(soup_cache_new(m_diskCacheDirectory.utf8().data(), SOUP_CACHE_SINGLE_USER));
-    SoupNetworkSession::defaultSession().setCache(soupCache.get());
+    NetworkStorageSession::defaultStorageSession().soupNetworkSession().setCache(soupCache.get());
     // Set an initial huge max_size for the SoupCache so the call to soup_cache_load() won't evict any cached
     // resource. The final size of the cache will be set by NetworkProcess::platformSetCacheModel().
     unsigned initialMaxSize = soup_cache_get_max_size(soupCache.get());
@@ -100,8 +101,7 @@ void NetworkProcess::platformInitializeNetworkProcess(const NetworkProcessCreati
 void NetworkProcess::platformSetURLCacheSize(unsigned /*urlCacheMemoryCapacity*/, uint64_t urlCacheDiskCapacity)
 {
 #if !ENABLE(NETWORK_CACHE)
-    SoupCache* cache = SoupNetworkSession::defaultSession().cache();
-    soup_cache_set_max_size(cache, urlCacheDiskCapacity);
+    soup_cache_set_max_size(NetworkStorageSession::defaultStorageSession().soupNetworkSession().cache(), urlCacheDiskCapacity);
 #else
     UNUSED_PARAM(urlCacheDiskCapacity);
 #endif
@@ -132,7 +132,7 @@ void NetworkProcess::clearDiskCache(std::chrono::system_clock::time_point modifi
 #else
     UNUSED_PARAM(modifiedSince);
     UNUSED_PARAM(completionHandler);
-    soup_cache_clear(SoupNetworkSession::defaultSession().cache());
+    soup_cache_clear(NetworkStorageSession::defaultStorageSession().soupNetworkSession().cache());
 #endif
 }
 
