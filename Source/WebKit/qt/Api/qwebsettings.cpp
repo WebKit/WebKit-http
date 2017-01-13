@@ -300,8 +300,10 @@ void QWebSettingsPrivate::apply()
                                       global->attributes.value(QWebSettings::SiteSpecificQuirksEnabled));
         settings->setNeedsSiteSpecificQuirks(value);
 
+#if ENABLE(FULLSCREEN_API)
         value = attributes.value(QWebSettings::FullScreenSupportEnabled, global->attributes.value(QWebSettings::FullScreenSupportEnabled));
         settings->setFullScreenEnabled(value);
+#endif
 
         settings->setUsesPageCache(WebCore::PageCache::singleton().maxSize());
     } else {
