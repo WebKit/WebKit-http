@@ -149,6 +149,14 @@ list(APPEND WebCore_SOURCES
     platform/text/qt/TextBreakIteratorInternalICUQt.cpp
 )
 
+if (COMPILER_IS_GCC_OR_CLANG)
+    set_source_files_properties(
+        platform/graphics/qt/ImageBufferDataQt.cpp
+    PROPERTIES
+        COMPILE_FLAGS -frtti
+    )
+endif ()
+
 if (ENABLE_DEVICE_ORIENTATION)
     list(APPEND WebCore_SOURCES
         platform/qt/DeviceMotionClientQt.cpp
