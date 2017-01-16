@@ -19,6 +19,10 @@
       <dep package="gst-libav"/>
       <dep package="openwebrtc"/>
       <dep package="qt"/>
+      <if condition-set="linux">
+        <dep package="llvm"/>
+        <dep package="mesa"/>
+      </if>
     </dependencies>
   </metamodule>
 
@@ -47,6 +51,10 @@
       href="http://webkitgtk.org/jhbuild_mirror/"/>
   <repository type="tarball" name="nice.freedesktop.org"
       href="http://nice.freedesktop.org/"/>
+  <repository type="tarball" name="people.freedesktop.org"
+      href="http://people.freedesktop.org"/>
+  <repository type="tarball" name="llvm.org"
+      href="http://llvm.org"/>
 
   <autotools id="fonts" supports-non-srcdir-builds="no"
              skip-autogen="true">
@@ -256,6 +264,26 @@
             hash="sha256:e16b22cbefdd354bec114541f7849a12f8fc2015320ca5282ee4fd787571457b">
       <patch file="icudata-stdlibs.patch" strip="1"/>
     </branch>
+  </autotools>
+
+  <autotools id="llvm"
+             autogenargs="--enable-optimized --disable-terminfo --disable-zlib --enable-targets=host --disable-backtraces --disable-crash-overrides --disable-expensive-checks --disable-debug-runtime --disable-assertions --enable-shared">
+    <branch repo="llvm.org"
+            module="/releases/3.7.0/llvm-3.7.0.src.tar.xz" version="3.7.0" checkoutdir="llvm-3.7.0"
+            hash="sha256:ab45895f9dcdad1e140a3a79fd709f64b05ad7364e308c0e582c5b02e9cc3153"/>
+  </autotools>
+
+  <autotools id="mesa" autogenargs="--enable-xlib-glx --disable-dri --disable-egl --with-gallium-drivers=swrast" skip-install="true">
+    <!--- WARNING: At jhbuildrc, when we define the path to the Gallium llvmpipe software rasterizer (needed by XvfbDriver),
+          we assume that the directory is named "Mesa". So, don't change the checkoutdir name even if you update the version.  -->
+    <branch module="/~brianp/mesa/11.0.6/mesa-11.0.6.tar.xz" version="11.0.6"
+            checkoutdir="Mesa"
+            repo="people.freedesktop.org"
+            hash="sha256:8340e64cdc91999840404c211496f3de38e7b4cb38db34e2f72f1642c5134760">
+    </branch>
+    <dependencies>
+      <dep package="llvm"/>
+    </dependencies>
   </autotools>
 
 </moduleset>
