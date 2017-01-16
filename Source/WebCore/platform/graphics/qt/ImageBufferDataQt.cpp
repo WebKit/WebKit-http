@@ -141,7 +141,7 @@ struct ImageBufferDataPrivateAccelerated : public TextureMapperPlatformLayer, pu
                       const FloatRect& srcRect, CompositeOperator op, BlendMode blendMode,
                       bool ownContext) override;
     void drawPattern(GraphicsContext& destContext, const FloatRect& srcRect, const AffineTransform& patternTransform,
-                             const FloatPoint& phase, CompositeOperator op,
+                             const FloatPoint& phase, const FloatSize& spacing, CompositeOperator op,
                              const FloatRect& destRect, bool ownContext) override;
     void clip(GraphicsContext& context, const FloatRect& floatRect) const override;
     void platformTransformColorSpace(const Vector<int>& lookUpTable) override;
@@ -247,11 +247,11 @@ void ImageBufferDataPrivateAccelerated::draw(GraphicsContext& destContext, const
 
 
 void ImageBufferDataPrivateAccelerated::drawPattern(GraphicsContext& destContext, const FloatRect& srcRect, const AffineTransform& patternTransform,
-                                                    const FloatPoint& phase, CompositeOperator op,
+                                                    const FloatPoint& phase, const FloatSize& spacing, CompositeOperator op,
                                                     const FloatRect& destRect, bool /*ownContext*/)
 {
     RefPtr<Image> image = StillImage::create(QPixmap::fromImage(toQImage()));
-    image->drawPattern(destContext, srcRect, patternTransform, phase, op, destRect);
+    image->drawPattern(destContext, srcRect, patternTransform, phase, spacing, op, destRect);
 }
 
 void ImageBufferDataPrivateAccelerated::clip(GraphicsContext& context, const FloatRect& floatRect) const
@@ -358,7 +358,7 @@ struct ImageBufferDataPrivateUnaccelerated : public ImageBufferDataPrivate {
               const FloatRect& srcRect, CompositeOperator op, BlendMode blendMode,
               bool ownContext) override;
     void drawPattern(GraphicsContext& destContext, const FloatRect& srcRect, const AffineTransform& patternTransform,
-                     const FloatPoint& phase, CompositeOperator op,
+                     const FloatPoint& phase, const FloatSize& spacing, CompositeOperator op,
                      const FloatRect& destRect, bool ownContext) override;
     void clip(GraphicsContext& context, const FloatRect& floatRect) const override;
     void platformTransformColorSpace(const Vector<int>& lookUpTable) override;
@@ -412,15 +412,15 @@ void ImageBufferDataPrivateUnaccelerated::draw(GraphicsContext& destContext, con
 }
 
 void ImageBufferDataPrivateUnaccelerated::drawPattern(GraphicsContext& destContext, const FloatRect& srcRect, const AffineTransform& patternTransform,
-                                                      const FloatPoint& phase, CompositeOperator op,
+                                                      const FloatPoint& phase, const FloatSize& spacing, CompositeOperator op,
                                                       const FloatRect& destRect, bool ownContext)
 {
     if (ownContext) {
         // We're drawing into our own buffer.  In order for this to work, we need to copy the source buffer first.
         RefPtr<Image> copy = copyImage();
-        copy->drawPattern(destContext, srcRect, patternTransform, phase, op, destRect);
+        copy->drawPattern(destContext, srcRect, patternTransform, phase, spacing, op, destRect);
     } else
-        m_image->drawPattern(destContext, srcRect, patternTransform, phase, op, destRect);
+        m_image->drawPattern(destContext, srcRect, patternTransform, phase, spacing, op, destRect);
 }
 
 void ImageBufferDataPrivateUnaccelerated::clip(GraphicsContext& context, const FloatRect& floatRect) const
