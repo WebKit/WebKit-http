@@ -63,7 +63,8 @@ public:
 
     void setProxies(const Vector<WebCore::Proxy>&);
 
-    void setAcceptLanguages(const Vector<String>&);
+    static void setInitialAcceptLanguages(const CString&);
+    void setAcceptLanguages(const CString&);
 
     static void setShouldIgnoreTLSErrors(bool);
     static void checkTLSErrors(SoupRequest*, SoupMessage*, std::function<void (const ResourceError&)>&&);
