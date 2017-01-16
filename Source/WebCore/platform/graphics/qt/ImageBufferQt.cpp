@@ -115,15 +115,15 @@ BackingStoreCopy ImageBuffer::fastCopyImageMode()
     return DontCopyBackingStore;
 }
 
-void ImageBuffer::drawConsuming(std::unique_ptr<ImageBuffer> imageBuffer, GraphicsContext& destContext, const FloatRect& destRect, const FloatRect& srcRect, CompositeOperator op, BlendMode blendMode, bool useLowQualityScale)
+void ImageBuffer::drawConsuming(std::unique_ptr<ImageBuffer> imageBuffer, GraphicsContext& destContext, const FloatRect& destRect, const FloatRect& srcRect, CompositeOperator op, BlendMode blendMode)
 {
-    imageBuffer->draw(destContext, destRect, srcRect, op, blendMode, useLowQualityScale);
+    imageBuffer->draw(destContext, destRect, srcRect, op, blendMode);
 }
 
 void ImageBuffer::draw(GraphicsContext* destContext, ColorSpace styleColorSpace, const FloatRect& destRect, const FloatRect& srcRect,
-    CompositeOperator op, BlendMode blendMode, bool useLowQualityScale)
+    CompositeOperator op, BlendMode blendMode)
 {
-    m_data.m_impl->draw(destContext, styleColorSpace, destRect, srcRect, op, blendMode, useLowQualityScale, destContext == context());
+    m_data.m_impl->draw(destContext, styleColorSpace, destRect, srcRect, op, blendMode, destContext == context());
 }
 
 void ImageBuffer::drawPattern(GraphicsContext* destContext, const FloatRect& srcRect, const AffineTransform& patternTransform,

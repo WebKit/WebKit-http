@@ -51,7 +51,7 @@ struct ImageBufferDataPrivate {
     virtual bool isAccelerated() const = 0;
     virtual PlatformLayer* platformLayer() = 0;
     virtual void draw(GraphicsContext* destContext, ColorSpace styleColorSpace, const FloatRect& destRect,
-                      const FloatRect& srcRect, CompositeOperator op, BlendMode blendMode, bool useLowQualityScale,
+                      const FloatRect& srcRect, CompositeOperator op, BlendMode blendMode,
                       bool ownContext) = 0;
     virtual void drawPattern(GraphicsContext* destContext, const FloatRect& srcRect, const AffineTransform& patternTransform,
                              const FloatPoint& phase, ColorSpace styleColorSpace, CompositeOperator op,

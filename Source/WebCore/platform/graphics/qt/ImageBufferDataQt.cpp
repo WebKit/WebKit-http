@@ -138,7 +138,7 @@ struct ImageBufferDataPrivateAccelerated : public TextureMapperPlatformLayer, pu
 
     void invalidateState() const;
     void draw(GraphicsContext* destContext, ColorSpace styleColorSpace, const FloatRect& destRect,
-                      const FloatRect& srcRect, CompositeOperator op, BlendMode blendMode, bool useLowQualityScale,
+                      const FloatRect& srcRect, CompositeOperator op, BlendMode blendMode,
                       bool ownContext) override;
     void drawPattern(GraphicsContext* destContext, const FloatRect& srcRect, const AffineTransform& patternTransform,
                              const FloatPoint& phase, ColorSpace styleColorSpace, CompositeOperator op,
@@ -200,7 +200,7 @@ void ImageBufferDataPrivateAccelerated::invalidateState() const
 
 void ImageBufferDataPrivateAccelerated::draw(GraphicsContext* destContext, ColorSpace styleColorSpace, const FloatRect& destRect,
                                              const FloatRect& srcRect, CompositeOperator op, BlendMode blendMode,
-                                             bool useLowQualityScale, bool /*ownContext*/)
+                                             bool /*ownContext*/)
 {
     if (destContext->isAcceleratedContext()) {
         invalidateState();
@@ -242,7 +242,7 @@ void ImageBufferDataPrivateAccelerated::draw(GraphicsContext* destContext, Color
     }
     RefPtr<Image> image = StillImage::create(QPixmap::fromImage(toQImage()));
     destContext->drawImage(image.get(), styleColorSpace, destRect, srcRect, op, blendMode,
-                           DoNotRespectImageOrientation, useLowQualityScale);
+                           DoNotRespectImageOrientation);
 }
 
 
@@ -355,7 +355,7 @@ struct ImageBufferDataPrivateUnaccelerated : public ImageBufferDataPrivate {
     bool isAccelerated() const override { return false; }
     PlatformLayer* platformLayer() override { return 0; }
     void draw(GraphicsContext* destContext, ColorSpace styleColorSpace, const FloatRect& destRect,
-              const FloatRect& srcRect, CompositeOperator op, BlendMode blendMode, bool useLowQualityScale,
+              const FloatRect& srcRect, CompositeOperator op, BlendMode blendMode,
               bool ownContext) override;
     void drawPattern(GraphicsContext* destContext, const FloatRect& srcRect, const AffineTransform& patternTransform,
                      const FloatPoint& phase, ColorSpace styleColorSpace, CompositeOperator op,
@@ -401,14 +401,14 @@ PassRefPtr<Image> ImageBufferDataPrivateUnaccelerated::copyImage() const
 
 void ImageBufferDataPrivateUnaccelerated::draw(GraphicsContext* destContext, ColorSpace styleColorSpace, const FloatRect& destRect,
                                                const FloatRect& srcRect, CompositeOperator op, BlendMode blendMode,
-                                               bool useLowQualityScale, bool ownContext)
+                                               bool ownContext)
 {
     if (ownContext) {
         // We're drawing into our own buffer.  In order for this to work, we need to copy the source buffer first.
         RefPtr<Image> copy = copyImage();
-        destContext->drawImage(copy.get(), ColorSpaceDeviceRGB, destRect, srcRect, op, blendMode, DoNotRespectImageOrientation, useLowQualityScale);
+        destContext->drawImage(copy.get(), ColorSpaceDeviceRGB, destRect, srcRect, op, blendMode, DoNotRespectImageOrientation);
     } else
-        destContext->drawImage(m_image.get(), styleColorSpace, destRect, srcRect, op, blendMode, DoNotRespectImageOrientation, useLowQualityScale);
+        destContext->drawImage(m_image.get(), styleColorSpace, destRect, srcRect, op, blendMode, DoNotRespectImageOrientation);
 }
 
 void ImageBufferDataPrivateUnaccelerated::drawPattern(GraphicsContext* destContext, const FloatRect& srcRect, const AffineTransform& patternTransform,
