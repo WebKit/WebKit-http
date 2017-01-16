@@ -53,11 +53,11 @@ struct ImageBufferDataPrivate {
     virtual bool isAccelerated() const = 0;
     virtual PlatformLayer* platformLayer() = 0;
     virtual void draw(GraphicsContext& destContext, const FloatRect& destRect,
-                      const FloatRect& srcRect, CompositeOperator op, BlendMode blendMode,
+                      const FloatRect& srcRect, CompositeOperator op, BlendMode,
                       bool ownContext) = 0;
     virtual void drawPattern(GraphicsContext& destContext, const FloatRect& srcRect, const AffineTransform& patternTransform,
                              const FloatPoint& phase, const FloatSize& spacing, CompositeOperator op,
-                             const FloatRect& destRect, bool ownContext) = 0;
+                             const FloatRect& destRect, BlendMode, bool ownContext) = 0;
     virtual void clip(GraphicsContext& context, const FloatRect& floatRect) const = 0;
     virtual void platformTransformColorSpace(const Vector<int>& lookUpTable) = 0;
 };

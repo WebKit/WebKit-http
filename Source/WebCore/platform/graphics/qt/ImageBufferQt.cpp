@@ -128,9 +128,9 @@ void ImageBuffer::draw(GraphicsContext& destContext, const FloatRect& destRect, 
 }
 
 void ImageBuffer::drawPattern(GraphicsContext& destContext, const FloatRect& srcRect, const AffineTransform& patternTransform,
-                              const FloatPoint& phase, const FloatSize& spacing, CompositeOperator op, const FloatRect& destRect)
+                              const FloatPoint& phase, const FloatSize& spacing, CompositeOperator op, const FloatRect& destRect, BlendMode blendMode)
 {
-    m_data.m_impl->drawPattern(destContext, srcRect, patternTransform, phase, spacing, op, destRect, &destContext == &context());
+    m_data.m_impl->drawPattern(destContext, srcRect, patternTransform, phase, spacing, op, destRect, blendMode, &destContext == &context());
 }
 
 void ImageBuffer::clip(GraphicsContext& context, const FloatRect& floatRect) const
