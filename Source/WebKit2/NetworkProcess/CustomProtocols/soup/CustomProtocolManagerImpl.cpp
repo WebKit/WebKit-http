@@ -94,7 +94,7 @@ void CustomProtocolManagerImpl::registerScheme(const String& scheme)
     SoupRequestClass* genericRequestClass = static_cast<SoupRequestClass*>(g_type_class_ref(WEBKIT_TYPE_SOUP_REQUEST_GENERIC));
     genericRequestClass->schemes = const_cast<const char**>(reinterpret_cast<char**>(m_schemes->pdata));
     static_cast<WebKitSoupRequestGenericClass*>(g_type_class_ref(WEBKIT_TYPE_SOUP_REQUEST_GENERIC))->client = this;
-    soup_session_add_feature_by_type(WebCore::NetworkStorageSession::defaultStorageSession().soupNetworkSession().soupSession(), WEBKIT_TYPE_SOUP_REQUEST_GENERIC);
+    soup_session_add_feature_by_type(WebCore::NetworkStorageSession::defaultStorageSession().getOrCreateSoupNetworkSession().soupSession(), WEBKIT_TYPE_SOUP_REQUEST_GENERIC);
 }
 
 bool CustomProtocolManagerImpl::supportsScheme(const String& scheme)

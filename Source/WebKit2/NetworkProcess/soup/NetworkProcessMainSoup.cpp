@@ -39,7 +39,7 @@ public:
     bool platformInitialize() override
     {
 #if PLATFORM(WPE)
-        WebCore::NetworkStorageSession::defaultStorageSession().soupNetworkSession().setupHTTPProxyFromEnvironment();
+        WebCore::NetworkStorageSession::defaultStorageSession().getOrCreateSoupNetworkSession().setupHTTPProxyFromEnvironment();
 #endif
         return true;
     }

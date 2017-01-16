@@ -97,13 +97,14 @@ void NetworkProcess::userPreferredLanguagesChanged(const Vector<String>& languag
     auto acceptLanguages = buildAcceptLanguages(languages);
     SoupNetworkSession::setInitialAcceptLanguages(acceptLanguages);
     NetworkStorageSession::forEach([&acceptLanguages](const WebCore::NetworkStorageSession& session) {
-        session.soupNetworkSession().setAcceptLanguages(acceptLanguages);
+        if (auto* soupSession = session.soupNetworkSession())
+            soupSession->setAcceptLanguages(acceptLanguages);
     });
 }
 
 void NetworkProcess::setProxies(WebCore::SessionID, const Vector<WebCore::Proxy>& proxies)
 {
-    NetworkStorageSession::defaultStorageSession().soupNetworkSession().setProxies(proxies);
+    NetworkStorageSession::defaultStorageSession().getOrCreateSoupNetworkSession().setProxies(proxies);
 }
 
 void NetworkProcess::platformInitializeNetworkProcess(const NetworkProcessCreationParameters& parameters)
@@ -127,7 +128,7 @@ void NetworkProcess::platformInitializeNetworkProcess(const NetworkProcessCreati
     SoupNetworkSession::clearCache(WebCore::directoryName(m_diskCacheDirectory));
 
     GRefPtr<SoupCache> soupCache = adoptGRef(soup_cache_new(m_diskCacheDirectory.utf8().data(), SOUP_CACHE_SINGLE_USER));
-    NetworkStorageSession::defaultStorageSession().soupNetworkSession().setCache(soupCache.get());
+    NetworkStorageSession::defaultStorageSession().getOrCreateSoupNetworkSession().setCache(soupCache.get());
     // Set an initial huge max_size for the SoupCache so the call to soup_cache_load() won't evict any cached
     // resource. The final size of the cache will be set by NetworkProcess::platformSetCacheModel().
     unsigned initialMaxSize = soup_cache_get_max_size(soupCache.get());
@@ -151,7 +152,7 @@ void NetworkProcess::platformInitializeNetworkProcess(const NetworkProcessCreati
 void NetworkProcess::platformSetURLCacheSize(unsigned /*urlCacheMemoryCapacity*/, uint64_t urlCacheDiskCapacity)
 {
 #if !ENABLE(NETWORK_CACHE)
-    soup_cache_set_max_size(NetworkStorageSession::defaultStorageSession().soupNetworkSession().cache(), urlCacheDiskCapacity);
+    soup_cache_set_max_size(NetworkStorageSession::defaultStorageSession().getOrCreateSoupNetworkSession().cache(), urlCacheDiskCapacity);
 #else
     UNUSED_PARAM(urlCacheDiskCapacity);
 #endif
@@ -182,7 +183,7 @@ void NetworkProcess::clearDiskCache(std::chrono::system_clock::time_point modifi
 #else
     UNUSED_PARAM(modifiedSince);
     UNUSED_PARAM(completionHandler);
-    soup_cache_clear(NetworkStorageSession::defaultStorageSession().soupNetworkSession().cache());
+    soup_cache_clear(NetworkStorageSession::defaultStorageSession().getOrCreateSoupNetworkSession().cache());
 #endif
 }
 
