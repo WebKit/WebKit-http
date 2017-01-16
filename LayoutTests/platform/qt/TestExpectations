@@ -157,6 +157,11 @@ webkit.org/b/159370 [ Debug ] fast/history/page-cache-destroy-document.html [ Cr
   js/slow-stress/array-prototype-filter.html [ Pass Crash ]
   css3/shapes/shape-outside/values/shape-outside-ellipse-004.html [ Crash Failure ]
   css3/shapes/shape-outside/values/shape-outside-circle-004.html [ Crash Failure ]
+webgl/1.0.2/conformance/uniforms/out-of-bounds-uniform-array-access.html [ Crash ]
+webgl/1.0.2/conformance/canvas/to-data-url-test.html [ Crash ]
+webgl/1.0.2/conformance/glsl/misc/shader-uniform-packing-restrictions.html [ Crash ]
+webgl/1.0.3/conformance/glsl/bugs/complex-glsl-does-not-crash.html [ Crash ]
+
 
 #Probably 281 as well:
 perf/array-nested-loop.html [ Crash ]
@@ -195,7 +200,7 @@ perf/table-rows-length-caching.html [ Crash Pass ]
   http/tests/ssl/referer-301.html [ Pass Crash ]
   http/tests/websocket/tests/hybi/workers/worker-reload.html [ Pass Crash ]
 
-[ Release ]  http/tests/xmlhttprequest/onabort-response-getters.html [ Crash ]
+[ Release ]  http/tests/xmlhttprequest/onabort-response-getters.html [ Pass Crash ]
 
 # QTBUG-39577
 [ Debug ] svg/foreignObject/mask.html [ Crash ]
@@ -212,6 +217,9 @@ css3/masking/mask-luminance-png.html [ Crash ]
 fast/events/right-click-focus.html [ Crash Pass ]
 
 #fast/events/onunload-back-to-page-cache.html [ Crash ]
+
+#405
+webgl/1.0.2/conformance/context/context-release-with-workers.html [ Crash Pass ]
 
 # =========================================================================== #
 #       Permanently Skipped Tests.                                            #
@@ -248,18 +256,6 @@ storage/storageinfo-request-quota.html
 storage/storagequota-query-usage.html
 storage/storagequota-request-quota.html
 fast/workers/worker-storagequota-query-usage.html
-
-# ENABLE(WEBGL) is disabled.
-http/tests/canvas/webgl
-compositing/webgl
-fast/canvas/webgl
-fast/images/webgl-teximage2d.html
-http/tests/security/webgl-remote-read-remote-image-allowed.html
-http/tests/security/webgl-remote-read-remote-image-allowed-with-credentials.html
-http/tests/security/webgl-remote-read-remote-image-blocked-no-crossorigin.html
-webgl/
-http/tests/webgl
-compositing/backface-visibility/backface-visibility-webgl.html [ Failure ]
 
 # ENABLE(DASHBOARD_SUPPORT) is disabled
 http/tests/xmlhttprequest/default-content-type-dashboard.html
@@ -1238,6 +1234,58 @@ fast/borders/border-mixed-alpha.html [ ImageOnlyFailure ]
 fullscreen/full-screen-plugin.html [ Skip ]
 
 
+# ============================================================================= #
+# Failing WebGL Tests
+# ============================================================================= #
+
+#404
+  webgl/1.0.2/conformance/extensions/oes-texture-float-with-video.html [ Skip ]
+  webgl/1.0.2/conformance/textures/tex-image-and-sub-image-2d-with-video-rgb565.html [ Skip ]
+  webgl/1.0.2/conformance/textures/tex-image-and-sub-image-2d-with-video-rgba4444.html [ Skip ]
+  webgl/1.0.2/conformance/textures/tex-image-and-sub-image-2d-with-video-rgba5551.html [ Skip ]
+  webgl/1.0.2/conformance/textures/tex-image-and-sub-image-2d-with-video.html [ Skip ]
+  webgl/1.0.3/conformance/extensions/oes-texture-half-float-with-video.html [ Skip ]
+  webgl/1.0.3/conformance/textures/texture-upload-size.html [ Skip ]
+
+# Unsorted WebGL fails
+  compositing/backface-visibility/backface-visibility-webgl.html [ ImageOnlyFailure ]
+  compositing/webgl/webgl-repaint.html [ ImageOnlyFailure ]
+  fast/canvas/webgl/webgl-composite-modes-repaint.html [ ImageOnlyFailure ]
+  fast/canvas/webgl/webgl-layer-update.html [ ImageOnlyFailure ]
+
+  fast/canvas/webgl/antialiasing-enabled.html [ Failure ]
+  fast/canvas/webgl/context-attributes-alpha-depth-stencil-antialias.html [ Failure ]
+  fast/canvas/webgl/premultiplyalpha-test.html [ Failure ]
+  fast/canvas/webgl/read-pixels-test.html [ Failure ]
+  fast/canvas/webgl/unprefixed-anisotropic-extension.html [ Failure ]
+  webgl/1.0.2/conformance/canvas/buffer-offscreen-test.html [ Failure ]
+  webgl/1.0.2/conformance/canvas/buffer-preserve-test.html [ Failure ]
+  webgl/1.0.2/conformance/context/context-attribute-preserve-drawing-buffer.html [ Failure ]
+  webgl/1.0.2/conformance/context/context-attributes-alpha-depth-stencil-antialias.html [ Failure ]
+  webgl/1.0.2/conformance/context/premultiplyalpha-test.html [ Failure ]
+  webgl/1.0.2/conformance/extensions/oes-texture-float.html [ Failure ]
+  webgl/1.0.2/conformance/glsl/literals/float_literal.vert.html [ Failure ]
+  webgl/1.0.2/conformance/ogles/GL/build/build_177_to_178.html [ Failure ]
+  webgl/1.0.2/conformance/reading/read-pixels-test.html [ Failure ]
+  webgl/1.0.2/conformance/textures/copy-tex-image-2d-formats.html [ Failure ]
+  webgl/1.0.2/conformance/textures/texture-attachment-formats.html [ Failure ]
+  webgl/1.0.2/conformance/textures/texture-mips.html [ Failure ]
+  webgl/1.0.2/conformance/textures/texture-npot.html [ Failure ]
+  webgl/1.0.2/conformance/textures/texture-size-limit.html [ Failure ]
+  webgl/1.0.3/conformance/attribs/gl-bindAttribLocation-aliasing.html [ Failure ]
+  webgl/1.0.3/conformance/attribs/gl-bindAttribLocation-matrix.html [ Failure ]
+  webgl/1.0.3/conformance/extensions/oes-texture-half-float.html [ Failure ]
+  webgl/1.0.3/conformance/extensions/webgl-compressed-texture-size-limit.html [ Failure ]
+  webgl/1.0.3/conformance/glsl/misc/shaders-with-invariance.html [ Failure ]
+  webgl/1.0.3/conformance/glsl/misc/shaders-with-name-conflicts.html [ Failure ]
+  webgl/1.0.3/conformance/renderbuffers/feedback-loop.html [ Failure ]
+  webgl/1.0.3/conformance/rendering/point-no-attributes.html [ Failure ]
+  webgl/1.0.3/conformance/textures/default-texture.html [ Failure ]
+  webgl/1.0.3/conformance/textures/texture-copying-feedback-loops.html [ Failure ]
+
+
+
+
 # Unsorted timeouts (FIXME)
 
   fast/events/5056619.html [ Skip ]
@@ -1378,9 +1426,6 @@ http/tests/w3c/webperf/submission/Google/resource-timing/html/test_resource_cach
 http/tests/w3c/webperf/submission/Google/resource-timing/html/test_resource_connection_reuse.html
 
   http/tests/w3c/webperf/submission/Google/resource-timing/html/test_resource_iframe_self_navigation.html [ Skip ]
-  http/tests/webgl/1.0.2/origin-clean-conformance.html [ Skip ]
-  http/tests/webgl/1.0.2/texImage2DHTML.html [ Skip ]
-  http/tests/webgl/1.0.2/texSubImage2DHTML.html [ Skip ]
   http/tests/xmlhttprequest/post-blob-content-type-sync.html [ Skip ]
 
 js/regress/getter-richards-try-catch.html [ Timeout Pass ]
@@ -1834,7 +1879,6 @@ js/date-constructor.html [ Failure ]
   compositing/geometry/ancestor-overflow-change.html [ Failure ]
   compositing/iframes/iframe-content-flipping.html [ Failure ]
   compositing/tiling/backface-preserve-3d-tiled.html [ Failure ]
-  compositing/visibility/visibility-simple-webgl-layer.html [ Failure ]
 
   compositing/animation/busy-indicator.html [ Missing ]
   compositing/animation/state-at-end-event-transform-layer.html [ Missing ]
@@ -2445,7 +2489,6 @@ js/date-constructor.html [ Failure ]
   fast/events/click-count.html [ Failure ]
   fast/events/clientXY-in-zoom-and-scroll.html [ Failure ]
   fast/events/constructors/device-proximity-event-constructor.html [ Failure ]
-  fast/events/constructors/webgl-context-event-constructor.html [ Failure ]
   fast/events/content-changed-during-drop.html [ Failure ]
   fast/events/crash-on-mutate-during-drop.html [ Failure ]
   fast/events/dont-loose-last-event.html [ Failure ]

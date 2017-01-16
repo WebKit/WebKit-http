@@ -44,7 +44,7 @@ PASS Uint32Array.length is 3
 PASS Uint8Array.length is 3
 PASS Uint8ClampedArray.length is 3
 PASS VTTCue.length is 3
-FAIL WebGLContextEvent.length should be 1. Threw exception ReferenceError: Can't find variable: WebGLContextEvent
+PASS WebGLContextEvent.length is 1
 PASS WebKitAnimationEvent.length is 1
 PASS WebKitCSSMatrix.length is 0
 PASS WebKitMutationObserver.length is 1
