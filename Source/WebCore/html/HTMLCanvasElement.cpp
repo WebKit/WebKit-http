@@ -676,7 +676,7 @@ void HTMLCanvasElement::createImageBuffer() const
         QWebPageClient* client = document()->page()->chrome().platformPageClient();
         // The WebKit2 Chrome does not have a pageclient.
         QOpenGLContext* context = client ? client->openGLContextIfAvailable() : 0;
-        setImageBuffer(ImageBuffer::createCompatibleBuffer(size(), m_deviceScaleFactor, ColorSpaceDeviceRGB, context));
+        setImageBuffer(ImageBuffer::createCompatibleBuffer(size(), 1.0f, ColorSpaceDeviceRGB, context));
     } else
 #endif
     {
