@@ -32,7 +32,7 @@
 #endif
 
 namespace OpenGLShimsQt {
-ALWAYS_INLINE static void doNothing() {}
+ALWAYS_INLINE static void doNothing() { }
 }
 
 #define LOOKUP_GL_FUNCTION(f, ...) OpenGLShimsQt::doNothing(), FUNCTIONS->f(__VA_ARGS__)

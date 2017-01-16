@@ -156,7 +156,7 @@ PassRefPtr<Uint8ClampedArray> getImageData(const IntRect& rect, const ImageBuffe
     // FIXME: This is inefficient for accelerated ImageBuffers when only part of the imageData is read.
     QPainter painter(&image);
     painter.setCompositionMode(QPainter::CompositionMode_Source);
-    painter.drawImage(QPoint(0,0), imageData.m_impl->toQImage(), rect);
+    painter.drawImage(QPoint(0, 0), imageData.m_impl->toQImage(), rect);
     painter.end();
 
     return result.release();

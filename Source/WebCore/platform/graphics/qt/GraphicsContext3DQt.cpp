@@ -30,11 +30,10 @@
 #include "QWebPageClient.h"
 #include "SharedBuffer.h"
 #include "TextureMapperPlatformLayer.h"
+#include <QOffscreenSurface>
+#include <private/qopenglextensions_p.h>
 #include <qpa/qplatformpixmap.h>
 #include <wtf/text/CString.h>
-
-#include <private/qopenglextensions_p.h>
-#include <QOffscreenSurface>
 
 #if USE(TEXTURE_MAPPER_GL)
 #include <texmap/TextureMapperGL.h>
@@ -43,7 +42,7 @@
 #if ENABLE(GRAPHICS_CONTEXT_3D)
 
 QT_BEGIN_NAMESPACE
-extern Q_GUI_EXPORT QImage qt_gl_read_framebuffer(const QSize &size, bool alpha_format, bool include_alpha);
+extern Q_GUI_EXPORT QImage qt_gl_read_framebuffer(const QSize&, bool alpha_format, bool include_alpha);
 QT_END_NAMESPACE
 
 namespace WebCore {
@@ -72,10 +71,7 @@ typedef char GLchar;
 #define GL_DRAW_FRAMEBUFFER               0x8CA9
 #endif
 
-class GraphicsContext3DPrivate
-        : public TextureMapperPlatformLayer
-        , public QOpenGLExtensions
-{
+class GraphicsContext3DPrivate : public TextureMapperPlatformLayer, public QOpenGLExtensions {
 public:
     GraphicsContext3DPrivate(GraphicsContext3D*, HostWindow*, GraphicsContext3D::RenderStyle);
     ~GraphicsContext3DPrivate();
@@ -109,14 +105,14 @@ public:
 #endif
 
     // Register as a child of a Qt context to make the necessary when it may be destroyed before the GraphicsContext3D instance
-    class QtContextWatcher : public QObject
-    {
-        public:
-            QtContextWatcher(QObject* ctx, GraphicsContext3DPrivate* watcher): QObject(ctx), m_watcher(watcher) { }
-            ~QtContextWatcher() { m_watcher->m_platformContext = 0; m_watcher->m_platformContextWatcher = 0; }
+    class QtContextWatcher : public QObject {
+    public:
+        QtContextWatcher(QObject* ctx, GraphicsContext3DPrivate* watcher)
+            : QObject(ctx), m_watcher(watcher) { }
+        ~QtContextWatcher() { m_watcher->m_platformContext = 0; m_watcher->m_platformContextWatcher = 0; }
 
-        private:
-            GraphicsContext3DPrivate* m_watcher;
+    private:
+        GraphicsContext3DPrivate* m_watcher;
     };
     QtContextWatcher* m_platformContextWatcher;
 };
@@ -195,8 +191,7 @@ GraphicsContext3DPrivate::GraphicsContext3DPrivate(GraphicsContext3D* context, H
     initializeOpenGLFunctions();
 #if USE(GRAPHICS_SURFACE)
     IntSize surfaceSize(m_context->m_currentWidth, m_context->m_currentHeight);
-    m_surfaceFlags = GraphicsSurface::SupportsTextureTarget
-                    | GraphicsSurface::SupportsSharing;
+    m_surfaceFlags = GraphicsSurface::SupportsTextureTarget | GraphicsSurface::SupportsSharing;
 
     if (!surfaceSize.isEmpty())
         m_graphicsSurface = GraphicsSurface::create(surfaceSize, m_surfaceFlags, m_platformContext);
