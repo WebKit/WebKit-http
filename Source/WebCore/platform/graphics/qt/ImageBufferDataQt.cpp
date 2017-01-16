@@ -242,8 +242,8 @@ void ImageBufferDataPrivateAccelerated::draw(GraphicsContext& destContext, const
         }
     }
     RefPtr<Image> image = StillImage::create(QPixmap::fromImage(toQImage()));
-    destContext.drawImage(image.get(), destRect, srcRect, op, blendMode,
-                           DoNotRespectImageOrientation);
+    destContext.drawImage(*image, destRect, srcRect, ImagePaintingOptions(op, blendMode,
+                           DoNotRespectImageOrientation));
 }
 
 
@@ -408,9 +408,9 @@ void ImageBufferDataPrivateUnaccelerated::draw(GraphicsContext& destContext, con
     if (ownContext) {
         // We're drawing into our own buffer.  In order for this to work, we need to copy the source buffer first.
         RefPtr<Image> copy = copyImage();
-        destContext.drawImage(copy.get(), destRect, srcRect, op, blendMode, DoNotRespectImageOrientation);
+        destContext.drawImage(*copy, destRect, srcRect, ImagePaintingOptions(op, blendMode, ImageOrientationDescription()));
     } else
-        destContext.drawImage(m_image.get(), destRect, srcRect, op, blendMode, DoNotRespectImageOrientation);
+        destContext.drawImage(*m_image, destRect, srcRect, ImagePaintingOptions(op, blendMode, ImageOrientationDescription()));
 }
 
 void ImageBufferDataPrivateUnaccelerated::drawPattern(GraphicsContext& destContext, const FloatRect& srcRect, const AffineTransform& patternTransform,
