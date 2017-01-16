@@ -673,7 +673,7 @@ void HTMLCanvasElement::createImageBuffer() const
 
 #if PLATFORM(QT) && ENABLE(ACCELERATED_2D_CANVAS)
     if (renderingMode == Accelerated) {
-        QWebPageClient* client = document()->page()->chrome().platformPageClient();
+        QWebPageClient* client = document().page()->chrome().platformPageClient();
         // The WebKit2 Chrome does not have a pageclient.
         QOpenGLContext* context = client ? client->openGLContextIfAvailable() : 0;
         setImageBuffer(ImageBuffer::createCompatibleBuffer(size(), 1.0f, ColorSpaceDeviceRGB, context));

@@ -50,13 +50,13 @@ struct ImageBufferDataPrivate {
     virtual PassRefPtr<Image> copyImage() const = 0;
     virtual bool isAccelerated() const = 0;
     virtual PlatformLayer* platformLayer() = 0;
-    virtual void draw(GraphicsContext* destContext, ColorSpace styleColorSpace, const FloatRect& destRect,
+    virtual void draw(GraphicsContext& destContext, ColorSpace styleColorSpace, const FloatRect& destRect,
                       const FloatRect& srcRect, CompositeOperator op, BlendMode blendMode,
                       bool ownContext) = 0;
-    virtual void drawPattern(GraphicsContext* destContext, const FloatRect& srcRect, const AffineTransform& patternTransform,
+    virtual void drawPattern(GraphicsContext& destContext, const FloatRect& srcRect, const AffineTransform& patternTransform,
                              const FloatPoint& phase, ColorSpace styleColorSpace, CompositeOperator op,
                              const FloatRect& destRect, bool ownContext) = 0;
-    virtual void clip(GraphicsContext* context, const FloatRect& floatRect) const = 0;
+    virtual void clip(GraphicsContext& context, const FloatRect& floatRect) const = 0;
     virtual void platformTransformColorSpace(const Vector<int>& lookUpTable) = 0;
 };
 

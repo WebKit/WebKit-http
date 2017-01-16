@@ -90,11 +90,11 @@ std::unique_ptr<ImageBuffer> ImageBuffer::createCompatibleBuffer(const IntSize& 
 }
 #endif
 
-GraphicsContext* ImageBuffer::context() const
+GraphicsContext& ImageBuffer::context() const
 {
     ASSERT(m_data.m_painter->isActive());
 
-    return m_context.get();
+    return *m_data.m_context;
 }
 
 PassRefPtr<Image> ImageBuffer::copyImage(BackingStoreCopy copyBehavior, ScaleBehavior) const
@@ -120,19 +120,19 @@ void ImageBuffer::drawConsuming(std::unique_ptr<ImageBuffer> imageBuffer, Graphi
     imageBuffer->draw(destContext, destRect, srcRect, op, blendMode);
 }
 
-void ImageBuffer::draw(GraphicsContext* destContext, ColorSpace styleColorSpace, const FloatRect& destRect, const FloatRect& srcRect,
+void ImageBuffer::draw(GraphicsContext& destContext, ColorSpace styleColorSpace, const FloatRect& destRect, const FloatRect& srcRect,
     CompositeOperator op, BlendMode blendMode)
 {
-    m_data.m_impl->draw(destContext, styleColorSpace, destRect, srcRect, op, blendMode, destContext == context());
+    m_data.m_impl->draw(destContext, styleColorSpace, destRect, srcRect, op, blendMode, &destContext == &context());
 }
 
-void ImageBuffer::drawPattern(GraphicsContext* destContext, const FloatRect& srcRect, const AffineTransform& patternTransform,
+void ImageBuffer::drawPattern(GraphicsContext& destContext, const FloatRect& srcRect, const AffineTransform& patternTransform,
                               const FloatPoint& phase, ColorSpace styleColorSpace, CompositeOperator op, const FloatRect& destRect)
 {
-    m_data.m_impl->drawPattern(destContext, srcRect, patternTransform, phase, styleColorSpace, op, destRect, destContext == context());
+    m_data.m_impl->drawPattern(destContext, srcRect, patternTransform, phase, styleColorSpace, op, destRect, &destContext == &context());
 }
 
-void ImageBuffer::clip(GraphicsContext* context, const FloatRect& floatRect) const
+void ImageBuffer::clip(GraphicsContext& context, const FloatRect& floatRect) const
 {
     m_data.m_impl->clip(context, floatRect);
 }

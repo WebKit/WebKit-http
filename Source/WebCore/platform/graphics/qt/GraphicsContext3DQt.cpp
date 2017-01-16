@@ -80,7 +80,7 @@ public:
     GraphicsContext3DPrivate(GraphicsContext3D*, HostWindow*, GraphicsContext3D::RenderStyle);
     ~GraphicsContext3DPrivate();
 
-    virtual void paintToTextureMapper(TextureMapper*, const FloatRect& target, const TransformationMatrix&, float opacity);
+    virtual void paintToTextureMapper(TextureMapper&, const FloatRect& target, const TransformationMatrix&, float opacity);
 #if USE(GRAPHICS_SURFACE)
     virtual IntSize platformLayerSize() const;
     virtual uint32_t copyToGraphicsSurface();
@@ -274,21 +274,21 @@ GraphicsContext3DPrivate::~GraphicsContext3DPrivate()
     m_platformContextWatcher = 0;
 }
 
-void GraphicsContext3DPrivate::paintToTextureMapper(TextureMapper* textureMapper, const FloatRect& targetRect, const TransformationMatrix& matrix, float opacity)
+void GraphicsContext3DPrivate::paintToTextureMapper(TextureMapper& textureMapper, const FloatRect& targetRect, const TransformationMatrix& matrix, float opacity)
 {
     m_context->markLayerComposited();
     blitMultisampleFramebufferAndRestoreContext();
 
-    if (textureMapper->accelerationMode() == TextureMapper::OpenGLMode) {
-        TextureMapperGL* texmapGL = static_cast<TextureMapperGL*>(textureMapper);
+    if (textureMapper.accelerationMode() == TextureMapper::OpenGLMode) {
+        TextureMapperGL& texmapGL = static_cast<TextureMapperGL&>(textureMapper);
         TextureMapperGL::Flags flags = TextureMapperGL::ShouldFlipTexture | (m_context->m_attrs.alpha ? TextureMapperGL::ShouldBlend : 0);
         IntSize textureSize(m_context->m_currentWidth, m_context->m_currentHeight);
-        texmapGL->drawTexture(m_context->m_texture, flags, textureSize, targetRect, matrix, opacity);
+        texmapGL.drawTexture(m_context->m_texture, flags, textureSize, targetRect, matrix, opacity);
         return;
     }
 
     // Alternatively read pixels to a memory buffer.
-    GraphicsContext* context = textureMapper->graphicsContext();
+    GraphicsContext* context = textureMapper.graphicsContext();
     QPainter* painter = context->platformContext();
     painter->save();
     painter->setTransform(matrix);
