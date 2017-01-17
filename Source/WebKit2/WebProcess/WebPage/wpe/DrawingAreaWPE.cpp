@@ -84,7 +84,7 @@ void DrawingAreaWPE::updatePreferences(const WebPreferencesStore& store)
 void DrawingAreaWPE::mainFrameContentSizeChanged(const WebCore::IntSize& size)
 {
     if (m_layerTreeHost)
-        m_layerTreeHost->sizeDidChange(size);
+        m_layerTreeHost->contentsSizeChanged(size);
 }
 
 GraphicsLayerFactory* DrawingAreaWPE::graphicsLayerFactory()
@@ -138,7 +138,7 @@ void DrawingAreaWPE::updateBackingStoreState(uint64_t, bool, float deviceScaleFa
     m_webPage.scrollMainFrameIfNotAtMaxScrollPosition(scrollOffset);
 
     ASSERT(m_layerTreeHost);
-    m_layerTreeHost->contentsSizeChanged(m_webPage.size());
+    m_layerTreeHost->sizeDidChange(m_webPage.size());
 }
 
 void DrawingAreaWPE::didUpdate()
@@ -151,7 +151,7 @@ void DrawingAreaWPE::enterAcceleratedCompositingMode(GraphicsLayer* graphicsLaye
     m_layerTreeHost = LayerTreeHost::create(m_webPage);
     m_layerTreeHost->setRootCompositingLayer(graphicsLayer);
     m_layerTreeHost->setShouldNotifyAfterNextScheduledLayerFlush(true);
-    m_layerTreeHost->contentsSizeChanged(m_webPage.size());
+    m_layerTreeHost->sizeDidChange(m_webPage.size());
 }
 
 } // namespace WebKit
