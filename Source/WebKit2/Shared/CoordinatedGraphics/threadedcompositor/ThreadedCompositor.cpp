@@ -29,7 +29,7 @@
 #if USE(COORDINATED_GRAPHICS_THREADED)
 
 #include "CompositingRunLoop.h"
-#include "DisplayRefreshMonitor.h"
+#include "TCDisplayRefreshMonitor.h"
 #include <WebCore/PlatformDisplay.h>
 #include <WebCore/TransformationMatrix.h>
 #include <cstdio>

@@ -24,7 +24,7 @@
  */
 
 #include "config.h"
-#include "DisplayRefreshMonitor.h"
+#include "TCDisplayRefreshMonitor.h"
 
 #if USE(COORDINATED_GRAPHICS_THREADED) && USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
 
