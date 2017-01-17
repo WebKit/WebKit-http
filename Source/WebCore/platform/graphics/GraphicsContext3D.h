@@ -1413,7 +1413,9 @@ private:
     String mappedSymbolName(Platform3DObject shaders[2], size_t count, const String& name);
     String originalSymbolName(Platform3DObject program, ANGLEShaderSymbolType, const String& name);
 
+#if !PLATFORM(QT)
     ANGLEWebKitBridge m_compiler;
+#endif
 
     std::unique_ptr<ShaderNameHash> nameHashMapForShaders;
 
@@ -1468,7 +1470,12 @@ private:
 
     friend class GraphicsContext3DPrivate;
     std::unique_ptr<GraphicsContext3DPrivate> m_private;
-    
+
+#if PLATFORM(QT)
+    // Must be initialized after m_private so that isGLES2Compliant works
+    ANGLEWebKitBridge m_compiler;
+#endif
+
     WebGLRenderingContextBase* m_webglContext;
 };
 
