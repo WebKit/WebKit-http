@@ -13,10 +13,10 @@ Change-Id: If9ee3e185c42af10c05ae3852d088881da1d4f1a
  .../fontdatabases/fontconfig/qfontconfigdatabase_p.h              | 1 +
  2 files changed, 8 insertions(+), 1 deletion(-)
 
-diff --git a/qtbase/src/platformsupport/fontdatabases/fontconfig/qfontconfigdatabase.cpp b/qtbase/src/platformsupport/fontdatabases/fontconfig/qfontconfigdatabase.cpp
+diff --git a/src/platformsupport/fontdatabases/fontconfig/qfontconfigdatabase.cpp b/src/platformsupport/fontdatabases/fontconfig/qfontconfigdatabase.cpp
 index 8ebabf3..194f66c 100644
---- a/qtbase/src/platformsupport/fontdatabases/fontconfig/qfontconfigdatabase.cpp
-+++ b/qtbase/src/platformsupport/fontdatabases/fontconfig/qfontconfigdatabase.cpp
+--- a/src/platformsupport/fontdatabases/fontconfig/qfontconfigdatabase.cpp
++++ b/src/platformsupport/fontdatabases/fontconfig/qfontconfigdatabase.cpp
 @@ -471,7 +471,7 @@ static void populateFromPattern(FcPattern *pattern)
  
  void QFontconfigDatabase::populateFontDatabase()
@@ -39,10 +39,10 @@ index 8ebabf3..194f66c 100644
  QFontEngineMulti *QFontconfigDatabase::fontEngineMulti(QFontEngine *fontEngine, QChar::Script script)
  {
      return new QFontEngineMultiFontConfig(fontEngine, script);
-diff --git a/qtbase/src/platformsupport/fontdatabases/fontconfig/qfontconfigdatabase_p.h b/qtbase/src/platformsupport/fontdatabases/fontconfig/qfontconfigdatabase_p.h
+diff --git a/src/platformsupport/fontdatabases/fontconfig/qfontconfigdatabase_p.h b/src/platformsupport/fontdatabases/fontconfig/qfontconfigdatabase_p.h
 index 2199f39..ab77fab 100644
---- a/qtbase/src/platformsupport/fontdatabases/fontconfig/qfontconfigdatabase_p.h
-+++ b/qtbase/src/platformsupport/fontdatabases/fontconfig/qfontconfigdatabase_p.h
+--- a/src/platformsupport/fontdatabases/fontconfig/qfontconfigdatabase_p.h
++++ b/src/platformsupport/fontdatabases/fontconfig/qfontconfigdatabase_p.h
 @@ -56,6 +56,7 @@ class QFontconfigDatabase : public QBasicFontDatabase
  {
  public:

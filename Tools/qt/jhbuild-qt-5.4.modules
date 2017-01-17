@@ -3,15 +3,27 @@
 <?xml-stylesheet type="text/xsl" href="moduleset.xsl"?>
 <moduleset>
 
+  <metamodule id="qt">
+    <dependencies>
+      <dep package="qtbase"/>
+      <dep package="qtlocation"/>
+      <dep package="qtsensors"/>
+    </dependencies>
+  </metamodule>
+
   <repository type="tarball" name="download.qt.io"
       href="http://download.qt.io"/>
 
-  <autotools id="qt"
+  <autotools id="qtbase"
+      supports-non-srcdir-builds="no"
       makeinstallargs="install INSTALL_ROOT='$(DESTDIR)'"
       autogen-template="%(srcdir)s/%(autogen-sh)s -prefix %(prefix)s -I%(prefix)s/include -L%(prefix)s/lib -libdir %(prefix)s/lib"
       autogen-sh="configure
  -opensource
  -confirm-license
+
+ -force-debug-info
+ -separate-debug-info
 
  -icu
  -openssl
@@ -20,22 +32,6 @@
  -nomake examples
  -nomake tools
  -nomake tests
-
- -skip connectivity
- -skip enginio
- -skip graphicaleffects
- -skip imageformats
- -skip multimedia
- -skip quickcontrols
- -skip script
- -skip serialport
- -skip svg
- -skip translations
- -skip wayland
- -skip webengine
- -skip webkit
- -skip x11extras
- -skip xmlpatterns
 
  -system-harfbuzz
  -system-freetype
@@ -62,10 +58,10 @@
  -no-sql-db2 -no-sql-ibase -no-sql-mysql -no-sql-oci -no-sql-odbc -no-sql-psql -no-sql-sqlite2 -no-sql-tds
  -plugin-sql-sqlite
                 ">
-    <branch module="archive/qt/5.4/${version}/single/qt-everywhere-opensource-src-${version}.tar.xz" version="5.4.0"
+    <branch module="archive/qt/5.4/${version}/submodules/qtbase-opensource-src-${version}.tar.xz" version="5.4.0"
           repo="download.qt.io"
-          hash="sha256:b2d9df47b9fd2fcfa5ebd162e1373b7eddf4759e6ba148c4589f3d8b6628c39c">
-      <patch file="qt-5.4-fontconfig-fix.patch" strip="1"/>
+          hash="sha256:daea240ba5e77bc2d78ec21a2cb664eed83b3d4ad409b6277a6f7d4c0c8e91d1">
+      <patch file="qtbase-5.4-fontconfig-fix.patch" strip="1"/>
     </branch>
     <dependencies>
       <dep package="fontconfig"/>
@@ -76,4 +72,27 @@
     </dependencies>
   </autotools>
 
+  <autotools id="qtlocation"
+      autogen-template="%(prefix)s/bin/qmake %(srcdir)s"
+      makeinstallargs="install INSTALL_ROOT='$(DESTDIR)'"
+      supports-non-srcdir-builds="no">
+      <branch module="archive/qt/5.4/${version}/submodules/qtlocation-opensource-src-${version}.tar.xz" version="5.4.0"
+          repo="download.qt.io"
+          hash="sha256:e8420c1b5fdddbc44faa7aa1c653da91dc101055a869dcb518326188be81d456"/>
+      <dependencies>
+          <dep package="qtbase"/>
+      </dependencies>
+  </autotools>
+
+  <autotools id="qtsensors"
+      autogen-template="%(prefix)s/bin/qmake %(srcdir)s"
+      makeinstallargs="install INSTALL_ROOT='$(DESTDIR)'"
+      supports-non-srcdir-builds="no">
+      <branch module="archive/qt/5.4/${version}/submodules/qtsensors-opensource-src-${version}.tar.xz" version="5.4.0"
+          repo="download.qt.io"
+          hash="sha256:8a0f33ccf572b9fbcdc46fca602d75270979a2f851b6a1f399d039b1f7aae159"/>
+      <dependencies>
+          <dep package="qtbase"/>
+      </dependencies>
+  </autotools>
 </moduleset>
