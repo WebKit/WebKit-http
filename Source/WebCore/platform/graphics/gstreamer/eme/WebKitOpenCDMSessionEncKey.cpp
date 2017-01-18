@@ -48,9 +48,8 @@ WebKitOpenCDMSessionEncKey::WebKitOpenCDMSessionEncKey(CDMSessionClient* client,
 {
 }
 
-RefPtr<Uint8Array> WebKitOpenCDMSessionEncKey::generateKeyRequest(const String& mimeType, Uint8Array* initData, String& destinationUrl, unsigned short& errorCode, uint32_t& sysCode)
+RefPtr<Uint8Array> WebKitOpenCDMSessionEncKey::generateKeyRequest(const String& mimeType, Uint8Array* initData, String& destinationUrl, unsigned short& errorCode, uint32_t&)
 {
-    UNUSED_PARAM(sysCode);
     int returnValue = 0;
 
     unsigned char initDataValue[initData->length()];
@@ -66,7 +65,7 @@ RefPtr<Uint8Array> WebKitOpenCDMSessionEncKey::generateKeyRequest(const String& 
     }
     m_sessionId = String::fromUTF8(sessionId.c_str());
 
-    unsigned char temporaryUrl[100] = "\0";
+    unsigned char temporaryUrl[1024] = "\0";
     string message;
     int messageLength = 0;
     returnValue = m_openCdmSession->GetKeyMessage(message,
