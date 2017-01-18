@@ -1291,10 +1291,6 @@ private:
     void createGraphicsSurfaces(const IntSize&);
 #endif
 
-#if USE(COORDINATED_GRAPHICS_THREADED)
-    void swapBufferIfNeeded();
-#endif
-
     int m_currentWidth, m_currentHeight;
 
 #if PLATFORM(COCOA)
