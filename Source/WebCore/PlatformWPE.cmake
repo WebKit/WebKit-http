@@ -180,8 +180,6 @@ list(APPEND WebCore_SOURCES
     platform/wpe/SoundWPE.cpp
     platform/wpe/ThemeWPE.cpp
     platform/wpe/WidgetWPE.cpp
-    platform/wpe/CDMPrivateEncKeyWPE.cpp
-    platform/wpe/CDMSessionEncKeyWPE.cpp
 )
 
 list(APPEND WebCore_USER_AGENT_STYLE_SHEETS

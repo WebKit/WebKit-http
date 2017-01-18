@@ -155,7 +155,7 @@ public:
 #endif
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA) && USE(OCDM)
-    virtual void emitOCDMSession();
+    virtual void emitOpenCDMSession();
 #endif
 
     static bool supportsKeySystem(const String& keySystem, const String& mimeType);

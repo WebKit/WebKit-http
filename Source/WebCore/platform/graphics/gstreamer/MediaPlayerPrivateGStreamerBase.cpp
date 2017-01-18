@@ -121,9 +121,9 @@
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
 #include "CDMPRSessionGStreamer.h"
 #if USE(OCDM)
-#include <wpe/CDMPrivateEncKeyWPE.h>
-#include <wpe/CDMSessionEncKeyWPE.h>
-#include "WebKitOpenCDMiWidevineDecryptorGStreamer.h"
+#include "WebKitOpenCDMDecryptorGStreamer.h"
+#include "WebKitOpenCDMPrivateEncKey.h"
+#include "WebKitOpenCDMSessionEncKey.h"
 #endif // USE(OCDM)
 #endif // ENABLE(LEGACY_ENCRYPTED_MEDIA)
 #if USE(PLAYREADY)
@@ -177,7 +177,7 @@ void registerWebKitGStreamerElements()
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA) && USE(OCDM)
     GRefPtr<GstElementFactory> widevineDecryptorFactory = gst_element_factory_find("webkitwidevine");
     if (!widevineDecryptorFactory)
-        gst_element_register(0, "webkitwidevine", GST_RANK_PRIMARY + 100, OPENCDMI_TYPE_WIDEVINE_DECRYPT);
+        gst_element_register(0, "webkitwidevine", GST_RANK_PRIMARY + 100, WEBKIT_OPENCDM_TYPE_DECRYPT);
 #endif
 }
 
@@ -1446,27 +1446,27 @@ void MediaPlayerPrivateGStreamerBase::emitSession()
 #endif
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA) && USE(OCDM)
-void MediaPlayerPrivateGStreamerBase::emitOCDMSession()
+void MediaPlayerPrivateGStreamerBase::emitOpenCDMSession()
 {
     if (!m_cdmSession)
         return;
 
-    CDMSessionEncKey* cdmSession = static_cast<CDMSessionEncKey*>(m_cdmSession);
-    String sessionId = (cdmSession->sessionId()).utf8().data();
+    WebKitOpenCDMSessionEncKey* cdmSession = static_cast<WebKitOpenCDMSessionEncKey*>(m_cdmSession);
+    const String& sessionId = cdmSession->sessionId();
     if (sessionId.isEmpty())
         return;
 
     gst_element_send_event(m_pipeline.get(), gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM_OOB,
-    gst_structure_new("drm-session", "session", G_TYPE_STRING, sessionId.utf8().data(), nullptr)));
+        gst_structure_new("drm-session", "session", G_TYPE_STRING, sessionId.utf8().data(), nullptr)));
 }
-#endif //ENABLE(LEGACY_ENCRYPTED_MEDIA) && USE(OCDM)
+#endif // ENABLE(LEGACY_ENCRYPTED_MEDIA) && USE(OCDM)
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)
 MediaPlayer::MediaKeyException MediaPlayerPrivateGStreamerBase::addKey(const String& keySystem, const unsigned char* keyData, unsigned keyLength, const unsigned char* /* initData */, unsigned /* initDataLength */ , const String& sessionID)
 {
     GST_DEBUG("addKey system: %s, length: %u, session: %s", keySystem.utf8().data(), keyLength, sessionID.utf8().data());
 
- #if USE(PLAYREADY)
+#if USE(PLAYREADY)
     if (equalIgnoringASCIICase(keySystem, PLAYREADY_PROTECTION_SYSTEM_ID)
         || equalIgnoringASCIICase(keySystem, PLAYREADY_YT_PROTECTION_SYSTEM_ID)) {
         RefPtr<Uint8Array> key = Uint8Array::create(keyData, keyLength);
@@ -1610,9 +1610,8 @@ void MediaPlayerPrivateGStreamerBase::keyAdded()
 #endif
 
 #if USE(OCDM)
-    if (m_cdmSession) {
-       emitOCDMSession();
-    }
+    if (m_cdmSession)
+        emitOpenCDMSession();
 #endif // USE(OCDM)
 }
 
@@ -1629,9 +1628,8 @@ std::unique_ptr<CDMSession> MediaPlayerPrivateGStreamerBase::createSession(const
 #endif
 
 #if USE(OCDM)
-    if (CDMPrivateEncKey::supportsKeySystem(keySystem)) {
-        return (CDMPrivateEncKey::createSession(client));
-    }
+    if (WebKitOpenCDMPrivateEncKey::supportsKeySystem(keySystem))
+        return WebKitOpenCDMPrivateEncKey::createSession(client);
 #endif // USE(OCDM)
     return nullptr;
 }
@@ -1743,10 +1741,9 @@ bool MediaPlayerPrivateGStreamerBase::supportsKeySystem(const String& keySystem,
         return true;
 #endif
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA) && USE(OCDM)
-    if (CDMPrivateEncKey::supportsKeySystemAndMimeType(keySystem,mimeType)) {
+    if (WebKitOpenCDMPrivateEncKey::supportsKeySystemAndMimeType(keySystem,mimeType))
         return true;
-    }
-#endif // ENABLE(LEGACY_ENCRYPTED_MEDIA) && USE(OCDM)
+#endif
 
     return false;
 }
