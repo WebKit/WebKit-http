@@ -177,6 +177,8 @@ bool Extensions3DOpenGL::supportsExtension(const String& name)
     // GL_ANGLE_framebuffer_blit and GL_ANGLE_framebuffer_multisample are "fake". They are implemented using other
     // extensions. In particular GL_EXT_framebuffer_blit and GL_EXT_framebuffer_multisample/GL_APPLE_framebuffer_multisample.
 #if PLATFORM(QT)
+    m_context->makeContextCurrent();
+
     if (name == "GL_ANGLE_framebuffer_blit" || name == "GL_EXT_framebuffer_blit")
         return m_context->m_functions->hasOpenGLExtension(QOpenGLExtensions::FramebufferBlit);
     if (name == "GL_ANGLE_framebuffer_multisample" || name == "GL_EXT_framebuffer_multisample")
