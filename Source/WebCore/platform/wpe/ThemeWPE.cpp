@@ -41,13 +41,13 @@ Theme* platformTheme()
 
 LengthSize ThemeWPE::controlSize(ControlPart part, const FontCascade& fontCascade, const LengthSize& zoomedSize, float zoomFactor) const
 {
-    if (!zoomedSize.width().isIntrinsicOrAuto() && !zoomedSize.height().isIntrinsicOrAuto())
+    if (!zoomedSize.width.isIntrinsicOrAuto() && !zoomedSize.height.isIntrinsicOrAuto())
         return Theme::controlSize(part, fontCascade, zoomedSize, zoomFactor);
 
     switch (part) {
     case CheckboxPart:
     case RadioPart:
-        return LengthSize(Length(12, Fixed), Length(12, Fixed));
+        return LengthSize { Length(12, Fixed), Length(12, Fixed) };
     default:
         break;
     }

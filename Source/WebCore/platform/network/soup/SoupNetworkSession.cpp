@@ -252,7 +252,7 @@ void SoupNetworkSession::setupProxy()
     soup_session_abort(m_soupSession.get());
 }
 
-#if PLATFORM(EFL)
+#if PLATFORM(EFL) || PLATFORM(WPE)
 // FIXME: This function should not exist at all and we don't want to accidentally use it in other ports.
 // The correct way to set proxy settings from the environment is to use a GProxyResolver that does so.
 // It also lacks the rather important https_proxy and ftp_proxy variables, and the uppercase versions of

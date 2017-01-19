@@ -38,7 +38,7 @@ public:
     bool platformInitialize() override
     {
 #if PLATFORM(WPE)
-        WebCore::SoupNetworkSession::defaultSession().setupHTTPProxyFromEnvironment();
+        WebCore::SoupNetworkSession::setProxySettingsFromEnvironment();
 #endif
         return true;
     }

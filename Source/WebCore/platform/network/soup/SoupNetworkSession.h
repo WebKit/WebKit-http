@@ -57,7 +57,7 @@ public:
 
     static void clearOldSoupCache(const String& cacheDirectory);
 
-#if PLATFORM(EFL)
+#if PLATFORM(EFL) || PLATFORM(WPE)
     static void setProxySettingsFromEnvironment();
 #endif
     static void setProxySettings(const SoupNetworkProxySettings&);

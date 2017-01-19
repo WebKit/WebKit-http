@@ -31,6 +31,7 @@
 #include "DocumentLoader.h"
 
 #include "ApplicationCacheHost.h"
+#include "Archive.h"
 #include "ArchiveResourceCollection.h"
 #include "CachedPage.h"
 #include "CachedRawResource.h"
@@ -70,6 +71,7 @@
 #include "SecurityPolicy.h"
 #include "Settings.h"
 #include "SubresourceLoader.h"
+#include "SubstituteResource.h"
 #include "TextResourceDecoder.h"
 #include <wtf/Assertions.h>
 #include <wtf/NeverDestroyed.h>
