@@ -1314,8 +1314,7 @@ GstElement* MediaPlayerPrivateGStreamerBase::createVideoSinkGL()
 GstElement* MediaPlayerPrivateGStreamerBase::createVideoSink()
 {
 #if USE(GSTREAMER_GL)
-    if (m_player->client().mediaPlayerRenderingCanBeAccelerated(m_player))
-        m_videoSink = createVideoSinkGL();
+    m_videoSink = createVideoSinkGL();
 #endif
 
     if (!m_videoSink) {

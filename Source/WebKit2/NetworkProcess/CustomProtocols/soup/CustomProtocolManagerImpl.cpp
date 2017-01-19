@@ -25,6 +25,7 @@
 #include "DataReference.h"
 #include "WebCoreArgumentCoders.h"
 #include "WebKitSoupRequestInputStream.h"
+#include <WebCore/NetworkStorageSession.h>
 #include <WebCore/ResourceError.h>
 #include <WebCore/ResourceRequest.h>
 #include <WebCore/ResourceResponse.h>
@@ -90,11 +91,10 @@ void CustomProtocolManagerImpl::registerScheme(const String& scheme)
     g_ptr_array_add(m_schemes.get(), g_strdup(scheme.utf8().data()));
     g_ptr_array_add(m_schemes.get(), nullptr);
 
-    SoupSession* session = WebCore::SoupNetworkSession::defaultSession().soupSession();
     SoupRequestClass* genericRequestClass = static_cast<SoupRequestClass*>(g_type_class_ref(WEBKIT_TYPE_SOUP_REQUEST_GENERIC));
     genericRequestClass->schemes = const_cast<const char**>(reinterpret_cast<char**>(m_schemes->pdata));
     static_cast<WebKitSoupRequestGenericClass*>(g_type_class_ref(WEBKIT_TYPE_SOUP_REQUEST_GENERIC))->client = this;
-    soup_session_add_feature_by_type(session, WEBKIT_TYPE_SOUP_REQUEST_GENERIC);
+    soup_session_add_feature_by_type(WebCore::NetworkStorageSession::defaultStorageSession().getOrCreateSoupNetworkSession().soupSession(), WEBKIT_TYPE_SOUP_REQUEST_GENERIC);
 }
 
 bool CustomProtocolManagerImpl::supportsScheme(const String& scheme)

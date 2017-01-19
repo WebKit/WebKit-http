@@ -44,7 +44,7 @@ NetworkSessionSoup::~NetworkSessionSoup()
 
 SoupSession* NetworkSessionSoup::soupSession() const
 {
-    return networkStorageSession().soupNetworkSession().soupSession();
+    return networkStorageSession().getOrCreateSoupNetworkSession().soupSession();
 }
 
 } // namespace WebKit

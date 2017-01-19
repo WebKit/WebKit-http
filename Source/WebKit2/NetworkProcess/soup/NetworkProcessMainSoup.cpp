@@ -29,6 +29,7 @@
 
 #include "ChildProcessMain.h"
 #include "NetworkProcessMainUnix.h"
+#include <WebCore/NetworkStorageSession.h>
 #include <WebCore/SoupNetworkSession.h>
 
 namespace WebKit {
@@ -38,7 +39,7 @@ public:
     bool platformInitialize() override
     {
 #if PLATFORM(WPE)
-        WebCore::SoupNetworkSession::defaultSession().setupHTTPProxyFromEnvironment();
+        WebCore::NetworkStorageSession::defaultStorageSession().getOrCreateSoupNetworkSession().setupHTTPProxyFromEnvironment();
 #endif
         return true;
     }

@@ -27,6 +27,12 @@
 
 #include "DestructionMode.h"
 
+#if COMPILER(GCC_OR_CLANG)
+#define HEAPCELL_ALIGNMENT __attribute__ ((aligned (sizeof(void*))))
+#else
+#define HEAPCELL_ALIGNMENT
+#endif
+
 namespace JSC {
 
 class CellContainer;
@@ -36,7 +42,7 @@ class MarkedBlock;
 class VM;
 struct AllocatorAttributes;
 
-class HeapCell {
+class HEAPCELL_ALIGNMENT HeapCell {
 public:
     enum Kind : int8_t {
         JSCell,

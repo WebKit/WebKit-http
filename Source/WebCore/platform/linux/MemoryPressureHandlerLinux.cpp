@@ -59,8 +59,8 @@ namespace WebCore {
 static const unsigned s_minimumHoldOffTime = 5;
 static const unsigned s_holdOffMultiplier = 20;
 static const unsigned s_pollTimeSec = 1;
-static const size_t s_memCriticalLimit = 30 * KB * KB; // 30 MB
-static const size_t s_memNonCriticalLimit = 70 * KB * KB; // 70 MB
+static const size_t s_memCriticalLimit = 3 * KB * KB; // 3 MB
+static const size_t s_memNonCriticalLimit = 5 * KB * KB; // 5 MB
 static size_t s_pollMaximumProcessMemoryCriticalLimit = 0;
 static size_t s_pollMaximumProcessMemoryNonCriticalLimit = 0;
 
@@ -255,7 +255,7 @@ static bool defaultPollMaximumProcessMemory(size_t &criticalLimit, size_t &nonCr
 
             if (!fnmatch(key.utf8().data(), processName.utf8().data(), 0)) {
                 criticalLimit = size * units;
-                nonCriticalLimit = criticalLimit * 0.75;
+                nonCriticalLimit = criticalLimit * 0.95; //0.75;
                 return true;
             }
         }
@@ -281,17 +281,18 @@ void MemoryPressureHandler::pollMemoryPressure(void*)
                 critical = vmRSS > s_pollMaximumProcessMemoryCriticalLimit;
                 break;
             }
-        } else {
-            size_t memFree = readToken(s_memInfo, "MemFree:", KB);
-
-            if (!memFree)
-                return;
-
-            if (memFree < s_memNonCriticalLimit) {
-                critical = memFree < s_memCriticalLimit;
-                break;
-            }
         }
+
+        size_t memFree = readToken(s_memInfo, "MemFree:", KB);
+
+        if (!memFree)
+            return;
+
+        if (memFree < s_memNonCriticalLimit) {
+            critical = memFree < s_memCriticalLimit;
+            break;
+        }
+
         sleep(s_pollTimeSec);
     } while (true);
 

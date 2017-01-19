@@ -30,7 +30,6 @@
 #include "SoupNetworkSession.h"
 
 #include "AuthenticationChallenge.h"
-#include "CookieJarSoup.h"
 #include "CryptoDigest.h"
 #include "FileSystem.h"
 #include "GUniquePtrSoup.h"
@@ -48,6 +47,7 @@
 namespace WebCore {
 
 static bool gIgnoreTLSErrors;
+static CString gInitialAcceptLanguages;
 
 #if !LOG_DISABLED
 inline static void soupLogPrinter(SoupLogger*, SoupLoggerLogLevel, char direction, const char* data, gpointer)
@@ -94,31 +94,6 @@ static HashMap<String, HostTLSCertificateSet, ASCIICaseInsensitiveHash>& clientC
     return certificates;
 }
 
-SoupNetworkSession& SoupNetworkSession::defaultSession()
-{
-    static NeverDestroyed<SoupNetworkSession> networkSession(soupCookieJar());
-    return networkSession;
-}
-
-std::unique_ptr<SoupNetworkSession> SoupNetworkSession::createPrivateBrowsingSession()
-{
-    return std::unique_ptr<SoupNetworkSession>(new SoupNetworkSession(soupCookieJar()));
-}
-
-std::unique_ptr<SoupNetworkSession> SoupNetworkSession::createTestingSession()
-{
-    auto cookieJar = adoptGRef(createPrivateBrowsingCookieJar());
-    auto newSoupSession = std::unique_ptr<SoupNetworkSession>(new SoupNetworkSession(cookieJar.get()));
-    // FIXME: Creating a testing session is losing soup session values set when initializing the network process.
-    g_object_set(newSoupSession->soupSession(), "accept-language", "en-us", nullptr);
-    return newSoupSession;
-}
-
-std::unique_ptr<SoupNetworkSession> SoupNetworkSession::createForSoupSession(SoupSession* soupSession)
-{
-    return std::unique_ptr<SoupNetworkSession>(new SoupNetworkSession(soupSession));
-}
-
 static void authenticateCallback(SoupSession*, SoupMessage* soupMessage, SoupAuth* soupAuth, gboolean retrying)
 {
     RefPtr<ResourceHandle> handle = static_cast<ResourceHandle*>(g_object_get_data(G_OBJECT(soupMessage), "handle"));
@@ -147,17 +122,26 @@ SoupNetworkSession::SoupNetworkSession(SoupCookieJar* cookieJar)
     static const int maxConnections = 17;
     static const int maxConnectionsPerHost = 6;
 
+    GRefPtr<SoupCookieJar> jar = cookieJar;
+    if (!jar) {
+        jar = adoptGRef(soup_cookie_jar_new());
+        soup_cookie_jar_set_accept_policy(jar.get(), SOUP_COOKIE_JAR_ACCEPT_NO_THIRD_PARTY);
+    }
+
     g_object_set(m_soupSession.get(),
         SOUP_SESSION_MAX_CONNS, maxConnections,
         SOUP_SESSION_MAX_CONNS_PER_HOST, maxConnectionsPerHost,
         SOUP_SESSION_ADD_FEATURE_BY_TYPE, SOUP_TYPE_CONTENT_DECODER,
         SOUP_SESSION_ADD_FEATURE_BY_TYPE, SOUP_TYPE_CONTENT_SNIFFER,
         SOUP_SESSION_ADD_FEATURE_BY_TYPE, SOUP_TYPE_PROXY_RESOLVER_DEFAULT,
-        SOUP_SESSION_ADD_FEATURE, cookieJar,
+        SOUP_SESSION_ADD_FEATURE, jar.get(),
         SOUP_SESSION_USE_THREAD_CONTEXT, TRUE,
         SOUP_SESSION_SSL_USE_SYSTEM_CA_FILE, TRUE,
         SOUP_SESSION_SSL_STRICT, FALSE,
         nullptr);
+
+    if (!gInitialAcceptLanguages.isNull())
+        setAcceptLanguages(gInitialAcceptLanguages);
 
 #if SOUP_CHECK_VERSION(2, 53, 92)
     if (soup_auth_negotiate_supported()) {
@@ -173,12 +157,6 @@ SoupNetworkSession::SoupNetworkSession(SoupCookieJar* cookieJar)
 #if ENABLE(WEB_TIMING) && !SOUP_CHECK_VERSION(2, 49, 91)
     g_signal_connect(m_soupSession.get(), "request-started", G_CALLBACK(requestStartedCallback), nullptr);
 #endif
-}
-
-SoupNetworkSession::SoupNetworkSession(SoupSession* soupSession)
-    : m_soupSession(soupSession)
-{
-    setupLogger();
 }
 
 SoupNetworkSession::~SoupNetworkSession()
@@ -308,53 +286,15 @@ void SoupNetworkSession::setupHTTPProxyFromEnvironment()
 #endif
 }
 
-static CString buildAcceptLanguages(const Vector<String>& languages)
+
+void SoupNetworkSession::setInitialAcceptLanguages(const CString& languages)
 {
-    size_t languagesCount = languages.size();
-
-    // Ignore "C" locale.
-    size_t cLocalePosition = languages.find("c");
-    if (cLocalePosition != notFound)
-        languagesCount--;
-
-    // Fallback to "en" if the list is empty.
-    if (!languagesCount)
-        return "en";
-
-    // Calculate deltas for the quality values.
-    int delta;
-    if (languagesCount < 10)
-        delta = 10;
-    else if (languagesCount < 20)
-        delta = 5;
-    else
-        delta = 1;
-
-    // Set quality values for each language.
-    StringBuilder builder;
-    for (size_t i = 0; i < languages.size(); ++i) {
-        if (i == cLocalePosition)
-            continue;
-
-        if (i)
-            builder.appendLiteral(", ");
-
-        builder.append(languages[i]);
-
-        int quality = 100 - i * delta;
-        if (quality > 0 && quality < 100) {
-            char buffer[8];
-            g_ascii_formatd(buffer, 8, "%.2f", quality / 100.0);
-            builder.append(String::format(";q=%s", buffer));
-        }
-    }
-
-    return builder.toString().utf8();
+    gInitialAcceptLanguages = languages;
 }
 
-void SoupNetworkSession::setAcceptLanguages(const Vector<String>& languages)
+void SoupNetworkSession::setAcceptLanguages(const CString& languages)
 {
-    g_object_set(m_soupSession.get(), "accept-language", buildAcceptLanguages(languages).data(), nullptr);
+    g_object_set(m_soupSession.get(), "accept-language", languages.data(), nullptr);
 }
 
 void SoupNetworkSession::setShouldIgnoreTLSErrors(bool ignoreTLSErrors)

@@ -145,8 +145,8 @@ if (ENABLE_LEGACY_ENCRYPTED_MEDIA_V1 OR ENABLE_LEGACY_ENCRYPTED_MEDIA)
     )
 
     list(APPEND WebCore_SOURCES
-        platform/graphics/gstreamer/CDMPRSessionGStreamer.cpp
-        platform/graphics/gstreamer/WebKitPlayReadyDecryptorGStreamer.cpp
+        platform/graphics/gstreamer/eme/CDMPRSessionGStreamer.cpp
+        platform/graphics/gstreamer/eme/WebKitPlayReadyDecryptorGStreamer.cpp
     )
 
     if (ENABLE_PLAYREADY)
@@ -163,7 +163,7 @@ if (ENABLE_LEGACY_ENCRYPTED_MEDIA_V1 OR ENABLE_LEGACY_ENCRYPTED_MEDIA)
             endif()
         endforeach()
         list(APPEND WebCore_SOURCES
-            platform/graphics/gstreamer/PlayreadySession.cpp
+            platform/graphics/gstreamer/eme/PlayreadySession.cpp
         )
     endif ()
 endif ()
