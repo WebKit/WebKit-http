@@ -710,8 +710,12 @@ bool MediaPlayerPrivateGStreamer::paused() const
     if (m_playbackRatePause)
         return false;
 
-    GstState state;
-    gst_element_get_state(m_pipeline.get(), &state, nullptr, 0);
+    GstState state, pending;
+    GstStateChangeReturn result = gst_element_get_state(m_pipeline.get(), &state, &pending, 0);
+
+    if (result == GST_STATE_CHANGE_ASYNC)
+        state = pending;
+
     return state <= GST_STATE_PAUSED;
 }
 
