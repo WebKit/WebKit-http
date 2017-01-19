@@ -85,7 +85,6 @@ NetworkStorageSession& WebFrameNetworkingContext::storageSession() const
         if (auto* storageSession = NetworkStorageSession::storageSession(frame()->page()->sessionID()))
             return *storageSession;
     }
-
     return NetworkStorageSession::defaultStorageSession();
 }
 
