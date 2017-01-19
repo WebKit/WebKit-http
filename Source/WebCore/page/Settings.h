@@ -199,6 +199,9 @@ public:
     static bool shouldUseHighResolutionTimers() { return gShouldUseHighResolutionTimers; }
 #endif
 
+    static bool isPostLoadCPUUsageMeasurementEnabled();
+    static bool isPostBackgroundingCPUUsageMeasurementEnabled();
+
     static bool globalConstRedeclarationShouldThrow();
 
     WEBCORE_EXPORT void setBackgroundShouldExtendBeyondPage(bool);

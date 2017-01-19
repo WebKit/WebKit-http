@@ -247,10 +247,6 @@ the public iOS SDK. We will also need to update the FeatureDefines.xcconfig file
 #define ENABLE_MAC_GESTURE_EVENTS 1
 #endif
 
-#if !defined(ENABLE_KEYBOARD_CODE_ATTRIBUTE)
-#define ENABLE_KEYBOARD_CODE_ATTRIBUTE 1
-#endif
-
 #endif /* PLATFORM(MAC) */
 
 #if PLATFORM(COCOA)
@@ -261,6 +257,10 @@ the public iOS SDK. We will also need to update the FeatureDefines.xcconfig file
 
 #if !defined(ENABLE_KEYBOARD_KEY_ATTRIBUTE)
 #define ENABLE_KEYBOARD_KEY_ATTRIBUTE 1
+#endif
+
+#if !defined(ENABLE_KEYBOARD_CODE_ATTRIBUTE)
+#define ENABLE_KEYBOARD_CODE_ATTRIBUTE 1
 #endif
 
 #endif /* PLATFORM(COCOA) */
@@ -418,10 +418,6 @@ the public iOS SDK. We will also need to update the FeatureDefines.xcconfig file
 
 #if !defined(ENABLE_DATA_TRANSFER_ITEMS)
 #define ENABLE_DATA_TRANSFER_ITEMS 0
-#endif
-
-#if !defined(ENABLE_DETAILS_ELEMENT)
-#define ENABLE_DETAILS_ELEMENT 1
 #endif
 
 #if !defined(ENABLE_DEVICE_ORIENTATION)
@@ -652,10 +648,6 @@ the public iOS SDK. We will also need to update the FeatureDefines.xcconfig file
 #define ENABLE_REMOTE_INSPECTOR 0
 #endif
 
-#if !defined(ENABLE_REQUEST_ANIMATION_FRAME)
-#define ENABLE_REQUEST_ANIMATION_FRAME 0
-#endif
-
 #if !defined(ENABLE_REQUEST_AUTOCOMPLETE)
 #define ENABLE_REQUEST_AUTOCOMPLETE 0
 #endif
@@ -773,6 +765,10 @@ the public iOS SDK. We will also need to update the FeatureDefines.xcconfig file
 
 #if !defined(ENABLE_WEB_TIMING)
 #define ENABLE_WEB_TIMING 0
+#endif
+
+#if !defined(ENABLE_USER_TIMING)
+#define ENABLE_USER_TIMING 0
 #endif
 
 #if !defined(ENABLE_WILL_REVEAL_EDGE_EVENTS)

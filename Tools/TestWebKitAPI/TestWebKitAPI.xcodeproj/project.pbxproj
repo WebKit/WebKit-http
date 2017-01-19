@@ -197,6 +197,8 @@
 		7A909A831D877480007E10F8 /* IntSize.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7A909A751D877475007E10F8 /* IntSize.cpp */; };
 		7AD3FE8E1D76131200B169A4 /* TransformationMatrix.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7AD3FE8D1D75FB8D00B169A4 /* TransformationMatrix.cpp */; };
 		7AE9E5091AE5AE8B00CF874B /* test.pdf in Copy Resources */ = {isa = PBXBuildFile; fileRef = 7AE9E5081AE5AE8B00CF874B /* test.pdf */; };
+		7AEAD47F1E20116C00416EFE /* CrossPartitionFileSchemeAccess.mm in Sources */ = {isa = PBXBuildFile; fileRef = 7AEAD47C1E20113800416EFE /* CrossPartitionFileSchemeAccess.mm */; };
+		7AEAD4811E20122700416EFE /* CrossPartitionFileSchemeAccess.html in Copy Resources */ = {isa = PBXBuildFile; fileRef = 7AEAD47D1E20114E00416EFE /* CrossPartitionFileSchemeAccess.html */; };
 		7C3965061CDD74F90094DBB8 /* Color.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7C3965051CDD74F90094DBB8 /* Color.cpp */; };
 		7C3DB8E41D12129B00AE8CC3 /* CommandBackForward.mm in Sources */ = {isa = PBXBuildFile; fileRef = 7C3DB8E21D12129B00AE8CC3 /* CommandBackForward.mm */; };
 		7C417F331D19E14800B8EF53 /* WKWebViewDefaultNavigationDelegate.mm in Sources */ = {isa = PBXBuildFile; fileRef = 7C417F311D19E14800B8EF53 /* WKWebViewDefaultNavigationDelegate.mm */; };
@@ -423,6 +425,7 @@
 		7CCE7F2D1A411B1000447C4C /* UserContentTest.mm in Sources */ = {isa = PBXBuildFile; fileRef = 2943BE84161DFEB800999E3D /* UserContentTest.mm */; };
 		7CCE7F2E1A411B1000447C4C /* WKBrowsingContextGroupTest.mm in Sources */ = {isa = PBXBuildFile; fileRef = BC3C4C7D14587AA60025FB62 /* WKBrowsingContextGroupTest.mm */; };
 		7CCE7F2F1A411B1000447C4C /* WKBrowsingContextLoadDelegateTest.mm in Sources */ = {isa = PBXBuildFile; fileRef = BC3C4C7014575B6A0025FB62 /* WKBrowsingContextLoadDelegateTest.mm */; };
+		7CD4C26E1E2C0E6E00929470 /* StringConcatenate.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7CD4C26C1E2C0E6E00929470 /* StringConcatenate.cpp */; };
 		7CEFA9661AC0B9E200B910FD /* _WKUserContentExtensionStore.mm in Sources */ = {isa = PBXBuildFile; fileRef = 7CEFA9641AC0B9E200B910FD /* _WKUserContentExtensionStore.mm */; };
 		7CFBCAE51743238F00B2BFCF /* WillLoad_Bundle.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 7CFBCAE31743238E00B2BFCF /* WillLoad_Bundle.cpp */; };
 		8349D3C21DB96DDE004A9F65 /* ContextMenuDownload.mm in Sources */ = {isa = PBXBuildFile; fileRef = 8349D3C11DB96DDA004A9F65 /* ContextMenuDownload.mm */; };
@@ -601,6 +604,7 @@
 			dstPath = TestWebKitAPI.resources;
 			dstSubfolderSpec = 7;
 			files = (
+				7AEAD4811E20122700416EFE /* CrossPartitionFileSchemeAccess.html in Copy Resources */,
 				CDB4115A1E0B00DB00EAD352 /* video-with-muted-audio.html in Copy Resources */,
 				9BD4239C1E04C01C00200395 /* chinese-character-with-image.html in Copy Resources */,
 				A155022C1E050D0300A24C57 /* duplicate-completion-handler-calls.html in Copy Resources */,
@@ -1040,6 +1044,8 @@
 		7AA6A1511AAC0B31002B2ED3 /* WorkQueue.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = WorkQueue.cpp; sourceTree = "<group>"; };
 		7AD3FE8D1D75FB8D00B169A4 /* TransformationMatrix.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = TransformationMatrix.cpp; sourceTree = "<group>"; };
 		7AE9E5081AE5AE8B00CF874B /* test.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; path = test.pdf; sourceTree = "<group>"; };
+		7AEAD47C1E20113800416EFE /* CrossPartitionFileSchemeAccess.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = CrossPartitionFileSchemeAccess.mm; sourceTree = "<group>"; };
+		7AEAD47D1E20114E00416EFE /* CrossPartitionFileSchemeAccess.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html; name = CrossPartitionFileSchemeAccess.html; path = Tests/mac/CrossPartitionFileSchemeAccess.html; sourceTree = SOURCE_ROOT; };
 		7C3965051CDD74F90094DBB8 /* Color.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Color.cpp; sourceTree = "<group>"; };
 		7C3DB8E21D12129B00AE8CC3 /* CommandBackForward.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = CommandBackForward.mm; sourceTree = "<group>"; };
 		7C417F311D19E14800B8EF53 /* WKWebViewDefaultNavigationDelegate.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = WKWebViewDefaultNavigationDelegate.mm; sourceTree = "<group>"; };
@@ -1072,6 +1078,7 @@
 		7CCE7E8C1A41144E00447C4C /* libTestWebKitAPI.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libTestWebKitAPI.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		7CCE7EA31A4115CB00447C4C /* TestWebKitAPILibrary.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = TestWebKitAPILibrary.xcconfig; sourceTree = "<group>"; };
 		7CD0D5AA1D5534DE000CC9E1 /* Variant.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Variant.cpp; sourceTree = "<group>"; };
+		7CD4C26C1E2C0E6E00929470 /* StringConcatenate.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = StringConcatenate.cpp; sourceTree = "<group>"; };
 		7CEFA9641AC0B9E200B910FD /* _WKUserContentExtensionStore.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = _WKUserContentExtensionStore.mm; sourceTree = "<group>"; };
 		7CFBCADD1743234F00B2BFCF /* WillLoad.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = WillLoad.cpp; sourceTree = "<group>"; };
 		7CFBCAE31743238E00B2BFCF /* WillLoad_Bundle.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = WillLoad_Bundle.cpp; sourceTree = "<group>"; };
@@ -1871,7 +1878,6 @@
 		BC9096461255618900083756 /* WTF */ = {
 			isa = PBXGroup;
 			children = (
-				AD7C434C1DD2A5470026888B /* Expected.cpp */,
 				C0991C4F143C7D68007998F2 /* cf */,
 				7CBBA07519BB8A0900BBF025 /* darwin */,
 				BC029B1A1486B23800817DA9 /* ns */,
@@ -1886,6 +1892,7 @@
 				1A3524A91D627BD40031729B /* DeletedAddressOfOperator.h */,
 				E4A757D3178AEA5B00B5D7A4 /* Deque.cpp */,
 				1AF7B21D1D6CD12E008C126C /* EnumTraits.cpp */,
+				AD7C434C1DD2A5470026888B /* Expected.cpp */,
 				7A38D7E51C752D5F004F157D /* HashCountedSet.cpp */,
 				0BCD833414857CE400EA2003 /* HashMap.cpp */,
 				26B2DFF815BDE599004F691D /* HashSet.cpp */,
@@ -1913,6 +1920,7 @@
 				DC69AA621CF77C6500C6272F /* ScopedLambda.cpp */,
 				CD5393C91757BAC400C07123 /* SHA1.cpp */,
 				81B50192140F232300D9EB58 /* StringBuilder.cpp */,
+				7CD4C26C1E2C0E6E00929470 /* StringConcatenate.cpp */,
 				93ABA80816DDAB91002DB2FA /* StringHasher.cpp */,
 				26F1B44315CA434F00D1E4BF /* StringImpl.cpp */,
 				C01363C713C3997300EF3964 /* StringOperators.cpp */,
@@ -2029,6 +2037,7 @@
 		C07E6CAD13FD67650038B22B /* mac */ = {
 			isa = PBXGroup;
 			children = (
+				7AEAD47C1E20113800416EFE /* CrossPartitionFileSchemeAccess.mm */,
 				5C0BF88F1DD5999B00B00328 /* WebViewCanPasteZeroPng.mm */,
 				5C0BF88C1DD5957400B00328 /* MemoryPressureHandler.mm */,
 				C07E6CB013FD737C0038B22B /* Resources */,
@@ -2093,6 +2102,7 @@
 		C07E6CB013FD737C0038B22B /* Resources */ = {
 			isa = PBXGroup;
 			children = (
+				7AEAD47D1E20114E00416EFE /* CrossPartitionFileSchemeAccess.html */,
 				F42DA5151D8CEFDB00336F40 /* large-input-field-focus-onload.html */,
 				379028B814FABE49007E6B43 /* acceptsFirstMouse.html */,
 				B55F11B9151916E600915916 /* Ahem.ttf */,
@@ -2410,6 +2420,7 @@
 				1AF7B21F1D6CD14D008C126C /* EnumTraits.cpp in Sources */,
 				7C83DEEF1D0A590C00FEBCF3 /* MD5.cpp in Sources */,
 				7C83DEF11D0A590C00FEBCF3 /* MediaTime.cpp in Sources */,
+				7CD4C26E1E2C0E6E00929470 /* StringConcatenate.cpp in Sources */,
 				7C83DEF61D0A590C00FEBCF3 /* MetaAllocator.cpp in Sources */,
 				7C83DEFE1D0A590C00FEBCF3 /* NakedPtr.cpp in Sources */,
 				531C1D8E1DF8EF72006E979F /* LEBDecoder.cpp in Sources */,
@@ -2497,6 +2508,7 @@
 				2DC4CF771D2D9DD800ECCC94 /* DataDetection.mm in Sources */,
 				2D1646E21D1862CD00015A1A /* DeferredViewInWindowStateChange.mm in Sources */,
 				7CCE7EB91A411A7E00447C4C /* DeviceScaleFactorInDashboardRegions.mm in Sources */,
+				7AEAD47F1E20116C00416EFE /* CrossPartitionFileSchemeAccess.mm in Sources */,
 				7CCE7EBA1A411A7E00447C4C /* DeviceScaleFactorOnBack.mm in Sources */,
 				7C83E04D1D0A641800FEBCF3 /* DFACombiner.cpp in Sources */,
 				7C83E04E1D0A641800FEBCF3 /* DFAMinimizer.cpp in Sources */,

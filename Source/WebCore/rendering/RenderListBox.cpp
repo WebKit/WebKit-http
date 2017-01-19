@@ -856,7 +856,7 @@ bool RenderListBox::shouldSuspendScrollAnimations() const
 
 bool RenderListBox::forceUpdateScrollbarsOnMainThreadForPerformanceTesting() const
 {
-    return frame().settings().forceUpdateScrollbarsOnMainThreadForPerformanceTesting();
+    return settings().forceUpdateScrollbarsOnMainThreadForPerformanceTesting();
 }
 
 ScrollableArea* RenderListBox::enclosingScrollableArea() const
@@ -902,7 +902,7 @@ Ref<Scrollbar> RenderListBox::createScrollbar()
         if (page().expectsWheelEventTriggers())
             scrollAnimator().setWheelEventTestTrigger(page().testTrigger());
     }
-    view().frameView().addChild(widget.get());
+    view().frameView().addChild(*widget);
     return widget.releaseNonNull();
 }
 

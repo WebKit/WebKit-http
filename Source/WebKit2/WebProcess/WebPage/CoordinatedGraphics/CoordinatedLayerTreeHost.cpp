@@ -234,7 +234,6 @@ GraphicsLayerFactory* CoordinatedLayerTreeHost::graphicsLayerFactory()
     return &m_coordinator;
 }
 
-#if ENABLE(REQUEST_ANIMATION_FRAME)
 void CoordinatedLayerTreeHost::scheduleAnimation()
 {
     if (m_isWaitingForRenderer)
@@ -246,7 +245,6 @@ void CoordinatedLayerTreeHost::scheduleAnimation()
     scheduleLayerFlush();
     m_layerFlushTimer.startOneShot(m_coordinator.nextAnimationServiceTime());
 }
-#endif
 
 void CoordinatedLayerTreeHost::commitScrollOffset(uint32_t layerID, const WebCore::IntSize& offset)
 {

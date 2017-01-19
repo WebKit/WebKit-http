@@ -33,6 +33,7 @@
 #include "ContextMenuController.h"
 #include "DatabaseProvider.h"
 #include "DiagnosticLoggingClient.h"
+#include "DiagnosticLoggingKeys.h"
 #include "DocumentLoader.h"
 #include "DocumentMarkerController.h"
 #include "DragController.h"
@@ -97,7 +98,9 @@
 #include "VisitedLinkState.h"
 #include "VisitedLinkStore.h"
 #include "VoidCallback.h"
+#include "WebGLStateTracker.h"
 #include "Widget.h"
+#include <wtf/CurrentTime.h>
 #include <wtf/RefCountedLeakCounter.h>
 #include <wtf/StdLibExtras.h>
 #include <wtf/text/Base64.h>
@@ -124,7 +127,13 @@
 
 namespace WebCore {
 
+#define RELEASE_LOG_IF_ALLOWED(channel, fmt, ...) RELEASE_LOG_IF(isAlwaysOnLoggingAllowed(), channel, "%p - Page::" fmt, this, ##__VA_ARGS__)
+
 static HashSet<Page*>* allPages;
+
+static const std::chrono::seconds cpuUsageMeasurementDelay { 5 };
+static const std::chrono::seconds postLoadCPUUsageMeasurementDuration { 10 };
+static const std::chrono::minutes backgroundCPUUsageMeasurementDuration { 5 };
 
 DEFINE_DEBUG_ONLY_GLOBAL(WTF::RefCountedLeakCounter, pageCounter, ("Page"));
 
@@ -190,7 +199,7 @@ Page::Page(PageConfiguration&& pageConfiguration)
     , m_plugInClient(pageConfiguration.plugInClient)
     , m_validationMessageClient(WTFMove(pageConfiguration.validationMessageClient))
     , m_diagnosticLoggingClient(WTFMove(pageConfiguration.diagnosticLoggingClient))
-    , m_subframeCount(0)
+    , m_webGLStateTracker(WTFMove(pageConfiguration.webGLStateTracker))
     , m_openedByDOM(false)
     , m_tabKeyCyclesThroughElements(true)
     , m_defersLoading(false)
@@ -244,6 +253,8 @@ Page::Page(PageConfiguration&& pageConfiguration)
     , m_visitedLinkStore(*WTFMove(pageConfiguration.visitedLinkStore))
     , m_sessionID(SessionID::defaultSessionID())
     , m_isClosing(false)
+    , m_postPageLoadCPUUsageTimer(*this, &Page::measurePostLoadCPUUsage)
+    , m_postBackgroundingCPUUsageTimer(*this, &Page::measurePostBackgroundingCPUUsage)
 {
     updateTimerThrottlingState();
 
@@ -276,6 +287,9 @@ Page::Page(PageConfiguration&& pageConfiguration)
 
 Page::~Page()
 {
+    ASSERT(!m_nestedRunLoopCount);
+    ASSERT(!m_unnestCallback);
+
     m_validationMessageClient = nullptr;
     m_diagnosticLoggingClient = nullptr;
     m_mainFrame->setView(nullptr);
@@ -552,10 +566,8 @@ bool Page::showAllPlugins() const
     if (m_showAllPlugins)
         return true;
 
-    if (Document* document = mainFrame().document()) {
-        if (SecurityOrigin* securityOrigin = document->securityOrigin())
-            return securityOrigin->isLocal();
-    }
+    if (Document* document = mainFrame().document())
+        return document->securityOrigin().isLocal();
 
     return false;
 }
@@ -918,6 +930,95 @@ void Page::setUserInterfaceLayoutDirection(UserInterfaceLayoutDirection userInte
         frame->document()->userInterfaceLayoutDirectionChanged();
     }
 #endif
+}
+
+void Page::didStartProvisionalLoad()
+{
+    m_postLoadCPUTime = std::nullopt;
+    m_postPageLoadCPUUsageTimer.stop();
+}
+
+void Page::didFinishLoad()
+{
+    resetRelevantPaintedObjectCounter();
+
+    // Only do post-load CPU usage measurement if there is a single Page in the process in order to reduce noise.
+    if (Settings::isPostLoadCPUUsageMeasurementEnabled() && allPages->size() == 1) {
+        m_postLoadCPUTime = std::nullopt;
+        m_postPageLoadCPUUsageTimer.startOneShot(cpuUsageMeasurementDelay);
+    }
+}
+
+static String foregroundCPUUsageToDiagnosticLogginKey(double cpuUsage)
+{
+    if (cpuUsage < 10)
+        return ASCIILiteral("Below10");
+    if (cpuUsage < 20)
+        return ASCIILiteral("10to20");
+    if (cpuUsage < 40)
+        return ASCIILiteral("20to40");
+    if (cpuUsage < 60)
+        return ASCIILiteral("40to60");
+    if (cpuUsage < 80)
+        return ASCIILiteral("60to80");
+    return ASCIILiteral("over80");
+}
+
+void Page::measurePostLoadCPUUsage()
+{
+    if (allPages->size() != 1)
+        return;
+
+    if (!m_postLoadCPUTime) {
+        m_postLoadCPUTime = getCPUTime();
+        if (m_postLoadCPUTime)
+            m_postPageLoadCPUUsageTimer.startOneShot(postLoadCPUUsageMeasurementDuration);
+        return;
+    }
+    std::optional<CPUTime> cpuTime = getCPUTime();
+    if (!cpuTime)
+        return;
+
+    double cpuUsage = cpuTime.value().percentageCPUUsageSince(*m_postLoadCPUTime);
+    RELEASE_LOG_IF_ALLOWED(PerformanceLogging, "measurePostLoadCPUUsage: Process was using %.1f%% percent CPU after the page load.", cpuUsage);
+    diagnosticLoggingClient().logDiagnosticMessageWithValue(DiagnosticLoggingKeys::postPageLoadKey(), DiagnosticLoggingKeys::cpuUsageKey(), foregroundCPUUsageToDiagnosticLogginKey(cpuUsage), ShouldSample::No);
+}
+
+static String backgroundCPUUsageToDiagnosticLogginKey(double cpuUsage)
+{
+    if (cpuUsage < 1)
+        return ASCIILiteral("Below1");
+    if (cpuUsage < 5)
+        return ASCIILiteral("1to5");
+    if (cpuUsage < 10)
+        return ASCIILiteral("5to10");
+    if (cpuUsage < 30)
+        return ASCIILiteral("10to30");
+    if (cpuUsage < 50)
+        return ASCIILiteral("30to50");
+    if (cpuUsage < 70)
+        return ASCIILiteral("50to70");
+    return ASCIILiteral("over70");
+}
+
+void Page::measurePostBackgroundingCPUUsage()
+{
+    if (allPages->size() != 1)
+        return;
+
+    if (!m_postBackgroundingCPUTime) {
+        m_postBackgroundingCPUTime = getCPUTime();
+        if (m_postBackgroundingCPUTime)
+            m_postBackgroundingCPUUsageTimer.startOneShot(backgroundCPUUsageMeasurementDuration);
+        return;
+    }
+    std::optional<CPUTime> cpuTime = getCPUTime();
+    if (!cpuTime)
+        return;
+
+    double cpuUsage = cpuTime.value().percentageCPUUsageSince(*m_postBackgroundingCPUTime);
+    RELEASE_LOG_IF_ALLOWED(PerformanceLogging, "measurePostBackgroundingCPUUsage: Process was using %.1f%% percent CPU after becoming non visible.", cpuUsage);
+    diagnosticLoggingClient().logDiagnosticMessageWithValue(DiagnosticLoggingKeys::postPageBackgroundingKey(), DiagnosticLoggingKeys::cpuUsageKey(), backgroundCPUUsageToDiagnosticLogginKey(cpuUsage), ShouldSample::No);
 }
 
 void Page::setTopContentInset(float contentInset)
@@ -1333,18 +1434,15 @@ void Page::dnsPrefetchingStateChanged()
 Vector<Ref<PluginViewBase>> Page::pluginViews()
 {
     Vector<Ref<PluginViewBase>> views;
-
     for (Frame* frame = &mainFrame(); frame; frame = frame->tree().traverseNext()) {
-        FrameView* view = frame->view();
+        auto* view = frame->view();
         if (!view)
             break;
-
         for (auto& widget : view->children()) {
-            if (is<PluginViewBase>(*widget))
-                views.append(downcast<PluginViewBase>(*widget));
+            if (is<PluginViewBase>(widget.get()))
+                views.append(downcast<PluginViewBase>(widget.get()));
         }
     }
-
     return views;
 }
 
@@ -1528,6 +1626,13 @@ void Page::setIsVisibleInternal(bool isVisible)
         if (FrameView* view = mainFrame().view())
             view->hide();
     }
+
+    // Measure CPU usage of pages when they are no longer visible.
+    m_postBackgroundingCPUTime = std::nullopt;
+    if (isVisible)
+        m_postBackgroundingCPUUsageTimer.stop();
+    else if (Settings::isPostBackgroundingCPUUsageMeasurementEnabled() && allPages->size() == 1)
+        m_postBackgroundingCPUUsageTimer.startOneShot(cpuUsageMeasurementDelay);
 }
 
 void Page::setIsPrerender()
@@ -1578,6 +1683,41 @@ void Page::addFooterWithHeight(int footerHeight)
     renderView->compositor().updateLayerForFooter(m_footerHeight);
 }
 #endif
+
+void Page::incrementNestedRunLoopCount()
+{
+    m_nestedRunLoopCount++;
+}
+
+void Page::decrementNestedRunLoopCount()
+{
+    ASSERT(m_nestedRunLoopCount);
+    if (m_nestedRunLoopCount <= 0)
+        return;
+
+    m_nestedRunLoopCount--;
+
+    if (!m_nestedRunLoopCount && m_unnestCallback) {
+        callOnMainThread([this] {
+            if (insideNestedRunLoop())
+                return;
+
+            // This callback may destruct the Page.
+            if (m_unnestCallback) {
+                auto callback = m_unnestCallback;
+                m_unnestCallback = nullptr;
+                callback();
+            }
+        });
+    }
+}
+
+void Page::whenUnnested(std::function<void()> callback)
+{
+    ASSERT(!m_unnestCallback);
+
+    m_unnestCallback = callback;
+}
 
 #if ENABLE(REMOTE_INSPECTOR)
 bool Page::remoteInspectionAllowed() const

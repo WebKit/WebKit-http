@@ -38,7 +38,7 @@
 #include "HTMLEntityParser.h"
 #include "HTMLHtmlElement.h"
 #include "HTMLTemplateElement.h"
-#include "Page.h"
+#include "InlineClassicScript.h"
 #include "PendingScript.h"
 #include "ProcessingInstruction.h"
 #include "ResourceError.h"
@@ -421,7 +421,7 @@ static bool shouldAllowExternalLoad(const URL& url)
     // retrieved content.  If we had more context, we could potentially allow
     // the parser to load a DTD.  As things stand, we take the conservative
     // route and allow same-origin requests only.
-    if (!XMLDocumentParserScope::currentCachedResourceLoader->document()->securityOrigin()->canRequest(url)) {
+    if (!XMLDocumentParserScope::currentCachedResourceLoader->document()->securityOrigin().canRequest(url)) {
         XMLDocumentParserScope::currentCachedResourceLoader->printAccessDeniedMessage(url);
         return false;
     }
@@ -877,7 +877,7 @@ void XMLDocumentParser::endElementNs()
         // the libxml2 and Qt XMLDocumentParser implementations.
 
         if (scriptElement.readyToBeParserExecuted())
-            scriptElement.executeClassicScript(ScriptSourceCode(scriptElement.scriptContent(), document()->url(), m_scriptStartPosition));
+            scriptElement.executeClassicScript(ScriptSourceCode(scriptElement.scriptContent(), document()->url(), m_scriptStartPosition, JSC::SourceProviderSourceType::Program, InlineClassicScript::create(scriptElement)));
         else if (scriptElement.willBeParserExecuted() && scriptElement.loadableScript()) {
             m_pendingScript = PendingScript::create(scriptElement, *scriptElement.loadableScript());
             m_pendingScript->setClient(*this);

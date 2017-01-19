@@ -62,6 +62,10 @@
 #include "WebMediaSessionFocusManager.h"
 #endif
 
+#if USE(SOUP)
+#include <WebCore/SoupNetworkProxySettings.h>
+#endif
+
 #if PLATFORM(COCOA)
 OBJC_CLASS NSMutableDictionary;
 OBJC_CLASS NSObject;
@@ -79,6 +83,7 @@ class PageConfiguration;
 namespace WebKit {
 
 class DownloadProxy;
+class HighPerformanceGraphicsUsageSampler;
 class UIGamepad;
 class WebAutomationSession;
 class WebContextSupplement;
@@ -220,6 +225,7 @@ public:
 
 #if USE(SOUP)
     void setInitialHTTPCookieAcceptPolicy(HTTPCookieAcceptPolicy policy) { m_initialHTTPCookieAcceptPolicy = policy; }
+    void setNetworkProxySettings(const WebCore::SoupNetworkProxySettings&);
 #endif
     void setEnhancedAccessibility(bool);
     
@@ -294,12 +300,12 @@ public:
     NetworkProcessProxy* networkProcess() { return m_networkProcess.get(); }
     void networkProcessCrashed(NetworkProcessProxy*);
 
-    void getNetworkProcessConnection(PassRefPtr<Messages::WebProcessProxy::GetNetworkProcessConnection::DelayedReply>);
+    void getNetworkProcessConnection(Ref<Messages::WebProcessProxy::GetNetworkProcessConnection::DelayedReply>&&);
 
 #if ENABLE(DATABASE_PROCESS)
     void ensureDatabaseProcess();
     DatabaseProcessProxy* databaseProcess() { return m_databaseProcess.get(); }
-    void getDatabaseProcessConnection(PassRefPtr<Messages::WebProcessProxy::GetDatabaseProcessConnection::DelayedReply>);
+    void getDatabaseProcessConnection(Ref<Messages::WebProcessProxy::GetDatabaseProcessConnection::DelayedReply>&&);
     void databaseProcessCrashed(DatabaseProcessProxy*);
 #endif
 
@@ -515,6 +521,7 @@ private:
 
 #if USE(SOUP)
     HTTPCookieAcceptPolicy m_initialHTTPCookieAcceptPolicy { HTTPCookieAcceptPolicyOnlyFromMainDocumentDomain };
+    WebCore::SoupNetworkProxySettings m_networkProxySettings;
 #endif
 
 #if PLATFORM(MAC)
@@ -523,6 +530,8 @@ private:
     RetainPtr<NSObject> m_automaticSpellingCorrectionNotificationObserver;
     RetainPtr<NSObject> m_automaticQuoteSubstitutionNotificationObserver;
     RetainPtr<NSObject> m_automaticDashSubstitutionNotificationObserver;
+
+    std::unique_ptr<HighPerformanceGraphicsUsageSampler> m_highPerformanceGraphicsUsageSampler;
 #endif
 
     String m_overrideIconDatabasePath;

@@ -53,9 +53,8 @@ ScriptModuleLoader::ScriptModuleLoader(Document& document)
 ScriptModuleLoader::~ScriptModuleLoader()
 {
     for (auto& loader : m_loaders)
-        const_cast<CachedModuleScriptLoader&>(loader.get()).clearClient();
+        loader->clearClient();
 }
-
 
 static bool isRootModule(JSC::JSValue importerModuleKey)
 {
@@ -159,9 +158,9 @@ JSC::JSInternalPromise* ScriptModuleLoader::fetch(JSC::JSGlobalObject* jsGlobalO
     }
 
     if (auto* frame = m_document.frame()) {
-        auto loader = CachedModuleScriptLoader::create(*this, deferred.get());
+        auto loader = CachedModuleScriptLoader::create(*this, deferred.get(), *static_cast<CachedScriptFetcher*>(JSC::jsCast<JSC::JSScriptFetcher*>(scriptFetcher)->fetcher()));
         m_loaders.add(loader.copyRef());
-        if (!loader->load(m_document, *static_cast<LoadableScript*>(JSC::jsCast<JSC::JSScriptFetcher*>(scriptFetcher)->fetcher()), completedURL)) {
+        if (!loader->load(m_document, completedURL)) {
             loader->clearClient();
             m_loaders.remove(WTFMove(loader));
             deferred->reject(frame->script().moduleLoaderAlreadyReportedErrorSymbol());
@@ -243,7 +242,7 @@ void ScriptModuleLoader::notifyFinished(CachedModuleScriptLoader& loader, RefPtr
     }
 
     m_requestURLToResponseURLMap.add(cachedScript.url(), cachedScript.response().url());
-    ScriptSourceCode scriptSourceCode(&cachedScript, JSC::SourceProviderSourceType::Module);
+    ScriptSourceCode scriptSourceCode(&cachedScript, JSC::SourceProviderSourceType::Module, loader.scriptFetcher());
     promise->resolveWithCallback([] (JSC::ExecState& state, JSDOMGlobalObject&, JSC::SourceCode sourceCode) {
         return JSC::JSSourceCode::create(state.vm(), WTFMove(sourceCode));
     }, scriptSourceCode.jsSourceCode());

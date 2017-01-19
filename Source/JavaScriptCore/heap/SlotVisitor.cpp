@@ -284,7 +284,6 @@ ALWAYS_INLINE void SlotVisitor::appendToMarkStack(ContainerType& container, JSCe
 {
     ASSERT(Heap::isMarkedConcurrently(cell));
     ASSERT(!cell->isZapped());
-    ASSERT(cell->cellState() == CellState::PossiblyGrey);
     
     container.noteMarked();
     
@@ -347,12 +346,6 @@ private:
     SlotVisitor& m_visitor;
 };
 
-void SlotVisitor::visitAsConstraint(const JSCell* cell)
-{
-    m_isVisitingMutatorStack = true;
-    visitChildren(cell);
-}
-
 ALWAYS_INLINE void SlotVisitor::visitChildren(const JSCell* cell)
 {
     ASSERT(Heap::isMarkedConcurrently(cell));
@@ -361,8 +354,8 @@ ALWAYS_INLINE void SlotVisitor::visitChildren(const JSCell* cell)
     
     if (false) {
         dataLog("Visiting ", RawPointer(cell));
-        if (m_isVisitingMutatorStack)
-            dataLog(" (mutator)");
+        if (!m_isFirstVisit)
+            dataLog(" (subsequent)");
         dataLog("\n");
     }
     
@@ -396,9 +389,15 @@ ALWAYS_INLINE void SlotVisitor::visitChildren(const JSCell* cell)
     }
     
     if (UNLIKELY(m_heapSnapshotBuilder)) {
-        if (!m_isVisitingMutatorStack)
+        if (m_isFirstVisit)
             m_heapSnapshotBuilder->appendNode(const_cast<JSCell*>(cell));
     }
+}
+
+void SlotVisitor::visitAsConstraint(const JSCell* cell)
+{
+    m_isFirstVisit = false;
+    visitChildren(cell);
 }
 
 void SlotVisitor::donateKnownParallel(MarkStackArray& from, MarkStackArray& to)
@@ -470,7 +469,7 @@ void SlotVisitor::drain(MonotonicTime timeout)
         updateMutatorIsStopped(locker);
         if (!m_collectorStack.isEmpty()) {
             m_collectorStack.refill();
-            m_isVisitingMutatorStack = false;
+            m_isFirstVisit = true;
             for (unsigned countdown = Options::minimumNumberOfScansBetweenRebalance(); m_collectorStack.canRemoveLast() && countdown--;)
                 visitChildren(m_collectorStack.removeLast());
         } else if (!m_mutatorStack.isEmpty()) {
@@ -478,7 +477,7 @@ void SlotVisitor::drain(MonotonicTime timeout)
             // We know for sure that we are visiting objects because of the barrier, not because of
             // marking. Marking will visit an object exactly once. The barrier will visit it
             // possibly many times, and always after it was already marked.
-            m_isVisitingMutatorStack = true;
+            m_isFirstVisit = false;
             for (unsigned countdown = Options::minimumNumberOfScansBetweenRebalance(); m_mutatorStack.canRemoveLast() && countdown--;)
                 visitChildren(m_mutatorStack.removeLast());
         } else
@@ -487,7 +486,7 @@ void SlotVisitor::drain(MonotonicTime timeout)
         donateKnownParallel();
     }
     
-    mergeOpaqueRootsIfNecessary();
+    mergeIfNecessary();
 }
 
 bool SlotVisitor::didReachTermination()
@@ -615,15 +614,18 @@ void SlotVisitor::addOpaqueRoot(void* root)
     if (!root)
         return;
     
+    if (m_ignoreNewOpaqueRoots)
+        return;
+    
     if (Options::numberOfGCMarkers() == 1) {
         // Put directly into the shared HashSet.
-        m_visitCount += m_heap.m_opaqueRoots.add(root).isNewEntry;
+        m_heap.m_opaqueRoots.add(root);
         return;
     }
     // Put into the local set, but merge with the shared one every once in
     // a while to make sure that the local sets don't grow too large.
     mergeOpaqueRootsIfProfitable();
-    m_visitCount += m_opaqueRoots.add(root);
+    m_opaqueRoots.add(root);
 }
 
 bool SlotVisitor::containsOpaqueRoot(void* root) const
@@ -648,13 +650,13 @@ TriState SlotVisitor::containsOpaqueRootTriState(void* root) const
     return MixedTriState;
 }
 
-void SlotVisitor::mergeOpaqueRootsIfNecessary()
+void SlotVisitor::mergeIfNecessary()
 {
     if (m_opaqueRoots.isEmpty())
         return;
     mergeOpaqueRoots();
 }
-    
+
 void SlotVisitor::mergeOpaqueRootsIfProfitable()
 {
     if (static_cast<unsigned>(m_opaqueRoots.size()) < Options::opaqueRootMergeThreshold())
@@ -702,10 +704,10 @@ void SlotVisitor::didRace(const VisitRaceKey& race)
     if (Options::verboseVisitRace())
         dataLog(toCString("GC visit race: ", race, "\n"));
     
-    if (!ASSERT_DISABLED) {
-        auto locker = holdLock(heap()->m_visitRaceLock);
-        heap()->m_visitRaces.add(race);
-    }
+    auto locker = holdLock(heap()->m_raceMarkStackLock);
+    JSCell* cell = race.cell();
+    cell->setCellState(CellState::PossiblyGrey);
+    heap()->m_raceMarkStack->append(cell);
 }
 
 void SlotVisitor::dump(PrintStream& out) const

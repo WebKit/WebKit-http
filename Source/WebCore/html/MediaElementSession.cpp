@@ -29,8 +29,6 @@
 
 #include "MediaElementSession.h"
 
-#include "Chrome.h"
-#include "ChromeClient.h"
 #include "Document.h"
 #include "Frame.h"
 #include "FrameView.h"
@@ -46,8 +44,10 @@
 #include "RenderMedia.h"
 #include "RenderView.h"
 #include "ScriptController.h"
+#include "Settings.h"
 #include "SourceBuffer.h"
 #include <wtf/CurrentTime.h>
+#include <wtf/text/StringBuilder.h>
 
 #if PLATFORM(IOS)
 #include "AudioSession.h"

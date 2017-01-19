@@ -30,6 +30,7 @@
 #include "FloatQuad.h"
 #include "Frame.h"
 #include "LayoutRect.h"
+#include "Page.h"
 #include "PaintPhase.h"
 #include "RenderObjectEnums.h"
 #include "RenderStyle.h"
@@ -223,9 +224,7 @@ public:
     virtual bool isCounter() const { return false; }
     virtual bool isQuote() const { return false; }
 
-#if ENABLE(DETAILS_ELEMENT)
     virtual bool isDetailsMarker() const { return false; }
-#endif
     virtual bool isEmbeddedObject() const { return false; }
     virtual bool isFieldset() const { return false; }
     virtual bool isFileUploadControl() const { return false; }
@@ -516,6 +515,7 @@ public:
     Document& document() const { return m_node.document(); }
     Frame& frame() const;
     Page& page() const;
+    Settings& settings() const { return page().settings(); }
 
     // Returns the object containing this one. Can be different from parent for positioned elements.
     // If repaintContainer and repaintContainerSkipped are not null, on return *repaintContainerSkipped

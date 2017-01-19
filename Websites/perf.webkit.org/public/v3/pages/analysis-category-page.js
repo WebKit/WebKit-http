@@ -23,10 +23,10 @@ class AnalysisCategoryPage extends PageWithHeading {
         var self = this;
         AnalysisTask.fetchAll().then(function () {
             self._fetched = true;
-            self.render();
+            self.enqueueToRender();
         }, function (error) {
             self._errorMessage = 'Failed to fetch the list of analysis tasks: ' + error;
-            self.render();
+            self.enqueueToRender();
         });
         super.open(state);
     }
@@ -59,12 +59,12 @@ class AnalysisCategoryPage extends PageWithHeading {
             this._categoryToolbar.setFilter(state.filter);
 
         if (!isOpen)
-            this.render();
+            this.enqueueToRender();
     }
 
     filterDidChange(shouldUpdateState)
     {
-        this.render();
+        this.enqueueToRender();
         if (shouldUpdateState)
             this.scheduleUrlStateUpdate();
     }
@@ -74,7 +74,7 @@ class AnalysisCategoryPage extends PageWithHeading {
         Instrumentation.startMeasuringTime('AnalysisCategoryPage', 'render');
 
         super.render();
-        this._categoryToolbar.render();
+        this._categoryToolbar.enqueueToRender();
 
         if (this._errorMessage) {
             console.assert(!this._fetched);

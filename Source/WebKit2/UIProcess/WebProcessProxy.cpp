@@ -109,6 +109,8 @@ WebProcessProxy::WebProcessProxy(WebProcessPool& processPool)
 WebProcessProxy::~WebProcessProxy()
 {
     ASSERT(m_pageURLRetainCountMap.isEmpty());
+    
+    WebPasteboardProxy::singleton().removeWebProcessProxy(*this);
 
     if (m_webConnection)
         m_webConnection->invalidate();
@@ -405,21 +407,21 @@ void WebProcessProxy::getPlugins(bool refresh, Vector<PluginInfo>& plugins, Vect
 #endif // ENABLE(NETSCAPE_PLUGIN_API)
 
 #if ENABLE(NETSCAPE_PLUGIN_API)
-void WebProcessProxy::getPluginProcessConnection(uint64_t pluginProcessToken, PassRefPtr<Messages::WebProcessProxy::GetPluginProcessConnection::DelayedReply> reply)
+void WebProcessProxy::getPluginProcessConnection(uint64_t pluginProcessToken, Ref<Messages::WebProcessProxy::GetPluginProcessConnection::DelayedReply>&& reply)
 {
-    PluginProcessManager::singleton().getPluginProcessConnection(pluginProcessToken, reply);
+    PluginProcessManager::singleton().getPluginProcessConnection(pluginProcessToken, WTFMove(reply));
 }
 #endif
 
-void WebProcessProxy::getNetworkProcessConnection(PassRefPtr<Messages::WebProcessProxy::GetNetworkProcessConnection::DelayedReply> reply)
+void WebProcessProxy::getNetworkProcessConnection(Ref<Messages::WebProcessProxy::GetNetworkProcessConnection::DelayedReply>&& reply)
 {
-    m_processPool->getNetworkProcessConnection(reply);
+    m_processPool->getNetworkProcessConnection(WTFMove(reply));
 }
 
 #if ENABLE(DATABASE_PROCESS)
-void WebProcessProxy::getDatabaseProcessConnection(PassRefPtr<Messages::WebProcessProxy::GetDatabaseProcessConnection::DelayedReply> reply)
+void WebProcessProxy::getDatabaseProcessConnection(Ref<Messages::WebProcessProxy::GetDatabaseProcessConnection::DelayedReply>&& reply)
 {
-    m_processPool->getDatabaseProcessConnection(reply);
+    m_processPool->getDatabaseProcessConnection(WTFMove(reply));
 }
 #endif // ENABLE(DATABASE_PROCESS)
 

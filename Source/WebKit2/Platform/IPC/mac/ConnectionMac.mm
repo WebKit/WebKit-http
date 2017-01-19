@@ -263,6 +263,7 @@ bool Connection::open()
 
 bool Connection::sendMessage(std::unique_ptr<MachMessage> message)
 {
+    ASSERT(message);
     ASSERT(!m_pendingOutgoingMachMessage);
 
     // Send the message.
@@ -399,7 +400,9 @@ void Connection::initializeSendSource()
         }
 
         if (data & DISPATCH_MACH_SEND_POSSIBLE) {
-            connection->sendMessage(WTFMove(connection->m_pendingOutgoingMachMessage));
+            // FIXME: Figure out why we get spurious DISPATCH_MACH_SEND_POSSIBLE events.
+            if (connection->m_pendingOutgoingMachMessage)
+                connection->sendMessage(WTFMove(connection->m_pendingOutgoingMachMessage));
             connection->sendOutgoingMessages();
             return;
         }
@@ -494,6 +497,9 @@ static mach_msg_header_t* readFromMachPort(mach_port_t machPort, ReceiveBuffer& 
     }
 
     if (kr != MACH_MSG_SUCCESS) {
+#if !ASSERT_DISABLED
+        WKSetCrashReportApplicationSpecificInformation((CFStringRef)[NSString stringWithFormat:@"Unhandled error code %x from mach_msg", kr]);
+#endif
         ASSERT_NOT_REACHED();
         return 0;
     }

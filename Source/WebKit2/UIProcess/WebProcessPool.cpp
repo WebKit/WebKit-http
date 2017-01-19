@@ -37,6 +37,7 @@
 #include "DownloadProxy.h"
 #include "DownloadProxyMessages.h"
 #include "GamepadData.h"
+#include "HighPerformanceGraphicsUsageSampler.h"
 #include "LogInitialization.h"
 #include "NetworkProcessCreationParameters.h"
 #include "NetworkProcessMessages.h"
@@ -165,6 +166,9 @@ WebProcessPool::WebProcessPool(API::ProcessPoolConfiguration& configuration)
     , m_memorySamplerEnabled(false)
     , m_memorySamplerInterval(1400.0)
     , m_websiteDataStore(m_configuration->shouldHaveLegacyDataStore() ? API::WebsiteDataStore::create(legacyWebsiteDataStoreConfiguration(m_configuration)).ptr() : nullptr)
+#if PLATFORM(MAC)
+    , m_highPerformanceGraphicsUsageSampler(std::make_unique<HighPerformanceGraphicsUsageSampler>(*this))
+#endif
     , m_shouldUseTestingNetworkSession(false)
     , m_processTerminationEnabled(true)
     , m_canHandleHTTPSServerTrustEvaluation(true)
@@ -412,14 +416,12 @@ void WebProcessPool::networkProcessCrashed(NetworkProcessProxy* networkProcessPr
     m_networkProcess = nullptr;
 }
 
-void WebProcessPool::getNetworkProcessConnection(PassRefPtr<Messages::WebProcessProxy::GetNetworkProcessConnection::DelayedReply> reply)
+void WebProcessPool::getNetworkProcessConnection(Ref<Messages::WebProcessProxy::GetNetworkProcessConnection::DelayedReply>&& reply)
 {
-    ASSERT(reply);
-
     ensureNetworkProcess();
     ASSERT(m_networkProcess);
 
-    m_networkProcess->getNetworkProcessConnection(reply);
+    m_networkProcess->getNetworkProcessConnection(WTFMove(reply));
 }
 
 #if ENABLE(DATABASE_PROCESS)
@@ -444,13 +446,11 @@ void WebProcessPool::ensureDatabaseProcess()
     m_databaseProcess->send(Messages::DatabaseProcess::InitializeDatabaseProcess(parameters), 0);
 }
 
-void WebProcessPool::getDatabaseProcessConnection(PassRefPtr<Messages::WebProcessProxy::GetDatabaseProcessConnection::DelayedReply> reply)
+void WebProcessPool::getDatabaseProcessConnection(Ref<Messages::WebProcessProxy::GetDatabaseProcessConnection::DelayedReply>&& reply)
 {
-    ASSERT(reply);
-
     ensureDatabaseProcess();
 
-    m_databaseProcess->getDatabaseProcessConnection(reply);
+    m_databaseProcess->getDatabaseProcessConnection(WTFMove(reply));
 }
 
 void WebProcessPool::databaseProcessCrashed(DatabaseProcessProxy* databaseProcessProxy)
@@ -1269,6 +1269,8 @@ void WebProcessPool::startedUsingGamepads(IPC::Connection& connection)
 
     if (!wereAnyProcessesUsingGamepads)
         UIGamepadProvider::singleton().processPoolStartedUsingGamepads(*this);
+
+    proxy->send(Messages::WebProcess::SetInitialGamepads(UIGamepadProvider::singleton().snapshotGamepads()), 0);
 }
 
 void WebProcessPool::stoppedUsingGamepads(IPC::Connection& connection)

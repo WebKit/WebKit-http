@@ -98,7 +98,8 @@ public:
         if (!ecore_main_loop_glib_integrate())
             return false;
 
-        SoupNetworkSession::defaultSession().setupHTTPProxyFromEnvironment();
+        SoupNetworkSession::setProxySettingsFromEnvironment();
+
         return true;
     }
 

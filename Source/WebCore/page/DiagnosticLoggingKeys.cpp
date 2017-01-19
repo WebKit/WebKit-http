@@ -53,6 +53,16 @@ String DiagnosticLoggingKeys::pluginLoadingFailedKey()
     return ASCIILiteral("pluginFailedLoading");
 }
 
+String DiagnosticLoggingKeys::postPageBackgroundingKey()
+{
+    return ASCIILiteral("postPageBackgrounding");
+}
+
+String DiagnosticLoggingKeys::postPageLoadKey()
+{
+    return ASCIILiteral("postPageLoad");
+}
+
 String DiagnosticLoggingKeys::provisionalLoadKey()
 {
     return ASCIILiteral("provisionalLoad");
@@ -238,6 +248,11 @@ String DiagnosticLoggingKeys::inMemoryCacheKey()
     return ASCIILiteral("inMemoryCache");
 }
 
+String DiagnosticLoggingKeys::inactiveKey()
+{
+    return ASCIILiteral("inactive");
+}
+
 String DiagnosticLoggingKeys::internalErrorKey()
 {
     return ASCIILiteral("internalError");
@@ -303,6 +318,11 @@ String DiagnosticLoggingKeys::cannotSuspendActiveDOMObjectsKey()
     return ASCIILiteral("cannotSuspendActiveDOMObjects");
 }
 
+String DiagnosticLoggingKeys::cpuUsageKey()
+{
+    return ASCIILiteral("cpuUsage");
+}
+
 String DiagnosticLoggingKeys::createSharedBufferFailedKey()
 {
     return ASCIILiteral("createSharedBufferFailed");
@@ -311,6 +331,16 @@ String DiagnosticLoggingKeys::createSharedBufferFailedKey()
 String DiagnosticLoggingKeys::deltaKey()
 {
     return ASCIILiteral("delta");
+}
+
+String DiagnosticLoggingKeys::activeInForegroundTabKey()
+{
+    return ASCIILiteral("activeInForegroundTab");
+}
+
+String DiagnosticLoggingKeys::activeInBackgroundTabOnlyKey()
+{
+    return ASCIILiteral("activeInBackgroundTabOnly");
 }
 
 String DiagnosticLoggingKeys::applicationCacheKey()
@@ -436,6 +466,11 @@ String DiagnosticLoggingKeys::scriptKey()
 String DiagnosticLoggingKeys::sourceKey()
 {
     return ASCIILiteral("source");
+}
+
+String DiagnosticLoggingKeys::stateKey()
+{
+    return ASCIILiteral("state");
 }
 
 String DiagnosticLoggingKeys::streamingMedia()
@@ -616,6 +651,11 @@ String WebCore::DiagnosticLoggingKeys::notHTTPFamilyKey()
 String DiagnosticLoggingKeys::notInCacheKey()
 {
     return ASCIILiteral("notInCache");
+}
+
+String WebCore::DiagnosticLoggingKeys::webGLKey()
+{
+    return ASCIILiteral("webGL");
 }
 
 } // namespace WebCore

@@ -27,7 +27,9 @@
 #include "NetworkConnectionToWebProcess.h"
 
 #include "BlobDataFileReferenceWithSandboxExtension.h"
+#include "DataReference.h"
 #include "NetworkBlobRegistry.h"
+#include "NetworkCache.h"
 #include "NetworkConnectionToWebProcessMessages.h"
 #include "NetworkLoad.h"
 #include "NetworkProcess.h"
@@ -127,7 +129,7 @@ void NetworkConnectionToWebProcess::scheduleResourceLoad(const NetworkResourceLo
     loader->start();
 }
 
-void NetworkConnectionToWebProcess::performSynchronousLoad(const NetworkResourceLoadParameters& loadParameters, RefPtr<Messages::NetworkConnectionToWebProcess::PerformSynchronousLoad::DelayedReply>&& reply)
+void NetworkConnectionToWebProcess::performSynchronousLoad(const NetworkResourceLoadParameters& loadParameters, Ref<Messages::NetworkConnectionToWebProcess::PerformSynchronousLoad::DelayedReply>&& reply)
 {
     auto loader = NetworkResourceLoader::create(loadParameters, *this, WTFMove(reply));
     m_networkResourceLoaders.add(loadParameters.identifier, loader.ptr());
@@ -320,6 +322,11 @@ void NetworkConnectionToWebProcess::writeBlobsToTemporaryFiles(const Vector<Stri
             m_connection->send(Messages::NetworkProcessConnection::DidWriteBlobsToTemporaryFiles(requestIdentifier, fileNames), 0);
         });
     });
+}
+
+void NetworkConnectionToWebProcess::storeDerivedDataToCache(const WebKit::NetworkCache::DataKey& dataKey, const IPC::DataReference& data)
+{
+    NetworkCache::singleton().storeData(dataKey, data.data(), data.size());
 }
 
 void NetworkConnectionToWebProcess::ensureLegacyPrivateBrowsingSession()

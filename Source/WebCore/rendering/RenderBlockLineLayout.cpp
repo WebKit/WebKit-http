@@ -897,8 +897,9 @@ BidiRun* RenderBlockFlow::computeInlineDirectionPositionsForSegment(RootInlineBo
             if (unsigned length = renderText.textLength()) {
                 if (!run->m_start && needsWordSpacing && isSpaceOrNewline(renderText.characterAt(run->m_start)))
                     totalLogicalWidth += lineStyle(*renderText.parent(), lineInfo).fontCascade().wordSpacing();
-                ASSERT(run->m_stop > 0);
-                needsWordSpacing = !isSpaceOrNewline(renderText.characterAt(run->m_stop - 1)) && run->m_stop == length;
+                // run->m_start == run->m_stop should only be true iff the run is a replaced run for bidi: isolate.
+                ASSERT(run->m_stop > 0 || run->m_start == run->m_stop);
+                needsWordSpacing = run->m_stop == length && !isSpaceOrNewline(renderText.characterAt(run->m_stop - 1));
             }
 
             setLogicalWidthForTextRun(lineBox, run, renderText, totalLogicalWidth, lineInfo, textBoxDataMap, verticalPositionCache, wordMeasurements);
@@ -2262,7 +2263,7 @@ LayoutUnit RenderBlockFlow::startAlignedOffsetForLine(LayoutUnit position, Inden
     // https://bugs.webkit.org/show_bug.cgi?id=124522
     // This quirk is for legacy content that doesn't work properly with the center positioning scheme
     // being honored (e.g., epubs).
-    if (shouldApplyIndentText || document().settings()->useLegacyTextAlignPositionedElementBehavior()) // FIXME: Handle TAEND here
+    if (shouldApplyIndentText || settings().useLegacyTextAlignPositionedElementBehavior()) // FIXME: Handle TAEND here
         return startOffsetForLine(position, shouldIndentText);
 
     // updateLogicalWidthForAlignment() handles the direction of the block so no need to consider it here

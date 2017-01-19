@@ -109,7 +109,7 @@ class EmptyChromeClient : public ChromeClient {
 #if USE(COORDINATED_GRAPHICS)
     void delegatedScrollRequested(const IntPoint&) final { }
 #endif
-#if ENABLE(REQUEST_ANIMATION_FRAME) && !USE(REQUEST_ANIMATION_FRAME_TIMER)
+#if !USE(REQUEST_ANIMATION_FRAME_TIMER)
     void scheduleAnimation() final { }
 #endif
 
@@ -138,7 +138,7 @@ class EmptyChromeClient : public ChromeClient {
     std::unique_ptr<ColorChooser> createColorChooser(ColorChooserClient*, const Color&) final;
 #endif
 
-    void runOpenPanel(Frame*, PassRefPtr<FileChooser>) final;
+    void runOpenPanel(Frame&, FileChooser&) final;
     void loadIconForFiles(const Vector<String>&, FileIconLoader&) final { }
 
     void elementDidFocus(const Node*) final { }

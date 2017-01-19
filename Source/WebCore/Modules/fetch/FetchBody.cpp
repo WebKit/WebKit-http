@@ -57,7 +57,7 @@ std::optional<FetchBody> FetchBody::extract(ScriptExecutionContext& context, JSC
         ASSERT(!context.isWorkerGlobalScope());
         auto& domFormData = *JSDOMFormData::toWrapped(value);
         auto formData = FormData::createMultiPart(domFormData, domFormData.encoding(), &static_cast<Document&>(context));
-        contentType = makeString("multipart/form-data;boundary=", formData->boundary().data());
+        contentType = makeString("multipart/form-data; boundary=", formData->boundary().data());
         return FetchBody(WTFMove(formData));
     }
     if (value.isString()) {
@@ -68,8 +68,11 @@ std::optional<FetchBody> FetchBody::extract(ScriptExecutionContext& context, JSC
         contentType = HTTPHeaderValues::formURLEncodedContentType();
         return FetchBody(*JSURLSearchParams::toWrapped(value));
     }
-    if (value.inherits(JSReadableStream::info()))
-        return FetchBody();
+    if (value.inherits(JSReadableStream::info())) {
+        FetchBody body;
+        body.m_isReadableStream = true;
+        return WTFMove(body);
+    }
     if (value.inherits(JSC::JSArrayBuffer::info())) {
         ArrayBuffer* data = toUnsharedArrayBuffer(value);
         ASSERT(data);

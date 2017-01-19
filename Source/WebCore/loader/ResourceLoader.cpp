@@ -128,7 +128,7 @@ bool ResourceLoader::init(const ResourceRequest& r)
     
     m_defersLoading = m_options.defersLoadingPolicy == DefersLoadingPolicy::AllowDefersLoading && m_frame->page()->defersLoading();
 
-    if (m_options.securityCheck == DoSecurityCheck && !m_frame->document()->securityOrigin()->canDisplay(clientRequest.url())) {
+    if (m_options.securityCheck == DoSecurityCheck && !m_frame->document()->securityOrigin().canDisplay(clientRequest.url())) {
         FrameLoader::reportLocalLoadFailed(m_frame.get(), clientRequest.url().string());
         releaseResources();
         return false;
@@ -191,7 +191,7 @@ void ResourceLoader::start()
         return;
 #endif
 
-    if (m_documentLoader->applicationCacheHost()->maybeLoadResource(*this, m_request, m_request.url()))
+    if (m_documentLoader->applicationCacheHost().maybeLoadResource(*this, m_request, m_request.url()))
         return;
 
     if (m_defersLoading) {
@@ -607,7 +607,7 @@ ResourceError ResourceLoader::cannotShowURLError()
 
 ResourceRequest ResourceLoader::willSendRequest(ResourceHandle*, ResourceRequest&& request, ResourceResponse&& redirectResponse)
 {
-    if (documentLoader()->applicationCacheHost()->maybeLoadFallbackForRedirect(this, request, redirectResponse))
+    if (documentLoader()->applicationCacheHost().maybeLoadFallbackForRedirect(this, request, redirectResponse))
         return WTFMove(request);
     willSendRequestInternal(request, redirectResponse);
     return WTFMove(request);
@@ -620,7 +620,7 @@ void ResourceLoader::didSendData(ResourceHandle*, unsigned long long bytesSent, 
 
 void ResourceLoader::didReceiveResponse(ResourceHandle*, ResourceResponse&& response)
 {
-    if (documentLoader()->applicationCacheHost()->maybeLoadFallbackForResponse(this, response))
+    if (documentLoader()->applicationCacheHost().maybeLoadFallbackForResponse(this, response))
         return;
     didReceiveResponse(response);
 }
@@ -642,7 +642,7 @@ void ResourceLoader::didFinishLoading(ResourceHandle*, double finishTime)
 
 void ResourceLoader::didFail(ResourceHandle*, const ResourceError& error)
 {
-    if (documentLoader()->applicationCacheHost()->maybeLoadFallbackForError(this, error))
+    if (documentLoader()->applicationCacheHost().maybeLoadFallbackForError(this, error))
         return;
     didFail(error);
 }
@@ -670,7 +670,7 @@ bool ResourceLoader::isAllowedToAskUserForCredentials() const
 {
     if (m_options.clientCredentialPolicy == ClientCredentialPolicy::CannotAskClientForCredentials)
         return false;
-    return m_options.credentials == FetchOptions::Credentials::Include || (m_options.credentials == FetchOptions::Credentials::SameOrigin && m_frame->document()->securityOrigin()->canRequest(originalRequest().url()));
+    return m_options.credentials == FetchOptions::Credentials::Include || (m_options.credentials == FetchOptions::Credentials::SameOrigin && m_frame->document()->securityOrigin().canRequest(originalRequest().url()));
 }
 
 void ResourceLoader::didReceiveAuthenticationChallenge(const AuthenticationChallenge& challenge)
@@ -742,6 +742,10 @@ void ResourceLoader::didCreateQuickLookHandle(QuickLookHandle& handle)
 bool ResourceLoader::isAlwaysOnLoggingAllowed() const
 {
     return frameLoader() && frameLoader()->isAlwaysOnLoggingAllowed();
+}
+
+void ResourceLoader::didRetrieveDerivedDataFromCache(const String&, SharedBuffer&)
+{
 }
 
 }

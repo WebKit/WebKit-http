@@ -30,7 +30,6 @@
 #include "FrameView.h"
 #include "HTMLIFrameElement.h"
 #include "HTMLNames.h"
-#include "Page.h"
 #include "RenderView.h"
 #include "Settings.h"
 #include <wtf/StackStats.h>
@@ -72,9 +71,7 @@ RenderView* RenderIFrame::contentRootRenderer() const
 
 bool RenderIFrame::flattenFrame() const
 {
-    bool enabled = frame().settings().frameFlatteningEnabled();
-
-    if (!enabled)
+    if (!settings().frameFlatteningEnabled())
         return false;
 
     if (style().width().isFixed() && style().height().isFixed()) {

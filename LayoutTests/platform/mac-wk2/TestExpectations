@@ -544,10 +544,7 @@ webkit.org/b/160445 [ Sierra+ ] http/tests/security/contentSecurityPolicy/upgrad
 webkit.org/b/163932 inspector/css/pseudo-element-matches.html [ Pass Failure ]
 
 webkit.org/b/163604 inspector/debugger/breakpoint-action-eval.html [ Pass Timeout ]
-webkit.org/b/161774 inspector/debugger/breakpoint-columns.html [ Pass Failure ]
-webkit.org/b/165292 inspector/debugger/csp-exceptions.html [ Pass Failure ]
 webkit.org/b/159447 [ Debug ] inspector/debugger/tail-deleted-frames-from-vm-entry.html [ Pass Failure ]
-webkit.org/b/165582 inspector/worker/debugger-scripts.html [ Pass Failure ]
 
 webkit.org/b/159430 [ Debug Sierra+ ] media/restore-from-page-cache.html [ Pass Crash ]
 
@@ -581,8 +578,6 @@ webkit.org/b/160017 js/regress-139548.html [ Pass Timeout ]
 webkit.org/b/161659 [ Yosemite Debug ] media/media-controls-drag-timeline-set-controls-property.html [ Pass Timeout ]
 
 webkit.org/b/162524 [ Sierra Release ] http/tests/cache/disk-cache/disk-cache-redirect.html [ Pass Timeout ]
-
-webkit.org/b/162510 [ Debug ] fast/images/animated-gif-restored-from-bfcache.html [ Pass Failure ]
 
 webkit.org/b/161745 http/tests/security/anchor-download-allow-data.html [ Pass Failure ]
 

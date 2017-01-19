@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -81,14 +81,14 @@ inline void SlotVisitor::appendValuesHidden(const WriteBarrierBase<Unknown>* bar
 
 inline void SlotVisitor::reportExtraMemoryVisited(size_t size)
 {
-    if (!m_isVisitingMutatorStack)
+    if (m_isFirstVisit)
         heap()->reportExtraMemoryVisited(size);
 }
 
 #if ENABLE(RESOURCE_USAGE)
 inline void SlotVisitor::reportExternalMemoryVisited(size_t size)
 {
-    if (!m_isVisitingMutatorStack)
+    if (m_isFirstVisit)
         heap()->reportExternalMemoryVisited(size);
 }
 #endif
@@ -106,20 +106,6 @@ inline VM& SlotVisitor::vm()
 inline const VM& SlotVisitor::vm() const
 {
     return *m_heap.m_vm;
-}
-
-inline void SlotVisitor::didNotRace(const VisitRaceKey& race)
-{
-    if (ASSERT_DISABLED)
-        return;
-    
-    if (!m_isVisitingMutatorStack) {
-        // This is the first visit so we don't need to remove anything.
-        return;
-    }
-    
-    auto locker = holdLock(heap()->m_visitRaceLock);
-    heap()->m_visitRaces.remove(race);
 }
 
 } // namespace JSC

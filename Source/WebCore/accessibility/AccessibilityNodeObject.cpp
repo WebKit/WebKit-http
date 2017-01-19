@@ -61,12 +61,10 @@
 #include "MathMLNames.h"
 #include "NodeList.h"
 #include "NodeTraversal.h"
-#include "Page.h"
 #include "ProgressTracker.h"
 #include "RenderImage.h"
 #include "RenderView.h"
 #include "SVGElement.h"
-#include "SVGNames.h"
 #include "Text.h"
 #include "TextControlInnerElements.h"
 #include "UserGestureIndicator.h"
@@ -1363,6 +1361,10 @@ void AccessibilityNodeObject::alternativeText(Vector<AccessibilityText>& textOrd
             textOrder.append(AccessibilityText(accessibleNameForNode(captionForFigure->node()), AlternativeText));
     }
     
+    // Tree items missing a label are labeled by all child elements.
+    if (isTreeItem() && ariaLabel.isEmpty() && ariaLabeledByAttribute().isEmpty())
+        textOrder.append(AccessibilityText(accessibleNameForNode(node), AlternativeText));
+    
 #if ENABLE(MATHML)
     if (node->isMathMLElement())
         textOrder.append(AccessibilityText(getAttribute(MathMLNames::alttextAttr), AlternativeText));
@@ -1642,15 +1644,11 @@ unsigned AccessibilityNodeObject::hierarchicalLevel() const
 
 void AccessibilityNodeObject::setIsExpanded(bool expand)
 {
-#if ENABLE(DETAILS_ELEMENT)
     if (is<HTMLDetailsElement>(node())) {
         auto& details = downcast<HTMLDetailsElement>(*node());
         if (expand != details.isOpen())
             details.toggleOpen();
     }
-#else
-    UNUSED_PARAM(expand);
-#endif
 }
     
 // When building the textUnderElement for an object, determine whether or not

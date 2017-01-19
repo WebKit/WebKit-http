@@ -65,6 +65,7 @@ public:
     bool avoidsFloats() const override { return true; }
     bool canDropAnonymousBlockChild() const override { return false; }
 
+    void dirtyGrid();
     Vector<LayoutUnit> trackSizesForComputedStyle(GridTrackSizingDirection) const;
 
     const Vector<LayoutUnit>& columnPositions() const { return m_columnPositions; }
@@ -76,6 +77,12 @@ private:
     const char* renderName() const override;
     bool isRenderGrid() const override { return true; }
     void computeIntrinsicLogicalWidths(LayoutUnit& minLogicalWidth, LayoutUnit& maxLogicalWidth) const override;
+
+    void addChild(RenderObject* newChild, RenderObject* beforeChild) final;
+    void removeChild(RenderObject&) final;
+
+    bool explicitGridDidResize(const RenderStyle&) const;
+    bool namedGridLinesDefinitionDidChange(const RenderStyle&) const;
 
     std::optional<LayoutUnit> computeIntrinsicLogicalContentHeightUsing(Length logicalHeightLength, std::optional<LayoutUnit> intrinsicContentHeight, LayoutUnit borderAndPadding) const override;
 
@@ -117,7 +124,6 @@ private:
 
     void layoutGridItems(GridSizingData&);
     void populateGridPositionsForDirection(GridSizingData&, GridTrackSizingDirection);
-    void clearGrid();
 
     static bool shouldProcessTrackForTrackSizeComputationPhase(TrackSizeComputationPhase, const GridTrackSize&);
     static bool trackShouldGrowBeyondGrowthLimitsForTrackSizeComputationPhase(TrackSizeComputationPhase, const GridTrackSize&);
@@ -175,6 +181,11 @@ private:
     void resetAutoMarginsAndLogicalTopInColumnAxis(RenderBox& child);
     void updateAutoMarginsInColumnAxisIfNeeded(RenderBox&);
     void updateAutoMarginsInRowAxisIfNeeded(RenderBox&);
+
+    int baselinePosition(FontBaseline, bool firstLine, LineDirectionMode, LinePositionMode = PositionOnContainingLine) const final;
+    std::optional<int> firstLineBaseline() const final;
+    std::optional<int> inlineBlockBaseline(LineDirectionMode) const final;
+    bool isInlineBaselineAlignedChild(const RenderBox&) const;
 
 #ifndef NDEBUG
     bool tracksAreWiderThanMinTrackBreadth(GridTrackSizingDirection, GridSizingData&);
@@ -240,8 +251,6 @@ private:
 
     private:
         friend class GridIterator;
-
-        void clear();
 
         OrderIterator m_orderIterator;
 

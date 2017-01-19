@@ -23,11 +23,11 @@
 
 #include "BridgeJSC.h"
 #include "CachedModuleScript.h"
+#include "CachedScriptFetcher.h"
 #include "CommonVM.h"
 #include "ContentSecurityPolicy.h"
 #include "DocumentLoader.h"
 #include "Event.h"
-#include "EventNames.h"
 #include "Frame.h"
 #include "FrameLoaderClient.h"
 #include "GCController.h"
@@ -186,36 +186,36 @@ JSValue ScriptController::evaluate(const ScriptSourceCode& sourceCode, Exception
     return evaluateInWorld(sourceCode, mainThreadNormalWorld(), exceptionDetails);
 }
 
-void ScriptController::loadModuleScriptInWorld(CachedModuleScript& moduleScript, const String& moduleName, LoadableScript& loadableScript, DOMWrapperWorld& world)
+void ScriptController::loadModuleScriptInWorld(CachedModuleScript& moduleScript, const String& moduleName, CachedScriptFetcher& scriptFetcher, DOMWrapperWorld& world)
 {
     JSLockHolder lock(world.vm());
 
     auto& shell = *windowShell(world);
     auto& state = *shell.window()->globalExec();
 
-    auto& promise = JSMainThreadExecState::loadModule(state, moduleName, JSC::JSScriptFetcher::create(state.vm(), { &loadableScript }));
+    auto& promise = JSMainThreadExecState::loadModule(state, moduleName, JSC::JSScriptFetcher::create(state.vm(), { &scriptFetcher }));
     setupModuleScriptHandlers(moduleScript, promise, world);
 }
 
-void ScriptController::loadModuleScript(CachedModuleScript& moduleScript, const String& moduleName, LoadableScript& loadableScript)
+void ScriptController::loadModuleScript(CachedModuleScript& moduleScript, const String& moduleName, CachedScriptFetcher& scriptFetcher)
 {
-    loadModuleScriptInWorld(moduleScript, moduleName, loadableScript, mainThreadNormalWorld());
+    loadModuleScriptInWorld(moduleScript, moduleName, scriptFetcher, mainThreadNormalWorld());
 }
 
-void ScriptController::loadModuleScriptInWorld(CachedModuleScript& moduleScript, const ScriptSourceCode& sourceCode, LoadableScript& loadableScript, DOMWrapperWorld& world)
+void ScriptController::loadModuleScriptInWorld(CachedModuleScript& moduleScript, const ScriptSourceCode& sourceCode, CachedScriptFetcher& scriptFetcher, DOMWrapperWorld& world)
 {
     JSLockHolder lock(world.vm());
 
     auto& shell = *windowShell(world);
     auto& state = *shell.window()->globalExec();
 
-    auto& promise = JSMainThreadExecState::loadModule(state, sourceCode.jsSourceCode(), JSC::JSScriptFetcher::create(state.vm(), { &loadableScript }));
+    auto& promise = JSMainThreadExecState::loadModule(state, sourceCode.jsSourceCode(), JSC::JSScriptFetcher::create(state.vm(), { &scriptFetcher }));
     setupModuleScriptHandlers(moduleScript, promise, world);
 }
 
-void ScriptController::loadModuleScript(CachedModuleScript& moduleScript, const ScriptSourceCode& sourceCode, LoadableScript& loadableScript)
+void ScriptController::loadModuleScript(CachedModuleScript& moduleScript, const ScriptSourceCode& sourceCode, CachedScriptFetcher& scriptFetcher)
 {
-    loadModuleScriptInWorld(moduleScript, sourceCode, loadableScript, mainThreadNormalWorld());
+    loadModuleScriptInWorld(moduleScript, sourceCode, scriptFetcher, mainThreadNormalWorld());
 }
 
 JSC::JSValue ScriptController::linkAndEvaluateModuleScriptInWorld(CachedModuleScript& moduleScript, DOMWrapperWorld& world)
@@ -541,7 +541,7 @@ void ScriptController::collectIsolatedContexts(Vector<std::pair<JSC::ExecState*,
 {
     for (ShellMap::iterator iter = m_windowShells.begin(); iter != m_windowShells.end(); ++iter) {
         JSC::ExecState* exec = iter->value->window()->globalExec();
-        SecurityOrigin* origin = iter->value->window()->wrapped().document()->securityOrigin();
+        SecurityOrigin* origin = &iter->value->window()->wrapped().document()->securityOrigin();
         result.append(std::pair<JSC::ExecState*, SecurityOrigin*>(exec, origin));
     }
 }

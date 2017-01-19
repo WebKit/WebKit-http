@@ -1191,6 +1191,7 @@ webkit.org/b/148636 inspector/dom/content-node-region-info.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/dom/getAccessibilityPropertiesForNode.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/dom/highlight-shape-outside.html [ Pass Timeout ]
 webkit.org/b/153039 [ Debug ] inspector/heap/garbageCollected.html [ Pass Timeout ]
+webkit.org/b/167184 [ Debug ] inspector/indexeddb/clearObjectStore.html [ Pass Timeout ]
 webkit.org/b/159684 [ Debug ] inspector/indexeddb/deleteDatabaseNamesWithSpace.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/model/parse-script-syntax-tree.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/model/remote-object.html [ Pass Timeout ]
@@ -1202,15 +1203,14 @@ webkit.org/b/155607 inspector/unit-tests/heap-snapshot.html [ Pass Timeout ]
 webkit.org/b/157999 inspector/unit-tests/heap-snapshot-collection-event.html [ Pass Timeout ]
 webkit.org/b/161361 inspector/unit-tests/yieldable-task.html [ Pass Failure ]
 webkit.org/b/164872 inspector/worker/debugger-multiple-targets-pause.html [ Pass Failure Timeout ]
-webkit.org/b/164833 inspector/worker/debugger-pause.html [ Pass Failure ]
+webkit.org/b/164833 inspector/worker/debugger-pause.html [ Pass Failure Timeout ]
+webkit.org/b/165582 inspector/worker/debugger-scripts.html [ Pass Failure ]
 webkit.org/b/155607 inspector/heap/snapshot.html [ Pass Timeout ]
 webkit.org/b/143719 inspector/console/console-api.html [ Pass Timeout ]
 webkit.org/b/156078 inspector/console/heapSnapshot.html [ Pass Timeout ]
 webkit.org/b/158006 inspector/console/console-time.html [ Pass Timeout ]
 webkit.org/b/156634 inspector/formatting/formatting-javascript.html [ Pass Timeout ]
 webkit.org/b/158948 inspector/timeline [ Pass Timeout ]
-
-webkit.org/b/162305 inspector/css/manager-preferredInspectorStyleSheetForFrame.html [ Pass Failure ]
 
 # Colorspaces on CA OpenGL layers not available in Yosemite
 [ Yosemite ] fast/canvas/webgl/match-page-color-space.html [ Skip ]
@@ -1474,3 +1474,7 @@ media/encrypted-media/mock-MediaKeySession-generateRequest.html [ Skip ]
 webkit.org/b/166025 http/tests/fetch/fetching-same-resource-with-diffferent-options.html [ Pass Failure ]
 
 webkit.org/b/166672 [ Sierra+ ] fast/text/variations/advances.html [ Failure ]
+
+webkit.org/b/162507 http/tests/media/hls/hls-video-resize.html [ Pass Failure ]
+
+webkit.org/b/162510 [ Debug ] fast/images/animated-gif-restored-from-bfcache.html [ Pass Failure ]

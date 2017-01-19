@@ -21,6 +21,7 @@
 #pragma once
 
 #include "ActivityState.h"
+#include "CPUTime.h"
 #include "FindOptions.h"
 #include "FrameLoaderTypes.h"
 #include "LayoutMilestones.h"
@@ -129,6 +130,7 @@ class UserContentProvider;
 class ValidationMessageClient;
 class ActivityStateChangeObserver;
 class VisitedLinkStore;
+class WebGLStateTracker;
 
 typedef uint64_t LinkHash;
 
@@ -189,6 +191,11 @@ public:
     void incrementSubframeCount() { ++m_subframeCount; }
     void decrementSubframeCount() { ASSERT(m_subframeCount); --m_subframeCount; }
     int subframeCount() const { checkSubframeCountConsistency(); return m_subframeCount; }
+
+    void incrementNestedRunLoopCount();
+    void decrementNestedRunLoopCount();
+    bool insideNestedRunLoop() const { return m_nestedRunLoopCount > 0; }
+    WEBCORE_EXPORT void whenUnnested(std::function<void()>);
 
 #if ENABLE(REMOTE_INSPECTOR)
     WEBCORE_EXPORT bool remoteInspectionAllowed() const;
@@ -292,6 +299,9 @@ public:
 
     UserInterfaceLayoutDirection userInterfaceLayoutDirection() const { return m_userInterfaceLayoutDirection; }
     WEBCORE_EXPORT void setUserInterfaceLayoutDirection(UserInterfaceLayoutDirection);
+
+    void didStartProvisionalLoad();
+    void didFinishLoad(); // Called when the load has been committed in the main frame.
 
     // The view scale factor is multiplied into the page scale factor by all
     // callers of setPageScaleFactor.
@@ -548,6 +558,7 @@ public:
     std::optional<EventThrottlingBehavior> eventThrottlingBehaviorOverride() const { return m_eventThrottlingBehaviorOverride; }
     void setEventThrottlingBehaviorOverride(std::optional<EventThrottlingBehavior> throttling) { m_eventThrottlingBehaviorOverride = throttling; }
 
+    WebGLStateTracker* webGLStateTracker() const { return m_webGLStateTracker.get(); }
 private:
     WEBCORE_EXPORT void initGroup();
 
@@ -560,6 +571,9 @@ private:
 #else
     void checkSubframeCountConsistency() const;
 #endif
+
+    void measurePostLoadCPUUsage();
+    void measurePostBackgroundingCPUUsage();
 
     enum ShouldHighlightMatches { DoNotHighlightMatches, HighlightMatches };
     enum ShouldMarkMatches { DoNotMarkMatches, MarkMatches };
@@ -611,8 +625,12 @@ private:
     PlugInClient* m_plugInClient;
     std::unique_ptr<ValidationMessageClient> m_validationMessageClient;
     std::unique_ptr<DiagnosticLoggingClient> m_diagnosticLoggingClient;
+    std::unique_ptr<WebGLStateTracker> m_webGLStateTracker;
 
-    int m_subframeCount;
+    int m_nestedRunLoopCount { 0 };
+    std::function<void()> m_unnestCallback;
+
+    int m_subframeCount { 0 };
     String m_groupName;
     bool m_openedByDOM;
 
@@ -742,6 +760,11 @@ private:
     
     // For testing.
     std::optional<EventThrottlingBehavior> m_eventThrottlingBehaviorOverride;
+
+    Timer m_postPageLoadCPUUsageTimer;
+    std::optional<CPUTime> m_postLoadCPUTime;
+    Timer m_postBackgroundingCPUUsageTimer;
+    std::optional<CPUTime> m_postBackgroundingCPUTime;
 };
 
 inline PageGroup& Page::group()

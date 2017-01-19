@@ -74,7 +74,6 @@
 #include <memory>
 #include <wtf/HashMap.h>
 #include <wtf/MonotonicTime.h>
-#include <wtf/PassRefPtr.h>
 #include <wtf/RefPtr.h>
 #include <wtf/RunLoop.h>
 #include <wtf/Seconds.h>
@@ -314,7 +313,7 @@ public:
 #endif
 
     WebOpenPanelResultListener* activeOpenPanelResultListener() const { return m_activeOpenPanelResultListener.get(); }
-    void setActiveOpenPanelResultListener(PassRefPtr<WebOpenPanelResultListener>);
+    void setActiveOpenPanelResultListener(Ref<WebOpenPanelResultListener>&&);
 
     void didReceiveMessage(IPC::Connection&, IPC::Decoder&) override;
     void didReceiveSyncMessage(IPC::Connection&, IPC::Decoder&, std::unique_ptr<IPC::Encoder>&) override;
@@ -355,16 +354,16 @@ public:
     WebCore::MainFrame* mainFrame() const; // May return 0.
     WebCore::FrameView* mainFrameView() const; // May return 0.
 
-    PassRefPtr<WebCore::Range> currentSelectionAsRange();
+    RefPtr<WebCore::Range> currentSelectionAsRange();
 
 #if ENABLE(NETSCAPE_PLUGIN_API)
-    PassRefPtr<Plugin> createPlugin(WebFrame*, WebCore::HTMLPlugInElement*, const Plugin::Parameters&, String& newMIMEType);
+    RefPtr<Plugin> createPlugin(WebFrame*, WebCore::HTMLPlugInElement*, const Plugin::Parameters&, String& newMIMEType);
 #endif
 
 #if ENABLE(WEBGL)
     WebCore::WebGLLoadPolicy webGLPolicyForURL(WebFrame*, const String&);
     WebCore::WebGLLoadPolicy resolveWebGLPolicyForURL(WebFrame*, const String&);
-#endif // ENABLE(WEBGL)
+#endif
     
     enum class IncludePostLayoutDataHint { No, Yes };
     EditorState editorState(IncludePostLayoutDataHint = IncludePostLayoutDataHint::Yes) const;
@@ -456,21 +455,21 @@ public:
 
     bool hasCachedWindowFrame() const { return m_hasCachedWindowFrame; }
 
-#if !PLATFORM(IOS)
-    void setTopOverhangImage(PassRefPtr<WebImage>);
-    void setBottomOverhangImage(PassRefPtr<WebImage>);
-#endif // !PLATFORM(IOS)
-
     void updateHeaderAndFooterLayersForDeviceScaleChange(float scaleFactor);
-#endif // PLATFORM(COCOA)
+#endif
+
+#if PLATFORM(MAC)
+    void setTopOverhangImage(WebImage*);
+    void setBottomOverhangImage(WebImage*);
+#endif
 
     bool windowIsFocused() const;
     bool windowAndWebPageAreFocused() const;
 
 #if !PLATFORM(IOS)
-    void setHeaderPageBanner(PassRefPtr<PageBanner>);
+    void setHeaderPageBanner(PageBanner*);
     PageBanner* headerPageBanner();
-    void setFooterPageBanner(PassRefPtr<PageBanner>);
+    void setFooterPageBanner(PageBanner*);
     PageBanner* footerPageBanner();
 
     void hidePageBanners();
@@ -478,7 +477,7 @@ public:
     
     void setHeaderBannerHeightForTesting(int);
     void setFooterBannerHeightForTesting(int);
-#endif // !PLATFORM(IOS)
+#endif
 
     WebCore::IntPoint screenToRootView(const WebCore::IntPoint&);
     WebCore::IntRect rootViewToScreen(const WebCore::IntRect&);
@@ -622,7 +621,7 @@ public:
     bool hasLocalDataForURL(const WebCore::URL&);
     String cachedResponseMIMETypeForURL(const WebCore::URL&);
     String cachedSuggestedFilenameForURL(const WebCore::URL&);
-    PassRefPtr<WebCore::SharedBuffer> cachedResponseDataForURL(const WebCore::URL&);
+    RefPtr<WebCore::SharedBuffer> cachedResponseDataForURL(const WebCore::URL&);
 
     static bool canHandleRequest(const WebCore::ResourceRequest&);
 
@@ -1017,9 +1016,11 @@ private:
     bool shouldSwitchToBlockModeForHandle(const WebCore::IntPoint& handlePoint, SelectionHandlePosition);
     RefPtr<WebCore::Range> switchToBlockSelectionAtPoint(const WebCore::IntPoint&, SelectionHandlePosition);
 #endif
+
 #if !PLATFORM(COCOA) && !PLATFORM(WPE)
     static const char* interpretKeyEvent(const WebCore::KeyboardEvent*);
 #endif
+
     bool performDefaultBehaviorForKeyEvent(const WebKeyboardEvent&);
 
 #if PLATFORM(MAC)
@@ -1207,7 +1208,7 @@ private:
     static PluginView* focusedPluginViewForFrame(WebCore::Frame&);
     static PluginView* pluginViewForFrame(WebCore::Frame*);
 
-    static PassRefPtr<WebCore::Range> rangeFromEditingRange(WebCore::Frame&, const EditingRange&, EditingRangeIsRelativeTo = EditingRangeIsRelativeTo::EditableRoot);
+    static RefPtr<WebCore::Range> rangeFromEditingRange(WebCore::Frame&, const EditingRange&, EditingRangeIsRelativeTo = EditingRangeIsRelativeTo::EditableRoot);
 
     void reportUsedFeatures();
 

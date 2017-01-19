@@ -582,6 +582,38 @@ static WebPageVisibilityState kit(PageVisibilityState visibilityState)
     return WebPageVisibilityStateVisible;
 }
 
+namespace WebKit {
+
+class DeferredPageDestructor {
+public:
+    static void createDeferredPageDestructor(std::unique_ptr<Page> page)
+    {
+        new DeferredPageDestructor(WTFMove(page));
+    }
+
+private:
+    DeferredPageDestructor(std::unique_ptr<Page> page)
+        : m_page(WTFMove(page))
+    {
+        tryDestruction();
+    }
+
+    void tryDestruction()
+    {
+        if (m_page->insideNestedRunLoop()) {
+            m_page->whenUnnested([this] { tryDestruction(); });
+            return;
+        }
+
+        m_page = nullptr;
+        delete this;
+    }
+
+    std::unique_ptr<Page> m_page;
+};
+
+} // namespace WebKit
+
 @interface WebView (WebFileInternal)
 #if !PLATFORM(IOS)
 - (float)_deviceScaleFactor;
@@ -2148,8 +2180,8 @@ static bool fastDocumentTeardownEnabled()
     // all the plug-ins in the page cache to break any retain cycles.
     // See comment in HistoryItem::releaseAllPendingPageCaches() for more information.
     Page* page = _private->page;
-    _private->page = 0;
-    delete page;
+    _private->page = nullptr;
+    WebKit::DeferredPageDestructor::createDeferredPageDestructor(std::unique_ptr<Page>(page));
 
 #if !PLATFORM(IOS)
     if (_private->hasSpellCheckerDocumentTag) {
@@ -3470,8 +3502,8 @@ static inline IMP getMethod(id o, SEL s)
     NSView *documentView = [[kit(&frameView->frame()) frameView] documentView];
 
     for (const auto& widget: frameView->children()) {
-        if (is<FrameView>(*widget)) {
-            [self _addScrollerDashboardRegionsForFrameView:downcast<FrameView>(widget.get()) dashboardRegions:regions];
+        if (is<FrameView>(widget)) {
+            [self _addScrollerDashboardRegionsForFrameView:&downcast<FrameView>(widget.get()) dashboardRegions:regions];
             continue;
         }
 
@@ -8282,11 +8314,10 @@ FORWARD(toggleUnderline)
 {
     Frame* coreFrame = core([self _selectedOrMainFrame]);
     if (coreFrame)
-        return coreFrame->editor().fontAttributesForSelectionStart();
+        return coreFrame->editor().fontAttributesForSelectionStart().autorelease();
     
     return nil;
 }
-
 
 @end
 
@@ -9309,7 +9340,7 @@ bool LayerFlushController::flushLayers()
 {
     // FIXME: We should enable this on iOS as well.
 #if PLATFORM(MAC)
-    _private->formValidationBubble = std::make_unique<ValidationBubble>(self, message);
+    _private->formValidationBubble = ValidationBubble::create(self, message);
     _private->formValidationBubble->showRelativeTo(enclosingIntRect([self _convertRectFromRootView:anchorRect]));
 #else
     UNUSED_PARAM(message);

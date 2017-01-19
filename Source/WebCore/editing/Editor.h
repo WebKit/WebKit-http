@@ -99,10 +99,12 @@ enum class MailBlockquoteHandling {
 };
 
 #if PLATFORM(COCOA)
+
 struct FragmentAndResources {
     RefPtr<DocumentFragment> fragment;
-    Vector<RefPtr<ArchiveResource>> resources;
+    Vector<Ref<ArchiveResource>> resources;
 };
+
 #endif
 
 class Editor {
@@ -206,8 +208,8 @@ public:
     bool willReapplyEditing(const EditCommandComposition&) const;
 
     void appliedEditing(PassRefPtr<CompositeEditCommand>);
-    void unappliedEditing(PassRefPtr<EditCommandComposition>);
-    void reappliedEditing(PassRefPtr<EditCommandComposition>);
+    void unappliedEditing(EditCommandComposition&);
+    void reappliedEditing(EditCommandComposition&);
     void unappliedSpellCorrection(const VisibleSelection& selectionOfCorrected, const String& corrected, const String& correction);
 
     // This is off by default, since most editors want this behavior (originally matched IE but not Firefox).
@@ -443,11 +445,12 @@ public:
 
     RefPtr<DocumentFragment> webContentFromPasteboard(Pasteboard&, Range& context, bool allowPlainText, bool& chosePlainText);
 
-#if PLATFORM(COCOA)
+    WEBCORE_EXPORT const Font* fontForSelection(bool& hasMultipleFonts) const;
     WEBCORE_EXPORT static const RenderStyle* styleForSelectionStart(Frame* , Node *&nodeToRemove);
+
+#if PLATFORM(COCOA)
     void getTextDecorationAttributesRespectingTypingStyle(const RenderStyle&, NSMutableDictionary*) const;
-    WEBCORE_EXPORT const Font* fontForSelection(bool&) const;
-    WEBCORE_EXPORT NSDictionary *fontAttributesForSelectionStart() const;
+    WEBCORE_EXPORT RetainPtr<NSDictionary> fontAttributesForSelectionStart() const;
     WEBCORE_EXPORT String stringSelectionForPasteboard();
     String stringSelectionForPasteboardWithImageAltText();
 #if !PLATFORM(IOS)
@@ -512,16 +515,20 @@ private:
 
     bool unifiedTextCheckerEnabled() const;
 
+    RefPtr<Range> adjustedSelectionRange();
+
 #if PLATFORM(COCOA)
     RefPtr<SharedBuffer> selectionInWebArchiveFormat();
     String selectionInHTMLFormat();
     RefPtr<SharedBuffer> imageInWebArchiveFormat(Element&);
-    RefPtr<Range> adjustedSelectionRange();
     RefPtr<DocumentFragment> createFragmentForImageResourceAndAddResource(RefPtr<ArchiveResource>&&);
     Ref<DocumentFragment> createFragmentForImageAndURL(const String&);
     RefPtr<DocumentFragment> createFragmentAndAddResources(NSAttributedString *);
     FragmentAndResources createFragment(NSAttributedString *);
     void fillInUserVisibleForm(PasteboardURL&);
+
+    static RefPtr<SharedBuffer> dataInRTFDFormat(NSAttributedString *);
+    static RefPtr<SharedBuffer> dataInRTFFormat(NSAttributedString *);
 #endif
 
     void postTextStateChangeNotificationForCut(const String&, const VisibleSelection&);

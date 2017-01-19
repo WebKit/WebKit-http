@@ -38,7 +38,6 @@ using namespace JSC;
 namespace WebCore {
 
 VM* g_commonVMOrNull;
-bool g_opaqueRootWriteBarrierEnabled;
 
 VM& commonVMSlow()
 {
@@ -47,6 +46,10 @@ VM& commonVMSlow()
     
     ScriptController::initializeThreading();
     g_commonVMOrNull = &VM::createLeaked(LargeHeap).leakRef();
+#if CPU(X86_64) || CPU(ARM64)
+    static const size_t maxGCHeapSize = 4 * GB;
+    g_commonVMOrNull->heap.setMaxLiveSize(maxGCHeapSize);
+#endif
     g_commonVMOrNull->heap.acquireAccess(); // At any time, we may do things that affect the GC.
 #if !PLATFORM(IOS)
     g_commonVMOrNull->setExclusiveThread(std::this_thread::get_id());
@@ -56,17 +59,10 @@ VM& commonVMSlow()
 #endif
     
     g_commonVMOrNull->setGlobalConstRedeclarationShouldThrow(Settings::globalConstRedeclarationShouldThrow());
-    g_commonVMOrNull->heap.addMutatorShouldBeFencedCache(g_opaqueRootWriteBarrierEnabled);
     
-    initNormalWorldClientData(g_commonVMOrNull);
+    JSVMClientData::initNormalWorld(g_commonVMOrNull);
     
     return *g_commonVMOrNull;
-}
-
-void writeBarrierOpaqueRootSlow(void* root)
-{
-    if (VM* vm = g_commonVMOrNull)
-        vm->heap.writeBarrierOpaqueRoot(root);
 }
 
 } // namespace WebCore

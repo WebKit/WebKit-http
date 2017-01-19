@@ -29,8 +29,6 @@
 #include "Attr.h"
 #include "BeforeLoadEvent.h"
 #include "ChildListMutationScope.h"
-#include "Chrome.h"
-#include "ChromeClient.h"
 #include "ComposedTreeAncestorIterator.h"
 #include "ContainerNodeAlgorithms.h"
 #include "ContextMenuController.h"
@@ -430,11 +428,10 @@ static HashSet<RefPtr<Node>> nodeSetPreTransformedFromNodeOrStringVector(const V
     HashSet<RefPtr<Node>> nodeSet;
     for (const auto& variant : vector) {
         WTF::switchOn(variant,
-            [&](const RefPtr<Node>& node) { nodeSet.add(const_cast<Node*>(node.get())); },
-            [](const String&) { }
+            [&] (const RefPtr<Node>& node) { nodeSet.add(const_cast<Node*>(node.get())); },
+            [] (const String&) { }
         );
     }
-
     return nodeSet;
 }
 
@@ -1510,12 +1507,12 @@ ExceptionOr<void> Node::setTextContent(const String& text)
         return setNodeValue(text);
     case ELEMENT_NODE:
     case DOCUMENT_FRAGMENT_NODE: {
-        auto container = makeRef(downcast<ContainerNode>(*this));
-        ChildListMutationScope mutation(container);
-        container->removeChildren();
+        auto& container = downcast<ContainerNode>(*this);
         if (text.isEmpty())
-            return { };
-        return container->appendChild(document().createTextNode(text));
+            container.replaceAllChildren(nullptr);
+        else
+            container.replaceAllChildren(document().createTextNode(text));
+        return { };
     }
     case DOCUMENT_NODE:
     case DOCUMENT_TYPE_NODE:

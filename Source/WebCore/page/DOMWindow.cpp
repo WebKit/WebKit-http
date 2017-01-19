@@ -78,9 +78,9 @@
 #include "Navigator.h"
 #include "Page.h"
 #include "PageConsoleClient.h"
-#include "PageGroup.h"
 #include "PageTransitionEvent.h"
 #include "Performance.h"
+#include "RequestAnimationFrameCallback.h"
 #include "ResourceLoadInfo.h"
 #include "RuntimeApplicationChecks.h"
 #include "RuntimeEnabledFeatures.h"
@@ -127,10 +127,6 @@
 
 #if ENABLE(PROXIMITY_EVENTS)
 #include "DeviceProximityController.h"
-#endif
-
-#if ENABLE(REQUEST_ANIMATION_FRAME)
-#include "RequestAnimationFrameCallback.h"
 #endif
 
 #if ENABLE(GAMEPAD)
@@ -773,7 +769,7 @@ DOMApplicationCache* DOMWindow::applicationCache() const
     if (!isCurrentlyDisplayedInFrame())
         return nullptr;
     if (!m_applicationCache)
-        m_applicationCache = DOMApplicationCache::create(m_frame);
+        m_applicationCache = DOMApplicationCache::create(*m_frame);
     return m_applicationCache.get();
 }
 
@@ -862,7 +858,7 @@ ExceptionOr<Storage*> DOMWindow::sessionStorage() const
     if (!document)
         return nullptr;
 
-    if (!document->securityOrigin()->canAccessSessionStorage(document->topOrigin()))
+    if (!document->securityOrigin().canAccessSessionStorage(document->topOrigin()))
         return Exception { SECURITY_ERR };
 
     if (m_sessionStorage) {
@@ -875,7 +871,7 @@ ExceptionOr<Storage*> DOMWindow::sessionStorage() const
     if (!page)
         return nullptr;
 
-    auto storageArea = page->sessionStorage()->storageArea(SecurityOriginData::fromSecurityOrigin(*document->securityOrigin()));
+    auto storageArea = page->sessionStorage()->storageArea(SecurityOriginData::fromSecurityOrigin(document->securityOrigin()));
     if (!storageArea->canAccessStorage(m_frame))
         return Exception { SECURITY_ERR };
 
@@ -892,7 +888,7 @@ ExceptionOr<Storage*> DOMWindow::localStorage() const
     if (!document)
         return nullptr;
 
-    if (!document->securityOrigin()->canAccessLocalStorage(nullptr))
+    if (!document->securityOrigin().canAccessLocalStorage(nullptr))
         return Exception { SECURITY_ERR };
 
     auto* page = document->page();
@@ -937,7 +933,7 @@ ExceptionOr<void> DOMWindow::postMessage(JSC::ExecState& state, DOMWindow& calle
     if (targetOrigin == "/") {
         if (!sourceDocument)
             return { };
-        target = sourceDocument->securityOrigin();
+        target = &sourceDocument->securityOrigin();
     } else if (targetOrigin != "*") {
         target = SecurityOrigin::createFromString(targetOrigin);
         // It doesn't make sense target a postMessage at a unique origin
@@ -959,7 +955,7 @@ ExceptionOr<void> DOMWindow::postMessage(JSC::ExecState& state, DOMWindow& calle
     // in order to capture the source of the message correctly.
     if (!sourceDocument)
         return { };
-    auto sourceOrigin = sourceDocument->securityOrigin()->toString();
+    auto sourceOrigin = sourceDocument->securityOrigin().toString();
 
     // Capture stack trace only when inspector front-end is loaded as it may be time consuming.
     RefPtr<ScriptCallStack> stackTrace;
@@ -987,7 +983,7 @@ void DOMWindow::dispatchMessageEventWithOriginCheck(SecurityOrigin* intendedTarg
         // Check target origin now since the target document may have changed since the timer was scheduled.
         if (!intendedTargetOrigin->isSameSchemeHostPort(document()->securityOrigin())) {
             if (PageConsoleClient* pageConsole = console()) {
-                String message = makeString("Unable to post message to ", intendedTargetOrigin->toString(), ". Recipient has origin ", document()->securityOrigin()->toString(), ".\n");
+                String message = makeString("Unable to post message to ", intendedTargetOrigin->toString(), ". Recipient has origin ", document()->securityOrigin().toString(), ".\n");
                 pageConsole->addMessage(MessageSource::Security, MessageLevel::Error, message, stackTrace);
             }
             return;
@@ -1565,6 +1561,9 @@ void DOMWindow::scrollBy(double x, double y) const
 
 void DOMWindow::scrollTo(const ScrollToOptions& options) const
 {
+    if (!isCurrentlyDisplayedInFrame())
+        return;
+
     RefPtr<FrameView> view = m_frame->view();
     if (!view)
         return;
@@ -1710,8 +1709,6 @@ void DOMWindow::clearInterval(int timeoutId)
     DOMTimer::removeById(*context, timeoutId);
 }
 
-#if ENABLE(REQUEST_ANIMATION_FRAME)
-
 int DOMWindow::requestAnimationFrame(Ref<RequestAnimationFrameCallback>&& callback)
 {
     callback->m_useLegacyTimeBase = false;
@@ -1738,8 +1735,6 @@ void DOMWindow::cancelAnimationFrame(int id)
     document->cancelAnimationFrame(id);
 }
 
-#endif
-
 static void didAddStorageEventListener(DOMWindow& window)
 {
     // Creating these WebCore::Storage objects informs the system that we'd like to receive
@@ -1760,7 +1755,7 @@ bool DOMWindow::isSameSecurityOriginAsMainFrame() const
 
     Document* mainFrameDocument = m_frame->mainFrame().document();
 
-    if (mainFrameDocument && document()->securityOrigin()->canAccess(mainFrameDocument->securityOrigin()))
+    if (mainFrameDocument && document()->securityOrigin().canAccess(mainFrameDocument->securityOrigin()))
         return true;
 
     return false;
@@ -2084,7 +2079,7 @@ void DOMWindow::setLocation(DOMWindow& activeWindow, DOMWindow& firstWindow, con
     // We want a new history item if we are processing a user gesture.
     LockHistory lockHistory = (locking != LockHistoryBasedOnGestureState || !ScriptController::processingUserGesture()) ? LockHistory::Yes : LockHistory::No;
     LockBackForwardList lockBackForwardList = (locking != LockHistoryBasedOnGestureState) ? LockBackForwardList::Yes : LockBackForwardList::No;
-    m_frame->navigationScheduler().scheduleLocationChange(activeDocument, activeDocument->securityOrigin(),
+    m_frame->navigationScheduler().scheduleLocationChange(*activeDocument, activeDocument->securityOrigin(),
         // FIXME: What if activeDocument()->frame() is 0?
         completedURL, activeDocument->frame()->loader().outgoingReferrer(),
         lockHistory, lockBackForwardList);
@@ -2105,12 +2100,12 @@ String DOMWindow::crossDomainAccessErrorMessage(const DOMWindow& activeWindow)
     if (activeWindowURL.isNull())
         return String();
 
-    ASSERT(!activeWindow.document()->securityOrigin()->canAccess(document()->securityOrigin()));
+    ASSERT(!activeWindow.document()->securityOrigin().canAccess(document()->securityOrigin()));
 
     // FIXME: This message, and other console messages, have extra newlines. Should remove them.
-    SecurityOrigin* activeOrigin = activeWindow.document()->securityOrigin();
-    SecurityOrigin* targetOrigin = document()->securityOrigin();
-    String message = "Blocked a frame with origin \"" + activeOrigin->toString() + "\" from accessing a frame with origin \"" + targetOrigin->toString() + "\". ";
+    SecurityOrigin& activeOrigin = activeWindow.document()->securityOrigin();
+    SecurityOrigin& targetOrigin = document()->securityOrigin();
+    String message = "Blocked a frame with origin \"" + activeOrigin.toString() + "\" from accessing a frame with origin \"" + targetOrigin.toString() + "\". ";
 
     // Sandbox errors: Use the origin of the frames' location, rather than their actual origin (since we know that at least one will be "null").
     URL activeURL = activeWindow.document()->url();
@@ -2125,16 +2120,16 @@ String DOMWindow::crossDomainAccessErrorMessage(const DOMWindow& activeWindow)
     }
 
     // Protocol errors: Use the URL's protocol rather than the origin's protocol so that we get a useful message for non-heirarchal URLs like 'data:'.
-    if (targetOrigin->protocol() != activeOrigin->protocol())
+    if (targetOrigin.protocol() != activeOrigin.protocol())
         return message + " The frame requesting access has a protocol of \"" + activeURL.protocol() + "\", the frame being accessed has a protocol of \"" + targetURL.protocol() + "\". Protocols must match.\n";
 
     // 'document.domain' errors.
-    if (targetOrigin->domainWasSetInDOM() && activeOrigin->domainWasSetInDOM())
-        return message + "The frame requesting access set \"document.domain\" to \"" + activeOrigin->domain() + "\", the frame being accessed set it to \"" + targetOrigin->domain() + "\". Both must set \"document.domain\" to the same value to allow access.";
-    if (activeOrigin->domainWasSetInDOM())
-        return message + "The frame requesting access set \"document.domain\" to \"" + activeOrigin->domain() + "\", but the frame being accessed did not. Both must set \"document.domain\" to the same value to allow access.";
-    if (targetOrigin->domainWasSetInDOM())
-        return message + "The frame being accessed set \"document.domain\" to \"" + targetOrigin->domain() + "\", but the frame requesting access did not. Both must set \"document.domain\" to the same value to allow access.";
+    if (targetOrigin.domainWasSetInDOM() && activeOrigin.domainWasSetInDOM())
+        return message + "The frame requesting access set \"document.domain\" to \"" + activeOrigin.domain() + "\", the frame being accessed set it to \"" + targetOrigin.domain() + "\". Both must set \"document.domain\" to the same value to allow access.";
+    if (activeOrigin.domainWasSetInDOM())
+        return message + "The frame requesting access set \"document.domain\" to \"" + activeOrigin.domain() + "\", but the frame being accessed did not. Both must set \"document.domain\" to the same value to allow access.";
+    if (targetOrigin.domainWasSetInDOM())
+        return message + "The frame being accessed set \"document.domain\" to \"" + targetOrigin.domain() + "\", but the frame requesting access did not. Both must set \"document.domain\" to the same value to allow access.";
 
     // Default.
     return message + "Protocols, domains, and ports must match.";
@@ -2156,7 +2151,7 @@ bool DOMWindow::isInsecureScriptAccess(DOMWindow& activeWindow, const String& ur
 
         // FIXME: The name canAccess seems to be a roundabout way to ask "can execute script".
         // Can we name the SecurityOrigin function better to make this more clear?
-        if (activeWindow.document()->securityOrigin()->canAccess(document()->securityOrigin()))
+        if (activeWindow.document()->securityOrigin().canAccess(document()->securityOrigin()))
             return false;
     }
 
@@ -2210,7 +2205,7 @@ RefPtr<Frame> DOMWindow::createWindow(const String& urlString, const AtomicStrin
         newFrame->loader().changeLocation(frameRequest);
     } else if (!urlString.isEmpty()) {
         LockHistory lockHistory = ScriptController::processingUserGesture() ? LockHistory::No : LockHistory::Yes;
-        newFrame->navigationScheduler().scheduleLocationChange(activeWindow.document(), activeWindow.document()->securityOrigin(), completedURL, referrer, lockHistory, LockBackForwardList::No);
+        newFrame->navigationScheduler().scheduleLocationChange(*activeWindow.document(), activeWindow.document()->securityOrigin(), completedURL, referrer, lockHistory, LockBackForwardList::No);
     }
 
     // Navigating the new frame could result in it being detached from its page by a navigation policy delegate.
@@ -2220,28 +2215,26 @@ RefPtr<Frame> DOMWindow::createWindow(const String& urlString, const AtomicStrin
     return newFrame;
 }
 
-RefPtr<DOMWindow> DOMWindow::open(const String& urlString, const AtomicString& frameName, const String& windowFeaturesString,
-    DOMWindow& activeWindow, DOMWindow& firstWindow)
+RefPtr<DOMWindow> DOMWindow::open(const String& urlString, const AtomicString& frameName, const String& windowFeaturesString, DOMWindow& activeWindow, DOMWindow& firstWindow)
 {
     if (!isCurrentlyDisplayedInFrame())
         return nullptr;
 
-    Document* activeDocument = activeWindow.document();
+    auto* activeDocument = activeWindow.document();
     if (!activeDocument)
         return nullptr;
 
-    Frame* firstFrame = firstWindow.frame();
+    auto* firstFrame = firstWindow.frame();
     if (!firstFrame)
         return nullptr;
 
 #if ENABLE(CONTENT_EXTENSIONS)
     if (firstFrame->document()
-        && firstFrame->mainFrame().page()
+        && firstFrame->page()
         && firstFrame->mainFrame().document()
         && firstFrame->mainFrame().document()->loader()) {
-        ResourceLoadInfo resourceLoadInfo = { firstFrame->document()->completeURL(urlString), firstFrame->mainFrame().document()->url(), ResourceType::Popup };
-        Vector<ContentExtensions::Action> actions = firstFrame->mainFrame().page()->userContentProvider().actionsForResourceLoad(resourceLoadInfo, *firstFrame->mainFrame().document()->loader());
-        for (const ContentExtensions::Action& action : actions) {
+        ResourceLoadInfo resourceLoadInfo { firstFrame->document()->completeURL(urlString), firstFrame->mainFrame().document()->url(), ResourceType::Popup };
+        for (auto& action : firstFrame->page()->userContentProvider().actionsForResourceLoad(resourceLoadInfo, *firstFrame->mainFrame().document()->loader())) {
             if (action.type() == ContentExtensions::ActionType::BlockLoad)
                 return nullptr;
         }
@@ -2281,7 +2274,7 @@ RefPtr<DOMWindow> DOMWindow::open(const String& urlString, const AtomicString& f
         // For whatever reason, Firefox uses the first window rather than the active window to
         // determine the outgoing referrer. We replicate that behavior here.
         LockHistory lockHistory = ScriptController::processingUserGesture() ? LockHistory::No : LockHistory::Yes;
-        targetFrame->navigationScheduler().scheduleLocationChange(activeDocument, activeDocument->securityOrigin(), completedURL, firstFrame->loader().outgoingReferrer(),
+        targetFrame->navigationScheduler().scheduleLocationChange(*activeDocument, activeDocument->securityOrigin(), completedURL, firstFrame->loader().outgoingReferrer(),
             lockHistory, LockBackForwardList::No);
         return targetFrame->document()->domWindow();
     }

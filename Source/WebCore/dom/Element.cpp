@@ -2035,6 +2035,7 @@ void Element::childrenChanged(const ChildChange& change)
             // For elements, we notify shadowRoot in Element::insertedInto and Element::removedFrom.
             break;
         case AllChildrenRemoved:
+        case AllChildrenReplaced:
             shadowRoot->didRemoveAllChildrenOfShadowHost();
             break;
         case TextInserted:
@@ -3576,44 +3577,6 @@ bool Element::canContainRangeEndPoint() const
 String Element::completeURLsInAttributeValue(const URL& base, const Attribute& attribute) const
 {
     return URL(base, attribute.value()).string();
-}
-
-bool Element::ieForbidsInsertHTML() const
-{
-    // FIXME: Supposedly IE disallows setting innerHTML, outerHTML
-    // and createContextualFragment on these tags. We have no tests to
-    // verify this however, so this list could be totally wrong.
-    // This list was moved from the previous endTagRequirement() implementation.
-    // This is also called from editing and assumed to be the list of tags
-    // for which no end tag should be serialized. It's unclear if the list for
-    // IE compat and the list for serialization sanity are the same.
-    if (hasTagName(areaTag)
-        || hasTagName(baseTag)
-        || hasTagName(basefontTag)
-        || hasTagName(brTag)
-        || hasTagName(colTag)
-        || hasTagName(embedTag)
-        || hasTagName(frameTag)
-        || hasTagName(hrTag)
-        || hasTagName(imageTag)
-        || hasTagName(imgTag)
-        || hasTagName(inputTag)
-        || hasTagName(linkTag)
-        || hasTagName(metaTag)
-        || hasTagName(paramTag)
-        || hasTagName(sourceTag)
-        || hasTagName(wbrTag))
-        return true;
-    // FIXME: I'm not sure why dashboard mode would want to change the
-    // serialization of <canvas>, that seems like a bad idea.
-#if ENABLE(DASHBOARD_SUPPORT)
-    if (hasTagName(canvasTag)) {
-        Settings* settings = document().settings();
-        if (settings && settings->usesDashboardBackwardCompatibilityMode())
-            return true;
-    }
-#endif
-    return false;
 }
 
 ExceptionOr<Node*> Element::insertAdjacent(const String& where, Ref<Node>&& newChild)
