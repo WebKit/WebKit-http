@@ -23,8 +23,9 @@
 #include "WebKitOpenCDMDecryptorGStreamer.h"
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA) && USE(GSTREAMER) && USE(OCDM)
+
+#include "GUniquePtrGStreamer.h"
 #include <gcrypt.h>
-#include <gst/base/gstbytereader.h>
 #include <gst/gst.h>
 #include <open_cdm.h>
 #include <stdio.h>
@@ -110,8 +111,7 @@ static void webkit_media_opencdm_decrypt_init(WebKitMediaOpenCDMDecrypt* self)
 
 static void webKitMediaOpenCDMDecryptorFinalize(GObject* object)
 {
-    WebKitMediaOpenCDMDecrypt* self = WEBKIT_OPENCDM_DECRYPT(object);
-    WebKitMediaOpenCDMDecryptPrivate* priv = GST_WEBKIT_OPENCDM_DECRYPT_GET_PRIVATE(WEBKIT_OPENCDM_DECRYPT(self));
+    WebKitMediaOpenCDMDecryptPrivate* priv = GST_WEBKIT_OPENCDM_DECRYPT_GET_PRIVATE(WEBKIT_OPENCDM_DECRYPT(object));
     priv->m_openCdm->ReleaseMem();
     priv->~WebKitMediaOpenCDMDecryptPrivate();
     GST_CALL_PARENT(G_OBJECT_CLASS, finalize, (object));
@@ -165,38 +165,39 @@ static gboolean webKitMediaOpenCDMDecryptorDecrypt(WebKitMediaCommonEncryptionDe
             return false;
         }
 
-        GstByteReader* reader = gst_byte_reader_new(subSamplesMap.data, subSamplesMap.size);
+        GUniquePtr<GstByteReader> reader(gst_byte_reader_new(subSamplesMap.data, subSamplesMap.size));
         uint16_t inClear = 0;
         uint32_t inEncrypted = 0;
         uint32_t totalEncrypted = 0;
         unsigned position = 0;
         // Find out the total size of the encrypted data.
         for (position = 0; position < subSampleCount; position++) {
-            gst_byte_reader_get_uint16_be(reader, &inClear);
-            gst_byte_reader_get_uint32_be(reader, &inEncrypted);
+            gst_byte_reader_get_uint16_be(reader.get(), &inClear);
+            gst_byte_reader_get_uint32_be(reader.get(), &inEncrypted);
             totalEncrypted += inEncrypted;
         }
-        gst_byte_reader_set_pos(reader, 0);
+        gst_byte_reader_set_pos(reader.get(), 0);
 
         // Build a new buffer storing the entire encrypted cipher.
         GUniquePtr<uint8_t> holdEncryptedData(reinterpret_cast<uint8_t*>(malloc(totalEncrypted)));
         uint8_t* encryptedData = holdEncryptedData.get();
         unsigned index = 0;
         for (position = 0; position < subSampleCount; position++) {
-            gst_byte_reader_get_uint16_be(reader, &inClear);
-            gst_byte_reader_get_uint32_be(reader, &inEncrypted);
+            gst_byte_reader_get_uint16_be(reader.get(), &inClear);
+            gst_byte_reader_get_uint32_be(reader.get(), &inEncrypted);
             memcpy(encryptedData, map.data + index + inClear, inEncrypted);
             index += inClear + inEncrypted;
             encryptedData += inEncrypted;
         }
-        gst_byte_reader_set_pos(reader, 0);
+        gst_byte_reader_set_pos(reader.get(), 0);
 
         // Decrypt cipher.
         ASSERT(priv->sessionMetaData);
         if ((errorCode = priv->m_openCdm->Decrypt(holdEncryptedData.get(), static_cast<uint32_t>(totalEncrypted),
             ivMap.data, static_cast<uint32_t>(ivMap.size)))) {
             GST_WARNING_OBJECT(self, "ERROR - packet decryption failed [%d]", errorCode);
-            gst_byte_reader_free(reader);
+            if (reader)
+                reader.reset(nullptr);
             gst_buffer_unmap(buffer, &map);
             gst_buffer_unmap(subSamplesBuffer, &subSamplesMap);
             gst_buffer_unmap(ivBuffer, &ivMap);
@@ -208,8 +209,8 @@ static gboolean webKitMediaOpenCDMDecryptorDecrypt(WebKitMediaCommonEncryptionDe
         encryptedData = holdEncryptedData.get();
         unsigned total = 0;
         for (position = 0; position < subSampleCount; position++) {
-            gst_byte_reader_get_uint16_be(reader, &inClear);
-            gst_byte_reader_get_uint32_be(reader, &inEncrypted);
+            gst_byte_reader_get_uint16_be(reader.get(), &inClear);
+            gst_byte_reader_get_uint32_be(reader.get(), &inEncrypted);
 
             memcpy(map.data + total + inClear, encryptedData + index, inEncrypted);
             index += inEncrypted;
@@ -218,7 +219,7 @@ static gboolean webKitMediaOpenCDMDecryptorDecrypt(WebKitMediaCommonEncryptionDe
 
         gst_buffer_unmap(subSamplesBuffer, &subSamplesMap);
         if (reader)
-            gst_byte_reader_free(reader);
+            reader.reset(nullptr);
     } else {
         // Decrypt cipher.
         ASSERT(priv->sessionMetaData);
