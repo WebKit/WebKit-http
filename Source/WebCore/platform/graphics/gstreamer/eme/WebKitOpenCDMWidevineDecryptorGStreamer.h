@@ -19,8 +19,7 @@
  * Boston, MA 02110-1335, USA.
  */
 
-#ifndef GST_WEBKIT_OPENCDM_DECRYPTOR_H
-#define GST_WEBKIT_OPENCDM_DECRYPTOR_H
+#pragma once
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA) && USE(GSTREAMER) && USE(OCDM)
 
@@ -28,29 +27,28 @@
 
 G_BEGIN_DECLS
 
-#define WEBKIT_OPENCDM_TYPE_DECRYPT          (webkit_media_opencdm_decrypt_get_type())
-#define WEBKIT_OPENCDM_DECRYPT(obj)          (G_TYPE_CHECK_INSTANCE_CAST((obj), WEBKIT_OPENCDM_TYPE_DECRYPT, WebKitMediaOpenCDMDecrypt))
-#define WEBKIT_OPENCDM_DECRYPT_CLASS(klass)  (G_TYPE_CHECK_CLASS_CAST((klass), WEBKIT_OPENCDM_TYPE_DECRYPT, WebKitMediaOpenCDMDecryptClass))
-#define WEBKIT_OPENCDM_IS_DECRYPT(obj)       (G_TYPE_CHECK_INSTANCE_TYPE((obj), WEBKIT_OPENCDM_TYPE_DECRYPT))
-#define WEBKIT_OPENCDM_IS_DECRYPT_CLASS(obj) (G_TYPE_CHECK_CLASS_TYPE((klass), WEBKIT_OPENCDM_TYPE_DECRYPT))
+#define WEBKIT_OPENCDM_WIDEVINE_TYPE_DECRYPT          (webkit_media_opencdm_widevine_decrypt_get_type())
+#define WEBKIT_OPENCDM_WIDEVINE_DECRYPT(obj)          (G_TYPE_CHECK_INSTANCE_CAST((obj), WEBKIT_OPENCDM_WIDEVINE_TYPE_DECRYPT, WebKitOpenCDMWidevineDecrypt))
+#define WEBKIT_OPENCDM_WIDEVINE_DECRYPT_CLASS(klass)  (G_TYPE_CHECK_CLASS_CAST((klass), WEBKIT_OPENCDM_WIDEVINE_TYPE_DECRYPT, WebKitOpenCDMWidevineDecryptClass))
+#define WEBKIT_OPENCDM_WIDEVINE_IS_DECRYPT(obj)       (G_TYPE_CHECK_INSTANCE_TYPE((obj), WEBKIT_OPENCDM_WIDEVINE_TYPE_DECRYPT))
+#define WEBKIT_OPENCDM_WIDEVINE_IS_DECRYPT_CLASS(obj) (G_TYPE_CHECK_CLASS_TYPE((klass), WEBKIT_OPENCDM_WIDEVINE_TYPE_DECRYPT))
 
-typedef struct _WebKitMediaOpenCDMDecrypt           WebKitMediaOpenCDMDecrypt;
-typedef struct _WebKitMediaOpenCDMDecryptClass      WebKitMediaOpenCDMDecryptClass;
-typedef struct _WebKitMediaOpenCDMDecryptPrivate    WebKitMediaOpenCDMDecryptPrivate;
+typedef struct _WebKitOpenCDMWidevineDecrypt           WebKitOpenCDMWidevineDecrypt;
+typedef struct _WebKitOpenCDMWidevineDecryptClass      WebKitOpenCDMWidevineDecryptClass;
+typedef struct _WebKitOpenCDMWidevineDecryptPrivate    WebKitOpenCDMWidevineDecryptPrivate;
 
-GType webkit_media_opencdm_decrypt_get_type(void);
+GType webkit_media_opencdm_widevine_decrypt_get_type(void);
 
-struct _WebKitMediaOpenCDMDecrypt {
+struct _WebKitOpenCDMWidevineDecrypt {
     WebKitMediaCommonEncryptionDecrypt parent;
 
-    WebKitMediaOpenCDMDecryptPrivate* priv;
+    WebKitOpenCDMWidevineDecryptPrivate* priv;
 };
 
-struct _WebKitMediaOpenCDMDecryptClass {
+struct _WebKitOpenCDMWidevineDecryptClass {
     WebKitMediaCommonEncryptionDecryptClass parentClass;
 };
 
 G_END_DECLS
 
 #endif // ENABLE(LEGACY_ENCRYPTED_MEDIA) && USE(GSTREAMER) && USE(OCDM)
-#endif // GST_WEBKIT_OPENCDM_DECRYPTOR_H

@@ -27,81 +27,75 @@
  */
 
 #include "config.h"
-#include "WebKitOpenCDMSessionEncKey.h"
+#include "CDMSessionOpenCDMWidevine.h"
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA) && USE(OCDM)
 
 #include "CDM.h"
 #include "CDMSession.h"
-#include <gst/gst.h>
+#include "MediaPlayerPrivateGStreamerBase.h"
 #include "WebKitMediaKeyError.h"
+#include <gst/gst.h>
 
-GST_DEBUG_CATEGORY_EXTERN(webkit_media_opencdm_decrypt_debug_category);
-#define GST_CAT_DEFAULT webkit_media_opencdm_decrypt_debug_category
+GST_DEBUG_CATEGORY_EXTERN(webkit_media_opencdm_widevine_decrypt_debug_category);
+#define GST_CAT_DEFAULT webkit_media_opencdm_widevine_decrypt_debug_category
+
+#define WIDEVINE_PROTECTION_SYSTEM_UUID "edef8ba9-79d6-4ace-a3c8-27dcd51d21ed"
 
 namespace WebCore {
 
-WebKitOpenCDMSessionEncKey::WebKitOpenCDMSessionEncKey(CDMSessionClient* client, OpenCdm* openCdm)
+CDMSessionOpenCDMWidevine::CDMSessionOpenCDMWidevine(CDMSessionClient* client, OpenCdm* openCdm, MediaPlayerPrivateGStreamerBase* playerPrivate)
     : m_client(client)
     , m_openCdmSession(openCdm)
     , m_destinationUrlLength(0)
+    , m_playerPrivate(playerPrivate)
 {
 }
 
-RefPtr<Uint8Array> WebKitOpenCDMSessionEncKey::generateKeyRequest(const String& mimeType, Uint8Array* initData, String& destinationUrl, unsigned short& errorCode, uint32_t&)
+RefPtr<Uint8Array> CDMSessionOpenCDMWidevine::generateKeyRequest(const String& mimeType, Uint8Array* initData, String& destinationUrl, unsigned short& errorCode, uint32_t&)
 {
-    int returnValue = 0;
-
-    unsigned char initDataValue[initData->length()];
-
-    memcpy(initDataValue, initData->data(), initData->length());
-
     string sessionId;
+    m_playerPrivate->receivedGenerateKeyRequest(WIDEVINE_PROTECTION_SYSTEM_UUID);
+    unsigned char initDataValue[initData->length()];
+    memcpy(initDataValue, initData->data(), initData->length());
     m_openCdmSession->CreateSession(mimeType.utf8().data(), initDataValue,
         initData->length(), sessionId);
     if (!sessionId.size()) {
-        GST_WARNING("SessionId is empty\n");
+        GST_ERROR("SessionId is empty\n");
         return nullptr;
     }
     m_sessionId = String::fromUTF8(sessionId.c_str());
 
-    unsigned char temporaryUrl[1024] = "\0";
+    unsigned char temporaryUrl[1024] = {'\0'};
     string message;
     int messageLength = 0;
-    returnValue = m_openCdmSession->GetKeyMessage(message,
+    int returnValue = m_openCdmSession->GetKeyMessage(message,
         &messageLength, temporaryUrl, &m_destinationUrlLength);
     if (returnValue || !messageLength || !m_destinationUrlLength) {
         errorCode = WebKitMediaKeyError::MEDIA_KEYERR_UNKNOWN;
         return nullptr;
     }
-    else {
-        destinationUrl = String::fromUTF8(temporaryUrl);
-    }
+    
+    destinationUrl = String::fromUTF8(temporaryUrl);
     return Uint8Array::create(reinterpret_cast<unsigned char*>(const_cast<char*>(message.c_str())), messageLength);
 }
 
-void WebKitOpenCDMSessionEncKey::releaseKeys()
+void CDMSessionOpenCDMWidevine::releaseKeys()
 {
 }
 
-bool WebKitOpenCDMSessionEncKey::update(Uint8Array* key, RefPtr<Uint8Array>& nextMessage, unsigned short& errorCode, uint32_t& sysytemCode)
+bool CDMSessionOpenCDMWidevine::update(Uint8Array* key, RefPtr<Uint8Array>& nextMessage, unsigned short& errorCode, uint32_t&)
 {
-    UNUSED_PARAM(sysytemCode);
-
     GST_MEMDUMP("License :", key->data(), key->length());
 
-    int returnValue = 0;
     std::string responseMessage;
-    returnValue = m_openCdmSession->Update(key->data(), key->length(), responseMessage);
-    if (returnValue) {
+    if (m_openCdmSession->Update(key->data(), key->length(), responseMessage)) {
         responseMessage = "UpdateStatus: " + responseMessage;
-        String prettyResponseMessage = responseMessage.c_str();
-        RefPtr<Uint8Array> temporaryMessage = Uint8Array::create(prettyResponseMessage.characters8(), prettyResponseMessage.length());
-        nextMessage = temporaryMessage;
+        nextMessage = Uint8Array::create(reinterpret_cast<unsigned char*>(const_cast<char*>
+            (responseMessage.c_str())), responseMessage.length());
         errorCode = WebKitMediaKeyError::MEDIA_KEYERR_CLIENT;
         return false;
     }
-
     return true;
 }
 

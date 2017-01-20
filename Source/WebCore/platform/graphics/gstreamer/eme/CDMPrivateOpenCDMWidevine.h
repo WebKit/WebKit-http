@@ -25,51 +25,45 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "config.h"
-#include "WebKitOpenCDMPrivateEncKey.h"
+#pragma once
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA) && USE(OCDM)
 
-#include "CDM.h"
+#include "CDMPrivate.h"
 #include "CDMSession.h"
-#include <gst/gst.h>
-#include "WebKitOpenCDMSessionEncKey.h"
-#include "WebKitMediaKeyError.h"
 
-GST_DEBUG_CATEGORY_EXTERN(webkit_media_opencdm_decrypt_debug_category);
-#define GST_CAT_DEFAULT webkit_media_opencdm_decrypt_debug_category
+#include <open_cdm.h>
+#include <runtime/JSCInlines.h>
+#include <runtime/TypedArrayInlines.h>
+#include <runtime/Uint8Array.h>
 
 namespace WebCore {
 
-String WebKitOpenCDMPrivateEncKey::s_openCdmKeySystem("\0");
-std::unique_ptr<OpenCdm> WebKitOpenCDMPrivateEncKey::s_openCdm(nullptr);
+class CDM;
+class CDMSession;
+class MediaPlayerPrivateGStreamerBase;
 
-bool WebKitOpenCDMPrivateEncKey::supportsKeySystem(const String& keySystem)
-{
-    s_openCdmKeySystem = keySystem;
-    return getOpenCdmInstance()->IsTypeSupported(keySystem.utf8().data(), "");
-}
+class CDMPrivateOpenCDMWidevine : public RefCounted<CDMPrivateOpenCDMWidevine> {
+public:
+    explicit CDMPrivateOpenCDMWidevine(CDM* cdm)
+        : m_cdm(cdm)
+    {
+    }
+    explicit CDMPrivateOpenCDMWidevine() = default;
 
-bool WebKitOpenCDMPrivateEncKey::supportsKeySystemAndMimeType(const String& keySystem, const String& mimeType)
-{
-    if (!supportsKeySystem(keySystem))
-        return false;
+    static bool supportsKeySystem(const String&);
+    static bool supportsKeySystemAndMimeType(const String&, const String&);
+    static std::unique_ptr<CDMSession> createSession(CDMSessionClient*, MediaPlayerPrivateGStreamerBase*);
+    virtual ~CDMPrivateOpenCDMWidevine() = default;
+    static OpenCdm* getOpenCdmInstance();
 
-    return getOpenCdmInstance()->IsTypeSupported(keySystem.utf8().data(), mimeType.utf8().data());
-}
+private:
+    static String s_openCdmKeySystem;
+    static unique_ptr<OpenCdm> s_openCdm;
 
-std::unique_ptr<CDMSession> WebKitOpenCDMPrivateEncKey::createSession(CDMSessionClient* client)
-{
-    getOpenCdmInstance()->SelectKeySystem(s_openCdmKeySystem.utf8().data());
-    return std::make_unique<WebKitOpenCDMSessionEncKey>(client, getOpenCdmInstance());
-}
-
-OpenCdm* WebKitOpenCDMPrivateEncKey::getOpenCdmInstance()
-{
-    if (!s_openCdm)
-        s_openCdm = std::make_unique<OpenCdm>();
-    return s_openCdm.get();
-}
+protected:
+    CDM* m_cdm;
+};
 
 } // namespace WebCore
 

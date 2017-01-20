@@ -26,25 +26,25 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WEBKIT_OPENCDM_SESSION_ENC_KEY_H_
-#define WEBKIT_OPENCDM_SESSION_ENC_KEY_H_
+#pragma once
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA) && USE(OCDM)
 
 #include "CDMPrivate.h"
-#include "WebKitOpenCDMPrivateEncKey.h"
+#include "CDMPrivateOpenCDMWidevine.h"
 #include "CDMSession.h"
 
 namespace WebCore {
 
 class CDM;
 class CDMSession;
+class MediaPlayerPrivateGStreamerBase;
 
-class WebKitOpenCDMSessionEncKey : public CDMSession {
+class CDMSessionOpenCDMWidevine : public CDMSession {
 public:
-    WebKitOpenCDMPrivateEncKey* m_cdmEncryptedKey;
-    WebKitOpenCDMSessionEncKey(CDMSessionClient*, OpenCdm*);
-    virtual ~WebKitOpenCDMSessionEncKey() = default;
+    CDMPrivateOpenCDMWidevine* m_cdmEncryptedKey;
+    CDMSessionOpenCDMWidevine(CDMSessionClient*, OpenCdm*, MediaPlayerPrivateGStreamerBase*);
+    virtual ~CDMSessionOpenCDMWidevine() = default;
 
     void setClient(CDMSessionClient* client) override { m_client = client; }
     const String& sessionId() const override { return m_sessionId; }
@@ -59,9 +59,9 @@ private:
     OpenCdm* m_openCdmSession;
     String m_sessionId;
     int m_destinationUrlLength;
+    MediaPlayerPrivateGStreamerBase* m_playerPrivate;
 };
 
 } // namespace WebCore
 
 #endif // ENABLE(LEGACY_ENCRYPTED_MEDIA) && USE(OCDM)
-#endif // WEBKIT_OPENCDM_SESSION_ENC_KEY_H_

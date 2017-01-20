@@ -121,9 +121,9 @@
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
 #include "CDMPRSessionGStreamer.h"
 #if USE(OCDM)
-#include "WebKitOpenCDMDecryptorGStreamer.h"
-#include "WebKitOpenCDMPrivateEncKey.h"
-#include "WebKitOpenCDMSessionEncKey.h"
+#include "CDMPrivateOpenCDMWidevine.h"
+#include "CDMSessionOpenCDMWidevine.h"
+#include "WebKitOpenCDMWidevineDecryptorGStreamer.h"
 #endif // USE(OCDM)
 #endif // ENABLE(LEGACY_ENCRYPTED_MEDIA)
 #if USE(PLAYREADY)
@@ -177,7 +177,7 @@ void registerWebKitGStreamerElements()
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA) && USE(OCDM)
     GRefPtr<GstElementFactory> widevineDecryptorFactory = gst_element_factory_find("webkitwidevine");
     if (!widevineDecryptorFactory)
-        gst_element_register(0, "webkitwidevine", GST_RANK_PRIMARY + 100, WEBKIT_OPENCDM_TYPE_DECRYPT);
+        gst_element_register(0, "webkitwidevine", GST_RANK_PRIMARY + 100, WEBKIT_OPENCDM_WIDEVINE_TYPE_DECRYPT);
 #endif
 }
 
@@ -410,7 +410,7 @@ bool MediaPlayerPrivateGStreamerBase::handleSyncMessage(GstMessage* message)
                         GST_DEBUG("playready key requested already");
                         if (session->ready()) {
                             GST_DEBUG("playready key already negotiated");
-                            emitSession();
+                            emitPlayReadySession();
                         }
                         return false;
                     }
@@ -1317,8 +1317,7 @@ GstElement* MediaPlayerPrivateGStreamerBase::createVideoSinkGL()
 GstElement* MediaPlayerPrivateGStreamerBase::createVideoSink()
 {
 #if USE(GSTREAMER_GL)
-    if (m_player->client().mediaPlayerRenderingCanBeAccelerated(m_player))
-        m_videoSink = createVideoSinkGL();
+    m_videoSink = createVideoSinkGL();
 #endif
 
     if (!m_videoSink) {
@@ -1433,7 +1432,7 @@ PlayreadySession* MediaPlayerPrivateGStreamerBase::prSession() const
 #endif
 
 #if USE(PLAYREADY)
-void MediaPlayerPrivateGStreamerBase::emitSession()
+void MediaPlayerPrivateGStreamerBase::emitPlayReadySession()
 {
     PlayreadySession* session = prSession();
     if (!session->ready())
@@ -1446,18 +1445,19 @@ void MediaPlayerPrivateGStreamerBase::emitSession()
 #endif
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA) && USE(OCDM)
-void MediaPlayerPrivateGStreamerBase::emitOpenCDMSession()
+void MediaPlayerPrivateGStreamerBase::emitOpenCDMWidevineSession()
 {
     if (!m_cdmSession)
         return;
 
-    WebKitOpenCDMSessionEncKey* cdmSession = static_cast<WebKitOpenCDMSessionEncKey*>(m_cdmSession);
+    CDMSessionOpenCDMWidevine* cdmSession = static_cast<CDMSessionOpenCDMWidevine*>(m_cdmSession);
     const String& sessionId = cdmSession->sessionId();
     if (sessionId.isEmpty())
         return;
 
-    gst_element_send_event(m_pipeline.get(), gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM_OOB,
+    bool eventHandled = gst_element_send_event(m_pipeline.get(), gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM_OOB,
         gst_structure_new("drm-session", "session", G_TYPE_STRING, sessionId.utf8().data(), nullptr)));
+    GST_TRACE("emitted OCDM session on pipeline, event handled %s", eventHandled ? "yes" : "no");
 }
 #endif // ENABLE(LEGACY_ENCRYPTED_MEDIA) && USE(OCDM)
 
@@ -1481,7 +1481,7 @@ MediaPlayer::MediaKeyException MediaPlayerPrivateGStreamerBase::addKey(const Str
         }
 
         // XXX: use nextMessage here and send a new keyMessage is ack is needed?
-        emitSession();
+        emitPlayReadySession();
 
         m_player->keyAdded(keySystem, sessionID);
 
@@ -1538,7 +1538,7 @@ MediaPlayer::MediaKeyException MediaPlayerPrivateGStreamerBase::generateKeyReque
         if (!m_prSession)
             m_prSession = std::make_unique<PlayreadySession>();
         if (m_prSession->ready()) {
-            emitSession();
+            emitPlayReadySession();
             return MediaPlayer::NoError;
         }
 
@@ -1556,7 +1556,7 @@ MediaPlayer::MediaKeyException MediaPlayerPrivateGStreamerBase::generateKeyReque
         }
 
         if (m_prSession->ready()) {
-            emitSession();
+            emitPlayReadySession();
             return MediaPlayer::NoError;
         }
         URL url(URL(), destinationURL);
@@ -1606,12 +1606,12 @@ void MediaPlayerPrivateGStreamerBase::setCDMSession(CDMSession* session)
 void MediaPlayerPrivateGStreamerBase::keyAdded()
 {
 #if USE(PLAYREADY)
-    emitSession();
+    emitPlayReadySession();
 #endif
 
 #if USE(OCDM)
     if (m_cdmSession)
-        emitOpenCDMSession();
+        emitOpenCDMWidevineSession();
 #endif // USE(OCDM)
 }
 
@@ -1628,8 +1628,8 @@ std::unique_ptr<CDMSession> MediaPlayerPrivateGStreamerBase::createSession(const
 #endif
 
 #if USE(OCDM)
-    if (WebKitOpenCDMPrivateEncKey::supportsKeySystem(keySystem))
-        return WebKitOpenCDMPrivateEncKey::createSession(client);
+    if (CDMPrivateOpenCDMWidevine::supportsKeySystem(keySystem))
+        return CDMPrivateOpenCDMWidevine::createSession(client,this);
 #endif // USE(OCDM)
     return nullptr;
 }
@@ -1662,7 +1662,7 @@ void MediaPlayerPrivateGStreamerBase::handleProtectionEvent(GstEvent* event)
         PlayreadySession* session = prSession();
         if (session && (session->keyRequested() || session->ready())) {
             if (session->ready())
-                emitSession();
+                emitPlayReadySession();
             return;
         }
     }
@@ -1741,7 +1741,7 @@ bool MediaPlayerPrivateGStreamerBase::supportsKeySystem(const String& keySystem,
         return true;
 #endif
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA) && USE(OCDM)
-    if (WebKitOpenCDMPrivateEncKey::supportsKeySystemAndMimeType(keySystem,mimeType))
+    if (CDMPrivateOpenCDMWidevine::supportsKeySystemAndMimeType(keySystem, mimeType))
         return true;
 #endif
 

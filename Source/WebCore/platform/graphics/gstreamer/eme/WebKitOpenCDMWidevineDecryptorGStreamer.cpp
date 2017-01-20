@@ -20,31 +20,30 @@
  */
 
 #include "config.h"
-#include "WebKitOpenCDMDecryptorGStreamer.h"
+#include "WebKitOpenCDMWidevineDecryptorGStreamer.h"
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA) && USE(GSTREAMER) && USE(OCDM)
 
 #include "GUniquePtrGStreamer.h"
-#include <gcrypt.h>
 #include <gst/gst.h>
 #include <open_cdm.h>
 #include <stdio.h>
 #include <string>
 #include <wtf/glib/GUniquePtr.h>
 
-#define GST_WEBKIT_OPENCDM_DECRYPT_GET_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), WEBKIT_OPENCDM_TYPE_DECRYPT, WebKitMediaOpenCDMDecryptPrivate))
+#define GST_WEBKIT_OPENCDM_WIDEVINE_DECRYPT_GET_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), WEBKIT_OPENCDM_WIDEVINE_TYPE_DECRYPT, WebKitOpenCDMWidevineDecryptPrivate))
 
-struct _WebKitMediaOpenCDMDecryptPrivate {
-    GUniquePtr<char>            m_session;
-    GUniquePtr<OpenCdm>         m_openCdm;
+struct _WebKitOpenCDMWidevineDecryptPrivate {
+    GUniquePtr<char> m_session;
+    std::unique_ptr<OpenCdm> m_openCdm;
 };
 
 static void webKitMediaOpenCDMDecryptorFinalize(GObject*);
 static gboolean webKitMediaOpenCDMDecryptorHandleKeyResponse(WebKitMediaCommonEncryptionDecrypt*, GstEvent*);
 static gboolean webKitMediaOpenCDMDecryptorDecrypt(WebKitMediaCommonEncryptionDecrypt*, GstBuffer*, GstBuffer*, unsigned, GstBuffer*);
 
-GST_DEBUG_CATEGORY(webkit_media_opencdm_decrypt_debug_category);
-#define GST_CAT_DEFAULT webkit_media_opencdm_decrypt_debug_category
+GST_DEBUG_CATEGORY(webkit_media_opencdm_widevine_decrypt_debug_category);
+#define GST_CAT_DEFAULT webkit_media_opencdm_widevine_decrypt_debug_category
 
 #define WIDEVINE_PROTECTION_SYSTEM_UUID "edef8ba9-79d6-4ace-a3c8-27dcd51d21ed"
 
@@ -63,10 +62,10 @@ static GstStaticPadTemplate srcTemplate = GST_STATIC_PAD_TEMPLATE("src",
     GST_PAD_ALWAYS,
     GST_STATIC_CAPS("video/webm; audio/webm; video/mp4; audio/mp4; audio/mpeg; video/x-h264"));
 
-#define webkit_media_opencdm_decrypt_parent_class parent_class
-G_DEFINE_TYPE(WebKitMediaOpenCDMDecrypt, webkit_media_opencdm_decrypt, WEBKIT_TYPE_MEDIA_CENC_DECRYPT);
+#define webkit_media_opencdm_widevine_decrypt_parent_class parent_class
+G_DEFINE_TYPE(WebKitOpenCDMWidevineDecrypt, webkit_media_opencdm_widevine_decrypt, WEBKIT_TYPE_MEDIA_CENC_DECRYPT);
 
-static void webkit_media_opencdm_decrypt_class_init(WebKitMediaOpenCDMDecryptClass* klass)
+static void webkit_media_opencdm_widevine_decrypt_class_init(WebKitOpenCDMWidevineDecryptClass* klass)
 {
     GObjectClass* gobjectClass = G_OBJECT_CLASS(klass);
     gobjectClass->finalize = webKitMediaOpenCDMDecryptorFinalize;
@@ -81,7 +80,7 @@ static void webkit_media_opencdm_decrypt_class_init(WebKitMediaOpenCDMDecryptCla
         "Decrypts media that has been encrypted using OpenCDMi Encryption.",
         "TataElxsi");
 
-    GST_DEBUG_CATEGORY_INIT(webkit_media_opencdm_decrypt_debug_category,
+    GST_DEBUG_CATEGORY_INIT(webkit_media_opencdm_widevine_decrypt_debug_category,
         "webkitopencdmi", 0, "OpenCDMi decryptor");
 
     WebKitMediaCommonEncryptionDecryptClass* cencClass = WEBKIT_MEDIA_CENC_DECRYPT_CLASS(klass);
@@ -89,31 +88,22 @@ static void webkit_media_opencdm_decrypt_class_init(WebKitMediaOpenCDMDecryptCla
     cencClass->handleKeyResponse = GST_DEBUG_FUNCPTR(webKitMediaOpenCDMDecryptorHandleKeyResponse);
     cencClass->decrypt = GST_DEBUG_FUNCPTR(webKitMediaOpenCDMDecryptorDecrypt);
 
-    g_type_class_add_private(klass, sizeof(WebKitMediaOpenCDMDecryptPrivate));
+    g_type_class_add_private(klass, sizeof(WebKitOpenCDMWidevineDecryptPrivate));
 }
 
-static void webkit_media_opencdm_decrypt_init(WebKitMediaOpenCDMDecrypt* self)
+static void webkit_media_opencdm_widevine_decrypt_init(WebKitOpenCDMWidevineDecrypt* self)
 {
-    WebKitMediaOpenCDMDecryptPrivate* priv = GST_WEBKIT_OPENCDM_DECRYPT_GET_PRIVATE(self);
-
-    if (!gcry_check_version(GCRYPT_VERSION))
-        GST_ERROR_OBJECT(self, "Libgcrypt failed to initialize");
-
-    // Allocate a pool of 16k secure memory. This make the secure memory
-    // available and also drops privileges where needed.
-    gcry_control(GCRYCTL_INIT_SECMEM, 16384, 0);
-
-    gcry_control(GCRYCTL_INITIALIZATION_FINISHED, 0);
+    WebKitOpenCDMWidevineDecryptPrivate* priv = GST_WEBKIT_OPENCDM_WIDEVINE_DECRYPT_GET_PRIVATE(self);
 
     self->priv = priv;
-    new (priv) WebKitMediaOpenCDMDecryptPrivate();
+    new (priv) WebKitOpenCDMWidevineDecryptPrivate();
 }
 
 static void webKitMediaOpenCDMDecryptorFinalize(GObject* object)
 {
-    WebKitMediaOpenCDMDecryptPrivate* priv = GST_WEBKIT_OPENCDM_DECRYPT_GET_PRIVATE(WEBKIT_OPENCDM_DECRYPT(object));
+    WebKitOpenCDMWidevineDecryptPrivate* priv = GST_WEBKIT_OPENCDM_WIDEVINE_DECRYPT_GET_PRIVATE(WEBKIT_OPENCDM_WIDEVINE_DECRYPT(object));
     priv->m_openCdm->ReleaseMem();
-    priv->~WebKitMediaOpenCDMDecryptPrivate();
+    priv->~WebKitOpenCDMWidevineDecryptPrivate();
     GST_CALL_PARENT(G_OBJECT_CLASS, finalize, (object));
 }
 
@@ -124,28 +114,25 @@ static gboolean webKitMediaOpenCDMDecryptorHandleKeyResponse(WebKitMediaCommonEn
     if (!gst_structure_has_name(structure, "drm-session"))
         return false;
 
-    char* tempSession;
-    gst_structure_get(structure, "session", G_TYPE_STRING, &tempSession, nullptr);
-    WebKitMediaOpenCDMDecryptPrivate* priv = GST_WEBKIT_OPENCDM_DECRYPT_GET_PRIVATE(WEBKIT_OPENCDM_DECRYPT(self));
-    priv->m_session.reset(tempSession);
-    if (priv->m_session) {
-        priv->m_openCdm.reset(new OpenCdm());
-        priv->m_openCdm->SelectSession(priv->m_session.get());
-    }
+    char* temporarySession;
+    gst_structure_get(structure, "session", G_TYPE_STRING, &temporarySession, nullptr);
+    WebKitOpenCDMWidevineDecryptPrivate* priv = GST_WEBKIT_OPENCDM_WIDEVINE_DECRYPT_GET_PRIVATE(WEBKIT_OPENCDM_WIDEVINE_DECRYPT(self));
+    priv->m_session.reset(temporarySession);
+    ASSERT(priv->m_session);
 
+    priv->m_openCdm = std::make_unique<OpenCdm>();
+    priv->m_openCdm->SelectSession(priv->m_session.get());
     return true;
 }
 
 static gboolean webKitMediaOpenCDMDecryptorDecrypt(WebKitMediaCommonEncryptionDecrypt* self, GstBuffer* ivBuffer, GstBuffer* buffer, unsigned subSampleCount, GstBuffer* subSamplesBuffer)
 {
     GstMapInfo ivMap;
-    int errorCode;
     if (!gst_buffer_map(ivBuffer, &ivMap, GST_MAP_READ)) {
         GST_ERROR_OBJECT(self, "Failed to map IV");
         return false;
     }
 
-    WebKitMediaOpenCDMDecryptPrivate* priv = GST_WEBKIT_OPENCDM_DECRYPT_GET_PRIVATE(WEBKIT_OPENCDM_DECRYPT(self));
     GstMapInfo map;
     gboolean bufferMapped;
     bufferMapped = gst_buffer_map(buffer, &map, static_cast<GstMapFlags>(GST_MAP_READWRITE));
@@ -154,6 +141,9 @@ static gboolean webKitMediaOpenCDMDecryptorDecrypt(WebKitMediaCommonEncryptionDe
         GST_ERROR_OBJECT(self, "Failed to map buffer");
         return false;
     }
+
+    WebKitOpenCDMWidevineDecryptPrivate* priv = GST_WEBKIT_OPENCDM_WIDEVINE_DECRYPT_GET_PRIVATE(WEBKIT_OPENCDM_WIDEVINE_DECRYPT(self));
+    ASSERT(priv->sessionMetaData);
 
     if (subSamplesBuffer) {
         GstMapInfo subSamplesMap;
@@ -169,7 +159,7 @@ static gboolean webKitMediaOpenCDMDecryptorDecrypt(WebKitMediaCommonEncryptionDe
         uint16_t inClear = 0;
         uint32_t inEncrypted = 0;
         uint32_t totalEncrypted = 0;
-        unsigned position = 0;
+        unsigned position;
         // Find out the total size of the encrypted data.
         for (position = 0; position < subSampleCount; position++) {
             gst_byte_reader_get_uint16_be(reader.get(), &inClear);
@@ -192,12 +182,10 @@ static gboolean webKitMediaOpenCDMDecryptorDecrypt(WebKitMediaCommonEncryptionDe
         gst_byte_reader_set_pos(reader.get(), 0);
 
         // Decrypt cipher.
-        ASSERT(priv->sessionMetaData);
-        if ((errorCode = priv->m_openCdm->Decrypt(holdEncryptedData.get(), static_cast<uint32_t>(totalEncrypted),
-            ivMap.data, static_cast<uint32_t>(ivMap.size)))) {
+        int errorCode;
+        if (errorCode = priv->m_openCdm->Decrypt(holdEncryptedData.get(), static_cast<uint32_t>(totalEncrypted),
+            ivMap.data, static_cast<uint32_t>(ivMap.size))) {
             GST_WARNING_OBJECT(self, "ERROR - packet decryption failed [%d]", errorCode);
-            if (reader)
-                reader.reset(nullptr);
             gst_buffer_unmap(buffer, &map);
             gst_buffer_unmap(subSamplesBuffer, &subSamplesMap);
             gst_buffer_unmap(ivBuffer, &ivMap);
@@ -218,13 +206,11 @@ static gboolean webKitMediaOpenCDMDecryptorDecrypt(WebKitMediaCommonEncryptionDe
         }
 
         gst_buffer_unmap(subSamplesBuffer, &subSamplesMap);
-        if (reader)
-            reader.reset(nullptr);
     } else {
         // Decrypt cipher.
-        ASSERT(priv->sessionMetaData);
-        if ((errorCode = priv->m_openCdm->Decrypt(map.data, static_cast<uint32_t>(map.size),
-            ivMap.data, static_cast<uint32_t>(ivMap.size)))) {
+        int errorCode;
+        if (errorCode = priv->m_openCdm->Decrypt(map.data, static_cast<uint32_t>(map.size),
+            ivMap.data, static_cast<uint32_t>(ivMap.size))) {
             GST_WARNING_OBJECT(self, "ERROR - packet decryption failed [%d]", errorCode);
             gst_buffer_unmap(buffer, &map);
             gst_buffer_unmap(ivBuffer, &ivMap);

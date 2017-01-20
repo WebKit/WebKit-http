@@ -25,47 +25,54 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef WEBKIT_OPENCDM_PRIVATE_ENC_KEY_WPE_H_
-#define WEBKIT_OPENCDM_PRIVATE_ENC_KEY_WPE_H_
+#include "config.h"
+#include "CDMPrivateOpenCDMWidevine.h"
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA) && USE(OCDM)
 
-#include "CDMPrivate.h"
+#include "CDM.h"
 #include "CDMSession.h"
+#include "CDMSessionOpenCDMWidevine.h"
+#include "MediaPlayerPrivateGStreamerBase.h"
+#include "WebKitMediaKeyError.h"
+#include <gst/gst.h>
 
-#include <open_cdm.h>
-#include <runtime/JSCInlines.h>
-#include <runtime/TypedArrayInlines.h>
-#include <runtime/Uint8Array.h>
+GST_DEBUG_CATEGORY_EXTERN(webkit_media_opencdm_widevine_decrypt_debug_category);
+#define GST_CAT_DEFAULT webkit_media_opencdm_widevine_decrypt_debug_category
 
 namespace WebCore {
 
-class CDM;
-class CDMSession;
+String CDMPrivateOpenCDMWidevine::s_openCdmKeySystem;
+std::unique_ptr<OpenCdm> CDMPrivateOpenCDMWidevine::s_openCdm;
 
-class WebKitOpenCDMPrivateEncKey : public RefCounted<WebKitOpenCDMPrivateEncKey> {
-public:
-    explicit WebKitOpenCDMPrivateEncKey(CDM* cdm)
-        : m_cdm(cdm)
-    {
-    }
-    explicit WebKitOpenCDMPrivateEncKey() = default;
+bool CDMPrivateOpenCDMWidevine::supportsKeySystem(const String& keySystem)
+{
+    s_openCdmKeySystem = keySystem;
+    return getOpenCdmInstance()->IsTypeSupported(keySystem.utf8().data(), "");
+}
 
-    static bool supportsKeySystem(const String&);
-    static bool supportsKeySystemAndMimeType(const String&, const String&);
-    static std::unique_ptr<CDMSession> createSession(CDMSessionClient*);
-    virtual ~WebKitOpenCDMPrivateEncKey() = default;
-    static OpenCdm* getOpenCdmInstance();
+bool CDMPrivateOpenCDMWidevine::supportsKeySystemAndMimeType(const String& keySystem, const String& mimeType)
+{
+    if (!supportsKeySystem(keySystem))
+        return false;
 
-private:
-    static String s_openCdmKeySystem;
-    static unique_ptr<OpenCdm> s_openCdm;
+    return getOpenCdmInstance()->IsTypeSupported(keySystem.utf8().data(), mimeType.utf8().data());
+}
 
-protected:
-    CDM* m_cdm;
-};
+std::unique_ptr<CDMSession> CDMPrivateOpenCDMWidevine::createSession(CDMSessionClient* client, MediaPlayerPrivateGStreamerBase* playerPrivate)
+{
+    ASSERT(s_openCdmKeySystem);
+    getOpenCdmInstance()->SelectKeySystem(s_openCdmKeySystem.utf8().data());
+    return std::make_unique<CDMSessionOpenCDMWidevine>(client, getOpenCdmInstance(), playerPrivate);
+}
+
+OpenCdm* CDMPrivateOpenCDMWidevine::getOpenCdmInstance()
+{
+    if (!s_openCdm)
+        s_openCdm = std::make_unique<OpenCdm>();
+    return s_openCdm.get();
+}
 
 } // namespace WebCore
 
 #endif // ENABLE(LEGACY_ENCRYPTED_MEDIA) && USE(OCDM)
-#endif // WEBKIT_OPENCDM_PRIVATE_ENC_KEY_WPE_H_ 
