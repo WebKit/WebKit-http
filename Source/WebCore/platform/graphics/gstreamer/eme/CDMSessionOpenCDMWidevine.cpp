@@ -56,9 +56,7 @@ RefPtr<Uint8Array> CDMSessionOpenCDMWidevine::generateKeyRequest(const String& m
 {
     string sessionId;
     m_playerPrivate->receivedGenerateKeyRequest(WIDEVINE_PROTECTION_SYSTEM_UUID);
-    unsigned char initDataValue[initData->length()];
-    memcpy(initDataValue, initData->data(), initData->length());
-    m_openCdmSession->CreateSession(mimeType.utf8().data(), initDataValue,
+    m_openCdmSession->CreateSession(mimeType.utf8().data(), reinterpret_cast<unsigned char*>(initData->data()),
         initData->length(), sessionId);
     if (!sessionId.size()) {
         GST_ERROR("SessionId is empty\n");
