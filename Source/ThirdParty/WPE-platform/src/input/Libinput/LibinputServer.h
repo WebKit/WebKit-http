@@ -30,10 +30,6 @@
 
 #include "KeyboardEventRepeating.h"
 #include <glib.h>
-#include <libinput.h>
-#ifdef KEY_INPUT_UDEV
-#include <libudev.h>
-#endif
 #include <memory>
 #include <wpe/input.h>
 
@@ -66,13 +62,10 @@ private:
     LibinputServer();
     ~LibinputServer();
 
-    void processEvents();
 
     // Input::KeyboardEventRepeating::Client
     void dispatchKeyboardEvent(struct wpe_input_keyboard_event*) override;
 
-    struct udev* m_udev;
-    struct libinput* m_libinput;
     Client* m_client;
     std::unique_ptr<Input::KeyboardEventHandler> m_keyboardEventHandler;
     std::unique_ptr<Input::KeyboardEventRepeating> m_keyboardEventRepeating;
@@ -83,7 +76,6 @@ private:
 
     bool m_handleTouchEvents { false };
     std::array<struct wpe_input_touch_event_raw, 10> m_touchEvents;
-    void handleTouchEvent(struct libinput_event *event, enum wpe_input_touch_event_type type);
 
 #ifdef KEY_INPUT_HANDLING_VIRTUAL
 public:
@@ -91,7 +83,12 @@ public:
 
 private:
     void* m_virtualkeyboard;
-#endif
+#else
+    void processEvents();
+    void handleTouchEvent(struct libinput_event *event, enum wpe_input_touch_event_type type);
+
+    struct udev* m_udev;
+    struct libinput* m_libinput;
 
     class EventSource {
     public:
@@ -101,6 +98,7 @@ private:
         GPollFD pfd;
         LibinputServer* server;
     };
+#endif
 };
 
 } // namespace WPE
