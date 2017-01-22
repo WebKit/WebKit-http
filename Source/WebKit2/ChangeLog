@@ -1,3 +1,344 @@
+2017-01-21  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed, rolling out r211012.
+
+        It caused a lot of crashes in the network process
+
+        Reverted changeset:
+
+        "[SOUP] Custom protocols don't work in private browsing mode"
+        https://bugs.webkit.org/show_bug.cgi?id=167236
+        http://trac.webkit.org/changeset/211012
+
+2017-01-20  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Remove never changing IndexedDB RuntimeEnabledFeature
+        https://bugs.webkit.org/show_bug.cgi?id=167278
+
+        Reviewed by Darin Adler.
+
+        * WebProcess/WebProcess.cpp:
+        (WebKit::m_resourceLoadStatisticsStorage):
+
+2017-01-20  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [SOUP] Custom protocols don't work in private browsing mode
+        https://bugs.webkit.org/show_bug.cgi?id=167236
+
+        Reviewed by Sergio Villar Senin.
+
+        We only register them in the default session.
+
+        * NetworkProcess/CustomProtocols/soup/CustomProtocolManagerSoup.cpp:
+        (WebKit::CustomProtocolManager::registerProtocolClass): Set the WEBKIT_TYPE_SOUP_REQUEST_GENERIC as type for
+        custom protocols, and setup custom protocols in all existing sessions.
+        (WebKit::CustomProtocolManager::registerScheme): Use g_type_class_peek instead of g_type_class_ref since we know
+        the class was already created in registerProtocolClass().
+
+2017-01-20  Brady Eidson  <beidson@apple.com>
+
+        Require a button press on a gamepad for them to be exposed to the DOM.
+        <rdar://problem/28620919> and https://bugs.webkit.org/show_bug.cgi?id=167272
+
+        Reviewed by Alex Christensen.
+
+        * UIProcess/Gamepad/UIGamepadProvider.cpp:
+        (WebKit::UIGamepadProvider::gamepadSyncTimerFired):
+        (WebKit::UIGamepadProvider::platformGamepadInputActivity):
+        * UIProcess/Gamepad/UIGamepadProvider.h:
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::gamepadActivity):
+        * UIProcess/WebPageProxy.h:
+
+        * WebProcess/Gamepad/WebGamepadProvider.cpp:
+        (WebKit::WebGamepadProvider::gamepadActivity):
+        * WebProcess/Gamepad/WebGamepadProvider.h:
+
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::gamepadActivity):
+        * WebProcess/WebPage/WebPage.h:
+        * WebProcess/WebPage/WebPage.messages.in:
+
+2017-01-20  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Cleanup RuntimeEnabledFeatures
+        https://bugs.webkit.org/show_bug.cgi?id=167228
+
+        Reviewed by Simon Fraser.
+
+        * WebProcess/WebProcess.cpp:
+        (WebKit::m_resourceLoadStatisticsStorage):
+
+2017-01-20  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Remove outdated ENABLE(CSP_NEXT) build flag
+        https://bugs.webkit.org/show_bug.cgi?id=167252
+
+        Reviewed by Brent Fulgham.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-01-20  Alex Christensen  <achristensen@webkit.org>
+
+        Fix Mac CMake build.
+
+        * CMakeLists.txt:
+        * PlatformMac.cmake:
+
+2017-01-20  Antoine Quint  <graouts@apple.com>
+
+        Web Animations should be off by default and enabled as an experimental feature
+        https://bugs.webkit.org/show_bug.cgi?id=167115
+        <rdar://problem/30048963>
+
+        Reviewed by Joseph Pecoraro.
+
+        Promote, or relegate depending on how you see things, the Web Animations preference
+        to an experimental feature.
+
+        * Shared/WebPreferencesDefinitions.h:
+
+2017-01-20  Antoine Quint  <graouts@apple.com>
+
+        [Modern Media Controls] Turn modern media controls on by default
+        https://bugs.webkit.org/show_bug.cgi?id=165668
+
+        Reviewed by Dean Jackson.
+
+        Use DEFAULT_EXPERIMENTAL_FEATURES_ENABLED as the default value for modern media controls, which is true.
+
+        * Shared/WebPreferencesDefinitions.h:
+
+2017-01-20  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Update OptionsGTK.cmake and NEWS for 2.15.3 release.
+
+        * gtk/NEWS: Add release notes for 2.15.3.
+
+2017-01-19  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [Threaded Compositor] Initialize the threaded compositor with the current size
+        https://bugs.webkit.org/show_bug.cgi?id=167196
+
+        Reviewed by Žan Doberšek.
+
+        We are always creating the threaded compositor with an empty size and then a sizeDidChange always happen when
+        the backing store state changes. This is always happening because the threaded compositor is created before the
+        first backing store state, but if we wanted to create it later, for example to enter/leave AC mode on demand,
+        the threaded compositor will not have the viewport size unless the window is resized, or sizeDidChange is called
+        manually when entering AC mode. Creating the threaded compositor is sync and changing the size too, so it's
+        better to do both things at the same time using the same sync operation.
+
+        * Shared/CoordinatedGraphics/SimpleViewportController.cpp:
+        (WebKit::SimpleViewportController::SimpleViewportController): Pass an initial size to the constructor.
+        * Shared/CoordinatedGraphics/SimpleViewportController.h:
+        * Shared/CoordinatedGraphics/threadedcompositor/ThreadedCompositor.cpp:
+        (WebKit::ThreadedCompositor::create): Add viewportSize and scaleFactor construction parameters,
+        (WebKit::ThreadedCompositor::ThreadedCompositor): Ditto. Also mark as needs resize if the given size is not empty.
+        * Shared/CoordinatedGraphics/threadedcompositor/ThreadedCompositor.h:
+        * WebProcess/WebPage/CoordinatedGraphics/ThreadedCoordinatedLayerTreeHost.cpp:
+        (WebKit::ThreadedCoordinatedLayerTreeHost::ThreadedCoordinatedLayerTreeHost): Initialize the threaded compositor
+        with an initial viewport size and scale factor.
+
+2017-01-19  Chris Dumez  <cdumez@apple.com>
+
+        iterable<> should be enabled on WK1
+        https://bugs.webkit.org/show_bug.cgi?id=167221
+        <rdar://problem/30108531>
+
+        Reviewed by Youenn Fablet.
+
+        * Shared/WebPreferencesDefinitions.h:
+        * WebProcess/InjectedBundle/InjectedBundle.cpp:
+        (WebKit::InjectedBundle::overrideBoolPreferenceForTestRunner):
+        * WebProcess/WebPage/WebPage.cpp:
+        (WebKit::WebPage::updatePreferences):
+
+2017-01-19  Alex Christensen  <achristensen@webkit.org>
+
+        Construct URLSearchParams from array or object
+        https://bugs.webkit.org/show_bug.cgi?id=166973
+
+        Reviewed by Sam Weinig.
+
+        * NetworkProcess/capture/NetworkCaptureManager.cpp:
+        (WebKit::NetworkCapture::Manager::fuzzyMatchURLs):
+        Change std::pair's first/second to WTF::KeyValuePair's key/value.
+
+2017-01-19  Andy Estes  <aestes@apple.com>
+
+        [iOS] Move the PDF password view into its own class for possible reuse
+        https://bugs.webkit.org/show_bug.cgi?id=167192
+
+        Reviewed by Tim Horton.
+
+        * UIProcess/ios/WKPDFView.h: Stopped conforming to UIDocumentPasswordViewDelegate.
+        * UIProcess/ios/WKPDFView.mm: Changed _passwordView to a WKPasswordView.
+        (-[WKPDFView _passwordViewFrame]): Returns the frame to set on _passwordView.
+        (-[WKPDFView _updatePasswordEntryField]): Removed.
+        (-[WKPDFView _showPasswordEntryField]): Created a WKPasswordView, set a lambda on its
+        userDidEnterPassword property to do the work previously done in -_tryToUnlockWithPassword:,
+        and showed the password view.
+        (-[WKPDFView _keyboardDidShow:]): Moved to WKPasswordView.
+        (-[WKPDFView _hidePasswordEntryField]): Deleted. The userDidEnterPassword lambda now calls
+        -[WKPasswordView hide] when the document is unlocked.
+        (-[WKPDFView userDidEnterPassword:forPasswordView:]): Moved to WKPasswordView.
+        (-[WKPDFView didBeginEditingPassword:inView:]): Ditto.
+        (-[WKPDFView didEndEditingPassword:inView:]): Ditto.
+        (-[WKPDFView _didFailToUnlock]): Ditto.
+        (-[WKPDFView _tryToUnlockWithPassword:]): Moved into _passwordView's userDidEnterPassword lambda.
+        * UIProcess/ios/WKPasswordView.h: Added.
+        * UIProcess/ios/WKPasswordView.mm: Added.
+        (-[WKPasswordView initWithFrame:documentName:]): Created a UIDocumentPasswordView with
+        documentName, set self as its passwordDelegate, and added it as a subview.
+        (-[WKPasswordView layoutSubviews]): Updated _scrollView's contentSize if we are displaying
+        the view.
+        (-[WKPasswordView displayInContentView:]): Saved the scroll view's previous minimum/maximum
+        zoom scale and color, set new values for minimum/maximum zoom scale and color, and added
+        self as a subview of contentView.
+        (-[WKPasswordView hide]): Restored the saved minimum/maximum zoom scale and color on the
+        scroll view and removed self from its superview.
+        (-[WKPasswordView displayPasswordFailureAlert]): Displayed the alert previously shown by
+        -[WKPDFView _didFailToUnlock].
+        (-[WKPasswordView _keyboardDidShow:]): Moved from WKPDFView.
+        (-[WKPasswordView userDidEnterPassword:forPasswordView:]): Retained self and called the
+        _userDidEnterPassword block with the password.
+        (-[WKPasswordView didBeginEditingPassword:inView:]): Moved from WKPDFView.
+        (-[WKPasswordView didEndEditingPassword:inView:]): Ditto.
+        * WebKit2.xcodeproj/project.pbxproj:
+
+2017-01-19  Chris Dumez  <cdumez@apple.com>
+
+        Make sure HTML validation bubble gets dismissed when its associated element's frame gets detached
+        https://bugs.webkit.org/show_bug.cgi?id=167215
+        <rdar://problem/29885052>
+
+        Reviewed by Andreas Kling.
+
+        Make sure HTML validation bubble gets dismissed when its associated
+        element's frame gets detached and that we do not crash.
+
+        * WebProcess/WebCoreSupport/WebValidationMessageClient.cpp:
+        (WebKit::WebValidationMessageClient::documentDetached):
+        * WebProcess/WebCoreSupport/WebValidationMessageClient.h:
+
+2017-01-19  Chris Dumez  <cdumez@apple.com>
+
+        Implement per activity state CPU usage reporting using diagnostic logging
+        https://bugs.webkit.org/show_bug.cgi?id=167163
+        <rdar://problem/30058349>
+
+        Reviewed by Andreas Kling.
+
+        Implement per activity state CPU usage reporting using diagnostic logging.
+
+        * Platform/Logging.h:
+        * UIProcess/PerActivityStateCPUUsageSampler.cpp: Added.
+        (WebKit::PerActivityStateCPUUsageSampler::PerActivityStateCPUUsageSampler):
+        (WebKit::PerActivityStateCPUUsageSampler::~PerActivityStateCPUUsageSampler):
+        (WebKit::PerActivityStateCPUUsageSampler::reportWebContentCPUTime):
+        (WebKit::loggingKeyForActivityState):
+        (WebKit::loggingKeyForCPUUsage):
+        (WebKit::PerActivityStateCPUUsageSampler::loggingTimerFired):
+        (WebKit::PerActivityStateCPUUsageSampler::pageForLogging):
+        * UIProcess/PerActivityStateCPUUsageSampler.h: Copied from Source/WebCore/page/ActivityState.h.
+        * UIProcess/WebProcessPool.cpp:
+        (WebKit::WebProcessPool::WebProcessPool):
+        (WebKit::WebProcessPool::reportWebContentCPUTime):
+        * UIProcess/WebProcessPool.h:
+        * UIProcess/WebProcessPool.messages.in:
+        * WebKit2.xcodeproj/project.pbxproj:
+        * WebProcess/WebCoreSupport/WebChromeClient.cpp:
+        (WebKit::WebChromeClient::reportProcessCPUTime):
+        * WebProcess/WebCoreSupport/WebChromeClient.h:
+
+2017-01-19  Dan Bernstein  <mitz@apple.com>
+
+        Build fix.
+
+        Rubber-stamped by Anders Carlsson.
+
+        * UIProcess/ApplePay/cocoa/WebPaymentCoordinatorProxyCocoa.mm:
+        (WebKit::toPKPaymentAuthorizationStatus): Suppressed deprecation warnings.
+
+2017-01-19  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Cocoa] Variation fonts are erroneously disabled on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=167172
+
+        Reviewed by Simon Fraser.
+
+        OpenSource builders don't seem to understand sdk=embedded*.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-01-18  Anders Carlsson  <andersca@apple.com>
+
+        Install WebKit.apinotes with the public headers of WebKit framework
+        https://bugs.webkit.org/show_bug.cgi?id=167182
+        rdar://problem/29008989
+
+        Reviewed by Sam Weinig.
+
+        * Shared/API/Cocoa/WebKit.apinotes: Added.
+        * WebKit2.xcodeproj/project.pbxproj:
+
+2017-01-19  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: move Mac-specific automation commands to a separate implementation file
+        https://bugs.webkit.org/show_bug.cgi?id=163297
+        <rdar://problem/28718990>
+
+        Reviewed by Timothy Hatcher.
+
+        Not all Automation commands are available on all platforms. Start splitting out
+        command declarations and implementations based on the target platform.
+
+        * DerivedSources.make:
+        Set an appropriate --platform so the correct backend interface is generated.
+
+        * UIProcess/Automation/Automation.json:
+        Guard commands that should not be available on iOS:
+            - resizeWindowOfBrowsingContext
+            - moveWindowOfBrowsingContext
+            - inspectBrowsingContext
+
+        * UIProcess/Automation/WebAutomationSession.cpp:
+        (WebKit::WebAutomationSession::platformSimulateKeySequence): Deleted.
+        - Move shared convenience macros to header file.
+        - Move out Cocoa-only or Mac-only command implementations.
+
+        * UIProcess/Automation/WebAutomationSession.h:
+        Rearrange some declarations and switch from USE(APPKIT) to PLATFORM(MAC).
+
+        * UIProcess/Automation/WebAutomationSessionMacros.h: Added.
+
+        * UIProcess/Automation/cocoa/WebAutomationSessionCocoa.mm: Added.
+        (WebKit::WebAutomationSession::platformGetBase64EncodedPNGData):
+        Moved from WebAutomationSessionCocoa.mm. Add iOS-specific header includes.
+
+        * UIProcess/Automation/mac/WebAutomationSessionMac.mm: Renamed from Source/WebKit2/UIProcess/Cocoa/WebAutomationSessionCocoa.mm.
+        (WebKit::WebAutomationSession::resizeWindowOfBrowsingContext):
+        (WebKit::WebAutomationSession::moveWindowOfBrowsingContext):
+        (WebKit::WebAutomationSession::inspectBrowsingContext):
+        Move macOS platform command implementations to here. If other desktop ports want
+        to use these commands, we can move them somewhere else later.
+
+        (WebKit::WebAutomationSession::sendSynthesizedEventsToPage):
+        (WebKit::WebAutomationSession::markEventAsSynthesizedForAutomation):
+        (WebKit::WebAutomationSession::wasEventSynthesizedForAutomation):
+        Move out AppKit-specific event simulation code to here.
+
+        (WebKit::WebAutomationSession::platformSimulateMouseInteraction):
+        (WebKit::WebAutomationSession::platformSimulateKeyStroke):
+        (WebKit::WebAutomationSession::platformSimulateKeySequence):
+        Move out Mac platformFoo implementations to here.
+
+        * WebKit2.xcodeproj/project.pbxproj:
+        - Added UIProcess/Automation/{mac,cocoa} groups.
+        - Add new platform-specific implementation files.
+
 2017-01-19  Carlos Garcia Campos  <cgarcia@igalia.com>
 
         [GTK] Provide API to set proxy settings

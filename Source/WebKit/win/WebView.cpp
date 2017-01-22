@@ -5181,7 +5181,7 @@ HRESULT WebView::notifyPreferencesChanged(IWebNotification* notification)
     settings.setShouldDisplayTextDescriptions(enabled);
 #endif
 
-    COMPtr<IWebPreferencesPrivate3> prefsPrivate(Query, preferences);
+    COMPtr<IWebPreferencesPrivate4> prefsPrivate(Query, preferences);
     if (prefsPrivate) {
         hr = prefsPrivate->localStorageDatabasePath(&str);
         if (FAILED(hr))
@@ -5228,15 +5228,6 @@ HRESULT WebView::notifyPreferencesChanged(IWebNotification* notification)
 
     // FIXME: Add preferences for the runtime enabled features.
 
-#if ENABLE(INDEXED_DATABASE)
-    RuntimeEnabledFeatures::sharedFeatures().setWebkitIndexedDBEnabled(true);
-#endif
-
-    hr = prefsPrivate->domIteratorEnabled(&enabled);
-    if (FAILED(hr))
-        return hr;
-    RuntimeEnabledFeatures::sharedFeatures().setDOMIteratorEnabled(!!enabled);
-
 #if ENABLE(FETCH_API)
     hr = prefsPrivate->fetchAPIEnabled(&enabled);
     if (FAILED(hr))
@@ -5258,6 +5249,13 @@ HRESULT WebView::notifyPreferencesChanged(IWebNotification* notification)
     if (FAILED(hr))
         return hr;
     RuntimeEnabledFeatures::sharedFeatures().setModernMediaControlsEnabled(!!enabled);
+
+#if ENABLE(WEB_ANIMATIONS)
+    hr = prefsPrivate->webAnimationsEnabled(&enabled);
+    if (FAILED(hr))
+        return hr;
+    RuntimeEnabledFeatures::sharedFeatures().setWebAnimationsEnabled(!!enabled);
+#endif
 
     hr = preferences->privateBrowsingEnabled(&enabled);
     if (FAILED(hr))

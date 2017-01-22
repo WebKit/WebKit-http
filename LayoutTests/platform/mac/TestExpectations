@@ -1176,7 +1176,6 @@ webkit.org/b/148636 inspector/css/getAllStyleSheets.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/css/matched-style-properties.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/css/modify-rule-selector.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/css/pseudo-element-matches-for-pseudo-element-node.html [ Pass Timeout ]
-webkit.org/b/148636 inspector/css/pseudo-element-matches.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/css/selector-dynamic-specificity.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/css/selector-specificity.html [ Pass Timeout ]
 webkit.org/b/165584 inspector/debugger/async-stack-trace.html [ Pass Timeout ]
@@ -1195,6 +1194,7 @@ webkit.org/b/167184 [ Debug ] inspector/indexeddb/clearObjectStore.html [ Pass T
 webkit.org/b/159684 [ Debug ] inspector/indexeddb/deleteDatabaseNamesWithSpace.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/model/parse-script-syntax-tree.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/model/remote-object.html [ Pass Timeout ]
+webkit.org/b/167265 inspector/network/client-blocked-load.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/page/main-frame-resource.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/model/remote-object-weak-collection.html [ Pass Failure ]
 webkit.org/b/153108 [ Debug ] inspector/model/scope-chain-node.html [ Pass Timeout ]
@@ -1461,6 +1461,38 @@ webkit.org/b/165222 [ Debug ] imported/w3c/web-platform-tests/IndexedDB/idbindex
 
 webkit.org/b/165530 compositing/layer-creation/fixed-position-out-of-view-scaled.html [ Failure ]
 webkit.org/b/165530 compositing/layer-creation/fixed-position-out-of-view-scaled-scroll.html [ Failure ]
+
+# picture-in-picture is not supported prior to Sierra.
+[ ElCapitan Yosemite ] media/modern-media-controls/pip-support [ Skip ]
+[ ElCapitan Yosemite ] media/modern-media-controls/media-controller/media-controller-inline-to-fullscreen-to-pip-to-inline.html [ Skip ]
+[ ElCapitan Yosemite ] media/modern-media-controls/placard-support/placard-support-pip.html [ Skip ]
+
+# internals.setMockMediaPlaybackTargetPickerState() is not available on Yosemite
+[ Yosemite ] media/modern-media-controls/airplay-support/airplay-support.html [ Skip ]
+[ Yosemite ] media/modern-media-controls/placard-support/placard-support-airplay.html [ Skip ]
+
+# internals.setMockMediaPlaybackTargetPickerEnabled() is not available on Yosemite
+[ Yosemite ] media/modern-media-controls/audio/audio-controls-buttons.html [ Skip ]
+
+# iPad-specific tests
+media/modern-media-controls/fullscreen-support/ipad/fullscreen-support-tap.html [ Skip ]
+media/modern-media-controls/pip-support/ipad/pip-support-enabled.html [ Skip ]
+media/modern-media-controls/pip-support/ipad/pip-support-tap.html [ Skip ]
+media/modern-media-controls/placard-support/ipad/placard-support-pip.html [ Skip ]
+media/modern-media-controls/scrubber-support/ipad/scrubber-support-drag.html [ Skip ]
+
+# These sometimes work but more often than not don't
+webkit.org/b/164323 media/modern-media-controls/airplay-support/airplay-support.html [ Pass Failure ]
+webkit.org/b/164298 media/modern-media-controls/placard-support/placard-support-airplay.html [ Pass Failure Timeout ]
+
+# This one always times out on the bots, cannot reproduce locally.
+webkit.org/b/165234 media/modern-media-controls/audio/audio-controls-buttons.html [ Pass Timeout ]
+
+webkit.org/b/165290 media/modern-media-controls/tracks-panel/tracks-panel-hide-click-outside.html [ Pass Timeout ]
+
+webkit.org/b/167254 [ Debug ] media/modern-media-controls/media-controller/media-controller-auto-hide-mouse-leave-after-play.html [ Pass Failure ]
+
+webkit.org/b/167263 media/modern-media-controls/media-controller/media-controller-auto-hide.html [ Pass Failure ]
 
 webkit.org/b/165874 [ Debug ] streams/pipe-to.html [ Pass Failure ]
 

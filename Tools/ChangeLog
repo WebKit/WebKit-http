@@ -1,3 +1,198 @@
+2017-01-21  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Bring back gtk-doc error messages after r209981.
+
+        Since r209981, if gtk-doc shows warnings the build fails but those warnings are not printed to stdout so it's
+        impossible to know what's wrong.
+
+        * gtk/gtkdoc.py:
+        (GTKDoc._run_command): Make print_output True by default again and use debug instead of info to log "Running" messages.
+
+2017-01-20  Youenn Fablet  <youennf@gmail.com>
+
+        [WebRTC] Update build system to make G711 optional in libwebrtc
+        https://bugs.webkit.org/show_bug.cgi?id=167256
+
+        Reviewed by Alex Christensen.
+
+        * Scripts/webkitpy/libwebrtc/generate_cmake.py:
+        (CMakeGenerator.remove_webrtc_g711): Adding a missing file to the build system as this file includes generic pcm encoder functions.
+
+2017-01-20  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Cleanup RuntimeEnabledFeatures
+        https://bugs.webkit.org/show_bug.cgi?id=167228
+
+        Reviewed by Simon Fraser.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (enableExperimentalFeatures):
+        (resetWebPreferencesToConsistentValues):
+        (setWebPreferencesForTestOptions):
+        (resetWebViewToConsistentStateBeforeTesting):
+        * DumpRenderTree/win/DumpRenderTree.cpp:
+        (enableExperimentalFeatures):
+        (resetWebPreferencesToConsistentValues):
+        More closely match WebKitTestRunner initialization of preferences
+        for experimental features.
+
+2017-01-20  Alex Christensen  <achristensen@webkit.org>
+
+        Build Fix for Windows DumpRenderTree after r210976
+        https://bugs.webkit.org/show_bug.cgi?id=167115
+
+        * DumpRenderTree/win/DumpRenderTree.cpp:
+        (resetWebPreferencesToConsistentValues):
+
+2017-01-20  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Remove outdated ENABLE(CSP_NEXT) build flag
+        https://bugs.webkit.org/show_bug.cgi?id=167252
+
+        Reviewed by Brent Fulgham.
+
+        * Scripts/webkitperl/FeatureList.pm:
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+
+2017-01-20  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Build Fix for Windows DumpRenderTree after r210976
+
+        * DumpRenderTree/win/DumpRenderTree.cpp:
+        (resetWebPreferencesToConsistentValues):
+
+2017-01-20  Antoine Quint  <graouts@apple.com>
+
+        Web Animations should be off by default and enabled as an experimental feature
+        https://bugs.webkit.org/show_bug.cgi?id=167115
+        <rdar://problem/30048963>
+
+        Reviewed by Joseph Pecoraro.
+
+        Turn Web Animations on in DRT.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (resetWebPreferencesToConsistentValues):
+        * DumpRenderTree/win/DumpRenderTree.cpp:
+        (resetWebPreferencesToConsistentValues):
+
+2017-01-20  Youenn Fablet  <youenn@apple.com>
+
+        [WebRTC] Add libwebrtc build infrastructure
+        https://bugs.webkit.org/show_bug.cgi?id=167207
+
+        Reviewed by Alex Christensen.
+
+        Adding a script doing the libwebrtc project json to CMake file conversion.
+
+        * Scripts/generate-libwebrtc-cmake: Added.
+        * Scripts/webkitpy/libwebrtc/__init__.py: Added.
+        * Scripts/webkitpy/libwebrtc/generate_cmake.py: Added.
+
+2017-01-20  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Mini Browser: Show tooltip for Experimental Features
+        https://bugs.webkit.org/show_bug.cgi?id=167225
+
+        Reviewed by Alex Christensen.
+
+        * MiniBrowser/mac/SettingsController.m:
+        (-[SettingsController _populateMenu]):
+        Include the full details string as a tooltip.
+
+2017-01-20  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win] Test output results should not be written twice.
+        https://bugs.webkit.org/show_bug.cgi?id=167197
+
+        Reviewed by Brent Fulgham.
+
+        Prevent test output from being written twice by returning early from
+        the dump() function, if it already has been called.
+        This patch also adds a missing newline to a test output line. 
+        
+        * DumpRenderTree/win/DumpRenderTree.cpp:
+        (dump):
+
+2017-01-20  Antoine Quint  <graouts@apple.com>
+
+        [Modern Media Controls] Turn modern media controls on by default
+        https://bugs.webkit.org/show_bug.cgi?id=165668
+
+        Reviewed by Dean Jackson.
+
+        Enabled modern media controls by default in test runners.
+
+        * DumpRenderTree/TestOptions.h:
+        * WebKitTestRunner/TestOptions.h:
+
+2017-01-19  Chris Dumez  <cdumez@apple.com>
+
+        iterable<> should be enabled on WK1
+        https://bugs.webkit.org/show_bug.cgi?id=167221
+        <rdar://problem/30108531>
+
+        Reviewed by Youenn Fablet.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (resetWebPreferencesToConsistentValues):
+        * DumpRenderTree/win/DumpRenderTree.cpp:
+        (resetWebPreferencesToConsistentValues):
+        * WebKitTestRunner/InjectedBundle/InjectedBundle.cpp:
+        (WTR::InjectedBundle::beginTesting):
+        * WebKitTestRunner/InjectedBundle/TestRunner.cpp:
+        (WTR::TestRunner::setDOMIteratorEnabled): Deleted.
+        * WebKitTestRunner/InjectedBundle/TestRunner.h:
+
+2017-01-19  Aakash Jain  <aakash_jain@apple.com>
+
+        Ensure status server logs go to log file
+        https://bugs.webkit.org/show_bug.cgi?id=167210
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Scripts/webkitpy/common/net/statusserver.py:
+        (StatusServer.next_work_item): Change log level from debug to info in
+        order to facilitate deubgging issues.
+        (StatusServer.update_work_items): Same.
+
+2017-01-19  Megan Gardner  <megan_gardner@apple.com>
+
+        Additional selection tests and interpolation fix
+        https://bugs.webkit.org/show_bug.cgi?id=167171
+
+        Reviewed by Simon Fraser.
+
+        We weren't adding the final event when interpolating event streams.
+
+        * WebKitTestRunner/ios/HIDEventGenerator.mm:
+        (-[HIDEventGenerator interpolatedEvents:]):
+
+2017-01-19  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Cocoa] Variation fonts are erroneously disabled on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=167172
+
+        Reviewed by Simon Fraser.
+
+        OpenSource builders don't seem to understand sdk=embedded*.
+
+        * TestWebKitAPI/Configurations/FeatureDefines.xcconfig:
+
+2017-01-19  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. Fix GTK+ unit tests failing since r210531.
+
+        Avoid using paths to files that don't actually exist.
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestConsoleMessage.cpp:
+        (testWebKitConsoleMessageNetworkError):
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestContextMenu.cpp:
+        (testContextMenuDefaultMenu):
+        * TestWebKitAPI/Tests/WebKit2Gtk/resources/silence.mpg: Added.
+        * TestWebKitAPI/Tests/WebKit2Gtk/resources/simple.json: Added.
+        * TestWebKitAPI/Tests/WebKit2Gtk/resources/tracks.ogg: Added.
+
 2017-01-19  Carlos Garcia Campos  <cgarcia@igalia.com>
 
         [GTK] Provide API to set proxy settings

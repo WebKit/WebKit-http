@@ -5608,9 +5608,9 @@ void WebPageProxy::backForwardClear()
 
 #if ENABLE(GAMEPAD)
 
-void WebPageProxy::gamepadActivity(const Vector<GamepadData>& gamepadDatas)
+void WebPageProxy::gamepadActivity(const Vector<GamepadData>& gamepadDatas, bool shouldMakeGamepadsVisible)
 {
-    m_process->send(Messages::WebPage::GamepadActivity(gamepadDatas), m_pageID);
+    m_process->send(Messages::WebPage::GamepadActivity(gamepadDatas, shouldMakeGamepadsVisible), m_pageID);
 }
 
 #endif

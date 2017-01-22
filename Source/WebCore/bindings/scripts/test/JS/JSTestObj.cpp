@@ -54,6 +54,7 @@
 #include "Settings.h"
 #include "URL.h"
 #include "WebCoreJSClientData.h"
+#include <builtins/BuiltinNames.h>
 #include <inspector/ScriptArguments.h>
 #include <inspector/ScriptCallStackFactory.h>
 #include <runtime/Error.h>
@@ -63,8 +64,8 @@
 #include <runtime/ObjectConstructor.h>
 #include <runtime/PropertyNameArray.h>
 #include <wtf/GetPtr.h>
-#include <wtf/HashMap.h>
 #include <wtf/Variant.h>
+#include <wtf/Vector.h>
 
 #if ENABLE(Condition1)
 #include "JSTestObjectA.h"
@@ -1897,8 +1898,8 @@ void JSTestObjPrototype::finishCreation(VM& vm)
 #endif
     putDirect(vm, static_cast<JSVMClientData*>(vm.clientData)->builtinNames().privateMethodPrivateName(), JSFunction::create(vm, globalObject(), 0, String(), jsTestObjPrototypeFunctionPrivateMethod), ReadOnly | DontEnum);
     putDirect(vm, static_cast<JSVMClientData*>(vm.clientData)->builtinNames().publicAndPrivateMethodPrivateName(), JSFunction::create(vm, globalObject(), 0, String(), jsTestObjPrototypeFunctionPublicAndPrivateMethod), ReadOnly | DontEnum);
-    if (RuntimeEnabledFeatures::sharedFeatures().domIteratorEnabled())
-        addValueIterableMethods(*globalObject(), *this);
+    putDirect(vm, vm.propertyNames->iteratorSymbol, globalObject()->arrayPrototype()->getDirect(vm, vm.propertyNames->builtinNames().valuesPrivateName()), DontEnum);
+    addValueIterableMethods(*globalObject(), *this);
     JSObject& unscopables = *constructEmptyObject(globalObject()->globalExec(), globalObject()->nullPrototypeObjectStructure());
     unscopables.putDirect(vm, Identifier::fromString(&vm, "voidMethod"), jsBoolean(true));
     unscopables.putDirect(vm, Identifier::fromString(&vm, "shortAttr"), jsBoolean(true));

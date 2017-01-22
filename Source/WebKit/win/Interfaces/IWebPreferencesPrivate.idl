@@ -175,8 +175,6 @@ interface IWebPreferencesPrivate3 : IWebPreferencesPrivate2
 {
     HRESULT showTiledScrollingIndicator([out, retval] BOOL* enabled);
     HRESULT setShowTiledScrollingIndicator([in] BOOL enabled);
-    HRESULT domIteratorEnabled([out, retval] BOOL* enabled);
-    HRESULT setDOMIteratorEnabled([in] BOOL enabled);
     HRESULT fetchAPIEnabled([out, retval] BOOL* enabled);
     HRESULT setFetchAPIEnabled([in] BOOL enabled);
     HRESULT shadowDOMEnabled([out, retval] BOOL* enabled);
@@ -191,4 +189,6 @@ interface IWebPreferencesPrivate3 : IWebPreferencesPrivate2
 interface IWebPreferencesPrivate4 : IWebPreferencesPrivate3
 {
     HRESULT setApplicationId([in] BSTR applicationId);
+    HRESULT webAnimationsEnabled([out, retval] BOOL*);
+    HRESULT setWebAnimationsEnabled([in] BOOL enabled);
 }

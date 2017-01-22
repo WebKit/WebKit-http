@@ -613,6 +613,7 @@ public:
 #endif
         [NSNumber numberWithBool:YES], WebKitShadowDOMEnabledPreferenceKey,
         [NSNumber numberWithBool:YES], WebKitCustomElementsEnabledPreferenceKey,
+        [NSNumber numberWithBool:YES], WebKitModernMediaControlsEnabledPreferenceKey,
 #if ENABLE(WEBGL2)
         [NSNumber numberWithBool:NO], WebKitWebGL2EnabledPreferenceKey,
 #endif
@@ -2829,16 +2830,6 @@ static NSString *classIBCreatorID = nil;
 - (void)setCustomElementsEnabled:(BOOL)flag
 {
     [self _setBoolValue:flag forKey:WebKitCustomElementsEnabledPreferenceKey];
-}
-
-- (BOOL)DOMIteratorEnabled
-{
-    return [self _boolValueForKey:WebKitDOMIteratorEnabledPreferenceKey];
-}
-
-- (void)setDOMIteratorEnabled:(BOOL)flag
-{
-    [self _setBoolValue:flag forKey:WebKitDOMIteratorEnabledPreferenceKey];
 }
 
 - (BOOL)fetchAPIEnabled

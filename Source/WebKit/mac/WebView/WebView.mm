@@ -1966,12 +1966,6 @@ static NSMutableSet *knownPluginMIMETypes()
     return _private->page->renderTreeSize();
 }
 
-// FIXME: This is incorrectly named, and should be removed <rdar://problem/22242515>.
-- (NSSize)_contentsSizeRespectingOverflow
-{
-    return [[[[self mainFrame] frameView] documentView] bounds].size;
-}
-
 - (void)_dispatchTileDidDraw:(CALayer*)tile
 {
     id mailDelegate = [self _webMailDelegate];
@@ -2867,15 +2861,9 @@ static bool needsSelfRetainWhileLoadingQuirk()
     RuntimeEnabledFeatures::sharedFeatures().setGamepadsEnabled([preferences gamepadsEnabled]);
 #endif
 
-#if ENABLE(INDEXED_DATABASE)
-    RuntimeEnabledFeatures::sharedFeatures().setWebkitIndexedDBEnabled(true);
-#endif
-
     RuntimeEnabledFeatures::sharedFeatures().setShadowDOMEnabled([preferences shadowDOMEnabled]);
 
     RuntimeEnabledFeatures::sharedFeatures().setInteractiveFormValidationEnabled([self interactiveFormValidationEnabled]);
-
-    RuntimeEnabledFeatures::sharedFeatures().setDOMIteratorEnabled([preferences DOMIteratorEnabled]);
 
     RuntimeEnabledFeatures::sharedFeatures().setModernMediaControlsEnabled([preferences modernMediaControlsEnabled]);
 

@@ -304,6 +304,8 @@ void WebPreferences::initializeDefaultSettings()
 
     CFDictionaryAddValue(defaults, CFSTR(WebKitCustomElementsEnabledPreferenceKey), kCFBooleanFalse);
 
+    CFDictionaryAddValue(defaults, CFSTR(WebKitWebAnimationsEnabledPreferenceKey), kCFBooleanFalse);
+
     defaultSettings = defaults;
 }
 
@@ -1947,20 +1949,6 @@ HRESULT WebPreferences::setFetchAPIEnabled(BOOL enabled)
     return S_OK;
 }
 
-HRESULT WebPreferences::setDOMIteratorEnabled(BOOL enabled)
-{
-    setBoolValue(WebKitDOMIteratorEnabledPreferenceKey, enabled);
-    return S_OK;
-}
-
-HRESULT WebPreferences::domIteratorEnabled(_Out_ BOOL* enabled)
-{
-    if (!enabled)
-        return E_POINTER;
-    *enabled = boolValueForKey(WebKitDOMIteratorEnabledPreferenceKey);
-    return S_OK;
-}
-
 HRESULT WebPreferences::shadowDOMEnabled(_Out_ BOOL* enabled)
 {
     if (!enabled)
@@ -2006,5 +1994,19 @@ HRESULT WebPreferences::modernMediaControlsEnabled(_Out_ BOOL* enabled)
 HRESULT WebPreferences::setApplicationId(BSTR applicationId)
 {
     m_applicationId = String(applicationId).createCFString();
+    return S_OK;
+}
+
+HRESULT WebPreferences::setWebAnimationsEnabled(BOOL enabled)
+{
+    setBoolValue(WebKitWebAnimationsEnabledPreferenceKey, enabled);
+    return S_OK;
+}
+
+HRESULT WebPreferences::webAnimationsEnabled(_Out_ BOOL* enabled)
+{
+    if (!enabled)
+        return E_POINTER;
+    *enabled = boolValueForKey(WebKitWebAnimationsEnabledPreferenceKey);
     return S_OK;
 }

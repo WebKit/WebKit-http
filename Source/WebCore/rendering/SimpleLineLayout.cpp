@@ -76,27 +76,27 @@ enum AvoidanceReason_ : uint64_t {
     FlowHasUnsupportedUnderlineDecoration = 1LLU  << 11,
     FlowHasJustifiedNonLatinText          = 1LLU  << 12,
     FlowHasOverflowVisible                = 1LLU  << 13,
-    FlowIsNotLTR                          = 1LLU  << 14,
-    FlowHasLineBoxContainProperty         = 1LLU  << 15,
-    FlowIsNotTopToBottom                  = 1LLU  << 16,
-    FlowHasLineBreak                      = 1LLU  << 17,
-    FlowHasNonNormalUnicodeBiDi           = 1LLU  << 18,
-    FlowHasRTLOrdering                    = 1LLU  << 19,
-    FlowHasLineAlignEdges                 = 1LLU  << 20,
-    FlowHasLineSnap                       = 1LLU  << 21,
-    FlowHasHypensAuto                     = 1LLU  << 22,
-    FlowHasTextEmphasisFillOrMark         = 1LLU  << 23,
-    FlowHasTextShadow                     = 1LLU  << 24,
-    FlowHasPseudoFirstLine                = 1LLU  << 25,
-    FlowHasPseudoFirstLetter              = 1LLU  << 26,
-    FlowHasTextCombine                    = 1LLU  << 27,
-    FlowHasTextFillBox                    = 1LLU  << 28,
-    FlowHasBorderFitLines                 = 1LLU  << 29,
-    FlowHasNonAutoLineBreak               = 1LLU  << 30,
-    FlowHasNonAutoTrailingWord            = 1LLU  << 31,
-    FlowHasSVGFont                        = 1LLU  << 32,
-    FlowTextIsEmpty                       = 1LLU  << 33,
-    FlowTextHasNoBreakSpace               = 1LLU  << 34,
+    FlowHasWebKitNBSPMode                 = 1LLU  << 14,
+    FlowIsNotLTR                          = 1LLU  << 15,
+    FlowHasLineBoxContainProperty         = 1LLU  << 16,
+    FlowIsNotTopToBottom                  = 1LLU  << 17,
+    FlowHasLineBreak                      = 1LLU  << 18,
+    FlowHasNonNormalUnicodeBiDi           = 1LLU  << 19,
+    FlowHasRTLOrdering                    = 1LLU  << 20,
+    FlowHasLineAlignEdges                 = 1LLU  << 21,
+    FlowHasLineSnap                       = 1LLU  << 22,
+    FlowHasHypensAuto                     = 1LLU  << 23,
+    FlowHasTextEmphasisFillOrMark         = 1LLU  << 24,
+    FlowHasTextShadow                     = 1LLU  << 25,
+    FlowHasPseudoFirstLine                = 1LLU  << 26,
+    FlowHasPseudoFirstLetter              = 1LLU  << 27,
+    FlowHasTextCombine                    = 1LLU  << 28,
+    FlowHasTextFillBox                    = 1LLU  << 29,
+    FlowHasBorderFitLines                 = 1LLU  << 30,
+    FlowHasNonAutoLineBreak               = 1LLU  << 31,
+    FlowHasNonAutoTrailingWord            = 1LLU  << 32,
+    FlowHasSVGFont                        = 1LLU  << 33,
+    FlowTextIsEmpty                       = 1LLU  << 34,
     FlowTextHasSoftHyphen                 = 1LLU  << 35,
     FlowTextHasDirectionCharacter         = 1LLU  << 36,
     FlowIsMissingPrimaryFont              = 1LLU  << 37,
@@ -136,7 +136,7 @@ enum class IncludeReasons { First , All };
 #endif
 
 template <typename CharacterType>
-static AvoidanceReasonFlags canUseForText(const CharacterType* text, unsigned length, const Font& font, IncludeReasons includeReasons)
+static AvoidanceReasonFlags canUseForText(const CharacterType* text, unsigned length, const Font& font, bool textIsJustified, IncludeReasons includeReasons)
 {
     AvoidanceReasonFlags reasons = { };
     // FIXME: <textarea maxlength=0> generates empty text node.
@@ -148,9 +148,14 @@ static AvoidanceReasonFlags canUseForText(const CharacterType* text, unsigned le
         if (character == ' ')
             continue;
 
-        // These would be easy to support.
-        if (character == noBreakSpace)
-            SET_REASON_AND_RETURN_IF_NEEDED(FlowTextHasNoBreakSpace, reasons, includeReasons);
+        if (textIsJustified) {
+            // Include characters up to Latin Extended-B and some punctuation range when text is justified.
+            bool isLatinIncludingExtendedB = character <= 0x01FF;
+            bool isPunctuationRange = character >= 0x2010 && character <= 0x2027;
+            if (!(isLatinIncludingExtendedB || isPunctuationRange))
+                SET_REASON_AND_RETURN_IF_NEEDED(FlowHasJustifiedNonLatinText, reasons, includeReasons);
+        }
+
         if (character == softHyphen)
             SET_REASON_AND_RETURN_IF_NEEDED(FlowTextHasSoftHyphen, reasons, includeReasons);
 
@@ -167,11 +172,11 @@ static AvoidanceReasonFlags canUseForText(const CharacterType* text, unsigned le
     return reasons;
 }
 
-static AvoidanceReasonFlags canUseForText(const RenderText& textRenderer, const Font& font, IncludeReasons includeReasons)
+static AvoidanceReasonFlags canUseForText(const RenderText& textRenderer, const Font& font, bool textIsJustified, IncludeReasons includeReasons)
 {
     if (textRenderer.is8Bit())
-        return canUseForText(textRenderer.characters8(), textRenderer.textLength(), font, includeReasons);
-    return canUseForText(textRenderer.characters16(), textRenderer.textLength(), font, includeReasons);
+        return canUseForText(textRenderer.characters8(), textRenderer.textLength(), font, false, includeReasons);
+    return canUseForText(textRenderer.characters16(), textRenderer.textLength(), font, textIsJustified, includeReasons);
 }
 
 static AvoidanceReasonFlags canUseForFontAndText(const RenderBlockFlow& flow, IncludeReasons includeReasons)
@@ -183,9 +188,8 @@ static AvoidanceReasonFlags canUseForFontAndText(const RenderBlockFlow& flow, In
     if (primaryFont.isLoading())
         SET_REASON_AND_RETURN_IF_NEEDED(FlowIsMissingPrimaryFont, reasons, includeReasons);
 
+    bool flowIsJustified = style.textAlign() == JUSTIFY;
     for (const auto& textRenderer : childrenOfType<RenderText>(flow)) {
-        if (style.textAlign() == JUSTIFY && !textRenderer.originalText().containsOnlyLatin1())
-            SET_REASON_AND_RETURN_IF_NEEDED(FlowHasJustifiedNonLatinText, reasons, includeReasons);
         if (textRenderer.isCombineText())
             SET_REASON_AND_RETURN_IF_NEEDED(FlowTextIsCombineText, reasons, includeReasons);
         if (textRenderer.isCounter())
@@ -199,7 +203,7 @@ static AvoidanceReasonFlags canUseForFontAndText(const RenderBlockFlow& flow, In
         if (style.fontCascade().codePath(TextRun(textRenderer.text())) != FontCascade::Simple)
             SET_REASON_AND_RETURN_IF_NEEDED(FlowFontIsNotSimple, reasons, includeReasons);
 
-        auto textReasons = canUseForText(textRenderer, primaryFont, includeReasons);
+        auto textReasons = canUseForText(textRenderer, primaryFont, flowIsJustified, includeReasons);
         if (textReasons != NoReason)
             SET_REASON_AND_RETURN_IF_NEEDED(textReasons, reasons, includeReasons);
     }
@@ -250,6 +254,8 @@ static AvoidanceReasonFlags canUseForStyle(const RenderStyle& style, IncludeReas
         SET_REASON_AND_RETURN_IF_NEEDED(FlowHasBorderFitLines, reasons, includeReasons);
     if (style.lineBreak() != LineBreakAuto)
         SET_REASON_AND_RETURN_IF_NEEDED(FlowHasNonAutoLineBreak, reasons, includeReasons);
+    if (style.nbspMode() != NBNORMAL)
+        SET_REASON_AND_RETURN_IF_NEEDED(FlowHasWebKitNBSPMode, reasons, includeReasons);
 #if ENABLE(CSS_TRAILING_WORD)
     if (style.trailingWord() != TrailingWord::Auto)
         SET_REASON_AND_RETURN_IF_NEEDED(FlowHasNonAutoTrailingWord, reasons, includeReasons);
@@ -923,6 +929,9 @@ static void printReason(AvoidanceReason reason, TextStream& stream)
     case FlowHasOverflowVisible:
         stream << "overflow: visible";
         break;
+    case FlowHasWebKitNBSPMode:
+        stream << "-webkit-nbsp-mode: space";
+        break;
     case FlowIsNotLTR:
         stream << "dir is not LTR";
         break;
@@ -976,9 +985,6 @@ static void printReason(AvoidanceReason reason, TextStream& stream)
         break;
     case FlowHasSVGFont:
         stream << "SVG font";
-        break;
-    case FlowTextHasNoBreakSpace:
-        stream << "No-break-space character";
         break;
     case FlowTextHasSoftHyphen:
         stream << "soft hyphen character";

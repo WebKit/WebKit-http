@@ -49,18 +49,21 @@ using namespace WebCore;
 
 namespace WebKit {
 
-Ref<ThreadedCompositor> ThreadedCompositor::create(Client& client, WebPage& webPage, uint64_t nativeSurfaceHandle, ShouldDoFrameSync doFrameSync, TextureMapper::PaintFlags paintFlags)
+Ref<ThreadedCompositor> ThreadedCompositor::create(Client& client, WebPage& webPage, const IntSize& viewportSize, float scaleFactor, uint64_t nativeSurfaceHandle, ShouldDoFrameSync doFrameSync, TextureMapper::PaintFlags paintFlags)
 {
-    return adoptRef(*new ThreadedCompositor(client, webPage, nativeSurfaceHandle, doFrameSync, paintFlags));
+    return adoptRef(*new ThreadedCompositor(client, webPage, viewportSize, scaleFactor, nativeSurfaceHandle, doFrameSync, paintFlags));
 }
 
-ThreadedCompositor::ThreadedCompositor(Client& client, WebPage& webPage, uint64_t nativeSurfaceHandle, ShouldDoFrameSync doFrameSync, TextureMapper::PaintFlags paintFlags)
+ThreadedCompositor::ThreadedCompositor(Client& client, WebPage& webPage, const IntSize& viewportSize, float scaleFactor, uint64_t nativeSurfaceHandle, ShouldDoFrameSync doFrameSync, TextureMapper::PaintFlags paintFlags)
     : m_client(client)
+    , m_viewportSize(viewportSize)
+    , m_scaleFactor(scaleFactor)
     , m_nativeSurfaceHandle(nativeSurfaceHandle)
 #if PLATFORM(GTK)
     , m_doFrameSync(doFrameSync)
 #endif
     , m_paintFlags(paintFlags)
+    , m_needsResize(!viewportSize.isEmpty())
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)
     , m_displayRefreshMonitor(adoptRef(new WebKit::DisplayRefreshMonitor(*this)))
 #endif

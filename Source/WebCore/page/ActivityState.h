@@ -45,4 +45,10 @@ struct ActivityState {
     static const Flags AllFlags = WindowIsActive | IsFocused | IsVisible | IsVisibleOrOccluded | IsInWindow | IsVisuallyIdle | IsAudible | IsLoading;
 };
 
+enum class ActivityStateForCPUSampling {
+    NonVisible,
+    VisibleNonActive,
+    VisibleAndActive
+};
+
 } // namespace WebCore

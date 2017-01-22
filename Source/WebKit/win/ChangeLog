@@ -1,3 +1,66 @@
+2017-01-20  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Remove never changing IndexedDB RuntimeEnabledFeature
+        https://bugs.webkit.org/show_bug.cgi?id=167278
+
+        Reviewed by Darin Adler.
+
+        * WebView.cpp:
+        (WebView::notifyPreferencesChanged):
+
+2017-01-20  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Cleanup RuntimeEnabledFeatures
+        https://bugs.webkit.org/show_bug.cgi?id=167228
+
+        Reviewed by Simon Fraser.
+
+        * WebView.cpp:
+        (WebView::notifyPreferencesChanged):
+
+2017-01-20  Alex Christensen  <achristensen@webkit.org>
+
+        Build Fix for Windows DumpRenderTree after r210976
+        https://bugs.webkit.org/show_bug.cgi?id=167115
+
+        * WebPreferences.h:
+        Remove extra space.
+        * IWebPreferencesPrivate.idl:
+        Add new interface functions.
+        * WebView.cpp:
+        We use new functions that are only in IWebPreferencesPrivate4,
+        so instantiate that COM object instead of version 3.
+
+2017-01-20  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Build Fix for Windows DumpRenderTree after r210976
+
+        * WebPreferenceKeysPrivate.h:
+        * WebPreferences.cpp:
+        (WebPreferences::initializeDefaultSettings):
+        (WebPreferences::setWebAnimationsEnabled):
+        (WebPreferences::webAnimationsEnabled):
+        * WebPreferences.h:
+        * WebView.cpp:
+        Add toggle APIs for WebAnimations.
+
+2017-01-19  Chris Dumez  <cdumez@apple.com>
+
+        iterable<> should be enabled on WK1
+        https://bugs.webkit.org/show_bug.cgi?id=167221
+        <rdar://problem/30108531>
+
+        Reviewed by Youenn Fablet.
+
+        * Interfaces/IWebPreferencesPrivate.idl:
+        * WebPreferenceKeysPrivate.h:
+        * WebPreferences.cpp:
+        (WebPreferences::setDOMIteratorEnabled): Deleted.
+        (WebPreferences::domIteratorEnabled): Deleted.
+        * WebPreferences.h:
+        * WebView.cpp:
+        (WebView::notifyPreferencesChanged):
+
 2017-01-18  Alex Christensen  <achristensen@webkit.org>
 
         Fix WinCairo build after r210845.

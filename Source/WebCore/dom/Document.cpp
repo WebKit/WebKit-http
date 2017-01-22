@@ -180,6 +180,7 @@
 #include "TextNodeTraversal.h"
 #include "TransformSource.h"
 #include "TreeWalker.h"
+#include "ValidationMessageClient.h"
 #include "VisitedLinkState.h"
 #include "WheelEvent.h"
 #include "WindowFeatures.h"
@@ -2270,6 +2271,11 @@ void Document::prepareForDestruction()
     if (page())
         page()->pointerLockController().documentDetached(*this);
 #endif
+
+    if (auto* page = this->page()) {
+        if (auto* validationMessageClient = page->validationMessageClient())
+            validationMessageClient->documentDetached(*this);
+    }
 
     InspectorInstrumentation::documentDetached(*this);
 
@@ -5360,11 +5366,6 @@ void Document::addMessage(MessageSource source, MessageLevel level, const String
 
     if (Page* page = this->page())
         page->console().addMessage(source, level, message, sourceURL, lineNumber, columnNumber, WTFMove(callStack), state, requestIdentifier);
-}
-
-SecurityOrigin* Document::topOrigin() const
-{
-    return &topDocument().securityOrigin();
 }
 
 void Document::postTask(Task&& task)

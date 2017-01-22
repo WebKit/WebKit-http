@@ -36,7 +36,8 @@
 namespace WebCore {
 
 #define URL_PARSER_DEBUGGING 0
-    
+#define COMPARE_URLPARSERS 0
+
 #if URL_PARSER_DEBUGGING
 #define URL_PARSER_LOG(...) LOG(URLParser, __VA_ARGS__)
 #else
@@ -1116,6 +1117,17 @@ URLParser::URLParser(const String& input, const URL& base, const TextEncoding& e
             ASSERT(allValuesEqual(parser.result(), m_url));
     }
 #endif
+
+#if COMPARE_URLPARSERS
+    ASSERT(URLParser::enabled());
+    URLParser::setEnabled(false);
+    URL parsedWithOldParser = URL(base, input, encoding);
+    if (parsedWithOldParser != m_url)
+        WTFLogAlways("URLParser Differs: Input <%s> Base <%s> Encoding <%s>", input.utf8().data(), base.string().utf8().data(), encoding.name());
+    else
+        WTFLogAlways("URLParser Same: Input <%s> Base <%s> Encoding <%s>", input.utf8().data(), base.string().utf8().data(), encoding.name());
+    URLParser::setEnabled(true);
+#endif
 }
 
 template<typename CharacterType>
@@ -1833,7 +1845,6 @@ void URLParser::parse(const CharacterType* input, const unsigned length, const U
         LOG_FINAL_STATE("SpecialAuthorityIgnoreSlashes");
         failure();
         return;
-        break;
     case State::AuthorityOrHost:
         LOG_FINAL_STATE("AuthorityOrHost");
         m_url.m_userEnd = currentPosition(authorityOrHostBegin);
@@ -2717,7 +2728,7 @@ auto URLParser::parseURLEncodedForm(StringView input) -> URLEncodedForm
             auto name = formURLDecode(bytes.substring(0, valueStart));
             auto value = formURLDecode(bytes.substring(valueStart + 1));
             if (name && value)
-                output.append(std::make_pair(name.value().replace('+', 0x20), value.value().replace('+', 0x20)));
+                output.append({name.value().replace('+', 0x20), value.value().replace('+', 0x20)});
         }
     }
     return output;
@@ -2750,9 +2761,9 @@ String URLParser::serialize(const URLEncodedForm& tuples)
     for (auto& tuple : tuples) {
         if (!output.isEmpty())
             output.append('&');
-        serializeURLEncodedForm(tuple.first, output);
+        serializeURLEncodedForm(tuple.key, output);
         output.append('=');
-        serializeURLEncodedForm(tuple.second, output);
+        serializeURLEncodedForm(tuple.value, output);
     }
     return String::adopt(WTFMove(output));
 }

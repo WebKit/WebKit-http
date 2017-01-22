@@ -1,3 +1,278 @@
+2017-01-21  Chris Dumez  <cdumez@apple.com>
+
+        JavaScript for-of does not work on a lot of collection types (e.g. HTMLCollection)
+        https://bugs.webkit.org/show_bug.cgi?id=167091
+
+        Reviewed by Darin Adler.
+
+        Update Array methods to throw a TypeError when (this === null || this === undefined)
+        instead of when (this == null). This is because (this == null) returns true for types
+        that masquerades as undefined (such as document.all) and this prevented use of the
+        Array API on such types. The specification only stays to use ToObject(), which throws
+        when the input is undefined or null.
+
+        The corresponding specification is at:
+        - https://www.ecma-international.org/ecma-262/7.0/index.html#sec-array.prototype.values
+        - https://www.ecma-international.org/ecma-262/7.0/index.html#sec-toobject
+
+        * builtins/ArrayPrototype.js:
+        (values):
+        (keys):
+        (entries):
+        (reduce):
+        (reduceRight):
+        (every):
+        (forEach):
+        (filter):
+        (map):
+        (some):
+        (fill):
+        (find):
+        (findIndex):
+        (includes):
+        (sort):
+        (concatSlowPath):
+        (copyWithin):
+
+2017-01-21  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] export JSC::importModule API for WebCore dynamic import
+        https://bugs.webkit.org/show_bug.cgi?id=167099
+
+        Reviewed by Darin Adler.
+
+        We newly expose JSC::importModule API. This can be used later
+        from WebCore to implement WebCore side dynamic import.
+        And JSC shell also uses this API.
+
+        And this patch also cleans up module loader a bit:
+        Dropping requestInstantiateAll.
+
+        * builtins/BuiltinNames.h:
+        * builtins/ModuleLoaderPrototype.js:
+        (requestLink):
+        (requestImportModule):
+        (requestInstantiateAll): Deleted.
+        (importModule): Deleted.
+        * jsc.cpp:
+        (GlobalObject::moduleLoaderImportModule):
+        * runtime/Completion.cpp:
+        (JSC::importModule):
+        * runtime/Completion.h:
+        * runtime/JSModuleLoader.cpp:
+        (JSC::JSModuleLoader::requestImportModule):
+        * runtime/JSModuleLoader.h:
+        * runtime/ModuleLoaderPrototype.cpp:
+
+2017-01-21  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        dynamic import is ambiguous with import declaration at module code
+        https://bugs.webkit.org/show_bug.cgi?id=167098
+
+        Reviewed by Darin Adler.
+
+        This patch fixes two syntax issues related to dynamic import.
+
+        1. Fix member expression parsing with dynamic import results
+
+        We should not return import expression immediately after parsing
+        it in parseMemberExpression. This prohibits us to parse the following
+        code,
+
+            import("...").then(function () {
+            });
+
+        2. dynamic import with import declaration under the module context
+
+        Before this patch, we always attempt to parse IMPORT as import declaration
+        under the module context. It means that import call in the top level
+        expression statement fails to be parsed since the parser attempts to parse
+        it as import declaration.
+
+            import("...")  // module top level statement.
+
+        In this patch, we check the condition `[lookahead != (]` before starting
+        parsing import declaration. This allows us to put import call in the module
+        top level statement.
+
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseModuleSourceElements):
+        (JSC::Parser<LexerType>::parseMemberExpression):
+
+2017-01-20  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Remove outdated ENABLE(CSP_NEXT) build flag
+        https://bugs.webkit.org/show_bug.cgi?id=167252
+
+        Reviewed by Brent Fulgham.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-01-20  Saam Barati  <sbarati@apple.com>
+
+        We should flash a safepoint before each DFG/FTL phase
+        https://bugs.webkit.org/show_bug.cgi?id=167234
+
+        Reviewed by Filip Pizlo.
+
+        The recent GC changes caused us to regress Kraken because of a
+        longstanding issue that happened to be hit with higher frequency because
+        of a change in timing between when a particular GC was happening and 
+        when a particular FTL compilation was happening. The regression is caused
+        by the GC was waiting for a large function to make it through the DFG portion
+        of an FTL compilation. This was taking 20ms-30ms and started happened during a
+        particular test with much higher frequency.
+        
+        This means that anytime the GC waits for this compilation, the test ran at least
+        ~20ms slower because the GC waits for the compiler threads the mutator is stopped.
+        
+        It's good that we have such an easily reproducible case of this performance
+        issue because it will effect many real JS programs, especially ones with
+        large functions that get hot.
+        
+        The most straight forward solution to fix this is to flash a safepoint before
+        each phase, allowing the GC to suspend the compiler if needed. In my testing,
+        this progresses Kraken in the browser, and doesn't regress anything else. This
+        solution also makes the most sense. I did some analysis on the compilation time
+        of this function that took ~20-30ms to pass through the DFG phases, and
+        the phase times were mostly evenly distributed. Some took longer than others,
+        but no phase was longer than 3ms. Most were in the 0.25ms to 1.5ms range.
+
+        * dfg/DFGPlan.cpp:
+        (JSC::DFG::Plan::compileInThreadImpl):
+        * dfg/DFGSafepoint.cpp:
+        (JSC::DFG::Safepoint::begin):
+        * runtime/Options.h:
+
+2017-01-20  Skachkov Oleksandr  <gskachkov@gmail.com>
+
+        Super property access in base class constructor doesn't work
+        https://bugs.webkit.org/show_bug.cgi?id=166665
+
+        Reviewed by Ryosuke Niwa.
+
+        Allow to use super inside of the constructor for classes 
+        without parent class.
+        Parser checks if super used within the constructor and 
+        add this information to function metedata, and later it is used
+        during byte code generation.
+
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::ClassExprNode::emitBytecode):
+        * parser/Parser.cpp:
+        (JSC::Parser<LexerType>::parseFunctionBody):
+        (JSC::Parser<LexerType>::parseFunctionInfo):
+        * parser/Parser.h:
+        (JSC::Scope::usesEval):
+        (JSC::Scope::fillParametersForSourceProviderCache):
+        (JSC::Scope::restoreFromSourceProviderCache):
+        (JSC::Parser::adjustSuperBindingForBaseConstructor):
+        * parser/SourceProviderCacheItem.h:
+        (JSC::SourceProviderCacheItem::SourceProviderCacheItem):
+
+2017-01-19  Chris Dumez  <cdumez@apple.com>
+
+        iterable<> should be enabled on WK1
+        https://bugs.webkit.org/show_bug.cgi?id=167221
+        <rdar://problem/30108531>
+
+        Reviewed by Youenn Fablet.
+
+        * runtime/CommonIdentifiers.h:
+
+2017-01-19  Filip Pizlo  <fpizlo@apple.com>
+
+        Structure::pin() needs to be called while holding a lock
+        https://bugs.webkit.org/show_bug.cgi?id=167220
+
+        Reviewed by Saam Barati.
+
+        Imagine this race: the mutator calls pin() and the collector calls visitChildren(),
+        on the same Structure at the same time. In trunk pin() does not require a lock to be
+        held and it doesn't grab any locks. Meanwhile visitChildren() grabs the lock, checks
+        if the structure is pinned, and if not, it removes it by overwriting with zero. Now
+        imagine how this plays out when pin() runs. Since pin() grabs no locks, it is
+        irrelevant that visitChildren() grabs any locks. So, visitChildren() might check if
+        the table is pinned before pin() pins it, and then clear the table after it was
+        already pinned.
+
+        The problem here is that pin() should be holding a lock. We could either make pin()
+        grab that lock by itself, or what this patch does is makes the caller grab the lock.
+        This is great because it means that sometimes we don't have to introduce any new
+        locking.
+
+        This fixes a materializePropertyTable() checkOffsetConsistency() crash that happens
+        very rarely, but I was able to get it to reproduce with run-webkit-tests and
+        aggressive GC settings.
+
+        * runtime/ConcurrentJSLock.h:
+        * runtime/Structure.cpp:
+        (JSC::Structure::materializePropertyTable):
+        (JSC::Structure::changePrototypeTransition):
+        (JSC::Structure::attributeChangeTransition):
+        (JSC::Structure::toDictionaryTransition):
+        (JSC::Structure::nonPropertyTransition):
+        (JSC::Structure::pin):
+        (JSC::Structure::pinForCaching):
+        (JSC::Structure::add):
+        * runtime/Structure.h:
+        * runtime/StructureInlines.h:
+        (JSC::Structure::checkOffsetConsistency):
+        (JSC::Structure::add):
+        (JSC::Structure::addPropertyWithoutTransition):
+
+2017-01-19  Filip Pizlo  <fpizlo@apple.com>
+
+        The mutator needs to fire a barrier after memmoving stuff around in an object that the GC scans
+        https://bugs.webkit.org/show_bug.cgi?id=167208
+
+        Reviewed by Saam Barati.
+        
+        It used to be that if you moved a value from one place to another in the same object
+        then there is no need for a barrier because the generational GC would have no need to
+        know that some old object still continues to refer to the same other old object.
+
+        But the concurrent GC might scan that object as the mutator moves pointers around in
+        it. If the ordering is right, this could mean that the collector never sees some of
+        those pointers. This can be fixed by adding a barrier.
+
+        This fixes the most obvious cases I found. There may be more and I'll continue to
+        audit. Most of the other memmove users seem to already use some kind of synchronization
+        to prevent this. For example, this can also be fixed by just holding the cell lock
+        around the memmove since we're dealing with indexing storage and the GC reads that
+        under the cell lock.
+
+        * runtime/JSArray.cpp:
+        (JSC::JSArray::shiftCountWithAnyIndexingType):
+        (JSC::JSArray::unshiftCountWithAnyIndexingType):
+
+2017-01-19  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Cocoa] Variation fonts are erroneously disabled on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=167172
+
+        Reviewed by Simon Fraser.
+
+        OpenSource builders don't seem to understand sdk=embedded*.
+
+        * Configurations/FeatureDefines.xcconfig:
+
+2017-01-19  Skachkov Oleksandr  <gskachkov@gmail.com>
+
+        "this" missing after await in async arrow function
+        https://bugs.webkit.org/show_bug.cgi?id=166919
+
+        Reviewed by NOBODY Saam Barati.
+
+        This patch fixed issue in async arrow function. Issue appears because in arrow
+        function _this_ is loaded from arrow function virtual scope. 
+        Async arrow function can be suspended and when resuming should be used _this_ from 
+        virtual scope, to allow this we load _this_ from virtual scope before store it to 
+        generator.generatorThis property 
+
+        * bytecompiler/NodesCodegen.cpp:
+        (JSC::FunctionNode::emitBytecode):
+
 2017-01-18  Yusuke Suzuki  <utatane.tea@gmail.com>
 
         [B3] B3 strength reduction could encounter Value without owner in PureCSE
