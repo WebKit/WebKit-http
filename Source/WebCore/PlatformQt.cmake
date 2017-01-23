@@ -269,6 +269,10 @@ if (ENABLE_OPENGL)
             platform/graphics/opengl/Extensions3DOpenGLES.cpp
             platform/graphics/opengl/GraphicsContext3DOpenGLES.cpp
         )
+        list(APPEND WebCore_LIBRARIES
+            ${Qt5Gui_EGL_LIBRARIES}
+            ${Qt5Gui_OPENGL_LIBRARIES}
+        )
     else ()
         list(APPEND WebCore_SOURCES
             platform/graphics/opengl/Extensions3DOpenGL.cpp
