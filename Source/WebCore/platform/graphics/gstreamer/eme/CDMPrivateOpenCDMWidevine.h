@@ -40,15 +40,11 @@
 namespace WebCore {
 
 class CDM;
-class CDMSession;
 class MediaPlayerPrivateGStreamerBase;
 
 class CDMPrivateOpenCDMWidevine : public RefCounted<CDMPrivateOpenCDMWidevine> {
 public:
-    explicit CDMPrivateOpenCDMWidevine(CDM* cdm)
-        : m_cdm(cdm)
-    {
-    }
+    explicit CDMPrivateOpenCDMWidevine(CDM* cdm);
     explicit CDMPrivateOpenCDMWidevine() = default;
 
     static bool supportsKeySystem(const String&);

@@ -54,8 +54,8 @@ CDMSessionOpenCDMWidevine::CDMSessionOpenCDMWidevine(CDMSessionClient* client, O
 
 RefPtr<Uint8Array> CDMSessionOpenCDMWidevine::generateKeyRequest(const String& mimeType, Uint8Array* initData, String& destinationUrl, unsigned short& errorCode, uint32_t&)
 {
-    string sessionId;
     m_playerPrivate->receivedGenerateKeyRequest(WIDEVINE_PROTECTION_SYSTEM_UUID);
+    string sessionId;
     m_openCdmSession->CreateSession(mimeType.utf8().data(), reinterpret_cast<unsigned char*>(initData->data()),
         initData->length(), sessionId);
     if (!sessionId.size()) {
@@ -65,7 +65,7 @@ RefPtr<Uint8Array> CDMSessionOpenCDMWidevine::generateKeyRequest(const String& m
     m_sessionId = String::fromUTF8(sessionId.c_str());
 
     unsigned char temporaryUrl[1024] = {'\0'};
-    string message;
+    std::string message;
     int messageLength = 0;
     int returnValue = m_openCdmSession->GetKeyMessage(message,
         &messageLength, temporaryUrl, &m_destinationUrlLength);
@@ -89,8 +89,7 @@ bool CDMSessionOpenCDMWidevine::update(Uint8Array* key, RefPtr<Uint8Array>& next
     std::string responseMessage;
     if (m_openCdmSession->Update(key->data(), key->length(), responseMessage)) {
         responseMessage = "UpdateStatus: " + responseMessage;
-        nextMessage = Uint8Array::create(reinterpret_cast<unsigned char*>(const_cast<char*>
-            (responseMessage.c_str())), responseMessage.length());
+        nextMessage = Uint8Array::create(reinterpret_cast<unsigned char*>(const_cast<char*>(responseMessage.c_str())), responseMessage.length());
         errorCode = WebKitMediaKeyError::MEDIA_KEYERR_CLIENT;
         return false;
     }

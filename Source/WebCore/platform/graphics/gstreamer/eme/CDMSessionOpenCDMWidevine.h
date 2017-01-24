@@ -36,8 +36,6 @@
 
 namespace WebCore {
 
-class CDM;
-class CDMSession;
 class MediaPlayerPrivateGStreamerBase;
 
 class CDMSessionOpenCDMWidevine : public CDMSession {

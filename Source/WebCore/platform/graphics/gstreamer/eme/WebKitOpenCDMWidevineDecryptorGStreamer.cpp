@@ -29,12 +29,13 @@
 #include <open_cdm.h>
 #include <stdio.h>
 #include <string>
+#include <wtf/text/WTFString.h>
 #include <wtf/glib/GUniquePtr.h>
 
 #define GST_WEBKIT_OPENCDM_WIDEVINE_DECRYPT_GET_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), WEBKIT_OPENCDM_WIDEVINE_TYPE_DECRYPT, WebKitOpenCDMWidevineDecryptPrivate))
 
 struct _WebKitOpenCDMWidevineDecryptPrivate {
-    GUniquePtr<char> m_session;
+    String m_session;
     std::unique_ptr<OpenCdm> m_openCdm;
 };
 
@@ -114,14 +115,14 @@ static gboolean webKitMediaOpenCDMDecryptorHandleKeyResponse(WebKitMediaCommonEn
     if (!gst_structure_has_name(structure, "drm-session"))
         return false;
 
-    char* temporarySession;
-    gst_structure_get(structure, "session", G_TYPE_STRING, &temporarySession, nullptr);
+    GUniqueOutPtr<char> temporarySession;
+    gst_structure_get(structure, "session", G_TYPE_STRING, &temporarySession.outPtr(), nullptr);
     WebKitOpenCDMWidevineDecryptPrivate* priv = GST_WEBKIT_OPENCDM_WIDEVINE_DECRYPT_GET_PRIVATE(WEBKIT_OPENCDM_WIDEVINE_DECRYPT(self));
-    priv->m_session.reset(temporarySession);
-    ASSERT(priv->m_session);
+    ASSERT(temporarySession);
 
+    priv->m_session = temporarySession.get();
     priv->m_openCdm = std::make_unique<OpenCdm>();
-    priv->m_openCdm->SelectSession(priv->m_session.get());
+    priv->m_openCdm->SelectSession(priv->m_session.utf8().data());
     return true;
 }
 
@@ -134,9 +135,7 @@ static gboolean webKitMediaOpenCDMDecryptorDecrypt(WebKitMediaCommonEncryptionDe
     }
 
     GstMapInfo map;
-    gboolean bufferMapped;
-    bufferMapped = gst_buffer_map(buffer, &map, static_cast<GstMapFlags>(GST_MAP_READWRITE));
-    if (!bufferMapped) {
+    if (!gst_buffer_map(buffer, &map, static_cast<GstMapFlags>(GST_MAP_READWRITE))) {
         gst_buffer_unmap(ivBuffer, &ivMap);
         GST_ERROR_OBJECT(self, "Failed to map buffer");
         return false;
@@ -145,14 +144,14 @@ static gboolean webKitMediaOpenCDMDecryptorDecrypt(WebKitMediaCommonEncryptionDe
     WebKitOpenCDMWidevineDecryptPrivate* priv = GST_WEBKIT_OPENCDM_WIDEVINE_DECRYPT_GET_PRIVATE(WEBKIT_OPENCDM_WIDEVINE_DECRYPT(self));
     ASSERT(priv->sessionMetaData);
 
+    int errorCode;
+    bool returnValue = true;
     if (subSamplesBuffer) {
         GstMapInfo subSamplesMap;
-        gboolean subsamplesBufferMapped = gst_buffer_map(subSamplesBuffer, &subSamplesMap, GST_MAP_READ);
-        if (!subsamplesBufferMapped) {
+        if (!gst_buffer_map(subSamplesBuffer, &subSamplesMap, GST_MAP_READ)) {
             GST_ERROR_OBJECT(self, "Failed to map subsample buffer");
-            gst_buffer_unmap(ivBuffer, &ivMap);
-            gst_buffer_unmap(buffer, &map);
-            return false;
+            returnValue = false;
+            goto BUFFER_UNMAP;
         }
 
         GUniquePtr<GstByteReader> reader(gst_byte_reader_new(subSamplesMap.data, subSamplesMap.size));
@@ -182,14 +181,12 @@ static gboolean webKitMediaOpenCDMDecryptorDecrypt(WebKitMediaCommonEncryptionDe
         gst_byte_reader_set_pos(reader.get(), 0);
 
         // Decrypt cipher.
-        int errorCode;
         if (errorCode = priv->m_openCdm->Decrypt(holdEncryptedData.get(), static_cast<uint32_t>(totalEncrypted),
             ivMap.data, static_cast<uint32_t>(ivMap.size))) {
             GST_WARNING_OBJECT(self, "ERROR - packet decryption failed [%d]", errorCode);
-            gst_buffer_unmap(buffer, &map);
             gst_buffer_unmap(subSamplesBuffer, &subSamplesMap);
-            gst_buffer_unmap(ivBuffer, &ivMap);
-            return false;
+            returnValue = false;
+            goto BUFFER_UNMAP;
         }
 
         // Re-build sub-sample data.
@@ -208,19 +205,16 @@ static gboolean webKitMediaOpenCDMDecryptorDecrypt(WebKitMediaCommonEncryptionDe
         gst_buffer_unmap(subSamplesBuffer, &subSamplesMap);
     } else {
         // Decrypt cipher.
-        int errorCode;
         if (errorCode = priv->m_openCdm->Decrypt(map.data, static_cast<uint32_t>(map.size),
             ivMap.data, static_cast<uint32_t>(ivMap.size))) {
             GST_WARNING_OBJECT(self, "ERROR - packet decryption failed [%d]", errorCode);
-            gst_buffer_unmap(buffer, &map);
-            gst_buffer_unmap(ivBuffer, &ivMap);
-            return false;
+            returnValue = false;
         }
     }
+    BUFFER_UNMAP:
     gst_buffer_unmap(buffer, &map);
     gst_buffer_unmap(ivBuffer, &ivMap);
-
-    return true;
+    return returnValue;
 }
 
 #endif // ENABLE(LEGACY_ENCRYPTED_MEDIA) && USE(GSTREAMER) && USE(OCDM)

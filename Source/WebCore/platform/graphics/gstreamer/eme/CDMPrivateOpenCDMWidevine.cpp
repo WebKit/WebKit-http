@@ -45,6 +45,11 @@ namespace WebCore {
 String CDMPrivateOpenCDMWidevine::s_openCdmKeySystem;
 std::unique_ptr<OpenCdm> CDMPrivateOpenCDMWidevine::s_openCdm;
 
+CDMPrivateOpenCDMWidevine::CDMPrivateOpenCDMWidevine(CDM* cdm)
+    : m_cdm(cdm)
+{
+}
+
 bool CDMPrivateOpenCDMWidevine::supportsKeySystem(const String& keySystem)
 {
     s_openCdmKeySystem = keySystem;

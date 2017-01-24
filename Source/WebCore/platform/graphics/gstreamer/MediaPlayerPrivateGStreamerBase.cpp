@@ -1740,6 +1740,7 @@ bool MediaPlayerPrivateGStreamerBase::supportsKeySystem(const String& keySystem,
         || equalIgnoringASCIICase(keySystem, PLAYREADY_YT_PROTECTION_SYSTEM_ID))
         return true;
 #endif
+
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA) && USE(OCDM)
     if (CDMPrivateOpenCDMWidevine::supportsKeySystemAndMimeType(keySystem, mimeType))
         return true;
