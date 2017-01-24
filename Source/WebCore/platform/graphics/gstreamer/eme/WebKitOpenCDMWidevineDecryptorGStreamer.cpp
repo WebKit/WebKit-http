@@ -151,7 +151,7 @@ static gboolean webKitMediaOpenCDMDecryptorDecrypt(WebKitMediaCommonEncryptionDe
         if (!gst_buffer_map(subSamplesBuffer, &subSamplesMap, GST_MAP_READ)) {
             GST_ERROR_OBJECT(self, "Failed to map subsample buffer");
             returnValue = false;
-            goto BUFFER_UNMAP;
+            goto beach;
         }
 
         GUniquePtr<GstByteReader> reader(gst_byte_reader_new(subSamplesMap.data, subSamplesMap.size));
@@ -186,7 +186,7 @@ static gboolean webKitMediaOpenCDMDecryptorDecrypt(WebKitMediaCommonEncryptionDe
             GST_WARNING_OBJECT(self, "ERROR - packet decryption failed [%d]", errorCode);
             gst_buffer_unmap(subSamplesBuffer, &subSamplesMap);
             returnValue = false;
-            goto BUFFER_UNMAP;
+            goto beach;
         }
 
         // Re-build sub-sample data.
@@ -209,9 +209,10 @@ static gboolean webKitMediaOpenCDMDecryptorDecrypt(WebKitMediaCommonEncryptionDe
             ivMap.data, static_cast<uint32_t>(ivMap.size))) {
             GST_WARNING_OBJECT(self, "ERROR - packet decryption failed [%d]", errorCode);
             returnValue = false;
+            goto beach;
         }
     }
-    BUFFER_UNMAP:
+    beach:
     gst_buffer_unmap(buffer, &map);
     gst_buffer_unmap(ivBuffer, &ivMap);
     return returnValue;
