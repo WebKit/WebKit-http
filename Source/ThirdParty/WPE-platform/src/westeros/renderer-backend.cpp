@@ -97,9 +97,9 @@ public:
 private:
     static struct wl_registry_listener s_registryListener;
 
-    struct wl_display* m_display;
-    struct wl_registry* m_registry;
-    struct wl_compositor* m_compositor;
+    struct wl_display* m_display { nullptr };
+    struct wl_registry* m_registry { nullptr };
+    struct wl_compositor* m_compositor { nullptr };
     GSource* m_eventSource { nullptr };
 };
 
