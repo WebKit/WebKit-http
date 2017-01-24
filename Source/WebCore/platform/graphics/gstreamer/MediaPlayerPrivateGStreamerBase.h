@@ -271,7 +271,7 @@ private:
 #endif
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) && USE(PLAYREADY)
-    PlayreadySession* m_prSession;
+    std::unique_ptr<PlayreadySession> m_prSession;
 #endif
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)

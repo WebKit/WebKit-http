@@ -265,11 +265,6 @@ MediaPlayerPrivateGStreamerBase::MediaPlayerPrivateGStreamerBase(MediaPlayer* pl
     , m_repaintHandler(0)
     , m_drainHandler(0)
     , m_usingFallbackVideoSink(false)
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)
-#if USE(PLAYREADY)
-    , m_prSession(0)
-#endif
-#endif
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
     , m_cdmSession(0)
 #endif
@@ -312,13 +307,7 @@ MediaPlayerPrivateGStreamerBase::~MediaPlayerPrivateGStreamerBase()
     if (m_volumeElement)
         g_signal_handlers_disconnect_matched(m_volumeElement.get(), G_SIGNAL_MATCH_DATA, 0, 0, nullptr, nullptr, this);
 
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)
-#if USE(PLAYREADY)
-    if (m_prSession)
-        delete m_prSession;
-    m_prSession = nullptr;
-#endif
-#elif ENABLE(LEGACY_ENCRYPTED_MEDIA)
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
     m_cdmSession = nullptr;
 #endif
 
@@ -1417,7 +1406,7 @@ PlayreadySession* MediaPlayerPrivateGStreamerBase::prSession() const
 {
     PlayreadySession* session = nullptr;
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)
-    session = m_prSession;
+    session = m_prSession.get();
 #elif ENABLE(LEGACY_ENCRYPTED_MEDIA)
     if (m_cdmSession) {
         CDMPRSessionGStreamer* cdmSession = static_cast<CDMPRSessionGStreamer*>(m_cdmSession);
@@ -1515,7 +1504,7 @@ MediaPlayer::MediaKeyException MediaPlayerPrivateGStreamerBase::generateKeyReque
     if (equalIgnoringASCIICase(keySystem, PLAYREADY_PROTECTION_SYSTEM_ID)
         || equalIgnoringASCIICase(keySystem, PLAYREADY_YT_PROTECTION_SYSTEM_ID)) {
         if (!m_prSession)
-            m_prSession = new PlayreadySession();
+            m_prSession = std::make_unique<PlayreadySession>();
         if (m_prSession->ready()) {
             emitSession();
             return MediaPlayer::NoError;
