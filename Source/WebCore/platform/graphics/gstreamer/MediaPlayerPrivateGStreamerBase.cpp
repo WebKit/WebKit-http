@@ -391,6 +391,7 @@ bool MediaPlayerPrivateGStreamerBase::handleSyncMessage(GstMessage* message)
 
 #if USE(PLAYREADY)
                 if (webkit_media_playready_decrypt_is_playready_key_system_id(eventKeySystemId)) {
+                    LockHolder locker(m_prSessionMutex);
                     PlayreadySession* session = prSession();
                     if (session && (session->keyRequested() || session->ready())) {
                         GST_DEBUG("playready key requested already");
@@ -1503,6 +1504,7 @@ MediaPlayer::MediaKeyException MediaPlayerPrivateGStreamerBase::generateKeyReque
 #if USE(PLAYREADY)
     if (equalIgnoringASCIICase(keySystem, PLAYREADY_PROTECTION_SYSTEM_ID)
         || equalIgnoringASCIICase(keySystem, PLAYREADY_YT_PROTECTION_SYSTEM_ID)) {
+        LockHolder locker(m_prSessionMutex);
         if (!m_prSession)
             m_prSession = std::make_unique<PlayreadySession>();
         if (m_prSession->ready()) {
@@ -1615,6 +1617,7 @@ void MediaPlayerPrivateGStreamerBase::handleProtectionEvent(GstEvent* event)
 
 #if USE(PLAYREADY)
     if (webkit_media_playready_decrypt_is_playready_key_system_id(eventKeySystemId)) {
+        LockHolder locker(m_prSessionMutex);
         PlayreadySession* session = prSession();
         if (session && (session->keyRequested() || session->ready())) {
             if (session->ready())

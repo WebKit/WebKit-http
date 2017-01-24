@@ -272,6 +272,7 @@ private:
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) && USE(PLAYREADY)
     std::unique_ptr<PlayreadySession> m_prSession;
+    Lock m_prSessionMutex;
 #endif
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
