@@ -178,6 +178,7 @@ bool excludeFromBackup(const String&); // Returns true if successful.
 WEBCORE_EXPORT Vector<String> listDirectory(const String& path, const String& filter = String());
 
 WEBCORE_EXPORT CString fileSystemRepresentation(const String&);
+String stringFromFileSystemRepresentation(const char*);
 
 inline bool isHandleValid(const PlatformFileHandle& handle) { return handle != invalidPlatformFileHandle; }
 

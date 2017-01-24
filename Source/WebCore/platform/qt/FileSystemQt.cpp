@@ -147,6 +147,12 @@ CString fileSystemRepresentation(const String& path)
     return path.utf8();
 }
 
+String stringFromFileSystemRepresentation(const char* fileSystemRepresentation)
+{
+    // This needs to do the opposite of fileSystemRepresentation.
+    return String::fromUTF8(fileSystemRepresentation);
+}
+
 String openTemporaryFile(const String& prefix, PlatformFileHandle& handle)
 {
 #ifndef QT_NO_TEMPORARYFILE
