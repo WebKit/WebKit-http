@@ -71,4 +71,9 @@ void WesterosViewbackendOutput::initializeNestedOutputHandler(WstCompositor *com
     }
 }
 
+void WesterosViewbackendOutput::initializeClient()
+{
+    wpe_view_backend_dispatch_set_size(m_viewbackend, m_width, m_height);
+}
+
 } // namespace Westeros

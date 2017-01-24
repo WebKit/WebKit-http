@@ -18,6 +18,7 @@ public:
     WesterosViewbackendOutput(struct wpe_view_backend*);
     virtual ~WesterosViewbackendOutput();
     void initializeNestedOutputHandler(WstCompositor *compositor);
+    void initializeClient();
     void deinitialize() { m_viewbackend = nullptr; }
 
     static void handleGeometryCallback( void *userData, int32_t x, int32_t y, int32_t mmWidth, int32_t mmHeight,
