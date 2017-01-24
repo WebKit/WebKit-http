@@ -34,6 +34,10 @@
 #include <unistd.h>
 #include <wpe/view-backend.h>
 
+#ifndef KEY_INPUT_HANDLING_VIRTUAL
+#include <libinput.h>
+#include <libudev.h>
+
 namespace WPE {
 
 struct libinput_interface g_interface = {
@@ -48,9 +52,11 @@ struct libinput_interface g_interface = {
     }
 };
 
-#ifdef KEY_INPUT_HANDLING_VIRTUAL
+#else
 
 #include <gluelogic/virtualkeyboard/VirtualKeyboard.h>
+
+namespace WPE {
 
 static const char * connectorName = "/tmp/keyhandler";
 
@@ -91,16 +97,16 @@ LibinputServer::LibinputServer()
     , m_keyboardEventRepeating(new Input::KeyboardEventRepeating(*this))
     , m_pointerCoords(0, 0)
     , m_pointerBounds(1, 1)
+#ifndef KEY_INPUT_HANDLING_VIRTUAL
     , m_udev(nullptr)
-#ifdef KEY_INPUT_HANDLING_VIRTUAL
+#else
     , m_virtualkeyboard(nullptr)
 #endif
 {
-#ifdef KEY_INPUT_UDEV
+#ifndef KEY_INPUT_HANDLING_VIRTUAL
     m_udev = udev_new();
     if (!m_udev)
         return;
-#endif
 
     m_libinput = libinput_udev_create_context(&g_interface, nullptr, m_udev);
     if (!m_libinput)
@@ -122,7 +128,10 @@ LibinputServer::LibinputServer()
     g_source_set_priority(baseSource, G_PRIORITY_DEFAULT);
     g_source_attach(baseSource, g_main_context_get_thread_default());
 
-#ifdef KEY_INPUT_HANDLING_VIRTUAL
+    fprintf(stderr, "[LibinputServer] Initialization of linux input system succeeded.\n");
+
+#else
+
     const char listenerName[] = "WebKitBrowser";
     m_virtualkeyboard = Construct(listenerName, connectorName, VirtualKeyboardCallback);
     if (m_virtualkeyboard == nullptr) {
@@ -131,8 +140,6 @@ LibinputServer::LibinputServer()
     else {
        fprintf(stderr, "[LibinputServer] Initialization of virtual keyboard and linux input system succeeded.\n");
     }
-#else
-    fprintf(stderr, "[LibinputServer] Initialization of linux input system succeeded.\n");
 #endif
 
 }
@@ -143,11 +150,12 @@ LibinputServer::~LibinputServer()
     if (m_virtualkeyboard != nullptr) {
        Destruct(m_virtualkeyboard);
     }
-#endif
+#else
     libinput_unref(m_libinput);
     if (m_udev) {
         udev_unref(m_udev);
     }
+#endif
 }
 
 void LibinputServer::setClient(Client* client)
@@ -178,6 +186,7 @@ void LibinputServer::setPointerBounds(uint32_t width, uint32_t height)
     m_pointerBounds = { width, height };
 }
 
+#ifndef KEY_INPUT_HANDLING_VIRTUAL
 void LibinputServer::processEvents()
 {
     libinput_dispatch(m_libinput);
@@ -300,13 +309,6 @@ void LibinputServer::processEvents()
     }
 }
 
-void LibinputServer::dispatchKeyboardEvent(struct wpe_input_keyboard_event* event)
-{
-    Input::KeyboardEventHandler::Result result = m_keyboardEventHandler->handleKeyboardEvent(event);
-    struct wpe_input_keyboard_event newEvent{ event->time, std::get<0>(result), std::get<1>(result), event->pressed, std::get<2>(result) };
-    m_client->handleKeyboardEvent(&newEvent);
-}
-
 void LibinputServer::handleTouchEvent(struct libinput_event *event, enum wpe_input_touch_event_type type)
 {
     auto* touchEvent = libinput_event_get_touch_event(event);
@@ -359,5 +361,15 @@ GSourceFuncs LibinputServer::EventSource::s_sourceFuncs = {
     nullptr, // closure_callback
     nullptr, // closure_marshall
 };
+
+
+#endif
+
+void LibinputServer::dispatchKeyboardEvent(struct wpe_input_keyboard_event* event)
+{
+    Input::KeyboardEventHandler::Result result = m_keyboardEventHandler->handleKeyboardEvent(event);
+    struct wpe_input_keyboard_event newEvent{ event->time, std::get<0>(result), std::get<1>(result), event->pressed, std::get<2>(result) };
+    m_client->handleKeyboardEvent(&newEvent);
+}
 
 } // namespace WPE
