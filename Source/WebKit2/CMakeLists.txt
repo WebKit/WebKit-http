@@ -760,10 +760,19 @@ if (APPLE)
         PUBLIC JavaScriptCore
     )
 else ()
-    set(WebKit2_LIBRARIES
-        JavaScriptCore
-        WebCore
-    )
+    if (JavaScriptCore_LIBRARY_TYPE STREQUAL "STATIC")
+        set(JSC_WHOLE_ARCHIVE -Wl,--whole-archive JavaScriptCore -Wl,--no-whole-archive)
+
+        set(WebKit2_LIBRARIES
+            ${JSC_WHOLE_ARCHIVE}
+            WebCore
+        )
+    else ()
+        set(WebKit2_LIBRARIES
+            JavaScriptCore
+            WebCore
+        )
+    endif ()
 endif ()
 
 set(PluginProcess_LIBRARIES
