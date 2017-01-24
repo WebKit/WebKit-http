@@ -32,6 +32,12 @@
 #include <glib.h>
 #include <memory>
 #include <wpe/input.h>
+#ifndef KEY_INPUT_HANDLING_VIRTUAL
+#include <libudev.h>
+#include <libinput.h>
+#else
+#include <gluelogic/virtualkeyboard/VirtualKeyboard.h>
+#endif
 
 struct wpe_view_backend;
 

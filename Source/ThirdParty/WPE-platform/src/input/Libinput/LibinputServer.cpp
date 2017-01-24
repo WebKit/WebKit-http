@@ -34,11 +34,9 @@
 #include <unistd.h>
 #include <wpe/view-backend.h>
 
-#ifndef KEY_INPUT_HANDLING_VIRTUAL
-#include <libinput.h>
-#include <libudev.h>
-
 namespace WPE {
+
+#ifndef KEY_INPUT_HANDLING_VIRTUAL
 
 struct libinput_interface g_interface = {
     // open_restricted
@@ -53,10 +51,6 @@ struct libinput_interface g_interface = {
 };
 
 #else
-
-#include <gluelogic/virtualkeyboard/VirtualKeyboard.h>
-
-namespace WPE {
 
 static const char * connectorName = "/tmp/keyhandler";
 
