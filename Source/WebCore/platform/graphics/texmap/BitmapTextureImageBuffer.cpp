@@ -29,11 +29,23 @@
 
 #include "GraphicsLayer.h"
 
+#if PLATFORM(QT)
+#include "NativeImageQt.h"
+#endif
+
 namespace WebCore {
 
 void BitmapTextureImageBuffer::updateContents(const void* data, const IntRect& targetRect, const IntPoint& sourceOffset, int bytesPerLine, UpdateContentsFlag)
 {
-#if PLATFORM(CAIRO)
+#if PLATFORM(QT)
+    QImage image(reinterpret_cast<const uchar*>(data), targetRect.width(), targetRect.height(), bytesPerLine, NativeImageQt::defaultFormatForAlphaEnabledImages());
+
+    QPainter* painter = m_image->context().platformContext();
+    painter->save();
+    painter->setCompositionMode(QPainter::CompositionMode_Source);
+    painter->drawImage(targetRect, image, IntRect(sourceOffset, targetRect.size()));
+    painter->restore();
+#elif PLATFORM(CAIRO)
     RefPtr<cairo_surface_t> surface = adoptRef(cairo_image_surface_create_for_data(static_cast<unsigned char*>(data()),
         CAIRO_FORMAT_ARGB32, targetRect.width(), targetRect.height(), bytesPerLine));
     m_image->context()->platformContext()->drawSurfaceToContext(surface.get(), targetRect,
