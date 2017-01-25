@@ -176,7 +176,8 @@ void TextureMapperGLData::initializeStencil()
 }
 
 TextureMapperGL::TextureMapperGL()
-    : m_enableEdgeDistanceAntialiasing(false)
+    : TextureMapper(OpenGLMode)
+    , m_enableEdgeDistanceAntialiasing(false)
 {
     m_context3D = GraphicsContext3D::createForCurrentGLContext();
     m_data = new TextureMapperGLData(m_context3D.get());

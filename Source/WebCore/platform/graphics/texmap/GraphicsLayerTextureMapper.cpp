@@ -608,7 +608,8 @@ void GraphicsLayerTextureMapper::removeAnimation(const String& animationName)
 bool GraphicsLayerTextureMapper::setFilters(const FilterOperations& filters)
 {
     TextureMapper* textureMapper = m_layer.textureMapper();
-    if (!textureMapper)
+    // TextureMapperImageBuffer does not support CSS filters.
+    if (!textureMapper || textureMapper->accelerationMode() == TextureMapper::SoftwareMode)
         return false;
     notifyChange(FilterChange);
     return GraphicsLayer::setFilters(filters);

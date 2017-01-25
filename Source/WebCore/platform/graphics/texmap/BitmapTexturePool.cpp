@@ -107,7 +107,7 @@ RefPtr<BitmapTexture> BitmapTexturePool::createTexture(const BitmapTexture::Flag
 #if USE(TEXTURE_MAPPER_GL)
     return adoptRef(new BitmapTextureGL(m_context3D, flags));
 #else
-    return nullptr;
+    return BitmapTextureImageBuffer::create();
 #endif
 }
 
