@@ -221,7 +221,7 @@ void AppendPipeline::dispatchPendingDecryptionKey()
 {
     ASSERT(m_decryptor);
     ASSERT(m_pendingKey);
-    ASSERT(m_appendState == KeyNegotiation);
+    ASSERT(m_appendState == AppendState::KeyNegotiation);
     GST_TRACE("dispatching key to append pipeline %p", this);
     gst_element_send_event(m_pipeline.get(), gst_event_new_custom(GST_EVENT_CUSTOM_DOWNSTREAM_OOB,
         gst_structure_new("drm-cipher", "key", GST_TYPE_BUFFER, m_pendingKey.get(), nullptr)));
