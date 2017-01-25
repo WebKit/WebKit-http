@@ -226,7 +226,8 @@ void InspectorClientQt::detachRemoteFrontend()
 
 void InspectorClientQt::closeFrontendWindow()
 {
-    m_frontendClient->closeWindow();
+    if (m_frontendClient)
+        m_frontendClient->closeWindow();
 }
 
 void InspectorClientQt::highlight()
