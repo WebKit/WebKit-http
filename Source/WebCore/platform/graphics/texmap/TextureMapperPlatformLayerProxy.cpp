@@ -181,7 +181,7 @@ void TextureMapperPlatformLayerProxy::dropCurrentBufferWhilePreservingTexture()
 
     m_compositorThreadUpdateFunction =
         [this] {
-            ASSERT(m_lock.isHeld());
+            LockHolder locker(m_lock);
 
             if (!m_compositor || !m_targetLayer)
                 return;
