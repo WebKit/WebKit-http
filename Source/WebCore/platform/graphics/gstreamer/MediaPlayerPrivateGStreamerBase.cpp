@@ -391,7 +391,9 @@ bool MediaPlayerPrivateGStreamerBase::handleSyncMessage(GstMessage* message)
 
 #if USE(PLAYREADY)
                 if (webkit_media_playready_decrypt_is_playready_key_system_id(eventKeySystemId)) {
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)
                     LockHolder locker(m_prSessionMutex);
+#endif
                     PlayreadySession* session = prSession();
                     if (session && (session->keyRequested() || session->ready())) {
                         GST_DEBUG("playready key requested already");
@@ -1617,7 +1619,9 @@ void MediaPlayerPrivateGStreamerBase::handleProtectionEvent(GstEvent* event)
 
 #if USE(PLAYREADY)
     if (webkit_media_playready_decrypt_is_playready_key_system_id(eventKeySystemId)) {
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)
         LockHolder locker(m_prSessionMutex);
+#endif
         PlayreadySession* session = prSession();
         if (session && (session->keyRequested() || session->ready())) {
             if (session->ready())
