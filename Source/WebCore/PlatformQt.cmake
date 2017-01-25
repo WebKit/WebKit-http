@@ -65,6 +65,9 @@ list(APPEND WebCore_SOURCES
     platform/graphics/ImageSource.cpp
     platform/graphics/WOFFFileFormat.cpp
 
+    platform/graphics/texmap/BitmapTextureImageBuffer.cpp
+    platform/graphics/texmap/TextureMapperImageBuffer.cpp
+
     platform/graphics/qt/ColorQt.cpp
     platform/graphics/qt/FloatPointQt.cpp
     platform/graphics/qt/FloatRectQt.cpp

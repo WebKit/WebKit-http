@@ -30,6 +30,7 @@
 #include "GraphicsLayer.h"
 
 #if PLATFORM(QT)
+#include "GraphicsContext.h"
 #include "NativeImageQt.h"
 #endif
 
@@ -75,7 +76,7 @@ void BitmapTextureImageBuffer::updateContents(TextureMapper*, GraphicsLayer* sou
 
 void BitmapTextureImageBuffer::didReset()
 {
-    m_image = ImageBuffer::create(contentSize());
+    m_image = ImageBuffer::create(contentSize(), Unaccelerated);
 }
 
 void BitmapTextureImageBuffer::updateContents(Image* image, const IntRect& targetRect, const IntPoint& offset, UpdateContentsFlag)
