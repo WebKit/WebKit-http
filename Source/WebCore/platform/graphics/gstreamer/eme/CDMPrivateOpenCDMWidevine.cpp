@@ -35,6 +35,7 @@
 #include "CDMSessionOpenCDMWidevine.h"
 #include "MediaPlayerPrivateGStreamerBase.h"
 #include "WebKitMediaKeyError.h"
+
 #include <gst/gst.h>
 
 GST_DEBUG_CATEGORY_EXTERN(webkit_media_opencdm_widevine_decrypt_debug_category);

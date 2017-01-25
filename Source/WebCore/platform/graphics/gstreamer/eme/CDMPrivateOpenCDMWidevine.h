@@ -30,12 +30,7 @@
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA) && USE(OCDM)
 
 #include "CDMPrivate.h"
-#include "CDMSession.h"
-
 #include <open_cdm.h>
-#include <runtime/JSCInlines.h>
-#include <runtime/TypedArrayInlines.h>
-#include <runtime/Uint8Array.h>
 
 namespace WebCore {
 
@@ -44,7 +39,7 @@ class MediaPlayerPrivateGStreamerBase;
 
 class CDMPrivateOpenCDMWidevine : public RefCounted<CDMPrivateOpenCDMWidevine> {
 public:
-    explicit CDMPrivateOpenCDMWidevine(CDM* cdm);
+    explicit CDMPrivateOpenCDMWidevine(CDM*);
     explicit CDMPrivateOpenCDMWidevine() = default;
 
     static bool supportsKeySystem(const String&);
@@ -55,7 +50,7 @@ public:
 
 private:
     static String s_openCdmKeySystem;
-    static unique_ptr<OpenCdm> s_openCdm;
+    static std::unique_ptr<OpenCdm> s_openCdm;
 
 protected:
     CDM* m_cdm;

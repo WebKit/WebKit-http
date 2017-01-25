@@ -29,8 +29,8 @@
 #include <open_cdm.h>
 #include <stdio.h>
 #include <string>
-#include <wtf/text/WTFString.h>
 #include <wtf/glib/GUniquePtr.h>
+#include <wtf/text/WTFString.h>
 
 #define GST_WEBKIT_OPENCDM_WIDEVINE_DECRYPT_GET_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), WEBKIT_OPENCDM_WIDEVINE_TYPE_DECRYPT, WebKitOpenCDMWidevineDecryptPrivate))
 
@@ -212,7 +212,8 @@ static gboolean webKitMediaOpenCDMDecryptorDecrypt(WebKitMediaCommonEncryptionDe
             goto beach;
         }
     }
-    beach:
+
+beach:
     gst_buffer_unmap(buffer, &map);
     gst_buffer_unmap(ivBuffer, &ivMap);
     return returnValue;

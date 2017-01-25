@@ -30,21 +30,20 @@
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA) && USE(OCDM)
 
-#include "CDMPrivate.h"
 #include "CDMPrivateOpenCDMWidevine.h"
 #include "CDMSession.h"
 
 namespace WebCore {
 
+class CDMSession;
 class MediaPlayerPrivateGStreamerBase;
 
 class CDMSessionOpenCDMWidevine : public CDMSession {
 public:
-    CDMPrivateOpenCDMWidevine* m_cdmEncryptedKey;
     CDMSessionOpenCDMWidevine(CDMSessionClient*, OpenCdm*, MediaPlayerPrivateGStreamerBase*);
     virtual ~CDMSessionOpenCDMWidevine() = default;
 
-    void setClient(CDMSessionClient* client) override { m_client = client; }
+    void setClient(CDMSessionClient*) override { }
     const String& sessionId() const override { return m_sessionId; }
     void releaseKeys() override;
     RefPtr<Uint8Array> generateKeyRequest(const String&, Uint8Array*,
@@ -53,10 +52,8 @@ public:
         unsigned short&, uint32_t&) override;
 
 private:
-    CDMSessionClient* m_client;
     OpenCdm* m_openCdmSession;
     String m_sessionId;
-    int m_destinationUrlLength;
     MediaPlayerPrivateGStreamerBase* m_playerPrivate;
 };
 

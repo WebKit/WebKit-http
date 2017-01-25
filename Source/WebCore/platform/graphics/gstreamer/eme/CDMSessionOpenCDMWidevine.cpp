@@ -32,7 +32,6 @@
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA) && USE(OCDM)
 
 #include "CDM.h"
-#include "CDMSession.h"
 #include "MediaPlayerPrivateGStreamerBase.h"
 #include "WebKitMediaKeyError.h"
 #include <gst/gst.h>
@@ -44,10 +43,8 @@ GST_DEBUG_CATEGORY_EXTERN(webkit_media_opencdm_widevine_decrypt_debug_category);
 
 namespace WebCore {
 
-CDMSessionOpenCDMWidevine::CDMSessionOpenCDMWidevine(CDMSessionClient* client, OpenCdm* openCdm, MediaPlayerPrivateGStreamerBase* playerPrivate)
-    : m_client(client)
-    , m_openCdmSession(openCdm)
-    , m_destinationUrlLength(0)
+CDMSessionOpenCDMWidevine::CDMSessionOpenCDMWidevine(CDMSessionClient*, OpenCdm* openCdm, MediaPlayerPrivateGStreamerBase* playerPrivate)
+    : m_openCdmSession(openCdm)
     , m_playerPrivate(playerPrivate)
 {
 }
@@ -55,7 +52,8 @@ CDMSessionOpenCDMWidevine::CDMSessionOpenCDMWidevine(CDMSessionClient* client, O
 RefPtr<Uint8Array> CDMSessionOpenCDMWidevine::generateKeyRequest(const String& mimeType, Uint8Array* initData, String& destinationUrl, unsigned short& errorCode, uint32_t&)
 {
     m_playerPrivate->receivedGenerateKeyRequest(WIDEVINE_PROTECTION_SYSTEM_UUID);
-    string sessionId;
+
+    std::string sessionId;
     m_openCdmSession->CreateSession(mimeType.utf8().data(), reinterpret_cast<unsigned char*>(initData->data()),
         initData->length(), sessionId);
     if (!sessionId.size()) {
@@ -66,10 +64,10 @@ RefPtr<Uint8Array> CDMSessionOpenCDMWidevine::generateKeyRequest(const String& m
 
     unsigned char temporaryUrl[1024] = {'\0'};
     std::string message;
-    int messageLength = 0;
+    int messageLength = 0, destinationUrlLength = 0;
     int returnValue = m_openCdmSession->GetKeyMessage(message,
-        &messageLength, temporaryUrl, &m_destinationUrlLength);
-    if (returnValue || !messageLength || !m_destinationUrlLength) {
+        &messageLength, temporaryUrl, &destinationUrlLength);
+    if (returnValue || !messageLength || !destinationUrlLength) {
         errorCode = WebKitMediaKeyError::MEDIA_KEYERR_UNKNOWN;
         return nullptr;
     }
