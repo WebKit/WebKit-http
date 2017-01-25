@@ -59,6 +59,7 @@ private Q_SLOTS:
     void setPalette_data();
     void setPalette();
 #endif
+    void innerOuterRect();
 };
 
 // This will be called before the first test function is executed.
@@ -516,6 +517,28 @@ void tst_QWebView::renderingAfterMaxAndBack()
     view.page()->currentFrame()->render(&painter3);
 
     QCOMPARE(image3, reference3);
+}
+
+void tst_QWebView::innerOuterRect()
+{
+    QUrl url = QUrl("data:text/html,<html><head></head>"
+                    "<body bgcolor=red>"
+                    "</body>"
+                    "</html>");
+    QWebView view;
+    view.page()->mainFrame()->load(url);
+    QVERIFY(waitForSignal(&view, SIGNAL(loadFinished(bool))));
+    view.showMaximized();
+    const QRect frameGeometry = view.frameGeometry();
+    const QRect geometry = view.geometry();
+    QVariant outerWidth = view.page()->mainFrame()->evaluateJavaScript("window.outerWidth;");
+    QCOMPARE(outerWidth.toInt(), frameGeometry.width());
+    QVariant innerWidth = view.page()->mainFrame()->evaluateJavaScript("window.innerWidth;");
+    QCOMPARE(innerWidth.toInt(), geometry.width());
+    QVariant outerHeight = view.page()->mainFrame()->evaluateJavaScript("window.outerHeight;");
+    QCOMPARE(outerHeight.toInt(), frameGeometry.height());
+    QVariant innerHeight = view.page()->mainFrame()->evaluateJavaScript("window.innerHeight;");
+    QCOMPARE(innerHeight.toInt(), geometry.height());
 }
 
 QTEST_MAIN(tst_QWebView)
