@@ -44,6 +44,9 @@ class BitmapTexturePool {
     WTF_MAKE_NONCOPYABLE(BitmapTexturePool);
     WTF_MAKE_FAST_ALLOCATED;
 public:
+#if PLATFORM(QT)
+    BitmapTexturePool();
+#endif
 #if USE(TEXTURE_MAPPER_GL)
     explicit BitmapTexturePool(RefPtr<GraphicsContext3D>&&);
 #endif
