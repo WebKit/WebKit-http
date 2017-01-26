@@ -404,18 +404,13 @@ css3/blending/blend-mode-clip-accelerated-blending-with-siblings.html [ ImageOnl
 css3/blending/blend-mode-clip-accelerated-transformed-blending.html [ ImageOnlyFailure ]
 css3/blending/blend-mode-clip-rect-accelerated-blending.html [ ImageOnlyFailure ]
 css3/blending/blend-mode-html-element-screen.html [ ImageOnlyFailure ]
-css3/blending/background-blend-mode-default-value.html [ Missing ]
-css3/blending/background-blend-mode-different-image-formats.html [ Missing ]
 css3/blending/background-blend-mode-gif-color-2.html [ Missing ]
 css3/blending/background-blend-mode-gif-color.html [ Missing ]
 css3/blending/background-blend-mode-gradient-color.html [ Missing ]
 css3/blending/background-blend-mode-gradient-gradient.html [ Missing ]
 css3/blending/background-blend-mode-gradient-image.html [ Missing ]
-css3/blending/background-blend-mode-image-color.html [ Missing ]
-css3/blending/background-blend-mode-image-image.html [ Missing ]
 css3/blending/background-blend-mode-image-svg.html [ Missing ]
 css3/blending/background-blend-mode-multiple-background-layers.html [ Missing ]
-css3/blending/background-blend-mode-single-layer-no-blending.html [ Missing ]
 css3/blending/background-blend-mode-svg-color.html [ Missing ]
 css3/blending/blend-mode-background.html [ Missing ]
 css3/blending/blend-mode-isolated-group-1.html [ Missing ]
@@ -494,6 +489,13 @@ fast/images/exif-orientation.html [ Missing ]
 fast/images/exif-orientation-css.html [ Missing ]
 fast/images/exif-orientation-composited.html [ Missing ]
 fast/images/exif-orientation-image-document.html [ Missing ]
+#
+# The following tests fail because blend-modes are only partially supported.
+css3/blending/background-blend-mode-default-value.html [ Missing ]
+css3/blending/background-blend-mode-different-image-formats.html [ Missing ]
+css3/blending/background-blend-mode-image-color.html [ Missing ]
+css3/blending/background-blend-mode-image-image.html [ Missing ]
+css3/blending/background-blend-mode-single-layer-no-blending.html [ Missing ]
 
 # Tests for MediaSource API. Feature is not totally functional.
 webkit.org/b/99065 http/tests/media/media-source/mediasource-append-buffer.html [ Skip ]
@@ -572,8 +574,9 @@ fast/animation/request-animation-frame-disabled.html
 fast/scrolling/overflow-scroll-past-max.html
 
 # Missing WebKitCanvasUsesAcceleratedDrawing in overridePreference()
-fast/canvas/canvas-blend-solid.html
-fast/canvas/drawImage-with-small-values.html
+fast/canvas/canvas-blend-image.html [ Failure ]
+fast/canvas/canvas-blend-solid.html [ Failure ]
+fast/canvas/drawImage-with-small-values.html [ Failure ]
 
 # Need WebKitImageControlsEnabled in overridePreference()
 fast/images/image-controls-basic.html [ Missing ]
@@ -2040,7 +2043,6 @@ js/date-constructor.html [ Failure ]
   fast/block/positioning/negative-rel-position.html [ Failure ]
   fast/block/positioning/pref-width-change.html [ Failure ]
   fast/block/positioning/relative-positioned-inline-container.html [ Failure ]
-  fast/canvas/canvas-blend-image.html [ Failure ]
   fast/canvas/canvas-composite-canvas.html [ Failure ]
   fast/canvas/canvas-composite-image.html [ Failure ]
   fast/canvas/canvas-composite-text-alpha.html [ Failure ]
