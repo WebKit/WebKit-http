@@ -71,16 +71,16 @@ typedef char GLchar;
 #define GL_DRAW_FRAMEBUFFER               0x8CA9
 #endif
 
-class GraphicsContext3DPrivate : public TextureMapperPlatformLayer, public QOpenGLExtensions {
+class GraphicsContext3DPrivate final : public TextureMapperPlatformLayer, public QOpenGLExtensions {
 public:
     GraphicsContext3DPrivate(GraphicsContext3D*, HostWindow*, GraphicsContext3D::RenderStyle);
     ~GraphicsContext3DPrivate();
 
-    virtual void paintToTextureMapper(TextureMapper&, const FloatRect& target, const TransformationMatrix&, float opacity);
+    void paintToTextureMapper(TextureMapper&, const FloatRect& target, const TransformationMatrix&, float opacity) final;
 #if USE(GRAPHICS_SURFACE)
-    virtual IntSize platformLayerSize() const;
-    virtual uint32_t copyToGraphicsSurface();
-    virtual GraphicsSurfaceToken graphicsSurfaceToken() const;
+    IntSize platformLayerSize() const final;
+    uint32_t copyToGraphicsSurface() final;
+    GraphicsSurfaceToken graphicsSurfaceToken() const final;
 #endif
 
     QRectF boundingRect() const;
