@@ -169,7 +169,10 @@ void LauncherWindow::initializeView()
         WebViewGraphicsBased* view = new WebViewGraphicsBased(splitter);
         m_view = view;
 #ifndef QT_NO_OPENGL
-        toggleQGLWidgetViewport(m_windowOptions.useQGLWidgetViewport);
+        if (!m_windowOptions.useQOpenGLWidgetViewport)
+            toggleQGLWidgetViewport(m_windowOptions.useQGLWidgetViewport);
+        if (!m_windowOptions.useQGLWidgetViewport)
+            toggleQOpenGLWidgetViewport(m_windowOptions.useQOpenGLWidgetViewport);
 #endif
         view->setPage(page());
 
@@ -213,7 +216,8 @@ void LauncherWindow::applyPrefs()
 {
     QWebSettings* settings = page()->settings();
 #ifndef QT_NO_OPENGL
-    settings->setAttribute(QWebSettings::AcceleratedCompositingEnabled, m_windowOptions.useCompositing && m_windowOptions.useQGLWidgetViewport);
+    settings->setAttribute(QWebSettings::AcceleratedCompositingEnabled, m_windowOptions.useCompositing
+        && (m_windowOptions.useQGLWidgetViewport || m_windowOptions.useQOpenGLWidgetViewport));
 #endif
     settings->setAttribute(QWebSettings::TiledBackingStoreEnabled, m_windowOptions.useTiledBackingStore);
     settings->setAttribute(QWebSettings::FrameFlatteningEnabled, m_windowOptions.useFrameFlattening);
@@ -388,8 +392,12 @@ void LauncherWindow::createChrome()
     QAction* toggleAcceleratedCompositing = graphicsViewMenu->addAction("Toggle Accelerated Compositing", this, SLOT(toggleAcceleratedCompositing(bool)));
     toggleAcceleratedCompositing->setCheckable(true);
     toggleAcceleratedCompositing->setChecked(settings->testAttribute(QWebSettings::AcceleratedCompositingEnabled));
-    toggleAcceleratedCompositing->setEnabled(isGraphicsBased());
-    toggleAcceleratedCompositing->connect(toggleGraphicsView, SIGNAL(toggled(bool)), SLOT(setEnabled(bool)));
+
+    QAction* toggleAccelerated2dCanvas = graphicsViewMenu->addAction("Toggle Accelerated 2D canvas", this, SLOT(toggleAccelerated2dCanvas(bool)));
+    toggleAccelerated2dCanvas->setCheckable(true);
+    toggleAccelerated2dCanvas->setEnabled(settings->testAttribute(QWebSettings::AcceleratedCompositingEnabled));
+    toggleAccelerated2dCanvas->setChecked(settings->testAttribute(QWebSettings::Accelerated2dCanvasEnabled));
+    toggleAccelerated2dCanvas->connect(toggleAcceleratedCompositing, SIGNAL(toggled(bool)), SLOT(setEnabled(bool)));
 
     QAction* toggleResizesToContents = graphicsViewMenu->addAction("Toggle Resizes To Contents Mode", this, SLOT(toggleResizesToContents(bool)));
     toggleResizesToContents->setCheckable(true);
@@ -409,6 +417,13 @@ void LauncherWindow::createChrome()
     toggleQGLWidgetViewport->setChecked(m_windowOptions.useQGLWidgetViewport);
     toggleQGLWidgetViewport->setEnabled(isGraphicsBased());
     toggleQGLWidgetViewport->connect(toggleGraphicsView, SIGNAL(toggled(bool)), SLOT(setEnabled(bool)));
+#if QT_VERSION >= QT_VERSION_CHECK(5, 4, 0)
+    QAction* toggleQOpenGLWidgetViewport = graphicsViewMenu->addAction("Toggle use of QOpenGLWidget Viewport", this, SLOT(toggleQOpenGLWidgetViewport(bool)));
+    toggleQOpenGLWidgetViewport->setCheckable(true);
+    toggleQOpenGLWidgetViewport->setChecked(m_windowOptions.useQOpenGLWidgetViewport);
+    toggleQOpenGLWidgetViewport->setEnabled(isGraphicsBased());
+    toggleQOpenGLWidgetViewport->connect(toggleGraphicsView, SIGNAL(toggled(bool)), SLOT(setEnabled(bool)));
+#endif
 #endif
 
     QMenu* viewportUpdateMenu = graphicsViewMenu->addMenu("Change Viewport Update Mode");
@@ -799,7 +814,10 @@ void LauncherWindow::screenshot()
 #endif
 
 #ifndef QT_NO_OPENGL
-    toggleQGLWidgetViewport(m_windowOptions.useQGLWidgetViewport);
+    if (!m_windowOptions.useQOpenGLWidgetViewport)
+        toggleQGLWidgetViewport(m_windowOptions.useQGLWidgetViewport);
+    if (!m_windowOptions.useQGLWidgetViewport)
+        toggleQOpenGLWidgetViewport(m_windowOptions.useQOpenGLWidgetViewport);
 #endif
 }
 
@@ -888,6 +906,11 @@ void LauncherWindow::toggleAcceleratedCompositing(bool toggle)
 {
     m_windowOptions.useCompositing = toggle;
     page()->settings()->setAttribute(QWebSettings::AcceleratedCompositingEnabled, toggle);
+}
+
+void LauncherWindow::toggleAccelerated2dCanvas(bool toggle)
+{
+    page()->settings()->setAttribute(QWebSettings::Accelerated2dCanvasEnabled, toggle);
 }
 
 void LauncherWindow::toggleTiledBackingStore(bool toggle)
@@ -993,10 +1016,27 @@ void LauncherWindow::toggleQGLWidgetViewport(bool enable)
     if (!isGraphicsBased())
         return;
 
+    if (enable)
+        m_windowOptions.useQOpenGLWidgetViewport = false;
     m_windowOptions.useQGLWidgetViewport = enable;
-    WebViewGraphicsBased* view = static_cast<WebViewGraphicsBased*>(m_view);
 
+    WebViewGraphicsBased* view = static_cast<WebViewGraphicsBased*>(m_view);
     view->setViewport(enable ? new QGLWidget() : 0);
+}
+
+void LauncherWindow::toggleQOpenGLWidgetViewport(bool enable)
+{
+    if (!isGraphicsBased())
+        return;
+
+#if QT_VERSION >= QT_VERSION_CHECK(5, 4, 0)
+    if (enable)
+        m_windowOptions.useQGLWidgetViewport = false;
+    m_windowOptions.useQOpenGLWidgetViewport = enable;
+
+    WebViewGraphicsBased* view = static_cast<WebViewGraphicsBased*>(m_view);
+    view->setViewport(enable ? new QOpenGLWidget() : 0);
+#endif
 }
 #endif
 

@@ -34,17 +34,17 @@ namespace WebCore {
 
     class StillImage final : public Image {
     public:
-        static PassRefPtr<StillImage> create(const QPixmap& pixmap)
+        static RefPtr<StillImage> create(const QPixmap& pixmap)
         {
             return adoptRef(new StillImage(pixmap));
         }
 
-        static PassRefPtr<StillImage> createForRendering(const QPixmap* pixmap)
+        static RefPtr<StillImage> createForRendering(const QPixmap* pixmap)
         {
             return adoptRef(new StillImage(pixmap));
         }
 
-        static PassRefPtr<StillImage> create(QPixmap&& pixmap)
+        static RefPtr<StillImage> create(QPixmap&& pixmap)
         {
             return adoptRef(new StillImage(WTFMove(pixmap)));
         }

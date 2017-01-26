@@ -1,6 +1,9 @@
 /*
  * Copyright (C) 2010, 2013 Apple Inc. All rights reserved.
  * Copyright (C) 2011 Google Inc. All rights reserved.
+ * Copyright (C) 2012 ChangSeok Oh <shivamidow@gmail.com>
+ * Copyright (C) 2012 Research In Motion Limited. All rights reserved.
+ * Copyright (C) 2014 Digia Plc. and/or its subsidiary(-ies).
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -21,10 +24,12 @@
  * PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
  * OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
- * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. 
+ * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
 #include "config.h"
+
+// Note this implementation serves a double role for Qt where it also handles OpenGLES.
 
 #if ENABLE(GRAPHICS_CONTEXT_3D)
 
@@ -55,8 +60,53 @@
 #define GL_RGB32F_ARB                       0x8815
 #elif PLATFORM(MAC)
 #include <OpenGL/gl.h>
-#elif PLATFORM(GTK) || PLATFORM(EFL) || PLATFORM(QT) || PLATFORM(WIN)
+#elif PLATFORM(GTK) || PLATFORM(EFL) || PLATFORM(WIN)
 #include "OpenGLShims.h"
+#endif
+
+#if PLATFORM(QT)
+
+#define FUNCTIONS m_functions
+#include "OpenGLShimsQt.h"
+#include <QOpenGLContext>
+
+#define scopedScissor(c, s)     scopedScissor(m_functions, c, s)
+#define scopedDither(c, s)      scopedDither(m_functions, c, s)
+#define scopedDepth(c, s)       scopedDepth(m_functions, c, s)
+#define scopedStencil(c, s)     scopedStencil(m_functions, c, s)
+
+#ifndef GL_BGRA
+#define GL_BGRA                         0x80E1
+#endif
+
+#ifndef GL_READ_FRAMEBUFFER
+#define GL_READ_FRAMEBUFFER             0x8CA8
+#endif
+
+#ifndef GL_DRAW_FRAMEBUFFER
+#define GL_DRAW_FRAMEBUFFER             0x8CA9
+#endif
+
+#ifndef GL_MAX_VARYING_FLOATS
+#define GL_MAX_VARYING_FLOATS             0x8B4B
+#endif
+
+#ifndef GL_ALPHA16F_ARB
+#define GL_ALPHA16F_ARB                   0x881C
+#endif
+
+#ifndef GL_LUMINANCE16F_ARB
+#define GL_LUMINANCE16F_ARB               0x881E
+#endif
+
+#ifndef GL_LUMINANCE_ALPHA16F_ARB
+#define GL_LUMINANCE_ALPHA16F_ARB         0x881F
+#endif
+
+#ifndef GL_HALF_FLOAT_OES
+#define GL_HALF_FLOAT_OES                 0x8D61
+#endif
+
 #endif
 
 namespace WebCore {
@@ -64,7 +114,12 @@ namespace WebCore {
 void GraphicsContext3D::releaseShaderCompiler()
 {
     makeContextCurrent();
+#if PLATFORM(QT)
+    ASSERT(m_private);
+    m_functions->glReleaseShaderCompiler();
+#else
     notImplemented();
+#endif
 }
 
 void GraphicsContext3D::readPixelsAndConvertToBGRAIfNecessary(int x, int y, int width, int height, unsigned char* pixels)
@@ -93,13 +148,41 @@ void GraphicsContext3D::readPixelsAndConvertToBGRAIfNecessary(int x, int y, int 
         for (int i = 0; i < totalBytes; i += 4)
             std::swap(pixels[i], pixels[i + 2]);
 #endif
-    } else
+    } else {
+#if PLATFORM(QT)
+        ASSERT(m_private);
+        bool readBGRA = !isGLES2Compliant() || platformGraphicsContext3D()->hasExtension("GL_EXT_read_format_bgra");
+
+        if (readBGRA)
+            glReadPixels(x, y, width, height, GL_BGRA, GL_UNSIGNED_BYTE, pixels);
+        else
+            glReadPixels(x, y, width, height, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+        int totalBytes = width * height * 4;
+        if (!readBGRA) {
+            for (int i = 0; i < totalBytes; i += 4)
+                std::swap(pixels[i], pixels[i + 2]); // Convert to BGRA.
+        }
+#else
         ::glReadPixels(x, y, width, height, GL_BGRA, GL_UNSIGNED_INT_8_8_8_8_REV, pixels);
+#endif
+    }
 }
 
 void GraphicsContext3D::validateAttributes()
 {
+#if PLATFORM(QT)
+    if (isGLES2Compliant())
+        validateDepthStencil("GL_OES_packed_depth_stencil");
+    else
+        validateDepthStencil("GL_EXT_packed_depth_stencil");
+
+    if (m_attrs.antialias && isGLES2Compliant()) {
+        if (!m_functions->hasOpenGLExtension(QOpenGLExtensions::FramebufferMultisample) || !m_functions->hasOpenGLExtension(QOpenGLExtensions::FramebufferBlit))
+            m_attrs.antialias = false;
+    }
+#else
     validateDepthStencil("GL_EXT_packed_depth_stencil");
+#endif
 }
 
 bool GraphicsContext3D::reshapeFBOs(const IntSize& size)
@@ -107,13 +190,17 @@ bool GraphicsContext3D::reshapeFBOs(const IntSize& size)
     const int width = size.width();
     const int height = size.height();
     GLuint colorFormat, internalDepthStencilFormat = 0;
+    GLuint pixelDataType = 0;
     if (m_attrs.alpha) {
-        m_internalColorFormat = GL_RGBA8;
+        m_internalColorFormat = isGLES2Compliant() ? GL_RGBA : GL_RGBA8;
         colorFormat = GL_RGBA;
+        pixelDataType = GL_UNSIGNED_BYTE;
     } else {
-        m_internalColorFormat = GL_RGB8;
+        m_internalColorFormat = isGLES2Compliant() ? GL_RGB : GL_RGB8;
         colorFormat = GL_RGB;
+        pixelDataType = isGLES2Compliant() ? GL_UNSIGNED_SHORT_5_6_5 : GL_UNSIGNED_BYTE;
     }
+
     if (m_attrs.stencil || m_attrs.depth) {
         // We don't allow the logic where stencil is required and depth is not.
         // See GraphicsContext3D::validateAttributes.
@@ -131,7 +218,7 @@ bool GraphicsContext3D::reshapeFBOs(const IntSize& size)
     }
 
     // Resize multisample FBO.
-    if (m_attrs.antialias) {
+    if (m_attrs.antialias && !isGLES2Compliant()) {
         GLint maxSampleCount;
         ::glGetIntegerv(GL_MAX_SAMPLES_EXT, &maxSampleCount);
         GLint sampleCount = std::min(8, maxSampleCount);
@@ -169,12 +256,12 @@ bool GraphicsContext3D::reshapeFBOs(const IntSize& size)
     setRenderbufferStorageFromDrawable(m_currentWidth, m_currentHeight);
 #else
     ::glBindTexture(GL_TEXTURE_2D, m_texture);
-    ::glTexImage2D(GL_TEXTURE_2D, 0, m_internalColorFormat, width, height, 0, colorFormat, GL_UNSIGNED_BYTE, 0);
+    ::glTexImage2D(GL_TEXTURE_2D, 0, m_internalColorFormat, width, height, 0, colorFormat, pixelDataType, 0);
     ::glFramebufferTexture2DEXT(GL_FRAMEBUFFER_EXT, GL_COLOR_ATTACHMENT0_EXT, GL_TEXTURE_2D, m_texture, 0);
 
     if (m_compositorTexture) {
         ::glBindTexture(GL_TEXTURE_2D, m_compositorTexture);
-        ::glTexImage2D(GL_TEXTURE_2D, 0, m_internalColorFormat, width, height, 0, colorFormat, GL_UNSIGNED_BYTE, 0);
+        ::glTexImage2D(GL_TEXTURE_2D, 0, m_internalColorFormat, width, height, 0, colorFormat, pixelDataType, 0);
         ::glBindTexture(GL_TEXTURE_2D, 0);
 #if USE(COORDINATED_GRAPHICS_THREADED)
         ::glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, m_compositorFBO);
@@ -188,7 +275,7 @@ bool GraphicsContext3D::reshapeFBOs(const IntSize& size)
     attachDepthAndStencilBufferIfNeeded(internalDepthStencilFormat, width, height);
 
     bool mustRestoreFBO = true;
-    if (m_attrs.antialias) {
+    if (m_attrs.antialias && !isGLES2Compliant()) {
         ::glBindFramebufferEXT(GL_FRAMEBUFFER_EXT, m_multisampleFBO);
         if (m_state.boundFBO == m_multisampleFBO)
             mustRestoreFBO = false;
@@ -203,6 +290,10 @@ bool GraphicsContext3D::reshapeFBOs(const IntSize& size)
 void GraphicsContext3D::attachDepthAndStencilBufferIfNeeded(GLuint internalDepthStencilFormat, int width, int height)
 {
     if (!m_attrs.antialias && (m_attrs.stencil || m_attrs.depth)) {
+#if PLATFORM(QT)
+        bool supportPackedDepthStencilBuffer = internalDepthStencilFormat == GL_DEPTH24_STENCIL8_EXT;
+        if (supportPackedDepthStencilBuffer || !isGLES2Compliant()) {
+#endif
         ::glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, m_depthStencilBuffer);
         ::glRenderbufferStorageEXT(GL_RENDERBUFFER_EXT, internalDepthStencilFormat, width, height);
         if (m_attrs.stencil)
@@ -210,6 +301,21 @@ void GraphicsContext3D::attachDepthAndStencilBufferIfNeeded(GLuint internalDepth
         if (m_attrs.depth)
             ::glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, m_depthStencilBuffer);
         ::glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, 0);
+#if PLATFORM(QT)
+        } else {
+            if (m_attrs.stencil) {
+                ::glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, m_stencilBuffer);
+                ::glRenderbufferStorageEXT(GL_RENDERBUFFER_EXT, GL_STENCIL_INDEX8, width, height);
+                ::glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_STENCIL_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, m_stencilBuffer);
+            }
+            if (m_attrs.depth) {
+                ::glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, m_depthBuffer);
+                ::glRenderbufferStorageEXT(GL_RENDERBUFFER_EXT, GL_DEPTH_COMPONENT16, width, height);
+                ::glFramebufferRenderbufferEXT(GL_FRAMEBUFFER_EXT, GL_DEPTH_ATTACHMENT_EXT, GL_RENDERBUFFER_EXT, m_depthBuffer);
+            }
+            ::glBindRenderbufferEXT(GL_RENDERBUFFER_EXT, 0);
+        }
+#endif
     }
 
     if (glCheckFramebufferStatusEXT(GL_FRAMEBUFFER_EXT) != GL_FRAMEBUFFER_COMPLETE_EXT) {
@@ -220,6 +326,18 @@ void GraphicsContext3D::attachDepthAndStencilBufferIfNeeded(GLuint internalDepth
 
 void GraphicsContext3D::resolveMultisamplingIfNecessary(const IntRect& rect)
 {
+#if PLATFORM(QT)
+    Q_ASSERT(m_private);
+    if (!m_attrs.antialias)
+        return;
+
+    // QTFIXME: Probably not needed, iOS uses following code successfully
+    if (isGLES2Compliant()) {
+        notImplemented();
+        return;
+    }
+#endif
+
     TemporaryOpenGLSetting scopedScissor(GL_SCISSOR_TEST, GL_FALSE);
     TemporaryOpenGLSetting scopedDither(GL_DITHER, GL_FALSE);
     TemporaryOpenGLSetting scopedDepth(GL_DEPTH_TEST, GL_FALSE);
@@ -249,6 +367,9 @@ void GraphicsContext3D::renderbufferStorage(GC3Denum target, GC3Denum internalfo
 {
     makeContextCurrent();
 #if !PLATFORM(IOS)
+#if PLATFORM(QT)
+    if (!isGLES2Compliant()) {
+#endif
     switch (internalformat) {
     case DEPTH_STENCIL:
         internalformat = GL_DEPTH24_STENCIL8_EXT;
@@ -264,6 +385,9 @@ void GraphicsContext3D::renderbufferStorage(GC3Denum target, GC3Denum internalfo
         internalformat = GL_RGB;
         break;
     }
+#if PLATFORM(QT)
+    }
+#endif
 #endif
     ::glRenderbufferStorageEXT(target, internalformat, width, height);
 }
@@ -275,6 +399,12 @@ void GraphicsContext3D::getIntegerv(GC3Denum pname, GC3Dint* value)
     // whereas GLES2 return the number of vectors (each vector has 4 components).
     // Therefore, the value returned by desktop GL needs to be divided by 4.
     makeContextCurrent();
+#if PLATFORM(QT)
+    if (isGLES2Compliant()) {
+        ::glGetIntegerv(pname, value);
+        return;
+    }
+#endif
     switch (pname) {
 #if !PLATFORM(IOS)
     case MAX_FRAGMENT_UNIFORM_VECTORS:
@@ -307,11 +437,18 @@ void GraphicsContext3D::getIntegerv(GC3Denum pname, GC3Dint* value)
 
 void GraphicsContext3D::getShaderPrecisionFormat(GC3Denum shaderType, GC3Denum precisionType, GC3Dint* range, GC3Dint* precision)
 {
+#if !PLATFORM(QT)
     UNUSED_PARAM(shaderType);
+#endif
     ASSERT(range);
     ASSERT(precision);
 
     makeContextCurrent();
+
+#if PLATFORM(QT)
+    m_functions->glGetShaderPrecisionFormat(shaderType, precisionType, range, precision);
+    return;
+#endif
 
     switch (precisionType) {
     case GraphicsContext3D::LOW_INT:
@@ -346,6 +483,9 @@ bool GraphicsContext3D::texImage2D(GC3Denum target, GC3Dint level, GC3Denum inte
     GC3Denum openGLFormat = format;
     GC3Denum openGLInternalFormat = internalformat;
 #if !PLATFORM(IOS)
+#if PLATFORM(QT)
+    if (!isGLES2Compliant()) {
+#endif
     if (type == GL_FLOAT) {
         if (format == GL_RGBA)
             openGLInternalFormat = GL_RGBA32F_ARB;
@@ -370,6 +510,9 @@ bool GraphicsContext3D::texImage2D(GC3Denum target, GC3Dint level, GC3Denum inte
         openGLFormat = GL_RGBA;
     else if (format == Extensions3D::SRGB_EXT)
         openGLFormat = GL_RGB;
+#if PLATFORM(QT)
+    }
+#endif
 #endif
     texImage2DDirect(target, level, openGLInternalFormat, width, height, border, openGLFormat, type, pixels);
     return true;
@@ -404,6 +547,7 @@ Extensions3D* GraphicsContext3D::getExtensions()
 
 void GraphicsContext3D::readPixels(GC3Dint x, GC3Dint y, GC3Dsizei width, GC3Dsizei height, GC3Denum format, GC3Denum type, void* data)
 {
+    ASSERT(m_private);
     // FIXME: remove the two glFlush calls when the driver bug is fixed, i.e.,
     // all previous rendering calls should be done before reading pixels.
     makeContextCurrent();

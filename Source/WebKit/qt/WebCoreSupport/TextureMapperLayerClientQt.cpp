@@ -115,7 +115,17 @@ void TextureMapperLayerClientQt::renderCompositedLayers(GraphicsContext& context
 
     m_textureMapper->setTextDrawingMode(context.textDrawingMode());
     QPainter* painter = context.platformContext();
-    const QTransform transform = painter->worldTransform();
+    QTransform transform;
+    // QTFIXME: Restore SoftwareMode
+    if (true /*m_textureMapper->accelerationMode() == TextureMapper::OpenGLMode*/) {
+        // TextureMapperGL needs to duplicate the entire transform QPainter would do,
+        // including the transforms QPainter would normally do behind the scenes.
+        transform = painter->deviceTransform();
+    } else {
+        // TextureMapperImageBuffer needs a transform that can be used
+        // with QPainter::setWorldTransform.
+        transform = painter->worldTransform();
+    }
     const TransformationMatrix matrix(
         transform.m11(), transform.m12(), 0, transform.m13(),
         transform.m21(), transform.m22(), 0, transform.m23(),

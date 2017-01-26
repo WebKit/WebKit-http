@@ -65,8 +65,6 @@ list(APPEND WebCore_SOURCES
     platform/graphics/ImageSource.cpp
     platform/graphics/WOFFFileFormat.cpp
 
-    platform/graphics/gpu/qt/DrawingBufferQt.cpp
-
     platform/graphics/qt/ColorQt.cpp
     platform/graphics/qt/FloatPointQt.cpp
     platform/graphics/qt/FloatRectQt.cpp
@@ -80,12 +78,14 @@ list(APPEND WebCore_SOURCES
     platform/graphics/qt/GradientQt.cpp
     platform/graphics/qt/GraphicsContextQt.cpp
     platform/graphics/qt/IconQt.cpp
+    platform/graphics/qt/ImageBufferDataQt.cpp
     platform/graphics/qt/ImageBufferQt.cpp
     platform/graphics/qt/ImageDecoderQt.cpp
     platform/graphics/qt/ImageQt.cpp
     platform/graphics/qt/IntPointQt.cpp
     platform/graphics/qt/IntRectQt.cpp
     platform/graphics/qt/IntSizeQt.cpp
+    platform/graphics/qt/QFramebufferPaintDevice.cpp
     platform/graphics/qt/PathQt.cpp
     platform/graphics/qt/PatternQt.cpp
     platform/graphics/qt/StillImageQt.cpp
@@ -148,6 +148,14 @@ list(APPEND WebCore_SOURCES
 
     platform/text/qt/TextBreakIteratorInternalICUQt.cpp
 )
+
+if (COMPILER_IS_GCC_OR_CLANG)
+    set_source_files_properties(
+        platform/graphics/qt/ImageBufferDataQt.cpp
+    PROPERTIES
+        COMPILE_FLAGS -frtti
+    )
+endif ()
 
 if (ENABLE_DEVICE_ORIENTATION)
     list(APPEND WebCore_SOURCES
@@ -251,8 +259,6 @@ endif ()
 
 if (ENABLE_OPENGL)
     list(APPEND WebCore_SOURCES
-        platform/graphics/OpenGLShims.cpp
-
         platform/graphics/opengl/Extensions3DOpenGLCommon.cpp
         platform/graphics/opengl/GraphicsContext3DOpenGLCommon.cpp
         platform/graphics/opengl/TemporaryOpenGLSetting.cpp
@@ -263,23 +269,16 @@ if (ENABLE_OPENGL)
             platform/graphics/opengl/Extensions3DOpenGLES.cpp
             platform/graphics/opengl/GraphicsContext3DOpenGLES.cpp
         )
-    elseif (${Qt5Gui_OPENGL_IMPLEMENTATION} STREQUAL GL)
+        list(APPEND WebCore_LIBRARIES
+            ${Qt5Gui_EGL_LIBRARIES}
+            ${Qt5Gui_OPENGL_LIBRARIES}
+        )
+    else ()
         list(APPEND WebCore_SOURCES
             platform/graphics/opengl/Extensions3DOpenGL.cpp
             platform/graphics/opengl/GraphicsContext3DOpenGL.cpp
         )
-    else ()
-        message(FATAL_ERROR "Unsupported Qt OpenGL implementation ${Qt5Gui_OPENGL_IMPLEMENTATION}")
     endif ()
-
-    list(APPEND WebCore_SYSTEM_INCLUDE_DIRECTORIES
-        ${Qt5Gui_EGL_INCLUDE_DIRS}
-        ${Qt5Gui_OPENGL_INCLUDE_DIRS}
-    )
-    list(APPEND WebCore_LIBRARIES
-        ${Qt5Gui_EGL_LIBRARIES}
-        ${Qt5Gui_OPENGL_LIBRARIES}
-    )
 endif ()
 
 if (USE_GLIB)

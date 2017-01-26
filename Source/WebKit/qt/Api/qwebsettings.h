@@ -86,6 +86,7 @@ public:
         CaretBrowsingEnabled,
         NotificationsEnabled,
         WebAudioEnabled,
+        Accelerated2dCanvasEnabled,
         MediaSourceEnabled,
         MediaEnabled,
         WebSecurityEnabled,

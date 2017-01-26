@@ -40,6 +40,12 @@
 #include <wtf/PassRefPtr.h>
 #include <wtf/Vector.h>
 
+#if PLATFORM(QT)
+QT_BEGIN_NAMESPACE
+class QOpenGLContext;
+QT_END_NAMESPACE
+#endif
+
 namespace WebCore {
 
 class FloatRect;
@@ -80,6 +86,9 @@ public:
     }
 
     static std::unique_ptr<ImageBuffer> createCompatibleBuffer(const FloatSize&, float resolutionScale, ColorSpace, const GraphicsContext&, bool hasAlpha);
+#if PLATFORM(QT) && ENABLE(ACCELERATED_2D_CANVAS)
+    static std::unique_ptr<ImageBuffer> createCompatibleBuffer(const IntSize&, float resolutionScale, ColorSpace, QOpenGLContext*);
+#endif
 
     WEBCORE_EXPORT ~ImageBuffer();
 
@@ -164,6 +173,9 @@ private:
     // This constructor will place its success into the given out-variable
     // so that create() knows when it should return failure.
     WEBCORE_EXPORT ImageBuffer(const FloatSize&, float resolutionScale, ColorSpace, RenderingMode, bool& success);
+#if PLATFORM(QT) && ENABLE(ACCELERATED_2D_CANVAS)
+    ImageBuffer(const IntSize&, float resolutionScale, ColorSpace, QOpenGLContext*, bool& success);
+#endif
 };
 
 #if USE(CG)

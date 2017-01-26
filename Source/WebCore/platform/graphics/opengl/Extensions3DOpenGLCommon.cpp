@@ -35,13 +35,16 @@
 #if PLATFORM(IOS)
 #include <OpenGLES/ES2/glext.h>
 #else
-#if USE(OPENGL_ES_2)
+#if PLATFORM(QT)
+#define FUNCTIONS m_context->m_functions
+#include "OpenGLShimsQt.h"
+#elif USE(OPENGL_ES_2)
 #include "OpenGLESShims.h"
 #include <GLES2/gl2.h>
 #include <GLES2/gl2ext.h>
 #elif PLATFORM(MAC)
 #include <OpenGL/gl.h>
-#elif PLATFORM(GTK) || PLATFORM(EFL) || PLATFORM(QT) || PLATFORM(WIN)
+#elif PLATFORM(GTK) || PLATFORM(EFL) || PLATFORM(WIN)
 #include "OpenGLShims.h"
 #endif
 #endif
