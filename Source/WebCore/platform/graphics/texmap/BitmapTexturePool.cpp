@@ -31,6 +31,10 @@
 #include "BitmapTextureGL.h"
 #endif
 
+#if PLATFORM(QT)
+#include "BitmapTextureImageBuffer.h"
+#endif
+
 namespace WebCore {
 
 static const double s_releaseUnusedSecondsTolerance = 3;
@@ -112,6 +116,10 @@ void BitmapTexturePool::releaseUnusedTexturesTimerFired()
 
 RefPtr<BitmapTexture> BitmapTexturePool::createTexture(const BitmapTexture::Flags flags)
 {
+#if PLATFORM(QT)
+    if (!m_context3D)
+        return BitmapTextureImageBuffer::create();
+#endif
 #if USE(TEXTURE_MAPPER_GL)
     return adoptRef(new BitmapTextureGL(m_context3D, flags));
 #else
