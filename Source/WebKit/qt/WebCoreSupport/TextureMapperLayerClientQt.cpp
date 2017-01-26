@@ -86,12 +86,13 @@ void TextureMapperLayerClientQt::syncLayers()
     if (m_rootGraphicsLayer)
         syncRootLayer();
 
-    m_frame->frame->view()->flushCompositingStateIncludingSubframes();
+    bool didSync = m_frame->frame->view()->flushCompositingStateIncludingSubframes();
 
     if (!m_rootGraphicsLayer)
         return;
 
-    downcast<GraphicsLayerTextureMapper>(*m_rootGraphicsLayer).updateBackingStoreIncludingSubLayers();
+    if (didSync)
+        downcast<GraphicsLayerTextureMapper>(*m_rootGraphicsLayer).updateBackingStoreIncludingSubLayers();
 
     if (rootLayer()->descendantsOrSelfHaveRunningAnimations() && !m_syncTimer.isActive())
         m_syncTimer.startOneShot(1.0 / 60.0);
