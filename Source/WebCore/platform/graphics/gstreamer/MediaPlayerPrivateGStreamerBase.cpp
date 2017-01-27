@@ -175,9 +175,9 @@ void registerWebKitGStreamerElements()
 #endif
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA) && USE(OCDM)
-    GRefPtr<GstElementFactory> widevineDecryptorFactory = gst_element_factory_find("webkitwidevine");
+    GRefPtr<GstElementFactory> widevineDecryptorFactory = gst_element_factory_find("webkitopencdmwidevine");
     if (!widevineDecryptorFactory)
-        gst_element_register(0, "webkitwidevine", GST_RANK_PRIMARY + 100, WEBKIT_OPENCDM_WIDEVINE_TYPE_DECRYPT);
+        gst_element_register(0, "webkitopencdmwidevine", GST_RANK_PRIMARY + 100, WEBKIT_TYPE_OPENCDM_WIDEVINE_DECRYPT);
 #endif
 }
 

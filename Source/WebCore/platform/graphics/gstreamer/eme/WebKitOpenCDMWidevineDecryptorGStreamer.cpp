@@ -2,6 +2,7 @@
  *
  * Copyright (C) 2016-2017 TATA ELXSI
  * Copyright (C) 2016-2017 Metrological
+ * Copyright (C) 2016-2017 Igalia S.L
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -25,14 +26,12 @@
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA) && USE(GSTREAMER) && USE(OCDM)
 
 #include "GUniquePtrGStreamer.h"
-#include <gst/gst.h>
+
 #include <open_cdm.h>
-#include <stdio.h>
 #include <string>
-#include <wtf/glib/GUniquePtr.h>
 #include <wtf/text/WTFString.h>
 
-#define GST_WEBKIT_OPENCDM_WIDEVINE_DECRYPT_GET_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), WEBKIT_OPENCDM_WIDEVINE_TYPE_DECRYPT, WebKitOpenCDMWidevineDecryptPrivate))
+#define GST_WEBKIT_OPENCDM_WIDEVINE_DECRYPT_GET_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), WEBKIT_TYPE_OPENCDM_WIDEVINE_DECRYPT, WebKitOpenCDMWidevineDecryptPrivate))
 
 struct _WebKitOpenCDMWidevineDecryptPrivate {
     String m_session;
@@ -76,13 +75,13 @@ static void webkit_media_opencdm_widevine_decrypt_class_init(WebKitOpenCDMWidevi
     gst_element_class_add_pad_template(elementClass, gst_static_pad_template_get(&srcTemplate));
 
     gst_element_class_set_static_metadata(elementClass,
-        "Decrypt content encrypted using OpenCMDi Encryption",
+        "Decrypt content encrypted using Widevine DRM system supported with OpenCDM",
         GST_ELEMENT_FACTORY_KLASS_DECRYPTOR,
-        "Decrypts media that has been encrypted using OpenCDMi Encryption.",
+        "Decrypts media that has been encrypted using Widevine DRM system supported with OpenCDM",
         "TataElxsi");
 
     GST_DEBUG_CATEGORY_INIT(webkit_media_opencdm_widevine_decrypt_debug_category,
-        "webkitopencdmi", 0, "OpenCDMi decryptor");
+        "webkitopencdmwidevine", 0, "OpenCDM Widevine decryptor");
 
     WebKitMediaCommonEncryptionDecryptClass* cencClass = WEBKIT_MEDIA_CENC_DECRYPT_CLASS(klass);
     cencClass->protectionSystemId = WIDEVINE_PROTECTION_SYSTEM_UUID;
@@ -95,7 +94,6 @@ static void webkit_media_opencdm_widevine_decrypt_class_init(WebKitOpenCDMWidevi
 static void webkit_media_opencdm_widevine_decrypt_init(WebKitOpenCDMWidevineDecrypt* self)
 {
     WebKitOpenCDMWidevineDecryptPrivate* priv = GST_WEBKIT_OPENCDM_WIDEVINE_DECRYPT_GET_PRIVATE(self);
-
     self->priv = priv;
     new (priv) WebKitOpenCDMWidevineDecryptPrivate();
 }
@@ -111,7 +109,6 @@ static void webKitMediaOpenCDMDecryptorFinalize(GObject* object)
 static gboolean webKitMediaOpenCDMDecryptorHandleKeyResponse(WebKitMediaCommonEncryptionDecrypt* self, GstEvent* event)
 {
     const GstStructure* structure = gst_event_get_structure(event);
-
     if (!gst_structure_has_name(structure, "drm-session"))
         return false;
 

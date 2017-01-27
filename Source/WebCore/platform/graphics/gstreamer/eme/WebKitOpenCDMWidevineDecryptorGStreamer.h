@@ -2,6 +2,7 @@
  *
  * Copyright (C) 2016-2017 TATA ELXSI
  * Copyright (C) 2016-2017 Metrological
+ * Copyright (C) 2016-2017 Igalia S.L
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Library General Public
@@ -27,11 +28,9 @@
 
 G_BEGIN_DECLS
 
-#define WEBKIT_OPENCDM_WIDEVINE_TYPE_DECRYPT          (webkit_media_opencdm_widevine_decrypt_get_type())
-#define WEBKIT_OPENCDM_WIDEVINE_DECRYPT(obj)          (G_TYPE_CHECK_INSTANCE_CAST((obj), WEBKIT_OPENCDM_WIDEVINE_TYPE_DECRYPT, WebKitOpenCDMWidevineDecrypt))
-#define WEBKIT_OPENCDM_WIDEVINE_DECRYPT_CLASS(klass)  (G_TYPE_CHECK_CLASS_CAST((klass), WEBKIT_OPENCDM_WIDEVINE_TYPE_DECRYPT, WebKitOpenCDMWidevineDecryptClass))
-#define WEBKIT_OPENCDM_WIDEVINE_IS_DECRYPT(obj)       (G_TYPE_CHECK_INSTANCE_TYPE((obj), WEBKIT_OPENCDM_WIDEVINE_TYPE_DECRYPT))
-#define WEBKIT_OPENCDM_WIDEVINE_IS_DECRYPT_CLASS(obj) (G_TYPE_CHECK_CLASS_TYPE((klass), WEBKIT_OPENCDM_WIDEVINE_TYPE_DECRYPT))
+#define WEBKIT_TYPE_OPENCDM_WIDEVINE_DECRYPT          (webkit_media_opencdm_widevine_decrypt_get_type())
+#define WEBKIT_OPENCDM_WIDEVINE_DECRYPT(obj)          (G_TYPE_CHECK_INSTANCE_CAST((obj), WEBKIT_TYPE_OPENCDM_WIDEVINE_DECRYPT, WebKitOpenCDMWidevineDecrypt))
+#define WEBKIT_OPENCDM_WIDEVINE_DECRYPT_CLASS(klass)  (G_TYPE_CHECK_CLASS_CAST((klass), WEBKIT_TYPE_OPENCDM_WIDEVINE_DECRYPT, WebKitOpenCDMWidevineDecryptClass))
 
 typedef struct _WebKitOpenCDMWidevineDecrypt           WebKitOpenCDMWidevineDecrypt;
 typedef struct _WebKitOpenCDMWidevineDecryptClass      WebKitOpenCDMWidevineDecryptClass;
@@ -41,7 +40,6 @@ GType webkit_media_opencdm_widevine_decrypt_get_type(void);
 
 struct _WebKitOpenCDMWidevineDecrypt {
     WebKitMediaCommonEncryptionDecrypt parent;
-
     WebKitOpenCDMWidevineDecryptPrivate* priv;
 };
 

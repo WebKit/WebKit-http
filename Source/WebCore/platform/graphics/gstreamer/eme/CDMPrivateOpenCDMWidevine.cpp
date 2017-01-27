@@ -33,8 +33,6 @@
 #include "CDM.h"
 #include "CDMSession.h"
 #include "CDMSessionOpenCDMWidevine.h"
-#include "MediaPlayerPrivateGStreamerBase.h"
-#include "WebKitMediaKeyError.h"
 
 #include <gst/gst.h>
 

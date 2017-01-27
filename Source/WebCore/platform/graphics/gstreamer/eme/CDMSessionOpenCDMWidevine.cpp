@@ -1,4 +1,3 @@
-
 /*
  * Copyright (C) 2016-2017 TATA ELXSI
  * Copyright (C) 2016-2017 Metrological
@@ -64,7 +63,8 @@ RefPtr<Uint8Array> CDMSessionOpenCDMWidevine::generateKeyRequest(const String& m
 
     unsigned char temporaryUrl[1024] = {'\0'};
     std::string message;
-    int messageLength = 0, destinationUrlLength = 0;
+    int messageLength = 0;
+    int destinationUrlLength = 0;
     int returnValue = m_openCdmSession->GetKeyMessage(message,
         &messageLength, temporaryUrl, &destinationUrlLength);
     if (returnValue || !messageLength || !destinationUrlLength) {
