@@ -80,6 +80,11 @@ file Source/WebCore/platform/win/SystemInfo.h
 file Source/WebCore/platform/win/WebCoreInstanceHandle.cpp
 file Source/WebCore/platform/win/WebCoreInstanceHandle.h
 
+# macOS-specific code
+file Source/WTF/wtf/cf
+file Source/WTF/wtf/text/cf
+file Source/WebCore/platform/cf/SharedBufferCF.cpp
+
 # WK1 plugin code is in WebKit/win
 file Source/WebKit/win/Plugins
 
