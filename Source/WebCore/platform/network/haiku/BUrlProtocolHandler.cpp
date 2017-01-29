@@ -44,20 +44,20 @@
 static const int gMaxRecursionLimit = 10;
 
 namespace WebCore {
-	
+
 BFormDataIO::BFormDataIO(FormData& form)
-	: m_formElements(form.elements())
-	, m_currentFile(NULL)
-	, m_currentOffset(0)
-	, m_currentItem(0)
-	, m_lastItem(0)
+    : m_formElements(form.elements())
+    , m_currentFile(NULL)
+    , m_currentOffset(0)
+    , m_currentItem(0)
+    , m_lastItem(0)
 {
     _ParseCurrentElement();
 }
 
 BFormDataIO::~BFormDataIO()
 {
-	delete m_currentFile;
+    delete m_currentFile;
 }
 
 ssize_t BFormDataIO::Size()
@@ -162,7 +162,7 @@ BFormDataIO::Read(void* buffer, size_t size)
 
                 read += result;
 
-                if (m_currentFile->Position() >= m_currentFileSize 
+                if (m_currentFile->Position() >= m_currentFileSize
                         || !m_currentFile->IsReadable())
                     _NextElement();
             }
@@ -178,7 +178,7 @@ BFormDataIO::Read(void* buffer, size_t size)
                     toCopy = element.m_data.size() - m_currentOffset;
 
                 memcpy(reinterpret_cast<char*>(buffer) + read,
-                    element.m_data.data() + m_currentOffset, toCopy); 
+                    element.m_data.data() + m_currentOffset, toCopy);
                 m_currentOffset += toCopy;
                 read += toCopy;
 
@@ -192,7 +192,7 @@ BFormDataIO::Read(void* buffer, size_t size)
     return read;
 }
 
-ssize_t 
+ssize_t
 BFormDataIO::Write(const void* /*buffer*/, size_t /*size*/)
 {
     // Write isn't implemented since we don't use it
@@ -282,9 +282,10 @@ BUrlProtocolHandler::BUrlProtocolHandler(NetworkingContext* context,
     , m_postData(NULL)
     , m_request(handle->firstRequest().toNetworkRequest(
         context ? context->context() : NULL))
+    , m_position(0)
     , m_redirectionTries(gMaxRecursionLimit)
 {
-    m_method = BString(m_resourceHandle->firstRequest().httpMethod());
+    BString method = BString(m_resourceHandle->firstRequest().httpMethod());
 
     if (!m_resourceHandle)
         return;
@@ -297,7 +298,7 @@ BUrlProtocolHandler::BUrlProtocolHandler(NetworkingContext* context,
     BHttpRequest* httpRequest = dynamic_cast<BHttpRequest*>(m_request);
     if(httpRequest) {
         // TODO maybe we have data to send in other cases ?
-        if(m_method == B_HTTP_POST || m_method == B_HTTP_PUT) {
+        if(method == B_HTTP_POST || method == B_HTTP_PUT) {
             FormData* form = m_resourceHandle->firstRequest().httpBody();
             if(form) {
                 m_postData = new BFormDataIO(*form);
@@ -305,7 +306,7 @@ BUrlProtocolHandler::BUrlProtocolHandler(NetworkingContext* context,
             }
         }
 
-        httpRequest->SetMethod(m_method.String());
+        httpRequest->SetMethod(method.String());
     }
 
     // In synchronous mode, call this listener directly.
@@ -470,16 +471,12 @@ void BUrlProtocolHandler::AuthenticationNeeded(BHttpRequest* request, ResourceRe
 
 void BUrlProtocolHandler::ConnectionOpened(BUrlRequest*)
 {
-    BHttpRequest* httpRequest = dynamic_cast<BHttpRequest*>(m_request);
-    if (httpRequest != NULL)
-        m_redirected = true;
-    else
-        m_redirected = false;
     m_responseDataSent = false;
 }
 
 
-void BUrlProtocolHandler::HeadersReceived(BUrlRequest* /*caller*/)
+void BUrlProtocolHandler::HeadersReceived(BUrlRequest* caller,
+    const BUrlResult& result)
 {
     if (!m_resourceHandle)
         return;
@@ -494,34 +491,35 @@ void BUrlProtocolHandler::HeadersReceived(BUrlRequest* /*caller*/)
     WTF::String mimeType = extractMIMETypeFromMediaType(contentType);
 
     if (httpRequest) {
-        const BHttpResult& result = static_cast<const BHttpResult&>(
-            httpRequest->Result());
-        BString locationString(result.Headers()["Location"]);
-        if (locationString.Length()) {
+        const BHttpResult& hresult = static_cast<const BHttpResult&>(
+            result);
+        BString location = hresult.Headers()["Location"];
+        if (location.Length() > 0) {
             m_redirected = true;
-            url = URL(url, locationString);
-        } else
+            url = URL(url, location);
+        } else {
             m_redirected = false;
+        }
     }
 
     ResourceResponse response(url, mimeType, contentLength, encoding);
 
     if (httpRequest) {
-        const BHttpResult& result = static_cast<const BHttpResult&>(
-            httpRequest->Result());
-        int statusCode = result.StatusCode();
+        const BHttpResult& hresult = static_cast<const BHttpResult&>(
+            result);
+        int statusCode = hresult.StatusCode();
 
         String suggestedFilename = filenameFromHTTPContentDisposition(
-            result.Headers()["Content-Disposition"]);
+            hresult.Headers()["Content-Disposition"]);
 
         if (!suggestedFilename.isEmpty())
             response.setSuggestedFilename(suggestedFilename);
 
         response.setHTTPStatusCode(statusCode);
-        response.setHTTPStatusText(result.StatusText());
+        response.setHTTPStatusText(hresult.StatusText());
 
         // Add remaining headers.
-        const BHttpHeaders& resultHeaders = result.Headers();
+        const BHttpHeaders& resultHeaders = hresult.Headers();
         for (int i = 0; i < resultHeaders.CountHeaders(); i++) {
             BHttpHeader& headerPair = resultHeaders.HeaderAt(i);
             response.setHTTPHeaderField(headerPair.Name(), headerPair.Value());
@@ -560,7 +558,8 @@ void BUrlProtocolHandler::HeadersReceived(BUrlRequest* /*caller*/)
     }
 }
 
-void BUrlProtocolHandler::DataReceived(BUrlRequest* /*caller*/, const char* data, off_t /*position*/, ssize_t size)
+void BUrlProtocolHandler::DataReceived(BUrlRequest* caller, const char* data,
+    off_t position, ssize_t size)
 {
     if (!m_resourceHandle)
         return;
@@ -573,13 +572,21 @@ void BUrlProtocolHandler::DataReceived(BUrlRequest* /*caller*/, const char* data
     if (m_redirected)
         return;
 
+    if (position != m_position)
+    {
+        debugger("bad redirect");
+        return;
+    }
+
     if (size > 0) {
         m_responseDataSent = true;
         client->didReceiveData(m_resourceHandle, data, size, size);
     }
+
+    m_position += size;
 }
 
-void BUrlProtocolHandler::UploadProgress(BUrlRequest* /*caller*/, ssize_t bytesSent, ssize_t bytesTotal)
+void BUrlProtocolHandler::UploadProgress(BUrlRequest* caller, ssize_t bytesSent, ssize_t bytesTotal)
 {
     if (!m_resourceHandle)
         return;

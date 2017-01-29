@@ -75,19 +75,20 @@ private:
 
     // BUrlListener hooks
     void ConnectionOpened(BUrlRequest* caller) override;
-	void HeadersReceived(BUrlRequest* caller) override;
-	void DataReceived(BUrlRequest* caller, const char* data, off_t position, ssize_t size) override;
-	void UploadProgress(BUrlRequest* caller, ssize_t bytesSent, ssize_t bytesTotal) override;
-	void RequestCompleted(BUrlRequest* caller, bool success) override;
+    void HeadersReceived(BUrlRequest* caller, const BUrlResult& result) override;
+    void DataReceived(BUrlRequest* caller, const char* data, off_t position,
+        ssize_t size) override;
+    void UploadProgress(BUrlRequest* caller, ssize_t bytesSent, ssize_t bytesTotal) override;
+    void RequestCompleted(BUrlRequest* caller, bool success) override;
     bool CertificateVerificationFailed(BUrlRequest* caller, BCertificate& certificate, const char* message) override;
 
 private:
     ResourceHandle* m_resourceHandle;
     bool m_redirected;
     bool m_responseDataSent;
-    BString m_method;
     BFormDataIO* m_postData;
     BUrlRequest* m_request;
+    off_t m_position;
 
     int m_redirectionTries;
 };
