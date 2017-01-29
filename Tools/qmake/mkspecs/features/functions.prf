@@ -102,6 +102,8 @@ defineTest(isPlatformSupported) {
         skipBuild("C++11 support is required in order to build QtWebKit.")
     }
 
+    isRubyVersionSupported()
+
     isEmpty(skipBuildReason): return(true)
     return(false)
 }
@@ -110,6 +112,13 @@ defineTest(isGCCVersionSupported) {
     gcc_version = $${QT_GCC_MAJOR_VERSION}.$${QT_GCC_MINOR_VERSION}
     isVersionAtLeast($$gcc_version, "4.9"): return(true)
     skipBuild("Using gcc version $$gcc_version, but at least gcc version 4.9 is required to build QtWebKit.")
+    return(false)
+}
+
+defineTest(isRubyVersionSupported) {
+    ruby_version = $$system("ruby -e 'puts RUBY_VERSION'")
+    isVersionAtLeast($$ruby_version, "1.9"): return(true)
+    skipBuild("Using Ruby version $$ruby_version, but at least Ruby 1.9 is required to build QtWebKit.")
     return(false)
 }
 
