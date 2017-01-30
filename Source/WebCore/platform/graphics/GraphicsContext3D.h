@@ -686,7 +686,7 @@ public:
         ALREADY_SIGNALED = 0x911A,
         TIMEOUT_EXPIRED = 0x911B,
         CONDITION_SATISFIED = 0x911C,
-#if PLATFORM(WIN)
+#if OS(WINDOWS)
         WAIT_FAILED_WIN = 0x911D,
 #else
         WAIT_FAILED = 0x911D,
