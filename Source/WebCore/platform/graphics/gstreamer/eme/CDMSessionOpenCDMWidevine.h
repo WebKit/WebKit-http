@@ -55,7 +55,6 @@ private:
     OpenCdm* m_openCdmSession;
     String m_sessionId;
     MediaPlayerPrivateGStreamerBase* m_playerPrivate;
-    String m_openCdmKeySystem;
 };
 
 } // namespace WebCore

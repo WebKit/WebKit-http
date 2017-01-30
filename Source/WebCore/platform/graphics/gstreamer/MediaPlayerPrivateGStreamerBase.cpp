@@ -124,7 +124,6 @@
 #include "CDMPrivateOpenCDMWidevine.h"
 #include "CDMSessionOpenCDMWidevine.h"
 #include "WebKitOpenCDMWidevineDecryptorGStreamer.h"
-#include "WebKitOpenCDMPlayReadyDecryptorGStreamer.h"
 #endif // USE(OCDM)
 #endif // ENABLE(LEGACY_ENCRYPTED_MEDIA)
 #if USE(PLAYREADY)
@@ -169,22 +168,16 @@ void registerWebKitGStreamerElements()
         gst_element_register(0, "webkitclearkey", GST_RANK_PRIMARY + 100, WEBKIT_TYPE_MEDIA_CK_DECRYPT);
 #endif
 
-#if (ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA)) && USE(PLAYREADY) && !USE(OCDM)
+#if (ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA)) && USE(PLAYREADY)
     GRefPtr<GstElementFactory> playReadyDecryptorFactory = gst_element_factory_find("webkitplayreadydec");
     if (!playReadyDecryptorFactory)
         gst_element_register(0, "webkitplayreadydec", GST_RANK_PRIMARY + 100, WEBKIT_TYPE_MEDIA_PLAYREADY_DECRYPT);
 #endif
 
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA) && USE(OCDM)
-    GRefPtr<GstElementFactory> widevineOpenCDMDecryptorFactory = gst_element_factory_find("webkitopencdmwidevine");
-    if (!widevineOpenCDMDecryptorFactory)
+    GRefPtr<GstElementFactory> widevineDecryptorFactory = gst_element_factory_find("webkitopencdmwidevine");
+    if (!widevineDecryptorFactory)
         gst_element_register(0, "webkitopencdmwidevine", GST_RANK_PRIMARY + 100, WEBKIT_TYPE_OPENCDM_WIDEVINE_DECRYPT);
-#endif
-
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA) && USE(OCDM)
-    GRefPtr<GstElementFactory> playReadyOpenCDMDecryptorFactory = gst_element_factory_find("webkitopencdmplayready");
-    if (!playReadyOpenCDMDecryptorFactory)
-        gst_element_register(0, "webkitopencdmplayready", GST_RANK_PRIMARY + 100, WEBKIT_TYPE_OPENCDM_PLAYREADY_DECRYPT);
 #endif
 }
 
@@ -1708,16 +1701,12 @@ static AtomicString keySystemIdToUuid(const AtomicString& id)
         return AtomicString(CLEAR_KEY_PROTECTION_SYSTEM_UUID);
 #endif
 
-#if USE(PLAYREADY) || USE(OCDM)
+#if USE(PLAYREADY)
     if (equalIgnoringASCIICase(id, PLAYREADY_PROTECTION_SYSTEM_ID)
         || equalIgnoringASCIICase(id, PLAYREADY_YT_PROTECTION_SYSTEM_ID))
         return AtomicString(PLAYREADY_PROTECTION_SYSTEM_UUID);
 #endif
 
-#if USE(OCDM)
-    if (equalIgnoringASCIICase(id, WIDEVINE_PROTECTION_SYSTEM_ID))
-        return AtomicString(WIDEVINE_PROTECTION_SYSTEM_UUID);
-#endif
     return { };
 }
 #endif

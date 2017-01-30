@@ -816,9 +816,9 @@ void MediaPlayerPrivateGStreamerMSE::dispatchDecryptionKey(GstBuffer* buffer)
 #endif
 
 #if USE(PLAYREADY)
-void MediaPlayerPrivateGStreamerMSE::emitPlayReadySession()
+void MediaPlayerPrivateGStreamerMSE::emitSession()
 {
-    fprintf(stderr, "MediaPlayerPrivateGStreamerMSE::emitPlayReadySession()\n");
+    fprintf(stderr, "MediaPlayerPrivateGStreamerMSE::emitSession()\n");
     PlayreadySession* session = prSession();
     if (!session->ready())
         return;

@@ -36,8 +36,8 @@
 
 #include <gst/gst.h>
 
-GST_DEBUG_CATEGORY_EXTERN(webkit_media_opencdm_decrypt_debug_category);
-#define GST_CAT_DEFAULT webkit_media_opencdm_decrypt_debug_category
+GST_DEBUG_CATEGORY_EXTERN(webkit_media_opencdm_widevine_decrypt_debug_category);
+#define GST_CAT_DEFAULT webkit_media_opencdm_widevine_decrypt_debug_category
 
 namespace WebCore {
 
@@ -67,7 +67,7 @@ std::unique_ptr<CDMSession> CDMPrivateOpenCDMWidevine::createSession(CDMSessionC
 {
     ASSERT(s_openCdmKeySystem);
     getOpenCdmInstance()->SelectKeySystem(s_openCdmKeySystem.utf8().data());
-    return std::make_unique<CDMSessionOpenCDMWidevine>(client, getOpenCdmInstance(), playerPrivate, s_openCdmKeySystem);
+    return std::make_unique<CDMSessionOpenCDMWidevine>(client, getOpenCdmInstance(), playerPrivate);
 }
 
 OpenCdm* CDMPrivateOpenCDMWidevine::getOpenCdmInstance()
