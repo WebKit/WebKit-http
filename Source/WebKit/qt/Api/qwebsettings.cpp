@@ -153,9 +153,7 @@ void QWebSettingsPrivate::apply()
         value = attributes.value(QWebSettings::AcceleratedCompositingEnabled,
                                       global->attributes.value(QWebSettings::AcceleratedCompositingEnabled));
 
-        // FIXME: Temporary disabled until AC is fully working
-        // settings->setAcceleratedCompositingEnabled(value);
-        settings->setAcceleratedCompositingEnabled(false);
+        settings->setAcceleratedCompositingEnabled(value);
 
 #if ENABLE(ACCELERATED_2D_CANVAS)
         value = value && attributes.value(QWebSettings::Accelerated2dCanvasEnabled,
