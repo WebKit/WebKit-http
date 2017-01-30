@@ -11,7 +11,7 @@ add_subdirectory(JavaScriptCore)
 
 add_subdirectory(WebCore)
 
-if (WIN32 AND ENABLE_GRAPHICS_CONTEXT_3D)
+if (${PORT} STREQUAL "Win" AND ENABLE_GRAPHICS_CONTEXT_3D)
     add_subdirectory(ThirdParty/ANGLE)
 endif ()
 
