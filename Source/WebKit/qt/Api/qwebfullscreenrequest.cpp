@@ -107,7 +107,7 @@ void QWebFullScreenRequest::reject()
 
 bool QWebFullScreenRequest::toggleOn() const
 {
-    return d->toggleOn; 
+    return d->toggleOn;
 }
 
 QUrl QWebFullScreenRequest::origin() const
