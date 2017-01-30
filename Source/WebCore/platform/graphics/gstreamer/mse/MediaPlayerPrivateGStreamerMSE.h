@@ -84,7 +84,7 @@ public:
     void dispatchDecryptionKey(GstBuffer*) override;
 #endif
 #if USE(PLAYREADY)
-    void emitSession() override;
+    void emitPlayReadySession() override;
 #endif
 
     void trackDetected(RefPtr<AppendPipeline>, RefPtr<WebCore::TrackPrivateBase> oldTrack, RefPtr<WebCore::TrackPrivateBase> newTrack);
