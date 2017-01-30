@@ -48,6 +48,7 @@ class FilterOperations;
 class TextureMapper {
     WTF_MAKE_FAST_ALLOCATED;
 public:
+    enum AccelerationMode { SoftwareMode, OpenGLMode };
     enum PaintFlag {
         PaintingMirrored = 1 << 0,
     };
@@ -59,9 +60,9 @@ public:
 
     typedef unsigned PaintFlags;
 
-    static std::unique_ptr<TextureMapper> create();
+    static std::unique_ptr<TextureMapper> create(AccelerationMode newMode = SoftwareMode);
 
-    explicit TextureMapper();
+    explicit TextureMapper(AccelerationMode);
     virtual ~TextureMapper();
 
     enum ExposedEdges {
@@ -93,6 +94,7 @@ public:
 
     InterpolationQuality imageInterpolationQuality() const { return m_interpolationQuality; }
     TextDrawingModeFlags textDrawingMode() const { return m_textDrawingMode; }
+    AccelerationMode accelerationMode() const { return m_accelerationMode; }
 
     virtual void beginPainting(PaintFlags = 0) { }
     virtual void endPainting() { }
@@ -125,6 +127,7 @@ private:
 #endif
     InterpolationQuality m_interpolationQuality;
     TextDrawingModeFlags m_textDrawingMode;
+    AccelerationMode m_accelerationMode;
     bool m_isMaskMode;
     TransformationMatrix m_patternTransform;
     WrapMode m_wrapMode;

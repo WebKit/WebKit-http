@@ -23,6 +23,7 @@
 #include "BitmapTexturePool.h"
 #include "FilterOperations.h"
 #include "GraphicsLayer.h"
+#include "TextureMapperImageBuffer.h"
 #include "Timer.h"
 #include <wtf/CurrentTime.h>
 
@@ -35,15 +36,18 @@ PassRefPtr<BitmapTexture> TextureMapper::acquireTextureFromPool(const IntSize& s
     return selectedTexture.release();
 }
 
-std::unique_ptr<TextureMapper> TextureMapper::create()
+std::unique_ptr<TextureMapper> TextureMapper::create(AccelerationMode mode)
 {
+    if (mode == SoftwareMode)
+        return std::make_unique<TextureMapperImageBuffer>();
     return platformCreateAccelerated();
 }
 
-TextureMapper::TextureMapper()
+TextureMapper::TextureMapper(AccelerationMode accelerationMode)
     : m_context(0)
     , m_interpolationQuality(InterpolationDefault)
     , m_textDrawingMode(TextModeFill)
+    , m_accelerationMode(accelerationMode)
     , m_isMaskMode(false)
     , m_wrapMode(StretchWrap)
 { }
