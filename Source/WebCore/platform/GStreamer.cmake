@@ -171,6 +171,7 @@ if (ENABLE_LEGACY_ENCRYPTED_MEDIA_V1 OR ENABLE_LEGACY_ENCRYPTED_MEDIA)
         list(APPEND WebCore_SOURCES
             platform/graphics/gstreamer/eme/CDMPrivateOpenCDMWidevine.cpp
             platform/graphics/gstreamer/eme/CDMSessionOpenCDMWidevine.cpp
+            platform/graphics/gstreamer/eme/WebKitOpenCDMDecryptorGStreamer.cpp
             platform/graphics/gstreamer/eme/WebKitOpenCDMWidevineDecryptorGStreamer.cpp
         )
     endif ()

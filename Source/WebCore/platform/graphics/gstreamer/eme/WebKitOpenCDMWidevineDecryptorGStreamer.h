@@ -25,6 +25,10 @@
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA) && USE(GSTREAMER) && USE(OCDM)
 
 #include "WebKitCommonEncryptionDecryptorGStreamer.h"
+#include "WebKitOpenCDMDecryptorGStreamer.h"
+
+#define WIDEVINE_PROTECTION_SYSTEM_UUID "edef8ba9-79d6-4ace-a3c8-27dcd51d21ed"
+#define WIDEVINE_PROTECTION_SYSTEM_ID "com.widevine.alpha"
 
 G_BEGIN_DECLS
 
@@ -34,17 +38,15 @@ G_BEGIN_DECLS
 
 typedef struct _WebKitOpenCDMWidevineDecrypt           WebKitOpenCDMWidevineDecrypt;
 typedef struct _WebKitOpenCDMWidevineDecryptClass      WebKitOpenCDMWidevineDecryptClass;
-typedef struct _WebKitOpenCDMWidevineDecryptPrivate    WebKitOpenCDMWidevineDecryptPrivate;
 
 GType webkit_media_opencdm_widevine_decrypt_get_type(void);
 
 struct _WebKitOpenCDMWidevineDecrypt {
-    WebKitMediaCommonEncryptionDecrypt parent;
-    WebKitOpenCDMWidevineDecryptPrivate* priv;
+    WebKitOpenCDMDecrypt parent;
 };
 
 struct _WebKitOpenCDMWidevineDecryptClass {
-    WebKitMediaCommonEncryptionDecryptClass parentClass;
+    WebKitOpenCDMDecryptClass parentClass;
 };
 
 G_END_DECLS
