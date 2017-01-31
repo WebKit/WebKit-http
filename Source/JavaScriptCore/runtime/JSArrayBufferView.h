@@ -162,7 +162,7 @@ public:
     bool isNeutered() { return hasArrayBuffer() && !vector(); }
     void neuter();
     
-    void* vector()
+    void* vector() const
     {
         return m_vector.getPredicated(
             this,
