@@ -27,22 +27,22 @@
 #if USE(TEXTURE_MAPPER)
 namespace WebCore {
 
-class TextureMapperImageBuffer : public TextureMapper {
+class TextureMapperImageBuffer final : public TextureMapper {
     WTF_MAKE_FAST_ALLOCATED;
 public:
     TextureMapperImageBuffer();
 
     // TextureMapper implementation
-    virtual void drawBorder(const Color&, float borderWidth, const FloatRect&, const TransformationMatrix&) override;
-    virtual void drawNumber(int number, const Color&, const FloatPoint&, const TransformationMatrix&) override;
-    virtual void drawTexture(const BitmapTexture&, const FloatRect& targetRect, const TransformationMatrix&, float opacity, unsigned exposedEdges) override;
-    virtual void drawSolidColor(const FloatRect&, const TransformationMatrix&, const Color&) override;
-    virtual void beginClip(const TransformationMatrix&, const FloatRect&) override;
-    virtual void bindSurface(BitmapTexture* surface) override { m_currentSurface = surface;}
-    virtual void endClip() override { graphicsContext()->restore(); }
-    virtual IntRect clipBounds() override { return currentContext()->clipBounds(); }
-    virtual IntSize maxTextureSize() const;
-    virtual PassRefPtr<BitmapTexture> createTexture() override { return BitmapTextureImageBuffer::create(); }
+    void drawBorder(const Color&, float borderWidth, const FloatRect&, const TransformationMatrix&) final;
+    void drawNumber(int number, const Color&, const FloatPoint&, const TransformationMatrix&) final;
+    void drawTexture(const BitmapTexture&, const FloatRect& targetRect, const TransformationMatrix&, float opacity, unsigned exposedEdges) final;
+    void drawSolidColor(const FloatRect&, const TransformationMatrix&, const Color&) final;
+    void beginClip(const TransformationMatrix&, const FloatRect&) final;
+    void bindSurface(BitmapTexture* surface) final { m_currentSurface = surface;}
+    void endClip() final { graphicsContext()->restore(); }
+    IntRect clipBounds() final { return currentContext()->clipBounds(); }
+    IntSize maxTextureSize() const final;
+    PassRefPtr<BitmapTexture> createTexture() final { return BitmapTextureImageBuffer::create(); }
 
     inline GraphicsContext* currentContext()
     {

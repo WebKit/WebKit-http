@@ -36,17 +36,18 @@ namespace WebCore {
 
 class GraphicsContext;
 
-class BitmapTextureImageBuffer : public BitmapTexture {
+class BitmapTextureImageBuffer final : public BitmapTexture {
 public:
     static PassRefPtr<BitmapTexture> create() { return adoptRef(new BitmapTextureImageBuffer); }
-    virtual IntSize size() const { return m_image->internalSize(); }
-    virtual void didReset();
-    virtual bool isValid() const { return m_image.get(); }
+    IntSize size() const final { return m_image->internalSize(); }
+    void didReset() final;
+    bool isValid() const final { return m_image.get(); }
+    void updateContents(Image*, const IntRect&, const IntPoint&, UpdateContentsFlag) final;
+    void updateContents(TextureMapper*, GraphicsLayer*, const IntRect& target, const IntPoint& offset, UpdateContentsFlag) final;
+    void updateContents(const void*, const IntRect& target, const IntPoint& sourceOffset, int bytesPerLine, UpdateContentsFlag) final;
+    PassRefPtr<BitmapTexture> applyFilters(TextureMapper*, const FilterOperations&) final;
+
     inline GraphicsContext* graphicsContext() { return m_image ? &m_image->context() : nullptr; }
-    virtual void updateContents(Image*, const IntRect&, const IntPoint&, UpdateContentsFlag);
-    virtual void updateContents(TextureMapper*, GraphicsLayer*, const IntRect& target, const IntPoint& offset, UpdateContentsFlag);
-    virtual void updateContents(const void*, const IntRect& target, const IntPoint& sourceOffset, int bytesPerLine, UpdateContentsFlag);
-    PassRefPtr<BitmapTexture> applyFilters(TextureMapper*, const FilterOperations&);
     ImageBuffer* image() const { return m_image.get(); }
 
 private:
