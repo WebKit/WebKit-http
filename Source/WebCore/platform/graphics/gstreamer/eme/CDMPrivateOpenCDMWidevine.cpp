@@ -67,7 +67,7 @@ std::unique_ptr<CDMSession> CDMPrivateOpenCDMWidevine::createSession(CDMSessionC
 {
     ASSERT(s_openCdmKeySystem);
     getOpenCdmInstance()->SelectKeySystem(s_openCdmKeySystem.utf8().data());
-    return std::make_unique<CDMSessionOpenCDMWidevine>(client, getOpenCdmInstance(), playerPrivate);
+    return std::make_unique<CDMSessionOpenCDMWidevine>(client, getOpenCdmInstance(), playerPrivate, s_openCdmKeySystem);
 }
 
 OpenCdm* CDMPrivateOpenCDMWidevine::getOpenCdmInstance()

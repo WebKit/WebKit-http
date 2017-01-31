@@ -40,7 +40,7 @@ class MediaPlayerPrivateGStreamerBase;
 
 class CDMSessionOpenCDMWidevine : public CDMSession {
 public:
-    CDMSessionOpenCDMWidevine(CDMSessionClient*, OpenCdm*, MediaPlayerPrivateGStreamerBase*);
+    CDMSessionOpenCDMWidevine(CDMSessionClient*, OpenCdm*, MediaPlayerPrivateGStreamerBase*, String);
     virtual ~CDMSessionOpenCDMWidevine() = default;
 
     void setClient(CDMSessionClient*) override { }
@@ -55,6 +55,7 @@ private:
     OpenCdm* m_openCdmSession;
     String m_sessionId;
     MediaPlayerPrivateGStreamerBase* m_playerPrivate;
+    String m_openCdmKeySystem;
 };
 
 } // namespace WebCore

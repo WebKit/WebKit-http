@@ -38,19 +38,18 @@
 GST_DEBUG_CATEGORY_EXTERN(webkit_media_opencdm_widevine_decrypt_debug_category);
 #define GST_CAT_DEFAULT webkit_media_opencdm_widevine_decrypt_debug_category
 
-#define WIDEVINE_PROTECTION_SYSTEM_UUID "edef8ba9-79d6-4ace-a3c8-27dcd51d21ed"
-
 namespace WebCore {
 
-CDMSessionOpenCDMWidevine::CDMSessionOpenCDMWidevine(CDMSessionClient*, OpenCdm* openCdm, MediaPlayerPrivateGStreamerBase* playerPrivate)
+CDMSessionOpenCDMWidevine::CDMSessionOpenCDMWidevine(CDMSessionClient*, OpenCdm* openCdm, MediaPlayerPrivateGStreamerBase* playerPrivate, String openCdmKeySystem)
     : m_openCdmSession(openCdm)
     , m_playerPrivate(playerPrivate)
+    , m_openCdmKeySystem(openCdmKeySystem)
 {
 }
 
 RefPtr<Uint8Array> CDMSessionOpenCDMWidevine::generateKeyRequest(const String& mimeType, Uint8Array* initData, String& destinationUrl, unsigned short& errorCode, uint32_t&)
 {
-    m_playerPrivate->receivedGenerateKeyRequest(WIDEVINE_PROTECTION_SYSTEM_UUID);
+    m_playerPrivate->receivedGenerateKeyRequest(m_openCdmKeySystem);
 
     std::string sessionId;
     m_openCdmSession->CreateSession(mimeType.utf8().data(), reinterpret_cast<unsigned char*>(initData->data()),

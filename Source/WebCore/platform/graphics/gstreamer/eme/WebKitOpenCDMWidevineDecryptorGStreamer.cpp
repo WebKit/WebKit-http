@@ -28,7 +28,6 @@
 #include "GUniquePtrGStreamer.h"
 
 #include <open_cdm.h>
-#include <string>
 #include <wtf/text/WTFString.h>
 
 #define GST_WEBKIT_OPENCDM_WIDEVINE_DECRYPT_GET_PRIVATE(obj) (G_TYPE_INSTANCE_GET_PRIVATE((obj), WEBKIT_TYPE_OPENCDM_WIDEVINE_DECRYPT, WebKitOpenCDMWidevineDecryptPrivate))
