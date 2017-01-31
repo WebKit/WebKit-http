@@ -460,7 +460,6 @@ set(WebKit2_SOURCES
     UIProcess/API/C/WKPreferences.cpp
     UIProcess/API/C/WKProtectionSpace.cpp
     UIProcess/API/C/WKResourceCacheManager.cpp
-    UIProcess/API/C/WKSessionRef.cpp
     UIProcess/API/C/WKSessionStateRef.cpp
     UIProcess/API/C/WKTextChecker.cpp
     UIProcess/API/C/WKUserContentControllerRef.cpp
