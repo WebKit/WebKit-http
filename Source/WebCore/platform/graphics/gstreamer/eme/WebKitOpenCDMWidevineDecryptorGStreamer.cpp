@@ -44,8 +44,6 @@ static gboolean webKitMediaOpenCDMDecryptorDecrypt(WebKitMediaCommonEncryptionDe
 GST_DEBUG_CATEGORY(webkit_media_opencdm_widevine_decrypt_debug_category);
 #define GST_CAT_DEFAULT webkit_media_opencdm_widevine_decrypt_debug_category
 
-#define WIDEVINE_PROTECTION_SYSTEM_UUID "edef8ba9-79d6-4ace-a3c8-27dcd51d21ed"
-
 static GstStaticPadTemplate sinkTemplate = GST_STATIC_PAD_TEMPLATE("sink",
     GST_PAD_SINK,
     GST_PAD_ALWAYS,

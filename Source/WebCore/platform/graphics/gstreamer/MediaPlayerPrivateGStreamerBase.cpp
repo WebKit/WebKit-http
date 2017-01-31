@@ -1707,6 +1707,11 @@ static AtomicString keySystemIdToUuid(const AtomicString& id)
         return AtomicString(PLAYREADY_PROTECTION_SYSTEM_UUID);
 #endif
 
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA) && USE(OCDM)
+    if (equalIgnoringASCIICase(id, WIDEVINE_PROTECTION_SYSTEM_ID))
+        return AtomicString(WIDEVINE_PROTECTION_SYSTEM_UUID);
+#endif
+
     return { };
 }
 #endif
