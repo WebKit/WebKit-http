@@ -38,6 +38,11 @@
 #include "OpenGLESShims.h"
 #elif PLATFORM(QT)
 #include <qopengl.h>
+
+#ifndef GL_SAMPLER_2D_RECT_ARB
+#define GL_SAMPLER_2D_RECT_ARB            0x8B63
+#endif
+
 #elif PLATFORM(GTK) || PLATFORM(EFL)
 #if USE(OPENGL_ES_2)
 #include <GLES2/gl2.h>
@@ -73,7 +78,7 @@ struct ANGLEShaderSymbol {
         return symbolType == SHADER_SYMBOL_TYPE_UNIFORM
             && (dataType == GL_SAMPLER_2D
             || dataType == GL_SAMPLER_CUBE
-#if !PLATFORM(IOS) && !((PLATFORM(EFL) || PLATFORM(GTK) || PLATFORM(QT)) && USE(OPENGL_ES_2))
+#if !PLATFORM(IOS) && !((PLATFORM(EFL) || PLATFORM(GTK)) && USE(OPENGL_ES_2))
             || dataType == GL_SAMPLER_2D_RECT_ARB
 #endif
             );
