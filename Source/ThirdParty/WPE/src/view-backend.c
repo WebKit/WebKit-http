@@ -43,7 +43,7 @@ __attribute__((visibility("default")))
 struct wpe_view_backend*
 wpe_view_backend_create_with_backend_interface(struct wpe_view_backend_interface* interface, void* interface_user_data)
 {
-    struct wpe_view_backend* backend = malloc(sizeof(struct wpe_view_backend));
+    struct wpe_view_backend* backend = calloc(1, sizeof(struct wpe_view_backend));
     if (!backend)
         return 0;
 
