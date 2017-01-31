@@ -43,9 +43,9 @@ public:
     void didReset() final;
     bool isValid() const final { return m_image.get(); }
     void updateContents(Image*, const IntRect&, const IntPoint&, UpdateContentsFlag) final;
-    void updateContents(TextureMapper*, GraphicsLayer*, const IntRect& target, const IntPoint& offset, UpdateContentsFlag) final;
+    void updateContents(TextureMapper&, GraphicsLayer*, const IntRect& target, const IntPoint& offset, UpdateContentsFlag, float scale) final;
     void updateContents(const void*, const IntRect& target, const IntPoint& sourceOffset, int bytesPerLine, UpdateContentsFlag) final;
-    PassRefPtr<BitmapTexture> applyFilters(TextureMapper*, const FilterOperations&) final;
+    PassRefPtr<BitmapTexture> applyFilters(TextureMapper&, const FilterOperations&) final;
 
     inline GraphicsContext* graphicsContext() { return m_image ? &m_image->context() : nullptr; }
     ImageBuffer* image() const { return m_image.get(); }
