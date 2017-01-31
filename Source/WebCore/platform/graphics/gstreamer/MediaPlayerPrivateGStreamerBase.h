@@ -150,8 +150,12 @@ public:
 
 #if USE(PLAYREADY)
     PlayreadySession* prSession() const;
-    virtual void emitSession();
+    virtual void emitPlayReadySession();
 #endif
+#endif
+
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA) && USE(OCDM)
+    virtual void emitOpenCDMWidevineSession();
 #endif
 
     static bool supportsKeySystem(const String& keySystem, const String& mimeType);

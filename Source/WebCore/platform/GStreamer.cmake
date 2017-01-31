@@ -166,6 +166,14 @@ if (ENABLE_LEGACY_ENCRYPTED_MEDIA_V1 OR ENABLE_LEGACY_ENCRYPTED_MEDIA)
             platform/graphics/gstreamer/eme/PlayreadySession.cpp
         )
     endif ()
+
+    if (ENABLE_LEGACY_ENCRYPTED_MEDIA AND ENABLE_OCDM)
+        list(APPEND WebCore_SOURCES
+            platform/graphics/gstreamer/eme/CDMPrivateOpenCDMWidevine.cpp
+            platform/graphics/gstreamer/eme/CDMSessionOpenCDMWidevine.cpp
+            platform/graphics/gstreamer/eme/WebKitOpenCDMWidevineDecryptorGStreamer.cpp
+        )
+    endif ()
 endif ()
 
 if (USE_HOLE_PUNCH_EXTERNAL)
