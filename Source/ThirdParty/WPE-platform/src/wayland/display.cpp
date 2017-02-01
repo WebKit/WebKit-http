@@ -177,9 +177,10 @@ static const struct wl_pointer_listener g_pointerListener = {
         auto& pointer = static_cast<Display::SeatData*>(data)->pointer;
         pointer.coords = { x, y };
 
-        if (pointer.target.first) {
-            struct wpe_input_pointer_event event = { wpe_input_pointer_event_type_motion, time, x, y, pointer.button, pointer.state };
+        struct wpe_input_pointer_event event = { wpe_input_pointer_event_type_motion, time, x, y, pointer.button, pointer.state };
+        EventDispatcher::singleton().sendEvent( event );
 
+        if (pointer.target.first) {
             struct wpe_view_backend* backend = pointer.target.second;
             wpe_view_backend_dispatch_pointer_event(backend, &event);
         }
@@ -200,9 +201,10 @@ static const struct wl_pointer_listener g_pointerListener = {
         pointer.button = !!state ? button : 0;
         pointer.state = state;
 
-        if (pointer.target.first) {
-            struct wpe_input_pointer_event event = { wpe_input_pointer_event_type_button, time, coords.first, coords.second, button, state };
+        struct wpe_input_pointer_event event = { wpe_input_pointer_event_type_button, time, coords.first, coords.second, button, state };
+        EventDispatcher::singleton().sendEvent( event );
 
+        if (pointer.target.first) {
             struct wpe_view_backend* backend = pointer.target.second;
             wpe_view_backend_dispatch_pointer_event(backend, &event);
         }
@@ -213,9 +215,10 @@ static const struct wl_pointer_listener g_pointerListener = {
         auto& pointer = static_cast<Display::SeatData*>(data)->pointer;
         auto& coords = pointer.coords;
 
-        if (pointer.target.first) {
-            struct wpe_input_axis_event event = { wpe_input_axis_event_type_motion, time, coords.first, coords.second, axis, -wl_fixed_to_int(value) };
+        struct wpe_input_axis_event event = { wpe_input_axis_event_type_motion, time, coords.first, coords.second, axis, -wl_fixed_to_int(value) };
+        EventDispatcher::singleton().sendEvent( event );
 
+        if (pointer.target.first) {
             struct wpe_view_backend* backend = pointer.target.second;
             wpe_view_backend_dispatch_axis_event(backend, &event);
         }
@@ -238,9 +241,10 @@ handleKeyEvent(Display::SeatData& seatData, uint32_t key, uint32_t state, uint32
         unicode = xkb_keysym_to_utf32(keysym);
     }
 
-    if (seatData.keyboard.target.first) {
-        struct wpe_input_keyboard_event event = { time, keysym, unicode, !!state, xkb.modifiers };
+    struct wpe_input_keyboard_event event = { time, keysym, unicode, !!state, xkb.modifiers };
+    EventDispatcher::singleton().sendEvent( event );
 
+    if (seatData.keyboard.target.first) {
         struct wpe_view_backend* backend = seatData.keyboard.target.second;
         wpe_view_backend_dispatch_keyboard_event(backend, &event);
     }
@@ -318,7 +322,6 @@ static const struct wl_keyboard_listener g_keyboardListener = {
     {
         // IDK.
         key += 8;
-
         auto& seatData = *static_cast<Display::SeatData*>(data);
         seatData.serial = serial;
         handleKeyEvent(seatData, key, state, time);
@@ -501,6 +504,7 @@ static const struct wl_seat_listener g_seatListener = {
     [](void*, struct wl_seat*, const char*) { }
 };
 
+
 Display& Display::singleton()
 {
     static Display display;
@@ -511,10 +515,8 @@ Display::Display()
 {
     m_display = wl_display_connect(nullptr);
     m_registry = wl_display_get_registry(m_display);
-
     wl_registry_add_listener(m_registry, &g_registryListener, &m_interfaces);
     wl_display_roundtrip(m_display);
-
     m_eventSource = g_source_new(&EventSource::sourceFuncs, sizeof(EventSource));
     auto* source = reinterpret_cast<EventSource*>(m_eventSource);
     source->display = m_display;
@@ -523,18 +525,17 @@ Display::Display()
     source->pfd.events = G_IO_IN | G_IO_ERR | G_IO_HUP;
     source->pfd.revents = 0;
     g_source_add_poll(m_eventSource, &source->pfd);
-
     g_source_set_name(m_eventSource, "[WPE] Display");
     g_source_set_priority(m_eventSource, G_PRIORITY_HIGH + 30);
     g_source_set_can_recurse(m_eventSource, TRUE);
     g_source_attach(m_eventSource, g_main_context_get_thread_default());
-
     if (m_interfaces.xdg) {
         xdg_shell_add_listener(m_interfaces.xdg, &g_xdgShellListener, nullptr);
         xdg_shell_use_unstable_version(m_interfaces.xdg, 5);
     }
 
-    wl_seat_add_listener(m_interfaces.seat, &g_seatListener, &m_seatData);
+    if ( m_interfaces.seat )
+        wl_seat_add_listener(m_interfaces.seat, &g_seatListener, &m_seatData);
 
     m_seatData.xkb.context = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
     m_seatData.xkb.composeTable = xkb_compose_table_new_from_locale(m_seatData.xkb.context, setlocale(LC_CTYPE, nullptr), XKB_COMPOSE_COMPILE_NO_FLAGS);
@@ -617,6 +618,62 @@ void Display::unregisterInputClient(struct wl_surface* surface)
     if (m_seatData.keyboard.target.first == it->first)
         m_seatData.keyboard.target = { nullptr, nullptr };
     m_seatData.inputClients.erase(it);
+}
+
+
+EventDispatcher& EventDispatcher::singleton()
+{
+    static EventDispatcher event;
+    return event;
+}
+
+void EventDispatcher::sendEvent( wpe_input_axis_event& event )
+{
+    if ( m_ipc != nullptr )
+    {
+        IPC::Message message;
+        message.messageCode = MsgType::AXIS;
+        memcpy( message.messageData, &event, sizeof(event) );
+        m_ipc->sendMessage(IPC::Message::data(message), IPC::Message::size);
+    }
+}
+
+void EventDispatcher::sendEvent( wpe_input_pointer_event& event )
+{
+    if ( m_ipc != nullptr )
+    {
+        IPC::Message message;
+        message.messageCode = MsgType::POINTER;
+        memcpy( message.messageData, &event, sizeof(event) );
+        m_ipc->sendMessage(IPC::Message::data(message), IPC::Message::size);
+    }
+}
+
+void EventDispatcher::sendEvent( wpe_input_touch_event& event )
+{
+    if ( m_ipc != nullptr )
+    {
+        IPC::Message message;
+        message.messageCode = MsgType::TOUCH;
+        memcpy( message.messageData, &event, sizeof(event) );
+        m_ipc->sendMessage(IPC::Message::data(message), IPC::Message::size);
+    }
+}
+
+void EventDispatcher::sendEvent( wpe_input_keyboard_event& event )
+{
+    if ( m_ipc != nullptr )
+    {
+        IPC::Message message;
+        message.messageCode = MsgType::KEYBOARD;
+        memcpy( message.messageData, &event, sizeof(event) );
+        m_ipc->sendMessage(IPC::Message::data(message), IPC::Message::size);
+    }
+}
+
+void EventDispatcher::setIPC( IPC::Client& ipcClient )
+{
+    m_ipc = &ipcClient;
 }
 
 } // namespace Wayland

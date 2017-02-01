@@ -33,6 +33,7 @@
 #include <wpe/input.h>
 #include <xkbcommon/xkbcommon-compose.h>
 #include <xkbcommon/xkbcommon.h>
+#include "ipc.h"
 
 struct wpe_view_backend;
 
@@ -53,6 +54,28 @@ struct wl_shell;
 typedef struct _GSource GSource;
 
 namespace Wayland {
+
+class EventDispatcher
+{
+public:
+    static EventDispatcher& singleton();
+    void sendEvent( wpe_input_axis_event& event );
+    void sendEvent( wpe_input_pointer_event& event );
+    void sendEvent( wpe_input_touch_event& event );
+    void sendEvent( wpe_input_keyboard_event& event );
+    void setIPC( IPC::Client& ipcClient );
+    enum MsgType
+    {
+	AXIS = 0x30,
+	POINTER,
+	TOUCH,
+	KEYBOARD
+    };
+private:
+    EventDispatcher() {};
+    ~EventDispatcher() {};
+    IPC::Client * m_ipc;
+};
 
 class Display {
 public:

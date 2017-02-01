@@ -26,10 +26,14 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#include <wpe/input.h>
 #include <wpe/view-backend.h>
-
+#include "display.h"
 #include "ipc.h"
 #include "ipc-waylandegl.h"
+
+#define WIDTH 1280
+#define HEIGHT 720
 
 namespace WaylandEGL {
 
@@ -44,6 +48,7 @@ struct ViewBackend : public IPC::Host::Handler {
     void handleMessage(char*, size_t) override;
 
     void ackBufferCommit();
+    void initialize();
 
     struct wpe_view_backend* backend;
     IPC::Host ipcHost;
@@ -67,6 +72,30 @@ void ViewBackend::handleMessage(char* data, size_t size)
 
     auto& message = IPC::Message::cast(data);
     switch (message.messageCode) {
+    case Wayland::EventDispatcher::MsgType::AXIS:
+    {
+        struct wpe_input_axis_event * event = reinterpret_cast<wpe_input_axis_event*>(std::addressof(message.messageData));
+        wpe_view_backend_dispatch_axis_event(backend, event);
+        break;
+    }
+    case Wayland::EventDispatcher::MsgType::POINTER:
+    {
+        struct wpe_input_pointer_event * event = reinterpret_cast<wpe_input_pointer_event*>(std::addressof(message.messageData));
+        wpe_view_backend_dispatch_pointer_event(backend, event);
+        break;
+    }
+    case Wayland::EventDispatcher::MsgType::TOUCH:
+    {
+        struct wpe_input_touch_event * event = reinterpret_cast<wpe_input_touch_event*>(std::addressof(message.messageData));
+        wpe_view_backend_dispatch_touch_event(backend, event);
+        break;
+    }
+    case Wayland::EventDispatcher::MsgType::KEYBOARD:
+    {
+        struct wpe_input_keyboard_event * event = reinterpret_cast<wpe_input_keyboard_event*>(std::addressof(message.messageData));
+        wpe_view_backend_dispatch_keyboard_event(backend, event);
+        break;
+    }
     case IPC::WaylandEGL::BufferCommit::code:
     {
         ackBufferCommit();
@@ -75,6 +104,11 @@ void ViewBackend::handleMessage(char* data, size_t size)
     default:
         fprintf(stderr, "ViewBackend: unhandled message\n");
     }
+}
+
+void ViewBackend::initialize()
+{
+    wpe_view_backend_dispatch_set_size( backend, WIDTH, HEIGHT );
 }
 
 void ViewBackend::ackBufferCommit()
@@ -105,6 +139,8 @@ struct wpe_view_backend_interface wayland_egl_view_backend_interface = {
     // initialize
     [](void* data)
     {
+        auto& backend = *static_cast<WaylandEGL::ViewBackend*>(data);
+        backend.initialize();
     },
     // get_renderer_host_fd
     [](void* data) -> int

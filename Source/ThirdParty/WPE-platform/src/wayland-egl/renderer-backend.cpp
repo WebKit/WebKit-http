@@ -97,13 +97,14 @@ EGLTarget::EGLTarget(struct wpe_renderer_backend_egl_target* target, int hostFd)
     : target(target)
 {
     ipcClient.initialize(*this, hostFd);
+    Wayland::EventDispatcher::singleton().setIPC( ipcClient );
 }
 
 void EGLTarget::initialize(Backend& backend, uint32_t width, uint32_t height)
 {
     m_backend = &backend;
-
     m_surface = wl_compositor_create_surface(m_backend->display.interfaces().compositor);
+
     if (!m_surface) {
         fprintf(stderr, "EGLTarget: unable to create wayland surface\n");
         return;
@@ -114,10 +115,10 @@ void EGLTarget::initialize(Backend& backend, uint32_t width, uint32_t height)
         if (m_shellSurface) {
             wl_shell_surface_add_listener(m_shellSurface,
                                           &shell_surface_listener, NULL);
-            wl_shell_surface_set_toplevel(m_shellSurface);
+            // wl_shell_surface_set_toplevel(m_shellSurface);
+            wl_shell_surface_set_fullscreen(m_shellSurface, WL_SHELL_SURFACE_FULLSCREEN_METHOD_DEFAULT, 0, NULL);
         }
     }
-
     struct wl_region *region;
     region = wl_compositor_create_region(m_backend->display.interfaces().compositor);
     wl_region_add(region, 0, 0,
