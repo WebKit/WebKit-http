@@ -467,6 +467,16 @@ endif ()
 if (ENABLE_OPENGL)
     SET_AND_EXPOSE_TO_BUILD(USE_TEXTURE_MAPPER_GL TRUE)
     SET_AND_EXPOSE_TO_BUILD(ENABLE_GRAPHICS_CONTEXT_3D TRUE)
+
+    # TODO: Add proper support of DynamicGL detection to Qt and use it
+    if (WIN32)
+        if  (QT_USES_GLES2_ONLY)
+            # FIXME: Fix build with ANGLE-only Qt
+            message(FATAL_ERROR "Only dynamic GL is supported on Windows at the moment")
+        else ()
+            set(Qt5Gui_OPENGL_IMPLEMENTATION GL)
+        endif ()
+    endif ()
 endif ()
 
 if (NOT ENABLE_VIDEO)

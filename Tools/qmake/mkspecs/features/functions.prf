@@ -64,6 +64,10 @@ defineTest(isPlatformSupported) {
     }
 
     win32 {
+        qtConfig(opengles2):!qtConfig(dynamicgl) {
+            skipBuild("QtWebKit supports only dynamic GL Qt builds on Windows at the moment.")
+        }
+
         CONFIG(debug, debug|release):!contains(QMAKE_HOST.arch, x86_64) {
             # debug_and_release is built as release, see Tools/qmake/projects/run_cmake.pro
             !debug_and_release {

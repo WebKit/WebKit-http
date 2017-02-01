@@ -54,6 +54,10 @@ build_pass|!debug_and_release {
             ZLIB_INCLUDE_DIRS=$$QTBASE_DIR/src/3rdparty/zlib
     }
 
+    qtConfig(opengles2):!qtConfig(dynamicgl) {
+        CMAKE_CONFIG += QT_USES_GLES2_ONLY=1
+    }
+
     exists($$ROOT_BUILD_DIR/conanbuildinfo.cmake):exists($$ROOT_BUILD_DIR/conanfile.txt) {
         CMAKE_CONFIG += QT_CONAN_DIR=$$ROOT_BUILD_DIR
     }
