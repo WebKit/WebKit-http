@@ -357,6 +357,31 @@ void MediaPlayerPrivateGStreamerBase::clearSamples()
     m_sample = nullptr;
 }
 
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA)
+static std::pair<Vector<GRefPtr<GstEvent>>, Vector<String>> extractEventsAndSystemsFromMessage(GstMessage* message)
+{
+    const GstStructure* structure = gst_message_get_structure(message);
+
+    const GValue* streamEncryptionAllowedSystemsValue = gst_structure_get_value(structure, "stream-encryption-systems");
+    ASSERT(streamEncryptionAllowedSystemsValue && G_VALUE_HOLDS(streamEncryptionAllowedSystemsValue, G_TYPE_STRV));
+    const char** streamEncryptionAllowedSystems = reinterpret_cast<const char**>(g_value_get_boxed(streamEncryptionAllowedSystemsValue));
+    ASSERT(streamEncryptionAllowedSystems);
+    Vector<String> streamEncryptionAllowedSystemsVector;
+    unsigned i;
+    for (i = 0; !streamEncryptionAllowedSystems[i]; ++i)
+        streamEncryptionAllowedSystemsVector.append(streamEncryptionAllowedSystems[i]);
+
+    const GValue* streamEncryptionEventsList = gst_structure_get_value(structure, "stream-encryption-events");
+    ASSERT(streamEncryptionEventsList && GST_VALUE_HOLDS_LIST(streamEncryptionEventsList));
+    unsigned streamEncryptionEventsListSize = gst_value_list_get_size(streamEncryptionEventsList);
+    Vector<GRefPtr<GstEvent>> streamEncryptionEventsVector;
+    for (i = 0; i < streamEncryptionEventsListSize; ++i)
+        streamEncryptionEventsVector.append(GRefPtr<GstEvent>(static_cast<GstEvent*>(g_value_get_boxed(gst_value_list_get_value(streamEncryptionEventsList, i)))));
+
+    return std::make_pair(streamEncryptionEventsVector, streamEncryptionAllowedSystemsVector);
+}
+#endif
+
 bool MediaPlayerPrivateGStreamerBase::handleSyncMessage(GstMessage* message)
 {
     UNUSED_PARAM(message);
@@ -380,23 +405,14 @@ bool MediaPlayerPrivateGStreamerBase::handleSyncMessage(GstMessage* message)
                 return false;
             }
             GST_DEBUG("handling drm-preferred-decryption-system-id need context message");
-            const GstStructure* structure = gst_message_get_structure(message);
-            const GValue* streamEncryptionEventsList = gst_structure_get_value(structure, "stream-encryption-events");
-            ASSERT(streamEncryptionEventsList && GST_VALUE_HOLDS_LIST(streamEncryptionEventsList));
-            unsigned streamEncryptionEventsListSize = gst_value_list_get_size(streamEncryptionEventsList);
-            GST_TRACE("found %u protection events", streamEncryptionEventsListSize);
-            const GValue* streamEncryptionAllowedSystemsValue = gst_structure_get_value(structure, "stream-encryption-systems");
-            ASSERT(streamEncryptionAllowedSystemsValue && G_VALUE_HOLDS(streamEncryptionAllowedSystemsValue, G_TYPE_STRV));
-            const char** streamEncryptionAllowedSystems = reinterpret_cast<const char**>(g_value_get_boxed(streamEncryptionAllowedSystemsValue));
-            ASSERT(streamEncryptionAllowedSystems);
-            Ref<SharedBuffer> concatenatedInitDataChunks = SharedBuffer::create();
+            std::pair<Vector<GRefPtr<GstEvent>>, Vector<String>> streamEncryptionInformation = extractEventsAndSystemsFromMessage(message);
+            GST_TRACE("found %" G_GSIZE_FORMAT " protection events", streamEncryptionInformation.first.size());
+            Vector<uint8_t> concatenatedInitDataChunks;
             unsigned concatenatedInitDataChunksNumber = 0;
             String eventKeySystemIdString;
-            for (unsigned i = 0; i < streamEncryptionEventsListSize; ++i) {
-                const GValue* value = gst_value_list_get_value(streamEncryptionEventsList, i);
-                GRefPtr<GstEvent> event = static_cast<GstEvent*>(g_value_get_boxed(value));
+            for (auto& event : streamEncryptionInformation.first) {
                 GST_TRACE("handling protection event %u", GST_EVENT_SEQNUM(event.get()));
-                const gchar* eventKeySystemId = nullptr;
+                const char* eventKeySystemId = nullptr;
                 GstBuffer* data = nullptr;
                 gst_event_parse_protection(event.get(), &eventKeySystemId, &data, nullptr);
 
@@ -432,10 +448,10 @@ bool MediaPlayerPrivateGStreamerBase::handleSyncMessage(GstMessage* message)
 
                 GST_TRACE("appending init data for %s of size %u", eventKeySystemId, mapInfo.size);
                 GST_MEMDUMP("init data", reinterpret_cast<const unsigned char *>(mapInfo.data), mapInfo.size);
-                concatenatedInitDataChunks->append(reinterpret_cast<const char *>(mapInfo.data), mapInfo.size);
+                concatenatedInitDataChunks.append(mapInfo.data, mapInfo.size);
                 ++concatenatedInitDataChunksNumber;
                 eventKeySystemIdString = eventKeySystemId;
-                if (g_strv_contains(streamEncryptionAllowedSystems, eventKeySystemId)) {
+                if (streamEncryptionInformation.second.contains(eventKeySystemId)) {
                     GST_TRACE("considering init data handled for %s", eventKeySystemId);
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)
                     Vector<uint8_t> initDataVector;
@@ -447,21 +463,21 @@ bool MediaPlayerPrivateGStreamerBase::handleSyncMessage(GstMessage* message)
                 gst_buffer_unmap(data, &mapInfo);
             }
 
-            if (concatenatedInitDataChunksNumber == 0)
+            if (!concatenatedInitDataChunksNumber)
                 return false;
 
             if (concatenatedInitDataChunksNumber > 1)
                 eventKeySystemIdString = emptyString();
 
             RunLoop::main().dispatch([this, eventKeySystemIdString, initData = WTFMove(concatenatedInitDataChunks)] {
-                GST_DEBUG("scheduling keyNeeded event for %s with concatenated init datas size of %u", eventKeySystemIdString.utf8().data(), initData->size());
-                GST_MEMDUMP("init datas", reinterpret_cast<const unsigned char *>(initData->data()), initData->size());
+                GST_DEBUG("scheduling keyNeeded event for %s with concatenated init datas size of %" G_GSIZE_FORMAT, eventKeySystemIdString.utf8().data(), initData.size());
+                GST_MEMDUMP("init datas", initData.data(), initData.size());
 
                 // FIXME: Provide a somehow valid sessionId.
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)
-                needKey(keySystemUuidToId(eventKeySystemIdString).string(), "sessionId", reinterpret_cast<const unsigned char *>(initData->data()), initData->size());
+                needKey(keySystemUuidToId(eventKeySystemIdString).string(), "sessionId", initData.data(), initData.size());
 #elif ENABLE(LEGACY_ENCRYPTED_MEDIA)
-                RefPtr<Uint8Array> initDataArray = Uint8Array::create(reinterpret_cast<const unsigned char *>(initData->data()), initData->size());
+                RefPtr<Uint8Array> initDataArray = Uint8Array::create(initData.data(), initData.size());
                 needKey(initDataArray);
 #else
                 ASSERT_NOT_REACHED();
@@ -470,12 +486,14 @@ bool MediaPlayerPrivateGStreamerBase::handleSyncMessage(GstMessage* message)
 
             GST_INFO("waiting for a key request to arrive");
             LockHolder lock(m_protectionMutex);
-            m_protectionCondition.waitFor(m_protectionMutex, Seconds(4), [this] { return !this->m_lastGenerateKeyRequestKeySystemUuid.isEmpty(); });
+            m_protectionCondition.waitFor(m_protectionMutex, Seconds(4), [this] {
+                return !this->m_lastGenerateKeyRequestKeySystemUuid.isEmpty();
+            });
             if (!m_lastGenerateKeyRequestKeySystemUuid.isEmpty()) {
                 GST_INFO("got a key request, continuing with %s on %s", m_lastGenerateKeyRequestKeySystemUuid.utf8().data(), GST_MESSAGE_SRC_NAME(message));
 
                 GRefPtr<GstContext> context = adoptGRef(gst_context_new("drm-preferred-decryption-system-id", FALSE));
-                GstStructure *contextStructure = gst_context_writable_structure(context.get());
+                GstStructure* contextStructure = gst_context_writable_structure(context.get());
                 gst_structure_set(contextStructure, "decryption-system-id", G_TYPE_STRING, m_lastGenerateKeyRequestKeySystemUuid.utf8().data(), nullptr);
                 gst_element_set_context(GST_ELEMENT(GST_MESSAGE_SRC(message)), context.get());
             } else

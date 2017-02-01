@@ -57,7 +57,7 @@ public:
     GstFlowReturn handleNewAppsinkSample(GstElement*);
     GstFlowReturn pushNewBuffer(GstBuffer*);
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA)
-    void dispatchDecryptionKey(GstBuffer* buffer);
+    void dispatchDecryptionKey(GstBuffer*);
 #endif
 
     // Takes ownership of caps.
@@ -152,7 +152,9 @@ private:
     RefPtr<WebCore::TrackPrivateBase> m_track;
 
     GRefPtr<GstBuffer> m_pendingBuffer;
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA)
     GRefPtr<GstBuffer> m_pendingKey;
+#endif
 };
 
 } // namespace WebCore.
