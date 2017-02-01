@@ -20,7 +20,6 @@
 */
 
 #include "../util.h"
-#include "../WebCoreSupport/DumpRenderTreeSupportQt.h"
 #include <QClipboard>
 #include <QDir>
 #include <QGraphicsWidget>
@@ -49,6 +48,10 @@
 #include <qwebsecurityorigin.h>
 #include <qwebview.h>
 #include <qimagewriter.h>
+
+#ifdef HAVE_QTTESTSUPPORT
+#include "../WebCoreSupport/DumpRenderTreeSupportQt.h"
+#endif
 
 static void removeRecursive(const QString& dirname)
 {
@@ -110,7 +113,11 @@ public Q_SLOTS:
 private Q_SLOTS:
     void initTestCase();
     void cleanupTestCase();
+
+#ifdef HAVE_QTTESTSUPPORT
     void thirdPartyCookiePolicy();
+#endif
+
     void contextMenuCopy();
     void contextMenuPopulatedOnce();
     void acceptNavigationRequest();
@@ -135,7 +142,11 @@ private Q_SLOTS:
     void createViewlessPlugin_data();
     void createViewlessPlugin();
     void graphicsWidgetPlugin();
+
+#ifdef HAVE_QTTESTSUPPORT
     void multiplePageGroupsAndLocalStorage();
+#endif
+
     void cursorMovements();
     void textSelection();
     void textEditing();
@@ -143,7 +154,11 @@ private Q_SLOTS:
     void frameAt();
     void requestCache();
     void loadCachedPage();
+
+#ifdef HAVE_QTTESTSUPPORT
     void protectBindingsRuntimeObjectsFromCollector();
+#endif
+
     void localURLSchemes();
     void testOptionalJSObjects();
     void testLocalStorageVisibility();
@@ -1089,6 +1104,7 @@ void tst_QWebPage::createViewlessPlugin()
 
 }
 
+#ifdef HAVE_QTTESTSUPPORT
 void tst_QWebPage::multiplePageGroupsAndLocalStorage()
 {
     QDir dir(tmpDirPath());
@@ -1130,6 +1146,7 @@ void tst_QWebPage::multiplePageGroupsAndLocalStorage()
     dir.rmdir(QDir::toNativeSeparators("./path1"));
     dir.rmdir(QDir::toNativeSeparators("./path2"));
 }
+#endif
 
 class CursorTrackedPage : public QWebPage
 {
@@ -2449,6 +2466,7 @@ void tst_QWebPage::inputMethodsTextFormat()
     delete view;
 }
 
+#ifdef HAVE_QTTESTSUPPORT
 void tst_QWebPage::protectBindingsRuntimeObjectsFromCollector()
 {
     QSignalSpy loadSpy(m_view, SIGNAL(loadFinished(bool)));
@@ -2470,6 +2488,7 @@ void tst_QWebPage::protectBindingsRuntimeObjectsFromCollector()
     // don't crash!
     newPage->mainFrame()->evaluateJavaScript("testme('bar')");
 }
+#endif
 
 void tst_QWebPage::localURLSchemes()
 {
@@ -3133,6 +3152,7 @@ void tst_QWebPage::navigatorCookieEnabled()
     QVERIFY(m_page->mainFrame()->evaluateJavaScript("navigator.cookieEnabled").toBool());
 }
 
+#ifdef HAVE_QTTESTSUPPORT
 void tst_QWebPage::thirdPartyCookiePolicy()
 {
     QWebSettings::globalSettings()->setThirdPartyCookiePolicy(QWebSettings::AlwaysBlockThirdPartyCookies);
@@ -3171,6 +3191,7 @@ void tst_QWebPage::thirdPartyCookiePolicy()
     QVERIFY(!DumpRenderTreeSupportQt::thirdPartyCookiePolicyAllows(m_page->handle(),
             QUrl("http://anotherexample.co.uk"), QUrl("http://example.co.uk")));
 }
+#endif
 
 #ifdef Q_OS_MAC
 void tst_QWebPage::macCopyUnicodeToClipboard()

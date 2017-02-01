@@ -22,6 +22,10 @@ include_directories(SYSTEM
     ${Qt5Test_INCLUDE_DIRS}
 )
 
+if (ENABLE_TEST_SUPPORT)
+    add_definitions(-DHAVE_QTTESTSUPPORT)
+endif ()
+
 set(QtWK1ApiTests_LIBRARIES
     ${Qt5Gui_LIBRARIES}
     ${Qt5Network_LIBRARIES}
