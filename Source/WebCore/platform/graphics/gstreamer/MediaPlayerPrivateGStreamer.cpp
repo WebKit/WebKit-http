@@ -1120,7 +1120,8 @@ void MediaPlayerPrivateGStreamer::handleMessage(GstMessage* message)
         break;
     case GST_MESSAGE_DURATION_CHANGED:
         // Duration in MSE is managed by MediaSource, SourceBuffer and AppendPipeline.
-        if (!isMediaSource() && (messageSourceIsPlaybin || g_strstr_len(GST_MESSAGE_SRC_NAME(message), 14, "mpegaudioparse”)))
+        // FIXME: Gstreamer upstream issue getting the MP3 duration, workaround applied by getting the duration from mpegaudioparse.
+        if (!isMediaSource() && (messageSourceIsPlaybin || g_strstr_len(GST_MESSAGE_SRC_NAME(message), 14, "mpegaudioparse")))
             durationChanged();
         break;
     case GST_MESSAGE_REQUEST_STATE:
