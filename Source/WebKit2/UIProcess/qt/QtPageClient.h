@@ -22,6 +22,7 @@
 #define QtPageClient_h
 
 #include "PageClient.h"
+#include "WebFullScreenManagerProxy.h"
 
 class QQuickWebView;
 
@@ -33,7 +34,11 @@ class QtWebPageEventHandler;
 class DefaultUndoController;
 class ShareableBitmap;
 
-class QtPageClient final : public PageClient {
+class QtPageClient final : public PageClient
+#if ENABLE(FULLSCREEN_API)
+    , public WebFullScreenManagerProxyClient
+#endif
+{
 public:
     QtPageClient();
     ~QtPageClient();
@@ -98,6 +103,18 @@ public:
 #endif
 #if ENABLE(TOUCH_EVENTS)
     void doneWithTouchEvent(const NativeWebTouchEvent&, bool wasEventHandled) override;
+#endif
+
+#if ENABLE(FULLSCREEN_API)
+    WebFullScreenManagerProxyClient& fullScreenManagerProxyClient() final;
+
+    // WebFullScreenManagerProxyClient
+    void closeFullScreenManager() final;
+    bool isFullScreen() final;
+    void enterFullScreen() final;
+    void exitFullScreen() final;
+    void beganEnterFullScreen(const WebCore::IntRect& initialFrame, const WebCore::IntRect& finalFrame) final;
+    void beganExitFullScreen(const WebCore::IntRect& initialFrame, const WebCore::IntRect& finalFrame) final;
 #endif
 
 private:

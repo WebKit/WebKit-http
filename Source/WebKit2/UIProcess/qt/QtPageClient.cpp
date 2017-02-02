@@ -267,6 +267,43 @@ void QtPageClient::doneWithTouchEvent(const NativeWebTouchEvent& event, bool was
 }
 #endif
 
+WebFullScreenManagerProxyClient& QtPageClient::fullScreenManagerProxyClient()
+{
+    return *this;
+}
+
+// QTFIXME: #419
+void QtPageClient::closeFullScreenManager()
+{
+    notImplemented();
+}
+
+bool QtPageClient::isFullScreen()
+{
+    notImplemented();
+    return false;
+}
+
+void QtPageClient::enterFullScreen()
+{
+    notImplemented();
+}
+
+void QtPageClient::exitFullScreen()
+{
+    notImplemented();
+}
+
+void QtPageClient::beganEnterFullScreen(const IntRect& initialFrame, const IntRect& finalFrame)
+{
+    notImplemented();
+}
+
+void QtPageClient::beganExitFullScreen(const IntRect& initialFrame, const IntRect& finalFrame)
+{
+    notImplemented();
+}
+
 void QtPageClient::displayView()
 {
     // FIXME: Implement.
