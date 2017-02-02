@@ -228,6 +228,7 @@ public:
     virtual void createUndoStep(QSharedPointer<UndoStepQt>) = 0;
 
     virtual void updateNavigationActions() = 0;
+    virtual void clearCustomActions() = 0;
 
     virtual QWebFrameAdapter* mainFrameAdapter() = 0;
 
@@ -273,7 +274,7 @@ public:
             Separator,
             SubMenu
         } type;
-        MenuAction action;
+        int action;
         enum Trait {
             None = 0,
             Enabled = 1,
@@ -344,6 +345,7 @@ public:
     QWebHitTestResultPrivate* updatePositionDependentMenuActions(const QPoint&, QBitArray*);
     void updateActionInternal(MenuAction, const char* commandName, bool* enabled, bool* checked);
     void triggerAction(MenuAction, QWebHitTestResultPrivate*, const char* commandName, bool endToEndReload);
+    void triggerCustomAction(int action, const QString &title);
     QString contextMenuItemTagForAction(MenuAction, bool* checkable) const;
 
     QStringList supportedContentTypes() const;

@@ -876,8 +876,11 @@ void QWebPageAdapter::dynamicPropertyChangeEvent(QObject* obj, QDynamicPropertyC
 #define MAP_ACTION_FROM_VALUE(Name, Value) \
     case Value: return QWebPageAdapter::Name
 
-static QWebPageAdapter::MenuAction adapterActionForContextMenuAction(WebCore::ContextMenuAction action)
+static int adapterActionForContextMenuAction(WebCore::ContextMenuAction action)
 {
+    if (action >= ContextMenuItemBaseCustomTag && action <= ContextMenuItemLastCustomTag)
+        return action;
+
     switch (action) {
         FOR_EACH_MAPPED_MENU_ACTION(MAP_ACTION_FROM_VALUE, SEMICOLON_SEPARATOR);
     case WebCore::ContextMenuItemTagInspectElement:
@@ -899,7 +902,7 @@ QList<MenuItem> descriptionForPlatformMenu(const Vector<ContextMenuItem>& items,
         switch (item.type()) {
         case WebCore::CheckableActionType: /* fall through */
         case WebCore::ActionType: {
-            QWebPageAdapter::MenuAction action = adapterActionForContextMenuAction(item.action());
+            int action = adapterActionForContextMenuAction(item.action());
             if (action > QWebPageAdapter::NoAction) {
                 description.type = MenuItem::Action;
                 description.action = action;
@@ -1184,6 +1187,14 @@ void QWebPageAdapter::triggerAction(QWebPageAdapter::MenuAction action, QWebHitT
             editor.command(commandName).execute();
         break;
     }
+}
+
+void QWebPageAdapter::triggerCustomAction(int action, const QString &title)
+{
+    if (action >= ContextMenuItemBaseCustomTag && action <= ContextMenuItemLastCustomTag)
+        page->contextMenuController().contextMenuItemSelected(static_cast<ContextMenuAction>(action), title);
+    else
+        ASSERT_NOT_REACHED();
 }
 
 

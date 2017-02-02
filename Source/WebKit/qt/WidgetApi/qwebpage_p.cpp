@@ -50,6 +50,8 @@ QWebPagePrivate::~QWebPagePrivate()
     // in order for various destruction callbacks out of WebCore to
     // work.
     deletePage();
+
+    clearCustomActions();
 }
 
 QWebFramePrivate::~QWebFramePrivate() = default;
