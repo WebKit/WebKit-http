@@ -24,7 +24,6 @@
 #include "GStreamerUtilities.h"
 
 #include "GRefPtrGStreamer.h"
-#include "GstAllocatorFastMalloc.h"
 #include "IntSize.h"
 
 #include <gst/audio/audio-info.h>
@@ -155,8 +154,6 @@ bool initializeGStreamer()
     // FIXME: We should probably pass the arguments from the command line.
     bool gstInitialized = gst_init_check(0, 0, &error.outPtr());
     ASSERT_WITH_MESSAGE(gstInitialized, "GStreamer initialization failed: %s", error ? error->message : "unknown error occurred");
-
-    gst_allocator_set_default(GST_ALLOCATOR(g_object_new(gst_allocator_fast_malloc_get_type(), nullptr)));
 
 #if ENABLE(VIDEO_TRACK) && USE(GSTREAMER_MPEGTS)
     if (gstInitialized)
