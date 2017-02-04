@@ -160,7 +160,6 @@ static const char* fragmentTemplate =
         void noop(inout vec2 dummyParameter) { }
         void noop(inout vec4 dummyParameter) { }
         void noop(inout vec4 dummyParameter, vec2 texCoord) { }
-        void noop(inout vec2 dummyParameter) { }
 
         float antialias() { return smoothstep(0., 1., v_antialias); }
 
