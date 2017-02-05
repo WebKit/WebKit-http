@@ -1151,7 +1151,7 @@ void LauncherWindow::fileDownloadFinished()
     if (fileName.isEmpty())
         return;
     if (m_reply->error() != QNetworkReply::NoError)
-        QMessageBox::critical(this, QString("Download"), QString("Download failed."));
+        QMessageBox::critical(this, QStringLiteral("Download"), QStringLiteral("Download failed: ") + m_reply->errorString());
     else {
         QFile file(fileName);
         file.open(QIODevice::WriteOnly);
