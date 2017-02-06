@@ -156,7 +156,7 @@ webkit.org/b/159370 [ Debug ] fast/history/page-cache-destroy-document.html [ Cr
   css3/shapes/shape-outside/values/shape-outside-ellipse-004.html [ Crash Failure ]
   css3/shapes/shape-outside/values/shape-outside-circle-004.html [ Crash Failure ]
 webgl/1.0.2/conformance/uniforms/out-of-bounds-uniform-array-access.html [ Crash ]
-webgl/1.0.2/conformance/canvas/to-data-url-test.html [ Crash ]
+[ Release ] webgl/1.0.2/conformance/canvas/to-data-url-test.html [ Crash ]
 webgl/1.0.2/conformance/glsl/misc/shader-uniform-packing-restrictions.html [ Crash ]
 webgl/1.0.3/conformance/glsl/bugs/complex-glsl-does-not-crash.html [ Crash ]
 
@@ -1239,6 +1239,9 @@ fullscreen/full-screen-plugin.html [ Skip ]
 # ============================================================================= #
 # Failing WebGL Tests
 # ============================================================================= #
+
+[ Debug ] webgl/1.0.2/conformance/uniforms/gl-uniform-arrays.html [ Timeout ]
+[ Debug ] webgl/1.0.2/conformance/canvas/to-data-url-test.html [ Failure ]
 
 #404
   webgl/1.0.2/conformance/extensions/oes-texture-float-with-video.html [ Skip ]
