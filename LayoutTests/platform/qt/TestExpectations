@@ -98,7 +98,6 @@ webkit.org/b/159370 [ Debug ] fast/history/page-cache-destroy-document.html [ Cr
 # =========================================================================== #
 
 [ Debug ] fast/history/back-from-page-with-focused-iframe.html [ Crash ]
-[ Debug ]  http/tests/local/fileapi/upload-zip-bundle-as-blob.html [ Crash ]
 [ Debug ]  http/tests/security/contentSecurityPolicy/worker-set-timeout-blocked.html [ Crash Pass ]
 [ Release ]  http/tests/security/contentSecurityPolicy/worker-set-timeout-blocked.html [ Failure Pass ]
 [ Debug ]  http/tests/websocket/tests/hybi/bad-handshake-crash.html [ Crash ]
@@ -141,7 +140,6 @@ webkit.org/b/159370 [ Debug ] fast/history/page-cache-destroy-document.html [ Cr
 [ Debug ]  http/tests/websocket/tests/hybi/workers/close-code-and-reason.html [ Crash ]
 [ Debug ]  http/tests/websocket/tests/hybi/workers/close.html [ Crash Pass ]
 [ Release ]  http/tests/websocket/tests/hybi/workers/close.html [ Failure Pass ]
-[ Debug ]  http/tests/xmlhttprequest/post-blob-content-type-async.html [ Crash ]
 
 #281 FTL crashes
   js/dom/cross-frame-bad-time.html [ Pass Crash ]
@@ -558,6 +556,7 @@ fast/css/draggable-region-parser.html [ Failure ]
 
 fast/lists/drag-into-marker.html [ Missing ]
 
+http/tests/local/fileapi/upload-zip-bundle-as-blob.html [ Timeout ]
 # ============================================================================= #
 #            Missing features in our DumpRenderTree implementation              #
 # ============================================================================= #
@@ -1368,22 +1367,15 @@ http/tests/messaging/cross-domain-message-send.html
 
 http/tests/media/remove-while-loading.html [ Skip ]
 http/tests/contentdispositionattachmentsandbox/referer-header-stripped-with-meta-referer-no-referrer.html [ Skip ]
-http/tests/local/formdata/send-form-data-with-empty-blob-filename.html [ Skip ]
-http/tests/local/blob/send-data-blob.html [ Skip ]
 http/tests/contentdispositionattachmentsandbox/referer-header-stripped-with-meta-referer-no-referrer-when-downgrade.html [ Skip ]
 http/tests/inspector/dom/disconnect-dom-tree-after-main-frame-navigation.html [ Skip ]
 http/tests/contentdispositionattachmentsandbox/referer-header-stripped-with-meta-referer-never.html [ Skip ]
 http/tests/inspector/console/cross-domain-inspected-node-access.html [ Skip ]
-http/tests/fileapi/xhr-send-form-data-mimetype-normalization.html [ Skip ]
 http/tests/contentdispositionattachmentsandbox/referer-header-stripped-with-meta-referer-always.html [ Skip ]
 http/tests/contentdispositionattachmentsandbox/referer-header-stripped-with-meta-referer-default.html [ Skip ]
-http/tests/fileapi/xhr-send-form-data-filename-escaping.html [ Skip ]
 http/tests/contentdispositionattachmentsandbox/referer-header-stripped-with-meta-referer-origin.html [ Skip ]
-http/tests/local/blob/send-hybrid-blob.html [ Skip ]
 http/tests/contentdispositionattachmentsandbox/referer-header-stripped-with-meta-referer-unsafe-url.html [ Skip ]
-http/tests/local/formdata/send-form-data-with-sliced-file.html [ Skip ]
   http/tests/contentdispositionattachmentsandbox/referer-header-stripped.html [ Skip ]
-  http/tests/local/blob/send-sliced-data-blob.html [ Skip ]
   http/tests/media/clearkey/clear-key-hls-aes128.html [ Skip ]
   http/tests/media/hls/hls-accessiblity-describes-video.html [ Skip ]
   http/tests/media/hls/hls-audio-tracks-has-audio.html [ Skip ]
@@ -1429,7 +1421,6 @@ http/tests/w3c/webperf/submission/Google/resource-timing/html/test_resource_cach
 http/tests/w3c/webperf/submission/Google/resource-timing/html/test_resource_connection_reuse.html
 
   http/tests/w3c/webperf/submission/Google/resource-timing/html/test_resource_iframe_self_navigation.html [ Skip ]
-  http/tests/xmlhttprequest/post-blob-content-type-sync.html [ Skip ]
 
 js/regress/getter-richards-try-catch.html [ Timeout Pass ]
 
@@ -1596,6 +1587,11 @@ http/tests/cookies/js-get-and-set-http-only-cookie.html [ Failure ]
 
 # https://bugs.webkit.org/show_bug.cgi?id=109799
 webkit.org/b/90007 http/tests/security/mixedContent/insecure-audio-video-in-main-frame.html [ Failure ]
+
+# [Qt] new http/tests/xmlhttprequest/post-blob-content-type-sync.html and ~async.html fail since introduced in r136893
+# https://bugs.webkit.org/show_bug.cgi?id=104352
+http/tests/xmlhttprequest/post-blob-content-type-async.html [ Failure ]
+http/tests/xmlhttprequest/post-blob-content-type-sync.html [ Failure ]
 
 # =========================================================================== #
 #       Failing xmlhttprequest tests                                          #
@@ -2558,8 +2554,6 @@ js/date-constructor.html [ Failure ]
 # http
 # ============================================================================= #
 
-[ Release ]  http/tests/local/fileapi/upload-zip-bundle-as-blob.html [ Failure ]
-[ Release ]  http/tests/xmlhttprequest/post-blob-content-type-async.html [ Failure ]
 
 # Regressions: Unexpected text-only failures (184)
   http/tests/appcache/origin-delete.html [ Failure ]

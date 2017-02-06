@@ -85,9 +85,7 @@ void FormDataIODevice::prepareFormElements()
     if (!m_formData)
         return;
 
-#if ENABLE(BLOB)
     m_formData = m_formData->resolveBlobReferences();
-#endif
 
     // Take a deep copy of the FormDataElements
     m_formElements = m_formData->elements();
@@ -102,14 +100,10 @@ qint64 FormDataIODevice::computeSize()
             m_dataSize += element.m_data.size();
         else {
             QFileInfo fi(element.m_filename);
-#if ENABLE(BLOB)
             qint64 fileEnd = fi.size();
             if (element.m_fileLength != BlobDataItem::toEndOfFile)
                 fileEnd = qMin<qint64>(fi.size(), element.m_fileStart + element.m_fileLength);
             m_fileSize += qMax<qint64>(0, fileEnd - element.m_fileStart);
-#else
-            m_fileSize += fi.size();
-#endif
         }
     }
     return m_dataSize + m_fileSize;
@@ -150,7 +144,6 @@ void FormDataIODevice::openFileForCurrentElement()
 
     m_currentFile->setFileName(m_formElements[0].m_filename);
     m_currentFile->open(QFile::ReadOnly);
-#if ENABLE(BLOB)
     if (isValidFileTime(m_formElements[0].m_expectedFileModificationTime)) {
         QFileInfo info(*m_currentFile);
         if (!info.exists() || static_cast<time_t>(m_formElements[0].m_expectedFileModificationTime) < info.lastModified().toTime_t()) {
@@ -160,7 +153,6 @@ void FormDataIODevice::openFileForCurrentElement()
     }
     if (m_formElements[0].m_fileStart)
         m_currentFile->seek(m_formElements[0].m_fileStart);
-#endif
 }
 
 // m_formElements[0] is the current item. If the destination buffer is
@@ -185,10 +177,8 @@ qint64 FormDataIODevice::readData(char* destination, qint64 size)
                 moveToNextElement();
         } else if (element.m_type == FormDataElement::Type::EncodedFile) {
             quint64 toCopy = available;
-#if ENABLE(BLOB)
             if (element.m_fileLength != BlobDataItem::toEndOfFile)
                 toCopy = qMin<qint64>(toCopy, element.m_fileLength - m_currentDelta);
-#endif
             const QByteArray data = m_currentFile->read(toCopy);
             memcpy(destination+copied, data.constData(), data.size());
             m_currentDelta += data.size();
@@ -196,10 +186,8 @@ qint64 FormDataIODevice::readData(char* destination, qint64 size)
 
             if (m_currentFile->atEnd() || !m_currentFile->isOpen())
                 moveToNextElement();
-#if ENABLE(BLOB)
             else if (element.m_fileLength != BlobDataItem::toEndOfFile && m_currentDelta == element.m_fileLength)
                 moveToNextElement();
-#endif
         }
     }
 

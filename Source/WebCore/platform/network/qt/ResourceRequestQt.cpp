@@ -22,11 +22,8 @@
 #include "ResourceRequest.h"
 #include "ThirdPartyCookiesQt.h"
 
-#if ENABLE(BLOB)
 #include "BlobData.h"
 #include "BlobRegistryImpl.h"
-#include "BlobStorageData.h"
-#endif
 
 #include <qglobal.h>
 
@@ -46,10 +43,9 @@ unsigned initializeMaximumHTTPConnectionCountPerHost()
     return 6 * (1 + 3 + 2);
 }
 
-#if ENABLE(BLOB)
 static void appendBlobResolved(QByteArray& data, const QUrl& url, QString* contentType = 0)
 {
-    RefPtr<BlobStorageData> blobData = static_cast<BlobRegistryImpl&>(blobRegistry()).getBlobDataFromURL(url);
+    RefPtr<BlobData> blobData = static_cast<BlobRegistryImpl&>(blobRegistry()).getBlobDataFromURL(url);
     if (!blobData)
         return;
 
@@ -60,12 +56,11 @@ static void appendBlobResolved(QByteArray& data, const QUrl& url, QString* conte
     const BlobDataItemList::const_iterator itend = blobData->items().end();
     for (; it != itend; ++it) {
         const BlobDataItem& blobItem = *it;
-        if (blobItem.type == BlobDataItem::Data)
-            data.append(blobItem.data->data() + static_cast<int>(blobItem.offset), static_cast<int>(blobItem.length));
-        else if (blobItem.type == BlobDataItem::Blob)
-            appendBlobResolved(data, blobItem.url);
-        else if (blobItem.type == BlobDataItem::File) {
+        if (blobItem.type() == BlobDataItem::Type::Data)
+            data.append(reinterpret_cast<const char*>(blobItem.data().data()->data()) + static_cast<int>(blobItem.offset()), static_cast<int>(blobItem.length()));
+        else if (blobItem.type() == BlobDataItem::Type::File) {
             // File types are not allowed here, so just ignore it.
+            RELEASE_ASSERT_WITH_MESSAGE(false, "File types are not allowed here");
         } else
             ASSERT_NOT_REACHED();
     }
@@ -73,7 +68,7 @@ static void appendBlobResolved(QByteArray& data, const QUrl& url, QString* conte
 
 static void resolveBlobUrl(const QUrl& url, QUrl& resolvedUrl)
 {
-    RefPtr<BlobStorageData> blobData = static_cast<BlobRegistryImpl&>(blobRegistry()).getBlobDataFromURL(url);
+    RefPtr<BlobData> blobData = static_cast<BlobRegistryImpl&>(blobRegistry()).getBlobDataFromURL(url);
     if (!blobData)
         return;
 
@@ -87,7 +82,6 @@ static void resolveBlobUrl(const QUrl& url, QUrl& resolvedUrl)
     dataUri.append(QString::fromLatin1(data.toBase64()));
     resolvedUrl = QUrl(dataUri);
 }
-#endif
 
 static inline QByteArray stringToByteArray(const String& string)
 {
@@ -101,10 +95,8 @@ QNetworkRequest ResourceRequest::toNetworkRequest(NetworkingContext *context) co
     QNetworkRequest request;
     QUrl newurl = url();
 
-#if ENABLE(BLOB)
     if (newurl.scheme() == QLatin1String("blob"))
         resolveBlobUrl(url(), newurl);
-#endif
 
     request.setUrl(newurl);
     request.setOriginatingObject(context ? context->originatingObject() : 0);
