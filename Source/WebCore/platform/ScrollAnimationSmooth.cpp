@@ -228,6 +228,8 @@ static inline double releaseArea(ScrollAnimationSmooth::Curve curve, double star
 
 static inline void getAnimationParametersForGranularity(ScrollGranularity granularity, double& animationTime, double& repeatMinimumSustainTime, double& attackTime, double& releaseTime, ScrollAnimationSmooth::Curve& coastTimeCurve, double& maximumCoastTime)
 {
+    // Qt uses a slightly different strategy for the animation with a steep attack curve and natural release curve.
+    // The fast acceleration makes the animation look more responsive to user input.
     switch (granularity) {
     case ScrollByDocument:
         animationTime = 20 * tickTime;
