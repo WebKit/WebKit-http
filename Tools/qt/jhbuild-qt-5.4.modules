@@ -62,6 +62,8 @@
           repo="download.qt.io"
           hash="sha256:daea240ba5e77bc2d78ec21a2cb664eed83b3d4ad409b6277a6f7d4c0c8e91d1">
       <patch file="qtbase-5.4-fontconfig-fix.patch" strip="1"/>
+      <patch file="qtbase-5.4-no-sslv3.patch" strip="1"/>
+      <patch file="qtbase-5.4-no-sslv2_3.patch" strip="1"/>
     </branch>
     <dependencies>
       <dep package="fontconfig"/>

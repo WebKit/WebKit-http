@@ -1,0 +1,100 @@
+From 6839aead0430a9b07b60fa3a1a7d685fe5d2d1ef Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Andr=C3=A9=20Klitzing?= <aklitzing@gmail.com>
+Date: Fri, 9 Jan 2015 11:53:17 +0100
+Subject: [PATCH 1/1] Fix compile error if openssl is built with no-ssl3-method
+
+Since openssl 1.0.1k with enabled option no-ssl3-method we need to
+check for OPENSSL_NO_SSL3_METHOD to use following functions:
+
+- SSLv3_method
+- SSLv3_server_method
+- SSLv3_client_method
+
+Change-Id: Iee83a6f4bacbf5660baa6bdb89eb02ceb9f11614
+Reviewed-by: Thiago Macieira <thiago.macieira@intel.com>
+---
+ src/network/ssl/qsslcontext_openssl.cpp        |  6 ++++++
+ src/network/ssl/qsslsocket_openssl_symbols.cpp | 12 ++++++++++++
+ 2 files changed, 18 insertions(+)
+
+diff --git a/src/network/ssl/qsslcontext_openssl.cpp b/src/network/ssl/qsslcontext_openssl.cpp
+index 92e726bc01..18eef2fc60 100644
+--- a/src/network/ssl/qsslcontext_openssl.cpp
++++ b/src/network/ssl/qsslcontext_openssl.cpp
+@@ -138,7 +138,13 @@ init_context:
+ #endif
+         break;
+     case QSsl::SslV3:
++#ifndef OPENSSL_NO_SSL3_METHOD
+         sslContext->ctx = q_SSL_CTX_new(client ? q_SSLv3_client_method() : q_SSLv3_server_method());
++#else
++        // SSL 3 not supported by the system, but chosen deliberately -> error
++        sslContext->ctx = 0;
++        unsupportedProtocol = true;
++#endif
+         break;
+     case QSsl::SecureProtocols:
+         // SSLv2 and SSLv3 will be disabled by SSL options
+diff --git a/src/network/ssl/qsslsocket_openssl_symbols.cpp b/src/network/ssl/qsslsocket_openssl_symbols.cpp
+index ea6e84adef..c1fea930d0 100644
+--- a/src/network/ssl/qsslsocket_openssl_symbols.cpp
++++ b/src/network/ssl/qsslsocket_openssl_symbols.cpp
+@@ -270,7 +270,9 @@ DEFINEFUNC(SSL_SESSION*, SSL_get_session, const SSL *ssl, ssl, return 0, return)
+ #ifndef OPENSSL_NO_SSL2
+ DEFINEFUNC(const SSL_METHOD *, SSLv2_client_method, DUMMYARG, DUMMYARG, return 0, return)
+ #endif
++#ifndef OPENSSL_NO_SSL3_METHOD
+ DEFINEFUNC(const SSL_METHOD *, SSLv3_client_method, DUMMYARG, DUMMYARG, return 0, return)
++#endif
+ DEFINEFUNC(const SSL_METHOD *, SSLv23_client_method, DUMMYARG, DUMMYARG, return 0, return)
+ DEFINEFUNC(const SSL_METHOD *, TLSv1_client_method, DUMMYARG, DUMMYARG, return 0, return)
+ #if OPENSSL_VERSION_NUMBER >= 0x10001000L
+@@ -280,7 +282,9 @@ DEFINEFUNC(const SSL_METHOD *, TLSv1_2_client_method, DUMMYARG, DUMMYARG, return
+ #ifndef OPENSSL_NO_SSL2
+ DEFINEFUNC(const SSL_METHOD *, SSLv2_server_method, DUMMYARG, DUMMYARG, return 0, return)
+ #endif
++#ifndef OPENSSL_NO_SSL3_METHOD
+ DEFINEFUNC(const SSL_METHOD *, SSLv3_server_method, DUMMYARG, DUMMYARG, return 0, return)
++#endif
+ DEFINEFUNC(const SSL_METHOD *, SSLv23_server_method, DUMMYARG, DUMMYARG, return 0, return)
+ DEFINEFUNC(const SSL_METHOD *, TLSv1_server_method, DUMMYARG, DUMMYARG, return 0, return)
+ #if OPENSSL_VERSION_NUMBER >= 0x10001000L
+@@ -289,11 +293,15 @@ DEFINEFUNC(const SSL_METHOD *, TLSv1_2_server_method, DUMMYARG, DUMMYARG, return
+ #endif
+ #else
+ DEFINEFUNC(SSL_METHOD *, SSLv2_client_method, DUMMYARG, DUMMYARG, return 0, return)
++#ifndef OPENSSL_NO_SSL3_METHOD
+ DEFINEFUNC(SSL_METHOD *, SSLv3_client_method, DUMMYARG, DUMMYARG, return 0, return)
++#endif
+ DEFINEFUNC(SSL_METHOD *, SSLv23_client_method, DUMMYARG, DUMMYARG, return 0, return)
+ DEFINEFUNC(SSL_METHOD *, TLSv1_client_method, DUMMYARG, DUMMYARG, return 0, return)
+ DEFINEFUNC(SSL_METHOD *, SSLv2_server_method, DUMMYARG, DUMMYARG, return 0, return)
++#ifndef OPENSSL_NO_SSL3_METHOD
+ DEFINEFUNC(SSL_METHOD *, SSLv3_server_method, DUMMYARG, DUMMYARG, return 0, return)
++#endif
+ DEFINEFUNC(SSL_METHOD *, SSLv23_server_method, DUMMYARG, DUMMYARG, return 0, return)
+ DEFINEFUNC(SSL_METHOD *, TLSv1_server_method, DUMMYARG, DUMMYARG, return 0, return)
+ #endif
+@@ -799,7 +807,9 @@ bool q_resolveOpenSslSymbols()
+ #ifndef OPENSSL_NO_SSL2
+     RESOLVEFUNC(SSLv2_client_method)
+ #endif
++#ifndef OPENSSL_NO_SSL3_METHOD
+     RESOLVEFUNC(SSLv3_client_method)
++#endif
+     RESOLVEFUNC(SSLv23_client_method)
+     RESOLVEFUNC(TLSv1_client_method)
+ #if OPENSSL_VERSION_NUMBER >= 0x10001000L
+@@ -809,7 +819,9 @@ bool q_resolveOpenSslSymbols()
+ #ifndef OPENSSL_NO_SSL2
+     RESOLVEFUNC(SSLv2_server_method)
+ #endif
++#ifndef OPENSSL_NO_SSL3_METHOD
+     RESOLVEFUNC(SSLv3_server_method)
++#endif
+     RESOLVEFUNC(SSLv23_server_method)
+     RESOLVEFUNC(TLSv1_server_method)
+ #if OPENSSL_VERSION_NUMBER >= 0x10001000L
+-- 
+2.11.0
+

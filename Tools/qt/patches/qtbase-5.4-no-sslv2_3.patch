@@ -1,0 +1,89 @@
+From 027571c8c3efe8b1451fb73b74be7e617db1899f Mon Sep 17 00:00:00 2001
+From: Daniel Molkentin <danimo@owncloud.com>
+Date: Fri, 10 Apr 2015 09:57:29 +0200
+Subject: [PATCH 1/1] Also add support for linked OpenSSL without SSL v2 & v3
+ support
+
+So far, this was only supported for dlopen mode. This adds symmetric
+defines for the linking case.
+
+Change-Id: I9cbfa18e04d041dde0cbd833929782cada9eb812
+Reviewed-by: Richard J. Moore <rich@kde.org>
+---
+ src/network/ssl/qsslsocket_openssl_symbols.cpp |  4 ++++
+ src/network/ssl/qsslsocket_openssl_symbols_p.h | 16 ++++++++++++++++
+ 2 files changed, 20 insertions(+)
+
+diff --git a/src/network/ssl/qsslsocket_openssl_symbols.cpp b/src/network/ssl/qsslsocket_openssl_symbols.cpp
+index 332b64264e..042c593e62 100644
+--- a/src/network/ssl/qsslsocket_openssl_symbols.cpp
++++ b/src/network/ssl/qsslsocket_openssl_symbols.cpp
+@@ -312,13 +312,17 @@ DEFINEFUNC(const SSL_METHOD *, TLSv1_1_server_method, DUMMYARG, DUMMYARG, return
+ DEFINEFUNC(const SSL_METHOD *, TLSv1_2_server_method, DUMMYARG, DUMMYARG, return 0, return)
+ #endif
+ #else
++#ifndef OPENSSL_NO_SSL2
+ DEFINEFUNC(SSL_METHOD *, SSLv2_client_method, DUMMYARG, DUMMYARG, return 0, return)
++#endif
+ #ifndef OPENSSL_NO_SSL3_METHOD
+ DEFINEFUNC(SSL_METHOD *, SSLv3_client_method, DUMMYARG, DUMMYARG, return 0, return)
+ #endif
+ DEFINEFUNC(SSL_METHOD *, SSLv23_client_method, DUMMYARG, DUMMYARG, return 0, return)
+ DEFINEFUNC(SSL_METHOD *, TLSv1_client_method, DUMMYARG, DUMMYARG, return 0, return)
++#ifndef OPENSSL_NO_SSL2
+ DEFINEFUNC(SSL_METHOD *, SSLv2_server_method, DUMMYARG, DUMMYARG, return 0, return)
++#endif
+ #ifndef OPENSSL_NO_SSL3_METHOD
+ DEFINEFUNC(SSL_METHOD *, SSLv3_server_method, DUMMYARG, DUMMYARG, return 0, return)
+ #endif
+diff --git a/src/network/ssl/qsslsocket_openssl_symbols_p.h b/src/network/ssl/qsslsocket_openssl_symbols_p.h
+index 626c049629..a15bf4b87d 100644
+--- a/src/network/ssl/qsslsocket_openssl_symbols_p.h
++++ b/src/network/ssl/qsslsocket_openssl_symbols_p.h
+@@ -363,27 +363,43 @@ typedef unsigned int (*q_psk_client_callback_t)(SSL *ssl, const char *hint, char
+ void q_SSL_set_psk_client_callback(SSL *ssl, q_psk_client_callback_t callback);
+ #endif // OPENSSL_NO_PSK
+ #if OPENSSL_VERSION_NUMBER >= 0x10000000L
++#ifndef OPENSSL_NO_SSL2
+ const SSL_METHOD *q_SSLv2_client_method();
++#endif
++#ifndef OPENSSL_NO_SSL3_METHOD
+ const SSL_METHOD *q_SSLv3_client_method();
++#endif
+ const SSL_METHOD *q_SSLv23_client_method();
+ const SSL_METHOD *q_TLSv1_client_method();
+ const SSL_METHOD *q_TLSv1_1_client_method();
+ const SSL_METHOD *q_TLSv1_2_client_method();
++#ifndef OPENSSL_NO_SSL2
+ const SSL_METHOD *q_SSLv2_server_method();
++#endif
++#ifndef OPENSSL_NO_SSL3_METHOD
+ const SSL_METHOD *q_SSLv3_server_method();
++#endif
+ const SSL_METHOD *q_SSLv23_server_method();
+ const SSL_METHOD *q_TLSv1_server_method();
+ const SSL_METHOD *q_TLSv1_1_server_method();
+ const SSL_METHOD *q_TLSv1_2_server_method();
+ #else
++#ifndef OPENSSL_NO_SSL2
+ SSL_METHOD *q_SSLv2_client_method();
++#endif
++#ifndef OPENSSL_NO_SSL3_METHOD
+ SSL_METHOD *q_SSLv3_client_method();
++#endif
+ SSL_METHOD *q_SSLv23_client_method();
+ SSL_METHOD *q_TLSv1_client_method();
+ SSL_METHOD *q_TLSv1_1_client_method();
+ SSL_METHOD *q_TLSv1_2_client_method();
++#ifndef OPENSSL_NO_SSL2
+ SSL_METHOD *q_SSLv2_server_method();
++#endif
++#ifndef OPENSSL_NO_SSL3_METHOD
+ SSL_METHOD *q_SSLv3_server_method();
++#endif
+ SSL_METHOD *q_SSLv23_server_method();
+ SSL_METHOD *q_TLSv1_server_method();
+ SSL_METHOD *q_TLSv1_1_server_method();
+-- 
+2.11.0
+
