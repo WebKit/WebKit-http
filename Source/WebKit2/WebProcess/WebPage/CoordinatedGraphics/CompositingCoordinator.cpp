@@ -35,6 +35,7 @@
 #include <WebCore/GraphicsContext.h>
 #include <WebCore/InspectorController.h>
 #include <WebCore/MainFrame.h>
+#include <WebCore/MemoryPressureHandler.h>
 #include <WebCore/Page.h>
 #include <wtf/TemporaryChange.h>
 #include "Extensions3DCache.h"
@@ -415,12 +416,18 @@ void CompositingCoordinator::scheduleReleaseInactiveAtlases()
 
 void CompositingCoordinator::releaseInactiveAtlasesTimerFired()
 {
+    releaseAtlases(MemoryPressureHandler::singleton().isUnderMemoryPressure() ? ReleaseUnused : ReleaseInactive);
+}
+
+void CompositingCoordinator::releaseAtlases(ReleaseAtlasPolicy policy)
+{
     for (int i = m_updateAtlases.size() - 1;  i >= 0; --i) {
         UpdateAtlas* atlas = m_updateAtlases[i].get();
-        if (!atlas->isInUse())
+        if (!atlas->isInUse()) {
             atlas->addTimeInactive(ReleaseInactiveAtlasesTimerInterval);
-        if (atlas->isInactive())
-            m_updateAtlases.remove(i);
+            if (atlas->isInactive() || policy == ReleaseUnused)
+                m_updateAtlases.remove(i);
+        }
     }
 
     m_updateAtlases.shrinkToFit();
