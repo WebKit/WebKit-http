@@ -5,3 +5,8 @@ find_dependency(Qt5Gui     @Qt5_VERSION@ EXACT)
 find_dependency(Qt5Network @Qt5_VERSION@ EXACT)
 
 include("${CMAKE_CURRENT_LIST_DIR}/WebKitTargets.cmake")
+
+set(_Qt5WebKit_MODULE_DEPENDENCIES "Gui;Network;Core")
+set(Qt5WebKit_DEFINITIONS -DQT_WEBKIT_LIB)
+
+@QTWEBKIT_PACKAGE_FOOTER@

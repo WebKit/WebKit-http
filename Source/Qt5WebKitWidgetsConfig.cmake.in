@@ -8,3 +8,8 @@ find_dependency(Qt5Widgets @Qt5_VERSION@ EXACT)
 find_dependency(Qt5WebKit @PROJECT_VERSION_STRING@ EXACT)
 
 include("${CMAKE_CURRENT_LIST_DIR}/Qt5WebKitWidgetsTargets.cmake")
+
+set(_Qt5WebKitWidgets_MODULE_DEPENDENCIES "WebKit;Widgets;Gui;Network;Core")
+set(Qt5WebKitWidgets_DEFINITIONS -DQT_WEBKITWIDGETS_LIB)
+
+@QTWEBKIT_PACKAGE_FOOTER@
