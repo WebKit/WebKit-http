@@ -41,7 +41,6 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
     "${WEBCORE_DIR}/platform/mock/mediasource"
     "${WEBCORE_DIR}/platform/network/soup"
     "${WEBCORE_DIR}/platform/text/icu"
-    ${WPE_DIR}
     ${WTF_DIR}
 )
 
@@ -215,7 +214,7 @@ list(APPEND WebCore_LIBRARIES
     ${LIBXSLT_LIBRARIES}
     ${OCDM_LIBRARIES}
     ${SQLITE_LIBRARIES}
-    WPE
+    ${WPE_LIBRARIES}
 )
 
 list(APPEND WebCore_INCLUDE_DIRECTORIES
@@ -233,7 +232,7 @@ list(APPEND WebCore_INCLUDE_DIRECTORIES
     ${LIBXSLT_INCLUDE_DIR}
     ${OCDM_INCLUDE_DIRS}
     ${SQLITE_INCLUDE_DIR}
-    ${WPE_DIR}
+    ${WPE_INCLUDE_DIRS}
 )
 
 if (ENABLE_SUBTLE_CRYPTO)
