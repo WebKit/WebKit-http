@@ -7,6 +7,7 @@ set(WebKit2_DatabaseProcess_OUTPUT_NAME QtWebDatabaseProcess)
 
 list(APPEND WebKit2_INCLUDE_DIRECTORIES
     "${FORWARDING_HEADERS_DIR}"
+    "${FORWARDING_HEADERS_DIR}/QtWebKit"
 
     "${WEBCORE_DIR}/platform/graphics/opentype"
     "${WEBCORE_DIR}/platform/graphics/qt"
@@ -254,3 +255,4 @@ set(WEBKIT2_EXTRA_DEPENDENCIES
      WebKit2-forwarding-headers
 )
 
+WEBKIT_CREATE_FORWARDING_HEADERS(QtWebKit/private DIRECTORIES UIProcess/API/qt)

@@ -3,6 +3,7 @@ include_directories(
     ${CMAKE_BINARY_DIR}
     ${CMAKE_SOURCE_DIR}/Source
     "${FORWARDING_HEADERS_DIR}"
+    "${FORWARDING_HEADERS_DIR}/QtWebKit"
 
     # The WebKit2 Qt APIs depend on qwebkitglobal.h, which lives in WebKit
     "${WEBKIT_DIR}/qt/Api"

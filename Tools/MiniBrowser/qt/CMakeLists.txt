@@ -1,5 +1,7 @@
 set(MiniBrowser_INCLUDE_DIRECTORIES
     ${CMAKE_BINARY_DIR}
+    "${CMAKE_SOURCE_DIR}/Source"
+    "${FORWARDING_HEADERS_DIR}/QtWebKit"
     "${WEBKIT_DIR}/qt/Api"
     "${WEBKIT_DIR}/qt/WebCoreSupport"
     "${WEBKIT2_DIR}/UIProcess/API/qt"
