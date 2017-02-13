@@ -32,10 +32,13 @@
 #import "MockRealtimeAudioSourceMac.h"
 
 #if ENABLE(MEDIA_STREAM)
+#import "AudioSampleBufferList.h"
+#import "CAAudioStreamDescription.h"
 #import "MediaConstraints.h"
 #import "MediaSampleAVFObjC.h"
 #import "NotImplemented.h"
 #import "RealtimeMediaSourceSettings.h"
+#import "WebAudioBufferList.h"
 #import "WebAudioSourceProviderAVFObjC.h"
 #import <AVFoundation/AVAudioBuffer.h>
 #import <AudioToolbox/AudioConverter.h>
@@ -48,6 +51,11 @@ SOFT_LINK_FRAMEWORK(AudioToolbox)
 SOFT_LINK(AudioToolbox, AudioConverterNew, OSStatus, (const AudioStreamBasicDescription* inSourceFormat, const AudioStreamBasicDescription* inDestinationFormat, AudioConverterRef* outAudioConverter), (inSourceFormat, inDestinationFormat, outAudioConverter))
 
 namespace WebCore {
+
+static inline size_t alignTo16Bytes(size_t size)
+{
+    return (size + 15) & ~15;
+}
 
 RefPtr<MockRealtimeAudioSource> MockRealtimeAudioSource::create(const String& name, const MediaConstraints* constraints)
 {
@@ -92,7 +100,11 @@ void MockRealtimeAudioSourceMac::emitSampleBuffers(uint32_t frameCount)
 {
     ASSERT(m_formatDescription);
 
-    CMTime startTime = CMTimeMake(elapsedTime() * m_sampleRate, m_sampleRate);
+    CMTime startTime = CMTimeMake(m_bytesEmitted, m_sampleRate);
+    m_bytesEmitted += frameCount;
+
+    audioSamplesAvailable(toMediaTime(startTime), *m_audioBufferList, CAAudioStreamDescription(m_streamFormat), frameCount);
+
     CMSampleBufferRef sampleBuffer;
     OSStatus result = CMAudioSampleBufferCreateWithPacketDescriptions(nullptr, nullptr, true, nullptr, nullptr, m_formatDescription.get(), frameCount, startTime, nullptr, &sampleBuffer);
     ASSERT(sampleBuffer);
@@ -102,15 +114,13 @@ void MockRealtimeAudioSourceMac::emitSampleBuffers(uint32_t frameCount)
         return;
 
     auto buffer = adoptCF(sampleBuffer);
-    result = CMSampleBufferSetDataBufferFromAudioBufferList(sampleBuffer, kCFAllocatorDefault, kCFAllocatorDefault, 0, m_audioBufferList.get());
+    result = CMSampleBufferSetDataBufferFromAudioBufferList(sampleBuffer, kCFAllocatorDefault, kCFAllocatorDefault, 0, m_audioBufferList->list());
     ASSERT(!result);
 
     result = CMSampleBufferSetDataReady(sampleBuffer);
     ASSERT(!result);
 
-    mediaDataUpdated(MediaSampleAVFObjC::create(sampleBuffer));
-
-    for (auto& observer : m_observers)
+    for (const auto& observer : m_observers)
         observer->process(m_formatDescription.get(), sampleBuffer);
 }
 
@@ -119,36 +129,15 @@ void MockRealtimeAudioSourceMac::reconfigure()
     m_maximiumFrameCount = WTF::roundUpToPowerOfTwo(renderInterval() / 1000. * m_sampleRate * 2);
     ASSERT(m_maximiumFrameCount);
 
-    // AudioBufferList is a variable-length struct, so create on the heap with a generic new() operator
-    // with a custom size, and initialize the struct manually.
-    uint32_t bufferDataSize = m_bytesPerFrame * m_maximiumFrameCount;
-    uint32_t baseSize = offsetof(AudioBufferList, mBuffers) + sizeof(AudioBuffer);
-    uint64_t bufferListSize = baseSize + bufferDataSize;
-    ASSERT(bufferListSize <= SIZE_MAX);
-    if (bufferListSize > SIZE_MAX)
-        return;
-
-    m_audioBufferListBufferSize = static_cast<size_t>(bufferListSize);
-    m_audioBufferList = std::unique_ptr<AudioBufferList>(static_cast<AudioBufferList*>(::operator new (m_audioBufferListBufferSize)));
-    memset(m_audioBufferList.get(), 0, m_audioBufferListBufferSize);
-
-    m_audioBufferList->mNumberBuffers = 1;
-    auto& buffer = m_audioBufferList->mBuffers[0];
-    buffer.mNumberChannels = 1;
-    buffer.mDataByteSize = bufferDataSize;
-    buffer.mData = reinterpret_cast<uint8_t*>(m_audioBufferList.get()) + baseSize;
-
     const int bytesPerFloat = sizeof(Float32);
     const int bitsPerByte = 8;
-    m_streamFormat = { };
-    m_streamFormat.mSampleRate = m_sampleRate;
-    m_streamFormat.mFormatID = kAudioFormatLinearPCM;
-    m_streamFormat.mFormatFlags = kAudioFormatFlagsNativeFloatPacked | kAudioFormatFlagIsNonInterleaved;
-    m_streamFormat.mBytesPerPacket = bytesPerFloat;
-    m_streamFormat.mFramesPerPacket = 1;
-    m_streamFormat.mBytesPerFrame = bytesPerFloat;
-    m_streamFormat.mChannelsPerFrame = 1;
-    m_streamFormat.mBitsPerChannel = bitsPerByte * bytesPerFloat;
+    const int channelCount = 2;
+    const bool isFloat = true;
+    const bool isBigEndian = false;
+    const bool isNonInterleaved = true;
+    FillOutASBDForLPCM(m_streamFormat, m_sampleRate, channelCount, bitsPerByte * bytesPerFloat, bitsPerByte * bytesPerFloat, isFloat, isBigEndian, isNonInterleaved);
+
+    m_audioBufferList = std::make_unique<WebAudioBufferList>(m_streamFormat, m_streamFormat.mBytesPerFrame * m_maximiumFrameCount);
 
     CMFormatDescriptionRef formatDescription;
     CMAudioFormatDescriptionCreate(NULL, &m_streamFormat, 0, NULL, 0, NULL, NULL, &formatDescription);
@@ -162,45 +151,50 @@ void MockRealtimeAudioSourceMac::render(double delta)
 {
     static double theta;
     static const double frequencies[] = { 1500., 500. };
+    static const double tau = 2 * M_PI;
 
     if (!m_audioBufferList)
         reconfigure();
 
-    uint32_t totalFrameCount = delta * m_sampleRate;
+    uint32_t totalFrameCount = alignTo16Bytes(delta * m_sampleRate);
     uint32_t frameCount = std::min(totalFrameCount, m_maximiumFrameCount);
     double elapsed = elapsedTime();
+
     while (frameCount) {
-        float *buffer = static_cast<float *>(m_audioBufferList->mBuffers[0].mData);
-        for (uint32_t frame = 0; frame < frameCount; ++frame) {
-            int phase = fmod(elapsed, 2) * 15;
-            double increment = 0;
-            bool silent = true;
+        for (auto& audioBuffer : m_audioBufferList->buffers()) {
+            audioBuffer.mDataByteSize = frameCount * m_streamFormat.mBytesPerFrame;
+            float *buffer = static_cast<float *>(audioBuffer.mData);
+            for (uint32_t frame = 0; frame < frameCount; ++frame) {
+                int phase = fmod(elapsed, 2) * 15;
+                double increment = 0;
+                bool silent = true;
 
-            switch (phase) {
-            case 0:
-            case 14: {
-                int index = fmod(elapsed, 1) * 2;
-                increment = 2.0 * M_PI * frequencies[index] / m_sampleRate;
-                silent = false;
-                break;
-            }
-            default:
-                break;
-            }
+                switch (phase) {
+                case 0:
+                case 14: {
+                    int index = fmod(elapsed, 1) * 2;
+                    increment = tau * frequencies[index] / m_sampleRate;
+                    silent = false;
+                    break;
+                }
+                default:
+                    break;
+                }
 
-            if (silent) {
-                buffer[frame] = 0;
-                continue;
-            }
+                if (silent) {
+                    buffer[frame] = 0;
+                    continue;
+                }
 
-            buffer[frame] = sin(theta) * 0.25;
-            theta += increment;
-            if (theta > 2.0 * M_PI)
-                theta -= 2.0 * M_PI;
-            elapsed += 1 / m_sampleRate;
+                float tone = sin(theta) * 0.25;
+                buffer[frame] = tone;
+
+                theta += increment;
+                if (theta > tau)
+                    theta -= tau;
+                elapsed += 1 / m_sampleRate;
+            }
         }
-
-        m_audioBufferList->mBuffers[0].mDataByteSize = frameCount * sizeof(float);
         emitSampleBuffers(frameCount);
         totalFrameCount -= frameCount;
         frameCount = std::min(totalFrameCount, m_maximiumFrameCount);

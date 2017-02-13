@@ -75,6 +75,7 @@ enum ForcedAccessibilityValue { "system", "on", "off" };
     [MayThrowException] void setAutoscrollForDragAndDropEnabled(boolean enabled);
     [MayThrowException] void setBackgroundShouldExtendBeyondPage(boolean hasExtendedBackground);
     [MayThrowException] void setScrollingTreeIncludesFrames(boolean enabled);
+    [MayThrowException] void setAllowUnclampedScrollPosition(boolean allowUnclamped);
 
     [MayThrowException] void setMinimumTimerInterval(unrestricted double intervalInSeconds);
     [MayThrowException] void setAllowsInlineMediaPlayback(boolean allows);
@@ -82,9 +83,6 @@ enum ForcedAccessibilityValue { "system", "on", "off" };
     [MayThrowException] void setInlineMediaPlaybackRequiresPlaysInlineAttribute(boolean requires);
 
     // RuntimeEnabledFeatures.
-    void setLangAttributeAwareFormControlUIEnabled(boolean enabled);
-    void setResourceTimingEnabled(boolean enabled);
-    void setLinkPreloadEnabled(boolean enabled);
     void setIndexedDBWorkersEnabled(boolean enabled);
     void setCSSGridLayoutEnabled(boolean enabled);
     void setWebGL2Enabled(boolean enabled);

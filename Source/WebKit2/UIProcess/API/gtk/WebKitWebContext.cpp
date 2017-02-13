@@ -176,6 +176,7 @@ struct _WebKitWebContextPrivate {
     unsigned processCountLimit;
 
     HashMap<uint64_t, WebKitWebView*> webViews;
+    unsigned ephemeralPageCount;
 
     CString webExtensionsDirectory;
     GRefPtr<GVariant> webExtensionsInitializationUserData;
@@ -258,7 +259,7 @@ static void webkitWebContextConstructed(GObject* object)
 
     WebKitWebContext* webContext = WEBKIT_WEB_CONTEXT(object);
     WebKitWebContextPrivate* priv = webContext->priv;
-    if (priv->websiteDataManager) {
+    if (priv->websiteDataManager && !webkit_website_data_manager_is_ephemeral(priv->websiteDataManager.get())) {
         configuration.setLocalStorageDirectory(WebCore::stringFromFileSystemRepresentation(webkit_website_data_manager_get_local_storage_directory(priv->websiteDataManager.get())));
         configuration.setDiskCacheDirectory(WebCore::pathByAppendingComponent(WebCore::stringFromFileSystemRepresentation(webkit_website_data_manager_get_disk_cache_directory(priv->websiteDataManager.get())), networkCacheSubdirectory));
         configuration.setApplicationCacheDirectory(WebCore::stringFromFileSystemRepresentation(webkit_website_data_manager_get_offline_application_cache_directory(priv->websiteDataManager.get())));
@@ -449,6 +450,26 @@ WebKitWebContext* webkit_web_context_new(void)
 }
 
 /**
+ * webkit_web_context_new_ephemeral:
+ *
+ * Create a new ephemeral #WebKitWebContext. An ephemeral #WebKitWebContext is a context
+ * created with an ephemeral #WebKitWebsiteDataManager. This is just a convenient method
+ * to create ephemeral contexts without having to create your own #WebKitWebsiteDataManager.
+ * All #WebKitWebView<!-- -->s associated with this context will also be ephemeral. Websites will
+ * not store any data in the client storage.
+ * This is normally used to implement private instances.
+ *
+ * Returns: (transfer full): a new ephemeral #WebKitWebContext.
+ *
+ * Since: 2.16
+ */
+WebKitWebContext* webkit_web_context_new_ephemeral()
+{
+    GRefPtr<WebKitWebsiteDataManager> manager = adoptGRef(webkit_website_data_manager_new_ephemeral());
+    return WEBKIT_WEB_CONTEXT(g_object_new(WEBKIT_TYPE_WEB_CONTEXT, "website-data-manager", manager.get(), nullptr));
+}
+
+/**
  * webkit_web_context_new_with_website_data_manager:
  * @manager: a #WebKitWebsiteDataManager
  *
@@ -480,6 +501,23 @@ WebKitWebsiteDataManager* webkit_web_context_get_website_data_manager(WebKitWebC
     g_return_val_if_fail(WEBKIT_IS_WEB_CONTEXT(context), nullptr);
 
     return context->priv->websiteDataManager.get();
+}
+
+/**
+ * webkit_web_context_is_ephemeral:
+ * @context: the #WebKitWebContext
+ *
+ * Get whether a #WebKitWebContext is ephemeral.
+ *
+ * Returns: %TRUE if @context is ephemeral or %FALSE otherwise.
+ *
+ * Since: 2.16
+ */
+gboolean webkit_web_context_is_ephemeral(WebKitWebContext* context)
+{
+    g_return_val_if_fail(WEBKIT_IS_WEB_CONTEXT(context), FALSE);
+
+    return webkit_website_data_manager_is_ephemeral(context->priv->websiteDataManager.get());
 }
 
 /**
@@ -675,6 +713,31 @@ static void ensureFaviconDatabase(WebKitWebContext* context)
     priv->faviconDatabase = adoptGRef(webkitFaviconDatabaseCreate(priv->processPool->iconDatabase()));
 }
 
+static void webkitWebContextEnableIconDatabasePrivateBrowsingIfNeeded(WebKitWebContext* context, WebKitWebView* webView)
+{
+    if (webkit_web_context_is_ephemeral(context))
+        return;
+    if (!webkit_web_view_is_ephemeral(webView))
+        return;
+
+    if (!context->priv->ephemeralPageCount)
+        context->priv->processPool->iconDatabase()->setPrivateBrowsingEnabled(true);
+    context->priv->ephemeralPageCount++;
+}
+
+static void webkitWebContextDisableIconDatabasePrivateBrowsingIfNeeded(WebKitWebContext* context, WebKitWebView* webView)
+{
+    if (webkit_web_context_is_ephemeral(context))
+        return;
+    if (!webkit_web_view_is_ephemeral(webView))
+        return;
+
+    ASSERT(context->priv->ephemeralPageCount);
+    context->priv->ephemeralPageCount--;
+    if (!context->priv->ephemeralPageCount)
+        context->priv->processPool->iconDatabase()->setPrivateBrowsingEnabled(false);
+}
+
 /**
  * webkit_web_context_set_favicon_database_directory:
  * @context: a #WebKitWebContext
@@ -713,6 +776,9 @@ void webkit_web_context_set_favicon_database_directory(WebKitWebContext* context
 
     // Setting the path will cause the icon database to be opened.
     priv->processPool->setIconDatabasePath(WebCore::stringFromFileSystemRepresentation(faviconDatabasePath.get()));
+
+    if (webkit_web_context_is_ephemeral(context))
+        priv->processPool->iconDatabase()->setPrivateBrowsingEnabled(true);
 }
 
 /**
@@ -1421,12 +1487,20 @@ void webkitWebContextCreatePageForWebView(WebKitWebContext* context, WebKitWebVi
 {
     WebKitWebViewBase* webViewBase = WEBKIT_WEB_VIEW_BASE(webView);
 
+    // FIXME: icon database private mode is global, not per page, so while there are
+    // pages in private mode we need to enable the private mode in the icon database.
+    webkitWebContextEnableIconDatabasePrivateBrowsingIfNeeded(context, webView);
+
     auto pageConfiguration = API::PageConfiguration::create();
     pageConfiguration->setProcessPool(context->priv->processPool.get());
     pageConfiguration->setPreferences(webkitSettingsGetPreferences(webkit_web_view_get_settings(webView)));
     pageConfiguration->setRelatedPage(relatedView ? webkitWebViewBaseGetPage(WEBKIT_WEB_VIEW_BASE(relatedView)) : nullptr);
     pageConfiguration->setUserContentController(userContentManager ? webkitUserContentManagerGetUserContentControllerProxy(userContentManager) : nullptr);
-    pageConfiguration->setWebsiteDataStore(&webkitWebsiteDataManagerGetDataStore(context->priv->websiteDataManager.get()));
+
+    WebKitWebsiteDataManager* manager = webkitWebViewGetWebsiteDataManager(webView);
+    if (!manager)
+        manager = context->priv->websiteDataManager.get();
+    pageConfiguration->setWebsiteDataStore(&webkitWebsiteDataManagerGetDataStore(manager));
     pageConfiguration->setSessionID(pageConfiguration->websiteDataStore()->websiteDataStore().sessionID());
     webkitWebViewBaseCreateWebPage(webViewBase, WTFMove(pageConfiguration));
 
@@ -1436,6 +1510,7 @@ void webkitWebContextCreatePageForWebView(WebKitWebContext* context, WebKitWebVi
 
 void webkitWebContextWebViewDestroyed(WebKitWebContext* context, WebKitWebView* webView)
 {
+    webkitWebContextDisableIconDatabasePrivateBrowsingIfNeeded(context, webView);
     WebPageProxy* page = webkitWebViewBaseGetPage(WEBKIT_WEB_VIEW_BASE(webView));
     context->priv->webViews.remove(page->pageID());
 }

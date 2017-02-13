@@ -56,6 +56,11 @@
 #include <wtf/StdLibExtras.h>
 #include <wtf/text/WTFString.h>
 
+#if PLATFORM(IOS)
+#include <WebCore/WebCoreThreadRun.h>
+#include <wtf/BlockPtr.h>
+#endif
+
 #if PLATFORM(MAC) && !PLATFORM(IOS)
 #include <Carbon/Carbon.h>
 #endif
@@ -342,7 +347,7 @@ static JSValueRef setAudioResultCallback(JSContextRef context, JSObjectRef funct
         return JSValueMakeUndefined(context);
 
     // FIXME (123058): Use a JSC API to get buffer contents once such is exposed.
-    JSC::JSArrayBufferView* jsBufferView = JSC::jsDynamicCast<JSC::JSArrayBufferView*>(toJS(toJS(context), arguments[0]));
+    JSC::JSArrayBufferView* jsBufferView = JSC::jsDynamicCast<JSC::JSArrayBufferView*>(toJS(context)->vm(), toJS(toJS(context), arguments[0]));
     ASSERT(jsBufferView);
     RefPtr<JSC::ArrayBufferView> bufferView = jsBufferView->unsharedImpl();
     const char* buffer = static_cast<const char*>(bufferView->baseAddress());
@@ -2407,17 +2412,26 @@ void TestRunner::runUIScript(JSContextRef context, JSStringRef script, JSValueRe
 void TestRunner::callUIScriptCallback(unsigned callbackID, JSStringRef result)
 {
     JSRetainPtr<JSStringRef> protectedResult(result);
-    
+#if !PLATFORM(IOS)
     RunLoop::main().dispatch([protectedThis = makeRef(*this), callbackID, protectedResult]() mutable {
         JSContextRef context = protectedThis->mainFrameJSContext();
         JSValueRef resultValue = JSValueMakeString(context, protectedResult.get());
         protectedThis->callTestRunnerCallback(callbackID, 1, &resultValue);
     });
+#else
+    WebThreadRun(
+        BlockPtr<void()>::fromCallable([protectedThis = makeRef(*this), callbackID, protectedResult] {
+            JSContextRef context = protectedThis->mainFrameJSContext();
+            JSValueRef resultValue = JSValueMakeString(context, protectedResult.get());
+            protectedThis->callTestRunnerCallback(callbackID, 1, &resultValue);
+        }).get()
+    );
+#endif
 }
 
 void TestRunner::uiScriptDidComplete(const String& result, unsigned callbackID)
 {
-    JSRetainPtr<JSStringRef> stringRef(Adopt, JSStringCreateWithCharacters(result.characters16(), result.length()));
+    JSRetainPtr<JSStringRef> stringRef(Adopt, JSStringCreateWithUTF8CString(result.utf8().data()));
     callUIScriptCallback(callbackID, stringRef.get());
 }
 

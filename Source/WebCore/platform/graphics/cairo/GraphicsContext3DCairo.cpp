@@ -55,6 +55,10 @@
 #include "OpenGLShims.h"
 #endif
 
+#if USE(TEXTURE_MAPPER)
+#include "TextureMapperGC3DPlatformLayer.h"
+#endif
+
 namespace WebCore {
 
 static const int MaxActiveContexts = 16;
@@ -110,8 +114,13 @@ GraphicsContext3D::GraphicsContext3D(GraphicsContext3DAttributes attributes, Hos
     , m_multisampleFBO(0)
     , m_multisampleDepthStencilBuffer(0)
     , m_multisampleColorBuffer(0)
-    , m_private(std::make_unique<GraphicsContext3DPrivate>(this, renderStyle))
 {
+#if USE(TEXTURE_MAPPER)
+    m_texmapLayer = std::make_unique<TextureMapperGC3DPlatformLayer>(*this, renderStyle);
+#else
+    m_private = std::make_unique<GraphicsContext3DPrivate>(this, renderStyle);
+#endif
+
     makeContextCurrent();
 
     validateAttributes();
@@ -225,8 +234,13 @@ GraphicsContext3D::GraphicsContext3D(GraphicsContext3DAttributes attributes, Hos
 
 GraphicsContext3D::~GraphicsContext3D()
 {
+#if USE(TEXTURE_MAPPER)
+    if (m_texmapLayer->renderStyle() == RenderToCurrentGLContext)
+        return;
+#else
     if (m_private->renderStyle() == RenderToCurrentGLContext)
         return;
+#endif
 
     makeContextCurrent();
     if (m_texture)
@@ -372,9 +386,14 @@ void GraphicsContext3D::setErrorMessageCallback(std::unique_ptr<ErrorMessageCall
 
 bool GraphicsContext3D::makeContextCurrent()
 {
-    if (!m_private)
-        return false;
-    return m_private->makeContextCurrent();
+#if USE(TEXTURE_MAPPER)
+    if (m_texmapLayer)
+        return m_texmapLayer->makeContextCurrent();
+#else
+    if (m_private)
+        return m_private->makeContextCurrent();
+#endif
+    return false;
 }
 
 void GraphicsContext3D::checkGPUStatusIfNecessary()
@@ -383,7 +402,11 @@ void GraphicsContext3D::checkGPUStatusIfNecessary()
 
 PlatformGraphicsContext3D GraphicsContext3D::platformGraphicsContext3D()
 {
+#if USE(TEXTURE_MAPPER)
+    return m_texmapLayer->platformContext();
+#else
     return m_private->platformContext();
+#endif
 }
 
 Platform3DObject GraphicsContext3D::platformTexture() const
@@ -402,7 +425,11 @@ bool GraphicsContext3D::isGLES2Compliant() const
 
 PlatformLayer* GraphicsContext3D::platformLayer() const
 {
+#if USE(TEXTURE_MAPPER)
+    return m_texmapLayer.get();
+#else
     return m_private.get();
+#endif
 }
 
 #if PLATFORM(GTK)

@@ -35,7 +35,6 @@
 #include "FindController.h"
 #include "GeolocationPermissionRequestManager.h"
 #include "ImageOptions.h"
-#include "InjectedBundlePageDiagnosticLoggingClient.h"
 #include "InjectedBundlePageFullScreenClient.h"
 #include "InjectedBundlePageLoaderClient.h"
 #include "InjectedBundlePagePolicyClient.h"
@@ -199,6 +198,7 @@ struct InteractionInformationAtPosition;
 struct InteractionInformationRequest;
 struct LoadParameters;
 struct PrintInfo;
+struct WebsitePolicies;
 struct WebPageCreationParameters;
 struct WebPreferencesStore;
 struct WebSelectionData;
@@ -213,10 +213,10 @@ class WebTouchEvent;
 
 class WebPage : public API::ObjectImpl<API::Object::Type::BundlePage>, public IPC::MessageReceiver, public IPC::MessageSender {
 public:
-    static Ref<WebPage> create(uint64_t pageID, const WebPageCreationParameters&);
+    static Ref<WebPage> create(uint64_t pageID, WebPageCreationParameters&&);
     virtual ~WebPage();
 
-    void reinitializeWebPage(const WebPageCreationParameters&);
+    void reinitializeWebPage(WebPageCreationParameters&&);
 
     void close();
 
@@ -292,6 +292,8 @@ public:
     String platformUserAgent(const WebCore::URL&) const;
     WebCore::KeyboardUIMode keyboardUIMode();
 
+    const String& overrideContentSecurityPolicy() const { return m_overrideContentSecurityPolicy; }
+
     WebUndoStep* webUndoStep(uint64_t);
     void addWebUndoStep(uint64_t, WebUndoStep*);
     void removeWebEditCommand(uint64_t);
@@ -331,7 +333,6 @@ public:
 #if ENABLE(FULLSCREEN_API)
     void initializeInjectedBundleFullScreenClient(WKBundlePageFullScreenClientBase*);
 #endif
-    void initializeInjectedBundleDiagnosticLoggingClient(WKBundlePageDiagnosticLoggingClientBase*);
 
 #if ENABLE(CONTEXT_MENUS)
     API::InjectedBundle::PageContextMenuClient& injectedBundleContextMenuClient() { return *m_contextMenuClient.get(); }
@@ -342,7 +343,6 @@ public:
     InjectedBundlePagePolicyClient& injectedBundlePolicyClient() { return m_policyClient; }
     InjectedBundlePageResourceLoadClient& injectedBundleResourceLoadClient() { return m_resourceLoadClient; }
     API::InjectedBundle::PageUIClient& injectedBundleUIClient() { return *m_uiClient.get(); }
-    InjectedBundlePageDiagnosticLoggingClient& injectedBundleDiagnosticLoggingClient() { return m_logDiagnosticMessageClient; }
 #if ENABLE(FULLSCREEN_API)
     InjectedBundlePageFullScreenClient& injectedBundleFullScreenClient() { return m_fullScreenClient; }
 #endif
@@ -577,6 +577,8 @@ public:
     void updateSelectionAppearance();
     void getSelectionContext(uint64_t callbackID);
     void handleTwoFingerTapAtPoint(const WebCore::IntPoint&, uint64_t requestID);
+    void getRectsForGranularityWithSelectionOffset(uint32_t, int32_t, uint64_t callbackID);
+    void getRectsAtSelectionOffsetWithText(int32_t, const String&, uint64_t callbackID);
 #if ENABLE(IOS_TOUCH_EVENTS)
     void dispatchAsynchronousTouchEvents(const Vector<WebTouchEvent, 1>& queue);
 #endif
@@ -977,7 +979,7 @@ public:
     void setUseIconLoadingClient(bool);
 
 private:
-    WebPage(uint64_t pageID, const WebPageCreationParameters&);
+    WebPage(uint64_t pageID, WebPageCreationParameters&&);
 
     void updateThrottleState();
     void updateUserActivity();
@@ -1015,6 +1017,9 @@ private:
     PassRefPtr<WebCore::Range> rangeForGranularityAtPoint(const WebCore::Frame&, const WebCore::IntPoint&, uint32_t granularity, bool isInteractingWithAssistedNode);
     bool shouldSwitchToBlockModeForHandle(const WebCore::IntPoint& handlePoint, SelectionHandlePosition);
     RefPtr<WebCore::Range> switchToBlockSelectionAtPoint(const WebCore::IntPoint&, SelectionHandlePosition);
+#if ENABLE(DATA_INTERACTION)
+    void requestStartDataInteraction(const WebCore::IntPoint& clientPosition, const WebCore::IntPoint& globalPosition);
+#endif
 #endif
 
 #if !PLATFORM(COCOA) && !PLATFORM(WPE)
@@ -1212,6 +1217,8 @@ private:
 
     void reportUsedFeatures();
 
+    void updateWebsitePolicies(const WebsitePolicies&);
+
 #if PLATFORM(MAC)
     void performImmediateActionHitTestAtLocation(WebCore::FloatPoint);
     RefPtr<WebCore::Range> lookupTextAtLocation(WebCore::FloatPoint, NSDictionary **options);
@@ -1225,6 +1232,9 @@ private:
     void dataDetectorsDidHideUI(WebCore::PageOverlay::PageOverlayID);
 
     void handleAcceptedCandidate(WebCore::TextCheckingResult);
+#endif
+
+#if PLATFORM(COCOA)
     void requestActiveNowPlayingSessionInfo();
 #endif
 
@@ -1250,6 +1260,10 @@ private:
     void setUserInterfaceLayoutDirection(uint32_t);
 
     bool canPluginHandleResponse(const WebCore::ResourceResponse&);
+
+#if USE(QUICK_LOOK)
+    void didReceivePasswordForQuickLookDocument(const String&);
+#endif
 
     uint64_t m_pageID;
 
@@ -1354,7 +1368,6 @@ private:
 #if ENABLE(FULLSCREEN_API)
     InjectedBundlePageFullScreenClient m_fullScreenClient;
 #endif
-    InjectedBundlePageDiagnosticLoggingClient m_logDiagnosticMessageClient;
 
     FindController m_findController;
 
@@ -1528,6 +1541,8 @@ private:
 #endif
 
     WebCore::UserInterfaceLayoutDirection m_userInterfaceLayoutDirection { WebCore::UserInterfaceLayoutDirection::LTR };
+
+    const String m_overrideContentSecurityPolicy;
 };
 
 } // namespace WebKit

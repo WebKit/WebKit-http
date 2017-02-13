@@ -96,6 +96,8 @@ messages -> WebPage LegacyReceiver {
     SetAllowsMediaDocumentInlinePlayback(bool allows)
     HandleTwoFingerTapAtPoint(WebCore::IntPoint point, uint64_t requestID)
     SetForceAlwaysUserScalable(bool userScalable)
+    GetRectsForGranularityWithSelectionOffset(uint32_t granularity, int32_t offset, uint64_t callbackID);
+    GetRectsAtSelectionOffsetWithText(int32_t offset, String text, uint64_t callbackID);
 #endif
 
     SetControlledByAutomation(bool controlled)
@@ -146,6 +148,7 @@ messages -> WebPage LegacyReceiver {
 
     DidRemoveBackForwardItem(uint64_t backForwardItemID)
 
+    UpdateWebsitePolicies(struct WebKit::WebsitePolicies websitePolicies)
     DidReceivePolicyDecision(uint64_t frameID, uint64_t listenerID, uint32_t policyAction, uint64_t navigationID, WebKit::DownloadID downloadID)
 
     ClearSelection()
@@ -245,6 +248,10 @@ messages -> WebPage LegacyReceiver {
 #if ENABLE(DRAG_SUPPORT)
     DidStartDrag()
     DragEnded(WebCore::IntPoint clientPosition, WebCore::IntPoint globalPosition, uint64_t operation)
+#endif
+
+#if ENABLE(DATA_INTERACTION)
+    RequestStartDataInteraction(WebCore::IntPoint clientPosition, WebCore::IntPoint globalPosition)
 #endif
 
     # Popup menu.
@@ -425,10 +432,13 @@ messages -> WebPage LegacyReceiver {
     DataDetectorsDidHideUI(WebCore::PageOverlay::PageOverlayID pageOverlay)
 
     HandleAcceptedCandidate(struct WebCore::TextCheckingResult acceptedCandidate)
-    RequestActiveNowPlayingSessionInfo()
 
     SetHeaderBannerHeightForTesting(int height);
     SetFooterBannerHeightForTesting(int height);
+#endif
+
+#if PLATFORM(COCOA)
+    RequestActiveNowPlayingSessionInfo()
 #endif
 
     SetShouldDispatchFakeMouseMoveEvents(bool shouldDispatchFakeMouseMoveEvents)
@@ -461,5 +471,9 @@ messages -> WebPage LegacyReceiver {
 
 #if ENABLE(GAMEPAD)
     GamepadActivity(Vector<WebKit::GamepadData> gamepadDatas, bool shouldMakeGamepadsVisible)
+#endif
+
+#if USE(QUICK_LOOK)
+    DidReceivePasswordForQuickLookDocument(String password)
 #endif
 }

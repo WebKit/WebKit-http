@@ -1,3 +1,57 @@
+2017-02-06  Jon Davis  <jond@apple.com>
+
+        Add a survey to learn how people use WebKit Nightly builds
+        https://bugs.webkit.org/show_bug.cgi?id=167748
+
+        Reviewed by Joseph Pecoraro.
+
+        * wp-content/themes/webkit/functions.php:
+        * wp-content/themes/webkit/nightly-start.php:
+        * wp-content/themes/webkit/nightly-survey.php: Added.
+        * wp-content/themes/webkit/survey.json: Added.
+
+2017-01-28  Yoav Weiss  <yoav@yoav.ws>
+
+        Add Link Preload as an off-by-default experimental feature menu item.
+        https://bugs.webkit.org/show_bug.cgi?id=167201
+
+        Reviewed by Ryosuke Niwa.
+
+        * experimental-features.html: Added Link Preload.
+
+2017-01-28  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Add User Timing Experimental Feature
+        https://bugs.webkit.org/show_bug.cgi?id=167542
+        <rdar://problem/22746307>
+
+        Reviewed by Ryosuke Niwa.
+
+        * experimental-features.html:
+
+2017-01-27  Dean Jackson  <dino@apple.com>
+
+        Add a simple demo for Touch stylus events
+        https://bugs.webkit.org/show_bug.cgi?id=167534
+
+        Reviewed by Simon Fraser.
+
+        * demos/touch/stylus.html: Added.
+
+2017-01-27  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Unreviewed, update scroll snapping demos to use current Module 1 spec
+
+        * demos/scroll-snap/index.html:
+
+        Adopt the new CSS properties scroll-snap-type and scroll-snap-align.
+
+2017-01-26  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Unreviewed, add a demo page for an input events blog post
+
+        * demos/input-events/index.html: Added.
+
 2017-01-20  Antoine Quint  <graouts@apple.com>
 
         Web Animations should be off by default and enabled as an experimental feature

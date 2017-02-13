@@ -1066,6 +1066,11 @@ static NSCellStateValue kit(TriState state)
 #if !PLATFORM(IOS)
     if (promisedDragTIFFDataSource)
         promisedDragTIFFDataSource->removeClient(promisedDataClient());
+
+    if (flagsChangedEventMonitor) {
+        [NSEvent removeMonitor:flagsChangedEventMonitor];
+        flagsChangedEventMonitor = nil;
+    }
 #endif
 
     [super dealloc];
@@ -3504,8 +3509,9 @@ WEBCORE_COMMAND(toggleUnderline)
 
 #if !PLATFORM(IOS)
         if (!_private->flagsChangedEventMonitor) {
+            __block WebHTMLView *weakSelf = self;
             _private->flagsChangedEventMonitor = [NSEvent addLocalMonitorForEventsMatchingMask:NSEventMaskFlagsChanged handler:^(NSEvent *flagsChangedEvent) {
-                [self _postFakeMouseMovedEventForFlagsChangedEvent:flagsChangedEvent];
+                [weakSelf _postFakeMouseMovedEventForFlagsChangedEvent:flagsChangedEvent];
                 return flagsChangedEvent;
             }];
         }
@@ -3866,9 +3872,6 @@ static RetainPtr<NSArray> fixMenusReceivedFromOldClients(NSArray *delegateSuppli
 
 static RetainPtr<NSMenuItem> createShareMenuItem(const HitTestResult& hitTestResult)
 {
-    if (![[NSMenuItem class] respondsToSelector:@selector(standardShareMenuItemWithItems:)])
-        return nil;
-
     auto items = adoptNS([[NSMutableArray alloc] init]);
 
     if (!hitTestResult.absoluteLinkURL().isEmpty()) {
@@ -3894,7 +3897,7 @@ static RetainPtr<NSMenuItem> createShareMenuItem(const HitTestResult& hitTestRes
     if (![items count])
         return nil;
 
-    return [NSMenuItem standardShareMenuItemWithItems:items.get()];
+    return [NSMenuItem standardShareMenuItemForItems:items.get()];
 }
 
 static RetainPtr<NSMutableArray> createMenuItems(const HitTestResult&, const Vector<ContextMenuItem>&);
@@ -4544,7 +4547,7 @@ static BOOL currentScrollIsBlit(NSView *clipView)
 }
 #endif
 
-#if ENABLE(DRAG_SUPPORT)
+#if ENABLE(DRAG_SUPPORT) && PLATFORM(MAC)
 - (void)dragImage:(NSImage *)dragImage
                at:(NSPoint)at
            offset:(NSSize)offset
@@ -4688,7 +4691,7 @@ static bool matchesExtensionOrEquivalent(NSString *filename, NSString *extension
     
     return [NSArray arrayWithObject:[path lastPathComponent]];
 }
-#endif
+#endif // ENABLE(DRAG_SUPPORT) && PLATFORM(MAC)
 
 #if !PLATFORM(IOS)
 - (void)mouseUp:(NSEvent *)event
@@ -5343,7 +5346,10 @@ static PassRefPtr<KeyboardEvent> currentKeyboardEvent(Frame* coreFrame)
 
 - (NSDictionary *)_fontAttributesFromFontPasteboard
 {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
     NSPasteboard *fontPasteboard = [NSPasteboard pasteboardWithName:NSFontPboard];
+#pragma clang diagnostic pop
     if (fontPasteboard == nil)
         return nil;
     NSData *data = [fontPasteboard dataForType:NSFontPboardType];
@@ -5545,7 +5551,10 @@ static PassRefPtr<KeyboardEvent> currentKeyboardEvent(Frame* coreFrame)
 
     // Put RTF with font attributes on the pasteboard.
     // Maybe later we should add a pasteboard type that contains CSS text for "native" copy and paste font.
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
     NSPasteboard *fontPasteboard = [NSPasteboard pasteboardWithName:NSFontPboard];
+#pragma clang diagnostic pop
     [fontPasteboard declareTypes:[NSArray arrayWithObject:NSFontPboardType] owner:nil];
     [fontPasteboard setData:[self _selectionStartFontAttributesAsRTF] forType:NSFontPboardType];
 }
@@ -6092,8 +6101,7 @@ static BOOL writingDirectionKeyBindingsEnabled()
 #if !PLATFORM(IOS)
 - (void)otherMouseDown:(NSEvent *)event
 {
-    if ([event buttonNumber] != 2 || ([NSMenu respondsToSelector:@selector(menuTypeForEvent:)]
-        && [NSMenu menuTypeForEvent:event] == NSMenuTypeContextMenu)) {
+    if (event.buttonNumber != 2 || [NSMenu menuTypeForEvent:event] == NSMenuTypeContextMenu) {
         [super otherMouseDown:event];
         return;
     }

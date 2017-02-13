@@ -32,21 +32,18 @@ class MacOSInlineMediaControls extends MacOSMediaControls
 
         this.element.classList.add("inline");
 
-        this._leftContainer = new ButtonsContainer({
+        this.leftContainer = new ButtonsContainer({
             buttons: [this.playPauseButton, this.skipBackButton],
-            cssClassName: "left",
-            padding: 24,
-            margin: 24
+            cssClassName: "left"
         });
 
-        this._rightContainer = new ButtonsContainer({
-            buttons: [this.muteButton, this.airplayButton, this.pipButton, this.tracksButton, this.fullscreenButton],
-            cssClassName: "right",
-            padding: 24,
-            margin: 24
+        this.rightContainer = new ButtonsContainer({
+            cssClassName: "right"
         });
 
-        this._volumeSliderContainer = new LayoutNode(`<div class="volume-slider-container">`);
+        this._matchLayoutTraits();
+
+        this._volumeSliderContainer = new LayoutNode(`<div class="volume-slider-container"></div>`);
         this._volumeSliderContainer.children = [this.volumeSlider];
         this._volumeSliderContainer.visible = false;
         this.volumeSlider.width = 60;
@@ -56,10 +53,24 @@ class MacOSInlineMediaControls extends MacOSMediaControls
         this.muteButton.element.addEventListener("mouseleave", this);
         this._volumeSliderContainer.element.addEventListener("mouseleave", this);
 
-        this.controlsBar.children = [this._leftContainer, this._rightContainer, this._volumeSliderContainer];
+        this.controlsBar.children = [this.leftContainer, this.rightContainer, this._volumeSliderContainer];
     }
 
     // Public
+
+    get layoutTraits()
+    {
+        return this._layoutTraits;
+    }
+
+    set layoutTraits(layoutTraits)
+    {
+        if (this._layoutTraits === layoutTraits)
+            return;
+
+        this._layoutTraits = layoutTraits;
+        this._matchLayoutTraits();
+    }
 
     layout()
     {
@@ -69,19 +80,19 @@ class MacOSInlineMediaControls extends MacOSMediaControls
             return;
 
         // Reset dropped buttons.
-        this._rightContainer.buttons.concat(this._leftContainer.buttons).forEach(button => delete button.dropped);
+        this.rightContainer.buttons.concat(this.leftContainer.buttons).forEach(button => delete button.dropped);
 
-        this._leftContainer.layout();
-        this._rightContainer.layout();
+        this.leftContainer.layout();
+        this.rightContainer.layout();
 
         const middleContainer = !!this.statusLabel.text ? this.statusLabel : this.timeControl;
-        this.controlsBar.children = [this._leftContainer, middleContainer, this._rightContainer, this._volumeSliderContainer];
+        this.controlsBar.children = [this.leftContainer, middleContainer, this.rightContainer, this._volumeSliderContainer];
 
         if (middleContainer === this.timeControl)
-            this.timeControl.width = this.width - this._leftContainer.width - this._rightContainer.width;
+            this.timeControl.width = this.width - this.leftContainer.width - this.rightContainer.width;
 
         if (middleContainer === this.timeControl && this.timeControl.isSufficientlyWide)
-            this.timeControl.x = this._leftContainer.width;
+            this.timeControl.x = this.leftContainer.width;
         else {
             this.timeControl.remove();
 
@@ -91,7 +102,7 @@ class MacOSInlineMediaControls extends MacOSMediaControls
             // enough space to display all buttons in the left and right containers, so gradually drop them.
             for (let button of [this.airplayButton, this.pipButton, this.tracksButton, this.muteButton, this.skipBackButton, this.fullscreenButton]) {
                 // Nothing left to do if the combined container widths is shorter than the available width.
-                if (this._leftContainer.width + this._rightContainer.width < this.width)
+                if (this.leftContainer.width + this.rightContainer.width < this.width)
                     break;
 
                 droppedControls = true;
@@ -103,25 +114,25 @@ class MacOSInlineMediaControls extends MacOSMediaControls
                 // This button must now be dropped.
                 button.dropped = true;
 
-                this._leftContainer.layout();
-                this._rightContainer.layout();
+                this.leftContainer.layout();
+                this.rightContainer.layout();
             }
 
             // We didn't need to drop controls and we have status text to show.
             if (!droppedControls && middleContainer === this.statusLabel) {
-                this.statusLabel.x = this._leftContainer.width;
-                this.statusLabel.width = this.width - this._leftContainer.width - this._rightContainer.width;
+                this.statusLabel.x = this.leftContainer.width;
+                this.statusLabel.width = this.width - this.leftContainer.width - this.rightContainer.width;
             }
         }
 
-        this._rightContainer.x = this.width - this._rightContainer.width;
-        this._volumeSliderContainer.x = this._rightContainer.x + this.muteButton.x;
+        this.rightContainer.x = this.width - this.rightContainer.width;
+        this._volumeSliderContainer.x = this.rightContainer.x + this.muteButton.x;
     }
 
     showTracksPanel()
     {
         super.showTracksPanel();
-        this.tracksPanel.rightX = this._rightContainer.width - this.tracksButton.x - this.tracksButton.width;
+        this.tracksPanel.rightX = this.rightContainer.width - this.tracksButton.x - this.tracksButton.width;
     }
 
     // Protected
@@ -131,4 +142,58 @@ class MacOSInlineMediaControls extends MacOSMediaControls
         this._volumeSliderContainer.visible = event.type === "mouseenter" || event.relatedTarget === this._volumeSliderContainer.element;
     }
 
+    controlsBarVisibilityDidChange(controlsBar)
+    {
+        if (controlsBar.visible)
+            this.layout();
+    }
+
+    // Private
+
+    _matchLayoutTraits()
+    {
+        if (!this.leftContainer || !this.rightContainer)
+            return;
+
+        const layoutTraits = this.layoutTraits;
+        if (layoutTraits & LayoutTraits.Compact) {
+            this.leftContainer.leftMargin = 8;
+            this.leftContainer.rightMargin = 12;
+            this.leftContainer.buttonMargin = 12;
+            this.rightContainer.leftMargin = 12;
+            this.rightContainer.rightMargin = 8;
+            this.rightContainer.buttonMargin = 12;
+        } else if (layoutTraits & LayoutTraits.TightPadding) {
+            this.leftContainer.leftMargin = 12;
+            this.leftContainer.rightMargin = 12;
+            this.leftContainer.buttonMargin = 12;
+            this.rightContainer.leftMargin = 12;
+            this.rightContainer.rightMargin = 12;
+            this.rightContainer.buttonMargin = 12;
+        } else if (layoutTraits & LayoutTraits.ReducedPadding) {
+            this.leftContainer.leftMargin = 12;
+            this.leftContainer.rightMargin = 16;
+            this.leftContainer.buttonMargin = 16;
+            this.rightContainer.leftMargin = 0;
+            this.rightContainer.rightMargin = 12;
+            this.rightContainer.buttonMargin = 16;
+        } else {
+            this.leftContainer.leftMargin = 24;
+            this.leftContainer.rightMargin = 24;
+            this.leftContainer.buttonMargin = 24;
+            this.rightContainer.leftMargin = 24;
+            this.rightContainer.rightMargin = 24;
+            this.rightContainer.buttonMargin = 24;
+        }
+
+        if (layoutTraits & LayoutTraits.Compact)
+            this.rightContainer.buttons = [this.muteButton, this.fullscreenButton];
+        else
+            this.rightContainer.buttons = [this.muteButton, this.airplayButton, this.pipButton, this.tracksButton, this.fullscreenButton];
+
+        this.leftContainer.buttons.forEach(button => button.layoutTraitsDidChange());
+        this.rightContainer.buttons.forEach(button => button.layoutTraitsDidChange());
+
+        this.element.classList.toggle("compact", layoutTraits & LayoutTraits.Compact);
+    }
 }

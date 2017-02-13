@@ -33,7 +33,6 @@
 #include "ContentSecurityPolicyHash.h"
 #include "ContentSecurityPolicySource.h"
 #include "ContentSecurityPolicySourceList.h"
-#include "CryptoDigest.h"
 #include "DOMStringList.h"
 #include "Document.h"
 #include "DocumentLoader.h"
@@ -57,6 +56,7 @@
 #include <inspector/InspectorValues.h>
 #include <inspector/ScriptCallStack.h>
 #include <inspector/ScriptCallStackFactory.h>
+#include <pal/crypto/CryptoDigest.h>
 #include <wtf/SetForScope.h>
 #include <wtf/text/StringBuilder.h>
 #include <wtf/text/TextPosition.h>
@@ -110,6 +110,8 @@ ContentSecurityPolicy::~ContentSecurityPolicy()
 
 void ContentSecurityPolicy::copyStateFrom(const ContentSecurityPolicy* other) 
 {
+    if (m_hasAPIPolicy)
+        return;
     ASSERT(m_policies.isEmpty());
     for (auto& policy : other->m_policies)
         didReceiveHeader(policy->header(), policy->headerType(), ContentSecurityPolicy::PolicyFrom::Inherited);
@@ -177,6 +179,14 @@ void ContentSecurityPolicy::didReceiveHeaders(const ContentSecurityPolicyRespons
 
 void ContentSecurityPolicy::didReceiveHeader(const String& header, ContentSecurityPolicyHeaderType type, ContentSecurityPolicy::PolicyFrom policyFrom)
 {
+    if (m_hasAPIPolicy)
+        return;
+
+    if (policyFrom == PolicyFrom::API) {
+        ASSERT(m_policies.isEmpty());
+        m_hasAPIPolicy = true;
+    }
+
     // RFC2616, section 4.2 specifies that headers appearing multiple times can
     // be combined with a comma. Walk the header string, and parse each comma
     // separated chunk as a separate header.
@@ -246,8 +256,8 @@ bool ContentSecurityPolicy::urlMatchesSelf(const URL& url) const
 
 bool ContentSecurityPolicy::allowContentSecurityPolicySourceStarToMatchAnyProtocol() const
 {
-    if (Settings* settings = is<Document>(m_scriptExecutionContext) ? downcast<Document>(*m_scriptExecutionContext).settings() : nullptr)
-        return settings->allowContentSecurityPolicySourceStarToMatchAnyProtocol();
+    if (is<Document>(m_scriptExecutionContext))
+        return downcast<Document>(*m_scriptExecutionContext).settings().allowContentSecurityPolicySourceStarToMatchAnyProtocol();
     return false;
 }
 
@@ -301,18 +311,18 @@ bool ContentSecurityPolicy::allPoliciesAllow(ViolatedDirectiveCallback&& callbac
     return isAllowed;
 }
 
-static CryptoDigest::Algorithm toCryptoDigestAlgorithm(ContentSecurityPolicyHashAlgorithm algorithm)
+static PAL::CryptoDigest::Algorithm toCryptoDigestAlgorithm(ContentSecurityPolicyHashAlgorithm algorithm)
 {
     switch (algorithm) {
     case ContentSecurityPolicyHashAlgorithm::SHA_256:
-        return CryptoDigest::Algorithm::SHA_256;
+        return PAL::CryptoDigest::Algorithm::SHA_256;
     case ContentSecurityPolicyHashAlgorithm::SHA_384:
-        return CryptoDigest::Algorithm::SHA_384;
+        return PAL::CryptoDigest::Algorithm::SHA_384;
     case ContentSecurityPolicyHashAlgorithm::SHA_512:
-        return CryptoDigest::Algorithm::SHA_512;
+        return PAL::CryptoDigest::Algorithm::SHA_512;
     }
     ASSERT_NOT_REACHED();
-    return CryptoDigest::Algorithm::SHA_512;
+    return PAL::CryptoDigest::Algorithm::SHA_512;
 }
 
 template<typename Predicate>
@@ -333,7 +343,7 @@ ContentSecurityPolicy::HashInEnforcedAndReportOnlyPoliciesPair ContentSecurityPo
     bool foundHashInEnforcedPolicies = false;
     bool foundHashInReportOnlyPolicies = false;
     for (auto algorithm : algorithms) {
-        auto cryptoDigest = CryptoDigest::create(toCryptoDigestAlgorithm(algorithm));
+        auto cryptoDigest = PAL::CryptoDigest::create(toCryptoDigestAlgorithm(algorithm));
         cryptoDigest->addBytes(contentCString.data(), contentCString.length());
         ContentSecurityPolicyHash hash = { algorithm, cryptoDigest->computeHash() };
         if (!foundHashInEnforcedPolicies && allPoliciesWithDispositionAllow(ContentSecurityPolicy::Disposition::Enforce, std::forward<Predicate>(predicate), hash))

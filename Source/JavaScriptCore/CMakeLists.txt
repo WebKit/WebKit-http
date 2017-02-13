@@ -18,6 +18,7 @@ set(JavaScriptCore_INCLUDE_DIRECTORIES
     "${JAVASCRIPTCORE_DIR}/dfg"
     "${JAVASCRIPTCORE_DIR}/disassembler"
     "${JAVASCRIPTCORE_DIR}/disassembler/udis86"
+    "${JAVASCRIPTCORE_DIR}/disassembler/ARM64"
     "${JAVASCRIPTCORE_DIR}/domjit"
     "${JAVASCRIPTCORE_DIR}/ftl"
     "${JAVASCRIPTCORE_DIR}/heap"
@@ -373,6 +374,7 @@ set(JavaScriptCore_SOURCES
     dfg/DFGPromotedHeapLocation.cpp
     dfg/DFGPureValue.cpp
     dfg/DFGPutStackSinkingPhase.cpp
+    dfg/DFGRegisteredStructureSet.cpp
     dfg/DFGSSACalculator.cpp
     dfg/DFGSSAConversionPhase.cpp
     dfg/DFGSSALoweringPhase.cpp
@@ -386,7 +388,6 @@ set(JavaScriptCore_SOURCES
     dfg/DFGStoreBarrierInsertionPhase.cpp
     dfg/DFGStrengthReductionPhase.cpp
     dfg/DFGStructureAbstractValue.cpp
-    dfg/DFGStructureRegistrationPhase.cpp
     dfg/DFGThreadData.cpp
     dfg/DFGThunks.cpp
     dfg/DFGTierUpCheckInjectionPhase.cpp
@@ -503,6 +504,7 @@ set(JavaScriptCore_SOURCES
     heap/MutatorState.cpp
     heap/SlotVisitor.cpp
     heap/SpaceTimeMutatorScheduler.cpp
+    heap/StochasticSpaceTimeMutatorScheduler.cpp
     heap/StopIfNecessaryTimer.cpp
     heap/Subspace.cpp
     heap/SynchronousStopTheWorldMutatorScheduler.cpp
@@ -513,6 +515,7 @@ set(JavaScriptCore_SOURCES
     heap/WeakSet.cpp
     heap/WriteBarrierSupport.cpp
 
+    inspector/AsyncStackTrace.cpp
     inspector/ConsoleMessage.cpp
     inspector/ContentSearchUtilities.cpp
     inspector/EventLoop.cpp
@@ -906,6 +909,8 @@ set(JavaScriptCore_SOURCES
     tools/FunctionWhitelist.cpp
     tools/JSDollarVM.cpp
     tools/JSDollarVMPrototype.cpp
+    tools/SigillCrashAnalyzer.cpp
+    tools/VMInspector.cpp
 
     wasm/JSWebAssembly.cpp
     wasm/WasmB3IRGenerator.cpp

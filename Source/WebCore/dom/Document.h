@@ -78,6 +78,7 @@ class CSSFontSelector;
 class CSSStyleDeclaration;
 class CSSStyleSheet;
 class CachedCSSStyleSheet;
+class CachedFrameBase;
 class CachedResourceLoader;
 class CachedScript;
 class CanvasRenderingContext;
@@ -507,7 +508,8 @@ public:
 
     WEBCORE_EXPORT FrameView* view() const; // can be NULL
     WEBCORE_EXPORT Page* page() const; // can be NULL
-    WEBCORE_EXPORT Settings* settings() const; // can be NULL
+    const Settings& settings() const { return m_settings.get(); }
+    Settings& mutableSettings() { return m_settings.get(); }
 
     float deviceScaleFactor() const;
 
@@ -553,7 +555,6 @@ public:
 
     void didBecomeCurrentDocumentInFrame();
     void destroyRenderTree();
-    void disconnectFromFrame();
     void prepareForDestruction();
 
     // Override ScriptExecutionContext methods to do additional work
@@ -886,7 +887,7 @@ public:
     static bool hasValidNamespaceForElements(const QualifiedName&);
     static bool hasValidNamespaceForAttributes(const QualifiedName&);
 
-    HTMLBodyElement* body() const;
+    WEBCORE_EXPORT HTMLBodyElement* body() const;
     WEBCORE_EXPORT HTMLElement* bodyOrFrameset() const;
     WEBCORE_EXPORT ExceptionOr<void> setBodyOrFrameset(RefPtr<HTMLElement>&&);
 
@@ -983,6 +984,9 @@ public:
     void registerForMediaVolumeCallbacks(Element*);
     void unregisterForMediaVolumeCallbacks(Element*);
     void mediaVolumeDidChange();
+
+    bool audioPlaybackRequiresUserGesture() const;
+    bool videoPlaybackRequiresUserGesture() const;
 
 #if ENABLE(MEDIA_SESSION)
     MediaSession& defaultMediaSession();
@@ -1279,6 +1283,9 @@ public:
     void didRemoveInDocumentShadowRoot(ShadowRoot&);
     const HashSet<ShadowRoot*>& inDocumentShadowRoots() const { return m_inDocumentShadowRoots; }
 
+    void attachToCachedFrame(CachedFrameBase&);
+    void detachFromCachedFrame(CachedFrameBase&);
+
 protected:
     enum ConstructionFlags { Synthesized = 1, NonRenderedPlaceholder = 1 << 1 };
     Document(Frame*, const URL&, unsigned = DefaultDocumentClass, unsigned constructionFlags = 0);
@@ -1291,6 +1298,8 @@ private:
     friend class Node;
     friend class IgnoreDestructiveWriteCountIncrementer;
     friend class IgnoreOpensDuringUnloadCountIncrementer;
+
+    void detachFromFrame() { observeFrame(nullptr); }
 
     void updateTitleElement(Element* newTitleElement);
     void frameDestroyed() final;
@@ -1376,6 +1385,8 @@ private:
     bool shouldEnforceHTTP09Sandbox() const;
 
     unsigned m_referencingNodeCount;
+
+    const Ref<Settings> m_settings;
 
     std::unique_ptr<StyleResolver> m_userAgentShadowTreeStyleResolver;
     bool m_hasNodesWithPlaceholderStyle;

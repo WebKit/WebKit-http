@@ -46,6 +46,7 @@ set(TestWebCoreLib_SOURCES
     ${TESTWEBKITAPI_DIR}/TestsController.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebCore/AffineTransform.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebCore/CalculationValue.cpp
+    ${TESTWEBKITAPI_DIR}/Tests/WebCore/ComplexTextController.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebCore/CSSParser.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebCore/FloatRect.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebCore/FloatPoint.cpp
@@ -142,6 +143,7 @@ endif ()
 add_library(TestWebKitLib SHARED
     ${test_main_SOURCES}
     ${TESTWEBKITAPI_DIR}/TestsController.cpp
+    ${TESTWEBKITAPI_DIR}/Tests/WebKit/win/ScaleWebView.cpp
     ${TESTWEBKITAPI_DIR}/Tests/WebKit/win/WebViewDestruction.cpp
     ${TESTWEBKITAPI_DIR}/win/HostWindow.cpp
 )

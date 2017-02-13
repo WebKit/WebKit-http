@@ -32,6 +32,7 @@
 #include <heap/HeapInlines.h>
 #include <runtime/VM.h>
 #include <wtf/MainThread.h>
+#include <wtf/text/AtomicString.h>
 
 using namespace JSC;
 
@@ -46,10 +47,6 @@ VM& commonVMSlow()
     
     ScriptController::initializeThreading();
     g_commonVMOrNull = &VM::createLeaked(LargeHeap).leakRef();
-#if CPU(X86_64) || CPU(ARM64)
-    static const size_t maxGCHeapSize = 4 * GB;
-    g_commonVMOrNull->heap.setMaxLiveSize(maxGCHeapSize);
-#endif
     g_commonVMOrNull->heap.acquireAccess(); // At any time, we may do things that affect the GC.
 #if !PLATFORM(IOS)
     g_commonVMOrNull->setExclusiveThread(std::this_thread::get_id());
@@ -63,6 +60,11 @@ VM& commonVMSlow()
     JSVMClientData::initNormalWorld(g_commonVMOrNull);
     
     return *g_commonVMOrNull;
+}
+
+void addImpureProperty(const AtomicString& propertyName)
+{
+    commonVM().addImpureProperty(propertyName);
 }
 
 } // namespace WebCore

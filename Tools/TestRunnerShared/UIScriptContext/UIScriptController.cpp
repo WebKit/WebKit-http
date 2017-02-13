@@ -375,7 +375,29 @@ void UIScriptController::platformSetDidHideKeyboardCallback()
 void UIScriptController::platformClearAllCallbacks()
 {
 }
+
+void UIScriptController::retrieveSpeakSelectionContent(JSValueRef)
+{
+}
+
+JSRetainPtr<JSStringRef> UIScriptController::accessibilitySpeakSelectionContent() const
+{
+    return nullptr;
+}
+
 #endif
+
+#if !PLATFORM(COCOA)
+
+void UIScriptController::removeViewFromWindow(JSValueRef)
+{
+}
+
+void UIScriptController::addViewToWindow(JSValueRef)
+{
+}
+
+#endif // !PLATFORM(COCOA)
 
 #if !PLATFORM(MAC)
 

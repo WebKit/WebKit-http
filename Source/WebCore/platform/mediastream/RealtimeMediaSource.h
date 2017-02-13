@@ -47,11 +47,17 @@
 #include <wtf/WeakPtr.h>
 #include <wtf/text/WTFString.h>
 
+namespace WTF {
+class MediaTime;
+}
+
 namespace WebCore {
 
+class AudioStreamDescription;
 class FloatRect;
 class GraphicsContext;
 class MediaStreamPrivate;
+class PlatformAudioData;
 class RealtimeMediaSourceSettings;
 
 class RealtimeMediaSource : public RefCounted<RealtimeMediaSource> {
@@ -68,8 +74,11 @@ public:
         // Observer state queries.
         virtual bool preventSourceFromStopping() = 0;
         
-        // Media data changes.
-        virtual void sourceHasMoreMediaData(MediaSample&) = 0;
+        // Called on the main thread.
+        virtual void videoSampleAvailable(MediaSample&) { }
+
+        // May be called on a background thread.
+        virtual void audioSamplesAvailable(const MediaTime&, const PlatformAudioData&, const AudioStreamDescription&, size_t /*numberOfFrames*/) { }
     };
 
     virtual ~RealtimeMediaSource() { }
@@ -99,7 +108,9 @@ public:
     virtual bool supportsConstraints(const MediaConstraints&, String&);
 
     virtual void settingsDidChange();
-    void mediaDataUpdated(MediaSample&);
+
+    void videoSampleAvailable(MediaSample&);
+    void audioSamplesAvailable(const MediaTime&, const PlatformAudioData&, const AudioStreamDescription&, size_t);
     
     bool stopped() const { return m_stopped; }
 
@@ -112,8 +123,8 @@ public:
     virtual bool remote() const { return m_remote; }
     virtual void setRemote(bool remote) { m_remote = remote; }
 
-    void addObserver(Observer*);
-    void removeObserver(Observer*);
+    void addObserver(Observer&);
+    void removeObserver(Observer&);
 
     virtual void startProducingData() { }
     virtual void stopProducingData() { }

@@ -1,3 +1,444 @@
+2017-02-10  Dan Bernstein  <mitz@apple.com>
+
+        [Xcode] WTF installs extra copies of two headers outside /usr/local/include/wtf
+        https://bugs.webkit.org/show_bug.cgi?id=168160
+
+        Reviewed by Sam Weinig.
+
+        * WTF.xcodeproj/project.pbxproj: Demoted OrdinalNumber.h MemoryFootprint.h from Private to
+          Project.
+
+2017-02-10  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r212139.
+        https://bugs.webkit.org/show_bug.cgi?id=168152
+
+        Caused some assertions (Requested by JoePeck on #webkit).
+
+        Reverted changeset:
+
+        "Fix misleading comment in RunLoop.h"
+        https://bugs.webkit.org/show_bug.cgi?id=167832
+        http://trac.webkit.org/changeset/212139
+
+2017-02-10  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Fix misleading comment in RunLoop.h
+        https://bugs.webkit.org/show_bug.cgi?id=167832
+
+        Reviewed by Sam Weinig.
+
+        * wtf/RunLoop.h:
+        Mac initialization used to force using CFRunLoopGetMain(). Now however it just
+        uses RunLoop::current which uses CFRunLoopGetCurrent(). So this comment that
+        it can be done on any thread is misleading and can lead to incorrect behavior
+        if it is actually done on a non-main thread on Mac.
+
+2017-02-09  Alex Christensen  <achristensen@webkit.org>
+
+        Unreviewed, rolling out r212040.
+
+        Broke build.  I'm not surprised
+
+        Reverted changeset:
+
+        "[WebRTC][Mac] Activate libwebrtc"
+        https://bugs.webkit.org/show_bug.cgi?id=167293
+        http://trac.webkit.org/changeset/212040
+
+2017-02-09  Youenn Fablet  <youenn@apple.com>
+
+        [WebRTC][Mac] Activate libwebrtc
+        https://bugs.webkit.org/show_bug.cgi?id=167293
+
+        Reviewed by Alex Christensen.
+
+        * wtf/Platform.h:
+
+2017-02-09  Brady Eidson  <beidson@apple.com>
+
+        Transition "WebKit Library Version" checks to SDK version checks.
+        <rdar://problem/30313696> and https://bugs.webkit.org/show_bug.cgi?id=168056
+
+        Reviewed by Geoffrey Garen.
+
+        * wtf/spi/darwin/dyldSPI.h: Add entries for the iOS 10.3, macOS 10.11, and macOS 10.12.4 SDKs.
+
+2017-02-09  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r211980 and r211987.
+        https://bugs.webkit.org/show_bug.cgi?id=168072
+
+        Caused API test WebKit2.DuplicateCompletionHandlerCalls to
+        fail (Requested by ryanhaddad on #webkit).
+
+        Reverted changesets:
+
+        "Transition "WebKit Library Version" checks to SDK version
+        checks."
+        https://bugs.webkit.org/show_bug.cgi?id=168056
+        http://trac.webkit.org/changeset/211980
+
+        "Build fix for APPLE_INTERNAL_SDK builds after r211980."
+        http://trac.webkit.org/changeset/211987
+
+2017-02-09  Alexey Proskuryakov  <ap@apple.com>
+
+        Remove unused WebThreadRunSync
+        https://bugs.webkit.org/show_bug.cgi?id=168024
+
+        Reviewed by Tim Horton.
+
+        * wtf/ios/WebCoreThread.cpp:
+        * wtf/ios/WebCoreThread.h:
+
+2017-02-09  Brady Eidson  <beidson@apple.com>
+
+        Build fix for APPLE_INTERNAL_SDK builds after r211980.
+
+        Unreviewed.
+
+        * wtf/spi/darwin/dyldSPI.h:
+
+2017-02-09  Brady Eidson  <beidson@apple.com>
+
+        Transition "WebKit Library Version" checks to SDK version checks.
+        <rdar://problem/30313696> and https://bugs.webkit.org/show_bug.cgi?id=168056
+
+        Reviewed by Geoffrey Garen.
+
+        * wtf/spi/darwin/dyldSPI.h: Add entries for the iOS 10.3, macOS 10.11, and macOS 10.12.4 SDKs.
+
+2017-02-06  Jer Noble  <jer.noble@apple.com>
+
+        Playback stalls when a SourceBuffer append causes frame eviction
+        https://bugs.webkit.org/show_bug.cgi?id=167834
+
+        Reviewed by Eric Carlson.
+
+        Optimize the MediaTime class; specifically the compare() method. The class only
+        needs 6 bits to store the TimeFlags, so make that a uint8_t rather than uint32_t.
+        The implementation is slightly simpler if the TimeScale is unsigned, so make that
+        a uint32_t rather than int32_t. Inline the comparison operators. Optimize the equality
+        comparison by bitwise-and'ing the flags together and masking the result. Optimize for
+        common comparison scenarios (equal timeScales, equal timeValues(), etc.). Attempt the
+        mathematically simpler simpler method for comparing ratios, and only fall back to the
+        complex method if the results of multiplying the timeScale by the timeValue overflows.
+
+        * wtf/MediaTime.cpp:
+        (WTF::greatestCommonDivisor):
+        (WTF::leastCommonMultiple):
+        (WTF::signum):
+        (WTF::MediaTime::MediaTime):
+        (WTF::MediaTime::createWithFloat):
+        (WTF::MediaTime::createWithDouble):
+        (WTF::MediaTime::operator+):
+        (WTF::MediaTime::operator-):
+        (WTF::MediaTime::operator!):
+        (WTF::MediaTime::operator bool):
+        (WTF::MediaTime::compare):
+        (WTF::MediaTime::setTimeScale):
+        (WTF::abs):
+        (WTF::MediaTime::operator<): Deleted.
+        (WTF::MediaTime::operator>): Deleted.
+        (WTF::MediaTime::operator!=): Deleted.
+        (WTF::MediaTime::operator==): Deleted.
+        (WTF::MediaTime::operator>=): Deleted.
+        (WTF::MediaTime::operator<=): Deleted.
+        * wtf/MediaTime.h:
+
+2017-02-04  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] Fix huge ENABLE_RESOURCE_USAGE warning spam
+
+        Unreviewed. We shouldn't redefine ENABLE_RESOURCE_USAGE in Platform.h as
+        it's already defined in cmakeconfig.h.
+
+        * wtf/Platform.h:
+
+2017-02-03  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Performance Timing: Convert WTF::MonotonicTime and WTF::Seconds
+        https://bugs.webkit.org/show_bug.cgi?id=167768
+
+        Reviewed by Geoffrey Garen.
+
+        * wtf/Stopwatch.h:
+        (WTF::Stopwatch::elapsedTimeSince):
+        (WTF::Stopwatch::elapsedTimeSinceMonotonicTime): Deleted.
+
+2017-02-03  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Add initial implementation of resource usage overlay
+        https://bugs.webkit.org/show_bug.cgi?id=167731
+
+        Reviewed by Michael Catanzaro.
+
+        Enable RESOURCE_USAGE for GTK+ port too.
+
+        * wtf/Platform.h:
+
+2017-02-02  Andreas Kling  <akling@apple.com>
+
+        [Mac] In-process memory pressure monitor for WebContent processes AKA websam
+        <https://webkit.org/b/167491>
+        <rdar://problem/30116072>
+
+        Reviewed by Antti Koivisto.
+
+        Add a WTF helper function for getting the current process's memory footprint.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/MemoryFootprint.cpp:
+        (WTF::memoryFootprint):
+        * wtf/MemoryFootprint.h:
+
+2017-02-02  Mark Lam  <mark.lam@apple.com>
+
+        Add a SIGILL crash analyzer to make debugging SIGILLs easier.
+        https://bugs.webkit.org/show_bug.cgi?id=167714
+        <rdar://problem/30318237>
+
+        Reviewed by Filip Pizlo.
+
+        * wtf/StdLibExtras.h:
+
+2017-02-02  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r211571 and r211582.
+        https://bugs.webkit.org/show_bug.cgi?id=167751
+
+        This change caused API test WebKit1.MemoryPressureHandler to
+        fail with an assertion. (Requested by ryanhaddad on #webkit).
+
+        Reverted changesets:
+
+        "[Mac] In-process memory pressure monitor for WebContent
+        processes."
+        https://bugs.webkit.org/show_bug.cgi?id=167491
+        http://trac.webkit.org/changeset/211571
+
+        "Unreviewed attempt to fix the Windows build after r211571."
+        http://trac.webkit.org/changeset/211582
+
+2017-02-02  Andreas Kling  <akling@apple.com>
+
+        [Mac] In-process memory pressure monitor for WebContent processes.
+        <https://webkit.org/b/167491>
+        <rdar://problem/30116072>
+
+        Reviewed by Antti Koivisto.
+
+        Add a WTF helper function for getting the current process's memory footprint.
+
+        * WTF.xcodeproj/project.pbxproj:
+        * wtf/CMakeLists.txt:
+        * wtf/MemoryFootprint.cpp:
+        (WTF::memoryFootprint):
+        * wtf/MemoryFootprint.h:
+
+2017-02-01  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Unreviewed, fix the WebKit nightly open source build
+        <rdar://problem/30308635>
+
+        We cannot assume all internal SDKs have the latest WebKitAdditions, so we need an explicit header check here.
+
+        * wtf/Platform.h:
+
+2017-02-01  Andreas Kling  <akling@apple.com>
+
+        Implement the alwaysRunsAtBackgroundPriority WK2 setting using thread QoS.
+        <https://webkit.org/b/167387>
+        <rdar://problem/29711409>
+
+        Reviewed by Antti Koivisto.
+
+        Add a new mechanism for overriding the max thread QoS level globally:
+
+            void setGlobalMaxQOSClass(qos_class_t)
+            qos_class_t adjustedQOSClass(qos_class_t)
+
+        The QoS cap applies to all newly created threads, threads that try to override
+        their QoS class manually, and also passed down to bmalloc.
+
+        * wtf/Threading.cpp:
+        (WTF::setCurrentThreadIsUserInteractive):
+        (WTF::setCurrentThreadIsUserInitiated):
+        (WTF::setGlobalMaxQOSClass):
+        (WTF::adjustedQOSClass):
+        * wtf/Threading.h:
+        * wtf/ThreadingPthreads.cpp:
+        (WTF::createThreadInternal):
+        * wtf/cocoa/WorkQueueCocoa.cpp:
+        (WTF::dispatchQOSClass):
+
+2017-01-31  Antti Koivisto  <antti@apple.com>
+
+        Teach cache coders to encode time_points
+        https://bugs.webkit.org/show_bug.cgi?id=167670
+
+        Reviewed by Andreas Kling.
+
+        * wtf/persistence/Coders.h:
+        (WTF::Persistence::Coder<std::chrono::system_clock::time_point>::encode):
+        (WTF::Persistence::Coder<std::chrono::system_clock::time_point>::decode):
+
+2017-01-31  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Removed unused m_nestedCount from RunLoop
+        https://bugs.webkit.org/show_bug.cgi?id=167674
+
+        Reviewed by Sam Weinig.
+
+        * wtf/RunLoop.h:
+        * wtf/cf/RunLoopCF.cpp:
+        (WTF::RunLoop::RunLoop):
+        (WTF::RunLoop::run):
+
+2017-01-31  Filip Pizlo  <fpizlo@apple.com>
+
+        The mutator should be able to perform increments of GC work
+        https://bugs.webkit.org/show_bug.cgi?id=167528
+
+        Reviewed by Keith Miller and Geoffrey Garen.
+
+        We want dataLog to be locked even if you're not logging to a file!
+
+        * wtf/DataLog.cpp:
+        (WTF::initializeLogFileOnce):
+
+2017-01-28  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Check USE(APPLE_INTERNAL_SDK) instead of specific headers when importing from WebKitAdditions
+        https://bugs.webkit.org/show_bug.cgi?id=167555
+
+        Reviewed by Dan Bernstein.
+
+        Instead of guarding #import <WebKitAdditions/*> on the existence of the imported file, consult
+        USE(APPLE_INTERNAL_SDK) instead.
+
+        * wtf/Platform.h:
+
+2017-01-26  Saam Barati  <sbarati@apple.com>
+
+        Harden how the compiler references GC objects
+        https://bugs.webkit.org/show_bug.cgi?id=167277
+        <rdar://problem/30179506>
+
+        Reviewed by Filip Pizlo.
+
+        I made TinyPtrSet use bitwise_cast instead of static_cast
+        for its singleEntry() function so that it can work on pointer-like
+        types just as it can on actual pointer types.
+        
+        An example of where this matters is when you have TinyPtrSet<T>
+        where T is defined to be a struct which wraps a pointer, e.g:
+        
+        struct T {
+            void* m_pointer;
+        }
+
+        * wtf/TinyPtrSet.h:
+        (WTF::TinyPtrSet::singleEntry):
+
+2017-01-25  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Introduce an item-provider-based pasteboard wrapper
+        https://bugs.webkit.org/show_bug.cgi?id=167410
+
+        Reviewed by Enrica Casucci.
+
+        Adds an additional feature flag.
+
+        * wtf/FeatureDefines.h:
+
+2017-01-25  Konstantin Tokarev  <annulen@yandex.ru>
+
+        Removed leftovers of pre-2015 VisualStudio support
+        https://bugs.webkit.org/show_bug.cgi?id=167434
+
+        Reviewed by Alex Christensen.
+
+        * wtf/Compiler.h:
+        * wtf/Platform.h:
+        * wtf/StringExtras.h:
+
+2017-01-25  Chris Dumez  <cdumez@apple.com>
+
+        Disable Download attribute support on iOS
+        https://bugs.webkit.org/show_bug.cgi?id=167337
+        <rdar://problem/30154148>
+
+        Reviewed by Alexey Proskuryakov.
+
+        Disable Download attribute support on iOS as it currently does not work.
+
+        * wtf/FeatureDefines.h:
+
+2017-01-25  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Add a hook to include additional feature defines
+        https://bugs.webkit.org/show_bug.cgi?id=167403
+
+        Reviewed by Enrica Casucci.
+
+        * wtf/Platform.h: Include AdditionalFeatureDefines.h, if it exists.
+
+2017-01-24  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Fold USER_TIMING into WEB_TIMING and make it a RuntimeEnabledFeature
+        https://bugs.webkit.org/show_bug.cgi?id=167394
+
+        Reviewed by Ryosuke Niwa.
+
+        * wtf/FeatureDefines.h:
+
+2017-01-24  Konstantin Tokarev  <annulen@yandex.ru>
+
+        VS2015 supports ref qualifiers
+        https://bugs.webkit.org/show_bug.cgi?id=167368
+
+        Reviewed by Sam Weinig.
+
+        * wtf/Compiler.h: Enable
+        WTF_COMPILER_SUPPORTS_CXX_REFERENCE_QUALIFIED_FUNCTIONS for VS2015
+
+2017-01-24  Daniel Bates  <dabates@apple.com>
+
+        StringView.split() should use an iterator design pattern instead of allocating a Vector
+        https://bugs.webkit.org/show_bug.cgi?id=163225
+
+        Reviewed by Darin Adler.
+
+        Implement StringView.split() using an iterator design.
+
+        Using an iterator design avoids the need to allocate a Vector of StringView objects,
+        which is space-inefficient and error prone as the returned Vector may outlive the
+        lifetime of the underlying string associated with the split (as StringView is a non-
+        owning reference to a string).
+
+        StringView.split() now returns a StringView::SplitResult object that implements begin()/end()
+        to support iterating over StringView substrings delimited by the specified separator
+        character. For example, to iterate over the 'c'-separated substrings of a StringView v,
+        you can write:
+
+        for (StringView substring : v.split('c'))
+            // Do something with substring.
+
+        * wtf/text/StringView.cpp:
+        (WTF::StringView::SplitResult::Iterator::findNextSubstring): Advances the iterator to point to the
+        next substring.
+        (WTF::StringView::split): Modified to return a SplitResult::Iterator object instead of a Vector<StringView>.
+        * wtf/text/StringView.h:
+        (WTF::StringView::SplitResult::SplitResult):
+        (WTF::StringView::SplitResult::Iterator::Iterator):
+        (WTF::StringView::SplitResult::Iterator::operator*):
+        (WTF::StringView::SplitResult::Iterator::operator==):
+        (WTF::StringView::SplitResult::Iterator::operator!=):
+        Implements the iterator interface.
+
 2017-01-20  Joseph Pecoraro  <pecoraro@apple.com>
 
         Remove outdated ENABLE(CSP_NEXT) build flag

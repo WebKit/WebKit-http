@@ -22,10 +22,10 @@
 
 #include "ActivityStateChangeObserver.h"
 #include "AlternativeTextClient.h"
-#include "AnimationController.h"
 #include "ApplicationCacheStorage.h"
 #include "BackForwardClient.h"
 #include "BackForwardController.h"
+#include "CSSAnimationController.h"
 #include "Chrome.h"
 #include "ChromeClient.h"
 #include "ClientRectList.h"
@@ -55,6 +55,7 @@
 #include "HistoryItem.h"
 #include "InspectorController.h"
 #include "InspectorInstrumentation.h"
+#include "LibWebRTCProvider.h"
 #include "Logging.h"
 #include "MainFrame.h"
 #include "MediaCanStartListener.h"
@@ -80,6 +81,7 @@
 #include "RenderWidget.h"
 #include "ResourceUsageOverlay.h"
 #include "RuntimeEnabledFeatures.h"
+#include "SVGDocumentExtensions.h"
 #include "SchemeRegistry.h"
 #include "ScriptController.h"
 #include "ScrollingCoordinator.h"
@@ -124,6 +126,10 @@
 #if ENABLE(INDEXED_DATABASE)
 #include "IDBConnectionToServer.h"
 #include "InProcessIDBServer.h"
+#endif
+
+#if ENABLE(DATA_INTERACTION)
+#include "SelectionRect.h"
 #endif
 
 namespace WebCore {
@@ -201,6 +207,7 @@ Page::Page(PageConfiguration&& pageConfiguration)
     , m_validationMessageClient(WTFMove(pageConfiguration.validationMessageClient))
     , m_diagnosticLoggingClient(WTFMove(pageConfiguration.diagnosticLoggingClient))
     , m_webGLStateTracker(WTFMove(pageConfiguration.webGLStateTracker))
+    , m_libWebRTCProvider(WTFMove(pageConfiguration.libWebRTCProvider))
     , m_openedByDOM(false)
     , m_tabKeyCyclesThroughElements(true)
     , m_defersLoading(false)
@@ -319,6 +326,7 @@ Page::~Page()
         m_scrollingCoordinator->pageDestroyed();
 
     backForward().close();
+    PageCache::singleton().removeAllItemsForPage(*this);
 
 #ifndef NDEBUG
     pageCounter.decrement();
@@ -363,7 +371,7 @@ ViewportArguments Page::viewportArguments() const
 ScrollingCoordinator* Page::scrollingCoordinator()
 {
     if (!m_scrollingCoordinator && m_settings->scrollingCoordinatorEnabled()) {
-        m_scrollingCoordinator = chrome().client().createScrollingCoordinator(this);
+        m_scrollingCoordinator = chrome().client().createScrollingCoordinator(*this);
         if (!m_scrollingCoordinator)
             m_scrollingCoordinator = ScrollingCoordinator::create(this);
     }
@@ -537,26 +545,11 @@ void Page::refreshPlugins(bool reload)
 
     HashSet<PluginInfoProvider*> pluginInfoProviders;
 
-    Vector<Ref<Frame>> framesNeedingReload;
-
-    for (auto& page : *allPages) {
+    for (auto& page : *allPages)
         pluginInfoProviders.add(&page->pluginInfoProvider());
-        page->m_pluginData = nullptr;
-
-        if (!reload)
-            continue;
-        
-        for (Frame* frame = &page->mainFrame(); frame; frame = frame->tree().traverseNext()) {
-            if (frame->loader().subframeLoader().containsPlugins())
-                framesNeedingReload.append(*frame);
-        }
-    }
 
     for (auto& pluginInfoProvider : pluginInfoProviders)
-        pluginInfoProvider->refreshPlugins();
-
-    for (auto& frame : framesNeedingReload)
-        frame->loader().reload();
+        pluginInfoProvider->refresh(reload);
 }
 
 PluginData& Page::pluginData()
@@ -564,6 +557,11 @@ PluginData& Page::pluginData()
     if (!m_pluginData)
         m_pluginData = PluginData::create(*this);
     return *m_pluginData;
+}
+
+void Page::clearPluginData()
+{
+    m_pluginData = nullptr;
 }
 
 bool Page::showAllPlugins() const
@@ -1496,6 +1494,10 @@ void Page::setActivityState(ActivityState::Flags activityState)
         setIsInWindowInternal(activityState & ActivityState::IsInWindow);
     if (changed & ActivityState::IsVisuallyIdle)
         setIsVisuallyIdleInternal(activityState & ActivityState::IsVisuallyIdle);
+    if (changed & ActivityState::WindowIsActive) {
+        if (auto* view = m_mainFrame->view())
+            view->updateTiledBackingAdaptiveSizing();
+    }
 
     if (changed & (ActivityState::IsVisible | ActivityState::IsVisuallyIdle | ActivityState::IsAudible | ActivityState::IsLoading))
         updateTimerThrottlingState();
@@ -1515,12 +1517,35 @@ bool Page::isVisibleAndActive() const
     return (m_activityState & ActivityState::IsVisible) && (m_activityState & ActivityState::WindowIsActive);
 }
 
+bool Page::isWindowActive() const
+{
+    return m_activityState & ActivityState::WindowIsActive;
+}
+
 void Page::setIsVisible(bool isVisible)
 {
     if (isVisible)
         setActivityState((m_activityState & ~ActivityState::IsVisuallyIdle) | ActivityState::IsVisible | ActivityState::IsVisibleOrOccluded);
     else
         setActivityState((m_activityState & ~(ActivityState::IsVisible | ActivityState::IsVisibleOrOccluded)) | ActivityState::IsVisuallyIdle);
+}
+
+enum class SVGAnimationsState { Paused, Resumed };
+static inline void setSVGAnimationsState(Page& page, SVGAnimationsState state)
+{
+    for (Frame* frame = &page.mainFrame(); frame; frame = frame->tree().traverseNext()) {
+        auto* document = frame->document();
+        if (!document)
+            continue;
+
+        if (!document->svgExtensions())
+            continue;
+
+        if (state == SVGAnimationsState::Paused)
+            document->accessSVGExtensions().pauseAnimations();
+        else
+            document->accessSVGExtensions().unpauseAnimations();
+    }
 }
 
 void Page::setIsVisibleInternal(bool isVisible)
@@ -1542,6 +1567,8 @@ void Page::setIsVisibleInternal(bool isVisible)
         if (m_settings->hiddenPageCSSAnimationSuspensionEnabled())
             mainFrame().animation().resumeAnimations();
 
+        setSVGAnimationsState(*this, SVGAnimationsState::Resumed);
+
         resumeAnimatingImages();
     }
 
@@ -1555,6 +1582,8 @@ void Page::setIsVisibleInternal(bool isVisible)
     if (!isVisible) {
         if (m_settings->hiddenPageCSSAnimationSuspensionEnabled())
             mainFrame().animation().suspendAnimations();
+
+        setSVGAnimationsState(*this, SVGAnimationsState::Paused);
 
 #if PLATFORM(IOS)
         suspendDeviceMotionAndOrientationUpdates();
@@ -2115,7 +2144,7 @@ void Page::setResourceUsageOverlayVisible(bool visible)
         return;
     }
 
-    if (!m_resourceUsageOverlay)
+    if (!m_resourceUsageOverlay && m_settings->acceleratedCompositingEnabled())
         m_resourceUsageOverlay = std::make_unique<ResourceUsageOverlay>(*this);
 }
 #endif
@@ -2159,5 +2188,27 @@ void Page::accessibilitySettingsDidChange()
     if (neededRecalc)
         LOG(Layout, "hasMediaQueriesAffectedByAccessibilitySettingsChange, enqueueing style recalc");
 }
+
+#if ENABLE(DATA_INTERACTION)
+
+bool Page::hasDataInteractionAtPosition(const FloatPoint& position) const
+{
+    auto currentSelection = m_mainFrame->selection().selection();
+    if (!currentSelection.isRange())
+        return false;
+
+    if (auto selectedRange = currentSelection.toNormalizedRange()) {
+        Vector<SelectionRect> selectionRects;
+        selectedRange->collectSelectionRects(selectionRects);
+        for (auto selectionRect : selectionRects) {
+            if (FloatRect(selectionRect.rect()).contains(position))
+                return true;
+        }
+    }
+
+    return false;
+}
+
+#endif
 
 } // namespace WebCore

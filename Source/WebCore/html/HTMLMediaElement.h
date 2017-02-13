@@ -457,9 +457,9 @@ public:
     void pageScaleFactorChanged();
     void userInterfaceLayoutDirectionChanged();
     WEBCORE_EXPORT String getCurrentMediaControlsStatus();
-#endif
 
     MediaControlsHost* mediaControlsHost() { return m_mediaControlsHost.get(); }
+#endif
 
     bool isDisablingSleep() const { return m_sleepDisabler.get(); }
 
@@ -776,6 +776,7 @@ private:
     bool supportsSeeking() const override;
     bool shouldOverrideBackgroundPlaybackRestriction(PlatformMediaSession::InterruptionType) const override;
     bool shouldOverrideBackgroundLoadingRestriction() const override;
+    bool canProduceAudio() const final;
 
     void pageMutedStateDidChange() override;
 

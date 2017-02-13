@@ -2154,11 +2154,22 @@ void BytecodeGenerator::hoistSloppyModeFunctionIfNecessary(const Identifier& fun
         
         ASSERT(m_varScopeLexicalScopeStackIndex);
         ASSERT(*m_varScopeLexicalScopeStackIndex < m_lexicalScopeStack.size());
-        auto& varScope = m_lexicalScopeStack[*m_varScopeLexicalScopeStackIndex];
+        LexicalScopeStackEntry varScope = m_lexicalScopeStack[*m_varScopeLexicalScopeStackIndex];
         SymbolTable* varSymbolTable = varScope.m_symbolTable;
         ASSERT(varSymbolTable->scopeType() == SymbolTable::ScopeType::VarScope);
         SymbolTableEntry entry = varSymbolTable->get(NoLockingNecessary, functionName.impl());
-        ASSERT(!entry.isNull());
+        if (functionName == propertyNames().arguments && entry.isNull()) {
+            // "arguments" might be put in the parameter scope when we have a non-simple
+            // parameter list since "arguments" is visible to expressions inside the
+            // parameter evaluation list.
+            // e.g:
+            // function foo(x = arguments) { { function arguments() { } } }
+            RELEASE_ASSERT(*m_varScopeLexicalScopeStackIndex > 0);
+            varScope = m_lexicalScopeStack[*m_varScopeLexicalScopeStackIndex - 1];
+            SymbolTable* parameterSymbolTable = varScope.m_symbolTable;
+            entry = parameterSymbolTable->get(NoLockingNecessary, functionName.impl());
+        }
+        RELEASE_ASSERT(!entry.isNull());
         bool isLexicallyScoped = false;
         emitPutToScope(varScope.m_scope, variableForLocalEntry(functionName, entry, varScope.m_symbolTableConstantIndex, isLexicallyScoped), currentValue.get(), DoNotThrowIfNotFound, InitializationMode::NotInitialization);
     }
@@ -2568,6 +2579,17 @@ RegisterID* BytecodeGenerator::emitInstanceOfCustom(RegisterID* dst, RegisterID*
     instructions().append(value->index());
     instructions().append(constructor->index());
     instructions().append(hasInstanceValue->index());
+    return dst;
+}
+
+RegisterID* BytecodeGenerator::emitIn(RegisterID* dst, RegisterID* property, RegisterID* base)
+{
+    UnlinkedArrayProfile arrayProfile = newArrayProfile();
+    emitOpcode(op_in);
+    instructions().append(dst->index());
+    instructions().append(base->index());
+    instructions().append(property->index());
+    instructions().append(arrayProfile);
     return dst;
 }
 
@@ -4253,17 +4275,22 @@ void BytecodeGenerator::emitEnumeration(ThrowableExpressionData* node, Expressio
 RegisterID* BytecodeGenerator::emitGetTemplateObject(RegisterID* dst, TaggedTemplateNode* taggedTemplate)
 {
     TemplateRegistryKey::StringVector rawStrings;
-    TemplateRegistryKey::StringVector cookedStrings;
+    TemplateRegistryKey::OptionalStringVector cookedStrings;
 
     TemplateStringListNode* templateString = taggedTemplate->templateLiteral()->templateStrings();
     for (; templateString; templateString = templateString->next()) {
-        rawStrings.append(templateString->value()->raw().impl());
-        cookedStrings.append(templateString->value()->cooked().impl());
+        auto* string = templateString->value();
+        ASSERT(string->raw());
+        rawStrings.append(string->raw()->impl());
+        if (!string->cooked())
+            cookedStrings.append(std::nullopt);
+        else
+            cookedStrings.append(string->cooked()->impl());
     }
 
     RefPtr<RegisterID> getTemplateObject = emitGetGlobalPrivate(newTemporary(), propertyNames().builtinNames().getTemplateObjectPrivateName());
     CallArguments arguments(*this, nullptr);
-    emitLoad(arguments.thisRegister(), JSValue(addTemplateRegistryKeyConstant(m_vm->templateRegistryKeyTable().createKey(rawStrings, cookedStrings))));
+    emitLoad(arguments.thisRegister(), JSValue(addTemplateRegistryKeyConstant(m_vm->templateRegistryKeyTable().createKey(WTFMove(rawStrings), WTFMove(cookedStrings)))));
     return emitCall(dst, getTemplateObject.get(), NoExpectedFunction, arguments, taggedTemplate->divot(), taggedTemplate->divotStart(), taggedTemplate->divotEnd(), DebuggableCall::No);
 }
 

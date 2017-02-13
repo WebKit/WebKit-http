@@ -452,7 +452,7 @@ inline AccessibilityObjectInclusion AXComputedObjectAttributeCache::getIgnored(A
 inline AccessibilityReplacedText::AccessibilityReplacedText(const VisibleSelection&) { }
 inline void AccessibilityReplacedText::postTextStateChangeNotification(AXObjectCache*, AXTextEditType, const String&, const VisibleSelection&) { }
 inline void AXComputedObjectAttributeCache::setIgnored(AXID, AccessibilityObjectInclusion) { }
-inline AXObjectCache::AXObjectCache(Document& document) : m_document(document), m_notificationPostTimer(nullptr), m_passwordNotificationPostTimer(nullptr), m_liveRegionChangedPostTimer(nullptr), m_focusAriaModalNodeTimer(nullptr) { }
+inline AXObjectCache::AXObjectCache(Document& document) : m_document(document), m_notificationPostTimer(*this, &AXObjectCache::notificationPostTimerFired), m_passwordNotificationPostTimer(*this, &AXObjectCache::passwordNotificationPostTimerFired), m_liveRegionChangedPostTimer(*this, &AXObjectCache::liveRegionChangedNotificationPostTimerFired), m_focusAriaModalNodeTimer(*this, &AXObjectCache::focusAriaModalNodeTimerFired) { }
 inline AXObjectCache::~AXObjectCache() { }
 inline AccessibilityObject* AXObjectCache::focusedUIElementForPage(const Page*) { return nullptr; }
 inline AccessibilityObject* AXObjectCache::get(RenderObject*) { return nullptr; }
@@ -490,6 +490,8 @@ inline void AXObjectCache::handleFocusedUIElementChanged(Node*, Node*) { }
 inline void AXObjectCache::handleScrollbarUpdate(ScrollView*) { }
 inline void AXObjectCache::handleAttributeChanged(const QualifiedName&, Element*) { }
 inline void AXObjectCache::recomputeIsIgnored(RenderObject*) { }
+inline void AXObjectCache::recomputeDeferredIsIgnored(RenderBlock&) { }
+inline void AXObjectCache::performDeferredIsIgnoredChange() { }
 inline void AXObjectCache::handleScrolledToAnchor(const Node*) { }
 inline void AXObjectCache::postTextStateChangeNotification(Node*, const AXTextStateChangeIntent&, const VisibleSelection&) { }
 inline void AXObjectCache::postTextStateChangeNotification(Node*, AXTextEditType, const String&, const VisiblePosition&) { }
@@ -524,9 +526,6 @@ inline void AXObjectCache::postTextReplacementPlatformNotification(Accessibility
 inline AXTextChange AXObjectCache::textChangeForEditType(AXTextEditType) { return AXTextInserted; }
 inline void AXObjectCache::nodeTextChangePlatformNotification(AccessibilityObject*, AXTextChange, unsigned, const String&) { }
 #endif
-
-inline void AXObjectCache::recomputeDeferredIsIgnored(RenderBlock&) { }
-inline void AXObjectCache::performDeferredIsIgnoredChange() { }
 
 inline AXAttributeCacheEnabler::AXAttributeCacheEnabler(AXObjectCache*) { }
 inline AXAttributeCacheEnabler::~AXAttributeCacheEnabler() { }

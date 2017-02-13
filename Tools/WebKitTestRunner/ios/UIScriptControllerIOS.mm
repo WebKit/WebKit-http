@@ -107,6 +107,25 @@ void UIScriptController::zoomToScale(double scale, JSValueRef callback)
     }];
 }
 
+void UIScriptController::retrieveSpeakSelectionContent(JSValueRef callback)
+{
+    TestRunnerWKWebView *webView = TestController::singleton().mainWebView()->platformView();
+    
+    unsigned callbackID = m_context->prepareForAsyncTask(callback, CallbackTypeNonPersistent);
+    
+    [webView accessibilityRetrieveSpeakSelectionContentWithCompletionHandler:^() {
+        if (!m_context)
+            return;
+        m_context->asyncTaskComplete(callbackID);
+    }];
+}
+
+JSRetainPtr<JSStringRef> UIScriptController::accessibilitySpeakSelectionContent() const
+{
+    TestRunnerWKWebView *webView = TestController::singleton().mainWebView()->platformView();
+    return JSStringCreateWithCFString((CFStringRef)webView.accessibilitySpeakSelectionContent);
+}
+
 void UIScriptController::simulateAccessibilitySettingsChangeNotification(JSValueRef callback)
 {
     unsigned callbackID = m_context->prepareForAsyncTask(callback, CallbackTypeNonPersistent);
@@ -515,6 +534,16 @@ JSRetainPtr<JSStringRef> UIScriptController::scrollingTreeAsText() const
 {
     TestRunnerWKWebView *webView = TestController::singleton().mainWebView()->platformView();
     return JSStringCreateWithCFString((CFStringRef)[webView _scrollingTreeAsText]);
+}
+
+void UIScriptController::removeViewFromWindow(JSValueRef callback)
+{
+    TestController::singleton().mainWebView()->removeFromWindow();
+}
+
+void UIScriptController::addViewToWindow(JSValueRef callback)
+{
+    TestController::singleton().mainWebView()->addToWindow();
 }
 
 void UIScriptController::platformSetDidStartFormControlInteractionCallback()

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -26,13 +26,14 @@
 #include "config.h"
 #include "WebResourceLoadStatisticsStore.h"
 
-#include "APIWebsiteDataStore.h"
 #include "WebProcessMessages.h"
 #include "WebProcessPool.h"
+#include "WebProcessProxy.h"
 #include "WebResourceLoadStatisticsStoreMessages.h"
 #include "WebsiteDataFetchOption.h"
 #include "WebsiteDataType.h"
 #include <WebCore/KeyedCoding.h>
+#include <WebCore/ResourceLoadObserver.h>
 #include <WebCore/ResourceLoadStatistics.h>
 #include <wtf/CurrentTime.h>
 #include <wtf/MainThread.h>
@@ -44,9 +45,11 @@ using namespace WebCore;
 
 namespace WebKit {
 
-static const auto numberOfSecondsBetweenRemovingDataRecords = 60;
 static const auto featureVectorLengthThreshold = 3;
+static auto minimumTimeBetweeenDataRecordsRemoval = 60;
 static OptionSet<WebKit::WebsiteDataType> dataTypesToRemove;
+static auto notifyPages = false;
+static auto shouldClassifyResourcesBeforeDataRecordsRemoval = true;
 
 Ref<WebResourceLoadStatisticsStore> WebResourceLoadStatisticsStore::create(const String& resourceLoadStatisticsDirectory)
 {
@@ -54,7 +57,7 @@ Ref<WebResourceLoadStatisticsStore> WebResourceLoadStatisticsStore::create(const
 }
 
 WebResourceLoadStatisticsStore::WebResourceLoadStatisticsStore(const String& resourceLoadStatisticsDirectory)
-    : m_resourceStatisticsStore(ResourceLoadStatisticsStore::create())
+    : m_resourceLoadStatisticsStore(ResourceLoadStatisticsStore::create())
     , m_statisticsQueue(WorkQueue::create("WebResourceLoadStatisticsStore Process Data Queue"))
     , m_storagePath(resourceLoadStatisticsDirectory)
 {
@@ -62,6 +65,22 @@ WebResourceLoadStatisticsStore::WebResourceLoadStatisticsStore(const String& res
 
 WebResourceLoadStatisticsStore::~WebResourceLoadStatisticsStore()
 {
+}
+
+void WebResourceLoadStatisticsStore::setNotifyPagesWhenDataRecordsWereScanned(bool always)
+{
+    notifyPages = always;
+}
+
+void WebResourceLoadStatisticsStore::setShouldClassifyResourcesBeforeDataRecordsRemoval(bool value)
+{
+    shouldClassifyResourcesBeforeDataRecordsRemoval = value;
+}
+
+void WebResourceLoadStatisticsStore::setMinimumTimeBetweeenDataRecordsRemoval(double seconds)
+{
+    if (seconds >= 0)
+        minimumTimeBetweeenDataRecordsRemoval = seconds;
 }
 
 bool WebResourceLoadStatisticsStore::hasPrevalentResourceCharacteristics(const ResourceLoadStatistics& resourceStatistic)
@@ -110,12 +129,8 @@ void WebResourceLoadStatisticsStore::removeDataRecords()
         return;
 
     double now = currentTime();
-    if (!m_lastTimeDataRecordsWereRemoved) {
-        m_lastTimeDataRecordsWereRemoved = now;
-        return;
-    }
-
-    if (now < (m_lastTimeDataRecordsWereRemoved + numberOfSecondsBetweenRemovingDataRecords))
+    if (m_lastTimeDataRecordsWereRemoved
+        && now < m_lastTimeDataRecordsWereRemoved + minimumTimeBetweeenDataRecordsRemoval)
         return;
 
     m_dataRecordsRemovalPending = true;
@@ -123,57 +138,50 @@ void WebResourceLoadStatisticsStore::removeDataRecords()
 
     if (dataTypesToRemove.isEmpty()) {
         dataTypesToRemove |= WebsiteDataType::Cookies;
-        dataTypesToRemove |= WebsiteDataType::LocalStorage;
-        dataTypesToRemove |= WebsiteDataType::IndexedDBDatabases;
         dataTypesToRemove |= WebsiteDataType::DiskCache;
         dataTypesToRemove |= WebsiteDataType::MemoryCache;
+        dataTypesToRemove |= WebsiteDataType::OfflineWebApplicationCache;
+        dataTypesToRemove |= WebsiteDataType::SessionStorage;
+        dataTypesToRemove |= WebsiteDataType::LocalStorage;
+        dataTypesToRemove |= WebsiteDataType::WebSQLDatabases;
+        dataTypesToRemove |= WebsiteDataType::IndexedDBDatabases;
+        dataTypesToRemove |= WebsiteDataType::MediaKeys;
+        dataTypesToRemove |= WebsiteDataType::HSTSCache;
+        dataTypesToRemove |= WebsiteDataType::SearchFieldRecentSearches;
+#if ENABLE(NETSCAPE_PLUGIN_API)
+        dataTypesToRemove |= WebsiteDataType::PlugInData;
+#endif
+#if ENABLE(MEDIA_STREAM)
+        dataTypesToRemove |= WebsiteDataType::MediaDeviceIdentifier;
+#endif
     }
 
     // Switch to the main thread to get the default website data store
     RunLoop::main().dispatch([prevalentResourceDomains = WTFMove(prevalentResourceDomains), this] () mutable {
-        auto& websiteDataStore = API::WebsiteDataStore::defaultDataStore()->websiteDataStore();
-
-        websiteDataStore.fetchData(dataTypesToRemove, { }, [prevalentResourceDomains = WTFMove(prevalentResourceDomains), this](auto websiteDataRecords) {
-            Vector<WebsiteDataRecord> dataRecords;
-            Vector<String> prevalentResourceDomainsWithDataRecords;
-            for (auto& websiteDataRecord : websiteDataRecords) {
-                for (auto& prevalentResourceDomain : prevalentResourceDomains) {
-                    if (websiteDataRecord.displayName.endsWithIgnoringASCIICase(prevalentResourceDomain)) {
-                        auto suffixStart = websiteDataRecord.displayName.length() - prevalentResourceDomain.length();
-                        if (!suffixStart || websiteDataRecord.displayName[suffixStart - 1] == '.') {
-                            dataRecords.append(websiteDataRecord);
-                            prevalentResourceDomainsWithDataRecords.append(prevalentResourceDomain);
-                        }
-                    }
-                }
-            }
-
-            if (!dataRecords.size()) {
-                m_dataRecordsRemovalPending = false;
-                return;
-            }
-
-            auto& websiteDataStore = API::WebsiteDataStore::defaultDataStore()->websiteDataStore();
-            websiteDataStore.removeData(dataTypesToRemove, dataRecords, [prevalentResourceDomainsWithDataRecords = WTFMove(prevalentResourceDomainsWithDataRecords), this] {
-                this->coreStore().updateStatisticsForRemovedDataRecords(prevalentResourceDomainsWithDataRecords);
-                m_dataRecordsRemovalPending = false;
-            });
+        WebProcessProxy::deleteWebsiteDataForTopPrivatelyOwnedDomainsInAllPersistentDataStores(dataTypesToRemove, prevalentResourceDomains, notifyPages, [this]() mutable {
+            m_dataRecordsRemovalPending = false;
         });
     });
+}
+
+void WebResourceLoadStatisticsStore::processStatisticsAndDataRecords()
+{
+    if (shouldClassifyResourcesBeforeDataRecordsRemoval) {
+        coreStore().processStatistics([this] (ResourceLoadStatistics& resourceStatistic) {
+            classifyResource(resourceStatistic);
+        });
+    }
+    removeDataRecords();
+    
+    auto encoder = coreStore().createEncoderFromData();
+    
+    writeEncoderToDisk(*encoder.get(), "full_browsing_session");
 }
 
 void WebResourceLoadStatisticsStore::resourceLoadStatisticsUpdated(const Vector<WebCore::ResourceLoadStatistics>& origins)
 {
     coreStore().mergeStatistics(origins);
-
-    coreStore().processStatistics([this] (ResourceLoadStatistics& resourceStatistic) {
-        classifyResource(resourceStatistic);
-        removeDataRecords();
-    });
-    
-    auto encoder = coreStore().createEncoderFromData();
-    
-    writeEncoderToDisk(*encoder.get(), "full_browsing_session");
+    processStatisticsAndDataRecords();
 }
 
 void WebResourceLoadStatisticsStore::setResourceLoadStatisticsEnabled(bool enabled)
@@ -189,6 +197,17 @@ void WebResourceLoadStatisticsStore::setResourceLoadStatisticsEnabled(bool enabl
 bool WebResourceLoadStatisticsStore::resourceLoadStatisticsEnabled() const
 {
     return m_resourceLoadStatisticsEnabled;
+}
+
+
+void WebResourceLoadStatisticsStore::registerSharedResourceLoadObserver()
+{
+    ResourceLoadObserver::sharedObserver().setStatisticsStore(m_resourceLoadStatisticsStore.copyRef());
+    m_resourceLoadStatisticsStore->setNotificationCallback([this] {
+        if (m_resourceLoadStatisticsStore->isEmpty())
+            return;
+        processStatisticsAndDataRecords();
+    });
 }
 
 void WebResourceLoadStatisticsStore::readDataFromDiskIfNeeded()

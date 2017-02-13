@@ -164,6 +164,10 @@ the public iOS SDK. We will also need to update the FeatureDefines.xcconfig file
 #define ENABLE_PRIMARY_SNAPSHOTTED_PLUGIN_HEURISTIC 1
 #endif
 
+#if !defined(ENABLE_DOWNLOAD_ATTRIBUTE)
+#define ENABLE_DOWNLOAD_ATTRIBUTE 0
+#endif
+
 #endif /* PLATFORM(IOS) */
 
 /* --------- Apple MAC port (not IOS) --------- */
@@ -763,10 +767,6 @@ the public iOS SDK. We will also need to update the FeatureDefines.xcconfig file
 #define ENABLE_WEB_TIMING 0
 #endif
 
-#if !defined(ENABLE_USER_TIMING)
-#define ENABLE_USER_TIMING 0
-#endif
-
 #if !defined(ENABLE_WILL_REVEAL_EDGE_EVENTS)
 #define ENABLE_WILL_REVEAL_EDGE_EVENTS 1
 #endif
@@ -781,6 +781,10 @@ the public iOS SDK. We will also need to update the FeatureDefines.xcconfig file
 
 #if !defined(ENABLE_KEYBOARD_CODE_ATTRIBUTE)
 #define ENABLE_KEYBOARD_CODE_ATTRIBUTE 0
+#endif
+
+#if !defined(ENABLE_DATA_INTERACTION)
+#define ENABLE_DATA_INTERACTION 0
 #endif
 
 /* Asserts, invariants for macro definitions */

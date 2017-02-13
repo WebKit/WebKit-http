@@ -78,6 +78,11 @@ function testWebGL2() {
     return canvas.getContext("webgl2");
 }
 
+function testLinkPreload() {
+    var link = document.createElement("link");
+    return link.relList.supports("preload");
+}
+
 function testGamepad() {
     return navigator.getGamepads;
 }
@@ -104,6 +109,10 @@ function testES6Modules() {
 
 function testSubtleCrypto() {
     return window.crypto.subtle;
+}
+
+function testUserTiming() {
+    return window.performance.mark;
 }
 
 function testWebAnimations() {
@@ -136,8 +145,10 @@ window.addEventListener("load", function () {
         <div class="test" id="Gamepad"><p>Gamepad API</p></div>
         <div class="test" id="FormValidation"><p>HTML Form Validation</p></div>
         <div class="test" id="InputEvents"><p>HTML Input Events</p></div>
+        <div class="test" id="LinkPreload"><p>Link Preload</p></div>
         <div class="test" id="SubtleCrypto"><p>SubtleCrypto</p></div>
         <div class="test" id="VariationFonts"><p>Variation Fonts</p></div>
+        <div class="test" id="UserTiming"><p>User Timing</p></div>
         <div class="test" id="WebAnimations"><p>Web Animations</p></div>
         <div class="test" id="WebGL2"><p>WebGL 2.0</p></div>
     </div>

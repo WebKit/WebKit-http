@@ -80,6 +80,10 @@ public:
     RefPtr<SharedBuffer> sanitizeInitData(const AtomicString& initDataType, const SharedBuffer&);
     bool supportsInitData(const AtomicString& initDataType, const SharedBuffer&);
 
+    RefPtr<SharedBuffer> sanitizeResponse(const SharedBuffer&);
+
+    std::optional<String> sanitizeSessionId(const String& sessionId);
+
 private:
     CDM(Document&, const String& keySystem);
 

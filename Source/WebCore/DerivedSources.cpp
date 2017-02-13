@@ -350,7 +350,6 @@
 #include "JSNavigatorContentUtils.cpp"
 #include "JSNavigatorGeolocation.cpp"
 #include "JSNavigatorMediaDevices.cpp"
-#include "JSNavigatorUserMedia.cpp"
 #include "JSNavigatorVibration.cpp"
 #include "JSNode.cpp"
 #include "JSNodeFilter.cpp"
@@ -616,7 +615,6 @@
 #include "JSTreeWalker.cpp"
 #include "JSUIEvent.cpp"
 #include "JSUIEventInit.cpp"
-#include "JSURLUtils.cpp"
 #if ENABLE(USER_MESSAGE_HANDLERS)
 #include "JSUserMessageHandler.cpp"
 #include "JSUserMessageHandlersNamespace.cpp"

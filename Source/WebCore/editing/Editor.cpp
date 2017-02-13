@@ -107,8 +107,7 @@ namespace WebCore {
 
 static bool dispatchBeforeInputEvent(Element& element, const AtomicString& inputType, const String& data = { }, RefPtr<DataTransfer>&& dataTransfer = nullptr, const Vector<RefPtr<StaticRange>>& targetRanges = { }, bool cancelable = true)
 {
-    auto* settings = element.document().settings();
-    if (!settings || !settings->inputEventsEnabled())
+    if (!element.document().settings().inputEventsEnabled())
         return true;
 
     return element.dispatchEvent(InputEvent::create(eventNames().beforeinputEvent, inputType, true, cancelable, element.document().defaultView(), data, WTFMove(dataTransfer), targetRanges, 0));
@@ -116,10 +115,13 @@ static bool dispatchBeforeInputEvent(Element& element, const AtomicString& input
 
 static void dispatchInputEvent(Element& element, const AtomicString& inputType, const String& data = { }, RefPtr<DataTransfer>&& dataTransfer = nullptr, const Vector<RefPtr<StaticRange>>& targetRanges = { })
 {
-    auto* settings = element.document().settings();
-    if (settings && settings->inputEventsEnabled())
-        element.dispatchEvent(InputEvent::create(eventNames().inputEvent, inputType, true, false, element.document().defaultView(), data, WTFMove(dataTransfer), targetRanges, 0));
-    else
+    if (element.document().settings().inputEventsEnabled()) {
+        // FIXME: We should not be dispatching to the scoped queue here. Normally, input events are dispatched in CompositeEditCommand::apply after the end of the scope,
+        // but TypingCommands are special in that existing TypingCommands that are applied again fire input events *from within* the scope by calling typingAddedToOpenCommand.
+        // Instead, TypingCommands should always dispatch events synchronously after the end of the scoped queue in CompositeEditCommand::apply. To work around this for the
+        // time being, just revert back to calling dispatchScopedEvent.
+        element.dispatchScopedEvent(InputEvent::create(eventNames().inputEvent, inputType, true, false, element.document().defaultView(), data, WTFMove(dataTransfer), targetRanges, 0));
+    } else
         element.dispatchInputEvent();
 }
 
@@ -2943,9 +2945,7 @@ String Editor::selectedText() const
 
 String Editor::selectedTextForDataTransfer() const
 {
-    if (m_frame.settings().selectionIncludesAltImageText())
-        return selectedText(TextIteratorEmitsImageAltText);
-    return selectedText();
+    return selectedText(TextIteratorEmitsImageAltText);
 }
 
 String Editor::selectedText(TextIteratorBehavior behavior) const
@@ -3435,7 +3435,7 @@ void Editor::editorUIUpdateTimerFired()
         // When typing we check spelling elsewhere, so don't redo it here.
         // If this is a change in selection resulting from a delete operation,
         // oldSelection may no longer be in the document.
-        if (m_editorUIUpdateTimerShouldCheckSpellingAndGrammar && oldSelection.isContentEditable() && oldSelection.start().deprecatedNode() && oldSelection.start().anchorNode()->inDocument()) {
+        if (m_editorUIUpdateTimerShouldCheckSpellingAndGrammar && oldSelection.isContentEditable() && oldSelection.start().deprecatedNode() && oldSelection.start().anchorNode()->isConnected()) {
             VisiblePosition oldStart(oldSelection.visibleStart());
             VisibleSelection oldAdjacentWords = VisibleSelection(startOfWord(oldStart, LeftWordIfOnBoundary), endOfWord(oldStart, RightWordIfOnBoundary));
             if (oldAdjacentWords != newAdjacentWords) {

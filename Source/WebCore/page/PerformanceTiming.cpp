@@ -46,13 +46,6 @@
 
 namespace WebCore {
 
-static unsigned long long toIntegerMilliseconds(double seconds)
-{
-    ASSERT(seconds >= 0);
-    double reducedSeconds = Performance::reduceTimeResolution(seconds);
-    return static_cast<unsigned long long>(reducedSeconds * 1000.0);
-}
-
 PerformanceTiming::PerformanceTiming(Frame* frame)
     : DOMWindowProperty(frame)
 {
@@ -307,7 +300,7 @@ unsigned long long PerformanceTiming::loadEventEnd() const
 DocumentLoader* PerformanceTiming::documentLoader() const
 {
     if (!m_frame)
-        return 0;
+        return nullptr;
 
     return m_frame->loader().documentLoader();
 }
@@ -315,11 +308,11 @@ DocumentLoader* PerformanceTiming::documentLoader() const
 const DocumentTiming* PerformanceTiming::documentTiming() const
 {
     if (!m_frame)
-        return 0;
+        return nullptr;
 
     Document* document = m_frame->document();
     if (!document)
-        return 0;
+        return nullptr;
 
     return &document->timing();
 }
@@ -328,7 +321,7 @@ LoadTiming* PerformanceTiming::loadTiming() const
 {
     DocumentLoader* loader = documentLoader();
     if (!loader)
-        return 0;
+        return nullptr;
 
     return &loader->timing();
 }
@@ -336,15 +329,28 @@ LoadTiming* PerformanceTiming::loadTiming() const
 unsigned long long PerformanceTiming::resourceLoadTimeRelativeToFetchStart(double relativeMilliseconds) const
 {
     ASSERT(relativeMilliseconds >= 0);
-    return fetchStart() + relativeMilliseconds;
+
+    LoadTiming* timing = loadTiming();
+    if (!timing)
+        return 0;
+
+    WallTime fetchStart = timing->monotonicTimeToPseudoWallTime(timing->fetchStart());
+    WallTime combined = fetchStart + Seconds::fromMilliseconds(relativeMilliseconds);
+    Seconds reduced = Performance::reduceTimeResolution(combined.secondsSinceEpoch());
+    return static_cast<unsigned long long>(reduced.milliseconds());
 }
 
-unsigned long long PerformanceTiming::monotonicTimeToIntegerMilliseconds(double monotonicSeconds) const
+unsigned long long PerformanceTiming::monotonicTimeToIntegerMilliseconds(MonotonicTime timeStamp) const
 {
-    ASSERT(monotonicSeconds >= 0);
-    if (const LoadTiming* timing = loadTiming())
-        return toIntegerMilliseconds(timing->monotonicTimeToPseudoWallTime(monotonicSeconds));
-    return 0;
+    ASSERT(timeStamp.secondsSinceEpoch().seconds() >= 0);
+
+    LoadTiming* timing = loadTiming();
+    if (!timing)
+        return 0;
+
+    WallTime wallTime = timing->monotonicTimeToPseudoWallTime(timeStamp);
+    Seconds reduced = Performance::reduceTimeResolution(wallTime.secondsSinceEpoch());
+    return static_cast<unsigned long long>(reduced.milliseconds());
 }
 
 } // namespace WebCore

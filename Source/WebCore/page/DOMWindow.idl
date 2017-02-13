@@ -33,6 +33,7 @@
     CustomPreventExtensions,
     CustomProxyToJSObject,
     CustomPutFunction,
+    CustomToStringName,
     ExportMacro=WEBCORE_EXPORT,
     ImplicitThis,
     InterfaceName=Window,
@@ -136,9 +137,6 @@
 
     [NewObject] CSSStyleDeclaration getComputedStyle(Element element, optional DOMString? pseudoElement = null);
 
-    // FIXME: Drop the following overload of getComputedStyle once <rdar://problem/28020681> has been fixed.
-    [NewObject, MayThrowException] CSSStyleDeclaration? getComputedStyle(Document document, optional DOMString? pseudoElement = null);
-
     CSSRuleList getMatchedCSSRules(optional Element? element = null, optional DOMString? pseudoElement = null);
 
     [Replaceable] readonly attribute unrestricted double devicePixelRatio;
@@ -156,8 +154,6 @@
     [Conditional=ORIENTATION_EVENTS] readonly attribute long orientation;
 
     [CallWith=ScriptState&CallerWindow, DoNotCheckSecurity, ForwardDeclareInHeader, MayThrowException] void postMessage(any message, USVString targetOrigin, optional sequence<object> transfer = []);
-
-    [Conditional=WEB_TIMING, Replaceable] readonly attribute Performance performance;
 
     long requestAnimationFrame(RequestAnimationFrameCallback callback);
     void cancelAnimationFrame(long id);
@@ -177,6 +173,8 @@
 
     [MayThrowException, EnabledForWorld=shadowRootIsAlwaysOpen]
     NodeList collectMatchingElementsInFlatTree(Node scope, DOMString selectors);
+    [MayThrowException, EnabledForWorld=shadowRootIsAlwaysOpen]
+    Element? matchingElementInFlatTree(Node scope, DOMString selectors);
 
     // Event handlers unique to Element and DOMWindow.
     // FIXME: Should these be exposed on Document as well (and therefore moved to GlobalEventHandlers.idl)?
@@ -200,5 +198,6 @@
 
 DOMWindow implements GlobalCrypto;
 DOMWindow implements GlobalEventHandlers;
+DOMWindow implements GlobalPerformance;
 DOMWindow implements WindowEventHandlers;
 DOMWindow implements WindowOrWorkerGlobalScope;

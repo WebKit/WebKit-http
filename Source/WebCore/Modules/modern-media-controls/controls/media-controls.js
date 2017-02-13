@@ -28,7 +28,7 @@ class MediaControls extends LayoutNode
 
     constructor({ width = 300, height = 150, layoutTraits = LayoutTraits.Unknown } = {})
     {
-        super(`<div class="media-controls">`);
+        super(`<div class="media-controls"></div>`);
 
         this._scaleFactor = 1;
 
@@ -130,6 +130,11 @@ class MediaControls extends LayoutNode
             this.element.style.zoom = 1 / this._scaleFactor;
         else
             super.commitProperty(propertyName);
+    }
+
+    controlsBarVisibilityDidChange(controlsBar)
+    {
+        // Implemented by subclasses as needed.
     }
 
     // Private

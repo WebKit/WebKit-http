@@ -63,6 +63,7 @@ NetworkDataTask::NetworkDataTask(NetworkSession& session, NetworkDataTaskClient&
     : m_failureTimer(*this, &NetworkDataTask::failureTimerFired)
     , m_session(session)
     , m_client(&client)
+    , m_partition(requestWithCredentials.cachePartition())
     , m_storedCredentials(storedCredentials)
     , m_lastHTTPMethod(requestWithCredentials.httpMethod())
     , m_firstRequest(requestWithCredentials)

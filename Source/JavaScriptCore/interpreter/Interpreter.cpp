@@ -302,7 +302,6 @@ Interpreter::Interpreter(VM& vm)
 #if !ENABLE(JIT)
     , m_cloopStack(vm)
 #endif
-    , m_errorHandlingModeReentry(0)
 #if !ASSERT_DISABLED
     , m_initialized(false)
 #endif
@@ -576,7 +575,7 @@ ALWAYS_INLINE static void notifyDebuggerOfUnwinding(CallFrame* callFrame)
     auto catchScope = DECLARE_CATCH_SCOPE(vm);
     if (Debugger* debugger = callFrame->vmEntryGlobalObject()->debugger()) {
         SuspendExceptionScope scope(&vm);
-        if (jsDynamicCast<JSFunction*>(callFrame->jsCallee()))
+        if (jsDynamicCast<JSFunction*>(vm, callFrame->jsCallee()))
             debugger->unwindEvent(callFrame);
         else
             debugger->didExecuteProgram(callFrame);
@@ -681,7 +680,7 @@ NEVER_INLINE HandlerInfo* Interpreter::unwind(VM& vm, CallFrame*& callFrame, Exc
 
     // Calculate an exception handler vPC, unwinding call frames as necessary.
     HandlerInfo* handler = nullptr;
-    UnwindFunctor functor(callFrame, isTerminatedExecutionException(exception), codeBlock, handler);
+    UnwindFunctor functor(callFrame, isTerminatedExecutionException(vm, exception), codeBlock, handler);
     callFrame->iterate(functor);
     if (!handler)
         return nullptr;
@@ -691,6 +690,7 @@ NEVER_INLINE HandlerInfo* Interpreter::unwind(VM& vm, CallFrame*& callFrame, Exc
 
 void Interpreter::notifyDebuggerOfExceptionToBeThrown(CallFrame* callFrame, Exception* exception)
 {
+    VM& vm = callFrame->vm();
     Debugger* debugger = callFrame->vmEntryGlobalObject()->debugger();
     if (debugger && debugger->needsExceptionCallbacks() && !exception->didNotifyInspectorOfThrow()) {
         // This code assumes that if the debugger is enabled then there is no inlining.
@@ -699,7 +699,7 @@ void Interpreter::notifyDebuggerOfExceptionToBeThrown(CallFrame* callFrame, Exce
         // https://bugs.webkit.org/show_bug.cgi?id=121754
 
         bool hasCatchHandler;
-        bool isTermination = isTerminatedExecutionException(exception);
+        bool isTermination = isTerminatedExecutionException(vm, exception);
         if (isTermination)
             hasCatchHandler = false;
         else {
@@ -727,11 +727,15 @@ static inline JSObject* checkedReturn(JSObject* returnValue)
     return returnValue;
 }
 
-JSValue Interpreter::execute(ProgramExecutable* program, CallFrame* callFrame, JSObject* thisObj)
+JSValue Interpreter::executeProgram(const SourceCode& source, CallFrame* callFrame, JSObject* thisObj)
 {
     JSScope* scope = thisObj->globalObject()->globalScope();
     VM& vm = *scope->vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);
+
+    ProgramExecutable* program = ProgramExecutable::create(callFrame, source);
+    ASSERT(throwScope.exception() || program);
+    RETURN_IF_EXCEPTION(throwScope, { });
 
     ASSERT(!throwScope.exception());
     ASSERT(!vm.isCollectorBusyOnCurrentThread());
@@ -850,7 +854,7 @@ failedJSONP:
     {
         CodeBlock* tempCodeBlock;
         JSObject* error = program->prepareForExecution<ProgramExecutable>(vm, nullptr, scope, CodeForCall, tempCodeBlock);
-        ASSERT(!throwScope.exception() || throwScope.exception() == jsDynamicCast<Exception*>(error));
+        ASSERT(!throwScope.exception() || throwScope.exception() == jsDynamicCast<Exception*>(vm, error));
         if (error)
             return checkedReturn(throwException(callFrame, throwScope, error));
         codeBlock = jsCast<ProgramCodeBlock*>(tempCodeBlock);

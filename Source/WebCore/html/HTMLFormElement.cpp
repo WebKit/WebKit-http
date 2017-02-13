@@ -128,7 +128,7 @@ bool HTMLFormElement::rendererIsNeeded(const RenderStyle& style)
 Node::InsertionNotificationRequest HTMLFormElement::insertedInto(ContainerNode& insertionPoint)
 {
     HTMLElement::insertedInto(insertionPoint);
-    if (insertionPoint.inDocument())
+    if (insertionPoint.isConnected())
         document().didAssociateFormControl(this);
     return InsertionDone;
 }
@@ -214,8 +214,7 @@ void HTMLFormElement::submitImplicitly(Event& event, bool fromImplicitSubmission
         return;
 
     // Older iOS apps using WebViews expect the behavior of auto submitting multi-input forms.
-    Settings* settings = document().settings();
-    if (fromImplicitSubmissionTrigger && (submissionTriggerCount == 1 || (settings && settings->allowMultiElementImplicitSubmission())))
+    if (fromImplicitSubmissionTrigger && (submissionTriggerCount == 1 || document().settings().allowMultiElementImplicitSubmission()))
         prepareForSubmission(event);
 }
 
@@ -249,7 +248,7 @@ bool HTMLFormElement::validateInteractively()
 
     // Focus on the first focusable control and show a validation message.
     for (auto& control : unhandledInvalidControls) {
-        if (control->inDocument() && control->isFocusable()) {
+        if (control->isConnected() && control->isFocusable()) {
             control->focusAndShowValidationMessage();
             break;
         }
@@ -258,7 +257,7 @@ bool HTMLFormElement::validateInteractively()
     // Warn about all of unfocusable controls.
     if (document().frame()) {
         for (auto& control : unhandledInvalidControls) {
-            if (control->inDocument() && control->isFocusable())
+            if (control->isConnected() && control->isFocusable())
                 continue;
             String message = makeString("An invalid form control with name='", control->name(), "' is not focusable.");
             document().addConsoleMessage(MessageSource::Rendering, MessageLevel::Error, message);
@@ -548,8 +547,9 @@ unsigned HTMLFormElement::formElementIndex(FormAssociatedElement* associatedElem
 
     // Treats separately the case where this element has the form attribute
     // for performance consideration.
-    if (associatedHTMLElement.hasAttributeWithoutSynchronization(formAttr)) {
+    if (associatedHTMLElement.hasAttributeWithoutSynchronization(formAttr) && associatedHTMLElement.isConnected()) {
         unsigned short position = compareDocumentPosition(associatedHTMLElement);
+        ASSERT_WITH_SECURITY_IMPLICATION(!(position & DOCUMENT_POSITION_DISCONNECTED));
         if (position & DOCUMENT_POSITION_PRECEDING) {
             ++m_associatedElementsBeforeIndex;
             ++m_associatedElementsAfterIndex;

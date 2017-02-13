@@ -56,7 +56,7 @@
 #import <JavaScriptCore/JSContextInternal.h>
 #import <WebCore/AXObjectCache.h>
 #import <WebCore/AccessibilityObject.h>
-#import <WebCore/AnimationController.h>
+#import <WebCore/CSSAnimationController.h>
 #import <WebCore/CSSStyleDeclaration.h>
 #import <WebCore/CachedResourceLoader.h>
 #import <WebCore/Chrome.h>
@@ -302,14 +302,14 @@ WebView *getWebView(WebFrame *webFrame)
     WebView *webView = kit(page);
 
     WebFrame *frame = [[self alloc] _initWithWebFrameView:frameView webView:webView];
-    Ref<WebCore::Frame> coreFrame = Frame::create(page, ownerElement, new WebFrameLoaderClient(frame));
+    auto coreFrame = Frame::create(page, ownerElement, new WebFrameLoaderClient(frame));
     [frame release];
     frame->_private->coreFrame = coreFrame.ptr();
 
     coreFrame.get().tree().setName(name);
     if (ownerElement) {
         ASSERT(ownerElement->document().frame());
-        ownerElement->document().frame()->tree().appendChild(coreFrame.ptr());
+        ownerElement->document().frame()->tree().appendChild(coreFrame.get());
     }
 
     coreFrame.get().init();
@@ -933,7 +933,7 @@ static inline WebDataSource *dataSource(DocumentLoader* loader)
     _private->coreFrame->editor().computeAndSetTypingStyle(properties.get(), undoAction);
 }
 
-#if ENABLE(DRAG_SUPPORT)
+#if ENABLE(DRAG_SUPPORT) && PLATFORM(MAC)
 - (void)_dragSourceEndedAt:(NSPoint)windowLoc operation:(NSDragOperation)operation
 {
     if (!_private->coreFrame)
@@ -946,7 +946,7 @@ static inline WebDataSource *dataSource(DocumentLoader* loader)
                              LeftButton, PlatformEvent::MouseMoved, 0, false, false, false, false, currentTime(), WebCore::ForceAtClick, WebCore::NoTap);
     _private->coreFrame->eventHandler().dragSourceEndedAt(event, (DragOperation)operation);
 }
-#endif
+#endif // ENABLE(DRAG_SUPPORT) && PLATFORM(MAC)
 
 - (BOOL)_canProvideDocumentSource
 {
@@ -1594,9 +1594,9 @@ static WebFrameLoadType toWebFrameLoadType(FrameLoadType frameLoadType)
         return;
 
     Node* node = core(element);
-    if (!node->inDocument())
+    if (!node->isConnected())
         return;
-        
+
     frame->selection().selectRangeOnElement(range.location, range.length, *node);
 }
 
@@ -2064,7 +2064,8 @@ static WebFrameLoadType toWebFrameLoadType(FrameLoadType frameLoadType)
 
     // The global object is probably a shell object? - if so, we know how to use this!
     JSC::JSObject* globalObjectObj = toJS(globalObjectRef);
-    if (!strcmp(globalObjectObj->classInfo()->className, "JSDOMWindowShell"))
+    JSC::VM& vm = *globalObjectObj->vm();
+    if (!strcmp(globalObjectObj->classInfo(vm)->className, "JSDOMWindowShell"))
         anyWorldGlobalObject = static_cast<JSDOMWindowShell*>(globalObjectObj)->window();
 
     // Get the frame frome the global object we've settled on.

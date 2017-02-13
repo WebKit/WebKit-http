@@ -197,7 +197,8 @@ inspector/heap/getRemoteObject.html [ Skip ]
 inspector/unit-tests/heap-snapshot.html [ Skip ]
 inspector/unit-tests/heap-snapshot-collection-event.html [ Skip ]
 
-# This test checks ScrollAnimator events only for main frame scrollbars that use native widgets in WK1.
+# These tests check ScrollAnimator events for main frame scrollbars that use native widgets in WK1.
+fast/scrolling/scroll-animator-overlay-scrollbars-clicked.html [ Skip ]
 fast/scrolling/scroll-animator-overlay-scrollbars-hovered.html [ Skip ]
 
 # This hit-test test doesn't work on DRT
@@ -209,6 +210,8 @@ webkit.org/b/156069 fast/dom/HTMLAnchorElement/anchor-download.html [ Failure ]
 webkit.org/b/156069 fast/dom/HTMLAnchorElement/anchor-download-synthetic-click.html [ Skip ]
 webkit.org/b/156069 fast/dom/HTMLAnchorElement/anchor-download-user-triggered-synthetic-click.html [ Skip ]
 webkit.org/b/156069 fast/dom/HTMLAnchorElement/anchor-file-blob-download.html [ Skip ]
+webkit.org/b/156069 fast/dom/HTMLAnchorElement/anchor-file-blob-download-no-extension.html [ Skip ]
+webkit.org/b/156069 http/tests/download/anchor-download-no-extension.html [ Skip ]
 webkit.org/b/156069 http/tests/download/area-download.html [ Skip ]
 webkit.org/b/156069 http/tests/security/anchor-download-allow-blob.html [ Skip ]
 webkit.org/b/156069 http/tests/security/anchor-download-allow-data.html [ Skip ]
@@ -290,6 +293,8 @@ webkit.org/b/164933 http/tests/misc/link-rel-icon-beforeload.html [ Failure ]
 webkit.org/b/165541 compositing/layer-creation/fixed-overlap-extent-rtl.html [ Failure ]
 webkit.org/b/165541 compositing/rtl/rtl-fixed-overflow.html [ Failure ]
 
+webkit.org/b/154612 [ Sierra ] compositing/repaint/fixed-background-scroll.html [ Pass Failure ]
+
 webkit.org/b/165589 pointer-lock/lock-lost-on-esc-in-fullscreen.html [ Skip ]
 
 # webkit.org/b/163585
@@ -297,8 +302,9 @@ media/track/track-cues-cuechange.html [ Pass Crash ]
 media/track/track-cue-rendering-horizontal.html [ Pass Crash ]
 media/accessibility-closed-captions-has-aria-owns.html [ Pass Crash ]
 media/track/track-cues-enter-exit.html [ Pass Crash ]
-media/modern-media-controls/tracks-support/tracks-support-click-track-in-panel.html [ Pass Timeout ]
 
-webkit.org/b/167253 media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-buttons-containers-styles.html [ Pass Failure ]
+webkit.org/b/167347 media/modern-media-controls/airplay-button/airplay-button-on.html [ Pass Timeout ]
 
-webkit.org/b/164336 [ Debug ] media/modern-media-controls/pip-support/pip-support-enabled.html [ Crash ]
+webkit.org/b/167127 pointer-lock/locked-element-removed-from-dom.html
+
+webkit.org/b/167857 pageoverlay/overlay-remove-reinsert-view.html [ Skip ]

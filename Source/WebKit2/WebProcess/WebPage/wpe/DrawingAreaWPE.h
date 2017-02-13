@@ -67,6 +67,14 @@ private:
 
     virtual void attachViewOverlayGraphicsLayer(WebCore::Frame*, WebCore::GraphicsLayer*) override;
 
+#if USE(COORDINATED_GRAPHICS_THREADED)
+    virtual void didChangeViewportAttributes(WebCore::ViewportAttributes&&) override;
+#endif
+
+#if USE(COORDINATED_GRAPHICS) || USE(TEXTURE_MAPPER)
+    virtual void deviceOrPageScaleFactorChanged() override;
+#endif
+
     virtual void updateBackingStoreState(uint64_t, bool, float, const WebCore::IntSize&, const WebCore::IntSize&) override;
     virtual void didUpdate() override;
 

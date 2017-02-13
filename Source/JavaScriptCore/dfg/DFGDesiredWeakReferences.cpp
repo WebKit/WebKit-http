@@ -68,10 +68,16 @@ bool DesiredWeakReferences::contains(JSCell* cell)
 void DesiredWeakReferences::reallyAdd(VM& vm, CommonData* common)
 {
     for (JSCell* target : m_references) {
-        if (Structure* structure = jsDynamicCast<Structure*>(target)) {
+        if (Structure* structure = jsDynamicCast<Structure*>(vm, target)) {
             common->weakStructureReferences.append(
                 WriteBarrier<Structure>(vm, m_codeBlock, structure));
         } else {
+            // There are weird relationships in how optimized CodeBlocks
+            // point to other CodeBlocks. We don't want to have them be
+            // part of the weak pointer set. For example, an optimized CodeBlock
+            // having a weak pointer to itself will cause it to get collected.
+            RELEASE_ASSERT(!jsDynamicCast<CodeBlock*>(vm, target));
+
             common->weakReferences.append(
                 WriteBarrier<JSCell>(vm, m_codeBlock, target));
         }

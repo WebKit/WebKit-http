@@ -128,7 +128,6 @@ my (
     $touchEventsSupport,
     $touchIconLoadingSupport,
     $touchSliderSupport,
-    $userTimingSupport,
     $vibrationSupport,
     $videoSupport,
     $videoTrackSupport,
@@ -148,7 +147,7 @@ prohibitUnknownPort();
 
 my @features = (
     { option => "3d-rendering", desc => "Toggle 3D Rendering support",
-      define => "ENABLE_3D_TRANSFORMS", default => (isAppleMacWebKit() || isIOSWebKit() || isGtk() || isEfl() || isWPE()), value => \$threeDTransformsSupport },
+      define => "ENABLE_3D_TRANSFORMS", default => (isAppleCocoaWebKit() || isIOSWebKit() || isGtk() || isEfl() || isWPE()), value => \$threeDTransformsSupport },
 
     { option => "accelerated-2d-canvas", desc => "Toggle Accelerated 2D Canvas support",
       define => "ENABLE_ACCELERATED_2D_CANVAS", default => isWPE(), value => \$accelerated2DCanvasSupport },
@@ -235,7 +234,7 @@ my @features = (
       define => "ENABLE_FTPDIR", default => 1, value => \$ftpDirSupport },
 
     { option => "fullscreen-api", desc => "Toggle Fullscreen API support",
-      define => "ENABLE_FULLSCREEN_API", default => (isAppleMacWebKit() || isEfl() || isGtk()), value => \$fullscreenAPISupport },
+      define => "ENABLE_FULLSCREEN_API", default => (isAppleCocoaWebKit() || isEfl() || isGtk()), value => \$fullscreenAPISupport },
 
     { option => "gamepad", desc => "Toggle Gamepad support",
       define => "ENABLE_GAMEPAD", default => 0, value => \$gamepadSupport },
@@ -250,7 +249,7 @@ my @features = (
       define => "ENABLE_ICONDATABASE", default => !isIOSWebKit(), value => \$icondatabaseSupport },
 
     { option => "indexed-database", desc => "Toggle Indexed Database support",
-      define => "ENABLE_INDEXED_DATABASE", default => (isAppleMacWebKit() || isEfl() || isGtk() || isWPE()), value => \$indexedDatabaseSupport },
+      define => "ENABLE_INDEXED_DATABASE", default => (isAppleCocoaWebKit() || isEfl() || isGtk() || isWPE()), value => \$indexedDatabaseSupport },
 
     { option => "input-speech", desc => "Toggle Input Speech support",
       define => "ENABLE_INPUT_SPEECH", default => 0, value => \$inputSpeechSupport },
@@ -361,7 +360,7 @@ my @features = (
       define => "ENABLE_SCRIPTED_SPEECH", default => 0, value => \$scriptedSpeechSupport },
 
     { option => "subtle-crypto", desc => "Toggle WebCrypto Subtle-Crypto support",
-      define => "ENABLE_SUBTLE_CRYPTO", default => (isGtk() || isEfl() || isAppleMacWebKit() || isIOSWebKit()), value => \$subtleCrypto },
+      define => "ENABLE_SUBTLE_CRYPTO", default => (isGtk() || isEfl() || isAppleCocoaWebKit() || isIOSWebKit()), value => \$subtleCrypto },
 
     { option => "svg-fonts", desc => "Toggle SVG Fonts support",
       define => "ENABLE_SVG_FONTS", default => 1, value => \$svgFontsSupport },
@@ -381,9 +380,6 @@ my @features = (
     { option => "touch-slider", desc => "Toggle Touch Slider support",
       define => "ENABLE_TOUCH_SLIDER", default => isEfl(), value => \$touchSliderSupport },
 
-    { option => "user-timing", desc => "Toggle User Timing support",
-      define => "ENABLE_USER_TIMING", default => (isGtk() || isWPE()), value => \$userTimingSupport },
-
     { option => "vibration", desc => "Toggle Vibration support",
       define => "ENABLE_VIBRATION", default => isEfl(), value => \$vibrationSupport },
 
@@ -400,10 +396,10 @@ my @features = (
       define => "ENABLE_WEB_AUDIO", default => (isEfl() || isGtk() || isWPE()), value => \$webAudioSupport },
 
     { option => "web-replay", desc => "Toggle Web Replay support",
-      define => "ENABLE_WEB_REPLAY", default => isAppleMacWebKit(), value => \$webReplaySupport },
+      define => "ENABLE_WEB_REPLAY", default => isAppleCocoaWebKit(), value => \$webReplaySupport },
 
     { option => "web-rtc", desc => "Toggle WebRTC support",
-      define => "ENABLE_WEB_RTC", default => (isAppleMacWebKit() || isIOSWebKit() || isGtk()), value => \$webRTCSupport },
+      define => "ENABLE_WEB_RTC", default => (isAppleCocoaWebKit() || isIOSWebKit() || isGtk()), value => \$webRTCSupport },
 
     { option => "web-sockets", desc => "Toggle Web Sockets support",
       define => "ENABLE_WEB_SOCKETS", default => 1, value => \$webSocketsSupport },
@@ -415,7 +411,7 @@ my @features = (
       define => "ENABLE_WEBASSEMBLY", default => 0, value => \$webAssemblySupport },
 
     { option => "webgl", desc => "Toggle WebGL support",
-      define => "ENABLE_WEBGL", default => (isAppleMacWebKit() || isIOSWebKit() || isGtk() || isEfl() || isWPE()), value => \$webglSupport },
+      define => "ENABLE_WEBGL", default => (isAppleCocoaWebKit() || isGtk() || isEfl() || isWPE()), value => \$webglSupport },
 
     { option => "writableStreamAPI", desc => "Toggle WritableStream API support",
       define => "ENABLE_WRITABLE_STREAM_API", default => 1, value => \$writableStreamAPISupport },

@@ -1,3 +1,404 @@
+2017-02-10  Alex Christensen  <achristensen@webkit.org>
+
+        Fix iOS libwebrtc build after r212127
+        https://bugs.webkit.org/show_bug.cgi?id=168134
+
+        * Configurations/libwebrtc.xcconfig:
+        * libwebrtc.xcodeproj/project.pbxproj:
+        I got a little carried away removing ObjC sources.
+        We still need RTCLogging.mm and RTCUIApplication.mm on iOS.
+        Also sorted the project file.
+
+2017-02-10  Alex Christensen  <achristensen@webkit.org>
+
+        Fix iOS libwebrtc build after r212127
+        https://bugs.webkit.org/show_bug.cgi?id=168134
+
+        * libwebrtc.xcodeproj/project.pbxproj:
+        I got a little carried away removing -fobjc-arc.  These files need it.
+        It was originally added in r211902 and these files are in the 
+        EXCLUDED_SOURCE_FILE_NAMES[sdk=macosx*] list in libwebrtc.xcconfig
+        so adding this flag won't break the 32-bit El Capitan build.
+
+2017-02-10  Alex Christensen  <achristensen@webkit.org>
+
+        Remove unnecessary automatic reference counting in libwebrtc
+        https://bugs.webkit.org/show_bug.cgi?id=168134
+
+        Reviewed by Youenn Fablet.
+
+        * libwebrtc.xcodeproj/project.pbxproj:
+
+2017-02-10  Youenn Fablet  <youennf@gmail.com>
+
+        [WebRTC] Activate libwebrtc G711/G722 audio codecs
+        https://bugs.webkit.org/show_bug.cgi?id=168123
+
+        Reviewed by Alex Christensen.
+
+        Adding G711/G722 missing codec files.
+        Activating use of these in the build system.
+
+        * Configurations/libwebrtc.xcconfig:
+        * Source/webrtc/modules/audio_coding/codecs/g711/g711.c: Added.
+        (ulaw_to_alaw):
+        * Source/webrtc/modules/audio_coding/codecs/g711/g711.h: Added.
+        * Source/webrtc/modules/audio_coding/codecs/g722/audio_decoder_g722.cc: Added.
+        * Source/webrtc/modules/audio_coding/codecs/g722/audio_decoder_g722.h: Added.
+        * Source/webrtc/modules/audio_coding/codecs/g722/audio_encoder_g722.cc: Added.
+        * Source/webrtc/modules/audio_coding/codecs/g722/audio_encoder_g722.h: Added.
+        * Source/webrtc/modules/audio_coding/codecs/g722/g722_decode.c: Added.
+        * Source/webrtc/modules/audio_coding/codecs/g722/g722_enc_dec.h: Added.
+        * Source/webrtc/modules/audio_coding/codecs/g722/g722_encode.c: Added.
+        * Source/webrtc/modules/audio_coding/codecs/g722/g722_interface.c: Added.
+        * Source/webrtc/modules/audio_coding/codecs/g722/g722_interface.h: Added.
+        * Source/webrtc/modules/audio_coding/codecs/g722/test/testG722.cc: Added.
+        * libwebrtc.xcodeproj/project.pbxproj:
+
+2017-02-10  Alex Christensen  <achristensen@webkit.org>
+
+        Fix ASAN build.
+
+        * Source/webrtc/base/sanitizer.h:
+        SANITIZER_UNUSED3 wasn't defined if we are using address_sanitizer but not memory_sanitizer.
+
+2017-02-09  Alex Christensen  <achristensen@webkit.org>
+
+        Fix El Capitan build.
+
+        * libwebrtc.xcodeproj/project.pbxproj:
+        Remove more SSE4 code.
+
+2017-02-09  Alex Christensen  <achristensen@webkit.org>
+
+        Fix El Capitan build.
+
+        * libwebrtc.xcodeproj/project.pbxproj:
+        Remove more SSE4 code.
+
+2017-02-09  Alex Christensen  <achristensen@webkit.org>
+
+        Fix iOS and El Capitan builds of libwebrtc.
+
+        * Configurations/libwebrtc.xcconfig:
+        Skip building audio_mixer_manager_mac.cc on iOS.
+        * libwebrtc.xcodeproj/project.pbxproj:
+        El Capitan doesn't like the SSE4 optimizations in opus.
+        Just don't include them for now.
+
+2017-02-09  Alex Christensen  <achristensen@webkit.org>
+
+        Fix warnings in libwebrtc build
+        https://bugs.webkit.org/show_bug.cgi?id=168088
+
+        Reviewed by Youenn Fablet.
+
+        * Source/third_party/opus/src/src/opus_decoder.c:
+        Silence a warning.  Debug builds of opus can be slow.  No big deal.
+        * libwebrtc.xcodeproj/project.pbxproj:
+        More sdk files need ARC.
+
+2017-02-09  Alex Christensen  <achristensen@webkit.org>
+
+        Fix iOS libwebrtc build after r211960
+        https://bugs.webkit.org/show_bug.cgi?id=168038
+
+        * Source/webrtc/sdk/objc/Framework/Classes/RTCOpenGLVideoRenderer.h:
+        GlContextType declaration needs to be platform specific here like it is in RTCOpenGLDefines.h
+
+2017-02-09  Alex Christensen  <achristensen@webkit.org>
+
+        Fix i386 libwebrtc build
+        https://bugs.webkit.org/show_bug.cgi?id=168038
+
+        Reviewed by Geoffrey Garen.
+
+        Unfortunately, 32-bit ObjC can't use all the coolest new features of ObjC.
+        Fortunately, we can move things around a bit to become valid old ObjC.
+
+        * Source/webrtc/sdk/objc/Framework/Classes/RTCAVFoundationVideoSource.mm:
+        * Source/webrtc/sdk/objc/Framework/Classes/RTCAudioSource.mm:
+        * Source/webrtc/sdk/objc/Framework/Classes/RTCFileLogger.mm:
+        * Source/webrtc/sdk/objc/Framework/Classes/RTCI420Shader.mm:
+        * Source/webrtc/sdk/objc/Framework/Classes/RTCMediaConstraints.mm:
+        * Source/webrtc/sdk/objc/Framework/Classes/RTCMediaSource+Private.h:
+        * Source/webrtc/sdk/objc/Framework/Classes/RTCMediaSource.mm:
+        * Source/webrtc/sdk/objc/Framework/Classes/RTCMediaStream.mm:
+        * Source/webrtc/sdk/objc/Framework/Classes/RTCMediaStreamTrack+Private.h:
+        * Source/webrtc/sdk/objc/Framework/Classes/RTCMediaStreamTrack.mm:
+        * Source/webrtc/sdk/objc/Framework/Classes/RTCOpenGLVideoRenderer.h:
+        * Source/webrtc/sdk/objc/Framework/Classes/RTCOpenGLVideoRenderer.mm:
+        * Source/webrtc/sdk/objc/Framework/Classes/RTCPeerConnectionFactory.mm:
+        * Source/webrtc/sdk/objc/Framework/Classes/RTCRtpReceiver.mm:
+        * Source/webrtc/sdk/objc/Framework/Classes/RTCRtpSender.mm:
+        * Source/webrtc/sdk/objc/Framework/Classes/RTCShader.h:
+        * Source/webrtc/sdk/objc/Framework/Classes/RTCVideoFrame.mm:
+        * Source/webrtc/sdk/objc/Framework/Classes/RTCVideoRendererAdapter.h:
+        * Source/webrtc/sdk/objc/Framework/Classes/RTCVideoRendererAdapter.mm:
+        * Source/webrtc/sdk/objc/Framework/Classes/RTCVideoSource.mm:
+        * Source/webrtc/sdk/objc/Framework/Classes/RTCVideoTrack.mm:
+        * Source/webrtc/sdk/objc/Framework/Classes/avfoundationvideocapturer.mm:
+        * Source/webrtc/sdk/objc/Framework/Headers/WebRTC/RTCAVFoundationVideoSource.h:
+        * Source/webrtc/sdk/objc/Framework/Headers/WebRTC/RTCAudioSource.h:
+        * Source/webrtc/sdk/objc/Framework/Headers/WebRTC/RTCAudioTrack.h:
+        * Source/webrtc/sdk/objc/Framework/Headers/WebRTC/RTCConfiguration.h:
+        * Source/webrtc/sdk/objc/Framework/Headers/WebRTC/RTCDataChannelConfiguration.h:
+        * Source/webrtc/sdk/objc/Framework/Headers/WebRTC/RTCFileLogger.h:
+        * Source/webrtc/sdk/objc/Framework/Headers/WebRTC/RTCIceCandidate.h:
+        * Source/webrtc/sdk/objc/Framework/Headers/WebRTC/RTCIceServer.h:
+        * Source/webrtc/sdk/objc/Framework/Headers/WebRTC/RTCLegacyStatsReport.h:
+        * Source/webrtc/sdk/objc/Framework/Headers/WebRTC/RTCMediaConstraints.h:
+        * Source/webrtc/sdk/objc/Framework/Headers/WebRTC/RTCMediaSource.h:
+        * Source/webrtc/sdk/objc/Framework/Headers/WebRTC/RTCMediaStream.h:
+        * Source/webrtc/sdk/objc/Framework/Headers/WebRTC/RTCMediaStreamTrack.h:
+        * Source/webrtc/sdk/objc/Framework/Headers/WebRTC/RTCMetricsSampleInfo.h:
+        * Source/webrtc/sdk/objc/Framework/Headers/WebRTC/RTCPeerConnectionFactory.h:
+        * Source/webrtc/sdk/objc/Framework/Headers/WebRTC/RTCRtpCodecParameters.h:
+        * Source/webrtc/sdk/objc/Framework/Headers/WebRTC/RTCRtpEncodingParameters.h:
+        * Source/webrtc/sdk/objc/Framework/Headers/WebRTC/RTCRtpParameters.h:
+        * Source/webrtc/sdk/objc/Framework/Headers/WebRTC/RTCRtpReceiver.h:
+        * Source/webrtc/sdk/objc/Framework/Headers/WebRTC/RTCRtpSender.h:
+        * Source/webrtc/sdk/objc/Framework/Headers/WebRTC/RTCSessionDescription.h:
+        * Source/webrtc/sdk/objc/Framework/Headers/WebRTC/RTCVideoFrame.h:
+        * Source/webrtc/sdk/objc/Framework/Headers/WebRTC/RTCVideoSource.h:
+        * Source/webrtc/sdk/objc/Framework/Headers/WebRTC/RTCVideoTrack.h:
+        Make code compile for i386.
+        * libwebrtc.xcodeproj/project.pbxproj:
+        Added missing headers so Xcode can search them.
+
+2017-02-09  Alex Christensen  <achristensen@webkit.org>
+
+        Remove svn:executable property from headers.
+
+        * Source/webrtc/base/sigslottester.h: Removed property svn:executable.
+        * Source/webrtc/modules/video_processing/util/skin_detection.h: Removed property svn:executable.
+
+2017-02-08  Alex Christensen  <achristensen@webkit.org>
+
+        Fix libwebrtc build.
+        https://bugs.webkit.org/show_bug.cgi?id=168017
+
+        * Configurations/libwebrtc.xcconfig:
+        Trying to compile audio_device_not_implemented_ios.mm on Mac doesn't work.
+        * libwebrtc.xcodeproj/project.pbxproj:
+        Add some neon files.  They are nicely protected by macros at the top, so their contents are only compiled if necessary.
+
+2017-02-08  Alex Christensen  <achristensen@webkit.org>
+
+        Fix libwebrtc build on iOS simulator
+        https://bugs.webkit.org/show_bug.cgi?id=168017
+
+        Reviewed by Tim Horton.
+
+        * Configurations/libwebrtc.xcconfig:
+        * Configurations/libwebrtcpcrtc.xcconfig:
+        Use $(inherited)
+        * Source/webrtc/modules/audio_device/ios/audio_device_ios.h:
+        * Source/webrtc/modules/audio_device/ios/audio_device_ios.mm:
+        * Source/webrtc/modules/audio_device/ios/objc/RTCAudioSession+Configuration.mm:
+        * Source/webrtc/modules/audio_device/ios/objc/RTCAudioSession+Private.h:
+        * Source/webrtc/modules/audio_device/ios/objc/RTCAudioSession.h:
+        * Source/webrtc/modules/audio_device/ios/objc/RTCAudioSession.mm:
+        * Source/webrtc/modules/audio_device/ios/objc/RTCAudioSessionConfiguration.h:
+        * Source/webrtc/modules/audio_device/ios/objc/RTCAudioSessionConfiguration.m:
+        * Source/webrtc/modules/audio_device/ios/objc/RTCAudioSessionDelegateAdapter.h:
+        * Source/webrtc/modules/audio_device/ios/objc/RTCAudioSessionDelegateAdapter.mm:
+        Renamed RTCAudioSession* to WebRTCAudioSession* so that all ObjC classes in WebCore start with Web prefix.
+        * libwebrtc.xcodeproj/project.pbxproj:
+        Add necessary files.  Some iOS-specific files need ARC, 
+        and this matches the Build.gn in Source/webrtc/modules/audio_device
+
+2017-02-08  Alex Christensen  <achristensen@webkit.org>
+
+        Fix iOS libwebrtc build
+        https://bugs.webkit.org/show_bug.cgi?id=168004
+
+        Reviewed by Youenn Fablet.
+
+        We might still need to add some neon files.
+
+        * Configurations/libwebrtc.xcconfig:
+        * Configurations/libwebrtcpcrtc.xcconfig:
+        * Configurations/opus.xcconfig:
+        Don't build sse-specific files for iOS.
+        * libwebrtc.xcodeproj/project.pbxproj:
+        Don't include the sse4 optimization for now.
+        We can add the optimization for CPUs that support it later.
+
+2017-02-08  Youenn Fablet  <youennf@gmail.com>
+
+        [WebRTC] Fix libwebrtc build system
+        https://bugs.webkit.org/show_bug.cgi?id=167978
+
+        Reviewed by Alex Christensen.
+
+        * Configurations/libwebrtc.xcconfig:
+        * Configurations/libwebrtcpcrtc.xcconfig:
+        * Configurations/usrsctp.xcconfig:
+        * libwebrtc.xcodeproj/project.pbxproj:
+
+2017-02-07  Youenn Fablet  <youenn@apple.com>
+
+        Fix libwebrtcpcrtc target include path
+        https://bugs.webkit.org/show_bug.cgi?id=167971
+
+        Reviewed by Alex Christensen.
+
+        * Configurations/libwebrtcpcrtc.xcconfig:
+
+2017-02-07  Youenn Fablet  <youenn@apple.com>
+
+        [WebRTC] usrsctp (libwebrtc third party library) is not compiling
+        https://bugs.webkit.org/show_bug.cgi?id=167969
+
+        Reviewed by Alex Christensen.
+
+        Also removing .gitignore files in libwebrtc directory.
+
+        * Source/.gitignore: Removed.
+        * Source/third_party/boringssl/src/.gitignore: Removed.
+        * Source/third_party/gflags/src/.gitignore: Removed.
+        * Source/third_party/jsoncpp/source/.gitignore: Removed.
+        * Source/third_party/libyuv/.gitignore: Removed.
+        * Source/third_party/protobuf/.gitignore: Removed.
+        * Source/third_party/protobuf/csharp/.gitignore: Removed.
+        * Source/third_party/protobuf/ruby/.gitignore: Removed.
+        * Source/third_party/usrsctp/usrsctplib/.gitignore: Removed.
+        * Source/third_party/usrsctp/usrsctplib/usrsctplib/netinet/sctp_input.c:
+        (sctp_process_cookie_existing):
+        * Source/third_party/usrsctp/usrsctplib/usrsctplib/netinet/sctp_output.c:
+        * Source/tools/.gitignore: Removed.
+        * Source/webrtc/.gitignore: Removed.
+
+2017-02-07  Alex Christensen  <achristensen@webkit.org>
+
+        Move webrtc/pc to own Xcode target
+        https://bugs.webkit.org/show_bug.cgi?id=167970
+
+        Reviewed by Youenn Fablet.
+
+        It needs to include different directories than the rest of libwebrtc.
+        Also moved some target names so liblibsrtp.a is changed to libsrtp.a, etc.
+
+        * Configurations/libwebrtcpcrtc.xcconfig: Added.
+        * libwebrtc.xcodeproj/project.pbxproj:
+
+2017-02-07  Alex Christensen  <achristensen@webkit.org>
+
+        [libwebrtc] Move libsrtp and libyuv to own Xcode targets
+        https://bugs.webkit.org/show_bug.cgi?id=167966
+
+        Reviewed by Youenn Fablet.
+
+        * Configurations/libsrtp.xcconfig: Added.
+        * Configurations/libyuv.xcconfig: Added.
+        * Configurations/usrsctp.xcconfig:
+        * libwebrtc.xcodeproj/project.pbxproj:
+
+2017-02-07  Alex Christensen  <achristensen@webkit.org>
+
+        Fix libwebrtc build after r211817
+        https://bugs.webkit.org/show_bug.cgi?id=167944
+
+        * Configurations/usrsctp.xcconfig:
+        Disable more warnings.
+
+2017-02-07  Alex Christensen  <achristensen@webkit.org>
+
+        build usrsctp with Xcode
+        https://bugs.webkit.org/show_bug.cgi?id=167944
+
+        Reviewed by Youenn Fablet.
+
+        * Configurations/usrsctp.xcconfig:
+        * Source/third_party/usrsctp/usrsctplib/usrsctplib/netinet/sctp_pcb.c:
+        * Source/third_party/usrsctp/usrsctplib/usrsctplib/user_atomic.h:
+        * libwebrtc.xcodeproj/project.pbxproj:
+
+2017-02-06  Alex Christensen  <achristensen@webkit.org>
+
+        [WebRTC] Remove unneeded build directory accidentally checked in with libwebrtc source.
+
+        Reviewed by Youenn Fablet.
+
+        * third_party/usrsctp/build: Removed.
+
+2017-02-03  Alex Christensen  <achristensen@webkit.org>
+
+        [WebRTC] Add more files to libwebrtc build
+        https://bugs.webkit.org/show_bug.cgi?id=167824
+
+        Reviewed by Youenn Fablet.
+
+        * Configurations/libwebrtc.xcconfig:
+        * Configurations/usrsctp.xcconfig: Added.
+        * libwebrtc.xcodeproj/project.pbxproj:
+
+2017-02-02  Alex Christensen  <achristensen@webkit.org>
+
+        Build libwebrtc and dependencies with Xcode
+        https://bugs.webkit.org/show_bug.cgi?id=167758
+
+        Reviewed by Dean Jackson.
+
+        * Configurations: Added.
+        * Configurations/Base.xcconfig: Added.
+        * Configurations/DebugRelease.xcconfig: Added.
+        * Configurations/boringssl.xcconfig: Added.
+        * Configurations/libwebrtc.xcconfig: Added.
+        * Configurations/opus.xcconfig: Added.
+        * libwebrtc.xcodeproj/project.pbxproj:
+
+2017-01-30  Youenn Fablet  <youennf@gmail.com>
+
+        [WebRTC] Upload a diff of WebKit libwebrtc code and original libwebrtc code
+        https://bugs.webkit.org/show_bug.cgi?id=167573
+
+        Reviewed by Alex Christensen.
+
+        * WebKit/patch-libwebrtc: Added.
+
+2017-01-27  Dan Bernstein  <mitz@apple.com>
+
+        Ignore Xcode’s project.xcworkspace and userdata directories in this new project like we do
+        in other projects.
+
+        * libwebrtc.xcodeproj: Added property svn:ignore.
+
+2017-01-24  Youenn Fablet  <youenn@apple.com>
+
+        [WebRTC] Use HAVE_PTHREAD_COND_TIMEDWAIT_RELATIVE for libwebrtc
+        https://bugs.webkit.org/show_bug.cgi?id=167353
+
+        Reviewed by Alex Christensen.
+
+        * CMakeLists.txt:
+
+2017-01-23  Youenn Fablet  <youenn@apple.com>
+
+        [WebRTC] Filter libwebrtc link flags
+        https://bugs.webkit.org/show_bug.cgi?id=167287
+
+        Reviewed by Alex Christensen.
+
+        * CMakeLists.txt:
+
+2017-01-23  Youenn Fablet  <youennf@gmail.com>
+
+        [WebRTC] Make VP8 optional in libwebrtc
+        https://bugs.webkit.org/show_bug.cgi?id=167257
+
+        Reviewed by Darin Adler.
+
+        Reusing strategy used to have VP9 optional for VP8 codec.
+
+        * CMakeLists.txt: Updated tocompile and link vp8_noop.cc
+        * Source/webrtc/media/engine/webrtcvideoengine2.cc:
+        * Source/webrtc/modules/video_coding/codecs/vp8/include/vp8.h:
+        * Source/webrtc/modules/video_coding/codecs/vp8/vp8_impl.cc:
+        * Source/webrtc/modules/video_coding/codecs/vp8/vp8_noop.cc: Added.
+        * Source/webrtc/video/video_encoder.cc:
+
 2017-01-20  Youenn Fablet  <youennf@gmail.com>
 
         [WebRTC] Update build system to make G711 optional in libwebrtc

@@ -55,6 +55,11 @@
 #include "UserContentController.h"
 #endif
 
+#if USE(QUICK_LOOK)
+#include "PreviewConverter.h"
+#include "QuickLook.h"
+#endif
+
 namespace WebCore {
 
 ResourceLoader::ResourceLoader(Frame& frame, ResourceLoaderOptions options)
@@ -371,6 +376,11 @@ void ResourceLoader::willSendRequestInternal(ResourceRequest& request, const Res
     else
         InspectorInstrumentation::willSendRequest(m_frame.get(), m_identifier, m_frame->loader().documentLoader(), request, redirectResponse);
 
+#if USE(QUICK_LOOK)
+    if (auto previewConverter = m_documentLoader->previewConverter())
+        request = previewConverter->safeRequest(request);
+#endif
+
     bool isRedirect = !redirectResponse.isNull();
     if (isRedirect)
         platformStrategies()->loaderStrategy()->crossOriginRedirectReceived(this, request.url());
@@ -422,7 +432,7 @@ static void logResourceResponseSource(Frame* frame, ResourceResponse::Source sou
         return;
     }
 
-    frame->page()->diagnosticLoggingClient().logDiagnosticMessageWithValue(DiagnosticLoggingKeys::resourceResponseKey(), DiagnosticLoggingKeys::sourceKey(), sourceKey, ShouldSample::Yes);
+    frame->page()->diagnosticLoggingClient().logDiagnosticMessage(DiagnosticLoggingKeys::resourceResponseSourceKey(), sourceKey, ShouldSample::Yes);
 }
 
 void ResourceLoader::didReceiveResponse(const ResourceResponse& r)
@@ -732,10 +742,9 @@ void ResourceLoader::unschedule(SchedulePair& pair)
 #endif
 
 #if USE(QUICK_LOOK)
-void ResourceLoader::didCreateQuickLookHandle(QuickLookHandle& handle)
+bool ResourceLoader::isQuickLookResource() const
 {
-    m_isQuickLookResource = true;
-    frameLoader()->client().didCreateQuickLookHandle(handle);
+    return !!m_quickLookHandle;
 }
 #endif
 

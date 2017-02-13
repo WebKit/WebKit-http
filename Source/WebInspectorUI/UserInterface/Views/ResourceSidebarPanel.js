@@ -289,7 +289,7 @@ WebInspector.ResourceSidebarPanel = class ResourceSidebarPanel extends WebInspec
         // Worker script.
         if (script.target !== WebInspector.mainTarget) {
             if (script.isMainResource())
-                this._addTargetWithMainResource(script.target)
+                this._addTargetWithMainResource(script.target);
             return;
         }
 
@@ -348,8 +348,12 @@ WebInspector.ResourceSidebarPanel = class ResourceSidebarPanel extends WebInspec
         let parentTreeElement = scriptTreeElement.parent;
         parentTreeElement.removeChild(scriptTreeElement);
 
-        if (parentTreeElement instanceof WebInspector.FolderTreeElement && !parentTreeElement.children.length)
-            parentTreeElement.parent.removeChild(parentTreeElement);
+        if (parentTreeElement instanceof WebInspector.FolderTreeElement) {
+            parentTreeElement.representedObject.remove(script);
+
+            if (!parentTreeElement.children.length)
+                parentTreeElement.parent.removeChild(parentTreeElement);
+        }
     }
 
     _scriptsCleared(event)

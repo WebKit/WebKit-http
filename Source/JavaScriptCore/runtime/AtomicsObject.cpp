@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -77,7 +77,7 @@ Structure* AtomicsObject::createStructure(VM& vm, JSGlobalObject* globalObject, 
 void AtomicsObject::finishCreation(VM& vm, JSGlobalObject* globalObject)
 {
     Base::finishCreation(vm);
-    ASSERT(inherits(info()));
+    ASSERT(inherits(vm, info()));
     
 #define PUT_DIRECT_NATIVE_FUNC(lowerName, upperName, count) \
     putDirectNativeFunctionWithoutTransition(vm, globalObject, Identifier::fromString(&vm, #lowerName), count, atomicsFunc ## upperName, Atomics ## upperName ## Intrinsic, DontEnum);
@@ -92,15 +92,14 @@ EncodedJSValue atomicOperationWithArgsCase(ExecState* exec, ThrowScope& scope, J
 {
     JSGenericTypedArrayView<Adaptor>* typedArray = jsCast<JSGenericTypedArrayView<Adaptor>*>(typedArrayView);
     
-    typename Adaptor::Type extraArgs[numExtraArgs + 1]; // Add 1 to avoid 0 size array error in VS.
+    double extraArgs[numExtraArgs + 1]; // Add 1 to avoid 0 size array error in VS.
     for (unsigned i = 0; i < numExtraArgs; ++i) {
-        int32_t value = exec->argument(2 + i).toInt32(exec);
+        double value = exec->argument(2 + i).toInteger(exec);
         RETURN_IF_EXCEPTION(scope, JSValue::encode(jsUndefined()));
-        extraArgs[i] = Adaptor::toNativeFromInt32(value);
+        extraArgs[i] = value;
     }
 
-    typename Adaptor::Type result = func(typedArray->typedVector() + accessIndex, extraArgs);
-    return JSValue::encode(Adaptor::toJSValue(result));
+    return JSValue::encode(func(typedArray->typedVector() + accessIndex, extraArgs));
 }
 
 unsigned validatedAccessIndex(VM& vm, ExecState* exec, JSArrayBufferView* typedArrayView)
@@ -108,11 +107,16 @@ unsigned validatedAccessIndex(VM& vm, ExecState* exec, JSArrayBufferView* typedA
     auto scope = DECLARE_THROW_SCOPE(vm);
     JSValue accessIndexValue = exec->argument(1);
     if (UNLIKELY(!accessIndexValue.isInt32())) {
-        accessIndexValue = jsNumber(accessIndexValue.toNumber(exec));
+        double accessIndexDouble = accessIndexValue.toNumber(exec);
         RETURN_IF_EXCEPTION(scope, 0);
-        if (!accessIndexValue.isInt32()) {
-            throwRangeError(exec, scope, ASCIILiteral("Access index is not an integer."));
-            return 0;
+        if (accessIndexDouble == 0)
+            accessIndexValue = jsNumber(0);
+        else {
+            accessIndexValue = jsNumber(accessIndexDouble);
+            if (!accessIndexValue.isInt32()) {
+                throwRangeError(exec, scope, ASCIILiteral("Access index is not an integer."));
+                return 0;
+            }
         }
     }
     int32_t accessIndex = accessIndexValue.asInt32();
@@ -187,32 +191,36 @@ EncodedJSValue atomicOperationWithArgs(ExecState* exec, const Func& func)
 EncodedJSValue JSC_HOST_CALL atomicsFuncAdd(ExecState* exec)
 {
     return atomicOperationWithArgs<1>(
-        exec, [&] (auto* ptr, const auto* args) {
-            return WTF::atomicExchangeAdd(ptr, args[0]);
+        exec, [&] (auto* ptr, const double* args) {
+            return jsNumber(WTF::atomicExchangeAdd(ptr, toInt32(args[0])));
         });
 }
 
 EncodedJSValue JSC_HOST_CALL atomicsFuncAnd(ExecState* exec)
 {
     return atomicOperationWithArgs<1>(
-        exec, [&] (auto* ptr, const auto* args) {
-            return WTF::atomicExchangeAnd(ptr, args[0]);
+        exec, [&] (auto* ptr, const double* args) {
+            return jsNumber(WTF::atomicExchangeAnd(ptr, toInt32(args[0])));
         });
 }
 
 EncodedJSValue JSC_HOST_CALL atomicsFuncCompareExchange(ExecState* exec)
 {
     return atomicOperationWithArgs<2>(
-        exec, [&] (auto* ptr, const auto* args) {
-            return WTF::atomicCompareExchangeStrong(ptr, args[0], args[1]);
+        exec, [&] (auto* ptr, const double* args) {
+            typedef typename std::remove_pointer<decltype(ptr)>::type T;
+            T expected = static_cast<T>(toInt32(args[0]));
+            T newValue = static_cast<T>(toInt32(args[1]));
+            return jsNumber(WTF::atomicCompareExchangeStrong(ptr, expected, newValue));
         });
 }
 
 EncodedJSValue JSC_HOST_CALL atomicsFuncExchange(ExecState* exec)
 {
     return atomicOperationWithArgs<1>(
-        exec, [&] (auto* ptr, const auto* args) {
-            return WTF::atomicExchange(ptr, args[0]);
+        exec, [&] (auto* ptr, const double* args) {
+            typedef typename std::remove_pointer<decltype(ptr)>::type T;
+            return jsNumber(WTF::atomicExchange(ptr, static_cast<T>(toInt32(args[0]))));
         });
 }
 
@@ -241,34 +249,36 @@ EncodedJSValue JSC_HOST_CALL atomicsFuncIsLockFree(ExecState* exec)
 EncodedJSValue JSC_HOST_CALL atomicsFuncLoad(ExecState* exec)
 {
     return atomicOperationWithArgs<0>(
-        exec, [&] (auto* ptr, const auto*) {
-            return WTF::atomicLoad(ptr);
+        exec, [&] (auto* ptr, const double*) {
+            return jsNumber(WTF::atomicLoad(ptr));
         });
 }
 
 EncodedJSValue JSC_HOST_CALL atomicsFuncOr(ExecState* exec)
 {
     return atomicOperationWithArgs<1>(
-        exec, [&] (auto* ptr, const auto* args) {
-            return WTF::atomicExchangeOr(ptr, args[0]);
+        exec, [&] (auto* ptr, const double* args) {
+            return jsNumber(WTF::atomicExchangeOr(ptr, toInt32(args[0])));
         });
 }
 
 EncodedJSValue JSC_HOST_CALL atomicsFuncStore(ExecState* exec)
 {
     return atomicOperationWithArgs<1>(
-        exec, [&] (auto* ptr, const auto* args) {
-            auto value = args[0];
-            WTF::atomicStore(ptr, value);
-            return value;
+        exec, [&] (auto* ptr, const double* args) {
+            typedef typename std::remove_pointer<decltype(ptr)>::type T;
+            double valueAsInt = args[0];
+            T valueAsT = static_cast<T>(toInt32(valueAsInt));
+            WTF::atomicStore(ptr, valueAsT);
+            return jsNumber(valueAsInt);
         });
 }
 
 EncodedJSValue JSC_HOST_CALL atomicsFuncSub(ExecState* exec)
 {
     return atomicOperationWithArgs<1>(
-        exec, [&] (auto* ptr, const auto* args) {
-            return WTF::atomicExchangeSub(ptr, args[0]);
+        exec, [&] (auto* ptr, const double* args) {
+            return jsNumber(WTF::atomicExchangeSub(ptr, toInt32(args[0])));
         });
 }
 
@@ -277,7 +287,7 @@ EncodedJSValue JSC_HOST_CALL atomicsFuncWait(ExecState* exec)
     VM& vm = exec->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
     
-    JSInt32Array* typedArray = jsDynamicCast<JSInt32Array*>(exec->argument(0));
+    JSInt32Array* typedArray = jsDynamicCast<JSInt32Array*>(vm, exec->argument(0));
     if (!typedArray) {
         throwTypeError(exec, scope, ASCIILiteral("Typed array for wait/wake must be an Int32Array."));
         return JSValue::encode(jsUndefined());
@@ -347,7 +357,7 @@ EncodedJSValue JSC_HOST_CALL atomicsFuncWake(ExecState* exec)
     VM& vm = exec->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
     
-    JSInt32Array* typedArray = jsDynamicCast<JSInt32Array*>(exec->argument(0));
+    JSInt32Array* typedArray = jsDynamicCast<JSInt32Array*>(vm, exec->argument(0));
     if (!typedArray) {
         throwTypeError(exec, scope, ASCIILiteral("Typed array for wait/wake must be an Int32Array."));
         return JSValue::encode(jsUndefined());
@@ -377,8 +387,8 @@ EncodedJSValue JSC_HOST_CALL atomicsFuncWake(ExecState* exec)
 EncodedJSValue JSC_HOST_CALL atomicsFuncXor(ExecState* exec)
 {
     return atomicOperationWithArgs<1>(
-        exec, [&] (auto* ptr, const auto* args) {
-            return WTF::atomicExchangeXor(ptr, args[0]);
+        exec, [&] (auto* ptr, const double* args) {
+            return jsNumber(WTF::atomicExchangeXor(ptr, toInt32(args[0])));
         });
 }
 

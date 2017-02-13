@@ -1,3 +1,239 @@
+2017-02-10  Daniel Bates  <dabates@apple.com>
+
+        Attempt to fix the WinCairo 64-Bit Release build following <https://trac.webkit.org/changeset/212173>
+        (https://bugs.webkit.org/show_bug.cgi?id=166774)
+
+        Touch WebKit.idl in the hopes that it will cause CMake to regenerate the COM interface files.
+
+        * Interfaces/WebKit.idl:
+
+2017-02-10  Daniel Bates  <dabates@apple.com>
+
+        Detach frame from document when entering page cache
+        https://bugs.webkit.org/show_bug.cgi?id=166774
+        <rdar://problem/29904368>
+
+        Reviewed by Chris Dumez.
+
+        * Interfaces/IWebPreferencesPrivate.idl:
+        * WebPreferenceKeysPrivate.h:
+        * WebPreferences.cpp:
+        (WebPreferences::initializeDefaultSettings):
+        (WebPreferences::setAllowsPageCacheWithWindowOpener): Deleted.
+        (WebPreferences::allowsPageCacheWithWindowOpener): Deleted.
+        * WebPreferences.h:
+        * WebView.cpp:
+        (WebView::notifyPreferencesChanged):
+
+2017-02-10  Joseph Pecoraro  <pecoraro@apple.com>
+
+        [Resource Timing] Enable Resource Timing by default in Tests
+        https://bugs.webkit.org/show_bug.cgi?id=168145
+
+        Reviewed by Ryosuke Niwa.
+
+        * Interfaces/IWebPreferencesPrivate.idl:
+        * WebPreferenceKeysPrivate.h:
+        * WebPreferences.cpp:
+        (WebPreferences::initializeDefaultSettings):
+        (WebPreferences::setResourceTimingEnabled):
+        (WebPreferences::resourceTimingEnabled):
+        * WebPreferences.h:
+        * WebView.cpp:
+        (WebView::notifyPreferencesChanged):
+
+2017-02-06  Alex Christensen  <achristensen@webkit.org>
+
+        More build fixes after r211751
+        https://bugs.webkit.org/show_bug.cgi?id=166998
+
+        * WebDownloadCFNet.cpp:
+        (WebDownload::didReceiveAuthenticationChallenge):
+
+2017-02-06  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        Rename AnimationController to CSSAnimationController
+        https://bugs.webkit.org/show_bug.cgi?id=167829
+
+        Reviewed by Simon Fraser.
+
+        * WebFrame.cpp:
+
+2017-02-02  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Drag images should be anchored to the mouse location
+        https://bugs.webkit.org/show_bug.cgi?id=167690
+        <rdar://problem/30295261>
+
+        Reviewed by Enrica Casucci.
+
+        Adds some plumbing for the anchor point in the WK1 client layer.
+
+        * WebCoreSupport/WebDragClient.cpp:
+        (WebDragClient::startDrag):
+        * WebCoreSupport/WebDragClient.h:
+
+2017-02-02  Per Arne Vollan  <pvollan@apple.com>
+
+        [Win][HiDPI] Scale factor is applied twice in accelerated compositing mode.
+        https://bugs.webkit.org/show_bug.cgi?id=167732
+
+        Reviewed by Brent Fulgham.
+
+        Backing layer should not be scaled when CACFLayerSetContentsScale is used for scaling.
+
+        * WebView.cpp:
+        (WebView::setAcceleratedCompositing):
+
+2017-02-02  Chris Dumez  <cdumez@apple.com>
+
+        [Crash] com.apple.WebKit.WebContent at WebKit: WebKit::WebPage::fromCorePage()
+        https://bugs.webkit.org/show_bug.cgi?id=167738
+        <rdar://problem/30229990>
+
+        Reviewed by Andreas Kling.
+
+        The BackForwardClient no longer needs to worry about removing HistoryItems
+        from the PageCache now that WebCore takes care of it.
+
+        * BackForwardList.cpp:
+        (BackForwardList::close):
+
+2017-01-28  Yoav Weiss  <yoav@yoav.ws>
+
+        Add Link Preload as an off-by-default experimental feature menu item.
+        https://bugs.webkit.org/show_bug.cgi?id=167201
+
+        Reviewed by Ryosuke Niwa.
+
+        * WebPreferenceKeysPrivate.h:
+        * WebPreferences.cpp:
+        (WebPreferences::initializeDefaultSettings):
+        (WebPreferences::valueForKey):
+        (WebPreferences::setLinkPreloadEnabled):
+        (WebPreferences::linkPreloadEnabled):
+        * WebPreferences.h:
+        * Interfaces/IWebPreferencesPrivate.idl:
+
+2017-01-28  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Add User Timing Experimental Feature
+        https://bugs.webkit.org/show_bug.cgi?id=167542
+        <rdar://problem/22746307>
+
+        Reviewed by Ryosuke Niwa.
+
+        * Interfaces/IWebPreferencesPrivate.idl:
+        * WebPreferenceKeysPrivate.h:
+        * WebPreferences.cpp:
+        (WebPreferences::initializeDefaultSettings):
+        (WebPreferences::setUserTimingEnabled):
+        (WebPreferences::userTimingEnabled):
+        * WebPreferences.h:
+        * WebView.cpp:
+        (WebView::notifyPreferencesChanged):
+        Add setting for User Timing runtime enabled feature.
+
+2017-01-26  Chris Dumez  <cdumez@apple.com>
+
+        Crash when navigating back to a page in PacheCache when one of its frames has been removed
+        https://bugs.webkit.org/show_bug.cgi?id=167421
+        <rdar://problem/30188490>
+
+        Reviewed by Darin Adler.
+
+        Add a new setting allowing layout tests to enable PageCache in a window
+        that has an opener, for convenience.
+
+        * WebPreferenceKeysPrivate.h:
+        * WebPreferences.cpp:
+        (WebPreferences::initializeDefaultSettings):
+        * WebPreferences.h:
+
+2017-01-26  Keith Miller  <keith_miller@apple.com>
+
+        classInfo should take a VM so it is not materialized from the object on each call
+        https://bugs.webkit.org/show_bug.cgi?id=167424
+
+        Rubber Stamped by Michael Saboff.
+
+        Previously, classInfo() would get the VM from the target's
+        MarkedBlock.  Most callers already have a VM on hand, so it is
+        wasteful to compute the VM from the marked block every time. This
+        patch refactors some of the most common callers of classInfo(),
+        jsDynamicCast and inherits to take a VM as well.
+
+        * WebFrame.cpp:
+        (WebFrame::stringByEvaluatingJavaScriptInScriptWorld):
+        * WebView.cpp:
+        (WebView::elementFromJS):
+
+2017-01-26  Per Arne Vollan  <pvollan@apple.com>
+
+        Crash when setting custom scale factor.
+        https://bugs.webkit.org/show_bug.cgi?id=167369
+
+        Reviewed by Sam Weinig.
+
+        Add null pointer check.
+
+        * WebView.cpp:
+        (WebView::setCustomBackingScaleFactor):
+
+2017-01-24  Youenn Fablet  <youennf@gmail.com>
+
+        [WebRTC] Introduce libwebrtc abstraction for WK1/WK2 implementations
+        https://bugs.webkit.org/show_bug.cgi?id=167294
+
+        Reviewed by Alex Christensen.
+
+        * WebView.cpp:
+        (WebView::initWithFrame):
+
+2017-01-23  Chris Dumez  <cdumez@apple.com>
+
+        REGRESSION (r211033): ASSERTION FAILED: m_ptr in com.apple.WebCore: WTF::RefPtr<WebCore::Element>::operator* const + 70
+        https://bugs.webkit.org/show_bug.cgi?id=167308
+        <rdar://problem/30144964>
+
+        Unreviewed, do a partial revert of r211033 to fix assertion.
+
+        * WebCoreSupport/WebChromeClient.cpp:
+        (WebChromeClient::exitFullScreenForElement):
+
+2017-01-20  Darin Adler  <darin@apple.com>
+
+        Remove PassRefPtr from "page" directory of WebCore, also deploy references
+        https://bugs.webkit.org/show_bug.cgi?id=167224
+
+        Reviewed by Chris Dumez.
+
+        * Plugins/PluginView.cpp:
+        (WebCore::PluginView::status): Pass reference.
+        (WebCore::PluginView::focusPluginElement): Ditto.
+
+        * WebCoreSupport/WebChromeClient.cpp:
+        (WebChromeClient::createWindow): Updated for change to ChromeClient.
+        (WebChromeClient::runBeforeUnloadConfirmPanel): Ditto.
+        (WebChromeClient::runJavaScriptAlert): Ditto.
+        (WebChromeClient::runJavaScriptConfirm): Ditto.
+        (WebChromeClient::runJavaScriptPrompt): Ditto.
+        (WebChromeClient::contentsSizeChanged): Ditto.
+        (WebChromeClient::unavailablePluginButtonClicked): Ditto.
+        (WebChromeClient::print): Ditto.
+        (WebChromeClient::exceededDatabaseQuota): Ditto.
+        (WebChromeClient::reachedApplicationCacheOriginQuota): Ditto.
+        (WebChromeClient::attachRootGraphicsLayer): Ditto.
+        (WebChromeClient::attachViewOverlayGraphicsLayer): Ditto.
+        (WebChromeClient::enterVideoFullscreenForVideoElement): Ditto.
+        (WebChromeClient::createPopupMenu): Ditto.
+        (WebChromeClient::createSearchPopupMenu): Ditto.
+        (WebChromeClient::supportsFullScreenForElement): Ditto.
+        (WebChromeClient::enterFullScreenForElement): Ditto.
+        (WebChromeClient::exitFullScreenForElement): Ditto.
+        (WebChromeClient::shouldUseTiledBackingForFrameView): Ditto.
+        * WebCoreSupport/WebChromeClient.h: Ditto.
+
 2017-01-20  Joseph Pecoraro  <pecoraro@apple.com>
 
         Remove never changing IndexedDB RuntimeEnabledFeature

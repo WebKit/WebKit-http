@@ -49,6 +49,10 @@
 #import <WebKitAdditions/EventHandlerIOSTouch.cpp>
 #endif
 
+#if USE(APPLE_INTERNAL_SDK)
+#import <WebKitAdditions/EventHandlerAdditions.mm>
+#endif
+
 namespace WebCore {
 
 static RetainPtr<WebEvent>& currentEventSlot()
@@ -120,7 +124,7 @@ void EventHandler::touchEvent(WebEvent *event)
 }
 #endif
 
-bool EventHandler::tabsToAllFormControls(KeyboardEvent* event) const
+bool EventHandler::tabsToAllFormControls(KeyboardEvent& event) const
 {
     Page* page = m_frame.page();
     if (!page)

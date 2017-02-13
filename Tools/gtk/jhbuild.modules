@@ -101,8 +101,12 @@
   <!-- FIXME: Pixman 0.32.6 isn't buildable with Clang, but disable-mmx option fixes
               the build. This workaround can be removed once the original bug is fixed.
               Details can be found here: https://bugs.webkit.org/show_bug.cgi?id=151441 -->
+  <!-- FIXME: Pixman 0.32.6 ARM iwMMXt fast path isn't buildable with GCC 4.9 and
+              ARM traditional instruction set. It causes a build failure on Raspbian.
+              This workaround can be removed once we raise the minimum GCC version
+              for WebKitGTK+ above 4.9 -->
   <autotools id="pixman" autogen-sh="configure"
-             autogenargs="--enable-gtk=no --disable-mmx">
+             autogenargs="--enable-gtk=no --disable-mmx --disable-arm-iwmmxt">
     <branch module="releases/pixman-0.32.6.tar.gz" version="0.32.6"
             repo="cairographics.org"
             hash="sha256:3dfed13b8060eadabf0a4945c7045b7793cc7e3e910e748a8bb0f0dc3e794904"
@@ -357,7 +361,9 @@
     <branch module="gstreamer/gstreamer-${version}.tar.xz" version="1.8.0"
             repo="gstreamer"
             hash="sha256:947a314a212b5d94985d89b43440dbe66b696e12bbdf9a2f78967b98d74abedc"
-            md5sum="6846d7289ec323c38c49b818171e955a"/>
+            md5sum="6846d7289ec323c38c49b818171e955a">
+      <patch file="gstreamer-0001-protection-added-function-to-filter-system-ids.patch" strip="1"/>
+    </branch>
   </autotools>
 
   <autotools id="gst-plugins-base"
@@ -393,6 +399,7 @@
       <patch file="gst-plugins-good-0001-rtpbin-pipeline-gets-an-EOS-when-any-rtpsources-byes.patch" strip="1"/>
       <patch file="gst-plugins-good-0002-rtpbin-avoid-generating-errors-when-rtcp-messages-ar.patch" strip="1"/>
       <patch file="gst-plugins-good-0003-rtpbin-receive-bundle-support.patch" strip="1"/>
+      <patch file="gst-plugins-good-0004-qtdemux-add-context-for-a-preferred-protection.patch" strip="1"/>
     </branch>
   </autotools>
 
@@ -490,7 +497,7 @@
     autogenargs="--disable-dri3 --enable-dri --enable-glx --enable-egl --with-egl-platforms=x11,wayland --with-dri-drivers=swrast --with-gallium-drivers=swrast">
     <!--- WARNING: At jhbuildrc, when we define the path to the Gallium llvmpipe software rasterizer (needed by XvfbDriver),
           we assume that the directory is named "Mesa". So, don't change the checkoutdir name even if you update the version.  -->
-    <branch module="/~brianp/mesa/11.0.6/mesa-11.0.6.tar.xz" version="11.0.6"
+    <branch module="/~brianp/mesa/older-versions/11.x/11.0.6/mesa-11.0.6.tar.xz" version="11.0.6"
             checkoutdir="Mesa"
             repo="people.freedesktop.org"
             hash="sha256:8340e64cdc91999840404c211496f3de38e7b4cb38db34e2f72f1642c5134760">

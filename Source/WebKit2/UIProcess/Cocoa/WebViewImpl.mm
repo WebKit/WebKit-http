@@ -30,6 +30,7 @@
 
 #import "APILegacyContextHistoryClient.h"
 #import "ColorSpaceData.h"
+#import "FullscreenClient.h"
 #import "GenericCallback.h"
 #import "Logging.h"
 #import "NativeWebGestureEvent.h"
@@ -1266,6 +1267,10 @@ WebViewImpl::WebViewImpl(NSView <WebViewImplDelegate> *view, WKWebView *outerWeb
 
     // Explicitly set the layer contents placement so AppKit will make sure that our layer has masksToBounds set to YES.
     m_view.layerContentsPlacement = NSViewLayerContentsPlacementTopLeft;
+
+#if ENABLE(FULLSCREEN_API) && WK_API_ENABLED
+    m_page->setFullscreenClient(std::make_unique<WebKit::FullscreenClient>((WKWebView *)m_view));
+#endif
 
     WebProcessPool::statistics().wkViewCount++;
 }
@@ -3107,11 +3112,8 @@ void WebViewImpl::dismissContentRelativeChildWindowsFromViewOnly()
     if (m_view.window.isKeyWindow || hasActiveImmediateAction) {
         WebCore::DictionaryLookup::hidePopup();
 
-        if (DataDetectorsLibrary()) {
-            DDActionsManager *actionsManager = [getDDActionsManagerClass() sharedManager];
-            if ([actionsManager respondsToSelector:@selector(requestBubbleClosureUnanchorOnFailure:)])
-                [actionsManager requestBubbleClosureUnanchorOnFailure:YES];
-        }
+        if (DataDetectorsLibrary())
+            [[getDDActionsManagerClass() sharedManager] requestBubbleClosureUnanchorOnFailure:YES];
     }
 
     clearTextIndicatorWithAnimation(WebCore::TextIndicatorWindowDismissalAnimation::FadeOut);
@@ -3736,7 +3738,10 @@ void WebViewImpl::dragImageForView(NSView *view, NSImage *image, CGPoint clientP
 {
     // The call below could release the view.
     RetainPtr<NSView> protector(m_view);
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
     NSPasteboard *pasteboard = [NSPasteboard pasteboardWithName:NSDragPboard];
+#pragma clang diagnostic pop
     [pasteboard setString:@"" forType:PasteboardTypes::WebDummyPboardType];
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
@@ -4634,8 +4639,6 @@ bool WebViewImpl::performKeyEquivalent(NSEvent *event)
         // first performs the original key equivalent, and if that isn't handled, it dispatches a synthetic Cmd+'+'.
         return [m_view _web_superPerformKeyEquivalent:event];
     }
-
-    ASSERT(event == [NSApp currentEvent]);
 
     disableComplexTextInputIfNecessary();
 

@@ -1332,32 +1332,16 @@ void GraphicsLayerCA::setVisibleAndCoverageRects(const VisibleAndCoverageRects& 
     if (intersectsCoverageRect != m_intersectsCoverageRect) {
         m_uncommittedChanges |= CoverageRectChanged;
         m_intersectsCoverageRect = intersectsCoverageRect;
-
-        if (GraphicsLayerCA* maskLayer = downcast<GraphicsLayerCA>(m_maskLayer)) {
-            maskLayer->m_uncommittedChanges |= CoverageRectChanged;
-            maskLayer->m_intersectsCoverageRect = intersectsCoverageRect;
-        }
     }
 
     if (visibleRectChanged) {
         m_uncommittedChanges |= CoverageRectChanged;
         m_visibleRect = rects.visibleRect;
-
-        if (GraphicsLayerCA* maskLayer = downcast<GraphicsLayerCA>(m_maskLayer)) {
-            // FIXME: this assumes that the mask layer has the same geometry as this layer (which is currently always true).
-            maskLayer->m_uncommittedChanges |= CoverageRectChanged;
-            maskLayer->m_visibleRect = rects.visibleRect;
-        }
     }
 
     if (coverageRectChanged) {
         m_uncommittedChanges |= CoverageRectChanged;
         m_coverageRect = rects.coverageRect;
-
-        if (GraphicsLayerCA* maskLayer = downcast<GraphicsLayerCA>(m_maskLayer)) {
-            maskLayer->m_uncommittedChanges |= CoverageRectChanged;
-            maskLayer->m_coverageRect = rects.coverageRect;
-        }
     }
 }
 
@@ -1382,7 +1366,7 @@ void GraphicsLayerCA::recursiveCommitChanges(const CommitState& commitState, con
 #ifdef VISIBLE_TILE_WASH
     // Use having a transform as a key to making the tile wash layer. If every layer gets a wash,
     // they start to obscure useful information.
-    if ((!m_transform.isIdentity() || m_usingTiledBacking) && !m_visibleTileWashLayer) {
+    if ((!m_transform.isIdentity() || tiledBacking()) && !m_visibleTileWashLayer) {
         static NeverDestroyed<Color> washFillColor(255, 0, 0, 50);
         static NeverDestroyed<Color> washBorderColor(255, 0, 0, 100);
         
@@ -1423,8 +1407,10 @@ void GraphicsLayerCA::recursiveCommitChanges(const CommitState& commitState, con
     
     childCommitState.ancestorIsViewportConstrained |= m_isViewportConstrained;
 
-    if (GraphicsLayerCA* maskLayer = downcast<GraphicsLayerCA>(m_maskLayer))
+    if (GraphicsLayerCA* maskLayer = downcast<GraphicsLayerCA>(m_maskLayer)) {
+        maskLayer->setVisibleAndCoverageRects(rects, m_isViewportConstrained || commitState.ancestorIsViewportConstrained);
         maskLayer->commitLayerChangesBeforeSublayers(childCommitState, pageScaleFactor, baseRelativePosition);
+    }
 
     const Vector<GraphicsLayer*>& childLayers = children();
     size_t numChildren = childLayers.size();
@@ -1559,13 +1545,15 @@ void GraphicsLayerCA::commitLayerChangesBeforeSublayers(CommitState& commitState
 
     bool needTiledLayer = requiresTiledLayer(pageScaleFactor);
     bool needBackdropLayerType = (customAppearance() == LightBackdropAppearance || customAppearance() == DarkBackdropAppearance);
-    PlatformCALayer::LayerType neededLayerType = m_layer->layerType();
+
+    PlatformCALayer::LayerType currentLayerType = m_layer->layerType();
+    PlatformCALayer::LayerType neededLayerType = currentLayerType;
 
     if (needBackdropLayerType)
         neededLayerType = layerTypeForCustomBackdropAppearance(customAppearance());
     else if (needTiledLayer)
         neededLayerType = PlatformCALayer::LayerTypeTiledBackingLayer;
-    else if (isCustomBackdropLayerType(m_layer->layerType()) || m_usingTiledBacking)
+    else if (currentLayerType == PlatformCALayer::LayerTypeTiledBackingLayer || isCustomBackdropLayerType(m_layer->layerType()))
         neededLayerType = PlatformCALayer::LayerTypeWebLayer;
 
     if (neededLayerType != m_layer->layerType())
@@ -2541,20 +2529,18 @@ void GraphicsLayerCA::updateMasksToBoundsRect()
 void GraphicsLayerCA::updateMaskLayer()
 {
     PlatformCALayer* maskCALayer = m_maskLayer ? downcast<GraphicsLayerCA>(*m_maskLayer).primaryLayer() : nullptr;
-    m_layer->setMask(maskCALayer);
-
-    if (m_backdropLayer) {
-        if (m_maskLayer) {
-            ReplicaState replicaState(ReplicaState::ChildBranch);
-            RefPtr<PlatformCALayer> maskClone = downcast<GraphicsLayerCA>(*m_maskLayer).fetchCloneLayers(this, replicaState, IntermediateCloneLevel);
-            m_backdropLayer->setMask(maskClone.get());
-        } else
-            m_backdropLayer->setMask(nullptr);
+    
+    LayerMap* layerCloneMap;
+    if (m_structuralLayer) {
+        m_structuralLayer->setMask(maskCALayer);
+        layerCloneMap = m_structuralLayerClones.get();
+    } else {
+        m_layer->setMask(maskCALayer);
+        layerCloneMap = m_layerClones.get();
     }
 
     LayerMap* maskLayerCloneMap = m_maskLayer ? downcast<GraphicsLayerCA>(*m_maskLayer).primaryLayerClones() : nullptr;
-    
-    if (LayerMap* layerCloneMap = m_layerClones.get()) {
+    if (layerCloneMap) {
         for (auto& clone : *layerCloneMap) {
             PlatformCALayer* maskClone = maskLayerCloneMap ? maskLayerCloneMap->get(clone.key) : nullptr;
             clone.value->setMask(maskClone);
@@ -3508,6 +3494,9 @@ void GraphicsLayerCA::dumpAdditionalProperties(TextStream& textStream, int inden
         IntRect gridExtent = tiledBacking()->tileGridExtent();
         writeIndent(textStream, indent + 1);
         textStream << "(top left tile " << gridExtent.x() << ", " << gridExtent.y() << " tiles grid " << gridExtent.width() << " x " << gridExtent.height() << ")\n";
+
+        writeIndent(textStream, indent + 1);
+        textStream << "(in window " << tiledBacking()->isInWindow() << ")\n";
     }
     
     if (behavior & LayerTreeAsTextIncludeContentLayers) {
@@ -3562,11 +3551,12 @@ void GraphicsLayerCA::changeLayerTypeTo(PlatformCALayer::LayerType newLayerType)
     if (newLayerType == oldLayerType)
         return;
 
-    RefPtr<PlatformCALayer> oldLayer = m_layer;
+    bool wasTiledLayer = oldLayerType == PlatformCALayer::LayerTypeTiledBackingLayer;
+    bool isTiledLayer = newLayerType == PlatformCALayer::LayerTypeTiledBackingLayer;
 
+    RefPtr<PlatformCALayer> oldLayer = m_layer;
     m_layer = createPlatformCALayer(newLayerType, this);
 
-    m_usingTiledBacking = newLayerType == PlatformCALayer::LayerTypeTiledBackingLayer;
     m_usingBackdropLayerType = isCustomBackdropLayerType(newLayerType);
 
     m_layer->adoptSublayers(*oldLayer);
@@ -3605,7 +3595,7 @@ void GraphicsLayerCA::changeLayerTypeTo(PlatformCALayer::LayerType newLayerType)
         | NameChanged
         | DebugIndicatorsChanged;
     
-    if (m_usingTiledBacking)
+    if (isTiledLayer)
         m_uncommittedChanges |= CoverageRectChanged;
 
     moveAnimations(oldLayer.get(), m_layer.get());
@@ -3613,8 +3603,8 @@ void GraphicsLayerCA::changeLayerTypeTo(PlatformCALayer::LayerType newLayerType)
     // need to tell new layer to draw itself
     setNeedsDisplay();
 
-    if (oldLayerType == PlatformCALayer::LayerTypeTiledBackingLayer || newLayerType == PlatformCALayer::LayerTypeTiledBackingLayer)
-        client().tiledBackingUsageChanged(this, m_usingTiledBacking);
+    if (wasTiledLayer || isTiledLayer)
+        client().tiledBackingUsageChanged(this, isTiledLayer);
 }
 
 GraphicsLayer::CompositingCoordinatesOrientation GraphicsLayerCA::defaultContentsOrientation() const

@@ -147,10 +147,12 @@ http/tests/quicklook/base-url-blocked.html [ Skip ]
 http/tests/quicklook/cross-origin-iframe-blocked.html [ Skip ]
 http/tests/quicklook/document-domain-is-empty-string.html [ Skip ]
 http/tests/quicklook/external-stylesheet-blocked.html [ Skip ]
+http/tests/quicklook/rtf-document-domain-is-empty-string.html [ Skip ]
 http/tests/quicklook/submit-form-blocked.html [ Skip ]
 http/tests/quicklook/top-navigation-blocked.html [ Skip ]
 http/tests/quicklook/hide-referer-on-navigation.html [ Skip ]
 imported/w3c/web-platform-tests/touch-events [ Skip ]
+media/modern-media-controls/media-controller/media-controller-ios-only-enable-tap-gesture-recognizer-with-fades-when-idle.html [ Skip ]
 platform/ios-simulator/ios/fast/forms/range-input-container-touches.html [ Skip ]
 platform/ios-simulator/ios/fast/forms/range-input-readonly-and-disabled.html [ Skip ]
 platform/ios-simulator/ios/fast/forms/range-input-touches.html [ Skip ]
@@ -299,6 +301,7 @@ fast/events/mouse-force-up.html [ Skip ]
 
 # testRunner.setPageVisibility is not implemented for iOS
 webkit.org/b/165799 fast/events/page-visibility-onvisibilitychange.html [ Skip ]
+webkit.org/b/165799 svg/animations/animations-paused-page-non-visible.html [ Skip ]
 
 # AutoFill button is not supported
 fast/forms/auto-fill-button/mouse-down-input-mouse-release-auto-fill-button.html
@@ -311,6 +314,7 @@ pageoverlay/overlay-small-frame-mouse-events.html [ Skip ]
 loader/stateobjects/pushstate-size.html [ Skip ]
 loader/stateobjects/pushstate-size-iframe.html [ Skip ]
 fast/scrolling/scroll-animator-basic-events.html [ Skip ]
+fast/scrolling/scroll-animator-overlay-scrollbars-clicked.html [ Skip ]
 fast/scrolling/scroll-animator-overlay-scrollbars-hovered.html [ Skip ]
 fast/scrolling/scroll-animator-select-list-events.html [ Skip ]
 fast/events/prevent-default-prevents-interaction-with-scrollbars.html [ Skip ]
@@ -352,6 +356,7 @@ fast/text/all-small-caps-whitespace.html [ Skip ]
 # This test relies on EventSender.keydown(), which is not supported on iOS
 editing/caret/emoji.html [ Skip ]
 webkit.org/b/155233 fast/events/max-tabindex-focus.html [ Skip ]
+fast/forms/validation-bubble-escape-key-dismiss.html [ Skip ]
 fast/forms/validation-message-maxLength.html [ Skip ]
 fast/shadow-dom/shadow-host-removal-crash.html [ Skip ]
 fast/shadow-dom/input-element-in-shadow.html [ Skip ]
@@ -362,6 +367,7 @@ fast/shadow-dom/hover-over-slotted-content.html [ Skip ]
 fast/events/keyboardevent-key.html [ Skip ]
 fast/events/keyboardevent-code.html [ Skip ]
 http/tests/navigation/keyboard-events-during-provisional-navigation.html [ Skip ]
+media/audio-dealloc-crash.html [ Skip ]
 
 # The file-wrapper part of <attachment> is not yet working on iOS
 fast/attachment/attachment-type-attribute.html [ Skip ]
@@ -374,6 +380,9 @@ fast/scrolling/rtl-scrollbars-position-absolute.html [ Skip ]
 fast/scrolling/rtl-scrollbars-position-fixed.html [ Skip ]
 fast/scrolling/rtl-scrollbars-text-selection-scrolled.html [ Skip ]
 fast/scrolling/rtl-scrollbars-text-selection.html [ Skip ]
+
+# This is specific to extensions on macOS
+webkit.org/b/167795 http/tests/security/bypassing-cors-checks-for-extension-urls.html [ Skip ]
 
 ###
 # Known failures
@@ -1232,6 +1241,7 @@ fast/events/input-events-ime-composition.html [ Failure ]
 fast/events/input-events-paste-rich-datatransfer.html [ Failure ]
 fast/events/input-events-spell-checking-datatransfer.html [ Failure ]
 fast/events/input-events-selection-forecolor-data.html [ Failure ]
+fast/events/input-events-insert-newlines-after-mutation.html [ Failure ]
 fast/events/before-input-events-prevent-default.html [ Failure ]
 fast/events/before-input-events-prevent-default-in-textfield.html [ Failure ]
 fast/events/before-input-events-different-start-end-elements.html [ Failure ]
@@ -2792,6 +2802,8 @@ media/modern-media-controls/media-controller/media-controller-inline-to-fullscre
 media/modern-media-controls/seek-backward-support [ Skip ]
 media/modern-media-controls/seek-forward-support [ Skip ]
 media/modern-media-controls/start-support/start-support-fullscreen.html [ Skip ]
+media/modern-media-controls/volume-down-support [ Skip ]
+media/modern-media-controls/volume-up-support [ Skip ]
 
 # These tests are mouse-specific
 media/modern-media-controls/media-controller/media-controller-auto-hide-mouse-leave-after-play.html [ Skip ]
@@ -2799,6 +2811,7 @@ media/modern-media-controls/media-controller/media-controller-auto-hide-mouse-en
 media/modern-media-controls/media-controller/media-controller-auto-hide-mouse-enter-over-controls-bar.html [ Skip ]
 media/modern-media-controls/media-controller/media-controller-auto-hide-rewind-with-mouse-enter.html [ Skip ]
 media/modern-media-controls/scrubber-support/scrubber-support-click.html [ Skip ]
+media/modern-media-controls/media-documents/click-on-video-should-not-pause.html [ Skip ]
 
 # Tests designed for macOS that have iOS equivalents in "ipad" directories
 media/modern-media-controls/fullscreen-support/fullscreen-support-click.html [ Skip ]
@@ -2823,6 +2836,18 @@ webkit.org/b/166062 media/modern-media-controls/airplay-support/airplay-support.
 webkit.org/b/166062 media/modern-media-controls/placard-support/placard-support-airplay.html [ Skip ]
 webkit.org/b/166062 media/modern-media-controls/audio/audio-controls-buttons.html [ Skip ]
 
+# There is no compact, reduced padding or tight padding mode on iOS.
+media/modern-media-controls/icon-button/icon-button-change-layout-traits.html [ Skip ]
+media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-compact-buttons-styles.html [ Skip ]
+media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-compact-controls-bar-styles.html [ Skip ]
+media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-compact.html [ Skip ]
+media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-reduced-padding.html [ Skip ]
+media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-tight-padding.html [ Skip ]
+media/modern-media-controls/media-controller/media-controller-compact.html [ Skip ]
+media/modern-media-controls/media-controller/media-controller-reduced-padding.html [ Skip ]
+media/modern-media-controls/media-controller/media-controller-tight-padding.html [ Skip ]
+media/modern-media-controls/media-controller/media-controller-toggle-compact-mode.html [ Skip ]
+
 # New Encrypted Media API not enabled on iOS
 media/encrypted-media/mock-navigator-requestMediaKeySystemAccess.html [ Skip ]
 
@@ -2833,3 +2858,12 @@ editing/caret/emoji.html [ Failure ]
 
 # Requires changes to QuickLook.framework tracked by rdar://problem/28544527
 quicklook/password-protected.html [ Skip ]
+
+webkit.org/b/167376 imported/w3c/web-platform-tests/html/browsers/history/the-location-interface/location-protocol-setter-non-broken.html [ Pass Failure ]
+webkit.org/b/167211 imported/w3c/web-platform-tests/html/browsers/history/the-location-interface/location-protocol-setter-non-broken-weird.html [ Pass Failure ]
+
+webkit.org/b/167619 css3/filters/backdrop/dynamic-with-clip-path.html [ ImageOnlyFailure ]
+
+webkit.org/b/167967 http/tests/security/credentials-iframes.html [ Failure ]
+
+webkit.org/b/168054 compositing/masks/solid-color-masked.html [ ImageOnlyFailure ]

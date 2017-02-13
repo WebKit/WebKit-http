@@ -56,7 +56,7 @@ EncodedJSValue JSC_HOST_CALL webAssemblyCompileFunc(ExecState* exec)
     JSValue module = WebAssemblyModuleConstructor::createModule(exec, exec->lexicalGlobalObject()->WebAssemblyModuleStructure());
     if (Exception* exception = catchScope.exception()) {
         catchScope.clearException();
-        promise->reject(exec, exception);
+        promise->reject(exec, exception->value());
         return JSValue::encode(promise->promise());
     }
 
@@ -96,7 +96,7 @@ Structure* JSWebAssembly::createStructure(VM& vm, JSGlobalObject* globalObject, 
 void JSWebAssembly::finishCreation(VM& vm, JSGlobalObject* globalObject)
 {
     Base::finishCreation(vm);
-    ASSERT(inherits(info()));
+    ASSERT(inherits(vm, info()));
     JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION("validate", webAssemblyValidateFunc, DontEnum, 1);
     JSC_NATIVE_FUNCTION_WITHOUT_TRANSITION("compile", webAssemblyCompileFunc, DontEnum, 1);
 }

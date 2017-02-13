@@ -24,7 +24,6 @@
 #include "config.h"
 #include "ScriptElement.h"
 
-#include "CachedModuleScript.h"
 #include "CachedResourceLoader.h"
 #include "CachedResourceRequest.h"
 #include "CachedScript.h"
@@ -42,6 +41,7 @@
 #include "LoadableClassicScript.h"
 #include "LoadableModuleScript.h"
 #include "MIMETypeRegistry.h"
+#include "NoEventDispatchAssertion.h"
 #include "PendingScript.h"
 #include "SVGScriptElement.h"
 #include "ScriptController.h"
@@ -75,7 +75,7 @@ ScriptElement::ScriptElement(Element& element, bool parserInserted, bool already
 
 bool ScriptElement::shouldCallFinishedInsertingSubtree(ContainerNode& insertionPoint)
 {
-    return insertionPoint.inDocument() && !m_parserInserted;
+    return insertionPoint.isConnected() && !m_parserInserted;
 }
 
 void ScriptElement::finishedInsertingSubtree()
@@ -84,9 +84,9 @@ void ScriptElement::finishedInsertingSubtree()
     prepareScript(); // FIXME: Provide a real starting line number here.
 }
 
-void ScriptElement::childrenChanged()
+void ScriptElement::childrenChanged(const ContainerNode::ChildChange& childChange)
 {
-    if (!m_parserInserted && m_element.inDocument())
+    if (!m_parserInserted && childChange.isInsertion() && m_element.isConnected())
         prepareScript(); // FIXME: Provide a real starting line number here.
 }
 
@@ -187,14 +187,14 @@ bool ScriptElement::prepareScript(const TextPosition& scriptStartPosition, Legac
     } else
         wasParserInserted = false;
 
-    if (wasParserInserted && !asyncAttributeValue())
+    if (wasParserInserted && !hasAsyncAttribute())
         m_forceAsync = true;
 
     // FIXME: HTML5 spec says we should check that all children are either comments or empty text nodes.
     if (!hasSourceAttribute() && !m_element.firstChild())
         return false;
 
-    if (!m_element.inDocument())
+    if (!m_element.isConnected())
         return false;
 
     ScriptType scriptType = ScriptType::Classic;
@@ -218,6 +218,9 @@ bool ScriptElement::prepareScript(const TextPosition& scriptStartPosition, Legac
     // viewless document but this'll do for now.
     // See http://bugs.webkit.org/show_bug.cgi?id=5727
     if (!document.frame())
+        return false;
+
+    if (scriptType == ScriptType::Classic && hasNoModuleAttribute())
         return false;
 
     if (!document.frame()->script().canExecuteScripts(AboutToExecuteScript))
@@ -249,21 +252,21 @@ bool ScriptElement::prepareScript(const TextPosition& scriptStartPosition, Legac
     // is handled as the same to the external module script.
 
     bool isClassicExternalScript = scriptType == ScriptType::Classic && hasSourceAttribute();
-    bool isParserInsertedDeferredScript = ((isClassicExternalScript && deferAttributeValue()) || scriptType == ScriptType::Module)
-        && m_parserInserted && !asyncAttributeValue();
+    bool isParserInsertedDeferredScript = ((isClassicExternalScript && hasDeferAttribute()) || scriptType == ScriptType::Module)
+        && m_parserInserted && !hasAsyncAttribute();
     if (isParserInsertedDeferredScript) {
         m_willExecuteWhenDocumentFinishedParsing = true;
         m_willBeParserExecuted = true;
-    } else if (isClassicExternalScript && m_parserInserted && !asyncAttributeValue()) {
+    } else if (isClassicExternalScript && m_parserInserted && !hasAsyncAttribute()) {
         ASSERT(scriptType == ScriptType::Classic);
         m_willBeParserExecuted = true;
-    } else if ((isClassicExternalScript || scriptType == ScriptType::Module) && !asyncAttributeValue() && !m_forceAsync) {
+    } else if ((isClassicExternalScript || scriptType == ScriptType::Module) && !hasAsyncAttribute() && !m_forceAsync) {
         m_willExecuteInOrder = true;
         ASSERT(m_loadableScript);
         document.scriptRunner()->queueScriptForExecution(*this, *m_loadableScript, ScriptRunner::IN_ORDER_EXECUTION);
     } else if (hasSourceAttribute() || scriptType == ScriptType::Module) {
         ASSERT(m_loadableScript);
-        ASSERT(asyncAttributeValue() || m_forceAsync);
+        ASSERT(hasAsyncAttribute() || m_forceAsync);
         document.scriptRunner()->queueScriptForExecution(*this, *m_loadableScript, ScriptRunner::ASYNC_EXECUTION);
     } else if (!hasSourceAttribute() && m_parserInserted && !document.haveStylesheetsLoaded()) {
         ASSERT(scriptType == ScriptType::Classic);
@@ -283,7 +286,7 @@ bool ScriptElement::requestClassicScript(const String& sourceURL)
     Ref<Document> originalDocument(m_element.document());
     if (!m_element.dispatchBeforeLoadEvent(sourceURL))
         return false;
-    bool didEventListenerDisconnectThisElement = !m_element.inDocument() || &m_element.document() != originalDocument.ptr();
+    bool didEventListenerDisconnectThisElement = !m_element.isConnected() || &m_element.document() != originalDocument.ptr();
     if (didEventListenerDisconnectThisElement)
         return false;
 
@@ -323,7 +326,7 @@ bool ScriptElement::requestModuleScript(const TextPosition& scriptStartPosition)
         if (!m_element.dispatchBeforeLoadEvent(sourceURL))
             return false;
 
-        bool didEventListenerDisconnectThisElement = !m_element.inDocument() || &m_element.document() != originalDocument.ptr();
+        bool didEventListenerDisconnectThisElement = !m_element.isConnected() || &m_element.document() != originalDocument.ptr();
         if (didEventListenerDisconnectThisElement)
             return false;
 
@@ -363,6 +366,7 @@ bool ScriptElement::requestModuleScript(const TextPosition& scriptStartPosition)
 
 void ScriptElement::executeClassicScript(const ScriptSourceCode& sourceCode)
 {
+    ASSERT_WITH_SECURITY_IMPLICATION(NoEventDispatchAssertion::isEventAllowedInMainThread());
     ASSERT(m_alreadyStarted);
 
     if (sourceCode.isEmpty())
@@ -387,11 +391,11 @@ void ScriptElement::executeClassicScript(const ScriptSourceCode& sourceCode)
     frame->script().evaluate(sourceCode);
 }
 
-void ScriptElement::executeModuleScript(CachedModuleScript& moduleScript)
+void ScriptElement::executeModuleScript(LoadableModuleScript& loadableModuleScript)
 {
     // https://html.spec.whatwg.org/multipage/scripting.html#execute-the-script-block
 
-    ASSERT(!moduleScript.error());
+    ASSERT(!loadableModuleScript.error());
 
     auto& document = m_element.document();
     auto* frame = document.frame();
@@ -401,7 +405,7 @@ void ScriptElement::executeModuleScript(CachedModuleScript& moduleScript)
     IgnoreDestructiveWriteCountIncrementer ignoreDesctructiveWriteCountIncrementer(&document);
     CurrentScriptIncrementer currentScriptIncrementer(document, m_element);
 
-    frame->script().linkAndEvaluateModuleScript(moduleScript);
+    frame->script().linkAndEvaluateModuleScript(loadableModuleScript);
 }
 
 void ScriptElement::executeScriptAndDispatchEvent(LoadableScript& loadableScript)
@@ -431,7 +435,7 @@ void ScriptElement::executePendingScript(PendingScript& pendingScript)
 
 bool ScriptElement::ignoresLoadRequest() const
 {
-    return m_alreadyStarted || m_isExternalScript || m_parserInserted || !m_element.inDocument();
+    return m_alreadyStarted || m_isExternalScript || m_parserInserted || !m_element.isConnected();
 }
 
 bool ScriptElement::isScriptForEventSupported() const

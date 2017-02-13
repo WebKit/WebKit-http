@@ -31,7 +31,7 @@
 #include "FrameView.h"
 #include "HTMLNames.h"
 #include "HTMLParserIdioms.h"
-#include "JSDOMBinding.h"
+#include "JSDOMBindingSecurity.h"
 #include "Page.h"
 #include "RenderWidget.h"
 #include "ScriptController.h"
@@ -135,17 +135,17 @@ void HTMLFrameElementBase::setNameAndOpenURL()
 Node::InsertionNotificationRequest HTMLFrameElementBase::insertedInto(ContainerNode& insertionPoint)
 {
     HTMLFrameOwnerElement::insertedInto(insertionPoint);
-    if (insertionPoint.inDocument())
+    if (insertionPoint.isConnected())
         return InsertionShouldCallFinishedInsertingSubtree;
     return InsertionDone;
 }
 
 void HTMLFrameElementBase::finishedInsertingSubtree()
 {
-    if (!inDocument())
+    if (!isConnected())
         return;
 
-    // DocumentFragments don't kick of any loads.
+    // DocumentFragments don't kick off any loads.
     if (!document().frame())
         return;
 
@@ -174,13 +174,12 @@ URL HTMLFrameElementBase::location() const
 
 void HTMLFrameElementBase::setLocation(const String& str)
 {
-    Settings* settings = document().settings();
-    if (settings && settings->needsAcrobatFrameReloadingQuirk() && m_URL == str)
+    if (document().settings().needsAcrobatFrameReloadingQuirk() && m_URL == str)
         return;
 
     m_URL = AtomicString(str);
 
-    if (inDocument())
+    if (isConnected())
         openURL(LockHistory::No, LockBackForwardList::No);
 }
 

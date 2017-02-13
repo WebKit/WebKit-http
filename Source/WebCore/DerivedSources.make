@@ -163,7 +163,6 @@ JS_BINDING_IDLS = \
     $(WebCore)/Modules/mediastream/MediaTrackConstraints.idl \
     $(WebCore)/Modules/mediastream/MediaTrackSupportedConstraints.idl \
     $(WebCore)/Modules/mediastream/NavigatorMediaDevices.idl \
-    $(WebCore)/Modules/mediastream/NavigatorUserMedia.idl \
     $(WebCore)/Modules/mediastream/OverconstrainedError.idl \
     $(WebCore)/Modules/mediastream/OverconstrainedErrorEvent.idl \
     $(WebCore)/Modules/mediastream/RTCConfiguration.idl \
@@ -496,7 +495,6 @@ JS_BINDING_IDLS = \
     $(WebCore)/html/TextMetrics.idl \
     $(WebCore)/html/TimeRanges.idl \
     $(WebCore)/html/URLSearchParams.idl \
-    $(WebCore)/html/URLUtils.idl \
     $(WebCore)/html/ValidityState.idl \
     $(WebCore)/html/VoidCallback.idl \
     $(WebCore)/html/WebKitMediaKeyError.idl \
@@ -569,6 +567,7 @@ JS_BINDING_IDLS = \
     $(WebCore)/page/DOMWindow.idl \
     $(WebCore)/page/EventSource.idl \
     $(WebCore)/page/GlobalCrypto.idl \
+    $(WebCore)/page/GlobalPerformance.idl \
     $(WebCore)/page/History.idl \
     $(WebCore)/page/IntersectionObserver.idl \
     $(WebCore)/page/IntersectionObserverCallback.idl \
@@ -581,7 +580,12 @@ JS_BINDING_IDLS = \
     $(WebCore)/page/NavigatorOnLine.idl \
     $(WebCore)/page/Performance.idl \
     $(WebCore)/page/PerformanceEntry.idl \
+    $(WebCore)/page/PerformanceMark.idl \
+    $(WebCore)/page/PerformanceMeasure.idl \
     $(WebCore)/page/PerformanceNavigation.idl \
+    $(WebCore)/page/PerformanceObserver.idl \
+    $(WebCore)/page/PerformanceObserverCallback.idl \
+    $(WebCore)/page/PerformanceObserverEntryList.idl \
     $(WebCore)/page/PerformanceResourceTiming.idl \
     $(WebCore)/page/PerformanceTiming.idl \
     $(WebCore)/page/Screen.idl \
@@ -1338,7 +1342,6 @@ WebCore_BUILTINS_SOURCES = \
     $(WebCore)/Modules/fetch/FetchRequest.js \
     $(WebCore)/Modules/fetch/FetchResponse.js \
     ${WebCore}/Modules/fetch/WorkerGlobalScopeFetch.js \
-    $(WebCore)/Modules/mediastream/NavigatorUserMedia.js \
     $(WebCore)/Modules/mediastream/RTCPeerConnection.js \
     $(WebCore)/Modules/mediastream/RTCPeerConnectionInternals.js \
     $(WebCore)/Modules/streams/ByteLengthQueuingStrategy.js \

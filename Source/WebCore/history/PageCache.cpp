@@ -64,7 +64,7 @@ namespace WebCore {
 
 static inline void logPageCacheFailureDiagnosticMessage(DiagnosticLoggingClient& client, const String& reason)
 {
-    client.logDiagnosticMessageWithValue(DiagnosticLoggingKeys::pageCacheKey(), DiagnosticLoggingKeys::failureKey(), reason, ShouldSample::Yes);
+    client.logDiagnosticMessage(DiagnosticLoggingKeys::pageCacheFailureKey(), reason, ShouldSample::Yes);
 }
 
 static inline void logPageCacheFailureDiagnosticMessage(Page* page, const String& reason)
@@ -154,7 +154,7 @@ static bool canCacheFrame(Frame& frame, DiagnosticLoggingClient& diagnosticLoggi
         PCLOG("   -The document cannot suspend its active DOM Objects");
         for (auto* activeDOMObject : unsuspendableObjects) {
             PCLOG("    - Unsuspendable: ", activeDOMObject->activeDOMObjectName());
-            diagnosticLoggingClient.logDiagnosticMessageWithValue(DiagnosticLoggingKeys::pageCacheKey(), DiagnosticLoggingKeys::unsuspendableDOMObjectKey(), activeDOMObject->activeDOMObjectName(), ShouldSample::Yes);
+            diagnosticLoggingClient.logDiagnosticMessage(DiagnosticLoggingKeys::unsuspendableDOMObjectKey(), activeDOMObject->activeDOMObjectName(), ShouldSample::Yes);
             UNUSED_PARAM(activeDOMObject);
         }
         logPageCacheFailureDiagnosticMessage(diagnosticLoggingClient, DiagnosticLoggingKeys::cannotSuspendActiveDOMObjectsKey());
@@ -451,6 +451,19 @@ std::unique_ptr<CachedPage> PageCache::take(HistoryItem& item, Page* page)
     }
 
     return cachedPage;
+}
+
+void PageCache::removeAllItemsForPage(Page& page)
+{
+    for (auto it = m_items.begin(); it != m_items.end();) {
+        // Increment iterator first so it stays valid after the removal.
+        auto current = it;
+        ++it;
+        if (&(*current)->m_cachedPage->page() == &page) {
+            (*current)->m_cachedPage = nullptr;
+            m_items.remove(current);
+        }
+    }
 }
 
 CachedPage* PageCache::get(HistoryItem& item, Page* page)

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -84,6 +84,9 @@ struct WebProcessCreationParameters {
     SandboxExtension::Handle containerTemporaryDirectoryExtensionHandle;
 #endif
     SandboxExtension::Handle mediaKeyStorageDirectoryExtensionHandle;
+#if ENABLE(MEDIA_STREAM)
+    SandboxExtension::Handle audioCaptureExtensionHandle;
+#endif
     String mediaKeyStorageDirectory;
 
     bool shouldUseTestingNetworkSession;
@@ -97,9 +100,7 @@ struct WebProcessCreationParameters {
     Vector<String> urlSchemesRegisteredAsDisplayIsolated;
     Vector<String> urlSchemesRegisteredAsCORSEnabled;
     Vector<String> urlSchemesRegisteredAsAlwaysRevalidated;
-#if ENABLE(CACHE_PARTITIONING)
     Vector<String> urlSchemesRegisteredAsCachePartitioned;
-#endif
 
     CacheModel cacheModel;
 

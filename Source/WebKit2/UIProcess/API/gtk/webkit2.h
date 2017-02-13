@@ -58,6 +58,7 @@
 #include <webkit2/WebKitNotificationPermissionRequest.h>
 #include <webkit2/WebKitPermissionRequest.h>
 #include <webkit2/WebKitPlugin.h>
+#include <webkit2/WebKitPrintCustomWidget.h>
 #include <webkit2/WebKitPrintOperation.h>
 #include <webkit2/WebKitResponsePolicyDecision.h>
 #include <webkit2/WebKitScriptDialog.h>
@@ -77,6 +78,7 @@
 #include <webkit2/WebKitWebView.h>
 #include <webkit2/WebKitWebViewBase.h>
 #include <webkit2/WebKitWebViewSessionState.h>
+#include <webkit2/WebKitWebsiteData.h>
 #include <webkit2/WebKitWebsiteDataManager.h>
 #include <webkit2/WebKitWindowProperties.h>
 

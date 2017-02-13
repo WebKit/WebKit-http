@@ -42,7 +42,7 @@ function privateInitializeReadableByteStreamController(stream, underlyingByteSou
     this.@pullAgain = false;
     this.@pulling = false;
     @readableByteStreamControllerClearPendingPullIntos(this);
-    this.@queue = @newQueue();
+    this.@queue = [];
     this.@totalQueuedBytes = 0;
     this.@started = false;
     this.@closeRequested = false;
@@ -59,7 +59,7 @@ function privateInitializeReadableByteStreamController(stream, underlyingByteSou
             @throwRangeError("autoAllocateChunkSize value is negative or equal to positive or negative infinity");
     }
     this.@autoAllocateChunkSize = autoAllocateChunkSize;
-    this.@pendingPullIntos = @newQueue();
+    this.@pendingPullIntos = [];
 
     const controller = this;
     const startResult = @promiseInvokeOrNoopNoCatch(underlyingByteSource, "start", [this]).@then(() => {
@@ -73,7 +73,7 @@ function privateInitializeReadableByteStreamController(stream, underlyingByteSou
     });
 
     this.@cancel = @readableByteStreamControllerCancel;
-    // FIXME: Implement pull.
+    this.@pull = @readableByteStreamControllerPull;
 
     return this;
 }
@@ -101,9 +101,9 @@ function readableByteStreamControllerCancel(controller, reason)
 {
     "use strict";
 
-    if (controller.@pendingPullIntos.content.length > 0)
+    if (controller.@pendingPullIntos.length > 0)
         controller.@pendingPullIntos[0].bytesFilled = 0;
-    controller.@queue = @newQueue();
+    controller.@queue = [];
     controller.@totalQueuedBytes = 0;
     return @promiseInvokeOrNoop(controller.@underlyingByteSource, "cancel", [reason]);
 }
@@ -114,7 +114,7 @@ function readableByteStreamControllerError(controller, e)
 
     @assert(controller.@controlledReadableStream.@state === @streamReadable);
     @readableByteStreamControllerClearPendingPullIntos(controller);
-    controller.@queue = @newQueue();
+    controller.@queue = [];
     @readableStreamError(controller.@controlledReadableStream, e);
 }
 
@@ -130,7 +130,7 @@ function readableByteStreamControllerClose(controller)
         return;
     }
 
-    if (controller.@pendingPullIntos.content.length > 0) {
+    if (controller.@pendingPullIntos.length > 0) {
         if (controller.@pendingPullIntos[0].bytesFilled > 0) {
             const e = new @TypeError("Close requested while there remain pending bytes");
             @readableByteStreamControllerError(controller, e);
@@ -169,6 +169,62 @@ function readableStreamHasDefaultReader(stream)
     return stream.@reader !== @undefined && @isReadableStreamDefaultReader(stream.@reader);
 }
 
+function readableByteStreamControllerHandleQueueDrain(controller) {
+
+    "use strict";
+
+    @assert(controller.@controlledReadableStream.@state === @streamReadable);
+    if (!controller.@totalQueuedBytes && controller.@closeRequested)
+        @readableStreamClose(controller.@controlledReadableStream);
+    else
+        @readableByteStreamControllerCallPullIfNeeded(controller);
+}
+
+function readableByteStreamControllerPull(controller)
+{
+    "use strict";
+
+    const stream = controller.@controlledReadableStream;
+    @assert(@readableStreamHasDefaultReader(stream));
+
+    if (controller.@totalQueuedBytes > 0) {
+        @assert(stream.@reader.@readRequests.length === 0);
+        const entry = controller.@queue.@shift();
+        controller.@totalQueuedBytes -= entry.byteLength;
+        @readableByteStreamControllerHandleQueueDrain(controller);
+        let view;
+        try {
+            view = new @Uint8Array(entry.buffer, entry.byteOffset, entry.byteLength);
+        } catch (error) {
+            return @Promise.@reject(error);
+        }
+        return @Promise.@resolve({value: view, done: false});
+    }
+
+    if (controller.@autoAllocateChunkSize !== @undefined) {
+        let buffer;
+        try {
+            buffer = new @ArrayBuffer(controller.@autoAllocateChunkSize);
+        } catch (error) {
+            return @Promise.@reject(error);
+        }
+        const pullIntoDescriptor = {
+            buffer,
+            byteOffset: 0,
+            byteLength: controller.@autoAllocateChunkSize,
+            bytesFilled: 0,
+            elementSize: 1,
+            ctor: @Uint8Array,
+            readerType: 'default'
+        };
+        controller.@pendingPullIntos.@push(pullIntoDescriptor);
+    }
+
+    const promise = @readableStreamAddReadRequest(stream);
+    @readableByteStreamControllerCallPullIfNeeded(controller);
+    return promise;
+}
+
 function readableByteStreamControllerShouldCallPull(controller)
 {
     "use strict";
@@ -181,9 +237,9 @@ function readableByteStreamControllerShouldCallPull(controller)
         return false;
     if (!controller.@started)
         return false;
-    if (@readableStreamHasDefaultReader(stream) && stream.@reader.@readRequests > 0)
+    if (@readableStreamHasDefaultReader(stream) && stream.@reader.@readRequests.length > 0)
         return true;
-    if (@readableStreamHasBYOBReader(stream) && stream.@reader.@readIntoRequests > 0)
+    if (@readableStreamHasBYOBReader(stream) && stream.@reader.@readIntoRequests.length > 0)
         return true;
     if (@readableByteStreamControllerGetDesiredSize(controller) > 0)
         return true;
@@ -214,4 +270,61 @@ function readableByteStreamControllerCallPullIfNeeded(controller)
         if (controller.@controlledReadableStream.@state === @streamReadable)
             @readableByteStreamControllerError(controller, error);
     });
+}
+
+function transferBufferToCurrentRealm(buffer)
+{
+    "use strict";
+
+    // FIXME: Determine what should be done here exactly (what is already existing in current
+    // codebase and what has to be added). According to spec, Transfer operation should be
+    // performed in order to transfer buffer to current realm. For the moment, simply return
+    // received buffer.
+    return buffer;
+}
+
+function readableByteStreamControllerEnqueue(controller, chunk)
+{
+    "use strict";
+
+    const stream = controller.@controlledReadableStream;
+    @assert(!controller.@closeRequested);
+    @assert(stream.@state === @streamReadable);
+    const buffer = chunk.buffer;
+    const byteOffset = chunk.byteOffset;
+    const byteLength = chunk.byteLength;
+    const transferredBuffer = @transferBufferToCurrentRealm(buffer);
+
+    if (@readableStreamHasDefaultReader(stream)) {
+        if (!stream.@reader.@readRequests.length)
+            @readableByteStreamControllerEnqueueChunkToQueue(controller, transferredBuffer, byteOffset, byteLength);
+        else {
+            @assert(!controller.@queue.length);
+            let transferredView = new @Uint8Array(transferredBuffer, byteOffset, byteLength);
+            @readableStreamFulfillReadRequest(stream, transferredView, false);
+        }
+        return;
+    }
+
+    if (@readableStreamHasBYOBReader(stream)) {
+        // FIXME: To be implemented once ReadableStreamBYOBReader has been implemented (for the moment,
+        // test cannot be true).
+        @throwTypeError("ReadableByteStreamController enqueue operation has no support for BYOB reader");
+        return;
+    }
+
+    @assert(!@isReadableStreamLocked(stream));
+    @readableByteStreamControllerEnqueueChunkToQueue(controller, transferredBuffer, byteOffset, byteLength);
+}
+
+function readableByteStreamControllerEnqueueChunkToQueue(controller, buffer, byteOffset, byteLength)
+{
+    "use strict";
+
+    controller.@queue.@push({
+        buffer: buffer,
+        byteOffset: byteOffset,
+        byteLength: byteLength
+    });
+    controller.@totalQueuedBytes += byteLength;
 }

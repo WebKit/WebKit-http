@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2011-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2011-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -47,7 +47,7 @@
 #include <WebCore/GraphicsLayer.h>
 #include <WebCore/IDBGetResult.h>
 #include <WebCore/Image.h>
-#include <WebCore/JSDOMBinding.h>
+#include <WebCore/JSDOMExceptionHandling.h>
 #include <WebCore/Length.h>
 #include <WebCore/Path.h>
 #include <WebCore/PluginData.h>
@@ -982,10 +982,7 @@ bool ArgumentCoder<Cursor>::decode(Decoder& decoder, Cursor& cursor)
 
 void ArgumentCoder<ResourceRequest>::encode(Encoder& encoder, const ResourceRequest& resourceRequest)
 {
-#if ENABLE(CACHE_PARTITIONING)
     encoder << resourceRequest.cachePartition();
-#endif
-
     encoder << resourceRequest.hiddenFromInspector();
 
     if (resourceRequest.encodingRequiresPlatformData()) {
@@ -999,12 +996,10 @@ void ArgumentCoder<ResourceRequest>::encode(Encoder& encoder, const ResourceRequ
 
 bool ArgumentCoder<ResourceRequest>::decode(Decoder& decoder, ResourceRequest& resourceRequest)
 {
-#if ENABLE(CACHE_PARTITIONING)
     String cachePartition;
     if (!decoder.decode(cachePartition))
         return false;
     resourceRequest.setCachePartition(cachePartition);
-#endif
 
     bool isHiddenFromInspector;
     if (!decoder.decode(isHiddenFromInspector))
@@ -1226,8 +1221,10 @@ void ArgumentCoder<DragData>::encode(Encoder& encoder, const DragData& dragData)
     encoder << dragData.globalPosition();
     encoder.encodeEnum(dragData.draggingSourceOperationMask());
     encoder.encodeEnum(dragData.flags());
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
     encoder << dragData.pasteboardName();
+#endif
+#if PLATFORM(MAC)
     encoder << dragData.fileNames();
 #endif
 }
@@ -1251,13 +1248,15 @@ bool ArgumentCoder<DragData>::decode(Decoder& decoder, DragData& dragData)
         return false;
 
     String pasteboardName;
-#if PLATFORM(MAC)
+#if PLATFORM(COCOA)
     if (!decoder.decode(pasteboardName))
         return false;
 #endif
     Vector<String> fileNames;
+#if PLATFORM(MAC)
     if (!decoder.decode(fileNames))
         return false;
+#endif
 
     dragData = DragData(pasteboardName, clientPosition, globalPosition, draggingSourceOperationMask, applicationFlags);
     dragData.setFileNames(fileNames);
@@ -2268,6 +2267,8 @@ void ArgumentCoder<ResourceLoadStatistics>::encode(Encoder& encoder, const WebCo
     
     // User interaction
     encoder << statistics.hadUserInteraction;
+    encoder << statistics.mostRecentUserInteraction;
+    encoder << statistics.grandfathered;
     
     // Top frame stats
     encoder << statistics.topFrameHasBeenNavigatedToBefore;
@@ -2298,6 +2299,7 @@ void ArgumentCoder<ResourceLoadStatistics>::encode(Encoder& encoder, const WebCo
     // Prevalent Resource
     encoder << statistics.redirectedToOtherPrevalentResourceOrigins;
     encoder << statistics.isPrevalentResource;
+    encoder << statistics.dataRecordsRemoved;
 }
 
 bool ArgumentCoder<ResourceLoadStatistics>::decode(Decoder& decoder, WebCore::ResourceLoadStatistics& statistics)
@@ -2307,6 +2309,12 @@ bool ArgumentCoder<ResourceLoadStatistics>::decode(Decoder& decoder, WebCore::Re
     
     // User interaction
     if (!decoder.decode(statistics.hadUserInteraction))
+        return false;
+
+    if (!decoder.decode(statistics.mostRecentUserInteraction))
+        return false;
+
+    if (!decoder.decode(statistics.grandfathered))
         return false;
     
     // Top frame stats
@@ -2378,7 +2386,10 @@ bool ArgumentCoder<ResourceLoadStatistics>::decode(Decoder& decoder, WebCore::Re
     
     if (!decoder.decode(statistics.isPrevalentResource))
         return false;
-    
+
+    if (!decoder.decode(statistics.dataRecordsRemoved))
+        return false;
+
     return true;
 }
 

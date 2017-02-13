@@ -45,6 +45,9 @@ WebInspector.WorkerTarget = class WorkerTarget extends WebInspector.Target
 
         if (this.ConsoleAgent)
             this.ConsoleAgent.enable();
+
+        if (this.HeapAgent)
+            this.HeapAgent.enable();
     }
 
     // Protected (Target)
@@ -53,4 +56,4 @@ WebInspector.WorkerTarget = class WorkerTarget extends WebInspector.Target
     {
         return WebInspector.displayNameForURL(this._name);
     }
-}
+};

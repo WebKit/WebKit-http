@@ -1,3 +1,65 @@
+2017-02-10  Aakash Jain  <aakash_jain@apple.com>
+
+        WebKitLegacy doesn't re-export various symbols from WebCore required by clients
+        https://bugs.webkit.org/show_bug.cgi?id=168158
+        <rdar://problem/24527933>
+
+        Reviewed by Dan Bernstein.
+
+        * WebKit.iOS.exp: Exporting various symbols which are required by clients. This 
+        would enable clients to stop linking against WebCore and instead link against WebKit.
+
+2017-02-02  Yongjun Zhang  <yongjun_zhang@apple.com>
+
+        In iOS, we should take background assertion when accessing localstorage databases.
+        https://bugs.webkit.org/show_bug.cgi?id=165478
+
+        Move application background task handling code from WebKit to WebCore.
+
+        Reviewed by Brady Eidson.
+
+        * Misc/WebUIKitSupport.h: Remove several methods that only used internally for background
+            task handling. They are not needed in WebKit any more since background task handling
+            is moved to WebCore and wrapped in WebBackgroundTaskController class.
+        * Misc/WebUIKitSupport.mm:
+        (WebKitSetInvalidWebBackgroundTaskIdentifier): Instead of storing the value in a static global
+            variable, save it in WebBackgroundTaskController.
+        (WebKitSetStartBackgroundTaskBlock): Ditto.
+        (WebKitSetEndBackgroundTaskBlock): Ditto.
+
+2017-01-25  Aakash Jain  <aakash_jain@apple.com>
+
+        LoadWebLocalizedStrings method should be moved in correct file
+        https://bugs.webkit.org/show_bug.cgi?id=167393
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Misc/WebUIKitSupport.mm:
+        (LoadWebLocalizedStringsTimerCallback): Moved from WebLocalizableStrings.mm
+        (LoadWebLocalizedStrings): Moved from WebLocalizableStrings.mm
+
+2017-01-21  Darin Adler  <darin@apple.com>
+
+        Remove PassRefPtr from "page" directory of WebCore, also deploy references
+        https://bugs.webkit.org/show_bug.cgi?id=167224
+
+        Reviewed by Chris Dumez.
+
+        * WebCoreSupport/WebChromeClientIOS.h: Update for changes to ChromeClient.
+        * WebCoreSupport/WebChromeClientIOS.mm:
+        (WebChromeClientIOS::runJavaScriptAlert): Ditto.
+        (WebChromeClientIOS::runJavaScriptConfirm): Ditto.
+        (WebChromeClientIOS::runJavaScriptPrompt): Ditto.
+        (WebChromeClientIOS::setNeedsScrollNotifications): Ditto.
+        (WebChromeClientIOS::observedContentChange): Ditto.
+        (WebChromeClientIOS::clearContentChangeObservers): Ditto.
+        (WebChromeClientIOS::notifyRevealedSelectionByScrollingFrame): Ditto.
+        (WebChromeClientIOS::elementDidFocus): Ditto.
+        (WebChromeClientIOS::elementDidBlur): Ditto.
+        (WebChromeClientIOS::createPopupMenu): Ditto.
+        (WebChromeClientIOS::createSearchPopupMenu): Ditto.
+        (WebChromeClientIOS::attachRootGraphicsLayer): Ditto.
+
 2017-01-21  Simon Fraser  <simon.fraser@apple.com>
 
         Remove the unused -[WebFixedPositionContent minimumOffsetFromFixedPositionLayersToAnchorEdge:ofRect:inLayer:]

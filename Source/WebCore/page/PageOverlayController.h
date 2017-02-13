@@ -39,26 +39,28 @@ class Page;
 class PlatformMouseEvent;
 
 class PageOverlayController final : public GraphicsLayerClient {
-    WTF_MAKE_NONCOPYABLE(PageOverlayController);
     WTF_MAKE_FAST_ALLOCATED;
 public:
     PageOverlayController(MainFrame&);
     virtual ~PageOverlayController();
 
-    WEBCORE_EXPORT GraphicsLayer& documentOverlayRootLayer();
-    WEBCORE_EXPORT GraphicsLayer& viewOverlayRootLayer();
+    GraphicsLayer& layerWithDocumentOverlays();
+    GraphicsLayer& layerWithViewOverlays();
+
+    WEBCORE_EXPORT GraphicsLayer* documentOverlayRootLayer() const;
+    WEBCORE_EXPORT GraphicsLayer* viewOverlayRootLayer() const;
 
     const Vector<RefPtr<PageOverlay>>& pageOverlays() const { return m_pageOverlays; }
 
-    WEBCORE_EXPORT void installPageOverlay(PassRefPtr<PageOverlay>, PageOverlay::FadeMode);
-    WEBCORE_EXPORT void uninstallPageOverlay(PageOverlay*, PageOverlay::FadeMode);
+    WEBCORE_EXPORT void installPageOverlay(PageOverlay&, PageOverlay::FadeMode);
+    WEBCORE_EXPORT void uninstallPageOverlay(PageOverlay&, PageOverlay::FadeMode);
 
     void setPageOverlayNeedsDisplay(PageOverlay&, const IntRect&);
     void setPageOverlayOpacity(PageOverlay&, float);
     void clearPageOverlay(PageOverlay&);
     GraphicsLayer& layerForOverlay(PageOverlay&) const;
 
-    void willAttachRootLayer();
+    void willDetachRootLayer();
 
     void didChangeViewSize();
     void didChangeDocumentSize();
@@ -89,6 +91,7 @@ private:
     void paintContents(const GraphicsLayer*, GraphicsContext&, GraphicsLayerPaintingPhase, const FloatRect& clipRect) override;
     float deviceScaleFactor() const override;
     bool shouldSkipLayerInDump(const GraphicsLayer*, LayerTreeAsTextBehavior) const override;
+    void tiledBackingUsageChanged(const GraphicsLayer*, bool) override;
 
     std::unique_ptr<GraphicsLayer> m_documentOverlayRootLayer;
     std::unique_ptr<GraphicsLayer> m_viewOverlayRootLayer;

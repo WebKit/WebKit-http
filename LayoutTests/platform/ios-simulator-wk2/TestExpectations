@@ -17,6 +17,9 @@ fast/media/mq-inverted-colors-live-update-in-subframes.html [ Pass ]
 fast/media/mq-monochrome-live-update.html [ Pass ]
 fast/media/mq-prefers-reduced-motion-live-update.html [ Pass ]
 
+fast/visual-viewport/rubberbanding-viewport-rects.html [ Pass ]
+fast/visual-viewport/rubberbanding-viewport-rects-header-footer.html  [ Pass ]
+
 #//////////////////////////////////////////////////////////////////////////////////////////
 # End platform-specific directories.
 #//////////////////////////////////////////////////////////////////////////////////////////
@@ -1769,6 +1772,7 @@ fast/shadow-dom/fullscreen-in-slot-webkitCurrentFullScreenElement.html [ Skip ]
 fast/events/focus-label-legend-elements-with-tab.html [ Skip ]
 
 # No touch events
+fast/visual-viewport/ios/bottom-bar-with-keyboard.html [ Skip ]
 fast/visual-viewport/ios/fixed-element-on-bottom-with-keyboard.html [ Skip ]
 fast/visual-viewport/ios/zoomed-focus-in-fixed.html [ Skip ]
 http/tests/contentdispositionattachmentsandbox/referer-header-stripped-with-meta-referer-always.html [ Skip ]
@@ -1810,10 +1814,12 @@ webkit.org/b/156067 fast/dom/HTMLAnchorElement/anchor-download-unset.html [ Skip
 webkit.org/b/156067 fast/dom/HTMLAnchorElement/anchor-download.html [ Skip ]
 webkit.org/b/156067 fast/dom/HTMLAnchorElement/anchor-file-blob-convert-to-download.html [ Skip ]
 webkit.org/b/156067 fast/dom/HTMLAnchorElement/anchor-file-blob-download.html [ Skip ]
+webkit.org/b/156067 fast/dom/HTMLAnchorElement/anchor-file-blob-download-no-extension.html [ Skip ]
 webkit.org/b/156067 fast/dom/HTMLAnchorElement/anchor-nodownload-set.html [ Skip ]
 webkit.org/b/156067 fast/dom/HTMLAnchorElement/anchor-nodownload.html [ Skip ]
 webkit.org/b/156067 fast/dom/HTMLAnchorElement/anchor-download-synthetic-click.html [ Skip ]
 webkit.org/b/156067 fast/dom/HTMLAnchorElement/anchor-download-user-triggered-synthetic-click.html [ Skip ]
+webkit.org/b/156067 http/tests/download/anchor-download-no-extension.html [ Skip ]
 webkit.org/b/156067 http/tests/download/area-download.html [ Skip ]
 webkit.org/b/156067 http/tests/security/anchor-download-allow-blob.html [ Skip ]
 webkit.org/b/156067 http/tests/security/anchor-download-allow-data.html [ Skip ]
@@ -1907,4 +1913,4 @@ fast/css/deferred-parsing/hover-test.html [ Skip ]
 
 webkit.org/b/166025 http/tests/fetch/fetching-same-resource-with-diffferent-options.html [ Pass Failure ]
 
-webkit.org/b/167258 media/modern-media-controls/audio/audio-controls-metrics.html [ Failure ]
+webkit.org/b/167258 media/modern-media-controls/audio/audio-controls-metrics.html [ Skip ]

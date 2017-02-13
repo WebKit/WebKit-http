@@ -28,6 +28,7 @@
 #include "cmakeconfig.h"
 
 #include "BrowserWindow.h"
+#include <JavaScriptCore/JavaScript.h>
 #include <errno.h>
 #include <gtk/gtk.h>
 #include <string.h>
@@ -40,6 +41,7 @@ static GdkRGBA *backgroundColor;
 static gboolean editorMode;
 static const char *sessionFile;
 static char *geometry;
+static gboolean privateMode;
 
 typedef enum {
     MINI_BROWSER_ERROR_INVALID_ABOUT_PATH
@@ -59,11 +61,14 @@ static gchar *argumentToURL(const char *filename)
     return fileURL;
 }
 
-static WebKitWebView *createBrowserTab(BrowserWindow *window, WebKitSettings *webkitSettings)
+static WebKitWebView *createBrowserTab(BrowserWindow *window, WebKitSettings *webkitSettings, WebKitUserContentManager *userContentManager)
 {
-    WebKitWebView *webView = WEBKIT_WEB_VIEW(webkit_web_view_new());
-    if (webkitSettings)
-        webkit_web_view_set_settings(webView, webkitSettings);
+    WebKitWebView *webView = WEBKIT_WEB_VIEW(g_object_new(WEBKIT_TYPE_WEB_VIEW,
+        "web-context", browser_window_get_web_context(window),
+        "settings", webkitSettings,
+        "user-content-manager", userContentManager,
+        NULL));
+
     if (editorMode)
         webkit_web_view_set_editable(webView, TRUE);
 
@@ -89,6 +94,7 @@ static const GOptionEntry commandLineOptions[] =
     { "editor-mode", 'e', 0, G_OPTION_ARG_NONE, &editorMode, "Run in editor mode", NULL },
     { "session-file", 's', 0, G_OPTION_ARG_FILENAME, &sessionFile, "Session file", "FILE" },
     { "geometry", 'g', 0, G_OPTION_ARG_STRING, &geometry, "Set the size and position of the window (WIDTHxHEIGHT+X+Y)", "GEOMETRY" },
+    { "private", 'p', 0, G_OPTION_ARG_NONE, &privateMode, "Run in private browsing mode", NULL },
     { G_OPTION_REMAINING, 0, 0, G_OPTION_ARG_FILENAME_ARRAY, &uriArguments, 0, "[URL…]" },
     { 0, 0, 0, 0, 0, 0, 0 }
 };
@@ -225,7 +231,195 @@ static gboolean addSettingsGroupToContext(GOptionContext *context, WebKitSetting
     return TRUE;
 }
 
-static void aboutURISchemeRequestCallback(WebKitURISchemeRequest *request, gpointer userData)
+typedef struct {
+    WebKitURISchemeRequest *request;
+    GList *dataList;
+    GHashTable *dataMap;
+} AboutDataRequest;
+
+static GHashTable *aboutDataRequestMap;
+
+static void aboutDataRequestFree(AboutDataRequest *request)
+{
+    if (!request)
+        return;
+
+    g_list_free_full(request->dataList, g_object_unref);
+
+    if (request->request)
+        g_object_unref(request->request);
+    if (request->dataMap)
+        g_hash_table_destroy(request->dataMap);
+
+    g_slice_free(AboutDataRequest, request);
+}
+
+static AboutDataRequest* aboutDataRequestNew(WebKitURISchemeRequest *uriRequest)
+{
+    if (!aboutDataRequestMap)
+        aboutDataRequestMap = g_hash_table_new_full(g_direct_hash, g_direct_equal, NULL, (GDestroyNotify)aboutDataRequestFree);
+
+    AboutDataRequest *request = g_slice_new0(AboutDataRequest);
+    request->request = g_object_ref(uriRequest);
+    g_hash_table_insert(aboutDataRequestMap, GUINT_TO_POINTER(webkit_web_view_get_page_id(webkit_uri_scheme_request_get_web_view(request->request))), request);
+
+    return request;
+}
+
+static AboutDataRequest *aboutDataRequestForView(guint64 pageID)
+{
+    return aboutDataRequestMap ? g_hash_table_lookup(aboutDataRequestMap, GUINT_TO_POINTER(pageID)) : NULL;
+}
+
+static void websiteDataRemovedCallback(WebKitWebsiteDataManager *manager, GAsyncResult *result, AboutDataRequest *dataRequest)
+{
+    if (webkit_website_data_manager_remove_finish(manager, result, NULL))
+        webkit_web_view_reload(webkit_uri_scheme_request_get_web_view(dataRequest->request));
+}
+
+static void websiteDataClearedCallback(WebKitWebsiteDataManager *manager, GAsyncResult *result, AboutDataRequest *dataRequest)
+{
+    if (webkit_website_data_manager_clear_finish(manager, result, NULL))
+        webkit_web_view_reload(webkit_uri_scheme_request_get_web_view(dataRequest->request));
+}
+
+static void aboutDataScriptMessageReceivedCallback(WebKitUserContentManager *userContentManager, WebKitJavascriptResult *message, WebKitWebContext *webContext)
+{
+    JSValueRef jsValue = webkit_javascript_result_get_value(message);
+    JSStringRef jsString = JSValueToStringCopy(webkit_javascript_result_get_global_context(message), jsValue, NULL);
+    size_t maxSize = JSStringGetMaximumUTF8CStringSize(jsString);
+    if (!maxSize) {
+        JSStringRelease(jsString);
+        return;
+    }
+    char *messageString = g_malloc(maxSize);
+    JSStringGetUTF8CString(jsString, messageString, maxSize);
+    JSStringRelease(jsString);
+
+    char **tokens = g_strsplit(messageString, ":", 3);
+    g_free(messageString);
+
+    unsigned tokenCount = g_strv_length(tokens);
+    if (!tokens || tokenCount < 2) {
+        g_strfreev(tokens);
+        return;
+    }
+
+    guint64 pageID = g_ascii_strtoull(tokens[0], NULL, 10);
+    AboutDataRequest *dataRequest = aboutDataRequestForView(pageID);
+    if (!dataRequest) {
+        g_strfreev(tokens);
+        return;
+    }
+
+    WebKitWebsiteDataManager *manager = webkit_web_context_get_website_data_manager(webContext);
+    guint64 types = g_ascii_strtoull(tokens[1], NULL, 10);
+    if (tokenCount == 2)
+        webkit_website_data_manager_clear(manager, types, 0, NULL, (GAsyncReadyCallback)websiteDataClearedCallback, dataRequest);
+    else {
+        guint64 domainID = g_ascii_strtoull(tokens[2], NULL, 10);
+        GList *dataList = g_hash_table_lookup(dataRequest->dataMap, GUINT_TO_POINTER(types));
+        WebKitWebsiteData *data = g_list_nth_data(dataList, domainID);
+        if (data) {
+            GList dataList = { data, NULL, NULL };
+            webkit_website_data_manager_remove(manager, types, &dataList, NULL, (GAsyncReadyCallback)websiteDataRemovedCallback, dataRequest);
+        }
+    }
+    g_strfreev(tokens);
+}
+
+static void domainListFree(GList *domains)
+{
+    g_list_free_full(domains, (GDestroyNotify)webkit_website_data_unref);
+}
+
+static void aboutDataFillTable(GString *result, AboutDataRequest *dataRequest, GList* dataList, const char *title, WebKitWebsiteDataTypes types, const char *dataPath, guint64 pageID)
+{
+    guint64 totalDataSize = 0;
+    GList *domains = NULL;
+    GList *l;
+    for (l = dataList; l; l = g_list_next(l)) {
+        WebKitWebsiteData *data = (WebKitWebsiteData *)l->data;
+
+        if (webkit_website_data_get_types(data) & types) {
+            domains = g_list_prepend(domains, webkit_website_data_ref(data));
+            totalDataSize += webkit_website_data_get_size(data, types);
+        }
+    }
+    if (!domains)
+        return;
+
+    if (!dataRequest->dataMap)
+        dataRequest->dataMap = g_hash_table_new_full(g_direct_hash, g_direct_equal, NULL, (GDestroyNotify)domainListFree);
+    g_hash_table_insert(dataRequest->dataMap, GUINT_TO_POINTER(types), domains);
+
+    if (totalDataSize) {
+        char *totalDataSizeStr = g_format_size(totalDataSize);
+        g_string_append_printf(result, "<h1>%s (%s)</h1>\n<table>\n", title, totalDataSizeStr);
+        g_free(totalDataSizeStr);
+    } else
+        g_string_append_printf(result, "<h1>%s</h1>\n<table>\n", title);
+    if (dataPath)
+        g_string_append_printf(result, "<tr><td colspan=\"2\">Path: %s</td></tr>\n", dataPath);
+
+    unsigned index;
+    for (l = domains, index = 0; l; l = g_list_next(l), index++) {
+        WebKitWebsiteData *data = (WebKitWebsiteData *)l->data;
+        const char *displayName = webkit_website_data_get_name(data);
+        guint64 dataSize = webkit_website_data_get_size(data, types);
+        if (dataSize) {
+            char *dataSizeStr = g_format_size(dataSize);
+            g_string_append_printf(result, "<tr><td>%s (%s)</td>", displayName, dataSizeStr);
+            g_free(dataSizeStr);
+        } else
+            g_string_append_printf(result, "<tr><td>%s</td>", displayName);
+        g_string_append_printf(result, "<td><input type=\"button\" value=\"Remove\" onclick=\"removeData('%"G_GUINT64_FORMAT":%u:%u');\"></td></tr>\n",
+            pageID, types, index);
+    }
+    g_string_append_printf(result, "<tr><td><input type=\"button\" value=\"Clear all\" onclick=\"clearData('%"G_GUINT64_FORMAT":%u');\"></td></tr></table>\n",
+        pageID, types);
+}
+
+static void gotWebsiteDataCallback(WebKitWebsiteDataManager *manager, GAsyncResult *asyncResult, AboutDataRequest *dataRequest)
+{
+    GList *dataList = webkit_website_data_manager_fetch_finish(manager, asyncResult, NULL);
+
+    GString *result = g_string_new(
+        "<html><head>"
+        "<script>"
+        "  function removeData(domain) {"
+        "    window.webkit.messageHandlers.aboutData.postMessage(domain);"
+        "  }"
+        "  function clearData(dataType) {"
+        "    window.webkit.messageHandlers.aboutData.postMessage(dataType);"
+        "  }"
+        "</script></head><body>\n");
+
+    guint64 pageID = webkit_web_view_get_page_id(webkit_uri_scheme_request_get_web_view(dataRequest->request));
+    aboutDataFillTable(result, dataRequest, dataList, "Memory Cache", WEBKIT_WEBSITE_DATA_MEMORY_CACHE, NULL, pageID);
+    aboutDataFillTable(result, dataRequest, dataList, "Disk Cache", WEBKIT_WEBSITE_DATA_DISK_CACHE, webkit_website_data_manager_get_disk_cache_directory(manager), pageID);
+    aboutDataFillTable(result, dataRequest, dataList, "Session Storage", WEBKIT_WEBSITE_DATA_SESSION_STORAGE, NULL, pageID);
+    aboutDataFillTable(result, dataRequest, dataList, "Local Storage", WEBKIT_WEBSITE_DATA_LOCAL_STORAGE, webkit_website_data_manager_get_local_storage_directory(manager), pageID);
+    aboutDataFillTable(result, dataRequest, dataList, "WebSQL Databases", WEBKIT_WEBSITE_DATA_WEBSQL_DATABASES, webkit_website_data_manager_get_websql_directory(manager), pageID);
+    aboutDataFillTable(result, dataRequest, dataList, "IndexedDB Databases", WEBKIT_WEBSITE_DATA_INDEXEDDB_DATABASES, webkit_website_data_manager_get_indexeddb_directory(manager), pageID);
+    aboutDataFillTable(result, dataRequest, dataList, "Plugins Data", WEBKIT_WEBSITE_DATA_PLUGIN_DATA, NULL, pageID);
+    aboutDataFillTable(result, dataRequest, dataList, "Offline Web Applications Cache", WEBKIT_WEBSITE_DATA_OFFLINE_APPLICATION_CACHE, webkit_website_data_manager_get_offline_application_cache_directory(manager), pageID);
+
+    result = g_string_append(result, "</body></html>");
+    gsize streamLength = result->len;
+    GInputStream *stream = g_memory_input_stream_new_from_data(g_string_free(result, FALSE), streamLength, g_free);
+    webkit_uri_scheme_request_finish(dataRequest->request, stream, streamLength, "text/html");
+    g_list_free_full(dataList, (GDestroyNotify)webkit_website_data_unref);
+}
+
+static void aboutDataHandleRequest(WebKitURISchemeRequest *request, WebKitWebContext *webContext)
+{
+    AboutDataRequest *dataRequest = aboutDataRequestNew(request);
+    WebKitWebsiteDataManager *manager = webkit_web_context_get_website_data_manager(webContext);
+    webkit_website_data_manager_fetch(manager, WEBKIT_WEBSITE_DATA_ALL, NULL, (GAsyncReadyCallback)gotWebsiteDataCallback, dataRequest);
+}
+
+static void aboutURISchemeRequestCallback(WebKitURISchemeRequest *request, WebKitWebContext *webContext)
 {
     GInputStream *stream;
     gsize streamLength;
@@ -244,7 +438,9 @@ static void aboutURISchemeRequestCallback(WebKitURISchemeRequest *request, gpoin
 
         webkit_uri_scheme_request_finish(request, stream, streamLength, "text/html");
         g_object_unref(stream);
-    } else {
+    } else if (!g_strcmp0(path, "data"))
+        aboutDataHandleRequest(request, webContext);
+    else {
         error = g_error_new(MINI_BROWSER_ERROR, MINI_BROWSER_ERROR_INVALID_ABOUT_PATH, "Invalid about:%s page.", path);
         webkit_uri_scheme_request_finish_error(request, error);
         g_error_free(error);
@@ -257,10 +453,6 @@ int main(int argc, char *argv[])
 #if ENABLE_DEVELOPER_MODE
     g_setenv("WEBKIT_INJECTED_BUNDLE_PATH", WEBKIT_INJECTED_BUNDLE_PATH, FALSE);
 #endif
-
-    const gchar *singleprocess = g_getenv("MINIBROWSER_SINGLEPROCESS");
-    webkit_web_context_set_process_model(webkit_web_context_get_default(), (singleprocess && *singleprocess) ?
-        WEBKIT_PROCESS_MODEL_SHARED_SECONDARY_PROCESS : WEBKIT_PROCESS_MODEL_MULTIPLE_SECONDARY_PROCESSES);
 
     GOptionContext *context = g_option_context_new(NULL);
     g_option_context_add_main_entries(context, commandLineOptions, 0);
@@ -283,12 +475,22 @@ int main(int argc, char *argv[])
     }
     g_option_context_free (context);
 
+    WebKitWebContext *webContext = privateMode ? webkit_web_context_new_ephemeral() : webkit_web_context_get_default();
+
+    const gchar *singleprocess = g_getenv("MINIBROWSER_SINGLEPROCESS");
+    webkit_web_context_set_process_model(webContext, (singleprocess && *singleprocess) ?
+        WEBKIT_PROCESS_MODEL_SHARED_SECONDARY_PROCESS : WEBKIT_PROCESS_MODEL_MULTIPLE_SECONDARY_PROCESSES);
+
     // Enable the favicon database, by specifying the default directory.
-    webkit_web_context_set_favicon_database_directory(webkit_web_context_get_default(), NULL);
+    webkit_web_context_set_favicon_database_directory(webContext, NULL);
 
-    webkit_web_context_register_uri_scheme(webkit_web_context_get_default(), BROWSER_ABOUT_SCHEME, aboutURISchemeRequestCallback, NULL, NULL);
+    webkit_web_context_register_uri_scheme(webContext, BROWSER_ABOUT_SCHEME, (WebKitURISchemeRequestCallback)aboutURISchemeRequestCallback, webContext, NULL);
 
-    BrowserWindow *mainWindow = BROWSER_WINDOW(browser_window_new(NULL));
+    WebKitUserContentManager *userContentManager = webkit_user_content_manager_new();
+    webkit_user_content_manager_register_script_message_handler(userContentManager, "aboutData");
+    g_signal_connect(userContentManager, "script-message-received::aboutData", G_CALLBACK(aboutDataScriptMessageReceivedCallback), webContext);
+
+    BrowserWindow *mainWindow = BROWSER_WINDOW(browser_window_new(NULL, webContext));
     if (geometry)
         gtk_window_parse_geometry(GTK_WINDOW(mainWindow), geometry);
 
@@ -297,7 +499,7 @@ int main(int argc, char *argv[])
         int i;
 
         for (i = 0; uriArguments[i]; i++) {
-            WebKitWebView *webView = createBrowserTab(mainWindow, webkitSettings);
+            WebKitWebView *webView = createBrowserTab(mainWindow, webkitSettings, userContentManager);
             if (!i)
                 firstTab = GTK_WIDGET(webView);
             gchar *url = argumentToURL(uriArguments[i]);
@@ -305,7 +507,7 @@ int main(int argc, char *argv[])
             g_free(url);
         }
     } else {
-        WebKitWebView *webView = createBrowserTab(mainWindow, webkitSettings);
+        WebKitWebView *webView = createBrowserTab(mainWindow, webkitSettings, userContentManager);
         firstTab = GTK_WIDGET(webView);
 
         if (backgroundColor)
@@ -323,8 +525,12 @@ int main(int argc, char *argv[])
     gtk_widget_show(GTK_WIDGET(mainWindow));
 
     g_clear_object(&webkitSettings);
+    g_clear_object(&userContentManager);
 
     gtk_main();
+
+    if (privateMode)
+        g_object_unref(webContext);
 
     return 0;
 }

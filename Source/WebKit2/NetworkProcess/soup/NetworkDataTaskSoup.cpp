@@ -68,9 +68,9 @@ NetworkDataTaskSoup::NetworkDataTaskSoup(NetworkSession& session, NetworkDataTas
             request.removeCredentials();
 
             if (m_user.isEmpty() && m_password.isEmpty())
-                m_initialCredential = m_session->networkStorageSession().credentialStorage().get(request.url());
+                m_initialCredential = m_session->networkStorageSession().credentialStorage().get(m_partition, request.url());
             else
-                m_session->networkStorageSession().credentialStorage().set(Credential(m_user, m_password, CredentialPersistenceNone), request.url());
+                m_session->networkStorageSession().credentialStorage().set(m_partition, Credential(m_user, m_password, CredentialPersistenceNone), request.url());
         }
         applyAuthenticationToRequest(request);
     }
@@ -448,17 +448,17 @@ void NetworkDataTaskSoup::authenticate(AuthenticationChallenge&& challenge)
             // The stored credential wasn't accepted, stop using it. There is a race condition
             // here, since a different credential might have already been stored by another
             // NetworkDataTask, but the observable effect should be very minor, if any.
-            m_session->networkStorageSession().credentialStorage().remove(challenge.protectionSpace());
+            m_session->networkStorageSession().credentialStorage().remove(m_partition, challenge.protectionSpace());
         }
 
         if (!challenge.previousFailureCount()) {
-            auto credential = m_session->networkStorageSession().credentialStorage().get(challenge.protectionSpace());
+            auto credential = m_session->networkStorageSession().credentialStorage().get(m_partition, challenge.protectionSpace());
             if (!credential.isEmpty() && credential != m_initialCredential) {
                 ASSERT(credential.persistence() == CredentialPersistenceNone);
 
                 if (isAuthenticationFailureStatusCode(challenge.failureResponse().httpStatusCode())) {
                     // Store the credential back, possibly adding it as a default for this directory.
-                    m_session->networkStorageSession().credentialStorage().set(credential, challenge.protectionSpace(), challenge.failureResponse().url());
+                    m_session->networkStorageSession().credentialStorage().set(m_partition, credential, challenge.protectionSpace(), challenge.failureResponse().url());
                 }
                 soup_auth_authenticate(challenge.soupAuth(), credential.user().utf8().data(), credential.password().utf8().data());
                 return;
@@ -509,7 +509,7 @@ void NetworkDataTaskSoup::continueAuthenticate(AuthenticationChallenge&& challen
                 // we place the credentials in the store even though libsoup will never fire the authenticate signal again for
                 // this protection space.
                 if (credential.persistence() == CredentialPersistenceForSession || credential.persistence() == CredentialPersistencePermanent)
-                    m_session->networkStorageSession().credentialStorage().set(credential, challenge.protectionSpace(), challenge.failureResponse().url());
+                    m_session->networkStorageSession().credentialStorage().set(m_partition, credential, challenge.protectionSpace(), challenge.failureResponse().url());
 
                 if (credential.persistence() == CredentialPersistencePermanent) {
                     m_protectionSpaceForPersistentStorage = challenge.protectionSpace();
@@ -639,7 +639,7 @@ void NetworkDataTaskSoup::continueHTTPRedirection()
         request.clearHTTPOrigin();
     } else if (url.protocolIsInHTTPFamily() && m_storedCredentials == AllowStoredCredentials) {
         if (m_user.isEmpty() && m_password.isEmpty()) {
-            auto credential = m_session->networkStorageSession().credentialStorage().get(request.url());
+            auto credential = m_session->networkStorageSession().credentialStorage().get(m_partition, request.url());
             if (!credential.isEmpty())
                 m_initialCredential = credential;
         }
@@ -839,7 +839,10 @@ void NetworkDataTaskSoup::download()
         return;
     }
 
-    m_downloadDestinationFile = adoptGRef(g_file_new_for_uri(m_pendingDownloadLocation.utf8().data()));
+    if (g_path_is_absolute(m_pendingDownloadLocation.utf8().data()))
+        m_downloadDestinationFile = adoptGRef(g_file_new_for_path(m_pendingDownloadLocation.utf8().data()));
+    else
+        m_downloadDestinationFile = adoptGRef(g_file_new_for_uri(m_pendingDownloadLocation.utf8().data()));
     GRefPtr<GFileOutputStream> outputStream;
     GUniqueOutPtr<GError> error;
     if (m_allowOverwriteDownload)
@@ -851,8 +854,9 @@ void NetworkDataTaskSoup::download()
         return;
     }
 
-    String intermediateURI = m_pendingDownloadLocation + ".wkdownload";
-    m_downloadIntermediateFile = adoptGRef(g_file_new_for_uri(intermediateURI.utf8().data()));
+    GUniquePtr<char> downloadDestinationURI(g_file_get_uri(m_downloadDestinationFile.get()));
+    GUniquePtr<char> intermediateURI(g_strdup_printf("%s.wkdownload", downloadDestinationURI.get()));
+    m_downloadIntermediateFile = adoptGRef(g_file_new_for_uri(intermediateURI.get()));
     outputStream = adoptGRef(g_file_replace(m_downloadIntermediateFile.get(), 0, TRUE, G_FILE_CREATE_NONE, 0, &error.outPtr()));
     if (!outputStream) {
         didFailDownload(platformDownloadDestinationError(m_response, error->message));
@@ -864,7 +868,7 @@ void NetworkDataTaskSoup::download()
     auto download = std::make_unique<Download>(downloadManager, m_pendingDownloadID, *this, m_session->sessionID(), suggestedFilename());
     auto* downloadPtr = download.get();
     downloadManager.dataTaskBecameDownloadTask(m_pendingDownloadID, WTFMove(download));
-    downloadPtr->didCreateDestination(m_pendingDownloadLocation);
+    downloadPtr->didCreateDestination(String::fromUTF8(downloadDestinationURI.get()));
 
     ASSERT(!m_client);
     read();

@@ -28,7 +28,9 @@
 
 #if ENABLE(MEDIA_STREAM) && USE(AVFOUNDATION)
 
+#import "AudioSampleBufferList.h"
 #import "AudioSourceObserverObjC.h"
+#import "CAAudioStreamDescription.h"
 #import "Logging.h"
 #import "MediaConstraints.h"
 #import "MediaSampleAVFObjC.h"
@@ -91,7 +93,6 @@ RefPtr<AVMediaCaptureSource> AVAudioCaptureSource::create(AVCaptureDeviceTypedef
 AVAudioCaptureSource::AVAudioCaptureSource(AVCaptureDeviceTypedef* device, const AtomicString& id)
     : AVMediaCaptureSource(device, id, RealtimeMediaSource::Audio)
 {
-    m_inputDescription = std::make_unique<AudioStreamBasicDescription>();
 }
     
 AVAudioCaptureSource::~AVAudioCaptureSource()
@@ -120,8 +121,8 @@ void AVAudioCaptureSource::addObserver(AudioSourceObserverObjC& observer)
 {
     LockHolder lock(m_lock);
     m_observers.append(&observer);
-    if (m_inputDescription->mSampleRate)
-        observer.prepare(m_inputDescription.get());
+    if (m_inputDescription)
+        observer.prepare(&m_inputDescription->streamDescription());
 }
 
 void AVAudioCaptureSource::removeObserver(AudioSourceObserverObjC& observer)
@@ -162,7 +163,7 @@ void AVAudioCaptureSource::shutdownCaptureSession()
         LockHolder lock(m_lock);
 
         m_audioConnection = nullptr;
-        m_inputDescription = std::make_unique<AudioStreamBasicDescription>();
+        m_inputDescription = nullptr;
 
         for (auto& observer : m_observers)
             observer->unprepare();
@@ -174,23 +175,6 @@ void AVAudioCaptureSource::shutdownCaptureSession()
     m_audioSourceProvider = nullptr;
 }
 
-static bool operator==(const AudioStreamBasicDescription& a, const AudioStreamBasicDescription& b)
-{
-    return a.mSampleRate == b.mSampleRate
-        && a.mFormatID == b.mFormatID
-        && a.mFormatFlags == b.mFormatFlags
-        && a.mBytesPerPacket == b.mBytesPerPacket
-        && a.mFramesPerPacket == b.mFramesPerPacket
-        && a.mBytesPerFrame == b.mBytesPerFrame
-        && a.mChannelsPerFrame == b.mChannelsPerFrame
-        && a.mBitsPerChannel == b.mBitsPerChannel;
-}
-
-static bool operator!=(const AudioStreamBasicDescription& a, const AudioStreamBasicDescription& b)
-{
-    return !(a == b);
-}
-
 void AVAudioCaptureSource::captureOutputDidOutputSampleBufferFromConnection(AVCaptureOutputType*, CMSampleBufferRef sampleBuffer, AVCaptureConnectionType*)
 {
     if (muted())
@@ -200,26 +184,27 @@ void AVAudioCaptureSource::captureOutputDidOutputSampleBufferFromConnection(AVCa
     if (!formatDescription)
         return;
 
-    RetainPtr<CMSampleBufferRef> buffer = sampleBuffer;
-    scheduleDeferredTask([this, buffer] {
-        mediaDataUpdated(MediaSampleAVFObjC::create(buffer.get()));
-    });
-
     std::unique_lock<Lock> lock(m_lock, std::try_to_lock);
     if (!lock.owns_lock()) {
         // Failed to acquire the lock, just return instead of blocking.
         return;
     }
 
+    const AudioStreamBasicDescription* streamDescription = CMAudioFormatDescriptionGetStreamBasicDescription(formatDescription);
+    if (!m_inputDescription || *m_inputDescription != *streamDescription) {
+        m_inputDescription = std::make_unique<CAAudioStreamDescription>(*streamDescription);
+
+        if (!m_observers.isEmpty()) {
+            for (auto& observer : m_observers)
+                observer->prepare(streamDescription);
+        }
+    }
+
+    m_list = std::make_unique<WebAudioBufferList>(*m_inputDescription, sampleBuffer);
+    audioSamplesAvailable(toMediaTime(CMSampleBufferGetPresentationTimeStamp(sampleBuffer)), *m_list, CAAudioStreamDescription(*streamDescription), CMSampleBufferGetNumSamples(sampleBuffer));
+
     if (m_observers.isEmpty())
         return;
-
-    const AudioStreamBasicDescription* streamDescription = CMAudioFormatDescriptionGetStreamBasicDescription(formatDescription);
-    if (*m_inputDescription != *streamDescription) {
-        m_inputDescription = std::make_unique<AudioStreamBasicDescription>(*streamDescription);
-        for (auto& observer : m_observers)
-            observer->prepare(m_inputDescription.get());
-    }
 
     for (auto& observer : m_observers)
         observer->process(formatDescription, sampleBuffer);

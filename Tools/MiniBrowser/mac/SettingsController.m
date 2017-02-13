@@ -39,6 +39,7 @@ static NSString * const DefaultURLPreferenceKey = @"DefaultURL";
 static NSString * const UseWebKit2ByDefaultPreferenceKey = @"UseWebKit2ByDefault";
 static NSString * const CreateEditorByDefaultPreferenceKey = @"CreateEditorByDefault";
 static NSString * const LayerBordersVisiblePreferenceKey = @"LayerBordersVisible";
+static NSString * const SimpleLineLayoutEnabledPreferenceKey = @"SimpleLineLayoutEnabled";
 static NSString * const SimpleLineLayoutDebugBordersEnabledPreferenceKey = @"SimpleLineLayoutDebugBordersEnabled";
 static NSString * const TiledScrollingIndicatorVisiblePreferenceKey = @"TiledScrollingIndicatorVisible";
 static NSString * const ReserveSpaceForBannersPreferenceKey = @"ReserveSpaceForBanners";
@@ -128,6 +129,7 @@ typedef NS_ENUM(NSInteger, DebugOverylayMenuItemTag) {
     [self _addItemWithTitle:@"Use Transparent Windows" action:@selector(toggleUseTransparentWindows:) indented:NO];
     [self _addItemWithTitle:@"Use Paginated Mode" action:@selector(toggleUsePaginatedMode:) indented:NO];
     [self _addItemWithTitle:@"Show Layer Borders" action:@selector(toggleShowLayerBorders:) indented:NO];
+    [self _addItemWithTitle:@"Disable Simple Line Layout" action:@selector(toggleSimpleLineLayoutEnabled:) indented:NO];
     [self _addItemWithTitle:@"Show Simple Line Layout Borders" action:@selector(toggleSimpleLineLayoutDebugBordersEnabled:) indented:NO];
     [self _addItemWithTitle:@"Suppress Incremental Rendering in New Windows" action:@selector(toggleIncrementalRenderingSuppressed:) indented:NO];
     [self _addItemWithTitle:@"Enable Accelerated Drawing" action:@selector(toggleAcceleratedDrawingEnabled:) indented:NO];
@@ -185,6 +187,7 @@ typedef NS_ENUM(NSInteger, DebugOverylayMenuItemTag) {
 
     [_menu addItem:experimentalFeaturesSubmenuItem];
     [experimentalFeaturesSubmenuItem release];
+    [experimentalFeaturesMenu release];
 #endif // WK_API_ENABLED
 
     [self _addHeaderWithTitle:@"WebKit1-only Settings"];
@@ -205,6 +208,8 @@ typedef NS_ENUM(NSInteger, DebugOverylayMenuItemTag) {
         [menuItem setState:[self usePaginatedMode] ? NSOnState : NSOffState];
     else if (action == @selector(toggleShowLayerBorders:))
         [menuItem setState:[self layerBordersVisible] ? NSOnState : NSOffState];
+    else if (action == @selector(toggleSimpleLineLayoutEnabled:))
+        [menuItem setState:[self simpleLineLayoutEnabled] ? NSOffState : NSOnState];
     else if (action == @selector(toggleSimpleLineLayoutDebugBordersEnabled:))
         [menuItem setState:[self simpleLineLayoutDebugBordersEnabled] ? NSOnState : NSOffState];
     else if (action == @selector(toggleIncrementalRenderingSuppressed:))
@@ -318,7 +323,10 @@ typedef NS_ENUM(NSInteger, DebugOverylayMenuItemTag) {
     [alert addButtonWithTitle:@"Switch and Quit"];
     [alert addButtonWithTitle:@"Cancel"];
 
-    if ([alert runModal] != NSAlertFirstButtonReturn)
+    NSModalResponse response = [alert runModal];    
+    [alert release];
+
+    if (response != NSAlertFirstButtonReturn)
         return;
 
     [self _toggleBooleanDefault:PerWindowWebProcessesDisabledKey];
@@ -348,6 +356,16 @@ typedef NS_ENUM(NSInteger, DebugOverylayMenuItemTag) {
 - (BOOL)layerBordersVisible
 {
     return [[NSUserDefaults standardUserDefaults] boolForKey:LayerBordersVisiblePreferenceKey];
+}
+
+- (void)toggleSimpleLineLayoutEnabled:(id)sender
+{
+    [self _toggleBooleanDefault:SimpleLineLayoutEnabledPreferenceKey];
+}
+
+- (BOOL)simpleLineLayoutEnabled
+{
+    return [[NSUserDefaults standardUserDefaults] boolForKey:SimpleLineLayoutEnabledPreferenceKey];
 }
 
 - (void)toggleSimpleLineLayoutDebugBordersEnabled:(id)sender

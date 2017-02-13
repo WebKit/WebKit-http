@@ -90,6 +90,8 @@ list(APPEND WebKit2_SOURCES
     Shared/wpe/WebEventFactory.cpp
     Shared/wpe/WebKit2InitializeWPE.cpp
 
+    UIProcess/API/C/WKResourceLoadStatisticsManager.cpp
+
     UIProcess/API/C/cairo/WKIconDatabaseCairo.cpp
 
     UIProcess/API/C/soup/WKCookieManagerSoup.cpp
@@ -105,6 +107,7 @@ list(APPEND WebKit2_SOURCES
     UIProcess/BackingStore.cpp
     UIProcess/DefaultUndoController.cpp
     UIProcess/LegacySessionStateCodingNone.cpp
+    UIProcess/WebResourceLoadStatisticsManager.cpp
     UIProcess/WebResourceLoadStatisticsStore.cpp
     UIProcess/WebTextChecker.cpp
     UIProcess/WebTextCheckerClient.cpp

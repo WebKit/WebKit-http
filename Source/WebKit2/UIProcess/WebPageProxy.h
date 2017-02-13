@@ -156,7 +156,7 @@ class RunLoopObserver;
 class SharedBuffer;
 class TextIndicator;
 class ValidationBubble;
-enum class HasInsecureContent;
+
 struct DictionaryPopupInfo;
 struct ExceptionDetails;
 struct FileChooserSettings;
@@ -166,6 +166,9 @@ struct TextAlternativeWithRange;
 struct TextCheckingResult;
 struct ViewportAttributes;
 struct WindowFeatures;
+
+enum class HasInsecureContent;
+enum class ShouldSample;
 }
 
 #if PLATFORM(GTK)
@@ -256,6 +259,7 @@ typedef GenericCallback<const String&, double, bool> FontAtSelectionCallback;
 #if PLATFORM(IOS)
 typedef GenericCallback<const WebCore::IntPoint&, uint32_t, uint32_t, uint32_t> GestureCallback;
 typedef GenericCallback<const WebCore::IntPoint&, uint32_t, uint32_t> TouchesCallback;
+typedef GenericCallback<const Vector<WebCore::SelectionRect>&> SelectionRectsCallback;
 struct NodeAssistanceArguments {
     AssistedNodeInformation m_nodeInformation;
     bool m_userIsInteracting;
@@ -408,6 +412,8 @@ public:
 
     bool willHandleHorizontalScrollEvents() const;
 
+    void updateWebsitePolicies(const WebsitePolicies&);
+
     bool canShowMIMEType(const String& mimeType);
 
     bool drawsBackground() const { return m_drawsBackground; }
@@ -543,6 +549,13 @@ public:
     void handleTwoFingerTapAtPoint(const WebCore::IntPoint&, uint64_t requestID);
     void setForceAlwaysUserScalable(bool);
     void setIsScrollingOrZooming(bool);
+    void requestRectsForGranularityWithSelectionOffset(WebCore::TextGranularity, uint32_t offset, std::function<void(const Vector<WebCore::SelectionRect>&, CallbackBase::Error)>);
+    void requestRectsAtSelectionOffsetWithText(int32_t offset, const String&, std::function<void(const Vector<WebCore::SelectionRect>&, CallbackBase::Error)>);
+#if ENABLE(DATA_INTERACTION)
+    void didPerformDataInteractionControllerOperation();
+    void didHandleStartDataInteractionRequest(bool started);
+    void requestStartDataInteraction(const WebCore::IntPoint& clientPosition, const WebCore::IntPoint& globalPosition);
+#endif
 #endif
 #if ENABLE(DATA_DETECTION)
     void setDataDetectionResult(const DataDetectionResult&);
@@ -823,7 +836,7 @@ public:
     void didPerformDragControllerAction(uint64_t dragOperation, bool mouseIsOverFileInput, unsigned numberOfItemsToBeAccepted);
     void dragEnded(const WebCore::IntPoint& clientPosition, const WebCore::IntPoint& globalPosition, uint64_t operation);
 #if PLATFORM(COCOA)
-    void setDragImage(const WebCore::IntPoint& clientPosition, const ShareableBitmap::Handle& dragImageHandle, bool isLinkDrag);
+    void setDragImage(const WebCore::IntPoint& clientPosition, const ShareableBitmap::Handle& dragImageHandle, const WebCore::FloatPoint& dragImageAnchor, bool isLinkDrag);
     void setPromisedDataForImage(const String& pasteboardName, const SharedMemory::Handle& imageHandle, uint64_t imageSize, const String& filename, const String& extension,
                          const String& title, const String& url, const String& visibleURL, const SharedMemory::Handle& archiveHandle, uint64_t archiveSize);
 #if ENABLE(ATTACHMENT_ELEMENT)
@@ -1059,15 +1072,19 @@ public:
     bool hasActiveAudioStream() const { return m_mediaState & WebCore::MediaProducer::HasActiveAudioCaptureDevice; }
     bool hasActiveVideoStream() const { return m_mediaState & WebCore::MediaProducer::HasActiveVideoCaptureDevice; }
     WebCore::MediaProducer::MediaStateFlags mediaStateFlags() const { return m_mediaState; }
+    void didPlayMediaPreventedFromPlayingWithoutUserGesture();
 
 #if PLATFORM(MAC)
     void videoControlsManagerDidChange();
     bool hasActiveVideoForControlsManager() const;
     void requestControlledElementID() const;
     void handleControlledElementIDResponse(const String&) const;
+    bool isPlayingVideoInEnhancedFullscreen() const;
+#endif
+
+#if PLATFORM(COCOA)
     void requestActiveNowPlayingSessionInfo();
     void handleActiveNowPlayingSessionInfoResponse(bool hasActiveSession, const String& title, double duration, double elapsedTime) const;
-    bool isPlayingVideoInEnhancedFullscreen() const;
 #endif
 
 #if ENABLE(MEDIA_SESSION)
@@ -1111,12 +1128,10 @@ public:
     void setShouldDispatchFakeMouseMoveEvents(bool);
 
     // Diagnostic messages logging.
-    void logDiagnosticMessage(const String& message, const String& description, bool shouldSample);
-    void logDiagnosticMessageWithResult(const String& message, const String& description, uint32_t result, bool shouldSample);
-    void logDiagnosticMessageWithValue(const String& message, const String& description, const String& value, bool shouldSample);
-    void logSampledDiagnosticMessage(const String& message, const String& description);
-    void logSampledDiagnosticMessageWithResult(const String& message, const String& description, uint32_t result);
-    void logSampledDiagnosticMessageWithValue(const String& message, const String& description, const String& value);
+    void logDiagnosticMessage(const String& message, const String& description, WebCore::ShouldSample);
+    void logDiagnosticMessageWithResult(const String& message, const String& description, uint32_t result, WebCore::ShouldSample);
+    void logDiagnosticMessageWithValue(const String& message, const String& description, double value, unsigned significantFigures, WebCore::ShouldSample);
+    void logDiagnosticMessageWithEnhancedPrivacy(const String& message, const String& description, WebCore::ShouldSample);
 
     // Form validation messages.
     void showValidationMessage(const WebCore::IntRect& anchorClientRect, const String& message);
@@ -1468,6 +1483,7 @@ private:
     void selectionContextCallback(const String&, const String&, const String&, uint64_t);
     void interpretKeyEvent(const EditorState&, bool isCharEvent, bool& handled);
     void showPlaybackTargetPicker(bool hasVideo, const WebCore::IntRect& elementRect);
+    void selectionRectsCallback(const Vector<WebCore::SelectionRect>&, uint64_t);
 #endif
 #if PLATFORM(GTK)
     void printFinishedCallback(const WebCore::ResourceError&, uint64_t);
@@ -1569,6 +1585,7 @@ private:
 #if USE(QUICK_LOOK)
     void didStartLoadForQuickLookDocumentInMainFrame(const String& fileName, const String& uti);
     void didFinishLoadForQuickLookDocumentInMainFrame(const QuickLookDocumentData&);
+    void didRequestPasswordForQuickLookDocumentInMainFrame(const String& fileName);
 #endif
 
 #if ENABLE(CONTENT_FILTERING)
@@ -1649,6 +1666,7 @@ private:
     String m_applicationNameForUserAgent;
     String m_customUserAgent;
     String m_customTextEncodingName;
+    String m_overrideContentSecurityPolicy;
 
     bool m_treatsSHA1CertificatesAsInsecure;
 

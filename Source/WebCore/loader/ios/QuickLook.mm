@@ -28,12 +28,17 @@
 
 #if USE(QUICK_LOOK)
 
+#import "DocumentLoader.h"
 #import "FileSystemIOS.h"
+#import "FrameLoader.h"
+#import "FrameLoaderClient.h"
 #import "Logging.h"
 #import "NSFileManagerSPI.h"
+#import "PreviewConverter.h"
 #import "QuickLookHandleClient.h"
 #import "ResourceError.h"
 #import "ResourceLoader.h"
+#import "ResourceRequest.h"
 #import "SharedBuffer.h"
 #import <wtf/NeverDestroyed.h>
 #import <wtf/Vector.h>
@@ -47,28 +52,6 @@ NSSet *WebCore::QLPreviewGetSupportedMIMETypesSet()
 {
     static NeverDestroyed<RetainPtr<NSSet>> set = QLPreviewGetSupportedMIMETypes();
     return set.get().get();
-}
-
-NSDictionary *WebCore::QLFileAttributes()
-{
-    // Set file perms to owner read/write only
-    NSNumber *filePOSIXPermissions = [NSNumber numberWithInteger:(WEB_UREAD | WEB_UWRITE)];
-    static NSDictionary *dictionary = adoptNS([[NSDictionary alloc] initWithObjectsAndKeys:
-                                        NSUserName(), NSFileOwnerAccountName,
-                                        filePOSIXPermissions, NSFilePosixPermissions,
-                                        nullptr]).leakRef();
-    return dictionary;
-}
-
-NSDictionary *WebCore::QLDirectoryAttributes()
-{
-    // Set file perms to owner read/write/execute only
-    NSNumber *directoryPOSIXPermissions = [NSNumber numberWithInteger:(WEB_UREAD | WEB_UWRITE | WEB_UEXEC)];
-    static NSDictionary *dictionary = adoptNS([[NSDictionary alloc] initWithObjectsAndKeys:
-                                                NSUserName(), NSFileOwnerAccountName,
-                                                directoryPOSIXPermissions, NSFilePosixPermissions,
-                                                nullptr]).leakRef();
-    return dictionary;
 }
 
 static Lock& qlPreviewConverterDictionaryMutex()
@@ -89,42 +72,20 @@ static NSMutableDictionary *QLContentDictionary()
     return contentDictionary;
 }
 
-void WebCore::addQLPreviewConverterWithFileForURL(NSURL *url, id converter, NSString *fileName)
+void WebCore::removeQLPreviewConverterForURL(NSURL *url)
+{
+    LockHolder lock(qlPreviewConverterDictionaryMutex());
+    [QLPreviewConverterDictionary() removeObjectForKey:url];
+    [QLContentDictionary() removeObjectForKey:url];
+}
+
+static void addQLPreviewConverterWithFileForURL(NSURL *url, id converter, NSString *fileName)
 {
     ASSERT(url);
     ASSERT(converter);
     LockHolder lock(qlPreviewConverterDictionaryMutex());
     [QLPreviewConverterDictionary() setObject:converter forKey:url];
     [QLContentDictionary() setObject:(fileName ? fileName : @"") forKey:url];
-}
-
-NSString *WebCore::qlPreviewConverterFileNameForURL(NSURL *url)
-{
-    return [QLContentDictionary() objectForKey:url];
-}
-
-NSString *WebCore::qlPreviewConverterUTIForURL(NSURL *url)
-{
-    id converter = nil;
-    {
-        LockHolder lock(qlPreviewConverterDictionaryMutex());
-        converter = [QLPreviewConverterDictionary() objectForKey:url];
-    }
-    if (!converter)
-        return nil;
-    return [converter previewUTI];
-}
-
-void WebCore::removeQLPreviewConverterForURL(NSURL *url)
-{
-    LockHolder lock(qlPreviewConverterDictionaryMutex());
-    [QLPreviewConverterDictionary() removeObjectForKey:url];
-
-    // Delete the file when we remove the preview converter
-    NSString *filename = qlPreviewConverterFileNameForURL(url);
-    if ([filename length])
-        [[NSFileManager defaultManager] _web_removeFileOnlyAtPath:filename];
-    [QLContentDictionary() removeObjectForKey:url];
 }
 
 RetainPtr<NSURLRequest> WebCore::registerQLPreviewConverterIfNeeded(NSURL *url, NSString *mimeType, NSData *data)
@@ -134,34 +95,17 @@ RetainPtr<NSURLRequest> WebCore::registerQLPreviewConverterIfNeeded(NSURL *url, 
     if ([QLPreviewGetSupportedMIMETypesSet() containsObject:updatedMIMEType.get()]) {
         RetainPtr<NSString> uti = adoptNS(QLTypeCopyUTIForURLAndMimeType(url, updatedMIMEType.get()));
 
-        RetainPtr<QLPreviewConverter> converter = adoptNS([allocQLPreviewConverterInstance() initWithData:data name:nil uti:uti.get() options:nil]);
-        NSURLRequest *request = [converter previewRequest];
+        auto converter = std::make_unique<PreviewConverter>(data, uti.get());
+        ResourceRequest previewRequest = converter->previewRequest();
 
         // We use [request URL] here instead of url since it will be
         // the URL that the WebDataSource will see during -dealloc.
-        addQLPreviewConverterWithFileForURL([request URL], converter.get(), nil);
+        addQLPreviewConverterWithFileForURL(previewRequest.url(), converter->platformConverter(), nil);
 
-        return request;
+        return previewRequest.nsURLRequest(DoNotUpdateHTTPBody);
     }
 
     return nil;
-}
-
-const URL WebCore::safeQLURLForDocumentURLAndResourceURL(const URL& documentURL, const String& resourceURL)
-{
-    id converter = nil;
-    NSURL *nsDocumentURL = documentURL;
-    {
-        LockHolder lock(qlPreviewConverterDictionaryMutex());
-        converter = [QLPreviewConverterDictionary() objectForKey:nsDocumentURL];
-    }
-
-    if (!converter)
-        return URL(ParsedURLString, resourceURL);
-
-    RetainPtr<NSURLRequest> request = adoptNS([[NSURLRequest alloc] initWithURL:[NSURL URLWithString:resourceURL]]);
-    NSURLRequest *safeRequest = [converter safeRequestForRequest:request.get()];
-    return [safeRequest URL];
 }
 
 static Vector<char> createQLPreviewProtocol()
@@ -190,36 +134,24 @@ static QuickLookHandleClient& emptyClient()
     return emptyClient.get();
 }
 
-static QuickLookHandleClient& testingOrEmptyClient()
-{
-    if (testingClient())
-        return *testingClient();
-    return emptyClient();
-}
-
-@interface WebPreviewConverter : NSObject {
+@interface WebPreviewLoader : NSObject {
     RefPtr<ResourceLoader> _resourceLoader;
+    ResourceResponse _response;
     QuickLookHandle* _handle;
     RefPtr<QuickLookHandleClient> _client;
-    RetainPtr<NSURLResponse> _originalResponse;
-    RetainPtr<QLPreviewConverter> _platformConverter;
-    RetainPtr<NSURLResponse> _previewResponse;
+    std::unique_ptr<PreviewConverter> _converter;
     RetainPtr<NSMutableArray> _bufferedDataArray;
     BOOL _hasSentDidReceiveResponse;
-    BOOL _hasFailed;
 }
 
 - (instancetype)initWithResourceLoader:(ResourceLoader&)resourceLoader resourceResponse:(const ResourceResponse&)resourceResponse quickLookHandle:(QuickLookHandle&)quickLookHandle;
-- (void)setClient:(Ref<QuickLookHandleClient>&&)client;
 - (void)appendDataArray:(NSArray<NSData *> *)dataArray;
 - (void)finishedAppending;
 - (void)failed;
 
-@property (nonatomic, readonly) QLPreviewConverter *platformConverter;
-
 @end
 
-@implementation WebPreviewConverter
+@implementation WebPreviewLoader
 
 - (instancetype)initWithResourceLoader:(ResourceLoader&)resourceLoader resourceResponse:(const ResourceResponse&)resourceResponse quickLookHandle:(QuickLookHandle&)quickLookHandle
 {
@@ -228,27 +160,26 @@ static QuickLookHandleClient& testingOrEmptyClient()
         return nil;
 
     _resourceLoader = &resourceLoader;
+    _response = resourceResponse;
     _handle = &quickLookHandle;
-    _client = &testingOrEmptyClient();
-    _originalResponse = resourceResponse.nsURLResponse();
-    _platformConverter = adoptNS([allocQLPreviewConverterInstance() initWithConnection:nil delegate:self response:_originalResponse.get() options:nil]);
-    _previewResponse = [_platformConverter previewResponse];
+    _converter = std::make_unique<PreviewConverter>(self, _response);
     _bufferedDataArray = adoptNS([[NSMutableArray alloc] init]);
 
-    LOG(Network, "WebPreviewConverter created with preview file name \"%s\".", [_platformConverter previewFileName]);
-    return self;
-}
-
-- (void)setClient:(Ref<QuickLookHandleClient>&&)client
-{
-    if (!testingClient())
+    if (testingClient())
+        _client = testingClient();
+    else if (auto client = resourceLoader.frameLoader()->client().createQuickLookHandleClient(_converter->previewFileName(), _converter->previewUTI()))
         _client = WTFMove(client);
+    else
+        _client = &emptyClient();
+
+    LOG(Network, "WebPreviewConverter created with preview file name \"%s\".", _converter->previewFileName().utf8().data());
+    return self;
 }
 
 - (void)appendDataArray:(NSArray<NSData *> *)dataArray
 {
     LOG(Network, "WebPreviewConverter appending data array with count %ld.", dataArray.count);
-    [_platformConverter appendDataArray:dataArray];
+    [_converter->platformConverter() appendDataArray:dataArray];
     [_bufferedDataArray addObjectsFromArray:dataArray];
     _client->didReceiveDataArray((CFArrayRef)dataArray);
 }
@@ -256,39 +187,29 @@ static QuickLookHandleClient& testingOrEmptyClient()
 - (void)finishedAppending
 {
     LOG(Network, "WebPreviewConverter finished appending data.");
-    [_platformConverter finishedAppendingData];
+    [_converter->platformConverter() finishedAppendingData];
     _client->didFinishLoading();
 }
 
 - (void)failed
 {
     LOG(Network, "WebPreviewConverter failed.");
-    [_platformConverter finishConverting];
+    [_converter->platformConverter() finishConverting];
     _client->didFail();
-}
-
-- (QLPreviewConverter *)platformConverter
-{
-    return _platformConverter.get();
 }
 
 - (void)_sendDidReceiveResponseIfNecessary
 {
+    if (_hasSentDidReceiveResponse)
+        return;
+
     [_bufferedDataArray removeAllObjects];
 
-    if (_hasSentDidReceiveResponse || _hasFailed)
-        return;
-
-    // QuickLook might fail to convert a document without calling connection:didFailWithError: (see <rdar://problem/17927972>).
-    // A nil MIME type is an indication of such a failure, so stop loading the resource and ignore subsequent delegate messages.
-    if (![_previewResponse MIMEType]) {
-        _hasFailed = YES;
-        _resourceLoader->didFail(_resourceLoader->cannotShowURLError());
-        return;
-    }
-
-    ResourceResponse response { _previewResponse.get() };
+    ResourceResponse response { _converter->previewResponse() };
     response.setIsQuickLook(true);
+    ASSERT(response.mimeType().length());
+
+    _resourceLoader->documentLoader()->setPreviewConverter(WTFMove(_converter));
 
     _hasSentDidReceiveResponse = YES;
     _resourceLoader->didReceiveResponse(response);
@@ -298,8 +219,6 @@ static QuickLookHandleClient& testingOrEmptyClient()
 {
     ASSERT_UNUSED(connection, !connection);
     [self _sendDidReceiveResponseIfNecessary];
-    if (_hasFailed)
-        return;
 
     // QuickLook code sends us a nil data at times. The check below is the same as the one in
     // ResourceHandleMac.cpp added for a different bug.
@@ -310,42 +229,61 @@ static QuickLookHandleClient& testingOrEmptyClient()
 - (void)connectionDidFinishLoading:(NSURLConnection *)connection
 {
     ASSERT_UNUSED(connection, !connection);
-    if (_hasFailed)
-        return;
-
     ASSERT(_hasSentDidReceiveResponse);
     _resourceLoader->didFinishLoading(0);
+}
+
+static inline bool isQuickLookPasswordError(NSError *error)
+{
+    return error.code == kQLReturnPasswordProtected && [error.domain isEqualToString:@"QuickLookErrorDomain"];
 }
 
 - (void)connection:(NSURLConnection *)connection didFailWithError:(NSError *)error
 {
     ASSERT_UNUSED(connection, !connection);
 
-    if (error.code == kQLReturnPasswordProtected && [error.domain isEqualToString:@"QuickLookErrorDomain"]) {
-        if (!_client->supportsPasswordEntry()) {
-            _resourceLoader->didFail(_resourceLoader->cannotShowURLError());
-            return;
-        }
-
-        _client->didRequestPassword([retainedSelf = retainPtr(self)] (const String& password) {
-            NSDictionary *passwordOption = @{ (NSString *)kQLPreviewOptionPasswordKey : password };
-            auto converterWithPassword = adoptNS([allocQLPreviewConverterInstance() initWithConnection:nil delegate:retainedSelf.get() response:retainedSelf->_originalResponse.get() options:passwordOption]);
-            [converterWithPassword appendDataArray:retainedSelf->_bufferedDataArray.get()];
-            [converterWithPassword finishedAppendingData];
-            retainedSelf->_previewResponse = [converterWithPassword previewResponse];
-            retainedSelf->_platformConverter = WTFMove(converterWithPassword);
-        });
+    if (!isQuickLookPasswordError(error)) {
+        [self _sendDidReceiveResponseIfNecessary];
+        _resourceLoader->didFail(error);
         return;
     }
 
-    [self _sendDidReceiveResponseIfNecessary];
-    if (!_hasFailed)
-        _resourceLoader->didFail(error);
+    if (!_client->supportsPasswordEntry()) {
+        _resourceLoader->didFail(_resourceLoader->cannotShowURLError());
+        return;
+    }
+
+    _client->didRequestPassword([retainedSelf = retainPtr(self)] (const String& password) {
+        auto converter = std::make_unique<PreviewConverter>(retainedSelf.get(), retainedSelf->_response, password);
+        QLPreviewConverter *platformConverter = converter->platformConverter();
+        [platformConverter appendDataArray:retainedSelf->_bufferedDataArray.get()];
+        [platformConverter finishedAppendingData];
+        retainedSelf->_converter = WTFMove(converter);
+    });
 }
 
 @end
 
 namespace WebCore {
+
+static NSDictionary *temporaryFileAttributes()
+{
+    static NSDictionary *attributes = [@{
+        NSFileOwnerAccountName : NSUserName(),
+        NSFilePosixPermissions : [NSNumber numberWithInteger:(WEB_UREAD | WEB_UWRITE)],
+        } retain];
+    return attributes;
+}
+
+static NSDictionary *temporaryDirectoryAttributes()
+{
+    static NSDictionary *attributes = [@{
+        NSFileOwnerAccountName : NSUserName(),
+        NSFilePosixPermissions : [NSNumber numberWithInteger:(WEB_UREAD | WEB_UWRITE | WEB_UEXEC)],
+        NSFileProtectionKey : NSFileProtectionCompleteUnlessOpen,
+        } retain];
+    return attributes;
+}
 
 NSString *createTemporaryFileForQuickLook(NSString *fileName)
 {
@@ -353,23 +291,26 @@ NSString *createTemporaryFileForQuickLook(NSString *fileName)
     if (!downloadDirectory)
         return nil;
 
-    NSString *contentPath = [downloadDirectory stringByAppendingPathComponent:fileName];
     NSFileManager *fileManager = [NSFileManager defaultManager];
-    NSString *uniqueContentPath = [fileManager _web_pathWithUniqueFilenameForPath:contentPath];
 
-    BOOL success = [fileManager _web_createFileAtPathWithIntermediateDirectories:uniqueContentPath
-                                                                        contents:nil
-                                                                      attributes:QLFileAttributes()
-                                                             directoryAttributes:QLDirectoryAttributes()];
+    NSError *error;
+    if (![fileManager setAttributes:temporaryDirectoryAttributes() ofItemAtPath:downloadDirectory error:&error]) {
+        LOG_ERROR("Failed to set attribute NSFileProtectionCompleteUnlessOpen on directory %@ with error: %@.", downloadDirectory, error.localizedDescription);
+        return nil;
+    }
 
-    return success ? uniqueContentPath : nil;
+    NSString *contentPath = [downloadDirectory stringByAppendingPathComponent:fileName.lastPathComponent];
+    if (![fileManager _web_createFileAtPath:contentPath contents:nil attributes:temporaryFileAttributes()]) {
+        LOG_ERROR("Failed to create QuickLook temporary file at path %@.", contentPath);
+        return nil;
+    }
+
+    return contentPath;
 }
 
 QuickLookHandle::QuickLookHandle(ResourceLoader& loader, const ResourceResponse& response)
-    : m_firstRequestURL { loader.originalRequest().nsURLRequest(DoNotUpdateHTTPBody).URL }
-    , m_converter { adoptNS([[WebPreviewConverter alloc] initWithResourceLoader:loader resourceResponse:response quickLookHandle:*this]) }
+    : m_previewLoader { adoptNS([[WebPreviewLoader alloc] initWithResourceLoader:loader resourceResponse:response quickLookHandle:*this]) }
 {
-    loader.didCreateQuickLookHandle(*this);
 }
 
 QuickLookHandle::~QuickLookHandle()
@@ -392,7 +333,7 @@ bool QuickLookHandle::didReceiveData(const char* data, unsigned length)
     if (m_finishedLoadingDataIntoConverter)
         return false;
 
-    [m_converter appendDataArray:@[ [NSData dataWithBytes:data length:length] ]];
+    [m_previewLoader appendDataArray:@[ [NSData dataWithBytes:data length:length] ]];
     return true;
 }
 
@@ -401,7 +342,7 @@ bool QuickLookHandle::didReceiveBuffer(const SharedBuffer& buffer)
     if (m_finishedLoadingDataIntoConverter)
         return false;
 
-    [m_converter appendDataArray:buffer.createNSDataArray().get()];
+    [m_previewLoader appendDataArray:buffer.createNSDataArray().get()];
     return true;
 }
 
@@ -411,44 +352,19 @@ bool QuickLookHandle::didFinishLoading()
         return false;
 
     m_finishedLoadingDataIntoConverter = true;
-    [m_converter finishedAppending];
+    [m_previewLoader finishedAppending];
     return true;
 }
 
 void QuickLookHandle::didFail()
 {
-    [m_converter failed];
-    m_converter = nullptr;
-}
-
-void QuickLookHandle::setClient(Ref<QuickLookHandleClient>&& client)
-{
-    [m_converter setClient:WTFMove(client)];
+    [m_previewLoader failed];
+    m_previewLoader = nullptr;
 }
 
 void QuickLookHandle::setClientForTesting(RefPtr<QuickLookHandleClient>&& client)
 {
     testingClient() = WTFMove(client);
-}
-
-String QuickLookHandle::previewFileName() const
-{
-    return [m_converter platformConverter].previewFileName;
-}
-
-String QuickLookHandle::previewUTI() const
-{
-    return [m_converter platformConverter].previewUTI;
-}
-
-NSURL *QuickLookHandle::previewRequestURL() const
-{
-    return [m_converter platformConverter].previewRequest.URL;
-}
-
-QLPreviewConverter *QuickLookHandle::converter() const
-{
-    return [m_converter platformConverter];
 }
 
 }

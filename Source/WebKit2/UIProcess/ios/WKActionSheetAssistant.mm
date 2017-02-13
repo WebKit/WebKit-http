@@ -59,10 +59,6 @@ SOFT_LINK_PRIVATE_FRAMEWORK(TCC)
 SOFT_LINK(TCC, TCCAccessPreflight, TCCAccessPreflightResult, (CFStringRef service, CFDictionaryRef options), (service, options))
 SOFT_LINK_CONSTANT(TCC, kTCCServicePhotos, CFStringRef)
 
-@interface DDDetectionController (StagingToRemove)
-- (NSArray *)actionsForURL:(NSURL *)url identifier:(NSString *)identifier selectedText:(NSString *)selectedText results:(NSArray *)results context:(NSDictionary *)context;
-@end
-
 using namespace WebKit;
 
 #if HAVE(APP_LINKS)
@@ -150,6 +146,18 @@ static LSAppLink *appLinkForURL(NSURL *url)
 - (UIView *)hostViewForSheet
 {
     return [self superviewForSheet];
+}
+
+- (CGRect)presentationRectForIndicatedElement
+{
+    UIView *view = [self superviewForSheet];
+    auto delegate = _delegate.get();
+    if (!view || !delegate)
+        return CGRectZero;
+
+    static const CGFloat presentationElementRectPadding = 15;
+    auto elementBounds = [delegate positionInformationForActionSheetAssistant:self].bounds;
+    return CGRectInset([view convertRect:elementBounds fromView:_view], -presentationElementRectPadding, -presentationElementRectPadding);
 }
 
 - (CGRect)initialPresentationRectInHostViewForSheet
@@ -293,7 +301,8 @@ static LSAppLink *appLinkForURL(NSURL *url)
     const auto& positionInformation = [delegate positionInformationForActionSheetAssistant:self];
 
     NSURL *targetURL = [NSURL _web_URLWithWTFString:positionInformation.url];
-    auto elementInfo = adoptNS([[_WKActivatedElementInfo alloc] _initWithType:_WKActivatedElementTypeImage URL:targetURL location:positionInformation.request.point title:positionInformation.title ID:positionInformation.idAttribute rect:positionInformation.bounds image:positionInformation.image.get()]);
+    auto elementBounds = positionInformation.bounds;
+    auto elementInfo = adoptNS([[_WKActivatedElementInfo alloc] _initWithType:_WKActivatedElementTypeImage URL:targetURL location:positionInformation.request.point title:positionInformation.title ID:positionInformation.idAttribute rect:elementBounds image:positionInformation.image.get()]);
     if ([delegate respondsToSelector:@selector(actionSheetAssistant:showCustomSheetForElement:)] && [delegate actionSheetAssistant:self showCustomSheetForElement:elementInfo.get()])
         return;
     auto defaultActions = [self defaultActionsForImageSheet:elementInfo.get()];
@@ -309,8 +318,28 @@ static LSAppLink *appLinkForURL(NSURL *url)
 
     _elementInfo = WTFMove(elementInfo);
 
-    if (![_interactionSheet presentSheet])
+    if (![_interactionSheet presentSheet:[self _presentationStyleForImageAtElementRect:elementBounds]])
         [self cleanupSheet];
+}
+
+- (WKActionSheetPresentationStyle)_presentationStyleForImageAtElementRect:(CGRect)elementRect
+{
+    auto apparentElementRect = [_view convertRect:elementRect toView:_view.window];
+    auto windowRect = _view.window.bounds;
+    apparentElementRect = CGRectIntersection(apparentElementRect, windowRect);
+
+    auto leftInset = CGRectGetMinX(apparentElementRect) - CGRectGetMinX(windowRect);
+    auto topInset = CGRectGetMinY(apparentElementRect) - CGRectGetMinY(windowRect);
+    auto rightInset = CGRectGetMaxX(windowRect) - CGRectGetMaxX(apparentElementRect);
+    auto bottomInset = CGRectGetMaxY(windowRect) - CGRectGetMaxY(apparentElementRect);
+
+    // If at least this much of the window is available for the popover to draw in, then target the element rect when presenting the action menu popover.
+    // Otherwise, there is not enough space to position the popover around the element, so revert to using the touch location instead.
+    static const CGFloat minimumAvailableWidthOrHeightRatio = 0.4;
+    if (std::max(leftInset, rightInset) > minimumAvailableWidthOrHeightRatio * CGRectGetWidth(windowRect) || std::max(topInset, bottomInset) > minimumAvailableWidthOrHeightRatio * CGRectGetHeight(windowRect))
+        return WKActionSheetPresentAtElementRect;
+
+    return WKActionSheetPresentAtTouchLocation;
 }
 
 - (void)_appendOpenActionsForURL:(NSURL *)url actions:(NSMutableArray *)defaultActions elementInfo:(_WKActivatedElementInfo *)elementInfo
@@ -428,7 +457,7 @@ static LSAppLink *appLinkForURL(NSURL *url)
 
     _elementInfo = WTFMove(elementInfo);
 
-    if (![_interactionSheet presentSheet])
+    if (![_interactionSheet presentSheet:WKActionSheetPresentAtTouchLocation])
         [self cleanupSheet];
 }
 
@@ -447,29 +476,25 @@ static LSAppLink *appLinkForURL(NSURL *url)
         return;
 
     DDDetectionController *controller = [getDDDetectionControllerClass() sharedController];
-    NSArray *dataDetectorsActions = nil;
-    if ([controller respondsToSelector:@selector(actionsForURL:identifier:selectedText:results:context:)]) {
-        NSDictionary *context = nil;
-        NSString *textAtSelection = nil;
-        RetainPtr<NSMutableDictionary> extendedContext;
+    NSDictionary *context = nil;
+    NSString *textAtSelection = nil;
+    RetainPtr<NSMutableDictionary> extendedContext;
 
-        if ([delegate respondsToSelector:@selector(dataDetectionContextForActionSheetAssistant:)])
-            context = [delegate dataDetectionContextForActionSheetAssistant:self];
-        if ([delegate respondsToSelector:@selector(selectedTextForActionSheetAssistant:)])
-            textAtSelection = [delegate selectedTextForActionSheetAssistant:self];
-        if (!positionInformation.textBefore.isEmpty() || !positionInformation.textAfter.isEmpty()) {
-            extendedContext = adoptNS([@{
-                getkDataDetectorsLeadingText() : positionInformation.textBefore,
-                getkDataDetectorsTrailingText() : positionInformation.textAfter,
-            } mutableCopy]);
-            
-            if (context)
-                [extendedContext addEntriesFromDictionary:context];
-            context = extendedContext.get();
-        }
-        dataDetectorsActions = [controller actionsForURL:targetURL identifier:positionInformation.dataDetectorIdentifier selectedText:textAtSelection results:positionInformation.dataDetectorResults.get() context:context];
-    } else
-        dataDetectorsActions = [controller actionsForAnchor:nil url:targetURL forFrame:nil];
+    if ([delegate respondsToSelector:@selector(dataDetectionContextForActionSheetAssistant:)])
+        context = [delegate dataDetectionContextForActionSheetAssistant:self];
+    if ([delegate respondsToSelector:@selector(selectedTextForActionSheetAssistant:)])
+        textAtSelection = [delegate selectedTextForActionSheetAssistant:self];
+    if (!positionInformation.textBefore.isEmpty() || !positionInformation.textAfter.isEmpty()) {
+        extendedContext = adoptNS([@{
+            getkDataDetectorsLeadingText() : positionInformation.textBefore,
+            getkDataDetectorsTrailingText() : positionInformation.textAfter,
+        } mutableCopy]);
+        
+        if (context)
+            [extendedContext addEntriesFromDictionary:context];
+        context = extendedContext.get();
+    }
+    NSArray *dataDetectorsActions = [controller actionsForURL:targetURL identifier:positionInformation.dataDetectorIdentifier selectedText:textAtSelection results:positionInformation.dataDetectorResults.get() context:context];
     if ([dataDetectorsActions count] == 0)
         return;
 
@@ -494,7 +519,7 @@ static LSAppLink *appLinkForURL(NSURL *url)
     if (elementActions.count <= 1)
         _interactionSheet.get().arrowDirections = UIPopoverArrowDirectionUp | UIPopoverArrowDirectionDown;
 
-    if (![_interactionSheet presentSheet])
+    if (![_interactionSheet presentSheet:WKActionSheetPresentAtTouchLocation])
         [self cleanupSheet];
 }
 

@@ -270,7 +270,7 @@ InspectorBackend.Connection = class InspectorBackendConnection
         for (let script of scriptsToRun)
             script.call(this);
     }
-}
+};
 
 InspectorBackend.MainConnection = class InspectorBackendPageConnection extends InspectorBackend.Connection
 {
@@ -285,7 +285,7 @@ InspectorBackend.MainConnection = class InspectorBackendPageConnection extends I
     {
         InspectorFrontendHost.sendMessageToBackend(message);
     }
-}
+};
 
 InspectorBackend.WorkerConnection = class InspectorBackendWorkerConnection extends InspectorBackend.Connection
 {
@@ -295,8 +295,7 @@ InspectorBackend.WorkerConnection = class InspectorBackendWorkerConnection exten
 
         this._workerId = workerId;
 
-        // FIXME: Get this list from generated InspectorBackendCommands / InspectorBackend.
-        const workerDomains = ["Runtime", "Console", "Debugger"];
+        const workerDomains = InspectorBackend.workerSupportedDomains;
 
         for (let domain of workerDomains) {
             let agent = InspectorBackend._agents[domain];
@@ -311,6 +310,6 @@ InspectorBackend.WorkerConnection = class InspectorBackendWorkerConnection exten
     {
         WorkerAgent.sendMessageToWorker(this._workerId, message);
     }
-}
+};
 
 InspectorBackend.mainConnection = new InspectorBackend.MainConnection;

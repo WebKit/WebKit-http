@@ -97,6 +97,7 @@ class HTMLMediaElement;
 class UserInputBridge;
 class InspectorClient;
 class InspectorController;
+class LibWebRTCProvider;
 class MainFrame;
 class MediaCanStartListener;
 class MediaPlaybackTarget;
@@ -109,9 +110,7 @@ class PlugInClient;
 class PluginData;
 class PluginInfoProvider;
 class PluginViewBase;
-#if ENABLE(POINTER_LOCK)
 class PointerLockController;
-#endif
 class ProgressTracker;
 class ProgressTrackerClient;
 class Range;
@@ -166,6 +165,7 @@ public:
 
     static void refreshPlugins(bool reload);
     WEBCORE_EXPORT PluginData& pluginData();
+    void clearPluginData();
 
     WEBCORE_EXPORT void setCanStartMedia(bool);
     bool canStartMedia() const { return m_canStartMedia; }
@@ -222,6 +222,7 @@ public:
 #if ENABLE(POINTER_LOCK)
     PointerLockController& pointerLockController() const { return *m_pointerLockController; }
 #endif
+    LibWebRTCProvider& libWebRTCProvider() { return m_libWebRTCProvider.get(); }
 
     ValidationMessageClient* validationMessageClient() const { return m_validationMessageClient.get(); }
     void updateValidationBubbleStateIfNeeded();
@@ -359,6 +360,7 @@ public:
     WEBCORE_EXPORT void setActivityState(ActivityState::Flags);
     ActivityState::Flags activityState() const { return m_activityState; }
 
+    bool isWindowActive() const;
     bool isVisibleAndActive() const;
     WEBCORE_EXPORT void setIsVisible(bool);
     WEBCORE_EXPORT void setIsPrerender();
@@ -387,6 +389,9 @@ public:
 #if ENABLE(RESOURCE_USAGE)
     void setResourceUsageOverlayVisible(bool);
 #endif
+
+    void setAsRunningUserScripts() { m_isRunningUserScripts = true; }
+    bool isRunningUserScripts() const { return m_isRunningUserScripts; }
 
     void setDebugger(JSC::Debugger*);
     JSC::Debugger* debugger() const { return m_debugger; }
@@ -565,6 +570,10 @@ public:
     bool isOnlyNonUtilityPage() const;
     bool isUtilityPage() const { return m_isUtilityPage; }
 
+#if ENABLE(DATA_INTERACTION)
+    WEBCORE_EXPORT bool hasDataInteractionAtPosition(const FloatPoint&) const;
+#endif
+
 private:
     WEBCORE_EXPORT void initGroup();
 
@@ -629,6 +638,8 @@ private:
     std::unique_ptr<ValidationMessageClient> m_validationMessageClient;
     std::unique_ptr<DiagnosticLoggingClient> m_diagnosticLoggingClient;
     std::unique_ptr<WebGLStateTracker> m_webGLStateTracker;
+
+    UniqueRef<LibWebRTCProvider> m_libWebRTCProvider;
 
     int m_nestedRunLoopCount { 0 };
     std::function<void()> m_unnestCallback;
@@ -766,6 +777,8 @@ private:
     std::optional<EventThrottlingBehavior> m_eventThrottlingBehaviorOverride;
 
     std::unique_ptr<PerformanceMonitor> m_performanceMonitor;
+
+    bool m_isRunningUserScripts { false };
 };
 
 inline PageGroup& Page::group()

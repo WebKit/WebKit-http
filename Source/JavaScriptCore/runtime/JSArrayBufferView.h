@@ -167,7 +167,7 @@ public:
     bool isNeutered() { return hasArrayBuffer() && !vector(); }
     void neuter();
     
-    void* vector() { return m_vector.get(); }
+    void* vector() const { return m_vector.get(); }
     
     unsigned byteOffset();
     unsigned length() const { return m_length; }
@@ -178,7 +178,7 @@ public:
     static ptrdiff_t offsetOfLength() { return OBJECT_OFFSETOF(JSArrayBufferView, m_length); }
     static ptrdiff_t offsetOfMode() { return OBJECT_OFFSETOF(JSArrayBufferView, m_mode); }
     
-    static RefPtr<ArrayBufferView> toWrapped(JSValue);
+    static RefPtr<ArrayBufferView> toWrapped(VM&, JSValue);
 
 private:
     static void finalize(JSCell*);

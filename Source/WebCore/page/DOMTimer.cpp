@@ -47,6 +47,7 @@
 #include "ChromeClient.h"
 #include "Frame.h"
 #include "WKContentObservation.h"
+#include "WKContentObservationInternal.h"
 #endif
 
 namespace WebCore {
@@ -361,7 +362,7 @@ void DOMTimer::fired()
         if (WKObservedContentChange() == WKContentVisibilityChange || shouldReportLackOfChanges) {
             Document& document = downcast<Document>(context);
             if (Page* page = document.page())
-                page->chrome().client().observedContentChange(document.frame());
+                page->chrome().client().observedContentChange(*document.frame());
         }
     }
 #endif

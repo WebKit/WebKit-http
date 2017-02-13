@@ -1363,10 +1363,12 @@ private:
             break;
 
         case In: {
-            // FIXME: We should at some point have array profiling on op_in, in which
-            // case we would be able to turn this into a kind of GetByVal.
-            
-            fixEdge<CellUse>(node->child2());
+            if (node->child2()->shouldSpeculateInt32()) {
+                convertToHasIndexedProperty(node);
+                break;
+            }
+
+            fixEdge<CellUse>(node->child1());
             break;
         }
 
@@ -1947,7 +1949,7 @@ private:
             if (!edge)
                 break;
             edge.setUseKind(KnownStringUse);
-            JSString* string = edge->dynamicCastConstant<JSString*>();
+            JSString* string = edge->dynamicCastConstant<JSString*>(vm());
             if (!string)
                 continue;
             if (string->length())
@@ -2365,7 +2367,7 @@ private:
                 if (structure) {
                     m_insertionSet.insertNode(
                         m_indexInBlock, SpecNone, ArrayifyToStructure, origin,
-                        OpInfo(structure), OpInfo(arrayMode.asWord()), Edge(array, CellUse), indexEdge);
+                        OpInfo(m_graph.registerStructure(structure)), OpInfo(arrayMode.asWord()), Edge(array, CellUse), indexEdge);
                 } else {
                     m_insertionSet.insertNode(
                         m_indexInBlock, SpecNone, Arrayify, origin,
@@ -2652,7 +2654,7 @@ private:
         else
             truncateConstantToInt32(node->child2());
     }
-    
+
     bool attemptToMakeIntegerAdd(Node* node)
     {
         AddSpeculationMode mode = m_graph.addSpeculationMode(node, FixupPass);
@@ -2743,7 +2745,25 @@ private:
             m_indexInBlock, SpecInt32Only, GetArrayLength, origin,
             OpInfo(arrayMode.asWord()), Edge(child, KnownCellUse), Edge(storage));
     }
-    
+
+    void convertToHasIndexedProperty(Node* node)
+    {
+        node->setOp(HasIndexedProperty);
+        node->clearFlags(NodeMustGenerate);
+        node->setArrayMode(
+            node->arrayMode().refine(
+                m_graph, node,
+                node->child1()->prediction(),
+                node->child2()->prediction(),
+                SpecNone));
+        node->setInternalMethodType(PropertySlot::InternalMethodType::HasProperty);
+
+        blessArrayOperation(node->child1(), node->child2(), node->child3());
+
+        fixEdge<CellUse>(node->child1());
+        fixEdge<Int32Use>(node->child2());
+    }
+
     bool attemptToMakeCallDOM(Node* node)
     {
         if (m_graph.hasExitSite(node->origin.semantic, BadType))

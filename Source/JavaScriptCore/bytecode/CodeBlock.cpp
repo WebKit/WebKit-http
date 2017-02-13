@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2008-2010, 2012-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2008-2010, 2012-2017 Apple Inc. All rights reserved.
  * Copyright (C) 2008 Cameron Zwarich <cwzwarich@uwaterloo.ca>
  *
  * Redistribution and use in source and binary forms, with or without
@@ -1105,6 +1105,7 @@ void CodeBlock::dumpBytecode(
         }
         case op_in: {
             printBinaryOp(out, exec, location, it, "in");
+            dumpArrayProfiling(out, it, hasPrintedProfiling);
             break;
         }
         case op_try_get_by_id: {
@@ -1948,7 +1949,7 @@ void CodeBlock::finishCreation(VM& vm, ScriptExecutable* ownerExecutable, Unlink
 
     // We already have the cloned symbol table for the module environment since we need to instantiate
     // the module environments before linking the code block. We replace the stored symbol table with the already cloned one.
-    if (UnlinkedModuleProgramCodeBlock* unlinkedModuleProgramCodeBlock = jsDynamicCast<UnlinkedModuleProgramCodeBlock*>(unlinkedCodeBlock)) {
+    if (UnlinkedModuleProgramCodeBlock* unlinkedModuleProgramCodeBlock = jsDynamicCast<UnlinkedModuleProgramCodeBlock*>(vm, unlinkedCodeBlock)) {
         SymbolTable* clonedSymbolTable = jsCast<ModuleProgramExecutable*>(ownerExecutable)->moduleEnvironmentSymbolTable();
         if (m_vm->typeProfiler()) {
             ConcurrentJSLocker locker(clonedSymbolTable->m_lock);
@@ -2095,12 +2096,9 @@ void CodeBlock::finishCreation(VM& vm, ScriptExecutable* ownerExecutable, Unlink
             linkValueProfile(i, opLength);
             break;
         }
-        case op_put_by_val: {
-            int arrayProfileIndex = pc[opLength - 1].u.operand;
-            m_arrayProfiles[arrayProfileIndex] = ArrayProfile(i);
-            instructions[i + opLength - 1] = &m_arrayProfiles[arrayProfileIndex];
-            break;
-        }
+
+        case op_in:
+        case op_put_by_val:
         case op_put_by_val_direct: {
             int arrayProfileIndex = pc[opLength - 1].u.operand;
             m_arrayProfiles[arrayProfileIndex] = ArrayProfile(i);
@@ -2122,7 +2120,7 @@ void CodeBlock::finishCreation(VM& vm, ScriptExecutable* ownerExecutable, Unlink
 
             instructions[i + opLength - 1] = objectAllocationProfile;
             objectAllocationProfile->initialize(vm,
-                this, m_globalObject->objectPrototype(), inferredInlineCapacity);
+                m_globalObject.get(), this, m_globalObject->objectPrototype(), inferredInlineCapacity);
             break;
         }
 
@@ -2405,7 +2403,7 @@ void CodeBlock::setConstantRegisters(const Vector<WriteBarrier<Unknown>>& consta
         JSValue constant = constants[i].get();
 
         if (!constant.isEmpty()) {
-            if (SymbolTable* symbolTable = jsDynamicCast<SymbolTable*>(constant)) {
+            if (SymbolTable* symbolTable = jsDynamicCast<SymbolTable*>(*vm(), constant)) {
                 if (hasTypeProfiler) {
                     ConcurrentJSLocker locker(symbolTable->m_lock);
                     symbolTable->prepareForTypeProfiling(locker);
@@ -2725,7 +2723,9 @@ void CodeBlock::determineLiveness(const ConcurrentJSLocker&, SlotVisitor& visito
     // GC we still have not proved liveness, then this code block is toast.
     bool allAreLiveSoFar = true;
     for (unsigned i = 0; i < dfgCommon->weakReferences.size(); ++i) {
-        if (!Heap::isMarkedConcurrently(dfgCommon->weakReferences[i].get())) {
+        JSCell* reference = dfgCommon->weakReferences[i].get();
+        ASSERT(!jsDynamicCast<CodeBlock*>(*reference->vm(), reference));
+        if (!Heap::isMarkedConcurrently(reference)) {
             allAreLiveSoFar = false;
             break;
         }
@@ -3307,7 +3307,7 @@ CodeBlock* CodeBlock::newReplacement()
 #if ENABLE(JIT)
 CodeBlock* CodeBlock::replacement()
 {
-    const ClassInfo* classInfo = this->classInfo();
+    const ClassInfo* classInfo = this->classInfo(*vm());
 
     if (classInfo == FunctionCodeBlock::info())
         return jsCast<FunctionExecutable*>(ownerExecutable())->codeBlockFor(m_isConstructor ? CodeForConstruct : CodeForCall);
@@ -3327,7 +3327,7 @@ CodeBlock* CodeBlock::replacement()
 
 DFG::CapabilityLevel CodeBlock::computeCapabilityLevel()
 {
-    const ClassInfo* classInfo = this->classInfo();
+    const ClassInfo* classInfo = this->classInfo(*vm());
 
     if (classInfo == FunctionCodeBlock::info()) {
         if (m_isConstructor)
@@ -4205,7 +4205,7 @@ String CodeBlock::nameForRegister(VirtualRegister virtualRegister)
     for (auto& constantRegister : m_constantRegisters) {
         if (constantRegister.get().isEmpty())
             continue;
-        if (SymbolTable* symbolTable = jsDynamicCast<SymbolTable*>(constantRegister.get())) {
+        if (SymbolTable* symbolTable = jsDynamicCast<SymbolTable*>(*vm(), constantRegister.get())) {
             ConcurrentJSLocker locker(symbolTable->m_lock);
             auto end = symbolTable->end(locker);
             for (auto ptr = symbolTable->begin(locker); ptr != end; ++ptr) {

@@ -1,3 +1,316 @@
+2017-02-11  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Implement (Shared)ArrayBuffer.prototype.byteLength
+        https://bugs.webkit.org/show_bug.cgi?id=166476
+
+        Reviewed by Saam Barati.
+
+        * ChakraCore/test/typedarray/arraybufferType.baseline-jsc:
+        * stress/array-buffer-byte-length.js: Added.
+        (shouldBe):
+        (shouldThrow):
+        (Symbol):
+        * stress/reflect-set.js:
+
+2017-02-10  Saam Barati  <sbarati@apple.com>
+
+        Object allocation sinking phase doesn't properly handle control flow when emitting a PutHint of a materialized object into a PromotedHeapLocation of a still sunken object
+        https://bugs.webkit.org/show_bug.cgi?id=168140
+        <rdar://problem/30205880>
+
+        Reviewed by Filip Pizlo.
+
+        * stress/allocation-sinking-puthint-control-flow.js: Added.
+        (e):
+        (bar):
+        (let.y):
+        (else.let.y):
+        (baz):
+        (foo):
+        (catch):
+
+2017-02-09  Mark Lam  <mark.lam@apple.com>
+
+        B3::Procedure::deleteOrphans() should neutralize upsilons with dead phis.
+        https://bugs.webkit.org/show_bug.cgi?id=167437
+        <rdar://problem/30198083>
+
+        Reviewed by Filip Pizlo.
+
+        * stress/b3-delete-orphans-should-neutralize-upsilons-with-dead-phis.js: Added.
+
+2017-02-09  Saam Barati  <sbarati@apple.com>
+
+        Sloppy mode: We don't properly hoist functions names "arguments" when we have a non-simple parameter list
+        https://bugs.webkit.org/show_bug.cgi?id=167319
+        <rdar://problem/30149432>
+
+        Reviewed by Mark Lam.
+
+        * stress/sloppy-mode-hoist-arguments-function-non-simple-parameter-list.js: Added.
+        (assert):
+        (assert.arguments):
+        (assert.b):
+        (x.arguments):
+        (x.b):
+        (x):
+
+2017-02-09  Mark Lam  <mark.lam@apple.com>
+
+        Fix max length check in ArrayPrototype.js' concatSlowPath().
+        https://bugs.webkit.org/show_bug.cgi?id=167270
+        <rdar://problem/30128133>
+
+        Reviewed by Filip Pizlo.
+
+        * stress/array-prototype-concat-of-long-spliced-arrays.js: Added.
+        * stress/array-prototype-concat-of-long-spliced-arrays2.js: Added.
+
+2017-02-09  Keith Miller  <keith_miller@apple.com>
+
+        We should not allow Function.caller to be used on native functions
+        https://bugs.webkit.org/show_bug.cgi?id=165628
+
+        Reviewed by Mark Lam.
+
+        * stress/caller-native-code.js: Added.
+        (f):
+
+2017-02-04  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Add operationToInt32SensibleSlow to optimize kraken pbkdf2 and sha256
+        https://bugs.webkit.org/show_bug.cgi?id=167736
+
+        Reviewed by Saam Barati.
+
+        * stress/to-int32-sensible.js: Added.
+        (shouldBe):
+        (toInt32):
+        (test):
+
+2017-02-01  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Unreviewed, remove loop
+        https://bugs.webkit.org/show_bug.cgi?id=167694
+
+        It causes timeout.
+        Original bug can be tested even without this loop.
+
+        * stress/arity-fixup-should-not-touch-stack-area-below-sp.js:
+
+2017-02-01  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        ArityFixup should adjust SP first
+        https://bugs.webkit.org/show_bug.cgi?id=167239
+
+        Reviewed by Michael Saboff.
+
+        Significantly large arity fixup reliably causes this crash.
+
+        * stress/arity-fixup-should-not-touch-stack-area-below-sp.js: Added.
+
+2017-01-31  Filip Pizlo  <fpizlo@apple.com>
+
+        Move slow-running microbenchmarks out of JSTests/microbenchmarks
+        https://bugs.webkit.org/show_bug.cgi?id=167676
+
+        Reviewed by Saam Barati.
+        
+        The microbenchmarks directory is profitable when it's cheap to run. This change moves very slow
+        tests (>=200ms running time on my machine) and puts them in JSTests/slowMicrobenchmarks instead.
+        That directory is run only through `slow!; defaultQuickRun` and is not run by run-jsc-benchmarks.
+        This is a big progression in test running time. But because it frontloads more slow tests, the
+        tests will seem to run more slowly when you first start the test runner.
+
+        * microbenchmarks/default-derived-constructor.js: Removed.
+        * microbenchmarks/dense-set.js: Removed.
+        * microbenchmarks/ftl-polymorphic-div.js: Removed.
+        * microbenchmarks/ftl-polymorphic-mul.js: Removed.
+        * microbenchmarks/function-bind-inlining.js: Removed.
+        * microbenchmarks/function-bind-no-inlining.js: Removed.
+        * microbenchmarks/large-map-iteration-with-additions.js: Removed.
+        * microbenchmarks/large-map-iteration-with-mutation.js: Removed.
+        * microbenchmarks/map-get-get-cse.js: Removed.
+        * microbenchmarks/misc-bugs-847389-jpeg2000.js: Removed.
+        * microbenchmarks/spread-small-array.js: Removed.
+        * microbenchmarks/v8-raytrace-with-try-catch-high-frequency-throws.js: Removed.
+        * slowMicrobenchmarks: Added.
+        * slowMicrobenchmarks.yaml: Added.
+        * slowMicrobenchmarks/README: Added.
+        * slowMicrobenchmarks/default-derived-constructor.js: Copied from JSTests/microbenchmarks/default-derived-constructor.js.
+        * slowMicrobenchmarks/dense-set.js: Copied from JSTests/microbenchmarks/dense-set.js.
+        * slowMicrobenchmarks/ftl-polymorphic-div.js: Copied from JSTests/microbenchmarks/ftl-polymorphic-div.js.
+        * slowMicrobenchmarks/ftl-polymorphic-mul.js: Copied from JSTests/microbenchmarks/ftl-polymorphic-mul.js.
+        * slowMicrobenchmarks/function-bind-inlining.js: Copied from JSTests/microbenchmarks/function-bind-inlining.js.
+        * slowMicrobenchmarks/function-bind-no-inlining.js: Copied from JSTests/microbenchmarks/function-bind-no-inlining.js.
+        * slowMicrobenchmarks/large-map-iteration-with-additions.js: Copied from JSTests/microbenchmarks/large-map-iteration-with-additions.js.
+        * slowMicrobenchmarks/large-map-iteration-with-mutation.js: Copied from JSTests/microbenchmarks/large-map-iteration-with-mutation.js.
+        * slowMicrobenchmarks/map-get-get-cse.js: Copied from JSTests/microbenchmarks/map-get-get-cse.js.
+        * slowMicrobenchmarks/misc-bugs-847389-jpeg2000.js: Copied from JSTests/microbenchmarks/misc-bugs-847389-jpeg2000.js.
+        * slowMicrobenchmarks/spread-small-array.js: Copied from JSTests/microbenchmarks/spread-small-array.js.
+        * slowMicrobenchmarks/v8-raytrace-with-try-catch-high-frequency-throws.js: Copied from JSTests/microbenchmarks/v8-raytrace-with-try-catch-high-frequency-throws.js.
+
+2017-01-30  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Do not reject WebAssembly.compile() with Exception
+        https://bugs.webkit.org/show_bug.cgi?id=167585
+
+        Reviewed by Mark Lam.
+
+        * wasm/js-api/Module-compile.js:
+        (async.testPromiseAPI):
+
+2017-01-27  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        Lift template escape sequence restrictions in tagged templates
+        https://bugs.webkit.org/show_bug.cgi?id=166871
+
+        Reviewed by Saam Barati.
+
+        Update the error messages and add new tests.
+
+        * ChakraCore/test/es6/unicode_6_identifier_Blue524737.baseline-jsc:
+        * stress/lift-template-literal.js: Added.
+        (dump):
+        (testTag.return.tag):
+        (testTag):
+        * stress/template-literal-syntax.js:
+
+2017-01-26  Mark Lam  <mark.lam@apple.com>
+
+        Fix missing exception check in genericTypedArrayViewProtoFuncSet().
+        https://bugs.webkit.org/show_bug.cgi?id=166812
+        <rdar://problem/29916672>
+
+        Reviewed by Saam Barati.
+
+        * stress/regress-166812.js: Added.
+
+2017-01-26  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r211224.
+        https://bugs.webkit.org/show_bug.cgi?id=167479
+
+        "It was a Kraken performance regression" (Requested by
+        saamyjoon on #webkit).
+
+        Reverted changeset:
+
+        "OSR entry: delay outer-loop compilation when at inner-loop"
+        https://bugs.webkit.org/show_bug.cgi?id=167149
+        http://trac.webkit.org/changeset/211224
+
+2017-01-26  JF Bastien  <jfbastien@apple.com>
+
+        OSR entry: delay outer-loop compilation when at inner-loop
+        https://bugs.webkit.org/show_bug.cgi?id=167149
+
+        Reviewed by Filip Pizlo.
+
+        Try to be mean to OSR entry by using nested loops, and having
+        non-int32 types or truly varying types.
+
+        Mandelbrot currently never tiers up to FTL because it exits too
+        many times before this. That shouldn't happen because it's just
+        numbers and int32s. I'll file a bug to fix this.
+
+        * microbenchmarks/mandelbrot.js: Added.
+        (mandelbrot):
+        (printable):
+        * microbenchmarks/nonude.js: Added.
+        (Array.prototype.remove):
+        (const.u):
+        (const.load):
+        (const.scan):
+        (const.main):
+
+2017-01-25  Saam Barati  <sbarati@apple.com>
+
+        WebAssembly JS API: coerce return values from imports
+        https://bugs.webkit.org/show_bug.cgi?id=165480
+        <rdar://problem/29760318>
+
+        Reviewed by Yusuke Suzuki.
+
+        * wasm/function-tests/function-import-return-value.js: Added.
+        (import.Builder.from.string_appeared_here.import.as.assert.from.string_appeared_here.const.tests.x.assert.eq):
+        (import.Builder.from.string_appeared_here.import.as.assert.from.string_appeared_here.const.tests.Math.fround):
+        (import.Builder.from.string_appeared_here.import.as.assert.from.string_appeared_here.let.type.of.Reflect.ownKeys):
+        (test.1):
+        (assert.truthy):
+        (assert.throws):
+
+2017-01-25  Filip Pizlo  <fpizlo@apple.com>
+
+        jsc.cpp should have the $.agent stuff for testing SAB
+        https://bugs.webkit.org/show_bug.cgi?id=167431
+
+        Reviewed by Saam Barati.
+        
+        Add a very basic test of Atomics using $.agent. This is based on
+        LayoutTests/workers/sab/simple.html.
+
+        * stress/lars-sab-workers.js: Added.
+        (startWorker):
+        (resources):
+        (wake):
+        (else):
+
+2017-01-24  Filip Pizlo  <fpizlo@apple.com>
+
+        Atomics.store should return the int-converted value according to toInteger
+        https://bugs.webkit.org/show_bug.cgi?id=167399
+
+        Reviewed by Saam Barati.
+
+        * stress/atomics-add-uint32.js: Added.
+        * stress/atomics-store-return.js: Fix the test to match what the spec wants.
+
+2017-01-24  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Optimize Number#toString with Int52
+        https://bugs.webkit.org/show_bug.cgi?id=167303
+
+        Reviewed by Sam Weinig.
+
+        * stress/to-string-with-int52.js: Added.
+        (shouldBe):
+
+2017-01-24  Filip Pizlo  <fpizlo@apple.com>
+
+        Atomics.store should return the int-converted value, not the value that it stored
+        https://bugs.webkit.org/show_bug.cgi?id=167395
+
+        Reviewed by Saam Barati.
+
+        * stress/atomics-store-return.js: Added.
+
+2017-01-24  Filip Pizlo  <fpizlo@apple.com>
+
+        -0 is a valid array index and AtomicsObject should know this
+        https://bugs.webkit.org/show_bug.cgi?id=167386
+
+        Reviewed by Mark Lam.
+
+        * stress/atomics-neg-zero.js: Added.
+
+2017-01-23  Saam Barati  <sbarati@apple.com>
+
+        https://bugs.webkit.org/show_bug.cgi?id=167247
+        JSC: operationSpreadGeneric uses the wrong global object for the builtin function and slow_path_spread consults the wrong global object to prove if the iterator protocol is unobservable
+        <rdar://problem/30121809>
+
+        Reviewed by Filip Pizlo.
+
+        * stress/spread-consults-correct-global-object.js: Added.
+        (assert):
+        (spread):
+        * stress/spread-correct-global-object-on-exception.js: Added.
+        (assert):
+        (spread):
+        (const.objectText.let.o.Symbol.iterator):
+        (catch):
+
 2017-01-21  Yusuke Suzuki  <utatane.tea@gmail.com>
 
         dynamic import is ambiguous with import declaration at module code

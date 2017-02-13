@@ -70,13 +70,20 @@ class Frame;
 class FrameLoader;
 class IconLoader;
 class Page;
-class QuickLookHandle;
+class PreviewConverter;
 class ResourceLoader;
 class SharedBuffer;
 class SubresourceLoader;
 class SubstituteResource;
 
 using ResourceLoaderMap = HashMap<unsigned long, RefPtr<ResourceLoader>>;
+
+enum class AutoplayPolicy {
+    Default, // Uses policies specified in document settings.
+    Allow,
+    AllowWithoutSound,
+    Deny,
+};
 
 class DocumentLoader : public RefCounted<DocumentLoader>, private CachedRawResourceClient {
     WTF_MAKE_FAST_ALLOCATED;
@@ -232,6 +239,9 @@ public:
     bool userContentExtensionsEnabled() const { return m_userContentExtensionsEnabled; }
     void setUserContentExtensionsEnabled(bool enabled) { m_userContentExtensionsEnabled = enabled; }
 
+    AutoplayPolicy autoplayPolicy() const { return m_autoplayPolicy; }
+    void setAutoplayPolicy(AutoplayPolicy policy) { m_autoplayPolicy = policy; }
+
     void addSubresourceLoader(ResourceLoader*);
     void removeSubresourceLoader(ResourceLoader*);
     void addPlugInStreamLoader(ResourceLoader&);
@@ -261,8 +271,8 @@ public:
     URL documentURL() const;
 
 #if USE(QUICK_LOOK)
-    WEBCORE_EXPORT void setQuickLookHandle(std::unique_ptr<QuickLookHandle>);
-    QuickLookHandle* quickLookHandle() const { return m_quickLookHandle.get(); }
+    void setPreviewConverter(std::unique_ptr<PreviewConverter>&&);
+    PreviewConverter* previewConverter() const;
 #endif
 
 #if ENABLE(CONTENT_EXTENSIONS)
@@ -428,7 +438,7 @@ private:
     bool m_loadingMainResource { false };
     LoadTiming m_loadTiming;
 
-    double m_timeOfLastDataReceived { 0 };
+    MonotonicTime m_timeOfLastDataReceived;
     unsigned long m_identifierForLoadWithoutResourceLoader { 0 };
 
     DocumentLoaderTimer m_dataLoadTimer;
@@ -453,7 +463,7 @@ private:
 #endif
 
 #if USE(QUICK_LOOK)
-    std::unique_ptr<QuickLookHandle> m_quickLookHandle;
+    std::unique_ptr<PreviewConverter> m_previewConverter;
 #endif
 
 #if ENABLE(CONTENT_EXTENSIONS)
@@ -461,6 +471,7 @@ private:
     HashMap<String, Vector<std::pair<String, uint32_t>>> m_pendingContentExtensionDisplayNoneSelectors;
 #endif
     bool m_userContentExtensionsEnabled { true };
+    AutoplayPolicy m_autoplayPolicy { AutoplayPolicy::Default };
 
 #ifndef NDEBUG
     bool m_hasEverBeenAttached { false };

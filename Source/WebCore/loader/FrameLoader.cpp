@@ -95,6 +95,7 @@
 #include "PluginDocument.h"
 #include "PolicyChecker.h"
 #include "ProgressTracker.h"
+#include "PublicSuffix.h"
 #include "ResourceHandle.h"
 #include "ResourceLoadInfo.h"
 #include "ResourceLoadObserver.h"
@@ -345,9 +346,6 @@ void FrameLoader::urlSelected(const URL& url, const String& passedTarget, Event*
 
 void FrameLoader::urlSelected(const FrameLoadRequest& passedRequest, Event* triggeringEvent)
 {
-    ASSERT_WITH_SECURITY_IMPLICATION(!triggeringEvent || !triggeringEvent->target() || !triggeringEvent->target()->toNode()
-        || triggeringEvent->target()->toNode()->document().pageCacheState() == Document::NotInPageCache);
-
     Ref<Frame> protect(m_frame);
     FrameLoadRequest frameRequest(passedRequest);
 
@@ -373,9 +371,6 @@ void FrameLoader::submitForm(Ref<FormSubmission>&& submission)
     if (!m_frame.page())
         return;
 
-    if (submission->state().sourceDocument().pageCacheState() != Document::NotInPageCache)
-        return;
-
     if (submission->action().isEmpty())
         return;
 
@@ -397,7 +392,7 @@ void FrameLoader::submitForm(Ref<FormSubmission>&& submission)
 
     Frame* targetFrame = findFrameForNavigation(submission->target(), &submission->state().sourceDocument());
     if (!targetFrame) {
-        if (!DOMWindow::allowPopUp(&m_frame) && !ScriptController::processingUserGesture())
+        if (!DOMWindow::allowPopUp(m_frame) && !ScriptController::processingUserGesture())
             return;
 
         // FIXME: targetFrame can be null for two distinct reasons:
@@ -1133,9 +1128,6 @@ void FrameLoader::setupForReplace()
 
 void FrameLoader::loadFrameRequest(const FrameLoadRequest& request, Event* event, FormState* formState)
 {
-    ASSERT_WITH_SECURITY_IMPLICATION(!event || !event->target() || !event->target()->toNode()
-        || event->target()->toNode()->document().pageCacheState() == Document::NotInPageCache);
-
     // Protect frame from getting blown away inside dispatchBeforeLoadEvent in loadWithDocumentLoader.
     auto protectFrame = makeRef(m_frame);
 
@@ -1209,10 +1201,9 @@ void FrameLoader::loadURL(const FrameLoadRequest& frameLoadRequest, const String
         RefPtr<SecurityOrigin> referrerOrigin = SecurityOrigin::createFromString(referrer);
         addHTTPOriginIfNeeded(request, referrerOrigin->toString());
     }
-#if ENABLE(CACHE_PARTITIONING)
     if (&m_frame.tree().top() != &m_frame)
         request.setDomainForCachePartition(m_frame.tree().top().document()->securityOrigin().domainForCachePartition());
-#endif
+
     addExtraFieldsToRequest(request, newLoadType, true);
     if (newLoadType == FrameLoadType::Reload || newLoadType == FrameLoadType::ReloadFromOrigin)
         request.setCachePolicy(ReloadIgnoringCacheData);
@@ -1377,7 +1368,7 @@ void FrameLoader::load(DocumentLoader* newDocumentLoader)
     loadWithDocumentLoader(newDocumentLoader, type, 0, AllowNavigationToInvalidURL::Yes);
 }
 
-static void logNavigation(MainFrame& frame, FrameLoadType type)
+static void logNavigation(MainFrame& frame, const URL& destinationURL, FrameLoadType type)
 {
     if (!frame.page())
         return;
@@ -1411,6 +1402,11 @@ static void logNavigation(MainFrame& frame, FrameLoadType type)
         return;
     }
     frame.page()->diagnosticLoggingClient().logDiagnosticMessage(DiagnosticLoggingKeys::navigationKey(), navigationDescription, ShouldSample::No);
+#if ENABLE(PUBLIC_SUFFIX_LIST)
+    String domain = topPrivatelyControlledDomain(destinationURL.host());
+    if (!domain.isEmpty())
+        frame.page()->diagnosticLoggingClient().logDiagnosticMessageWithEnhancedPrivacy(DiagnosticLoggingKeys::domainVisitedKey(), domain, ShouldSample::No);
+#endif
 }
 
 void FrameLoader::loadWithDocumentLoader(DocumentLoader* loader, FrameLoadType type, FormState* formState, AllowNavigationToInvalidURL allowNavigationToInvalidURL)
@@ -1431,16 +1427,17 @@ void FrameLoader::loadWithDocumentLoader(DocumentLoader* loader, FrameLoadType t
     if (m_frame.document())
         m_previousURL = m_frame.document()->url();
 
+    const URL& newURL = loader->request().url();
+
     // Log main frame navigation types.
     if (m_frame.isMainFrame()) {
-        logNavigation(static_cast<MainFrame&>(m_frame), type);
+        logNavigation(static_cast<MainFrame&>(m_frame), newURL, type);
         static_cast<MainFrame&>(m_frame).performanceLogging().didReachPointOfInterest(PerformanceLogging::MainFrameLoadStarted);
     }
 
     policyChecker().setLoadType(type);
     bool isFormSubmission = formState;
 
-    const URL& newURL = loader->request().url();
     const String& httpMethod = loader->request().httpMethod();
 
     if (shouldPerformFragmentNavigation(isFormSubmission, httpMethod, policyChecker().loadType(), newURL)) {
@@ -1751,7 +1748,7 @@ void FrameLoader::setState(FrameState newState)
         if (m_documentLoader)
             m_documentLoader->stopRecordingResponses();
         if (m_frame.isMainFrame() && oldState != newState)
-            static_cast<MainFrame&>(m_frame).performanceLogging().didReachPointOfInterest(PerformanceLogging::MainFrameLoadCompleted);
+            static_cast<MainFrame&>(m_frame).didCompleteLoad();
     }
 }
 
@@ -1852,11 +1849,9 @@ void FrameLoader::commitProvisionalLoad()
         history().updateForClientRedirect();
 
     if (m_loadingFromCachedPage) {
-#if PLATFORM(IOS)
         // Note, didReceiveDocType is expected to be called for cached pages. See <rdar://problem/5906758> for more details.
-        if (m_frame.document()->doctype() && m_frame.page())
-            m_frame.page()->chrome().didReceiveDocType(&m_frame);
-#endif
+        if (auto* page = m_frame.page())
+            page->chrome().didReceiveDocType(m_frame);
         m_frame.document()->resume(ActiveDOMObject::PageCache);
 
         // Force a layout to update view size and thereby update scrollbars.
@@ -2439,15 +2434,15 @@ void FrameLoader::detachChildren()
         child->loader().detachFromParent();
 }
 
-void FrameLoader::closeAndRemoveChild(Frame* child)
+void FrameLoader::closeAndRemoveChild(Frame& child)
 {
-    child->tree().detachFromParent();
+    child.tree().detachFromParent();
 
-    child->setView(nullptr);
-    if (child->ownerElement() && child->page())
-        child->page()->decrementSubframeCount();
-    child->willDetachPage();
-    child->detachFromPage();
+    child.setView(nullptr);
+    if (child.ownerElement() && child.page())
+        child.page()->decrementSubframeCount();
+    child.willDetachPage();
+    child.detachFromPage();
 
     m_frame.tree().removeChild(child);
 }
@@ -2501,25 +2496,31 @@ void FrameLoader::dispatchOnloadEvents()
 
 void FrameLoader::frameDetached()
 {
-    // Calling stopAllLoaders can cause the frame to be deallocated, including the frame loader.
+    // Calling stopAllLoaders() can cause the frame to be deallocated, including the frame loader.
     Ref<Frame> protectedFrame(m_frame);
 
-    stopAllLoaders();
-    m_frame.document()->stopActiveDOMObjects();
+    if (m_frame.document()->pageCacheState() != Document::InPageCache) {
+        stopAllLoaders();
+        m_frame.document()->stopActiveDOMObjects();
+    }
+
     detachFromParent();
 }
 
 void FrameLoader::detachFromParent()
 {
+    // Calling stopAllLoaders() can cause the frame to be deallocated, including the frame loader.
     Ref<Frame> protect(m_frame);
 
     closeURL();
     history().saveScrollPositionAndViewStateToItem(history().currentItem());
     detachChildren();
-    // stopAllLoaders() needs to be called after detachChildren(), because detachedChildren()
-    // will trigger the unload event handlers of any child frames, and those event
-    // handlers might start a new subresource load in this frame.
-    stopAllLoaders();
+    if (m_frame.document()->pageCacheState() != Document::InPageCache) {
+        // stopAllLoaders() needs to be called after detachChildren() if the document is not in the page cache,
+        // because detachedChildren() will trigger the unload event handlers of any child frames, and those event
+        // handlers might start a new subresource load in this frame.
+        stopAllLoaders();
+    }
 
     InspectorInstrumentation::frameDetachedFromParent(m_frame);
 
@@ -2528,7 +2529,7 @@ void FrameLoader::detachFromParent()
     m_progressTracker = nullptr;
 
     if (Frame* parent = m_frame.tree().parent()) {
-        parent->loader().closeAndRemoveChild(&m_frame);
+        parent->loader().closeAndRemoveChild(m_frame);
         parent->loader().scheduleCheckCompleted();
     } else {
         m_frame.setView(nullptr);
@@ -2952,8 +2953,6 @@ void FrameLoader::dispatchUnloadEvents(UnloadEventPolicy unloadEventPolicy)
             }
         }
         m_pageDismissalEventBeingDispatched = PageDismissalType::None;
-        if (m_frame.document())
-            m_frame.document()->updateStyleIfNeeded();
         m_wasUnloadEventEmitted = true;
     }
 
@@ -3032,7 +3031,7 @@ bool FrameLoader::dispatchBeforeUnloadEvent(Chrome& chrome, FrameLoader* frameLo
     frameLoaderBeingNavigated->m_currentNavigationHasShownBeforeUnloadConfirmPanel = true;
 
     String text = document->displayStringModifiedByEncoding(beforeUnloadEvent->returnValue());
-    return chrome.runBeforeUnloadConfirmPanel(text, &m_frame);
+    return chrome.runBeforeUnloadConfirmPanel(text, m_frame);
 }
 
 void FrameLoader::continueLoadAfterNavigationPolicy(const ResourceRequest& request, FormState* formState, bool shouldContinue, AllowNavigationToInvalidURL allowNavigationToInvalidURL)
@@ -3657,7 +3656,7 @@ RefPtr<Frame> createWindow(Frame& openerFrame, Frame& lookupFrame, const FrameLo
         return nullptr;
 
     ShouldOpenExternalURLsPolicy shouldOpenExternalURLsPolicy = shouldOpenExternalURLsPolicyToApply(openerFrame, request.shouldOpenExternalURLsPolicy());
-    Page* page = oldPage->chrome().createWindow(&openerFrame, requestWithReferrer, features, NavigationAction(requestWithReferrer.resourceRequest(), shouldOpenExternalURLsPolicy));
+    Page* page = oldPage->chrome().createWindow(openerFrame, requestWithReferrer, features, NavigationAction(requestWithReferrer.resourceRequest(), shouldOpenExternalURLsPolicy));
     if (!page)
         return nullptr;
 
@@ -3705,7 +3704,7 @@ RefPtr<Frame> createWindow(Frame& openerFrame, Frame& lookupFrame, const FrameLo
         windowRect.setHeight(*features.height + (windowRect.height() - viewportSize.height()));
 
     // Ensure non-NaN values, minimum size as well as being within valid screen area.
-    FloatRect newWindowRect = DOMWindow::adjustWindowRect(page, windowRect);
+    FloatRect newWindowRect = DOMWindow::adjustWindowRect(*page, windowRect);
 
     if (!frame->page())
         return nullptr;

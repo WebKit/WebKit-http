@@ -246,7 +246,8 @@ RegisterID* TemplateStringNode::emitBytecode(BytecodeGenerator& generator, Regis
 {
     if (dst == generator.ignoredResult())
         return nullptr;
-    return generator.emitLoad(dst, JSValue(generator.addStringConstant(cooked())));
+    ASSERT(cooked());
+    return generator.emitLoad(dst, JSValue(generator.addStringConstant(*cooked())));
 }
 
 // ------------------------------ TemplateLiteralNode -----------------------------------
@@ -265,7 +266,8 @@ RegisterID* TemplateLiteralNode::emitBytecode(BytecodeGenerator& generator, Regi
     TemplateExpressionListNode* templateExpression = m_templateExpressions;
     for (; templateExpression; templateExpression = templateExpression->next(), templateString = templateString->next()) {
         // Evaluate TemplateString.
-        if (!templateString->value()->cooked().isEmpty()) {
+        ASSERT(templateString->value()->cooked());
+        if (!templateString->value()->cooked()->isEmpty()) {
             temporaryRegisters.append(generator.newTemporary());
             generator.emitNode(temporaryRegisters.last().get(), templateString->value());
         }
@@ -277,7 +279,8 @@ RegisterID* TemplateLiteralNode::emitBytecode(BytecodeGenerator& generator, Regi
     }
 
     // Evaluate tail TemplateString.
-    if (!templateString->value()->cooked().isEmpty()) {
+    ASSERT(templateString->value()->cooked());
+    if (!templateString->value()->cooked()->isEmpty()) {
         temporaryRegisters.append(generator.newTemporary());
         generator.emitNode(temporaryRegisters.last().get(), templateString->value());
     }
@@ -2038,6 +2041,17 @@ RegisterID* InstanceOfNode::emitBytecode(BytecodeGenerator& generator, RegisterI
 
     return dstReg.get();
 }
+
+// ------------------------------ InNode ----------------------------
+
+RegisterID* InNode::emitBytecode(BytecodeGenerator& generator, RegisterID* dst)
+{
+    RefPtr<RegisterID> key = generator.emitNodeForLeftHandSide(m_expr1, m_rightHasAssignments, m_expr2->isPure(generator));
+    RefPtr<RegisterID> base = generator.emitNode(m_expr2);
+    generator.emitExpressionInfo(divot(), divotStart(), divotEnd());
+    return generator.emitIn(generator.finalDestination(dst, key.get()), key.get(), base.get());
+}
+
 
 // ------------------------------ LogicalOpNode ----------------------------
 

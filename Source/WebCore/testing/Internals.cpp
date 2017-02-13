@@ -29,11 +29,11 @@
 
 #include "AXObjectCache.h"
 #include "ActiveDOMCallbackMicrotask.h"
-#include "AnimationController.h"
 #include "ApplicationCacheStorage.h"
 #include "Autofill.h"
 #include "BackForwardController.h"
 #include "BitmapImage.h"
+#include "CSSAnimationController.h"
 #include "CSSKeyframesRule.h"
 #include "CSSMediaRule.h"
 #include "CSSStyleRule.h"
@@ -85,6 +85,8 @@
 #include "IntRect.h"
 #include "InternalSettings.h"
 #include "Language.h"
+#include "LibWebRTCProvider.h"
+#include "LibWebRTCUtils.h"
 #include "MainFrame.h"
 #include "MallocStatistics.h"
 #include "MediaPlayer.h"
@@ -92,6 +94,7 @@
 #include "MemoryCache.h"
 #include "MemoryInfo.h"
 #include "MemoryPressureHandler.h"
+#include "MockLibWebRTCPeerConnection.h"
 #include "MockPageOverlay.h"
 #include "MockPageOverlayClient.h"
 #include "Page.h"
@@ -110,6 +113,7 @@
 #include "RenderView.h"
 #include "RenderedDocumentMarker.h"
 #include "ResourceLoadObserver.h"
+#include "SVGDocumentExtensions.h"
 #include "SVGPathStringBuilder.h"
 #include "SchemeRegistry.h"
 #include "ScriptedAnimationController.h"
@@ -390,6 +394,8 @@ void Internals::resetToConsistentState(Page& page)
 #if USE(COORDINATED_GRAPHICS)
         mainFrameView->setFixedVisibleContentRect(IntRect());
 #endif
+        if (auto* backing = mainFrameView->tiledBacking())
+            backing->setTileSizeUpdateDelayDisabledForTesting(false);
     }
 
     WebCore::clearDefaultPortForProtocolMapForTesting();
@@ -450,6 +456,7 @@ Internals::Internals(Document& document)
 
 #if ENABLE(WEB_RTC)
     enableMockMediaEndpoint();
+    useMockRTCPeerConnectionFactory(String());
 #endif
 
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
@@ -492,6 +499,18 @@ InternalSettings* Internals::settings() const
 unsigned Internals::workerThreadCount() const
 {
     return WorkerThread::workerThreadCount();
+}
+
+bool Internals::areSVGAnimationsPaused() const
+{
+    auto* document = contextDocument();
+    if (!document)
+        return false;
+
+    if (!document->svgExtensions())
+        return false;
+
+    return document->accessSVGExtensions().areAnimationsPaused();
 }
 
 String Internals::address(Node& node)
@@ -544,9 +563,8 @@ bool Internals::isLoadingFromMemoryCache(const String& url)
         return false;
 
     ResourceRequest request(contextDocument()->completeURL(url));
-#if ENABLE(CACHE_PARTITIONING)
     request.setDomainForCachePartition(contextDocument()->topOrigin().domainForCachePartition());
-#endif
+    
     CachedResource* resource = MemoryCache::singleton().resourceForRequest(request, contextDocument()->page()->sessionID());
     return resource && resource->status() == CachedResource::Cached;
 }
@@ -705,6 +723,20 @@ unsigned Internals::pageCacheSize() const
     return PageCache::singleton().pageCount();
 }
 
+void Internals::disableTileSizeUpdateDelay()
+{
+    Document* document = contextDocument();
+    if (!document || !document->frame())
+        return;
+
+    auto* view = document->frame()->view();
+    if (!view)
+        return;
+
+    if (auto* backing = view->tiledBacking())
+        backing->setTileSizeUpdateDelayDisabledForTesting(true);
+}
+
 Node* Internals::treeScopeRootNode(Node& node)
 {
     return &node.treeScope().rootNode();
@@ -735,7 +767,7 @@ ExceptionOr<bool> Internals::animationsAreSuspended() const
     if (!document || !document->frame())
         return Exception { INVALID_ACCESS_ERR };
 
-    return document->frame()->animation().isSuspended();
+    return document->frame()->animation().animationsAreSuspendedForDocument(document);
 }
 
 ExceptionOr<void> Internals::suspendAnimations() const
@@ -744,7 +776,13 @@ ExceptionOr<void> Internals::suspendAnimations() const
     if (!document || !document->frame())
         return Exception { INVALID_ACCESS_ERR };
 
-    document->frame()->animation().suspendAnimations();
+    document->frame()->animation().suspendAnimationsForDocument(document);
+
+    for (Frame* frame = document->frame(); frame; frame = frame->tree().traverseNext()) {
+        if (Document* document = frame->document())
+            frame->animation().suspendAnimationsForDocument(document);
+    }
+
     return { };
 }
 
@@ -754,7 +792,13 @@ ExceptionOr<void> Internals::resumeAnimations() const
     if (!document || !document->frame())
         return Exception { INVALID_ACCESS_ERR };
 
-    document->frame()->animation().resumeAnimations();
+    document->frame()->animation().resumeAnimationsForDocument(document);
+
+    for (Frame* frame = document->frame(); frame; frame = frame->tree().traverseNext()) {
+        if (Document* document = frame->document())
+            frame->animation().resumeAnimationsForDocument(document);
+    }
+
     return { };
 }
 
@@ -1089,6 +1133,17 @@ void Internals::enableMockMediaEndpoint()
 void Internals::emulateRTCPeerConnectionPlatformEvent(RTCPeerConnection& connection, const String& action)
 {
     connection.emulatePlatformEvent(action);
+}
+
+void Internals::useMockRTCPeerConnectionFactory(const String& testCase)
+{
+#if USE(LIBWEBRTC)
+    Document* document = contextDocument();
+    LibWebRTCProvider* provider = (document && document->page()) ? &document->page()->libWebRTCProvider() : nullptr;
+    WebCore::useMockRTCPeerConnectionFactory(provider, testCase);
+#else
+    UNUSED_PARAM(testCase);
+#endif
 }
 
 #endif
@@ -1439,6 +1494,11 @@ String Internals::rangeAsText(const Range& range)
 Ref<Range> Internals::subrange(Range& range, int rangeLocation, int rangeLength)
 {
     return TextIterator::subrange(&range, rangeLocation, rangeLength);
+}
+
+RefPtr<Range> Internals::rangeOfStringNearLocation(const Range& searchRange, const String& text, unsigned targetOffset)
+{
+    return findClosestPlainText(searchRange, text, 0, targetOffset);
 }
 
 ExceptionOr<RefPtr<Range>> Internals::rangeForDictionaryLookupAtLocation(int x, int y)
@@ -1971,6 +2031,25 @@ ExceptionOr<bool> Internals::isPageBoxVisible(int pageNumber)
     return document->isPageBoxVisible(pageNumber);
 }
 
+static LayerTreeFlags toLayerTreeFlags(unsigned short flags)
+{
+    LayerTreeFlags layerTreeFlags = 0;
+    if (flags & Internals::LAYER_TREE_INCLUDES_VISIBLE_RECTS)
+        layerTreeFlags |= LayerTreeFlagsIncludeVisibleRects;
+    if (flags & Internals::LAYER_TREE_INCLUDES_TILE_CACHES)
+        layerTreeFlags |= LayerTreeFlagsIncludeTileCaches;
+    if (flags & Internals::LAYER_TREE_INCLUDES_REPAINT_RECTS)
+        layerTreeFlags |= LayerTreeFlagsIncludeRepaintRects;
+    if (flags & Internals::LAYER_TREE_INCLUDES_PAINTING_PHASES)
+        layerTreeFlags |= LayerTreeFlagsIncludePaintingPhases;
+    if (flags & Internals::LAYER_TREE_INCLUDES_CONTENT_LAYERS)
+        layerTreeFlags |= LayerTreeFlagsIncludeContentLayers;
+    if (flags & Internals::LAYER_TREE_INCLUDES_ACCELERATES_DRAWING)
+        layerTreeFlags |= LayerTreeFlagsIncludeAcceleratesDrawing;
+
+    return layerTreeFlags;
+}
+
 // FIXME: Remove the document argument. It is almost always the same as
 // contextDocument(), with the exception of a few tests that pass a
 // different document, and could just make the call through another Internals
@@ -1980,19 +2059,7 @@ ExceptionOr<String> Internals::layerTreeAsText(Document& document, unsigned shor
     if (!document.frame())
         return Exception { INVALID_ACCESS_ERR };
 
-    LayerTreeFlags layerTreeFlags = 0;
-    if (flags & LAYER_TREE_INCLUDES_VISIBLE_RECTS)
-        layerTreeFlags |= LayerTreeFlagsIncludeVisibleRects;
-    if (flags & LAYER_TREE_INCLUDES_TILE_CACHES)
-        layerTreeFlags |= LayerTreeFlagsIncludeTileCaches;
-    if (flags & LAYER_TREE_INCLUDES_REPAINT_RECTS)
-        layerTreeFlags |= LayerTreeFlagsIncludeRepaintRects;
-    if (flags & LAYER_TREE_INCLUDES_PAINTING_PHASES)
-        layerTreeFlags |= LayerTreeFlagsIncludePaintingPhases;
-    if (flags & LAYER_TREE_INCLUDES_CONTENT_LAYERS)
-        layerTreeFlags |= LayerTreeFlagsIncludeContentLayers;
-
-    return document.frame()->layerTreeAsText(layerTreeFlags);
+    return document.frame()->layerTreeAsText(toLayerTreeFlags(flags));
 }
 
 ExceptionOr<String> Internals::repaintRectsAsText() const
@@ -3205,7 +3272,7 @@ ExceptionOr<Ref<MockPageOverlay>> Internals::installMockPageOverlay(PageOverlayT
     return MockPageOverlayClient::singleton().installOverlay(document->frame()->mainFrame(), type == PageOverlayType::View ? PageOverlay::OverlayType::View : PageOverlay::OverlayType::Document);
 }
 
-ExceptionOr<String> Internals::pageOverlayLayerTreeAsText() const
+ExceptionOr<String> Internals::pageOverlayLayerTreeAsText(unsigned short flags) const
 {
     Document* document = contextDocument();
     if (!document || !document->frame())
@@ -3213,7 +3280,7 @@ ExceptionOr<String> Internals::pageOverlayLayerTreeAsText() const
 
     document->updateLayout();
 
-    return MockPageOverlayClient::singleton().layerTreeAsText(document->frame()->mainFrame());
+    return MockPageOverlayClient::singleton().layerTreeAsText(document->frame()->mainFrame(), toLayerTreeFlags(flags));
 }
 
 void Internals::setPageMuted(const String& states)
@@ -3627,13 +3694,23 @@ Vector<String> Internals::accessKeyModifiers() const
     return accessKeyModifierStrings;
 }
 
-#if USE(QUICK_LOOK)
+#if PLATFORM(IOS)
 void Internals::setQuickLookPassword(const String& password)
 {
+#if USE(QUICK_LOOK)
     auto& quickLookHandleClient = MockQuickLookHandleClient::singleton();
     QuickLookHandle::setClientForTesting(&quickLookHandleClient);
     quickLookHandleClient.setPassword(password);
+#else
+    UNUSED_PARAM(password);
+#endif
 }
 #endif
+
+void Internals::setAsRunningUserScripts(Document& document)
+{
+    if (document.page())
+        document.page()->setAsRunningUserScripts();
+}
 
 } // namespace WebCore

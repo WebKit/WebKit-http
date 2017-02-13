@@ -30,7 +30,9 @@ WebKitTLSErrorsPolicy
 WebKitNetworkProxyMode
 webkit_web_context_get_default
 webkit_web_context_new
+webkit_web_context_new_ephemeral
 webkit_web_context_new_with_website_data_manager
+webkit_web_context_is_ephemeral
 webkit_web_context_get_website_data_manager
 webkit_web_context_get_cache_model
 webkit_web_context_set_cache_model
@@ -158,6 +160,7 @@ webkit_web_view_new_with_context
 webkit_web_view_new_with_related_view
 webkit_web_view_new_with_settings
 webkit_web_view_new_with_user_content_manager
+webkit_web_view_is_ephemeral
 webkit_web_view_get_context
 webkit_web_view_get_user_content_manager
 webkit_web_view_try_close
@@ -355,6 +358,7 @@ webkit_back_forward_list_item_get_type
 <SECTION>
 <FILE>WebKitSettings</FILE>
 WebKitSettings
+WebKitHardwareAccelerationPolicy
 webkit_settings_new
 webkit_settings_new_with_settings
 webkit_settings_get_auto_load_images
@@ -458,6 +462,8 @@ webkit_settings_get_allow_file_access_from_file_urls
 webkit_settings_set_allow_file_access_from_file_urls
 webkit_settings_get_allow_universal_access_from_file_urls
 webkit_settings_set_allow_universal_access_from_file_urls
+webkit_settings_get_hardware_acceleration_policy
+webkit_settings_set_hardware_acceleration_policy
 
 <SUBSECTION Standard>
 WebKitSettingsClass
@@ -1237,6 +1243,8 @@ webkit_security_origin_get_type
 <FILE>WebKitWebsiteDataManager</FILE>
 WebKitWebsiteDataManager
 webkit_website_data_manager_new
+webkit_website_data_manager_new_ephemeral
+webkit_website_data_manager_is_ephemeral
 webkit_website_data_manager_get_base_data_directory
 webkit_website_data_manager_get_base_cache_directory
 webkit_website_data_manager_get_local_storage_directory
@@ -1244,6 +1252,12 @@ webkit_website_data_manager_get_disk_cache_directory
 webkit_website_data_manager_get_offline_application_cache_directory
 webkit_website_data_manager_get_indexeddb_directory
 webkit_website_data_manager_get_websql_directory
+webkit_website_data_manager_fetch
+webkit_website_data_manager_fetch_finish
+webkit_website_data_manager_remove
+webkit_website_data_manager_remove_finish
+webkit_website_data_manager_clear
+webkit_website_data_manager_clear_finish
 
 <SUBSECTION Standard>
 WebKitWebsiteDataManagerClass
@@ -1257,6 +1271,23 @@ WEBKIT_WEBSITE_DATA_MANAGER_GET_CLASS
 <SUBSECTION Private>
 WebKitWebsiteDataManagerPrivate
 webkit_website_data_manager_get_type
+</SECTION>
+
+<SECTION>
+<FILE>WebKitWebsiteData</FILE>
+WebKitWebsiteData
+WebKitWebsiteDataTypes
+webkit_website_data_ref
+webkit_website_data_unref
+webkit_website_data_get_name
+webkit_website_data_get_types
+webkit_website_data_get_size
+
+<SUBSECTION Standard>
+WEBKIT_TYPE_WEBSITE_DATA
+
+<SUBSECTION Private>
+webkit_website_data_get_type
 </SECTION>
 
 <SECTION>
@@ -1439,4 +1470,25 @@ WEBKIT_COLOR_CHOOSER_REQUEST_GET_CLASS
 <SUBSECTION Private>
 WebKitColorChooserRequestPrivate
 webkit_color_chooser_request_get_type
+</SECTION>
+
+<SECTION>
+<FILE>WebKitPrintCustomWidget</FILE>
+WebKitPrintCustomWidget
+webkit_print_custom_widget_new
+webkit_print_custom_widget_get_widget
+webkit_print_custom_widget_get_title
+
+<SUBSECTION Standard>
+WebKitPrintCustomWidgetClass
+WEBKIT_TYPE_PRINT_CUSTOM_WIDGET
+WEBKIT_PRINT_CUSTOM_WIDGET
+WEBKIT_IS_PRINT_CUSTOM_WIDGET
+WEBKIT_PRINT_CUSTOM_WIDGET_CLASS
+WEBKIT_IS_PRINT_CUSTOM_WIDGET_CLASS
+WEBKIT_PRINT_CUSTOM_WIDGET_GET_CLASS
+
+<SUBSECTION Private>
+WebKitPrintCustomWidgetPrivate
+webkit_print_custom_widget_get_type
 </SECTION>

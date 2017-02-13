@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2015 Yusuke Suzuki <utatane.tea@gmail.com>.
- * Copyright (C) 2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2016-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -141,7 +141,7 @@ static const PropertyOffset valuePropertyOffset = 1;
 
 Structure* createIteratorResultObjectStructure(VM& vm, JSGlobalObject& globalObject)
 {
-    Structure* iteratorResultStructure = vm.prototypeMap.emptyObjectStructureForPrototype(globalObject.objectPrototype(), JSFinalObject::defaultInlineCapacity());
+    Structure* iteratorResultStructure = vm.prototypeMap.emptyObjectStructureForPrototype(&globalObject, globalObject.objectPrototype(), JSFinalObject::defaultInlineCapacity());
     PropertyOffset offset;
     iteratorResultStructure = Structure::addPropertyTransition(vm, iteratorResultStructure, vm.propertyNames->done, 0, offset);
     RELEASE_ASSERT(offset == donePropertyOffset);
@@ -159,12 +159,29 @@ JSObject* createIteratorResultObject(ExecState* exec, JSValue value, bool done)
     return resultObject;
 }
 
+bool hasIteratorMethod(ExecState& state, JSValue value)
+{
+    auto& vm = state.vm();
+    auto scope = DECLARE_THROW_SCOPE(vm);
+
+    if (!value.isObject())
+        return false;
+
+    JSObject* object = asObject(value);
+    CallData callData;
+    CallType callType;
+    JSValue applyMethod = object->getMethod(&state, callData, callType, vm.propertyNames->iteratorSymbol, ASCIILiteral("Symbol.iterator property should be callable"));
+    RETURN_IF_EXCEPTION(scope, false);
+
+    return !applyMethod.isUndefined();
+}
+
 JSValue iteratorForIterable(ExecState* state, JSValue iterable)
 {
     VM& vm = state->vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
     
-    JSValue iteratorFunction = iterable.get(state, state->propertyNames().iteratorSymbol);
+    JSValue iteratorFunction = iterable.get(state, vm.propertyNames->iteratorSymbol);
     RETURN_IF_EXCEPTION(scope, JSValue());
     
     CallData iteratorFunctionCallData;

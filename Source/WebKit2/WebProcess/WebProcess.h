@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2010-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -28,6 +28,7 @@
 #include "CacheModel.h"
 #include "ChildProcess.h"
 #include "DrawingArea.h"
+#include "LibWebRTCNetwork.h"
 #include "PluginProcessConnectionManager.h"
 #include "ResourceCachesToClear.h"
 #include "SandboxExtension.h"
@@ -116,7 +117,7 @@ public:
     WebConnectionToUIProcess* webConnectionToUIProcess() const { return m_webConnection.get(); }
 
     WebPage* webPage(uint64_t pageID) const;
-    void createWebPage(uint64_t pageID, const WebPageCreationParameters&);
+    void createWebPage(uint64_t pageID, WebPageCreationParameters&&);
     void removeWebPage(uint64_t pageID);
     WebPage* focusedWebPage() const;
 
@@ -164,6 +165,10 @@ public:
     NetworkProcessConnection& networkConnection();
     void networkProcessConnectionClosed(NetworkProcessConnection*);
     WebLoaderStrategy& webLoaderStrategy();
+
+#if USE(LIBWEBRTC)
+    LibWebRTCNetwork& libWebRTCNetwork();
+#endif
 
 #if ENABLE(DATABASE_PROCESS)
     void webToDatabaseProcessConnectionClosed(WebToDatabaseProcessConnection*);
@@ -252,9 +257,7 @@ private:
     void registerURLSchemeAsDisplayIsolated(const String&) const;
     void registerURLSchemeAsCORSEnabled(const String&) const;
     void registerURLSchemeAsAlwaysRevalidated(const String&) const;
-#if ENABLE(CACHE_PARTITIONING)
     void registerURLSchemeAsCachePartitioned(const String&) const;
-#endif
     void setDefaultRequestTimeoutInterval(double);
     void setAlwaysUsesComplexTextCodePath(bool);
     void setShouldUseFontSmoothing(bool);
@@ -333,7 +336,6 @@ private:
     void didReceiveMessage(IPC::Connection&, IPC::Decoder&) override;
     void didReceiveSyncMessage(IPC::Connection&, IPC::Decoder&, std::unique_ptr<IPC::Encoder>&) override;
     void didClose(IPC::Connection&) override;
-    void didReceiveInvalidMessage(IPC::Connection&, IPC::StringReference messageReceiverName, IPC::StringReference messageName) override;
 
     // Implemented in generated WebProcessMessageReceiver.cpp
     void didReceiveWebProcessMessage(IPC::Connection&, IPC::Decoder&);
@@ -349,8 +351,6 @@ private:
 #if PLATFORM(IOS)
     RefPtr<ViewUpdateDispatcher> m_viewUpdateDispatcher;
 #endif
-
-    bool m_inDidClose { false };
 
     HashMap<WebCore::SessionID, HashMap<unsigned, double>> m_plugInAutoStartOriginHashes;
     HashSet<String> m_plugInAutoStartOrigins;
@@ -377,6 +377,11 @@ private:
     void ensureNetworkProcessConnection();
     RefPtr<NetworkProcessConnection> m_networkProcessConnection;
     WebLoaderStrategy& m_webLoaderStrategy;
+
+#if USE(LIBWEBRTC)
+    std::unique_ptr<LibWebRTCNetwork> m_libWebRTCNetwork;
+#endif
+
     HashSet<String> m_dnsPrefetchedHosts;
     WebCore::HysteresisActivity m_dnsPrefetchHystereris;
 
@@ -407,7 +412,7 @@ private:
     WebSQLiteDatabaseTracker m_webSQLiteDatabaseTracker;
 #endif
 
-    Ref<WebCore::ResourceLoadStatisticsStore> m_resourceLoadStatisticsStorage;
+    Ref<WebCore::ResourceLoadStatisticsStore> m_resourceLoadStatisticsStore;
 
     unsigned m_pagesMarkingLayersAsVolatile { 0 };
     bool m_suppressMemoryPressureHandler { false };

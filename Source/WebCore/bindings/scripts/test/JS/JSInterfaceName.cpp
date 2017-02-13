@@ -22,7 +22,10 @@
 #include "JSInterfaceName.h"
 
 #include "JSDOMBinding.h"
-#include "JSDOMConstructor.h"
+#include "JSDOMBindingCaller.h"
+#include "JSDOMConstructorNotConstructable.h"
+#include "JSDOMExceptionHandling.h"
+#include "JSDOMWrapperCache.h"
 #include <runtime/FunctionPrototype.h>
 #include <wtf/GetPtr.h>
 
@@ -102,7 +105,7 @@ JSInterfaceName::JSInterfaceName(Structure* structure, JSDOMGlobalObject& global
 void JSInterfaceName::finishCreation(VM& vm)
 {
     Base::finishCreation(vm);
-    ASSERT(inherits(info()));
+    ASSERT(inherits(vm, info()));
 
 }
 
@@ -126,7 +129,7 @@ EncodedJSValue jsInterfaceNameConstructor(ExecState* state, EncodedJSValue thisV
 {
     VM& vm = state->vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);
-    JSInterfaceNamePrototype* domObject = jsDynamicDowncast<JSInterfaceNamePrototype*>(JSValue::decode(thisValue));
+    JSInterfaceNamePrototype* domObject = jsDynamicDowncast<JSInterfaceNamePrototype*>(vm, JSValue::decode(thisValue));
     if (UNLIKELY(!domObject))
         return throwVMTypeError(state, throwScope);
     return JSValue::encode(JSInterfaceName::getConstructor(state->vm(), domObject->globalObject()));
@@ -137,7 +140,7 @@ bool setJSInterfaceNameConstructor(ExecState* state, EncodedJSValue thisValue, E
     VM& vm = state->vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);
     JSValue value = JSValue::decode(encodedValue);
-    JSInterfaceNamePrototype* domObject = jsDynamicDowncast<JSInterfaceNamePrototype*>(JSValue::decode(thisValue));
+    JSInterfaceNamePrototype* domObject = jsDynamicDowncast<JSInterfaceNamePrototype*>(vm, JSValue::decode(thisValue));
     if (UNLIKELY(!domObject)) {
         throwVMTypeError(state, throwScope);
         return false;
@@ -218,9 +221,9 @@ JSC::JSValue toJS(JSC::ExecState* state, JSDOMGlobalObject* globalObject, Interf
     return wrap(state, globalObject, impl);
 }
 
-InterfaceName* JSInterfaceName::toWrapped(JSC::JSValue value)
+InterfaceName* JSInterfaceName::toWrapped(JSC::VM& vm, JSC::JSValue value)
 {
-    if (auto* wrapper = jsDynamicDowncast<JSInterfaceName*>(value))
+    if (auto* wrapper = jsDynamicDowncast<JSInterfaceName*>(vm, value))
         return &wrapper->wrapped();
     return nullptr;
 }

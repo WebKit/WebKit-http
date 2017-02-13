@@ -87,6 +87,7 @@ public:
     ExceptionOr<void> setBackgroundShouldExtendBeyondPage(bool);
     ExceptionOr<void> setShouldConvertPositionStyleOnCopy(bool);
     ExceptionOr<void> setScrollingTreeIncludesFrames(bool);
+    ExceptionOr<void> setAllowUnclampedScrollPosition(bool);
     ExceptionOr<void> setAllowsInlineMediaPlayback(bool);
     ExceptionOr<void> setAllowsInlineMediaPlaybackAfterFullscreen(bool);
     ExceptionOr<void> setInlineMediaPlaybackRequiresPlaysInlineAttribute(bool);
@@ -109,9 +110,6 @@ public:
     void setForcedPrefersReducedMotionAccessibilityValue(ForcedAccessibilityValue);
 
     // RuntimeEnabledFeatures.
-    static void setLangAttributeAwareFormControlUIEnabled(bool);
-    static void setResourceTimingEnabled(bool);
-    static void setLinkPreloadEnabled(bool);
     static void setIndexedDBWorkersEnabled(bool);
     static void setCSSGridLayoutEnabled(bool);
     static void setWebGL2Enabled(bool);
@@ -188,9 +186,6 @@ private:
         Settings::ForcedAccessibilityValue m_forcedPrefersReducedMotionAccessibilityValue;
 
         // Runtime enabled settings.
-        bool m_langAttributeAwareFormControlUIEnabled;
-        bool m_resourceTimingEnabled;
-        bool m_linkPreloadEnabled;
         bool m_indexedDBWorkersEnabled;
         bool m_cssGridLayoutEnabled;
         bool m_webGL2Enabled;

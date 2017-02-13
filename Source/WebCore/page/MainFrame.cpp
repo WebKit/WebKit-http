@@ -92,7 +92,13 @@ void MainFrame::selfOnlyDeref()
 void MainFrame::dropChildren()
 {
     while (Frame* child = tree().firstChild())
-        tree().removeChild(child);
+        tree().removeChild(*child);
+}
+
+void MainFrame::didCompleteLoad()
+{
+    m_timeOfLastCompletedLoad = MonotonicTime::now();
+    performanceLogging().didReachPointOfInterest(PerformanceLogging::MainFrameLoadCompleted);
 }
 
 #if PLATFORM(MAC)

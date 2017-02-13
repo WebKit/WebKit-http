@@ -195,6 +195,7 @@ enum EventThrottlingBehavior {
     DOMString rangeAsText(Range range);
     Range subrange(Range range, long rangeLocation, long rangeLength);
     [MayThrowException] Range? rangeForDictionaryLookupAtLocation(long x, long y);
+    Range? rangeOfStringNearLocation(Range range, DOMString text, long targetOffset);
 
     [MayThrowException] void setDelegatesScrolling(boolean enabled);
 
@@ -245,12 +246,15 @@ enum EventThrottlingBehavior {
     readonly attribute InternalSettings settings;
     readonly attribute unsigned long workerThreadCount;
 
+    readonly attribute boolean areSVGAnimationsPaused;
+
     // Flags for layerTreeAsText.
     const unsigned short LAYER_TREE_INCLUDES_VISIBLE_RECTS = 1;
     const unsigned short LAYER_TREE_INCLUDES_TILE_CACHES = 2;
     const unsigned short LAYER_TREE_INCLUDES_REPAINT_RECTS = 4;
     const unsigned short LAYER_TREE_INCLUDES_PAINTING_PHASES = 8;
     const unsigned short LAYER_TREE_INCLUDES_CONTENT_LAYERS = 16;
+    const unsigned short LAYER_TREE_INCLUDES_ACCELERATES_DRAWING = 32;
     [MayThrowException] DOMString layerTreeAsText(Document document, optional unsigned short flags = 0);
 
     [MayThrowException] DOMString scrollingStateTreeAsText();
@@ -435,13 +439,14 @@ enum EventThrottlingBehavior {
     [Conditional=WIRELESS_PLAYBACK_TARGET, MayThrowException] void setMockMediaPlaybackTargetPickerState(DOMString deviceName, DOMString deviceState);
     [Conditional=MEDIA_STREAM] void setMockMediaCaptureDevicesEnabled(boolean enabled);
     [Conditional=WEB_RTC] void emulateRTCPeerConnectionPlatformEvent(RTCPeerConnection connection, DOMString action);
+    [Conditional=WEB_RTC] void useMockRTCPeerConnectionFactory(DOMString testCase);
 
     [Conditional=VIDEO] void simulateSystemSleep();
     [Conditional=VIDEO] void simulateSystemWake();
     [Conditional=VIDEO] boolean elementIsBlockingDisplaySleep(HTMLMediaElement element);
 
     [MayThrowException] MockPageOverlay installMockPageOverlay(PageOverlayType type);
-    [MayThrowException] DOMString pageOverlayLayerTreeAsText();
+    [MayThrowException] DOMString pageOverlayLayerTreeAsText(optional unsigned short flags = 0);
 
     void setPageMuted(DOMString mutedState);
     DOMString pageMediaState();
@@ -495,4 +500,8 @@ enum EventThrottlingBehavior {
 #if defined(WTF_PLATFORM_IOS) && WTF_PLATFORM_IOS
     void setQuickLookPassword(DOMString password);
 #endif
+
+    [CallWith=Document] void setAsRunningUserScripts();
+
+    void disableTileSizeUpdateDelay();
 };

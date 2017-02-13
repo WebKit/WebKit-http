@@ -40,9 +40,11 @@
 #include "ExceptionFuzz.h"
 #include "GetterSetter.h"
 #include "HostCallReturnValue.h"
+#include "ICStats.h"
 #include "Interpreter.h"
 #include "IteratorOperations.h"
 #include "JIT.h"
+#include "JSArrayInlines.h"
 #include "JSCInlines.h"
 #include "JSCJSValue.h"
 #include "JSFixedArray.h"
@@ -619,7 +621,7 @@ SLOW_PATH_DECL(slow_path_is_function)
 SLOW_PATH_DECL(slow_path_in)
 {
     BEGIN();
-    RETURN(jsBoolean(CommonSlowPaths::opIn(exec, OP_C(2).jsValue(), OP_C(3).jsValue())));
+    RETURN(jsBoolean(CommonSlowPaths::opIn(exec, OP_C(2).jsValue(), OP_C(3).jsValue(), pc[4].u.arrayProfile)));
 }
 
 SLOW_PATH_DECL(slow_path_del_by_val)
@@ -1004,7 +1006,7 @@ SLOW_PATH_DECL(slow_path_new_array_with_spread)
     JSGlobalObject* globalObject = exec->lexicalGlobalObject();
     Structure* structure = globalObject->arrayStructureForIndexingTypeDuringAllocation(ArrayWithContiguous);
 
-    JSArray* result = JSArray::tryCreateUninitialized(vm, structure, arraySize);
+    JSArray* result = JSArray::tryCreateForInitializationPrivate(vm, structure, arraySize);
     CHECK_EXCEPTION();
 
     unsigned index = 0;
@@ -1034,15 +1036,17 @@ SLOW_PATH_DECL(slow_path_spread)
 
     JSValue iterable = OP_C(2).jsValue();
 
-    JSGlobalObject* globalObject = exec->lexicalGlobalObject();
-
-    if (iterable.isCell() && isJSArray(iterable.asCell()) && globalObject->isArrayIteratorProtocolFastAndNonObservable()) {
-        // JSFixedArray::createFromArray does not consult the prototype chain,
-        // so we must be sure that not consulting the prototype chain would
-        // produce the same value during iteration.
+    if (iterable.isCell() && isJSArray(iterable.asCell())) {
         JSArray* array = jsCast<JSArray*>(iterable);
-        RETURN(JSFixedArray::createFromArray(exec, vm, array));
+        if (array->isIteratorProtocolFastAndNonObservable()) {
+            // JSFixedArray::createFromArray does not consult the prototype chain,
+            // so we must be sure that not consulting the prototype chain would
+            // produce the same value during iteration.
+            RETURN(JSFixedArray::createFromArray(exec, vm, array));
+        }
     }
+
+    JSGlobalObject* globalObject = exec->lexicalGlobalObject();
 
     JSArray* array;
     {

@@ -204,8 +204,7 @@ CanvasRenderingContext* HTMLCanvasElement::getContext2d(const String& type)
     if (!m_context) {
         bool usesDashboardCompatibilityMode = false;
 #if ENABLE(DASHBOARD_SUPPORT)
-        if (Settings* settings = document().settings())
-            usesDashboardCompatibilityMode = settings->usesDashboardBackwardCompatibilityMode();
+        usesDashboardCompatibilityMode = document().settings().usesDashboardBackwardCompatibilityMode();
 #endif
 
         // Make sure we don't use more pixel memory than the system can support.
@@ -243,18 +242,15 @@ static bool requiresAcceleratedCompositingForWebGL()
 #endif
 
 }
-static bool shouldEnableWebGL(Settings* settings)
+static bool shouldEnableWebGL(const Settings& settings)
 {
-    if (!settings)
-        return false;
-
-    if (!settings->webGLEnabled())
+    if (!settings.webGLEnabled())
         return false;
 
     if (!requiresAcceleratedCompositingForWebGL())
         return true;
 
-    return settings->acceleratedCompositingEnabled();
+    return settings.acceleratedCompositingEnabled();
 }
 
 bool HTMLCanvasElement::is3dType(const String& type)
@@ -540,19 +536,25 @@ SecurityOrigin* HTMLCanvasElement::securityOrigin() const
 
 bool HTMLCanvasElement::shouldAccelerate(const IntSize& size) const
 {
+    auto& settings = document().settings();
+
+    auto area = size.area<RecordOverflow>();
+    if (area.hasOverflowed())
+        return false;
+
+    if (area > settings.maximumAccelerated2dCanvasSize())
+        return false;
+
 #if USE(IOSURFACE_CANVAS_BACKING_STORE)
-    UNUSED_PARAM(size);
-    return document().settings() && document().settings()->canvasUsesAcceleratedDrawing();
+    return settings.canvasUsesAcceleratedDrawing();
 #elif ENABLE(ACCELERATED_2D_CANVAS)
     if (m_context && !m_context->is2d())
         return false;
 
-    Settings* settings = document().settings();
-    if (!settings || !settings->accelerated2dCanvasEnabled())
+    if (!settings.accelerated2dCanvasEnabled())
         return false;
 
-    // Do not use acceleration for small canvas.
-    if (size.width() * size.height() < settings->minimumAccelerated2dCanvasSize())
+    if (area < settings.minimumAccelerated2dCanvasSize())
         return false;
 
     return true;
@@ -657,8 +659,6 @@ void HTMLCanvasElement::createImageBuffer() const
         return;
     m_imageBuffer->context().setShadowsIgnoreTransforms(true);
     m_imageBuffer->context().setImageInterpolationQuality(defaultInterpolationQuality);
-    if (document().settings() && !document().settings()->antialiased2dCanvasEnabled())
-        m_imageBuffer->context().setShouldAntialias(false);
     m_imageBuffer->context().setStrokeThickness(1);
     m_contextStateSaver = std::make_unique<GraphicsContextStateSaver>(m_imageBuffer->context());
 

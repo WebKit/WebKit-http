@@ -23,8 +23,11 @@
 
 #include "CustomElementReactionQueue.h"
 #include "JSDOMBinding.h"
-#include "JSDOMConstructor.h"
+#include "JSDOMBindingCaller.h"
+#include "JSDOMConstructorNotConstructable.h"
 #include "JSDOMConvert.h"
+#include "JSDOMExceptionHandling.h"
+#include "JSDOMWrapperCache.h"
 #include <runtime/Error.h>
 #include <runtime/FunctionPrototype.h>
 #include <wtf/GetPtr.h>
@@ -113,7 +116,7 @@ JSTestCEReactionsStringifier::JSTestCEReactionsStringifier(Structure* structure,
 void JSTestCEReactionsStringifier::finishCreation(VM& vm)
 {
     Base::finishCreation(vm);
-    ASSERT(inherits(info()));
+    ASSERT(inherits(vm, info()));
 
 }
 
@@ -133,14 +136,14 @@ void JSTestCEReactionsStringifier::destroy(JSC::JSCell* cell)
     thisObject->JSTestCEReactionsStringifier::~JSTestCEReactionsStringifier();
 }
 
-template<> inline JSTestCEReactionsStringifier* BindingCaller<JSTestCEReactionsStringifier>::castForAttribute(ExecState&, EncodedJSValue thisValue)
+template<> inline JSTestCEReactionsStringifier* BindingCaller<JSTestCEReactionsStringifier>::castForAttribute(ExecState& state, EncodedJSValue thisValue)
 {
-    return jsDynamicDowncast<JSTestCEReactionsStringifier*>(JSValue::decode(thisValue));
+    return jsDynamicDowncast<JSTestCEReactionsStringifier*>(state.vm(), JSValue::decode(thisValue));
 }
 
 template<> inline JSTestCEReactionsStringifier* BindingCaller<JSTestCEReactionsStringifier>::castForOperation(ExecState& state)
 {
-    return jsDynamicDowncast<JSTestCEReactionsStringifier*>(state.thisValue());
+    return jsDynamicDowncast<JSTestCEReactionsStringifier*>(state.vm(), state.thisValue());
 }
 
 static inline JSValue jsTestCEReactionsStringifierValueGetter(ExecState&, JSTestCEReactionsStringifier&, ThrowScope& throwScope);
@@ -163,7 +166,7 @@ EncodedJSValue jsTestCEReactionsStringifierConstructor(ExecState* state, Encoded
 {
     VM& vm = state->vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);
-    JSTestCEReactionsStringifierPrototype* domObject = jsDynamicDowncast<JSTestCEReactionsStringifierPrototype*>(JSValue::decode(thisValue));
+    JSTestCEReactionsStringifierPrototype* domObject = jsDynamicDowncast<JSTestCEReactionsStringifierPrototype*>(vm, JSValue::decode(thisValue));
     if (UNLIKELY(!domObject))
         return throwVMTypeError(state, throwScope);
     return JSValue::encode(JSTestCEReactionsStringifier::getConstructor(state->vm(), domObject->globalObject()));
@@ -174,7 +177,7 @@ bool setJSTestCEReactionsStringifierConstructor(ExecState* state, EncodedJSValue
     VM& vm = state->vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);
     JSValue value = JSValue::decode(encodedValue);
-    JSTestCEReactionsStringifierPrototype* domObject = jsDynamicDowncast<JSTestCEReactionsStringifierPrototype*>(JSValue::decode(thisValue));
+    JSTestCEReactionsStringifierPrototype* domObject = jsDynamicDowncast<JSTestCEReactionsStringifierPrototype*>(vm, JSValue::decode(thisValue));
     if (UNLIKELY(!domObject)) {
         throwVMTypeError(state, throwScope);
         return false;
@@ -275,9 +278,9 @@ JSC::JSValue toJS(JSC::ExecState* state, JSDOMGlobalObject* globalObject, TestCE
     return wrap(state, globalObject, impl);
 }
 
-TestCEReactionsStringifier* JSTestCEReactionsStringifier::toWrapped(JSC::JSValue value)
+TestCEReactionsStringifier* JSTestCEReactionsStringifier::toWrapped(JSC::VM& vm, JSC::JSValue value)
 {
-    if (auto* wrapper = jsDynamicDowncast<JSTestCEReactionsStringifier*>(value))
+    if (auto* wrapper = jsDynamicDowncast<JSTestCEReactionsStringifier*>(vm, value))
         return &wrapper->wrapped();
     return nullptr;
 }

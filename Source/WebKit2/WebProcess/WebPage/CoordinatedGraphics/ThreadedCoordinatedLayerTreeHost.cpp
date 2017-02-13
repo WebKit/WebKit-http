@@ -55,6 +55,12 @@ ThreadedCoordinatedLayerTreeHost::ThreadedCoordinatedLayerTreeHost(WebPage& webP
     , m_surface(AcceleratedSurface::create(webPage))
     , m_viewportController(webPage.size())
 {
+    if (FrameView* frameView = m_webPage.mainFrameView()) {
+        auto contentsSize = frameView->contentsSize();
+        if (!contentsSize.isEmpty())
+            m_viewportController.didChangeContentsSize(contentsSize);
+    }
+
     IntSize scaledSize(m_webPage.size());
     scaledSize.scale(m_webPage.deviceScaleFactor());
     float scaleFactor = m_webPage.deviceScaleFactor() * m_viewportController.pageScaleFactor();
@@ -96,17 +102,28 @@ void ThreadedCoordinatedLayerTreeHost::scrollNonCompositedContents(const IntRect
         return;
 
     m_viewportController.didScroll(rect.location());
-    didChangeViewport();
+    if (m_isDiscardable)
+        m_discardableSyncActions |= DiscardableSyncActions::UpdateViewport;
+    else
+        didChangeViewport();
 }
 
 void ThreadedCoordinatedLayerTreeHost::contentsSizeChanged(const IntSize& newSize)
 {
     m_viewportController.didChangeContentsSize(newSize);
-    didChangeViewport();
+    if (m_isDiscardable)
+        m_discardableSyncActions |= DiscardableSyncActions::UpdateViewport;
+    else
+        didChangeViewport();
 }
 
 void ThreadedCoordinatedLayerTreeHost::deviceOrPageScaleFactorChanged()
 {
+    if (m_isDiscardable) {
+        m_discardableSyncActions |= DiscardableSyncActions::UpdateScale;
+        return;
+    }
+
     if (m_surface && m_surface->resize(m_webPage.size()))
         m_layerTreeContext.contextID = m_surface->surfaceID();
 
@@ -116,12 +133,23 @@ void ThreadedCoordinatedLayerTreeHost::deviceOrPageScaleFactorChanged()
 
 void ThreadedCoordinatedLayerTreeHost::pageBackgroundTransparencyChanged()
 {
+    if (m_isDiscardable) {
+        m_discardableSyncActions |= DiscardableSyncActions::UpdateBackground;
+        return;
+    }
+
     CoordinatedLayerTreeHost::pageBackgroundTransparencyChanged();
     m_compositor->setDrawsBackground(m_webPage.drawsBackground());
 }
 
 void ThreadedCoordinatedLayerTreeHost::sizeDidChange(const IntSize& size)
 {
+    if (m_isDiscardable) {
+        m_discardableSyncActions |= DiscardableSyncActions::UpdateSize;
+        m_viewportController.didChangeViewportSize(size);
+        return;
+    }
+
     if (m_surface && m_surface->resize(size))
         m_layerTreeContext.contextID = m_surface->surfaceID();
 
@@ -133,10 +161,13 @@ void ThreadedCoordinatedLayerTreeHost::sizeDidChange(const IntSize& size)
     didChangeViewport();
 }
 
-void ThreadedCoordinatedLayerTreeHost::didChangeViewportProperties(const ViewportAttributes& attr)
+void ThreadedCoordinatedLayerTreeHost::didChangeViewportAttributes(ViewportAttributes&& attr)
 {
-    m_viewportController.didChangeViewportAttributes(attr);
-    didChangeViewport();
+    m_viewportController.didChangeViewportAttributes(WTFMove(attr));
+    if (m_isDiscardable)
+        m_discardableSyncActions |= DiscardableSyncActions::UpdateViewport;
+    else
+        didChangeViewport();
 }
 
 #if PLATFORM(GTK) && PLATFORM(X11) && !USE(REDIRECTED_XCOMPOSITE_WINDOW)
@@ -187,6 +218,33 @@ void ThreadedCoordinatedLayerTreeHost::commitSceneState(const CoordinatedGraphic
 {
     CoordinatedLayerTreeHost::commitSceneState(state);
     m_compositor->updateSceneState(state);
+}
+
+void ThreadedCoordinatedLayerTreeHost::setIsDiscardable(bool discardable)
+{
+    m_isDiscardable = discardable;
+    if (m_isDiscardable) {
+        m_discardableSyncActions = OptionSet<DiscardableSyncActions>();
+        return;
+    }
+
+    if (m_discardableSyncActions.isEmpty())
+        return;
+
+    if (m_discardableSyncActions.contains(DiscardableSyncActions::UpdateBackground))
+        pageBackgroundTransparencyChanged();
+
+    if (m_discardableSyncActions.contains(DiscardableSyncActions::UpdateSize)) {
+        // Size changes already sets the scale factor and updates the viewport.
+        sizeDidChange(m_webPage.size());
+        return;
+    }
+
+    if (m_discardableSyncActions.contains(DiscardableSyncActions::UpdateScale))
+        deviceOrPageScaleFactorChanged();
+
+    if (m_discardableSyncActions.contains(DiscardableSyncActions::UpdateViewport))
+        didChangeViewport();
 }
 
 #if USE(REQUEST_ANIMATION_FRAME_DISPLAY_MONITOR)

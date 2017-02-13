@@ -45,25 +45,19 @@ class IDBKeyData;
 class IDBValue;
 class IndexKey;
 class JSDOMGlobalObject;
-class ThreadSafeDataBuffer;
-
-// FIXME: Remove this once we support returning union types.
-JSC::JSValue toJS(JSC::ExecState&, JSDOMGlobalObject&, const std::optional<IDBKeyPath>&);
 
 RefPtr<IDBKey> maybeCreateIDBKeyFromScriptValueAndKeyPath(JSC::ExecState&, const JSC::JSValue&, const IDBKeyPath&);
 bool canInjectIDBKeyIntoScriptValue(JSC::ExecState&, const JSC::JSValue&, const IDBKeyPath&);
 bool injectIDBKeyIntoScriptValue(JSC::ExecState&, const IDBKeyData&, JSC::JSValue, const IDBKeyPath&);
 
-JSC::JSValue toJS(JSC::ExecState&, JSC::JSGlobalObject&, IDBKey*);
-JSC::JSValue idbKeyDataToScriptValue(JSC::ExecState&, const IDBKeyData&);
 void generateIndexKeyForValue(JSC::ExecState&, const IDBIndexInfo&, JSC::JSValue, IndexKey& outKey);
-
-JSC::JSValue deserializeIDBValueToJSValue(JSC::ExecState&, const IDBValue&);
 
 Ref<IDBKey> scriptValueToIDBKey(JSC::ExecState&, const JSC::JSValue&);
 
-JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject*, const IDBKeyData&);
+JSC::JSValue deserializeIDBValueToJSValue(JSC::ExecState&, const IDBValue&);
 JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject*, const IDBValue&);
+JSC::JSValue toJS(JSC::ExecState&, JSC::JSGlobalObject&, IDBKey*);
+JSC::JSValue toJS(JSC::ExecState*, JSDOMGlobalObject*, const IDBKeyData&);
 
 }
 

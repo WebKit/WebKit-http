@@ -48,4 +48,6 @@ target_link_libraries(gtest
 if (CMAKE_USE_PTHREADS_INIT)
     target_link_libraries(gtest ${CMAKE_THREAD_LIBS_INIT})
     add_definitions(-DGTEST_HAS_PTHREAD=1)
+else ()
+    add_definitions(-DGTEST_HAS_PTHREAD=0)
 endif ()

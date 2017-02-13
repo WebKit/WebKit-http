@@ -114,7 +114,7 @@ private:
     void renderLayerTree();
     void scheduleDisplayImmediately();
 
-    bool makeContextCurrent();
+    void createGLContext();
 
     Client& m_client;
     RefPtr<CoordinatedGraphicsScene> m_scene;

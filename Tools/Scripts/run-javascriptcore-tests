@@ -56,7 +56,7 @@ my $memoryLimited;
 
 my $buildJSC = 1;
 
-my $runTestAPI = isAppleMacWebKit() || isAppleWinWebKit() || isWinCairo();
+my $runTestAPI = isAppleCocoaWebKit() || isAppleWinWebKit() || isWinCairo();
 
 my $runJSCStress = 1;
 my $runJITStressTests = 1;
@@ -270,8 +270,8 @@ sub runJSCStressTests
         @testList = (
             "PerformanceTests/SunSpider/tests/sunspider-1.0",
             "PerformanceTests/JetStream/cdjs/cdjs-tests.yaml",
-            "PerformanceTests/ES6SampleBench/Air/airjs-tests.yaml",
-            "PerformanceTests/ES6SampleBench/Basic/basic-tests.yaml",
+            "PerformanceTests/ARES-6/Air/airjs-tests.yaml",
+            "PerformanceTests/ARES-6/Basic/basic-tests.yaml",
             "JSTests/executableAllocationFuzz.yaml",
             "JSTests/exceptionFuzz.yaml",
             "PerformanceTests/SunSpider/no-architecture-specific-optimizations.yaml",
@@ -279,6 +279,7 @@ sub runJSCStressTests
             "PerformanceTests/SunSpider/tests/v8-v6",
             "JSTests/stress",
             "JSTests/microbenchmarks",
+            "JSTests/slowMicrobenchmarks.yaml",
             "PerformanceTests/SunSpider/profiler-test.yaml",
             "LayoutTests/jsc-layout-tests.yaml",
             "JSTests/typeProfiler.yaml",

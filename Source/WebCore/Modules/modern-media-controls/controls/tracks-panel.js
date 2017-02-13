@@ -4,7 +4,7 @@ class TracksPanel extends LayoutNode
 
     constructor()
     {
-        super(`<div class="tracks-panel">`);
+        super(`<div class="tracks-panel"></div>`);
         this._rightX = 0;
         this._bottomY = 0;
     }
@@ -43,7 +43,9 @@ class TracksPanel extends LayoutNode
         window.removeEventListener("keydown", this, true);
 
         this.element.addEventListener("transitionend", this);
-        this.element.classList.add("fade-out");
+
+        // Ensure a transition will indeed happen by starting it only on the next frame.
+        window.requestAnimationFrame(() => { this.element.classList.add("fade-out") });
     }
 
     get bottomY()

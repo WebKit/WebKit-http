@@ -49,6 +49,17 @@ RunResolver::Run::Run(const Iterator& iterator)
 {
 }
 
+String RunResolver::Run::textWithHyphen() const
+{
+    auto& run = m_iterator.simpleRun();
+    ASSERT(run.hasHyphen);
+    // Empty runs should not have hyphen.
+    ASSERT(run.start < run.end);
+    auto& segment = m_iterator.resolver().m_flowContents.segmentForRun(run.start, run.end);
+    auto text = StringView(segment.text).substring(segment.toSegmentPosition(run.start), run.end - run.start);
+    return makeString(text, m_iterator.resolver().flow().style().hyphenString());
+}
+
 FloatRect RunResolver::Run::rect() const
 {
     auto& run = m_iterator.simpleRun();
@@ -74,7 +85,7 @@ StringView RunResolver::Run::text() const
     auto& segment = m_iterator.resolver().m_flowContents.segmentForRun(run.start, run.end);
     // We currently split runs on segment boundaries (different RenderObject).
     ASSERT(run.end <= segment.end);
-    return StringView(segment.text).substring(run.start - segment.start, run.end - run.start);
+    return StringView(segment.text).substring(segment.toSegmentPosition(run.start), run.end - run.start);
 }
 
 RunResolver::Iterator::Iterator(const RunResolver& resolver, unsigned runIndex, unsigned lineIndex)

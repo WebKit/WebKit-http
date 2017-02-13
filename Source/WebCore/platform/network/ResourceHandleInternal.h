@@ -50,6 +50,7 @@
 
 #if USE(SOUP)
 #include "GUniquePtrSoup.h"
+#include "SoupNetworkSession.h"
 #include <libsoup/soup.h>
 #include <wtf/RunLoop.h>
 #include <wtf/glib/GRefPtr.h>
@@ -78,6 +79,7 @@ public:
         , m_client(client)
         , m_firstRequest(request)
         , m_lastHTTPMethod(request.httpMethod())
+        , m_partition(request.cachePartition())
         , m_defersLoading(defersLoading)
         , m_shouldContentSniff(shouldContentSniff)
         , m_usesAsyncCallbacks(client && client->usesAsyncCallbacks())
@@ -106,6 +108,7 @@ public:
     ResourceHandleClient* m_client;
     ResourceRequest m_firstRequest;
     String m_lastHTTPMethod;
+    String m_partition;
 
     // Suggested credentials for the current redirection step.
     String m_user;
@@ -149,6 +152,7 @@ public:
     bool m_addedCacheValidationHeaders { false };
 #endif
 #if USE(SOUP)
+    SoupNetworkSession* m_session { nullptr };
     GRefPtr<SoupMessage> m_soupMessage;
     ResourceResponse m_response;
     bool m_cancelled { false };

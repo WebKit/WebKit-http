@@ -35,7 +35,6 @@
 #include "Element.h"
 #include "ElementIterator.h"
 #include "Event.h"
-#include "EventHandler.h"
 #include "EventNames.h"
 #include "FloatQuad.h"
 #include "FocusController.h"
@@ -420,7 +419,7 @@ static bool removingNodeRemovesPosition(Node& node, const Position& position)
 
 void DragCaretController::nodeWillBeRemoved(Node& node)
 {
-    if (!hasCaret() || !node.inDocument())
+    if (!hasCaret() || !node.isConnected())
         return;
 
     if (!removingNodeRemovesPosition(node, m_position.deepEquivalent()))
@@ -436,7 +435,7 @@ void FrameSelection::nodeWillBeRemoved(Node& node)
 {
     // There can't be a selection inside a fragment, so if a fragment's node is being removed,
     // the selection in the document that created the fragment needs no adjustment.
-    if (isNone() || !node.inDocument())
+    if (isNone() || !node.isConnected())
         return;
 
     respondToNodeModification(node, removingNodeRemovesPosition(node, m_selection.base()), removingNodeRemovesPosition(node, m_selection.extent()),
@@ -525,7 +524,7 @@ static void updatePositionAfterAdoptingTextReplacement(Position& position, Chara
 void FrameSelection::textWasReplaced(CharacterData* node, unsigned offset, unsigned oldLength, unsigned newLength)
 {
     // The fragment check is a performance optimization. See http://trac.webkit.org/changeset/30062.
-    if (isNone() || !node || !node->inDocument())
+    if (isNone() || !node || !node->isConnected())
         return;
 
     Position base = m_selection.base();
@@ -1944,7 +1943,7 @@ void FrameSelection::selectAll()
     }
 }
 
-bool FrameSelection::setSelectedRange(Range* range, EAffinity affinity, bool closeTyping)
+bool FrameSelection::setSelectedRange(Range* range, EAffinity affinity, bool closeTyping, EUserTriggered userTriggered)
 {
     if (!range)
         return false;
@@ -1957,6 +1956,14 @@ bool FrameSelection::setSelectedRange(Range* range, EAffinity affinity, bool clo
     if (newSelection.isNone())
         return false;
 #endif
+
+    if (userTriggered == UserTriggered) {
+        FrameSelection trialFrameSelection;
+        trialFrameSelection.setSelection(newSelection, ClearTypingStyle | (closeTyping ? CloseTyping : 0));
+
+        if (!shouldChangeSelection(trialFrameSelection.selection()))
+            return false;
+    }
 
     setSelection(newSelection, ClearTypingStyle | (closeTyping ? CloseTyping : 0));
     return true;
@@ -2157,7 +2164,7 @@ void FrameSelection::setFocusedElementIfNeeded()
     bool caretBrowsing = m_frame->settings().caretBrowsingEnabled();
     if (caretBrowsing) {
         if (Element* anchor = enclosingAnchorElement(m_selection.base())) {
-            m_frame->page()->focusController().setFocusedElement(anchor, m_frame);
+            m_frame->page()->focusController().setFocusedElement(anchor, *m_frame);
             return;
         }
     }
@@ -2169,16 +2176,16 @@ void FrameSelection::setFocusedElementIfNeeded()
             // so add the !isFrameElement check here. There's probably a better way to make this
             // work in the long term, but this is the safest fix at this time.
             if (target->isMouseFocusable() && !isFrameElement(target)) {
-                m_frame->page()->focusController().setFocusedElement(target, m_frame);
+                m_frame->page()->focusController().setFocusedElement(target, *m_frame);
                 return;
             }
             target = target->parentOrShadowHostElement();
         }
-        m_frame->document()->setFocusedElement(0);
+        m_frame->document()->setFocusedElement(nullptr);
     }
 
     if (caretBrowsing)
-        m_frame->page()->focusController().setFocusedElement(0, m_frame);
+        m_frame->page()->focusController().setFocusedElement(nullptr, *m_frame);
 }
 
 void DragCaretController::paintDragCaret(Frame* frame, GraphicsContext& p, const LayoutPoint& paintOffset, const LayoutRect& clipRect) const
@@ -2328,7 +2335,7 @@ void FrameSelection::revealSelection(SelectionRevealMode revealMode, const Scrol
                 layer->setAdjustForIOSCaretWhenScrolling(false);
                 updateAppearance();
                 if (m_frame->page())
-                    m_frame->page()->chrome().client().notifyRevealedSelectionByScrollingFrame(m_frame);
+                    m_frame->page()->chrome().client().notifyRevealedSelectionByScrollingFrame(*m_frame);
             }
         }
 #else

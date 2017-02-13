@@ -34,10 +34,19 @@
 
 namespace WebCore {
 
-CachedResourceHandle<CachedScript> CachedScriptFetcher::requestScriptWithCache(Document& document, const URL& sourceURL) const
+Ref<CachedScriptFetcher> CachedScriptFetcher::create(const String& charset)
 {
-    auto* settings = document.settings();
-    if (settings && !settings->isScriptEnabled())
+    return adoptRef(*new CachedScriptFetcher(charset));
+}
+
+CachedResourceHandle<CachedScript> CachedScriptFetcher::requestModuleScript(Document& document, const URL& sourceURL) const
+{
+    return requestScriptWithCache(document, sourceURL, String());
+}
+
+CachedResourceHandle<CachedScript> CachedScriptFetcher::requestScriptWithCache(Document& document, const URL& sourceURL, const String& crossOriginMode) const
+{
+    if (!document.settings().isScriptEnabled())
         return nullptr;
 
     ASSERT(document.contentSecurityPolicy());
@@ -46,11 +55,12 @@ CachedResourceHandle<CachedScript> CachedScriptFetcher::requestScriptWithCache(D
     options.contentSecurityPolicyImposition = hasKnownNonce ? ContentSecurityPolicyImposition::SkipPolicyCheck : ContentSecurityPolicyImposition::DoPolicyCheck;
 
     CachedResourceRequest request(ResourceRequest(sourceURL), options);
-    request.setAsPotentiallyCrossOrigin(m_crossOriginMode, document);
+    request.setAsPotentiallyCrossOrigin(crossOriginMode, document);
     request.upgradeInsecureRequestIfNeeded(document);
 
     request.setCharset(m_charset);
-    request.setInitiator(m_initiatorName);
+    if (!m_initiatorName.isNull())
+        request.setInitiator(m_initiatorName);
 
     return document.cachedResourceLoader().requestScript(WTFMove(request));
 }

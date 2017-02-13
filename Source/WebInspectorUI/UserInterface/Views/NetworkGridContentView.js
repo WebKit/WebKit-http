@@ -32,6 +32,8 @@ WebInspector.NetworkGridContentView = class NetworkGridContentView extends WebIn
 
         super(representedObject);
 
+        WebInspector.Frame.addEventListener(WebInspector.Frame.Event.MainResourceDidChange, this._mainResourceDidChange, this);
+
         this._networkSidebarPanel = extraArguments.networkSidebarPanel;
 
         this._contentTreeOutline = this._networkSidebarPanel.contentTreeOutline;
@@ -101,7 +103,8 @@ WebInspector.NetworkGridContentView = class NetworkGridContentView extends WebIn
         networkTimeline.addEventListener(WebInspector.Timeline.Event.RecordAdded, this._networkTimelineRecordAdded, this);
         networkTimeline.addEventListener(WebInspector.Timeline.Event.Reset, this._networkTimelineReset, this);
 
-        this._clearNetworkItemsNavigationItem = new WebInspector.ButtonNavigationItem("clear-network-items", WebInspector.UIString("Clear Network Items (%s)").format(WebInspector.clearKeyboardShortcut.displayName), "Images/NavigationItemTrash.svg", 15, 15);
+        let clearImageDimensions = WebInspector.Platform.name === "mac" ? 16 : 15;
+        this._clearNetworkItemsNavigationItem = new WebInspector.ButtonNavigationItem("clear-network-items", WebInspector.UIString("Clear Network Items (%s)").format(WebInspector.clearKeyboardShortcut.displayName), "Images/NavigationItemClear.svg", clearImageDimensions, clearImageDimensions);
         this._clearNetworkItemsNavigationItem.addEventListener(WebInspector.ButtonNavigationItem.Event.Clicked, () => this.reset());
 
         this._pendingRecords = [];
@@ -245,6 +248,16 @@ WebInspector.NetworkGridContentView = class NetworkGridContentView extends WebIn
         }
 
         this._pendingRecords = [];
+    }
+
+    _mainResourceDidChange(event)
+    {
+        let frame = event.target;
+        if (!frame.isMainFrame() || WebInspector.settings.clearNetworkOnNavigate.value)
+            return;
+
+        for (let dataGridNode of this._dataGrid.children)
+            dataGridNode.element.classList.add("preserved");
     }
 
     _networkTimelineReset(event)

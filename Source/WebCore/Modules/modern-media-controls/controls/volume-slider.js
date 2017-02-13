@@ -29,6 +29,7 @@ class VolumeSlider extends Slider
     constructor()
     {
         super("volume");
+        this.enabled = true;
     }
 
 }

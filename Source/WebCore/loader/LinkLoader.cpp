@@ -180,6 +180,7 @@ std::unique_ptr<LinkPreloadResourceClient> LinkLoader::preloadIfNeeded(const Lin
     resourceRequest.setIgnoreForRequestCount(true);
     CachedResourceRequest linkRequest(WTFMove(resourceRequest), CachedResourceLoader::defaultCachedResourceOptions(), CachedResource::defaultPriorityForResourceType(type.value()));
     linkRequest.setInitiator("link");
+    linkRequest.setIsLinkPreload();
 
     linkRequest.setAsPotentiallyCrossOrigin(crossOriginMode, document);
     CachedResourceHandle<CachedResource> cachedLinkResource = document.cachedResourceLoader().preload(type.value(), WTFMove(linkRequest));
@@ -189,13 +190,18 @@ std::unique_ptr<LinkPreloadResourceClient> LinkLoader::preloadIfNeeded(const Lin
     return nullptr;
 }
 
+void LinkLoader::cancelLoad()
+{
+    if (m_preloadResourceClient)
+        m_preloadResourceClient->clear();
+}
+
 bool LinkLoader::loadLink(const LinkRelAttribute& relAttribute, const URL& href, const String& as, const String& crossOrigin, Document& document)
 {
     if (relAttribute.isDNSPrefetch) {
-        Settings* settings = document.settings();
         // FIXME: The href attribute of the link element can be in "//hostname" form, and we shouldn't attempt
         // to complete that as URL <https://bugs.webkit.org/show_bug.cgi?id=48857>.
-        if (settings && settings->dnsPrefetchingEnabled() && href.isValid() && !href.isEmpty() && document.frame())
+        if (document.settings().dnsPrefetchingEnabled() && href.isValid() && !href.isEmpty() && document.frame())
             document.frame()->loader().client().prefetchDNS(href.host());
     }
 
@@ -203,6 +209,8 @@ bool LinkLoader::loadLink(const LinkRelAttribute& relAttribute, const URL& href,
         auto resourceClient = preloadIfNeeded(relAttribute, href, document, as, crossOrigin, this, &m_client);
         if (resourceClient)
             m_preloadResourceClient = WTFMove(resourceClient);
+        else if (m_preloadResourceClient)
+            m_preloadResourceClient->clear();
     }
 
 #if ENABLE(LINK_PREFETCH)

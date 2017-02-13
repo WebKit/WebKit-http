@@ -62,13 +62,14 @@ list(APPEND WebCore_SOURCES
     loader/soup/CachedRawResourceSoup.cpp
     loader/soup/SubresourceLoaderSoup.cpp
 
+    page/linux/ResourceUsageOverlayLinux.cpp
+    page/linux/ResourceUsageThreadLinux.cpp
+
     platform/KillRingNone.cpp
     platform/StaticPasteboard.cpp
     platform/UserAgentQuirks.cpp
 
     platform/audio/glib/AudioBusGLib.cpp
-
-    platform/crypto/gcrypt/CryptoDigestGCrypt.cpp
 
     platform/gamepad/glib/GamepadsGlib.cpp
 
@@ -118,6 +119,7 @@ list(APPEND WebCore_SOURCES
 
     platform/graphics/gstreamer/ImageGStreamerCairo.cpp
 
+    platform/graphics/harfbuzz/ComplexTextControllerHarfBuzz.cpp
     platform/graphics/harfbuzz/HarfBuzzFace.cpp
     platform/graphics/harfbuzz/HarfBuzzFaceCairo.cpp
     platform/graphics/harfbuzz/HarfBuzzShaper.cpp

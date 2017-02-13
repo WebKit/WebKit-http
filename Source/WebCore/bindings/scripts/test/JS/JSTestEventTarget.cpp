@@ -22,8 +22,11 @@
 #include "JSTestEventTarget.h"
 
 #include "JSDOMBinding.h"
-#include "JSDOMConstructor.h"
+#include "JSDOMBindingCaller.h"
+#include "JSDOMConstructorNotConstructable.h"
 #include "JSDOMConvert.h"
+#include "JSDOMExceptionHandling.h"
+#include "JSDOMWrapperCache.h"
 #include "JSNode.h"
 #include <runtime/Error.h>
 #include <runtime/PropertyNameArray.h>
@@ -109,7 +112,7 @@ JSTestEventTarget::JSTestEventTarget(Structure* structure, JSDOMGlobalObject& gl
 void JSTestEventTarget::finishCreation(VM& vm)
 {
     Base::finishCreation(vm);
-    ASSERT(inherits(info()));
+    ASSERT(inherits(vm, info()));
 
 }
 
@@ -173,14 +176,14 @@ void JSTestEventTarget::getOwnPropertyNames(JSObject* object, ExecState* state, 
 
 template<> inline JSTestEventTarget* BindingCaller<JSTestEventTarget>::castForOperation(ExecState& state)
 {
-    return jsDynamicDowncast<JSTestEventTarget*>(state.thisValue());
+    return jsDynamicDowncast<JSTestEventTarget*>(state.vm(), state.thisValue());
 }
 
 EncodedJSValue jsTestEventTargetConstructor(ExecState* state, EncodedJSValue thisValue, PropertyName)
 {
     VM& vm = state->vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);
-    JSTestEventTargetPrototype* domObject = jsDynamicDowncast<JSTestEventTargetPrototype*>(JSValue::decode(thisValue));
+    JSTestEventTargetPrototype* domObject = jsDynamicDowncast<JSTestEventTargetPrototype*>(vm, JSValue::decode(thisValue));
     if (UNLIKELY(!domObject))
         return throwVMTypeError(state, throwScope);
     return JSValue::encode(JSTestEventTarget::getConstructor(state->vm(), domObject->globalObject()));
@@ -191,7 +194,7 @@ bool setJSTestEventTargetConstructor(ExecState* state, EncodedJSValue thisValue,
     VM& vm = state->vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);
     JSValue value = JSValue::decode(encodedValue);
-    JSTestEventTargetPrototype* domObject = jsDynamicDowncast<JSTestEventTargetPrototype*>(JSValue::decode(thisValue));
+    JSTestEventTargetPrototype* domObject = jsDynamicDowncast<JSTestEventTargetPrototype*>(vm, JSValue::decode(thisValue));
     if (UNLIKELY(!domObject)) {
         throwVMTypeError(state, throwScope);
         return false;
@@ -229,7 +232,6 @@ void JSTestEventTarget::visitChildren(JSCell* cell, SlotVisitor& visitor)
     auto* thisObject = jsCast<JSTestEventTarget*>(cell);
     ASSERT_GC_OBJECT_INHERITS(thisObject, info());
     Base::visitChildren(thisObject, visitor);
-    thisObject->wrapped().visitJSEventListeners(visitor);
 }
 
 #if ENABLE(BINDING_INTEGRITY)
@@ -270,9 +272,9 @@ JSC::JSValue toJS(JSC::ExecState* state, JSDOMGlobalObject* globalObject, TestEv
     return wrap(state, globalObject, impl);
 }
 
-TestEventTarget* JSTestEventTarget::toWrapped(JSC::JSValue value)
+TestEventTarget* JSTestEventTarget::toWrapped(JSC::VM& vm, JSC::JSValue value)
 {
-    if (auto* wrapper = jsDynamicDowncast<JSTestEventTarget*>(value))
+    if (auto* wrapper = jsDynamicDowncast<JSTestEventTarget*>(vm, value))
         return &wrapper->wrapped();
     return nullptr;
 }

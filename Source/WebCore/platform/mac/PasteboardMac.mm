@@ -118,7 +118,10 @@ Pasteboard::Pasteboard(const String& pasteboardName)
 
 std::unique_ptr<Pasteboard> Pasteboard::createForCopyAndPaste()
 {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
     return std::make_unique<Pasteboard>(NSGeneralPboard);
+#pragma clang diagnostic pop
 }
 
 std::unique_ptr<Pasteboard> Pasteboard::createPrivate()
@@ -129,7 +132,10 @@ std::unique_ptr<Pasteboard> Pasteboard::createPrivate()
 #if ENABLE(DRAG_SUPPORT)
 std::unique_ptr<Pasteboard> Pasteboard::createForDragAndDrop()
 {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
     return std::make_unique<Pasteboard>(NSDragPboard);
+#pragma clang diagnostic pop
 }
 
 std::unique_ptr<Pasteboard> Pasteboard::createForDragAndDrop(const DragData& dragData)
@@ -408,6 +414,13 @@ void Pasteboard::read(PasteboardWebContentReader& reader)
         }
     }
 
+    if (types.contains(String(kUTTypeJPEG))) {
+        if (RefPtr<SharedBuffer> buffer = strategy.bufferForType(kUTTypeJPEG, m_pasteboardName)) {
+            if (reader.readImage(buffer.releaseNonNull(), ASCIILiteral("image/jpeg")))
+                return;
+        }
+    }
+
     if (types.contains(String(NSURLPboardType))) {
         URL url = strategy.url(m_pasteboardName);
         String title = strategy.stringForType(WebURLNamePboardType, m_pasteboardName);
@@ -417,6 +430,12 @@ void Pasteboard::read(PasteboardWebContentReader& reader)
 
     if (types.contains(String(NSStringPboardType))) {
         String string = strategy.stringForType(NSStringPboardType, m_pasteboardName);
+        if (!string.isNull() && reader.readPlainText(string))
+            return;
+    }
+
+    if (types.contains(String(kUTTypeUTF8PlainText))) {
+        String string = strategy.stringForType(kUTTypeUTF8PlainText, m_pasteboardName);
         if (!string.isNull() && reader.readPlainText(string))
             return;
     }

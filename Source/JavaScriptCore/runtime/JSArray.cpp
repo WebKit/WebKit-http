@@ -40,6 +40,8 @@ using namespace WTF;
 
 namespace JSC {
 
+static const char* const LengthExceededTheMaximumArrayLengthError = "Length exceeded the maximum array length";
+
 STATIC_ASSERT_IS_TRIVIALLY_DESTRUCTIBLE(JSArray);
 
 const ClassInfo JSArray::s_info = {"Array", &JSNonFinalObject::s_info, 0, CREATE_METHOD_TABLE(JSArray)};
@@ -58,7 +60,7 @@ Butterfly* createArrayButterflyInDictionaryIndexingMode(
     return butterfly;
 }
 
-JSArray* JSArray::tryCreateUninitialized(VM& vm, GCDeferralContext* deferralContext, Structure* structure, unsigned initialLength)
+JSArray* JSArray::tryCreateForInitializationPrivate(VM& vm, GCDeferralContext* deferralContext, Structure* structure, unsigned initialLength)
 {
     if (initialLength > MAX_STORAGE_VECTOR_LENGTH)
         return 0;
@@ -495,7 +497,15 @@ bool JSArray::appendMemcpy(ExecState* exec, VM& vm, unsigned startIndex, JSC::JS
         return false;
 
     unsigned otherLength = otherArray->length();
-    unsigned newLength = startIndex + otherLength;
+    Checked<unsigned, RecordOverflow> checkedNewLength = startIndex;
+    checkedNewLength += otherLength;
+
+    unsigned newLength;
+    if (checkedNewLength.safeGet(newLength) == CheckedState::DidOverflow) {
+        throwException(exec, scope, createRangeError(exec, ASCIILiteral(LengthExceededTheMaximumArrayLengthError)));
+        return false;
+    }
+
     if (newLength >= MIN_SPARSE_ARRAY_INDEX)
         return false;
 
@@ -724,7 +734,7 @@ void JSArray::push(ExecState* exec, JSValue value)
         if (UNLIKELY(length > MAX_ARRAY_INDEX)) {
             methodTable(vm)->putByIndex(this, exec, length, value, true);
             if (!scope.exception())
-                throwException(exec, scope, createRangeError(exec, ASCIILiteral("Invalid array length")));
+                throwException(exec, scope, createRangeError(exec, ASCIILiteral(LengthExceededTheMaximumArrayLengthError)));
             return;
         }
 
@@ -745,7 +755,7 @@ void JSArray::push(ExecState* exec, JSValue value)
         if (UNLIKELY(length > MAX_ARRAY_INDEX)) {
             methodTable(vm)->putByIndex(this, exec, length, value, true);
             if (!scope.exception())
-                throwException(exec, scope, createRangeError(exec, ASCIILiteral("Invalid array length")));
+                throwException(exec, scope, createRangeError(exec, ASCIILiteral(LengthExceededTheMaximumArrayLengthError)));
             return;
         }
 
@@ -780,7 +790,7 @@ void JSArray::push(ExecState* exec, JSValue value)
         if (UNLIKELY(length > MAX_ARRAY_INDEX)) {
             methodTable(vm)->putByIndex(this, exec, length, value, true);
             if (!scope.exception())
-                throwException(exec, scope, createRangeError(exec, ASCIILiteral("Invalid array length")));
+                throwException(exec, scope, createRangeError(exec, ASCIILiteral(LengthExceededTheMaximumArrayLengthError)));
             return;
         }
 
@@ -819,7 +829,7 @@ void JSArray::push(ExecState* exec, JSValue value)
             methodTable(vm)->putByIndex(this, exec, storage->length(), value, true);
             // Per ES5.1 15.4.4.7 step 6 & 15.4.5.1 step 3.d.
             if (!scope.exception())
-                throwException(exec, scope, createRangeError(exec, ASCIILiteral("Invalid array length")));
+                throwException(exec, scope, createRangeError(exec, ASCIILiteral(LengthExceededTheMaximumArrayLengthError)));
             return;
         }
 
@@ -846,7 +856,7 @@ JSArray* JSArray::fastSlice(ExecState& exec, unsigned startIndex, unsigned count
             return nullptr;
 
         Structure* resultStructure = exec.lexicalGlobalObject()->arrayStructureForIndexingTypeDuringAllocation(arrayType);
-        JSArray* resultArray = JSArray::tryCreateUninitialized(vm, resultStructure, count);
+        JSArray* resultArray = JSArray::tryCreateForInitializationPrivate(vm, resultStructure, count);
         if (!resultArray)
             return nullptr;
 

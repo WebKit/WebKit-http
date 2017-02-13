@@ -130,6 +130,18 @@ void DrawingAreaWPE::attachViewOverlayGraphicsLayer(WebCore::Frame* frame, WebCo
     m_layerTreeHost->setViewOverlayRootLayer(viewOverlayRootLayer);
 }
 
+#if USE(COORDINATED_GRAPHICS_THREADED)
+void DrawingAreaWPE::didChangeViewportAttributes(WebCore::ViewportAttributes&&)
+{
+}
+#endif
+
+#if USE(COORDINATED_GRAPHICS) || USE(TEXTURE_MAPPER)
+void DrawingAreaWPE::deviceOrPageScaleFactorChanged()
+{
+}
+#endif
+
 void DrawingAreaWPE::updateBackingStoreState(uint64_t, bool, float deviceScaleFactor, const WebCore::IntSize& size, const WebCore::IntSize& scrollOffset)
 {
     m_webPage.setDeviceScaleFactor(deviceScaleFactor);

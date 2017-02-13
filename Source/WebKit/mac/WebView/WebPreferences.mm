@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2005-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2005-2017 Apple Inc. All rights reserved.
  *           (C) 2006 Graham Dennis (graham.dennis@gmail.com)
  *
  * Redistribution and use in source and binary forms, with or without
@@ -500,6 +500,7 @@ public:
         [NSNumber numberWithBool:NO],  WebKitCanvasUsesAcceleratedDrawingPreferenceKey,
 #endif
         [NSNumber numberWithBool:NO],   WebKitShowDebugBordersPreferenceKey,
+        [NSNumber numberWithBool:YES],  WebKitSimpleLineLayoutEnabledPreferenceKey,
         [NSNumber numberWithBool:NO],   WebKitSimpleLineLayoutDebugBordersEnabledPreferenceKey,
         [NSNumber numberWithBool:NO],   WebKitShowRepaintCounterPreferenceKey,
         [NSNumber numberWithBool:YES],  WebKitWebGLEnabledPreferenceKey,
@@ -640,15 +641,17 @@ public:
 #if ENABLE(SUBTLE_CRYPTO)
         [NSNumber numberWithBool:YES], WebKitSubtleCryptoEnabledPreferenceKey,
 #endif
-
 #if ENABLE(MEDIA_STREAM)
         [NSNumber numberWithBool:NO], WebKitMediaStreamEnabledPreferenceKey,
 #endif
-
 #if ENABLE(WEB_RTC)
         [NSNumber numberWithBool:NO], WebKitPeerConnectionEnabledPreferenceKey,
 #endif
-
+#if ENABLE(INTERSECTION_OBSERVER)
+        @NO, WebKitIntersectionObserverEnabledPreferenceKey,
+#endif
+        @NO, WebKitUserTimingEnabledPreferenceKey,
+        @NO, WebKitResourceTimingEnabledPreferenceKey,
         nil];
 
 #if !PLATFORM(IOS)
@@ -1960,6 +1963,16 @@ static NSString *classIBCreatorID = nil;
     [self _setBoolValue:enabled forKey:WebKitShowDebugBordersPreferenceKey];
 }
 
+- (BOOL)simpleLineLayoutEnabled
+{
+    return [self _boolValueForKey:WebKitSimpleLineLayoutEnabledPreferenceKey];
+}
+
+- (void)setSimpleLineLayoutEnabled:(BOOL)enabled
+{
+    [self _setBoolValue:enabled forKey:WebKitSimpleLineLayoutEnabledPreferenceKey];
+}
+
 - (BOOL)simpleLineLayoutDebugBordersEnabled
 {
     return [self _boolValueForKey:WebKitSimpleLineLayoutDebugBordersEnabledPreferenceKey];
@@ -2732,6 +2745,16 @@ static NSString *classIBCreatorID = nil;
     [self _setBoolValue:flag forKey:WebKitPeerConnectionEnabledPreferenceKey];
 }
 
+- (BOOL)linkPreloadEnabled
+{
+    return [self _boolValueForKey:WebKitLinkPreloadEnabledPreferenceKey];
+}
+
+- (void)setLinkPreloadEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitLinkPreloadEnabledPreferenceKey];
+}
+
 - (void)setMetaRefreshEnabled:(BOOL)enabled
 {
     [self setHTTPEquivEnabled:enabled];
@@ -2901,6 +2924,38 @@ static NSString *classIBCreatorID = nil;
 {
     [self _setBoolValue:flag forKey:WebKitIntersectionObserverEnabledPreferenceKey];
 }
+
+- (BOOL)userTimingEnabled
+{
+    return [self _boolValueForKey:WebKitUserTimingEnabledPreferenceKey];
+}
+
+- (void)setUserTimingEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitUserTimingEnabledPreferenceKey];
+}
+
+- (BOOL)resourceTimingEnabled
+{
+    return [self _boolValueForKey:WebKitResourceTimingEnabledPreferenceKey];
+}
+
+- (void)setResourceTimingEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitResourceTimingEnabledPreferenceKey];
+}
+
+#if PLATFORM(IOS)
+- (BOOL)quickLookDocumentSavingEnabled
+{
+    return [self _boolValueForKey:WebKitQuickLookDocumentSavingPreferenceKey];
+}
+
+- (void)setQuickLookDocumentSavingEnabled:(BOOL)flag
+{
+    [self _setBoolValue:flag forKey:WebKitQuickLookDocumentSavingPreferenceKey];
+}
+#endif
 
 @end
 

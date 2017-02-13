@@ -72,6 +72,8 @@ public:
     bool hasSessionWithID(const String& id) { return m_sessions.contains(id); }
     void removeSessionWithID(const String& id) { m_sessions.remove(id); }
     void addKeysToSessionWithID(const String& id, Vector<Ref<SharedBuffer>>&&);
+    std::optional<const Vector<Ref<SharedBuffer>>&> keysForSessionWithID(const String& id) const;
+    Vector<Ref<SharedBuffer>> removeKeysFromSessionWithID(const String& id);
 
 private:
     MockCDMFactory();
@@ -113,6 +115,8 @@ private:
     bool supportsServerCertificates() const final;
     bool supportsSessions() const final;
     bool supportsInitData(const AtomicString&, const SharedBuffer&) const final;
+    RefPtr<SharedBuffer> sanitizeResponse(const SharedBuffer&) const final;
+    std::optional<String> sanitizeSessionId(const String&) const final;
 
     WeakPtr<MockCDMFactory> m_factory;
     WeakPtrFactory<MockCDM> m_weakPtrFactory;
@@ -128,6 +132,11 @@ private:
     SuccessValue setPersistentStateAllowed(bool) final;
     SuccessValue setServerCertificate(Ref<SharedBuffer>&&) final;
     void requestLicense(LicenseType, const AtomicString& initDataType, Ref<SharedBuffer>&& initData, LicenseCallback) final;
+    void updateLicense(const String&, LicenseType, const SharedBuffer&, LicenseUpdateCallback) final;
+    void loadSession(LicenseType, const String&, const String&, LoadSessionCallback) final;
+    void closeSession(const String&, CloseSessionCallback) final;
+    void removeSessionData(const String&, LicenseType, RemoveSessionDataCallback) final;
+    void storeRecordOfKeyUsage(const String&) final;
 
     WeakPtr<MockCDM> m_cdm;
     bool m_distinctiveIdentifiersAllowed { true };

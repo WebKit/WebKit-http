@@ -24,14 +24,15 @@
 
 #include "JSTestCallbackInterface.h"
 
-#include "JSDOMConstructor.h"
+#include "JSDOMConstructorNotConstructable.h"
 #include "JSDOMConvert.h"
+#include "JSDOMExceptionHandling.h"
 #include "JSDOMStringList.h"
 #include "JSTestNode.h"
 #include "ScriptExecutionContext.h"
 #include "SerializedScriptValue.h"
+#include <runtime/FunctionPrototype.h>
 #include <runtime/JSLock.h>
-#include <runtime/ObjectPrototype.h>
 
 using namespace JSC;
 
@@ -74,7 +75,7 @@ static_assert(TestCallbackInterface::CONSTANT2 == 2, "CONSTANT2 in TestCallbackI
 template<> JSValue JSTestCallbackInterfaceConstructor::prototypeForStructure(JSC::VM& vm, const JSDOMGlobalObject& globalObject)
 {
     UNUSED_PARAM(vm);
-    return globalObject.objectPrototype();
+    return globalObject.functionPrototype();
 }
 
 template<> void JSTestCallbackInterfaceConstructor::initializeProperties(VM& vm, JSDOMGlobalObject& globalObject)

@@ -29,7 +29,7 @@
 #include "config.h"
 #include "KeyframeAnimation.h"
 
-#include "AnimationControllerPrivate.h"
+#include "CSSAnimationControllerPrivate.h"
 #include "CSSPropertyAnimation.h"
 #include "CSSPropertyNames.h"
 #include "CompositeAnimation.h"
@@ -327,7 +327,7 @@ bool KeyframeAnimation::sendAnimationEvent(const AtomicString& eventType, double
             return false;
 
         // Schedule event handling
-        m_compositeAnimation->animationController().addEventToDispatch(element, eventType, m_keyframes.animationName(), elapsedTime);
+        m_compositeAnimation->animationController().addEventToDispatch(*element, eventType, m_keyframes.animationName(), elapsedTime);
 
         // Restore the original (unanimated) style
         if ((eventType == eventNames().webkitAnimationEndEvent || eventType == eventNames().animationendEvent) && element->renderer())

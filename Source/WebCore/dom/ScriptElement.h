@@ -23,6 +23,7 @@
 
 #include "CachedResourceClient.h"
 #include "CachedResourceHandle.h"
+#include "ContainerNode.h"
 #include "LoadableScript.h"
 #include "LoadableScriptClient.h"
 #include "Timer.h"
@@ -30,10 +31,10 @@
 
 namespace WebCore {
 
-class CachedModuleScript;
 class CachedScript;
 class ContainerNode;
 class Element;
+class LoadableModuleScript;
 class PendingScript;
 class ScriptSourceCode;
 class URL;
@@ -51,7 +52,7 @@ public:
     String scriptCharset() const { return m_characterEncoding; }
     WEBCORE_EXPORT String scriptContent() const;
     void executeClassicScript(const ScriptSourceCode&);
-    void executeModuleScript(CachedModuleScript&);
+    void executeModuleScript(LoadableModuleScript&);
 
     void executePendingScript(PendingScript&);
 
@@ -84,7 +85,7 @@ protected:
     // Helper functions used by our parent classes.
     bool shouldCallFinishedInsertingSubtree(ContainerNode&);
     void finishedInsertingSubtree();
-    void childrenChanged();
+    void childrenChanged(const ContainerNode::ChildChange&);
     void handleSourceAttribute(const String& sourceURL);
     void handleAsyncAttribute();
 
@@ -95,8 +96,6 @@ private:
     bool ignoresLoadRequest() const;
     bool isScriptForEventSupported() const;
 
-    CachedResourceHandle<CachedScript> requestScriptWithCache(const URL&, const String& nonceAttribute, const String& crossoriginAttribute);
-
     bool requestClassicScript(const String& sourceURL);
     bool requestModuleScript(const TextPosition& scriptStartPosition);
 
@@ -106,9 +105,10 @@ private:
     virtual String languageAttributeValue() const = 0;
     virtual String forAttributeValue() const = 0;
     virtual String eventAttributeValue() const = 0;
-    virtual bool asyncAttributeValue() const = 0;
-    virtual bool deferAttributeValue() const = 0;
+    virtual bool hasAsyncAttribute() const = 0;
+    virtual bool hasDeferAttribute() const = 0;
     virtual bool hasSourceAttribute() const = 0;
+    virtual bool hasNoModuleAttribute() const = 0;
 
     Element& m_element;
     WTF::OrdinalNumber m_startLineNumber;

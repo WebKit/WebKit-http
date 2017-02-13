@@ -81,6 +81,14 @@ void PlatformWebView::removeChromeInputField()
 {
 }
 
+void PlatformWebView::addToWindow()
+{
+}
+
+void PlatformWebView::removeFromWindow()
+{
+}
+
 void PlatformWebView::setWindowIsKey(bool windowIsKey)
 {
     m_windowIsKey = windowIsKey;

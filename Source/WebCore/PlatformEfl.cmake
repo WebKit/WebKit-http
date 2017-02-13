@@ -69,8 +69,6 @@ list(APPEND WebCore_SOURCES
 
     platform/audio/efl/AudioBusEfl.cpp
 
-    platform/crypto/gcrypt/CryptoDigestGCrypt.cpp
-
     platform/efl/CursorEfl.cpp
     platform/efl/DragDataEfl.cpp
     platform/efl/DragImageEfl.cpp
@@ -140,6 +138,7 @@ list(APPEND WebCore_SOURCES
 
     platform/graphics/gstreamer/ImageGStreamerCairo.cpp
 
+    platform/graphics/harfbuzz/ComplexTextControllerHarfBuzz.cpp
     platform/graphics/harfbuzz/HarfBuzzFace.cpp
     platform/graphics/harfbuzz/HarfBuzzFaceCairo.cpp
     platform/graphics/harfbuzz/HarfBuzzShaper.cpp

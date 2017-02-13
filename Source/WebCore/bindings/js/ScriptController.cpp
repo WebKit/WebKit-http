@@ -22,7 +22,6 @@
 #include "ScriptController.h"
 
 #include "BridgeJSC.h"
-#include "CachedModuleScript.h"
 #include "CachedScriptFetcher.h"
 #include "CommonVM.h"
 #include "ContentSecurityPolicy.h"
@@ -33,11 +32,15 @@
 #include "GCController.h"
 #include "HTMLPlugInElement.h"
 #include "InspectorInstrumentation.h"
+#include "JSDOMBindingSecurity.h"
+#include "JSDOMExceptionHandling.h"
 #include "JSDOMWindow.h"
 #include "JSDocument.h"
 #include "JSMainThreadExecState.h"
+#include "LoadableModuleScript.h"
 #include "MainFrame.h"
 #include "MemoryPressureHandler.h"
+#include "ModuleFetchFailureKind.h"
 #include "NP_jsobject.h"
 #include "Page.h"
 #include "PageConsoleClient.h"
@@ -186,39 +189,39 @@ JSValue ScriptController::evaluate(const ScriptSourceCode& sourceCode, Exception
     return evaluateInWorld(sourceCode, mainThreadNormalWorld(), exceptionDetails);
 }
 
-void ScriptController::loadModuleScriptInWorld(CachedModuleScript& moduleScript, const String& moduleName, CachedScriptFetcher& scriptFetcher, DOMWrapperWorld& world)
+void ScriptController::loadModuleScriptInWorld(LoadableModuleScript& moduleScript, const String& moduleName, DOMWrapperWorld& world)
 {
     JSLockHolder lock(world.vm());
 
     auto& shell = *windowShell(world);
     auto& state = *shell.window()->globalExec();
 
-    auto& promise = JSMainThreadExecState::loadModule(state, moduleName, JSC::JSScriptFetcher::create(state.vm(), { &scriptFetcher }));
+    auto& promise = JSMainThreadExecState::loadModule(state, moduleName, JSC::JSScriptFetcher::create(state.vm(), { &moduleScript }));
     setupModuleScriptHandlers(moduleScript, promise, world);
 }
 
-void ScriptController::loadModuleScript(CachedModuleScript& moduleScript, const String& moduleName, CachedScriptFetcher& scriptFetcher)
+void ScriptController::loadModuleScript(LoadableModuleScript& moduleScript, const String& moduleName)
 {
-    loadModuleScriptInWorld(moduleScript, moduleName, scriptFetcher, mainThreadNormalWorld());
+    loadModuleScriptInWorld(moduleScript, moduleName, mainThreadNormalWorld());
 }
 
-void ScriptController::loadModuleScriptInWorld(CachedModuleScript& moduleScript, const ScriptSourceCode& sourceCode, CachedScriptFetcher& scriptFetcher, DOMWrapperWorld& world)
+void ScriptController::loadModuleScriptInWorld(LoadableModuleScript& moduleScript, const ScriptSourceCode& sourceCode, DOMWrapperWorld& world)
 {
     JSLockHolder lock(world.vm());
 
     auto& shell = *windowShell(world);
     auto& state = *shell.window()->globalExec();
 
-    auto& promise = JSMainThreadExecState::loadModule(state, sourceCode.jsSourceCode(), JSC::JSScriptFetcher::create(state.vm(), { &scriptFetcher }));
+    auto& promise = JSMainThreadExecState::loadModule(state, sourceCode.jsSourceCode(), JSC::JSScriptFetcher::create(state.vm(), { &moduleScript }));
     setupModuleScriptHandlers(moduleScript, promise, world);
 }
 
-void ScriptController::loadModuleScript(CachedModuleScript& moduleScript, const ScriptSourceCode& sourceCode, CachedScriptFetcher& scriptFetcher)
+void ScriptController::loadModuleScript(LoadableModuleScript& moduleScript, const ScriptSourceCode& sourceCode)
 {
-    loadModuleScriptInWorld(moduleScript, sourceCode, scriptFetcher, mainThreadNormalWorld());
+    loadModuleScriptInWorld(moduleScript, sourceCode, mainThreadNormalWorld());
 }
 
-JSC::JSValue ScriptController::linkAndEvaluateModuleScriptInWorld(CachedModuleScript& moduleScript, DOMWrapperWorld& world)
+JSC::JSValue ScriptController::linkAndEvaluateModuleScriptInWorld(LoadableModuleScript& moduleScript, DOMWrapperWorld& world)
 {
     JSLockHolder lock(world.vm());
 
@@ -240,7 +243,7 @@ JSC::JSValue ScriptController::linkAndEvaluateModuleScriptInWorld(CachedModuleSc
     return returnValue;
 }
 
-JSC::JSValue ScriptController::linkAndEvaluateModuleScript(CachedModuleScript& moduleScript)
+JSC::JSValue ScriptController::linkAndEvaluateModuleScript(LoadableModuleScript& moduleScript)
 {
     return linkAndEvaluateModuleScriptInWorld(moduleScript, mainThreadNormalWorld());
 }
@@ -368,7 +371,7 @@ static Identifier jsValueToModuleKey(ExecState* exec, JSValue value)
     return asString(value)->toIdentifier(exec);
 }
 
-void ScriptController::setupModuleScriptHandlers(CachedModuleScript& moduleScriptRef, JSInternalPromise& promise, DOMWrapperWorld& world)
+void ScriptController::setupModuleScriptHandlers(LoadableModuleScript& moduleScriptRef, JSInternalPromise& promise, DOMWrapperWorld& world)
 {
     auto& shell = *windowShell(world);
     auto& state = *shell.window()->globalExec();
@@ -377,10 +380,7 @@ void ScriptController::setupModuleScriptHandlers(CachedModuleScript& moduleScrip
     // For example, if the page load is canceled, the DeferredPromise used in the module loader pipeline will stop executing JS code.
     // Thus the promise returned from this function could remain unresolved.
 
-    JSC::PrivateName moduleLoaderAlreadyReportedErrorSymbol = m_moduleLoaderAlreadyReportedErrorSymbol;
-    JSC::PrivateName moduleLoaderFetchingIsCanceledSymbol = m_moduleLoaderFetchingIsCanceledSymbol;
-
-    RefPtr<CachedModuleScript> moduleScript(&moduleScriptRef);
+    RefPtr<LoadableModuleScript> moduleScript(&moduleScriptRef);
 
     auto& fulfillHandler = *JSNativeStdFunction::create(state.vm(), shell.window(), 1, String(), [moduleScript](ExecState* exec) {
         Identifier moduleKey = jsValueToModuleKey(exec, exec->argument(0));
@@ -388,31 +388,35 @@ void ScriptController::setupModuleScriptHandlers(CachedModuleScript& moduleScrip
         return JSValue::encode(jsUndefined());
     });
 
-    auto& rejectHandler = *JSNativeStdFunction::create(state.vm(), shell.window(), 1, String(), [moduleScript, moduleLoaderAlreadyReportedErrorSymbol, moduleLoaderFetchingIsCanceledSymbol](ExecState* exec) {
-        JSValue error = exec->argument(0);
-        if (auto* symbol = jsDynamicCast<Symbol*>(error)) {
-            if (symbol->privateName() == moduleLoaderAlreadyReportedErrorSymbol) {
-                moduleScript->notifyLoadFailed(LoadableScript::Error {
-                    LoadableScript::ErrorType::CachedScript,
-                    std::nullopt
-                });
-                return JSValue::encode(jsUndefined());
-            }
-
-            if (symbol->privateName() == moduleLoaderFetchingIsCanceledSymbol) {
-                moduleScript->notifyLoadWasCanceled();
+    auto& rejectHandler = *JSNativeStdFunction::create(state.vm(), shell.window(), 1, String(), [moduleScript](ExecState* exec) {
+        VM& vm = exec->vm();
+        JSValue errorValue = exec->argument(0);
+        if (errorValue.isObject()) {
+            auto* object = JSC::asObject(errorValue);
+            if (JSValue failureKindValue = object->getDirect(vm, static_cast<JSVMClientData&>(*vm.clientData).builtinNames().failureKindPrivateName())) {
+                // This is host propagated error in the module loader pipeline.
+                switch (static_cast<ModuleFetchFailureKind>(failureKindValue.asInt32())) {
+                case ModuleFetchFailureKind::WasErrored:
+                    moduleScript->notifyLoadFailed(LoadableScript::Error {
+                        LoadableScript::ErrorType::CachedScript,
+                        std::nullopt
+                    });
+                    break;
+                case ModuleFetchFailureKind::WasCanceled:
+                    moduleScript->notifyLoadWasCanceled();
+                    break;
+                }
                 return JSValue::encode(jsUndefined());
             }
         }
 
-        VM& vm = exec->vm();
         auto scope = DECLARE_CATCH_SCOPE(vm);
         moduleScript->notifyLoadFailed(LoadableScript::Error {
             LoadableScript::ErrorType::CachedScript,
             LoadableScript::ConsoleMessage {
                 MessageSource::JS,
                 MessageLevel::Error,
-                retrieveErrorMessage(*exec, vm, error, scope),
+                retrieveErrorMessage(*exec, vm, errorValue, scope),
             }
         });
         return JSValue::encode(jsUndefined());
@@ -649,7 +653,7 @@ void ScriptController::clearScriptObjects()
 JSValue ScriptController::executeScriptInWorld(DOMWrapperWorld& world, const String& script, bool forceUserGesture)
 {
     UserGestureIndicator gestureIndicator(forceUserGesture ? std::optional<ProcessingUserGestureState>(ProcessingUserGesture) : std::nullopt);
-    ScriptSourceCode sourceCode(script, m_frame.document()->url());
+    ScriptSourceCode sourceCode(script, m_frame.document()->url(), TextPosition(), JSC::SourceProviderSourceType::Program, CachedScriptFetcher::create(m_frame.document()->charset()));
 
     if (!canExecuteScripts(AboutToExecuteScript) || isPaused())
         return { };
@@ -675,7 +679,7 @@ bool ScriptController::canExecuteScripts(ReasonForCallingCanExecuteScripts reaso
 JSValue ScriptController::executeScript(const String& script, bool forceUserGesture, ExceptionDetails* exceptionDetails)
 {
     UserGestureIndicator gestureIndicator(forceUserGesture ? std::optional<ProcessingUserGestureState>(ProcessingUserGesture) : std::nullopt);
-    return executeScript(ScriptSourceCode(script, m_frame.document()->url()), exceptionDetails);
+    return executeScript(ScriptSourceCode(script, m_frame.document()->url(), TextPosition(), JSC::SourceProviderSourceType::Program, CachedScriptFetcher::create(m_frame.document()->charset())), exceptionDetails);
 }
 
 JSValue ScriptController::executeScript(const ScriptSourceCode& sourceCode, ExceptionDetails* exceptionDetails)

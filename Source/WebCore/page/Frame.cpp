@@ -30,9 +30,9 @@
 #include "config.h"
 #include "Frame.h"
 
-#include "AnimationController.h"
 #include "ApplyStyleCommand.h"
 #include "BackForwardController.h"
+#include "CSSAnimationController.h"
 #include "CSSComputedStyleDeclaration.h"
 #include "CSSPropertyNames.h"
 #include "CachedCSSStyleSheet.h"
@@ -160,7 +160,7 @@ Frame::Frame(Page& page, HTMLFrameOwnerElement* ownerElement, FrameLoaderClient&
     , m_script(std::make_unique<ScriptController>(*this))
     , m_editor(std::make_unique<Editor>(*this))
     , m_selection(std::make_unique<FrameSelection>(this))
-    , m_animationController(std::make_unique<AnimationController>(*this))
+    , m_animationController(std::make_unique<CSSAnimationController>(*this))
 #if PLATFORM(IOS)
     , m_overflowAutoScrollTimer(*this, &Frame::overflowAutoScrollTimerFired)
     , m_selectionChangeCallbacksDisabled(false)
@@ -710,8 +710,10 @@ void Frame::injectUserScripts(UserScriptInjectionTime injectionTime)
         if (script.injectedFrames() == InjectInTopFrameOnly && ownerElement())
             return;
 
-        if (script.injectionTime() == injectionTime && UserContentURLPattern::matchesPatterns(document->url(), script.whitelist(), script.blacklist()))
+        if (script.injectionTime() == injectionTime && UserContentURLPattern::matchesPatterns(document->url(), script.whitelist(), script.blacklist())) {
+            m_page->setAsRunningUserScripts();
             m_script->evaluateInWorld(ScriptSourceCode(script.source(), script.url()), world);
+        }
     });
 }
 
@@ -777,7 +779,7 @@ void Frame::willDetachPage()
 
 #if PLATFORM(IOS)
     if (WebThreadCountOfObservedContentModifiers() > 0 && m_page)
-        m_page->chrome().client().clearContentChangeObservers(this);
+        m_page->chrome().client().clearContentChangeObservers(*this);
 #endif
 
     script().clearScriptObjects();

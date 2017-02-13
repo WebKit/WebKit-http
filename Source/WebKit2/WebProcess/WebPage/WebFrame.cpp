@@ -109,7 +109,7 @@ static uint64_t generateListenerID()
     return uniqueListenerID++;
 }
 
-PassRefPtr<WebFrame> WebFrame::createWithCoreMainFrame(WebPage* page, WebCore::Frame* coreFrame)
+Ref<WebFrame> WebFrame::createWithCoreMainFrame(WebPage* page, WebCore::Frame* coreFrame)
 {
     auto frame = create(std::unique_ptr<WebFrameLoaderClient>(static_cast<WebFrameLoaderClient*>(&coreFrame->loader().client())));
     page->send(Messages::WebPageProxy::DidCreateMainFrame(frame->frameID()), page->pageID(), IPC::SendOption::DispatchMessageEvenWhenWaitingForSyncReply);
@@ -120,30 +120,32 @@ PassRefPtr<WebFrame> WebFrame::createWithCoreMainFrame(WebPage* page, WebCore::F
     return frame;
 }
 
-PassRefPtr<WebFrame> WebFrame::createSubframe(WebPage* page, const String& frameName, HTMLFrameOwnerElement* ownerElement)
+Ref<WebFrame> WebFrame::createSubframe(WebPage* page, const String& frameName, HTMLFrameOwnerElement* ownerElement)
 {
     auto frame = create(std::make_unique<WebFrameLoaderClient>());
     page->send(Messages::WebPageProxy::DidCreateSubframe(frame->frameID()), page->pageID(), IPC::SendOption::DispatchMessageEvenWhenWaitingForSyncReply);
 
-    Ref<WebCore::Frame> coreFrame = Frame::create(page->corePage(), ownerElement, frame->m_frameLoaderClient.get());
+    auto coreFrame = Frame::create(page->corePage(), ownerElement, frame->m_frameLoaderClient.get());
     frame->m_coreFrame = coreFrame.ptr();
-    frame->m_coreFrame->tree().setName(frameName);
+
+    coreFrame->tree().setName(frameName);
     if (ownerElement) {
         ASSERT(ownerElement->document().frame());
-        ownerElement->document().frame()->tree().appendChild(WTFMove(coreFrame));
+        ownerElement->document().frame()->tree().appendChild(coreFrame.get());
     }
-    frame->m_coreFrame->init();
+    coreFrame->init();
+
     return frame;
 }
 
-PassRefPtr<WebFrame> WebFrame::create(std::unique_ptr<WebFrameLoaderClient> frameLoaderClient)
+Ref<WebFrame> WebFrame::create(std::unique_ptr<WebFrameLoaderClient> frameLoaderClient)
 {
     auto frame = adoptRef(*new WebFrame(WTFMove(frameLoaderClient)));
 
     // Add explict ref() that will be balanced in WebFrameLoaderClient::frameLoaderDestroyed().
     frame->ref();
 
-    return WTFMove(frame);
+    return frame;
 }
 
 WebFrame::WebFrame(std::unique_ptr<WebFrameLoaderClient> frameLoaderClient)
@@ -679,13 +681,12 @@ void WebFrame::stopLoading()
 
 WebFrame* WebFrame::frameForContext(JSContextRef context)
 {
-    JSObjectRef globalObjectRef = JSContextGetGlobalObject(context);
-    JSC::JSObject* globalObjectObj = toJS(globalObjectRef);
-    if (strcmp(globalObjectObj->classInfo()->className, "JSDOMWindowShell") != 0)
-        return 0;
 
-    Frame* frame = static_cast<JSDOMWindowShell*>(globalObjectObj)->window()->wrapped().frame();
-    return WebFrame::fromCoreFrame(*frame);
+    JSC::JSGlobalObject* globalObjectObj = toJS(context)->lexicalGlobalObject();
+    JSDOMWindow* window = jsDynamicDowncast<JSDOMWindow*>(globalObjectObj->vm(), globalObjectObj);
+    if (!window)
+        return nullptr;
+    return WebFrame::fromCoreFrame(*(window->wrapped().frame()));
 }
 
 JSValueRef WebFrame::jsWrapperForWorld(InjectedBundleNodeHandle* nodeHandle, InjectedBundleScriptWorld* world)
@@ -726,7 +727,7 @@ JSValueRef WebFrame::jsWrapperForWorld(InjectedBundleFileHandle* fileHandle, Inj
 
 String WebFrame::counterValue(JSObjectRef element)
 {
-    if (!toJS(element)->inherits(JSElement::info()))
+    if (!toJS(element)->inherits(*toJS(element)->vm(), JSElement::info()))
         return String();
 
     return counterValueForElement(&jsCast<JSElement*>(toJS(element))->wrapped());

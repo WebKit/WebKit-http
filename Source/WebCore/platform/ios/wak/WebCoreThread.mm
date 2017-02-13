@@ -42,6 +42,7 @@
 #import <runtime/JSLock.h>
 #import <wtf/Assertions.h>
 #import <wtf/MainThread.h>
+#import <wtf/RunLoop.h>
 #import <wtf/Threading.h>
 #import <wtf/text/AtomicString.h>
 
@@ -139,6 +140,7 @@ WEBCORE_EXPORT volatile bool webThreadShouldYield;
 
 static pthread_mutex_t WebCoreReleaseLock;
 static void WebCoreObjCDeallocOnWebThreadImpl(id self, SEL _cmd);
+static void WebCoreObjCDeallocWithWebThreadLock(Class cls);
 static void WebCoreObjCDeallocWithWebThreadLockImpl(id self, SEL _cmd);
 
 static NSMutableArray *sAsyncDelegates = nil;
@@ -709,6 +711,8 @@ static void StartWebThread()
 
     // Initialize AtomicString on the main thread.
     WTF::AtomicString::init();
+
+    RunLoop::initializeMainRunLoop();
 
     // register class for WebThread deallocation
     WebCoreObjCDeallocOnWebThread([WAKWindow class]);

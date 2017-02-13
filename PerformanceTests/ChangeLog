@@ -1,3 +1,240 @@
+2017-02-10  Zalan Bujtas  <zalan@apple.com>
+
+        Mail hangs when removing multiple rows from large table.
+        https://bugs.webkit.org/show_bug.cgi?id=168103
+        <rdar://problem/30090186>
+
+        Reviewed by Ryosuke Niwa.
+
+        * DOM/large-table-edit.html: Added.
+
+2017-02-05  Filip Pizlo  <fpizlo@apple.com>
+
+        Beef up the ARES-6 explainer text
+        https://bugs.webkit.org/show_bug.cgi?id=167867
+
+        Reviewed by Saam Barati.
+        
+        Added appropriate links.
+
+        Added text that explains the subscores.
+
+        * ARES-6/index.html:
+
+2017-02-06  Jer Noble  <jer.noble@apple.com>
+
+        Playback stalls when a SourceBuffer append causes frame eviction
+        https://bugs.webkit.org/show_bug.cgi?id=167834
+
+        Reviewed by Eric Carlson.
+
+        Add an in-page performance test measuring the amount of time required
+        to append a large amount of media data to a SourceBuffer, and then to
+        completely remove that data 30s at a time.
+
+        Add a microbenchmark for MediaTime which measures the amount of time
+        required to create a 1M entry std::map and traverse the map 1M times.
+
+        * Media/MSERemoveCodedFrames.html: Added.
+        * Media/media-source-loader.js:
+        (MediaSourceLoader.prototype.get duration):
+        * MediaTime/Configurations/Base.xcconfig: Added.
+        * MediaTime/Configurations/DebugRelease.xcconfig: Added.
+        * MediaTime/Makefile: Added.
+        * MediaTime/MediaTime.xcodeproj/project.pbxproj: Added.
+        * MediaTime/main.cpp: Added.
+        (performTest):
+        (test):
+        (main):
+        * Skipped:
+
+2017-02-06  Saam Barati  <sbarati@apple.com>
+
+        Make ARES-6 work from the CLI again
+        https://bugs.webkit.org/show_bug.cgi?id=167895
+
+        Reviewed by Michael Saboff.
+
+        * ARES-6/driver.js:
+        (Driver.prototype.readyTrigger):
+        (Driver.prototype.disableTrigger):
+        * ARES-6/stats.js:
+        (Stats.prototype.toString.span.span):
+        (Stats.prototype.toString.return.span):
+        (Stats.prototype.toString):
+
+2017-02-06  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Skip ARES-6 on performance bots
+        https://bugs.webkit.org/show_bug.cgi?id=167863
+
+        Unreviewed test gardening.
+
+        ES6SampleBench was renamed to ARES-6, so this should be updated in PerformanceTests/Skipped as well.
+
+        * Skipped:
+
+2017-02-05  Filip Pizlo  <fpizlo@apple.com>
+
+        Change ES6SampleBench into ARES-6
+        https://bugs.webkit.org/show_bug.cgi?id=167863
+
+        Rubber stamped by Saam Barati.
+        
+        This imports changes that Jonathan Davis (jond@apple.com) made to ES6SampleBench to make it look
+        super awesome. Its now called ARES-6.
+
+        * ARES-6: Copied from PerformanceTests/ES6SampleBench.
+        * ARES-6/ARES-6.svg: Added.
+        * ARES-6/driver.js:
+        (Driver):
+        (Driver.prototype.readyTrigger):
+        (Driver.prototype.disableTrigger):
+        (Driver.prototype.start):
+        (Driver.prototype._updateIterations):
+        * ARES-6/glue.js:
+        * ARES-6/index.html:
+        * ARES-6/results.js:
+        (Results.prototype.reportRunning):
+        (Results.prototype.reportDone):
+        * ARES-6/stats.js:
+        (Stats.prototype.toString.return.span):
+        (Stats.prototype.toString.span.span):
+        (Stats.prototype.toString): Deleted.
+        * ARES-6/style.css: Removed.
+        * ARES-6/styles.css: Added.
+        (html):
+        (body):
+        (header,):
+        (p a):
+        (p a:hover):
+        (.flip):
+        (header):
+        (h2,):
+        (p):
+        (.about h2):
+        (.logo):
+        (.start):
+        (.start.ready):
+        (.start.ready:hover):
+        (.start:after):
+        (.start.ready .testrun):
+        (.tests):
+        (.test):
+        (.overall h2,):
+        (.test .indicator):
+        (.test .indicator.running):
+        (@keyframes test-running):
+        (100%):
+        (.score):
+        (.score label):
+        (.score .value):
+        (.score .units):
+        (.score .margin):
+        (.overall):
+        (.overall .score):
+        (.overall .margin):
+        (.testing, .about):
+        (.testing):
+        (.about):
+        (#about:target):
+        (@media only screen and (max-width: 784px)):
+        * ARES-6/swoop.svg: Added.
+        * ES6SampleBench: Removed.
+        * ES6SampleBench/Air: Removed.
+        * ES6SampleBench/Air/README.md: Removed.
+        * ES6SampleBench/Air/airjs-tests.yaml: Removed.
+        * ES6SampleBench/Air/all.js: Removed.
+        * ES6SampleBench/Air/allocate_stack.js: Removed.
+        * ES6SampleBench/Air/arg.js: Removed.
+        * ES6SampleBench/Air/basic_block.js: Removed.
+        * ES6SampleBench/Air/benchmark.js: Removed.
+        * ES6SampleBench/Air/code.js: Removed.
+        * ES6SampleBench/Air/custom.js: Removed.
+        * ES6SampleBench/Air/frequented_block.js: Removed.
+        * ES6SampleBench/Air/insertion_set.js: Removed.
+        * ES6SampleBench/Air/inst.js: Removed.
+        * ES6SampleBench/Air/liveness.js: Removed.
+        * ES6SampleBench/Air/make_dist.sh: Removed.
+        * ES6SampleBench/Air/opcode.js: Removed.
+        * ES6SampleBench/Air/payload-airjs-ACLj8C.js: Removed.
+        * ES6SampleBench/Air/payload-gbemu-executeIteration.js: Removed.
+        * ES6SampleBench/Air/payload-imaging-gaussian-blur-gaussianBlur.js: Removed.
+        * ES6SampleBench/Air/payload-typescript-scanIdentifier.js: Removed.
+        * ES6SampleBench/Air/reg.js: Removed.
+        * ES6SampleBench/Air/stack_slot.js: Removed.
+        * ES6SampleBench/Air/stress-test.js: Removed.
+        * ES6SampleBench/Air/strip-hash.rb: Removed.
+        * ES6SampleBench/Air/symbols.js: Removed.
+        * ES6SampleBench/Air/test.html: Removed.
+        * ES6SampleBench/Air/test.js: Removed.
+        * ES6SampleBench/Air/tmp.js: Removed.
+        * ES6SampleBench/Air/tmp_base.js: Removed.
+        * ES6SampleBench/Air/util.js: Removed.
+        * ES6SampleBench/Basic: Removed.
+        * ES6SampleBench/Basic/ast.js: Removed.
+        * ES6SampleBench/Basic/basic-tests.yaml: Removed.
+        * ES6SampleBench/Basic/basic.js: Removed.
+        * ES6SampleBench/Basic/benchmark.js: Removed.
+        * ES6SampleBench/Basic/caseless_map.js: Removed.
+        * ES6SampleBench/Basic/lexer.js: Removed.
+        * ES6SampleBench/Basic/number.js: Removed.
+        * ES6SampleBench/Basic/parser.js: Removed.
+        * ES6SampleBench/Basic/random.js: Removed.
+        * ES6SampleBench/Basic/state.js: Removed.
+        * ES6SampleBench/Basic/stress-test.js: Removed.
+        * ES6SampleBench/Basic/test.html: Removed.
+        * ES6SampleBench/Basic/test.js: Removed.
+        * ES6SampleBench/Basic/util.js: Removed.
+        * ES6SampleBench/air_benchmark.js: Removed.
+        * ES6SampleBench/basic_benchmark.js: Removed.
+        * ES6SampleBench/cli.js: Removed.
+        * ES6SampleBench/driver.js: Removed.
+        * ES6SampleBench/glue.js: Removed.
+        * ES6SampleBench/index.html: Removed.
+        * ES6SampleBench/results.js: Removed.
+        * ES6SampleBench/stats.js: Removed.
+        * ES6SampleBench/style.css: Removed.
+
+2017-02-05  Zalan Bujtas  <zalan@apple.com>
+
+        Simple line layout: Add performance test with varying string and font-size to minimize width-cache hit.
+        https://bugs.webkit.org/show_bug.cgi?id=167859
+        <rdar://problem/30368070>
+
+        Reviewed by Antti Koivisto.
+
+        This is in preparation for webkit.org/b/167843.
+
+        * Layout/simple-line-layout-with-varying-content.html: Added.
+
+2017-01-16  Filip Pizlo  <fpizlo@apple.com>
+
+        Add framerate baselines to the splay-detail test
+        https://bugs.webkit.org/show_bug.cgi?id=167659
+
+        Reviewed by Geoffrey Garen.
+
+        * JetStream/Octane2/splay-detail.html:
+
+2017-01-31  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [EFL][GTK] Skip some IndexedDB tests that time out on the Perf bots.
+
+        Unreviewed performance test gardening.
+
+        * Skipped:
+
+2017-01-30  Zalan Bujtas  <zalan@apple.com>
+
+        Simple line layout: Small tweaks to improve performance.
+        https://bugs.webkit.org/show_bug.cgi?id=167611
+        <rdar://problem/30274294>
+
+        Reviewed by Simon Fraser.
+
+        * Layout/simple-line-layout-non-repeating-text.html: Added.
+
 2017-01-13  Said Abou-Hallawa  <sabouhallawa@apple.com>
 
         26 MotionMark performance tests failing

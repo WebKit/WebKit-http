@@ -23,8 +23,7 @@
  * THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#ifndef PageClientImplIOS_h
-#define PageClientImplIOS_h
+#pragma once
 
 #if PLATFORM(IOS)
 
@@ -65,6 +64,8 @@ private:
     void preferencesDidChange() override;
     void toolTipChanged(const String&, const String&) override;
     bool decidePolicyForGeolocationPermissionRequest(WebFrameProxy&, API::SecurityOrigin&, GeolocationPermissionRequestProxy&) override;
+    void didStartProvisionalLoadForMainFrame() override;
+    void didFailProvisionalLoadForMainFrame() override;
     void didCommitLoadForMainFrame(const String& mimeType, bool useCustomContentProvider) override;
     void handleDownloadRequest(DownloadProxy*) override;
     void didChangeContentSize(const WebCore::IntSize&) override;
@@ -194,6 +195,18 @@ private:
 
     WebCore::UserInterfaceLayoutDirection userInterfaceLayoutDirection() override;
 
+    void handleActiveNowPlayingSessionInfoResponse(bool hasActiveSession, const String& title, double duration, double elapsedTime) override;
+
+#if USE(QUICK_LOOK)
+    void requestPasswordForQuickLookDocument(const String& fileName, std::function<void(const String&)>&&) override;
+#endif
+
+#if ENABLE(DATA_INTERACTION)
+    void didPerformDataInteractionControllerOperation() override;
+    void didHandleStartDataInteractionRequest(bool started) override;
+    void startDataInteractionWithImage(const WebCore::IntPoint& clientPosition, const ShareableBitmap::Handle& image, const WebCore::FloatPoint& anchorPoint, bool isLink) override;
+#endif
+
     WKContentView *m_contentView;
     WKWebView *m_webView;
     RetainPtr<WKEditorUndoTargetObjC> m_undoTarget;
@@ -201,5 +214,3 @@ private:
 } // namespace WebKit
 
 #endif // PLATFORM(IOS)
-
-#endif // PageClientImplIOS_h

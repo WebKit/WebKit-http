@@ -1,7 +1,7 @@
 /*
  *  Copyright (C) 1999-2002 Harri Porten (porten@kde.org)
  *  Copyright (C) 2001 Peter Kelly (pmk@post.com)
- *  Copyright (C) 2003-2009, 2015-2016 Apple Inc. All rights reserved.
+ *  Copyright (C) 2003-2009, 2015-2017 Apple Inc. All rights reserved.
  *  Copyright (C) 2007 Cameron Zwarich (cwzwarich@uwaterloo.ca)
  *  Copyright (C) 2007 Maks Orlovich
  *  Copyright (C) 2015 Canon Inc. All rights reserved.
@@ -92,7 +92,7 @@ JSFunction::JSFunction(VM& vm, JSGlobalObject* globalObject, Structure* structur
 void JSFunction::finishCreation(VM& vm, NativeExecutable* executable, int length, const String& name)
 {
     Base::finishCreation(vm);
-    ASSERT(inherits(info()));
+    ASSERT(inherits(vm, info()));
     m_executable.set(vm, this, executable);
     // Some NativeExecutable functions, like JSBoundFunction, decide to lazily allocate their name string.
     if (!name.isNull())
@@ -133,11 +133,12 @@ FunctionRareData* JSFunction::allocateAndInitializeRareData(ExecState* exec, siz
 {
     ASSERT(!m_rareData);
     VM& vm = exec->vm();
-    JSObject* prototype = jsDynamicCast<JSObject*>(get(exec, vm.propertyNames->prototype));
+    JSObject* prototype = jsDynamicCast<JSObject*>(vm, get(exec, vm.propertyNames->prototype));
+    JSGlobalObject* globalObject = this->globalObject(vm);
     if (!prototype)
-        prototype = globalObject(vm)->objectPrototype();
+        prototype = globalObject->objectPrototype();
     FunctionRareData* rareData = FunctionRareData::create(vm);
-    rareData->initializeObjectAllocationProfile(vm, prototype, inlineCapacity);
+    rareData->initializeObjectAllocationProfile(vm, globalObject, prototype, inlineCapacity);
 
     // A DFG compilation thread may be trying to read the rare data
     // We want to ensure that it sees it properly allocated
@@ -151,10 +152,11 @@ FunctionRareData* JSFunction::initializeRareData(ExecState* exec, size_t inlineC
 {
     ASSERT(!!m_rareData);
     VM& vm = exec->vm();
-    JSObject* prototype = jsDynamicCast<JSObject*>(get(exec, vm.propertyNames->prototype));
+    JSObject* prototype = jsDynamicCast<JSObject*>(vm, get(exec, vm.propertyNames->prototype));
+    JSGlobalObject* globalObject = this->globalObject(vm);
     if (!prototype)
-        prototype = globalObject(vm)->objectPrototype();
-    m_rareData->initializeObjectAllocationProfile(vm, prototype, inlineCapacity);
+        prototype = globalObject->objectPrototype();
+    m_rareData->initializeObjectAllocationProfile(vm, globalObject, prototype, inlineCapacity);
     return m_rareData.get();
 }
 
@@ -226,7 +228,7 @@ CallType JSFunction::getCallData(JSCell* cell, CallData& callData)
 class RetrieveArgumentsFunctor {
 public:
     RetrieveArgumentsFunctor(JSFunction* functionObj)
-        : m_targetCallee(jsDynamicCast<JSObject*>(functionObj))
+        : m_targetCallee(functionObj)
         , m_result(jsNull())
     {
     }
@@ -266,7 +268,7 @@ EncodedJSValue JSFunction::argumentsGetter(ExecState* exec, EncodedJSValue thisV
 class RetrieveCallerFunctionFunctor {
 public:
     RetrieveCallerFunctionFunctor(JSFunction* functionObj)
-        : m_targetCallee(jsDynamicCast<JSObject*>(functionObj))
+        : m_targetCallee(functionObj)
         , m_hasFoundFrame(false)
         , m_hasSkippedToCallerFrame(false)
         , m_result(jsNull())
@@ -279,7 +281,7 @@ public:
     {
         JSCell* callee = visitor->callee();
 
-        if (callee && callee->inherits(JSBoundFunction::info()))
+        if (callee && callee->inherits(*callee->vm(), JSBoundFunction::info()))
             return StackVisitor::Continue;
 
         if (!m_hasFoundFrame && (callee != m_targetCallee))
@@ -320,14 +322,18 @@ EncodedJSValue JSFunction::callerGetter(ExecState* exec, EncodedJSValue thisValu
     JSValue caller = retrieveCallerFunction(exec, thisObj);
 
     // See ES5.1 15.3.5.4 - Function.caller may not be used to retrieve a strict caller.
-    if (!caller.isObject() || !asObject(caller)->inherits(JSFunction::info())) {
-        // It isn't a JSFunction, but if it is a JSCallee from a program or call eval, return null.
-        if (jsDynamicCast<JSCallee*>(caller))
+    if (!caller.isObject() || !asObject(caller)->inherits(vm, JSFunction::info())) {
+        // It isn't a JSFunction, but if it is a JSCallee from a program or eval call or an internal constructor, return null.
+        if (jsDynamicCast<JSCallee*>(vm, caller) || jsDynamicCast<InternalFunction*>(vm, caller))
             return JSValue::encode(jsNull());
         return JSValue::encode(caller);
     }
     JSFunction* function = jsCast<JSFunction*>(caller);
-    if (function->isHostOrBuiltinFunction() || !function->jsExecutable()->isStrictMode())
+
+    // Firefox returns null for native code callers, so we match that behavior.
+    if (function->isHostOrBuiltinFunction())
+        return JSValue::encode(jsNull());
+    if (!function->jsExecutable()->isStrictMode())
         return JSValue::encode(caller);
     return JSValue::encode(throwTypeError(exec, scope, ASCIILiteral("Function.caller used to retrieve strict caller")));
 }
@@ -388,8 +394,8 @@ bool JSFunction::getOwnPropertySlot(JSObject* object, ExecState* exec, PropertyN
 void JSFunction::getOwnNonIndexPropertyNames(JSObject* object, ExecState* exec, PropertyNameArray& propertyNames, EnumerationMode mode)
 {
     JSFunction* thisObject = jsCast<JSFunction*>(object);
+    VM& vm = exec->vm();
     if (!thisObject->isHostOrBuiltinFunction() && mode.includeDontEnumProperties()) {
-        VM& vm = exec->vm();
         // Make sure prototype has been reified.
         PropertySlot slot(thisObject, PropertySlot::InternalMethodType::VMInquiry);
         thisObject->methodTable(vm)->getOwnPropertySlot(thisObject, exec, vm.propertyNames->prototype, slot);
@@ -402,7 +408,7 @@ void JSFunction::getOwnNonIndexPropertyNames(JSObject* object, ExecState* exec, 
             propertyNames.add(vm.propertyNames->length);
         if (!thisObject->hasReifiedName())
             propertyNames.add(vm.propertyNames->name);
-    } else if (thisObject->isHostOrBuiltinFunction() && mode.includeDontEnumProperties() && thisObject->inherits(JSBoundFunction::info()) && !thisObject->hasReifiedName())
+    } else if (thisObject->isHostOrBuiltinFunction() && mode.includeDontEnumProperties() && thisObject->inherits(vm, JSBoundFunction::info()) && !thisObject->hasReifiedName())
         propertyNames.add(exec->vm().propertyNames->name);
     Base::getOwnNonIndexPropertyNames(thisObject, exec, propertyNames, mode);
 }
@@ -576,9 +582,9 @@ ConstructType JSFunction::getConstructData(JSCell* cell, ConstructData& construc
 
 String getCalculatedDisplayName(VM& vm, JSObject* object)
 {
-    if (JSFunction* function = jsDynamicCast<JSFunction*>(object))
+    if (JSFunction* function = jsDynamicCast<JSFunction*>(vm, object))
         return function->calculatedDisplayName(vm);
-    if (InternalFunction* function = jsDynamicCast<InternalFunction*>(object))
+    if (InternalFunction* function = jsDynamicCast<InternalFunction*>(vm, object))
         return function->calculatedDisplayName(vm);
     return emptyString();
 }
@@ -688,7 +694,7 @@ JSFunction::LazyPropertyType JSFunction::reifyBoundNameIfNeeded(VM& vm, ExecStat
     if (hasReifiedName())
         return LazyPropertyType::IsLazyProperty;
 
-    if (this->inherits(JSBoundFunction::info())) {
+    if (this->inherits(vm, JSBoundFunction::info())) {
         FunctionRareData* rareData = this->rareData(vm);
         String name = makeString("bound ", static_cast<NativeExecutable*>(m_executable.get())->name());
         unsigned initialAttributes = DontEnum | ReadOnly;

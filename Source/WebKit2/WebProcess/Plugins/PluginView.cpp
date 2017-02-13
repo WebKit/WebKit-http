@@ -1128,7 +1128,7 @@ void PluginView::focusPluginElement()
     ASSERT(frame());
     
     if (Page* page = frame()->page())
-        page->focusController().setFocusedElement(m_pluginElement.get(), frame());
+        page->focusController().setFocusedElement(m_pluginElement.get(), *frame());
     else
         frame()->document()->setFocusedElement(m_pluginElement.get());
 }
@@ -1508,7 +1508,7 @@ void PluginView::setStatusbarText(const String& statusbarText)
     if (!page)
         return;
 
-    page->chrome().setStatusbarText(frame(), statusbarText);
+    page->chrome().setStatusbarText(*frame(), statusbarText);
 }
 
 bool PluginView::isAcceleratedCompositingEnabled()
@@ -1589,7 +1589,8 @@ void PluginView::setCookiesForURL(const String& urlString, const String& cookieS
 
 bool PluginView::getAuthenticationInfo(const ProtectionSpace& protectionSpace, String& username, String& password)
 {
-    Credential credential = CredentialStorage::defaultCredentialStorage().get(protectionSpace);
+    String partitionName = m_pluginElement->contentDocument()->topDocument().securityOrigin().domainForCachePartition();
+    Credential credential = CredentialStorage::defaultCredentialStorage().get(partitionName, protectionSpace);
     if (credential.isEmpty())
         credential = CredentialStorage::defaultCredentialStorage().getFromPersistentStorage(protectionSpace);
 

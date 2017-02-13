@@ -425,7 +425,7 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
     case AllocatePropertyStorage:
     case ReallocatePropertyStorage:
         return state.forNode(node->child1()).m_structure.isSubsetOf(
-            StructureSet(node->transition()->previous));
+            RegisteredStructureSet(node->transition()->previous));
         
     case GetByOffset:
     case GetGetterSetterByOffset:
@@ -433,7 +433,7 @@ bool safeToExecute(AbstractStateType& state, Graph& graph, Node* node)
         PropertyOffset offset = node->storageAccessData().offset;
 
         if (state.structureClobberState() == StructuresAreWatched) {
-            if (JSObject* knownBase = node->child1()->dynamicCastConstant<JSObject*>()) {
+            if (JSObject* knownBase = node->child1()->dynamicCastConstant<JSObject*>(graph.m_vm)) {
                 if (graph.isSafeToLoad(knownBase, offset))
                     return true;
             }

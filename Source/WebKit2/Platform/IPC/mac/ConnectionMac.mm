@@ -120,6 +120,7 @@ void Connection::platformInvalidate()
         }
 
         if (m_receivePort) {
+            mach_port_unguard(mach_task_self(), m_receivePort, reinterpret_cast<mach_port_context_t>(this));
             mach_port_mod_refs(mach_task_self(), m_receivePort, MACH_PORT_RIGHT_RECEIVE, -1);
             m_receivePort = MACH_PORT_NULL;
         }
@@ -170,6 +171,8 @@ void Connection::platformInitialize(Identifier identifier)
     if (m_isServer) {
         m_receivePort = identifier.port;
         m_sendPort = MACH_PORT_NULL;
+
+        mach_port_guard(mach_task_self(), m_receivePort, reinterpret_cast<mach_port_context_t>(this), true);
     } else {
         m_receivePort = MACH_PORT_NULL;
         m_sendPort = identifier.port;
@@ -179,19 +182,6 @@ void Connection::platformInitialize(Identifier identifier)
     m_receiveSource = nullptr;
 
     m_xpcConnection = identifier.xpcConnection;
-}
-
-template<typename Function>
-static dispatch_source_t createReceiveSource(mach_port_t receivePort, WorkQueue& workQueue, Function&& function)
-{
-    dispatch_source_t source = dispatch_source_create(DISPATCH_SOURCE_TYPE_MACH_RECV, receivePort, 0, workQueue.dispatchQueue());
-    dispatch_source_set_event_handler(source, function);
-
-    dispatch_source_set_cancel_handler(source, ^{
-        mach_port_mod_refs(mach_task_self(), receivePort, MACH_PORT_RIGHT_RECEIVE, -1);
-    });
-
-    return source;
 }
 
 bool Connection::open()
@@ -204,8 +194,8 @@ bool Connection::open()
         ASSERT(!m_receivePort);
         ASSERT(m_sendPort);
 
-        // Create the receive port.
         mach_port_allocate(mach_task_self(), MACH_PORT_RIGHT_RECEIVE, &m_receivePort);
+        mach_port_guard(mach_task_self(), m_receivePort, reinterpret_cast<mach_port_context_t>(this), true);
 
 #if PLATFORM(MAC)
         mach_port_set_attributes(mach_task_self(), m_receivePort, MACH_PORT_DENAP_RECEIVER, (mach_port_info_t)0, 0);
@@ -225,16 +215,24 @@ bool Connection::open()
     // Change the message queue length for the receive port.
     setMachPortQueueLength(m_receivePort, MACH_PORT_QLIMIT_LARGE);
 
-    // Register the data available handler.
     RefPtr<Connection> connection(this);
-    m_receiveSource = createReceiveSource(m_receivePort, m_connectionQueue, [connection] {
+    m_receiveSource = dispatch_source_create(DISPATCH_SOURCE_TYPE_MACH_RECV, m_receivePort, 0, m_connectionQueue->dispatchQueue());
+    dispatch_source_set_event_handler(m_receiveSource, [connection] {
         connection->receiveSourceEventHandler();
+    });
+    dispatch_source_set_cancel_handler(m_receiveSource, [connection, receivePort = m_receivePort] {
+        mach_port_unguard(mach_task_self(), receivePort, reinterpret_cast<mach_port_context_t>(connection.get()));
+        mach_port_mod_refs(mach_task_self(), receivePort, MACH_PORT_RIGHT_RECEIVE, -1);
     });
 
 #if PLATFORM(MAC) && __MAC_OS_X_VERSION_MIN_REQUIRED <= 101000
     if (m_exceptionPort) {
-        m_exceptionPortDataAvailableSource = createReceiveSource(m_exceptionPort, m_connectionQueue, [connection] {
+        m_exceptionPortDataAvailableSource = dispatch_source_create(DISPATCH_SOURCE_TYPE_MACH_RECV, m_exceptionPort, 0, m_connectionQueue->dispatchQueue());
+        dispatch_source_set_event_handler(m_exceptionPortDataAvailableSource, [connection] {
             connection->exceptionSourceEventHandler();
+        });
+        dispatch_source_set_cancel_handler(m_exceptionPortDataAvailableSource, [connection, exceptionPort = m_exceptionPort] {
+            mach_port_mod_refs(mach_task_self(), exceptionPort, MACH_PORT_RIGHT_RECEIVE, -1);
         });
 
         auto encoder = std::make_unique<Encoder>("IPC", "SetExceptionPort", 0);
@@ -498,7 +496,7 @@ static mach_msg_header_t* readFromMachPort(mach_port_t machPort, ReceiveBuffer& 
 
     if (kr != MACH_MSG_SUCCESS) {
 #if !ASSERT_DISABLED
-        WKSetCrashReportApplicationSpecificInformation((CFStringRef)[NSString stringWithFormat:@"Unhandled error code %x from mach_msg", kr]);
+        WKSetCrashReportApplicationSpecificInformation((CFStringRef)[NSString stringWithFormat:@"Unhandled error code %x from mach_msg, receive port is %x", kr, machPort]);
 #endif
         ASSERT_NOT_REACHED();
         return 0;

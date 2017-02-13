@@ -59,25 +59,6 @@ public:
         BUBBLING_PHASE      = 3 
     };
 
-    enum EventType {
-        MOUSEDOWN           = 1,
-        MOUSEUP             = 2,
-        MOUSEOVER           = 4,
-        MOUSEOUT            = 8,
-        MOUSEMOVE           = 16,
-        MOUSEDRAG           = 32,
-        CLICK               = 64,
-        DBLCLICK            = 128,
-        KEYDOWN             = 256,
-        KEYUP               = 512,
-        KEYPRESS            = 1024,
-        DRAGDROP            = 2048,
-        FOCUS               = 4096,
-        BLUR                = 8192,
-        SELECT              = 16384,
-        CHANGE              = 32768
-    };
-
     static Ref<Event> create(const AtomicString& type, bool canBubble, bool cancelable)
     {
         return adoptRef(*new Event(type, canBubble, cancelable));
@@ -105,8 +86,8 @@ public:
     EventTarget* target() const { return m_target.get(); }
     void setTarget(RefPtr<EventTarget>&&);
 
-    EventTarget* currentTarget() const { return m_currentTarget; }
-    void setCurrentTarget(EventTarget* currentTarget) { m_currentTarget = currentTarget; }
+    EventTarget* currentTarget() const { return m_currentTarget.get(); }
+    void setCurrentTarget(EventTarget*);
 
     unsigned short eventPhase() const { return m_eventPhase; }
     void setEventPhase(unsigned short eventPhase) { m_eventPhase = eventPhase; }
@@ -211,7 +192,7 @@ private:
     bool m_isExecutingPassiveEventListener { false };
 
     unsigned short m_eventPhase { 0 };
-    EventTarget* m_currentTarget { nullptr };
+    RefPtr<EventTarget> m_currentTarget;
     const EventPath* m_eventPath { nullptr };
     RefPtr<EventTarget> m_target;
     DOMTimeStamp m_createTime;

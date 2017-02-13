@@ -22,8 +22,12 @@
 #include "JSTestNamedConstructor.h"
 
 #include "JSDOMBinding.h"
-#include "JSDOMConstructor.h"
+#include "JSDOMBindingCaller.h"
+#include "JSDOMConstructorNotConstructable.h"
 #include "JSDOMConvert.h"
+#include "JSDOMExceptionHandling.h"
+#include "JSDOMNamedConstructor.h"
+#include "JSDOMWrapperCache.h"
 #include <runtime/Error.h>
 #include <runtime/FunctionPrototype.h>
 #include <wtf/GetPtr.h>
@@ -139,7 +143,7 @@ JSTestNamedConstructor::JSTestNamedConstructor(Structure* structure, JSDOMGlobal
 void JSTestNamedConstructor::finishCreation(VM& vm)
 {
     Base::finishCreation(vm);
-    ASSERT(inherits(info()));
+    ASSERT(inherits(vm, info()));
 
 }
 
@@ -163,7 +167,7 @@ EncodedJSValue jsTestNamedConstructorConstructor(ExecState* state, EncodedJSValu
 {
     VM& vm = state->vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);
-    JSTestNamedConstructorPrototype* domObject = jsDynamicDowncast<JSTestNamedConstructorPrototype*>(JSValue::decode(thisValue));
+    JSTestNamedConstructorPrototype* domObject = jsDynamicDowncast<JSTestNamedConstructorPrototype*>(vm, JSValue::decode(thisValue));
     if (UNLIKELY(!domObject))
         return throwVMTypeError(state, throwScope);
     return JSValue::encode(JSTestNamedConstructor::getConstructor(state->vm(), domObject->globalObject()));
@@ -174,7 +178,7 @@ bool setJSTestNamedConstructorConstructor(ExecState* state, EncodedJSValue thisV
     VM& vm = state->vm();
     auto throwScope = DECLARE_THROW_SCOPE(vm);
     JSValue value = JSValue::decode(encodedValue);
-    JSTestNamedConstructorPrototype* domObject = jsDynamicDowncast<JSTestNamedConstructorPrototype*>(JSValue::decode(thisValue));
+    JSTestNamedConstructorPrototype* domObject = jsDynamicDowncast<JSTestNamedConstructorPrototype*>(vm, JSValue::decode(thisValue));
     if (UNLIKELY(!domObject)) {
         throwVMTypeError(state, throwScope);
         return false;
@@ -247,9 +251,9 @@ JSC::JSValue toJS(JSC::ExecState* state, JSDOMGlobalObject* globalObject, TestNa
     return wrap(state, globalObject, impl);
 }
 
-TestNamedConstructor* JSTestNamedConstructor::toWrapped(JSC::JSValue value)
+TestNamedConstructor* JSTestNamedConstructor::toWrapped(JSC::VM& vm, JSC::JSValue value)
 {
-    if (auto* wrapper = jsDynamicDowncast<JSTestNamedConstructor*>(value))
+    if (auto* wrapper = jsDynamicDowncast<JSTestNamedConstructor*>(vm, value))
         return &wrapper->wrapped();
     return nullptr;
 }

@@ -74,7 +74,7 @@ void SVGScriptElement::svgAttributeChanged(const QualifiedName& attrName)
 Node::InsertionNotificationRequest SVGScriptElement::insertedInto(ContainerNode& rootParent)
 {
     SVGElement::insertedInto(rootParent);
-    if (rootParent.inDocument())
+    if (rootParent.isConnected())
         SVGExternalResourcesRequired::insertedIntoDocument(this);
     return shouldCallFinishedInsertingSubtree(rootParent) ? InsertionShouldCallFinishedInsertingSubtree : InsertionDone;
 }
@@ -87,7 +87,7 @@ void SVGScriptElement::finishedInsertingSubtree()
 void SVGScriptElement::childrenChanged(const ChildChange& change)
 {
     SVGElement::childrenChanged(change);
-    ScriptElement::childrenChanged();
+    ScriptElement::childrenChanged(change);
 }
 
 bool SVGScriptElement::isURLAttribute(const Attribute& attribute) const
@@ -138,12 +138,17 @@ String SVGScriptElement::eventAttributeValue() const
     return String();
 }
 
-bool SVGScriptElement::asyncAttributeValue() const
+bool SVGScriptElement::hasAsyncAttribute() const
 {
     return false;
 }
 
-bool SVGScriptElement::deferAttributeValue() const
+bool SVGScriptElement::hasDeferAttribute() const
+{
+    return false;
+}
+
+bool SVGScriptElement::hasNoModuleAttribute() const
 {
     return false;
 }

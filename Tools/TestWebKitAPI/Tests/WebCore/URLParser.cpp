@@ -630,6 +630,10 @@ TEST_F(URLParserTest, ParseRelative)
     checkRelativeURL("", "applewebdata://Host", {"applewebdata", "", "", "Host", 0, "", "", "", "applewebdata://Host"});
     checkRelativeURL("?query", "applewebdata://Host", {"applewebdata", "", "", "Host", 0, "", "query", "", "applewebdata://Host?query"});
     checkRelativeURL("#fragment", "applewebdata://Host", {"applewebdata", "", "", "Host", 0, "", "", "fragment", "applewebdata://Host#fragment"});
+    checkRelativeURL("notspecial://something?", "file:////var//containers//stuff/", {"notspecial", "", "", "something", 0, "", "", "", "notspecial://something?"}, TestTabs::No);
+    checkRelativeURL("notspecial://something#", "file:////var//containers//stuff/", {"notspecial", "", "", "something", 0, "", "", "", "notspecial://something#"}, TestTabs::No);
+    checkRelativeURL("http://something?", "file:////var//containers//stuff/", {"http", "", "", "something", 0, "/", "", "", "http://something/?"}, TestTabs::No);
+    checkRelativeURL("http://something#", "file:////var//containers//stuff/", {"http", "", "", "something", 0, "/", "", "", "http://something/#"}, TestTabs::No);
 
     // The checking of slashes in SpecialAuthoritySlashes needed to get this to pass contradicts what is in the spec,
     // but it is included in the web platform tests.
@@ -783,7 +787,12 @@ TEST_F(URLParserTest, ParserDifferences)
     checkURLDifferences("file:pAtH/",
         {"file", "", "", "", 0, "/pAtH/", "", "", "file:///pAtH/"},
         {"file", "", "", "", 0, "pAtH/", "", "", "file://pAtH/"});
-    
+    checkURLDifferences("http://example.com%A0",
+        {"", "", "", "", 0, "", "", "", "http://example.com%A0"},
+        {"http", "", "", "example.com%a0", 0, "/", "", "", "http://example.com%a0/"});
+    checkURLDifferences("http://%E2%98%83",
+        {"http", "", "", "xn--n3h", 0, "/", "", "", "http://xn--n3h/"},
+        {"http", "", "", "%e2%98%83", 0, "/", "", "", "http://%e2%98%83/"});
     checkURLDifferences("http://host%73",
         {"http", "", "", "hosts", 0, "/", "", "", "http://hosts/"},
         {"http", "", "", "host%73", 0, "/", "", "", "http://host%73/"});
@@ -971,8 +980,12 @@ TEST_F(URLParserTest, ParserDifferences)
         {"http", "", "", "f", 10, "/c", "", "", "http://f:10/c"},
         {"http", "", "", "f", 10, "/c", "", "", "http://f:010/c"});
     checkURL("notspecial://HoSt", {"notspecial", "", "", "HoSt", 0, "", "", "", "notspecial://HoSt"});
-    checkURL("notspecial://H%6FSt", {"notspecial", "", "", "H%6FSt", 0, "", "", "", "notspecial://H%6FSt"});
-    checkURL("notspecial://H%4fSt", {"notspecial", "", "", "H%4fSt", 0, "", "", "", "notspecial://H%4fSt"});
+    checkURLDifferences("notspecial://H%6FSt",
+        {"", "", "", "", 0, "", "", "", "notspecial://H%6FSt"},
+        {"notspecial", "", "", "H%6FSt", 0, "", "", "", "notspecial://H%6FSt"});
+    checkURLDifferences("notspecial://H%4fSt",
+        {"", "", "", "", 0, "", "", "", "notspecial://H%4fSt"},
+        {"notspecial", "", "", "H%4fSt", 0, "", "", "", "notspecial://H%4fSt"});
     checkURLDifferences(utf16String(u"notspecial://H😍ßt"),
         {"notspecial", "", "", "H%F0%9F%98%8D%C3%9Ft", 0, "", "", "", "notspecial://H%F0%9F%98%8D%C3%9Ft"},
         {"notspecial", "", "", "xn--hsst-qc83c", 0, "", "", "", "notspecial://xn--hsst-qc83c"}, testTabsValueForSurrogatePairs);
@@ -1060,9 +1073,15 @@ TEST_F(URLParserTest, ParserDifferences)
         {"asdf", "", "", "[::a:b:c:d]", 0, "", "", "", "asdf://[::a:b:c:d]"},
         {"asdf", "", "", "[0:0:0:0:a:b:c:d]", 0, "", "", "", "asdf://[0:0:0:0:a:b:c:d]"}, TestTabs::No);
     shouldFail("a://%:a");
-    checkURL("a://%:/", {"a", "", "", "%", 0, "/", "", "", "a://%/"});
-    checkURL("a://%:", {"a", "", "", "%", 0, "", "", "", "a://%"});
-    checkURL("a://%:1/", {"a", "", "", "%", 1, "/", "", "", "a://%:1/"});
+    checkURLDifferences("a://%:/",
+        {"", "", "", "", 0, "", "", "", "a://%:/"},
+        {"a", "", "", "%", 0, "/", "", "", "a://%/"});
+    checkURLDifferences("a://%:",
+        {"", "", "", "", 0, "", "", "", "a://%:"},
+        {"a", "", "", "%", 0, "", "", "", "a://%"});
+    checkURLDifferences("a://%:1/",
+        {"", "", "", "", 0, "", "", "", "a://%:1/"},
+        {"a", "", "", "%", 1, "/", "", "", "a://%:1/"});
     checkURLDifferences("http://%:",
         {"", "", "", "", 0, "", "", "", "http://%:"},
         {"http", "", "", "%", 0, "/", "", "", "http://%/"});
@@ -1255,14 +1274,13 @@ TEST_F(URLParserTest, ParserFailures)
     shouldFail("http://[1234::ab@]");
     shouldFail("http://[1234::ab~]");
     shouldFail("http://[2001::1");
+    shouldFail("http://4:b\xE1");
     shouldFail("http://[1:2:3:4:5:6:7:8~]/");
     shouldFail("http://[a:b:c:d:e:f:g:127.0.0.1]");
     shouldFail("http://[a:b:c:d:e:f:g:h:127.0.0.1]");
     shouldFail("http://[a:b:c:d:e:f:127.0.0.0x11]"); // Chrome treats this as hex, Firefox and the spec fail
     shouldFail("http://[a:b:c:d:e:f:127.0.-0.1]");
-    checkURLDifferences("asdf://space In\aHost",
-        {"asdf", "", "", "space In%07Host", 0, "", "", "", "asdf://space In%07Host"},
-        {"", "", "", "", 0, "", "", "", "asdf://space In\aHost"});
+    shouldFail("asdf://space In\aHost");
     shouldFail("asdf://[0:0:0:0:a:b:c:d");
 }
 

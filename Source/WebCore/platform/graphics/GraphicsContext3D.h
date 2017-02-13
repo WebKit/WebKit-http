@@ -101,6 +101,9 @@ class WebGLRenderingContextBase;
 #if USE(CAIRO)
 class PlatformContextCairo;
 #endif
+#if USE(TEXTURE_MAPPER)
+class TextureMapperGC3DPlatformLayer;
+#endif
 
 typedef WTF::HashMap<CString, uint64_t> ShaderNameHash;
 
@@ -1137,6 +1140,9 @@ public:
 #if PLATFORM(IOS)
     void endPaint();
 #endif
+#if PLATFORM(MAC)
+    void updateCGLContext();
+#endif
 
     // Support for buffer creation and deletion
     Platform3DObject createBuffer();
@@ -1413,8 +1419,13 @@ private:
     // Errors raised by synthesizeGLError().
     ListHashSet<GC3Denum> m_syntheticErrors;
 
+#if USE(TEXTURE_MAPPER) && !PLATFORM(EFL)
+    friend class TextureMapperGC3DPlatformLayer;
+    std::unique_ptr<TextureMapperGC3DPlatformLayer> m_texmapLayer;
+#else
     friend class GraphicsContext3DPrivate;
     std::unique_ptr<GraphicsContext3DPrivate> m_private;
+#endif
     
     WebGLRenderingContextBase* m_webglContext;
 

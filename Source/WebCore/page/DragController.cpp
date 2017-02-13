@@ -32,6 +32,7 @@
 #if ENABLE(DRAG_SUPPORT)
 #include "CachedImage.h"
 #include "CachedResourceLoader.h"
+#include "ClientRect.h"
 #include "DataTransfer.h"
 #include "Document.h"
 #include "DocumentFragment.h"
@@ -76,6 +77,11 @@
 #include "TextEvent.h"
 #include "htmlediting.h"
 #include "markup.h"
+
+#if ENABLE(DATA_INTERACTION)
+#include "SelectionRect.h"
+#endif
+
 #include <wtf/CurrentTime.h>
 #include <wtf/RefPtr.h>
 #endif
@@ -195,9 +201,9 @@ void DragController::dragExited(const DragData& dragData)
 #else
         DataTransferAccessPolicy policy = DataTransferAccessPolicy::TypesReadable;
 #endif
-        RefPtr<DataTransfer> dataTransfer = DataTransfer::createForDragAndDrop(policy, dragData);
+        auto dataTransfer = DataTransfer::createForDragAndDrop(policy, dragData);
         dataTransfer->setSourceOperation(dragData.draggingSourceOperationMask());
-        m_page.mainFrame().eventHandler().cancelDragAndDrop(createMouseEvent(dragData), dataTransfer.get());
+        m_page.mainFrame().eventHandler().cancelDragAndDrop(createMouseEvent(dragData), dataTransfer);
         dataTransfer->setAccessPolicy(DataTransferAccessPolicy::Numb); // Invalidate dataTransfer here for security.
     }
     mouseMovedIntoDocument(nullptr);
@@ -225,9 +231,9 @@ bool DragController::performDragOperation(const DragData& dragData)
         bool preventedDefault = false;
         if (mainFrame->view()) {
             // Sending an event can result in the destruction of the view and part.
-            RefPtr<DataTransfer> dataTransfer = DataTransfer::createForDragAndDrop(DataTransferAccessPolicy::Readable, dragData);
+            auto dataTransfer = DataTransfer::createForDragAndDrop(DataTransferAccessPolicy::Readable, dragData);
             dataTransfer->setSourceOperation(dragData.draggingSourceOperationMask());
-            preventedDefault = mainFrame->eventHandler().performDragAndDrop(createMouseEvent(dragData), dataTransfer.get());
+            preventedDefault = mainFrame->eventHandler().performDragAndDrop(createMouseEvent(dragData), dataTransfer);
             dataTransfer->setAccessPolicy(DataTransferAccessPolicy::Numb); // Invalidate dataTransfer here for security.
         }
         if (preventedDefault) {
@@ -547,7 +553,7 @@ bool DragController::concludeEditDrag(const DragData& dragData)
 
     if (rootEditableElement) {
         if (Frame* frame = rootEditableElement->document().frame())
-            frame->eventHandler().updateDragStateAfterEditDragIfNeeded(rootEditableElement.get());
+            frame->eventHandler().updateDragStateAfterEditDragIfNeeded(*rootEditableElement);
     }
 
     return true;
@@ -616,12 +622,12 @@ bool DragController::tryDHTMLDrag(const DragData& dragData, DragOperation& opera
 #else
     DataTransferAccessPolicy policy = DataTransferAccessPolicy::TypesReadable;
 #endif
-    RefPtr<DataTransfer> dataTransfer = DataTransfer::createForDragAndDrop(policy, dragData);
+    auto dataTransfer = DataTransfer::createForDragAndDrop(policy, dragData);
     DragOperation srcOpMask = dragData.draggingSourceOperationMask();
     dataTransfer->setSourceOperation(srcOpMask);
 
     PlatformMouseEvent event = createMouseEvent(dragData);
-    if (!mainFrame->eventHandler().updateDragAndDrop(event, dataTransfer.get())) {
+    if (!mainFrame->eventHandler().updateDragAndDrop(event, dataTransfer)) {
         dataTransfer->setAccessPolicy(DataTransferAccessPolicy::Numb); // Invalidate dataTransfer here for security.
         return false;
     }
@@ -810,6 +816,7 @@ bool DragController::startDrag(Frame& src, const DragState& state, DragOperation
     ASSERT(state.source);
     Element& element = *state.source;
 
+    IntRect dragImageBounds;
     Image* image = getImage(element);
     if (state.type == DragSourceActionSelection) {
         if (!dataTransfer.pasteboard().hasData()) {
@@ -817,6 +824,14 @@ bool DragController::startDrag(Frame& src, const DragState& state, DragOperation
 
             RefPtr<Range> selectionRange = src.selection().toNormalizedRange();
             ASSERT(selectionRange);
+
+#if ENABLE(DATA_INTERACTION)
+            Vector<SelectionRect> selectionRects;
+            selectionRange->collectSelectionRects(selectionRects);
+            for (auto selectionRect : selectionRects)
+                dragImageBounds.unite(selectionRect.rect());
+            dragImageBounds.inflate(SelectionDragImagePadding);
+#endif
 
             src.editor().willWriteSelectionToPasteboard(selectionRange.get());
 
@@ -843,7 +858,7 @@ bool DragController::startDrag(Frame& src, const DragState& state, DragOperation
         if (!dragImage)
             return false;
 
-        doSystemDrag(dragImage, dragLoc, dragOrigin, dataTransfer, src, false);
+        doSystemDrag(dragImage, dragLoc, dragOrigin, dragImageBounds, dataTransfer, src, false);
     } else if (!src.document()->securityOrigin().canDisplay(linkURL)) {
         src.document()->addConsoleMessage(MessageSource::Security, MessageLevel::Error, "Not allowed to drag local resource: " + linkURL.stringCenterEllipsizedToLength());
         startedDrag = false;
@@ -866,7 +881,7 @@ bool DragController::startDrag(Frame& src, const DragState& state, DragOperation
             doImageDrag(element, dragOrigin, hitTestResult.imageRect(), dataTransfer, src, m_dragOffset);
         } else {
             // DHTML defined drag image
-            doSystemDrag(dragImage, dragLoc, dragOrigin, dataTransfer, src, false);
+            doSystemDrag(dragImage, dragLoc, dragOrigin, { }, dataTransfer, src, false);
         }
     } else if (!linkURL.isEmpty() && (m_dragSourceAction & DragSourceActionLink)) {
         if (!dataTransfer.pasteboard().hasData()) {
@@ -902,7 +917,7 @@ bool DragController::startDrag(Frame& src, const DragState& state, DragOperation
             // Later code expects the drag image to be scaled by device's scale factor.
             dragImage = scaleDragImage(dragImage, FloatSize(m_page.deviceScaleFactor(), m_page.deviceScaleFactor()));
         }
-        doSystemDrag(dragImage, dragLoc, mouseDraggedPoint, dataTransfer, src, true);
+        doSystemDrag(dragImage, dragLoc, mouseDraggedPoint, { }, dataTransfer, src, true);
 #if ENABLE(ATTACHMENT_ELEMENT)
     } else if (!attachmentURL.isEmpty() && (m_dragSourceAction & DragSourceActionAttachment)) {
         if (!dataTransfer.pasteboard().hasData()) {
@@ -918,13 +933,13 @@ bool DragController::startDrag(Frame& src, const DragState& state, DragOperation
             dragLoc = dragLocForSelectionDrag(src);
             m_dragOffset = IntPoint(dragOrigin.x() - dragLoc.x(), dragOrigin.y() - dragLoc.y());
         }
-        doSystemDrag(dragImage, dragLoc, dragOrigin, dataTransfer, src, false);
+        doSystemDrag(dragImage, dragLoc, dragOrigin, { }, dataTransfer, src, false);
 #endif
     } else if (state.type == DragSourceActionDHTML) {
         if (dragImage) {
             ASSERT(m_dragSourceAction & DragSourceActionDHTML);
             m_client.willPerformDragSourceAction(DragSourceActionDHTML, dragOrigin, dataTransfer);
-            doSystemDrag(dragImage, dragLoc, dragOrigin, dataTransfer, src, false);
+            doSystemDrag(dragImage, dragLoc, dragOrigin, { }, dataTransfer, src, false);
         } else
             startedDrag = false;
     } else {
@@ -977,21 +992,29 @@ void DragController::doImageDrag(Element& element, const IntPoint& dragOrigin, c
         }
     }
 
+    if (!dragImage)
+        return;
+
     dragImageOffset = mouseDownPoint + scaledOrigin;
-    doSystemDrag(dragImage, dragImageOffset, dragOrigin, dataTransfer, frame, false);
+    doSystemDrag(dragImage, dragImageOffset, dragOrigin, element.boundsInRootViewSpace(), dataTransfer, frame, false);
 
     deleteDragImage(dragImage);
 }
 
-void DragController::doSystemDrag(DragImageRef image, const IntPoint& dragLoc, const IntPoint& eventPos, DataTransfer& dataTransfer, Frame& frame, bool forLink)
+void DragController::doSystemDrag(DragImageRef image, const IntPoint& dragLoc, const IntPoint& eventPos, const IntRect& dragImageBounds, DataTransfer& dataTransfer, Frame& frame, bool forLink)
 {
+    FloatPoint dragImageAnchor = { 0.5, 0.5 };
+    if (!dragImageBounds.isEmpty()) {
+        dragImageAnchor.setX((eventPos.x() - dragImageBounds.x()) / (float)dragImageBounds.width());
+        dragImageAnchor.setY((eventPos.y() - dragImageBounds.y()) / (float)dragImageBounds.height());
+    }
+
     m_didInitiateDrag = true;
     m_dragInitiator = frame.document();
     // Protect this frame and view, as a load may occur mid drag and attempt to unload this frame
     Ref<MainFrame> frameProtector(m_page.mainFrame());
     RefPtr<FrameView> viewProtector = frameProtector->view();
-    m_client.startDrag(image, viewProtector->rootViewToContents(frame.view()->contentsToRootView(dragLoc)),
-        viewProtector->rootViewToContents(frame.view()->contentsToRootView(eventPos)), dataTransfer, frameProtector.get(), forLink);
+    m_client.startDrag(image, viewProtector->rootViewToContents(frame.view()->contentsToRootView(dragLoc)), viewProtector->rootViewToContents(frame.view()->contentsToRootView(eventPos)), dragImageAnchor, dataTransfer, frameProtector.get(), forLink);
     // DragClient::startDrag can cause our Page to dispear, deallocating |this|.
     if (!frameProtector->page())
         return;

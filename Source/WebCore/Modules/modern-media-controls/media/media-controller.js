@@ -23,6 +23,10 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+const CompactModeMaxWidth = 241;
+const ReducedPaddingMaxWidth = 300;
+const AudioTightPaddingMaxWidth = 400;
+
 class MediaController
 {
 
@@ -34,6 +38,7 @@ class MediaController
 
         this.container = shadowRoot.appendChild(document.createElement("div"));
         this.container.className = "media-controls-container";
+        this.container.addEventListener("click", this, true);
 
         if (host) {
             host.controlsDependOnPageScaleFactor = this.layoutTraits & LayoutTraits.iOS;
@@ -43,6 +48,9 @@ class MediaController
         this._updateControlsIfNeeded();
 
         shadowRoot.addEventListener("resize", this);
+
+        media.videoTracks.addEventListener("addtrack", this);
+        media.videoTracks.addEventListener("removetrack", this);
 
         if (media.webkitSupportsPresentationMode)
             media.addEventListener("webkitpresentationmodechanged", this);
@@ -58,6 +66,18 @@ class MediaController
                 return traits | LayoutTraits.Fullscreen;
         } else if (this.media.webkitDisplayingFullscreen)
             return traits | LayoutTraits.Fullscreen;
+
+        const controlsWidth = this._controlsWidth();
+        if (controlsWidth <= CompactModeMaxWidth)
+            return traits | LayoutTraits.Compact;
+
+        const isAudio = this.media instanceof HTMLAudioElement || this.media.videoTracks.length === 0;
+        if (isAudio && controlsWidth <= AudioTightPaddingMaxWidth)
+            return traits | LayoutTraits.TightPadding;
+
+        if (!isAudio && controlsWidth <= ReducedPaddingMaxWidth)
+            return traits | LayoutTraits.ReducedPadding;
+
         return traits;
     }
 
@@ -76,8 +96,12 @@ class MediaController
 
     handleEvent(event)
     {
-        if (event.type === "resize" && event.currentTarget === this.shadowRoot)
-            this._updateControlsSize();
+        if (event instanceof TrackEvent && event.currentTarget === this.media.videoTracks)
+            this._updateControlsIfNeeded();
+        else if (event.type === "resize" && event.currentTarget === this.shadowRoot)
+            this._updateControlsIfNeeded();
+        else if (event.type === "click" && event.currentTarget === this.container)
+            this._containerWasClicked(event);
         else if (event.currentTarget === this.media) {
             this._updateControlsIfNeeded();
             if (event.type === "webkitpresentationmodechanged")
@@ -87,12 +111,23 @@ class MediaController
 
     // Private
 
+    _containerWasClicked(event)
+    {
+        // We need to call preventDefault() here since, in the case of Media Documents,
+        // playback may be toggled when clicking on the video.
+        event.preventDefault();
+    }
+
     _updateControlsIfNeeded()
     {
+        const layoutTraits = this.layoutTraits;
         const previousControls = this.controls;
-        const ControlsClass = this._controlsClass();
-        if (previousControls && previousControls.constructor === ControlsClass)
+        const ControlsClass = this._controlsClassForLayoutTraits(layoutTraits);
+        if (previousControls && previousControls.constructor === ControlsClass) {
+            this.controls.layoutTraits = layoutTraits;
+            this._updateControlsSize();
             return;
+        }
 
         // Before we reset the .controls property, we need to destroy the previous
         // supporting objects so we don't leak.
@@ -113,17 +148,23 @@ class MediaController
         } else
             this.container.appendChild(this.controls.element);        
 
+        this.controls.layoutTraits = layoutTraits;
         this._updateControlsSize();
 
-        this._supportingObjects = [AirplaySupport, ControlsVisibilitySupport, ElapsedTimeSupport, FullscreenSupport, MuteSupport, PiPSupport, PlacardSupport, PlaybackSupport, RemainingTimeSupport, ScrubbingSupport, SeekBackwardSupport, SeekForwardSupport, SkipBackSupport, StartSupport, StatusSupport, TracksSupport, VolumeSupport].map(SupportClass => {
+        this._supportingObjects = [AirplaySupport, ControlsVisibilitySupport, FullscreenSupport, MuteSupport, PiPSupport, PlacardSupport, PlaybackSupport, ScrubbingSupport, SeekBackwardSupport, SeekForwardSupport, SkipBackSupport, StartSupport, StatusSupport, TimeLabelsSupport, TracksSupport, VolumeSupport, VolumeDownSupport, VolumeUpSupport].map(SupportClass => {
             return new SupportClass(this);
         }, this);
     }
 
     _updateControlsSize()
     {
-        this.controls.width = Math.round(this.media.offsetWidth * this.controls.scaleFactor);
+        this.controls.width = this._controlsWidth();
         this.controls.height = Math.round(this.media.offsetHeight * this.controls.scaleFactor);
+    }
+
+    _controlsWidth()
+    {
+        return Math.round(this.media.offsetWidth * (this.controls ? this.controls.scaleFactor : 1));
     }
 
     _returnMediaLayerToInlineIfNeeded()
@@ -132,9 +173,8 @@ class MediaController
             window.requestAnimationFrame(() => this.host.setPreparedToReturnVideoLayerToInline(this.media.webkitPresentationMode !== PiPMode));
     }
 
-    _controlsClass()
+    _controlsClassForLayoutTraits(layoutTraits)
     {
-        const layoutTraits = this.layoutTraits;
         if (layoutTraits & LayoutTraits.iOS)
             return IOSInlineMediaControls;
         if (layoutTraits & LayoutTraits.Fullscreen)

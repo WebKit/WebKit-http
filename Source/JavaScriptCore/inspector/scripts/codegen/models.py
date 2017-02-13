@@ -132,11 +132,17 @@ class Platform:
 
 
 class Platforms:
-    All = Platform("All")
+    All = Platform("all")
     Generic = Platform("generic")
-    iOS = Platform("iOS")
-    macOS = Platform("macOS")
+    iOS = Platform("ios")
+    macOS = Platform("macos")
 
+    # Allow iteration over all platforms. See <http://stackoverflow.com/questions/5434400/>.
+    class __metaclass__(type):
+        def __iter__(self):
+            for attr in dir(Platforms):
+                if not attr.startswith("__"):
+                    yield getattr(Platforms, attr)
 
 class TypeReference:
     def __init__(self, type_kind, referenced_type_name, enum_values, array_items):
@@ -382,7 +388,11 @@ class Protocol:
             if json['availability'] not in allowed_activation_strings:
                 raise ParseException('Malformed domain specification: availability is an unsupported string. Was: "%s", Allowed values: %s' % (json['availability'], ', '.join(allowed_activation_strings)))
 
-        self.domains.append(Domain(json['domain'], json.get('description', ''), json.get('featureGuard'), json.get('availability'), isSupplemental, types, commands, events))
+        if 'workerSupported' in json:
+            if not isinstance(json['workerSupported'], bool):
+                raise ParseException('Malformed domain specification: workerSupported is not a boolean. Was: "%s"' % json['availability'])
+
+        self.domains.append(Domain(json['domain'], json.get('description', ''), json.get('featureGuard'), json.get('availability'), json.get('workerSupported', False), isSupplemental, types, commands, events))
 
     def parse_type_declaration(self, json):
         check_for_required_properties(['id', 'type'], json, "type")
@@ -552,11 +562,12 @@ class Protocol:
 
 
 class Domain:
-    def __init__(self, domain_name, description, feature_guard, availability, isSupplemental, type_declarations, commands, events):
+    def __init__(self, domain_name, description, feature_guard, availability, workerSupported, isSupplemental, type_declarations, commands, events):
         self.domain_name = domain_name
         self.description = description
         self.feature_guard = feature_guard
         self.availability = availability
+        self.workerSupported = workerSupported
         self.is_supplemental = isSupplemental
         self._type_declarations = type_declarations
         self._commands = commands
@@ -586,7 +597,7 @@ class Domain:
 
 
 class Domains:
-    GLOBAL = Domain("", "The global domain, in which primitive types are implicitly declared.", None, None, True, [], [], [])
+    GLOBAL = Domain("", "The global domain, in which primitive types are implicitly declared.", None, None, True, False, [], [], [])
 
 
 class TypeDeclaration:

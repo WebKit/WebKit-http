@@ -25,6 +25,8 @@
 
 #pragma once
 
+#if ENABLE(WEBGL)
+
 #include "ActiveDOMObject.h"
 #include "CanvasRenderingContext.h"
 #include "GraphicsContext3D.h"
@@ -827,10 +829,14 @@ protected:
 private:
     bool validateArrayBufferType(const char* functionName, GC3Denum type, std::optional<JSC::TypedArrayType>);
     void registerWithWebGLStateTracker();
+    void checkForContextLossHandling();
 
     WebGLStateTracker::Token m_trackerToken;
+    Timer m_checkForContextLossHandlingTimer;
 };
 
 } // namespace WebCore
 
 SPECIALIZE_TYPE_TRAITS_CANVASRENDERINGCONTEXT(WebCore::WebGLRenderingContextBase, is3d())
+
+#endif

@@ -28,8 +28,7 @@
 #include "RenderObject.h"
 
 #include "AXObjectCache.h"
-#include "AnimationController.h"
-#include "EventHandler.h"
+#include "CSSAnimationController.h"
 #include "FloatQuad.h"
 #include "FlowThreadController.h"
 #include "FrameSelection.h"

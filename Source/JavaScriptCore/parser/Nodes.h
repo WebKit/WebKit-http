@@ -490,16 +490,16 @@ namespace JSC {
 
     class TemplateStringNode : public ExpressionNode {
     public:
-        TemplateStringNode(const JSTokenLocation&, const Identifier& cooked, const Identifier& raw);
+        TemplateStringNode(const JSTokenLocation&, const Identifier* cooked, const Identifier* raw);
 
-        const Identifier& cooked() { return m_cooked; }
-        const Identifier& raw() { return m_raw; }
+        const Identifier* cooked() { return m_cooked; }
+        const Identifier* raw() { return m_raw; }
 
     private:
         RegisterID* emitBytecode(BytecodeGenerator&, RegisterID* = 0) override;
 
-        const Identifier& m_cooked;
-        const Identifier& m_raw;
+        const Identifier* m_cooked;
+        const Identifier* m_raw;
     };
 
     class TemplateStringListNode : public ParserArenaFreeable {
@@ -1152,6 +1152,9 @@ namespace JSC {
     class InNode : public ThrowableBinaryOpNode {
     public:
         InNode(const JSTokenLocation&, ExpressionNode* expr1, ExpressionNode* expr2, bool rightHasAssignments);
+
+    private:
+        RegisterID* emitBytecode(BytecodeGenerator&, RegisterID* = 0) override;
     };
 
     class EqualNode : public BinaryOpNode {

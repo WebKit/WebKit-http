@@ -31,6 +31,7 @@
 #include "Document.h"
 #include "HTMLFormElement.h"
 #include "JSCustomElementInterface.h"
+#include "JSDOMConstructorBase.h"
 #include "JSNodeCustom.h"
 #include "ScriptExecutionContext.h"
 #include <runtime/InternalFunction.h>
@@ -45,7 +46,7 @@ EncodedJSValue JSC_HOST_CALL constructJSHTMLElement(ExecState& exec)
     VM& vm = exec.vm();
     auto scope = DECLARE_THROW_SCOPE(vm);
 
-    auto* jsConstructor = jsCast<DOMConstructorObject*>(exec.jsCallee());
+    auto* jsConstructor = jsCast<JSDOMConstructorBase*>(exec.jsCallee());
     ASSERT(jsConstructor);
 
     auto* context = jsConstructor->scriptExecutionContext();

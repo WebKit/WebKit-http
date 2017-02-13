@@ -84,7 +84,7 @@ class Page;
 class PluginViewBase;
 class PolicyChecker;
 class ProtectionSpace;
-class QuickLookHandle;
+class QuickLookHandleClient;
 class RTCPeerConnectionHandler;
 class ResourceError;
 class ResourceHandle;
@@ -256,6 +256,8 @@ public:
     virtual void setTitle(const StringWithDirection&, const URL&) = 0;
 
     virtual String userAgent(const URL&) = 0;
+
+    virtual String overrideContentSecurityPolicy() const { return String(); }
     
     virtual void savePlatformDataToCachedFrame(CachedFrame*) = 0;
     virtual void transitionToCommittedFromCachedFrame(CachedFrame*) = 0;
@@ -340,7 +342,7 @@ public:
     virtual bool isEmptyFrameLoaderClient() { return false; }
 
 #if USE(QUICK_LOOK)
-    virtual void didCreateQuickLookHandle(QuickLookHandle&) { }
+    virtual RefPtr<QuickLookHandleClient> createQuickLookHandleClient(const String&, const String&) = 0;
 #endif
 
 #if ENABLE(CONTENT_FILTERING)

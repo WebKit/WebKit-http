@@ -92,6 +92,12 @@ WebInspector.ThreadTreeElement = class ThreadTreeElement extends WebInspector.Ge
             for (let i = startIndex; i < currentStackTrace.callFrames.length; ++i)
                 this.appendChild(new WebInspector.CallFrameTreeElement(currentStackTrace.callFrames[i]));
 
+            if (currentStackTrace.truncated) {
+                let truncatedTreeElement = new WebInspector.GeneralTreeElement("truncated-call-frames", WebInspector.UIString("Call Frames Truncated"));
+                truncatedTreeElement.selectable = false;
+                this.appendChild(truncatedTreeElement);
+            }
+
             currentStackTrace = currentStackTrace.parentStackTrace;
         }
 
@@ -108,14 +114,15 @@ WebInspector.ThreadTreeElement = class ThreadTreeElement extends WebInspector.Ge
         this.expand();
     }
 
-    oncontextmenu(event)
+    populateContextMenu(contextMenu, event)
     {
         let targetData = WebInspector.debuggerManager.dataForTarget(this._target);
 
-        let contextMenu = WebInspector.ContextMenu.createFromEvent(event);
         contextMenu.appendItem(WebInspector.UIString("Resume Thread"), () => {
             WebInspector.debuggerManager.continueUntilNextRunLoop(this._target);
         }, !targetData.paused);
+
+        super.populateContextMenu(contextMenu, event);
     }
 
     // Private

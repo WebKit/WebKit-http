@@ -48,7 +48,7 @@ public:
 
     bool isNull() { return !m_structure; }
 
-    void initialize(VM& vm, JSCell* owner, JSObject* prototype, unsigned inferredInlineCapacity)
+    void initialize(VM& vm, JSGlobalObject* globalObject, JSCell* owner, JSObject* prototype, unsigned inferredInlineCapacity)
     {
         ASSERT(!m_allocator);
         ASSERT(!m_structure);
@@ -92,7 +92,7 @@ public:
                 inlineCapacity = JSFinalObject::maxInlineCapacity();
         }
 
-        Structure* structure = vm.prototypeMap.emptyObjectStructureForPrototype(prototype, inlineCapacity);
+        Structure* structure = vm.prototypeMap.emptyObjectStructureForPrototype(globalObject, prototype, inlineCapacity);
 
         // Ensure that if another thread sees the structure, it will see it properly created
         WTF::storeStoreFence();
@@ -139,7 +139,7 @@ private:
             JSValue value = prototype->getDirect(vm, propertyNameVector[i]);
 
             // Functions are common, and are usually class-level objects that are not overridden.
-            if (jsDynamicCast<JSFunction*>(value))
+            if (jsDynamicCast<JSFunction*>(vm, value))
                 continue;
 
             ++count;

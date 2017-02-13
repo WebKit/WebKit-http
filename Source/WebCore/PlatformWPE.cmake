@@ -63,8 +63,6 @@ list(APPEND WebCore_SOURCES
 
     platform/audio/glib/AudioBusGLib.cpp
 
-    platform/crypto/gnutls/CryptoDigestGnuTLS.cpp
-
     platform/graphics/GLContext.cpp
     platform/graphics/GraphicsContext3DPrivate.cpp
     platform/graphics/ImageSource.cpp
@@ -96,6 +94,7 @@ list(APPEND WebCore_SOURCES
 
     platform/graphics/gstreamer/ImageGStreamerCairo.cpp
 
+    platform/graphics/harfbuzz/ComplexTextControllerHarfBuzz.cpp
     platform/graphics/harfbuzz/HarfBuzzFace.cpp
     platform/graphics/harfbuzz/HarfBuzzFaceCairo.cpp
     platform/graphics/harfbuzz/HarfBuzzShaper.cpp

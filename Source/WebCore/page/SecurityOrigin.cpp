@@ -114,7 +114,7 @@ SecurityOrigin::SecurityOrigin(const URL& url)
     m_canLoadLocalResources = isLocal();
 
     if (m_canLoadLocalResources)
-        m_filePath = url.path(); // In case enforceFilePathSeparation() is called.
+        m_filePath = url.fileSystemPath(); // In case enforceFilePathSeparation() is called.
 }
 
 SecurityOrigin::SecurityOrigin()
@@ -304,8 +304,10 @@ bool SecurityOrigin::canDisplay(const URL& url) const
     if (m_universalAccess)
         return true;
 
-    if (m_protocol == "file" && url.isLocalFile() && !filesHaveSameVolume(m_filePath, url.path()))
+#if !PLATFORM(IOS)
+    if (m_protocol == "file" && url.isLocalFile() && !filesHaveSameVolume(m_filePath, url.fileSystemPath()))
         return false;
+#endif
 
     if (isFeedWithNestedProtocolInHTTPFamily(url))
         return true;
@@ -393,11 +395,10 @@ void SecurityOrigin::grantStorageAccessFromFileURLsQuirk()
     m_needsStorageAccessFromFileURLsQuirk = true;
 }
 
-#if ENABLE(CACHE_PARTITIONING)
 String SecurityOrigin::domainForCachePartition() const
 {
     if (m_storageBlockingPolicy != BlockThirdPartyStorage)
-        return String();
+        return emptyString();
 
     if (isHTTPFamily())
         return host();
@@ -405,9 +406,8 @@ String SecurityOrigin::domainForCachePartition() const
     if (SchemeRegistry::shouldPartitionCacheForURLScheme(m_protocol))
         return host();
 
-    return String();
+    return emptyString();
 }
-#endif
 
 void SecurityOrigin::enforceFilePathSeparation()
 {

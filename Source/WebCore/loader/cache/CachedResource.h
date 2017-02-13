@@ -114,9 +114,7 @@ public:
     const ResourceRequest& resourceRequest() const { return m_resourceRequest; }
     ResourceRequest& resourceRequest() { return m_resourceRequest; }
     const URL& url() const { return m_resourceRequest.url();}
-#if ENABLE(CACHE_PARTITIONING)
     const String& cachePartition() const { return m_resourceRequest.cachePartition(); }
-#endif
     SessionID sessionID() const { return m_sessionID; }
     Type type() const { return m_type; }
 
@@ -232,6 +230,8 @@ public:
     bool isPreloaded() const { return m_preloadCount; }
     void increasePreloadCount() { ++m_preloadCount; }
     void decreasePreloadCount() { ASSERT(m_preloadCount); --m_preloadCount; }
+    bool isLinkPreload() { return m_isLinkPreload; }
+    void setLinkPreload() { m_isLinkPreload = true; }
 
     void registerHandle(CachedResourceHandleBase*);
     WEBCORE_EXPORT void unregisterHandle(CachedResourceHandleBase*);
@@ -336,6 +336,7 @@ private:
 
     bool m_inCache { false };
     bool m_loading { false };
+    bool m_isLinkPreload { false };
 
     bool m_switchingClientsToRevalidatedResource { false };
 

@@ -77,13 +77,49 @@ ThreadedCompositor::ThreadedCompositor(Client& client, WebPage& webPage, const I
     m_compositingRunLoop->performTaskSync([this, protectedThis = makeRef(*this)] {
         m_scene = adoptRef(new CoordinatedGraphicsScene(this));
 #if PLATFORM(GTK)
-        m_scene->setActive(!!m_nativeSurfaceHandle);
+        if (m_nativeSurfaceHandle) {
+            createGLContext();
+            m_scene->setActive(true);
+        } else
+            m_scene->setActive(false);
 #endif
     });
 }
 
 ThreadedCompositor::~ThreadedCompositor()
 {
+}
+
+void ThreadedCompositor::createGLContext()
+{
+    ASSERT(!isMainThread());
+
+#if PLATFORM(GTK)
+    ASSERT(m_nativeSurfaceHandle);
+
+    m_context = GLContext::createContextForWindow(reinterpret_cast<GLNativeWindowType>(m_nativeSurfaceHandle), &PlatformDisplay::sharedDisplayForCompositing());
+    if (!m_context)
+        return;
+#endif
+
+#if PLATFORM(WPE)
+    RELEASE_ASSERT(is<PlatformDisplayWPE>(PlatformDisplay::sharedDisplay()));
+    m_target = downcast<PlatformDisplayWPE>(PlatformDisplay::sharedDisplay()).createEGLTarget(*this, m_compositingManager.releaseConnectionFd());
+    ASSERT(m_target);
+    m_target->initialize(m_viewportSize);
+
+    m_context = m_target->createGLContext();
+    if (!m_context)
+        return;
+
+    if (!m_context->makeContextCurrent())
+        return;
+#endif
+
+#if PLATFORM(GTK)
+    if (m_doFrameSync == ShouldDoFrameSync::No)
+        m_context->swapInterval(0);
+#endif
 }
 
 void ThreadedCompositor::invalidate()
@@ -109,13 +145,16 @@ void ThreadedCompositor::setNativeSurfaceHandleForCompositing(uint64_t handle)
 #if PLATFORM(GTK)
     m_compositingRunLoop->stopUpdates();
     m_compositingRunLoop->performTaskSync([this, protectedThis = makeRef(*this), handle] {
-        m_scene->setActive(!!handle);
-
         // A new native handle can't be set without destroying the previous one first if any.
         ASSERT(!!handle ^ !!m_nativeSurfaceHandle);
         m_nativeSurfaceHandle = handle;
-        if (!m_nativeSurfaceHandle)
+        if (m_nativeSurfaceHandle) {
+            createGLContext();
+            m_scene->setActive(true);
+        } else {
+            m_scene->setActive(false);
             m_context = nullptr;
+        }
         m_nativeSurfaceHandle = 0;
     });
 #endif
@@ -182,42 +221,6 @@ void ThreadedCompositor::scheduleDisplayImmediately()
     m_compositingRunLoop->scheduleUpdate();
 }
 
-bool ThreadedCompositor::makeContextCurrent()
-{
-    if (m_context)
-        return m_context->makeContextCurrent();
-
-#if PLATFORM(GTK)
-    if (!m_nativeSurfaceHandle)
-        return false;
-
-    m_context = GLContext::createContextForWindow(reinterpret_cast<GLNativeWindowType>(m_nativeSurfaceHandle), &PlatformDisplay::sharedDisplayForCompositing());
-    if (!m_context)
-        return false;
-#endif
-
-#if PLATFORM(WPE)
-    RELEASE_ASSERT(is<PlatformDisplayWPE>(PlatformDisplay::sharedDisplay()));
-    m_target = downcast<PlatformDisplayWPE>(PlatformDisplay::sharedDisplay()).createEGLTarget(*this, m_compositingManager.releaseConnectionFd());
-    ASSERT(m_target);
-    m_target->initialize(m_viewportSize);
-
-    m_context = m_target->createGLContext();
-    if (!m_context)
-        return false;
-#endif
-
-    if (!m_context->makeContextCurrent())
-        return false;
-
-#if PLATFORM(GTK)
-    if (m_doFrameSync == ShouldDoFrameSync::No)
-        m_context->swapInterval(0);
-#endif
-
-    return true;
-}
-
 void ThreadedCompositor::forceRepaint()
 {
     m_compositingRunLoop->performTaskSync([this, protectedThis = makeRef(*this)] {
@@ -234,7 +237,12 @@ void ThreadedCompositor::renderLayerTree()
         return;
 #endif
 
-    if (!makeContextCurrent())
+#if PLATFORM(WPE)
+    if (!m_context)
+        createGLContext();
+#endif
+
+    if (!m_context || !m_context->makeContextCurrent())
         return;
 
 #if PLATFORM(WPE)
