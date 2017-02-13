@@ -111,6 +111,8 @@ Bug(WPE) webgl/1.0.3/conformance/textures/texture-copying-feedback-loops.html [ 
 Bug(WPE) webgl/1.0.3/conformance/extensions/oes-texture-half-float-with-video.html [ Timeout ]
 Bug(WPE) webgl/1.0.3/conformance/glsl/bugs/temp-expressions-should-not-crash.html [ Timeout ]
 Bug(WPE) webgl/1.0.3/conformance/textures/texture-upload-size.html [ Timeout ]
+#  One of these tests is DDoS-ing Mesa AMD drivers.
+Bug(WPE) webgl/1.0.3/conformance/glsl/bugs [ Skip ]
 
 # Pixel test result oddities
 Bug(WPE) webgl/webgl-border.html [ ImageOnlyFailure ]
