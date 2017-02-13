@@ -1,6 +1,28 @@
+# Minimal debug
+
+# Builds with debug flags result in a huge amount of symbols with the GNU toolchain,
+# resulting in the need of several gigabytes of memory at link-time. Reduce the pressure
+# by compiling any static library like WTF or JSC with optimization flags instead and keep
+# debug symbols for the static libraries that implement API.
+cmake_dependent_option(USE_MINIMAL_DEBUG_INFO "Add debug info only for the libraries that implement API" OFF
+    "NOT MINGW" ON)
+
+if (USE_MINIMAL_DEBUG_INFO)
+    target_compile_options(WTF                PRIVATE -g0 -O1)
+    target_compile_options(JavaScriptCore     PRIVATE -g0 -O1)
+    target_compile_options(WebCore            PRIVATE -g0 -O1)
+    target_compile_options(WebCoreTestSupport PRIVATE -g0 -O1)
+    if (TARGET ANGLESupport)
+        target_compile_options(ANGLESupport   PRIVATE -g0 -O1)
+    endif ()
+    if (TARGET gtest)
+        target_compile_options(gtest          PRIVATE -g0 -O1)
+    endif ()
+endif ()
+
 # GTest
 
-if (ENABLE_API_TESTS)
+if (TARGET gtest)
     set(GTEST_DEFINITIONS QT_NO_KEYWORDS)
     if (COMPILER_IS_GCC_OR_CLANG)
         list(APPEND GTEST_DEFINITIONS "GTEST_API_=__attribute__((visibility(\"default\")))")

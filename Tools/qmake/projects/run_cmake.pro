@@ -4,7 +4,7 @@ ROOT_QT_BUILD_DIR = $$ROOT_BUILD_DIR/..
 
 TEMPLATE = aux
 
-win32:!contains(QMAKE_HOST.arch, x86_64) {
+msvc:!contains(QMAKE_HOST.arch, x86_64) {
     debug_and_release {
         warning("Skipping debug build of QtWebKit because it requires a 64-bit toolchain")
         CONFIG -= debug_and_release debug

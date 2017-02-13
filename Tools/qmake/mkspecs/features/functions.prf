@@ -67,19 +67,18 @@ defineTest(isPlatformSupported) {
         qtConfig(opengles2):!qtConfig(dynamicgl) {
             skipBuild("QtWebKit supports only dynamic GL Qt builds on Windows at the moment.")
         }
-
-        CONFIG(debug, debug|release):!contains(QMAKE_HOST.arch, x86_64) {
-            # debug_and_release is built as release, see Tools/qmake/projects/run_cmake.pro
-            !debug_and_release {
-                skipBuild("QtWebKit requires a 64-bit toolchain for debug build")
-            }
-        }
         winrt {
             skipBuild("WinRT is not supported.")
         }
         msvc {
             !isVersionAtLeast($$MSVC_VER, "14.0") {
                 skipBuild("QtWebKit on Windows requires MSVC 2015.")
+            }
+            CONFIG(debug, debug|release):!contains(QMAKE_HOST.arch, x86_64) {
+                # debug_and_release is built as release, see Tools/qmake/projects/run_cmake.pro
+                !debug_and_release {
+                    skipBuild("QtWebKit requires 64-bit MSVC toolchain for debug build")
+                }
             }
         } else {
             isGCCVersionSupported()
