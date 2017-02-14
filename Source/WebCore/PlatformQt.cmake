@@ -88,7 +88,6 @@ list(APPEND WebCore_SOURCES
     platform/graphics/qt/IntPointQt.cpp
     platform/graphics/qt/IntRectQt.cpp
     platform/graphics/qt/IntSizeQt.cpp
-    platform/graphics/qt/QFramebufferPaintDevice.cpp
     platform/graphics/qt/PathQt.cpp
     platform/graphics/qt/PatternQt.cpp
     platform/graphics/qt/StillImageQt.cpp
@@ -272,6 +271,8 @@ if (ENABLE_OPENGL)
         platform/graphics/opengl/Extensions3DOpenGLCommon.cpp
         platform/graphics/opengl/GraphicsContext3DOpenGLCommon.cpp
         platform/graphics/opengl/TemporaryOpenGLSetting.cpp
+
+        platform/graphics/qt/QFramebufferPaintDevice.cpp
     )
 
     if (${Qt5Gui_OPENGL_IMPLEMENTATION} STREQUAL GLESv2)

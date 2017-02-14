@@ -116,7 +116,7 @@ void BitmapTexturePool::releaseUnusedTexturesTimerFired()
 
 RefPtr<BitmapTexture> BitmapTexturePool::createTexture(const BitmapTexture::Flags flags)
 {
-#if PLATFORM(QT)
+#if PLATFORM(QT) && USE(TEXTURE_MAPPER_GL)
     if (!m_context3D)
         return BitmapTextureImageBuffer::create();
 #endif
