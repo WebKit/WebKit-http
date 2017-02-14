@@ -96,9 +96,11 @@
 #if USE(OPENGL_ES_2)
 #if GST_CHECK_VERSION(1, 8, 1)
 #if !USE(HOLE_PUNCH_GSTREAMER)
+#if USE(GSTREAMER_GL)
 #define GST_USE_UNSTABLE_API
 #include <gst/gl/egl/gstglmemoryegl.h>
 #undef GST_USE_UNSTABLE_API
+#endif
 #endif
 #endif
 #include <GLES2/gl2.h>
