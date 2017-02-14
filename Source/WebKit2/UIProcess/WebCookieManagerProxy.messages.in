@@ -26,5 +26,5 @@ messages -> WebCookieManagerProxy {
 
     DidGetCookies(Vector<WebCore::Cookie> cookies, uint64_t callbackID)
 
-    CookiesDidChange()
+    CookiesDidChange(WebCore::SessionID sessionID)
 }
