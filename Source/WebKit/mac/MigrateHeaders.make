@@ -47,8 +47,6 @@ endif
 ifneq ($(PLATFORM_NAME), macosx)
 all : \
     $(PRIVATE_HEADERS_DIR)/KeyEventCodesIOS.h \
-    $(PRIVATE_HEADERS_DIR)/ScrollTypes.h \
-    $(PRIVATE_HEADERS_DIR)/SystemMemory.h \
     $(PRIVATE_HEADERS_DIR)/WAKAppKitStubs.h \
     $(PRIVATE_HEADERS_DIR)/WAKResponder.h \
     $(PRIVATE_HEADERS_DIR)/WAKView.h \
@@ -56,7 +54,6 @@ all : \
     $(PRIVATE_HEADERS_DIR)/WKContentObservation.h \
     $(PRIVATE_HEADERS_DIR)/WKGraphics.h \
     $(PRIVATE_HEADERS_DIR)/WKTypes.h \
-    $(PRIVATE_HEADERS_DIR)/WebCoreFrameView.h \
     $(PRIVATE_HEADERS_DIR)/WebCoreThread.h \
     $(PRIVATE_HEADERS_DIR)/WebCoreThreadMessage.h \
     $(PRIVATE_HEADERS_DIR)/WebCoreThreadRun.h \

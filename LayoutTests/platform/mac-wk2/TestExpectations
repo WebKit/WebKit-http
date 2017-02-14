@@ -321,6 +321,9 @@ webkit.org/b/155312 inspector/heap/getPreview.html [ Pass Timeout ]
 
 webkit.org/b/156077 inspector/heap/getRemoteObject.html [ Pass Failure ]
 
+# Video fullscreen is not implemented for mac wk2 in webkittestrunner
+media/media-fullscreen-loop-inline.html [ Skip ]
+
 ### END OF (1) Classified failures with bug reports
 ########################################
 
@@ -622,3 +625,7 @@ webkit.org/b/168065 inspector/unit-tests/heap-snapshot.html [ Pass Failure Timeo
 webkit.org/b/167538 [ Sierra ] fast/css-grid-layout/grid-simplified-layout-positioned.html [ Pass ImageOnlyFailure ]
 
 webkit.org/b/167965 pointer-lock/mouse-event-delivery.html [ Pass Failure ]
+
+webkit.org/b/168235 [ Debug ] imported/w3c/web-platform-tests/html/semantics/text-level-semantics/the-a-element/a-download-click.html [ Pass Failure ]
+
+webkit.org/b/168085 tiled-drawing/scrolling/latched-to-deleted-node.html [ Pass Failure ]

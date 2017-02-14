@@ -32,10 +32,10 @@
 #import "FloatingPointEnvironment.h"
 #import "RuntimeApplicationChecks.h"
 #import "ThreadGlobalData.h"
+#import "WAKWindow.h"
 #import "WebCoreThreadInternal.h"
 #import "WebCoreThreadMessage.h"
 #import "WebCoreThreadRun.h"
-#import "WebCoreThreadSafe.h"
 #import "WKUtilities.h"
 
 #import <runtime/InitializeThreading.h>
@@ -990,11 +990,6 @@ NSRunLoop* WebThreadNSRunLoop(void)
 WebThreadContext *WebThreadCurrentContext(void)
 {
     return CurrentThreadContext();
-}
-
-bool WebThreadContextIsCurrent(void)
-{   
-    return WebThreadCurrentContext() == webThreadContext;
 }
 
 void WebThreadSetDelegateSourceRunLoopMode(CFStringRef mode)

@@ -26,7 +26,7 @@
 
 #if USE(LIBWEBRTC)
 
-#include "LibWebRTCUtils.h"
+#include "LibWebRTCProvider.h"
 #include "PeerConnectionBackend.h"
 #include "RealtimeOutgoingAudioSource.h"
 #include "RealtimeOutgoingVideoSource.h"
@@ -71,6 +71,9 @@ public:
 
     void stop();
     bool isStopped() const { return !m_backend; }
+
+    RefPtr<RTCSessionDescription> localDescription() const;
+    RefPtr<RTCSessionDescription> remoteDescription() const;
 
 private:
     LibWebRTCMediaEndpoint(LibWebRTCPeerConnectionBackend&, LibWebRTCProvider&);

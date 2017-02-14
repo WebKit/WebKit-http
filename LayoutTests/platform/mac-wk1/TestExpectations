@@ -217,6 +217,8 @@ webkit.org/b/156069 http/tests/security/anchor-download-allow-blob.html [ Skip ]
 webkit.org/b/156069 http/tests/security/anchor-download-allow-data.html [ Skip ]
 webkit.org/b/156069 http/tests/security/anchor-download-allow-sameorigin.html [ Skip ]
 webkit.org/b/156069 http/tests/security/anchor-download-block-crossorigin.html [ Skip ]
+webkit.org/b/156069 imported/w3c/web-platform-tests/html/semantics/text-level-semantics/the-a-element/a-download-click.html [ Skip ]
+webkit.org/b/156069 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-area-element/area-download-click.html [ Skip ]
 
 # testRunner.setShouldDownloadUndisplayableMIMETypes() is not supported on WK1.
 fast/dom/HTMLAnchorElement/anchor-file-blob-convert-to-download.html [ Skip ]
@@ -302,8 +304,6 @@ media/track/track-cues-cuechange.html [ Pass Crash ]
 media/track/track-cue-rendering-horizontal.html [ Pass Crash ]
 media/accessibility-closed-captions-has-aria-owns.html [ Pass Crash ]
 media/track/track-cues-enter-exit.html [ Pass Crash ]
-
-webkit.org/b/167347 media/modern-media-controls/airplay-button/airplay-button-on.html [ Pass Timeout ]
 
 webkit.org/b/167127 pointer-lock/locked-element-removed-from-dom.html
 

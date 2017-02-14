@@ -493,11 +493,22 @@ TEST_F(URLParserTest, Basic)
     checkURL("http://\t//\\///user:@webkit.org:99?foo", {"http", "user", "", "webkit.org", 99, "/", "foo", "", "http://user@webkit.org:99/?foo"});
     checkURL("http:/\\user:@webkit.org:99?foo", {"http", "user", "", "webkit.org", 99, "/", "foo", "", "http://user@webkit.org:99/?foo"});
     checkURL("http://127.0.0.1", {"http", "", "", "127.0.0.1", 0, "/", "", "", "http://127.0.0.1/"});
-    checkURL("http://127.0.0.1.", {"http", "", "", "127.0.0.1.", 0, "/", "", "", "http://127.0.0.1./"});
-    checkURL("http://127.0.0.1./", {"http", "", "", "127.0.0.1.", 0, "/", "", "", "http://127.0.0.1./"});
-    checkURL("http://0x100.0/", {"http", "", "", "0x100.0", 0, "/", "", "", "http://0x100.0/"});
-    checkURL("http://0.0.0x100.0/", {"http", "", "", "0.0.0x100.0", 0, "/", "", "", "http://0.0.0x100.0/"});
-    checkURL("http://0.0.0.0x100/", {"http", "", "", "0.0.0.0x100", 0, "/", "", "", "http://0.0.0.0x100/"});
+    checkURLDifferences("http://127.0.0.1.",
+        {"http", "", "", "127.0.0.1", 0, "/", "", "", "http://127.0.0.1/"},
+        {"http", "", "", "127.0.0.1.", 0, "/", "", "", "http://127.0.0.1./"});
+    checkURLDifferences("http://127.0.0.1./",
+        {"http", "", "", "127.0.0.1", 0, "/", "", "", "http://127.0.0.1/"},
+        {"http", "", "", "127.0.0.1.", 0, "/", "", "", "http://127.0.0.1./"});
+    checkURL("http://127.0.0.1../", {"http", "", "", "127.0.0.1..", 0, "/", "", "", "http://127.0.0.1../"});
+    checkURLDifferences("http://0x100.0/",
+        {"", "", "", "", 0, "", "", "", "http://0x100.0/"},
+        {"http", "", "", "0x100.0", 0, "/", "", "", "http://0x100.0/"});
+    checkURLDifferences("http://0.0.0x100.0/",
+        {"", "", "", "", 0, "", "", "", "http://0.0.0x100.0/"},
+        {"http", "", "", "0.0.0x100.0", 0, "/", "", "", "http://0.0.0x100.0/"});
+    checkURLDifferences("http://0.0.0.0x100/",
+        {"", "", "", "", 0, "", "", "", "http://0.0.0.0x100/"},
+        {"http", "", "", "0.0.0.0x100", 0, "/", "", "", "http://0.0.0.0x100/"});
     checkURL("http://host:123?", {"http", "", "", "host", 123, "/", "", "", "http://host:123/?"});
     checkURL("http://host:123?query", {"http", "", "", "host", 123, "/", "query", "", "http://host:123/?query"});
     checkURL("http://host:123#", {"http", "", "", "host", 123, "/", "", "", "http://host:123/#"});
@@ -980,12 +991,8 @@ TEST_F(URLParserTest, ParserDifferences)
         {"http", "", "", "f", 10, "/c", "", "", "http://f:10/c"},
         {"http", "", "", "f", 10, "/c", "", "", "http://f:010/c"});
     checkURL("notspecial://HoSt", {"notspecial", "", "", "HoSt", 0, "", "", "", "notspecial://HoSt"});
-    checkURLDifferences("notspecial://H%6FSt",
-        {"", "", "", "", 0, "", "", "", "notspecial://H%6FSt"},
-        {"notspecial", "", "", "H%6FSt", 0, "", "", "", "notspecial://H%6FSt"});
-    checkURLDifferences("notspecial://H%4fSt",
-        {"", "", "", "", 0, "", "", "", "notspecial://H%4fSt"},
-        {"notspecial", "", "", "H%4fSt", 0, "", "", "", "notspecial://H%4fSt"});
+    checkURL("notspecial://H%6FSt", {"notspecial", "", "", "H%6FSt", 0, "", "", "", "notspecial://H%6FSt"});
+    checkURL("notspecial://H%4fSt", {"notspecial", "", "", "H%4fSt", 0, "", "", "", "notspecial://H%4fSt"});
     checkURLDifferences(utf16String(u"notspecial://H😍ßt"),
         {"notspecial", "", "", "H%F0%9F%98%8D%C3%9Ft", 0, "", "", "", "notspecial://H%F0%9F%98%8D%C3%9Ft"},
         {"notspecial", "", "", "xn--hsst-qc83c", 0, "", "", "", "notspecial://xn--hsst-qc83c"}, testTabsValueForSurrogatePairs);
@@ -1073,15 +1080,9 @@ TEST_F(URLParserTest, ParserDifferences)
         {"asdf", "", "", "[::a:b:c:d]", 0, "", "", "", "asdf://[::a:b:c:d]"},
         {"asdf", "", "", "[0:0:0:0:a:b:c:d]", 0, "", "", "", "asdf://[0:0:0:0:a:b:c:d]"}, TestTabs::No);
     shouldFail("a://%:a");
-    checkURLDifferences("a://%:/",
-        {"", "", "", "", 0, "", "", "", "a://%:/"},
-        {"a", "", "", "%", 0, "/", "", "", "a://%/"});
-    checkURLDifferences("a://%:",
-        {"", "", "", "", 0, "", "", "", "a://%:"},
-        {"a", "", "", "%", 0, "", "", "", "a://%"});
-    checkURLDifferences("a://%:1/",
-        {"", "", "", "", 0, "", "", "", "a://%:1/"},
-        {"a", "", "", "%", 1, "/", "", "", "a://%:1/"});
+    checkURL("a://%:/", {"a", "", "", "%", 0, "/", "", "", "a://%/"});
+    checkURL("a://%:", {"a", "", "", "%", 0, "", "", "", "a://%"});
+    checkURL("a://%:1/", {"a", "", "", "%", 1, "/", "", "", "a://%:1/"});
     checkURLDifferences("http://%:",
         {"", "", "", "", 0, "", "", "", "http://%:"},
         {"http", "", "", "%", 0, "/", "", "", "http://%/"});

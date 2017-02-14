@@ -86,6 +86,7 @@
 #import "_WKInputDelegate.h"
 #import "_WKRemoteObjectRegistryInternal.h"
 #import "_WKSessionStateInternal.h"
+#import "_WKTestingDelegate.h"
 #import "_WKVisitedLinkStoreInternal.h"
 #import "_WKWebsitePoliciesInternal.h"
 #import <WebCore/GraphicsContextCG.h>
@@ -138,6 +139,8 @@ CFStringRef kAXSAllowForceWebScalingEnabledNotification;
 }
 #endif
 #endif
+
+#define RELEASE_LOG_IF_ALLOWED(...) RELEASE_LOG_IF(_page && _page->isAlwaysOnLoggingAllowed(), ViewState, __VA_ARGS__)
 
 @interface UIScrollView (UIScrollViewInternal)
 - (void)_adjustForAutomaticKeyboardInfo:(NSDictionary*)info animated:(BOOL)animated lastAdjustment:(CGFloat*)lastAdjustment;
@@ -276,6 +279,8 @@ WKWebView* fromWebPageProxy(WebKit::WebPageProxy& page)
 
     BOOL _delayUpdateVisibleContentRects;
     BOOL _hadDelayedUpdateVisibleContentRects;
+    
+    int _activeAnimatedResizeCount;
 
     Vector<std::function<void ()>> _snapshotsDeferredDuringResize;
     RetainPtr<NSMutableArray> _stableStatePresentationUpdateCallbacks;
@@ -286,6 +291,8 @@ WKWebView* fromWebPageProxy(WebKit::WebPageProxy& page)
     std::unique_ptr<WebKit::WebViewImpl> _impl;
     RetainPtr<WKTextFinderClient> _textFinderClient;
 #endif
+
+    id<_WKTestingDelegate> _testingDelegate;
 }
 
 - (instancetype)initWithFrame:(CGRect)frame
@@ -1373,6 +1380,9 @@ static inline bool areEssentiallyEqualAsFloat(float a, float b)
         }
         return;
     }
+
+    if (_activeAnimatedResizeCount)
+        RELEASE_LOG_IF_ALLOWED("%p -[WKWebView _didCommitLayerTree:] - %d animated resizes in flight", self, _activeAnimatedResizeCount);
 
     CGSize newContentSize = roundScrollViewContentSize(*_page, [_contentView frame].size);
     [_scrollView _setContentSizePreservingContentOffsetDuringRubberband:newContentSize];
@@ -4408,6 +4418,7 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
         return;
     }
 
+    ++_activeAnimatedResizeCount;
     _resizeAnimationTransformAdjustments = CATransform3DIdentity;
 
     NSUInteger indexOfContentView = [[_scrollView subviews] indexOfObject:_contentView.get()];
@@ -4479,12 +4490,13 @@ static inline WebKit::FindOptions toFindOptions(_WKFindOptions wkFindOptions)
 
     if (!_resizeAnimationView) {
         // Paranoia. If _resizeAnimationView is null we'll end up setting a zero scale on the content view.
-        ASSERT_NOT_REACHED();
+        RELEASE_LOG_IF_ALLOWED("%p -[WKWebView _endAnimatedResize:] - _resizeAnimationView is nil", self);
         _dynamicViewportUpdateMode = DynamicViewportUpdateMode::NotResizing;
         [_contentView setHidden:NO];
         return;
     }
     
+    --_activeAnimatedResizeCount;
     NSUInteger indexOfResizeAnimationView = [[_scrollView subviews] indexOfObject:_resizeAnimationView.get()];
     [_scrollView insertSubview:_contentView.get() atIndex:indexOfResizeAnimationView];
     [_scrollView insertSubview:[_contentView unscaledView] atIndex:indexOfResizeAnimationView + 1];
@@ -4874,6 +4886,16 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
 #endif
 }
 
+- (id<_WKTestingDelegate>)_testingDelegate
+{
+    return _testingDelegate;
+}
+
+- (void)_setTestingDelegate:(id<_WKTestingDelegate>)testingDelegate
+{
+    _testingDelegate = testingDelegate;
+}
+
 #if PLATFORM(IOS)
 
 - (CGRect)_contentVisibleRect
@@ -5096,6 +5118,72 @@ static WebCore::UserInterfaceLayoutDirection toUserInterfaceLayoutDirection(UISe
 - (void)_disableBackForwardSnapshotVolatilityForTesting
 {
     WebKit::ViewSnapshotStore::singleton().setDisableSnapshotVolatilityForTesting(true);
+}
+
+
+- (void)_simulateDataInteractionGestureRecognized
+{
+#if ENABLE(DATA_INTERACTION)
+    [_contentView _simulateDataInteractionGestureRecognized:_testingDelegate.dataInteractionGestureRecognizer];
+#endif
+}
+
+- (void)_simulateDataInteractionEntered:(id)info
+{
+#if ENABLE(DATA_INTERACTION)
+    [_contentView _simulateDataInteractionEntered:info];
+#endif
+}
+
+- (void)_simulateDataInteractionUpdated:(id)info
+{
+#if ENABLE(DATA_INTERACTION)
+    [_contentView _simulateDataInteractionUpdated:info];
+#endif
+}
+
+- (void)_simulateDataInteractionPerformOperation:(id)info
+{
+#if ENABLE(DATA_INTERACTION)
+    [_contentView _simulateDataInteractionPerformOperation:info];
+#endif
+}
+
+- (void)_simulateDataInteractionEnded:(id)info
+{
+#if ENABLE(DATA_INTERACTION)
+    [_contentView _simulateDataInteractionEnded:info];
+#endif
+}
+
+- (void)_simulateDataInteractionSessionDidEnd:(id)session withOperation:(NSUInteger)operation
+{
+#if ENABLE(DATA_INTERACTION)
+    [_contentView _simulateDataInteractionSessionDidEnd:session withOperation:operation];
+#endif
+}
+
+- (void)_simulateFailedDataInteractionWithIndex:(NSInteger)sourceIndex
+{
+#if ENABLE(DATA_INTERACTION)
+    [_contentView _simulateFailedDataInteractionWithIndex:sourceIndex];
+#endif
+}
+
+- (void)_simulateWillBeginDataInteractionWithIndex:(NSInteger)sourceIndex withSession:(id)session
+{
+#if ENABLE(DATA_INTERACTION)
+    [_contentView _simulateWillBeginDataInteractionWithIndex:sourceIndex withSession:session];
+#endif
+}
+
+- (NSArray *)_simulatedItemsForDataInteractionWithIndex:(NSInteger)sourceIndex
+{
+#if ENABLE(DATA_INTERACTION)
+    return [_contentView _simulatedItemsForDataInteractionWithIndex:sourceIndex];
+#else
+    return @[ ];
+#endif
 }
 
 @end

@@ -71,7 +71,7 @@ class MacOSFullscreenMediaControls extends MacOSMediaControls
             rightMargin: 12
         });
 
-        this.controlsBar.children = [this._leftContainer, this._centerContainer, this._rightContainer, this.timeControl];
+        this.controlsBar.children = [new BackgroundTint, this._leftContainer, this._centerContainer, this._rightContainer, this.timeControl];
 
         this.element.addEventListener("mousedown", this);
     }
@@ -149,7 +149,7 @@ class MacOSFullscreenMediaControls extends MacOSMediaControls
             this.controlsBar.translation.x + currentDragPoint.x - this._lastDragPoint.x,
             this.controlsBar.translation.y + currentDragPoint.y - this._lastDragPoint.y
         );
-        
+
         this._lastDragPoint = currentDragPoint;
     }
 

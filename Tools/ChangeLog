@@ -1,3 +1,213 @@
+2017-02-14  Jonathan Bedard  <jbedard@apple.com>
+
+        Unreviewed build-fix after r212297.
+
+        * Scripts/webkitpy/port/simulator_process.py:
+        (SimulatorProcess.stop): Should return value of the ServerProcess's stop.
+
+2017-02-14  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [CMake] build-webkit should allow building with the default cmake configuration
+        https://bugs.webkit.org/show_bug.cgi?id=168323
+
+        Reviewed by Michael Catanzaro.
+
+        Add a --default-cmake-features switch that makes the script pass
+        no value for any of the features defined by build-webkit, that
+        way the default values from the port cmake config will be used.
+
+        * Scripts/build-webkit:
+        (cMakeArgsFromFeatures):
+
+2017-02-14  Jonathan Bedard  <jbedard@apple.com>
+
+        Unreviewed build-fix after r212297.
+
+        * Scripts/webkitpy/port/simulator_process.py:
+        (SimulatorProcess.stop): Handle case where there is no process to kill.
+
+2017-02-14  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [CMake] build-webkit should print the cmake command executed
+        https://bugs.webkit.org/show_bug.cgi?id=168318
+
+        Reviewed by Michael Catanzaro.
+
+        Run the cmake commands to configure or start the build through
+        a wrapper that prints the command before executing it.
+
+        * Scripts/webkitdirs.pm:
+        (systemVerbose):
+        (generateBuildSystemFromCMakeProject):
+        (buildCMakeGeneratedProject):
+        (cleanCMakeGeneratedProject):
+
+2017-02-14  Jonathan Bedard  <jbedard@apple.com>
+
+        run-webkit-tests for iOS Simulator always complains that stopping WebKitTestRunnerApp.app times out
+        https://bugs.webkit.org/show_bug.cgi?id=168150
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Scripts/webkitpy/port/simulator_process.py:
+        (SimulatorProcess.stop): Close app before calling ServerProcess's stop.
+        (SimulatorProcess._kill): Move closing of app into stop().
+        * Scripts/webkitpy/xcode/simulator.py:
+        (Device.launch_app):
+        (Device.terminate_app): Deleted.
+
+2017-02-14  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        REGRESSION(r212192): [GTK] Broke downloads API tests
+        https://bugs.webkit.org/show_bug.cgi?id=168193
+
+        Unreviewed. Update test expectations after r212192.
+
+        The suggested filename now includes a file extensions if the MIME type is known.
+
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestDownloads.cpp:
+        (testDownloadRemoteFile):
+        (testDownloadMIMEType):
+
+2017-02-14  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r212237.
+        https://bugs.webkit.org/show_bug.cgi?id=168298
+
+        This was a wrong fix (Requested by rniwa on #webkit).
+
+        Reverted changeset:
+
+        "Nwtr unexpectedly passes mismatch ref test if the hashes
+        doesn't match but no diff"
+        https://bugs.webkit.org/show_bug.cgi?id=168221
+        http://trac.webkit.org/changeset/212237
+
+2017-02-13  Alex Christensen  <achristensen@webkit.org>
+
+        URLs with an invalid IPv4 address should be invalid
+        https://bugs.webkit.org/show_bug.cgi?id=168260
+
+        Reviewed by Tim Horton.
+
+        * TestWebKitAPI/Tests/WebCore/URLParser.cpp:
+        (TestWebKitAPI::TEST_F):
+        Update tests to reflect new correct behavior.
+
+2017-02-13  Don Olmstead  <don.olmstead@am.sony.com>
+
+        [WinCairo] Add Build Slave
+        https://bugs.webkit.org/show_bug.cgi?id=168263
+
+        Reviewed by Lucas Forschler.
+
+        * BuildSlaveSupport/build.webkit.org-config/config.json:
+
+2017-02-13  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Fix the build after r212254
+
+        * TestWebKitAPI/ios/DataInteractionSimulator.mm:
+        (-[DataInteractionSimulator _currentLocation]):
+
+2017-02-13  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [WK2] Add test infrastructure and unit tests for data interaction
+        https://bugs.webkit.org/show_bug.cgi?id=168159
+        <rdar://problem/30477634>
+
+        Reviewed by Tim Horton.
+
+        Uses the testing delegate introduced in WebKit2 to override the gesture recognizer used to initiate data
+        interaction. Instead of being driven by UIKit, the DataInteractionSimulator drives this overridden gesture
+        recognizer by making the WKContentView call its dataInteractionGestureRecognized method. To simulate an actual
+        gesture being performed, we fire the gesture recognizer (or call the data interaction delegate methods, if the
+        gesture has already been recognized) at regular intervals over the course of the test.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/autofocus-contenteditable.html: Added.
+        * TestWebKitAPI/Tests/WebKit2Cocoa/image-and-contenteditable.html: Added.
+        * TestWebKitAPI/Tests/WebKit2Cocoa/image-and-textarea.html: Added.
+
+        New test pages for data interaction.
+
+        * TestWebKitAPI/Tests/ios/DataInteractionTests.mm: Added.
+        (TestWebKitAPI::runTestsExpectingToObserveEvents):
+        (TestWebKitAPI::TEST):
+        * TestWebKitAPI/cocoa/TestWKWebView.mm:
+        (-[TestWKWebView stringByEvaluatingJavaScript:]):
+        * TestWebKitAPI/ios/DataInteractionSimulator.h: Added.
+        * TestWebKitAPI/ios/DataInteractionSimulator.mm: Added.
+        (-[MockLongPressGestureRecognizer initWithWindow:]):
+        (-[MockLongPressGestureRecognizer locationInView:]):
+        (-[MockLongPressGestureRecognizer state]):
+        (-[MockLongPressGestureRecognizer numberOfTouches]):
+        (-[DataInteractionSimulator initWithWebView:startLocation:endLocation:]):
+        (-[DataInteractionSimulator dealloc]):
+        (-[DataInteractionSimulator run]):
+
+        Performs a data interaction gesture from the start location to the end location with linear interpolation. For
+        now, the timestep and progress per tick are 30ms and 3.33%, respectively, which means that tests should complete
+        in a little under 1 second, though this can be easily changed to be configurable in the future if needed.
+
+        (-[DataInteractionSimulator _advanceProgress]):
+
+        Fired periodically to drive the data interaction gesture. Schedules a call of itself until the test is
+        completed, and calls _finishDataInteraction when progress is at 1.
+
+        (-[DataInteractionSimulator _finishDataInteraction]):
+        (-[DataInteractionSimulator _currentLocation]):
+        (-[DataInteractionSimulator _scheduleAdvanceProgress]):
+        (-[DataInteractionSimulator _recognizeGestureAtLocation:withState:]):
+        (-[DataInteractionSimulator dataInteractionGestureRecognizer]):
+        (-[DataInteractionSimulator webViewDidPerformDataInteractionControllerOperation:]):
+        (-[DataInteractionSimulator webView:beginDataInteractionWithSourceIndex:gestureRecognizer:]):
+
+2017-02-13  Alex Christensen  <achristensen@webkit.org>
+
+        Percent should be allowed in non-special URL hosts
+        https://bugs.webkit.org/show_bug.cgi?id=168255
+
+        Reviewed by Tim Horton.
+
+        * TestWebKitAPI/Tests/WebCore/URLParser.cpp:
+        (TestWebKitAPI::TEST_F):
+
+2017-02-13  Fujii Hironori  <Hironori.Fujii@sony.com>
+
+        Nwtr unexpectedly passes mismatch ref test if the hashes doesn't match but no diff
+        https://bugs.webkit.org/show_bug.cgi?id=168221
+
+        Reviewed by Ryosuke Niwa.
+
+        There is a logic error in comparing mismatch ref test images. In
+        mismatch ref tests, it should be failed if two images has no diff.
+        But, if the hashes are different, nwtr unexpectedly pass the
+        mismatch ref test.
+
+        * Scripts/webkitpy/layout_tests/controllers/single_test_runner.py:
+        (SingleTestRunner._compare_output_with_reference): Fail the
+        mismatch ref test if hashes of two images are equal. Invoke
+        ImageDiff if the hashes don't match.
+
+2017-02-13  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Update custom line breaking iterators to the latest version of Unicode
+        https://bugs.webkit.org/show_bug.cgi?id=168182
+
+        Reviewed by Zalan Bujtas.
+
+        Treat the system's ICU as the source of truth to compare breaking positions against.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebCore/LineBreaking.mm: Added.
+        (generateJavaScriptForTest):
+        (breakingLocationsFromICU):
+        (testAFewStrings):
+        (TEST):
+        * TestWebKitAPI/Tests/WebKit2Cocoa/AllAhem.svg: Renamed from LayoutTests/css3/line-break/resources/AllAhem.svg.
+        * TestWebKitAPI/Tests/WebKit2Cocoa/LineBreaking.html: Added.
+
 2017-02-12  Michael Catanzaro  <mcatanzaro@igalia.com>
 
         [GTK] Several failing WebViewEditor API tests

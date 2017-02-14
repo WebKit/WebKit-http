@@ -1,3 +1,857 @@
+2017-02-14  Youenn Fablet  <youennf@gmail.com>
+
+        [WebRTC] Implement description getters for libwebrtc RTCPeerConnection
+        https://bugs.webkit.org/show_bug.cgi?id=168234
+
+        Reviewed by Alex Christensen.
+
+        Allows passing W3C webrtc tests.
+
+        Implementing localDescription/remoteDescription using libwebrtc backend.
+        current and pending description getters are made the same as local/remote getters for the moment.
+        This should be fixed when upgrading to latest libwebrtc revision.
+
+        * Modules/mediastream/libwebrtc/LibWebRTCMediaEndpoint.cpp:
+        (WebCore::toSessionDescriptionType):
+        (WebCore::fromSessionDescriptionType):
+        (WebCore::fromSessionDescription):
+        (WebCore::LibWebRTCMediaEndpoint::localDescription):
+        (WebCore::LibWebRTCMediaEndpoint::remoteDescription):
+        (WebCore::LibWebRTCMediaEndpoint::doSetLocalDescription):
+        (WebCore::LibWebRTCMediaEndpoint::doSetRemoteDescription):
+        * Modules/mediastream/libwebrtc/LibWebRTCMediaEndpoint.h:
+        * Modules/mediastream/libwebrtc/LibWebRTCPeerConnectionBackend.cpp:
+        (WebCore::LibWebRTCPeerConnectionBackend::localDescription):
+        * Modules/mediastream/libwebrtc/LibWebRTCPeerConnectionBackend.h:
+
+2017-02-14  Jeremy Jones  <jeremyj@apple.com>
+
+        When playing inline after fullscreen, set a flag instead of adding attribute plays inline, and use in requiresFullscreenForVideoPlayback.
+        https://bugs.webkit.org/show_bug.cgi?id=167815
+        rdar://problem/27685077
+
+        Reviewed by Jer Noble.
+
+        Test: media/media-fullscreen-loop-inline.html
+
+        When video is allowed to play inline after fullscreen. Looped video causes play state to update, which can send video back to fullscreen when
+        allowsInline is false. This change will set a new flag when allowsInlineMediaPlaybackAfterFullscreen allows inline playback that can be tested
+        in requiresFullscreenForVideoPlayback to prevent sending video back into fullscreen when video loops.
+
+        * html/HTMLMediaElement.cpp:
+        (WebCore::HTMLMediaElement::enterFullscreen):
+        (WebCore::HTMLMediaElement::exitFullscreen):
+        * html/HTMLMediaElement.h:
+        (WebCore::HTMLMediaElement::isTemporarilyAllowingInlinePlaybackAfterFullscreen): Added.
+        * html/MediaElementSession.cpp:
+        (WebCore::MediaElementSession::requiresFullscreenForVideoPlayback):
+
+2017-02-14  Jer Noble  <jer.noble@apple.com>
+
+        Video elements with MediaSource objects set by srcObject are not cleared when srcObject is set to null
+        https://bugs.webkit.org/show_bug.cgi?id=168268
+
+        Reviewed by Eric Carlson.
+
+        Test: fast/mediastream/MediaStream-MediaElement-setObject-null.html
+
+        Make the setSrcObject() operation compliant with the HTML spec. Since the specification defines
+        srcObject in terms of either a MediaSource, MediaStream, or Blob object, add the variant typedef
+        to HTMLMediaElement and move the definition out of the Modules/mediastream extension IDL and into
+        HTMLMediaElement.idl. Then bring the "media elements load" and "resource selection" algorithms up
+        to their most recent definitions in the HTML5 spec.
+
+        Drive-by fix: Allow the (admittedly weird) single-element-union type in IDL.
+
+        * CMakeLists.txt:
+        * DerivedSources.cpp:
+        * DerivedSources.make:
+        * Modules/mediastream/HTMLMediaElementMediaStream.cpp: Removed.
+        * Modules/mediastream/HTMLMediaElementMediaStream.h: Removed.
+        * Modules/mediastream/HTMLMediaElementMediaStream.idl: Removed.
+        * WebCore.xcodeproj/project.pbxproj:
+        * bindings/scripts/IDLParser.pm:
+        (parseUnionType):
+        * html/HTMLAudioElement.cpp:
+        (WebCore::HTMLAudioElement::createForJSConstructor):
+        * html/HTMLMediaElement.cpp:
+        (WebCore::actionName):
+        (WebCore::HTMLMediaElement::parseAttribute):
+        (WebCore::HTMLMediaElement::insertedInto):
+        (WebCore::HTMLMediaElement::scheduleDelayedAction):
+        (WebCore::HTMLMediaElement::scheduleNextSourceChild):
+        (WebCore::HTMLMediaElement::pendingActionTimerFired):
+        (WebCore::HTMLMediaElement::setSrcObject):
+        (WebCore::HTMLMediaElement::load):
+        (WebCore::HTMLMediaElement::prepareForLoad):
+        (WebCore::HTMLMediaElement::selectMediaResource):
+        (WebCore::HTMLMediaElement::loadResource):
+        (WebCore::HTMLMediaElement::playInternal):
+        (WebCore::HTMLMediaElement::pauseInternal):
+        (WebCore::HTMLMediaElement::sourceWasAdded):
+        (WebCore::HTMLMediaElement::clearMediaPlayer):
+        (WebCore::HTMLMediaElement::resume):
+        (WebCore::HTMLMediaElement::mediaCanStart):
+        (WebCore::HTMLMediaElement::createMediaPlayer):
+        (WebCore::HTMLMediaElement::loadInternal): Deleted.
+        * html/HTMLMediaElement.h:
+        (WebCore::HTMLMediaElement::srcObject):
+        * html/HTMLMediaElement.idl:
+        * platform/ContentType.h:
+
+2017-02-14  Aakash Jain  <aakash_jain@apple.com>
+
+        Remove unused WebThreadContextIsCurrent method from WebCoreThread.h
+        https://bugs.webkit.org/show_bug.cgi?id=168254
+
+        Reviewed by Dan Bernstein.
+
+        * platform/ios/wak/WebCoreThread.h: Removed unused WebThreadContextIsCurrent.
+        * platform/ios/wak/WebCoreThread.mm:
+        (WebThreadContextIsCurrent): Deleted.
+
+2017-02-14  Alexey Proskuryakov  <ap@apple.com>
+
+        WebCore shouldn't export SystemMemory.h
+        https://bugs.webkit.org/show_bug.cgi?id=168285
+
+        Reviewed by Alex Christensen.
+
+        * WebCore.xcodeproj/project.pbxproj:
+
+2017-02-13  Filip Pizlo  <fpizlo@apple.com>
+
+        worker.postMessage should throw a TypeError if a SharedArrayBuffer is in the transfer list
+        https://bugs.webkit.org/show_bug.cgi?id=168277
+
+        Reviewed by Mark Lam.
+
+        Test: workers/sab/postMessage-transfer-type-error.html
+        
+        This is a simple spec compliance change. The title says it all.
+
+        * bindings/js/SerializedScriptValue.cpp:
+        (WebCore::SerializedScriptValue::create):
+
+2017-02-14  Zan Dobersek  <zdobersek@igalia.com>
+
+        HTMLMediaElement: WebKitMediaKeys member name should be prefixed
+        https://bugs.webkit.org/show_bug.cgi?id=168297
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        Rename the LEGACY_ENCRYPTED_MEDIA m_mediaKeys variable to m_webkitMediaKeys
+        so that it contains the legacy prefix, just like the API. This will make
+        room for the MediaKeys member variable that will be implemented under
+        the ENCRYPTED_MEDIA guards.
+
+        * html/HTMLMediaElement.cpp:
+        (WebCore::HTMLMediaElement::mediaPlayerCachedKeyForKeyId):
+        (WebCore::HTMLMediaElement::webkitSetMediaKeys):
+        * html/HTMLMediaElement.h:
+        (WebCore::HTMLMediaElement::webkitKeys):
+
+2017-02-14  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Make DragImageRef a RefPtr instead of a plain pointer
+        https://bugs.webkit.org/show_bug.cgi?id=168296
+
+        Reviewed by Sergio Villar Senin.
+
+        Use RefPtr<cairo_surface_t> as DragImageRef for GTK+ port to avoid memory leaks.
+
+        * platform/DragImage.h:
+        * platform/gtk/DragImageGtk.cpp:
+        (WebCore::dragImageSize):
+        (WebCore::deleteDragImage):
+        (WebCore::scaleDragImage):
+        (WebCore::dissolveDragImageToFraction):
+        (WebCore::createDragImageFromImage):
+        (WebCore::createDragImageIconForCachedImageFilename):
+
+2017-02-14  Vanessa Chipirrás Navalón  <vchipirras@igalia.com>
+
+        [GStreamer][MSE] Some GStreamer log messages are generated with the 'default' category
+        https://bugs.webkit.org/show_bug.cgi?id=168015
+
+        Reviewed by Xabier Rodriguez-Calvar.
+
+        The elements AppendPipeline, PlaybackPipeline, MediaSourceClientGstreamerMSE do not have
+        a defined Gstreamer log category, then the webkitmse category has been added to them.
+        WebKitMediaSourceGstreamer has its own category but was not declared at the beginning of
+        the .cpp file.
+
+        * platform/graphics/gstreamer/mse/AppendPipeline.cpp: Added webkitmse category.
+        * platform/graphics/gstreamer/mse/MediaSourceClientGStreamerMSE.cpp:
+        Added webkitmse category and gst header.
+        * platform/graphics/gstreamer/mse/PlaybackPipeline.cpp: Added webkitmse category.
+        * platform/graphics/gstreamer/mse/WebKitMediaSourceGStreamer.cpp:
+        Added webkitmediasrc category.
+
+2017-02-14  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        CookieManager only works with the default session
+        https://bugs.webkit.org/show_bug.cgi?id=168229
+
+        Reviewed by Alex Christensen.
+
+        Update cookie observer API to use a std::function instead of a function pointer and make it work with multiple
+        sessions in the backends that support it.
+
+        * platform/network/CookieStorage.h:
+        * platform/network/cf/CookieStorageCFNet.cpp:
+        (WebCore::cookieChangeCallbackMap):
+        (WebCore::notifyCookiesChanged):
+        (WebCore::startObservingCookieChanges):
+        (WebCore::stopObservingCookieChanges):
+        * platform/network/mac/CookieStorageMac.mm:
+        (-[WebCookieStorageObjCAdapter startListeningForCookieChangeNotificationsWithCallback:]):
+        (-[WebCookieStorageObjCAdapter stopListeningForCookieChangeNotifications]):
+        (WebCore::startObservingCookieChanges):
+        (WebCore::stopObservingCookieChanges):
+        * platform/network/soup/CookieStorageSoup.cpp:
+        (WebCore::cookieChangeCallbackMap):
+        (WebCore::soupCookiesChanged):
+        (WebCore::startObservingCookieChanges):
+        (WebCore::stopObservingCookieChanges):
+
+2017-02-13  Antoine Quint  <graouts@apple.com>
+
+        REGRESSION: Update volume and scrubbing slider to match HI designs
+        https://bugs.webkit.org/show_bug.cgi?id=168170
+        <rdar://problem/28095266>
+
+        Reviewed by Dean Jackson.
+
+        We bring the designs of the control's background materials, scrubber and
+        volume slider up to spec.
+
+        The first important set of changes is that, on macOS, the materials and colors
+        were incorrect. Buttons and time labels now set a mix-blend-mode to correctly
+        appear vibrant against the media, and the controls bar, volume container
+        and tracks menu now use a new BackgroundTint node to correctly apply both
+        a backdrop-filter and blended tint above it.
+
+        The second important set of changes is the rendering of the sliders. Up to now
+        we would simply style the <input type="range"> track and thumb, applying solid
+        fills and strokes. We now draw sliders in two ways depending on the platform.
+        
+        On macOS, we draw the whole slider with a <canvas> element with "mix-blend-mode"
+        set to "plus-lighter". On iOS, we draw the track as a <div> with "mix-blend-mode"
+        set to "plus-darker" and draw the fill (up to the thumb) in the <canvas> with
+        no blend mode to obtain a pure white color, finally the thumb is rendered by the
+        <input> element. We couldn't draw the pure white color with the track in the
+        same <canvas> due to the "plus-darker" blend mode.
+
+        Test: media/modern-media-controls/background-tint/background-tint.html
+
+        * Modules/modern-media-controls/controls/airplay-button.css:
+        (button.airplay.on):
+        * Modules/modern-media-controls/controls/background-tint.css: Added.
+        (.background-tint):
+        (.background-tint,):
+        (.background-tint > .blur):
+        (.background-tint > .tint):
+        * Modules/modern-media-controls/controls/background-tint.js: Added.
+        (BackgroundTint):
+        * Modules/modern-media-controls/controls/ios-inline-media-controls.css:
+        (.media-controls.ios.inline .scrubber.slider):
+        (.media-controls.ios.inline .scrubber.slider > div):
+        (.media-controls.ios.inline .scrubber.slider > input::-webkit-slider-thumb):
+        (.media-controls.ios.inline .scrubber.slider > .fill): Deleted.
+        * Modules/modern-media-controls/controls/macos-compact-inline-media-controls.css:
+        (.media-controls.mac.inline.compact .volume-slider-container):
+        (.media-controls.mac.inline.compact .volume.slider):
+        (.media-controls.mac.inline.compact .scrubber.slider > input::-webkit-slider-thumb): Deleted.
+        * Modules/modern-media-controls/controls/macos-fullscreen-media-controls.css:
+        (.media-controls.mac.fullscreen > .controls-bar):
+        (.media-controls.mac.fullscreen > .controls-bar > .background-tint > div):
+        (.media-controls.mac.fullscreen .volume.slider):
+        (.media-controls.mac.fullscreen button.volume-up):
+        (.media-controls.mac.fullscreen button.rewind):
+        (.media-controls.mac.fullscreen button.forward):
+        (.media-controls.mac.fullscreen .buttons-container.right button):
+        (.media-controls.mac.fullscreen .scrubber):
+        (.media-controls.mac.fullscreen > .controls-bar button): Deleted.
+        (.media-controls.mac.fullscreen button.airplay): Deleted.
+        (.media-controls.mac.fullscreen button.aspect-ratio): Deleted.
+        (.media-controls.mac.fullscreen button.pip): Deleted.
+        (.media-controls.mac.fullscreen button.tracks): Deleted.
+        (.media-controls.mac.fullscreen button.fullscreen): Deleted.
+        * Modules/modern-media-controls/controls/macos-fullscreen-media-controls.js:
+        * Modules/modern-media-controls/controls/macos-inline-media-controls.css:
+        (.media-controls.mac.inline .scrubber.slider):
+        (.media-controls.mac.inline .volume-slider-container):
+        (.media-controls.mac.inline .volume-slider-container > .background-tint):
+        (.media-controls.mac.inline .volume-slider-container > .background-tint > div):
+        (.media-controls.mac.inline .volume.slider):
+        (.media-controls.mac.inline button): Deleted.
+        (.media-controls.mac.inline button:active): Deleted.
+        (.media-controls.mac.inline > .controls-bar button): Deleted.
+        (.media-controls.mac.inline > .controls-bar,): Deleted.
+        (.media-controls.mac.inline .volume-slider-container:before): Deleted.
+        * Modules/modern-media-controls/controls/macos-inline-media-controls.js:
+        (MacOSInlineMediaControls.prototype.layout):
+        * Modules/modern-media-controls/controls/macos-media-controls.css: Added.
+        (.media-controls.mac button:active):
+        (.media-controls.mac > .controls-bar button):
+        (.media-controls.mac > .controls-bar .time-label):
+        (.media-controls.mac > .controls-bar .slider > canvas):
+        (.media-controls.mac > .controls-bar .slider > input::-webkit-slider-thumb):
+        * Modules/modern-media-controls/controls/scrubber.css: Removed.
+        * Modules/modern-media-controls/controls/scrubber.js:
+        (Scrubber):
+        (Scrubber.prototype.get buffered):
+        (Scrubber.prototype.set buffered):
+        (Scrubber.prototype.draw):
+        (Scrubber.prototype._drawMacOS):
+        (Scrubber.prototype._drawiOS):
+        * Modules/modern-media-controls/controls/slider.css:
+        (.slider):
+        (.slider > canvas,):
+        (.slider > canvas):
+        (.slider > input):
+        (.slider > input,): Deleted.
+        (.slider > .fill): Deleted.
+        (.slider > input::-webkit-slider-thumb): Deleted.
+        * Modules/modern-media-controls/controls/slider.js:
+        (Slider.prototype.set value):
+        (Slider.prototype.set width):
+        (Slider.prototype.commitProperty):
+        (Slider.prototype.layout):
+        (Slider.prototype.draw):
+        (Slider.prototype._handleInputEvent):
+        (Slider.prototype._handleChangeEvent):
+        (addRoundedRect):
+        (Slider.prototype._updateFill): Deleted.
+        * Modules/modern-media-controls/controls/start-button.css:
+        (button.start):
+        * Modules/modern-media-controls/controls/time-control.js:
+        * Modules/modern-media-controls/controls/time-label.css:
+        (.time-label):
+        * Modules/modern-media-controls/controls/tracks-panel.css:
+        (.tracks-panel):
+        (.tracks-panel > .background-tint > div):
+        (.tracks-panel > section):
+        (.tracks-panel > section:first-of-type):
+        (.tracks-panel > section > h3):
+        (.tracks-panel > section > ul):
+        (.tracks-panel > section > ul > li):
+        (.tracks-panel > section > ul > li:focus):
+        (.tracks-panel > section > ul > li.selected:before):
+        (.tracks-panel > section > ul > li.animated):
+        (.tracks-panel-section): Deleted.
+        (.tracks-panel-section:first-of-type): Deleted.
+        (.tracks-panel-section > h3): Deleted.
+        (.tracks-panel-section > ul): Deleted.
+        (.tracks-panel-section > ul > li): Deleted.
+        (.tracks-panel-section > ul > li:focus): Deleted.
+        (.tracks-panel-section > ul > li.selected:before): Deleted.
+        (.tracks-panel-section > ul > li.animated): Deleted.
+        * Modules/modern-media-controls/controls/tracks-panel.js:
+        (TracksPanel.prototype._childrenFromDataSource):
+        (TracksPanel.prototype._childrenFromDataSource.): Deleted.
+        * Modules/modern-media-controls/controls/volume-slider.js:
+        (VolumeSlider):
+        (VolumeSlider.prototype.handleEvent):
+        (VolumeSlider.prototype.draw):
+        * Modules/modern-media-controls/js-files:
+        * Modules/modern-media-controls/media/scrubbing-support.js:
+        (ScrubbingSupport.prototype.get mediaEvents):
+        (ScrubbingSupport.prototype.syncControl):
+        (ScrubbingSupport):
+
+2017-02-13  Alex Christensen  <achristensen@webkit.org>
+
+        URLs with an invalid IPv4 address should be invalid
+        https://bugs.webkit.org/show_bug.cgi?id=168260
+
+        Reviewed by Tim Horton.
+
+        All URL hosts are fed through the IPv4 parser.  https://webkit.org/ doesn't
+        look enough like an IPv4 address to be considered an invalid IPv4 address, so 
+        we continue to the String host processing.  http://127.0.0.257 does, though, and
+        according to https://url.spec.whatwg.org/#concept-ipv4-parser parsing that URL
+        should fail.
+
+        Covered by newly passing web platform tests.
+
+        * platform/URLParser.cpp:
+        (WebCore::URLParser::parseIPv4Host):
+        (WebCore::URLParser::parseHostAndPort):
+        * platform/URLParser.h:
+
+2017-02-13  Dan Bernstein  <mitz@apple.com>
+
+        Reverted r212275. It still breaks some Apple-internal builds.
+
+        * platform/spi/mac/TUCallSPI.h:
+
+2017-02-13  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Address ESLint warnings in modern-media-controls
+        https://bugs.webkit.org/show_bug.cgi?id=168224
+
+        Reviewed by Alexey Proskuryakov.
+
+        * Modules/modern-media-controls/controls/controls-bar.js:
+        * Modules/modern-media-controls/controls/fullscreen-button.js:
+        * Modules/modern-media-controls/controls/layout-node.js:
+        * Modules/modern-media-controls/controls/macos-fullscreen-media-controls.js:
+        * Modules/modern-media-controls/controls/media-controls.js:
+        * Modules/modern-media-controls/controls/scheduler.js:
+        * Modules/modern-media-controls/controls/seek-button.js:
+        * Modules/modern-media-controls/controls/tracks-panel.js:
+        * Modules/modern-media-controls/controls/volume-slider.js:
+        * Modules/modern-media-controls/gesture-recognizers/gesture-recognizer.js:
+        * Modules/modern-media-controls/gesture-recognizers/pinch.js:
+        * Modules/modern-media-controls/media/fullscreen-support.js:
+        * Modules/modern-media-controls/media/media-controller.js:
+        * Modules/modern-media-controls/media/placard-support.js:
+        * Modules/modern-media-controls/media/status-support.js:
+        Address pedantic warnings.
+
+2017-02-13  Dan Bernstein  <mitz@apple.com>
+
+        Restored changes from r212210 in a way that does not break the build.
+
+        * platform/spi/mac/TUCallSPI.h:
+
+2017-02-13  Zalan Bujtas  <zalan@apple.com>
+
+        FontCascade::widthForSimpleText should skip applyTransforms() when kerning and ligatures are off.
+        https://bugs.webkit.org/show_bug.cgi?id=168251
+        <rdar://problem/30498102>
+
+        Reviewed by Antti Koivisto.
+
+        Covered by existing (perf)tests.
+
+        * platform/graphics/FontCascade.cpp:
+        (WebCore::FontCascade::widthForSimpleText):
+
+2017-02-12  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: expose system user interface layout direction through InspectorFrontendHost
+        https://bugs.webkit.org/show_bug.cgi?id=168209
+        <rdar://problem/11573736>
+
+        Reviewed by Joseph Pecoraro.
+
+        Forward the UserInterfaceLayoutDirection of the inspector page. If the WebKit client has
+        properly set the UI directionality from system settings in PageClient, this will get inherited
+        automatically by the Inspector's WebPage instance.
+
+        * inspector/InspectorFrontendClient.h:
+        * inspector/InspectorFrontendClientLocal.cpp:
+        (WebCore::InspectorFrontendClientLocal::userInterfaceLayoutDirection):
+        * inspector/InspectorFrontendClientLocal.h:
+
+        * inspector/InspectorFrontendHost.h:
+        * inspector/InspectorFrontendHost.idl:
+        * inspector/InspectorFrontendHost.cpp:
+        (WebCore::InspectorFrontendHost::userInterfaceLayoutDirection):
+        Expose the directionality to the frontend as "ltr" or "rtl" strings.
+
+2017-02-13  Zalan Bujtas  <zalan@apple.com>
+
+        Simple line layout: Do not measure runs with trailing whitespace when kerning and ligatures are off.
+        https://bugs.webkit.org/show_bug.cgi?id=168247
+        <rdar://problem/30497288>
+
+        Reviewed by Antti Koivisto.
+
+        The width of the run is supposed to be the same with or without the trailing whitespace.
+
+        Covered by performance test.
+
+        * rendering/SimpleLineLayoutTextFragmentIterator.cpp:
+        (WebCore::SimpleLineLayout::TextFragmentIterator::Style::Style):
+        (WebCore::SimpleLineLayout::TextFragmentIterator::textWidth):
+        * rendering/SimpleLineLayoutTextFragmentIterator.h:
+
+2017-02-13  Karim H  <karim@karhm.com>
+
+        Added the other missing BSTR roles tag names.
+        https://bugs.webkit.org/show_bug.cgi?id=165545
+
+        Reviewed by Chris Fleizach.
+
+        Test: accessibility/win/bstr-elements-role.html
+
+        * accessibility/AccessibilityRenderObject.cpp:
+        (WebCore::shouldReturnTagNameAsRoleForMSAA):
+
+2017-02-13  Youenn Fablet  <youennf@gmail.com>
+
+        [WebRTC] Creating RTCPeerConnection with libwebrtc backend is crashing on rwt
+        https://bugs.webkit.org/show_bug.cgi?id=168250
+
+        Reviewed by Alex Christensen.
+
+        Covered by webrtc tests in LayoutTests and in web-platform-tests.
+        Making mock peer connection factory keep a ref of the real libwebrtc peer connection factory.
+        That way, it can create real libwebrtc backends whenever requested by tests.
+
+        Moving LibWebRTCUtils.h routines as static LibWebRTCProvider methods.
+        In the future, we should make them no longer static.
+
+        * Modules/mediastream/libwebrtc/LibWebRTCMediaEndpoint.cpp:
+        (WebCore::LibWebRTCMediaEndpoint::doCreateOffer):
+        (WebCore::LibWebRTCMediaEndpoint::doCreateAnswer):
+        * Modules/mediastream/libwebrtc/LibWebRTCMediaEndpoint.h:
+        * WebCore.xcodeproj/project.pbxproj:
+        * platform/mediastream/libwebrtc/LibWebRTCProvider.cpp: Renamed from Source/WebCore/platform/mediastream/libwebrtc/LibWebRTCUtils.cpp.
+        (WebCore::LibWebRTCProvider::callOnWebRTCNetworkThread):
+        (WebCore::LibWebRTCProvider::callOnWebRTCSignalingThread):
+        (WebCore::LibWebRTCProvider::factory):
+        (WebCore::LibWebRTCProvider::setPeerConnectionFactory):
+        (WebCore::createActualPeerConnection):
+        (WebCore::LibWebRTCProvider::createPeerConnection):
+        * platform/mediastream/libwebrtc/LibWebRTCProvider.h:
+        * platform/mediastream/libwebrtc/LibWebRTCUtils.h: Removed.
+        * platform/mediastream/mac/RealtimeOutgoingAudioSource.cpp:
+        (WebCore::RealtimeOutgoingAudioSource::audioSamplesAvailable):
+        * testing/Internals.cpp:
+        * testing/MockLibWebRTCPeerConnection.cpp:
+        (WebCore::useMockRTCPeerConnectionFactory):
+        (WebCore::MockLibWebRTCPeerConnectionForIceCandidates::gotLocalDescription):
+        (WebCore::releaseInNetworkThread):
+        (WebCore::MockLibWebRTCPeerConnection::SetLocalDescription):
+        (WebCore::MockLibWebRTCPeerConnection::SetRemoteDescription):
+        (WebCore::MockLibWebRTCPeerConnection::CreateOffer):
+        (WebCore::MockLibWebRTCPeerConnection::CreateAnswer):
+
+2017-02-13  Anders Carlsson  <andersca@apple.com>
+
+        Simplify DragController::startDrag
+        https://bugs.webkit.org/show_bug.cgi?id=168240
+
+        Reviewed by Tim Horton.
+
+        Use early returns instead of assigning to a variable that's returned at the end of the function.
+
+        * page/DragController.cpp:
+        (WebCore::DragController::startDrag):
+
+2017-02-13  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        The current frame of an image should not deleted if another frame is asynchronously being decoded
+        https://bugs.webkit.org/show_bug.cgi?id=167618
+
+        Reviewed by Simon Fraser.
+
+        Test: fast/images/animated-image-draw-while-decode.html
+
+        If the memory cache asks the BitmapImage to destroy all its frames while
+        the next frame is being decoded, a thread contention may happen. This can
+        happen when BitmapImage::draw() is called and the next frame is not ready
+        yet for drawing, so the current frame has to be drawn. This will invoke
+        a frame decoding in the same image from the drawing committing thread.
+
+        We can avoid that by destroying all the frames except the current frame if
+        the image is asynchronously decoding its frames. This should not add extra
+        memory overhead because building the image frame cache and then destroying
+        it, when needed, is an on-going process. The frames will be allocated and
+        decoded all the time and all of them can be destroyed except the current one.
+        
+        * platform/graphics/BitmapImage.cpp:
+        (WebCore::BitmapImage::destroyDecodedData):
+        (WebCore::BitmapImage::destroyDecodedDataIfNecessary):
+        The logic of destroying the ImageFrames was split among BitmapImage, ImageSource
+        and ImageFrameCache. Move all the logic to BitmapImage and have ImageFrameCache
+        be responsible only for destroying a range of ImageFrames.
+
+        (WebCore::BitmapImage::draw): add an ASSERT_IMPLIES to ensure the current frame
+        is ready to be rendered if the next frame is being decoded.
+        
+        * platform/graphics/BitmapImage.h: Move a const from ImageFrameCache.h to BitmapImage.h.
+
+        * platform/graphics/ImageFrameCache.cpp:
+        (WebCore::ImageFrameCache::destroyDecodedData):
+        (WebCore::ImageFrameCache::destroyDecodedDataIfNecessary): Deleted.
+        * platform/graphics/ImageFrameCache.h:
+        (WebCore::ImageFrameCache::destroyAllDecodedData):
+        (WebCore::ImageFrameCache::destroyAllDecodedDataExcludeFrame):
+        (WebCore::ImageFrameCache::destroyDecodedDataBeforeFrame):
+        Make ImageFrameCache be responsible for destroying a range of ImageFrames.
+        This range might include all the frames, all the frames but up to a specific
+        frame, or all the frames but exclude one frame in the middle.
+        
+        * platform/graphics/ImageSource.cpp:
+        (WebCore::ImageSource::clear): No need to call clearFrameBufferCache() from clear().
+        The decision to call clearFrameBufferCache() or clear() is moved to
+        BitmapImage::destroyDecodedData().
+         
+        (WebCore::ImageSource::destroyDecodedData): Deleted.
+        (WebCore::ImageSource::destroyDecodedDataIfNecessary): Deleted.
+        These functions are replaced by another set of functions in ImageSource.h.
+        
+        * platform/graphics/ImageSource.h:
+        (WebCore::ImageSource::destroyAllDecodedData):
+        (WebCore::ImageSource::destroyAllDecodedDataExcludeFrame):
+        (WebCore::ImageSource::destroyDecodedDataBeforeFrame):
+        (WebCore::ImageSource::hasDecodingQueue):
+        These are new wrappers which call the corresponding ImageFrameCache functions.
+
+2017-02-13  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        [Cocoa] Stop soft-linking CTRunGetBaseAdvancesAndOrigins()
+        https://bugs.webkit.org/show_bug.cgi?id=168256
+
+        Reviewed by Alex Christensen.
+
+        Use of this function is already behind a platform guard.
+
+        No new tests because there is no behavior change.
+
+        * platform/graphics/mac/ComplexTextControllerCoreText.mm:
+        (SOFT_LINK): Deleted.
+
+2017-02-13  Jiewen Tan  <jiewen_tan@apple.com>
+
+        [WebCrypto] WebInspector should indicate webkitSubtle is deprecated
+        https://bugs.webkit.org/show_bug.cgi?id=165913
+        <rdar://problem/30477222>
+
+        Reviewed by Joseph Pecoraro.
+
+        Covered by existing tests.
+
+        * page/Crypto.cpp:
+        (WebCore::Crypto::webkitSubtle):
+
+2017-02-13  Simon Fraser  <simon.fraser@apple.com>
+
+        Call WKDestroyRenderingResources() on iOS when tabs are backgrounded
+        https://bugs.webkit.org/show_bug.cgi?id=168261
+        rdar://problem/30481079
+
+        Reviewed by Tim Horton.
+
+        Add CABackingStoreCollectBlocking() to QuartzCoreSPI.h, and fix files in WebCore
+        that do a framework include.
+
+        * platform/graphics/cocoa/TextTrackRepresentationCocoa.mm:
+        * platform/graphics/cocoa/WebActionDisablingCALayerDelegate.h:
+        * platform/spi/cocoa/QuartzCoreSPI.h:
+        * platform/spi/mac/NSViewSPI.h:
+
+2017-02-13  Youenn Fablet  <youenn@apple.com>
+
+        ASSERTION FAILED: !m_bodyLoader
+        https://bugs.webkit.org/show_bug.cgi?id=166986
+
+        Reviewed by Sam Weinig.
+
+        Refactoring to make the unset/set pending activity part of body loader.
+        This allows ensuring to not forget to do that by simply deleting the body loader.
+
+        * Modules/fetch/FetchResponse.cpp:
+        (WebCore::FetchResponse::fetch):
+        (WebCore::FetchResponse::BodyLoader::didSucceed):
+        (WebCore::FetchResponse::BodyLoader::didFail):
+        (WebCore::FetchResponse::BodyLoader::BodyLoader):
+        (WebCore::FetchResponse::BodyLoader::~BodyLoader):
+        (WebCore::FetchResponse::stop):
+        * Modules/fetch/FetchResponse.h:
+
+2017-02-13  Aakash Jain  <aakash_jain@apple.com>
+
+        Remove unused WebCoreThreadSafe.h
+        https://bugs.webkit.org/show_bug.cgi?id=168236
+
+        Reviewed by Dan Bernstein.
+
+        * platform/ios/wak/WebCoreThreadSafe.h: Removed.
+        * WebCore.xcodeproj/project.pbxproj: Removed WebCoreThreadSafe.h
+        * platform/ios/wak/WebCoreThread.mm: Removed WebCoreThreadSafe.h and included WAKWindow.h directly
+
+2017-02-13  Anders Carlsson  <andersca@apple.com>
+
+        Fix iOS build.
+
+        * platform/ios/DragImageIOS.mm:
+        (WebCore::deleteDragImage):
+
+2017-02-13  Sam Weinig  <sam@webkit.org>
+
+        Rename MediaQueryExp.h/cpp to MediaQueryExpression.h/cpp
+        https://bugs.webkit.org/show_bug.cgi?id=168249
+
+        Reviewed by Dean Jackson.
+
+        Fix a FIXME and rename MediaQueryExp.h/cpp to match the class it contains, MediaQueryExpression.
+
+        * CMakeLists.txt:
+        * WebCore.xcodeproj/project.pbxproj:
+        * css/CSSAllInOne.cpp:
+        * css/MediaQuery.h:
+        * css/MediaQueryEvaluator.h:
+        * css/MediaQueryExp.cpp: Removed.
+        * css/MediaQueryExp.h: Removed.
+        * css/MediaQueryExpression.cpp: Copied from Source/WebCore/css/MediaQueryExp.cpp.
+        * css/MediaQueryExpression.h: Copied from Source/WebCore/css/MediaQueryExp.h.
+        * css/parser/MediaQueryParser.h:
+
+2017-02-13  Aakash Jain  <aakash_jain@apple.com>
+
+        WAKResponder should be exported from WebCore
+        https://bugs.webkit.org/show_bug.cgi?id=168245
+
+        Reviewed by Dan Bernstein.
+
+        * platform/ios/wak/WAKResponder.h:
+
+2017-02-13  Simon Fraser  <simon.fraser@apple.com>
+
+        Log to the History Channel in a few more places
+        https://bugs.webkit.org/show_bug.cgi?id=168252
+
+        Reviewed by Brady Eidson.
+
+        *** Aliens ***
+
+        * loader/HistoryController.cpp:
+        (WebCore::HistoryController::restoreScrollPositionAndViewState):
+        (WebCore::HistoryController::updateForReload):
+        * loader/NavigationScheduler.cpp:
+        (WebCore::NavigationScheduler::scheduleHistoryNavigation):
+        (WebCore::NavigationScheduler::timerFired):
+        (WebCore::NavigationScheduler::cancel):
+        * page/History.cpp:
+        (WebCore::History::go):
+
+2017-02-13  Alex Christensen  <achristensen@webkit.org>
+
+        Percent should be allowed in non-special URL hosts
+        https://bugs.webkit.org/show_bug.cgi?id=168255
+
+        Reviewed by Tim Horton.
+
+        In the last few weeks, the spec has consolidated its sets of code points.
+        Now forbidden host code points replace the old invalid host code points with
+        the modification that percents are allowed in non-special hosts because we
+        percent-encode non-ascii code points in non-special hosts.
+        See https://url.spec.whatwg.org/#concept-opaque-host-parser
+
+        Covered by newly passing web platform tests.
+
+        * platform/URLParser.cpp:
+        (WebCore::isC0Control):
+        (WebCore::isInUserInfoEncodeSet):
+        (WebCore::URLParser::hasForbiddenHostCodePoint):
+        (WebCore::URLParser::parseHostAndPort):
+        (WebCore::isInvalidDomainCharacter): Deleted.
+        (WebCore::URLParser::hasInvalidDomainCharacter): Deleted.
+        * platform/URLParser.h:
+
+2017-02-13  Anders Carlsson  <andersca@apple.com>
+
+        Fix Windows build.
+
+        * platform/win/PasteboardWin.cpp:
+        (WebCore::Pasteboard::setDragImage):
+
+2017-02-13  Alex Christensen  <achristensen@webkit.org>
+
+        Fix Yosemite build after r211765
+        https://bugs.webkit.org/show_bug.cgi?id=168246
+        <rdar://problem/30494174>
+
+        Reviewed by Brady Eidson.
+
+        * platform/graphics/mac/ComplexTextControllerCoreText.mm:
+        (SOFT_LINK):
+
+2017-02-13  Anders Carlsson  <andersca@apple.com>
+
+        Add a DragImage class that wraps a DragImageRef
+        https://bugs.webkit.org/show_bug.cgi?id=168131
+
+        Reviewed by Beth Dakin.
+
+        This allows us to get rid of the explicit deleteDragImage calls and will make additional cleanup of the
+        various drag code paths possible. No functionality change.
+
+        * dom/DataTransfer.cpp:
+        (WebCore::DataTransfer::updateDragImage):
+        * page/DragController.cpp:
+        (WebCore::DragController::startDrag):
+        (WebCore::DragController::doImageDrag):
+        (WebCore::DragController::doSystemDrag):
+        * page/DragController.h:
+        * platform/DragImage.cpp:
+        (WebCore::DragImage::DragImage):
+        (WebCore::DragImage::operator=):
+        (WebCore::DragImage::~DragImage):
+        * platform/DragImage.h:
+        * platform/Pasteboard.h:
+        * platform/StaticPasteboard.h:
+        * platform/mac/PasteboardMac.mm:
+        (WebCore::Pasteboard::setDragImage):
+
+2017-02-13  Chris Dumez  <cdumez@apple.com>
+
+        Regression(r211455): ASSERTION FAILED: frameView || pageCacheState() == InPageCache in com.apple.WebCore: WebCore::Document::destroyRenderTree
+        https://bugs.webkit.org/show_bug.cgi?id=168237
+        <rdar://problem/30494165>
+
+        Reviewed by Gavin Barraclough.
+
+        Drop bad assertion under document::destroyRenderTree() that was introduced in r211455.
+        The assertion seemed like a good idea but the issue is that CachedFrame::destroy()
+        reset's the document's pageCacheState before calling Document::prepareForDestruction().
+
+        No new tests, this fixes assertion hits on our bots.
+
+        * dom/Document.cpp:
+        (WebCore::Document::destroyRenderTree):
+
+2017-02-13  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Update custom line breaking iterators to the latest version of Unicode
+        https://bugs.webkit.org/show_bug.cgi?id=168182
+
+        Reviewed by Zalan Bujtas.
+
+        Clean up our breaking code to be more descriptive about the difference between
+        line-break: auto vs line-break: loose | normal | strict. The only difference is
+        that we have some hardcoded tables to speed up character iteration for
+        line-break: auto.
+
+        Tests: TestWebKitAPI WebKit2.LineBreaking
+
+        * rendering/BreakLines.h:
+        (WebCore::nextBreakablePosition):
+        (WebCore::nextBreakablePositionIgnoringNBSP):
+        (WebCore::nextBreakablePositionWithoutShortcut):
+        (WebCore::nextBreakablePositionIgnoringNBSPWithoutShortcut):
+        (WebCore::isBreakable):
+        (WebCore::nextBreakablePositionNonLoosely): Deleted.
+        (WebCore::nextBreakablePositionLoosely): Deleted.
+        (WebCore::nextBreakablePositionLoose): Deleted.
+        (WebCore::nextBreakablePositionIgnoringNBSPLoose): Deleted.
+        * rendering/RenderText.cpp:
+        (WebCore::RenderText::computePreferredLogicalWidths):
+        * rendering/SimpleLineLayoutTextFragmentIterator.cpp:
+        (WebCore::SimpleLineLayout::nextBreakablePositionInSegment):
+        * rendering/line/BreakingContext.h:
+        (WebCore::BreakingContext::handleText):
+        (WebCore::BreakingContext::optimalLineBreakLocationForTrailingWord):
+
+2017-02-13  Youenn Fablet  <youenn@apple.com>
+
+        Remove @getUserMedia identifier
+        https://bugs.webkit.org/show_bug.cgi?id=168216
+
+        Reviewed by Sam Weinig.
+
+        No change of behavior.
+
+        * Modules/mediastream/MediaDevices.idl:
+        * bindings/js/WebCoreBuiltinNames.h:
+
 2017-02-13  Carlos Garcia Campos  <cgarcia@igalia.com>
 
         [GTK] Non-accelerated drawing is broken with HiDPI

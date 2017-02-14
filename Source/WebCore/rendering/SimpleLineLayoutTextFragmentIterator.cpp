@@ -37,6 +37,7 @@ namespace SimpleLineLayout {
 TextFragmentIterator::Style::Style(const RenderStyle& style, bool useSimplifiedTextMeasuring)
     : font(style.fontCascade())
     , textAlign(style.textAlign())
+    , hasKerningOrLigatures(font.enableKerning() || font.requiresShaping())
     , collapseWhitespace(style.collapseWhiteSpace())
     , preserveNewline(style.preserveNewline())
     , wrapLines(style.autoWrap())
@@ -127,15 +128,15 @@ static inline unsigned nextBreakablePositionInSegment(LazyLineBreakIterator& lin
         return nextBreakablePositionKeepingAllWordsIgnoringNBSP(lineBreakIterator, startPosition);
     }
 
-    if (lineBreakIterator.isLooseCJKMode()) {
+    if (lineBreakIterator.mode() == LineBreakIteratorMode::Default) {
         if (breakNBSP)
-            return nextBreakablePositionLoose(lineBreakIterator, startPosition);
-        return nextBreakablePositionIgnoringNBSPLoose(lineBreakIterator, startPosition);
+            return WebCore::nextBreakablePosition(lineBreakIterator, startPosition);
+        return nextBreakablePositionIgnoringNBSP(lineBreakIterator, startPosition);
     }
-        
+
     if (breakNBSP)
-        return WebCore::nextBreakablePosition(lineBreakIterator, startPosition);
-    return nextBreakablePositionIgnoringNBSP(lineBreakIterator, startPosition);
+        return nextBreakablePositionWithoutShortcut(lineBreakIterator, startPosition);
+    return nextBreakablePositionIgnoringNBSPWithoutShortcut(lineBreakIterator, startPosition);
 }
 
 unsigned TextFragmentIterator::nextBreakablePosition(const FlowContents::Segment& segment, unsigned startPosition)
@@ -244,7 +245,8 @@ float TextFragmentIterator::textWidth(unsigned from, unsigned to, float xPositio
     if (m_style.font.isFixedPitch())
         return downcast<RenderText>(segment.renderer).width(segmentFrom, segmentTo - segmentFrom, m_style.font, xPosition, nullptr, nullptr);
 
-    bool measureWithEndSpace = m_style.collapseWhitespace && segmentTo < segment.text.length() && segment.text[segmentTo] == ' ';
+    bool measureWithEndSpace = m_style.hasKerningOrLigatures && m_style.collapseWhitespace
+        && segmentTo < segment.text.length() && segment.text[segmentTo] == ' ';
     if (measureWithEndSpace)
         ++segmentTo;
     float width = 0;

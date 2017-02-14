@@ -1,3 +1,487 @@
+2017-02-14  Jeremy Jones  <jeremyj@apple.com>
+
+        When playing inline after fullscreen, set a flag instead of adding attribute plays inline, and use in requiresFullscreenForVideoPlayback.
+        https://bugs.webkit.org/show_bug.cgi?id=167815
+        rdar://problem/27685077
+
+        Reviewed by Jer Noble.
+
+        Add a new test that tests inline after fullscreen behavior of looping video.
+
+        * media/media-fullscreen-loop-inline-expected.txt: Added.
+        * media/media-fullscreen-loop-inline.html: Added.
+        * platform/mac-wk2/TestExpectations: Skipped on webkit2.
+
+2017-02-14  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Rebaseline media/modern-media-controls/airplay-button/airplay-button-on.html for ios-simulator.
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/media/modern-media-controls/airplay-button/airplay-button-on-expected.txt:
+
+2017-02-14  Jer Noble  <jer.noble@apple.com>
+
+        Video elements with MediaSource objects set by srcObject are not cleared when srcObject is set to null
+        https://bugs.webkit.org/show_bug.cgi?id=168268
+
+        Reviewed by Eric Carlson.
+
+        * fast/mediastream/MediaStream-MediaElement-setObject-null-expected.txt: Added.
+        * fast/mediastream/MediaStream-MediaElement-setObject-null.html: Added.
+        * fast/mediastream/MediaStream-video-element-expected.txt:
+        * fast/mediastream/MediaStream-video-element-track-stop-expected.txt:
+        * fast/mediastream/MediaStream-video-element-track-stop.html:
+        * fast/mediastream/MediaStream-video-element.html:
+
+2017-02-14  Antoine Quint  <graouts@apple.com>
+
+        [mac-wk1] LayoutTest media/modern-media-controls/forward-button/forward-button.html is a flaky timeout
+        https://bugs.webkit.org/show_bug.cgi?id=168265
+
+        Unreviewed test gardening.
+
+        * media/modern-media-controls/forward-button/forward-button-expected.txt:
+        * media/modern-media-controls/forward-button/forward-button.html:
+        * platform/mac-wk1/TestExpectations:
+
+2017-02-13  Filip Pizlo  <fpizlo@apple.com>
+
+        worker.postMessage should throw a TypeError if a SharedArrayBuffer is in the transfer list
+        https://bugs.webkit.org/show_bug.cgi?id=168277
+
+        Reviewed by Mark Lam.
+        
+        Add a test of the new behavior, and remove tests for the old behavior.
+        
+        Most of the SharedArrayBuffer tests use the new style, where the buffer is not in the
+        transfer list, and the tests being removed are clones of the no-transfer tests. So, we
+        aren't losing any coverage.
+
+        * workers/sab/null-worker.js: Added.
+        * workers/sab/postMessage-transfer-type-error-expected.txt: Added.
+        * workers/sab/postMessage-transfer-type-error.html: Added.
+        * workers/sab/sab-creator-transfer.js: Removed. (Sibling: sab-creator-no-transfer.js)
+        * workers/sab/sent-from-worker-transfer.html: Removed. (Sibling: sent-from-worker-no-transfer.html)
+        * workers/sab/simple.html: Removed. (Sibling: no-transfer.html)
+
+2017-02-14  Antoine Quint  <graouts@apple.com>
+
+        [mac-wk1] LayoutTest media/modern-media-controls/airplay-button/airplay-button-on.html is a flaky timeout
+        https://bugs.webkit.org/show_bug.cgi?id=167347
+
+        Unreviewed test gardening.
+
+        * media/modern-media-controls/airplay-button/airplay-button-on-expected.txt:
+        * media/modern-media-controls/airplay-button/airplay-button-on.html:
+        * platform/mac-wk1/TestExpectations:
+
+2017-02-14  Antoine Quint  <graouts@apple.com>
+
+        LayoutTest media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-buttons-containers-styles.html is a flaky timeout
+        https://bugs.webkit.org/show_bug.cgi?id=167589
+
+        Unreviewed test gardening.
+
+        * media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-buttons-containers-styles-expected.txt:
+        * media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-buttons-containers-styles.html:
+
+2017-02-14  Antoine Quint  <graouts@apple.com>
+
+        LayoutTest media/modern-media-controls/ios-inline-media-controls/ios-inline-media-controls-buttons-styles.html is a flaky timeout
+        https://bugs.webkit.org/show_bug.cgi?id=168125
+
+        Unreviewed test gardening.
+
+        * media/modern-media-controls/ios-inline-media-controls/ios-inline-media-controls-buttons-styles-expected.txt:
+        * media/modern-media-controls/ios-inline-media-controls/ios-inline-media-controls-buttons-styles.html:
+
+2017-02-14  Alex Christensen  <achristensen@webkit.org>
+
+        Rebase URL test after r212279.
+        https://bugs.webkit.org/show_bug.cgi?id=168260
+
+        * fast/url/ipv4-expected.txt:
+        http://0X12C0a80001/ is an invalid IPv4 address, so parsing should fail.
+        This matches Chrome and the URL specification.
+
+2017-02-14  Antoine Quint  <graouts@apple.com>
+
+        LayoutTest media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-buttons-styles.html is a flaky failure
+        https://bugs.webkit.org/show_bug.cgi?id=167372
+
+        Unreviewed test gardening.
+
+        * media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-buttons-styles-expected.txt:
+        * media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-buttons-styles.html:
+
+2017-02-14  Antoine Quint  <graouts@apple.com>
+
+        [mac-wk1] LayoutTest media/modern-media-controls/layout-node/addChild.html is a flaky timeout
+        https://bugs.webkit.org/show_bug.cgi?id=168074
+
+        Unreviewed test gardening.
+
+        * media/modern-media-controls/layout-node/addChild-expected.txt:
+        * media/modern-media-controls/layout-node/addChild.html:
+        * platform/mac-wk1/TestExpectations:
+
+2017-02-14  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed GTK+ gardening. Add platform specific resuls for http/tests/security/module-no-mime-type.html.
+
+        libsoup sniffer correctly guesses the perl MIME type as text/plain which is still an invalid JavaScript MIME type.
+
+        * platform/gtk/http/tests/security/module-no-mime-type-expected.txt: Added.
+
+2017-02-14  Joseph Pecoraro  <pecoraro@apple.com>
+
+        Fix typo in performance-observer-callback-mutate.html
+        https://bugs.webkit.org/show_bug.cgi?id=168294
+
+        Reviewed by Ryosuke Niwa.
+
+        * performance-api/performance-observer-callback-mutate-expected.txt:
+        * performance-api/performance-observer-callback-mutate.html:
+
+2017-02-13  Antoine Quint  <graouts@apple.com>
+
+        REGRESSION: Update volume and scrubbing slider to match HI designs
+        https://bugs.webkit.org/show_bug.cgi?id=168170
+        <rdar://problem/28095266>
+
+        Reviewed by Dean Jackson.
+
+        Rebaselining a host of existing tests to account for new DOM structure, metrics,
+        colors, blend modes, etc. We're also adding a new test for the BackgroundTint
+        class and removing one for the slider fill which is no longer appopriate since
+        we're drawing the slider's fill with a <canvas> element rather than a DOM element.
+
+        * media/modern-media-controls/background-tint/background-tint-expected.txt: Added.
+        * media/modern-media-controls/background-tint/background-tint.html: Added.
+        * media/modern-media-controls/ios-inline-media-controls/ios-inline-media-controls-time-control-styles-expected.txt:
+        * media/modern-media-controls/ios-inline-media-controls/ios-inline-media-controls-time-control-styles.html:
+        * media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-buttons-containers-styles.html:
+        * media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-buttons-styles-expected.txt:
+        * media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-buttons-styles.html:
+        * media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-constructor-expected.txt:
+        * media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-constructor.html:
+        * media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-controls-bar-styles-expected.txt:
+        * media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-controls-bar-styles.html:
+        * media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-right-container-margin.html:
+        * media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-time-control-styles-expected.txt:
+        * media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-time-control-styles.html:
+        * media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-volume-styles-expected.txt:
+        * media/modern-media-controls/macos-fullscreen-media-controls/macos-fullscreen-media-controls-volume-styles.html:
+        * media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-buttons-styles-expected.txt:
+        * media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-buttons-styles.html:
+        * media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-constructor-expected.txt:
+        * media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-constructor.html:
+        * media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-controls-bar-styles-expected.txt:
+        * media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-controls-bar-styles.html:
+        * media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-layout-expected.txt:
+        * media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-layout.html:
+        * media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-resize-with-hidden-controls-bar.html:
+        * media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-time-control-styles-expected.txt:
+        * media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-time-control-styles.html:
+        * media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-volume-styles-expected.txt:
+        * media/modern-media-controls/macos-inline-media-controls/macos-inline-media-controls-volume-styles.html:
+        * media/modern-media-controls/resources/media-controls-loader.js:
+        * media/modern-media-controls/scrubber/scrubber.html:
+        * media/modern-media-controls/slider/slider-constructor-expected.txt:
+        * media/modern-media-controls/slider/slider-constructor.html:
+        * media/modern-media-controls/slider/slider-fill-expected.txt: Removed.
+        * media/modern-media-controls/slider/slider-fill.html: Removed.
+        * media/modern-media-controls/slider/slider-styles-expected.txt:
+        * media/modern-media-controls/slider/slider-styles.html:
+        * media/modern-media-controls/time-label/time-label-expected.txt:
+        * media/modern-media-controls/time-label/time-label.html:
+        * media/modern-media-controls/tracks-panel/tracks-panel-population-expected.txt:
+        * media/modern-media-controls/tracks-panel/tracks-panel-population.html:
+        * media/modern-media-controls/tracks-support/tracks-support-show-and-populate-panel.html:
+        * media/modern-media-controls/volume-slider/volume-slider-value-expected.txt:
+        * media/modern-media-controls/volume-slider/volume-slider-value.html:
+        * media/modern-media-controls/volume-slider/volume-slider.html:
+        * media/modern-media-controls/volume-support/volume-support-click-expected.txt:
+        * media/modern-media-controls/volume-support/volume-support-click.html:
+        * media/modern-media-controls/volume-support/volume-support-drag-expected.txt:
+        * media/modern-media-controls/volume-support/volume-support-drag.html:
+
+2017-02-13  Alex Christensen  <achristensen@webkit.org>
+
+        URLs with an invalid IPv4 address should be invalid
+        https://bugs.webkit.org/show_bug.cgi?id=168260
+
+        Reviewed by Tim Horton.
+
+        * fetch/fetch-url-serialization-expected.txt:
+
+2017-02-13  Karim H  <karim@karhm.com>
+
+        Added the BSTR roles tag test for Windows.
+        https://bugs.webkit.org/show_bug.cgi?id=165545
+
+        Reviewed by Chris Fleizach.
+
+        * accessibility/win/bstr-elements-role-expected.txt: Added.
+        * accessibility/win/bstr-elements-role.html: Added.
+
+2017-02-13  Said Abou-Hallawa  <sabouhallawa@apple.com>
+
+        The current frame of an image should not deleted if another frame is asynchronously being decoded
+        https://bugs.webkit.org/show_bug.cgi?id=167618
+
+        Reviewed by Simon Fraser.
+
+        This test did not crash on Mac when running it without this patch. But
+        the new ASSERT_IMPLIES(), which is added to BitmapImage::draw(), fires
+        when the other changes are not included. So the bug could have happened
+        without the patch but the crash did not since it requires a thread
+        contention in the system underlying components.
+
+        * fast/images/animated-image-draw-while-decode-expected.txt: Added.
+        * fast/images/animated-image-draw-while-decode.html: Added.
+
+2017-02-13  Jiewen Tan  <jiewen_tan@apple.com>
+
+        [WebCrypto] WebInspector should indicate webkitSubtle is deprecated
+        https://bugs.webkit.org/show_bug.cgi?id=165913
+        <rdar://problem/30477222>
+
+        Reviewed by Joseph Pecoraro.
+
+        * crypto/subtle/rsassa-pkcs1-v1_5-generate-key-with-leading-zeroes-in-exponent.html:
+        Change webkitSubtle to subtle.
+        * crypto/webkitSubtle/aes-cbc-192-encrypt-decrypt-expected.txt:
+        * crypto/webkitSubtle/aes-cbc-256-encrypt-decrypt-expected.txt:
+        * crypto/webkitSubtle/aes-cbc-encrypt-decrypt-expected.txt:
+        * crypto/webkitSubtle/aes-cbc-encrypt-decrypt-with-padding-expected.txt:
+        * crypto/webkitSubtle/aes-cbc-generate-key-expected.txt:
+        * crypto/webkitSubtle/aes-cbc-import-jwk-expected.txt:
+        * crypto/webkitSubtle/aes-cbc-invalid-length-expected.txt:
+        * crypto/webkitSubtle/aes-cbc-unwrap-failure-expected.txt:
+        * crypto/webkitSubtle/aes-cbc-unwrap-rsa-expected.txt:
+        * crypto/webkitSubtle/aes-cbc-wrap-rsa-expected.txt:
+        * crypto/webkitSubtle/aes-cbc-wrap-rsa-non-extractable-expected.txt:
+        * crypto/webkitSubtle/aes-cbc-wrong-key-class-expected.txt:
+        * crypto/webkitSubtle/aes-export-key-expected.txt:
+        * crypto/webkitSubtle/aes-kw-key-manipulation-expected.txt:
+        * crypto/webkitSubtle/aes-kw-wrap-unwrap-aes-expected.txt:
+        * crypto/webkitSubtle/aes-postMessage-expected.txt:
+        * crypto/webkitSubtle/argument-conversion-expected.txt:
+        * crypto/webkitSubtle/array-buffer-view-offset-expected.txt:
+        * crypto/webkitSubtle/gc-2-expected.txt:
+        * crypto/webkitSubtle/gc-expected.txt:
+        * crypto/webkitSubtle/hmac-check-algorithm-expected.txt:
+        * crypto/webkitSubtle/hmac-export-key-expected.txt:
+        * crypto/webkitSubtle/hmac-generate-key-expected.txt:
+        * crypto/webkitSubtle/hmac-import-jwk-expected.txt:
+        * crypto/webkitSubtle/hmac-postMessage-expected.txt:
+        * crypto/webkitSubtle/hmac-sign-verify-empty-key-expected.txt:
+        * crypto/webkitSubtle/hmac-sign-verify-expected.txt:
+        * crypto/webkitSubtle/import-jwk-expected.txt:
+        * crypto/webkitSubtle/jwk-export-use-values-expected.txt:
+        * crypto/webkitSubtle/jwk-import-use-values-expected.txt:
+        * crypto/webkitSubtle/rsa-export-generated-keys-expected.txt:
+        * crypto/webkitSubtle/rsa-export-key-expected.txt:
+        * crypto/webkitSubtle/rsa-export-private-key-expected.txt:
+        * crypto/webkitSubtle/rsa-indexeddb-expected.txt:
+        * crypto/webkitSubtle/rsa-indexeddb-non-exportable-expected.txt:
+        * crypto/webkitSubtle/rsa-indexeddb-non-exportable-private-expected.txt:
+        * crypto/webkitSubtle/rsa-indexeddb-private-expected.txt:
+        * crypto/webkitSubtle/rsa-oaep-generate-non-extractable-key-expected.txt:
+        * crypto/webkitSubtle/rsa-oaep-key-manipulation-expected.txt:
+        * crypto/webkitSubtle/rsa-oaep-plaintext-length-expected.txt:
+        * crypto/webkitSubtle/rsa-oaep-wrap-unwrap-aes-expected.txt:
+        * crypto/webkitSubtle/rsa-postMessage-expected.txt:
+        * crypto/webkitSubtle/rsaes-pkcs1-v1_5-decrypt-expected.txt:
+        * crypto/webkitSubtle/rsaes-pkcs1-v1_5-wrap-unwrap-aes-expected.txt:
+        * crypto/webkitSubtle/rsassa-pkcs1-v1_5-generate-key-expected.txt:
+        * crypto/webkitSubtle/rsassa-pkcs1-v1_5-generate-key-with-leading-zeroes-in-exponent-expected.txt:
+        * crypto/webkitSubtle/rsassa-pkcs1-v1_5-import-jwk-expected.txt:
+        * crypto/webkitSubtle/rsassa-pkcs1-v1_5-import-jwk-small-key-expected.txt:
+        * crypto/webkitSubtle/rsassa-pkcs1-v1_5-sign-verify-expected.txt:
+        * crypto/webkitSubtle/sha-1-expected.txt:
+        * crypto/webkitSubtle/sha-224-expected.txt:
+        * crypto/webkitSubtle/sha-256-expected.txt:
+        * crypto/webkitSubtle/sha-384-expected.txt:
+        * crypto/webkitSubtle/sha-512-expected.txt:
+        * crypto/webkitSubtle/unimplemented-unwrap-crash-expected.txt:
+        * crypto/webkitSubtle/unwrapKey-check-usage-expected.txt:
+        * crypto/webkitSubtle/wrapKey-check-usage-expected.txt:
+        * fast/dom/Window/property-access-on-cached-window-after-frame-removed-expected.txt:
+
+2017-02-13  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark media/modern-media-controls/layout-node/addChild.html as flaky on El Capitan WK1.
+        https://bugs.webkit.org/show_bug.cgi?id=168074
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2017-02-13  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark media/modern-media-controls/forward-button/forward-button.html as flaky on mac-wk1.
+        https://bugs.webkit.org/show_bug.cgi?id=168265
+
+        Unreviewed test gardening.
+
+        * platform/mac-wk1/TestExpectations:
+
+2017-02-13  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark tiled-drawing/scrolling/latched-to-deleted-node.html as flaky on mac-wk2.
+        https://bugs.webkit.org/show_bug.cgi?id=168085
+
+        Unreviewed testg gardening.
+
+        * platform/mac-wk2/TestExpectations:
+
+2017-02-13  Ryan Haddad  <ryanhaddad@apple.com>
+
+        Mark imported/w3c/web-platform-tests/dom/events/EventListener-invoke-legacy.html as flaky on debug.
+        https://bugs.webkit.org/show_bug.cgi?id=168238
+
+        Unreviewed test gardening.
+
+        * TestExpectations:
+
+2017-02-13  Ryan Haddad  <ryanhaddad@apple.com>
+
+        TestExpectations gardening for imported/w3c/web-platform-tests/html/semantics/embedded-content/the-area-element/area-download-click.html.
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/TestExpectations:
+        * platform/mac-wk1/TestExpectations:
+
+2017-02-13  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        Update custom line breaking iterators to the latest version of Unicode
+        https://bugs.webkit.org/show_bug.cgi?id=168182
+
+        Reviewed by Zalan Bujtas.
+
+        Migrated to TestWebKitAPI.
+
+        * css3/line-break/line-break-auto-centered-2-expected.html: Removed.
+        * css3/line-break/line-break-auto-centered-2.html: Removed.
+        * css3/line-break/line-break-auto-centered-expected.html: Removed.
+        * css3/line-break/line-break-auto-centered.html: Removed.
+        * css3/line-break/line-break-auto-half-kana-2-expected.html: Removed.
+        * css3/line-break/line-break-auto-half-kana-2.html: Removed.
+        * css3/line-break/line-break-auto-half-kana-3-expected.html: Removed.
+        * css3/line-break/line-break-auto-half-kana-3.html: Removed.
+        * css3/line-break/line-break-auto-half-kana-4-expected.html: Removed.
+        * css3/line-break/line-break-auto-half-kana-4.html: Removed.
+        * css3/line-break/line-break-auto-half-kana-5-expected.html: Removed.
+        * css3/line-break/line-break-auto-half-kana-5.html: Removed.
+        * css3/line-break/line-break-auto-half-kana-expected.html: Removed.
+        * css3/line-break/line-break-auto-half-kana.html: Removed.
+        * css3/line-break/line-break-auto-hyphens-expected.html: Removed.
+        * css3/line-break/line-break-auto-hyphens.html: Removed.
+        * css3/line-break/line-break-auto-inseparables-expected.html: Removed.
+        * css3/line-break/line-break-auto-inseparables.html: Removed.
+        * css3/line-break/line-break-auto-iteration-marks-expected.html: Removed.
+        * css3/line-break/line-break-auto-iteration-marks.html: Removed.
+        * css3/line-break/line-break-auto-postfixes-expected.html: Removed.
+        * css3/line-break/line-break-auto-postfixes.html: Removed.
+        * css3/line-break/line-break-auto-prefixes-expected.html: Removed.
+        * css3/line-break/line-break-auto-prefixes.html: Removed.
+        * css3/line-break/line-break-auto-sound-marks-expected.html: Removed.
+        * css3/line-break/line-break-auto-sound-marks.html: Removed.
+        * css3/line-break/line-break-loose-centered-2-expected.html: Removed.
+        * css3/line-break/line-break-loose-centered-2.html: Removed.
+        * css3/line-break/line-break-loose-centered-expected.html: Removed.
+        * css3/line-break/line-break-loose-centered.html: Removed.
+        * css3/line-break/line-break-loose-half-kana-2-expected.html: Removed.
+        * css3/line-break/line-break-loose-half-kana-2.html: Removed.
+        * css3/line-break/line-break-loose-half-kana-3-expected.html: Removed.
+        * css3/line-break/line-break-loose-half-kana-3.html: Removed.
+        * css3/line-break/line-break-loose-half-kana-4-expected.html: Removed.
+        * css3/line-break/line-break-loose-half-kana-4.html: Removed.
+        * css3/line-break/line-break-loose-half-kana-5-expected.html: Removed.
+        * css3/line-break/line-break-loose-half-kana-5.html: Removed.
+        * css3/line-break/line-break-loose-half-kana-expected.html: Removed.
+        * css3/line-break/line-break-loose-half-kana.html: Removed.
+        * css3/line-break/line-break-loose-hyphens-expected.html: Removed.
+        * css3/line-break/line-break-loose-hyphens.html: Removed.
+        * css3/line-break/line-break-loose-inseparables-expected.html: Removed.
+        * css3/line-break/line-break-loose-inseparables.html: Removed.
+        * css3/line-break/line-break-loose-iteration-marks-expected.html: Removed.
+        * css3/line-break/line-break-loose-iteration-marks.html: Removed.
+        * css3/line-break/line-break-loose-postfixes-expected.html: Removed.
+        * css3/line-break/line-break-loose-postfixes.html: Removed.
+        * css3/line-break/line-break-loose-prefixes-expected.html: Removed.
+        * css3/line-break/line-break-loose-prefixes.html: Removed.
+        * css3/line-break/line-break-loose-sound-marks-expected.html: Removed.
+        * css3/line-break/line-break-loose-sound-marks.html: Removed.
+        * css3/line-break/line-break-normal-centered-2-expected.html: Removed.
+        * css3/line-break/line-break-normal-centered-2.html: Removed.
+        * css3/line-break/line-break-normal-centered-expected.html: Removed.
+        * css3/line-break/line-break-normal-centered.html: Removed.
+        * css3/line-break/line-break-normal-half-kana-2-expected.html: Removed.
+        * css3/line-break/line-break-normal-half-kana-2.html: Removed.
+        * css3/line-break/line-break-normal-half-kana-3-expected.html: Removed.
+        * css3/line-break/line-break-normal-half-kana-3.html: Removed.
+        * css3/line-break/line-break-normal-half-kana-4-expected.html: Removed.
+        * css3/line-break/line-break-normal-half-kana-4.html: Removed.
+        * css3/line-break/line-break-normal-half-kana-5-expected.html: Removed.
+        * css3/line-break/line-break-normal-half-kana-5.html: Removed.
+        * css3/line-break/line-break-normal-half-kana-expected.html: Removed.
+        * css3/line-break/line-break-normal-half-kana.html: Removed.
+        * css3/line-break/line-break-normal-hyphens-expected.html: Removed.
+        * css3/line-break/line-break-normal-hyphens.html: Removed.
+        * css3/line-break/line-break-normal-inseparables-expected.html: Removed.
+        * css3/line-break/line-break-normal-inseparables.html: Removed.
+        * css3/line-break/line-break-normal-iteration-marks-expected.html: Removed.
+        * css3/line-break/line-break-normal-iteration-marks.html: Removed.
+        * css3/line-break/line-break-normal-postfixes-expected.html: Removed.
+        * css3/line-break/line-break-normal-postfixes.html: Removed.
+        * css3/line-break/line-break-normal-prefixes-expected.html: Removed.
+        * css3/line-break/line-break-normal-prefixes.html: Removed.
+        * css3/line-break/line-break-normal-sound-marks-expected.html: Removed.
+        * css3/line-break/line-break-normal-sound-marks.html: Removed.
+        * css3/line-break/line-break-strict-centered-2-expected.html: Removed.
+        * css3/line-break/line-break-strict-centered-2.html: Removed.
+        * css3/line-break/line-break-strict-centered-expected.html: Removed.
+        * css3/line-break/line-break-strict-centered.html: Removed.
+        * css3/line-break/line-break-strict-half-kana-2-expected.html: Removed.
+        * css3/line-break/line-break-strict-half-kana-2.html: Removed.
+        * css3/line-break/line-break-strict-half-kana-3-expected.html: Removed.
+        * css3/line-break/line-break-strict-half-kana-3.html: Removed.
+        * css3/line-break/line-break-strict-half-kana-4-expected.html: Removed.
+        * css3/line-break/line-break-strict-half-kana-4.html: Removed.
+        * css3/line-break/line-break-strict-half-kana-5-expected.html: Removed.
+        * css3/line-break/line-break-strict-half-kana-5.html: Removed.
+        * css3/line-break/line-break-strict-half-kana-expected.html: Removed.
+        * css3/line-break/line-break-strict-half-kana.html: Removed.
+        * css3/line-break/line-break-strict-hyphens-expected.html: Removed.
+        * css3/line-break/line-break-strict-hyphens.html: Removed.
+        * css3/line-break/line-break-strict-inseparables-expected.html: Removed.
+        * css3/line-break/line-break-strict-inseparables.html: Removed.
+        * css3/line-break/line-break-strict-iteration-marks-expected.html: Removed.
+        * css3/line-break/line-break-strict-iteration-marks.html: Removed.
+        * css3/line-break/line-break-strict-postfixes-expected.html: Removed.
+        * css3/line-break/line-break-strict-postfixes.html: Removed.
+        * css3/line-break/line-break-strict-prefixes-expected.html: Removed.
+        * css3/line-break/line-break-strict-prefixes.html: Removed.
+        * css3/line-break/line-break-strict-sound-marks-expected.html: Removed.
+        * css3/line-break/line-break-strict-sound-marks.html: Removed.
+        * platform/ios-simulator-wk1/TestExpectations:
+        * platform/ios-simulator/TestExpectations:
+
+2017-02-13  Ryan Haddad  <ryanhaddad@apple.com>
+
+        TestExpectations gardening for imported/w3c/web-platform-tests/html/semantics/text-level-semantics/the-a-element/a-download-click.html.
+
+        Unreviewed test gardening.
+
+        * platform/ios-simulator/TestExpectations:
+        * platform/mac-wk1/TestExpectations:
+        * platform/mac-wk2/TestExpectations:
+
 2017-02-12  Ryosuke Niwa  <rniwa@webkit.org>
 
         parserRemoveChild should unload subframes

@@ -1,3 +1,336 @@
+2017-02-14  Simon Fraser  <simon.fraser@apple.com>
+
+        Add logging and defensive fixes to try to detect problems causing blank tabs
+        https://bugs.webkit.org/show_bug.cgi?id=168270
+        rdar://problem/30505482
+
+        Reviewed by Jon Lee.
+        
+        Add release logging when -[WKWebView _beginAnimatedResizeWithUpdates:] and -[WKWebView _endAnimatedResize]
+        are unbalanced across a commit, to detect cases where _endAnimatedResize wasn't called enough times.
+        
+        Also log when RemoteLayerTreeHost::updateLayerTree() fails to find a root layer, which should never happen.
+        
+        In WebPageProxy, clear m_firstLayerTreeTransactionIdAfterDidCommitLoad on a web process crash.
+
+        * Platform/Logging.h:
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _didCommitLayerTree:]):
+        (-[WKWebView _beginAnimatedResizeWithUpdates:]):
+        (-[WKWebView _endAnimatedResize]):
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::resetState):
+        * UIProcess/mac/RemoteLayerTreeDrawingAreaProxy.h:
+        * UIProcess/mac/RemoteLayerTreeDrawingAreaProxy.mm:
+        (WebKit::RemoteLayerTreeDrawingAreaProxy::isAlwaysOnLoggingAllowed):
+        * UIProcess/mac/RemoteLayerTreeHost.mm:
+        (WebKit::RemoteLayerTreeHost::updateLayerTree):
+        (WebKit::RemoteLayerTreeHost::clearLayers):
+        * WebProcess/WebPage/WebFrame.cpp:
+        (WebKit::WebFrame::WebFrame):
+        * WebProcess/WebPage/WebFrame.h:
+
+2017-02-14  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Allow to use stored credentials also for downloads started by DownloadManager::startDownload
+        https://bugs.webkit.org/show_bug.cgi?id=167584
+
+        Reviewed by Michael Catanzaro.
+
+        Cliking on a link that triggers a download works on an already HTTP authenticated site works, but right clicking
+        and downloading from the context menu shows the HTTP auth dialog again. This is because PendingDownload uses
+        DoNotAllowStoredCredentials unconditionally. We want to allow using cached credentials at least for
+        non-ephemeral sessions.
+
+        * NetworkProcess/Downloads/DownloadManager.cpp:
+        (WebKit::DownloadManager::startDownload):
+
+2017-02-14  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Make DragImageRef a RefPtr instead of a plain pointer
+        https://bugs.webkit.org/show_bug.cgi?id=168296
+
+        Reviewed by Sergio Villar Senin.
+
+        * WebProcess/WebCoreSupport/gtk/WebDragClientGtk.cpp:
+        (WebKit::WebDragClient::startDrag):
+
+2017-02-14  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [SOUP] Ensure a response MIME type when Content-Type is missing and sniffing not allowed
+        https://bugs.webkit.org/show_bug.cgi?id=168299
+
+        Reviewed by Sergio Villar Senin.
+
+        Sniffing is not allowed but we can try to guess the MIME using the response path, or at least fallback to
+        default MIME type instead of leaving an empty string. This matches what mac port does.
+
+        Fixes: http/tests/inspector/network/fetch-response-body.html
+               http/tests/inspector/network/xhr-response-body.html
+
+        * NetworkProcess/soup/NetworkDataTaskSoup.cpp:
+        (WebKit::NetworkDataTaskSoup::didSendRequest):
+
+2017-02-14  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        CookieManager only works with the default session
+        https://bugs.webkit.org/show_bug.cgi?id=168229
+
+        Reviewed by Alex Christensen.
+
+        Make CookieManager session aware by adding a SessionID parameter to all its functions, and update all the callers
+        to pass the default session ID, preserving the current
+        behavior. WebCookieManagerProxy::startObservingCookieChanges() now also receives an optional callback to be
+        called on every change.
+
+        * UIProcess/API/C/WKCookieManager.cpp:
+        (WKCookieManagerGetHostnamesWithCookies):
+        (WKCookieManagerDeleteCookiesForHostname):
+        (WKCookieManagerDeleteAllCookies):
+        (WKCookieManagerDeleteAllCookiesModifiedAfterDate):
+        (WKCookieManagerStartObservingCookieChanges):
+        (WKCookieManagerStopObservingCookieChanges):
+        * UIProcess/API/gtk/WebKitCookieManager.cpp:
+        (_WebKitCookieManagerPrivate::~_WebKitCookieManagerPrivate):
+        (webkitCookieManagerCreate):
+        (webkit_cookie_manager_set_persistent_storage):
+        (webkit_cookie_manager_get_domains_with_cookies):
+        (webkit_cookie_manager_delete_cookies_for_domain):
+        (webkit_cookie_manager_delete_all_cookies):
+        * UIProcess/Automation/WebAutomationSession.cpp:
+        (WebKit::WebAutomationSession::addSingleCookie):
+        (WebKit::WebAutomationSession::deleteAllCookies):
+        * UIProcess/WebCookieManagerProxy.cpp:
+        (WebKit::WebCookieManagerProxy::getHostnamesWithCookies):
+        (WebKit::WebCookieManagerProxy::deleteCookiesForHostname):
+        (WebKit::WebCookieManagerProxy::deleteAllCookies):
+        (WebKit::WebCookieManagerProxy::deleteAllCookiesModifiedSince):
+        (WebKit::WebCookieManagerProxy::addCookie):
+        (WebKit::WebCookieManagerProxy::startObservingCookieChanges):
+        (WebKit::WebCookieManagerProxy::stopObservingCookieChanges):
+        (WebKit::WebCookieManagerProxy::cookiesDidChange):
+        * UIProcess/WebCookieManagerProxy.h:
+        * UIProcess/WebCookieManagerProxy.messages.in:
+        * WebProcess/Cookies/WebCookieManager.cpp:
+        (WebKit::WebCookieManager::WebCookieManager):
+        (WebKit::WebCookieManager::getHostnamesWithCookies):
+        (WebKit::WebCookieManager::deleteCookiesForHostname):
+        (WebKit::WebCookieManager::deleteAllCookies):
+        (WebKit::WebCookieManager::deleteAllCookiesModifiedSince):
+        (WebKit::WebCookieManager::addCookie):
+        (WebKit::WebCookieManager::startObservingCookieChanges):
+        (WebKit::WebCookieManager::stopObservingCookieChanges):
+        * WebProcess/Cookies/WebCookieManager.h:
+        * WebProcess/Cookies/WebCookieManager.messages.in:
+
+2017-02-14  Tomas Popela  <tpopela@redhat.com>
+
+        Unreviewed, fix documentation typo
+
+        * UIProcess/API/gtk/WebKitEditingCommands.h:
+
+2017-02-12  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: expose system user interface layout direction through InspectorFrontendHost
+        https://bugs.webkit.org/show_bug.cgi?id=168209
+        <rdar://problem/11573736>
+
+        Reviewed by Joseph Pecoraro.
+
+        Forward the UserInterfaceLayoutDirection of the inspector page. If the WebKit client has
+        properly set the UI directionality from system settings in PageClient, this will get inherited
+        automatically by the Inspector's WebPage instance.
+
+        * WebProcess/WebPage/RemoteWebInspectorUI.cpp:
+        (WebKit::RemoteWebInspectorUI::userInterfaceLayoutDirection):
+        * WebProcess/WebPage/RemoteWebInspectorUI.h:
+        * WebProcess/WebPage/WebInspectorUI.cpp:
+        (WebKit::WebInspectorUI::userInterfaceLayoutDirection):
+        * WebProcess/WebPage/WebInspectorUI.h:
+
+2017-02-13  Youenn Fablet  <youennf@gmail.com>
+
+        [WebRTC] Creating RTCPeerConnection with libwebrtc backend is crashing on rwt
+        https://bugs.webkit.org/show_bug.cgi?id=168250
+
+        Reviewed by Alex Christensen.
+
+        * WebProcess/Network/webrtc/LibWebRTCProvider.cpp:
+        (WebKit::LibWebRTCProvider::createPeerConnection):
+        * WebProcess/Network/webrtc/LibWebRTCProvider.h:
+        * WebProcess/Network/webrtc/LibWebRTCSocket.h:
+        * WebProcess/Network/webrtc/WebRTCMonitor.cpp:
+        (WebKit::WebRTCMonitor::StartUpdating):
+        (WebKit::WebRTCMonitor::networksChanged):
+        * WebProcess/Network/webrtc/WebRTCMonitor.h:
+        * WebProcess/Network/webrtc/WebRTCResolver.cpp:
+        (WebKit::WebRTCResolver::setResolvedAddress):
+        (WebKit::WebRTCResolver::resolvedAddressError):
+        * WebProcess/Network/webrtc/WebRTCSocket.cpp:
+        (WebKit::WebRTCSocket::signalOnNetworkThread):
+
+2017-02-13  Megan Gardner  <megan_gardner@apple.com>
+
+        Implement Drag cancels
+        https://bugs.webkit.org/show_bug.cgi?id=168266
+
+        Reviewed by Wenson Hsieh.
+
+        Adds support for the UI Process to cancel already started drag events.
+
+        * UIProcess/WebPageProxy.cpp:
+        (WebKit::WebPageProxy::cancelledDrag):
+        * UIProcess/WebPageProxy.h:
+        * WebProcess/WebPage/WebPage.h:
+        (WebKit::WebPage::cancelledDrag):
+        * WebProcess/WebPage/WebPage.messages.in:
+
+2017-02-13  Simon Fraser  <simon.fraser@apple.com>
+
+        Call WKDestroyRenderingResources() on iOS when tabs are backgrounded
+        https://bugs.webkit.org/show_bug.cgi?id=168261
+        rdar://problem/30481079
+
+        Reviewed by Tim Horton.
+
+        There's code to call CABackingStoreCollectBlocking() on a 10s timer that exists for Mac, but on iOS
+        the web processes are suspended before this timer fires. So call CABackingStoreCollectBlocking()
+        from WebProcess::actualPrepareToSuspend(), which is where we also trigger the markAllLayersVolatile()
+        code.
+
+        Also add CABackingStoreCollectBlocking() to QuartzCoreSPI.h so we can use it without using WKSI.
+
+        Release-log how long this takes, in case we get reports of bad performance. In my testing it could be up to 10ms.
+
+        * WebProcess/WebProcess.cpp:
+        (WebKit::WebProcess::actualPrepareToSuspend):
+        * WebProcess/cocoa/WebProcessCocoa.mm:
+        (WebKit::WebProcess::destroyRenderingResources):
+
+2017-02-13  Brady Eidson  <beidson@apple.com>
+
+        Followup to: Replace all WebKit Library Version checks in WK2 with SDK version checks.
+        https://bugs.webkit.org/show_bug.cgi?id=168124
+
+        Reviewed by Geoffrey Garen.
+
+        * UIProcess/Cocoa/VersionChecks.h: 
+
+2017-02-13  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [WK2] Add test infrastructure and unit tests for data interaction
+        https://bugs.webkit.org/show_bug.cgi?id=168159
+        <rdar://problem/30477634>
+
+        Reviewed by Tim Horton.
+
+        Adds support at the WebKit2 layer for testing data interaction. Introduces the _WKTestingDelegate, which a
+        protocol which can specified for a WKWebView and used to install mock objects and simulate the state of the
+        platform. By default, this delegate is nil, which results in normal behavior. For data interaction, we are able
+        to specify a mock data interaction gesture recognizer for use by the WKContentView to simulate firing a long
+        press and subsequent movement. This gesture recognizer is used in place of the regular data interaction gesture
+        recognizer, and allows for TestWebKitAPI to drive interaction without actually sending events through the
+        UIApplication. The _WKTestingDelegate also contains optional method hooks which are invoked at key points in
+        time when performing a data interaction gesture.
+
+        Since all methods of the testing delegate are optional, the testing delegate can be easily extended to support
+        testing for other features -- the idea is that leaving all but the relevant methods in the protocol
+        unimplemented will result in default behavior for everything other than those methods, so a client need only
+        implement and add WebKit2 hooks for a few methods to support testing for a new feature.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _testingDelegate]):
+        (-[WKWebView _setTestingDelegate:]):
+
+        Specify the testing delegate to use for this WKWebView (see above for more details).
+
+        (-[WKWebView _simulateDataInteractionGestureRecognized]):
+        (-[WKWebView _simulateDataInteractionEntered:]):
+        (-[WKWebView _simulateDataInteractionUpdated:]):
+        (-[WKWebView _simulateDataInteractionPerformOperation:]):
+        (-[WKWebView _simulateDataInteractionEnded:]):
+        (-[WKWebView _simulateDataInteractionSessionDidEnd:withOperation:]):
+        (-[WKWebView _simulateFailedDataInteractionWithIndex:]):
+        (-[WKWebView _simulateWillBeginDataInteractionWithIndex:withSession:]):
+        (-[WKWebView _simulatedItemsForDataInteractionWithIndex:]):
+
+        Used by TestWebKitAPI to drive data interaction tests. See DataInteractionTests.mm.
+
+        * UIProcess/API/Cocoa/WKWebViewPrivate.h:
+        * UIProcess/API/Cocoa/_WKTestingDelegate.h: Added.
+        * UIProcess/ios/WKContentViewInteraction.h:
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView setupInteraction]):
+        (-[WKContentView _dataInteractionGestureRecognizer]):
+        * WebKit2.xcodeproj/project.pbxproj:
+
+2017-02-13  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream Mac] Video capture needs access to /Library/CoreMediaIO/Plug-Ins/DAL/
+        https://bugs.webkit.org/show_bug.cgi?id=168244
+        <rdar://problem/30461158>
+
+        Reviewed by Brady Eidson.
+
+        * WebProcess/com.apple.WebProcess.sb.in: Grant read-access to the video capture
+        plug-in directory when enabling video capture.
+
+2017-02-13  Antti Koivisto  <antti@apple.com>
+
+        Disable mmap'd cache files if container is class A
+        https://bugs.webkit.org/show_bug.cgi?id=168241
+        <rdar://problem/23676252>
+
+        Reviewed by JF Bastien and Chris Dumez.
+
+        If the mmap'd cache file gets evicted and the device is locked,
+        then WebContent won't be able to bring the file back in under
+        class A, causing SIGBUS.
+
+        In those circumstances, don't use mmap'd files.
+
+        * NetworkProcess/cache/NetworkCache.h:
+        (WebKit::NetworkCache::Cache::canUseSharedMemoryForBodyData):
+        * NetworkProcess/cache/NetworkCacheEntry.cpp:
+        (WebKit::NetworkCache::Entry::initializeShareableResourceHandleFromStorageRecord):
+
+            Don't initialize the shareable resource handle for the map if forbidden.
+
+        * NetworkProcess/cache/NetworkCacheFileSystem.cpp:
+        (WebKit::NetworkCache::canUseSharedMemoryForPath):
+
+            Query the system for the protection status of the cache path.
+
+        * NetworkProcess/cache/NetworkCacheFileSystem.h:
+        * NetworkProcess/cache/NetworkCacheStorage.cpp:
+        (WebKit::NetworkCache::Storage::Storage):
+        * NetworkProcess/cache/NetworkCacheStorage.h:
+        (WebKit::NetworkCache::Storage::canUseSharedMemoryForBodyData):
+
+2017-02-13  Youenn Fablet  <youennf@gmail.com>
+
+        [WebRTC] libwebrtc socket factory is not assigning the right socket type
+        https://bugs.webkit.org/show_bug.cgi?id=168233
+
+        Reviewed by Brent Fulgham.
+
+        * WebProcess/Network/webrtc/LibWebRTCSocketFactory.cpp:
+        (WebKit::LibWebRTCSocketFactory::CreateUdpSocket):
+        (WebKit::LibWebRTCSocketFactory::CreateClientTcpSocket):
+
+2017-02-13  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        [GTK] Unreviewed, add missing precondition check
+
+        * WebProcess/InjectedBundle/API/gtk/WebKitWebEditor.cpp:
+        (webkit_web_editor_get_page):
+
+2017-02-13  Michael Catanzaro  <mcatanzaro@igalia.com>
+
+        Unreviewed, fix another docs typo.
+
+        * UIProcess/API/gtk/WebKitEditingCommands.h:
+
 2017-02-12  Michael Catanzaro  <mcatanzaro@igalia.com>
 
         [GTK] Improve documentation of webkit_context_menu_set_user_data()

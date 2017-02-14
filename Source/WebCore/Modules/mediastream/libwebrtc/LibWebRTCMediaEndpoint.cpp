@@ -31,7 +31,6 @@
 #include "LibWebRTCDataChannelHandler.h"
 #include "LibWebRTCPeerConnectionBackend.h"
 #include "LibWebRTCProvider.h"
-#include "LibWebRTCUtils.h"
 #include "MediaStreamEvent.h"
 #include "NotImplemented.h"
 #include "PlatformStrategies.h"
@@ -75,6 +74,41 @@ static inline const char* sessionDescriptionType(RTCSessionDescription::SdpType 
     case RTCSessionDescription::SdpType::Rollback:
         return "rollback";
     }
+}
+
+static inline RTCSessionDescription::SdpType fromSessionDescriptionType(const webrtc::SessionDescriptionInterface& description)
+{
+    auto type = description.type();
+    if (type == webrtc::SessionDescriptionInterface::kOffer)
+        return RTCSessionDescription::SdpType::Offer;
+    if (type == webrtc::SessionDescriptionInterface::kAnswer)
+        return RTCSessionDescription::SdpType::Answer;
+    ASSERT(type == webrtc::SessionDescriptionInterface::kPrAnswer);
+    return RTCSessionDescription::SdpType::Pranswer;
+}
+
+static inline RefPtr<RTCSessionDescription> fromSessionDescription(const webrtc::SessionDescriptionInterface* description)
+{
+    if (!description)
+        return nullptr;
+
+    std::string sdp;
+    description->ToString(&sdp);
+    String sdpString(sdp.data(), sdp.size());
+
+    return RTCSessionDescription::create(fromSessionDescriptionType(*description), WTFMove(sdpString));
+}
+
+RefPtr<RTCSessionDescription> LibWebRTCMediaEndpoint::localDescription() const
+{
+    // FIXME: We might want to create a new object only if the session actually changed.
+    return fromSessionDescription(m_backend->local_description());
+}
+
+RefPtr<RTCSessionDescription> LibWebRTCMediaEndpoint::remoteDescription() const
+{
+    // FIXME: We might want to create a new object only if the session actually changed.
+    return fromSessionDescription(m_backend->remote_description());
 }
 
 void LibWebRTCMediaEndpoint::doSetLocalDescription(RTCSessionDescription& description)
@@ -123,7 +157,7 @@ void LibWebRTCMediaEndpoint::doCreateOffer()
     auto& senders = m_peerConnectionBackend.connection().getSenders();
     if (senders.size()) {
         // FIXME: We only support one stream for the moment.
-        auto stream = peerConnectionFactory().CreateLocalMediaStream(streamId(m_peerConnectionBackend.connection()));
+        auto stream = LibWebRTCProvider::factory().CreateLocalMediaStream(streamId(m_peerConnectionBackend.connection()));
         for (RTCRtpSender& sender : senders) {
             auto* track = sender.track();
             if (track) {
@@ -131,13 +165,13 @@ void LibWebRTCMediaEndpoint::doCreateOffer()
                 auto& source = track->source();
                 if (source.type() == RealtimeMediaSource::Audio) {
                     auto trackSource = RealtimeOutgoingAudioSource::create(source);
-                    auto rtcTrack = peerConnectionFactory().CreateAudioTrack(track->id().utf8().data(), trackSource.ptr());
+                    auto rtcTrack = LibWebRTCProvider::factory().CreateAudioTrack(track->id().utf8().data(), trackSource.ptr());
                     trackSource->setTrack(rtc::scoped_refptr<webrtc::AudioTrackInterface>(rtcTrack));
                     m_peerConnectionBackend.addAudioSource(WTFMove(trackSource));
                     stream->AddTrack(WTFMove(rtcTrack));
                 } else {
                     auto videoSource = RealtimeOutgoingVideoSource::create(source);
-                    auto videoTrack = peerConnectionFactory().CreateVideoTrack(track->id().utf8().data(), videoSource.ptr());
+                    auto videoTrack = LibWebRTCProvider::factory().CreateVideoTrack(track->id().utf8().data(), videoSource.ptr());
                     m_peerConnectionBackend.addVideoSource(WTFMove(videoSource));
                     stream->AddTrack(WTFMove(videoTrack));
                 }
@@ -155,7 +189,7 @@ void LibWebRTCMediaEndpoint::doCreateAnswer()
     auto& senders = m_peerConnectionBackend.connection().getSenders();
     if (senders.size()) {
         // FIXME: We only support one stream for the moment.
-        auto stream = peerConnectionFactory().CreateLocalMediaStream(streamId(m_peerConnectionBackend.connection()));
+        auto stream = LibWebRTCProvider::factory().CreateLocalMediaStream(streamId(m_peerConnectionBackend.connection()));
         for (RTCRtpSender& sender : senders) {
             auto* track = sender.track();
             if (track) {
@@ -163,13 +197,13 @@ void LibWebRTCMediaEndpoint::doCreateAnswer()
                 auto& source = track->source();
                 if (source.type() == RealtimeMediaSource::Audio) {
                     auto trackSource = RealtimeOutgoingAudioSource::create(source);
-                    auto rtcTrack = peerConnectionFactory().CreateAudioTrack(track->id().utf8().data(), trackSource.ptr());
+                    auto rtcTrack = LibWebRTCProvider::factory().CreateAudioTrack(track->id().utf8().data(), trackSource.ptr());
                     trackSource->setTrack(rtc::scoped_refptr<webrtc::AudioTrackInterface>(rtcTrack));
                     m_peerConnectionBackend.addAudioSource(WTFMove(trackSource));
                     stream->AddTrack(WTFMove(rtcTrack));
                 } else {
                     auto videoSource = RealtimeOutgoingVideoSource::create(source);
-                    auto videoTrack = peerConnectionFactory().CreateVideoTrack(track->id().utf8().data(), videoSource.ptr());
+                    auto videoTrack = LibWebRTCProvider::factory().CreateVideoTrack(track->id().utf8().data(), videoSource.ptr());
                     m_peerConnectionBackend.addVideoSource(WTFMove(videoSource));
                     stream->AddTrack(WTFMove(videoTrack));
                 }
