@@ -50,6 +50,10 @@
 #include <wtf/Condition.h>
 #include <wtf/NeverDestroyed.h>
 
+#if ENABLE(ENCRYPTED_MEDIA)
+#include "SharedBuffer.h"
+#endif
+
 static const char* dumpReadyState(WebCore::MediaPlayer::ReadyState readyState)
 {
     switch (readyState) {
@@ -806,6 +810,20 @@ void MediaPlayerPrivateGStreamerMSE::dispatchDecryptionKey(GstBuffer* buffer)
 {
     for (auto it : m_appendPipelinesMap)
         it.value->dispatchDecryptionKey(buffer);
+}
+#endif
+
+#if ENABLE(ENCRYPTED_MEDIA)
+void MediaPlayerPrivateGStreamerMSE::haveSomeKeys(const Vector<std::pair<Ref<SharedBuffer>, Ref<SharedBuffer>>>& keys)
+{
+    if (keys.isEmpty())
+        return;
+
+    auto& keyValue = keys.first().second;
+    GRefPtr<GstBuffer> buffer(gst_buffer_new_wrapped(g_memdup(keyValue->data(), keyValue->size()), keyValue->size()));
+
+    for (auto iterator : m_appendPipelinesMap)
+        iterator.value->dispatchDecryptionKey(buffer.get());
 }
 #endif
 

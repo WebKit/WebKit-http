@@ -232,6 +232,10 @@ public:
     virtual void keyAdded() { }
 #endif
 
+#if ENABLE(ENCRYPTED_MEDIA)
+    virtual void haveSomeKeys(const Vector<std::pair<Ref<SharedBuffer>, Ref<SharedBuffer>>>&) { }
+#endif
+
 #if ENABLE(VIDEO_TRACK)
     virtual bool requiresTextTrackRepresentation() const { return false; }
     virtual void setTextTrackRepresentation(TextTrackRepresentation*) { }

@@ -77,6 +77,9 @@ class MediaSourcePrivateClient;
 class MediaStreamPrivate;
 #endif
 class MediaPlayerPrivateInterface;
+#if ENABLE(ENCRYPTED_MEDIA)
+class SharedBuffer;
+#endif
 class TextTrackRepresentation;
 struct Cookie;
 
@@ -210,6 +213,10 @@ public:
     virtual RefPtr<ArrayBuffer> mediaPlayerCachedKeyForKeyId(const String&) const { return nullptr; }
     virtual bool mediaPlayerKeyNeeded(MediaPlayer*, Uint8Array*) { return false; }
     virtual String mediaPlayerMediaKeysStorageDirectory() const { return emptyString(); }
+#endif
+
+#if ENABLE(ENCRYPTED_MEDIA)
+    virtual bool mediaPlayerInitializationDataEncountered(const String&, RefPtr<ArrayBuffer>&&) { return false; }
 #endif
     
 #if ENABLE(WIRELESS_PLAYBACK_TARGET)
@@ -358,6 +365,10 @@ public:
     std::unique_ptr<CDMSession> createSession(const String& keySystem, CDMSessionClient*);
     void setCDMSession(CDMSession*);
     void keyAdded();
+#endif
+
+#if ENABLE(ENCRYPTED_MEDIA)
+    void haveSomeKeys(const Vector<std::pair<Ref<SharedBuffer>, Ref<SharedBuffer>>>&);
 #endif
 
     bool paused() const;
@@ -522,6 +533,10 @@ public:
     RefPtr<ArrayBuffer> cachedKeyForKeyId(const String& keyId) const;
     bool keyNeeded(Uint8Array* initData);
     String mediaKeysStorageDirectory() const;
+#endif
+
+#if ENABLE(ENCRYPTED_MEDIA)
+    bool initializationDataEncountered(const String&, RefPtr<ArrayBuffer>&&);
 #endif
 
     String referrer() const;

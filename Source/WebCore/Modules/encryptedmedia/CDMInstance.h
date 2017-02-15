@@ -85,6 +85,10 @@ public:
     virtual void removeSessionData(const String& sessionId, LicenseType, RemoveSessionDataCallback) = 0;
 
     virtual void storeRecordOfKeyUsage(const String& sessionId) = 0;
+
+    using KeyVector = Vector<std::pair<Ref<SharedBuffer>, Ref<SharedBuffer>>>;
+    using AvailableKeysCallback = Function<void(KeyVector&&)>;
+    virtual void gatherAvailableKeys(AvailableKeysCallback) = 0;
 };
 
 }
