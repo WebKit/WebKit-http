@@ -255,6 +255,7 @@ set(WebKit2_SOURCES
     Shared/WebEvent.cpp
     Shared/WebEventConversion.cpp
     Shared/WebGeolocationPosition.cpp
+    Shared/WebGestureEvent.cpp
     Shared/WebHitTestResultData.cpp
     Shared/WebImage.cpp
     Shared/WebKeyboardEvent.cpp
