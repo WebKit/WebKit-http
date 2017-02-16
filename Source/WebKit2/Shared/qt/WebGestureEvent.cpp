@@ -26,7 +26,7 @@
 #include "config.h"
 #include "WebEvent.h"
 
-#if ENABLE(GESTURE_EVENTS)
+#if ENABLE(QT_GESTURE_EVENTS)
 
 #include "Arguments.h"
 #include "WebCoreArgumentCoders.h"
@@ -85,4 +85,4 @@ bool WebGestureEvent::isGestureEventType(Type type)
 
 } // namespace WebKit
 
-#endif // ENABLE(GESTURE_EVENTS)
+#endif // ENABLE(QT_GESTURE_EVENTS)

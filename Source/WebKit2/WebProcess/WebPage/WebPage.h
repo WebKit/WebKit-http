@@ -210,7 +210,7 @@ struct WebPreferencesStore;
 class RemoteLayerTreeTransaction;
 #endif
 
-#if ENABLE(GESTURE_EVENTS)
+#if ENABLE(QT_GESTURE_EVENTS)
 class WebGestureEvent;
 #endif
 
@@ -815,7 +815,7 @@ public:
     void wheelEventHandlersChanged(bool);
     void recomputeShortCircuitHorizontalWheelEventsState();
 
-#if ENABLE(MAC_GESTURE_EVENTS) || ENABLE(GESTURE_EVENTS)
+#if ENABLE(MAC_GESTURE_EVENTS) || ENABLE(QT_GESTURE_EVENTS)
     void gestureEvent(const WebGestureEvent&);
 #endif
 

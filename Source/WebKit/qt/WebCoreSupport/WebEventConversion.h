@@ -49,7 +49,7 @@ class PlatformTouchEvent;
 PlatformTouchEvent convertTouchEvent(QTouchEvent*);
 #endif
 
-#if ENABLE(GESTURE_EVENTS)
+#if ENABLE(QT_GESTURE_EVENTS)
 class PlatformGestureEvent;
 PlatformGestureEvent convertGesture(QGestureEventFacade*);
 #endif

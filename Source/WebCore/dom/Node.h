@@ -75,7 +75,7 @@ class SVGQualifiedName;
 class ShadowRoot;
 class TagCollection;
 
-#if ENABLE(GESTURE_EVENTS)
+#if ENABLE(QT_GESTURE_EVENTS)
 class PlatformGestureEvent;
 #endif
 
@@ -538,7 +538,7 @@ public:
     void dispatchSubtreeModifiedEvent();
     bool dispatchDOMActivateEvent(int detail, PassRefPtr<Event> underlyingEvent);
 
-#if ENABLE(GESTURE_EVENTS)
+#if ENABLE(QT_GESTURE_EVENTS)
     bool dispatchGestureEvent(const PlatformGestureEvent&);
 #endif
 #if ENABLE(TOUCH_EVENTS)

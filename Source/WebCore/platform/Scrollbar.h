@@ -40,7 +40,7 @@ class PlatformMouseEvent;
 class ScrollableArea;
 class ScrollbarTheme;
 
-#if ENABLE(GESTURE_EVENTS)
+#if ENABLE(QT_GESTURE_EVENTS)
 class PlatformGestureEvent;
 #endif
 
@@ -100,7 +100,7 @@ public:
 
     bool isWindowActive() const;
 
-#if ENABLE(GESTURE_EVENTS)
+#if ENABLE(QT_GESTURE_EVENTS)
     bool gestureEvent(const PlatformGestureEvent&);
 #endif
 

@@ -26,7 +26,7 @@
 #ifndef PlatformGestureEvent_h
 #define PlatformGestureEvent_h
 
-#if ENABLE(GESTURE_EVENTS)
+#if ENABLE(QT_GESTURE_EVENTS)
 
 #include "FloatPoint.h"
 #include "IntPoint.h"
@@ -81,6 +81,6 @@ protected:
 
 } // namespace WebCore
 
-#endif // ENABLE(GESTURE_EVENTS)
+#endif // ENABLE(QT_GESTURE_EVENTS)
 
 #endif // PlatformGestureEvent_h

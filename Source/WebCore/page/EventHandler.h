@@ -96,7 +96,7 @@ class Widget;
 
 struct DragState;
 
-#if ENABLE(GESTURE_EVENTS)
+#if ENABLE(QT_GESTURE_EVENTS)
 class PlatformGestureEvent;
 #endif
 
@@ -221,7 +221,7 @@ public:
     typedef HashSet<RefPtr<EventTarget>> EventTargetSet;
 #endif
 
-#if ENABLE(GESTURE_EVENTS)
+#if ENABLE(QT_GESTURE_EVENTS)
     bool handleGestureEvent(const PlatformGestureEvent&);
     bool handleGestureTap(const PlatformGestureEvent&);
     bool handleGestureLongPress(const PlatformGestureEvent&);
@@ -262,7 +262,7 @@ public:
 #if ENABLE(CONTEXT_MENUS)
     WEBCORE_EXPORT bool sendContextMenuEvent(const PlatformMouseEvent&);
     bool sendContextMenuEventForKey();
-#if ENABLE(GESTURE_EVENTS)
+#if ENABLE(QT_GESTURE_EVENTS)
     bool sendContextMenuEventForGesture(const PlatformGestureEvent&);
 #endif
 #endif
@@ -480,7 +480,7 @@ private:
     bool isKeyEventAllowedInFullScreen(const PlatformKeyboardEvent&) const;
 #endif
 
-#if ENABLE(GESTURE_EVENTS)
+#if ENABLE(QT_GESTURE_EVENTS)
     bool handleGestureTapDown();
     bool handleGestureForTextSelectionOrContextMenu(const PlatformGestureEvent&);
     bool passGestureEventToWidget(const PlatformGestureEvent&, Widget*);
@@ -599,7 +599,7 @@ private:
     bool m_touchPressed { false };
 #endif
 
-#if ENABLE(GESTURE_EVENTS)
+#if ENABLE(QT_GESTURE_EVENTS)
     RefPtr<Node> m_scrollGestureHandlingNode;
     bool m_lastHitTestResultOverWidget;
     RefPtr<Element> m_previousGestureScrolledElement;

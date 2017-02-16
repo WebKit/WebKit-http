@@ -27,7 +27,7 @@
 #ifndef GestureEvent_h
 #define GestureEvent_h
 
-#if ENABLE(GESTURE_EVENTS)
+#if ENABLE(QT_GESTURE_EVENTS)
 
 #include "EventNames.h"
 #include "Frame.h"
@@ -62,6 +62,6 @@ private:
 
 } // namespace WebCore
 
-#endif // ENABLE(GESTURE_EVENTS)
+#endif // ENABLE(QT_GESTURE_EVENTS)
 
 #endif // GestureEvent_h

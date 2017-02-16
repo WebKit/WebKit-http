@@ -35,7 +35,7 @@
 #include "ScrollbarTheme.h"
 #include <algorithm>
 
-#if ENABLE(GESTURE_EVENTS)
+#if ENABLE(QT_GESTURE_EVENTS)
 #include "PlatformGestureEvent.h"
 #endif
 
@@ -323,7 +323,7 @@ void Scrollbar::setPressedPart(ScrollbarPart part)
         theme().invalidatePart(*this, m_hoveredPart);
 }
 
-#if ENABLE(GESTURE_EVENTS)
+#if ENABLE(QT_GESTURE_EVENTS)
 bool Scrollbar::gestureEvent(const PlatformGestureEvent& evt)
 {
     bool handled = false;

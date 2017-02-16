@@ -71,7 +71,7 @@ public:
         RawKeyDown,
         Char,
 
-#if ENABLE(GESTURE_EVENTS)
+#if ENABLE(QT_GESTURE_EVENTS)
         // WebGestureEvent
         GestureScrollBegin,
         GestureScrollEnd,
@@ -298,7 +298,7 @@ private:
 };
 
 
-#if ENABLE(GESTURE_EVENTS)
+#if ENABLE(QT_GESTURE_EVENTS)
 // FIXME: Move this class to its own header file.
 class WebGestureEvent : public WebEvent {
 public:
@@ -322,7 +322,7 @@ private:
     WebCore::IntSize m_area;
     WebCore::FloatPoint m_delta;
 };
-#endif // ENABLE(GESTURE_EVENTS)
+#endif // ENABLE(QT_GESTURE_EVENTS)
 
 
 #if ENABLE(TOUCH_EVENTS)

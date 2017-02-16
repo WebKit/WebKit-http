@@ -223,7 +223,7 @@ WebCore::PlatformKeyboardEvent platform(const WebKeyboardEvent& webEvent)
     return WebKit2PlatformKeyboardEvent(webEvent);
 }
 
-#if ENABLE(GESTURE_EVENTS)
+#if ENABLE(QT_GESTURE_EVENTS)
 class WebKit2PlatformGestureEvent : public WebCore::PlatformGestureEvent {
 public:
     WebKit2PlatformGestureEvent(const WebGestureEvent& webEvent)

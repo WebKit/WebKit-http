@@ -224,7 +224,7 @@ struct PlatformPopupMenuData;
 struct PrintInfo;
 struct WebPopupItem;
 
-#if ENABLE(GESTURE_EVENTS)
+#if ENABLE(QT_GESTURE_EVENTS)
 class WebGestureEvent;
 #endif
 
@@ -634,7 +634,7 @@ public:
     void handleGestureEvent(const NativeWebGestureEvent&);
 #endif
 
-#if ENABLE(GESTURE_EVENTS)
+#if ENABLE(QT_GESTURE_EVENTS)
     void handleGestureEvent(const WebGestureEvent&);
 #endif
 
@@ -1697,7 +1697,7 @@ private:
     DownloadID m_syncNavigationActionPolicyDownloadID;
     bool m_shouldSuppressAppLinksInNextNavigationPolicyDecision { false };
 
-#if ENABLE(GESTURE_EVENTS)
+#if ENABLE(QT_GESTURE_EVENTS)
     Deque<WebGestureEvent> m_gestureEventQueue;
 #endif
     Deque<NativeWebKeyboardEvent> m_keyEventQueue;

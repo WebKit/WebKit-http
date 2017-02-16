@@ -105,7 +105,7 @@
 #include "StyleCachedImageSet.h"
 #endif
 
-#if ENABLE(GESTURE_EVENTS)
+#if ENABLE(QT_GESTURE_EVENTS)
 #include "PlatformGestureEvent.h"
 #endif
 
@@ -355,7 +355,7 @@ static inline bool handleWheelEventInAppropriateEnclosingBox(Node* startNode, Wh
     return false;
 }
 
-#if (ENABLE(TOUCH_EVENTS) && !PLATFORM(IOS)) || ENABLE(GESTURE_EVENTS)
+#if (ENABLE(TOUCH_EVENTS) && !PLATFORM(IOS)) || ENABLE(QT_GESTURE_EVENTS)
 static inline bool shouldGesturesTriggerActive()
 {
     // If the platform we're on supports GestureTapDown and GestureTapCancel then we'll
@@ -391,7 +391,7 @@ EventHandler::EventHandler(Frame& frame)
 #if !ENABLE(IOS_TOUCH_EVENTS)
     , m_fakeMouseMoveEventTimer(*this, &EventHandler::fakeMouseMoveEventTimerFired)
 #endif
-#if ENABLE(GESTURE_EVENTS)
+#if ENABLE(QT_GESTURE_EVENTS)
     , m_scrollGestureHandlingNode(nullptr)
     , m_lastHitTestResultOverWidget(false)
 #endif
@@ -470,7 +470,7 @@ void EventHandler::clear()
     m_originatingTouchPointDocument = nullptr;
     m_originatingTouchPointTargetKey = 0;
 #endif
-#if ENABLE(GESTURE_EVENTS)
+#if ENABLE(QT_GESTURE_EVENTS)
     m_scrollGestureHandlingNode = nullptr;
     m_lastHitTestResultOverWidget = false;
     m_previousGestureScrolledElement = nullptr;
@@ -2722,7 +2722,7 @@ void EventHandler::defaultWheelEventHandler(Node* startNode, WheelEvent* wheelEv
 #endif
 }
 
-#if ENABLE(GESTURE_EVENTS)
+#if ENABLE(QT_GESTURE_EVENTS)
 bool EventHandler::handleGestureTapDown()
 {
     FrameView* view = m_frame.view();
@@ -3047,7 +3047,7 @@ bool EventHandler::isScrollbarHandlingGestures() const
 {
     return m_scrollbarHandlingScrollGesture.get();
 }
-#endif // ENABLE(GESTURE_EVENTS)
+#endif // ENABLE(QT_GESTURE_EVENTS)
 
 #if ENABLE(TOUCH_ADJUSTMENT)
 bool EventHandler::shouldApplyTouchAdjustment(const PlatformGestureEvent& event) const
@@ -3225,7 +3225,7 @@ bool EventHandler::sendContextMenuEventForKey()
     return !dispatchMouseEvent(eventNames().contextmenuEvent, targetNode, true, 0, platformMouseEvent, false);
 }
 
-#if ENABLE(GESTURE_EVENTS)
+#if ENABLE(QT_GESTURE_EVENTS)
 bool EventHandler::sendContextMenuEventForGesture(const PlatformGestureEvent& event)
 {
 #if OS(WINDOWS)
@@ -3246,7 +3246,7 @@ bool EventHandler::sendContextMenuEventForGesture(const PlatformGestureEvent& ev
     // We do not need to send a corresponding mouse release because in case of
     // right-click, the context menu takes capture and consumes all events.
 }
-#endif // ENABLE(GESTURE_EVENTS)
+#endif // ENABLE(QT_GESTURE_EVENTS)
 #endif // ENABLE(CONTEXT_MENUS)
 
 void EventHandler::scheduleHoverStateUpdate()

@@ -75,7 +75,7 @@
 #include <wtf/text/CString.h>
 #include <wtf/text/StringBuilder.h>
 
-#if ENABLE(GESTURE_EVENTS)
+#if ENABLE(QT_GESTURE_EVENTS)
 #include "GestureEvent.h"
 #endif
 
@@ -2153,7 +2153,7 @@ bool Node::dispatchDOMActivateEvent(int detail, PassRefPtr<Event> underlyingEven
     return event->defaultHandled();
 }
 
-#if ENABLE(GESTURE_EVENTS)
+#if ENABLE(QT_GESTURE_EVENTS)
 bool Node::dispatchGestureEvent(const PlatformGestureEvent& event)
 {
     RefPtr<GestureEvent> gestureEvent = GestureEvent::create(document().defaultView(), event);

@@ -47,7 +47,7 @@ QT_BEGIN_NAMESPACE
 class QPoint;
 QT_END_NAMESPACE
 
-#if ENABLE(GESTURE_EVENTS)
+#if ENABLE(QT_GESTURE_EVENTS)
 class QGestureEventFacade;
 #endif
 class QWebFrame;
@@ -133,7 +133,7 @@ public:
 
     void load(const QNetworkRequest&, QNetworkAccessManager::Operation = QNetworkAccessManager::GetOperation, const QByteArray& body = QByteArray());
     bool hasView() const;
-#if ENABLE(GESTURE_EVENTS)
+#if ENABLE(QT_GESTURE_EVENTS)
     void handleGestureEvent(QGestureEventFacade*);
 #endif
     QWebFrameAdapter* createFrame(QWebFrameData*);

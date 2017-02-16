@@ -26,7 +26,7 @@
 
 #include "config.h"
 
-#if ENABLE(GESTURE_EVENTS)
+#if ENABLE(QT_GESTURE_EVENTS)
 
 #include "GestureEvent.h"
 
@@ -107,4 +107,4 @@ GestureEvent::GestureEvent(const AtomicString& type, double timestamp, PassRefPt
 
 } // namespace WebCore
 
-#endif // ENABLE(GESTURE_EVENTS)
+#endif // ENABLE(QT_GESTURE_EVENTS)
