@@ -24,28 +24,27 @@
 
 #if (ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)) && USE(GSTREAMER) && USE(OCDM)
 
-#include "WebKitOpenCDMDecryptorGStreamer.h"
-
-#define WIDEVINE_PROTECTION_SYSTEM_UUID "edef8ba9-79d6-4ace-a3c8-27dcd51d21ed"
-#define WIDEVINE_PROTECTION_SYSTEM_ID "com.widevine.alpha"
+#include "WebKitCommonEncryptionDecryptorGStreamer.h"
 
 G_BEGIN_DECLS
 
-#define WEBKIT_TYPE_OPENCDM_WIDEVINE_DECRYPT          (webkit_media_opencdm_widevine_decrypt_get_type())
-#define WEBKIT_OPENCDM_WIDEVINE_DECRYPT(obj)          (G_TYPE_CHECK_INSTANCE_CAST((obj), WEBKIT_TYPE_OPENCDM_WIDEVINE_DECRYPT, WebKitOpenCDMWidevineDecrypt))
-#define WEBKIT_OPENCDM_WIDEVINE_DECRYPT_CLASS(klass)  (G_TYPE_CHECK_CLASS_CAST((klass), WEBKIT_TYPE_OPENCDM_WIDEVINE_DECRYPT, WebKitOpenCDMWidevineDecryptClass))
+#define WEBKIT_TYPE_OPENCDM_DECRYPT          (webkit_media_opencdm_decrypt_get_type())
+#define WEBKIT_OPENCDM_DECRYPT(obj)          (G_TYPE_CHECK_INSTANCE_CAST((obj), WEBKIT_TYPE_OPENCDM_DECRYPT, WebKitOpenCDMDecrypt))
+#define WEBKIT_OPENCDM_DECRYPT_CLASS(klass)  (G_TYPE_CHECK_CLASS_CAST((klass), WEBKIT_TYPE_OPENCDM_DECRYPT, WebKitOpenCDMDecryptClass))
 
-typedef struct _WebKitOpenCDMWidevineDecrypt           WebKitOpenCDMWidevineDecrypt;
-typedef struct _WebKitOpenCDMWidevineDecryptClass      WebKitOpenCDMWidevineDecryptClass;
+typedef struct _WebKitOpenCDMDecrypt           WebKitOpenCDMDecrypt;
+typedef struct _WebKitOpenCDMDecryptClass      WebKitOpenCDMDecryptClass;
+typedef struct _WebKitOpenCDMDecryptPrivate    WebKitOpenCDMDecryptPrivate;
 
-GType webkit_media_opencdm_widevine_decrypt_get_type(void);
+GType webkit_media_opencdm_decrypt_get_type(void);
 
-struct _WebKitOpenCDMWidevineDecrypt {
-    WebKitOpenCDMDecrypt parent;
+struct _WebKitOpenCDMDecrypt {
+    WebKitMediaCommonEncryptionDecrypt parent;
+    WebKitOpenCDMDecryptPrivate* priv;
 };
 
-struct _WebKitOpenCDMWidevineDecryptClass {
-    WebKitOpenCDMDecryptClass parentClass;
+struct _WebKitOpenCDMDecryptClass {
+    WebKitMediaCommonEncryptionDecryptClass parentClass;
 };
 
 G_END_DECLS

@@ -154,8 +154,9 @@ public:
 #endif
 #endif
 
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA) && USE(OCDM)
-    virtual void emitOpenCDMWidevineSession();
+#if (ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)) && USE(OCDM)
+    virtual void emitOpenCDMSession();
+    virtual void resetCDMSession();
 #endif
 
     static bool supportsKeySystem(const String& keySystem, const String& mimeType);
@@ -279,10 +280,15 @@ private:
     Lock m_prSessionMutex;
 #endif
 
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) && USE(OCDM)
+    std::unique_ptr<CDMSession> m_cdmSession;
+    Lock m_cdmSessionMutex;
+#endif
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
     std::unique_ptr<CDMSession> createSession(const String&, CDMSessionClient*);
     CDMSession* m_cdmSession;
 #endif
+
     ImageOrientation m_videoSourceOrientation;
 #if USE(GSTREAMER_GL)
     std::unique_ptr<VideoTextureCopierGStreamer> m_videoTextureCopier;

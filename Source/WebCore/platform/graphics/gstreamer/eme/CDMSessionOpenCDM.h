@@ -28,9 +28,9 @@
 
 #pragma once
 
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA) && USE(OCDM)
+#if (ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)) && USE(OCDM)
 
-#include "CDMPrivateOpenCDMWidevine.h"
+#include "CDMPrivateOpenCDM.h"
 #include "CDMSession.h"
 
 namespace WebCore {
@@ -38,10 +38,24 @@ namespace WebCore {
 class CDMSession;
 class MediaPlayerPrivateGStreamerBase;
 
-class CDMSessionOpenCDMWidevine : public CDMSession {
+class CDMSessionOpenCDM : public CDMSession {
+private:
+    enum KeyState {
+        // Has been initialized.
+        KeyInit = 0,
+        // Has a key message pending to be processed.
+        KeyPending = 1,
+        // Has a usable key.
+        KeyReady = 2,
+        // Has an error.
+        KeyError = 3,
+        // Has been closed.
+        KeyClosed = 4
+    };
+
 public:
-    CDMSessionOpenCDMWidevine(CDMSessionClient*, OpenCdm*, MediaPlayerPrivateGStreamerBase*, String);
-    virtual ~CDMSessionOpenCDMWidevine() = default;
+    CDMSessionOpenCDM(CDMSessionClient*, media::OpenCdm*, MediaPlayerPrivateGStreamerBase*, String);
+    virtual ~CDMSessionOpenCDM() = default;
 
     void setClient(CDMSessionClient*) override { }
     const String& sessionId() const override { return m_sessionId; }
@@ -50,14 +64,17 @@ public:
         String&, unsigned short&, uint32_t&) override;
     bool update(Uint8Array*, RefPtr<Uint8Array>&,
         unsigned short&, uint32_t&) override;
+    bool keyRequested() const override { return m_eKeyState == KeyPending; }
+    bool ready() const override { return m_eKeyState == KeyReady; }
 
 private:
-    OpenCdm* m_openCdmSession;
+    media::OpenCdm* m_openCdmSession;
     String m_sessionId;
     MediaPlayerPrivateGStreamerBase* m_playerPrivate;
     String m_openCdmKeySystem;
+    KeyState m_eKeyState;
 };
 
 } // namespace WebCore
 
-#endif // ENABLE(LEGACY_ENCRYPTED_MEDIA) && USE(OCDM)
+#endif // (ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)) && USE(OCDM)

@@ -26,29 +26,32 @@
  */
 
 #include "config.h"
-#include "CDMSessionOpenCDMWidevine.h"
+#include "CDMSessionOpenCDM.h"
 
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA) && USE(OCDM)
+#if (ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)) && USE(OCDM)
 
 #include "CDM.h"
 #include "MediaPlayerPrivateGStreamerBase.h"
 #include "WebKitMediaKeyError.h"
 #include <gst/gst.h>
 
-GST_DEBUG_CATEGORY_EXTERN(webkit_media_opencdm_widevine_decrypt_debug_category);
-#define GST_CAT_DEFAULT webkit_media_opencdm_widevine_decrypt_debug_category
+GST_DEBUG_CATEGORY_EXTERN(webkit_media_opencdm_decrypt_debug_category);
+#define GST_CAT_DEFAULT webkit_media_opencdm_decrypt_debug_category
 
 namespace WebCore {
 
-CDMSessionOpenCDMWidevine::CDMSessionOpenCDMWidevine(CDMSessionClient*, OpenCdm* openCdm, MediaPlayerPrivateGStreamerBase* playerPrivate, String openCdmKeySystem)
+CDMSessionOpenCDM::CDMSessionOpenCDM(CDMSessionClient*, media::OpenCdm* openCdm, MediaPlayerPrivateGStreamerBase* playerPrivate, String openCdmKeySystem)
     : m_openCdmSession(openCdm)
     , m_playerPrivate(playerPrivate)
     , m_openCdmKeySystem(openCdmKeySystem)
+    , m_eKeyState(KeyInit)
 {
 }
 
-RefPtr<Uint8Array> CDMSessionOpenCDMWidevine::generateKeyRequest(const String& mimeType, Uint8Array* initData, String& destinationUrl, unsigned short& errorCode, uint32_t&)
+RefPtr<Uint8Array> CDMSessionOpenCDM::generateKeyRequest(const String& mimeType, Uint8Array* initData, String& destinationUrl, unsigned short& errorCode, uint32_t&)
 {
+    if (m_eKeyState != KeyInit)
+        return nullptr;
     m_playerPrivate->receivedGenerateKeyRequest(m_openCdmKeySystem);
 
     std::string sessionId;
@@ -70,29 +73,35 @@ RefPtr<Uint8Array> CDMSessionOpenCDMWidevine::generateKeyRequest(const String& m
         errorCode = WebKitMediaKeyError::MEDIA_KEYERR_UNKNOWN;
         return nullptr;
     }
-    
+    printf("Key state set to PENDING \n");
+    m_eKeyState = KeyPending;
     destinationUrl = String::fromUTF8(temporaryUrl);
     return Uint8Array::create(reinterpret_cast<unsigned char*>(const_cast<char*>(message.c_str())), messageLength);
 }
 
-void CDMSessionOpenCDMWidevine::releaseKeys()
+void CDMSessionOpenCDM::releaseKeys()
 {
 }
 
-bool CDMSessionOpenCDMWidevine::update(Uint8Array* key, RefPtr<Uint8Array>& nextMessage, unsigned short& errorCode, uint32_t&)
+bool CDMSessionOpenCDM::update(Uint8Array* key, RefPtr<Uint8Array>& nextMessage, unsigned short& errorCode, uint32_t&)
 {
+    if (m_eKeyState != KeyPending)
+        return false;
+
     GST_MEMDUMP("License :", key->data(), key->length());
 
     std::string responseMessage;
     if (m_openCdmSession->Update(key->data(), key->length(), responseMessage)) {
-        responseMessage = "UpdateStatus: " + responseMessage;
-        nextMessage = Uint8Array::create(reinterpret_cast<unsigned char*>(const_cast<char*>(responseMessage.c_str())), responseMessage.length());
         errorCode = WebKitMediaKeyError::MEDIA_KEYERR_CLIENT;
+        m_eKeyState = KeyError;
         return false;
     }
+    responseMessage = "UpdateStatus: " + responseMessage;
+    nextMessage = Uint8Array::create(reinterpret_cast<unsigned char*>(const_cast<char*>(responseMessage.c_str())), responseMessage.length());
+    m_eKeyState = KeyReady;
     return true;
 }
 
 } // namespace WebCore
 
-#endif // ENABLE(LEGACY_ENCRYPTED_MEDIA) && USE(OCDM)
+#endif // (ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)) && USE(OCDM)
