@@ -1500,7 +1500,7 @@ void MediaPlayerPrivateGStreamerBase::emitOpenCDMSession()
     GST_TRACE("emitted OCDM session on pipeline, event handled %s", eventHandled ? "yes" : "no");
 }
 
-void MediaPlayerPrivateGStreamerBase::resetCDMSession()
+void MediaPlayerPrivateGStreamerBase::resetOpenCDMSession()
 {
     if (!m_cdmSession)
         return;

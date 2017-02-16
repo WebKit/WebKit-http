@@ -159,12 +159,11 @@ endif ()
 
 if (ENABLE_LEGACY_ENCRYPTED_MEDIA_V1 OR ENABLE_LEGACY_ENCRYPTED_MEDIA)
     find_package(LibGcrypt REQUIRED)
+    if (ENABLE_OCDM)
+        find_package(OCDM REQUIRED)
+        add_definitions(-DUSE_OCDM=1)
+    endif()
 endif ()
-
-if (ENABLE_LEGACY_ENCRYPTED_MEDIA AND ENABLE_OCDM)
-    find_package(OCDM REQUIRED)
-    add_definitions(-DUSE_OCDM=1)
-endif()
 
 if (ENABLE_BREAKPAD)
     find_package(Breakpad REQUIRED)
