@@ -75,6 +75,10 @@
 #include <wtf/text/CString.h>
 #include <wtf/text/StringBuilder.h>
 
+#if ENABLE(GESTURE_EVENTS)
+#include "GestureEvent.h"
+#endif
+
 #if ENABLE(INDIE_UI)
 #include "UIRequestEvent.h"
 #endif
@@ -2148,6 +2152,23 @@ bool Node::dispatchDOMActivateEvent(int detail, PassRefPtr<Event> underlyingEven
     dispatchScopedEvent(event);
     return event->defaultHandled();
 }
+
+#if ENABLE(GESTURE_EVENTS)
+bool Node::dispatchGestureEvent(const PlatformGestureEvent& event)
+{
+    RefPtr<GestureEvent> gestureEvent = GestureEvent::create(document().defaultView(), event);
+    if (!gestureEvent.get())
+        return false;
+
+    if (isDisabledFormControl(this))
+        return true;
+
+    EventDispatcher::dispatchEvent(this, gestureEvent);
+
+    ASSERT(!gestureEvent->defaultPrevented());
+    return gestureEvent->defaultHandled() || gestureEvent->defaultPrevented();
+}
+#endif
 
 #if ENABLE(TOUCH_EVENTS) && !PLATFORM(IOS)
 bool Node::dispatchTouchEvent(TouchEvent& event)
