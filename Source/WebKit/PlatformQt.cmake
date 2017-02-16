@@ -171,6 +171,7 @@ list(APPEND WebKit_SOURCES
     qt/Api/qwebhistory.cpp
     qt/Api/qwebhistoryinterface.cpp
     qt/Api/qwebkitglobal.cpp
+    qt/Api/qwebkitplatformplugin.h
     qt/Api/qwebplugindatabase.cpp
     qt/Api/qwebpluginfactory.cpp
     qt/Api/qwebscriptworld.cpp
