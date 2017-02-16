@@ -64,6 +64,7 @@ class Page;
 class Range;
 class RenderedDocumentMarker;
 class ScriptExecutionContext;
+class WebKitPoint;
 class SerializedScriptValue;
 class SourceBuffer;
 class TimeRanges;
@@ -193,6 +194,13 @@ public:
     RefPtr<Range> rangeForDictionaryLookupAtLocation(int x, int y, ExceptionCode&);
 
     void setDelegatesScrolling(bool enabled, ExceptionCode&);
+#if ENABLE(TOUCH_ADJUSTMENT)
+    PassRefPtr<WebKitPoint> touchPositionAdjustedToBestClickableNode(long x, long y, long width, long height, ExceptionCode&);
+    Node* touchNodeAdjustedToBestClickableNode(long x, long y, long width, long height, ExceptionCode&);
+    PassRefPtr<WebKitPoint> touchPositionAdjustedToBestContextMenuNode(long x, long y, long width, long height, ExceptionCode&);
+    Node* touchNodeAdjustedToBestContextMenuNode(long x, long y, long width, long height, ExceptionCode&);
+    PassRefPtr<ClientRect> bestZoomableAreaForTouchPoint(long x, long y, long width, long height, ExceptionCode&);
+#endif
 
     int lastSpellCheckRequestSequence(ExceptionCode&);
     int lastSpellCheckProcessedSequence(ExceptionCode&);
