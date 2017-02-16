@@ -455,6 +455,7 @@ set(WPE_INSTALLED_WEBKIT_HEADERS
     ${WEBKIT2_DIR}/UIProcess/API/C/WKFrame.h
     ${WEBKIT2_DIR}/UIProcess/API/C/WKFrameInfoRef.h
     ${WEBKIT2_DIR}/UIProcess/API/C/WKFramePolicyListener.h
+    ${WEBKIT2_DIR}/UIProcess/API/C/WKHTTPCookieStorageRef.h
     ${WEBKIT2_DIR}/UIProcess/API/C/WKHitTestResult.h
     ${WEBKIT2_DIR}/UIProcess/API/C/WKNativeEvent.h
     ${WEBKIT2_DIR}/UIProcess/API/C/WKNavigationActionRef.h
