@@ -454,7 +454,7 @@ void QWebPageAdapter::adjustPointForClicking(QMouseEvent* ev)
 {
 #if ENABLE(TOUCH_ADJUSTMENT)
     QtPlatformPlugin platformPlugin;
-    OwnPtr<QWebTouchModifier> touchModifier = platformPlugin.createTouchModifier();
+    std::unique_ptr<QWebTouchModifier> touchModifier = platformPlugin.createTouchModifier();
     if (!touchModifier)
         return;
 
