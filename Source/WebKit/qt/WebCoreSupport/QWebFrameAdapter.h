@@ -48,7 +48,7 @@ class QPoint;
 QT_END_NAMESPACE
 
 #if ENABLE(QT_GESTURE_EVENTS)
-class QGestureEventFacade;
+struct QGestureEventFacade;
 #endif
 class QWebFrame;
 class QWebFrameData;
