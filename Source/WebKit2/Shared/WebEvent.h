@@ -311,8 +311,8 @@ public:
     const WebCore::IntSize area() const { return m_area; }
     const WebCore::FloatPoint delta() const { return m_delta; }
 
-    void encode(CoreIPC::ArgumentEncoder&) const;
-    static bool decode(CoreIPC::ArgumentDecoder&, WebGestureEvent&);
+    void encode(IPC::ArgumentEncoder&) const;
+    static bool decode(IPC::ArgumentDecoder&, WebGestureEvent&);
 
 private:
     static bool isGestureEventType(Type);

@@ -53,7 +53,7 @@ WebGestureEvent::WebGestureEvent(Type type, const IntPoint& position, const IntP
     ASSERT(isGestureEventType(type));
 }
 
-void WebGestureEvent::encode(CoreIPC::ArgumentEncoder& encoder) const
+void WebGestureEvent::encode(IPC::ArgumentEncoder& encoder) const
 {
     WebEvent::encode(encoder);
 
@@ -63,7 +63,7 @@ void WebGestureEvent::encode(CoreIPC::ArgumentEncoder& encoder) const
     encoder << m_delta;
 }
 
-bool WebGestureEvent::decode(CoreIPC::ArgumentDecoder& decoder, WebGestureEvent& t)
+bool WebGestureEvent::decode(IPC::ArgumentDecoder& decoder, WebGestureEvent& t)
 {
     if (!WebEvent::decode(decoder, t))
         return false;
