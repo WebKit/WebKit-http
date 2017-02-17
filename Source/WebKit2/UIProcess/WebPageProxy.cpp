@@ -1937,7 +1937,7 @@ void WebPageProxy::handleGestureEvent(const WebGestureEvent& event)
 
     m_gestureEventQueue.append(event);
 
-    m_process->responsivenessTimer()->start();
+    m_process->responsivenessTimer().start();
     m_process->send(Messages::EventDispatcher::GestureEvent(m_pageID, event), 0);
 }
 #endif
@@ -4639,7 +4639,7 @@ void WebPageProxy::didReceiveEvent(uint32_t opaqueType, bool handled)
         MESSAGE_CHECK(type == event.type());
 
         m_gestureEventQueue.removeFirst();
-        m_pageClient->doneWithGestureEvent(event, handled);
+        m_pageClient.doneWithGestureEvent(event, handled);
         break;
     }
 #endif

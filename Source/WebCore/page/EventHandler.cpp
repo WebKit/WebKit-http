@@ -2735,9 +2735,7 @@ bool EventHandler::handleGestureTapDown()
         return false;
     for (FrameView::ScrollableAreaSet::const_iterator it = areas->begin(); it != areas->end(); ++it) {
         ScrollableArea* sa = *it;
-        ScrollAnimator* animator = sa->scrollAnimator();
-        if (animator)
-            animator->cancelAnimations();
+        sa->scrollAnimator().cancelAnimations();
     }
     return false;
 }

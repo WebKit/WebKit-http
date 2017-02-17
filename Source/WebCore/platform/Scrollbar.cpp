@@ -329,7 +329,7 @@ bool Scrollbar::gestureEvent(const PlatformGestureEvent& evt)
     bool handled = false;
     switch (evt.type()) {
     case PlatformEvent::GestureTapDown:
-        setPressedPart(theme()->hitTest(this, evt.position()));
+        setPressedPart(theme().hitTest(*this, evt.position()));
         m_pressedPos = (orientation() == HorizontalScrollbar ? convertFromContainingWindow(evt.position()).x() : convertFromContainingWindow(evt.position()).y());
         return true;
     case PlatformEvent::GestureTapDownCancel:
@@ -352,7 +352,7 @@ bool Scrollbar::gestureEvent(const PlatformGestureEvent& evt)
         break;
     case PlatformEvent::GestureTap:
         if (m_pressedPart != ThumbPart && m_pressedPart != NoPart)
-            handled = m_scrollableArea && m_scrollableArea->scroll(pressedPartScrollDirection(), pressedPartScrollGranularity());
+            handled = m_scrollableArea.scroll(pressedPartScrollDirection(), pressedPartScrollGranularity());
         break;
     default:
         break;

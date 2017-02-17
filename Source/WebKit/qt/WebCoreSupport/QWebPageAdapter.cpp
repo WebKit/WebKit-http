@@ -468,7 +468,7 @@ void QWebPageAdapter::adjustPointForClicking(QMouseEvent* ev)
     if (!topPadding && !rightPadding && !bottomPadding && !leftPadding)
         return;
 
-    FrameView* view = page->mainFrame()->view();
+    FrameView* view = page->mainFrame().view();
     ASSERT(view);
     if (view->scrollbarAtPoint(ev->pos()))
         return;
