@@ -1934,6 +1934,9 @@ sub GenerateHeader
         push(@headerContent, "    static JSC::JSValue getNamedConstructor(JSC::VM&, JSC::JSGlobalObject*);\n") if $interface->extendedAttributes->{NamedConstructor};
     }
 
+    # Serializer function.
+    push(@headerContent, "    static JSC::JSObject* serialize(JSC::ExecState*, JS${interfaceName}* thisObject, JSC::ThrowScope&);\n") if $interface->serializable;
+
     my $numCustomFunctions = 0;
     my $numCustomAttributes = 0;
 
@@ -3426,6 +3429,11 @@ sub GenerateImplementation
         push(@implContent, "    ASSERT(inherits(vm, info()));\n\n");
     }
 
+    if ($interfaceName eq "Location") {
+        push(@implContent, "    putDirect(vm, vm.propertyNames->valueOf, globalObject()->objectProtoValueOfFunction(), DontDelete | ReadOnly | DontEnum);\n");
+        push(@implContent, "    putDirect(vm, vm.propertyNames->toPrimitiveSymbol, jsUndefined(), DontDelete | ReadOnly | DontEnum);\n");
+    }
+
     # Support for RuntimeEnabled attributes on instances.
     foreach my $attribute (@{$interface->attributes}) {
         next unless NeedsRuntimeCheck($attribute);
@@ -4394,46 +4402,15 @@ sub GenerateSerializerFunction
 
     my $interfaceName = $interface->type->name;
 
-    my $serializerFunctionName = "toJSON";
-    my $serializerNativeFunctionName = $codeGenerator->WK_lcfirst($className) . "PrototypeFunction" . $codeGenerator->WK_ucfirst($serializerFunctionName);
-
-    AddToImplIncludes("<runtime/ObjectConstructor.h>");
-    push(@implContent, "static inline EncodedJSValue ${serializerNativeFunctionName}Caller(ExecState* state, JS$interfaceName* thisObject, JSC::ThrowScope& throwScope)\n");
-    push(@implContent, "{\n");
-    push(@implContent, "    auto& vm = state->vm();\n");
-    push(@implContent, "    auto* result = constructEmptyObject(state);\n");
-    push(@implContent, "\n");
-
-    GenerateSerializerAttributesForInterface($interface, $className);
-
-    push(@implContent, "    return JSValue::encode(result);\n");
-    push(@implContent, "}\n");
-    push(@implContent, "\n");
-    push(@implContent, "EncodedJSValue JSC_HOST_CALL ${serializerNativeFunctionName}(ExecState* state)\n");
-    push(@implContent, "{\n");
-    push(@implContent, "    return BindingCaller<JS$interfaceName>::callOperation<${serializerNativeFunctionName}Caller>(state, \"$serializerFunctionName\");\n");
-    push(@implContent, "}\n");
-    push(@implContent, "\n");
-}
-
-sub GenerateSerializerAttributesForInterface
-{
-    my ($interface, $className) = @_;
-
-    my $interfaceName = $interface->type->name;
-
+    my $parentSerializerInterface = 0;
     if ($interface->serializable->hasInherit) {
-        my $parentSerializerInterface = 0;
         $codeGenerator->ForAllParents($interface, sub {
             my $parentInterface = shift;
             if ($parentInterface->serializable && !$parentSerializerInterface) {
                 $parentSerializerInterface = $parentInterface;
             }
         }, 0);
-
         die "Failed to find parent interface with \"serializer\" for \"inherit\" serializer in $interfaceName\n" if !$parentSerializerInterface;
-
-        GenerateSerializerAttributesForInterface($parentSerializerInterface, $className);
     }
 
     my @serializedAttributes = ();
@@ -4451,19 +4428,49 @@ sub GenerateSerializerAttributesForInterface
                 last;
             }
         }
-        
         die "Failed to find \"serializer\" attribute \"$attributeName\" in $interfaceName\n" if !$foundAttribute;
     }
 
+    my $serializerFunctionName = "toJSON";
+    my $serializerNativeFunctionName = $codeGenerator->WK_lcfirst($className) . "PrototypeFunction" . $codeGenerator->WK_ucfirst($serializerFunctionName);
+
+    AddToImplIncludes("<runtime/ObjectConstructor.h>");
+
+    push(@implContent, "JSC::JSObject* JS${interfaceName}::serialize(ExecState* state, JS${interfaceName}* thisObject, ThrowScope& throwScope)\n");
+    push(@implContent, "{\n");
+    push(@implContent, "    auto& vm = state->vm();\n");
+
+    if ($interface->serializable->hasInherit) {
+        my $parentSerializerInterfaceName = $parentSerializerInterface->type->name;
+        push(@implContent, "    auto* result = JS${parentSerializerInterfaceName}::serialize(state, thisObject, throwScope);\n");
+    } else {
+        push(@implContent, "    auto* result = constructEmptyObject(state);\n");
+    }
+    push(@implContent, "\n");
+
     foreach my $attribute (@serializedAttributes) {
         my $name = $attribute->name;
-
         my $getFunctionName = GetAttributeGetterName($interface, $className, $attribute);
         push(@implContent, "    auto ${name}Value = ${getFunctionName}Getter(*state, *thisObject, throwScope);\n");
         push(@implContent, "    ASSERT(!throwScope.exception());\n");
         push(@implContent, "    result->putDirect(vm, Identifier::fromString(&vm, \"${name}\"), ${name}Value);\n");
         push(@implContent, "\n");
     }
+
+    push(@implContent, "    return result;\n");
+    push(@implContent, "}\n");
+    push(@implContent, "\n");
+
+    push(@implContent, "static inline EncodedJSValue ${serializerNativeFunctionName}Caller(ExecState* state, JS${interfaceName}* thisObject, JSC::ThrowScope& throwScope)\n");
+    push(@implContent, "{\n");
+    push(@implContent, "    return JSValue::encode(JS${interfaceName}::serialize(state, thisObject, throwScope));\n");
+    push(@implContent, "}\n");
+    push(@implContent, "\n");
+    push(@implContent, "EncodedJSValue JSC_HOST_CALL ${serializerNativeFunctionName}(ExecState* state)\n");
+    push(@implContent, "{\n");
+    push(@implContent, "    return BindingCaller<JS$interfaceName>::callOperation<${serializerNativeFunctionName}Caller>(state, \"$serializerFunctionName\");\n");
+    push(@implContent, "}\n");
+    push(@implContent, "\n");
 }
 
 sub GenerateCallWithUsingReferences
@@ -4522,7 +4529,7 @@ sub GenerateCallWith
         push(@callWithArgs, "*document");
     }
     if ($function and $codeGenerator->ExtendedAttributeContains($callWith, "ScriptArguments")) {
-        push(@$outputArray, "    RefPtr<Inspector::ScriptArguments> scriptArguments(Inspector::createScriptArguments($statePointer, " . @{$function->arguments} . "));\n");
+        push(@$outputArray, "    Ref<Inspector::ScriptArguments> scriptArguments(Inspector::createScriptArguments($statePointer, " . @{$function->arguments} . "));\n");
         $implIncludes{"<inspector/ScriptArguments.h>"} = 1;
         $implIncludes{"<inspector/ScriptCallStackFactory.h>"} = 1;
         push(@callWithArgs, "WTFMove(scriptArguments)");

@@ -1184,12 +1184,14 @@ webkit.org/b/164293 [ Debug ] inspector/debugger/breakpoint-scope.html [ Pass Ti
 webkit.org/b/168090 [ Debug ] inspector/debugger/breakpoint-columns.html [ Pass Timeout ]
 webkit.org/b/161951 [ Release ] inspector/debugger/breakpoints/resolved-dump-each-line.html [ Pass Timeout ]
 webkit.org/b/167711 [ Debug ] inspector/debugger/probe-manager-add-remove-actions.html [ Slow ]
+webkit.org/b/168399 [ Debug ] inspector/debugger/search-scripts.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/dom/content-flow-content-nodes.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/dom/content-flow-content-removal.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/dom/content-flow-list.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/dom/content-node-region-info.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/dom/getAccessibilityPropertiesForNode.html [ Pass Timeout ]
 webkit.org/b/148636 inspector/dom/highlight-shape-outside.html [ Pass Timeout ]
+webkit.org/b/154610 inspector/dom-debugger/node-removed.html [ Pass Timeout ]
 webkit.org/b/153039 [ Debug ] inspector/heap/garbageCollected.html [ Pass Timeout ]
 webkit.org/b/167408 [ Debug ] inspector/heap/gc.html [ Slow ]
 webkit.org/b/167184 [ Debug ] inspector/indexeddb/clearObjectStore.html [ Pass Timeout ]
@@ -1486,7 +1488,9 @@ webkit.org/b/167373 media/modern-media-controls/tracks-support/tracks-support-sh
 
 webkit.org/b/167396 media/modern-media-controls/media-controller/media-controller-auto-hide-rewind-with-mouse-enter.html [ Pass Failure ]
 
-webkit.org/b/167442 [ ElCapitan ] media/modern-media-controls/airplay-support/airplay-support.html [ Pass Timeout ]
+webkit.org/b/167441 media/modern-media-controls/placard-support/placard-support-airplay.html [ Pass Timeout ]
+
+webkit.org/b/167442 media/modern-media-controls/airplay-support/airplay-support.html [ Pass Timeout ]
 
 webkit.org/b/165874 [ Debug ] streams/pipe-to.html [ Pass Failure ]
 
@@ -1516,3 +1520,15 @@ webkit.org/b/167757 [ Sierra Release ] workers/bomb.html [ Pass Timeout ]
 webkit.org/b/167749 http/tests/media/track-in-band-hls-metadata-crash.html [ Pass Timeout ]
 
 webkit.org/b/167186 fast/backgrounds/hidpi-bitmap-background-on-subpixel-position.html [ Pass ImageOnlyFailure ]
+
+webkit.org/b/168087 media/video-zoom.html [ Pass Failure ]
+
+# rdar://problem/23643423
+[ Debug ] fast/frames/exponential-frames.html [ Skip ]
+
+webkit.org/b/167975 imported/w3c/web-platform-tests/media-source/SourceBuffer-abort-removed.html [ Pass Failure ]
+
+webkit.org/b/168415 [ ElCapitan ] imported/w3c/web-platform-tests/resource-timing/rt-cors.html [ Skip ]
+webkit.org/b/168415 [ ElCapitan ] imported/w3c/web-platform-tests/resource-timing/rt-cors.worker.html [ Skip ]
+
+webkit.org/b/212466 [ ElCapitan ] js/dom/gc-slot-visitor-parallel-drain-pings-runloop-when-done.html [ Skip ]

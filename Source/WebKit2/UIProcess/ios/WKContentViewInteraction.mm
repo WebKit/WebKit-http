@@ -1458,12 +1458,8 @@ static inline bool isSamePair(UIGestureRecognizer *a, UIGestureRecognizer *b, UI
     InteractionInformationRequest request(roundedIntPoint(point));
     [self ensurePositionInformationIsUpToDate:request];
 
-    if (_positionInformation.isImage)
+    if (_positionInformation.isImage || _positionInformation.isLink)
         return YES;
-
-    // FIXME: Add support for links.
-    if (_positionInformation.isLink)
-        return NO;
 
     return _positionInformation.hasDataInteractionAtPosition;
 }
@@ -1757,6 +1753,10 @@ static void cancelPotentialTapIfNecessary(WKContentView* contentView)
     _hasValidPositionInformation = YES;
     if (_actionSheetAssistant)
         [_actionSheetAssistant updateSheetPosition];
+
+#if ENABLE(DATA_INTERACTION)
+    [self _updateDataInteractionPreviewSnapshotIfPossible];
+#endif
 }
 
 - (void)_willStartScrollingOrZooming
@@ -3340,18 +3340,18 @@ static NSString *contentTypeFromFieldName(WebCore::AutofillFieldName fieldName)
     [self handleKeyWebEvent:webEvent];    
 }
 
-- (void)handleKeyWebEvent:(WebIOSEvent *)theEvent
+- (void)handleKeyWebEvent:(::WebEvent *)theEvent
 {
     _page->handleKeyboardEvent(NativeWebKeyboardEvent(theEvent));
 }
 
-- (void)handleKeyWebEvent:(WebIOSEvent *)theEvent withCompletionHandler:(void (^)(WebIOSEvent *theEvent, BOOL wasHandled))completionHandler
+- (void)handleKeyWebEvent:(::WebEvent *)theEvent withCompletionHandler:(void (^)(::WebEvent *theEvent, BOOL wasHandled))completionHandler
 {
     _keyWebEventHandler = [completionHandler copy];
     _page->handleKeyboardEvent(NativeWebKeyboardEvent(theEvent));
 }
 
-- (void)_didHandleKeyEvent:(WebIOSEvent *)event eventWasHandled:(BOOL)eventWasHandled
+- (void)_didHandleKeyEvent:(::WebEvent *)event eventWasHandled:(BOOL)eventWasHandled
 {
     if (_keyWebEventHandler) {
         _keyWebEventHandler(event, eventWasHandled);
@@ -3380,7 +3380,7 @@ static NSString *contentTypeFromFieldName(WebCore::AutofillFieldName fieldName)
     _uiEventBeingResent = nil;
 }
 
-- (std::optional<FloatPoint>)_scrollOffsetForEvent:(WebIOSEvent *)event
+- (std::optional<FloatPoint>)_scrollOffsetForEvent:(::WebEvent *)event
 {
     static const unsigned kWebSpaceKey = 0x20;
 
@@ -3444,7 +3444,7 @@ static NSString *contentTypeFromFieldName(WebCore::AutofillFieldName fieldName)
     return std::nullopt;
 }
 
-- (BOOL)_interpretKeyEvent:(WebIOSEvent *)event isCharEvent:(BOOL)isCharEvent
+- (BOOL)_interpretKeyEvent:(::WebEvent *)event isCharEvent:(BOOL)isCharEvent
 {
     static const unsigned kWebEnterKey = 0x0003;
     static const unsigned kWebBackspaceKey = 0x0008;
@@ -3814,7 +3814,7 @@ static bool isAssistableInputType(InputType type)
     
     // The custom fixed position rect behavior is affected by -isAssistingNode, so if that changes we need to recompute rects.
     if (editableChanged)
-        [_webView _updateVisibleContentRects];
+        [_webView _scheduleVisibleContentRectUpdate];
     
     [self _displayFormNodeInputView];
 
@@ -3848,7 +3848,7 @@ static bool isAssistableInputType(InputType type)
 
     // The custom fixed position rect behavior is affected by -isAssistingNode, so if that changes we need to recompute rects.
     if (editableChanged)
-        [_webView _updateVisibleContentRects];
+        [_webView _scheduleVisibleContentRectUpdate];
 
     [_webView didEndFormControlInteraction];
 }
@@ -3957,6 +3957,7 @@ static bool isAssistableInputType(InputType type)
     // FIXME: This should be more asynchronous, since we control the presentation of the action sheet.
     InteractionInformationRequest request(_positionInformation.request.point);
     request.includeSnapshot = true;
+    request.includeLinkIndicator = assistant.needsLinkIndicator;
     [self ensurePositionInformationIsUpToDate:request];
 
     return _positionInformation;
@@ -3967,6 +3968,7 @@ static bool isAssistableInputType(InputType type)
     _hasValidPositionInformation = NO;
     InteractionInformationRequest request(_positionInformation.request.point);
     request.includeSnapshot = true;
+    request.includeLinkIndicator = assistant.needsLinkIndicator;
 
     [self requestAsynchronousPositionInformationUpdate:request];
 }

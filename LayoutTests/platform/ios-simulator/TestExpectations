@@ -2841,6 +2841,11 @@ media/modern-media-controls/media-controller/media-controller-reduced-padding.ht
 media/modern-media-controls/media-controller/media-controller-tight-padding.html [ Skip ]
 media/modern-media-controls/media-controller/media-controller-toggle-compact-mode.html [ Skip ]
 
+webkit.org/b/168343 media/modern-media-controls/media-controller/media-controller-ios-do-not-hide-controls-when-tapping-button.html [ Pass Timeout ]
+
+# Form validation popover does not obey minimum font size setting on iOS but Dynamic Type instead.
+fast/forms/validation-message-minimum-font-size.html [ Skip ]
+
 # New Encrypted Media API not enabled on iOS
 media/encrypted-media/mock-navigator-requestMediaKeySystemAccess.html [ Skip ]
 
@@ -2863,3 +2868,8 @@ webkit.org/b/168054 compositing/masks/solid-color-masked.html [ ImageOnlyFailure
 
 webkit.org/b/168215 imported/w3c/web-platform-tests/html/semantics/text-level-semantics/the-a-element/a-download-click.html [ Skip ]
 webkit.org/b/168215 imported/w3c/web-platform-tests/html/semantics/embedded-content/the-area-element/area-download-click.html [ Skip ]
+
+# rdar://problem/23643423
+[ Debug ] fast/frames/exponential-frames.html [ Skip ]
+
+webkit.org/b/168053 pageoverlay/overlay-remove-reinsert-view.html [ Pass Failure ]

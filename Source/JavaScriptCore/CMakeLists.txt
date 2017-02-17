@@ -185,6 +185,7 @@ set(JavaScriptCore_SOURCES
     builtins/BuiltinExecutables.cpp
     builtins/BuiltinExecutableCreator.cpp
 
+    bytecode/AccessCase.cpp
     bytecode/AdaptiveInferredPropertyValueWatchpointBase.cpp
     bytecode/ArithProfile.cpp
     bytecode/ArrayAllocationProfile.cpp
@@ -218,9 +219,11 @@ set(JavaScriptCore_SOURCES
     bytecode/FunctionCodeBlock.cpp
     bytecode/GetByIdStatus.cpp
     bytecode/GetByIdVariant.cpp
+    bytecode/GetterSetterAccessCase.cpp
     bytecode/InlineAccess.cpp
     bytecode/InlineCallFrame.cpp
     bytecode/InlineCallFrameSet.cpp
+    bytecode/IntrinsicGetterAccessCase.cpp
     bytecode/JumpTable.cpp
     bytecode/LLIntPrototypeLoadAdaptiveStructureWatchpoint.cpp
     bytecode/LazyOperandValueProfile.cpp
@@ -233,6 +236,7 @@ set(JavaScriptCore_SOURCES
     bytecode/PreciseJumpTargets.cpp
     bytecode/ProgramCodeBlock.cpp
     bytecode/PropertyCondition.cpp
+    bytecode/ProxyableAccessCase.cpp
     bytecode/PutByIdFlags.cpp
     bytecode/PutByIdStatus.cpp
     bytecode/PutByIdVariant.cpp
@@ -470,6 +474,7 @@ set(JavaScriptCore_SOURCES
     heap/CellContainer.cpp
     heap/CodeBlockSet.cpp
     heap/CollectionScope.cpp
+    heap/CollectorPhase.cpp
     heap/ConservativeRoots.cpp
     heap/DeferGC.cpp
     heap/DestructionMode.cpp
@@ -477,6 +482,8 @@ set(JavaScriptCore_SOURCES
     heap/FullGCActivityCallback.cpp
     heap/FreeList.cpp
     heap/GCActivityCallback.cpp
+    heap/GCConductor.cpp
+    heap/GCFinalizationCallback.cpp
     heap/GCLogging.cpp
     heap/HandleSet.cpp
     heap/HandleStack.cpp
@@ -486,7 +493,6 @@ set(JavaScriptCore_SOURCES
     heap/HeapProfiler.cpp
     heap/HeapSnapshot.cpp
     heap/HeapSnapshotBuilder.cpp
-    heap/HeapStatistics.cpp
     heap/HeapTimer.cpp
     heap/HeapVerifier.cpp
     heap/IncrementalSweeper.cpp

@@ -1,3 +1,159 @@
+2017-02-16  Chris Dumez  <cdumez@apple.com>
+
+        <input>.labels is empty if type changes from text->hidden->checkbox
+        https://bugs.webkit.org/show_bug.cgi?id=168358
+
+        Reviewed by Ryosuke Niwa.
+
+        Re-sync web-platform-test from:
+        https://github.com/w3c/web-platform-tests/pull/4804
+
+        * web-platform-tests/html/semantics/forms/the-label-element/labelable-elements-expected.txt:
+        * web-platform-tests/html/semantics/forms/the-label-element/labelable-elements.html:
+
+2017-02-16  Alex Christensen  <achristensen@webkit.org>
+
+        Special URLs without a host are invalid
+        https://bugs.webkit.org/show_bug.cgi?id=168461
+
+        Reviewed by Tim Horton.
+
+        * web-platform-tests/url/a-element-expected.txt:
+        * web-platform-tests/url/a-element-xhtml-expected.txt:
+        * web-platform-tests/url/url-constructor-expected.txt:
+
+2017-02-16  Joseph Pecoraro  <pecoraro@apple.com>
+
+        [Resource Timing] Support Resource Timing in Workers
+        https://bugs.webkit.org/show_bug.cgi?id=168086
+        <rdar://problem/30430117>
+
+        Reviewed by Alex Christensen.
+
+        * web-platform-tests/resource-timing/idlharness-expected.txt:
+        * web-platform-tests/resource-timing/resource-timing-expected.txt:
+        * web-platform-tests/resource-timing/resource_cached-expected.txt:
+        * web-platform-tests/resource-timing/resource_connection_reuse-expected.txt:
+        Progressions.
+
+        * web-platform-tests/resource-timing/resources/data.json: Added.
+        * web-platform-tests/resource-timing/resources/rt-iframe-1.html: Added.
+        * web-platform-tests/resource-timing/resources/rt-iframe-2.html: Added.
+        * web-platform-tests/resource-timing/resources/rt-module.js: Added.
+        * web-platform-tests/resource-timing/resources/rt-sub-module.js: Added.
+        * web-platform-tests/resource-timing/resources/rt-utilities.js: Added.
+        * web-platform-tests/resource-timing/resources/rt-worker-resources.js: Added.
+        New Resources.
+
+        * web-platform-tests/resource-timing/rt-cors-expected.txt: Added.
+        * web-platform-tests/resource-timing/rt-cors.html: Added.
+        * web-platform-tests/resource-timing/rt-cors.js: Added.
+        * web-platform-tests/resource-timing/rt-cors.worker-expected.txt: Added.
+        * web-platform-tests/resource-timing/rt-cors.worker.html: Added.
+        * web-platform-tests/resource-timing/rt-cors.worker.js: Added.
+        Tests for redirects and cross origin data hiding.
+
+        * web-platform-tests/resource-timing/rt-initiatorType-css-expected.txt: Added.
+        * web-platform-tests/resource-timing/rt-initiatorType-css.html: Added.
+        * web-platform-tests/resource-timing/rt-initiatorType-element-expected.txt: Added.
+        * web-platform-tests/resource-timing/rt-initiatorType-element.html: Added.
+        * web-platform-tests/resource-timing/rt-initiatorType-fetch-expected.txt: Added.
+        * web-platform-tests/resource-timing/rt-initiatorType-fetch.html: Added.
+        * web-platform-tests/resource-timing/rt-initiatorType-fetch.js: Added.
+        * web-platform-tests/resource-timing/rt-initiatorType-other-expected.txt: Added.
+        * web-platform-tests/resource-timing/rt-initiatorType-other.html: Added.
+        * web-platform-tests/resource-timing/rt-initiatorType-script-module-expected.txt: Added.
+        * web-platform-tests/resource-timing/rt-initiatorType-script-module.html: Added.
+        * web-platform-tests/resource-timing/rt-initiatorType-xmlhttprequest-expected.txt: Added.
+        * web-platform-tests/resource-timing/rt-initiatorType-xmlhttprequest.html: Added.
+        * web-platform-tests/resource-timing/rt-initiatorType-xmlhttprequest.js: Added.
+        * web-platform-tests/resource-timing/rt-initiatorType.worker-expected.txt: Added.
+        * web-platform-tests/resource-timing/rt-initiatorType.worker.html: Added.
+        * web-platform-tests/resource-timing/rt-initiatorType.worker.js: Added.
+        Tests for producing different initiator types.
+
+        * web-platform-tests/resource-timing/rt-initiatorType-media-expected.txt: Added.
+        * web-platform-tests/resource-timing/rt-initiatorType-media.html: Added.
+        We currently fail these tests, so they are marked as fail.
+
+        * web-platform-tests/resource-timing/rt-performance-extensions-expected.txt: Added.
+        * web-platform-tests/resource-timing/rt-performance-extensions.html: Added.
+        * web-platform-tests/resource-timing/rt-performance-extensions.js: Added.
+        * web-platform-tests/resource-timing/rt-performance-extensions.worker-expected.txt: Added.
+        * web-platform-tests/resource-timing/rt-performance-extensions.worker.html: Added.
+        * web-platform-tests/resource-timing/rt-performance-extensions.worker.js: Added.
+        Tests for the new Performance APIs.
+
+        * web-platform-tests/resource-timing/rt-serialization-expected.txt: Added.
+        * web-platform-tests/resource-timing/rt-serialization.html: Added.
+        Tests for JSON serialization.
+
+        * web-platform-tests/resource-timing/rt-resource-errors-expected.txt: Added.
+        * web-platform-tests/resource-timing/rt-resource-errors.html: Added.
+        * web-platform-tests/resource-timing/rt-resource-ignored-expected.txt: Added.
+        * web-platform-tests/resource-timing/rt-resource-ignored.html: Added.
+        Tests for when PerformanceResourceTiming entries should not be included.
+
+        * web-platform-tests/resource-timing/rt-resources-per-frame-expected.txt: Added.
+        * web-platform-tests/resource-timing/rt-resources-per-frame.html: Added.
+        * web-platform-tests/resource-timing/rt-resources-per-worker-expected.txt: Added.
+        * web-platform-tests/resource-timing/rt-resources-per-worker.html: Added.
+        * web-platform-tests/resource-timing/rt-shared-resource-in-frames-expected.txt: Added.
+        * web-platform-tests/resource-timing/rt-shared-resource-in-frames.html: Added.
+        * web-platform-tests/resource-timing/rt-shared-resource-in-workers-expected.txt: Added.
+        * web-platform-tests/resource-timing/rt-shared-resource-in-workers.html: Added.
+        Tests for different entries in different contexts.
+
+        * web-platform-tests/serve:
+        Make executable.
+
+2017-02-16  Javier Fernandez  <jfernandez@igalia.com>
+
+        [GTK] Unreviewed test gardening
+        https://bugs.webkit.org/show_bug.cgi?id=168436
+
+        Unreviewed GTK+ gardening.
+
+        - rebaseline setrequestheader-content-type-expected.txt which still have FAILs as Mac does (bug 161003)
+
+        * web-platform-tests/XMLHttpRequest/setrequestheader-content-type-expected.txt:
+
+2017-02-15  Chris Dumez  <cdumez@apple.com>
+
+        Expose Symbol.toPrimitive / valueOf on Location instances
+        https://bugs.webkit.org/show_bug.cgi?id=168295
+
+        Reviewed by Geoffrey Garen, Keith Miller and Mark Lam.
+
+        Import test coverage from upstream web-platform-tests.
+
+        * web-platform-tests/html/browsers/history/the-location-interface/location-symbol-toprimitive-expected.txt: Added.
+        * web-platform-tests/html/browsers/history/the-location-interface/location-symbol-toprimitive.html: Added.
+        * web-platform-tests/html/browsers/history/the-location-interface/location-valueof-expected.txt: Added.
+        * web-platform-tests/html/browsers/history/the-location-interface/location-valueof.html: Added.
+        * web-platform-tests/html/browsers/history/the-location-interface/w3c-import.log:
+
+2017-02-15  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        REGRESSION (r206014): HTTPHeaderMap does not consistently use comma without space to separate values of header fields
+        https://bugs.webkit.org/show_bug.cgi?id=168115
+
+        Reviewed by Darin Adler.
+
+        * web-platform-tests/XMLHttpRequest/getresponseheader-case-insensitive-expected.txt:
+        * web-platform-tests/XMLHttpRequest/setrequestheader-header-allowed-expected.txt:
+
+2017-02-14  Chris Dumez  <cdumez@apple.com>
+
+        Fallback to legacy type only when event is trusted
+        https://bugs.webkit.org/show_bug.cgi?id=168301
+
+        Reviewed by Ryosuke Niwa.
+
+        Rebaseline web-platform-test now tha more checks are passing.
+
+        * web-platform-tests/dom/events/EventListener-invoke-legacy-expected.txt:
+
 2017-02-13  Alex Christensen  <achristensen@webkit.org>
 
         URLs with an invalid IPv4 address should be invalid

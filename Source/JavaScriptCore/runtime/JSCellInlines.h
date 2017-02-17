@@ -29,7 +29,6 @@
 #include "CallFrame.h"
 #include "DeferGC.h"
 #include "Handle.h"
-#include "HeapStatistics.h"
 #include "JSCell.h"
 #include "JSDestructibleObject.h"
 #include "JSObject.h"
@@ -148,7 +147,8 @@ void* allocateCell(Heap& heap, size_t size)
     ASSERT(!DisallowGC::isGCDisallowedOnCurrentThread());
     ASSERT(size >= sizeof(T));
     JSCell* result = static_cast<JSCell*>(subspaceFor<T>(*heap.vm())->allocate(size));
-#if ENABLE(JS_MEMORY_TRACKING)
+#if ENABLE(JS_MEMORY_TRACKING) && 0
+    // FIXME: HeapStatistics was removed
     if (Options::showAllocationBacktraces())
         HeapStatistics::showAllocBacktrace(&heap, size, result);
 #endif
@@ -285,7 +285,7 @@ ALWAYS_INLINE const ClassInfo* JSCell::classInfo(VM& vm) const
     // destructing the object. The GC thread or JIT threads, unlike the mutator thread, are able to access classInfo
     // independent of whether the mutator thread is sweeping or not. Hence, we also check for ownerThread() !=
     // std::this_thread::get_id() to allow the GC thread or JIT threads to pass this assertion.
-    ASSERT(vm.heap.mutatorState() == MutatorState::Running || vm.apiLock().ownerThread() != std::this_thread::get_id());
+    ASSERT(vm.heap.mutatorState() != MutatorState::Sweeping || vm.apiLock().ownerThread() != std::this_thread::get_id());
     return structure(vm)->classInfo();
 }
 

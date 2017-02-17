@@ -54,6 +54,7 @@ public:
     void doAsyncTask(JSValueRef callback);
     void doAfterPresentationUpdate(JSValueRef callback);
     void doAfterNextStablePresentationUpdate(JSValueRef callback);
+    void doAfterVisibleContentRectUpdate(JSValueRef callback);
 
     void zoomToScale(double scale, JSValueRef callback);
 
@@ -87,6 +88,7 @@ public:
     void selectFormAccessoryPickerRow(long);
     
     JSObjectRef contentsOfUserInterfaceItem(JSStringRef) const;
+    void overridePreference(JSStringRef preference, JSStringRef value);
     
     void scrollToOffset(long x, long y);
 

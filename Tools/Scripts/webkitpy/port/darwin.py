@@ -22,8 +22,8 @@
 
 import logging
 import os
-import time
 
+from webkitpy.common.memoized import memoized
 from webkitpy.common.system.crashlogs import CrashLogs
 from webkitpy.common.system.executive import ScriptError
 from webkitpy.port.apple import ApplePort
@@ -101,7 +101,7 @@ class DarwinPort(ApplePort):
         return crash_log.find_all_logs(include_errors=True, newer_than=newer_than)
 
     def _get_crash_log(self, name, pid, stdout, stderr, newer_than, time_fn=None, sleep_fn=None, wait_for_log=True):
-        return None
+        return super(DarwinPort, self)._get_crash_log(name, pid, stdout, stderr, newer_than)
 
     def look_for_new_crash_logs(self, crashed_processes, start_time):
         """Since crash logs can take a long time to be written out if the system is
@@ -175,6 +175,7 @@ class DarwinPort(ApplePort):
             _log.warn("xcrun failed; falling back to '%s'." % fallback)
             return fallback
 
+    @memoized
     def app_identifier_from_bundle(self, app_bundle):
         plist_path = self._filesystem.join(app_bundle, 'Info.plist')
         if not self._filesystem.exists(plist_path):

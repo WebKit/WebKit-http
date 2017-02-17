@@ -1,3 +1,109 @@
+2017-02-16  Daniel Bates  <dabates@apple.com>
+
+        Remove Chromium-specific code to call FrameLoaderClient::redirectDataToPlugin(nullptr)
+        https://bugs.webkit.org/show_bug.cgi?id=168417
+        <rdar://problem/30541748>
+
+        Reviewed by Brent Fulgham.
+
+        Update override of FrameLoaderClient::redirectDataToPlugin() to take a Widget& instead of a
+        Widget* as it is always called with a valid Widget.
+
+        * WebCoreSupport/WebFrameLoaderClient.h:
+        * WebCoreSupport/WebFrameLoaderClient.mm:
+        (WebFrameLoaderClient::redirectDataToPlugin):
+        * WebKit.order: Remove symbol for WebFrameLoaderClient::redirectDataToPlugin() that took a Widget*
+        as it no longer exists. I am unclear if this file is still meaningful as it was last modified in
+        r180570 (2 years ago) though Xcode still references this ordering file (why?).
+
+2017-02-16  Yusuke Suzuki  <utatane.tea@gmail.com>
+
+        [JSC] Drop PassRefPtr in inspector/
+        https://bugs.webkit.org/show_bug.cgi?id=168420
+
+        Reviewed by Alex Christensen.
+
+        * WebView/WebScriptDebugger.mm:
+        (WebScriptDebugger::handlePause):
+
+2017-02-16  Simon Fraser  <simon.fraser@apple.com>
+
+        Clean up use of some CALayer-related SPI
+        https://bugs.webkit.org/show_bug.cgi?id=168401
+
+        Reviewed by Tim Horton.
+
+        Include CALayer.h not CATiledLayer.h.
+
+        * WebInspector/WebNodeHighlight.h:
+
+2017-02-15  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Fix the build after r212379
+
+        Rubber-stamped by Anders Carlsson.
+
+        * WebCoreSupport/WebDragClient.mm:
+        (WebDragClient::startDrag):
+
+2017-02-15  Anders Carlsson  <andersca@apple.com>
+
+        Modernize DragClient::startDrag somewhat
+        https://bugs.webkit.org/show_bug.cgi?id=168379
+
+        Reviewed by Tim Horton.
+
+        Update for WebCore changes.
+
+        * WebCoreSupport/WebDragClient.h:
+        * WebCoreSupport/WebDragClient.mm:
+        (WebDragClient::startDrag):
+
+2017-02-14  Dean Jackson  <dino@apple.com>
+
+        Rename preferLowPowerWebGLRendering setting to forceWebGLUsesLowPower
+        https://bugs.webkit.org/show_bug.cgi?id=168339
+
+        Reviewed by Simon Fraser.
+
+        Use a better name.
+
+        * WebView/WebPreferenceKeysPrivate.h:
+        * WebView/WebPreferences.mm:
+        (+[WebPreferences initialize]):
+        (-[WebPreferences forceLowPowerGPUForWebGL]):
+        (-[WebPreferences setForceLowPowerGPUForWebGL:]):
+        (-[WebPreferences preferLowPowerWebGLRendering]): Deleted.
+        (-[WebPreferences setPreferLowPowerWebGLRendering:]): Deleted.
+        * WebView/WebPreferencesPrivate.h:
+        * WebView/WebView.mm:
+        (-[WebView _preferencesChanged:]):
+
+2017-02-14  Chris Dumez  <cdumez@apple.com>
+
+        HTML Form Validation bubble should take minimum font size setting into consideration
+        https://bugs.webkit.org/show_bug.cgi?id=168271
+        <rdar://problem/29869869>
+
+        Reviewed by Simon Fraser.
+
+        * WebView/WebView.mm:
+        (-[WebView _contentsOfUserInterfaceItem:]):
+        Return font size used in the validation bubble.
+
+        (-[WebView showFormValidationMessage:withAnchorRect:]):
+        Pass minimum font size setting when constructing the validation bubble.
+
+2017-02-14  Anders Carlsson  <andersca@apple.com>
+
+        Remove an unused delegate method
+        https://bugs.webkit.org/show_bug.cgi?id=168328
+
+        Reviewed by Wenson Hsieh.
+
+        * DefaultDelegates/WebDefaultUIDelegate.m:
+        (-[WebDefaultUIDelegate webView:shouldBeginDragForElement:dragImage:mouseDownEvent:mouseDraggedEvent:]): Deleted.
+
 2017-02-14  Alexey Proskuryakov  <ap@apple.com>
 
         WebCore shouldn't export SystemMemory.h

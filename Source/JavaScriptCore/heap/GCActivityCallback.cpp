@@ -34,9 +34,7 @@
 #include "JSObject.h"
 #include "VM.h"
 
-#if PLATFORM(EFL)
-#include <wtf/MainThread.h>
-#elif USE(GLIB)
+#if USE(GLIB)
 #include <glib.h>
 #endif
 
@@ -53,15 +51,11 @@ GCActivityCallback::GCActivityCallback(Heap* heap)
     : GCActivityCallback(heap->vm())
 {
 }
-#elif PLATFORM(EFL)
-GCActivityCallback::GCActivityCallback(Heap* heap)
-    : GCActivityCallback(heap->vm(), WTF::isMainThread())
-{
-}
 #elif USE(GLIB)
 GCActivityCallback::GCActivityCallback(Heap* heap)
     : GCActivityCallback(heap->vm())
 {
+    g_source_set_ready_time(m_timer.get(), g_get_monotonic_time() + s_decade * G_USEC_PER_SEC);
 }
 #endif
 
@@ -97,66 +91,33 @@ void GCActivityCallback::cancelTimer()
     m_nextFireTime = 0;
     CFRunLoopTimerSetNextFireDate(m_timer.get(), CFAbsoluteTimeGetCurrent() + s_decade);
 }
-#elif PLATFORM(EFL)
-void GCActivityCallback::scheduleTimer(double newDelay)
-{
-    if (newDelay * timerSlop > m_delay)
-        return;
-
-    stop();
-    m_delay = newDelay;
-    
-    ASSERT(!m_timer);
-    m_timer = add(newDelay, this);
-}
-
-void GCActivityCallback::cancelTimer()
-{
-    m_delay = s_hour;
-    stop();
-}
 #elif USE(GLIB)
 void GCActivityCallback::scheduleTimer(double newDelay)
 {
     ASSERT(newDelay >= 0);
-    if (m_delay != -1 && newDelay * timerSlop > m_delay)
+    if (newDelay * timerSlop > m_delay)
         return;
 
+    double delta = m_delay - newDelay;
     m_delay = newDelay;
     m_nextFireTime = WTF::currentTime() + newDelay;
-    if (!m_delay) {
-        g_source_set_ready_time(m_timer.get(), 0);
-        return;
-    }
 
-    auto delayDuration = std::chrono::duration<double>(m_delay);
-    std::chrono::microseconds safeDelayDuration =
-        Options::maxDelayForGCTimers() ? std::chrono::seconds(Options::maxDelayForGCTimers()) : std::chrono::microseconds::max();
-    if (delayDuration < safeDelayDuration)
-        safeDelayDuration = std::chrono::duration_cast<std::chrono::microseconds>(delayDuration);
-    gint64 currentTime = g_get_monotonic_time();
-    gint64 targetTime = currentTime + std::min<gint64>(G_MAXINT64 - currentTime, safeDelayDuration.count());
-    ASSERT(targetTime >= currentTime);
-    g_source_set_ready_time(m_timer.get(), targetTime);
+    // FIXME: Options::maxDelayForGCTimers() ?
+
+    gint64 readyTime = g_source_get_ready_time(m_timer.get());
+    g_source_set_ready_time(m_timer.get(), readyTime - delta * G_USEC_PER_SEC);
 }
 
 void GCActivityCallback::cancelTimer()
 {
-    m_delay = -1;
+    m_delay = s_decade;
     m_nextFireTime = 0;
-    g_source_set_ready_time(m_timer.get(), -1);
+    g_source_set_ready_time(m_timer.get(), g_get_monotonic_time() + s_decade * G_USEC_PER_SEC);
 }
 #endif
 
 void GCActivityCallback::didAllocate(size_t bytes)
 {
-#if PLATFORM(EFL)
-    if (!isEnabled())
-        return;
-
-    ASSERT(WTF::isMainThread());
-#endif
-
     // The first byte allocated in an allocation cycle will report 0 bytes to didAllocate. 
     // We pretend it's one byte so that we don't ignore this allocation entirely.
     if (!bytes)

@@ -110,6 +110,8 @@ public:
     unsigned long long totalBytes() const override;
     float maxTimeLoaded() const override;
 
+    bool hasSingleSecurityOrigin() const override;
+
     void loadStateChanged();
     void timeChanged();
     void didEnd();

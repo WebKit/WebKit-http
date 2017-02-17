@@ -66,6 +66,11 @@ void UIScriptController::doAfterNextStablePresentationUpdate(JSValueRef callback
     doAsyncTask(callback);
 }
 
+void UIScriptController::doAfterVisibleContentRectUpdate(JSValueRef callback)
+{
+    doAsyncTask(callback);
+}
+
 void UIScriptController::insertText(JSStringRef text, int location, int length)
 {
 #if WK_API_ENABLED
@@ -128,6 +133,22 @@ JSObjectRef UIScriptController::contentsOfUserInterfaceItem(JSStringRef interfac
 #else
     UNUSED_PARAM(interfaceItem);
     return nullptr;
+#endif
+}
+
+void UIScriptController::overridePreference(JSStringRef preferenceRef, JSStringRef valueRef)
+{
+#if WK_API_ENABLED
+    TestRunnerWKWebView *webView = TestController::singleton().mainWebView()->platformView();
+    WKPreferences *preferences = webView.configuration.preferences;
+
+    String preference = toWTFString(toWK(preferenceRef));
+    String value = toWTFString(toWK(valueRef));
+    if (preference == "WebKitMinimumFontSize")
+        preferences.minimumFontSize = value.toDouble();
+#else
+    UNUSED_PARAM(preferenceRef);
+    UNUSED_PARAM(valueRef);
 #endif
 }
 

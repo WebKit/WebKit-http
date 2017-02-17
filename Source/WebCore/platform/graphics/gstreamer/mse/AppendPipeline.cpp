@@ -296,6 +296,24 @@ void AppendPipeline::handleNeedContextSyncMessage(GstMessage* message)
         m_playerPrivate->handleSyncMessage(message);
 }
 
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA)
+void AppendPipeline::handleElementMessage(GstMessage* message)
+{
+    ASSERT(WTF::isMainThread());
+
+    const GstStructure* structure = gst_message_get_structure(message);
+    GST_TRACE("%s message from %s", gst_structure_get_name(structure), GST_MESSAGE_SRC_NAME(message));
+    if (m_playerPrivate && gst_structure_has_name(structure, "drm-key-needed")) {
+        setAppendState(AppendPipeline::AppendState::KeyNegotiation);
+
+        GST_DEBUG("sending drm-key-needed message from %s to the player", GST_MESSAGE_SRC_NAME(message));
+        GRefPtr<GstEvent> event;
+        gst_structure_get(structure, "event", GST_TYPE_EVENT, &event.outPtr(), nullptr);
+        m_playerPrivate->handleProtectionEvent(event.get());
+    }
+}
+#endif
+
 void AppendPipeline::handleApplicationMessage(GstMessage* message)
 {
     ASSERT(WTF::isMainThread());

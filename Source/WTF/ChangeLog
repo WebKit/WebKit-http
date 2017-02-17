@@ -1,3 +1,69 @@
+2017-02-16  Alex Christensen  <achristensen@webkit.org>
+
+        Remove EFL-specific files in Source.
+
+        Rubber-stamped by Anders Carlsson.
+
+        * wtf/text/efl: Removed.
+        * wtf/text/efl/TextBreakIteratorInternalICUEfl.cpp: Removed.
+
+2017-02-10  Filip Pizlo  <fpizlo@apple.com>
+
+        The collector thread should only start when the mutator doesn't have heap access
+        https://bugs.webkit.org/show_bug.cgi?id=167737
+
+        Reviewed by Keith Miller.
+        
+        Extend the use of AbstractLocker so that we can use more locking idioms.
+
+        * wtf/AutomaticThread.cpp:
+        (WTF::AutomaticThreadCondition::notifyOne):
+        (WTF::AutomaticThreadCondition::notifyAll):
+        (WTF::AutomaticThreadCondition::add):
+        (WTF::AutomaticThreadCondition::remove):
+        (WTF::AutomaticThreadCondition::contains):
+        (WTF::AutomaticThread::AutomaticThread):
+        (WTF::AutomaticThread::tryStop):
+        (WTF::AutomaticThread::isWaiting):
+        (WTF::AutomaticThread::notify):
+        (WTF::AutomaticThread::start):
+        (WTF::AutomaticThread::threadIsStopping):
+        * wtf/AutomaticThread.h:
+        * wtf/NumberOfCores.cpp:
+        (WTF::numberOfProcessorCores): Allow this to be overridden for testing.
+        * wtf/ParallelHelperPool.cpp:
+        (WTF::ParallelHelperClient::finish):
+        (WTF::ParallelHelperClient::claimTask):
+        (WTF::ParallelHelperPool::Thread::Thread):
+        (WTF::ParallelHelperPool::didMakeWorkAvailable):
+        (WTF::ParallelHelperPool::hasClientWithTask):
+        (WTF::ParallelHelperPool::getClientWithTask):
+        * wtf/ParallelHelperPool.h:
+
+2017-02-16  Anders Carlsson  <andersca@apple.com>
+
+        Remove EFL from WTF
+        https://bugs.webkit.org/show_bug.cgi?id=168452
+
+        Reviewed by Alex Christensen.
+
+        * wtf/CurrentTime.cpp:
+        * wtf/DisallowCType.h:
+        * wtf/FeatureDefines.h:
+        * wtf/MainThread.cpp:
+        * wtf/MainThread.h:
+        * wtf/Platform.h:
+        * wtf/RunLoop.h:
+        * wtf/WorkQueue.h:
+        * wtf/efl/DispatchQueueEfl.cpp: Removed.
+        * wtf/efl/DispatchQueueEfl.h: Removed.
+        * wtf/efl/DispatchQueueWorkItemEfl.h: Removed.
+        * wtf/efl/EflTypedefs.h: Removed.
+        * wtf/efl/MainThreadEfl.cpp: Removed.
+        * wtf/efl/RunLoopEfl.cpp: Removed.
+        * wtf/efl/UniquePtrEfl.h: Removed.
+        * wtf/efl/WorkQueueEfl.cpp: Removed.
+
 2017-02-13  Alex Christensen  <achristensen@webkit.org>
 
         URLs with an invalid IPv4 address should be invalid

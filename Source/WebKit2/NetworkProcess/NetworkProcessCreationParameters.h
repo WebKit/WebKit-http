@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -73,7 +73,6 @@ struct NetworkProcessCreationParameters {
 #endif
     bool shouldSuppressMemoryPressureHandler { false };
     bool shouldUseTestingNetworkSession;
-    bool urlParserEnabled { false };
     std::chrono::milliseconds loadThrottleLatency { 0ms };
 
     Vector<String> urlSchemesRegisteredForCustomProtocols;
@@ -112,6 +111,10 @@ struct NetworkProcessCreationParameters {
 #if ENABLE(NETWORK_CAPTURE)
     String recordReplayMode;
     String recordReplayCacheLocation;
+#endif
+
+#if ENABLE(WEB_RTC)
+    bool webRTCEnabled { false };
 #endif
 };
 

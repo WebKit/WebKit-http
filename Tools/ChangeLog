@@ -1,3 +1,499 @@
+2017-02-16  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r212514.
+        https://bugs.webkit.org/show_bug.cgi?id=168489
+
+        broke test runner (Requested by alexchristensen on #webkit).
+
+        Reverted changeset:
+
+        "Remove EFL-specific files in Tools."
+        http://trac.webkit.org/changeset/212514
+
+2017-02-16  Alex Christensen  <achristensen@webkit.org>
+
+        Remove EFL-specific files in Tools.
+
+        Rubber-stamped by Anders Carlsson.
+
+        * ImageDiff/efl: Removed.
+        * ImageDiff/efl/ImageDiff.cpp: Removed.
+        * MiniBrowser/efl: Removed.
+        * MiniBrowser/efl/CMakeLists.txt: Removed.
+        * MiniBrowser/efl/main.c: Removed.
+        * Scripts/run-efl-tests: Removed.
+        * Scripts/update-webkitefl-libs: Removed.
+        * Scripts/webkitpy/port/efl.py: Removed.
+        * Scripts/webkitpy/port/efl_unittest.py: Removed.
+        * TestWebKitAPI/Tests/WebKit2/efl: Removed.
+        * TestWebKitAPI/Tests/WebKit2/efl/WKViewClientWebProcessCallbacks.cpp: Removed.
+        * TestWebKitAPI/Tests/WebKit2/efl/WKViewClientWebProcessCallbacks_Bundle.cpp: Removed.
+        * TestWebKitAPI/Tests/WebKit2/efl/WKViewScrollTo.cpp: Removed.
+        * TestWebKitAPI/Tests/WebKit2/efl/scrollTo.html: Removed.
+        * TestWebKitAPI/efl: Removed.
+        * TestWebKitAPI/efl/InjectedBundleController.cpp: Removed.
+        * TestWebKitAPI/efl/PlatformUtilities.cpp: Removed.
+        * TestWebKitAPI/efl/PlatformWebView.cpp: Removed.
+        * TestWebKitAPI/efl/main.cpp: Removed.
+        * WebKitTestRunner/InjectedBundle/efl: Removed.
+        * WebKitTestRunner/InjectedBundle/efl/ActivateFontsEfl.cpp: Removed.
+        * WebKitTestRunner/InjectedBundle/efl/FontManagement.cpp: Removed.
+        * WebKitTestRunner/InjectedBundle/efl/FontManagement.h: Removed.
+        * WebKitTestRunner/InjectedBundle/efl/InjectedBundleEfl.cpp: Removed.
+        * WebKitTestRunner/InjectedBundle/efl/TestRunnerEfl.cpp: Removed.
+        * WebKitTestRunner/efl: Removed.
+        * WebKitTestRunner/efl/EventSenderProxyEfl.cpp: Removed.
+        * WebKitTestRunner/efl/PlatformWebViewEfl.cpp: Removed.
+        * WebKitTestRunner/efl/TestControllerEfl.cpp: Removed.
+        * WebKitTestRunner/efl/main.cpp: Removed.
+        * efl: Removed.
+        * efl/install-dependencies: Removed.
+        * efl/jhbuild-optional.modules: Removed.
+        * efl/jhbuild.modules: Removed.
+        * efl/jhbuildrc: Removed.
+        * efl/patches: Removed.
+        * efl/patches/evas-fix-build-with-giflib5.patch: Removed.
+        * efl/patches/fontconfig-C-11-requires-a-space-between-literal-and-identifier.patch: Removed.
+        * efl/patches/gst-libav.patch: Removed.
+        * efl/patches/gst-plugins-base-rtp-rtcpbuffer-fix-typo-in-enum.patch: Removed.
+        * efl/patches/gst-plugins-good-Revert-qtdemux-expose-streams-with-first-moof-for-fr.patch: Removed.
+        * efl/patches/gst-plugins-good-use-the-tfdt-decode-time.patch: Removed.
+        * efl/patches/openwebrtc-gst-plugins-clang-warning-fix.patch: Removed.
+
+2017-02-16  Myles C. Maxfield  <mmaxfield@apple.com>
+
+        font-weight in @font-face can cause a font to be downloaded even when it's not used
+        https://bugs.webkit.org/show_bug.cgi?id=168114
+        <rdar://problem/30301317>
+
+        Reviewed by Darin Adler.
+
+        LastResort needs to be usable in tests.
+
+        * DumpRenderTree/mac/DumpRenderTree.mm:
+        (allowedFontFamilySet):
+        * WebKitTestRunner/InjectedBundle/cocoa/ActivateFontsCocoa.mm:
+        (WTR::allowedFontFamilySet):
+        * WebKitTestRunner/mac/TestControllerMac.mm:
+        (WTR::allowedFontFamilySet):
+
+2017-02-16  Alex Christensen  <achristensen@webkit.org>
+
+        Remove old URL parser
+        https://bugs.webkit.org/show_bug.cgi?id=168483
+
+        Reviewed by Tim Horton.
+
+        * TestWebKitAPI/Tests/WebCore/URLParser.cpp:
+        (TestWebKitAPI::checkURL):
+        (TestWebKitAPI::checkRelativeURL):
+        (TestWebKitAPI::checkURLDifferences):
+        (TestWebKitAPI::checkRelativeURLDifferences):
+
+2017-02-16  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [WK2] Add additional test infrastructure and unit tests for data interaction
+        https://bugs.webkit.org/show_bug.cgi?id=168439
+        <rdar://problem/30557942>
+
+        Reviewed by Tim Horton.
+
+        Adds test support for additional data interaction scenarios that we currently cannot test, and also adds 7 new
+        test cases to DataInteractionTests. Most of the changes here refactor and augment DataInteractionSimulator to
+        support data interaction from  See per-method descriptions below for more details.
+
+        * Configurations/TestWebKitAPI.xcconfig:
+
+        Add MobileCoreServices to the list of additional frameworks to link against on iOS.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+
+        Add a new build phase that copies additional resources from WebKitAdditions/Resources/TestWebKitAPI and dumps
+        them into TestWebKitAPI.resources/ in the build directory, if the WebKitAdditions folder exists.
+
+        * TestWebKitAPI/Tests/ios/DataInteractionTests.mm:
+        (-[TestWKWebView editorContainsImageElement]):
+        (-[TestWKWebView editorValue]):
+
+        New helper methods for querying information from the "editor" element in a test page.
+
+        (TestWebKitAPI::TEST):
+        (TestWebKitAPI::runTestsExpectingToObserveEvents): Deleted.
+
+        Moves logic for capturing events during a simulated data interaction run from the test file to
+        DataInteractionSimulator. See -[DataInteractionSimulator observedEventNames].
+
+        * TestWebKitAPI/cocoa/TestWKWebView.h:
+        * TestWebKitAPI/cocoa/TestWKWebView.mm:
+        (-[TestMessageHandler removeMessage:]):
+        (-[TestWKWebView clearMessageHandlers:]):
+
+        Add the ability to clear message handlers from the TestWKWebView.
+
+        * TestWebKitAPI/ios/DataInteractionSimulator.h:
+        * TestWebKitAPI/ios/DataInteractionSimulator.mm:
+        (dataInteractionEventNames):
+        (-[DataInteractionSimulator initWithWebView:]):
+        (-[DataInteractionSimulator _resetSimulatedState]):
+
+        Moves logic to clear test harness state from any previous runs into a helper. Called at the beginning when
+        simulating data interaction.
+
+        (-[DataInteractionSimulator observedEventNames]):
+
+        Returns a list of the names of events relevant to data interaction that were observed over the course of the
+        most recent run.
+
+        (-[DataInteractionSimulator runFrom:to:]):
+
+        Changes -run to -runFrom:to:, which takes window-relative start and end locations. This allows the test harness
+        to run the same data interaction for multiple simulated gestures.
+
+        (-[DataInteractionSimulator _advanceProgress]):
+        (-[DataInteractionSimulator _finishDataInteraction]):
+        (-[DataInteractionSimulator externalItemProvider]):
+        (-[DataInteractionSimulator setExternalItemProvider:]):
+
+        Adds the -externalItemProvider property to DataInteractionSimulator. Setting this skips the gesture recognition
+        phase of a test run.
+
+        (-[DataInteractionSimulator webViewDidPerformDataInteractionControllerOperation:]):
+        (-[DataInteractionSimulator webView:beginDataInteractionWithSourceIndex:gestureRecognizer:]):
+        (-[DataInteractionSimulator webViewDidSendDataInteractionStartRequest:]):
+        (-[DataInteractionSimulator webView:didReceiveDataInteractionStartResponse:]):
+
+        While a request to start data interaction is in flight, put the remainder of the test on hold until the web
+        process returns. Then continue the test by scheduling a progress advance call. This addresses a race condition
+        wherein the the web process might take longer than usual to process the request to start data interaction, and
+        in the meantime, DataInteractionSimulator would end up completing the rest of the test before a response from
+        the web process is received, which then causes no simulated delegate methods to be fired.
+
+        (-[DataInteractionSimulator initWithWebView:startLocation:endLocation:]): Deleted.
+        (-[DataInteractionSimulator run]): Deleted.
+
+2017-02-16  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        Remove unused test pages in TestWebKitAPI
+        https://bugs.webkit.org/show_bug.cgi?id=168462
+
+        Reviewed by Anders Carlsson.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/autofocus-contenteditable.html: Removed.
+        * TestWebKitAPI/Tests/WebKit2Cocoa/background-image-link-and-input.html: Removed.
+        * TestWebKitAPI/Tests/WebKit2Cocoa/image-and-contenteditable.html: Removed.
+        * TestWebKitAPI/Tests/WebKit2Cocoa/image-and-textarea.html: Removed.
+        * TestWebKitAPI/Tests/WebKit2Cocoa/link-and-input.html: Removed.
+
+2017-02-16  Alex Christensen  <achristensen@webkit.org>
+
+        Special URLs without a host are invalid
+        https://bugs.webkit.org/show_bug.cgi?id=168461
+
+        Reviewed by Tim Horton.
+
+        * TestWebKitAPI/Tests/WebCore/URLParser.cpp:
+        (TestWebKitAPI::TEST_F):
+
+2017-02-10  Filip Pizlo  <fpizlo@apple.com>
+
+        The collector thread should only start when the mutator doesn't have heap access
+        https://bugs.webkit.org/show_bug.cgi?id=167737
+
+        Reviewed by Keith Miller.
+        
+        Make more tests collect continuously.
+
+        * Scripts/run-jsc-stress-tests:
+
+2017-02-16  Tim Horton  <timothy_horton@apple.com>
+
+        WKWebView inside a UICollectionView flashes when items are inserted above it
+        https://bugs.webkit.org/show_bug.cgi?id=168376
+        <rdar://problem/29322051>
+
+        Reviewed by Simon Fraser.
+
+        * WebKitTestRunner/cocoa/TestRunnerWKWebView.mm:
+        (-[TestRunnerWKWebView _setStableStateOverride:]):
+        Update the one external caller of this internal method...
+
+        * DumpRenderTree/ios/UIScriptControllerIOS.mm:
+        (WTR::UIScriptController::doAfterVisibleContentRectUpdate):
+        * DumpRenderTree/mac/UIScriptControllerMac.mm:
+        (WTR::UIScriptController::doAfterVisibleContentRectUpdate):
+        * TestRunnerShared/UIScriptContext/Bindings/UIScriptController.idl:
+        * TestRunnerShared/UIScriptContext/UIScriptController.cpp:
+        (WTR::UIScriptController::doAfterVisibleContentRectUpdate):
+        * TestRunnerShared/UIScriptContext/UIScriptController.h:
+        * WebKitTestRunner/ios/UIScriptControllerIOS.mm:
+        (WTR::UIScriptController::doAfterVisibleContentRectUpdate):
+        * WebKitTestRunner/mac/UIScriptControllerMac.mm:
+        (WTR::UIScriptController::doAfterVisibleContentRectUpdate):
+        Expose doAfterVisibleContentRectUpdate to DRT and WKTR. It is called
+        back after we dispatch a visible content rect update from the UI process
+        to the Web Content process, so any messages sent from the block will arrive
+        after the visible content rect update.
+
+2017-02-16  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK] Add two new buildbots that build-only test on Debian stable and Ubuntu LTS.
+        https://bugs.webkit.org/show_bug.cgi?id=168321
+
+        This bots should be added to the trunk build scheduler.
+        Unreviewed fix after r212429.
+
+        * BuildSlaveSupport/build.webkit.org-config/config.json:
+
+2017-02-16  Carlos Alberto Lopez Perez  <clopez@igalia.com>
+
+        [GTK] Add two new buildbots that build-only test on Debian stable and Ubuntu LTS
+        https://bugs.webkit.org/show_bug.cgi?id=168321
+
+        Reviewed by Michael Catanzaro.
+
+        The additionalArgument --default-cmake-features is used both to
+        skip the JHBuild (InstallGtkDependencies) build step and to build
+        with the default features from the CMake config.
+
+        * BuildSlaveSupport/build.webkit.org-config/config.json:
+        * BuildSlaveSupport/build.webkit.org-config/master.cfg:
+        (Factory.__init__):
+        * BuildSlaveSupport/build.webkit.org-config/mastercfg_unittest.py:
+
+2017-02-15  Lucas Forschler  <lforschler@apple.com>
+
+        https://bugs.webkit.org/show_bug.cgi?id=168386
+        Remove EFL from build.webkit.org
+
+        Reviewed by Alex Christensen
+
+        * BuildSlaveSupport/build.webkit.org-config/config.json:
+        * BuildSlaveSupport/build.webkit.org-config/master.cfg:
+        (DeleteStaleBuildFiles.start):
+        (appendCustomBuildFlags):
+        (RunWebKitTests.start):
+        (RunBuiltinsTests):
+        (Factory.__init__):
+        (TestFactory.__init__):
+        (loadBuilderConfig):
+        (InstallEflDependencies): Deleted.
+        (RunEflAPITests): Deleted.
+        * BuildSlaveSupport/build.webkit.org-config/mastercfg_unittest.py:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/TestFailures/scripts/config.js:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/BubbleQueueServer.js:
+        (BubbleQueueServer):
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/Dashboard.js:
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/MetricsAnalyzer.js:
+        (Analyzer.prototype._triggeringQueue):
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Scripts/WebKitBuildbot.js:
+        (WebKitBuildbot):
+        * BuildSlaveSupport/build.webkit.org-config/public_html/dashboard/Styles/Main.css:
+        (table.queue-grid tr.platform.linux-efl img.logo): Deleted.
+        * BuildSlaveSupport/build.webkit.org-config/templates/root.html:
+        * BuildSlaveSupport/build.webkit.org-config/wkbuild.py:
+        (_should_file_trigger_build):
+
+2017-02-15  Alex Christensen  <achristensen@webkit.org>
+
+        Unreviewed, rolling out r212169.
+
+        Broke iOS WebInspector
+
+        Reverted changeset:
+
+        "WebInspector: refactor RemoteInspector to move cocoa specific
+        code to their own files"
+        https://bugs.webkit.org/show_bug.cgi?id=166681
+        http://trac.webkit.org/changeset/212169
+
+2017-02-15  Jonathan Bedard  <jbedard@apple.com>
+
+        webkitpy: Fix DarwinPort._get_crash_log()
+        https://bugs.webkit.org/show_bug.cgi?id=168372
+        <rdar://problem/30535156>
+
+        Reviewed by Daniel Bates.
+
+        Callers of _get_crash_log expect a pair to be returned and do not check it's return value.  
+        DarwinPort should return the expected return value for _get_crash_log.
+
+        * Scripts/webkitpy/port/darwin.py:
+        (DarwinPort._get_crash_log): Call parent class's implementation of _get_crash_log.
+
+2017-02-15  Chris Dumez  <cdumez@apple.com>
+
+        [iOS] Form Validation Bubble should be sensitive to Dynamic Type
+        https://bugs.webkit.org/show_bug.cgi?id=168291
+        <rdar://problem/30508593>
+
+        Reviewed by Tim Horton.
+
+        Drop overridePreference() implementation in iOS's UIScriptController
+        as it was only used for the minimum font size setting and this setting
+        is not exposed on iOS.
+
+        * DumpRenderTree/ios/UIScriptControllerIOS.mm:
+        * TestRunnerShared/UIScriptContext/UIScriptController.cpp:
+        (WTR::UIScriptController::overridePreference):
+        * WebKitTestRunner/ios/UIScriptControllerIOS.mm:
+
+2017-02-15  Jonathan Bedard  <jbedard@apple.com>
+
+        webkitpy: Memoize app_identifier_from_bundle for efficiency, call parent class for _get_crash_log
+        https://bugs.webkit.org/show_bug.cgi?id=168329
+        <rdar://problem/30518832>
+
+        Reviewed by Daniel Bates.
+
+        When testing on device, app_identifier_from_bundle is repeatedly called but the return value will
+        never change given the same input arguments.  Memoize function for efficiency.
+
+        * Scripts/webkitpy/port/darwin.py: Add memoized import.
+        (DarwinPort):
+        (DarwinPort.app_identifier_from_bundle): Memoize to avoid extra executions of PlistBuddy.
+        
+
+2017-02-15  Jonathan Bedard  <jbedard@apple.com>
+
+        webkitpy: Remove unused import from darwin.py
+        https://bugs.webkit.org/show_bug.cgi?id=168371
+
+        Reviewed by Alex Christensen.
+
+        * Scripts/webkitpy/port/darwin.py: Remove unused 'time' module.
+
+2017-02-15  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [SOUP] Credentials stored by libsoup are used even StoredCredentials policy is DoNotAllowStoredCredentials
+        https://bugs.webkit.org/show_bug.cgi?id=168364
+
+        Reviewed by Michael Catanzaro.
+
+        This can happen if a previous load with allowed to use stored credentials authenticated successfully, saving the
+        credentials in libsoup. It's actually a libsoup bug, but since it's causing layout test failures and we have
+        patches for them, let's patch out jhbuild until we have a new libsoup version to depend on.
+
+        Fixes: http/tests/security/credentials-from-different-domains.html
+               http/tests/xmlhttprequest/cross-origin-no-authorization.html
+
+        * gtk/jhbuild.modules:
+        * gtk/patches/libsoup-auth-Fix-async-authentication-when-flag-SOUP_MESSAGE.patch: Added.
+        * gtk/patches/libsoup-auth-do-not-use-cached-credentials-in-lookup-method-.patch: Added.
+
+2017-02-14  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Update cookie manager API to properly work with ephemeral sessions
+        https://bugs.webkit.org/show_bug.cgi?id=168230
+
+        Reviewed by Michael Catanzaro.
+
+        Update unit tests and add new cases for the new API.
+
+        * MiniBrowser/gtk/main.c:
+        (gotWebsiteDataCallback):
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestCookieManager.cpp:
+        (testCookieManagerEphemeral):
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestWebKitWebContext.cpp:
+        (testWebContextEphemeral):
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestWebKitWebView.cpp:
+        (testWebViewEphemeral):
+        * TestWebKitAPI/Tests/WebKit2Gtk/TestWebsiteData.cpp:
+        (serverCallback):
+        (testWebsiteDataEphemeral):
+        (testWebsiteDataCookies):
+        (beforeAll):
+
+2017-02-14  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [WK2] Support data interaction on links
+        https://bugs.webkit.org/show_bug.cgi?id=168331
+        <rdar://problem/30200837>
+
+        Reviewed by Tim Horton.
+
+        Adds 2 unit tests checking that data interaction from a link (with or without a background image) into an
+        editable area results in the link URL being inserted.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/background-image-link-and-input.html: Added.
+        * TestWebKitAPI/Tests/WebKit2Cocoa/link-and-input.html: Added.
+        * TestWebKitAPI/Tests/ios/DataInteractionTests.mm:
+        (TestWebKitAPI::TEST):
+
+2017-02-14  Jason Rinn  <jrinn@apple.com>
+
+        Add a test for new WebKit Cocoa API, _getContentsAsString.
+        https://bugs.webkit.org/show_bug.cgi?id=168147
+        <rdar://problem/30502539>
+
+        Reviewed by Tim Horton.
+
+        * TestWebKitAPI/TestWebKitAPI.xcodeproj/project.pbxproj:
+        * TestWebKitAPI/Tests/WebKit2Cocoa/WKWebViewGetContents.mm: Added.
+        (TEST):
+
+2017-02-14  Matt Rajca  <mrajca@apple.com>
+
+        Website policies: iframes should respect the autoplay policy of the top-level document
+        https://bugs.webkit.org/show_bug.cgi?id=168333
+
+        Reviewed by Alex Christensen.
+
+        * TestWebKitAPI/Tests/WebKit2/autoplay-check-frame.html: Added.
+        * TestWebKitAPI/Tests/WebKit2/autoplay-check-in-iframe.html: Added.
+        * TestWebKitAPI/Tests/WebKit2Cocoa/WebsitePolicies.mm:
+        (-[AutoplayPoliciesDelegate _webView:decidePolicyForNavigationAction:decisionHandler:]):
+        (TEST):
+
+2017-02-14  Chris Dumez  <cdumez@apple.com>
+
+        HTML Form Validation bubble should take minimum font size setting into consideration
+        https://bugs.webkit.org/show_bug.cgi?id=168271
+        <rdar://problem/29869869>
+
+        Reviewed by Simon Fraser.
+
+        Extend UIScriptController's contentsOfUserInterfaceItem() to also return the
+        font size of the validation bubble.
+
+        Add an overridePreference() method to UIScriptController. This is currently
+        used to override the value of the minimumFontSize setting. testRunner's
+        overridePreference() is not usable on WK2 because it does not update the
+        value of the preference on the UIProcess side.
+
+        * DumpRenderTree/ios/UIScriptControllerIOS.mm:
+        (WTR::UIScriptController::overridePreference):
+        * DumpRenderTree/mac/UIScriptControllerMac.mm:
+        (WTR::UIScriptController::overridePreference):
+        * TestRunnerShared/UIScriptContext/Bindings/UIScriptController.idl:
+        * TestRunnerShared/UIScriptContext/UIScriptController.h:
+        * WebKitTestRunner/TestController.cpp:
+        (WTR::TestController::resetPreferencesToConsistentValues):
+        * WebKitTestRunner/ios/UIScriptControllerIOS.mm:
+        (WTR::UIScriptController::overridePreference):
+        * WebKitTestRunner/mac/UIScriptControllerMac.mm:
+        (WTR::UIScriptController::contentsOfUserInterfaceItem):
+        (WTR::UIScriptController::overridePreference):
+
+2017-02-14  Florian Bruhin  <git@the-compiler.org>
+
+        Use a set instead of a list for tests when parsing expectations
+        https://bugs.webkit.org/show_bug.cgi?id=168304
+
+        In _collect_matching_tests, a lot of membership tests are done on a giant list
+        of strings. By making it a set instead, we can make those much faster, and
+        there's no reason for it to be a list.
+
+        With ~45k tests and some 1000 expectations, this reduces the parse time from 34s
+        to 3s on my machine.
+
+        Reviewed by Ryosuke Niwa.
+
+        * Scripts/webkitpy/layout_tests/models/test_expectations.py:
+        (TestExpectationParser.__init__):
+        (TestExpectationParser._collect_matching_tests):
+
 2017-02-14  Jonathan Bedard  <jbedard@apple.com>
 
         Unreviewed build-fix after r212297.

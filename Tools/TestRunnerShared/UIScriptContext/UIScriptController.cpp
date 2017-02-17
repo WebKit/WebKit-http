@@ -74,6 +74,10 @@ void UIScriptController::doAfterPresentationUpdate(JSValueRef)
 void UIScriptController::doAfterNextStablePresentationUpdate(JSValueRef)
 {
 }
+
+void UIScriptController::doAfterVisibleContentRectUpdate(JSValueRef)
+{
+}
 #endif
 
 void UIScriptController::setDidStartFormControlInteractionCallback(JSValueRef callback)
@@ -400,6 +404,10 @@ void UIScriptController::addViewToWindow(JSValueRef)
 #endif // !PLATFORM(COCOA)
 
 #if !PLATFORM(MAC)
+
+void UIScriptController::overridePreference(JSStringRef, JSStringRef)
+{
+}
 
 void UIScriptController::insertText(JSStringRef, int, int)
 {

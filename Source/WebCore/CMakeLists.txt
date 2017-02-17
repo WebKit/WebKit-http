@@ -225,6 +225,7 @@ set(WebCore_NON_SVG_IDL_FILES
     Modules/mediastream/MediaTrackConstraints.idl
     Modules/mediastream/MediaTrackSupportedConstraints.idl
     Modules/mediastream/NavigatorMediaDevices.idl
+    Modules/mediastream/NavigatorUserMedia.idl
     Modules/mediastream/OverconstrainedError.idl
     Modules/mediastream/OverconstrainedErrorEvent.idl
     Modules/mediastream/RTCConfiguration.idl
@@ -241,7 +242,6 @@ set(WebCore_NON_SVG_IDL_FILES
     Modules/mediastream/RTCRtpTransceiver.idl
     Modules/mediastream/RTCSessionDescription.idl
     Modules/mediastream/RTCStatsReport.idl
-    Modules/mediastream/RTCStatsResponse.idl
     Modules/mediastream/RTCTrackEvent.idl
 
     Modules/navigatorcontentutils/NavigatorContentUtils.idl
@@ -928,7 +928,6 @@ set(WebCore_SOURCES
     Modules/mediastream/RTCRtpTransceiver.cpp
     Modules/mediastream/RTCSessionDescription.cpp
     Modules/mediastream/RTCStatsReport.cpp
-    Modules/mediastream/RTCStatsResponse.cpp
     Modules/mediastream/RTCTrackEvent.cpp
     Modules/mediastream/SDPProcessor.cpp
     Modules/mediastream/UserMediaController.cpp
@@ -1891,6 +1890,7 @@ set(WebCore_SOURCES
     loader/ResourceLoadStatistics.cpp
     loader/ResourceLoadStatisticsStore.cpp
     loader/ResourceLoader.cpp
+    loader/ResourceTiming.cpp
     loader/ResourceTimingInformation.cpp
     loader/SinkDocument.cpp
     loader/SubframeLoader.cpp
@@ -3677,6 +3677,7 @@ set(WebCore_BUILTINS_SOURCES
     ${WEBCORE_DIR}/Modules/fetch/FetchRequest.js
     ${WEBCORE_DIR}/Modules/fetch/FetchResponse.js
     ${WEBCORE_DIR}/Modules/fetch/WorkerGlobalScopeFetch.js
+    ${WEBCORE_DIR}/Modules/mediastream/NavigatorUserMedia.js
     ${WEBCORE_DIR}/Modules/mediastream/RTCPeerConnection.js
     ${WEBCORE_DIR}/Modules/mediastream/RTCPeerConnectionInternals.js
     ${WEBCORE_DIR}/Modules/streams/ByteLengthQueuingStrategy.js

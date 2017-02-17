@@ -103,12 +103,12 @@ using namespace WebCore;
     _tileController->setNeedsDisplayInRect(enclosingIntRect(rect));
 }
 
-- (void)setAcceleratesDrawing:(BOOL)acceleratesDrawing
+- (void)setDrawsAsynchronously:(BOOL)acceleratesDrawing
 {
     _tileController->setAcceleratesDrawing(acceleratesDrawing);
 }
 
-- (BOOL)acceleratesDrawing
+- (BOOL)drawsAsynchronously
 {
     return _tileController ? _tileController->acceleratesDrawing() : NO;
 }

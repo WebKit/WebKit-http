@@ -201,7 +201,7 @@ void DragController::dragExited(const DragData& dragData)
 #else
         DataTransferAccessPolicy policy = DataTransferAccessPolicy::TypesReadable;
 #endif
-        auto dataTransfer = DataTransfer::createForDragAndDrop(policy, dragData);
+        auto dataTransfer = DataTransfer::createForDrop(policy, dragData);
         dataTransfer->setSourceOperation(dragData.draggingSourceOperationMask());
         m_page.mainFrame().eventHandler().cancelDragAndDrop(createMouseEvent(dragData), dataTransfer);
         dataTransfer->setAccessPolicy(DataTransferAccessPolicy::Numb); // Invalidate dataTransfer here for security.
@@ -231,7 +231,7 @@ bool DragController::performDragOperation(const DragData& dragData)
         bool preventedDefault = false;
         if (mainFrame->view()) {
             // Sending an event can result in the destruction of the view and part.
-            auto dataTransfer = DataTransfer::createForDragAndDrop(DataTransferAccessPolicy::Readable, dragData);
+            auto dataTransfer = DataTransfer::createForDrop(DataTransferAccessPolicy::Readable, dragData);
             dataTransfer->setSourceOperation(dragData.draggingSourceOperationMask());
             preventedDefault = mainFrame->eventHandler().performDragAndDrop(createMouseEvent(dragData), dataTransfer);
             dataTransfer->setAccessPolicy(DataTransferAccessPolicy::Numb); // Invalidate dataTransfer here for security.
@@ -622,7 +622,7 @@ bool DragController::tryDHTMLDrag(const DragData& dragData, DragOperation& opera
 #else
     DataTransferAccessPolicy policy = DataTransferAccessPolicy::TypesReadable;
 #endif
-    auto dataTransfer = DataTransfer::createForDragAndDrop(policy, dragData);
+    auto dataTransfer = DataTransfer::createForDrop(policy, dragData);
     DragOperation srcOpMask = dragData.draggingSourceOperationMask();
     dataTransfer->setSourceOperation(srcOpMask);
 
@@ -798,19 +798,21 @@ bool DragController::startDrag(Frame& src, const DragState& state, DragOperation
     ASSERT(state.dataTransfer);
 
     DataTransfer& dataTransfer = *state.dataTransfer;
-    if (state.type == DragSourceActionDHTML)
+    if (state.type == DragSourceActionDHTML) {
         dragImage = DragImage { dataTransfer.createDragImage(dragImageOffset) };
-    if (state.type == DragSourceActionSelection || !imageURL.isEmpty() || !linkURL.isEmpty())
+        // We allow DHTML/JS to set the drag image, even if its a link, image or text we're dragging.
+        // This is in the spirit of the IE API, which allows overriding of pasteboard data and DragOp.
+        if (dragImage) {
+            dragLoc = dragLocForDHTMLDrag(mouseDraggedPoint, dragOrigin, dragImageOffset, !linkURL.isEmpty());
+            m_dragOffset = dragImageOffset;
+        }
+    }
+
+    if (state.type == DragSourceActionSelection || !imageURL.isEmpty() || !linkURL.isEmpty()) {
         // Selection, image, and link drags receive a default set of allowed drag operations that
         // follows from:
         // http://trac.webkit.org/browser/trunk/WebKit/mac/WebView/WebHTMLView.mm?rev=48526#L3430
         m_sourceDragOperation = static_cast<DragOperation>(m_sourceDragOperation | DragOperationGeneric | DragOperationCopy);
-
-    // We allow DHTML/JS to set the drag image, even if its a link, image or text we're dragging.
-    // This is in the spirit of the IE API, which allows overriding of pasteboard data and DragOp.
-    if (dragImage) {
-        dragLoc = dragLocForDHTMLDrag(mouseDraggedPoint, dragOrigin, dragImageOffset, !linkURL.isEmpty());
-        m_dragOffset = dragImageOffset;
     }
 
     ASSERT(state.source);
@@ -837,7 +839,7 @@ bool DragController::startDrag(Frame& src, const DragState& state, DragOperation
             if (enclosingTextFormControl(src.selection().selection().start()))
                 dataTransfer.pasteboard().writePlainText(src.editor().selectedTextForDataTransfer(), Pasteboard::CannotSmartReplace);
             else {
-#if PLATFORM(COCOA) || PLATFORM(EFL) || PLATFORM(GTK)
+#if PLATFORM(COCOA) || PLATFORM(GTK)
                 src.editor().writeSelectionToPasteboard(dataTransfer.pasteboard());
 #else
                 // FIXME: Convert all other platforms to match Mac and delete this.
@@ -857,7 +859,7 @@ bool DragController::startDrag(Frame& src, const DragState& state, DragOperation
         if (!dragImage)
             return false;
 
-        doSystemDrag(WTFMove(dragImage), dragLoc, dragOrigin, dragImageBounds, dataTransfer, src, false);
+        doSystemDrag(WTFMove(dragImage), dragLoc, dragOrigin, dragImageBounds, dataTransfer, src, DragSourceActionSelection);
         return true;
     }
 
@@ -885,8 +887,9 @@ bool DragController::startDrag(Frame& src, const DragState& state, DragOperation
             doImageDrag(element, dragOrigin, hitTestResult.imageRect(), dataTransfer, src, m_dragOffset);
         } else {
             // DHTML defined drag image
-            doSystemDrag(WTFMove(dragImage), dragLoc, dragOrigin, { }, dataTransfer, src, false);
+            doSystemDrag(WTFMove(dragImage), dragLoc, dragOrigin, { }, dataTransfer, src, DragSourceActionImage);
         }
+
         return true;
     }
 
@@ -921,10 +924,9 @@ bool DragController::startDrag(Frame& src, const DragState& state, DragOperation
             IntSize size = dragImageSize(dragImage.get());
             m_dragOffset = IntPoint(-size.width() / 2, -LinkDragBorderInset);
             dragLoc = IntPoint(mouseDraggedPoint.x() + m_dragOffset.x(), mouseDraggedPoint.y() + m_dragOffset.y());
-            // Later code expects the drag image to be scaled by device's scale factor.
-            dragImage = DragImage { scaleDragImage(dragImage.get(), FloatSize(m_page.deviceScaleFactor(), m_page.deviceScaleFactor())) };
+            dragImage = DragImage { platformAdjustDragImageForDeviceScaleFactor(dragImage.get(), m_page.deviceScaleFactor()) };
         }
-        doSystemDrag(WTFMove(dragImage), dragLoc, mouseDraggedPoint, { }, dataTransfer, src, true);
+        doSystemDrag(WTFMove(dragImage), dragLoc, mouseDraggedPoint, { }, dataTransfer, src, DragSourceActionLink);
 
         return true;
     }
@@ -944,7 +946,7 @@ bool DragController::startDrag(Frame& src, const DragState& state, DragOperation
             dragLoc = dragLocForSelectionDrag(src);
             m_dragOffset = IntPoint(dragOrigin.x() - dragLoc.x(), dragOrigin.y() - dragLoc.y());
         }
-        doSystemDrag(WTFMove(dragImage), dragLoc, dragOrigin, { }, dataTransfer, src, false);
+        doSystemDrag(WTFMove(dragImage), dragLoc, dragOrigin, { }, dataTransfer, src, DragSourceActionAttachment);
         return true;
     }
 #endif
@@ -952,7 +954,7 @@ bool DragController::startDrag(Frame& src, const DragState& state, DragOperation
     if (state.type == DragSourceActionDHTML && dragImage) {
         ASSERT(m_dragSourceAction & DragSourceActionDHTML);
         m_client.willPerformDragSourceAction(DragSourceActionDHTML, dragOrigin, dataTransfer);
-        doSystemDrag(WTFMove(dragImage), dragLoc, dragOrigin, { }, dataTransfer, src, false);
+        doSystemDrag(WTFMove(dragImage), dragLoc, dragOrigin, { }, dataTransfer, src, DragSourceActionDHTML);
         return true;
     }
 
@@ -977,7 +979,7 @@ void DragController::doImageDrag(Element& element, const IntPoint& dragOrigin, c
         dragImage = DragImage { fitDragImageToMaxSize(dragImage.get(), layoutRect.size(), maxDragImageSize()) };
         IntSize fittedSize = dragImageSize(dragImage.get());
 
-        dragImage = DragImage { scaleDragImage(dragImage.get(), FloatSize(m_page.deviceScaleFactor(), m_page.deviceScaleFactor())) };
+        dragImage = DragImage { platformAdjustDragImageForDeviceScaleFactor(dragImage.get(), m_page.deviceScaleFactor()) };
         dragImage = DragImage { dissolveDragImageToFraction(dragImage.get(), DragImageAlpha) };
 
         // Properly orient the drag image and orient it differently if it's smaller than the original.
@@ -1002,13 +1004,15 @@ void DragController::doImageDrag(Element& element, const IntPoint& dragOrigin, c
         return;
 
     dragImageOffset = mouseDownPoint + scaledOrigin;
-    doSystemDrag(WTFMove(dragImage), dragImageOffset, dragOrigin, element.boundsInRootViewSpace(), dataTransfer, frame, false);
+    doSystemDrag(WTFMove(dragImage), dragImageOffset, dragOrigin, element.boundsInRootViewSpace(), dataTransfer, frame, DragSourceActionImage);
 }
 
-void DragController::doSystemDrag(DragImage image, const IntPoint& dragLoc, const IntPoint& eventPos, const IntRect& dragImageBounds, DataTransfer& dataTransfer, Frame& frame, bool forLink)
+void DragController::doSystemDrag(DragImage image, const IntPoint& dragLoc, const IntPoint& eventPos, const IntRect& dragImageBounds, DataTransfer& dataTransfer, Frame& frame, DragSourceAction dragSourceAction)
 {
     FloatPoint dragImageAnchor = { 0.5, 0.5 };
-    if (!dragImageBounds.isEmpty()) {
+    if (dragSourceAction == DragSourceActionLink)
+        dragImageAnchor.setY(1);
+    else if (!dragImageBounds.isEmpty()) {
         dragImageAnchor.setX((eventPos.x() - dragImageBounds.x()) / (float)dragImageBounds.width());
         dragImageAnchor.setY((eventPos.y() - dragImageBounds.y()) / (float)dragImageBounds.height());
     }
@@ -1018,7 +1022,7 @@ void DragController::doSystemDrag(DragImage image, const IntPoint& dragLoc, cons
     // Protect this frame and view, as a load may occur mid drag and attempt to unload this frame
     Ref<MainFrame> frameProtector(m_page.mainFrame());
     RefPtr<FrameView> viewProtector = frameProtector->view();
-    m_client.startDrag(image.get(), viewProtector->rootViewToContents(frame.view()->contentsToRootView(dragLoc)), viewProtector->rootViewToContents(frame.view()->contentsToRootView(eventPos)), dragImageAnchor, dataTransfer, frameProtector.get(), forLink);
+    m_client.startDrag(WTFMove(image), viewProtector->rootViewToContents(frame.view()->contentsToRootView(dragLoc)), viewProtector->rootViewToContents(frame.view()->contentsToRootView(eventPos)), dragImageAnchor, dataTransfer, frameProtector.get(), dragSourceAction);
     // DragClient::startDrag can cause our Page to dispear, deallocating |this|.
     if (!frameProtector->page())
         return;

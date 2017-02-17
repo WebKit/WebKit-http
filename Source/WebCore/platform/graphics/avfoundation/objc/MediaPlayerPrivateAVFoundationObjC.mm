@@ -189,6 +189,7 @@ SOFT_LINK_POINTER(AVFoundation, AVLayerVideoGravityResizeAspectFill, NSString *)
 SOFT_LINK_POINTER(AVFoundation, AVLayerVideoGravityResize, NSString *)
 
 SOFT_LINK_POINTER_OPTIONAL(AVFoundation, AVURLAssetClientBundleIdentifierKey, NSString *)
+SOFT_LINK_POINTER_OPTIONAL(AVFoundation, AVURLAssetRequiresCustomURLLoadingKey, NSString *)
 
 #define AVPlayer initAVPlayer()
 #define AVPlayerItem initAVPlayerItem()
@@ -210,6 +211,7 @@ SOFT_LINK_POINTER_OPTIONAL(AVFoundation, AVURLAssetClientBundleIdentifierKey, NS
 #define AVPlayerItemDidPlayToEndTimeNotification getAVPlayerItemDidPlayToEndTimeNotification()
 #define AVURLAssetInheritURIQueryComponentFromReferencingURIKey getAVURLAssetInheritURIQueryComponentFromReferencingURIKey()
 #define AVURLAssetClientBundleIdentifierKey getAVURLAssetClientBundleIdentifierKey()
+#define AVURLAssetRequiresCustomURLLoadingKey getAVURLAssetRequiresCustomURLLoadingKey()
 #define AVAssetImageGeneratorApertureModeCleanAperture getAVAssetImageGeneratorApertureModeCleanAperture()
 #define AVURLAssetReferenceRestrictionsKey getAVURLAssetReferenceRestrictionsKey()
 #define AVLayerVideoGravityResizeAspect getAVLayerVideoGravityResizeAspect()
@@ -936,6 +938,9 @@ void MediaPlayerPrivateAVFoundationObjC::createAVAssetForURL(const String& url)
     String identifier = player()->sourceApplicationIdentifier();
     if (!identifier.isEmpty() && AVURLAssetClientBundleIdentifierKey)
         [options setObject:identifier forKey:AVURLAssetClientBundleIdentifierKey];
+
+    if (AVURLAssetRequiresCustomURLLoadingKey)
+        [options setObject:@YES forKey:AVURLAssetRequiresCustomURLLoadingKey];
 #endif
 
 #if ENABLE(AVF_CAPTIONS)
@@ -1765,19 +1770,22 @@ bool MediaPlayerPrivateAVFoundationObjC::shouldWaitForLoadingOfResource(AVAssetR
         // [4 bytes: keyURI size], [keyURI size bytes: keyURI]
         unsigned keyURISize = keyURI.length() * sizeof(UChar);
         RefPtr<ArrayBuffer> initDataBuffer = ArrayBuffer::create(4 + keyURISize, 1);
-        RefPtr<JSC::DataView> initDataView = JSC::DataView::create(initDataBuffer, 0, initDataBuffer->byteLength());
+        unsigned byteLength = initDataBuffer->byteLength();
+        RefPtr<JSC::DataView> initDataView = JSC::DataView::create(initDataBuffer.copyRef(), 0, byteLength);
         initDataView->set<uint32_t>(0, keyURISize, true);
 
-        RefPtr<Uint16Array> keyURIArray = Uint16Array::create(initDataBuffer, 4, keyURI.length());
+        RefPtr<Uint16Array> keyURIArray = Uint16Array::create(initDataBuffer.copyRef(), 4, keyURI.length());
         keyURIArray->setRange(StringView(keyURI).upconvertedCharacters(), keyURI.length() / sizeof(unsigned char), 0);
 
-        RefPtr<Uint8Array> initData = Uint8Array::create(initDataBuffer, 0, initDataBuffer->byteLength());
+        RefPtr<Uint8Array> initData = Uint8Array::create(WTFMove(initDataBuffer), 0, byteLength);
         if (!player()->keyNeeded(initData.get()))
             return false;
 
         m_keyURIToRequestMap.set(keyURI, avRequest);
         return true;
-    } else if (scheme == "clearkey") {
+    }
+
+    if (scheme == "clearkey") {
         String keyID = [[[avRequest request] URL] resourceSpecifier];
         StringView keyIDView(keyID);
         CString utf8EncodedKeyId = UTF8Encoding().encode(keyIDView, URLEncodedEntitiesForUnencodables);

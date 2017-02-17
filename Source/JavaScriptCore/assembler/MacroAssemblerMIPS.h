@@ -836,7 +836,7 @@ public:
 
     ALWAYS_INLINE void load8SignedExtendTo32(AbsoluteAddress address, RegisterID dest)
     {
-        load8(address.m_ptr, dest);
+        load8SignedExtendTo32(address.m_ptr, dest);
     }
 
     void load8SignedExtendTo32(const void* address, RegisterID dest)
