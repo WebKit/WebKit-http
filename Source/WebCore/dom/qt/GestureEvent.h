@@ -42,8 +42,7 @@ class GestureEvent : public MouseRelatedEvent {
 public:
     virtual ~GestureEvent() { }
 
-    static PassRefPtr<GestureEvent> create();
-    static PassRefPtr<GestureEvent> create(PassRefPtr<AbstractView>, const PlatformGestureEvent&);
+    static RefPtr<GestureEvent> create(AbstractView*, const PlatformGestureEvent&);
 
     void initGestureEvent(const AtomicString& type, PassRefPtr<AbstractView>, int screenX, int screenY, int clientX, int clientY, bool ctrlKey, bool altKey, bool shiftKey, bool metaKey, float deltaX, float deltaY);
 
@@ -53,8 +52,7 @@ public:
     float deltaY() const { return m_deltaY; }
 
 private:
-    GestureEvent();
-    GestureEvent(const AtomicString& type, double timestamp, PassRefPtr<AbstractView>, int screenX, int screenY, int clientX, int clientY, bool ctrlKey, bool altKey, bool shiftKey, bool metaKey, float deltaX, float deltaY);
+    GestureEvent(const AtomicString& type, double timestamp, AbstractView*, int screenX, int screenY, int clientX, int clientY, bool ctrlKey, bool altKey, bool shiftKey, bool metaKey, float deltaX, float deltaY);
 
     float m_deltaX;
     float m_deltaY;

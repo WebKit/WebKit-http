@@ -35,12 +35,7 @@
 
 namespace WebCore {
 
-PassRefPtr<GestureEvent> GestureEvent::create()
-{
-    return adoptRef(new GestureEvent);
-}
-
-PassRefPtr<GestureEvent> GestureEvent::create(PassRefPtr<AbstractView> view, const PlatformGestureEvent& event)
+RefPtr<GestureEvent> GestureEvent::create(AbstractView* view, const PlatformGestureEvent& event)
 {
     AtomicString eventType;
     switch (event.type()) {
@@ -69,7 +64,7 @@ void GestureEvent::initGestureEvent(const AtomicString& type, PassRefPtr<Abstrac
     if (dispatched())
         return;
 
-    initUIEvent(type, true, true, view, 0);
+    initUIEvent(type, true, true, view.get(), 0);
     m_screenLocation = IntPoint(screenX, screenY);
     m_ctrlKey = ctrlKey;
     m_altKey = altKey;
@@ -88,13 +83,7 @@ EventInterface GestureEvent::eventInterface() const
     return EventInterfaceType;
 }
 
-GestureEvent::GestureEvent()
-    : m_deltaX(0)
-    , m_deltaY(0)
-{
-}
-
-GestureEvent::GestureEvent(const AtomicString& type, double timestamp, PassRefPtr<AbstractView> view, int screenX, int screenY, int clientX, int clientY, bool ctrlKey, bool altKey, bool shiftKey, bool metaKey, float deltaX, float deltaY)
+GestureEvent::GestureEvent(const AtomicString& type, double timestamp, AbstractView* view, int screenX, int screenY, int clientX, int clientY, bool ctrlKey, bool altKey, bool shiftKey, bool metaKey, float deltaX, float deltaY)
     : MouseRelatedEvent(type, true, true, timestamp, view, 0, IntPoint(screenX, screenY), IntPoint(clientX, clientY),
 #if ENABLE(POINTER_LOCK)
                         IntPoint(0, 0),
