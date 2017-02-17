@@ -2160,8 +2160,10 @@ bool Node::dispatchGestureEvent(const PlatformGestureEvent& event)
     if (!gestureEvent.get())
         return false;
 
-    if (isDisabledFormControl(this))
-        return true;
+    if (!is<Element>(*this))
+        return false;
+    if (downcast<Element>(*this).isDisabledFormControl())
+        return false;
 
     EventDispatcher::dispatchEvent(this, *gestureEvent);
 

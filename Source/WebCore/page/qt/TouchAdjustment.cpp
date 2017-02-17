@@ -79,7 +79,7 @@ bool nodeRespondsToTapGesture(Node* node)
         return true;
     // Accept nodes that has a CSS effect when touched.
     if (node->isElementNode()) {
-        Element* element = toElement(node);
+        Element* element = downcast<Element>(node);
         if (element->isMouseFocusable())
             return true;
         if (element->childrenAffectedByActive() || element->childrenAffectedByHover())
@@ -206,7 +206,7 @@ static inline void appendContextSubtargetsForNode(Node* node, SubtargetGeometryL
 
 static inline void appendZoomableSubtargets(Node* node, SubtargetGeometryList& subtargets)
 {
-    RenderBox* renderer = toRenderBox(node->renderer());
+    RenderBox* renderer = downcast<RenderBox>(node->renderer());
     ASSERT(renderer);
 
     Vector<FloatQuad> quads;
@@ -228,7 +228,7 @@ static inline Node* parentShadowHostOrOwner(const Node* node)
     if (Node* ancestor = node->parentOrShadowHostNode())
         return ancestor;
     if (node->isDocumentNode())
-        return toDocument(node)->ownerElement();
+        return downcast<Document>(node)->ownerElement();
     return 0;
 }
 

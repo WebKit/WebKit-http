@@ -2925,13 +2925,13 @@ bool EventHandler::passGestureEventToWidget(const PlatformGestureEvent& gestureE
     if (!widget->isFrameView())
         return false;
 
-    return toFrameView(widget)->frame().eventHandler().handleGestureEvent(gestureEvent);
+    return downcast<FrameView>(widget)->frame().eventHandler().handleGestureEvent(gestureEvent);
 }
 
 bool EventHandler::passGestureEventToWidgetIfPossible(const PlatformGestureEvent& gestureEvent, RenderObject* renderer)
 {
     if (m_lastHitTestResultOverWidget && renderer && renderer->isWidget()) {
-        Widget* widget = toRenderWidget(renderer)->widget();
+        Widget* widget = downcast<RenderWidget>(renderer)->widget();
         return widget && passGestureEventToWidget(gestureEvent, widget);
     }
     return false;
