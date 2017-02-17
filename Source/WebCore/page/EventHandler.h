@@ -98,6 +98,7 @@ struct DragState;
 
 #if ENABLE(QT_GESTURE_EVENTS)
 class PlatformGestureEvent;
+class RenderObject;
 #endif
 
 #if ENABLE(DRAG_SUPPORT)
@@ -604,6 +605,7 @@ private:
     bool m_lastHitTestResultOverWidget;
     RefPtr<Element> m_previousGestureScrolledElement;
     RefPtr<Scrollbar> m_scrollbarHandlingScrollGesture;
+    bool m_didLongPressInvokeContextMenu { false };
 #endif
 
     double m_maxMouseMovedDuration { 0 };

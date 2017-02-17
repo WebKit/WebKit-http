@@ -162,7 +162,7 @@ static inline void appendContextSubtargetsForNode(Node* node, SubtargetGeometryL
     if (textRenderer->frame().editor().behavior().shouldSelectOnContextualMenuClick()) {
         // Make subtargets out of every word.
         String textValue = textNode->data();
-        TextBreakIterator* wordIterator = wordBreakIterator(textValue.characters(), textValue.length());
+        TextBreakIterator* wordIterator = wordBreakIterator(StringView(textValue));
         int lastOffset = textBreakFirst(wordIterator);
         if (lastOffset == -1)
             return;

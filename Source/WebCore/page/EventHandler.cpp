@@ -107,6 +107,7 @@
 
 #if ENABLE(QT_GESTURE_EVENTS)
 #include "PlatformGestureEvent.h"
+#include "ScrollAnimator.h"
 #endif
 
 #if ENABLE(TOUCH_ADJUSTMENT)
@@ -355,6 +356,20 @@ static inline bool handleWheelEventInAppropriateEnclosingBox(Node* startNode, Wh
     return false;
 }
 
+#if ENABLE(QT_GESTURE_EVENTS)
+static inline bool scrollNode(float delta, ScrollGranularity granularity, ScrollDirection positiveDirection, ScrollDirection negativeDirection, Node* node, Element** stopNode)
+{
+    if (!delta)
+        return false;
+    if (!node->renderer())
+        return false;
+    RenderBox& enclosingBox = node->renderer()->enclosingBox();
+    float absDelta = delta > 0 ? delta : -delta;
+    return enclosingBox.scroll(delta < 0 ? negativeDirection : positiveDirection, granularity, absDelta, stopNode);
+}
+#endif
+
+
 #if (ENABLE(TOUCH_EVENTS) && !PLATFORM(IOS)) || ENABLE(QT_GESTURE_EVENTS)
 static inline bool shouldGesturesTriggerActive()
 {
@@ -475,6 +490,7 @@ void EventHandler::clear()
     m_lastHitTestResultOverWidget = false;
     m_previousGestureScrolledElement = nullptr;
     m_scrollbarHandlingScrollGesture = nullptr;
+    m_didLongPressInvokeContextMenu = false;
 #endif
     m_maxMouseMovedDuration = 0;
     m_baseEventType = PlatformEvent::NoType;
@@ -2843,7 +2859,7 @@ bool EventHandler::handleGestureTap(const PlatformGestureEvent& gestureEvent)
 
     PlatformMouseEvent fakeMouseMove(adjustedPoint, gestureEvent.globalPosition(),
         NoButton, PlatformEvent::MouseMoved, /* clickCount */ 0,
-        gestureEvent.shiftKey(), gestureEvent.ctrlKey(), gestureEvent.altKey(), gestureEvent.metaKey(), gestureEvent.timestamp());
+        gestureEvent.shiftKey(), gestureEvent.ctrlKey(), gestureEvent.altKey(), gestureEvent.metaKey(), gestureEvent.timestamp(), ForceAtClick);
     mouseMoved(fakeMouseMove);
 
     int tapCount = 1;
@@ -2855,12 +2871,12 @@ bool EventHandler::handleGestureTap(const PlatformGestureEvent& gestureEvent)
     bool defaultPrevented = false;
     PlatformMouseEvent fakeMouseDown(adjustedPoint, gestureEvent.globalPosition(),
         LeftButton, PlatformEvent::MousePressed, tapCount,
-        gestureEvent.shiftKey(), gestureEvent.ctrlKey(), gestureEvent.altKey(), gestureEvent.metaKey(), gestureEvent.timestamp());
+        gestureEvent.shiftKey(), gestureEvent.ctrlKey(), gestureEvent.altKey(), gestureEvent.metaKey(), gestureEvent.timestamp(), ForceAtClick);
     defaultPrevented |= handleMousePressEvent(fakeMouseDown);
 
     PlatformMouseEvent fakeMouseUp(adjustedPoint, gestureEvent.globalPosition(),
         LeftButton, PlatformEvent::MouseReleased, tapCount,
-        gestureEvent.shiftKey(), gestureEvent.ctrlKey(), gestureEvent.altKey(), gestureEvent.metaKey(), gestureEvent.timestamp());
+        gestureEvent.shiftKey(), gestureEvent.ctrlKey(), gestureEvent.altKey(), gestureEvent.metaKey(), gestureEvent.timestamp(), ForceAtClick);
     defaultPrevented |= handleMouseReleaseEvent(fakeMouseUp);
 
     return defaultPrevented;
@@ -2868,15 +2884,15 @@ bool EventHandler::handleGestureTap(const PlatformGestureEvent& gestureEvent)
 
 bool EventHandler::handleGestureLongPress(const PlatformGestureEvent& gestureEvent)
 {
-#if ENABLE(DRAG_SUPPORT)
+#if 0 // ENABLE(DRAG_SUPPORT)
     if (m_frame.settings().touchDragDropEnabled()) {
         IntPoint adjustedPoint = gestureEvent.position();
 #if ENABLE(TOUCH_ADJUSTMENT)
         adjustGesturePosition(gestureEvent, adjustedPoint);
 #endif
-        PlatformMouseEvent mouseDownEvent(adjustedPoint, gestureEvent.globalPosition(), LeftButton, PlatformEvent::MousePressed, 0, false, false, false, false, WTF::currentTime());
+        PlatformMouseEvent mouseDownEvent(adjustedPoint, gestureEvent.globalPosition(), LeftButton, PlatformEvent::MousePressed, 0, false, false, false, false, WTF::currentTime(), ForceAtClick);
         handleMousePressEvent(mouseDownEvent);
-        PlatformMouseEvent mouseDragEvent(adjustedPoint, gestureEvent.globalPosition(), LeftButton, PlatformEvent::MouseMoved, 0, false, false, false, false, WTF::currentTime());
+        PlatformMouseEvent mouseDragEvent(adjustedPoint, gestureEvent.globalPosition(), LeftButton, PlatformEvent::MouseMoved, 0, false, false, false, false, WTF::currentTime(), ForceAtClick);
         HitTestRequest request(HitTestRequest::ReadOnly | HitTestRequest::DisallowShadowContent);
         MouseEventWithHitTestResults mev = prepareMouseEvent(request, mouseDragEvent);
         m_didStartDrag = false;
@@ -2994,7 +3010,7 @@ bool EventHandler::handleGestureScrollUpdate(const PlatformGestureEvent& gesture
         stopElement = m_previousGestureScrolledElement.get();
 
     // First try to scroll the closest scrollable RenderBox ancestor of |node|.
-    ScrollGranularity granularity = ScrollByPixel; 
+    ScrollGranularity granularity = ScrollByPixel;
     bool horizontalScroll = scrollNode(delta.width(), granularity, ScrollLeft, ScrollRight, node, &stopElement);
     bool verticalScroll = scrollNode(delta.height(), granularity, ScrollUp, ScrollDown, node, &stopElement);
 
@@ -3236,7 +3252,7 @@ bool EventHandler::sendContextMenuEventForGesture(const PlatformGestureEvent& ev
 #if ENABLE(TOUCH_ADJUSTMENT)
     adjustGesturePosition(event, adjustedPoint);
 #endif
-    PlatformMouseEvent mouseEvent(adjustedPoint, event.globalPosition(), RightButton, eventType, 1, false, false, false, false, WTF::currentTime());
+    PlatformMouseEvent mouseEvent(adjustedPoint, event.globalPosition(), RightButton, eventType, 1, false, false, false, false, WTF::currentTime(), ForceAtClick);
     // To simulate right-click behavior, we send a right mouse down and then
     // context menu event.
     handleMousePressEvent(mouseEvent);
