@@ -474,7 +474,7 @@ void EventHandler::clear()
     m_scrollGestureHandlingNode = nullptr;
     m_lastHitTestResultOverWidget = false;
     m_previousGestureScrolledElement = nullptr;
-    m_scrollbarHandlingScrollGesture = 0;
+    m_scrollbarHandlingScrollGesture = nullptr;
 #endif
     m_maxMouseMovedDuration = 0;
     m_baseEventType = PlatformEvent::NoType;
@@ -2784,7 +2784,7 @@ bool EventHandler::handleGestureEvent(const PlatformGestureEvent& gestureEvent)
         if (gestureEvent.type() == PlatformEvent::GestureScrollBegin && eventSwallowed)
             m_scrollbarHandlingScrollGesture = scrollbar;
         else if (gestureEvent.type() == PlatformEvent::GestureScrollEnd || !eventSwallowed)
-            m_scrollbarHandlingScrollGesture = 0;
+            m_scrollbarHandlingScrollGesture = nullptr;
 
         if (eventSwallowed)
             return true;
