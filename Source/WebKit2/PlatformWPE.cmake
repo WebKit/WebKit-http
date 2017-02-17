@@ -88,7 +88,6 @@ list(APPEND WebKit2_SOURCES
     Shared/wpe/NativeWebWheelEventWPE.cpp
     Shared/wpe/ProcessExecutablePathWPE.cpp
     Shared/wpe/WebEventFactory.cpp
-    Shared/wpe/WebKit2InitializeWPE.cpp
 
     UIProcess/API/C/WKResourceLoadStatisticsManager.cpp
 

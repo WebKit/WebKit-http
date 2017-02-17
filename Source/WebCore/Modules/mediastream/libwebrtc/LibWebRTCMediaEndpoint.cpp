@@ -236,7 +236,7 @@ void LibWebRTCMediaEndpoint::StatsCollector::OnStatsDelivered(const rtc::scoped_
         // FIXME: Fulfill promise with the report
         UNUSED_PARAM(report);
 
-        protectedThis->m_endpoint.m_peerConnectionBackend.iceCandidateFailed(protectedThis->m_promise, Exception { TypeError, ASCIILiteral("Stats API is not yet implemented") });
+        protectedThis->m_endpoint.m_peerConnectionBackend.getStatsFailed(protectedThis->m_promise, Exception { TypeError, ASCIILiteral("Stats API is not yet implemented") });
     });
 }
 
@@ -380,7 +380,11 @@ void LibWebRTCMediaEndpoint::stop()
 
 void LibWebRTCMediaEndpoint::OnRenegotiationNeeded()
 {
-    notImplemented();
+    callOnMainThread([protectedThis = makeRef(*this)] {
+        if (protectedThis->isStopped())
+            return;
+        protectedThis->m_peerConnectionBackend.markAsNeedingNegotiation();
+    });
 }
 
 static inline PeerConnectionStates::IceConnectionState iceConnectionState(webrtc::PeerConnectionInterface::IceConnectionState state)

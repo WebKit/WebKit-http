@@ -1,3 +1,118 @@
+2017-02-16  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: add DebugUI setting to manually override UI layout direction
+        https://bugs.webkit.org/show_bug.cgi?id=168222
+
+        Reviewed by Joseph Pecoraro.
+
+        Expose three layout direction settings:
+         - System (inherit system UI layout direction)
+         - LTR (the default regardless of system language)
+         - RTL (under development, only accessible via this menu)
+
+        * UserInterface/Base/Main.js:
+        The UI layout direction is normally only set once per frontend load.
+        There is no expectation on macOS that applications can switch dynamically.
+        But, for DebugUI purposes we need to switch the layout direction quickly.
+        Store the new setting and trigger a hard reload of the frontend page.
+        If the 'system' setting is specified, fall back to the system layout
+        direction as provided by InspectorFrontendHost.
+
+        * UserInterface/Base/Setting.js:
+        Add an application-level setting for (user interface) layout direction.
+
+        * UserInterface/Views/SettingsTabContentView.js:
+        (WebInspector.SettingsTabContentView):
+        (WebInspector.SettingsTabContentView.prototype.layout):
+        (WebInspector.SettingsTabContentView.prototype.initialLayout): Deleted.
+        Make this a normal layout() method so that we can dirty the view
+        when DebugUI is turned on or off.
+
+2017-02-16  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: popovers shouldn't be dismissed when Web Inspector window is dragged
+        https://bugs.webkit.org/show_bug.cgi?id=166935
+
+        Reviewed by Joseph Pecoraro.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.contentLoaded):
+        (WebInspector._mouseDown): Created.
+        (WebInspector._dockedResizerMouseDown):
+        (WebInspector._moveWindowMouseDown):
+        Applies Popover.EventPreventDismissSymbol whenever a mousedown event is fired for an element
+        that controls the positioning or size of the WebInspector window.
+
+        * UserInterface/Views/Popover.js:
+        (WebInspector.Popover.prototype._handleEvent):
+        (WebInspector.Popover.EventPreventDismissSymbol):
+        Do not dismiss the popover if Popover.EventPreventDismissSymbol is applied to the event.
+
+2017-02-15  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: Request headers when copied & pasted should follow HTTP format, colon instead of tab
+        https://bugs.webkit.org/show_bug.cgi?id=168155
+
+        Reviewed by Matt Baker.
+
+        * UserInterface/Views/DataGrid.js:
+        (WebInspector.DataGrid):
+        (WebInspector.DataGrid.prototype.set copyTextDelimiter):
+        (WebInspector.DataGrid.prototype._copyTextForDataGridNode):
+        (WebInspector.DataGrid.prototype._copyTextForDataGridHeaders):
+        * UserInterface/Views/ResourceDetailsSidebarPanel.js:
+        (WebInspector.ResourceDetailsSidebarPanel.prototype._createNameValueDataGrid):
+        Allow instances of DataGrid to change the delimiter between items when copying rows.
+
+2017-02-15  Devin Rousso  <dcrousso+webkit@gmail.com>
+
+        Web Inspector: Split console should be allowed when docked bottom on Elements/Resources/Debugger/Storage tabs
+        https://bugs.webkit.org/show_bug.cgi?id=168385
+
+        Reviewed by Timothy Hatcher.
+
+        * UserInterface/Base/Main.js:
+        (WebInspector.updateDockedState):
+        If the new docked configuration does not support the split console, hide it.
+
+        * UserInterface/Views/DebuggerTabContentView.js:
+        (WebInspector.DebuggerTabContentView.prototype.get supportsSplitContentBrowser):
+        * UserInterface/Views/ElementsTabContentView.js:
+        (WebInspector.ElementsTabContentView.prototype.get supportsSplitContentBrowser):
+        * UserInterface/Views/ResourcesTabContentView.js:
+        (WebInspector.ResourcesTabContentView.prototype.get supportsSplitContentBrowser):
+        * UserInterface/Views/StorageTabContentView.js:
+        (WebInspector.StorageTabContentView.prototype.get supportsSplitContentBrowser):
+
+2017-02-14  Brian Burg  <bburg@apple.com>
+
+        Web Inspector: RTL: adjust padding of dashboard icons
+        https://bugs.webkit.org/show_bug.cgi?id=168340
+
+        Reviewed by Matt Baker.
+
+        Extract the direction-dependent padding into a "local" variable.
+        Use two rules to apply it to whichever is the leading side.
+
+        While we tend to use leading/trailing in Apple layout technologies,
+        I think the CSS logical properties specification sticks to using
+        -start and -end, so let's use that nomenclature where we can.
+
+        * UserInterface/Views/DefaultDashboardView.css:
+        (.toolbar .dashboard.default > .item > div):
+        (body[dir=ltr] .toolbar .dashboard.default > .item > div):
+        (body[dir=rtl] .toolbar .dashboard.default > .item > div):
+
+2017-02-14  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream] add navigator.getUserMedia for compatibility with legacy content
+        https://bugs.webkit.org/show_bug.cgi?id=168324
+        <rdar://problem/30513125>
+
+        Reviewed by Youenn Fablet.
+
+        * UserInterface/Models/NativeFunctionParameters.js:
+
 2017-02-13  Devin Rousso  <dcrousso+webkit@gmail.com>
 
         Web Inspector: provide a way to show current value of CSS variables in style rules

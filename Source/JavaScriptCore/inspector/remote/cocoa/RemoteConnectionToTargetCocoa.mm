@@ -210,7 +210,7 @@ void RemoteConnectionToTarget::close()
     });
 }
 
-void RemoteConnectionToTarget::sendMessageToTarget(const String& message)
+void RemoteConnectionToTarget::sendMessageToTarget(NSString *message)
 {
     ref();
     dispatchAsyncOnTarget(^{

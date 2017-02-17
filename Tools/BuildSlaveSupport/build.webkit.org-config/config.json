@@ -72,9 +72,8 @@
                     { "name": "gtk-linux-slave-7", "platform": "gtk" },
                     { "name": "gtk-linux-slave-8", "platform": "gtk" },
                     { "name": "gtk-linux-slave-9", "platform": "gtk" },
-
-                    { "name": "efl-linux-slave-2", "platform": "efl" },
-                    { "name": "efl-linux-slave-3", "platform": "efl" },
+                    { "name": "gtk-linux-slave-10", "platform": "gtk" },
+                    { "name": "gtk-linux-slave-11", "platform": "gtk" },
 
                     { "name": "jsconly-linux-szeged-slave-1", "platform": "jsc-only" },
                     { "name": "jsconly-linux-szeged-slave-2", "platform": "jsc-only" },
@@ -305,19 +304,21 @@
                       "slavenames": ["gtk-linux-slave-9"]
                     },
                     {
+                      "name": "GTK Linux 64-bit Release Debian Stable (Build)", "type": "Build", "builddir": "gtk-linux-64-release-debian",
+                      "platform": "gtk", "configuration": "release", "architectures": ["x86_64"],
+                      "additionalArguments": ["--default-cmake-features"],
+                      "slavenames": ["gtk-linux-slave-10"]
+                    },
+                    {
+                      "name": "GTK Linux 64-bit Release Ubuntu LTS (Build)", "type": "Build", "builddir": "gtk-linux-64-release-ubuntu",
+                      "platform": "gtk", "configuration": "release", "architectures": ["x86_64"],
+                      "additionalArguments": ["--default-cmake-features"],
+                      "slavenames": ["gtk-linux-slave-11"]
+                    },
+                    {
                       "name": "WinCairo 64-Bit Release", "type": "Build", "builddir": "win-cairo-release",
                       "platform": "wincairo", "configuration": "release", "architectures": ["x86_64"],
                       "slavenames": ["wincairo-1", "wincairo-2"]
-                    },
-                    {
-                      "name": "EFL Linux 64-bit Release WK2", "type": "BuildAndTest", "builddir": "efl-linux-64-release-wk2",
-                      "platform": "efl", "configuration": "release", "architectures": ["x86_64"],
-                      "slavenames": ["efl-linux-slave-2"]
-                    },
-                    {
-                      "name": "EFL Linux 64-bit Release WK2 (Perf)", "type": "BuildAndPerfTest", "builddir": "efl-linux-64-release-wk2-perf",
-                      "platform": "efl", "configuration": "release", "architectures": ["x86_64"],
-                      "slavenames": ["efl-linux-slave-3"]
                     },
                     {
                       "name": "JSCOnly Linux AArch64 Release", "type": "BuildAndRemoteJSCTests", "builddir": "jsconly-linux-aarch64-release",
@@ -341,7 +342,7 @@
 
     "schedulers": [ { "type": "AnyBranchScheduler", "name": "trunk", "change_filter": "trunk_filter", "treeStableTimer": 45.0,
                       "builderNames": ["GTK Linux 32-bit Release", "GTK Linux 64-bit Release (Build)", "GTK Linux 64-bit Debug (Build)", "GTK Linux ARM Release",
-                                       "EFL Linux 64-bit Release WK2", "EFL Linux 64-bit Release WK2 (Perf)",
+                                       "GTK Linux 64-bit Release Debian Stable (Build)", "GTK Linux 64-bit Release Ubuntu LTS (Build)",
                                        "JSCOnly Linux AArch64 Release", "JSCOnly Linux ARMv7 Thumb2 Release", "JSCOnly Linux ARMv7 Traditional Release",
                                        "WinCairo 64-Bit Release"]
                     },

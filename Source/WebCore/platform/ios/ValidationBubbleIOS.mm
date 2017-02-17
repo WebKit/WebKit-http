@@ -40,6 +40,10 @@ SOFT_LINK_CLASS(UIKit, UIPopoverPresentationController);
 SOFT_LINK_CLASS(UIKit, UITapGestureRecognizer);
 SOFT_LINK_CLASS(UIKit, UIView);
 SOFT_LINK_CLASS(UIKit, UIViewController);
+SOFT_LINK_CONSTANT(UIKit, UIFontTextStyleCallout, UIFontTextStyle);
+SOFT_LINK_CONSTANT(UIKit, UIAccessibilityAnnouncementNotification, UIAccessibilityNotifications);
+#define UIAccessibilityPostNotification getUIAccessibilityPostNotification
+SOFT_LINK(UIKit, UIAccessibilityPostNotification, void, (UIAccessibilityNotifications n, id argument), (n, argument));
 
 @interface WebValidationBubbleTapRecognizer : NSObject
 @end
@@ -97,7 +101,7 @@ static const CGFloat horizontalPadding = 17;
 static const CGFloat verticalPadding = 9;
 static const CGFloat maxLabelWidth = 300;
 
-ValidationBubble::ValidationBubble(UIView* view, const String& message)
+ValidationBubble::ValidationBubble(UIView* view, const String& message, const Settings&)
     : m_view(view)
     , m_message(message)
 {
@@ -110,7 +114,8 @@ ValidationBubble::ValidationBubble(UIView* view, const String& message)
 
     RetainPtr<UILabel> label = adoptNS([[getUILabelClass() alloc] initWithFrame:CGRectZero]);
     [label setText:message];
-    [label setFont:[getUIFontClass() systemFontOfSize:14.0]];
+    [label setFont:[getUIFontClass() preferredFontForTextStyle:getUIFontTextStyleCallout()]];
+    m_fontSize = [[label font] pointSize];
     [label setLineBreakMode:NSLineBreakByTruncatingTail];
     [label setNumberOfLines:4];
     [popoverView addSubview:label.get()];
@@ -132,7 +137,12 @@ void ValidationBubble::show()
     // Protect the validation bubble so it stays alive until it is effectively presented. UIKit does not deal nicely with
     // dismissing a popover that is being presented.
     RefPtr<ValidationBubble> protectedThis(this);
-    [m_presentingViewController presentViewController:m_popoverController.get() animated:NO completion:[protectedThis]() { }];
+    [m_presentingViewController presentViewController:m_popoverController.get() animated:NO completion:[protectedThis]() {
+        // Hide this popover from VoiceOver and instead announce the message.
+        [protectedThis->m_popoverController.get().view setAccessibilityElementsHidden:YES];
+    }];
+
+    UIAccessibilityPostNotification(getUIAccessibilityAnnouncementNotification(), m_message);
 }
 
 static UIViewController *fallbackViewController(UIView *view)

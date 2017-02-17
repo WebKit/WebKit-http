@@ -175,7 +175,7 @@ MediaPlayerPrivateGStreamer::MediaPlayerPrivateGStreamer(MediaPlayer* player)
     , m_audioSourceProvider(std::make_unique<AudioSourceProviderGStreamer>())
 #endif
 {
-#if USE(GLIB) && !PLATFORM(EFL)
+#if USE(GLIB)
     m_readyTimerHandler.setPriority(G_PRIORITY_DEFAULT_IDLE);
 #endif
 }
@@ -1421,6 +1421,26 @@ void MediaPlayerPrivateGStreamer::sourceChanged()
         webKitWebSrcSetMediaPlayer(WEBKIT_WEB_SRC(m_source.get()), m_player);
         g_signal_connect(GST_ELEMENT_PARENT(m_source.get()), "element-added", G_CALLBACK(uriDecodeBinElementAddedCallback), this);
     }
+}
+
+bool MediaPlayerPrivateGStreamer::hasSingleSecurityOrigin() const
+{
+    if (!m_source)
+        return false;
+
+    if (!WEBKIT_IS_WEB_SRC(m_source.get()))
+        return true;
+
+    GUniqueOutPtr<char> originalURI, resolvedURI;
+    g_object_get(m_source.get(), "location", &originalURI.outPtr(), "resolved-location", &resolvedURI.outPtr(), nullptr);
+    if (!originalURI || !resolvedURI)
+        return false;
+    if (!g_strcmp0(originalURI.get(), resolvedURI.get()))
+        return true;
+
+    Ref<SecurityOrigin> resolvedOrigin(SecurityOrigin::createFromString(String::fromUTF8(resolvedURI.get())));
+    Ref<SecurityOrigin> requestedOrigin(SecurityOrigin::createFromString(String::fromUTF8(originalURI.get())));
+    return resolvedOrigin->isSameSchemeHostPort(requestedOrigin.get());
 }
 
 void MediaPlayerPrivateGStreamer::cancelLoad()

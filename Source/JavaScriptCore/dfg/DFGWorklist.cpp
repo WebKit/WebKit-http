@@ -40,7 +40,7 @@ namespace JSC { namespace DFG {
 
 class Worklist::ThreadBody : public AutomaticThread {
 public:
-    ThreadBody(const LockHolder& locker, Worklist& worklist, ThreadData& data, Box<Lock> lock, RefPtr<AutomaticThreadCondition> condition, int relativePriority)
+    ThreadBody(const AbstractLocker& locker, Worklist& worklist, ThreadData& data, Box<Lock> lock, RefPtr<AutomaticThreadCondition> condition, int relativePriority)
         : AutomaticThread(locker, lock, condition)
         , m_worklist(worklist)
         , m_data(data)
@@ -49,7 +49,7 @@ public:
     }
     
 protected:
-    PollResult poll(const LockHolder& locker) override
+    PollResult poll(const AbstractLocker& locker) override
     {
         if (m_worklist.m_queue.isEmpty())
             return PollResult::Wait;
@@ -150,7 +150,7 @@ protected:
         m_longLivedState = std::make_unique<LongLivedState>();
     }
     
-    void threadIsStopping(const LockHolder&) override
+    void threadIsStopping(const AbstractLocker&) override
     {
         // We're holding the Worklist::m_lock, so we should be careful not to deadlock.
         
@@ -223,17 +223,16 @@ bool Worklist::isActiveForVM(VM& vm) const
     return false;
 }
 
-void Worklist::enqueue(PassRefPtr<Plan> passedPlan)
+void Worklist::enqueue(Ref<Plan>&& plan)
 {
-    RefPtr<Plan> plan = passedPlan;
     LockHolder locker(*m_lock);
     if (Options::verboseCompilationQueue()) {
         dump(locker, WTF::dataFile());
         dataLog(": Enqueueing plan to optimize ", plan->key(), "\n");
     }
     ASSERT(m_plans.find(plan->key()) == m_plans.end());
-    m_plans.add(plan->key(), plan);
-    m_queue.append(plan);
+    m_plans.add(plan->key(), plan.copyRef());
+    m_queue.append(WTFMove(plan));
     m_planEnqueued->notifyOne(locker);
 }
 
@@ -480,7 +479,7 @@ void Worklist::dump(PrintStream& out) const
     dump(locker, out);
 }
 
-void Worklist::dump(const LockHolder&, PrintStream& out) const
+void Worklist::dump(const AbstractLocker&, PrintStream& out) const
 {
     out.print(
         "Worklist(", RawPointer(this), ")[Queue Length = ", m_queue.size(),
@@ -534,6 +533,41 @@ Worklist& ensureGlobalWorklistFor(CompilationMode mode)
     }
     RELEASE_ASSERT_NOT_REACHED();
     return ensureGlobalDFGWorklist();
+}
+
+unsigned numberOfWorklists() { return 2; }
+
+Worklist& ensureWorklistForIndex(unsigned index)
+{
+    switch (index) {
+    case 0:
+        return ensureGlobalDFGWorklist();
+    case 1:
+        return ensureGlobalFTLWorklist();
+    default:
+        RELEASE_ASSERT_NOT_REACHED();
+        return ensureGlobalDFGWorklist();
+    }
+}
+
+Worklist* existingWorklistForIndexOrNull(unsigned index)
+{
+    switch (index) {
+    case 0:
+        return existingGlobalDFGWorklistOrNull();
+    case 1:
+        return existingGlobalFTLWorklistOrNull();
+    default:
+        RELEASE_ASSERT_NOT_REACHED();
+        return 0;
+    }
+}
+
+Worklist& existingWorklistForIndex(unsigned index)
+{
+    Worklist* result = existingWorklistForIndexOrNull(index);
+    RELEASE_ASSERT(result);
+    return *result;
 }
 
 void completeAllPlansForVM(VM& vm)

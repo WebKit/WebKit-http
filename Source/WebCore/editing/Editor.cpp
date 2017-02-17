@@ -1246,13 +1246,13 @@ void Editor::performCutOrCopy(EditorActionSpecifier action)
             imageElement = imageElementFromImageDocument(document());
 
         if (imageElement) {
-#if PLATFORM(COCOA) || PLATFORM(EFL) || PLATFORM(GTK) || PLATFORM(WPE)
+#if PLATFORM(COCOA) || PLATFORM(GTK) || PLATFORM(WPE)
             writeImageToPasteboard(*Pasteboard::createForCopyAndPaste(), *imageElement, document().url(), document().title());
 #else
             Pasteboard::createForCopyAndPaste()->writeImage(*imageElement, document().url(), document().title());
 #endif
         } else {
-#if PLATFORM(COCOA) || PLATFORM(EFL) || PLATFORM(GTK) || PLATFORM(WPE)
+#if PLATFORM(COCOA) || PLATFORM(GTK) || PLATFORM(WPE)
             writeSelectionToPasteboard(*Pasteboard::createForCopyAndPaste());
 #else
             // FIXME: Convert all other platforms to match Mac and delete this.
@@ -1364,7 +1364,7 @@ void Editor::copyImage(const HitTestResult& result)
     if (url.isEmpty())
         url = result.absoluteImageURL();
 
-#if PLATFORM(COCOA) || PLATFORM(EFL) || PLATFORM(GTK) || PLATFORM(WPE)
+#if PLATFORM(COCOA) || PLATFORM(GTK) || PLATFORM(WPE)
     writeImageToPasteboard(*Pasteboard::createForCopyAndPaste(), *element, url, result.altDisplayString());
 #else
     Pasteboard::createForCopyAndPaste()->writeImage(*element, url, result.altDisplayString());
@@ -3740,5 +3740,15 @@ const Font* Editor::fontForSelection(bool& hasMultipleFonts) const
     return font;
 }
 
+Ref<DocumentFragment> Editor::createFragmentForImageAndURL(const String& url)
+{
+    auto imageElement = HTMLImageElement::create(*m_frame.document());
+    imageElement->setAttributeWithoutSynchronization(HTMLNames::srcAttr, url);
+
+    auto fragment = document().createDocumentFragment();
+    fragment->appendChild(imageElement);
+
+    return fragment;
+}
 
 } // namespace WebCore

@@ -464,7 +464,7 @@ public:
     WEBCORE_EXPORT void replaceSelectionWithAttributedString(NSAttributedString *, MailBlockquoteHandling = MailBlockquoteHandling::RespectBlockquote);
 #endif
 
-#if PLATFORM(COCOA) || PLATFORM(EFL) || PLATFORM(GTK) || PLATFORM(WPE)
+#if PLATFORM(COCOA) || PLATFORM(GTK) || PLATFORM(WPE)
     WEBCORE_EXPORT void writeSelectionToPasteboard(Pasteboard&);
     WEBCORE_EXPORT void writeImageToPasteboard(Pasteboard&, Element& imageElement, const URL&, const String& title);
 #endif
@@ -482,6 +482,8 @@ public:
 
     void setIsGettingDictionaryPopupInfo(bool b) { m_isGettingDictionaryPopupInfo = b; }
     bool isGettingDictionaryPopupInfo() const { return m_isGettingDictionaryPopupInfo; }
+
+    Ref<DocumentFragment> createFragmentForImageAndURL(const String&);
 
 private:
     class WebContentReader;
@@ -522,7 +524,6 @@ private:
     String selectionInHTMLFormat();
     RefPtr<SharedBuffer> imageInWebArchiveFormat(Element&);
     RefPtr<DocumentFragment> createFragmentForImageResourceAndAddResource(RefPtr<ArchiveResource>&&);
-    Ref<DocumentFragment> createFragmentForImageAndURL(const String&);
     RefPtr<DocumentFragment> createFragmentAndAddResources(NSAttributedString *);
     FragmentAndResources createFragment(NSAttributedString *);
     void fillInUserVisibleForm(PasteboardURL&);

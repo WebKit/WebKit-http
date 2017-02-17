@@ -907,6 +907,118 @@ static void closeLineEndingAndAdjustRuns(LineState& line, Layout::RunVector& run
     ++lineCount;
 }
 
+struct PaginatedLine {
+    LayoutUnit top;
+    LayoutUnit bottom;
+    LayoutUnit height; // Same value for each lines atm.
+};
+using PaginatedLines = Vector<PaginatedLine, 20>;
+
+static PaginatedLine computeLineTopAndBottomWithOverflow(const RenderBlockFlow& flow, unsigned lineIndex, Layout::SimplePaginationStruts& struts)
+{
+    // FIXME: Add visualOverflowForDecorations.
+    auto& fontMetrics = flow.style().fontCascade().fontMetrics();
+    auto ascent = fontMetrics.floatAscent();
+    auto descent = fontMetrics.floatDescent();
+    auto lineHeight = lineHeightFromFlow(flow);
+    LayoutUnit offset = flow.borderAndPaddingBefore();
+    for (auto& strut : struts) {
+        if (strut.lineBreak > lineIndex)
+            break;
+        offset += strut.offset;
+    }
+    if (ascent + descent <= lineHeight) {
+        auto topPosition = lineIndex * lineHeight + offset;
+        return { topPosition, topPosition + lineHeight, lineHeight };
+    }
+    auto baseline = baselineFromFlow(flow);
+    auto topPosition = lineIndex * lineHeight + offset + baseline - ascent;
+    auto bottomPosition = topPosition + ascent + descent;
+    return { topPosition, bottomPosition, bottomPosition - topPosition };
+}
+
+static unsigned computeLineBreakIndex(unsigned breakCandidate, unsigned lineCount, unsigned widows, const Layout::SimplePaginationStruts& struts)
+{
+    // First line does not fit the current page.
+    if (!breakCandidate)
+        return breakCandidate;
+    
+    auto remainingLineCount = lineCount - breakCandidate;
+    if (widows <= remainingLineCount)
+        return breakCandidate;
+    
+    // Only break after the first line with widows.
+    auto lineBreak = std::max<int>(lineCount - widows, 1);
+    // Break on current page only.
+    if (struts.isEmpty())
+        return lineBreak;
+    ASSERT(struts.last().lineBreak + 1 < lineCount);
+    return std::max<unsigned>(struts.last().lineBreak + 1, lineBreak);
+}
+
+static void setPageBreakForLine(unsigned lineBreak, PaginatedLines& lines, RenderBlockFlow& flow)
+{
+    if (!lineBreak) {
+        // When the line does not fit the current page, just add a page break in front.
+        auto line = lines.first();
+        flow.setPageBreak(line.top, flow.pageRemainingLogicalHeightForOffset(line.top, RenderBlockFlow::ExcludePageBoundary));
+        return;
+    }
+    auto beforeLineBreak = lines.at(lineBreak - 1);
+    auto spaceShortage = flow.pageRemainingLogicalHeightForOffset(beforeLineBreak.top, RenderBlockFlow::ExcludePageBoundary) - beforeLineBreak.height;
+    flow.setPageBreak(beforeLineBreak.bottom, spaceShortage);
+}
+
+static LayoutUnit computeOffsetAfterLineBreak(LayoutUnit lineBreakPosition, bool isFirstLine, bool atTheTopOfColumnOrPage, const RenderBlockFlow& flow)
+{
+    // No offset for top of the page lines unless widows pushed the line break.
+    LayoutUnit offset = isFirstLine ? flow.borderAndPaddingBefore() : LayoutUnit();
+    if (atTheTopOfColumnOrPage)
+        return offset;
+    return offset + flow.pageRemainingLogicalHeightForOffset(lineBreakPosition, RenderBlockFlow::ExcludePageBoundary);
+}
+
+static void updateMinimumPageHeight(RenderBlockFlow& flow, unsigned lineCount)
+{
+    auto& style = flow.style();
+    auto widows = style.hasAutoWidows() ? 1 : std::max<int>(style.widows(), 1);
+    auto orphans = style.hasAutoOrphans() ? 1 : std::max<int>(style.orphans(), 1);
+    auto minimumLineCount = std::min<unsigned>(std::max(widows, orphans), lineCount);
+    flow.updateMinimumPageHeight(0, minimumLineCount * lineHeightFromFlow(flow));
+}
+
+static void adjustLinePositionsForPagination(Layout::RunVector& runs, Layout::SimplePaginationStruts& struts,
+    RenderBlockFlow& flow, unsigned lineCount)
+{
+    updateMinimumPageHeight(flow, lineCount);
+    // First pass with no pagination offset?
+    if (!flow.pageLogicalHeightForOffset(0))
+        return;
+    unsigned lineIndex = 0;
+    auto widows = flow.style().hasAutoWidows() ? 1 : std::max<int>(flow.style().widows(), 1);
+    PaginatedLines lines;
+    for (auto& run : runs) {
+        if (!run.isEndOfLine)
+            continue;
+
+        auto line = computeLineTopAndBottomWithOverflow(flow, lineIndex, struts);
+        lines.append(line);
+        auto remainingHeight = flow.pageRemainingLogicalHeightForOffset(line.top, RenderBlockFlow::ExcludePageBoundary);
+        auto atTheTopOfColumnOrPage = flow.pageLogicalHeightForOffset(line.top) == remainingHeight;
+        if (line.height > remainingHeight || (atTheTopOfColumnOrPage && lineIndex)) {
+            auto lineBreakIndex = computeLineBreakIndex(lineIndex, lineCount, widows, struts);
+            // Are we still at the top of the column/page?
+            atTheTopOfColumnOrPage = atTheTopOfColumnOrPage ? lineIndex == lineBreakIndex : false;
+            setPageBreakForLine(lineBreakIndex, lines, flow);
+            struts.append({ lineBreakIndex, computeOffsetAfterLineBreak(lines[lineBreakIndex].top, !lineBreakIndex, atTheTopOfColumnOrPage, flow) });
+            // Recompute line positions that we already visited but window break pushed them to a new page.
+            for (auto i = lineBreakIndex; i < lines.size(); ++i)
+                lines.at(i) = computeLineTopAndBottomWithOverflow(flow, i, struts);
+        }
+        ++lineIndex;
+    }
+}
+
 static void createTextRuns(Layout::RunVector& runs, RenderBlockFlow& flow, unsigned& lineCount)
 {
     LayoutUnit borderAndPaddingBefore = flow.borderAndPaddingBefore();
@@ -931,20 +1043,23 @@ std::unique_ptr<Layout> create(RenderBlockFlow& flow)
 {
     unsigned lineCount = 0;
     Layout::RunVector runs;
-
     createTextRuns(runs, flow, lineCount);
-    return Layout::create(runs, lineCount);
+    Layout::SimplePaginationStruts struts;
+    if (flow.view().layoutState() && flow.view().layoutState()->isPaginated())
+        adjustLinePositionsForPagination(runs, struts, flow, lineCount);
+    return Layout::create(runs, struts, lineCount);
 }
 
-std::unique_ptr<Layout> Layout::create(const RunVector& runVector, unsigned lineCount)
+std::unique_ptr<Layout> Layout::create(const RunVector& runVector, SimplePaginationStruts& struts, unsigned lineCount)
 {
     void* slot = WTF::fastMalloc(sizeof(Layout) + sizeof(Run) * runVector.size());
-    return std::unique_ptr<Layout>(new (NotNull, slot) Layout(runVector, lineCount));
+    return std::unique_ptr<Layout>(new (NotNull, slot) Layout(runVector, struts, lineCount));
 }
 
-Layout::Layout(const RunVector& runVector, unsigned lineCount)
+Layout::Layout(const RunVector& runVector, SimplePaginationStruts& struts, unsigned lineCount)
     : m_lineCount(lineCount)
     , m_runCount(runVector.size())
+    , m_paginationStruts(WTFMove(struts))
 {
     memcpy(m_runs, runVector.data(), m_runCount * sizeof(Run));
 }
@@ -1224,12 +1339,19 @@ void printSimpleLineLayoutCoverage()
     unsigned textLength = 0;
     unsigned unsupportedTextLength = 0;
     unsigned numberOfUnsupportedLeafBlocks = 0;
+    unsigned supportedButForcedToLineLayoutTextLength = 0;
+    unsigned numberOfSupportedButForcedToLineLayoutLeafBlocks = 0;
     for (const auto* flow : leafRenderers) {
         auto flowLength = textLengthForSubtree(*flow);
         textLength += flowLength;
         auto reasons = canUseForWithReason(*flow, IncludeReasons::All);
-        if (reasons == NoReason)
+        if (reasons == NoReason) {
+            if (flow->lineLayoutPath() == RenderBlockFlow::ForceLineBoxesPath) {
+                supportedButForcedToLineLayoutTextLength += flowLength;
+                ++numberOfSupportedButForcedToLineLayoutLeafBlocks;
+            }
             continue;
+        }
         ++numberOfUnsupportedLeafBlocks;
         unsupportedTextLength += flowLength;
         for (auto reasonItem = EndOfReasons >> 1; reasonItem != NoReason; reasonItem >>= 1) {
@@ -1241,14 +1363,18 @@ void printSimpleLineLayoutCoverage()
         }
     }
     stream << "---------------------------------------------------\n";
-    stream << "Number of text blocks: total(" <<  leafRenderers.size() << ") non-simple(" << numberOfUnsupportedLeafBlocks << ")\nText length: total(" <<
+    stream << "Number of blocks: total(" <<  leafRenderers.size() << ") non-simple(" << numberOfUnsupportedLeafBlocks << ")\nContent length: total(" <<
         textLength << ") non-simple(" << unsupportedTextLength << ")\n";
     for (const auto reasonEntry : flowStatistics) {
         printReason(reasonEntry.key, stream);
         stream << ": " << (float)reasonEntry.value / (float)textLength * 100 << "%\n";
     }
-    stream << "simple line layout coverage: " << (float)(textLength - unsupportedTextLength) / (float)textLength * 100 << "%\n";
-    stream << "---------------------------------------------------\n";
+    if (supportedButForcedToLineLayoutTextLength) {
+        stream << "Simple line layout potential coverage: " << (float)(textLength - unsupportedTextLength) / (float)textLength * 100 << "%\n\n";
+        stream << "Simple line layout actual coverage: " << (float)(textLength - unsupportedTextLength - supportedButForcedToLineLayoutTextLength) / (float)textLength * 100 << "%\nForced line layout blocks: " << numberOfSupportedButForcedToLineLayoutLeafBlocks << " content length: " << supportedButForcedToLineLayoutTextLength << "(" << (float)supportedButForcedToLineLayoutTextLength / (float)textLength * 100 << "%)";
+    } else
+        stream << "Simple line layout coverage: " << (float)(textLength - unsupportedTextLength) / (float)textLength * 100 << "%";
+    stream << "\n---------------------------------------------------\n";
     WTFLogAlways("%s", stream.release().utf8().data());
 }
 #endif

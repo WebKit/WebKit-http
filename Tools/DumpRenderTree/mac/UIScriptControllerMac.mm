@@ -59,6 +59,11 @@ void UIScriptController::doAfterNextStablePresentationUpdate(JSValueRef callback
     doAsyncTask(callback);
 }
 
+void UIScriptController::doAfterVisibleContentRectUpdate(JSValueRef callback)
+{
+    doAsyncTask(callback);
+}
+
 void UIScriptController::insertText(JSStringRef, int, int)
 {
 }
@@ -92,6 +97,15 @@ JSObjectRef UIScriptController::contentsOfUserInterfaceItem(JSStringRef interfac
     UNUSED_PARAM(interfaceItem);
     return nullptr;
 #endif
+}
+
+void UIScriptController::overridePreference(JSStringRef preferenceRef, JSStringRef valueRef)
+{
+    WebPreferences *preferences = mainFrame.webView.preferences;
+
+    RetainPtr<CFStringRef> value = adoptCF(JSStringCopyCFString(kCFAllocatorDefault, valueRef));
+    if (JSStringIsEqualToUTF8CString(preferenceRef, "WebKitMinimumFontSize"))
+        preferences.minimumFontSize = [(NSString *)value.get() doubleValue];
 }
 
 void UIScriptController::removeViewFromWindow(JSValueRef callback)

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 Apple Inc. All rights reserved.
+ * Copyright (C) 2012-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -67,7 +67,6 @@ void NetworkProcessCreationParameters::encode(IPC::Encoder& encoder) const
 #endif
     encoder << shouldSuppressMemoryPressureHandler;
     encoder << shouldUseTestingNetworkSession;
-    encoder << urlParserEnabled;
     encoder << loadThrottleLatency;
     encoder << urlSchemesRegisteredForCustomProtocols;
 #if PLATFORM(COCOA)
@@ -101,6 +100,9 @@ void NetworkProcessCreationParameters::encode(IPC::Encoder& encoder) const
 #if ENABLE(NETWORK_CAPTURE)
     encoder << recordReplayMode;
     encoder << recordReplayCacheLocation;
+#endif
+#if ENABLE(WEB_RTC)
+    encoder << webRTCEnabled;
 #endif
 }
 
@@ -143,8 +145,6 @@ bool NetworkProcessCreationParameters::decode(IPC::Decoder& decoder, NetworkProc
     if (!decoder.decode(result.shouldSuppressMemoryPressureHandler))
         return false;
     if (!decoder.decode(result.shouldUseTestingNetworkSession))
-        return false;
-    if (!decoder.decode(result.urlParserEnabled))
         return false;
     if (!decoder.decode(result.loadThrottleLatency))
         return false;
@@ -203,6 +203,10 @@ bool NetworkProcessCreationParameters::decode(IPC::Decoder& decoder, NetworkProc
     if (!decoder.decode(result.recordReplayMode))
         return false;
     if (!decoder.decode(result.recordReplayCacheLocation))
+        return false;
+#endif
+#if ENABLE(WEB_RTC)
+    if (!decoder.decode(result.webRTCEnabled))
         return false;
 #endif
 

@@ -63,8 +63,6 @@ typedef RetainPtr<NSImage> DragImageRef;
 typedef HBITMAP DragImageRef;
 #elif PLATFORM(GTK) || PLATFORM(WPE)
 typedef RefPtr<cairo_surface_t> DragImageRef;
-#elif PLATFORM(EFL)
-typedef void* DragImageRef;
 #endif
 
 #if PLATFORM(COCOA)
@@ -78,6 +76,7 @@ IntSize dragImageSize(DragImageRef);
 // the input image ref will still be valid after they have been called.
 DragImageRef fitDragImageToMaxSize(DragImageRef, const IntSize& srcSize, const IntSize& dstSize);
 DragImageRef scaleDragImage(DragImageRef, FloatSize scale);
+DragImageRef platformAdjustDragImageForDeviceScaleFactor(DragImageRef, float deviceScaleFactor);
 DragImageRef dissolveDragImageToFraction(DragImageRef, float delta);
 
 DragImageRef createDragImageFromImage(Image*, ImageOrientationDescription);

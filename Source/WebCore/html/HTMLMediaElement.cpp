@@ -460,8 +460,9 @@ HTMLMediaElement::HTMLMediaElement(const QualifiedName& tagName, Document& docum
         m_mediaSession->addBehaviorRestriction(MediaElementSession::InvisibleAutoplayNotPermitted);
 
     if (document.ownerElement() || !document.isMediaDocument()) {
-        bool shouldAudioPlaybackRequireUserGesture = document.audioPlaybackRequiresUserGesture();
-        bool shouldVideoPlaybackRequireUserGesture = document.videoPlaybackRequiresUserGesture();
+        const auto& topDocument = document.topDocument();
+        bool shouldAudioPlaybackRequireUserGesture = topDocument.audioPlaybackRequiresUserGesture();
+        bool shouldVideoPlaybackRequireUserGesture = topDocument.videoPlaybackRequiresUserGesture();
 
         if (shouldVideoPlaybackRequireUserGesture) {
             m_mediaSession->addBehaviorRestriction(MediaElementSession::RequireUserGestureForVideoRateChange);
@@ -2557,7 +2558,8 @@ void HTMLMediaElement::prepareToPlay()
     if (m_havePreparedToPlay)
         return;
     m_havePreparedToPlay = true;
-    m_player->prepareToPlay();
+    if (m_player)
+        m_player->prepareToPlay();
 }
 
 void HTMLMediaElement::fastSeek(double time)

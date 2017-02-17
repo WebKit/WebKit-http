@@ -1889,7 +1889,7 @@ void CodeBlock::finishCreation(VM& vm, CopyParsedBlockTag, CodeBlock& other)
 }
 
 CodeBlock::CodeBlock(VM* vm, Structure* structure, ScriptExecutable* ownerExecutable, UnlinkedCodeBlock* unlinkedCodeBlock,
-    JSScope* scope, PassRefPtr<SourceProvider> sourceProvider, unsigned sourceOffset, unsigned firstLineColumnOffset)
+    JSScope* scope, RefPtr<SourceProvider>&& sourceProvider, unsigned sourceOffset, unsigned firstLineColumnOffset)
     : JSCell(*vm, structure)
     , m_globalObject(scope->globalObject()->vm(), this, scope->globalObject())
     , m_numCalleeLocals(unlinkedCodeBlock->m_numCalleeLocals)
@@ -1912,7 +1912,7 @@ CodeBlock::CodeBlock(VM* vm, Structure* structure, ScriptExecutable* ownerExecut
     , m_vm(unlinkedCodeBlock->vm())
     , m_thisRegister(unlinkedCodeBlock->thisRegister())
     , m_scopeRegister(unlinkedCodeBlock->scopeRegister())
-    , m_source(sourceProvider)
+    , m_source(WTFMove(sourceProvider))
     , m_sourceOffset(sourceOffset)
     , m_firstLineColumnOffset(firstLineColumnOffset)
     , m_osrExitCounter(0)
@@ -2304,7 +2304,7 @@ void CodeBlock::finishCreation(VM& vm, ScriptExecutable* ownerExecutable, Unlink
             }
 
             std::pair<TypeLocation*, bool> locationPair = vm.typeProfiler()->typeLocationCache()->getTypeLocation(globalVariableID,
-                ownerExecutable->sourceID(), divotStart, divotEnd, globalTypeSet, &vm);
+                ownerExecutable->sourceID(), divotStart, divotEnd, WTFMove(globalTypeSet), &vm);
             TypeLocation* location = locationPair.first;
             bool isNewLocation = locationPair.second;
 
@@ -2532,7 +2532,12 @@ void CodeBlock::visitChildren(SlotVisitor& visitor)
         visitor.reportExtraMemoryVisited(m_jitCode->size());
     if (m_instructions.size()) {
         unsigned refCount = m_instructions.refCount();
-        RELEASE_ASSERT(refCount);
+        if (!refCount) {
+            dataLog("CodeBlock: ", RawPointer(this), "\n");
+            dataLog("m_instructions.data(): ", RawPointer(m_instructions.data()), "\n");
+            dataLog("refCount: ", refCount, "\n");
+            RELEASE_ASSERT_NOT_REACHED();
+        }
         visitor.reportExtraMemoryVisited(m_instructions.size() * sizeof(Instruction) / refCount);
     }
 

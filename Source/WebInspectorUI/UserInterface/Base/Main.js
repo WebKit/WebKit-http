@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2013-2016 Apple Inc. All rights reserved.
+ * Copyright (C) 2013-2017 Apple Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -45,6 +45,12 @@ WebInspector.StateRestorationType = {
     Load: "state-restoration-load",
     Navigation: "state-restoration-navigation",
     Delayed: "state-restoration-delayed",
+};
+
+WebInspector.LayoutDirection = {
+    System: "system",
+    LTR: "ltr",
+    RTL: "rtl",
 };
 
 WebInspector.loaded = function()
@@ -217,6 +223,7 @@ WebInspector.contentLoaded = function()
     window.addEventListener("resize", this._windowResized.bind(this));
     window.addEventListener("keydown", this._windowKeyDown.bind(this));
     window.addEventListener("keyup", this._windowKeyUp.bind(this));
+    window.addEventListener("mousedown", this._mouseDown.bind(this), true);
     window.addEventListener("mousemove", this._mouseMoved.bind(this), true);
     window.addEventListener("pagehide", this._pageHidden.bind(this));
     window.addEventListener("contextmenu", this._contextMenuRequested.bind(this));
@@ -236,6 +243,12 @@ WebInspector.contentLoaded = function()
     }
 
     document.body.classList.add(this.debuggableType);
+
+    let layoutDirection = WebInspector.settings.layoutDirection.value;
+    if (layoutDirection === WebInspector.LayoutDirection.System)
+        layoutDirection = InspectorFrontendHost.userInterfaceLayoutDirection();
+
+    document.body.setAttribute("dir", layoutDirection);
 
     function setTabSize() {
         document.body.style.tabSize = WebInspector.settings.tabSize.value;
@@ -347,12 +360,15 @@ WebInspector.contentLoaded = function()
     this._closeToolbarButton.addEventListener(WebInspector.ButtonNavigationItem.Event.Clicked, this.close, this);
 
     this._undockToolbarButton = new WebInspector.ButtonToolbarItem("undock", WebInspector.UIString("Detach into separate window"), null, "Images/Undock.svg");
+    this._undockToolbarButton.element.classList.add(WebInspector.Popover.IgnoreAutoDismissClassName);
     this._undockToolbarButton.addEventListener(WebInspector.ButtonNavigationItem.Event.Clicked, this._undock, this);
 
     this._dockRightToolbarButton = new WebInspector.ButtonToolbarItem("dock-right", WebInspector.UIString("Dock to right of window"), null, "Images/DockRight.svg");
+    this._dockRightToolbarButton.element.classList.add(WebInspector.Popover.IgnoreAutoDismissClassName);
     this._dockRightToolbarButton.addEventListener(WebInspector.ButtonNavigationItem.Event.Clicked, this._dockRight, this);
 
     this._dockBottomToolbarButton = new WebInspector.ButtonToolbarItem("dock-bottom", WebInspector.UIString("Dock to bottom of window"), null, "Images/DockBottom.svg");
+    this._dockBottomToolbarButton.element.classList.add(WebInspector.Popover.IgnoreAutoDismissClassName);
     this._dockBottomToolbarButton.addEventListener(WebInspector.ButtonNavigationItem.Event.Clicked, this._dockBottom, this);
 
     this._togglePreviousDockConfigurationKeyboardShortcut = new WebInspector.KeyboardShortcut(WebInspector.KeyboardShortcut.Modifier.CommandOrControl | WebInspector.KeyboardShortcut.Modifier.Shift, "D", this._togglePreviousDockConfiguration.bind(this));
@@ -415,8 +431,9 @@ WebInspector.contentLoaded = function()
 
     this.modifierKeys = {altKey: false, metaKey: false, shiftKey: false};
 
-    this.toolbar.element.addEventListener("mousedown", this._toolbarMouseDown.bind(this));
-    document.getElementById("docked-resizer").addEventListener("mousedown", this._dockedResizerMouseDown.bind(this));
+    let dockedResizerElement = document.getElementById("docked-resizer");
+    dockedResizerElement.classList.add(WebInspector.Popover.IgnoreAutoDismissClassName);
+    dockedResizerElement.addEventListener("mousedown", this._dockedResizerMouseDown.bind(this));
 
     this._dockingAvailable = false;
 
@@ -766,7 +783,7 @@ WebInspector.updateDockedState = function(side)
 
     this._updateDockNavigationItems();
 
-    if (!this.dockedConfigurationSupportsSplitContentBrowser() && this.isShowingSplitConsole())
+    if (!this.dockedConfigurationSupportsSplitContentBrowser() && !this.doesCurrentTabSupportSplitContentBrowser())
         this.hideSplitConsole();
 };
 
@@ -1486,6 +1503,12 @@ WebInspector._windowKeyUp = function(event)
     this._updateModifierKeys(event);
 };
 
+WebInspector._mouseDown = function(event)
+{
+    if (this.toolbar.element.isSelfOrAncestor(event.target))
+        this._toolbarMouseDown(event);
+};
+
 WebInspector._mouseMoved = function(event)
 {
     this._updateModifierKeys(event);
@@ -1713,6 +1736,8 @@ WebInspector._dockedResizerMouseDown = function(event)
         !event.target.classList.contains("flexible-space") && !event.target.classList.contains("item-section"))
         return;
 
+    event[WebInspector.Popover.EventPreventDismissSymbol] = true;
+
     let windowProperty = this._dockConfiguration === WebInspector.DockConfiguration.Bottom ? "innerHeight" : "innerWidth";
     let eventScreenProperty = this._dockConfiguration === WebInspector.DockConfiguration.Bottom ? "screenY" : "screenX";
     let eventClientProperty = this._dockConfiguration === WebInspector.DockConfiguration.Bottom ? "clientY" : "clientX";
@@ -1775,6 +1800,8 @@ WebInspector._moveWindowMouseDown = function(event)
     if (!event.target.classList.contains("toolbar") && !event.target.classList.contains("flexible-space") &&
         !event.target.classList.contains("item-section"))
         return;
+
+    event[WebInspector.Popover.EventPreventDismissSymbol] = true;
 
     if (WebInspector.Platform.name === "mac") {
         // New Mac releases can start a window drag.
@@ -2115,6 +2142,23 @@ WebInspector.setZoomFactor = function(factor)
     InspectorFrontendHost.setZoomFactor(factor);
     // Round-trip through the frontend host API in case the requested factor is not used.
     WebInspector.settings.zoomFactor.value = InspectorFrontendHost.zoomFactor();
+};
+
+WebInspector.getLayoutDirection = function()
+{
+    return WebInspector.settings.layoutDirection.value;
+};
+
+WebInspector.setLayoutDirection = function(value)
+{
+    if (!Object.values(WebInspector.LayoutDirection).includes(value))
+        WebInspector.reportInternalError("Unknown layout direction requested: " + value);
+
+    if (value === WebInspector.settings.layoutDirection.value)
+        return;
+
+    WebInspector.settings.layoutDirection.value = value;
+    window.location.reload();
 };
 
 WebInspector._showTabAtIndex = function(i, event)

@@ -1,3 +1,862 @@
+2017-02-16  Aakash Jain  <aakash_jain@apple.com>
+
+        Remove unused methods WKPageGetDebugPaintFlags and WKPageSetDebugPaintFlags
+        https://bugs.webkit.org/show_bug.cgi?id=168464
+
+        Reviewed by Alexey Proskuryakov.
+
+        * UIProcess/API/C/WKPagePrivate.h:
+
+2017-02-16  Youenn Fablet  <youenn@apple.com>
+
+        [WebRTC] libwebrtc socket addresses should not be passed as strings
+        https://bugs.webkit.org/show_bug.cgi?id=168474
+
+        Reviewed by Alex Christensen.
+
+        Removing all seralization of socket addresses as strings.
+        Instead, a dedicated serialization is provided.
+        This allows proper handling of various cases like addresses with both hostnames and resolved IPs.
+
+        * NetworkProcess/webrtc/LibWebRTCSocketClient.cpp:
+        (WebKit::LibWebRTCSocketClient::signalReadPacket):
+        (WebKit::LibWebRTCSocketClient::signalSentPacket):
+        (WebKit::LibWebRTCSocketClient::signalAddressReady):
+        * NetworkProcess/webrtc/NetworkRTCProvider.cpp:
+        (WebKit::NetworkRTCProvider::createUDPSocket):
+        (WebKit::NetworkRTCProvider::createServerTCPSocket):
+        (WebKit::NetworkRTCProvider::createClientTCPSocket):
+        * NetworkProcess/webrtc/NetworkRTCProvider.h:
+        * NetworkProcess/webrtc/NetworkRTCProvider.messages.in:
+        * NetworkProcess/webrtc/NetworkRTCSocket.cpp:
+        (WebKit::NetworkRTCSocket::sendTo):
+        * NetworkProcess/webrtc/NetworkRTCSocket.h:
+        * NetworkProcess/webrtc/NetworkRTCSocket.messages.in:
+        * Shared/RTCNetwork.cpp:
+        (WebKit::RTCNetwork::SocketAddress::decode):
+        (WebKit::RTCNetwork::SocketAddress::encode):
+        * Shared/RTCNetwork.h:
+        (WebKit::RTCNetwork::SocketAddress::SocketAddress):
+        * WebProcess/Network/webrtc/LibWebRTCSocket.cpp:
+        (WebKit::LibWebRTCSocket::signalAddressReady):
+        (WebKit::LibWebRTCSocket::SendTo):
+        * WebProcess/Network/webrtc/LibWebRTCSocket.h:
+        * WebProcess/Network/webrtc/LibWebRTCSocketFactory.cpp:
+        (WebKit::LibWebRTCSocketFactory::CreateServerTcpSocket):
+        (WebKit::LibWebRTCSocketFactory::CreateUdpSocket):
+        (WebKit::LibWebRTCSocketFactory::CreateClientTcpSocket):
+        * WebProcess/Network/webrtc/WebRTCSocket.cpp:
+        (WebKit::WebRTCSocket::signalAddressReady):
+        * WebProcess/Network/webrtc/WebRTCSocket.h:
+        * WebProcess/Network/webrtc/WebRTCSocket.messages.in:
+
+2017-02-16  Daniel Bates  <dabates@apple.com>
+
+        Remove Chromium-specific code to call FrameLoaderClient::redirectDataToPlugin(nullptr)
+        https://bugs.webkit.org/show_bug.cgi?id=168417
+        <rdar://problem/30541748>
+
+        Reviewed by Brent Fulgham.
+
+        Update override of FrameLoaderClient::redirectDataToPlugin() to take a Widget& instead of a
+        Widget* as it is always called with a valid Widget.
+
+        * WebProcess/WebCoreSupport/WebFrameLoaderClient.cpp:
+        (WebKit::WebFrameLoaderClient::redirectDataToPlugin):
+        * WebProcess/WebCoreSupport/WebFrameLoaderClient.h:
+        * mac/WebKit2.order: Remove symbol for WebFrameLoaderClient::redirectDataToPlugin() that took a Widget*
+        as it no longer exists. I am unclear if this file is still meaningful as it was last modified in
+        r180570 (2 years ago) though Xcode still references this ordering file (why?).
+
+2017-02-16  Alex Christensen  <achristensen@webkit.org>
+
+        Remove EFL-specific files in WebKit2.
+
+        Rubber-stamped by Anders Carlsson
+
+        * DatabaseProcess/efl: Removed.
+        * DatabaseProcess/efl/DatabaseProcessMainEfl.cpp: Removed.
+        * NetworkProcess/Downloads/efl: Removed.
+        * NetworkProcess/Downloads/efl/DownloadSoupErrorsEfl.cpp: Removed.
+        * NetworkProcess/efl: Removed.
+        * NetworkProcess/efl/NetworkProcessMainEfl.cpp: Removed.
+        * Platform/efl: Removed.
+        * Platform/efl/ModuleEfl.cpp: Removed.
+        * Shared/API/c/efl: Removed.
+        * Shared/API/c/efl/WKArrayEfl.cpp: Removed.
+        * Shared/API/c/efl/WKArrayEfl.h: Removed.
+        * Shared/API/c/efl/WKBaseEfl.h: Removed.
+        * Shared/efl: Removed.
+        * Shared/efl/NativeWebKeyboardEventEfl.cpp: Removed.
+        * Shared/efl/NativeWebTouchEventEfl.cpp: Removed.
+        * Shared/efl/NativeWebWheelEventEfl.cpp: Removed.
+        * Shared/efl/ProcessExecutablePathEfl.cpp: Removed.
+        * Shared/efl/WebEventFactory.cpp: Removed.
+        * Shared/efl/WebEventFactory.h: Removed.
+        * UIProcess/API/C/efl: Removed.
+        * UIProcess/API/C/efl/WKAPICastEfl.h: Removed.
+        * UIProcess/API/C/efl/WKColorPickerResultListener.cpp: Removed.
+        * UIProcess/API/C/efl/WKColorPickerResultListener.h: Removed.
+        * UIProcess/API/C/efl/WKEventEfl.cpp: Removed.
+        * UIProcess/API/C/efl/WKEventEfl.h: Removed.
+        * UIProcess/API/C/efl/WKViewEfl.cpp: Removed.
+        * UIProcess/API/C/efl/WKViewEfl.h: Removed.
+        * UIProcess/API/cpp/efl: Removed.
+        * UIProcess/API/cpp/efl/WKEinaSharedString.cpp: Removed.
+        * UIProcess/API/cpp/efl/WKEinaSharedString.h: Removed.
+        * UIProcess/API/efl: Removed.
+        * UIProcess/API/efl/APIWebsiteDataStoreEfl.cpp: Removed.
+        * UIProcess/API/efl/EWebKit2.h.in: Removed.
+        * UIProcess/API/efl/EwkView.cpp: Removed.
+        * UIProcess/API/efl/EwkView.h: Removed.
+        * UIProcess/API/efl/EwkViewCallbacks.h: Removed.
+        * UIProcess/API/efl/GestureRecognizer.cpp: Removed.
+        * UIProcess/API/efl/GestureRecognizer.h: Removed.
+        * UIProcess/API/efl/SnapshotImageGL.cpp: Removed.
+        * UIProcess/API/efl/SnapshotImageGL.h: Removed.
+        * UIProcess/API/efl/WebAccessibility.cpp: Removed.
+        * UIProcess/API/efl/WebAccessibility.h: Removed.
+        * UIProcess/API/efl/ewk_application_cache_manager.cpp: Removed.
+        * UIProcess/API/efl/ewk_application_cache_manager.h: Removed.
+        * UIProcess/API/efl/ewk_application_cache_manager_private.h: Removed.
+        * UIProcess/API/efl/ewk_auth_request.cpp: Removed.
+        * UIProcess/API/efl/ewk_auth_request.h: Removed.
+        * UIProcess/API/efl/ewk_auth_request_private.h: Removed.
+        * UIProcess/API/efl/ewk_back_forward_list.cpp: Removed.
+        * UIProcess/API/efl/ewk_back_forward_list.h: Removed.
+        * UIProcess/API/efl/ewk_back_forward_list_item.cpp: Removed.
+        * UIProcess/API/efl/ewk_back_forward_list_item.h: Removed.
+        * UIProcess/API/efl/ewk_back_forward_list_item_private.h: Removed.
+        * UIProcess/API/efl/ewk_back_forward_list_private.h: Removed.
+        * UIProcess/API/efl/ewk_color_picker.cpp: Removed.
+        * UIProcess/API/efl/ewk_color_picker.h: Removed.
+        * UIProcess/API/efl/ewk_color_picker_private.h: Removed.
+        * UIProcess/API/efl/ewk_context.cpp: Removed.
+        * UIProcess/API/efl/ewk_context.h: Removed.
+        * UIProcess/API/efl/ewk_context_menu.cpp: Removed.
+        * UIProcess/API/efl/ewk_context_menu.h: Removed.
+        * UIProcess/API/efl/ewk_context_menu_item.cpp: Removed.
+        * UIProcess/API/efl/ewk_context_menu_item.h: Removed.
+        * UIProcess/API/efl/ewk_context_menu_item_private.h: Removed.
+        * UIProcess/API/efl/ewk_context_menu_private.h: Removed.
+        * UIProcess/API/efl/ewk_context_private.h: Removed.
+        * UIProcess/API/efl/ewk_cookie_manager.cpp: Removed.
+        * UIProcess/API/efl/ewk_cookie_manager.h: Removed.
+        * UIProcess/API/efl/ewk_cookie_manager_private.h: Removed.
+        * UIProcess/API/efl/ewk_database_manager.cpp: Removed.
+        * UIProcess/API/efl/ewk_database_manager.h: Removed.
+        * UIProcess/API/efl/ewk_database_manager_private.h: Removed.
+        * UIProcess/API/efl/ewk_download_job.cpp: Removed.
+        * UIProcess/API/efl/ewk_download_job.h: Removed.
+        * UIProcess/API/efl/ewk_download_job_private.h: Removed.
+        * UIProcess/API/efl/ewk_error.cpp: Removed.
+        * UIProcess/API/efl/ewk_error.h: Removed.
+        * UIProcess/API/efl/ewk_error_private.h: Removed.
+        * UIProcess/API/efl/ewk_favicon_database.cpp: Removed.
+        * UIProcess/API/efl/ewk_favicon_database.h: Removed.
+        * UIProcess/API/efl/ewk_favicon_database_private.h: Removed.
+        * UIProcess/API/efl/ewk_file_chooser_request.cpp: Removed.
+        * UIProcess/API/efl/ewk_file_chooser_request.h: Removed.
+        * UIProcess/API/efl/ewk_file_chooser_request_private.h: Removed.
+        * UIProcess/API/efl/ewk_form_submission_request.cpp: Removed.
+        * UIProcess/API/efl/ewk_form_submission_request.h: Removed.
+        * UIProcess/API/efl/ewk_form_submission_request_private.h: Removed.
+        * UIProcess/API/efl/ewk_intro.h: Removed.
+        * UIProcess/API/efl/ewk_main.cpp: Removed.
+        * UIProcess/API/efl/ewk_main.h: Removed.
+        * UIProcess/API/efl/ewk_main_private.h: Removed.
+        * UIProcess/API/efl/ewk_navigation_data.cpp: Removed.
+        * UIProcess/API/efl/ewk_navigation_data.h: Removed.
+        * UIProcess/API/efl/ewk_navigation_data_private.h: Removed.
+        * UIProcess/API/efl/ewk_navigation_policy_decision.cpp: Removed.
+        * UIProcess/API/efl/ewk_navigation_policy_decision.h: Removed.
+        * UIProcess/API/efl/ewk_navigation_policy_decision_private.h: Removed.
+        * UIProcess/API/efl/ewk_object.cpp: Removed.
+        * UIProcess/API/efl/ewk_object.h: Removed.
+        * UIProcess/API/efl/ewk_object_private.h: Removed.
+        * UIProcess/API/efl/ewk_page_group.cpp: Removed.
+        * UIProcess/API/efl/ewk_page_group.h: Removed.
+        * UIProcess/API/efl/ewk_page_group_private.h: Removed.
+        * UIProcess/API/efl/ewk_popup_menu.cpp: Removed.
+        * UIProcess/API/efl/ewk_popup_menu.h: Removed.
+        * UIProcess/API/efl/ewk_popup_menu_item.cpp: Removed.
+        * UIProcess/API/efl/ewk_popup_menu_item.h: Removed.
+        * UIProcess/API/efl/ewk_popup_menu_item_private.h: Removed.
+        * UIProcess/API/efl/ewk_popup_menu_private.h: Removed.
+        * UIProcess/API/efl/ewk_security_origin.cpp: Removed.
+        * UIProcess/API/efl/ewk_security_origin.h: Removed.
+        * UIProcess/API/efl/ewk_security_origin_private.h: Removed.
+        * UIProcess/API/efl/ewk_settings.cpp: Removed.
+        * UIProcess/API/efl/ewk_settings.h: Removed.
+        * UIProcess/API/efl/ewk_settings_private.h: Removed.
+        * UIProcess/API/efl/ewk_storage_manager.cpp: Removed.
+        * UIProcess/API/efl/ewk_storage_manager.h: Removed.
+        * UIProcess/API/efl/ewk_storage_manager_private.h: Removed.
+        * UIProcess/API/efl/ewk_text_checker.cpp: Removed.
+        * UIProcess/API/efl/ewk_text_checker.h: Removed.
+        * UIProcess/API/efl/ewk_text_checker_private.h: Removed.
+        * UIProcess/API/efl/ewk_touch.h: Removed.
+        * UIProcess/API/efl/ewk_url_request.cpp: Removed.
+        * UIProcess/API/efl/ewk_url_request.h: Removed.
+        * UIProcess/API/efl/ewk_url_request_private.h: Removed.
+        * UIProcess/API/efl/ewk_url_response.cpp: Removed.
+        * UIProcess/API/efl/ewk_url_response.h: Removed.
+        * UIProcess/API/efl/ewk_url_response_private.h: Removed.
+        * UIProcess/API/efl/ewk_url_scheme_request.cpp: Removed.
+        * UIProcess/API/efl/ewk_url_scheme_request.h: Removed.
+        * UIProcess/API/efl/ewk_url_scheme_request_private.h: Removed.
+        * UIProcess/API/efl/ewk_view.cpp: Removed.
+        * UIProcess/API/efl/ewk_view.h: Removed.
+        * UIProcess/API/efl/ewk_view_configuration.cpp: Removed.
+        * UIProcess/API/efl/ewk_view_configuration.h: Removed.
+        * UIProcess/API/efl/ewk_view_configuration_private.h: Removed.
+        * UIProcess/API/efl/ewk_view_private.h: Removed.
+        * UIProcess/API/efl/ewk_window_features.cpp: Removed.
+        * UIProcess/API/efl/ewk_window_features.h: Removed.
+        * UIProcess/API/efl/ewk_window_features_private.h: Removed.
+        * UIProcess/API/efl/tests: Removed.
+        * UIProcess/API/efl/tests/UnitTestUtils: Removed.
+        * UIProcess/API/efl/tests/UnitTestUtils/EWK2UnitTestBase.cpp: Removed.
+        * UIProcess/API/efl/tests/UnitTestUtils/EWK2UnitTestBase.h: Removed.
+        * UIProcess/API/efl/tests/UnitTestUtils/EWK2UnitTestEnvironment.cpp: Removed.
+        * UIProcess/API/efl/tests/UnitTestUtils/EWK2UnitTestEnvironment.h: Removed.
+        * UIProcess/API/efl/tests/UnitTestUtils/EWK2UnitTestMain.cpp: Removed.
+        * UIProcess/API/efl/tests/UnitTestUtils/EWK2UnitTestServer.cpp: Removed.
+        * UIProcess/API/efl/tests/UnitTestUtils/EWK2UnitTestServer.h: Removed.
+        * UIProcess/API/efl/tests/extensions: Removed.
+        * UIProcess/API/efl/tests/extensions/extension_sample.cpp: Removed.
+        * UIProcess/API/efl/tests/resources: Removed.
+        * UIProcess/API/efl/tests/resources/Page1.html: Removed.
+        * UIProcess/API/efl/tests/resources/Page2.html: Removed.
+        * UIProcess/API/efl/tests/resources/Page3.html: Removed.
+        * UIProcess/API/efl/tests/resources/blank.ico: Removed.
+        * UIProcess/API/efl/tests/resources/default_test_page.html: Removed.
+        * UIProcess/API/efl/tests/resources/empty_theme.edj: Removed.
+        * UIProcess/API/efl/tests/resources/file_chooser.html: Removed.
+        * UIProcess/API/efl/tests/resources/frame_flattening_test.html: Removed.
+        * UIProcess/API/efl/tests/resources/frame_flattening_test_subframe.html: Removed.
+        * UIProcess/API/efl/tests/resources/local_file_access.html: Removed.
+        * UIProcess/API/efl/tests/resources/redirect_url_to_default.html: Removed.
+        * UIProcess/API/efl/tests/resources/resultMHTML.mht: Removed.
+        * UIProcess/API/efl/tests/resources/same_page_navigation.html: Removed.
+        * UIProcess/API/efl/tests/resources/spelling_selection_tests.html: Removed.
+        * UIProcess/API/efl/tests/resources/spelling_test.html: Removed.
+        * UIProcess/API/efl/tests/resources/test.pdf: Removed.
+        * UIProcess/API/efl/tests/resources/window_move_resize.html: Removed.
+        * UIProcess/API/efl/tests/test_ewk2_accessibility.cpp: Removed.
+        * UIProcess/API/efl/tests/test_ewk2_application_cache_manager.cpp: Removed.
+        * UIProcess/API/efl/tests/test_ewk2_auth_request.cpp: Removed.
+        * UIProcess/API/efl/tests/test_ewk2_back_forward_list.cpp: Removed.
+        * UIProcess/API/efl/tests/test_ewk2_color_picker.cpp: Removed.
+        * UIProcess/API/efl/tests/test_ewk2_context.cpp: Removed.
+        * UIProcess/API/efl/tests/test_ewk2_context_history_callbacks.cpp: Removed.
+        * UIProcess/API/efl/tests/test_ewk2_context_menu.cpp: Removed.
+        * UIProcess/API/efl/tests/test_ewk2_cookie_manager.cpp: Removed.
+        * UIProcess/API/efl/tests/test_ewk2_database_manager.cpp: Removed.
+        * UIProcess/API/efl/tests/test_ewk2_download_job.cpp: Removed.
+        * UIProcess/API/efl/tests/test_ewk2_eina_shared_string.cpp: Removed.
+        * UIProcess/API/efl/tests/test_ewk2_favicon_database.cpp: Removed.
+        * UIProcess/API/efl/tests/test_ewk2_file_chooser_request.cpp: Removed.
+        * UIProcess/API/efl/tests/test_ewk2_javascript_binding.cpp: Removed.
+        * UIProcess/API/efl/tests/test_ewk2_object.cpp: Removed.
+        * UIProcess/API/efl/tests/test_ewk2_page.cpp: Removed.
+        * UIProcess/API/efl/tests/test_ewk2_page_group.cpp: Removed.
+        * UIProcess/API/efl/tests/test_ewk2_popup_menu.cpp: Removed.
+        * UIProcess/API/efl/tests/test_ewk2_settings.cpp: Removed.
+        * UIProcess/API/efl/tests/test_ewk2_ssl.cpp: Removed.
+        * UIProcess/API/efl/tests/test_ewk2_storage_manager.cpp: Removed.
+        * UIProcess/API/efl/tests/test_ewk2_text_checker.cpp: Removed.
+        * UIProcess/API/efl/tests/test_ewk2_view.cpp: Removed.
+        * UIProcess/API/efl/tests/test_ewk2_view_configuration.cpp: Removed.
+        * UIProcess/API/efl/tests/test_ewk2_window_features.cpp: Removed.
+        * UIProcess/InspectorServer/efl: Removed.
+        * UIProcess/InspectorServer/efl/WebInspectorServerEfl.cpp: Removed.
+        * UIProcess/Launcher/efl: Removed.
+        * UIProcess/Launcher/efl/ProcessLauncherEfl.cpp: Removed.
+        * UIProcess/efl: Removed.
+        * UIProcess/efl/ContextHistoryClientEfl.cpp: Removed.
+        * UIProcess/efl/ContextHistoryClientEfl.h: Removed.
+        * UIProcess/efl/ContextMenuClientEfl.cpp: Removed.
+        * UIProcess/efl/ContextMenuClientEfl.h: Removed.
+        * UIProcess/efl/DownloadManagerEfl.cpp: Removed.
+        * UIProcess/efl/DownloadManagerEfl.h: Removed.
+        * UIProcess/efl/EasingCurves.cpp: Removed.
+        * UIProcess/efl/EasingCurves.h: Removed.
+        * UIProcess/efl/EwkDebug.h: Removed.
+        * UIProcess/efl/EwkTouchEvent.cpp: Removed.
+        * UIProcess/efl/EwkTouchEvent.h: Removed.
+        * UIProcess/efl/EwkTouchPoint.cpp: Removed.
+        * UIProcess/efl/EwkTouchPoint.h: Removed.
+        * UIProcess/efl/FindClientEfl.cpp: Removed.
+        * UIProcess/efl/FindClientEfl.h: Removed.
+        * UIProcess/efl/FormClientEfl.cpp: Removed.
+        * UIProcess/efl/FormClientEfl.h: Removed.
+        * UIProcess/efl/InputMethodContextEfl.cpp: Removed.
+        * UIProcess/efl/InputMethodContextEfl.h: Removed.
+        * UIProcess/efl/PageLoadClientEfl.cpp: Removed.
+        * UIProcess/efl/PageLoadClientEfl.h: Removed.
+        * UIProcess/efl/PagePolicyClientEfl.cpp: Removed.
+        * UIProcess/efl/PagePolicyClientEfl.h: Removed.
+        * UIProcess/efl/PageUIClientEfl.cpp: Removed.
+        * UIProcess/efl/PageUIClientEfl.h: Removed.
+        * UIProcess/efl/PageViewportControllerClientEfl.cpp: Removed.
+        * UIProcess/efl/PageViewportControllerClientEfl.h: Removed.
+        * UIProcess/efl/RequestManagerClientEfl.cpp: Removed.
+        * UIProcess/efl/RequestManagerClientEfl.h: Removed.
+        * UIProcess/efl/TextCheckerClientEfl.cpp: Removed.
+        * UIProcess/efl/TextCheckerClientEfl.h: Removed.
+        * UIProcess/efl/TextCheckerEfl.cpp: Removed.
+        * UIProcess/efl/VibrationClientEfl.cpp: Removed.
+        * UIProcess/efl/VibrationClientEfl.h: Removed.
+        * UIProcess/efl/ViewClientEfl.cpp: Removed.
+        * UIProcess/efl/ViewClientEfl.h: Removed.
+        * UIProcess/efl/WebColorPickerClient.cpp: Removed.
+        * UIProcess/efl/WebColorPickerClient.h: Removed.
+        * UIProcess/efl/WebColorPickerEfl.cpp: Removed.
+        * UIProcess/efl/WebColorPickerEfl.h: Removed.
+        * UIProcess/efl/WebColorPickerResultListenerProxy.cpp: Removed.
+        * UIProcess/efl/WebColorPickerResultListenerProxy.h: Removed.
+        * UIProcess/efl/WebContextMenuProxyEfl.cpp: Removed.
+        * UIProcess/efl/WebContextMenuProxyEfl.h: Removed.
+        * UIProcess/efl/WebInspectorProxyEfl.cpp: Removed.
+        * UIProcess/efl/WebPageProxyEfl.cpp: Removed.
+        * UIProcess/efl/WebPopupItemEfl.cpp: Removed.
+        * UIProcess/efl/WebPopupItemEfl.h: Removed.
+        * UIProcess/efl/WebPopupMenuProxyEfl.cpp: Removed.
+        * UIProcess/efl/WebPopupMenuProxyEfl.h: Removed.
+        * UIProcess/efl/WebPreferencesEfl.cpp: Removed.
+        * UIProcess/efl/WebProcessPoolEfl.cpp: Removed.
+        * UIProcess/efl/WebView.cpp: Removed.
+        * UIProcess/efl/WebView.h: Removed.
+        * UIProcess/efl/WebViewClient.cpp: Removed.
+        * UIProcess/efl/WebViewClient.h: Removed.
+        * WebProcess/InjectedBundle/API/efl: Removed.
+        * WebProcess/InjectedBundle/API/efl/EWebKit_Extension.h: Removed.
+        * WebProcess/InjectedBundle/API/efl/ewk_extension.cpp: Removed.
+        * WebProcess/InjectedBundle/API/efl/ewk_extension.h: Removed.
+        * WebProcess/InjectedBundle/API/efl/ewk_extension_private.h: Removed.
+        * WebProcess/InjectedBundle/API/efl/ewk_page.cpp: Removed.
+        * WebProcess/InjectedBundle/API/efl/ewk_page.h: Removed.
+        * WebProcess/InjectedBundle/API/efl/ewk_page_private.h: Removed.
+        * WebProcess/InjectedBundle/efl: Removed.
+        * WebProcess/InjectedBundle/efl/InjectedBundleEfl.cpp: Removed.
+        * WebProcess/WebCoreSupport/efl: Removed.
+        * WebProcess/WebCoreSupport/efl/WebContextMenuClientEfl.cpp: Removed.
+        * WebProcess/WebCoreSupport/efl/WebEditorClientEfl.cpp: Removed.
+        * WebProcess/WebCoreSupport/efl/WebErrorsEfl.cpp: Removed.
+        * WebProcess/WebCoreSupport/efl/WebPopupMenuEfl.cpp: Removed.
+        * WebProcess/WebPage/efl: Removed.
+        * WebProcess/WebPage/efl/WebInspectorUIEfl.cpp: Removed.
+        * WebProcess/WebPage/efl/WebPageEfl.cpp: Removed.
+        * WebProcess/efl: Removed.
+        * WebProcess/efl/ExtensionManagerEfl.cpp: Removed.
+        * WebProcess/efl/ExtensionManagerEfl.h: Removed.
+        * WebProcess/efl/WebInjectedBundleMainEfl.cpp: Removed.
+        * WebProcess/efl/WebProcessMainEfl.cpp: Removed.
+        * efl: Removed.
+        * efl/EWebKit2Config.cmake.in: Removed.
+        * efl/EWebKit2ConfigVersion.cmake.in: Removed.
+        * efl/ewebkit2-extension.pc.in: Removed.
+        * efl/ewebkit2.pc.in: Removed.
+
+2017-02-16  Alex Christensen  <achristensen@webkit.org>
+
+        Remove old URL parser
+        https://bugs.webkit.org/show_bug.cgi?id=168483
+
+        Reviewed by Tim Horton.
+
+        * NetworkProcess/NetworkProcess.cpp:
+        (WebKit::NetworkProcess::initializeNetworkProcess):
+        * NetworkProcess/NetworkProcessCreationParameters.cpp:
+        (WebKit::NetworkProcessCreationParameters::encode):
+        (WebKit::NetworkProcessCreationParameters::decode):
+        * NetworkProcess/NetworkProcessCreationParameters.h:
+        * PlatformEfl.cmake:
+        * PlatformGTK.cmake:
+        * PlatformMac.cmake:
+        * Shared/Cocoa/WebKit2InitializeCocoa.mm: Removed.
+        * Shared/EntryPointUtilities/mac/XPCService/XPCServiceEntryPoint.h:
+        (WebKit::XPCServiceInitializer):
+        * Shared/WebKit2Initialize.cpp:
+        (WebKit::InitializeWebKit2):
+        * Shared/WebKit2Initialize.h:
+        (): Deleted.
+        * Shared/WebProcessCreationParameters.cpp:
+        (WebKit::WebProcessCreationParameters::encode):
+        (WebKit::WebProcessCreationParameters::decode):
+        * Shared/WebProcessCreationParameters.h:
+        * Shared/efl/WebKit2InitializeEFL.cpp: Removed.
+        * Shared/gtk/WebKit2InitializeGTK.cpp: Removed.
+        * UIProcess/WebProcessPool.cpp:
+        (WebKit::WebProcessPool::ensureNetworkProcess):
+        (WebKit::WebProcessPool::createNewWebProcess):
+        * WebKit2.xcodeproj/project.pbxproj:
+        * WebProcess/WebProcess.cpp:
+        (WebKit::WebProcess::initializeWebProcess):
+
+2017-02-16  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [WK2] Add additional test infrastructure and unit tests for data interaction
+        https://bugs.webkit.org/show_bug.cgi?id=168439
+        <rdar://problem/30557942>
+
+        Reviewed by Tim Horton.
+
+        Adds two new _WKTestingDelegate protocol methods that are fired when a 'start data interaction' request has been
+        sent to the web process, and when a response has been received. See Tools/ChangeLog for more details.
+
+        * UIProcess/API/Cocoa/_WKTestingDelegate.h:
+
+2017-02-16  Aakash Jain  <aakash_jain@apple.com>
+
+        Remove unused method WKBundlePageCopyContextMenuItemTitle
+        https://bugs.webkit.org/show_bug.cgi?id=168456
+
+        Reviewed by Dan Bernstein.
+
+        * WebProcess/InjectedBundle/API/c/WKBundlePagePrivate.h: Removed WKBundlePageCopyContextMenuItemTitle.
+
+2017-02-16  Aakash Jain  <aakash_jain@apple.com>
+
+        Remove unused WKContextGetProcessSuppressionEnabled and WKContextSetProcessSuppressionEnabled
+        https://bugs.webkit.org/show_bug.cgi?id=168460
+
+        Reviewed by Dan Bernstein.
+
+        * UIProcess/API/C/mac/WKContextPrivateMac.h:
+
+2017-02-16  Aakash Jain  <aakash_jain@apple.com>
+
+        Removed unused method WKContextGetProcessModel
+        https://bugs.webkit.org/show_bug.cgi?id=168457
+
+        Reviewed by Dan Bernstein.
+
+        * UIProcess/API/C/WKContext.h: Removed WKContextGetProcessModel.
+
+2017-02-16  Tim Horton  <timothy_horton@apple.com>
+
+        WKWebView inside a UICollectionView flashes when items are inserted above it
+        https://bugs.webkit.org/show_bug.cgi?id=168376
+        <rdar://problem/29322051>
+
+        Reviewed by Simon Fraser.
+
+        Previously, we would immediately send visible content rect updates
+        whenever we scrolled, or our frame or bounds changed, or ... a whole
+        bunch of other things. This message would be immediately sent to the
+        Web Content process, and coalesced at the whims of the Web Content process
+        main thread. However, if we received multiple such updates within the
+        same runloop cycle in the UI process, the Web Content process could
+        send back layer tree commits for intermediate states that would
+        never make it to the screen.
+
+        In the UICollectionView case, UIKit would first scroll to the new location
+        (potentially putting the WKWebView totally off-screen), and then update
+        our frame (back on screen), and we would get two layer tree commits;
+        one, with less tile coverage than needed to cover the area, and another
+        with full coverage.
+
+        Instead, wait until just before we commit the UI-side layer tree (and
+        thus everyone is done moving things around) to push the new visible 
+        rect info to the Web Content process.
+
+        So far, I have not found a way to test that reliably fails before
+        and reliably passes after without adding a ton of supporting code to WebKit.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _didInvokeUIScrollViewDelegateCallback]):
+        (-[WKWebView _didCommitLayerTree:]):
+        (-[WKWebView _didFinishScrolling]):
+        (-[WKWebView scrollViewDidScroll:]):
+        (-[WKWebView scrollViewDidZoom:]):
+        (-[WKWebView scrollViewDidEndZooming:withView:atScale:]):
+        (-[WKWebView _scrollViewDidInterruptDecelerating:]):
+        (-[WKWebView _didScroll]):
+        (-[WKWebView _enclosingScrollerScrollingEnded:]):
+        (-[WKWebView _frameOrBoundsChanged]):
+        (-[WKWebView _scheduleVisibleContentRectUpdate]):
+        (-[WKWebView _scrollViewIsInStableState:]):
+        (-[WKWebView _scheduleVisibleContentRectUpdateAfterScrollInView:]):
+        (-[WKWebView _keyboardChangedWithInfo:adjustScrollView:]):
+        (-[WKWebView _setObscuredInsets:]):
+        (-[WKWebView _endInteractiveObscuredInsetsChange]):
+        (-[WKWebView _beginAnimatedResizeWithUpdates:]):
+        (-[WKWebView _endAnimatedResize]):
+        (-[WKWebView _updateVisibleContentRects]): Deleted.
+        (-[WKWebView _updateVisibleContentRectAfterScrollInView:]): Deleted.
+        * UIProcess/API/Cocoa/WKWebViewInternal.h:
+        * UIProcess/ios/WKContentView.mm:
+        (-[WKContentView _didCommitLayerTree:]):
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView _startAssistingNode:userIsInteracting:blurPreviousNode:userObject:]):
+        (-[WKContentView _stopAssistingNode]):
+        * UIProcess/ios/WKScrollView.mm:
+        (-[WKScrollView setContentInset:]):
+        Have existing callers of _updateVisibleContentRect* instead call
+        _scheduleVisibleContentRectUpdate*.
+
+        In _scheduleVisibleContentRectUpdate, schedule a pre-commit callback
+        in which we will compute the new visible content rect information
+        and send it to the Web Content process.
+
+        Keep track of the stable state of the scroll view which most recently
+        scheduled an update, and use that to inform _updateVisibleContentRects.
+        This matches the previous behavior where the updates might get coalesced
+        in the Web Content process, and the most recent update wins.
+
+        Make a few callers of _updateVisibleContentRectAfterScrollInView
+        that passed in our scroll view just use _scheduleVisibleContentRectUpdate instead.
+
+2017-02-16  Brent Fulgham  <bfulgham@apple.com>
+
+        [WebRTC][Mac] Conditionally add sandbox extensions to the Network Process
+        https://bugs.webkit.org/show_bug.cgi?id=168010
+        <rdar://problem/30245503>
+
+        Reviewed by Youenn Fablet.
+
+        Conditionally add sandbox extensions to the Network Process when the WebRTC/Media Capture
+        features are enabled.
+
+        * NetworkProcess/NetworkProcess.h:
+        * NetworkProcess/NetworkProcessCreationParameters.cpp:
+        (WebKit::NetworkProcessCreationParameters::encode): Serialize new process configuration flag.
+        (WebKit::NetworkProcessCreationParameters::decode): Ditto.
+        * NetworkProcess/NetworkProcessCreationParameters.h:
+        * NetworkProcess/mac/NetworkProcessMac.mm:
+        (WebKit::NetworkProcess::platformInitializeNetworkProcess):  Remember state of WebRTC for when the
+        sandbox is established.
+        (WebKit::NetworkProcess::initializeSandbox): Add ENABLE_WEB_RTC parameter to sandbox launch state.
+        * NetworkProcess/mac/com.apple.WebKit.NetworkProcess.sb.in: Add conditional sandbox expansion to allow
+        bidirectional network access when the ENABLE_LIBWEBRTC flag is present in the sandbox launch parameters.
+        * UIProcess/Cocoa/WebProcessPoolCocoa.mm:
+        (WebKit::WebProcessPool::platformInitializeWebProcess): Use proper compile guards and check media stream
+        preference, rather than the peer connection preference.
+        (WebKit::WebProcessPool::platformInitializeNetworkProcess): Notify NetworkProcess at launch time whether the
+        user wants WebRTC support.
+
+2017-02-16  Brent Fulgham  <bfulgham@apple.com>
+
+        [WebRTC][Mac][WebKit2] Initial WebProcess does not support WebRTC
+        https://bugs.webkit.org/show_bug.cgi?id=168438
+        <rdar://problem/30401818>
+
+        Reviewed by Youenn Fablet.
+
+        The sandbox extension for microphone access does not take effect until the second WebProcess
+        is created, causing the initial browser tab to lack microphone support.
+
+        This patch checks the setting earlier in the boot process so that the initial WebProcess
+        instance gets the correct setting.
+
+        * UIProcess/Cocoa/WebProcessPoolCocoa.mm:
+        (WebKit::WebProcessPool::platformInitializeWebProcess): Move microphone sandbox extension here, so that the
+        initial WebProcess has the correct microphone access.
+        * UIProcess/WebProcessPool.cpp:
+        (WebKit::WebProcessPool::createNewWebProcess): Move microphone sandbox extension from here to platform-specific file.
+        (WebKit::WebProcessPool::createWebPage): Remove unneeded preference checks.
+
+2017-02-16  Eric Carlson  <eric.carlson@apple.com>
+
+        Add WebRTC as an off-by-default experimental feature menu item.
+        https://bugs.webkit.org/show_bug.cgi?id=167972
+        <rdar://problem/30293429>
+
+        Reviewed by Alex Christensen.
+
+        * Shared/WebPreferencesDefinitions.h:
+        * UIProcess/WebPreferences.cpp:
+        (WebKit::WebPreferences::setPeerConnectionAndMediaStreamEnabled): We need to enable/disable
+        peer connection and media stream preferences at the same time, so special case them.
+        (WebKit::WebPreferences::setEnabledForFeature):
+        * UIProcess/WebPreferences.h:
+
+2017-02-15  Alex Christensen  <achristensen@webkit.org>
+
+        Unreviewed, rolling out r212394.
+
+        Fixed iOS WebInspector
+
+        Reverted changeset:
+
+        "Unreviewed, rolling out r212169."
+        https://bugs.webkit.org/show_bug.cgi?id=166681
+        http://trac.webkit.org/changeset/212394
+
+2017-02-15  Eric Carlson  <eric.carlson@apple.com>
+
+        [MediaStream] delete CaptureDeviceInfo struct
+        https://bugs.webkit.org/show_bug.cgi?id=168395
+
+        Reviewed by Sam Weinig.
+
+        * Shared/WebCoreArgumentCoders.cpp:
+        (IPC::ArgumentCoder<CaptureDevice>::encode):
+        (IPC::ArgumentCoder<CaptureDevice>::decode):
+
+2017-02-15  Anders Carlsson  <andersca@apple.com>
+
+        Try again.
+
+        * WebProcess/WebCoreSupport/gtk/WebDragClientGtk.cpp:
+        (WebKit::WebDragClient::startDrag):
+
+2017-02-15  Anders Carlsson  <andersca@apple.com>
+
+        Attempt to fix the GTK+ build.
+
+        * WebProcess/WebCoreSupport/gtk/WebDragClientGtk.cpp:
+        (WebKit::WebDragClient::startDrag):
+
+2017-02-15  Simon Fraser  <simon.fraser@apple.com>
+
+        Clean up WebProcessCreationParameters a little
+        https://bugs.webkit.org/show_bug.cgi?id=168349
+
+        Reviewed by Alex Christensen.
+
+        Initialize the data members better, and rearrange to group the types in a slightly more space-efficient manner.
+
+        * Shared/WebProcessCreationParameters.cpp:
+        (WebKit::WebProcessCreationParameters::WebProcessCreationParameters):
+        * Shared/WebProcessCreationParameters.h:
+
+2017-02-15  Jer Noble  <jer.noble@apple.com>
+
+        REGRESSION(r183937): Fullscreen Exit animation missing mask
+        https://bugs.webkit.org/show_bug.cgi?id=168360
+
+        Reviewed by Eric Carlson.
+
+        In r183937, the fullscreen window's clip layer has it's mask removed when the enter
+        fullscreen animation completes, allowing low-power video playback mode to be entered. But
+        this breaks the exit fullscreen animaiton, which assumes a mask is present. Abstract the
+        mask creation code out into a static helper method, and use it at the beginning of the exit
+        fullscreen animation to re-create the mask before adding animations to it.
+
+        * UIProcess/mac/WKFullScreenWindowController.mm:
+        (createMask):
+        (-[WKFullScreenWindowController _startEnterFullScreenAnimationWithDuration:]):
+        (-[WKFullScreenWindowController _startExitFullScreenAnimationWithDuration:]):
+
+2017-02-15  Alex Christensen  <achristensen@webkit.org>
+
+        Unreviewed, rolling out r212169.
+
+        Broke iOS WebInspector
+
+        Reverted changeset:
+
+        "WebInspector: refactor RemoteInspector to move cocoa specific
+        code to their own files"
+        https://bugs.webkit.org/show_bug.cgi?id=166681
+        http://trac.webkit.org/changeset/212169
+
+2017-02-15  Anders Carlsson  <andersca@apple.com>
+
+        Modernize DragClient::startDrag somewhat
+        https://bugs.webkit.org/show_bug.cgi?id=168379
+
+        Reviewed by Tim Horton.
+
+        Update for WebCore changes.
+
+        * WebProcess/WebCoreSupport/WebDragClient.cpp:
+        (WebKit::WebDragClient::startDrag):
+        * WebProcess/WebCoreSupport/WebDragClient.h:
+        * WebProcess/WebCoreSupport/mac/WebDragClientMac.mm:
+        (WebKit::WebDragClient::startDrag):
+
+2017-02-15  Aakash Jain  <aakash_jain@apple.com>
+
+        Remove WebIOSEvent interface
+        https://bugs.webkit.org/show_bug.cgi?id=168368
+
+        Reviewed by Tim Horton.
+
+        * Shared/NativeWebKeyboardEvent.h: Using WebEvent from WebCore instead of WebIOSEvent.
+        * Shared/ios/NativeWebKeyboardEventIOS.mm: Ditto.
+        * Shared/ios/WebIOSEventFactory.h: Ditto.
+        * Shared/ios/WebIOSEventFactory.mm: Ditto.
+        * UIProcess/ios/WKContentViewInteraction.h: Ditto.
+        * UIProcess/ios/WKContentViewInteraction.mm: Ditto.
+        * UIProcess/API/C/WKPage.cpp: Using WebEvent from WebKit.
+
+2017-02-14  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        [GTK] Update cookie manager API to properly work with ephemeral sessions
+        https://bugs.webkit.org/show_bug.cgi?id=168230
+
+        Reviewed by Michael Catanzaro.
+
+        WebKitCookieManager is associated to a particular WebKitWebContext and uses the default session ID
+        unconditionally. It should be associated to a WebKitWebsiteDataManager instead and use its session ID. This
+        patch also adds support for handling cookies with WebKitWebsiteDataManager and deprecates
+        webkit_cookie_manager_get_domains_with_cookies(), webkit_cookie_manager_delete_cookies_for_domain() and
+        webkit_cookie_manager_delete_all_cookies(). It also adds API to get the the WebKitWebsiteDataManager of a
+        WebKitWebView, since it's the only way to get the WebKitCookieManager associated to an ephemeral web view.
+
+        * UIProcess/API/gtk/WebKitCookieManager.cpp:
+        (webkitCookieManagerDispose): Stop observing cookie changes.
+        (webkit_cookie_manager_class_init): Add dispose implementation.
+        (webkitCookieManagerCreate): Create the WebKitCookieManager with a WebKitWebsiteDataManager.
+        (webkit_cookie_manager_set_persistent_storage): Work with all contexts having the session.
+        (webkit_cookie_manager_set_accept_policy): Ditto.
+        (webkit_cookie_manager_get_accept_policy): Use any context having the session.
+        (webkit_cookie_manager_get_domains_with_cookies): Deprecate and implement using WebKitWebsiteDataManager.
+        (webkit_cookie_manager_get_domains_with_cookies_finish): Ditto.
+        (webkit_cookie_manager_delete_cookies_for_domain): Ditto.
+        (webkit_cookie_manager_delete_all_cookies): Ditto.
+        * UIProcess/API/gtk/WebKitCookieManager.h:
+        * UIProcess/API/gtk/WebKitCookieManagerPrivate.h:
+        * UIProcess/API/gtk/WebKitCustomProtocolManagerClient.cpp:
+        (attachCustomProtocolManagerClientToContext):
+        * UIProcess/API/gtk/WebKitDownloadClient.cpp:
+        (attachDownloadClientToContext):
+        * UIProcess/API/gtk/WebKitInjectedBundleClient.cpp:
+        (attachInjectedBundleClientToContext):
+        * UIProcess/API/gtk/WebKitSecurityManager.cpp:
+        (registerSecurityPolicyForURIScheme):
+        * UIProcess/API/gtk/WebKitWebContext.cpp:
+        (webkitWebContextConstructed): Call webkitWebsiteDataManagerAddProcessPool.
+        (webkitWebContextDispose): Call webkitWebsiteDataManagerRemoveProcessPool.
+        (webkit_web_context_get_cookie_manager): Return the WebKitCookieManager of the WebKitWebsiteDataManager.
+        (webkitWebContextGetProcessPool): Make it return a reference.
+        * UIProcess/API/gtk/WebKitWebContextPrivate.h:
+        * UIProcess/API/gtk/WebKitWebView.cpp:
+        (webkitWebViewConstructed): Call webkitWebsiteDataManagerAddProcessPool when creating a ephemeral web view.
+        (webkitWebViewDispose): Call webkitWebsiteDataManagerRemoveProcessPool if needed.
+        (webkit_web_view_get_website_data_manager): Return the WebKitWebsiteDataManager or the context one.
+        * UIProcess/API/gtk/WebKitWebView.h:
+        * UIProcess/API/gtk/WebKitWebsiteData.cpp: Add support for Cookies type.
+        (recordContainsSupportedDataTypes):
+        (toWebKitWebsiteDataTypes):
+        * UIProcess/API/gtk/WebKitWebsiteData.h:
+        * UIProcess/API/gtk/WebKitWebsiteDataManager.cpp:
+        (_WebKitWebsiteDataManagerPrivate::~_WebKitWebsiteDataManagerPrivate): Ensure all contexts were unregistered.
+        (webkitWebsiteDataManagerAddProcessPool): Register the process pool in the session.
+        (webkitWebsiteDataManagerRemoveProcessPool): Unregister the process poll from the session.
+        (webkitWebsiteDataManagerGetProcessPools): Return the list of proces pools registered.
+        (webkit_website_data_manager_get_cookie_manager): Return the WebKitCookieManager.
+        (toWebsiteDataTypes): Add Cookies.
+        * UIProcess/API/gtk/WebKitWebsiteDataManager.h:
+        * UIProcess/API/gtk/WebKitWebsiteDataManagerPrivate.h:
+        * UIProcess/API/gtk/docs/webkit2gtk-4.0-sections.txt: Add new symbols.
+        * UIProcess/WebsiteData/WebsiteDataRecord.cpp:
+        (WebKit::WebsiteDataRecord::displayNameForCookieHostName): Handle localhost as a special case here for backwards
+        compatibility.
+
+2017-02-14  Wenson Hsieh  <wenson_hsieh@apple.com>
+
+        [WK2] Support data interaction on links
+        https://bugs.webkit.org/show_bug.cgi?id=168331
+        <rdar://problem/30200837>
+
+        Reviewed by Tim Horton.
+
+        Adds support for data interaction on links at the client layer for WebKit2. This involves several changes,
+        detailed in the per-method changes below:
+
+        * Shared/ios/InteractionInformationAtPosition.h:
+        * Shared/ios/InteractionInformationAtPosition.mm:
+        (WebKit::InteractionInformationAtPosition::encode):
+        (WebKit::InteractionInformationAtPosition::decode):
+
+        Add adjustedPointForNodeRespondingToClickEvents (the request point, adjusted to take nodeRespondingToClickEvents
+        into account) to InteractionInformationAtPosition. The web process sends this adjusted point over to the UI
+        process so that the UI process will be able to begin a data interaction at the adjusted point rather than the
+        request point, which is necessary for small clickable (and data-interactive) elements such as links.
+
+        * UIProcess/ios/WKActionSheet.h:
+        * UIProcess/ios/WKActionSheet.mm:
+        (-[WKActionSheet presentSheet:]):
+        (-[WKActionSheet _presentationRectForStyle:]):
+        (-[WKActionSheet updateSheetPosition]):
+        * UIProcess/ios/WKActionSheetAssistant.h:
+        * UIProcess/ios/WKActionSheetAssistant.mm:
+        (-[WKActionSheetAssistant presentationRectForElementUsingClosestIndicatedRect]):
+        (-[WKActionSheetAssistant presentationRectForIndicatedElement]):
+        (-[WKActionSheetAssistant showImageSheet]):
+        (-[WKActionSheetAssistant _shouldPresentAtTouchLocationForElementRect:]):
+        (-[WKActionSheetAssistant needsLinkIndicator]):
+        (-[WKActionSheetAssistant showLinkSheet]):
+        (-[WKActionSheetAssistant cleanupSheet]):
+        (-[WKActionSheetAssistant _presentationStyleForImageAtElementRect:]): Deleted.
+
+        Add support for the WKActionSheetPresentAtClosestIndicatorRect style of presenting an action sheet. When
+        showing the action sheet for a link and there is space along the margins to show a popover in the first place,
+        we will now target the popover rect to the bounding rect of the set of adjacent (or nearly-adjacent) element
+        rects closest to the user's touch location. This covers cases where the link is split into multiple rects due to
+        a line break, when the link is on multiple lines with a jagged rect per line, and when both of the above are
+        true.
+
+        * UIProcess/ios/WKContentViewInteraction.mm:
+        (-[WKContentView pointIsInDataInteractionContent:]):
+        (-[WKContentView _positionInformationDidChange:]):
+        (-[WKContentView positionInformationForActionSheetAssistant:]):
+        (-[WKContentView updatePositionInformationForActionSheetAssistant:]):
+
+        Include link indicator data in the position information request if needed. As the FIXME suggests, this can be
+        improved by asynchronously presenting the action sheet assistant after the request returns, and is something we
+        should address in the future.
+
+        * WebProcess/WebPage/ios/WebPageIOS.mm:
+        (WebKit::WebPage::getPositionInformation):
+
+2017-02-14  Jason Rinn  <jrinn@apple.com>
+
+        Add new WKWebKit Cocoa API for getContentsAsString.
+        https://bugs.webkit.org/show_bug.cgi?id=168147
+        <rdar://problem/30502539>
+
+        Reviewed by Tim Horton.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _getContentsAsStringWithCompletionHandler:]): New API for getContentsAsString.
+        * UIProcess/API/Cocoa/WKWebViewPrivate.h:
+
+2017-02-14  Chris Dumez  <cdumez@apple.com>
+
+        HTML Form Validation bubble should take minimum font size setting into consideration
+        https://bugs.webkit.org/show_bug.cgi?id=168271
+        <rdar://problem/29869869>
+
+        Reviewed by Simon Fraser.
+
+        * UIProcess/API/Cocoa/WKWebView.mm:
+        (-[WKWebView _contentsOfUserInterfaceItem:]):
+        Return font size used in the validation bubble.
+
+        * UIProcess/PageClient.h:
+        * UIProcess/ios/PageClientImplIOS.h:
+        * UIProcess/ios/PageClientImplIOS.mm:
+        (WebKit::PageClientImpl::createValidationBubble):
+        * UIProcess/ios/WebPageProxyIOS.mm:
+        (WebKit::WebPageProxy::showValidationMessage):
+        * UIProcess/mac/PageClientImpl.h:
+        * UIProcess/mac/PageClientImpl.mm:
+        (WebKit::PageClientImpl::createValidationBubble):
+        * UIProcess/mac/WebPageProxyMac.mm:
+        (WebKit::WebPageProxy::showValidationMessage):
+        Pass minimum font size setting when constructing the form validation bubble.
+
+2017-02-14  Commit Queue  <commit-queue@webkit.org>
+
+        Unreviewed, rolling out r211879.
+        https://bugs.webkit.org/show_bug.cgi?id=168330
+
+        Not ready for the menu yet (Requested by eric_car_ on
+        #webkit).
+
+        Reverted changeset:
+
+        "Add WebRTC as an off-by-default experimental feature menu
+        item."
+        https://bugs.webkit.org/show_bug.cgi?id=167972
+        http://trac.webkit.org/changeset/211879
+
 2017-02-14  Simon Fraser  <simon.fraser@apple.com>
 
         Add logging and defensive fixes to try to detect problems causing blank tabs
