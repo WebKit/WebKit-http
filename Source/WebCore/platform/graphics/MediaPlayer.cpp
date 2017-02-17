@@ -618,6 +618,13 @@ void MediaPlayer::keyAdded()
 }
 #endif
     
+#if ENABLE(ENCRYPTED_MEDIA)
+void MediaPlayer::haveSomeKeys(const Vector<std::pair<Ref<SharedBuffer>, Ref<SharedBuffer>>>& keys)
+{
+    m_private->haveSomeKeys(keys);
+}
+#endif
+
 MediaTime MediaPlayer::duration() const
 {
     return m_private->durationMediaTime();
@@ -1273,6 +1280,13 @@ bool MediaPlayer::keyNeeded(Uint8Array* initData)
 String MediaPlayer::mediaKeysStorageDirectory() const
 {
     return client().mediaPlayerMediaKeysStorageDirectory();
+}
+#endif
+
+#if ENABLE(ENCRYPTED_MEDIA)
+bool MediaPlayer::initializationDataEncountered(const String& initDataType, RefPtr<ArrayBuffer>&& initData)
+{
+    return client().mediaPlayerInitializationDataEncountered(initDataType, WTFMove(initData));
 }
 #endif
 

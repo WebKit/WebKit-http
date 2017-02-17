@@ -54,6 +54,10 @@
 #include "PlayreadySession.h"
 #endif
 
+#if ENABLE(ENCRYPTED_MEDIA)
+#include "SharedBuffer.h"
+#endif
+
 static const char* dumpReadyState(WebCore::MediaPlayer::ReadyState readyState)
 {
     switch (readyState) {
@@ -813,6 +817,7 @@ void MediaPlayerPrivateGStreamerMSE::dispatchDecryptionKey(GstBuffer* buffer)
 }
 #endif
 
+<<<<<<< HEAD
 #if USE(PLAYREADY)
 void MediaPlayerPrivateGStreamerMSE::emitPlayReadySession()
 {
@@ -826,6 +831,20 @@ void MediaPlayerPrivateGStreamerMSE::emitPlayReadySession()
             gst_structure_new("playready-session", "session", G_TYPE_POINTER, session, nullptr)));
         it.value->setAppendState(AppendPipeline::AppendState::Ongoing);
     }
+}
+#endif
+
+#if ENABLE(ENCRYPTED_MEDIA)
+void MediaPlayerPrivateGStreamerMSE::haveSomeKeys(const Vector<std::pair<Ref<SharedBuffer>, Ref<SharedBuffer>>>& keys)
+{
+    if (keys.isEmpty())
+        return;
+
+    auto& keyValue = keys.first().second;
+    GRefPtr<GstBuffer> buffer(gst_buffer_new_wrapped(g_memdup(keyValue->data(), keyValue->size()), keyValue->size()));
+
+    for (auto iterator : m_appendPipelinesMap)
+        iterator.value->dispatchDecryptionKey(buffer.get());
 }
 #endif
 

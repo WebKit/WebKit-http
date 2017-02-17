@@ -377,6 +377,10 @@ void MockCDMInstance::storeRecordOfKeyUsage(const String&)
     // FIXME: This should be implemented along with the support for persistent-usage-record sessions.
 }
 
+void MockCDMInstance::gatherAvailableKeys(AvailableKeysCallback)
+{
+}
+
 }
 
 #endif

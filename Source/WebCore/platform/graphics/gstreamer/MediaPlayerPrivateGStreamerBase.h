@@ -288,6 +288,8 @@ private:
 #if ENABLE(LEGACY_ENCRYPTED_MEDIA)
     std::unique_ptr<CDMSession> createSession(const String&, CDMSessionClient*) override;
     CDMSession* m_cdmSession;
+#endif
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA)
     Lock m_protectionMutex;
     Condition m_protectionCondition;
     String m_lastGenerateKeyRequestKeySystemUuid;

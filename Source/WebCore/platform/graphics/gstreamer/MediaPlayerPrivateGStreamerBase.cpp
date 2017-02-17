@@ -302,7 +302,7 @@ MediaPlayerPrivateGStreamerBase::MediaPlayerPrivateGStreamerBase(MediaPlayer* pl
 
 MediaPlayerPrivateGStreamerBase::~MediaPlayerPrivateGStreamerBase()
 {
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA)
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA)
     m_protectionCondition.notifyOne();
 #endif
     m_notifier.cancelPendingNotifications();
@@ -367,7 +367,7 @@ void MediaPlayerPrivateGStreamerBase::clearSamples()
     m_sample = nullptr;
 }
 
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA)
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA)
 static std::pair<Vector<GRefPtr<GstEvent>>, Vector<String>> extractEventsAndSystemsFromMessage(GstMessage* message)
 {
     const GstStructure* structure = gst_message_get_structure(message);
@@ -409,7 +409,7 @@ bool MediaPlayerPrivateGStreamerBase::handleSyncMessage(GstMessage* message)
     }
 #endif // USE(GSTREAMER_GL)
 
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA)
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA)
     if (!g_strcmp0(contextType, "drm-preferred-decryption-system-id")) {
         if (isMainThread()) {
             GST_ERROR("can't handle drm-preferred-decryption-system-id need context message in the main thread");
@@ -491,6 +491,14 @@ bool MediaPlayerPrivateGStreamerBase::handleSyncMessage(GstMessage* message)
 #elif ENABLE(LEGACY_ENCRYPTED_MEDIA)
             RefPtr<Uint8Array> initDataArray = Uint8Array::create(initData.data(), initData.size());
             needKey(initDataArray);
+#elif ENABLE(ENCRYPTED_MEDIA)
+            fprintf(stderr, "MediaPlayerPrivateGStreamerBase: got init data of size %zu\n", initData.size());
+            m_player->initializationDataEncountered(ASCIILiteral("hoi"), ArrayBuffer::create(initData.data(), initData.size()));
+
+            // FIXME: ClearKey BestKey
+            LockHolder lock(m_protectionMutex);
+            m_lastGenerateKeyRequestKeySystemUuid = AtomicString(CLEAR_KEY_PROTECTION_SYSTEM_UUID);
+            m_protectionCondition.notifyOne();
 #else
             ASSERT_NOT_REACHED();
 #endif
@@ -513,7 +521,7 @@ bool MediaPlayerPrivateGStreamerBase::handleSyncMessage(GstMessage* message)
 
         return true;
     }
-#endif // ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA)
+#endif // ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(LEGACY_ENCRYPTED_MEDIA) || ENABLE(ENCRYPTED_MEDIA)
 
     return false;
 }
@@ -1822,8 +1830,8 @@ bool MediaPlayerPrivateGStreamerBase::supportsKeySystem(const String& keySystem,
 {
     GST_INFO("Checking for KeySystem support with %s and type %s: false.", keySystem.utf8().data(), mimeType.utf8().data());
 
-#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1)
-    if (equalIgnoringASCIICase(keySystem, "org.w3.clearkey"))
+#if ENABLE(LEGACY_ENCRYPTED_MEDIA_V1) || ENABLE(ENCRYPTED_MEDIA)
+    if (equalLettersIgnoringASCIICase(keySystem, "org.w3.clearkey"))
         return true;
 #endif
 
